@@ -55,6 +55,7 @@ public sealed class PyEnvironment
         Out = stdout ?? TextWriter.Null;
         Error = stderr ?? TextWriter.Null;
         Paths = [];
+        Args = [];
         CurrentFrame = new PyFrame();
         IsInteractive = isInteractive;
         FileSystem = fileSystem ?? MemoryFileSystem.CreateBuilder().Build();
@@ -76,6 +77,7 @@ public sealed class PyEnvironment
     internal Dictionary<string, PyModuleObject> Modules { get; } = [];
     internal PyFrame CurrentFrame { get; set; }
     internal List<string> Paths { get; }
+    internal List<string> Args { get; }
     internal int ExitCode { get; set; }
     internal event PyExitEventHandler? Exit;
     internal bool IsInteractive { get; set; }

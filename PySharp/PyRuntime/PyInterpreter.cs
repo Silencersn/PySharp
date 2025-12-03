@@ -30,11 +30,8 @@ public static class PyInterpreter
             .CreateBuilder()
             .StandardIO.WithConsole()
             .FileSystem.WithPhysicalFileSystem()
+            .System.AppendSysPath(Path.GetDirectoryName(Path.GetFullPath(filename))).AppendArgument(filename)
             .Build();
-
-        var path = Path.GetDirectoryName(Path.GetFullPath(filename));
-        if (path is not null)
-            environment.Paths.Add(path);
 
         return RunCode(code, moduleName, environment);
     }

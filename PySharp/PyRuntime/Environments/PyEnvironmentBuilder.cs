@@ -12,7 +12,8 @@ internal sealed class PyEnvironmentBuilder :
     IPyEnvironmentStandardIOBuilder,
     IPyEnvironmentFileSystemBuilder,
     IPyEnvironmentInterpreterModeBuilder,
-    IPyEnvironmentInitializationBuilder
+    IPyEnvironmentInitializationBuilder,
+    IPyEnvironmentSystemBuilder
 {
     private TextReader _stdin;
     private TextWriter _stdout;
@@ -22,7 +23,8 @@ internal sealed class PyEnvironmentBuilder :
 
     private bool _syncExit;
     private bool _importSite;
-    private List<string> _paths;
+    private readonly List<string> _paths;
+    private readonly List<string> _args;
 
     internal PyEnvironmentBuilder()
     {
@@ -35,12 +37,14 @@ internal sealed class PyEnvironmentBuilder :
         _syncExit = false;
         _importSite = true;
         _paths = [];
+        _args = [];
     }
 
     public IPyEnvironmentStandardIOBuilder StandardIO => this;
     public IPyEnvironmentFileSystemBuilder FileSystem => this;
     public IPyEnvironmentInterpreterModeBuilder InterpreterMode => this;
     public IPyEnvironmentInitializationBuilder Initialization => this;
+    public IPyEnvironmentSystemBuilder System => this;
 
     public PyEnvironment Build()
     {
@@ -62,6 +66,7 @@ internal sealed class PyEnvironmentBuilder :
             environment.Exit += static args => Environment.Exit(args.ExitCode);
 
         environment.Paths.AddRange(_paths);
+        environment.Args.AddRange(_args);
             
         return environment;
     }
@@ -118,10 +123,17 @@ internal sealed class PyEnvironmentBuilder :
         return this;
     }
 
-    IPyEnvironmentInitializationBuilder IPyEnvironmentInitializationBuilder.AppendSysPath(string? path)
+    IPyEnvironmentSystemBuilder IPyEnvironmentSystemBuilder.AppendSysPath(string? path)
     {
         if (path is not null)
             _paths.Add(path);
+        return this;
+    }
+
+    IPyEnvironmentSystemBuilder IPyEnvironmentSystemBuilder.AppendArgument(string? arg)
+    {
+        if (arg is not null)
+            _args.Add(arg);
         return this;
     }
 }
@@ -134,6 +146,7 @@ public interface IPyEnvironmentBuilder
     IPyEnvironmentFileSystemBuilder FileSystem { get; }
     IPyEnvironmentInterpreterModeBuilder InterpreterMode { get; }
     IPyEnvironmentInitializationBuilder Initialization { get; }
+    IPyEnvironmentSystemBuilder System { get; }
 
     PyEnvironment Build();
 }
@@ -167,11 +180,22 @@ public interface IPyEnvironmentInitializationBuilder : IPyEnvironmentBuilder
 {
     IPyEnvironmentInitializationBuilder SyncExit();
     IPyEnvironmentInitializationBuilder NotImplyImportSite();
-    IPyEnvironmentInitializationBuilder AppendSysPath(string? path);
-    IPyEnvironmentInitializationBuilder AppendSysPaths(IEnumerable<string>? paths)
+}
+
+public interface IPyEnvironmentSystemBuilder : IPyEnvironmentBuilder
+{
+    IPyEnvironmentSystemBuilder AppendSysPath(string? path);
+    IPyEnvironmentSystemBuilder AppendSysPaths(IEnumerable<string?>? paths)
     {
         foreach (var path in paths ?? [])
             AppendSysPath(path);
+        return this;
+    }
+    IPyEnvironmentSystemBuilder AppendArgument(string? arg);
+    IPyEnvironmentSystemBuilder AppendArguments(IEnumerable<string?>? args)
+    {
+        foreach (var arg in args ?? [])
+            AppendArgument(arg);
         return this;
     }
 }
