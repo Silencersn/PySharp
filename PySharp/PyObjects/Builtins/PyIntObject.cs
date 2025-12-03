@@ -111,13 +111,14 @@ public class PyIntObject : PyObject
 
     public override PyObject? Invert()
     {
-        return new PyIntObject(-(Value + 1));
+        return FromInteger(~Value);
     }
 
     public override PyObject? Add(PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.Add(other);
+
         return FromInteger(Value + intObj.Value);
     }
     public override PyObject? Sub(PyObject other)
@@ -190,9 +191,9 @@ public class PyIntObject : PyObject
                 return base.Pow(other, modulo);
 
             if (intObj.Value >= 0)
-                return FromInteger(BigInteger.Pow(Value, intObj.Int32Value) % moduloObj.Value);
+                return FromInteger(BigInteger.ModPow(Value, intObj.Value, moduloObj.Value));
 
-            return PyFloatObject.FromDouble(double.Pow((double)Value, intObj.Int32Value) % moduloObj.Int32Value);
+            return PyFloatObject.FromDouble(double.Pow((double)Value, intObj.Int32Value) % (double)moduloObj.Value);
         }
     }
     public override PyObject? LShift(PyObject other)
@@ -396,27 +397,14 @@ public sealed class PyIntObjectType : PyTypeObject
                 return false;
         }
 
-        if (numBase is 10)
+        if (numBase is 10 && !containsUnderline)
         {
-            if (containsUnderline)
-            {
-                if (!TryParseBaseNLessThanOrEqual10(s, numBase, out result))
-                    return false;
-            }
-            else
-            {
-                if (!TryParseBase10(s, out result))
-                    return false;
-            }
-        }
-        else if (numBase < 10)
-        {
-            if (!TryParseBaseNLessThanOrEqual10(s, numBase, out result))
+            if (!TryParseBase10(s, out result))
                 return false;
         }
         else
         {
-            if (!TryParseBaseNGreaterThan10(s, numBase, out result))
+            if (!TryParseBaseN(s, numBase, out result))
                 return false;
         }
 
@@ -447,33 +435,8 @@ public sealed class PyIntObjectType : PyTypeObject
         return BigInteger.TryParse(s, NumberStyles.None, provider: null, out result);
     }
 
-    private static bool TryParseBaseNLessThanOrEqual10(ReadOnlySpan<char> s, int numBase, out BigInteger result)
+    private static bool TryParseBaseN(ReadOnlySpan<char> s, int numBase, out BigInteger result)
     {
-        Debug.Assert(numBase >= 2 && numBase <= 10);
-
-        result = 0;
-        foreach (var c in s)
-        {
-            if (c is '_')
-                continue;
-
-            if (!TryConvertCharToIntLessThan10(c, out var value))
-                return false;
-
-            if (value >= numBase)
-                return false;
-
-            result *= numBase;
-            result += value;
-        }
-
-        return true;
-    }
-
-    private static bool TryParseBaseNGreaterThan10(ReadOnlySpan<char> s, int numBase, out BigInteger result)
-    {
-        Debug.Assert(numBase > 10 && numBase <= 36);
-
         result = 0;
         foreach (var c in s)
         {
@@ -491,18 +454,6 @@ public sealed class PyIntObjectType : PyTypeObject
         }
 
         return true;
-    }
-
-    private static bool TryConvertCharToIntLessThan10(char c, out int value)
-    {
-        if (char.IsAsciiDigit(c))
-        {
-            value = c - '0';
-            return true;
-        }
-
-        value = 0;
-        return false;
     }
 
     private static bool TryConvertCharToInt(char c, out int value)
