@@ -125,6 +125,39 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
     internal void AppendSpecialMethodsAsDescriptors<TPyObject>() where TPyObject : PyObject
     {
         AppendDefaultSpecialMethodsAsDescriptors<TPyObject>();
+
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Add), PySpecialMethodParametersType.Object);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Sub), PySpecialMethodParametersType.Object);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Mul), PySpecialMethodParametersType.Object);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(DivMod), PySpecialMethodParametersType.Object);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Pow), PySpecialMethodParametersType.ObjectObject);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Mod), PySpecialMethodParametersType.Object);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Neg), PySpecialMethodParametersType.NoArgs);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Pos), PySpecialMethodParametersType.NoArgs);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Invert), PySpecialMethodParametersType.NoArgs);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Abs), PySpecialMethodParametersType.NoArgs);
+
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Eq), PySpecialMethodParametersType.Object);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Ne), PySpecialMethodParametersType.Object);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Lt), PySpecialMethodParametersType.Object);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Le), PySpecialMethodParametersType.Object);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Gt), PySpecialMethodParametersType.Object);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Ge), PySpecialMethodParametersType.Object);
+
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(GetItem), PySpecialMethodParametersType.Object);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(SetItem), PySpecialMethodParametersType.ObjectObject);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(DelItem), PySpecialMethodParametersType.Object);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Contains), PySpecialMethodParametersType.Object);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Len), PySpecialMethodParametersType.NoArgs);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Iter), PySpecialMethodParametersType.NoArgs);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Next), PySpecialMethodParametersType.NoArgs);
+
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(GetAttribute), PySpecialMethodParametersType.String);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(SetAttr), PySpecialMethodParametersType.StringObject);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(DelAttr), PySpecialMethodParametersType.String);
+
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Call), PySpecialMethodParametersType.ArgsKwargs);
+
     }
     private static readonly FrozenDictionary<string, (string PyName, MethodInfo Method)> _nameToPyObjectMethod = new Dictionary<string, (string PyName, MethodInfo Method)>()
     {
@@ -132,6 +165,62 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
         [nameof(Str)] = (PySpecialNames.Str, GetPublicMethodFromPyObjectNoCache(nameof(Str))),
         [nameof(Hash)] = (PySpecialNames.Hash, GetPublicMethodFromPyObjectNoCache(nameof(Hash))),
         [nameof(Bool)] = (PySpecialNames.Bool, GetPublicMethodFromPyObjectNoCache(nameof(Bool))),
+        [nameof(Int)] = (PySpecialNames.Int, GetPublicMethodFromPyObjectNoCache(nameof(Int))),
+        [nameof(Float)] = (PySpecialNames.Float, GetPublicMethodFromPyObjectNoCache(nameof(Float))),
+        [nameof(Complex)] = (PySpecialNames.Complex, GetPublicMethodFromPyObjectNoCache(nameof(Complex))),
+        [nameof(Index)] = (PySpecialNames.Index, GetPublicMethodFromPyObjectNoCache(nameof(Index))),
+        [nameof(Call)] = (PySpecialNames.Call, GetPublicMethodFromPyObjectNoCache(nameof(Call))),
+        [nameof(GetAttribute)] = (PySpecialNames.GetAttribute, GetPublicMethodFromPyObjectNoCache(nameof(GetAttribute))),
+        [nameof(GetAttr)] = (PySpecialNames.GetAttr, GetPublicMethodFromPyObjectNoCache(nameof(GetAttr))),
+        [nameof(SetAttr)] = (PySpecialNames.SetAttr, GetPublicMethodFromPyObjectNoCache(nameof(SetAttr))),
+        [nameof(DelAttr)] = (PySpecialNames.DelAttr, GetPublicMethodFromPyObjectNoCache(nameof(DelAttr))),
+        [nameof(Contains)] = (PySpecialNames.Contains, GetPublicMethodFromPyObjectNoCache(nameof(Contains))),
+        [nameof(GetItem)] = (PySpecialNames.GetItem, GetPublicMethodFromPyObjectNoCache(nameof(GetItem))),
+        [nameof(SetItem)] = (PySpecialNames.SetItem, GetPublicMethodFromPyObjectNoCache(nameof(SetItem))),
+        [nameof(DelItem)] = (PySpecialNames.DelItem, GetPublicMethodFromPyObjectNoCache(nameof(DelItem))),
+        [nameof(Missing)] = (PySpecialNames.Missing, GetPublicMethodFromPyObjectNoCache(nameof(Missing))),
+        [nameof(Neg)] = (PySpecialNames.Neg, GetPublicMethodFromPyObjectNoCache(nameof(Neg))),
+        [nameof(Pos)] = (PySpecialNames.Pos, GetPublicMethodFromPyObjectNoCache(nameof(Pos))),
+        [nameof(Invert)] = (PySpecialNames.Invert, GetPublicMethodFromPyObjectNoCache(nameof(Invert))),
+        [nameof(Abs)] = (PySpecialNames.Abs, GetPublicMethodFromPyObjectNoCache(nameof(Abs))),
+        [nameof(Add)] = (PySpecialNames.Add, GetPublicMethodFromPyObjectNoCache(nameof(Add))),
+        [nameof(Sub)] = (PySpecialNames.Sub, GetPublicMethodFromPyObjectNoCache(nameof(Sub))),
+        [nameof(Mul)] = (PySpecialNames.Mul, GetPublicMethodFromPyObjectNoCache(nameof(Mul))),
+        [nameof(TrueDiv)] = (PySpecialNames.TrueDiv, GetPublicMethodFromPyObjectNoCache(nameof(TrueDiv))),
+        [nameof(FloorDiv)] = (PySpecialNames.FloorDiv, GetPublicMethodFromPyObjectNoCache(nameof(FloorDiv))),
+        [nameof(Mod)] = (PySpecialNames.Mod, GetPublicMethodFromPyObjectNoCache(nameof(Mod))),
+        [nameof(DivMod)] = (PySpecialNames.DivMod, GetPublicMethodFromPyObjectNoCache(nameof(DivMod))),
+        [nameof(Pow)] = (PySpecialNames.Pow, GetPublicMethodFromPyObjectNoCache(nameof(Pow))),
+        [nameof(LShift)] = (PySpecialNames.LShift, GetPublicMethodFromPyObjectNoCache(nameof(LShift))),
+        [nameof(RShift)] = (PySpecialNames.RShift, GetPublicMethodFromPyObjectNoCache(nameof(RShift))),
+        [nameof(And)] = (PySpecialNames.And, GetPublicMethodFromPyObjectNoCache(nameof(And))),
+        [nameof(Xor)] = (PySpecialNames.Xor, GetPublicMethodFromPyObjectNoCache(nameof(Xor))),
+        [nameof(Or)] = (PySpecialNames.Or, GetPublicMethodFromPyObjectNoCache(nameof(Or))),
+        [nameof(RAdd)] = (PySpecialNames.RAdd, GetPublicMethodFromPyObjectNoCache(nameof(RAdd))),
+        [nameof(RSub)] = (PySpecialNames.RSub, GetPublicMethodFromPyObjectNoCache(nameof(RSub))),
+        [nameof(RMul)] = (PySpecialNames.RMul, GetPublicMethodFromPyObjectNoCache(nameof(RMul))),
+        [nameof(RTrueDiv)] = (PySpecialNames.RTrueDiv, GetPublicMethodFromPyObjectNoCache(nameof(RTrueDiv))),
+        [nameof(RFloorDiv)] = (PySpecialNames.RFloorDiv, GetPublicMethodFromPyObjectNoCache(nameof(RFloorDiv))),
+        [nameof(RMod)] = (PySpecialNames.RMod, GetPublicMethodFromPyObjectNoCache(nameof(RMod))),
+        [nameof(RDivMod)] = (PySpecialNames.RDivMod, GetPublicMethodFromPyObjectNoCache(nameof(RDivMod))),
+        [nameof(RPow)] = (PySpecialNames.RPow, GetPublicMethodFromPyObjectNoCache(nameof(RPow))),
+        [nameof(RLShift)] = (PySpecialNames.RLShift, GetPublicMethodFromPyObjectNoCache(nameof(RLShift))),
+        [nameof(RRShift)] = (PySpecialNames.RRShift, GetPublicMethodFromPyObjectNoCache(nameof(RRShift))),
+        [nameof(RAnd)] = (PySpecialNames.RAnd, GetPublicMethodFromPyObjectNoCache(nameof(RAnd))),
+        [nameof(RXor)] = (PySpecialNames.RXor, GetPublicMethodFromPyObjectNoCache(nameof(RXor))),
+        [nameof(ROr)] = (PySpecialNames.ROr, GetPublicMethodFromPyObjectNoCache(nameof(ROr))),
+        [nameof(Lt)] = (PySpecialNames.Lt, GetPublicMethodFromPyObjectNoCache(nameof(Lt))),
+        [nameof(Le)] = (PySpecialNames.Le, GetPublicMethodFromPyObjectNoCache(nameof(Le))),
+        [nameof(Eq)] = (PySpecialNames.Eq, GetPublicMethodFromPyObjectNoCache(nameof(Eq))),
+        [nameof(Ne)] = (PySpecialNames.Ne, GetPublicMethodFromPyObjectNoCache(nameof(Ne))),
+        [nameof(Gt)] = (PySpecialNames.Gt, GetPublicMethodFromPyObjectNoCache(nameof(Gt))),
+        [nameof(Ge)] = (PySpecialNames.Ge, GetPublicMethodFromPyObjectNoCache(nameof(Ge))),
+        [nameof(Get)] = (PySpecialNames.Get, GetPublicMethodFromPyObjectNoCache(nameof(Get))),
+        [nameof(Set)] = (PySpecialNames.Set, GetPublicMethodFromPyObjectNoCache(nameof(Set))),
+        [nameof(Delete)] = (PySpecialNames.Delete, GetPublicMethodFromPyObjectNoCache(nameof(Delete))),
+        [nameof(Len)] = (PySpecialNames.Len, GetPublicMethodFromPyObjectNoCache(nameof(Len))),
+        [nameof(Iter)] = (PySpecialNames.Iter, GetPublicMethodFromPyObjectNoCache(nameof(Iter))),
+        [nameof(Next)] = (PySpecialNames.Next, GetPublicMethodFromPyObjectNoCache(nameof(Next))),
     }.ToFrozenDictionary();
     private static MethodInfo GetPublicMethodFromPyObjectNoCache(string name)
     {
@@ -140,9 +229,9 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
         return method;
     }
 
-    private void AppendSpecialMethodAsDescriptorIfOverrided<TPyObject>(string methodName, PySpecialMethodParametersType paramType) where TPyObject : PyObject
+    private void AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(string methodName, PySpecialMethodParametersType paramType) where TPyObject : PyObject
     {
-        if (!Utils.IsPyObjectMethodOverrided(typeof(TPyObject), methodName))
+        if (!Utils.IsPyObjectMethodOverridden(typeof(TPyObject), methodName))
             return;
 
         var (pyName, method) = _nameToPyObjectMethod[methodName];

@@ -220,7 +220,7 @@ internal static class Utils
         return PyStrObject.FromString(builder.ToString());
     }
 
-    public static bool IsPyObjectMethodOverrided(Type type, string name)
+    public static bool IsPyObjectMethodOverridden(Type type, string name)
     {
         return IsPyObjectMethodOverride(type, name, out _);
     }
@@ -238,9 +238,9 @@ internal static class Utils
     {
         (var isDescriptor, hasGet, hasSet, hasDelete) = _isDescriptorCache.GetOrAdd(pyObj.GetType(), static type =>
         {
-            var hasGet = IsPyObjectMethodOverrided(type, nameof(PyObject.Get));
-            var hasSet = IsPyObjectMethodOverrided(type, nameof(PyObject.Set));
-            var hasDelete = IsPyObjectMethodOverrided(type, nameof(PyObject.Delete));
+            var hasGet = IsPyObjectMethodOverridden(type, nameof(PyObject.Get));
+            var hasSet = IsPyObjectMethodOverridden(type, nameof(PyObject.Set));
+            var hasDelete = IsPyObjectMethodOverridden(type, nameof(PyObject.Delete));
             return (hasGet || hasSet || hasDelete, hasGet, hasSet, hasDelete);
         });
         return isDescriptor;
