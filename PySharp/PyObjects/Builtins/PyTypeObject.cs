@@ -25,7 +25,7 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
         MRO = [.. EnumerableMROTypes(this, Bases)];
     }
 
-    internal PyTypeObject(IReadOnlyList<PyTypeObject> bases, string name)
+    internal PyTypeObject(string name, IReadOnlyList<PyTypeObject> bases)
     {
         PyAttributes.Add(PySpecialNames.Bases, PyTupleObject.CreateTuple(bases));
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(name));

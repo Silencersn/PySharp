@@ -797,7 +797,7 @@ public sealed class ClassDefNode : AstStmtNode, IAstVariableScopeOwner
         public override string Name { get; }
         public override IReadOnlyList<PyTypeObject> Bases { get; }
 
-        internal CustomObjectType(string name, IReadOnlyList<PyTypeObject> bases, IEnumerable<KeyValuePair<string, PyObject>> attributes) : base(bases, name)
+        internal CustomObjectType(string name, IReadOnlyList<PyTypeObject> bases, IEnumerable<KeyValuePair<string, PyObject>> attributes) : base(name, bases)
         {
             Name = name;
             Bases = bases;

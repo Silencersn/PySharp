@@ -274,6 +274,11 @@ public class PyIntObject : PyObject
 
 public sealed class PyIntObjectType : PyTypeObject
 {
+    public PyIntObjectType()
+    {
+        AppendSpecialMethodsAsDescriptors<PyIntObject>();
+    }
+
     public override string Name => "int";
 
     private static readonly PyBuiltinFunctionOrMethodObject _new = new(PySpecialNames.New, NewImpl_1, NewImpl_2);

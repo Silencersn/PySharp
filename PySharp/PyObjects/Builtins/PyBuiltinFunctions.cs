@@ -342,15 +342,16 @@ public static partial class PyBuiltinFunctions
     }
 
     [PyFunctionArgsDef()]
-    private static PyObject DirImpl_1(PyArguments arguments)
+    private static PyListObject DirImpl_1(PyArguments arguments)
     {
         return PyListObject.CreateList(
             PyVirtualMachine.CurrentFrame.Locals
             .Where(static kvp => kvp.Value is not null)
+            .OrderBy(static kvp => kvp.Key)
             .Select(static kvp => PyStrObject.FromString(kvp.Key)));
     }
     [PyFunctionArgsDef("object", "/")]
-    private static PyObject DirImpl_2(PyArguments arguments)
+    private static PyListObject DirImpl_2(PyArguments arguments)
     {
         List<string> attrs = [];
 
@@ -360,6 +361,6 @@ public static partial class PyBuiltinFunctions
         foreach (var type in obj.PyType.MRO)
             attrs.AddRange(type.PyAttributes.Keys);
 
-        return PyListObject.CreateList(attrs.Distinct().Select(PyStrObject.FromString));
+        return PyListObject.CreateList(attrs.Distinct().Order().Select(PyStrObject.FromString));
     }
 }
