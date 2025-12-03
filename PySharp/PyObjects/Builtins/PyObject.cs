@@ -74,7 +74,7 @@ public class PyObject : IEquatable<PyObject>
         }
     }
 
-    private static int _pyNextId = 1;
+    private static int _pyNextId = 0;
 
     private readonly int _pyId;
     internal ConcurrentDictionary<string, PyObject>? _pyMembers;
@@ -86,7 +86,7 @@ public class PyObject : IEquatable<PyObject>
 
     public PyObject()
     {
-        _pyId = _pyNextId++;
+        _pyId = Interlocked.Increment(ref _pyNextId);
     }
 
     public static PyObject? PyObjectGetAttribute(PyObject pyObj, string name)
