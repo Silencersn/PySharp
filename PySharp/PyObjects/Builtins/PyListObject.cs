@@ -20,6 +20,11 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr
         _list = [.. list];
     }
 
+    public static PyListObject CreateList(params IEnumerable<PyObject> objects)
+    {
+        return new PyListObject(objects);
+    }
+
     public override PyObject? GetItem(PyObject item)
     {
         if (!PyInteropService.TryGetIndex(item, out var index))

@@ -20,7 +20,8 @@ public class PyBuiltinsModuleObject : PyModuleObject
         AddObjToAttrs(PyBuiltinFunctions.Any); // any
         AddObjToAttrs(PyBuiltinFunctions.Max); // max
         AddObjToAttrs(PyBuiltinFunctions.Sum); // sum
-        AddObjToAttrs(PyBuiltinFunctions.GetAttr); // sum
+        AddObjToAttrs(PyBuiltinFunctions.GetAttr); // getattr
+        AddObjToAttrs(PyBuiltinFunctions.Dir); // dir
 
         AddObjToAttrs(PyBuiltinTypes.Object); // object
         AddObjToAttrs(PyBuiltinTypes.Str); // str

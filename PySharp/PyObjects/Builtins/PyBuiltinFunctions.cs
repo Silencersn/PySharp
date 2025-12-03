@@ -24,6 +24,7 @@ public static partial class PyBuiltinFunctions
     public static readonly PyBuiltinFunctionOrMethodObject Max = new("max", MaxImpl_1, MaxImpl_2, MaxImpl_3);
     public static readonly PyBuiltinFunctionOrMethodObject Sum = new("sum", SumImpl);
     public static readonly PyBuiltinFunctionOrMethodObject GetAttr = new("getattr", GetAttrImpl_1, GetAttrImpl_2);
+    public static readonly PyBuiltinFunctionOrMethodObject Dir = new("dir", DirImpl_1, DirImpl_2);
 
     [PyFunctionArgsDef("*objects", "sep=' '", "end='\\n'", "file=None", "flush=False")]
     private static PyObject? PrintImpl(PyArguments arguments)
@@ -338,5 +339,27 @@ public static partial class PyBuiltinFunctions
             return attr;
 
         return arguments[2];
+    }
+
+    [PyFunctionArgsDef()]
+    private static PyObject DirImpl_1(PyArguments arguments)
+    {
+        return PyListObject.CreateList(
+            PyVirtualMachine.CurrentFrame.Locals
+            .Where(static kvp => kvp.Value is not null)
+            .Select(static kvp => PyStrObject.FromString(kvp.Key)));
+    }
+    [PyFunctionArgsDef("object", "/")]
+    private static PyObject DirImpl_2(PyArguments arguments)
+    {
+        List<string> attrs = [];
+
+        var obj = arguments[0];
+        attrs.AddRange(obj.PyAttributes.Keys);
+
+        foreach (var type in obj.PyType.MRO)
+            attrs.AddRange(type.PyAttributes.Keys);
+
+        return PyListObject.CreateList(attrs.Distinct().Select(PyStrObject.FromString));
     }
 }
