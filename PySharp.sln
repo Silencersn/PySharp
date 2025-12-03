@@ -1,0 +1,33 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.11222.15 d18.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PySharp", "PySharp\PySharp.csproj", "{1853A5AB-B923-4DCB-AA20-3F64E41EF150}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Example", "Example\Example.csproj", "{CC4FC234-5F8C-46BF-8DEA-33090583D2FF}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{0981AE71-1CB1-48AC-8437-5CB488585E54}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1853A5AB-B923-4DCB-AA20-3F64E41EF150}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1853A5AB-B923-4DCB-AA20-3F64E41EF150}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1853A5AB-B923-4DCB-AA20-3F64E41EF150}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1853A5AB-B923-4DCB-AA20-3F64E41EF150}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CC4FC234-5F8C-46BF-8DEA-33090583D2FF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CC4FC234-5F8C-46BF-8DEA-33090583D2FF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CC4FC234-5F8C-46BF-8DEA-33090583D2FF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CC4FC234-5F8C-46BF-8DEA-33090583D2FF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

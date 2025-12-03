@@ -1,0 +1,637 @@
+﻿using PySharp.PyRuntime;
+using System.Buffers;
+using System.Collections.Concurrent;
+using System.Collections.Frozen;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
+using System.Text;
+
+namespace PySharp.PyObjects.Builtins;
+
+public class PyStrObject : PyObject
+{
+    public string Value { get; }
+
+    public static PyStrObject Empty { get; } = new PyStrObject();
+
+    public override PyTypeObject PyType => PyBuiltinTypes.Str;
+
+    public PyStrObject()
+    {
+        Value = string.Empty;
+    }
+
+    public PyStrObject(string value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+
+        Value = value;
+    }
+
+    public override PyStrObject Repr()
+    {
+        return ToLiteral();
+    }
+
+    public override PyStrObject Str()
+    {
+        return this;
+    }
+
+    public override PyBoolObject Bool()
+    {
+        return Value.Length > 0;
+    }
+
+    public override PyIntObject Len()
+    {
+        return PyIntObject.FromInteger(Value.Length);
+    }
+
+    public override PyObject? Iter()
+    {
+        return new PyStrIteratorObject(Value);
+    }
+
+    public override PyObject? GetItem(PyObject item)
+    {
+        if (item is PyIntObject intObj)
+            return new PyStrObject(Value[(int)intObj.Value].ToString());
+
+        return PyVirtualMachine.RaiseTypeError(null);
+    }
+
+    public override PyObject? Add(PyObject other)
+    {
+        if (other is PyStrObject strObj)
+            return FromString(Value + strObj.Value);
+
+        return PyVirtualMachine.RaiseTypeError($"can only concatenate str (not \"{other.PyType.Name}\") to str");
+    }
+
+    public override PyObject? Eq(PyObject other)
+    {
+        if (other is PyStrObject strObj)
+            return PyBoolObject.FromBoolean(Value == strObj.Value);
+        return PyNotImplementedObject.NotImplemented;
+    }
+
+    public override PyObject? Lt(PyObject other)
+    {
+        if (other is not PyStrObject strObj)
+            return PyNotImplementedObject.NotImplemented;
+
+        return PyBoolObject.FromBoolean(Value.CompareTo(strObj.Value) < 0);
+    }
+
+    public override PyObject? Mul(PyObject other)
+    {
+        if (!PyInteropService.TryGetIndex(other, out var repeatCount))
+            return PyNotImplementedObject.NotImplemented;
+
+        return FromString(string.Concat(Enumerable.Repeat(Value, repeatCount)));
+    }
+
+    public override PyObject? RMul(PyObject other)
+    {
+        return Mul(other);
+    }
+
+    public static implicit operator PyStrObject(string value)
+    {
+        return new PyStrObject(value);
+    }
+
+    internal static PyStrObject FromLiteral(string literal)
+    {
+        return FromString(FromLiteralToString(literal));
+    }
+
+    internal static string FromLiteralToString(string literal)
+    {
+        string value = RemovePrefixAndWrapper(literal, out var prefix);
+        if (prefix.ContainsAny(['f', 'F', 'b', 'B']))
+            throw new ArgumentException("prefix is not supported", nameof(literal));
+
+        if (prefix.ContainsAny('r', 'R'))
+            return value;
+
+        var builder = new StringBuilder();
+        for (int i = 0; i < value.Length; i++)
+        {
+            var c = value[i];
+            if (c is '\\')
+            {
+                Debug.Assert(i < value.Length - 1);
+                c = value[++i];
+                builder.Append(c switch
+                {
+                    '\\' => "\\",
+                    '\'' => "'",
+                    '"' => "\"",
+                    'a' => "\a",
+                    'b' => "\b",
+                    'f' => "\f",
+                    'n' => "\n",
+                    'r' => "\r",
+                    't' => "\t",
+                    'v' => "\v",
+                    _ => $"\\{c}"
+                });
+            }
+            else
+            {
+                builder.Append(c);
+            }
+        }
+
+        return builder.ToString();
+
+        static string RemovePrefixAndWrapper(string str, out string prefix)
+        {
+            Debug.Assert(str.Length >= 2);
+
+            if (str[0] is '\'' or '"')
+                prefix = string.Empty;
+            else if (str[1] is '\'' or '"')
+                prefix = str[0].ToString();
+            else
+                prefix = str[..2];
+
+            if (str.EndsWith("\"\"\"") || str.EndsWith("'''"))
+                return str[(prefix.Length + 3)..^3];
+
+            return str[(prefix.Length + 1)..^1];
+        }
+    }
+    internal static PyStrObject FromLiteralContent(string literalContent)
+    {
+        return FromString(FromLiteralContentToString(literalContent));
+    }
+
+    internal static string FromLiteralContentToString(string literalContent)
+    {
+        var builder = new StringBuilder();
+        for (int i = 0; i < literalContent.Length; i++)
+        {
+            var c = literalContent[i];
+            if (c is '\\')
+            {
+                Debug.Assert(i < literalContent.Length - 1);
+                c = literalContent[++i];
+                builder.Append(c switch
+                {
+                    '\\' => "\\",
+                    '\'' => "'",
+                    '"' => "\"",
+                    'a' => "\a",
+                    'b' => "\b",
+                    'f' => "\f",
+                    'n' => "\n",
+                    'r' => "\r",
+                    't' => "\t",
+                    'v' => "\v",
+                    _ => $"\\{c}"
+                });
+            }
+            else
+            {
+                builder.Append(c);
+            }
+        }
+
+        return builder.ToString();
+    }
+
+    internal string ToLiteral()
+    {
+        var builder = new StringBuilder();
+
+        var wrapper = '\'';
+        if (Value.Contains('\'') && !Value.Contains('"'))
+            wrapper = '"';
+
+        builder.Append(wrapper);
+        for (int i = 0; i < Value.Length; i++)
+        {
+            var c = Value[i];
+            builder.Append(c switch
+            {
+                '\\' => "\\\\",
+                '\'' => wrapper is '\'' ? "\\'" : "'",
+                '\a' => "\\a",
+                '\b' => "\\b",
+                '\f' => "\\f",
+                '\n' => "\\n",
+                '\r' => "\\r",
+                '\t' => "\\t",
+                '\v' => "\\v",
+                _ => c.ToString()
+            });
+        }
+        builder.Append(wrapper);
+
+        return builder.ToString();
+    }
+
+    public static PyStrObject FromString(string value)
+    {
+        return new PyStrObject(value);
+    }
+
+    private static readonly ConcurrentDictionary<Rune, PyStrObject> _runeToPyStr = [];
+    public static PyStrObject FromRune(Rune value)
+    {
+        return _runeToPyStr.GetOrAdd(value, static rune => FromString(rune.ToString()));
+    }
+
+    internal static string ToLiteral(string value)
+    {
+        return FromString(value).ToLiteral();
+    }
+}
+
+public sealed class PyStrObjectType : PyTypeObject
+{
+    public override string Name => "str";
+
+    public override PyObject? New(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        var pack = new PyArgsPack(args, kwargs);
+        if (!pack.ValidateCount(1, 0))
+            return PyVirtualMachine.RaiseTypeError(null);
+
+        return PySpecialMethods.GetStr(pack[0]);
+    }
+}
+
+public static class PyStrConverter
+{
+    public struct ConvertErrorInfo
+    {
+        public ConvertError Error;
+        public char Char;
+        public int Position;
+        public int Length;
+    }
+
+    public const int ExtraInfoOffset = 16;
+
+    public enum ConvertError : uint
+    {
+        None = 0,
+        DestinationNotEnough,
+        EndsWithEscape,
+        LowerXSequence,
+        LowerUSequence,
+        UpperUSequence,
+        SurrogatesNotAllowed,
+        IllegalUnicodeCharacter,
+        InvalidEscapeSequence,
+
+        WrongFormat,
+    }
+
+    public static bool TryFromTextToString(ReadOnlySpan<char> text, Span<char> destination, out int charsWritten, out ConvertErrorInfo info)
+    {
+        info = default;
+        var textLength = text.Length;
+        var destLength = destination.Length;
+        charsWritten = 0;
+        Span<char> cache = stackalloc char[2];
+
+        for (int i = 0; i < textLength; i++)
+        {
+            switch (text[i])
+            {
+                case '\\':
+                    if (++i >= textLength)
+                    {
+                        info.Error = ConvertError.EndsWithEscape;
+                        info.Position = i - 1;
+                        info.Length = 1;
+                        return false;
+                    }
+
+                    char charToWrite;
+                    bool hasSecond = false;
+                    char charToWrite2 = default;
+
+                    switch (text[i])
+                    {
+                        case '\\' or '\'' or '\"':
+                            charToWrite = text[i];
+                            break;
+
+                        case 'a':
+                            charToWrite = '\a';
+                            break;
+
+                        case 'b':
+                            charToWrite = '\b';
+                            break;
+
+                        case 'f':
+                            charToWrite = '\f';
+                            break;
+
+                        case 'n':
+                            charToWrite = '\n';
+                            break;
+
+                        case 'r':
+                            charToWrite = '\r';
+                            break;
+
+                        case 't':
+                            charToWrite = '\t';
+                            break;
+
+                        case 'v':
+                            charToWrite = '\v';
+                            break;
+
+                        case '0' or '1' or '2' or '3' or '4' or '5' or '6' or '7':
+                            int num = text[i] - '0';
+                            if ((i + 1 < textLength) && char.IsBetween(text[i + 1], '0', '7'))
+                            {
+                                num *= 8;
+                                num += text[++i] - '0';
+
+                                if (char.IsBetween(text[i - 1], '0', '3') && (i + 1 < textLength) && char.IsBetween(text[i + 1], '0', '7'))
+                                {
+                                    num *= 8;
+                                    num += text[++i] - '0';
+                                }
+                            }
+                            Debug.Assert(num >= byte.MinValue && num <= byte.MaxValue);
+                            charToWrite = (char)num;
+                            break;
+
+                        case 'x':
+                            if (i + 2 >= textLength)
+                            {
+                                info.Error = ConvertError.LowerXSequence;
+                                info.Position = i - 1;
+                                info.Length = 2;
+                                IncreaseUntilNonHexDight(ref info, text[(i + 1)..]);
+                                return false;
+                            }
+
+                            var xSeq = text.Slice(i + 1, 2);
+                            if (!AllAsciiHexDigit(xSeq))
+                            {
+                                info.Error = ConvertError.LowerXSequence;
+                                info.Position = i - 1;
+                                IncreaseUntilNonHexDight(ref info, xSeq);
+                                return false;
+                            }
+
+                            charToWrite = (char)byte.Parse(xSeq, NumberStyles.HexNumber);
+                            i += 2;
+                            break;
+
+                        case 'u':
+                            if (i + 4 >= textLength)
+                            {
+                                info.Error = ConvertError.LowerUSequence;
+                                info.Position = i - 1;
+                                info.Length = 2;
+                                IncreaseUntilNonHexDight(ref info, text[(i + 1)..]);
+                                return false;
+                            }
+
+                            var uSeq4 = text.Slice(i + 1, 4);
+                            if (!AllAsciiHexDigit(uSeq4))
+                            {
+                                info.Error = ConvertError.LowerUSequence;
+                                info.Position = i - 1;
+                                info.Length = 2;
+                                IncreaseUntilNonHexDight(ref info, uSeq4);
+                                return false;
+                            }
+                            charToWrite = (char)ushort.Parse(uSeq4, NumberStyles.HexNumber);
+                            if (char.IsSurrogate(charToWrite))
+                            {
+                                info.Error = ConvertError.SurrogatesNotAllowed;
+                                info.Char = charToWrite;
+                                info.Position = i - 1;
+                                return false;
+                            }
+                            i += 4;
+                            break;
+
+                        case 'U':
+                            if (i + 8 >= textLength)
+                            {
+                                info.Error = ConvertError.UpperUSequence;
+                                info.Position = i - 1;
+                                info.Length = 2;
+                                IncreaseUntilNonHexDight(ref info, text[(i + 1)..]);
+                                return false;
+                            }
+
+                            var uSeq8 = text.Slice(i + 1, 8);
+                            if (!AllAsciiHexDigit(uSeq8))
+                            {
+                                info.Error = ConvertError.UpperUSequence;
+                                info.Position = i - 1;
+                                info.Length = 2;
+                                IncreaseUntilNonHexDight(ref info, uSeq8);
+                                return false;
+                            }
+                            var value = uint.Parse(uSeq8, NumberStyles.HexNumber);
+
+                            if (!Rune.TryCreate(value, out var rune))
+                            {
+                                info.Error = ConvertError.IllegalUnicodeCharacter;
+                                info.Position = i - 1;
+                                info.Length = 10;
+                                return false;
+                            }
+
+                            if (rune.Utf16SequenceLength is 2)
+                            {
+                                hasSecond = true;
+                                rune.EncodeToUtf16(cache);
+                                charToWrite = cache[0];
+                                charToWrite2 = cache[1];
+                            }
+                            else
+                            {
+                                Debug.Assert(rune.Utf16SequenceLength is 1);
+                                charToWrite = (char)rune.Value;
+
+                                if (char.IsSurrogate(charToWrite))
+                                {
+                                    info.Error = ConvertError.SurrogatesNotAllowed;
+                                    info.Char = charToWrite;
+                                    info.Position = i - 1;
+                                    return false;
+                                }
+                            }
+                            i += 8;
+                            break;
+
+                        //case 'N':
+                        //    throw new NotSupportedException();
+
+                        default:
+                            info.Error = ConvertError.InvalidEscapeSequence;
+                            info.Char = text[i];
+                            charToWrite = '\\';
+                            hasSecond = true;
+                            charToWrite2 = text[i];
+                            break;
+                    }
+
+                    if (charsWritten >= destination.Length)
+                    {
+                        info.Error = ConvertError.DestinationNotEnough;
+                        return false;
+                    }
+                    destination[charsWritten++] = charToWrite;
+                    if (hasSecond)
+                    {
+                        if (charsWritten >= destination.Length)
+                        {
+                            info.Error = ConvertError.DestinationNotEnough;
+                            return false;
+                        }
+                        destination[charsWritten++] = charToWrite2;
+                    } 
+                    break;
+
+                default:
+                    if (charsWritten >= destination.Length)
+                    {
+                        info.Error = ConvertError.DestinationNotEnough;
+                        return false;
+                    }
+                    destination[charsWritten++] = text[i];
+                    break;
+            }
+        }
+
+        info.Error = ConvertError.None;
+        return true;
+
+        static bool AllAsciiHexDigit(ReadOnlySpan<char> chars)
+        {
+            foreach (var c in chars)
+            {
+                if (!char.IsAsciiHexDigit(c))
+                    return false;
+            }
+            return true;
+        }
+
+        static void IncreaseUntilNonHexDight(ref ConvertErrorInfo info, ReadOnlySpan<char> chars)
+        {
+            foreach (var c in chars)
+            {
+                if (char.IsAsciiHexDigit(c))
+                    info.Length++;
+                else
+                    break;
+            }
+        }
+    }
+
+    public static bool TryFromLiteralToString(ReadOnlySpan<char> literal, Span<char> destination, out int charsWritten, out ConvertErrorInfo info)
+    {
+        charsWritten = 0;
+        info = default;
+        info.Error = ConvertError.WrongFormat;
+
+        if (literal.Length < 2)
+            return false;
+
+        var wrapper = literal[^1];
+        if (wrapper is not ('\'' or '\"'))
+            return false;
+
+        var startIndex = literal.IndexOf(wrapper);
+        Debug.Assert(startIndex is not -1);
+        if (startIndex == literal.Length - 1)
+            return false;
+
+        var prefix = literal[..startIndex];
+        bool isRaw;
+        if (prefix.Length is 0)
+        {
+            isRaw = false;
+        }
+        else if (prefix.Length is 1)
+        {
+            if (prefix[0] is 'r' or 'R')
+            {
+                isRaw = true;
+            }
+            else if (prefix[0] is 'u' or 'U')
+            {
+                isRaw = false;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        else
+        {
+            return false;
+        }
+
+        ReadOnlySpan<char> text;
+        ReadOnlySpan<char> triple = [wrapper, wrapper, wrapper];
+        if (literal.EndsWith(triple))
+        {
+            if (!literal[startIndex..].StartsWith(triple))
+                return false;
+            text = literal[(startIndex + 3)..^3];
+        }
+        else
+        {
+            text = literal[(startIndex + 1)..^1];
+        }
+
+        info.Error = ConvertError.None;
+
+        if (isRaw)
+        {
+            if (text.Length > destination.Length)
+            {
+                info.Error = ConvertError.DestinationNotEnough;
+                return false;
+            }
+
+            text.CopyTo(destination);
+            charsWritten = text.Length;
+            return true;
+        }
+
+        return TryFromTextToString(text, destination, out charsWritten, out info);
+    }
+
+    public static bool TryFromLiteralToString(ReadOnlySpan<char> literal, [NotNullWhen(true)] out string? str, out ConvertErrorInfo info)
+    {
+        const int MaxStackLimit = 1024;
+        char[]? rentedArray = null;
+
+        Span<char> chars = literal.Length <= MaxStackLimit ? stackalloc char[literal.Length] : (rentedArray = ArrayPool<char>.Shared.Rent(literal.Length));
+        if (!TryFromLiteralToString(literal, chars, out var charsWritten, out info))
+        {
+            Debug.Assert(info.Error is not ConvertError.DestinationNotEnough);
+            str = null;
+            if (rentedArray is not null)
+                ArrayPool<char>.Shared.Return(rentedArray);
+            return false;
+        }
+
+        str = chars[..charsWritten].ToString();
+        if (rentedArray is not null)
+            ArrayPool<char>.Shared.Return(rentedArray);
+        return true;
+    }
+}

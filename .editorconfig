@@ -1,0 +1,7 @@
+﻿[*.cs]
+
+# IDE0060: 删除未使用的参数
+dotnet_diagnostic.IDE0060.severity = silent
+
+# IDE0290: 使用主构造函数
+dotnet_diagnostic.IDE0290.severity = silent

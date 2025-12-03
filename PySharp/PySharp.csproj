@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Authors>Silencersn</Authors>
+    <Version>0.1.0</Version>
+    <Copyright>Copyright © 2025 Silencersn. All rights reserved.</Copyright>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="PyObjects\Warnings\" />
+  </ItemGroup>
+
+</Project>
