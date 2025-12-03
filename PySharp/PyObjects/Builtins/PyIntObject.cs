@@ -31,11 +31,7 @@ public class PyIntObject : PyObject
     public BigInteger Value { get; }
     public int Int32Value => (int)Value;
 
-    public PyIntObject()
-    {
-    }
-
-    public PyIntObject(BigInteger value) : this()
+    internal PyIntObject(BigInteger value)
     {
         Value = value;
     }
@@ -80,7 +76,7 @@ public class PyIntObject : PyObject
 
     public override PyStrObject Repr()
     {
-        return Value.ToString();
+        return PyStrObject.FromString(Value.ToString());
     }
 
     public override PyBoolObject Bool()
@@ -238,35 +234,35 @@ public class PyIntObject : PyObject
     public override PyObject? Lt(PyObject other)
     {
         if (other is not PyIntObject intObj)
-            return base.Add(other);
+            return base.Lt(other);
 
         return PyBoolObject.FromBoolean(Value < intObj.Value);
     }
     public override PyObject? Gt(PyObject other)
     {
         if (other is not PyIntObject intObj)
-            return base.Add(other);
+            return base.Gt(other);
 
         return PyBoolObject.FromBoolean(Value > intObj.Value);
     }
     public override PyObject? Le(PyObject other)
     {
         if (other is not PyIntObject intObj)
-            return base.Add(other);
+            return base.Le(other);
 
         return PyBoolObject.FromBoolean(Value <= intObj.Value);
     }
     public override PyObject? Ge(PyObject other)
     {
         if (other is not PyIntObject intObj)
-            return base.Add(other);
+            return base.Ge(other);
 
         return PyBoolObject.FromBoolean(Value >= intObj.Value);
     }
     public override PyObject? Eq(PyObject other)
     {
         if (other is not PyIntObject intObj)
-            return base.Add(other);
+            return base.Eq(other);
 
         return PyBoolObject.FromBoolean(Value == intObj.Value);
     }
