@@ -22,6 +22,8 @@ public class PyBuiltinsModuleObject : PyModuleObject
         AddObjToAttrs(PyBuiltinFunctions.Sum); // sum
         AddObjToAttrs(PyBuiltinFunctions.GetAttr); // getattr
         AddObjToAttrs(PyBuiltinFunctions.Dir); // dir
+        AddObjToAttrs(PyBuiltinFunctions.Chr); // chr
+        AddObjToAttrs(PyBuiltinFunctions.Ord); // ord
 
         AddObjToAttrs(PyBuiltinTypes.Object); // object
         AddObjToAttrs(PyBuiltinTypes.Str); // str

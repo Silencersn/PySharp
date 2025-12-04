@@ -2,6 +2,8 @@
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.PyAttributes;
 using PySharp.Tokenization;
+using System.Diagnostics;
+using System.Text;
 
 namespace PySharp.PyObjects.Builtins;
 
@@ -25,6 +27,8 @@ public static partial class PyBuiltinFunctions
     public static readonly PyBuiltinFunctionOrMethodObject Sum = new("sum", SumImpl);
     public static readonly PyBuiltinFunctionOrMethodObject GetAttr = new("getattr", GetAttrImpl_1, GetAttrImpl_2);
     public static readonly PyBuiltinFunctionOrMethodObject Dir = new("dir", DirImpl_1, DirImpl_2);
+    public static readonly PyBuiltinFunctionOrMethodObject Chr = new("chr", ChrImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Ord = new("ord", OrdImpl);
 
     [PyFunctionArgsDef("*objects", "sep=' '", "end='\\n'", "file=None", "flush=False")]
     private static PyObject? PrintImpl(PyArguments arguments)
@@ -362,5 +366,31 @@ public static partial class PyBuiltinFunctions
             attrs.AddRange(type.PyAttributes.Keys);
 
         return PyListObject.CreateList(attrs.Distinct().Order().Select(PyStrObject.FromString));
+    }
+
+    [PyFunctionArgsDef("codepoint", "/")]
+    private static PyObject? ChrImpl(PyArguments arguments)
+    {
+        if (!PyInteropService.TryGetIndex(arguments[0], out var value))
+            return null;
+
+        if (!Rune.TryCreate(value, out var rune))
+            return PyVirtualMachine.RaiseValueError("chr() arg not in range(0x110000)");
+
+        return PyStrObject.FromRune(rune);
+    }
+
+    [PyFunctionArgsDef("c", "/")]
+    private static PyObject? OrdImpl(PyArguments arguments)
+    {
+        if (arguments[0] is not PyStrObject strObj)
+            return PyVirtualMachine.RaiseTypeError($"ord() expected string of length 1, but {arguments[0].PyType.Name} found");
+
+        if (strObj.PyLength is not 1)
+            return PyVirtualMachine.RaiseTypeError($"ord() expected a character, but string of length {strObj.PyLength} found");
+
+        var successful = Rune.TryGetRuneAt(strObj.Value, 0, out var rune);
+        Debug.Assert(successful);
+        return PyIntObject.FromInteger(rune.Value);
     }
 }
