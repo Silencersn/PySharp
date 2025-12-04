@@ -247,8 +247,14 @@ public sealed partial class Lexer
         Debug.Assert(_preString is not null);
         var pastString = _currentContent[_offset..(m.Index + m.Length)];
         var fullString = _preString + pastString;
+
+        // all the \r\n should be \n
+        fullString = fullString.Replace("\r", string.Empty);
+
         if (!_isRawString)
-            fullString = fullString.Replace("\\\r\n", string.Empty).Replace("\\\n", string.Empty);
+            // explicit line joining
+            fullString = fullString.Replace("\\\n", string.Empty);
+
         _lineno += pastString.AsSpan().Count('\n');
 
         var lastLine = GetCurrentLine(out var offsetOfNextLine);

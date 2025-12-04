@@ -1,4 +1,5 @@
 ﻿using PySharp.PyRuntime;
+using PySharp.PyRuntime.PyAttributes;
 using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Frozen;
@@ -9,7 +10,7 @@ using System.Text;
 
 namespace PySharp.PyObjects.Builtins;
 
-public class PyStrObject : PyObject
+public partial class PyStrObject : PyObject
 {
     public string Value { get; }
     public int PyLength
@@ -219,11 +220,23 @@ public class PyStrObject : PyObject
     {
         return _runeToPyStr.GetOrAdd(value, static rune => FromString(rune.ToString()));
     }
+
+    [PyFunctionArgsDef("iterable", "/")]
+    internal PyObject? JoinImpl(PyArguments arguments)
+    {
+        return PyJoin(arguments[0]);
+    }
 }
 
 public sealed class PyStrObjectType : PyTypeObject
 {
     public override string Name => "str";
+
+    public PyStrObjectType()
+    {
+        AppendSpecialMethodsAsDescriptors<PyStrObject>();
+        AppendMethodDescriptor<PyStrObject>("join", nameof(PyStrObject.JoinImpl));
+    }
 
     public override PyObject? New(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
