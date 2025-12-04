@@ -7,35 +7,21 @@ public sealed class PyExceptionObject : PyObject
 {
     public override PyExceptionType PyType { get; }
 
-    public PyExceptionObject(PyExceptionType exceptionType)
+    public PyExceptionObject(PyExceptionType exceptionType, params IEnumerable<PyObject> args)
     {
         ArgumentNullException.ThrowIfNull(exceptionType);
 
         PyType = exceptionType;
+        Args = [.. args];
     }
 
     public bool Raised { get; internal set; }
     public PyExceptionObject? Cause { get; internal set; }
     public string? CauseReason { get; internal set; }
-    public PyObject? Arg { get; internal set; } // TODO: Arg -> Args
-    public IReadOnlyList<PyObject> Args { get; internal set; }
+    public IReadOnlyList<PyObject> Args { get; }
 
     public override PyObject? Repr()
     {
-        //if (Arg is PyTupleObject tuple)
-        //{
-        //    if (PySpecialMethods.TryGetRepr(tuple, out var s))
-        //        return PyStrObject.FromString($"{PyType.Name}{s.Value}");
-        //    return null;
-        //}
-
-        //if (Arg is not null)
-        //{
-        //    if (PySpecialMethods.TryGetRepr(Arg, out var s))
-        //        return PyStrObject.FromString($"{PyType.Name}({s.Value})");
-        //    return null;
-        //}
-
         var builder = new StringBuilder();
         builder.Append(PyType.Name);
         builder.Append('(');
@@ -79,10 +65,15 @@ public sealed class PyExceptionObject : PyObject
                 .AppendLine();
 
         builder.Append(PyType.Name);
-        if (PySpecialMethods.TryGetStr(this, out var s) && s.Value != string.Empty)
-            builder.Append(": ").Append(s.Value);
+        if (PySpecialMethods.TryGetStr(this, out var s))
+        {
+            if (s.Value != string.Empty)
+                builder.Append(": ").Append(s.Value);
+        }
         else
-            builder.Append("<exception str() failed>");
+        {
+            builder.Append(": ").Append("<exception str() failed>");
+        }
 
         return builder.ToString();
     }
@@ -97,12 +88,12 @@ public abstract class PyExceptionType : PyTypeObject
 
     public PyExceptionObject Create(PyObject? pyObject)
     {
-        return new PyExceptionObject(this) { Arg = pyObject, Args = pyObject is null ? [] : [pyObject] };
+        return new PyExceptionObject(this, pyObject is null ? [] : [pyObject]);
     }
 
     public PyExceptionObject Create(params IEnumerable<PyObject> pyObjects)
     {
-        return new PyExceptionObject(this) { Arg = new PyTupleObject(pyObjects), Args = [.. pyObjects] };
+        return new PyExceptionObject(this, [.. pyObjects]);
     }
 
     public sealed override PyObject? New(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
@@ -110,10 +101,7 @@ public abstract class PyExceptionType : PyTypeObject
         if (kwargs.Count is not 0)
             return PyVirtualMachine.RaiseTypeError(null);
 
-        return new PyExceptionObject(this)
-        {
-            Args = [.. args]
-        };
+        return new PyExceptionObject(this, [.. args]);
     }
 }
 
