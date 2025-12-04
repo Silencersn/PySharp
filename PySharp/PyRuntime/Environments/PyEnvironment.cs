@@ -64,10 +64,15 @@ public sealed class PyEnvironment
 
     internal void Init(PyEnvironmentOptions options)
     {
-        ImportBuiltinModuleToFrame(CurrentFrame, "builtins", PySpecialNames.Builtins);
+        var builtins = ImportModule("builtins");
+        Debug.Assert(builtins is not null);
+        CurrentFrame.SetValue(PySpecialNames.Builtins, builtins);
         CurrentFrame.SetValue(PySpecialNames.Name, PyStrObject.FromString(PySpecialNames.Main));
         if (!options.NotImplyImportSite)
-            ImportBuiltinModuleToFrame(CurrentFrame, "site");
+        {
+            var site = ImportModule("builtins");
+            Debug.Assert(site is not null);
+        }
     }
 
     internal PyExceptionObject? CurrentError { get; set; }
@@ -90,16 +95,6 @@ public sealed class PyEnvironment
         Exit?.Invoke(args);
     }
 
-    private void ImportBuiltinModuleToFrame(PyFrame frame, string name, string? alias = null)
-    {
-        if (!Modules.TryGetValue(name, out var module))
-            module = PyStandardLibrary.TryCreateModule(name);
-        Debug.Assert(module is not null);
-        Modules[name] = module;
-        module.OnImport(this);
-        frame.SetValue(alias ?? name, module);
-    }
-
     internal PyModuleObject? ImportModule(string name)
     {
         if (Modules.TryGetValue(name, out var module))
@@ -108,8 +103,8 @@ public sealed class PyEnvironment
         module = PyStandardLibrary.TryCreateModule(name);
         if (module is not null)
         {
-            Modules[name] = module;
             module.OnImport(this);
+            Modules[name] = module;
             return module;
         }
 
@@ -122,8 +117,8 @@ public sealed class PyEnvironment
             var tokens = PyInterpreter.Tokenize(FileSystem.ReadAllText(filename));
             var node = PyInterpreter.Parse(tokens);
             module = PyVirtualMachine.ExecuteAstNodeWithinEnvironment(node, Path.GetFileNameWithoutExtension(filename));
-            Modules[name] = module;
             module.OnImport(this);
+            Modules[name] = module;
             return module;
         }
 
