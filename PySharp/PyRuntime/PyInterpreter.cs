@@ -1,5 +1,5 @@
 ﻿using PySharp.AstNodes;
-using PySharp.PyObjects.Builtins;
+using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime.Environments;
 using PySharp.Tokenization;
 using System.Diagnostics;
@@ -39,8 +39,6 @@ public static class PyInterpreter
     public static PyModuleObject RunCode(string code, string? moduleName = null, PyEnvironment? environment = null)
     {
         ArgumentNullException.ThrowIfNull(code);
-        var tokens = Tokenize(code);
-        var node = Parse(tokens, environment);
 
         environment ??= PyEnvironment
             .CreateBuilder()
@@ -48,6 +46,8 @@ public static class PyInterpreter
             .FileSystem.WithEmptyMemoryFileSystem()
             .Build();
 
+        var tokens = Tokenize(code);
+        var node = Parse(tokens, environment);
         return PyVirtualMachine.ExecuteAstNode(node, moduleName ?? string.Empty, environment);
     }
 

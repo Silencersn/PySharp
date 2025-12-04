@@ -1,9 +1,9 @@
-﻿using PySharp.PyObjects.Builtins;
-using PySharp.PyObjects.Operator;
-using PySharp.PyObjects.Random;
-using PySharp.PyObjects.Site;
-using PySharp.PyObjects.This;
-using PySharp.PyObjects.Time;
+﻿using PySharp.PyModules.Builtins;
+using PySharp.PyModules.Operator;
+using PySharp.PyModules.Random;
+using PySharp.PyModules.Site;
+using PySharp.PyModules.This;
+using PySharp.PyModules.Time;
 
 
 namespace PySharp.PyRuntime;

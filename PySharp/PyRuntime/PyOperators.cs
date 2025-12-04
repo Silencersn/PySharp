@@ -1,5 +1,5 @@
-﻿using PySharp.PyObjects;
-using PySharp.PyObjects.Builtins;
+﻿using PySharp.PyModules;
+using PySharp.PyModules.Builtins;
 using System.Diagnostics;
 
 namespace PySharp.PyRuntime;
