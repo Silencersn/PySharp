@@ -68,6 +68,58 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
     {
         return PyItems();
     }
+
+    [PyFunctionArgsDef()]
+    internal PyNoneObject ClearImpl(PyArguments arguments)
+    {
+        PyClear();
+        return PyNoneObject.None;
+    }
+
+    [PyFunctionArgsDef("key", "default=None", "/")]
+    internal PyObject GetImpl(PyArguments arguments)
+    {
+        if (PyTryGet(arguments[0], out var value))
+            return value;
+        return arguments[1];
+    }
+
+    [PyFunctionArgsDef("key", "default=None", "/")]
+    internal PyObject SetDefaultImpl(PyArguments arguments)
+    {
+        return PySetDefault(arguments[0], arguments[1]);
+    }
+
+    [PyFunctionArgsDef("key", "/")]
+    internal PyObject? PopImpl_1(PyArguments arguments)
+    {
+        var key = arguments[0];
+        if (PyTryPop(key, out var value))
+            return value;
+        return PyVirtualMachine.RaiseKeyError(key);
+    }
+
+    [PyFunctionArgsDef("key", "default", "/")]
+    internal PyObject PopImpl_2(PyArguments arguments)
+    {
+        if (PyTryPop(arguments[0], out var value))
+            return value;
+        return arguments[1];
+    }
+
+    [PyFunctionArgsDef()]
+    internal PyObject? PopItemImpl(PyArguments arguments)
+    {
+        if (PyTryPopItem(out var key, out var value))
+            return PyTupleObject.CreateTuple(key, value);
+        return PyVirtualMachine.RaiseKeyError("popitem(): dictionary is empty");
+    }
+
+    [PyFunctionArgsDef()]
+    internal PyDictObject CopyImpl(PyArguments arguments)
+    {
+        return PyCopy();
+    }
 }
 
 public sealed class PyDictObjectType : PyTypeObject
@@ -76,7 +128,14 @@ public sealed class PyDictObjectType : PyTypeObject
 
     public PyDictObjectType()
     {
+        AppendSpecialMethodsAsDescriptors<PyDictObject>();
         AppendMethodDescriptor<PyDictObject>("items", nameof(PyDictObject.ItemsImpl));
+        AppendMethodDescriptor<PyDictObject>("clear", nameof(PyDictObject.ClearImpl));
+        AppendMethodDescriptor<PyDictObject>("get", nameof(PyDictObject.GetImpl));
+        AppendMethodDescriptor<PyDictObject>("setdefault", nameof(PyDictObject.SetDefaultImpl));
+        AppendMethodDescriptor<PyDictObject>("pop", nameof(PyDictObject.PopImpl_1), nameof(PyDictObject.PopImpl_2));
+        AppendMethodDescriptor<PyDictObject>("popitem", nameof(PyDictObject.PopItemImpl));
+        AppendMethodDescriptor<PyDictObject>("copy", nameof(PyDictObject.CopyImpl));
     }
 
     public override PyObject? New(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)

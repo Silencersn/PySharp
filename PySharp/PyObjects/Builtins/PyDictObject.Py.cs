@@ -59,4 +59,11 @@ partial class PyDictObject
             PySetItem(pair.Key, pair.Value);
         }
     }
+
+    public PyObject PySetDefault(PyObject key, PyObject defaultValue)
+    {
+        if (_dict.TryGetValue(key, out var value))
+            return value;
+        return _dict[key] = defaultValue;
+    }
 }
