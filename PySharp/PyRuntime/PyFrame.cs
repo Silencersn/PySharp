@@ -37,9 +37,9 @@ public sealed class PyFrame
     internal Dictionary<string, PyVariableType>? _variables = null;
     internal Dictionary<string, PyFrame>? _capturedFrames = null;
 
-    internal PyFrame CreateFrame()
+    internal PyFrame CreateFrame(bool newGlobals = false)
     {
-        return new PyFrame(this, Globals, []);
+        return new PyFrame(this, newGlobals ? [] : Globals, []);
     }
 
     internal PyFrame TempFrame()
@@ -179,9 +179,7 @@ public sealed class PyFrame
 
     public void Import(string name, string? alias = null)
     {
-        var module = PyVirtualMachine.PyEnvironment.ImportModule(name);
-
-        if (module is null)
+        if (!PyVirtualMachine.PyEnvironment.TryLoadModule(name, out var module))
         {
             PyVirtualMachine.RaiseException(PyStandardExceptionTypes.ModuleNotFoundError, $"No module named '{name}'");
             throw new PyRuntimeException(PyVirtualMachine.CurrentException);

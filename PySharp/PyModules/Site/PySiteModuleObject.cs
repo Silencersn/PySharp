@@ -15,8 +15,7 @@ public class PySiteModuleObject : PyModuleObject
 
     public override void OnImport(PyEnvironment environment)
     {
-        var builtins = environment.ImportModule("builtins");
-        Debug.Assert(builtins is not null);
+        var builtins = environment.LoadBuiltinModule("builtins");
         builtins.AddObjToAttrs(PySiteFunctions.Exit);
         builtins.AddObjToAttrs(PySiteFunctions.Quit);
     }

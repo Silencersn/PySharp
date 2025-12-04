@@ -61,79 +61,32 @@ public static partial class PyVirtualMachine
         throw new PyRuntimeException(CurrentException);
     }
 
-    [return: NotNullIfNotNull(nameof(moduleName))]
-    public static PyModuleObject? ExecuteAstNodeWithinEnvironment(ModuleNode moduleNode, string? moduleName = null)
+    internal static PyModuleObject Execute(ModuleNode moduleNode, string moduleName, bool newFrame)
     {
-        var rootFrame = CurrentFrame;
-
-        moduleNode.Execute(rootFrame);
-        if (moduleName is null)
-            return null;
-
         var module = new PyModuleObject(moduleName);
-        foreach (var pair in rootFrame.Globals)
+        ExecuteToObject(moduleNode, module, newFrame);
+        return module;
+    }
+    internal static void ExecuteToObject(ModuleNode moduleNode, PyModuleObject module, bool newFrame)
+    {
+        if (newFrame)
+            EnterFrame(CurrentFrame.CreateFrame(newGlobals: true));
+
+        moduleNode.Execute(CurrentFrame);
+
+        // module will be reloaded
+        module.PyAttributes.Clear();
+
+        foreach (var pair in CurrentFrame.Globals)
         {
+            // all statements have been executed,
+            // there should be no uninitialized variables.
+            Debug.Assert(pair.Value is not null);
+
             module.PyAttributes[pair.Key] = pair.Value;
         }
 
-        return module;
-    }
-
-    [return: NotNullIfNotNull(nameof(moduleName))]
-    public static PyModuleObject? ExecuteAstNode(ModuleNode moduleNode, string? moduleName = null, PyEnvironment? environment = null)
-    {
-        ArgumentNullException.ThrowIfNull(moduleNode);
-
-        environment ??= PyEnvironment.Console;
-
-        using var context = new PyEnvironmentContext(environment);
-
-        PyEnvironment.Exit += static args =>
-        {
-            if (args.Exception is not null)
-                Console.WriteLine($"[exception:\n{args.Exception.ToMessage()}]");
-            Console.WriteLine($"[exit code: {args.ExitCode}]");
-        };
-        Console.WriteLine('[' + PyEnvironment.IdWithThread + " " + nameof(IsExceptionRaised) + " : " + IsExceptionRaised() + ']');
-
-        PyModuleObject? module = null;
-        try
-        {
-            module = ExecuteAstNodeWithinEnvironment(moduleNode, moduleName);
-            Debug.Assert(CurrentFrame.IsRoot);
-        }
-        catch (Exception ex)
-        {
-            var temp = ex;
-            while (temp is not null)
-            {
-                if (temp is PyRuntimeException pyRuntimeException)
-                {
-                    if (CurrentException is null)
-                    {
-                        Console.WriteLine("[WARNNING: CurrentError is null]");
-                        CurrentException = pyRuntimeException.PyException;
-                    }
-
-                    if (pyRuntimeException.PyException.PyType == PyStandardExceptionTypes.SystemExit)
-                        ClearException();
-                    else if (PyEnvironment.ExitCode is 0)
-                        PyEnvironment.ExitCode = 1;
-                    break;
-                }
-
-                temp = temp.InnerException;
-            }
-            if (temp is null)
-                throw;
-        }
-
-        PyEnvironment.OnExit();
-        return module;
-    }
-
-    public static Task ExecuteAsync(ModuleNode module)
-    {
-        return Task.Run(() => ExecuteAstNode(module));
+        if (newFrame)
+            ExitFrame();
     }
 }

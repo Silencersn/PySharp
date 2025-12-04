@@ -2,7 +2,6 @@
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime.IO;
 using PySharp.PyRuntime.IO.Memory;
-using PySharp.PyRuntime.IO.Physical;
 using System.Diagnostics;
 
 namespace PySharp.PyRuntime.Environments;
@@ -28,7 +27,7 @@ public sealed class PyEnvironmentContext : IDisposable
     }
 }
 
-public sealed class PyEnvironment
+public sealed partial class PyEnvironment
 {
     public static PyEnvironment Console => CreateBuilder().StandardIO.WithConsole().Build();
 
@@ -64,13 +63,13 @@ public sealed class PyEnvironment
 
     internal void Init(PyEnvironmentOptions options)
     {
-        var builtins = ImportModule("builtins");
+        var builtins = LoadBuiltinModule("builtins");
         Debug.Assert(builtins is not null);
         CurrentFrame.SetValue(PySpecialNames.Builtins, builtins);
         CurrentFrame.SetValue(PySpecialNames.Name, PyStrObject.FromString(PySpecialNames.Main));
         if (!options.NotImplyImportSite)
         {
-            var site = ImportModule("builtins");
+            var site = LoadBuiltinModule("site");
             Debug.Assert(site is not null);
         }
     }
@@ -79,7 +78,7 @@ public sealed class PyEnvironment
     internal TextReader In { get; }
     internal TextWriter Out { get; }
     internal TextWriter Error { get; }
-    internal Dictionary<string, PyModuleObject> Modules { get; } = [];
+    internal Dictionary<string, PyModuleObject?> Modules { get; } = [];
     internal PyFrame CurrentFrame { get; set; }
     internal List<string> Paths { get; }
     internal List<string> Args { get; }
@@ -94,39 +93,6 @@ public sealed class PyEnvironment
         var args = new PyExitEventArgs(ExitCode, CurrentError);
         Exit?.Invoke(args);
     }
-
-    internal PyModuleObject? ImportModule(string name)
-    {
-        if (Modules.TryGetValue(name, out var module))
-            return module;
-
-        module = PyStandardLibrary.TryCreateModule(name);
-        if (module is not null)
-        {
-            module.OnImport(this);
-            Modules[name] = module;
-            return module;
-        }
-
-        foreach (var path in Paths)
-        {
-            var filename = Path.Combine(path, $"{name}.py");
-            if (!FileSystem.ExistsFile(filename))
-                continue;
-
-            var tokens = PyInterpreter.Tokenize(FileSystem.ReadAllText(filename));
-            var node = PyInterpreter.Parse(tokens);
-            module = PyVirtualMachine.ExecuteAstNodeWithinEnvironment(node, Path.GetFileNameWithoutExtension(filename));
-            module.OnImport(this);
-            Modules[name] = module;
-            return module;
-        }
-
-        return null;
-    }
-
-    private readonly int _randomId = Random.Shared.Next();
-    internal string IdWithThread => $"{Environment.CurrentManagedThreadId}-{_randomId}";
 
     public static IPyEnvironmentBuilder CreateBuilder()
     {

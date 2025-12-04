@@ -2,9 +2,9 @@
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime.Environments;
 using PySharp.Tokenization;
+using System;
 using System.Diagnostics;
 using System.IO;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace PySharp.PyRuntime;
 
@@ -20,12 +20,12 @@ public static class PyInterpreter
         return Parser.Parse(tokens, environment);
     }
 
-    public static PyModuleObject RunFile(string filename, PyEnvironment? environment = null)
+    public static PyModuleObject? RunFile(string filename, PyEnvironment? environment = null)
     {
         ArgumentNullException.ThrowIfNull(filename);
+
         var code = File.ReadAllText(filename);
         var moduleName = Path.GetFileNameWithoutExtension(filename);
-
         environment ??= PyEnvironment
             .CreateBuilder()
             .StandardIO.WithConsole()
@@ -36,7 +36,7 @@ public static class PyInterpreter
         return RunCode(code, moduleName, environment);
     }
 
-    public static PyModuleObject RunCode(string code, string? moduleName = null, PyEnvironment? environment = null)
+    public static PyModuleObject? RunCode(string code, string? moduleName = null, PyEnvironment? environment = null)
     {
         ArgumentNullException.ThrowIfNull(code);
 
@@ -46,9 +46,53 @@ public static class PyInterpreter
             .FileSystem.WithEmptyMemoryFileSystem()
             .Build();
 
+        using var context = new PyEnvironmentContext(environment);
+
+        PyModuleObject? module = null;
+        try
+        {
+            module = RunCodeWithinEnvironment(code, moduleName ?? string.Empty, false);
+            Debug.Assert(PyVirtualMachine.CurrentFrame.IsRoot);
+        }
+        catch (Exception ex)
+        {
+            var currentException = ex;
+            while (currentException is not null)
+            {
+                if (currentException is PyRuntimeException pyRuntimeException)
+                {
+                    PyVirtualMachine.CurrentException ??= pyRuntimeException.PyException;
+
+                    if (pyRuntimeException.PyException.PyType == PyStandardExceptionTypes.SystemExit)
+                    {
+                        PyVirtualMachine.ClearException();
+                    }
+                    else if (PyVirtualMachine.PyEnvironment.ExitCode is 0)
+                    {
+                        PyVirtualMachine.PyEnvironment.ExitCode = 1;
+                        PyVirtualMachine.Error.WriteLine(PyVirtualMachine.CurrentException.ToMessage());
+                    }
+                    break;
+                }
+
+                currentException = currentException.InnerException;
+            }
+
+            if (currentException is null)
+                // If no PyRuntimeException was found in the exception chain,
+                // re-throw the original exception (non-Python errors).
+                throw;
+        }
+
+        PyVirtualMachine.PyEnvironment.OnExit();
+        return module;
+    }
+
+    public static PyModuleObject RunCodeWithinEnvironment(string code, string moduleName, bool newFrame)
+    {
         var tokens = Tokenize(code);
-        var node = Parse(tokens, environment);
-        return PyVirtualMachine.ExecuteAstNode(node, moduleName ?? string.Empty, environment);
+        var node = Parse(tokens, PyVirtualMachine.PyEnvironment);
+        return PyVirtualMachine.Execute(node, moduleName, newFrame);
     }
 
     public static void RunRepl()

@@ -34,6 +34,6 @@ internal static class PyStandardLibrary
 
     private static PyModuleObject Execute(string name, string code)
     {
-        return PyInterpreter.RunCode(code, name, PyVirtualMachine.PyEnvironmentAsyncLocal.Value);
+        return PyInterpreter.RunCodeWithinEnvironment(code, name, true);
     }
 }
