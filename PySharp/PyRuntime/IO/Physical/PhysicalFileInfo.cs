@@ -16,8 +16,8 @@ public sealed class PhysicalFileInfo : PhysicalFileSystemInfo, IVirtualFileInfo
         FileSystemInfo.Create();
     }
 
-    public Stream Open(FileMode mode, FileAccess access)
+    public Stream Open(FileMode mode, FileAccess access, FileShare share)
     {
-        return FileSystemInfo.Open(mode, access);
+        return FileSystemInfo.Open(mode, access, share);
     }
 }

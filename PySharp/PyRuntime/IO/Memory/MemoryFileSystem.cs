@@ -46,9 +46,10 @@ internal sealed class ConcurrentSet<T> : IEnumerable<T> where T : notnull
 
 public sealed class MemoryFileSystem : IVirtualFileSystem
 {
+    internal readonly ConcurrentSet<string> _roots;
     internal readonly ConcurrentDictionary<string, ConcurrentSet<string>> _directoryToSubdirectories;
     internal readonly ConcurrentDictionary<string, ConcurrentSet<string>> _directoryToFiles;
-    internal readonly ConcurrentDictionary<string, MemoryStream> _files;
+    internal readonly ConcurrentDictionary<string, MemoryFileStream> _files;
 
     public string CurrentDirectory
     {
@@ -62,6 +63,7 @@ public sealed class MemoryFileSystem : IVirtualFileSystem
 
     public MemoryFileSystem(string currentDirectory)
     {
+        _roots = [];
         _directoryToSubdirectories = [];
         _directoryToFiles = [];
         _files = [];
@@ -105,11 +107,15 @@ public sealed class MemoryFileSystem : IVirtualFileSystem
             InternalCreateDirectory(parentPath);
             _directoryToSubdirectories[parentPath].Add(fullPath);
         }
+        else
+        {
+            _roots.Add(fullPath);
+        }
         _directoryToSubdirectories[fullPath] = [];
         _directoryToFiles[fullPath] = [];
     }
 
-    internal void InternalCreateFile(string fullName)
+    internal MemoryFileStream InternalCreateFile(string fullName)
     {
         var directory = Path.GetDirectoryName(fullName);
         Debug.Assert(directory is not null);
@@ -118,7 +124,7 @@ public sealed class MemoryFileSystem : IVirtualFileSystem
         _directoryToFiles[directory].Add(fullName);
         if (_files.TryRemove(fullName, out var stream))
             stream.Dispose();
-        _files[fullName] = new MemoryStream();
+        return _files[fullName] = new MemoryFileStream();
     }
 
     internal void InternalDeleteDirectory(string fullPath)
@@ -144,7 +150,14 @@ public sealed class MemoryFileSystem : IVirtualFileSystem
 
         var parentPath = Path.GetDirectoryName(fullPath);
         if (parentPath is not null)
+        {
             _directoryToSubdirectories[parentPath].Remove(fullPath);
+        }
+        else
+        {
+            removed = _roots.Remove(fullPath);
+            Debug.Assert(removed);
+        }
     }
 
     internal void InternalDeleteFile(string fullName)
@@ -165,7 +178,7 @@ public sealed class MemoryFileSystem : IVirtualFileSystem
         return _directoryToSubdirectories.ContainsKey(fullPath);
     }
 
-    internal bool InternalTryGetFile(string fullName, [NotNullWhen(true)] out MemoryStream? stream)
+    internal bool InternalTryGetFile(string fullName, [NotNullWhen(true)] out MemoryFileStream? stream)
     {
         return _files.TryGetValue(fullName, out stream);
     }
@@ -276,86 +289,194 @@ public sealed class MemoryFileInfo : MemoryFileSystemInfo, IVirtualFileInfo
         _owner.InternalDeleteFile(FullName);
     }
 
-    public Stream Open(FileMode mode, FileAccess access)
+    public Stream Open(FileMode mode, FileAccess access, FileShare share)
     {
-        MemoryStream? stream;
+        MemoryFileStream? stream;
         switch (mode)
         {
-            case FileMode.Open when access is FileAccess.Read:
+            case FileMode.Open:
                 if (!_owner.InternalTryGetFile(FullName, out stream))
-                    throw new FileNotFoundException();
-                stream.Seek(0, SeekOrigin.Begin);
-                return new MemoryWrapperStream(stream, true, false);
+                    throw new FileNotFoundException(FullName);
+                break;
 
-            case FileMode.Create when access is FileAccess.Write:
-                _owner.InternalCreateFile(FullName);
+            case FileMode.Create or FileMode.OpenOrCreate:
                 if (!_owner.InternalTryGetFile(FullName, out stream))
-                    Debug.Fail(null);
-                return new MemoryWrapperStream(stream, false, true);
+                    stream = _owner.InternalCreateFile(FullName);
+                break;
+
+            case FileMode.CreateNew:
+                if (_owner.InternalTryGetFile(FullName, out _))
+                    throw new IOException(FullName);
+                stream = _owner.InternalCreateFile(FullName);
+                break;
+
+            case FileMode.Truncate:
+                if (!_owner.InternalTryGetFile(FullName, out stream))
+                    throw new FileNotFoundException(FullName);
+                break;
+
+            case FileMode.Append:
+                EnsureWriteAccess();
+                if (!_owner.InternalTryGetFile(FullName, out stream))
+                    stream = _owner.InternalCreateFile(FullName);
+                break;
+
+            default:
+                throw new ArgumentException(null, nameof(mode));
         }
 
-        throw new NotImplementedException();
+        if (!stream.TryAccess(access, share))
+            throw new IOException(FullName);
+
+        switch (mode)
+        {
+            case FileMode.Append:
+                stream.Seek(0, SeekOrigin.End);
+                break;
+
+            case FileMode.Open:
+            case FileMode.OpenOrCreate:
+            case FileMode.Create:
+            case FileMode.CreateNew:
+                stream.Seek(0, SeekOrigin.Begin);
+                break;
+
+            case FileMode.Truncate:
+                stream.SetLength(0);
+                break;
+        }
+
+        return stream;
+
+        void EnsureWriteAccess()
+        {
+            if (!access.HasFlag(FileAccess.Write))
+                throw new ArgumentException(null, nameof(access));
+        }
     }
 }
 
-
-internal class MemoryWrapperStream : Stream
+internal sealed class MemoryFileStream : Stream
 {
-    private readonly MemoryStream _memoryStream;
-    private readonly bool _canRead;
-    private readonly bool _canWrite;
+    private MemoryStream? _stream;
+    private int _sharingCount;
 
-    internal MemoryWrapperStream(MemoryStream memoryStream, bool canRead, bool canWrite)
-    {
-        _memoryStream = memoryStream;
-        _canRead = canRead;
-        _canWrite = canWrite;
-    }
+    internal MemoryStream Stream => _stream ??= new();
+    internal bool IsReadOnly { get; set; }
+    internal bool CanDelete { get; set; } = true;
+    internal FileAccess Access { get; set; }
+    internal FileShare Share { get; set; }
 
-    public override bool CanRead => _canRead && _memoryStream.CanRead;
+    public override bool CanRead => Access.HasFlag(FileAccess.Read);
 
-    public override bool CanWrite => _canWrite && _memoryStream.CanWrite;
+    public override bool CanSeek => true;
 
-    public override bool CanSeek => _memoryStream.CanSeek;
+    public override bool CanWrite => !IsReadOnly && Access.HasFlag(FileAccess.Write);
 
-    public override long Length => _memoryStream.Length;
+    public override long Length => _stream?.Length ?? 0;
 
     public override long Position
     {
-        get => _memoryStream.Position;
-        set => _memoryStream.Position = value;
+        get => _stream?.Position ?? 0;
+        set => Stream.Position = value;
+    }
+
+    private void EnsureReadable()
+    {
+        if (!CanRead)
+            throw new NotSupportedException("Stream does not support reading");
+    }
+
+    private void EnsureWritable()
+    {
+        if (!CanWrite)
+            throw new NotSupportedException("Stream does not support writing");
+    }
+
+    internal bool TryAccess(FileAccess access, FileShare share)
+    {
+        lock (this)
+        {
+            if (_sharingCount is 0)
+            {
+                Access = access;
+                Share = share;
+                _sharingCount++;
+                return true;
+            }
+
+            if (!share.HasFlag(Share))
+                return false;
+
+            // allows multiple readers or one writer (and reader)
+            if (Access.HasFlag(FileAccess.Write))
+                return false;
+
+            Debug.Assert(Access is FileAccess.Read);
+            if (access is FileAccess.Read)
+            {
+                _sharingCount++;
+                return true;
+            }
+
+            return false;
+        }
     }
 
     public override void Flush()
     {
-        if (!CanWrite)
-            throw new NotSupportedException("Stream is not writable");
-        _memoryStream.Flush();
+        // do nothing, the same as MemoryStream
     }
 
     public override int Read(byte[] buffer, int offset, int count)
     {
-        if (!CanRead)
-            throw new NotSupportedException("Stream is not readable");
-        return _memoryStream.Read(buffer, offset, count);
-    }
-
-    public override void Write(byte[] buffer, int offset, int count)
-    {
-        if (!CanWrite)
-            throw new NotSupportedException("Stream is not writable");
-        _memoryStream.Write(buffer, offset, count);
+        EnsureReadable();
+        return Stream.Read(buffer, offset, count);
     }
 
     public override long Seek(long offset, SeekOrigin origin)
     {
-        return _memoryStream.Seek(offset, origin);
+        return Stream.Seek(offset, origin);
     }
 
     public override void SetLength(long value)
     {
-        if (!CanWrite)
-            throw new NotSupportedException("Stream is not writable");
-        _memoryStream.SetLength(value);
+        EnsureWritable();
+        Stream.SetLength(value);
+    }
+
+    public override void Write(byte[] buffer, int offset, int count)
+    {
+        EnsureWritable();
+        Stream.Write(buffer, offset, count);
+    }
+
+    public override void Close()
+    {
+        if (_sharingCount is 0)
+            return;
+
+        lock (this)
+        {
+            if (_sharingCount is 0)
+                return;
+
+            if (Access.HasFlag(FileAccess.Write))
+            {
+                Debug.Assert(_sharingCount is 1);
+                _sharingCount = 0;
+                Access = default;
+                Share = default;
+            }
+            else // Access is FileAccess.Read
+            {
+                _sharingCount--;
+                if (_sharingCount is 0)
+                {
+                    Access = default;
+                    Share = default;
+                }
+            }
+        }
     }
 }
