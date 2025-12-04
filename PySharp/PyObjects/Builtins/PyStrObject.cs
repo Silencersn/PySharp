@@ -12,26 +12,30 @@ namespace PySharp.PyObjects.Builtins;
 public class PyStrObject : PyObject
 {
     public string Value { get; }
+    public int PyLength
+    {
+        get
+        {
+            if (field is not -1)
+                return field;
 
-    public static PyStrObject Empty { get; } = new PyStrObject();
+            return field = Value.EnumerateRunes().Count();
+        }
+    }
+
+    public static PyStrObject Empty { get; } = new PyStrObject(string.Empty);
 
     public override PyTypeObject PyType => PyBuiltinTypes.Str;
 
-    public PyStrObject()
+    private PyStrObject(string value)
     {
-        Value = string.Empty;
-    }
-
-    public PyStrObject(string value)
-    {
-        ArgumentNullException.ThrowIfNull(value);
-
         Value = value;
+        PyLength = -1;
     }
 
     public override PyStrObject Repr()
     {
-        return ToLiteral();
+        return FromString(PyStrConverter.FromStringToLiteral(Value));
     }
 
     public override PyStrObject Str()
@@ -46,7 +50,7 @@ public class PyStrObject : PyObject
 
     public override PyIntObject Len()
     {
-        return PyIntObject.FromInteger(Value.Length);
+        return PyIntObject.FromInteger(PyLength);
     }
 
     public override PyObject? Iter()
@@ -56,10 +60,14 @@ public class PyStrObject : PyObject
 
     public override PyObject? GetItem(PyObject item)
     {
-        if (item is PyIntObject intObj)
-            return new PyStrObject(Value[(int)intObj.Value].ToString());
+        if (!PyInteropService.TryGetIndex(item, out var index))
+            return null;
 
-        return PyVirtualMachine.RaiseTypeError(null);
+        index = Utils.MapIndex(index, PyLength);
+        if (index < 0 || index >= PyLength)
+            return PyVirtualMachine.RaiseIndexError("string index out of range");
+
+        return FromRune(Value.EnumerateRunes().ElementAt(index));
     }
 
     public override PyObject? Add(PyObject other)
@@ -96,11 +104,6 @@ public class PyStrObject : PyObject
     public override PyObject? RMul(PyObject other)
     {
         return Mul(other);
-    }
-
-    public static implicit operator PyStrObject(string value)
-    {
-        return new PyStrObject(value);
     }
 
     internal static PyStrObject FromLiteral(string literal)
@@ -204,39 +207,10 @@ public class PyStrObject : PyObject
         return builder.ToString();
     }
 
-    internal string ToLiteral()
-    {
-        var builder = new StringBuilder();
-
-        var wrapper = '\'';
-        if (Value.Contains('\'') && !Value.Contains('"'))
-            wrapper = '"';
-
-        builder.Append(wrapper);
-        for (int i = 0; i < Value.Length; i++)
-        {
-            var c = Value[i];
-            builder.Append(c switch
-            {
-                '\\' => "\\\\",
-                '\'' => wrapper is '\'' ? "\\'" : "'",
-                '\a' => "\\a",
-                '\b' => "\\b",
-                '\f' => "\\f",
-                '\n' => "\\n",
-                '\r' => "\\r",
-                '\t' => "\\t",
-                '\v' => "\\v",
-                _ => c.ToString()
-            });
-        }
-        builder.Append(wrapper);
-
-        return builder.ToString();
-    }
-
     public static PyStrObject FromString(string value)
     {
+        ArgumentNullException.ThrowIfNull(value);
+
         return new PyStrObject(value);
     }
 
@@ -244,11 +218,6 @@ public class PyStrObject : PyObject
     public static PyStrObject FromRune(Rune value)
     {
         return _runeToPyStr.GetOrAdd(value, static rune => FromString(rune.ToString()));
-    }
-
-    internal static string ToLiteral(string value)
-    {
-        return FromString(value).ToLiteral();
     }
 }
 
@@ -633,5 +602,36 @@ public static class PyStrConverter
         if (rentedArray is not null)
             ArrayPool<char>.Shared.Return(rentedArray);
         return true;
+    }
+
+    public static string FromStringToLiteral(ReadOnlySpan<char> str)
+    {
+        var builder = new StringBuilder();
+
+        var wrapper = '\'';
+        if (str.Contains('\'') && !str.Contains('"'))
+            wrapper = '"';
+
+        builder.Append(wrapper);
+        for (int i = 0; i < str.Length; i++)
+        {
+            var c = str[i];
+            builder.Append(c switch
+            {
+                '\\' => "\\\\",
+                '\'' => wrapper is '\'' ? "\\'" : "'",
+                '\a' => "\\a",
+                '\b' => "\\b",
+                '\f' => "\\f",
+                '\n' => "\\n",
+                '\r' => "\\r",
+                '\t' => "\\t",
+                '\v' => "\\v",
+                _ => char.IsControl(c) ? $"\\x{(int)c:x2}" : c.ToString()
+            });
+        }
+        builder.Append(wrapper);
+
+        return builder.ToString();
     }
 }

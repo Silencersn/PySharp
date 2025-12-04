@@ -175,7 +175,7 @@ public class PyObject : IEquatable<PyObject>
 
     public virtual PyObject? Repr()
     {
-        return new PyStrObject($"<{PyType.Name} object at {PyId:X16}>");
+        return PyStrObject.FromString($"<{PyType.Name} object at {PyId:X16}>");
     }
 
     public virtual PyObject? Str()

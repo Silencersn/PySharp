@@ -59,7 +59,7 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
 
     public override PyObject? Repr()
     {
-        return new PyStrObject($"<class '{Name}'>");
+        return PyStrObject.FromString($"<class '{Name}'>");
     }
 
     public static PyObject? PyTypeGetAttribute(PyTypeObject pyTypeObj, string name)

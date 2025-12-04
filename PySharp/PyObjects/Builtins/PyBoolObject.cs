@@ -15,7 +15,7 @@ public sealed class PyBoolObject : PyIntObject
     private PyBoolObject(bool value) : base(value ? 1 : 0)
     {
         BoolValue = value;
-        _repr = value ? "True" : "False";
+        _repr = PyStrObject.FromString(value ? "True" : "False");
     }
 
     public static implicit operator PyBoolObject(bool value)

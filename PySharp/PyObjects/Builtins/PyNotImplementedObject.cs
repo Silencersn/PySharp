@@ -5,10 +5,11 @@ namespace PySharp.PyObjects.Builtins;
 public class PyNotImplementedObject : PyObject
 {
     public static PyNotImplementedObject NotImplemented { get; } = new PyNotImplementedObject();
+    private static readonly PyStrObject _repr = PyStrObject.FromString("NotImplemented");
 
     public override PyStrObject Repr()
     {
-        return "NotImplemented";
+        return _repr;
     }
 }
 

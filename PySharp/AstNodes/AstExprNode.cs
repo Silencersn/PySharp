@@ -62,7 +62,7 @@ public sealed class NameNode : AstExprNode, IExprContextNode, ITargetNode
     internal override void Dump(AstNodeDumper dumper)
     {
         dumper
-            .AppendFormat("Name(id={0}, ctx={1}())", PyStrObject.ToLiteral(Identifier), Ctx);
+            .AppendFormat("Name(id={0}, ctx={1}())", PyStrConverter.FromStringToLiteral(Identifier), Ctx);
     }
 
     void ITargetNode.DeleteValue(PyFrame frame)
@@ -129,7 +129,7 @@ public sealed class AttributeNode : AstExprNode, IExprContextNode, ITargetNode
     {
         dumper
             .Append("Attribute")
-            .AppendFields(("value", Value), ("attr", PyStrObject.ToLiteral(Identifier)), ("ctx", Ctx));
+            .AppendFields(("value", Value), ("attr", PyStrConverter.FromStringToLiteral(Identifier)), ("ctx", Ctx));
     }
 
     public override void EnumerateNodes(Action<AstNode> action)

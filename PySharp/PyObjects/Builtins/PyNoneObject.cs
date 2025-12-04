@@ -5,10 +5,11 @@ namespace PySharp.PyObjects.Builtins;
 public class PyNoneObject : PyObject
 {
     public static PyNoneObject None { get; } = new PyNoneObject();
+    private static readonly PyStrObject _repr = PyStrObject.FromString("None");
 
     public override PyStrObject Repr()
     {
-        return "None";
+        return _repr;
     }
 
     public override PyBoolObject Bool()

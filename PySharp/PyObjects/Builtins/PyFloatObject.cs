@@ -30,7 +30,7 @@ public class PyFloatObject : PyObject
 
     public override PyStrObject Repr()
     {
-        return Value.ToString();
+        return PyStrObject.FromString(Value.ToString());
     }
 
     public override PyObject? Hash()
