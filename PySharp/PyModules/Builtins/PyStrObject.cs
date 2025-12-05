@@ -2,7 +2,6 @@
 using PySharp.PyRuntime.PyAttributes;
 using System.Buffers;
 using System.Collections.Concurrent;
-using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
@@ -482,7 +481,7 @@ public static class PyStrConverter
                             return false;
                         }
                         destination[charsWritten++] = charToWrite2;
-                    } 
+                    }
                     break;
 
                 default:

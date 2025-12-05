@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Numerics;
-using System.Text;
-
-namespace PySharp.PyModules.Builtins;
+﻿namespace PySharp.PyModules.Builtins;
 
 public class PySliceObject : PyObject
 {

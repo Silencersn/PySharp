@@ -2,7 +2,6 @@
 using PySharp.Tokenization;
 using System.Collections.Frozen;
 using System.Diagnostics;
-using System.Xml.Linq;
 
 namespace PySharp.AstNodes;
 
@@ -70,7 +69,7 @@ public sealed partial class Parser
 
             if (_tokenStream.CurrentToken.Type is TokenType.EndMarker)
                 _isEnd = true;
-            
+
             return _tokenStream.CurrentToken;
         }
     }

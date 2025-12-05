@@ -1,7 +1,4 @@
 ﻿using PySharp.Tokenization;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace PySharp.AstNodes;
 
@@ -12,7 +9,7 @@ partial class Parser
     private static class StopPredicates
     {
         public static bool UntilKeywordIn(TokenInfo token) => token.Type is TokenType.Name && token.String is "in";
-        public static bool UntilRightSquareBracket(TokenInfo token) => token.Type is TokenType.RightSquareBracket; 
+        public static bool UntilRightSquareBracket(TokenInfo token) => token.Type is TokenType.RightSquareBracket;
         public static bool UntilRightParen(TokenInfo token) => token.Type is TokenType.RightParen;
         public static bool UntilRightBrace(TokenInfo token) => token.Type is TokenType.RightBrace;
         public static bool UntilNewLine(TokenInfo token) => token.Type is TokenType.NewLine;

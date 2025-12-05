@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
-
-namespace PySharp.PyRuntime.IO.Physical;
+﻿namespace PySharp.PyRuntime.IO.Physical;
 
 public sealed class PhysicalFileSystem : IVirtualFileSystem
 {

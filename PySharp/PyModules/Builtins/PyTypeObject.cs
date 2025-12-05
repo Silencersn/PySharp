@@ -1,11 +1,7 @@
 ﻿using PySharp.PyRuntime;
-using PySharp.PyRuntime.PyAttributes;
 using System.Collections.Frozen;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
-using System.Xml.Linq;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace PySharp.PyModules.Builtins;
 
@@ -16,7 +12,7 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
     public abstract string Name { get; }
     public virtual string FullName => Name;
     public virtual string Document => string.Empty;
-    
+
 
     internal PyTypeObject()
     {

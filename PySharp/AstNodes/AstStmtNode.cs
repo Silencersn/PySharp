@@ -2,10 +2,8 @@
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
 using PySharp.Tokenization;
-using System;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Xml.Linq;
 using static PySharp.AstNodes.BreakNode;
 using static PySharp.AstNodes.ContinueNode;
 using static PySharp.AstNodes.ReturnNode;

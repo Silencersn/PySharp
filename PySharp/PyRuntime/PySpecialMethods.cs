@@ -142,7 +142,7 @@ public static class PySpecialMethods
         result = null;
         return false;
     }
-    
+
     public static PyObject? DivMod(PyObject left, PyObject right)
     {
         var ret = left.DivMod(right);
@@ -160,7 +160,7 @@ public static class PySpecialMethods
 
     public static PyObject? Iter(PyObject obj)
     {
-        return obj.Iter(); 
+        return obj.Iter();
     }
 
     public static PyObject? Next(PyObject obj)

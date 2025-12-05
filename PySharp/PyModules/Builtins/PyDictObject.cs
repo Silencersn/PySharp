@@ -1,6 +1,5 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.PyAttributes;
-using System.Text;
 
 namespace PySharp.PyModules.Builtins;
 

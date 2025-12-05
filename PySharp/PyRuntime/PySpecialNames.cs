@@ -1,6 +1,4 @@
-﻿using System.Collections.Immutable;
-
-namespace PySharp.PyRuntime;
+﻿namespace PySharp.PyRuntime;
 
 public static class PySpecialNames
 {

@@ -96,6 +96,6 @@ public sealed partial class PyEnvironment
 
     public static IPyEnvironmentBuilder CreateBuilder()
     {
-        return new PyEnvironmentBuilder(); 
+        return new PyEnvironmentBuilder();
     }
 }

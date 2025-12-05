@@ -1,7 +1,4 @@
-﻿using PySharp.PyRuntime;
-using System.Text;
-
-namespace PySharp.PyModules.Builtins;
+﻿namespace PySharp.PyModules.Builtins;
 
 public class PySetObject : PyObject, IPyObjectRecursiveRepr
 {

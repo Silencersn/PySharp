@@ -1,5 +1,4 @@
 ﻿using PySharp.PyRuntime;
-using System.Xml.Linq;
 
 namespace PySharp.PyModules.Builtins;
 

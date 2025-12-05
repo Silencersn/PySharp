@@ -1,11 +1,9 @@
 ﻿using PySharp.AstNodes;
 using PySharp.PyRuntime;
-using PySharp.PyRuntime.Environments;
 using PySharp.PyRuntime.PyAttributes;
 using PySharp.Tokenization;
 using System.Diagnostics;
 using System.Text;
-using System.Xml.Linq;
 
 namespace PySharp.PyModules.Builtins;
 

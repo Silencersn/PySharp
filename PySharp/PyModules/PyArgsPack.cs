@@ -356,7 +356,7 @@ public sealed class PyArguments
 
     internal PyArguments(IEnumerable<PyObject> args, IEnumerable<PyObject> extraArgs, IEnumerable<KeyValuePair<string, PyObject>> kwargs, IEnumerable<KeyValuePair<string, PyObject>> extraKwargs)
     {
-        Args = [..args];
+        Args = [.. args];
         ExtraArgs = [.. extraArgs];
         Kwargs = kwargs.ToDictionary();
         ExtraKwargs = new OrderedDictionary<string, PyObject>(extraKwargs);

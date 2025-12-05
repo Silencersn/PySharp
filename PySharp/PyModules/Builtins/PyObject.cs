@@ -1,9 +1,7 @@
 ﻿using PySharp.PyRuntime;
-using PySharp.PyRuntime.PyAttributes;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Xml.Linq;
 
 namespace PySharp.PyModules.Builtins;
 
@@ -462,7 +460,7 @@ public class PyObject : IEquatable<PyObject>
 
     public virtual PyObject? Delete(PyObject instance)
     {
-        throw new NotImplementedException(); 
+        throw new NotImplementedException();
     }
 
     public override string ToString()

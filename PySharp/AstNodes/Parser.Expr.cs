@@ -1,11 +1,9 @@
 ﻿using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
 using PySharp.Tokenization;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Numerics;
-using System.Runtime.InteropServices;
 using System.Text;
 
 namespace PySharp.AstNodes;
@@ -163,7 +161,7 @@ partial class Parser
                         PyStrConverter.ConvertError.DestinationNotEnough or
                         PyStrConverter.ConvertError.WrongFormat or
                         PyStrConverter.ConvertError.InvalidEscapeSequence));
-                    
+
                     switch (info.Error)
                     {
                         case PyStrConverter.ConvertError.LowerXSequence:
@@ -173,7 +171,7 @@ partial class Parser
                         case PyStrConverter.ConvertError.LowerUSequence:
                             PyVirtualMachine.RaiseSyntaxError(MakeUnicodeErrorInfo("truncated \\uXXXX escape"));
                             throw new PyRuntimeException(PyVirtualMachine.CurrentException);
-                            
+
                         case PyStrConverter.ConvertError.UpperUSequence:
                             PyVirtualMachine.RaiseSyntaxError(MakeUnicodeErrorInfo("truncated \\UXXXXXXXX escape"));
                             throw new PyRuntimeException(PyVirtualMachine.CurrentException);
@@ -850,7 +848,7 @@ partial class Parser
 
         return ParseOrExpr();
     }
-    
+
     /// <summary>
     /// flexible_expression: <see cref="ParseAssignmentExpression">assignment_expression</see> | <see cref="ParseStarredExpression">starred_expression</see>
     /// </summary>

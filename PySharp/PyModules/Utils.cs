@@ -113,7 +113,7 @@ internal static class Utils
 
     public static Index ToIndex(int index)
     {
-        return new Index(int.Abs(index), index < 0); 
+        return new Index(int.Abs(index), index < 0);
     }
 
     public static int MapIndex(int index, int count)

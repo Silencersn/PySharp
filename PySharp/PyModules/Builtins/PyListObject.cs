@@ -1,7 +1,5 @@
-﻿using PySharp.AstNodes;
-using PySharp.PyRuntime;
+﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.PyAttributes;
-using System.Text;
 
 namespace PySharp.PyModules.Builtins;
 
@@ -13,7 +11,7 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr
 
     public PyListObject()
     {
-        _list = []; 
+        _list = [];
     }
     public PyListObject(IEnumerable<PyObject> list)
     {

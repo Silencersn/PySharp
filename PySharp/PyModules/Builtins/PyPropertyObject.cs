@@ -1,8 +1,5 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.PyAttributes;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace PySharp.PyModules.Builtins;
 
@@ -81,7 +78,7 @@ public sealed class PyPropertyObjectType : PyTypeObject
     {
         return new PyPropertyObject(arguments[0], arguments[1], arguments[2], arguments[3]);
     }
-    
+
     public override PyObject? New(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return _new.Call(args, kwargs);

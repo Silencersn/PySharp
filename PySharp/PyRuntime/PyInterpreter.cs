@@ -2,9 +2,7 @@
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime.Environments;
 using PySharp.Tokenization;
-using System;
 using System.Diagnostics;
-using System.IO;
 
 namespace PySharp.PyRuntime;
 

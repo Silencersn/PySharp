@@ -3,7 +3,6 @@ using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Xml.Linq;
 
 namespace PySharp.AstNodes;
 

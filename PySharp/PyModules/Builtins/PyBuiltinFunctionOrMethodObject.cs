@@ -1,6 +1,5 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.PyAttributes;
-using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;

@@ -49,7 +49,7 @@ public sealed class PyExceptionObject : PyObject
 
         if (Args.Count is 1)
             return Args[0].Str();
-        
+
         return PyTupleObject.CreateTuple(Args).Str();
     }
 

@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Text;
-
-namespace PySharp.Tokenization;
+﻿namespace PySharp.Tokenization;
 
 public abstract class TokenStream
 {
@@ -106,7 +101,7 @@ public sealed class TokenInteractiveStream : TokenStream
     {
         _out.Write(IsParsingCompoundStmt ? "... " : ">>> ");
         var line = _in.ReadLine() ?? throw new EndOfStreamException();
-        
+
         if (string.IsNullOrWhiteSpace(line))
         {
             _lexer.InternalClearIndentation();

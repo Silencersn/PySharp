@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace PySharp.PyRuntime.IO;
+﻿namespace PySharp.PyRuntime.IO;
 
 public interface IVirtualFileSystemInfo
 {

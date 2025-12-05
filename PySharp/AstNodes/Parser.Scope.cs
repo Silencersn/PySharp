@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace PySharp.AstNodes;
+﻿namespace PySharp.AstNodes;
 
 partial class Parser
 {
