@@ -598,7 +598,15 @@ public class ImportNode : AstStmtNode
     {
         foreach (var name in Names)
         {
-            frame.Import(name.Name, name.AsName ?? name.Name);
+            frame.Import(name.Name, name.AsName ?? GetName(name.Name));
+        }
+
+        static string GetName(string module)
+        {
+            if (!module.Contains('.'))
+                return module;
+
+            return module.Split('.')[0];
         }
     }
 
@@ -608,6 +616,87 @@ public class ImportNode : AstStmtNode
         Names.EnumerateNodes(action);
     }
 
+}
+
+public class ImportFromNode : AstStmtNode
+{
+    public ImportFromNode(string? module, List<AstAliasNode> names, int level)
+    {
+        Module = module;
+        Names = names;
+        Level = level;
+    }
+
+    public string? Module { get; }
+    public List<AstAliasNode> Names { get; }
+    public int Level { get; }
+
+    public override void Execute(PyFrame frame)
+    {
+        if (Level > 0)
+            // TODO: relative import
+            throw new NotSupportedException($"Relative imports (level={Level}) are not supported");
+
+        // Module must be not null when Level is 0
+        Debug.Assert(Module is not null);
+
+        if (!PyVirtualMachine.PyEnvironment.TryLoadModule(Module, out var module))
+        {
+            PyVirtualMachine.RaiseException(PyStandardExceptionTypes.ModuleNotFoundError, $"No module named '{Module}'");
+            throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+        }
+
+        if (Names.Count is 1 && Names[0].Name is "*")
+        {
+            // if module has __all__, import only those names
+            // item in __all__ must be str
+            if (module.PyAttributes.TryGetValue(PySpecialNames.All, out var all))
+            {
+                // unlike cpython, allows iterable
+                var list = Utils.EnumerabledIterable(all);
+                if (list is null)
+                {
+                    PyVirtualMachine.RaiseTypeError($"{Module /* TODO: should be module.__name__ */}.__all__ must be iterable");
+                    throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                }
+
+                foreach (var item in list)
+                {
+                    if (item is not PyStrObject strObj)
+                    {
+                        PyVirtualMachine.RaiseTypeError($"Item in {Module /* TODO: should be module.__name__ */}.__all__ must be str, not {item.PyType.Name}");
+                        throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                    }
+
+                    var attr = module.GetAttribute(strObj.Value).PyThrowIfNull();
+                    frame.SetValue(strObj.Value, attr);
+                }
+            }
+            else
+            {
+                foreach (var kvp in module.PyAttributes)
+                {
+                    // only import names that do not start with '_'
+                    if (!kvp.Key.StartsWith('_'))
+                        frame.SetValue(kvp.Key, kvp.Value);
+                }
+            }
+            return;
+        }
+
+        foreach (var name in Names)
+        {
+            Debug.Assert(name.Name is not "*");
+
+            if (!module.PyAttributes.TryGetValue(name.Name, out var value))
+            {
+                PyVirtualMachine.RaiseException(PyStandardExceptionTypes.ImportError, $"cannot import name '{name.Name}' from '{Module /* TODO: should be module.__name__ */}'");
+                throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+            }
+
+            frame.SetValue(name.AsName ?? name.Name, value);
+        }
+    }
 }
 
 public sealed class GlobalNode : AstStmtNode

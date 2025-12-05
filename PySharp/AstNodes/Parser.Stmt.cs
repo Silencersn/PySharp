@@ -5,6 +5,139 @@ namespace PySharp.AstNodes;
 
 partial class Parser
 {
+    /// <summary>
+    /// module: (<see cref="ParseIdentifier">identifier</see> ".")* <see cref="ParseIdentifier">identifier</see>
+    /// </summary>
+    /// <returns></returns>
+    private string ParseModule()
+    {
+        List<string> modulePaths = [ParseIdentifier()];
+        while (CurrentTokenType is TokenType.Dot)
+        {
+            MoveNextToken();
+            modulePaths.Add(ParseIdentifier());
+        }
+        return string.Join('.', modulePaths);
+    }
+
+    /// <summary>
+    /// relative_module:  "."* <see cref="ParseModule">module</see> | "."+
+    /// </summary>
+    /// <returns></returns>
+    private (string? Module, int Level) ParseRelativeModule()
+    {
+        string? module = null;
+        int level = 0;
+        
+        while (CurrentTokenType is TokenType.Dot)
+        {
+            level++;
+            MoveNextToken();
+        }
+
+        if (CurrentTokenType is TokenType.Name && !IsKeyword(CurrentToken.String))
+            module = ParseModule();
+
+        if (module is null && level is 0)
+        {
+            PyVirtualMachine.RaiseSyntaxError("invalid syntax");
+            throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+        }
+        return (module, level);
+    }
+
+    /// <summary>
+    /// import_stmt: "import" <see cref="ParseModule">module</see> ["as" <see cref="ParseIdentifier">identifier</see>] ("," <see cref="ParseModule">module</see> ["as" <see cref="ParseIdentifier">identifier</see>])*
+    /// <br/>      | "from" <see cref="ParseRelativeModule">relative_module</see> "import" <see cref="ParseIdentifier">identifier</see> ["as" <see cref="ParseIdentifier">identifier</see>] ("," <see cref="ParseIdentifier">identifier</see> ["as" <see cref="ParseIdentifier">identifier</see>])*
+    /// <br/>      | "from" <see cref="ParseRelativeModule">relative_module</see> "import" "(" <see cref="ParseIdentifier">identifier</see> ["as" <see cref="ParseIdentifier">identifier</see>]  ("," <see cref="ParseIdentifier">identifier</see> ["as" <see cref="ParseIdentifier">identifier</see>])* [","] ")"
+    /// <br/>      | "from" <see cref="ParseRelativeModule">relative_module</see> "import" "*"
+    /// </summary>
+    /// <returns></returns>
+    private AstStmtNode ParseImportStmt()
+    {
+        if (IsCurrentKeyword("import"))
+        {
+            MoveNextToken();
+            var importNode = new ImportNode();
+            importNode.Names.Add(ParseAlias());
+
+            while (CurrentTokenType is TokenType.Comma)
+            {
+                MoveNextToken();
+                importNode.Names.Add(ParseAlias());
+            }
+
+            return importNode;
+
+            AstAliasNode ParseAlias()
+            {
+                var module = ParseModule();
+                var id = null as string;
+                if (IsCurrentKeyword("as"))
+                {
+                    MoveNextToken();
+                    id = ParseIdentifier();
+                }
+                CurrentScope.TrySetLocalIfNotExistsOrUnknown(id ?? module);
+                return new AstAliasNode(module, id);
+            }
+        }
+        else
+        {
+            EnsureKeywordThenMove("from");
+            var (module, level) = ParseRelativeModule();
+            EnsureKeywordThenMove("import");
+
+            if (CurrentTokenType is TokenType.Star)
+            {
+                MoveNextToken();
+                return new ImportFromNode(module, [new("*", null)], level);
+            }
+            else if (CurrentTokenType is TokenType.LeftParen)
+            {
+                MoveNextToken();
+
+                List<AstAliasNode> names = [ParseAlias()];
+
+                while (CurrentTokenType is TokenType.Comma)
+                {
+                    MoveNextToken();
+                    if (CurrentTokenType is TokenType.RightParen)
+                        break;
+                    names.Add(ParseAlias());
+                }
+
+                EnsureTokenTypeThenMove(TokenType.RightParen);
+                return new ImportFromNode(module, names, level);
+            }
+            else
+            {
+                List<AstAliasNode> names = [ParseAlias()];
+
+                while (CurrentTokenType is TokenType.Comma)
+                {
+                    MoveNextToken();
+                    names.Add(ParseAlias());
+                }
+
+                return new ImportFromNode(module, names, level);
+            }
+
+            AstAliasNode ParseAlias()
+            {
+                var name = ParseIdentifier();
+                var asName = null as string;
+                if (IsCurrentKeyword("as"))
+                {
+                    MoveNextToken();
+                    asName = ParseIdentifier();
+                }
+                CurrentScope.TrySetLocalIfNotExistsOrUnknown(asName ?? name);
+                return new AstAliasNode(name, asName);
+            }
+        }
+    }
+
     private AstStmtNode ParseSimpleStmt()
     {
         if (CurrentTokenType is TokenType.Name && IsKeyword(CurrentToken.String))
@@ -73,43 +206,9 @@ partial class Parser
                 var targetList = ParseTargetList(StopPredicates.UntilNewLineOrSemicolon, out _);
                 return new DeleteNode([.. targetList]);
             }
-            else if (keyword is "import")
+            else if (keyword is "import" or "from")
             {
-                MoveNextToken();
-                var importNode = new ImportNode();
-                importNode.Names.Add(ParseAlias());
-
-                while (CurrentTokenType is TokenType.Comma)
-                {
-                    MoveNextToken();
-                    importNode.Names.Add(ParseAlias());
-                }
-
-                return importNode;
-
-                string ParseModule()
-                {
-                    List<string> modulePaths = [ParseIdentifier()];
-                    while (CurrentTokenType is TokenType.Dot)
-                    {
-                        MoveNextToken();
-                        modulePaths.Add(ParseIdentifier());
-                    }
-                    return string.Join('.', modulePaths);
-                }
-
-                AstAliasNode ParseAlias()
-                {
-                    var module = ParseModule();
-                    var id = null as string;
-                    if (IsCurrentKeyword("as"))
-                    {
-                        MoveNextToken();
-                        id = ParseIdentifier();
-                    }
-                    CurrentScope.TrySetLocalIfNotExistsOrUnknown(id ?? module);
-                    return new AstAliasNode(module, id);
-                }
+                return ParseImportStmt();
             }
             else if (keyword is "assert")
             {
