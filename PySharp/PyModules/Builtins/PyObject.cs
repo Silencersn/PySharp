@@ -87,7 +87,7 @@ public class PyObject : IEquatable<PyObject>
         _pyId = Interlocked.Increment(ref _pyNextId);
     }
 
-    public static PyObject? PyObjectGetAttribute(PyObject pyObj, string name)
+    internal static PyObject? PyObjectGetAttribute(PyObject pyObj, string name)
     {
         PyObject? attrFromType = null;
         foreach (var pyType in pyObj.PyType.MRO)
@@ -120,7 +120,7 @@ public class PyObject : IEquatable<PyObject>
         return PyVirtualMachine.RaiseAttributeError($"'{pyObj.PyType.Name}' object has no attribute '{name}'");
     }
 
-    public static PyObject? PyObjectSetAttribute(PyObject pyObj, string name, PyObject value)
+    internal static PyObject? PyObjectSetAttribute(PyObject pyObj, string name, PyObject value)
     {
         PyObject? attrFromType = null;
         foreach (var pyType in pyObj.PyType.MRO)
@@ -139,7 +139,7 @@ public class PyObject : IEquatable<PyObject>
         return PyNoneObject.None;
     }
 
-    public static PyObject? PyObjectDeleteAttribute(PyObject pyObj, string name)
+    internal static PyObject? PyObjectDeleteAttribute(PyObject pyObj, string name)
     {
         PyObject? attrFromType = null;
         foreach (var pyType in pyObj.PyType.MRO)
@@ -161,6 +161,26 @@ public class PyObject : IEquatable<PyObject>
         return PyNoneObject.None;
     }
 
+    internal PyStrObject PyObjectRepr()
+    {
+        return PyStrObject.FromString($"<{PyType.Name} object at {PyId:X16}>");
+    }
+
+    internal PyObject? PyObjectStr()
+    {
+        return Repr();
+    }
+    internal PyIntObject PyObjectHash()
+    {
+        return PyIntObject.FromInteger(PyId);
+    }
+#pragma warning disable CA1822
+    internal PyBoolObject PyObjectBool()
+#pragma warning restore CA1822
+    {
+        return PyBoolObject.True;
+    }
+
     public virtual PyObject? Init(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return PyNoneObject.None;
@@ -173,12 +193,12 @@ public class PyObject : IEquatable<PyObject>
 
     public virtual PyObject? Repr()
     {
-        return PyStrObject.FromString($"<{PyType.Name} object at {PyId:X16}>");
+        return PyObjectRepr();
     }
 
     public virtual PyObject? Str()
     {
-        return Repr();
+        return PyObjectStr();
     }
 
     public virtual PyObject? Hash()

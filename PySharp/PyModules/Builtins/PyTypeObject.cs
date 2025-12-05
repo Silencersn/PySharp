@@ -111,16 +111,16 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
         return PyVirtualMachine.RaiseTypeError($"cannot create '{Name}' instances");
     }
 
-    internal void AppendDefaultSpecialMethodsAsDescriptors<TPyObject>() where TPyObject : PyObject
+    internal void AppendDefaultSpecialMethodsAsDescriptors()
     {
-        AppendSpecialMethodAsDescriptor<TPyObject>(nameof(Repr), PySpecialMethodParametersType.NoArgs);
-        AppendSpecialMethodAsDescriptor<TPyObject>(nameof(Str), PySpecialMethodParametersType.NoArgs);
-        AppendSpecialMethodAsDescriptor<TPyObject>(nameof(Hash), PySpecialMethodParametersType.NoArgs);
-        AppendSpecialMethodAsDescriptor<TPyObject>(nameof(Bool), PySpecialMethodParametersType.NoArgs);
+        AppendSpecialMethodAsDescriptor(nameof(Repr), PySpecialMethodParametersType.NoArgs);
+        AppendSpecialMethodAsDescriptor(nameof(Str), PySpecialMethodParametersType.NoArgs);
+        AppendSpecialMethodAsDescriptor(nameof(Hash), PySpecialMethodParametersType.NoArgs);
+        AppendSpecialMethodAsDescriptor(nameof(Bool), PySpecialMethodParametersType.NoArgs);
     }
     internal void AppendSpecialMethodsAsDescriptors<TPyObject>() where TPyObject : PyObject
     {
-        AppendDefaultSpecialMethodsAsDescriptors<TPyObject>();
+        AppendDefaultSpecialMethodsAsDescriptors();
 
         AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Add), PySpecialMethodParametersType.Object);
         AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Sub), PySpecialMethodParametersType.Object);
@@ -233,7 +233,7 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
         var (pyName, method) = _nameToPyObjectMethod[methodName];
         PyAttributes[pyName] = new PyMethodDescriptorObject(pyName, method, paramType);
     }
-    private void AppendSpecialMethodAsDescriptor<TPyObject>(string methodName, PySpecialMethodParametersType paramType) where TPyObject : PyObject
+    private void AppendSpecialMethodAsDescriptor(string methodName, PySpecialMethodParametersType paramType)
     {
         var (pyName, method) = _nameToPyObjectMethod[methodName];
         PyAttributes[pyName] = new PyMethodDescriptorObject(pyName, method, paramType);
@@ -246,6 +246,10 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
             Debug.Assert(method is not null);
             return method;
         }));
+    }
+    internal void AppendMethodDescriptor(string name, Delegate instanceDelegate, PySpecialMethodParametersType paramType)
+    {
+        PyAttributes[name] = new PyMethodDescriptorObject(name, instanceDelegate.Method, paramType);
     }
 
     private static IEnumerable<PyTypeObject> EnumerableMROTypes(PyTypeObject pyType, IEnumerable<PyTypeObject> bases)
