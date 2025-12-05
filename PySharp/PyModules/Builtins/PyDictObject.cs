@@ -6,22 +6,33 @@ namespace PySharp.PyModules.Builtins;
 
 public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
 {
-    internal readonly OrderedDictionary<PyObject, PyObject> _dict;
+    internal readonly IDictionary<PyObject, PyObject> _dict;
 
     public override PyTypeObject PyType => PyBuiltinTypes.Dict;
 
     public PyDictObject()
     {
-        _dict = [];
+        _dict = new OrderedDictionary<PyObject, PyObject>();
     }
     public PyDictObject(IEnumerable<KeyValuePair<PyObject, PyObject>> dict) : this()
     {
         PyUpdate(dict);
     }
+    private PyDictObject(IDictionary<PyObject, PyObject> dict, bool isProxy)
+    {
+        if (isProxy)
+            _dict = dict;
+        else
+            _dict = new OrderedDictionary<PyObject, PyObject>(dict);
+    }
 
     public static PyDictObject CreateDict(IEnumerable<KeyValuePair<PyObject, PyObject>> dict)
     {
         return new PyDictObject(dict);
+    }
+    public static PyDictObject CreateProxy(IDictionary<PyObject, PyObject> dict)
+    {
+        return new PyDictObject(dict, true);
     }
 
     public override PyObject? GetItem(PyObject item)

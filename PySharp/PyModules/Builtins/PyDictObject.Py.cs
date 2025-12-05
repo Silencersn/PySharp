@@ -1,6 +1,7 @@
 ﻿using PySharp.PyRuntime.PyAttributes;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
@@ -47,8 +48,9 @@ partial class PyDictObject
             return false;
         }
 
-        (key, value) = _dict.GetAt(_dict.Count - 1);
-        _dict.RemoveAt(_dict.Count - 1);
+        (key, value) = _dict.ElementAt(_dict.Count - 1);
+        var removed = _dict.Remove(key);
+        Debug.Assert(removed);
         return true;
     }
 
