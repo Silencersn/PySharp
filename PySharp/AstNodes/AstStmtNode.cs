@@ -922,7 +922,13 @@ public sealed class ClassDefNode : AstStmtNode, IAstVariableScopeOwner
         {
             var method = PyObjectGetAttribute(this, methodName);
             if (method is null)
+            {
+                if (!PyVirtualMachine.IsExceptionOfTypeRaised(PyStandardExceptionTypes.AttributeError))
+                    return null;
+
+                PyVirtualMachine.ClearException();
                 return baseCall();
+            }
             return method.Call(args, kwargs ?? (Dictionary<string, PyObject>)[]);
         }
 
