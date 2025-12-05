@@ -24,6 +24,8 @@ public class PyBuiltinsModuleObject : PyModuleObject
         AddObjToAttrs(PyBuiltinFunctions.Dir); // dir
         AddObjToAttrs(PyBuiltinFunctions.Chr); // chr
         AddObjToAttrs(PyBuiltinFunctions.Ord); // ord
+        AddObjToAttrs(PyBuiltinFunctions.Locals); // locals
+        AddObjToAttrs(PyBuiltinFunctions.Globals); // globals
 
         AddObjToAttrs(PyBuiltinTypes.Object); // object
         AddObjToAttrs(PyBuiltinTypes.Str); // str

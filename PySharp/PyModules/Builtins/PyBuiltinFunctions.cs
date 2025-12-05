@@ -29,6 +29,8 @@ public static partial class PyBuiltinFunctions
     public static readonly PyBuiltinFunctionOrMethodObject Dir = new("dir", DirImpl_1, DirImpl_2);
     public static readonly PyBuiltinFunctionOrMethodObject Chr = new("chr", ChrImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Ord = new("ord", OrdImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Locals = new("locals", LocalsImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Globals = new("globals", GlobalsImpl);
 
     [PyFunctionArgsDef("*objects", "sep=' '", "end='\\n'", "file=None", "flush=False")]
     private static PyObject? PrintImpl(PyArguments arguments)
@@ -392,5 +394,19 @@ public static partial class PyBuiltinFunctions
         var successful = Rune.TryGetRuneAt(strObj.Value, 0, out var rune);
         Debug.Assert(successful);
         return PyIntObject.FromInteger(rune.Value);
+    }
+
+    [PyFunctionArgsDef()]
+    private static PyDictObject LocalsImpl(PyArguments arguments)
+    {
+        return PyDictObject.CreateDict(PyVirtualMachine.CurrentFrame.Locals
+            .Where(static kvp => kvp.Value is not null)
+            .Select(static kvp => KeyValuePair.Create((PyObject)PyStrObject.FromString(kvp.Key), kvp.Value!)));
+    }
+
+    [PyFunctionArgsDef()]
+    private static PyDictObject GlobalsImpl(PyArguments arguments)
+    {
+        return PyDictObject.CreateProxy(PyVirtualMachine.CurrentFrame._proxyGlobals);
     }
 }

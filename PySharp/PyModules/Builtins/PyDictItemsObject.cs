@@ -20,7 +20,7 @@ public class PyDictItemsObject : PyObject
 public class PyDictItemIterator : PyObject
 {
     private readonly PyDictItemsObject _items;
-    private OrderedDictionary<PyObject, PyObject>.KeyCollection.Enumerator _keyEnumerator;
+    private readonly IEnumerator<PyObject> _keyEnumerator;
 
     internal PyDictItemIterator(PyDictItemsObject items)
     {
