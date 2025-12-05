@@ -154,6 +154,9 @@ public sealed class PyArgsDef
         if (literal is "True" or "False")
             return PyBoolObject.FromBoolean(literal is "True");
 
+        if (literal.Replace(" ", "") is "()")
+            return PyTupleObject.CreateTuple();
+
         if (literal[0] is '"' or '\'')
             return PyStrObject.FromLiteral(literal);
 

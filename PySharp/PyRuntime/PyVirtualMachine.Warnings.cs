@@ -11,7 +11,7 @@ partial class PyVirtualMachine
     [MemberNotNullWhen(false, nameof(CurrentException))]
     public static bool TryWarn(PyExceptionType warningType, string message)
     {
-        Console.WriteLine(warningType.Create(PyStrObject.FromString(message)).ToMessage());
+        PyEnvironment.Error.WriteLine(warningType.Create(PyStrObject.FromString(message)).ToMessage());
         return true;
     }
     [MemberNotNullWhen(false, nameof(CurrentException))]

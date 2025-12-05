@@ -1,9 +1,11 @@
 ﻿using PySharp.AstNodes;
 using PySharp.PyRuntime;
+using PySharp.PyRuntime.Environments;
 using PySharp.PyRuntime.PyAttributes;
 using PySharp.Tokenization;
 using System.Diagnostics;
 using System.Text;
+using System.Xml.Linq;
 
 namespace PySharp.PyModules.Builtins;
 
@@ -31,6 +33,7 @@ public static partial class PyBuiltinFunctions
     public static readonly PyBuiltinFunctionOrMethodObject Ord = new("ord", OrdImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Locals = new("locals", LocalsImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Globals = new("globals", GlobalsImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Import = new(PySpecialNames.Import, ImportImpl);
 
     [PyFunctionArgsDef("*objects", "sep=' '", "end='\\n'", "file=None", "flush=False")]
     private static PyObject? PrintImpl(PyArguments arguments)
@@ -408,5 +411,18 @@ public static partial class PyBuiltinFunctions
     private static PyDictObject GlobalsImpl(PyArguments arguments)
     {
         return PyDictObject.CreateProxy(PyVirtualMachine.CurrentFrame._proxyGlobals);
+    }
+
+    [PyFunctionArgsDef("name", "globals=None", "locals=None", "fromlist=()", "level=0")]
+    private static PyObject? ImportImpl(PyArguments arguments)
+    {
+        if (arguments[0] is not PyStrObject strObj)
+            return PyVirtualMachine.RaiseTypeError("module name must be a string");
+
+        var name = strObj.Value;
+        if (!PyVirtualMachine.PyEnvironment.TryLoadModule(name, out var module))
+            return PyVirtualMachine.RaiseException(PyStandardExceptionTypes.ModuleNotFoundError, $"No module named '{name}'");
+
+        return module;
     }
 }
