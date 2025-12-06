@@ -12,13 +12,13 @@ public static class PyBuiltinTypes
     public static readonly PyListObjectType List = new(); // list
     public static readonly PyTypeObjectType Type = new(); // type
     public static readonly PyEllipsisObjectType Ellipsis = new(); // Ellipsis
-    public static readonly PyMethodObjectType Method = new(); // method
     public static readonly PyRangeObjectType Range = new(); // range
     public static readonly PyModuleObjectType Module = new(); // module
     public static readonly PyZipObjectType Zip = new(); // zip
-    public static readonly PyPropertyObjectType Property = new(); // property
     public static readonly PySuperObjectType Super = new(); // super
 
-    internal static readonly PyFunctionObjectType Function = new(); // function
-    internal static readonly PyMethodDescriptorObjectType MethodDescriptor = new(); // method_descriptor
+    public static readonly PyPropertyObjectType Property = PyPropertyObjectType.Shared; // property
+    public static readonly PyFunctionObjectType Function = PyFunctionObjectType.Shared; // function
+    public static readonly PyMethodObjectType Method = PyMethodObjectType.Shared; // method
+    public static readonly PyMethodDescriptorObjectType MethodDescriptor = PyMethodDescriptorObjectType.Shared; // method_descriptor
 }

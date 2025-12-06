@@ -317,6 +317,16 @@ public abstract class PyTypeObject<TSelf> : PyTypeObject, ISharedInstance<TSelf>
     public static TSelf Shared { get; } = new TSelf();
 }
 
+public abstract class PyPrimitiveTypeObject<TSelf, TObject> : PyTypeObject where TSelf : new() where TObject : PyObject
+{
+    public static TSelf Shared { get; } = new TSelf();
+
+    private protected PyPrimitiveTypeObject()
+    {
+        AppendSpecialMethodsAsDescriptors<TObject>();
+    }
+}
+
 public sealed class PyTypeObjectType : PyTypeObject
 {
     public override string Name => "type";

@@ -2,7 +2,7 @@
 
 namespace PySharp.PyModules.Builtins;
 
-public class PyFunctionObject : PyObject, IPyObjectName
+public sealed class PyFunctionObject : PyObject, IPyObjectName
 {
     private readonly PyUncompoundedFunction _function;
 
@@ -36,12 +36,7 @@ public class PyFunctionObject : PyObject, IPyObjectName
     }
 }
 
-internal sealed class PyFunctionObjectType : PyTypeObject
+public sealed class PyFunctionObjectType : PyPrimitiveTypeObject<PyFunctionObjectType, PyFunctionObject>
 {
     public override string Name => "function";
-
-    public PyFunctionObjectType()
-    {
-        AppendSpecialMethodsAsDescriptors<PyFunctionObject>();
-    }
 }

@@ -2,12 +2,12 @@
 
 namespace PySharp.PyModules.Builtins;
 
-public class PyMethodObject : PyObject
+public sealed class PyMethodObject : PyObject
 {
     private readonly PyFunctionObject _functionObj;
     private readonly PyObject _target;
 
-    public override PyTypeObject PyType => PyBuiltinTypes.Method;
+    public override PyTypeObject PyType => PyMethodObjectType.Shared;
     public string Name { get; }
 
     internal PyMethodObject(PyFunctionObject functionObj, PyObject target)
@@ -24,7 +24,7 @@ public class PyMethodObject : PyObject
     }
 }
 
-public sealed class PyMethodObjectType : PyTypeObject
+public sealed class PyMethodObjectType : PyPrimitiveTypeObject<PyMethodObjectType, PyMethodObject>
 {
     public override string Name => "method";
 }

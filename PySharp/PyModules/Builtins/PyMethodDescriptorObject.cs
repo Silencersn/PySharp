@@ -16,7 +16,7 @@ internal enum PySpecialMethodParametersType
     ArgsKwargs,
 }
 
-internal sealed class PyMethodDescriptorObject : PyObject
+public sealed class PyMethodDescriptorObject : PyObject
 {
     private readonly string _name;
     private readonly MethodInfo? _method;
@@ -178,12 +178,7 @@ internal sealed class PyMethodDescriptorObject : PyObject
 
 }
 
-internal sealed class PyMethodDescriptorObjectType : PyTypeObject
+public sealed class PyMethodDescriptorObjectType : PyPrimitiveTypeObject<PyMethodDescriptorObjectType, PyMethodDescriptorObject>
 {
     public override string Name => "method_descriptor";
-
-    public PyMethodDescriptorObjectType()
-    {
-        AppendSpecialMethodsAsDescriptors<PyMethodDescriptorObject>();
-    }
 }

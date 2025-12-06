@@ -3,7 +3,7 @@ using PySharp.PyRuntime.PyAttributes;
 
 namespace PySharp.PyModules.Builtins;
 
-public class PyPropertyObject : PyObject
+public sealed class PyPropertyObject : PyObject
 {
     private PyObject _fget;
     private PyObject _fset;
@@ -60,7 +60,7 @@ public class PyPropertyObject : PyObject
     }
 }
 
-public sealed class PyPropertyObjectType : PyTypeObject
+public sealed class PyPropertyObjectType : PyPrimitiveTypeObject<PyPropertyObjectType, PyPropertyObject>
 {
     public override string Name => "property";
 
