@@ -100,7 +100,7 @@ public class PyBuiltinFunctionOrMethodObject : PyObject, IPyObjectName
         if (IsMethod)
         {
             if (Self is not null)
-                return PyStrObject.FromString($"<built-in method {Name} of {SelfType.Name} object at {Self.PyId:X16}>");
+                return PyStrObject.FromString($"<built-in method {Name} of {SelfType.Name} object at 0x{Self.PyId:X16}>");
 
             return PyStrObject.FromString($"<method '{Name}' of '{SelfType.Name}' objects>");
         }

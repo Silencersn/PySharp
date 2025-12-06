@@ -17,7 +17,7 @@ public class PyFunctionObject : PyObject, IPyObjectName
 
     public override PyObject? Repr()
     {
-        return PyStrObject.FromString($"<function {Name} at {PyId:X16}>");
+        return PyStrObject.FromString($"<function {Name} at 0x{PyId:X16}>");
     }
 
     public override PyObject? Call(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)

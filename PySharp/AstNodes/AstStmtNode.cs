@@ -914,6 +914,14 @@ public sealed class ClassDefNode : AstStmtNode, IAstVariableScopeOwner
             PyType = pyType;
         }
 
+        protected internal override bool PyTryGetDescriptorInfo(out bool hasGet, out bool hasSet, out bool hasDelete)
+        {
+            hasGet = PyObjectHasAttribute(this, PySpecialNames.Get);
+            hasSet = PyObjectHasAttribute(this, PySpecialNames.Set);
+            hasDelete = PyObjectHasAttribute(this, PySpecialNames.Delete);
+            return true;
+        }
+
         private PyObject? CallSpecialMethodOrBase(
             string methodName,
             Func<PyObject?> baseCall,

@@ -81,10 +81,32 @@ public class PyObject : IEquatable<PyObject>
     public int PyId => _pyId;
 
     internal IDictionary<string, PyObject> PyAttributes => _pyMembers ??= [];
+    protected internal virtual bool PyTryGetDescriptorInfo(out bool hasGet, out bool hasSet, out bool hasDelete)
+    {
+        hasGet = hasSet = hasDelete = false;
+        return false;
+    }
 
     public PyObject()
     {
         _pyId = Interlocked.Increment(ref _pyNextId);
+    }
+
+    internal static bool PyObjectHasAttribute(PyObject pyObj, string name)
+    {
+        if (pyObj.PyAttributes.ContainsKey(name))
+            return true;
+
+        foreach (var pyType in pyObj.PyType.MRO)
+        {
+            if (pyType.PyAttributes.ContainsKey(name))
+                return true;
+        }
+
+        if (name is PySpecialNames.Class)
+            return true;
+
+        return false;
     }
 
     internal static PyObject? PyObjectGetAttribute(PyObject pyObj, string name)
@@ -168,7 +190,7 @@ public class PyObject : IEquatable<PyObject>
 
     internal PyStrObject PyObjectRepr()
     {
-        return PyStrObject.FromString($"<{PyType.Name} object at {PyId:X16}>");
+        return PyStrObject.FromString($"<{PyType.Name} object at 0x{PyId:X16}>");
     }
 
     internal PyObject? PyObjectStr()
