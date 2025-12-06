@@ -9,7 +9,7 @@ namespace PySharp.PyModules;
 
 internal static class Utils
 {
-    public static IEnumerable<PyObject?> EnumerableIterator(PyObject iterator)
+    public static IEnumerable<PyObject?> EnumerateIterator(PyObject iterator)
     {
         while (true)
         {
@@ -30,16 +30,16 @@ internal static class Utils
         }
     }
 
-    public static IEnumerable<PyObject?>? EnumerableIterable(PyObject iterable)
+    public static IEnumerable<PyObject?>? EnumerateIterable(PyObject iterable)
     {
         var iter = iterable.Iter();
         if (iter is null)
             return null;
 
-        return EnumerableIterator(iter);
+        return EnumerateIterator(iter);
     }
 
-    public static IReadOnlyList<PyObject>? EnumerabledIterator(PyObject iterator)
+    public static IReadOnlyList<PyObject>? EnumeratedIterator(PyObject iterator)
     {
         var list = new List<PyObject>();
         while (true)
@@ -61,23 +61,23 @@ internal static class Utils
         return list;
     }
 
-    public static IReadOnlyList<PyObject>? EnumerabledIterable(PyObject iterable)
+    public static IReadOnlyList<PyObject>? EnumeratedIterable(PyObject iterable)
     {
         var iter = iterable.Iter();
         if (iter is null)
             return null;
 
-        return EnumerabledIterator(iter);
+        return EnumeratedIterator(iter);
     }
 
-    public static IEnumerable<KeyValuePair<PyObject, PyObject>>? EnumerabledDictionary(IEnumerable<PyObject> iterable)
+    public static IEnumerable<KeyValuePair<PyObject, PyObject>>? EnumeratedDictionary(IEnumerable<PyObject> iterable)
     {
         var pairs = new List<KeyValuePair<PyObject, PyObject>>();
 
         int i = -1;
         foreach (var item in iterable)
         {
-            var kvp = EnumerabledIterable(item);
+            var kvp = EnumeratedIterable(item);
             if (kvp is null)
                 return null;
 

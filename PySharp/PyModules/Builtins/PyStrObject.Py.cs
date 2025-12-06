@@ -7,7 +7,7 @@ partial class PyStrObject
 {
     public PyObject? PyJoin(PyObject iterable)
     {
-        var items = Utils.EnumerableIterable(iterable);
+        var items = Utils.EnumerateIterable(iterable);
         if (items is null)
             return null;
 

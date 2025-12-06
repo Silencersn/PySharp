@@ -146,7 +146,7 @@ public static partial class PyBuiltinFunctions
     private static PyBoolObject? AllImpl(PyArguments arguments)
     {
         var iterable = arguments.Args[0];
-        var elements = Utils.EnumerableIterable(iterable);
+        var elements = Utils.EnumerateIterable(iterable);
         if (elements is null)
             return null;
 
@@ -169,7 +169,7 @@ public static partial class PyBuiltinFunctions
     private static PyBoolObject? AnyImpl(PyArguments arguments)
     {
         var iterable = arguments.Args[0];
-        var elements = Utils.EnumerableIterable(iterable);
+        var elements = Utils.EnumerateIterable(iterable);
         if (elements is null)
             return null;
 
@@ -195,7 +195,7 @@ public static partial class PyBuiltinFunctions
         if (arguments["key"] is not PyNoneObject)
             throw new NotImplementedException();
 
-        var elements = Utils.EnumerableIterable(iterable);
+        var elements = Utils.EnumerateIterable(iterable);
         if (elements is null)
             return null;
 
@@ -235,7 +235,7 @@ public static partial class PyBuiltinFunctions
         if (arguments["key"] is not PyNoneObject)
             throw new NotImplementedException();
 
-        var elements = Utils.EnumerableIterable(iterable);
+        var elements = Utils.EnumerateIterable(iterable);
         if (elements is null)
             return null;
 
@@ -306,7 +306,7 @@ public static partial class PyBuiltinFunctions
         if (start is PyStrObject)
             return PyVirtualMachine.RaiseTypeError("sum() can't sum strings [use ''.join(seq) instead]");
 
-        var iterable = Utils.EnumerableIterable(arguments[0]);
+        var iterable = Utils.EnumerateIterable(arguments[0]);
         if (iterable is null)
             return null;
 

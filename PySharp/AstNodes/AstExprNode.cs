@@ -750,7 +750,7 @@ public sealed class ListCompNode : AstExprNode
         void For(int index)
         {
             var generator = Generators[index];
-            var iter = Utils.EnumerableIterable(generator.Iter.GetExprValue(tempFrame)) ?? throw new PyRuntimeException(PyVirtualMachine.CurrentException!);
+            var iter = Utils.EnumerateIterable(generator.Iter.GetExprValue(tempFrame)) ?? throw new PyRuntimeException(PyVirtualMachine.CurrentException!);
             foreach (var item in iter)
             {
                 generator.Target.SetTargetValue(item.PyThrowIfNull(), tempFrame);
@@ -807,7 +807,7 @@ public sealed class SetCompNode : AstExprNode
         void For(int index)
         {
             var generator = Generators[index];
-            var iter = Utils.EnumerableIterable(generator.Iter.GetExprValue(tempFrame)) ?? throw new PyRuntimeException(PyVirtualMachine.CurrentException!);
+            var iter = Utils.EnumerateIterable(generator.Iter.GetExprValue(tempFrame)) ?? throw new PyRuntimeException(PyVirtualMachine.CurrentException!);
             foreach (var item in iter)
             {
                 generator.Target.SetTargetValue(item.PyThrowIfNull(), tempFrame);
@@ -866,7 +866,7 @@ public sealed class DictCompNode : AstExprNode
         void For(int index)
         {
             var generator = Generators[index];
-            var iter = Utils.EnumerableIterable(generator.Iter.GetExprValue(tempFrame)) ?? throw new PyRuntimeException(PyVirtualMachine.CurrentException!);
+            var iter = Utils.EnumerateIterable(generator.Iter.GetExprValue(tempFrame)) ?? throw new PyRuntimeException(PyVirtualMachine.CurrentException!);
             foreach (var item in iter)
             {
                 generator.Target.SetTargetValue(item.PyThrowIfNull(), tempFrame);
@@ -925,7 +925,7 @@ public sealed class GeneratorExpNode : AstExprNode
         void For(int index)
         {
             var generator = Generators[index];
-            var iter = Utils.EnumerableIterable(generator.Iter.GetExprValue(tempFrame)) ?? throw new PyRuntimeException(PyVirtualMachine.CurrentException!);
+            var iter = Utils.EnumerateIterable(generator.Iter.GetExprValue(tempFrame)) ?? throw new PyRuntimeException(PyVirtualMachine.CurrentException!);
             foreach (var item in iter)
             {
                 generator.Target.SetTargetValue(item.PyThrowIfNull(), tempFrame);

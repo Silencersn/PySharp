@@ -74,7 +74,7 @@ public sealed class PyTupleObjectType : PyTypeObject
         if (!pack.ValidateCount(1, 0))
             return PyVirtualMachine.RaiseTypeError(null);
 
-        var tuple = Utils.EnumerabledIterable(pack[0]);
+        var tuple = Utils.EnumeratedIterable(pack[0]);
         if (tuple is null)
             return null;
 

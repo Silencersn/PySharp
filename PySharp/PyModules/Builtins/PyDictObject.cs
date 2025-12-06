@@ -154,11 +154,11 @@ public sealed class PyDictObjectType : PyTypeObject
         if (!pack.ValidateArgsCount(1))
             return PyVirtualMachine.RaiseTypeError(null);
 
-        var kvpiteratables = Utils.EnumerabledIterable(pack[0]);
+        var kvpiteratables = Utils.EnumeratedIterable(pack[0]);
         if (kvpiteratables is null)
             return null;
 
-        var pairs = Utils.EnumerabledDictionary(kvpiteratables);
+        var pairs = Utils.EnumeratedDictionary(kvpiteratables);
         if (pairs is null)
             return null;
 
@@ -171,7 +171,7 @@ public sealed class PyDictObjectType : PyTypeObject
 
         for (int i = 0; i < kvpiteratables.Count; i++)
         {
-            var kvp = Utils.EnumerabledIterable(kvpiteratables[i]);
+            var kvp = Utils.EnumeratedIterable(kvpiteratables[i]);
             if (kvp is null)
                 return null;
 

@@ -59,7 +59,7 @@ internal static class AstUtils
         }
         else if (target is TupleNode tupleNode)
         {
-            var iter = Utils.EnumerabledIterable(value);
+            var iter = Utils.EnumeratedIterable(value);
             if (iter is null)
             {
                 Debug.Assert(PyVirtualMachine.CurrentException is not null);
@@ -78,7 +78,7 @@ internal static class AstUtils
         }
         else if (target is ListNode listNode)
         {
-            var iter = Utils.EnumerabledIterable(value);
+            var iter = Utils.EnumeratedIterable(value);
             if (iter is null)
             {
                 Debug.Assert(PyVirtualMachine.CurrentException is not null);

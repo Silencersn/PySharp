@@ -75,7 +75,7 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr
     [PyFunctionArgsDef("iterable", "/")]
     internal PyNoneObject? ExtendImpl(PyArguments arguments)
     {
-        var items = Utils.EnumerabledIterable(arguments[0]);
+        var items = Utils.EnumeratedIterable(arguments[0]);
         if (items is null)
             return null;
 
@@ -267,7 +267,7 @@ public sealed class PyListObjectType : PyTypeObject
         if (!pack.ValidateCount(1, 0))
             return PyVirtualMachine.RaiseTypeError(null);
 
-        var list = Utils.EnumerabledIterable(pack[0]);
+        var list = Utils.EnumeratedIterable(pack[0]);
         if (list is null)
             return null;
 
