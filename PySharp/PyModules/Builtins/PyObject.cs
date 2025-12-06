@@ -117,6 +117,11 @@ public class PyObject : IEquatable<PyObject>
         if (attrFromType is not null)
             return attrFromType;
 
+        // special read-only attributes
+        // __class__
+        if (name is PySpecialNames.Class)
+            return pyObj.PyType;
+
         return PyVirtualMachine.RaiseAttributeError($"'{pyObj.PyType.Name}' object has no attribute '{name}'");
     }
 
