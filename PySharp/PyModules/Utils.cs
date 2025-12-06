@@ -236,6 +236,7 @@ internal static class Utils
     }
     public static bool IsDescriptor(PyObject pyObj, out bool hasGet, out bool hasSet, out bool hasDelete)
     {
+        // TODO: ClassDefNode.CustomObject is dynamic
         (var isDescriptor, hasGet, hasSet, hasDelete) = _isDescriptorCache.GetOrAdd(pyObj.GetType(), static type =>
         {
             var hasGet = IsPyObjectMethodOverridden(type, nameof(PyObject.Get));

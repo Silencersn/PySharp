@@ -932,6 +932,8 @@ public sealed class ClassDefNode : AstStmtNode, IAstVariableScopeOwner
             return method.Call(args, kwargs ?? (Dictionary<string, PyObject>)[]);
         }
 
+        #region Methods
+
         public override PyObject? Str()
         {
             return CallSpecialMethodOrBase(PySpecialNames.Str, () => base.Str(), []);
@@ -1236,5 +1238,7 @@ public sealed class ClassDefNode : AstStmtNode, IAstVariableScopeOwner
         {
             return CallSpecialMethodOrBase(PySpecialNames.GetAttribute, () => base.GetAttribute(item), [PyStrObject.FromString(item)]);
         }
+
+        #endregion Methods
     }
 }
