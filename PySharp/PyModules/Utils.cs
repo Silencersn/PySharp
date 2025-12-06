@@ -229,24 +229,18 @@ internal static class Utils
         return (method = type.GetMethod(name)!).DeclaringType != typeof(PyObject);
     }
 
-    private static readonly ConcurrentDictionary<Type, (bool IsDescriptor, bool HasGet, bool HasSet, bool HasDelete)> _isDescriptorCache = [];
     public static bool IsDescriptor(PyObject pyObj)
     {
         return IsDescriptor(pyObj, out _, out _, out _);
     }
     public static bool IsDescriptor(PyObject pyObj, out bool hasGet, out bool hasSet, out bool hasDelete)
     {
-        if (pyObj.PyTryGetDescriptorInfo(out hasGet, out hasSet, out hasDelete))
-            return hasGet || hasSet || hasDelete;
+        // TODO: optimize internal types
 
-        (var isDescriptor, hasGet, hasSet, hasDelete) = _isDescriptorCache.GetOrAdd(pyObj.GetType(), static type =>
-        {
-            var hasGet = IsPyObjectMethodOverridden(type, nameof(PyObject.Get));
-            var hasSet = IsPyObjectMethodOverridden(type, nameof(PyObject.Set));
-            var hasDelete = IsPyObjectMethodOverridden(type, nameof(PyObject.Delete));
-            return (hasGet || hasSet || hasDelete, hasGet, hasSet, hasDelete);
-        });
-        return isDescriptor;
+        hasGet = PyObject.PyObjectHasAttribute(pyObj, PySpecialNames.Get);
+        hasSet = PyObject.PyObjectHasAttribute(pyObj, PySpecialNames.Set);
+        hasDelete = PyObject.PyObjectHasAttribute(pyObj, PySpecialNames.Delete);
+        return hasGet || hasSet || hasDelete;
     }
 
     public static bool TryCastStrAsArg(PyObject pyObj, [NotNullWhen(true)] out string? str, string? argName = null)

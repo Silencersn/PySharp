@@ -18,5 +18,7 @@ public static class PyBuiltinTypes
     public static readonly PyZipObjectType Zip = new(); // zip
     public static readonly PyPropertyObjectType Property = new(); // property
     public static readonly PySuperObjectType Super = new(); // super
-    internal static readonly PyMethodDescriptorObjectType MethodDescriptor = new();
+
+    internal static readonly PyFunctionObjectType Function = new(); // function
+    internal static readonly PyMethodDescriptorObjectType MethodDescriptor = new(); // method_descriptor
 }

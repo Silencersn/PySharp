@@ -8,6 +8,8 @@ public class PyFunctionObject : PyObject, IPyObjectName
 
     public string Name { get; }
 
+    public override PyTypeObject PyType => PyBuiltinTypes.Function;
+
     public PyFunctionObject(string name, PyUncompoundedFunction function)
     {
         Name = name;
@@ -31,5 +33,15 @@ public class PyFunctionObject : PyObject, IPyObjectName
             return this;
 
         return new PyMethodObject(this, instance);
+    }
+}
+
+internal sealed class PyFunctionObjectType : PyTypeObject
+{
+    public override string Name => "function";
+
+    public PyFunctionObjectType()
+    {
+        AppendSpecialMethodsAsDescriptors<PyFunctionObject>();
     }
 }

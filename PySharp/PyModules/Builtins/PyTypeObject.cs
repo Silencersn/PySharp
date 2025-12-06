@@ -98,7 +98,7 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
         if (attrFromType is not null)
             return attrFromType;
 
-        return PyVirtualMachine.RaiseAttributeError($"'{pyTypeObj.PyType.Name}' object has no attribute '{name}'");
+        return PyVirtualMachine.RaiseAttributeError($"'{pyTypeObj.Name}' object has no attribute '{name}'");
     }
 
     public override PyObject? GetAttribute(string item)
@@ -153,6 +153,41 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
         AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(DelAttr), PySpecialMethodParametersType.String);
 
         AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Call), PySpecialMethodParametersType.ArgsKwargs);
+
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Int), PySpecialMethodParametersType.NoArgs);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Float), PySpecialMethodParametersType.NoArgs);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Complex), PySpecialMethodParametersType.NoArgs);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Index), PySpecialMethodParametersType.NoArgs);
+
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(GetAttr), PySpecialMethodParametersType.String);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Missing), PySpecialMethodParametersType.Object);
+
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(TrueDiv), PySpecialMethodParametersType.Object);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(FloorDiv), PySpecialMethodParametersType.Object);
+
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(LShift), PySpecialMethodParametersType.Object);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(RShift), PySpecialMethodParametersType.Object);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(And), PySpecialMethodParametersType.Object);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Xor), PySpecialMethodParametersType.Object);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Or), PySpecialMethodParametersType.Object);
+
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(RAdd), PySpecialMethodParametersType.Object);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(RSub), PySpecialMethodParametersType.Object);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(RMul), PySpecialMethodParametersType.Object);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(RTrueDiv), PySpecialMethodParametersType.Object);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(RFloorDiv), PySpecialMethodParametersType.Object);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(RMod), PySpecialMethodParametersType.Object);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(RDivMod), PySpecialMethodParametersType.Object);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(RPow), PySpecialMethodParametersType.ObjectObject);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(RLShift), PySpecialMethodParametersType.Object);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(RRShift), PySpecialMethodParametersType.Object);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(RAnd), PySpecialMethodParametersType.Object);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(RXor), PySpecialMethodParametersType.Object);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(ROr), PySpecialMethodParametersType.Object);
+
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Get), PySpecialMethodParametersType.ObjectObject);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Set), PySpecialMethodParametersType.ObjectObject);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Delete), PySpecialMethodParametersType.Object);
 
     }
     private static readonly FrozenDictionary<string, (string PyName, MethodInfo Method)> _nameToPyObjectMethod = new Dictionary<string, (string PyName, MethodInfo Method)>()

@@ -181,4 +181,9 @@ internal sealed class PyMethodDescriptorObject : PyObject
 internal sealed class PyMethodDescriptorObjectType : PyTypeObject
 {
     public override string Name => "method_descriptor";
+
+    public PyMethodDescriptorObjectType()
+    {
+        AppendSpecialMethodsAsDescriptors<PyMethodDescriptorObject>();
+    }
 }
