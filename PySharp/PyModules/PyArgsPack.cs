@@ -1,6 +1,7 @@
 ﻿using PySharp.AstNodes;
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.PyModules;
@@ -127,6 +128,13 @@ public sealed class PyArgsPack
 
 public sealed class PyArgsDef
 {
+    private enum PyArgsDefParametersType
+    {
+        Unknown = 0,
+
+        NoArgsOrKwargs
+    }
+
     private PyArgsDef(string[] posonlyArgs, string[] args, string[] kwonlyArgs, PyObject?[] kwDefaults, PyObject[] defaults, string? varArg, string? kwArg)
     {
         PosonlyArgs = posonlyArgs;
@@ -136,8 +144,13 @@ public sealed class PyArgsDef
         Defaults = defaults;
         VarArg = varArg;
         KwArg = kwArg;
+
+        ParametersType = PyArgsDefParametersType.Unknown;
+        if (PosonlyArgs.Length is 0 && Args.Length is 0 && KwonlyArgs.Length is 0 && VarArg is null && KwArg is null)
+            ParametersType = PyArgsDefParametersType.NoArgsOrKwargs;
     }
 
+    private PyArgsDefParametersType ParametersType { get; }
     public string[] PosonlyArgs { get; }
     public string[] Args { get; }
     public string[] KwonlyArgs { get; }
@@ -268,6 +281,14 @@ public sealed class PyArgsDef
 
     public bool TryParse(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, [NotNullWhen(true)] out PyArguments? result)
     {
+        if (ParametersType is PyArgsDefParametersType.NoArgsOrKwargs)
+            return TryParseEmpty(args, kwargs, out result);
+
+        return TryParseGeneral(args, kwargs, out result);
+    }
+
+    private bool TryParseGeneral(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, [NotNullWhen(true)] out PyArguments? result)
+    {
         result = null;
 
         var defaultsForPosonly = int.Max(0, Defaults.Length - Args.Length);
@@ -345,10 +366,25 @@ public sealed class PyArgsDef
 
         return true;
     }
+
+    private bool TryParseEmpty(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, [NotNullWhen(true)] out PyArguments? result)
+    {
+        Debug.Assert(ParametersType is PyArgsDefParametersType.NoArgsOrKwargs);
+        if (args.Count is 0 && kwargs.Count is 0)
+        {
+            result = PyArguments.Empty;
+            return true;
+        }
+
+        result = null;
+        return false;
+    }
 }
 
 public sealed class PyArguments
 {
+    public static PyArguments Empty { get; } = new([], [], [], []);
+
     public IReadOnlyList<PyObject> Args { get; }
     public IReadOnlyDictionary<string, PyObject> Kwargs { get; }
     public IReadOnlyList<PyObject> ExtraArgs { get; }
