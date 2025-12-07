@@ -134,6 +134,7 @@ public sealed partial class Parser
 
         Debug.Assert(CurrentScope.IsRoot);
         FillUnknownVariables(CurrentScope);
+        FillClosureVariables(CurrentScope);
 
         return module.Reduce(_options);
     }
@@ -174,16 +175,6 @@ public sealed partial class Parser
             FillUnknownVariables(child);
         }
 
-        static IEnumerable<VariableScope> EnumerateFuncDefOrLambdaToRoot(VariableScope scope)
-        {
-            while (scope.Parent is not null)
-            {
-                scope = scope.Parent;
-                if (scope.Owner is FunctionDefNode or LambdaNode)
-                    yield return scope;
-            }
-        }
-
         void FillUnknownVariablesForInterface(IAstVariableScopeOwner owner)
         {
             foreach (var pair in owner.Variables)
@@ -207,6 +198,16 @@ public sealed partial class Parser
         }
     }
 
+    static IEnumerable<VariableScope> EnumerateFuncDefOrLambdaToRoot(VariableScope scope)
+    {
+        while (scope.Parent is not null)
+        {
+            scope = scope.Parent;
+            if (scope.Owner is FunctionDefNode or LambdaNode)
+                yield return scope;
+        }
+    }
+
     private static void SyncVariablesToOwnerThenFillLocal(VariableScope scope)
     {
         var owner = scope.Owner;
@@ -222,5 +223,37 @@ public sealed partial class Parser
             if (nodes.Any(node => node.Ctx is ExprContext.Store or ExprContext.Del && node.Identifier == pair.Key))
                 owner.Variables[pair.Key] = PyVariableType.Local;
         }
+    }
+
+    private static void FillClosureVariables(VariableScope scope)
+    {
+        foreach (var (name, type) in scope.Variables)
+        {
+            if (type is not PyVariableType.Closure)
+                continue;
+
+            bool found = false;
+            foreach (var wrapper in EnumerateFuncDefOrLambdaToRoot(scope))
+            {
+                if (wrapper.Variables.ContainsKey(name))
+                {
+                    wrapper.CapturedVariables.Add(name);
+                    found = true;
+                    break;
+                }
+            }
+            if (!found)
+                Debug.Fail($"Closure variable '{name}' not found in enclosing scopes");
+        }
+
+        foreach (var child in scope.Children)
+        {
+            FillClosureVariables(child);
+        }
+
+        if (scope.Owner is FunctionDefNode funcDefNode)
+            funcDefNode.CapturedVariables = scope.CapturedVariables;
+        else if (scope.Owner is LambdaNode lambdaNode)
+            lambdaNode.CapturedVariables = scope.CapturedVariables;
     }
 }

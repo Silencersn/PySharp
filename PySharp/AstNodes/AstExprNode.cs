@@ -973,10 +973,11 @@ public sealed class LambdaNode : AstExprNode, IAstVariableScopeOwner
     public AstArgumentsNode Args { get; }
     public AstExprNode Body { get; internal set; }
     public Dictionary<string, PyVariableType> Variables { get; set; } = [];
+    internal HashSet<string> CapturedVariables = [];
 
     public override PyObject GetExprValue(PyFrame frame)
     {
-        var caller = new LambdaFunctionCaller(this, frame, AstUtils.CaptureFrames(frame, Variables));
+        var caller = new LambdaFunctionCaller(this, frame);
         return new PyFunctionObject("<lambda>", caller.Call);
     }
 
@@ -992,13 +993,13 @@ public sealed class LambdaNode : AstExprNode, IAstVariableScopeOwner
     {
         private readonly LambdaNode _node;
         private readonly PyArgsDef _def;
-        private readonly Dictionary<string, PyFrame> _capturedFrames;
+        private readonly PyFrame _capturedFrame;
 
-        internal LambdaFunctionCaller(LambdaNode node, PyFrame frame, Dictionary<string, PyFrame> capturedFrames)
+        internal LambdaFunctionCaller(LambdaNode node, PyFrame frame)
         {
             _node = node;
             _def = PyArgsDef.FromAst(node.Args, frame);
-            _capturedFrames = capturedFrames;
+            _capturedFrame = frame;
         }
 
         public PyObject? Call(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
@@ -1006,11 +1007,17 @@ public sealed class LambdaNode : AstExprNode, IAstVariableScopeOwner
             var backFrame = PyVirtualMachine.CurrentFrame;
             var frame = backFrame.CreateFrame();
             frame._variables = _node.Variables;
-            foreach (var localName in _node.Variables.Where(pair => pair.Value is PyVariableType.Local).Select(pair => pair.Key))
+            foreach (var localName in _node.Variables.Where(pair => pair.Value is PyVariableType.Local or PyVariableType.Parameter).Select(pair => pair.Key))
             {
-                frame.Locals[localName] = null;
+                if (_node.CapturedVariables.Contains(localName))
+                    frame.Closures[localName] = PyCellObject.CreateCell(null);
+                else
+                    frame.Locals[localName] = null;
             }
-            frame._capturedFrames = _capturedFrames;
+            foreach (var (name, cell) in _capturedFrame.Closures)
+            {
+                frame.Closures.Add(name, cell);
+            }
             PyVirtualMachine.EnterFrame(frame);
 
             if (!_def.TryParse(args, kwargs, out var arguments))

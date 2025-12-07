@@ -760,10 +760,11 @@ public class FunctionDefNode : AstStmtNode, IAstVariableScopeOwner
     public List<AstExprNode> DecoratorList { get; } = [];
 
     public Dictionary<string, PyVariableType> Variables { get; set; } = [];
+    internal HashSet<string> CapturedVariables = [];
 
     public override void Execute(PyFrame frame)
     {
-        var caller = new CustomFunctionCaller(this, frame, AstUtils.CaptureFrames(frame, Variables));
+        var caller = new CustomFunctionCaller(this, frame);
 
         PyObject func = new PyFunctionObject(Identifier, caller.Call);
         func = AstUtils.ApplyDeractors(func, DecoratorList, frame);
@@ -782,13 +783,13 @@ public class FunctionDefNode : AstStmtNode, IAstVariableScopeOwner
     {
         private readonly FunctionDefNode _node;
         private readonly PyArgsDef _def;
-        private readonly Dictionary<string, PyFrame> _capturedFrames;
+        private readonly PyFrame _capturedFrame;
 
-        internal CustomFunctionCaller(FunctionDefNode node, PyFrame frame, Dictionary<string, PyFrame> capturedFrames)
+        internal CustomFunctionCaller(FunctionDefNode node, PyFrame frame)
         {
+            _capturedFrame = frame;
             _node = node;
             _def = PyArgsDef.FromAst(node.Args, frame);
-            _capturedFrames = capturedFrames;
         }
 
         public PyObject? Call(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
@@ -796,11 +797,17 @@ public class FunctionDefNode : AstStmtNode, IAstVariableScopeOwner
             var backFrame = PyVirtualMachine.CurrentFrame;
             var frame = backFrame.CreateFrame();
             frame._variables = _node.Variables;
-            foreach (var localName in _node.Variables.Where(pair => pair.Value is PyVariableType.Local).Select(pair => pair.Key))
+            foreach (var localName in _node.Variables.Where(pair => pair.Value is PyVariableType.Local or PyVariableType.Parameter).Select(pair => pair.Key))
             {
-                frame.Locals[localName] = null;
+                if (_node.CapturedVariables.Contains(localName))
+                    frame.Closures[localName] = PyCellObject.CreateCell(null);
+                else
+                    frame.Locals[localName] = null;
             }
-            frame._capturedFrames = _capturedFrames;
+            foreach (var (name, cell) in _capturedFrame.Closures)
+            {
+                frame.Closures.Add(name, cell);
+            }
             PyVirtualMachine.EnterFrame(frame);
 
             if (!_def.TryParse(args, kwargs, out var arguments))
@@ -852,7 +859,10 @@ public sealed class ClassDefNode : AstStmtNode, IAstVariableScopeOwner
     {
         var newFrame = frame.CreateFrame();
         newFrame._variables = Variables;
-        newFrame._capturedFrames = AstUtils.CaptureFrames(frame, Variables);
+        foreach (var (name, cell) in frame.Closures)
+        {
+            newFrame.Closures.Add(name, cell);
+        }
         PyVirtualMachine.EnterFrame(newFrame);
 
         foreach (var stmt in Body)

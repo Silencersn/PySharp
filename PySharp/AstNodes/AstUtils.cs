@@ -145,34 +145,6 @@ internal static class AstUtils
         }
     }
 
-    public static Dictionary<string, PyFrame> CaptureFrames(PyFrame frame, Dictionary<string, PyVariableType> variables)
-    {
-        Dictionary<string, PyFrame> capturedFrames = [];
-        foreach (var closureName in variables.Where(pair => pair.Value is PyVariableType.Closure).Select(pair => pair.Key))
-        {
-            var f = frame;
-            while (f is not null)
-            {
-                if (f._variables is null)
-                {
-                    f = f.Back;
-                    continue;
-                }
-
-                if (f._variables.TryGetValue(closureName, out var type) && type is not PyVariableType.Closure)
-                {
-                    capturedFrames[closureName] = f;
-                    break;
-                }
-
-                f = f.Back;
-            }
-            if (!capturedFrames.ContainsKey(closureName))
-                Debug.Fail("why");
-        }
-        return capturedFrames;
-    }
-
     public static PyObject ApplyDeractors(PyObject target, List<AstExprNode> decoratorList, PyFrame frame)
     {
         if (decoratorList.Count > 0)

@@ -16,6 +16,7 @@ public sealed class PyFrame
         Locals = Globals!;
         Exceptions = [];
         GlobalNames = [];
+        Closures = [];
 
         _proxyLocals = _proxyGlobals = new ProxyDict(Locals);
     }
@@ -24,6 +25,7 @@ public sealed class PyFrame
         Back = back;
         Globals = globals;
         Locals = locals;
+        Closures = [];
         Exceptions = [];
         GlobalNames = [];
         _proxyLocals = new ProxyDict(Locals);
@@ -35,12 +37,12 @@ public sealed class PyFrame
     public bool IsRoot => Back is null;
     public Dictionary<string, PyObject> Globals { get; }
     public Dictionary<string, PyObject?> Locals { get; }
+    public Dictionary<string, PyCellObject> Closures { get; }
     internal HashSet<string> GlobalNames { get; }
     public Stack<PyExceptionObject> Exceptions { get; }
     public PyExceptionObject CurrentException => Exceptions.Peek();
 
     internal Dictionary<string, PyVariableType>? _variables = null;
-    internal Dictionary<string, PyFrame>? _capturedFrames = null;
     internal ProxyDict _proxyGlobals;
     internal ProxyDict _proxyLocals;
 
@@ -132,6 +134,17 @@ public sealed class PyFrame
                 return value;
             }
 
+            if (Closures.TryGetValue(name, out var cell))
+            {
+                if (cell.Value is null)
+                {
+                    PyVirtualMachine.RaiseException(PyStandardExceptionTypes.UnboundLocalError, $"cannot access local variable '{name}' where it is not associated with a value");
+                    throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                }
+
+                return cell.Value;
+            }
+
             PyVirtualMachine.RaiseException(PyStandardExceptionTypes.NameError, $"name '{name}' is not defined");
             throw new PyRuntimeException(PyVirtualMachine.CurrentException);
         }
@@ -148,8 +161,15 @@ public sealed class PyFrame
         }
         else if (variableType is PyVariableType.Closure)
         {
-            Debug.Assert(_capturedFrames is not null);
-            return _capturedFrames[name].GetVariableValue(name, PyVariableType.Local);
+            //Debug.Assert(_capturedFrames is not null);
+            //return _capturedFrames[name].GetVariableValue(name, PyVariableType.Local);
+
+            var value = Closures[name].Value;
+            if (value is not null)
+                return value;
+
+            PyVirtualMachine.RaiseException(PyStandardExceptionTypes.NameError, $"cannot access free variable '{name}' where it is not associated with a value in enclosing scope");
+            throw new PyRuntimeException(PyVirtualMachine.CurrentException);
         }
 
         throw new NotImplementedException();
@@ -158,8 +178,10 @@ public sealed class PyFrame
     {
         if (variableType is PyVariableType.Local or PyVariableType.Parameter)
         {
-            Locals[name] = value;
-
+            if (Closures.TryGetValue(name, out PyCellObject? cell))
+                cell.Value = value;
+            else
+                Locals[name] = value;
         }
         else if (variableType is PyVariableType.Global)
         {
@@ -167,8 +189,10 @@ public sealed class PyFrame
         }
         else if (variableType is PyVariableType.Closure)
         {
-            Debug.Assert(_capturedFrames is not null);
-            _capturedFrames[name].SetVariableValue(name, PyVariableType.Local, value);
+            //Debug.Assert(_capturedFrames is not null);
+            //_capturedFrames[name].SetVariableValue(name, PyVariableType.Local, value);
+
+            Closures[name].Value = value;
         }
         else
         {

@@ -401,8 +401,9 @@ public static partial class PyBuiltinFunctions
     private static PyDictObject LocalsImpl(PyArguments arguments)
     {
         return PyDictObject.CreateDict(PyVirtualMachine.CurrentFrame.Locals
-            .Where(static kvp => kvp.Value is not null)
-            .Select(static kvp => KeyValuePair.Create((PyObject)PyStrObject.FromString(kvp.Key), kvp.Value!)));
+            .Concat(PyVirtualMachine.CurrentFrame.Closures.Select(static pair => KeyValuePair.Create(pair.Key, pair.Value.Value)))
+            .Where(static pair => pair.Value is not null)
+            .Select(static pair => KeyValuePair.Create((PyObject)PyStrObject.FromString(pair.Key), pair.Value!)));
     }
 
     [PyFunctionArgsDef()]
