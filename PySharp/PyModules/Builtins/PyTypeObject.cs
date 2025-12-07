@@ -1,5 +1,6 @@
 ﻿using PySharp.PyRuntime;
 using System.Collections.Frozen;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
 
@@ -18,14 +19,16 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
     {
         PyAttributes.Add(PySpecialNames.Bases, PyTupleObject.CreateTuple(Bases));
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
-        MRO = [.. EnumerableMROTypes(this, Bases)];
+        MRO = [.. CreateMRO(this, Bases)];
+        PyAttributes.Add(PySpecialNames.MRO, PyTupleObject.CreateTuple(MRO));
     }
 
     internal PyTypeObject(string name, IReadOnlyList<PyTypeObject> bases)
     {
         PyAttributes.Add(PySpecialNames.Bases, PyTupleObject.CreateTuple(bases));
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(name));
-        MRO = [.. EnumerableMROTypes(this, bases)];
+        MRO = [.. CreateMRO(this, bases)];
+        PyAttributes.Add(PySpecialNames.MRO, PyTupleObject.CreateTuple(MRO));
     }
 
     public bool IsInstance(PyObject obj)
@@ -289,23 +292,79 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
         PyAttributes[name] = new PyMethodDescriptorObject(name, instanceDelegate.Method, paramType);
     }
 
-    private static IEnumerable<PyTypeObject> EnumerableMROTypes(PyTypeObject pyType, IEnumerable<PyTypeObject> bases)
+    private static List<PyTypeObject> CreateMRO(PyTypeObject pyType, IEnumerable<PyTypeObject> bases)
     {
-        // it is a simple implementation, instead of C3
+        // L[C(B1 ... BN)] = C + merge(L[B1] ... L[BN], B1 ... BN)
+        List<PyTypeObject> resultMro = [pyType];
 
-        return bases.SelectMany(type => GetAllTypes(type)).Reverse().Distinct().Reverse().Prepend(pyType);
+        // B1 ... BN
+        var baseTypes = new Queue<PyTypeObject>(bases);
+        if (baseTypes.Count is 0)
+            // the type of object
+            return resultMro;
 
-        static IEnumerable<PyTypeObject> GetAllTypes(PyTypeObject type)
+        // L[B1] ... L[BN]
+        List<Queue<PyTypeObject>> baseMros = [.. baseTypes.Select(baseType => new Queue<PyTypeObject>(baseType.MRO))];
+
+        // L[B1] ... L[BN], B1 ... BN
+        baseMros.Add(baseTypes);
+
+        while (baseMros.Count > 0)
         {
-            yield return type;
-            foreach (var baseType in type.Bases)
+            // take the head of the first list, i.e L[B1][0];
+            // if this head is not in the tail of any of the other lists,
+            // then add it to the linearization of C and remove it from the lists in the merge,
+            // otherwise look at the head of the next list and take it, if it is a good head.
+            //
+            // Then repeat the operation until all the class are removed or it is impossible to find good heads.
+            // In this case, it is impossible to construct the merge,
+            // it will refuse to create the class C and will raise an exception.
+            //
+            for (int i = 0; i < baseMros.Count; i++)
             {
-                foreach (var mroType in GetAllTypes(baseType))
+                var head = baseMros[i].Peek();
+                bool notInOtherTails = true;
+                for (int j = 0; j < baseMros.Count; j++)
                 {
-                    yield return mroType;
+                    if (i == j)
+                        continue;
+
+                    var tail = baseMros[j].Skip(1);
+                    if (tail.Contains(head))
+                    {
+                        notInOtherTails = false;
+                        break;
+                    }
+                }
+                if (notInOtherTails)
+                {
+                    resultMro.Add(head);
+                    List<Queue<PyTypeObject>> baseMrosToRemove = [];
+                    foreach (var baseMro in baseMros)
+                    {
+                        if (baseMro.Peek() == head)
+                        {
+                            baseMro.Dequeue();
+                            if (baseMro.Count is 0)
+                                baseMrosToRemove.Add(baseMro);
+                        }
+                    }
+                    foreach (var baseMroToRemove in baseMrosToRemove)
+                    {
+                        var removed = baseMros.Remove(baseMroToRemove);
+                        Debug.Assert(removed);
+                    }
+                    break;
+                }
+                else if (i == baseMros.Count - 1)
+                {
+                    PyVirtualMachine.RaiseTypeError("Cannot create a consistent method resolution order (MRO)");
+                    throw new PyRuntimeException(PyVirtualMachine.CurrentException);
                 }
             }
         }
+
+        return resultMro;
     }
 }
 

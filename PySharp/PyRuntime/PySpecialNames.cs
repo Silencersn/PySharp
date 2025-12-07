@@ -87,6 +87,7 @@ public static class PySpecialNames
     public const string Debug = "__debug__";
     public const string All = "__all__";
     public const string Class = "__class__";
+    public const string MRO = "__mro__";
 
 
     // functions
