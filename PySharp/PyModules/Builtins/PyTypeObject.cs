@@ -188,6 +188,7 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
         AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Get), PySpecialMethodParametersType.ObjectObject);
         AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Set), PySpecialMethodParametersType.ObjectObject);
         AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(Delete), PySpecialMethodParametersType.Object);
+        AppendSpecialMethodAsDescriptorIfOverridden<TPyObject>(nameof(SetName), PySpecialMethodParametersType.ObjectObject);
 
     }
     private static readonly FrozenDictionary<string, (string PyName, MethodInfo Method)> _nameToPyObjectMethod = new Dictionary<string, (string PyName, MethodInfo Method)>()
@@ -252,6 +253,7 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
         [nameof(Len)] = (PySpecialNames.Len, GetPublicMethodFromPyObjectNoCache(nameof(Len))),
         [nameof(Iter)] = (PySpecialNames.Iter, GetPublicMethodFromPyObjectNoCache(nameof(Iter))),
         [nameof(Next)] = (PySpecialNames.Next, GetPublicMethodFromPyObjectNoCache(nameof(Next))),
+        [nameof(SetName)] = (PySpecialNames.SetName, GetPublicMethodFromPyObjectNoCache(nameof(SetName))),
     }.ToFrozenDictionary();
     private static MethodInfo GetPublicMethodFromPyObjectNoCache(string name)
     {

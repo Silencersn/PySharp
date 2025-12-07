@@ -308,4 +308,9 @@ partial class PyObject
     {
         throw new NotImplementedException();
     }
+
+    public virtual PyObject? SetName(PyObject owner, PyObject name)
+    {
+        return PyNoneObject.None;
+    }
 }

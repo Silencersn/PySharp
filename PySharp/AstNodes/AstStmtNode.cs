@@ -884,12 +884,13 @@ public sealed class ClassDefNode : AstStmtNode, IAstVariableScopeOwner
         if (bases.Count is 0)
             bases.Add(PyBuiltinTypes.Object);
 
-        PyObject type = new CustomObjectType(
-            Name,
-            bases,
-            Variables.Keys.ToDictionary(static member => member, newFrame.GetValue));
-        type = AstUtils.ApplyDeractors(type, DecoratorList, frame);
-        frame.SetValue(Name, type);
+        var attrs = Variables.Keys.ToDictionary(static member => member, newFrame.GetValue);
+        var type = new CustomObjectType(Name, bases, attrs);
+
+        foreach (var (name, value) in attrs)
+            value.SetName(type, PyStrObject.FromString(name)).PyThrowIfNull();
+
+        frame.SetValue(Name, AstUtils.ApplyDeractors(type, DecoratorList, frame));
     }
 
     private sealed class CustomObjectType : PyTypeObject
@@ -1250,6 +1251,11 @@ public sealed class ClassDefNode : AstStmtNode, IAstVariableScopeOwner
         public override PyObject? GetAttribute(string item)
         {
             return CallSpecialMethodOrBase(PySpecialNames.GetAttribute, () => base.GetAttribute(item), [PyStrObject.FromString(item)]);
+        }
+
+        public override PyObject? SetName(PyObject owner, PyObject name)
+        {
+            return CallSpecialMethodOrBase(PySpecialNames.SetName, () => base.SetName(owner, name), [owner, name]);
         }
 
         #endregion Methods

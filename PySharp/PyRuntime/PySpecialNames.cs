@@ -74,6 +74,7 @@ public static class PySpecialNames
     public const string Get = "__get__";
     public const string Set = "__set__";
     public const string Delete = "__delete__";
+    public const string SetName = "__set_name__";
 
 
     // attributes
