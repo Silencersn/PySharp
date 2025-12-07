@@ -7,19 +7,23 @@ public class PyTupleObject : PyObject, IPyObjectRecursiveRepr
     internal readonly PyObject[] _array;
 
     public override PyTypeObject PyType => PyBuiltinTypes.Tuple;
+    public static PyTupleObject Empty { get; } = new([]);
 
-    public PyTupleObject()
+    private PyTupleObject(PyObject[] array)
     {
-        _array = [];
-    }
-    public PyTupleObject(IEnumerable<PyObject> list)
-    {
-        _array = [.. list];
+        _array = array;
     }
 
     public static PyTupleObject CreateTuple(params IEnumerable<PyObject> items)
     {
-        return new PyTupleObject(items);
+        if (items.TryGetNonEnumeratedCount(out var count) && count is 0)
+            return Empty;
+
+        var array = items.ToArray();
+        if (array.Length is 0)
+            return Empty;
+
+        return new PyTupleObject(array);
     }
 
     public override PyObject? Iter()
@@ -78,6 +82,6 @@ public sealed class PyTupleObjectType : PyTypeObject
         if (tuple is null)
             return null;
 
-        return new PyTupleObject(tuple);
+        return PyTupleObject.CreateTuple(tuple);
     }
 }

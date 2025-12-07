@@ -346,7 +346,7 @@ public sealed class TupleNode : AstExprNode, IExprContextNode
 
     public override PyTupleObject GetExprValue(PyFrame frame)
     {
-        return new PyTupleObject(Elts.Select(item => item.GetExprValue(frame)));
+        return PyTupleObject.CreateTuple(Elts.Select(item => item.GetExprValue(frame)));
     }
 
     public override bool? NoSideEffects()
@@ -920,7 +920,7 @@ public sealed class GeneratorExpNode : AstExprNode
         var tempFrame = frame.TempFrame();
         var list = new List<PyObject>();
         For(0);
-        return new PyTupleObject(list);
+        return PyTupleObject.CreateTuple(list);
 
         void For(int index)
         {
