@@ -749,7 +749,63 @@ internal interface IAstVariableScopeOwner
     Dictionary<string, PyVariableType> Variables { get; set; }
 }
 
-public class FunctionDefNode : AstStmtNode, IAstVariableScopeOwner
+internal interface IAstVariableScopeOwnerWithCapturedVariables : IAstVariableScopeOwner
+{
+    AstArgumentsNode Args { get; }
+    HashSet<string> CapturedVariables { get; }
+}
+
+internal sealed class FunctionCaller
+{
+    private readonly IAstVariableScopeOwnerWithCapturedVariables _node;
+    private readonly PyArgsDef _def;
+    private readonly Func<PyFrame, PyObject> _getResult;
+    internal PyFunctionObject _func;
+
+    internal FunctionCaller(IAstVariableScopeOwnerWithCapturedVariables node, PyFrame frame, Func<PyFrame, PyObject> getResult)
+    {
+        _node = node;
+        _def = PyArgsDef.FromAst(node.Args, frame);
+        _getResult = getResult;
+        _func = null!; // deferred init
+    }
+
+    public PyObject? Call(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        var backFrame = PyVirtualMachine.CurrentFrame;
+        var frame = backFrame.CreateFrame();
+        frame._variables = _node.Variables;
+        foreach (var localName in _node.Variables.Where(pair => pair.Value is PyVariableType.Local or PyVariableType.Parameter).Select(pair => pair.Key))
+        {
+            if (_node.CapturedVariables.Contains(localName))
+                frame.Closures[localName] = PyCellObject.CreateCell(localName, null);
+            else
+                frame.Locals[localName] = null;
+        }
+        foreach (var cell in _func.CapturedVariables)
+        {
+            frame.Closures.Add(cell.Name, cell);
+        }
+        PyVirtualMachine.EnterFrame(frame);
+
+        if (!_def.TryParse(args, kwargs, out var arguments))
+        {
+            PyVirtualMachine.ExitFrame();
+            return PyVirtualMachine.RaiseTypeError("wrong arguments");
+        }
+
+        frame.InitArgs(_def, arguments);
+
+        PyObject result = _getResult(frame);
+
+        PyVirtualMachine.ExitFrame();
+        return result;
+    }
+
+
+}
+
+public class FunctionDefNode : AstStmtNode, IAstVariableScopeOwnerWithCapturedVariables
 {
     public FunctionDefNode(string identifier, AstArgumentsNode args)
     {
@@ -763,15 +819,29 @@ public class FunctionDefNode : AstStmtNode, IAstVariableScopeOwner
     public List<AstExprNode> DecoratorList { get; } = [];
 
     public Dictionary<string, PyVariableType> Variables { get; set; } = [];
-    internal HashSet<string> CapturedVariables = [];
+    public HashSet<string> CapturedVariables { get; internal set; } = [];
 
     public override void Execute(PyFrame frame)
     {
-        var caller = new CustomFunctionCaller(this, frame);
+        var caller = new FunctionCaller(this, frame, frame =>
+        {
+            try
+            {
+                foreach (var stmt in Body)
+                {
+                    stmt.Execute(frame);
+                }
+            }
+            catch (AstReturnException e)
+            {
+                return e.Value;
+            }
+            return PyNoneObject.None;
+        });
+        var func = new PyFunctionObject(Identifier, caller.Call, [.. frame.Closures.Values]);
+        caller._func = func;
 
-        PyObject func = new PyFunctionObject(Identifier, caller.Call);
-        func = AstUtils.ApplyDeractors(func, DecoratorList, frame);
-        frame.SetValue(Identifier, func);
+        frame.SetValue(Identifier, AstUtils.ApplyDeractors(func, DecoratorList, frame));
     }
 
     public override void EnumerateNodes(Action<AstNode> action)
@@ -780,65 +850,6 @@ public class FunctionDefNode : AstStmtNode, IAstVariableScopeOwner
         Args.EnumerateNodes(action);
         Body.EnumerateNodes(action);
         DecoratorList.EnumerateNodes(action);
-    }
-
-    private sealed class CustomFunctionCaller
-    {
-        private readonly FunctionDefNode _node;
-        private readonly PyArgsDef _def;
-        private readonly PyFrame _capturedFrame;
-
-        internal CustomFunctionCaller(FunctionDefNode node, PyFrame frame)
-        {
-            _capturedFrame = frame;
-            _node = node;
-            _def = PyArgsDef.FromAst(node.Args, frame);
-        }
-
-        public PyObject? Call(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
-        {
-            var backFrame = PyVirtualMachine.CurrentFrame;
-            var frame = backFrame.CreateFrame();
-            frame._variables = _node.Variables;
-            foreach (var localName in _node.Variables.Where(pair => pair.Value is PyVariableType.Local or PyVariableType.Parameter).Select(pair => pair.Key))
-            {
-                if (_node.CapturedVariables.Contains(localName))
-                    frame.Closures[localName] = PyCellObject.CreateCell(null);
-                else
-                    frame.Locals[localName] = null;
-            }
-            foreach (var (name, cell) in _capturedFrame.Closures)
-            {
-                frame.Closures.Add(name, cell);
-            }
-            PyVirtualMachine.EnterFrame(frame);
-
-            if (!_def.TryParse(args, kwargs, out var arguments))
-            {
-                PyVirtualMachine.ExitFrame();
-                return PyVirtualMachine.RaiseTypeError("wrong arguments");
-            }
-
-            frame.InitArgs(_def, arguments);
-
-            var dict = PyDictObject.CreateDict(arguments.ExtraKwargs.Select(static kvp => KeyValuePair.Create((PyObject)PyStrObject.FromString(kvp.Key), kvp.Value)));
-
-            try
-            {
-                foreach (var stmt in _node.Body)
-                {
-                    stmt.Execute(frame);
-                }
-            }
-            catch (AstReturnException e)
-            {
-                PyVirtualMachine.ExitFrame();
-                return e.Value;
-            }
-
-            PyVirtualMachine.ExitFrame();
-            return PyNoneObject.None;
-        }
     }
 }
 

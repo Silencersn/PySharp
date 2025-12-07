@@ -962,7 +962,7 @@ public sealed class GeneratorExpNode : AstExprNode
 
 }
 
-public sealed class LambdaNode : AstExprNode, IAstVariableScopeOwner
+public sealed class LambdaNode : AstExprNode, IAstVariableScopeOwnerWithCapturedVariables
 {
     internal LambdaNode(AstArgumentsNode args)
     {
@@ -973,12 +973,14 @@ public sealed class LambdaNode : AstExprNode, IAstVariableScopeOwner
     public AstArgumentsNode Args { get; }
     public AstExprNode Body { get; internal set; }
     public Dictionary<string, PyVariableType> Variables { get; set; } = [];
-    internal HashSet<string> CapturedVariables = [];
+    public HashSet<string> CapturedVariables { get; internal set; } = [];
 
     public override PyObject GetExprValue(PyFrame frame)
     {
-        var caller = new LambdaFunctionCaller(this, frame);
-        return new PyFunctionObject("<lambda>", caller.Call);
+        var caller = new FunctionCaller(this, frame, Body.GetExprValue);
+        var func = new PyFunctionObject("<lambda>", caller.Call, [.. frame.Closures.Values]);
+        caller._func = func;
+        return func;
     }
 
     public override void EnumerateNodes(Action<AstNode> action)
@@ -986,52 +988,6 @@ public sealed class LambdaNode : AstExprNode, IAstVariableScopeOwner
         base.EnumerateNodes(action);
         Args.EnumerateNodes(action);
         Body.EnumerateNodes(action);
-    }
-
-
-    private sealed class LambdaFunctionCaller
-    {
-        private readonly LambdaNode _node;
-        private readonly PyArgsDef _def;
-        private readonly PyFrame _capturedFrame;
-
-        internal LambdaFunctionCaller(LambdaNode node, PyFrame frame)
-        {
-            _node = node;
-            _def = PyArgsDef.FromAst(node.Args, frame);
-            _capturedFrame = frame;
-        }
-
-        public PyObject? Call(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
-        {
-            var backFrame = PyVirtualMachine.CurrentFrame;
-            var frame = backFrame.CreateFrame();
-            frame._variables = _node.Variables;
-            foreach (var localName in _node.Variables.Where(pair => pair.Value is PyVariableType.Local or PyVariableType.Parameter).Select(pair => pair.Key))
-            {
-                if (_node.CapturedVariables.Contains(localName))
-                    frame.Closures[localName] = PyCellObject.CreateCell(null);
-                else
-                    frame.Locals[localName] = null;
-            }
-            foreach (var (name, cell) in _capturedFrame.Closures)
-            {
-                frame.Closures.Add(name, cell);
-            }
-            PyVirtualMachine.EnterFrame(frame);
-
-            if (!_def.TryParse(args, kwargs, out var arguments))
-                return PyVirtualMachine.RaiseTypeError(null);
-
-            frame.InitArgs(_def, arguments);
-
-            var dict = PyDictObject.CreateDict(arguments.ExtraKwargs.Select(static kvp => KeyValuePair.Create((PyObject)PyStrObject.FromString(kvp.Key), kvp.Value)));
-            var result = _node.Body.GetExprValue(frame);
-
-            PyVirtualMachine.ExitFrame();
-
-            return result;
-        }
     }
 }
 

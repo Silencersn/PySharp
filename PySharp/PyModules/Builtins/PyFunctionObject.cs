@@ -5,16 +5,23 @@ namespace PySharp.PyModules.Builtins;
 public sealed class PyFunctionObject : PyObject, IPyObjectName
 {
     private readonly PyUncompoundedFunction _function;
+    private readonly PyCellObject[]? _closure;
 
     public string Name { get; }
+    internal ReadOnlySpan<PyCellObject> CapturedVariables => _closure;
 
     public override PyTypeObject PyType => PyBuiltinTypes.Function;
 
-    public PyFunctionObject(string name, PyUncompoundedFunction function)
+    public PyFunctionObject(string name, PyUncompoundedFunction function, PyCellObject[]? closure)
     {
         Name = name;
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
         _function = function;
+        _closure = closure;
+        if (closure is not null)
+            PyAttributes.Add(PySpecialNames.Closure, PyTupleObject.CreateProxy(closure));
+        else
+            PyAttributes.Add(PySpecialNames.Closure, PyNoneObject.None);
     }
 
     public override PyObject? Repr()

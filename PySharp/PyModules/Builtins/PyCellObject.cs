@@ -2,15 +2,17 @@ namespace PySharp.PyModules.Builtins;
 
 public class PyCellObject : PyObject
 {
+    internal string Name { get; }
     public PyObject? Value { get; set; }
 
-    private PyCellObject(PyObject? value)
+    private PyCellObject(string name, PyObject? value)
     {
+        Name = name;
         Value = value;
     }
 
-    public static PyCellObject CreateCell(PyObject? value)
+    public static PyCellObject CreateCell(string name, PyObject? value)
     {
-        return new PyCellObject(value);
+        return new PyCellObject(name, value);
     }
 }
