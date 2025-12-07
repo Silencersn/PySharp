@@ -24,7 +24,7 @@ public static partial class PyBuiltinFunctions
     public static readonly PyBuiltinFunctionOrMethodObject All = new("all", AllImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Any = new("any", AnyImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Max = new("max", MaxImpl_1, MaxImpl_2, MaxImpl_3);
-    public static readonly PyBuiltinFunctionOrMethodObject Sum = new("sum", SumImpl); 
+    public static readonly PyBuiltinFunctionOrMethodObject Sum = new("sum", SumImpl);
     public static readonly PyBuiltinFunctionOrMethodObject GetAttr = new("getattr", GetAttrImpl_1, GetAttrImpl_2);
     public static readonly PyBuiltinFunctionOrMethodObject SetAttr = new("setattr", SetAttrImpl);
     public static readonly PyBuiltinFunctionOrMethodObject HasAttr = new("hasattr", HasAttrImpl);
@@ -34,6 +34,7 @@ public static partial class PyBuiltinFunctions
     public static readonly PyBuiltinFunctionOrMethodObject Locals = new("locals", LocalsImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Globals = new("globals", GlobalsImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Import = new(PySpecialNames.Import, ImportImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject IsInstance = new("isinstance", IsInstanceImpl);
 
     [PyFunctionArgsDef("*objects", "sep=' '", "end='\\n'", "file=None", "flush=False")]
     private static PyObject? PrintImpl(PyArguments arguments)
@@ -452,5 +453,40 @@ public static partial class PyBuiltinFunctions
             return PyVirtualMachine.RaiseException(PyStandardExceptionTypes.ModuleNotFoundError, $"No module named '{name}'");
 
         return module;
+    }
+
+    [PyFunctionArgsDef("object", "classinfo", "/")]
+    private static PyBoolObject? IsInstanceImpl(PyArguments arguments)
+    {
+        var ret = IsInstanceForUnknown(arguments[0], arguments[1]);
+        if (ret is null)
+            return null;
+        return PyBoolObject.FromBoolean(ret.Value);
+
+        static bool? IsInstanceForUnknown(PyObject obj, PyObject classInfo)
+        {
+            return classInfo switch
+            {
+                PyTypeObject type => IsInstanceForType(obj, type),
+                PyTupleObject types => IsInstanceForTuple(obj, types),
+                _ => (bool?)(object?)PyVirtualMachine.RaiseTypeError("isinstance() arg 2 must be a type or a tuple of types")
+            };
+        }
+
+        static bool? IsInstanceForType(PyObject obj, PyTypeObject type)
+        {
+            return type.IsInstance(obj);
+        }
+
+        static bool? IsInstanceForTuple(PyObject obj, PyTupleObject types)
+        {
+            foreach (var type in types._array)
+            {
+                var ret = IsInstanceForUnknown(obj, type);
+                if (ret is null or true)
+                    return ret;
+            }
+            return false;
+        }
     }
 }

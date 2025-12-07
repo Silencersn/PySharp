@@ -36,7 +36,7 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
     {
         foreach (var baseType in MRO)
         {
-            if (baseType == this)
+            if (baseType == pyType)
                 return true;
         }
 
