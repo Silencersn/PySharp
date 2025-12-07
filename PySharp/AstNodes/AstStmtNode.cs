@@ -539,6 +539,9 @@ public class TryNode : AstStmtNode
         }
         catch (PyRuntimeException e)
         {
+            while (PyVirtualMachine.CurrentFrame != frame)
+                PyVirtualMachine.ExitFrame();
+
             frame.Exceptions.Push(e.PyException);
             catched = true;
             bool handled = false;
