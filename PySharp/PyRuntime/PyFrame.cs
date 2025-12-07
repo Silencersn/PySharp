@@ -16,10 +16,7 @@ public sealed class PyFrame
         Globals = [];
         Locals = Globals!;
         Exceptions = [];
-        GlobalNames = [];
         Closures = [];
-
-        _proxyLocals = _proxyGlobals = new ProxyDict(Locals);
     }
     private PyFrame(PyFrame back, Dictionary<string, PyObject> globals, Dictionary<string, PyObject?> locals)
     {
@@ -28,9 +25,6 @@ public sealed class PyFrame
         Locals = locals;
         Closures = [];
         Exceptions = [];
-        GlobalNames = [];
-        _proxyLocals = new ProxyDict(Locals);
-        _proxyGlobals = new ProxyDict(Globals!);
     }
 
     public PyFrame? Back { get; }
@@ -39,13 +33,12 @@ public sealed class PyFrame
     public Dictionary<string, PyObject> Globals { get; }
     public Dictionary<string, PyObject?> Locals { get; }
     public Dictionary<string, PyCellObject> Closures { get; }
-    internal HashSet<string> GlobalNames { get; }
     public Stack<PyExceptionObject> Exceptions { get; }
     public PyExceptionObject CurrentException => Exceptions.Peek();
 
     internal FrozenDictionary<string, PyVariableType>? _variables = null;
-    internal ProxyDict _proxyGlobals;
-    internal ProxyDict _proxyLocals;
+    internal ProxyDict ProxyGlobals => field ??= new ProxyDict(Globals!);
+    internal ProxyDict ProxyLocals => field ??= new ProxyDict(Locals);
 
     internal PyFrame CreateFrame(bool newGlobals = false)
     {
