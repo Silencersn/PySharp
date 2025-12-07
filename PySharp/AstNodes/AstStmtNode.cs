@@ -2,6 +2,7 @@
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
 using PySharp.Tokenization;
+using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using static PySharp.AstNodes.BreakNode;
@@ -746,23 +747,24 @@ public sealed class NonlocalNode : AstStmtNode
 
 internal interface IAstVariableScopeOwner
 {
-    Dictionary<string, PyVariableType> Variables { get; set; }
+    FrozenDictionary<string, PyVariableType> Variables { get; set; }
 }
 
-internal interface IAstVariableScopeOwnerWithCapturedVariables : IAstVariableScopeOwner
+internal interface IFunctionOrLambda : IAstVariableScopeOwner
 {
     AstArgumentsNode Args { get; }
-    HashSet<string> CapturedVariables { get; }
+    HashSet<string> CapturedVariables { get; set; }
+    HashSet<string> LocalNamesCache { get; set; }
 }
 
 internal sealed class FunctionCaller
 {
-    private readonly IAstVariableScopeOwnerWithCapturedVariables _node;
+    private readonly IFunctionOrLambda _node;
     private readonly PyArgsDef _def;
     private readonly Func<PyFrame, PyObject> _getResult;
     internal PyFunctionObject _func;
 
-    internal FunctionCaller(IAstVariableScopeOwnerWithCapturedVariables node, PyFrame frame, Func<PyFrame, PyObject> getResult)
+    internal FunctionCaller(IFunctionOrLambda node, PyFrame frame, Func<PyFrame, PyObject> getResult)
     {
         _node = node;
         _def = PyArgsDef.FromAst(node.Args, frame);
@@ -775,7 +777,7 @@ internal sealed class FunctionCaller
         var backFrame = PyVirtualMachine.CurrentFrame;
         var frame = backFrame.CreateFrame();
         frame._variables = _node.Variables;
-        foreach (var localName in _node.Variables.Where(pair => pair.Value is PyVariableType.Local or PyVariableType.Parameter).Select(pair => pair.Key))
+        foreach (var localName in _node.LocalNamesCache)
         {
             if (_node.CapturedVariables.Contains(localName))
                 frame.Closures[localName] = PyCellObject.CreateCell(localName, null);
@@ -805,7 +807,7 @@ internal sealed class FunctionCaller
 
 }
 
-public class FunctionDefNode : AstStmtNode, IAstVariableScopeOwnerWithCapturedVariables
+public class FunctionDefNode : AstStmtNode, IFunctionOrLambda
 {
     public FunctionDefNode(string identifier, AstArgumentsNode args)
     {
@@ -818,8 +820,9 @@ public class FunctionDefNode : AstStmtNode, IAstVariableScopeOwnerWithCapturedVa
     public List<AstStmtNode> Body { get; } = [];
     public List<AstExprNode> DecoratorList { get; } = [];
 
-    public Dictionary<string, PyVariableType> Variables { get; set; } = [];
-    public HashSet<string> CapturedVariables { get; internal set; } = [];
+    FrozenDictionary<string, PyVariableType> IAstVariableScopeOwner.Variables { get; set; } = null!;
+    HashSet<string> IFunctionOrLambda.CapturedVariables { get; set; } = null!;
+    HashSet<string> IFunctionOrLambda.LocalNamesCache { get; set; } = null!;
 
     public override void Execute(PyFrame frame)
     {
@@ -867,7 +870,7 @@ public sealed class ClassDefNode : AstStmtNode, IAstVariableScopeOwner
     public List<AstStmtNode> Body { get; } = [];
     public List<AstExprNode> DecoratorList { get; } = [];
 
-    public Dictionary<string, PyVariableType> Variables { get; set; } = [];
+    public FrozenDictionary<string, PyVariableType> Variables { get; set; } = null!;
 
     public override void Execute(PyFrame frame)
     {

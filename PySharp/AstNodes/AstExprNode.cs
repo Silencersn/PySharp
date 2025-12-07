@@ -1,6 +1,7 @@
 ﻿using PySharp.PyModules;
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
+using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Text;
@@ -962,7 +963,7 @@ public sealed class GeneratorExpNode : AstExprNode
 
 }
 
-public sealed class LambdaNode : AstExprNode, IAstVariableScopeOwnerWithCapturedVariables
+public sealed class LambdaNode : AstExprNode, IFunctionOrLambda
 {
     internal LambdaNode(AstArgumentsNode args)
     {
@@ -972,8 +973,9 @@ public sealed class LambdaNode : AstExprNode, IAstVariableScopeOwnerWithCaptured
 
     public AstArgumentsNode Args { get; }
     public AstExprNode Body { get; internal set; }
-    public Dictionary<string, PyVariableType> Variables { get; set; } = [];
-    public HashSet<string> CapturedVariables { get; internal set; } = [];
+    FrozenDictionary<string, PyVariableType> IAstVariableScopeOwner.Variables { get; set; } = null!;
+    HashSet<string> IFunctionOrLambda.CapturedVariables { get; set; } = null!;
+    HashSet<string> IFunctionOrLambda.LocalNamesCache { get; set; } = null!;
 
     public override PyObject GetExprValue(PyFrame frame)
     {

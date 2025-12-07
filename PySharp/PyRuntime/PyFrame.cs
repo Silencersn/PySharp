@@ -2,6 +2,7 @@
 using PySharp.PyModules;
 using PySharp.PyModules.Builtins;
 using System.Collections;
+using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
@@ -42,7 +43,7 @@ public sealed class PyFrame
     public Stack<PyExceptionObject> Exceptions { get; }
     public PyExceptionObject CurrentException => Exceptions.Peek();
 
-    internal Dictionary<string, PyVariableType>? _variables = null;
+    internal FrozenDictionary<string, PyVariableType>? _variables = null;
     internal ProxyDict _proxyGlobals;
     internal ProxyDict _proxyLocals;
 

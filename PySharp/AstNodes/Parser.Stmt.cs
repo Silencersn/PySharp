@@ -593,7 +593,7 @@ partial class Parser
         void EndParsingFuncDef()
         {
             var scope = Context.ExitScope();
-            SyncVariablesToOwnerThenFillLocal(scope);
+            FillLocalVariables(scope);
         }
     }
 
@@ -631,7 +631,7 @@ partial class Parser
         void EndParsingClassDef()
         {
             var scope = Context.ExitScope();
-            SyncVariablesToOwnerThenFillLocal(scope);
+            FillLocalVariables(scope);
         }
     }
 }

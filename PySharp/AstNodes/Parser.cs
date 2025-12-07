@@ -167,22 +167,14 @@ public sealed partial class Parser
 
     private static void FillUnknownVariables(VariableScope scope)
     {
-        if (scope.Owner is not null)
-            FillUnknownVariablesForInterface(scope.Owner);
-
-        foreach (var child in scope.Children)
+        if (!scope.IsRoot)
         {
-            FillUnknownVariables(child);
-        }
-
-        void FillUnknownVariablesForInterface(IAstVariableScopeOwner owner)
-        {
-            foreach (var pair in owner.Variables)
+            foreach (var pair in scope.Variables)
             {
                 if (pair.Value is not PyVariableType.Unknown)
                     continue;
 
-                owner.Variables[pair.Key] = PyVariableType.Global;
+                scope.Variables[pair.Key] = PyVariableType.Global;
 
                 foreach (var wrapper in EnumerateFuncDefOrLambdaToRoot(scope))
                 {
@@ -191,10 +183,15 @@ public sealed partial class Parser
                         if (type is PyVariableType.Global)
                             break;
 
-                        owner.Variables[pair.Key] = PyVariableType.Closure;
+                        scope.Variables[pair.Key] = PyVariableType.Closure;
                     }
                 }
             }
+        }
+
+        foreach (var child in scope.Children)
+        {
+            FillUnknownVariables(child);
         }
     }
 
@@ -208,20 +205,16 @@ public sealed partial class Parser
         }
     }
 
-    private static void SyncVariablesToOwnerThenFillLocal(VariableScope scope)
+    private static void FillLocalVariables(VariableScope scope)
     {
-        var owner = scope.Owner;
-        Debug.Assert(owner is not null);
-        owner.Variables = scope.Variables;
-
         var nodes = scope.TrackedNameNodes;
-        foreach (var pair in owner.Variables)
+        foreach (var pair in scope.Variables)
         {
             if (pair.Value is not PyVariableType.Unknown)
                 continue;
 
             if (nodes.Any(node => node.Ctx is ExprContext.Store or ExprContext.Del && node.Identifier == pair.Key))
-                owner.Variables[pair.Key] = PyVariableType.Local;
+                scope.Variables[pair.Key] = PyVariableType.Local;
         }
     }
 
@@ -251,9 +244,15 @@ public sealed partial class Parser
             FillClosureVariables(child);
         }
 
-        if (scope.Owner is FunctionDefNode funcDefNode)
-            funcDefNode.CapturedVariables = scope.CapturedVariables;
-        else if (scope.Owner is LambdaNode lambdaNode)
-            lambdaNode.CapturedVariables = scope.CapturedVariables;
+        if (scope.Owner is not null)
+        {
+            scope.Owner.Variables = scope.Variables.ToFrozenDictionary();
+
+            if (scope.Owner is IFunctionOrLambda node)
+            {
+                node.CapturedVariables = scope.CapturedVariables;
+                node.LocalNamesCache = [.. node.Variables.Where(pair => pair.Value is PyVariableType.Local or PyVariableType.Parameter).Select(pair => pair.Key)];
+            }
+        }
     }
 }

@@ -803,7 +803,7 @@ partial class Parser
         void EndParsingLambda()
         {
             var scope = Context.ExitScope();
-            SyncVariablesToOwnerThenFillLocal(scope);
+            FillLocalVariables(scope);
         }
     }
 
