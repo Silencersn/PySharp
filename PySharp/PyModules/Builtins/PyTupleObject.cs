@@ -26,6 +26,13 @@ public class PyTupleObject : PyObject, IPyObjectRecursiveRepr
         return new PyTupleObject(array);
     }
 
+    public static PyTupleObject CreateProxy(PyObject[] array)
+    {
+        ArgumentNullException.ThrowIfNull(array);
+
+        return new PyTupleObject(array);
+    }
+
     public override PyObject? Iter()
     {
         return new PyTupleIteratorObject(this);
