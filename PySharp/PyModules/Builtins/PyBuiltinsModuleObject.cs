@@ -21,6 +21,7 @@ public class PyBuiltinsModuleObject : PyModuleObject
         AddObjToAttrs(PyBuiltinFunctions.Max); // max
         AddObjToAttrs(PyBuiltinFunctions.Sum); // sum
         AddObjToAttrs(PyBuiltinFunctions.GetAttr); // getattr
+        AddObjToAttrs(PyBuiltinFunctions.SetAttr); // setattr
         AddObjToAttrs(PyBuiltinFunctions.Dir); // dir
         AddObjToAttrs(PyBuiltinFunctions.Chr); // chr
         AddObjToAttrs(PyBuiltinFunctions.Ord); // ord
