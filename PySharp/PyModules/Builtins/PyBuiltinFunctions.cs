@@ -381,11 +381,10 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef()]
     private static PyListObject DirImpl_1(PyArguments arguments)
     {
-        return PyListObject.CreateList(
-            PyVirtualMachine.CurrentFrame.Locals
-            .Where(static kvp => kvp.Value is not null)
-            .OrderBy(static kvp => kvp.Key)
-            .Select(static kvp => PyStrObject.FromString(kvp.Key)));
+        return PyListObject.CreateList(PyVirtualMachine.CurrentFrame.Locals
+            .Concat(PyVirtualMachine.CurrentFrame.Closures.Select(static pair => KeyValuePair.Create(pair.Key, pair.Value.Value)))
+            .Where(static pair => pair.Value is not null)
+            .Select(static pair => PyStrObject.FromString(pair.Key)));
     }
     [PyFunctionArgsDef("object", "/")]
     private static PyListObject DirImpl_2(PyArguments arguments)
