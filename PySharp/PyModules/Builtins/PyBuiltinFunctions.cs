@@ -24,9 +24,10 @@ public static partial class PyBuiltinFunctions
     public static readonly PyBuiltinFunctionOrMethodObject All = new("all", AllImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Any = new("any", AnyImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Max = new("max", MaxImpl_1, MaxImpl_2, MaxImpl_3);
-    public static readonly PyBuiltinFunctionOrMethodObject Sum = new("sum", SumImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Sum = new("sum", SumImpl); 
     public static readonly PyBuiltinFunctionOrMethodObject GetAttr = new("getattr", GetAttrImpl_1, GetAttrImpl_2);
     public static readonly PyBuiltinFunctionOrMethodObject SetAttr = new("setattr", SetAttrImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject HasAttr = new("hasattr", HasAttrImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Dir = new("dir", DirImpl_1, DirImpl_2);
     public static readonly PyBuiltinFunctionOrMethodObject Chr = new("chr", ChrImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Ord = new("ord", OrdImpl);
@@ -357,6 +358,23 @@ public static partial class PyBuiltinFunctions
             return null;
 
         return PyOperators.SetAttr(arguments[0], name, arguments[2]);
+    }
+
+    [PyFunctionArgsDef("object", "name", "/")]
+    private static PyObject? HasAttrImpl(PyArguments arguments)
+    {
+        if (!Utils.TryCastStrAsArg(arguments[1], out var name, "attribute name"))
+            return null;
+
+        var attr = PyOperators.GetAttr(arguments[0], name);
+        if (attr is not null)
+            return PyBoolObject.True;
+
+        if (!PyVirtualMachine.IsExceptionOfTypeRaised(PyStandardExceptionTypes.AttributeError))
+            return null;
+
+        PyVirtualMachine.ClearException();
+        return PyBoolObject.False;
     }
 
     [PyFunctionArgsDef()]
