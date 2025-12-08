@@ -252,8 +252,11 @@ public sealed partial class Parser
 
             if (scope.Owner is IFunctionOrLambda node)
             {
-                node.CapturedVariables = scope.CapturedVariables;
-                node.LocalNamesCache = [.. node.Variables.Where(pair => pair.Value is PyVariableType.Local or PyVariableType.Parameter).Select(pair => pair.Key)];
+                node.CapturedVariables = [.. scope.CapturedVariables];
+                node.LocalVariables = [.. node.Variables
+                    .Where(pair => pair.Value is PyVariableType.Local or PyVariableType.Parameter)
+                    .Where(pair => !scope.CapturedVariables.Contains(pair.Key))
+                    .Select(pair => pair.Key)];
             }
         }
     }

@@ -754,8 +754,8 @@ internal interface IAstVariableScopeOwner
 internal interface IFunctionOrLambda : IAstVariableScopeOwner
 {
     AstArgumentsNode Args { get; }
-    HashSet<string> CapturedVariables { get; set; }
-    HashSet<string> LocalNamesCache { get; set; }
+    string[] LocalVariables { get; set; }
+    string[] CapturedVariables { get; set; }
 }
 
 internal sealed class FunctionCaller
@@ -783,17 +783,14 @@ internal sealed class FunctionCaller
         var backFrame = PyVirtualMachine.CurrentFrame;
         var frame = backFrame.CreateFrame();
         frame._variables = _node.Variables;
-        foreach (var localName in _node.LocalNamesCache)
-        {
-            if (_node.CapturedVariables.Contains(localName))
-                frame.Closures[localName] = PyCellObject.CreateCell(localName, null);
-            else
-                frame.Locals[localName] = null;
-        }
+
+        foreach (var localVariable in _node.LocalVariables)
+            frame.Locals[localVariable] = null;
+        foreach (var capturedVariable in _node.CapturedVariables)
+            frame.Closures[capturedVariable] = PyCellObject.CreateCell(capturedVariable, null);
         foreach (var cell in _func.CapturedVariables)
-        {
             frame.Closures.Add(cell.Name, cell);
-        }
+
         PyVirtualMachine.EnterFrame(frame);
 
         if (!_def.TryParse(args, kwargs, out var arguments))
@@ -825,8 +822,8 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda
     public List<AstExprNode> DecoratorList { get; } = [];
 
     FrozenDictionary<string, PyVariableType> IAstVariableScopeOwner.Variables { get; set; } = null!;
-    HashSet<string> IFunctionOrLambda.CapturedVariables { get; set; } = null!;
-    HashSet<string> IFunctionOrLambda.LocalNamesCache { get; set; } = null!;
+    string[] IFunctionOrLambda.CapturedVariables { get; set; } = null!;
+    string[] IFunctionOrLambda.LocalVariables { get; set; } = null!;
 
     public override void Execute(PyFrame frame)
     {

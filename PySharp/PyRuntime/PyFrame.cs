@@ -10,24 +10,26 @@ namespace PySharp.PyRuntime;
 public sealed class PyFrame
 {
     private Dictionary<string, PyCellObject>? _closure = null;
+    private Dictionary<string, PyObject?>? _locals = null;
+
     internal PyFrame()
     {
         Back = null;
         Globals = [];
-        Locals = Globals!;
+        _locals = Globals!;
     }
-    private PyFrame(PyFrame back, Dictionary<string, PyObject> globals, Dictionary<string, PyObject?> locals)
+    private PyFrame(PyFrame back, Dictionary<string, PyObject> globals, Dictionary<string, PyObject?>? locals)
     {
         Back = back;
         Globals = globals;
-        Locals = locals;
+        _locals = locals;
     }
 
     public PyFrame? Back { get; }
     [MemberNotNullWhen(false, nameof(Back))]
     public bool IsRoot => Back is null;
     public Dictionary<string, PyObject> Globals { get; }
-    public Dictionary<string, PyObject?> Locals { get; }
+    public Dictionary<string, PyObject?> Locals => field ??= [];
     public Dictionary<string, PyCellObject> Closures => _closure ??= [];
     internal Dictionary<string, PyCellObject>? IntenalClosure => _closure;
     public Stack<PyExceptionObject> Exceptions => field ??= [];
@@ -39,7 +41,7 @@ public sealed class PyFrame
 
     internal PyFrame CreateFrame(bool newGlobals = false)
     {
-        return new PyFrame(this, newGlobals ? [] : Globals, []);
+        return new PyFrame(this, newGlobals ? [] : Globals, null);
     }
 
     internal PyFrame TempFrame()

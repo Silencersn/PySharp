@@ -1022,8 +1022,8 @@ public sealed class LambdaNode : AstExprNode, IFunctionOrLambda
     public AstArgumentsNode Args { get; }
     public AstExprNode Body { get; internal set; }
     FrozenDictionary<string, PyVariableType> IAstVariableScopeOwner.Variables { get; set; } = null!;
-    HashSet<string> IFunctionOrLambda.CapturedVariables { get; set; } = null!;
-    HashSet<string> IFunctionOrLambda.LocalNamesCache { get; set; } = null!;
+    string[] IFunctionOrLambda.CapturedVariables { get; set; } = null!;
+    string[] IFunctionOrLambda.LocalVariables { get; set; } = null!;
 
     public override PyObject GetExprValue(PyFrame frame)
     {
