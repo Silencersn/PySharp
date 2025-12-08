@@ -29,11 +29,12 @@ public sealed class PyFrame
         _locals = Globals!;
         Info = new FrameInfo("<module>");
     }
-    private PyFrame(PyFrame back, Dictionary<string, PyObject> globals, Dictionary<string, PyObject?>? locals, FrameInfo? info)
+    private PyFrame(PyFrame back, Dictionary<string, PyObject> globals, Dictionary<string, PyObject?>? locals, Dictionary<string, PyCellObject>? closure, FrameInfo? info)
     {
         Back = back;
         Globals = globals;
         _locals = locals;
+        _closure = closure;
         Info = info;
     }
 
@@ -58,13 +59,12 @@ public sealed class PyFrame
     }
     internal PyFrame CreateFuncCallFrame(FrameInfo info)
     {
-        return new PyFrame(this, Globals, null, info);
+        return new PyFrame(this, Globals, null, null, info);
     }
 
     internal PyFrame TempFrame()
     {
-        // TODO: Closure
-        var tempFrame = new PyFrame(this, Globals, Locals.ToDictionary(), null)
+        var tempFrame = new PyFrame(this, Globals, _locals?.ToDictionary(), _closure, null)
         {
             _variables = _variables
         };
