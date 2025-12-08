@@ -10,21 +10,18 @@ namespace PySharp.PyRuntime;
 
 public sealed class PyFrame
 {
+    private Dictionary<string, PyCellObject>? _closure = null;
     internal PyFrame()
     {
         Back = null;
         Globals = [];
         Locals = Globals!;
-        Exceptions = [];
-        Closures = [];
     }
     private PyFrame(PyFrame back, Dictionary<string, PyObject> globals, Dictionary<string, PyObject?> locals)
     {
         Back = back;
         Globals = globals;
         Locals = locals;
-        Closures = [];
-        Exceptions = [];
     }
 
     public PyFrame? Back { get; }
@@ -32,8 +29,9 @@ public sealed class PyFrame
     public bool IsRoot => Back is null;
     public Dictionary<string, PyObject> Globals { get; }
     public Dictionary<string, PyObject?> Locals { get; }
-    public Dictionary<string, PyCellObject> Closures { get; }
-    public Stack<PyExceptionObject> Exceptions { get; }
+    public Dictionary<string, PyCellObject> Closures => _closure ??= [];
+    internal Dictionary<string, PyCellObject>? IntenalClosure => _closure;
+    public Stack<PyExceptionObject> Exceptions => field ??= [];
     public PyExceptionObject CurrentException => Exceptions.Peek();
 
     internal FrozenDictionary<string, PyVariableType>? _variables = null;

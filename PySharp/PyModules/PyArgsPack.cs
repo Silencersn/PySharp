@@ -125,16 +125,15 @@ public sealed class PyArgsPack
         return TryParseOneKwarg(key, out arg);
     }
 }
+internal enum PyArgsDefParametersType
+{
+    Unknown = 0,
+
+    NoArgsOrKwargs
+}
 
 public sealed class PyArgsDef
 {
-    private enum PyArgsDefParametersType
-    {
-        Unknown = 0,
-
-        NoArgsOrKwargs
-    }
-
     private PyArgsDef(string[] posonlyArgs, string[] args, string[] kwonlyArgs, PyObject?[] kwDefaults, PyObject[] defaults, string? varArg, string? kwArg)
     {
         PosonlyArgs = posonlyArgs;
@@ -150,7 +149,7 @@ public sealed class PyArgsDef
             ParametersType = PyArgsDefParametersType.NoArgsOrKwargs;
     }
 
-    private PyArgsDefParametersType ParametersType { get; }
+    internal PyArgsDefParametersType ParametersType { get; }
     public string[] PosonlyArgs { get; }
     public string[] Args { get; }
     public string[] KwonlyArgs { get; }

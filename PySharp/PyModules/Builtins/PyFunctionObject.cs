@@ -12,14 +12,14 @@ public sealed class PyFunctionObject : PyObject, IPyObjectName
 
     public override PyTypeObject PyType => PyBuiltinTypes.Function;
 
-    public PyFunctionObject(string name, PyUncompoundedFunction function, PyCellObject[]? closure)
+    public PyFunctionObject(string name, PyUncompoundedFunction function, IEnumerable<PyCellObject>? closure)
     {
         Name = name;
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
         _function = function;
-        _closure = closure;
-        if (closure is not null)
-            PyAttributes.Add(PySpecialNames.Closure, PyTupleObject.CreateProxy(closure));
+        _closure = closure?.ToArray();
+        if (_closure is not null)
+            PyAttributes.Add(PySpecialNames.Closure, PyTupleObject.CreateProxy(_closure));
         else
             PyAttributes.Add(PySpecialNames.Closure, PyNoneObject.None);
     }

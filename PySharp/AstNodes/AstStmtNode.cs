@@ -774,6 +774,11 @@ internal sealed class FunctionCaller
 
     public PyObject? Call(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
+        return CallGeneral(args, kwargs);
+    }
+
+    private PyObject? CallGeneral(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
         var backFrame = PyVirtualMachine.CurrentFrame;
         var frame = backFrame.CreateFrame();
         frame._variables = _node.Variables;
@@ -803,8 +808,6 @@ internal sealed class FunctionCaller
         PyVirtualMachine.ExitFrame();
         return result;
     }
-
-
 }
 
 public class FunctionDefNode : AstStmtNode, IFunctionOrLambda
@@ -841,7 +844,7 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda
             }
             return PyNoneObject.None;
         });
-        var func = new PyFunctionObject(Identifier, caller.Call, [.. frame.Closures.Values]);
+        var func = new PyFunctionObject(Identifier, caller.Call, frame.IntenalClosure?.Values);
         caller._func = func;
 
         frame.SetValue(Identifier, AstUtils.ApplyDeractors(func, DecoratorList, frame));
