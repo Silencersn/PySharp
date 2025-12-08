@@ -13,8 +13,8 @@ public sealed class PyEnvironmentContext : IDisposable
 
     public PyEnvironmentContext(PyEnvironment? environment)
     {
-        _outerEnvironment = PyVirtualMachine.PyEnvironmentAsyncLocal.Value;
-        PyVirtualMachine.PyEnvironmentAsyncLocal.Value = environment;
+        _outerEnvironment = PyVirtualMachine.InternalPyEnvironment;
+        PyVirtualMachine.SetPyEnvironmentAsyncLocalValue(environment);
     }
 
     public void Dispose()
@@ -23,7 +23,7 @@ public sealed class PyEnvironmentContext : IDisposable
             return;
 
         _disposed = true;
-        PyVirtualMachine.PyEnvironmentAsyncLocal.Value = _outerEnvironment;
+        PyVirtualMachine.SetPyEnvironmentAsyncLocalValue(_outerEnvironment);
     }
 }
 

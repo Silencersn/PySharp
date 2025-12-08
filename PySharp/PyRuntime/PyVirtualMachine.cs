@@ -1,6 +1,7 @@
 ﻿using PySharp.AstNodes;
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime.Environments;
+using System;
 using System.Diagnostics;
 
 namespace PySharp.PyRuntime;
@@ -21,13 +22,43 @@ public delegate void PyExitEventHandler(PyExitEventArgs args);
 
 public static partial class PyVirtualMachine
 {
+    private static volatile int _asyncContextCounter = 0;
+    private static PyEnvironment? _nonAsyncEnvironment;
     private static readonly AsyncLocal<PyEnvironment?> _pyEnvironmentAsyncLocal = new();
     internal static AsyncLocal<PyEnvironment?> PyEnvironmentAsyncLocal => _pyEnvironmentAsyncLocal;
-    private static PyEnvironment GetPyEnvironment()
+    private static PyEnvironment GetAsyncPyEnvironment()
     {
         return _pyEnvironmentAsyncLocal.Value ?? throw new InvalidOperationException($"The {nameof(Environments.PyEnvironment)} is necessary");
     }
-    public static PyEnvironment PyEnvironment => GetPyEnvironment();
+    private static PyEnvironment GetNonAsyncPyEnvironment()
+    {
+        return _nonAsyncEnvironment ?? throw new InvalidOperationException($"The {nameof(Environments.PyEnvironment)} is necessary");
+    }
+    internal static bool IsAsyncContext => _asyncContextCounter > 0;
+    public static PyEnvironment PyEnvironment => IsAsyncContext ? GetAsyncPyEnvironment() : GetNonAsyncPyEnvironment();
+    internal static PyEnvironment? InternalPyEnvironment => IsAsyncContext ? _pyEnvironmentAsyncLocal.Value : _nonAsyncEnvironment;
+
+    public static void SetAsync(bool enable)
+    {
+        if (enable)
+        {
+            Interlocked.Increment(ref _asyncContextCounter);
+        }
+        else
+        {
+            if (_asyncContextCounter is 0)
+                throw new InvalidOperationException($"Cannot decrement {nameof(_asyncContextCounter)} below zero. SetAsync(false) called more times than SetAsync(true).");
+            Interlocked.Decrement(ref _asyncContextCounter);
+        }
+    }
+
+    internal static void SetPyEnvironmentAsyncLocalValue(PyEnvironment? environment)
+    {
+        if (IsAsyncContext)
+            PyEnvironmentAsyncLocal.Value = environment;
+        else
+            _nonAsyncEnvironment = environment;
+    }
 
     internal static PyExceptionObject? CurrentException
     {
