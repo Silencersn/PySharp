@@ -1,5 +1,6 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.PyAttributes;
+using System.Collections.Frozen;
 
 namespace PySharp.PyModules.Builtins;
 
@@ -25,17 +26,17 @@ public sealed class PyPropertyObject : PyObject
         if (instance is PyNoneObject)
             return this;
 
-        return _fget.Call([instance], (Dictionary<string, PyObject>)[]);
+        return _fget.Call([instance], FrozenDictionary<string, PyObject>.Empty);
     }
 
     public override PyObject? Set(PyObject instance, PyObject value)
     {
-        return _fset.Call([instance, value], (Dictionary<string, PyObject>)[]);
+        return _fset.Call([instance, value], FrozenDictionary<string, PyObject>.Empty);
     }
 
     public override PyObject? Delete(PyObject instance)
     {
-        return _fdel.Call([instance], (Dictionary<string, PyObject>)[]);
+        return _fdel.Call([instance], FrozenDictionary<string, PyObject>.Empty);
     }
 
     [PyFunctionArgsDef("fget")]

@@ -960,7 +960,7 @@ public sealed class ClassDefNode : AstStmtNode, IAstVariableScopeOwner
                 PyVirtualMachine.ClearException();
                 return baseCall();
             }
-            return method.Call(args, kwargs ?? (Dictionary<string, PyObject>)[]);
+            return method.Call(args, kwargs ?? FrozenDictionary<string, PyObject>.Empty);
         }
 
         #region Methods

@@ -474,7 +474,7 @@ public static partial class PyBuiltinFunctions
     }
 
     [PyFunctionArgsDef("object", "name", "/")]
-    private static PyObject? HasAttrImpl(PyArguments arguments)
+    private static PyBoolObject? HasAttrImpl(PyArguments arguments)
     {
         if (!Utils.TryCastStrAsArg(arguments[1], out var name, "attribute name"))
             return null;

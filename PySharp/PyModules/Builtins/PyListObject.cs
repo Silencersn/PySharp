@@ -1,5 +1,6 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.PyAttributes;
+using System.Collections.Frozen;
 
 namespace PySharp.PyModules.Builtins;
 
@@ -197,7 +198,7 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr
             Dictionary<PyObject, PyObject> itemToKey = [];
             foreach (var item in _list)
             {
-                var key = keySelector.Call([item], (Dictionary<string, PyObject>)[]);
+                var key = keySelector.Call([item], FrozenDictionary<string, PyObject>.Empty);
                 if (key is null)
                     return null;
                 itemToKey[item] = key;
