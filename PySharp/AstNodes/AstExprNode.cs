@@ -260,7 +260,27 @@ public sealed class CallNode : AstExprNode
         Func = func;
         Args = args;
         Keywords = keywords;
+
+        if (args.Length > 0 && keywords.Length > 0)
+            _argsType = CallArgumentsType.ArgsKwargs;
+        else if (args.Length > 0)
+            _argsType = CallArgumentsType.ArgsOnly;
+        else if (keywords.Length > 0)
+            _argsType = CallArgumentsType.KwargsOnly;
+        else
+            _argsType = CallArgumentsType.NoArgsOrKwargs;
     }
+
+    private enum CallArgumentsType
+    {
+        Unknown = 0,
+
+        NoArgsOrKwargs,
+        ArgsOnly,
+        KwargsOnly,
+        ArgsKwargs
+    }
+    private readonly CallArgumentsType _argsType;
 
     public AstExprNode Func { get; }
     public ImmutableArray<AstExprNode> Args { get; }
@@ -269,8 +289,36 @@ public sealed class CallNode : AstExprNode
     public override PyObject GetExprValue(PyFrame frame)
     {
         var func = Func.GetExprValue(frame).PyThrowIfNull();
-        var args = Args.Select(arg => arg.GetExprValue(frame)).ToList();
-        var kwargs = Keywords.ToDictionary(keyword => keyword.Arg, keyword => keyword.Value.GetExprValue(frame));
+
+        IReadOnlyList<PyObject> args;
+        IReadOnlyDictionary<string, PyObject> kwargs;
+
+        switch (_argsType)
+        {
+            case CallArgumentsType.ArgsKwargs:
+                args = [.. Args.Select(arg => arg.GetExprValue(frame))];
+                kwargs = Keywords.ToDictionary(keyword => keyword.Arg, keyword => keyword.Value.GetExprValue(frame));
+                break;
+
+            case CallArgumentsType.NoArgsOrKwargs:
+                args = [];
+                kwargs = FrozenDictionary<string, PyObject>.Empty;
+                break;
+
+            case CallArgumentsType.ArgsOnly:
+                args = [.. Args.Select(arg => arg.GetExprValue(frame))];
+                kwargs = FrozenDictionary<string, PyObject>.Empty;
+                break;
+
+            case CallArgumentsType.KwargsOnly:
+                args = [];
+                kwargs = Keywords.ToDictionary(keyword => keyword.Arg, keyword => keyword.Value.GetExprValue(frame));
+                break;
+
+            default:
+                throw new UnreachableException();
+        }
+
         return func.Call(args, kwargs).PyThrowIfNull();
     }
 
