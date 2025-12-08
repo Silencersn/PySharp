@@ -764,13 +764,17 @@ internal sealed class FunctionCaller
     private readonly PyArgsDef _def;
     private readonly Func<PyFrame, PyObject> _getResult;
     internal PyFunctionObject _func;
+    internal FrameInfo _info;
 
     internal FunctionCaller(IFunctionOrLambda node, PyFrame frame, Func<PyFrame, PyObject> getResult)
     {
         _node = node;
         _def = PyArgsDef.FromAst(node.Args, frame);
         _getResult = getResult;
-        _func = null!; // deferred init
+
+        // deferred init
+        _func = null!;
+        _info = null!;
     }
 
     public PyObject? Call(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
@@ -781,7 +785,7 @@ internal sealed class FunctionCaller
     private PyObject? CallGeneral(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var backFrame = PyVirtualMachine.CurrentFrame;
-        var frame = backFrame.CreateFrame();
+        var frame = backFrame.CreateFuncCallFrame(_info);
         frame._variables = _node.Variables;
 
         foreach (var localVariable in _node.LocalVariables)
@@ -844,6 +848,7 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda
         });
         var func = new PyFunctionObject(Identifier, caller.Call, frame.IntenalClosure?.Values);
         caller._func = func;
+        caller._info = new FrameInfo(func.Name);
 
         frame.SetValue(Identifier, AstUtils.ApplyDeractors(func, DecoratorList, frame));
     }
@@ -864,6 +869,7 @@ public sealed class ClassDefNode : AstStmtNode, IAstVariableScopeOwner
     internal ClassDefNode(string name)
     {
         Name = name;
+        _info = new FrameInfo(name);
     }
 
     public List<AstExprNode> Bases { get; } = [];
@@ -871,12 +877,13 @@ public sealed class ClassDefNode : AstStmtNode, IAstVariableScopeOwner
     public List<AstStmtNode> Body { get; } = [];
     public List<AstExprNode> DecoratorList { get; } = [];
 
-    public FrozenDictionary<string, PyVariableType> Variables { get; set; } = null!;
+    FrozenDictionary<string, PyVariableType> IAstVariableScopeOwner.Variables { get; set; } = null!;
+    private readonly FrameInfo _info;
 
     public override void Execute(PyFrame frame)
     {
-        var newFrame = frame.CreateFrame();
-        newFrame._variables = Variables;
+        var newFrame = frame.CreateFuncCallFrame(_info);
+        newFrame._variables = ((IAstVariableScopeOwner)this).Variables;
         foreach (var (name, cell) in frame.Closures)
         {
             newFrame.Closures.Add(name, cell);
@@ -899,7 +906,7 @@ public sealed class ClassDefNode : AstStmtNode, IAstVariableScopeOwner
         if (bases.Count is 0)
             bases.Add(PyBuiltinTypes.Object);
 
-        var attrs = Variables.Keys.ToDictionary(static member => member, newFrame.GetValue);
+        var attrs = ((IAstVariableScopeOwner)this).Variables.Keys.ToDictionary(static member => member, newFrame.GetValue);
         var type = new CustomObjectType(Name, bases, attrs);
 
         foreach (var (name, value) in attrs)

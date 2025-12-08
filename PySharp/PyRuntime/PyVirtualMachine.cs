@@ -99,7 +99,7 @@ public static partial class PyVirtualMachine
     {
         if (newFrame)
         {
-            EnterFrame(CurrentFrame.CreateFrame(newGlobals: true));
+            EnterFrame(PyFrame.CreateModuleFrame(CurrentFrame));
             PyEnvironment.Init(PyEnvironmentOptions.Default);
         }
 

@@ -55,7 +55,7 @@ public sealed partial class PyEnvironment
         Error = stderr ?? TextWriter.Null;
         Paths = [];
         Args = [];
-        CurrentFrame = new PyFrame();
+        CurrentFrame = PyFrame.CreateModuleFrame(null);
         IsInteractive = isInteractive;
         FileSystem = fileSystem ?? MemoryFileSystem.CreateBuilder().Build();
         OptimizationOptions = optimizationOptions ?? OptimizationOptions.O0;

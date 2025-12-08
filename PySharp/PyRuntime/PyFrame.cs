@@ -7,22 +7,34 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.PyRuntime;
 
+public sealed class FrameInfo
+{
+    public string Name { get; }
+
+    public FrameInfo(string name)
+    {
+        Name = name;
+    }
+}
+
 public sealed class PyFrame
 {
     private Dictionary<string, PyCellObject>? _closure = null;
     private Dictionary<string, PyObject?>? _locals = null;
 
-    internal PyFrame()
+    private PyFrame(PyFrame? back)
     {
-        Back = null;
+        Back = back;
         Globals = [];
         _locals = Globals!;
+        Info = new FrameInfo("<module>");
     }
-    private PyFrame(PyFrame back, Dictionary<string, PyObject> globals, Dictionary<string, PyObject?>? locals)
+    private PyFrame(PyFrame back, Dictionary<string, PyObject> globals, Dictionary<string, PyObject?>? locals, FrameInfo? info)
     {
         Back = back;
         Globals = globals;
         _locals = locals;
+        Info = info;
     }
 
     public PyFrame? Back { get; }
@@ -38,15 +50,21 @@ public sealed class PyFrame
     internal FrozenDictionary<string, PyVariableType>? _variables = null;
     internal DictAdapter ProxyGlobals => field ??= new DictAdapter(Globals!);
     internal DictAdapter ProxyLocals => field ??= new DictAdapter(Locals);
+    public FrameInfo? Info { get; }
 
-    internal PyFrame CreateFrame(bool newGlobals = false)
+    internal static PyFrame CreateModuleFrame(PyFrame? back)
     {
-        return new PyFrame(this, newGlobals ? [] : Globals, null);
+        return new PyFrame(back);
+    }
+    internal PyFrame CreateFuncCallFrame(FrameInfo info)
+    {
+        return new PyFrame(this, Globals, null, info);
     }
 
     internal PyFrame TempFrame()
     {
-        var tempFrame = new PyFrame(this, Globals, Locals.ToDictionary())
+        // TODO: Closure
+        var tempFrame = new PyFrame(this, Globals, Locals.ToDictionary(), null)
         {
             _variables = _variables
         };
