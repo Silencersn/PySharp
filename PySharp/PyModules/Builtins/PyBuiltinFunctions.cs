@@ -24,6 +24,7 @@ public static partial class PyBuiltinFunctions
     public static readonly PyBuiltinFunctionOrMethodObject All = new("all", AllImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Any = new("any", AnyImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Max = new("max", MaxImpl_1, MaxImpl_2, MaxImpl_3);
+    public static readonly PyBuiltinFunctionOrMethodObject Min = new("min", MinImpl_1, MinImpl_2, MinImpl_3);
     public static readonly PyBuiltinFunctionOrMethodObject Sum = new("sum", SumImpl);
     public static readonly PyBuiltinFunctionOrMethodObject GetAttr = new("getattr", GetAttrImpl_1, GetAttrImpl_2);
     public static readonly PyBuiltinFunctionOrMethodObject SetAttr = new("setattr", SetAttrImpl);
@@ -293,6 +294,117 @@ public static partial class PyBuiltinFunctions
                 return null;
 
             if (!PySpecialMethods.TryGetBool(gt, out var b))
+                return null;
+
+            if (b.BoolValue)
+                result = element;
+        }
+
+        return result;
+    }
+
+    [PyFunctionArgsDef("iterable", "/", "*", "key=None")]
+    private static PyObject? MinImpl_1(PyArguments arguments)
+    {
+        var iterable = arguments[0];
+        if (arguments["key"] is not PyNoneObject)
+            throw new NotImplementedException();
+
+        var elements = Utils.EnumerateIterable(iterable);
+        if (elements is null)
+            return null;
+
+        PyObject? result = null;
+
+        foreach (var element in elements)
+        {
+            if (element is null)
+                return null;
+
+            if (result is null)
+            {
+                result = element;
+                continue;
+            }
+
+            var lt = PyOperators.Lt(element, result);
+            if (lt is null)
+                return null;
+
+            if (!PySpecialMethods.TryGetBool(lt, out var b))
+                return null;
+
+            if (b.BoolValue)
+                result = element;
+        }
+
+        if (result is null)
+            PyVirtualMachine.RaiseValueError("min() iterable argument is empty");
+        return result;
+    }
+
+    [PyFunctionArgsDef("iterable", "/", "*", "default", "key=None")]
+    private static PyObject? MinImpl_2(PyArguments arguments)
+    {
+        var iterable = arguments[0];
+        if (arguments["key"] is not PyNoneObject)
+            throw new NotImplementedException();
+
+        var elements = Utils.EnumerateIterable(iterable);
+        if (elements is null)
+            return null;
+
+        PyObject result = arguments["default"];
+
+        foreach (var element in elements)
+        {
+            if (element is null)
+                return null;
+
+            if (result is null)
+            {
+                result = element;
+                continue;
+            }
+
+            var lt = PyOperators.Lt(element, result);
+            if (lt is null)
+                return null;
+
+            if (!PySpecialMethods.TryGetBool(lt, out var b))
+                return null;
+
+            if (b.BoolValue)
+                result = element;
+        }
+
+        return result;
+    }
+
+    [PyFunctionArgsDef("*args", "key=None")]
+    private static PyObject? MinImpl_3(PyArguments arguments)
+    {
+        if (arguments["key"] is not PyNoneObject)
+            throw new NotImplementedException();
+
+        PyObject? result = null;
+
+        foreach (var element in arguments.ExtraArgs)
+        {
+            if (element is null)
+                return null;
+
+            if (result is null)
+            {
+                result = element;
+                continue;
+            }
+
+            var lt = PyOperators.Lt(element, result);
+            if (lt is null)
+                return null;
+
+            if (!PySpecialMethods.TryGetBool(lt, out var b))
                 return null;
 
             if (b.BoolValue)

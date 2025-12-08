@@ -148,6 +148,7 @@ public sealed partial class Parser
 
         Debug.Assert(CurrentScope.IsRoot);
         FillUnknownVariables(CurrentScope);
+        FillClosureVariables(CurrentScope);
 
         return new ExpressionNode(expr).Reduce(_options);
     }
@@ -160,6 +161,7 @@ public sealed partial class Parser
 
         Debug.Assert(CurrentScope.IsRoot);
         FillUnknownVariables(CurrentScope);
+        FillClosureVariables(CurrentScope);
         CurrentScope.Children.Clear();
 
         return new InteractiveNode(list).Reduce(_options);
