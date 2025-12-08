@@ -29,7 +29,7 @@ public sealed class PyFrame
     [MemberNotNullWhen(false, nameof(Back))]
     public bool IsRoot => Back is null;
     public Dictionary<string, PyObject> Globals { get; }
-    public Dictionary<string, PyObject?> Locals => field ??= [];
+    public Dictionary<string, PyObject?> Locals => _locals ??= [];
     public Dictionary<string, PyCellObject> Closures => _closure ??= [];
     internal Dictionary<string, PyCellObject>? IntenalClosure => _closure;
     public Stack<PyExceptionObject> Exceptions => field ??= [];
@@ -116,7 +116,7 @@ public sealed class PyFrame
     {
         if (variableType is PyVariableType.Local or PyVariableType.Parameter)
         {
-            if (Locals.TryGetValue(name, out var value))
+            if (_locals is not null && _locals.TryGetValue(name, out var value))
             {
                 if (value is null)
                 {
@@ -127,7 +127,7 @@ public sealed class PyFrame
                 return value;
             }
 
-            if (Closures.TryGetValue(name, out var cell))
+            if (_closure is not null && _closure.TryGetValue(name, out var cell))
             {
                 if (cell.Value is null)
                 {
