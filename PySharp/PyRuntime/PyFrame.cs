@@ -36,8 +36,8 @@ public sealed class PyFrame
     public PyExceptionObject CurrentException => Exceptions.Peek();
 
     internal FrozenDictionary<string, PyVariableType>? _variables = null;
-    internal ProxyDict ProxyGlobals => field ??= new ProxyDict(Globals!);
-    internal ProxyDict ProxyLocals => field ??= new ProxyDict(Locals);
+    internal DictAdapter ProxyGlobals => field ??= new DictAdapter(Globals!);
+    internal DictAdapter ProxyLocals => field ??= new DictAdapter(Locals);
 
     internal PyFrame CreateFrame(bool newGlobals = false)
     {
@@ -219,12 +219,12 @@ public sealed class PyFrame
         Locals.Remove(identifier);
     }
 
-    internal sealed class ProxyDict : IDictionary<PyObject, PyObject>
+    internal sealed class DictAdapter : IDictionary<PyObject, PyObject>
     {
         private readonly Dictionary<string, PyObject?> _origDict;
         private readonly Dictionary<PyObject, PyObject> _extraDict;
 
-        public ProxyDict(Dictionary<string, PyObject?> dict)
+        public DictAdapter(Dictionary<string, PyObject?> dict)
         {
             _origDict = dict;
             _extraDict = [];
