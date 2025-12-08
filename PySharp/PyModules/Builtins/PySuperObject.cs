@@ -1,10 +1,7 @@
 ﻿using PySharp.PyRuntime;
+using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.PyAttributes;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Text;
-using System.Xml.Linq;
 
 namespace PySharp.PyModules.Builtins;
 
@@ -41,7 +38,7 @@ public class PySuperObject : PyObject
                     return new PySuperObject(null, objectOrType, [.. mro.Skip(i + 1)]);
             }
         }
-        
+
         PyVirtualMachine.RaiseTypeError("super(type, obj): obj must be an instance or subtype of type");
         return null;
     }

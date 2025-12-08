@@ -28,7 +28,7 @@ partial class Parser
     {
         string? module = null;
         int level = 0;
-        
+
         while (CurrentTokenType is TokenType.Dot)
         {
             level++;
