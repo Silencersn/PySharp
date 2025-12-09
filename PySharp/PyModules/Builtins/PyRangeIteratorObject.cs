@@ -1,18 +1,15 @@
 ﻿using PySharp.PyRuntime;
+using System.Numerics;
 
 namespace PySharp.PyModules.Builtins;
 
 public class PyRangeIteratorObject : PyObject
 {
-    private readonly PyRangeObject _range;
-    private int _current;
+    private readonly IEnumerator<PyIntObject> _enumerator;
 
-    public PyRangeIteratorObject(PyRangeObject pyRangeObject)
+    internal PyRangeIteratorObject(IEnumerable<PyIntObject> enumerable)
     {
-        ArgumentNullException.ThrowIfNull(pyRangeObject);
-
-        _range = pyRangeObject;
-        _current = _range.Start;
+        _enumerator = enumerable.GetEnumerator();
     }
 
     public override PyObject? Iter()
@@ -22,20 +19,10 @@ public class PyRangeIteratorObject : PyObject
 
     public override PyObject? Next()
     {
-        if (_range.Step > 0)
-        {
-            if (_current >= _range.Stop)
-                return PyVirtualMachine.RaiseStopIteration();
-        }
-        else
-        {
-            if (_current <= _range.Stop)
-                return PyVirtualMachine.RaiseStopIteration();
-        }
+        if (!_enumerator.MoveNext())
+            return PyVirtualMachine.RaiseStopIteration();
 
-        var value = _current;
-        _current += _range.Step;
-        return PyIntObject.FromInteger(value);
+        return _enumerator.Current;
     }
 }
 

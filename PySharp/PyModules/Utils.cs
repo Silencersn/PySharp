@@ -31,6 +31,9 @@ internal static class Utils
 
     public static IEnumerable<PyObject?>? EnumerateIterable(PyObject iterable)
     {
+        if (iterable is PyRangeObject rangeObj)
+            return rangeObj.EnumerateRange();
+
         var iter = iterable.Iter();
         if (iter is null)
             return null;
