@@ -21,6 +21,32 @@ public sealed class PyExceptionObject : PyObject
     public IReadOnlyList<PyObject> Args { get; }
     public string? Traceback { get; internal set; }
 
+    internal PyExceptionObject WithTraceback(string? traceback = null)
+    {
+        Traceback = traceback ?? PrintTraceback();
+        return this;
+    }
+
+    public static string PrintTraceback()
+    {
+        Stack<string> stack = [];
+        var frame = PyVirtualMachine.CurrentFrame;
+        while (frame is not null)
+        {
+            var info = frame.Info;
+            if (info is not null)
+            {
+                var metaInfo = info.MetaInfo;
+                if (info.CurrentLine is not null)
+                    stack.Push($"    {info.CurrentLine.Trim().TrimEnd('\r', '\n')}");
+                stack.Push($"  File \"{metaInfo.SourceName ?? "<unknown>"}\", line {info.Lineno}, in {info.Name}");
+            }
+
+            frame = frame.Back;
+        }
+        return string.Join(Environment.NewLine, stack);
+    }
+
     public override PyObject? Repr()
     {
         var builder = new StringBuilder();
