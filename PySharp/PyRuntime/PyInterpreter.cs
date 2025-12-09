@@ -13,40 +13,11 @@ public static class PyInterpreter
         return Lexer.Tokenize(code);
     }
 
-
-    public static PyModuleObject? RunFile(string filename, PyEnvironment? environment = null)
+    internal static void PyTryCatch(Action action)
     {
-        ArgumentNullException.ThrowIfNull(filename);
-
-        var code = File.ReadAllText(filename);
-        var moduleName = Path.GetFileNameWithoutExtension(filename);
-        environment ??= PyEnvironment
-            .CreateBuilder()
-            .StandardIO.WithConsole()
-            .FileSystem.WithPhysicalFileSystem()
-            .System.AppendSysPath(Path.GetDirectoryName(Path.GetFullPath(filename))).AppendArgument(filename)
-            .Build();
-
-        return RunCode(code, moduleName, environment, Path.GetFullPath(filename));
-    }
-
-    public static PyModuleObject? RunCode(string code, string? moduleName = null, PyEnvironment? environment = null, string? sourceName = null)
-    {
-        ArgumentNullException.ThrowIfNull(code);
-
-        environment ??= PyEnvironment
-            .CreateBuilder()
-            .StandardIO.WithConsole()
-            .FileSystem.WithEmptyMemoryFileSystem()
-            .Build();
-
-        using var context = new PyEnvironmentContext(environment);
-
-        PyModuleObject? module = null;
         try
         {
-            module = RunCodeWithinEnvironment(code, moduleName ?? string.Empty, false, sourceName ?? "<string>");
-            Debug.Assert(PyVirtualMachine.CurrentFrame.IsRoot);
+            action();
         }
         catch (Exception ex)
         {
@@ -77,7 +48,42 @@ public static class PyInterpreter
                 // re-throw the original exception (non-Python errors).
                 throw;
         }
+    }
 
+    public static PyModuleObject? RunFile(string filename, PyEnvironment? environment = null)
+    {
+        ArgumentNullException.ThrowIfNull(filename);
+
+        var code = File.ReadAllText(filename);
+        var moduleName = Path.GetFileNameWithoutExtension(filename);
+        environment ??= PyEnvironment
+            .CreateBuilder()
+            .StandardIO.WithConsole()
+            .FileSystem.WithPhysicalFileSystem()
+            .System.AppendSysPath(Path.GetDirectoryName(Path.GetFullPath(filename))).AppendArgument(filename)
+            .Build();
+
+        return RunCode(code, moduleName, environment, Path.GetFullPath(filename));
+    }
+
+    public static PyModuleObject? RunCode(string code, string? moduleName = null, PyEnvironment? environment = null, string? sourceName = null)
+    {
+        ArgumentNullException.ThrowIfNull(code);
+
+        environment ??= PyEnvironment
+            .CreateBuilder()
+            .StandardIO.WithConsole()
+            .FileSystem.WithEmptyMemoryFileSystem()
+            .Build();
+
+        using var context = new PyEnvironmentContext(environment);
+
+        PyModuleObject? module = null;
+        PyTryCatch(() =>
+        {
+            module = RunCodeWithinEnvironment(code, moduleName ?? string.Empty, false, sourceName ?? "<string>");
+            Debug.Assert(PyVirtualMachine.CurrentFrame.IsRoot);
+        });
         PyVirtualMachine.PyEnvironment.OnExit();
         return module;
     }

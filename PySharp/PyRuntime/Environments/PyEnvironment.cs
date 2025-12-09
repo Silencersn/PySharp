@@ -14,7 +14,7 @@ public sealed class PyEnvironmentContext : IDisposable
     public PyEnvironmentContext(PyEnvironment? environment)
     {
         _outerEnvironment = PyVirtualMachine.InternalPyEnvironment;
-        PyVirtualMachine.SetPyEnvironmentAsyncLocalValue(environment);
+        PyVirtualMachine.SetPyEnvironment(environment);
     }
 
     public void Dispose()
@@ -23,7 +23,7 @@ public sealed class PyEnvironmentContext : IDisposable
             return;
 
         _disposed = true;
-        PyVirtualMachine.SetPyEnvironmentAsyncLocalValue(_outerEnvironment);
+        PyVirtualMachine.SetPyEnvironment(_outerEnvironment);
     }
 }
 
@@ -79,7 +79,15 @@ public sealed partial class PyEnvironment
     internal TextWriter Out { get; }
     internal TextWriter Error { get; }
     internal Dictionary<string, PyModuleObject?> Modules { get; } = [];
-    internal PyFrame CurrentFrame { get; set; }
+    internal HashSet<Thread> Threads { get; } = [];
+    internal CancellationTokenSource CancellationTokenSource { get; } = new();
+
+    private readonly ThreadLocal<PyFrame> _currentFrameThreadLocal = new();
+    internal PyFrame CurrentFrame
+    {
+        get => _currentFrameThreadLocal.Value ?? throw new InvalidOperationException();
+        set => _currentFrameThreadLocal.Value = value;
+    }
     internal List<string> Paths { get; }
     internal List<string> Args { get; }
     internal int ExitCode { get; set; }
@@ -92,6 +100,10 @@ public sealed partial class PyEnvironment
     {
         var args = new PyExitEventArgs(ExitCode, CurrentError);
         Exit?.Invoke(args);
+
+        CancellationTokenSource.Cancel();
+        foreach (var thread in Threads)
+            thread.Join();
     }
 
     public static IPyEnvironmentBuilder CreateBuilder()

@@ -21,7 +21,7 @@ public abstract class AstStmtNode : AstNode
 
     public sealed override void Execute(PyFrame frame)
     {
-        if (MetaInfo.Lineno is not 0 && frame.Info is not null)
+        if (MetaInfo.Lineno is not 0)
         {
             frame.Info.Lineno = MetaInfo.Lineno;
             frame.Info.CurrentLine = MetaInfo.FirstLine;

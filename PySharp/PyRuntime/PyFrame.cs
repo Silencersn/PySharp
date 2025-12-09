@@ -33,6 +33,13 @@ public sealed class PyFrame
         _locals = Globals!;
         Info = new FrameInfo(default, "<module>");
     }
+    private PyFrame(Dictionary<string, PyObject> globals)
+    {
+        Back = null;
+        Globals = globals;
+        _locals = null;
+        Info = new FrameInfo(default, $"<thread-{Environment.CurrentManagedThreadId}>");
+    }
     private PyFrame(PyFrame back, Dictionary<string, PyObject> globals, Dictionary<string, PyObject?>? locals, Dictionary<string, PyCellObject>? closure, FrameInfo info)
     {
         Back = back;
@@ -64,6 +71,10 @@ public sealed class PyFrame
     internal PyFrame CreateFuncCallFrame(FrameInfo info)
     {
         return new PyFrame(this, Globals, null, null, info);
+    }
+    internal PyFrame CreateThreadRootFrame()
+    {
+        return new PyFrame(Globals);
     }
 
     internal PyFrame TempFrame()

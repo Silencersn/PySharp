@@ -52,7 +52,7 @@ public static partial class PyVirtualMachine
         }
     }
 
-    internal static void SetPyEnvironmentAsyncLocalValue(PyEnvironment? environment)
+    internal static void SetPyEnvironment(PyEnvironment? environment)
     {
         if (IsAsyncContext)
             PyEnvironmentAsyncLocal.Value = environment;

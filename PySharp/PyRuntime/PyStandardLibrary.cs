@@ -3,6 +3,7 @@ using PySharp.PyModules.Operator;
 using PySharp.PyModules.Random;
 using PySharp.PyModules.Site;
 using PySharp.PyModules.This;
+using PySharp.PyModules.Threading;
 using PySharp.PyModules.Time;
 
 
@@ -16,6 +17,7 @@ internal static class PyStandardLibrary
     public static PyModuleObject Time => new PyTimeModuleObject();
     public static PyModuleObject Random => new PyRandomModuleObject();
     public static PyModuleObject This => Execute("this", PyThisModuleObject.Code);
+    public static PyModuleObject Threading => new PyThreadingModuleObject();
 
     public static PyModuleObject? TryCreateModule(string name)
     {
@@ -27,6 +29,7 @@ internal static class PyStandardLibrary
             "time" => Time,
             "random" => Random,
             "this" => This,
+            "threading" => Threading,
 
             _ => null
         };
