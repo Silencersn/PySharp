@@ -25,18 +25,7 @@ public class PyBuiltinFunctionOrMethodObject : PyObject, IPyObjectName
         Self = null;
         Function = (args, kwargs) =>
         {
-            if (_defCache is null)
-            {
-                _defCache = [];
-                foreach (var func in funcs)
-                {
-                    var argsDef = func.Method.GetCustomAttribute<PyFunctionArgsDefAttribute>();
-                    Debug.Assert(argsDef is not null);
-                    var def = PyArgsDef.FromDef(argsDef.Parameters);
-                    _defCache[func.Method] = def;
-                }
-            }
-
+            EnsureDefCache(funcs);
             foreach (var func in funcs)
             {
                 if (_defCache[func.Method].TryParse(args, kwargs, out var result))
@@ -55,18 +44,7 @@ public class PyBuiltinFunctionOrMethodObject : PyObject, IPyObjectName
         IsMethod = true;
         Function = (args, kwargs) =>
         {
-            if (_defCache is null)
-            {
-                _defCache = [];
-                foreach (var func in funcs)
-                {
-                    var argsDef = func.Method.GetCustomAttribute<PyFunctionArgsDefAttribute>();
-                    Debug.Assert(argsDef is not null);
-                    var def = PyArgsDef.FromDef(argsDef.Parameters);
-                    _defCache[func.Method] = def;
-                }
-            }
-
+            EnsureDefCache(funcs);
             foreach (var func in funcs)
             {
                 if (_defCache[func.Method].TryParse(args, kwargs, out var result))
@@ -94,6 +72,29 @@ public class PyBuiltinFunctionOrMethodObject : PyObject, IPyObjectName
         return func.Invoke(args[0]);
     })
     {
+    }
+
+    [MemberNotNull(nameof(_defCache))]
+    private void EnsureDefCache(PyFunction[] funcs)
+    {
+        if (_defCache is null)
+        {
+            lock (funcs)
+            {
+                if (_defCache is null)
+                {
+                    var cache = new Dictionary<MethodInfo, PyArgsDef>();
+                    foreach (var func in funcs)
+                    {
+                        var argsDef = func.Method.GetCustomAttribute<PyFunctionArgsDefAttribute>();
+                        Debug.Assert(argsDef is not null);
+                        var def = PyArgsDef.FromDef(argsDef.Parameters);
+                        cache[func.Method] = def;
+                    }
+                    _defCache = cache;
+                }
+            }
+        }
     }
 
     public override PyObject? Repr()
