@@ -103,7 +103,7 @@ public partial class PyRandomObject : PyObject
     }
 }
 
-public sealed class PyRandomObjectType : PyTypeObject<PyRandomObjectType>
+public sealed class PyRandomObjectType : PyPrimitiveTypeObject<PyRandomObjectType, PyRandomObjectType>
 {
     public override string Name => "Random";
 
