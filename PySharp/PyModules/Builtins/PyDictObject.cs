@@ -26,7 +26,7 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
             _dict = new OrderedDictionary<PyObject, PyObject>(dict);
     }
 
-    public static PyDictObject CreateDict(IEnumerable<KeyValuePair<PyObject, PyObject>> dict)
+    public static PyDictObject CreateDict(params IEnumerable<KeyValuePair<PyObject, PyObject>> dict)
     {
         return new PyDictObject(dict);
     }

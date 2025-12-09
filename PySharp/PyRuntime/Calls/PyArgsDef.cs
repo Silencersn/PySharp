@@ -46,8 +46,15 @@ public sealed class PyArgsDef
         if (literal is "True" or "False")
             return PyBoolObject.FromBoolean(literal is "True");
 
-        if (literal.Replace(" ", "") is "()")
+        var removedSpace = literal.Replace(" ", string.Empty);
+        if (removedSpace is "()")
             return PyTupleObject.CreateTuple();
+
+        if (removedSpace is "[]")
+            return PyListObject.CreateList();
+
+        if (removedSpace is "{}")
+            return PyDictObject.CreateDict();
 
         if (literal[0] is '"' or '\'')
             return PyStrObject.FromLiteral(literal);
