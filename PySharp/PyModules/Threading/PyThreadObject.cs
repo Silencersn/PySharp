@@ -35,6 +35,12 @@ public partial class PyThreadObject : PyObject
     [PyFunctionArgsDef("timeout=None")]
     internal PyObject? JoinImpl(PyArguments arguments)
     {
+        if (arguments[0] is PyNoneObject)
+        {
+            PyJoin(-1);
+            return PyNoneObject.None;
+        }
+
         if (!PyInteropService.TryGetFloat(arguments[0], out var timeout))
             return null;
 

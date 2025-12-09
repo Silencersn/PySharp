@@ -25,6 +25,8 @@ partial class PyThreadObject : PyObject
             PyInterpreter.PyTryCatch(PyRun);
             Debug.Assert(PyVirtualMachine.CurrentFrame.IsRoot);
             // no need to PyVirtualMachine.ExitFrame()
+            Debug.Assert(_thread is not null);
+            PyVirtualMachine.PyEnvironment.Threads.Remove(_thread);
         });
         PyVirtualMachine.PyEnvironment.Threads.Add(_thread);
         _thread.Start();
@@ -36,11 +38,14 @@ partial class PyThreadObject : PyObject
             _target.Call(_args, _kwargs).PyThrowIfNull();
     }
 
-    public void PyJoin(double timeout)
+    public void PyJoin(double timeout = -1)
     {
         if (_thread is null)
             throw new InvalidOperationException();
 
+        if (timeout < 0)
+            _thread.Join();
+        else
         _thread.Join(TimeSpan.FromSeconds(timeout));
     }
 
