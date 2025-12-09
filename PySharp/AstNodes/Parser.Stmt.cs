@@ -55,6 +55,7 @@ partial class Parser
     /// <returns></returns>
     private AstStmtNode ParseImportStmt()
     {
+        var metaInfo = CreateMetaInfo();
         if (IsCurrentKeyword("import"))
         {
             MoveNextToken();
@@ -67,6 +68,7 @@ partial class Parser
                 importNode.Names.Add(ParseAlias());
             }
 
+            importNode.MetaInfo = metaInfo;
             return importNode;
 
             AstAliasNode ParseAlias()
@@ -91,7 +93,7 @@ partial class Parser
             if (CurrentTokenType is TokenType.Star)
             {
                 MoveNextToken();
-                return new ImportFromNode(module, [new("*", null)], level);
+                return new ImportFromNode(module, [new("*", null)], level) { MetaInfo = metaInfo };
             }
             else if (CurrentTokenType is TokenType.LeftParen)
             {
@@ -108,7 +110,7 @@ partial class Parser
                 }
 
                 EnsureTokenTypeThenMove(TokenType.RightParen);
-                return new ImportFromNode(module, names, level);
+                return new ImportFromNode(module, names, level) { MetaInfo = metaInfo };
             }
             else
             {
@@ -120,7 +122,7 @@ partial class Parser
                     names.Add(ParseAlias());
                 }
 
-                return new ImportFromNode(module, names, level);
+                return new ImportFromNode(module, names, level) { MetaInfo = metaInfo };
             }
 
             AstAliasNode ParseAlias()
@@ -140,6 +142,7 @@ partial class Parser
 
     private AstStmtNode ParseSimpleStmt()
     {
+        var metaInfo = CreateMetaInfo();
         if (CurrentTokenType is TokenType.Name && IsKeyword(CurrentToken.String))
         {
             var keyword = CurrentToken.String;
@@ -149,7 +152,7 @@ partial class Parser
                     throw new AstException("'break' outside loop");
 
                 MoveNextToken();
-                return new BreakNode();
+                return new BreakNode() { MetaInfo = metaInfo };
             }
             else if (keyword is "continue")
             {
@@ -157,7 +160,7 @@ partial class Parser
                     throw new AstException("'continue' outside loop");
 
                 MoveNextToken();
-                return new ContinueNode();
+                return new ContinueNode() { MetaInfo = metaInfo };
             }
             else if (keyword is "raise")
             {
@@ -172,13 +175,13 @@ partial class Parser
 
                         var cause = ParseExpression();
 
-                        return new RaiseNode(exc, cause);
+                        return new RaiseNode(exc, cause) { MetaInfo = metaInfo };
                     }
 
-                    return new RaiseNode(exc, null);
+                    return new RaiseNode(exc, null) { MetaInfo = metaInfo };
                 }
 
-                return new RaiseNode(null, null);
+                return new RaiseNode(null, null) { MetaInfo = metaInfo };
             }
             else if (keyword is "return")
             {
@@ -187,24 +190,24 @@ partial class Parser
 
                 MoveNextToken();
                 if (CurrentTokenType is TokenType.NewLine or TokenType.Semicolon)
-                    return new ReturnNode();
+                    return new ReturnNode() { MetaInfo = metaInfo };
 
                 var list = ParseExpressionList(StopPredicates.UntilNewLineOrSemicolon, out var comma);
                 if (list.Count is 1 && !comma)
-                    return new ReturnNode(list[0]);
+                    return new ReturnNode(list[0]) { MetaInfo = metaInfo };
 
-                return new ReturnNode(AstNode.Tuple(list));
+                return new ReturnNode(AstNode.Tuple(list)) { MetaInfo = metaInfo };
             }
             else if (keyword is "pass")
             {
                 MoveNextToken();
-                return new PassNode();
+                return new PassNode() { MetaInfo = metaInfo };
             }
             else if (keyword is "del")
             {
                 MoveNextToken();
                 var targetList = ParseTargetList(StopPredicates.UntilNewLineOrSemicolon, out _);
-                return new DeleteNode([.. targetList]);
+                return new DeleteNode([.. targetList]) { MetaInfo = metaInfo };
             }
             else if (keyword is "import" or "from")
             {
@@ -214,13 +217,19 @@ partial class Parser
             {
                 MoveNextToken();
                 var test = ParseExpression();
+                AssertNode node;
                 if (CurrentTokenType is TokenType.Comma)
                 {
                     MoveNextToken();
                     var msg = ParseExpression();
-                    return AstNode.Assert(test, msg);
+                    node = AstNode.Assert(test, msg);
                 }
-                return AstNode.Assert(test);
+                else 
+                {
+                    node = AstNode.Assert(test);
+                }
+                node.MetaInfo = metaInfo;
+                return node;
             }
             else if (keyword is "global")
             {
@@ -239,11 +248,11 @@ partial class Parser
                         if (variableType is PyVariableType.Local)
                             throw new AstException($"name '{name}' is assigned to before nonlocal declaration");
 
-                        foreach (var node in CurrentScope.TrackedNameNodes)
+                        foreach (var nameNode in CurrentScope.TrackedNameNodes)
                         {
-                            if (node.Identifier == name)
+                            if (nameNode.Identifier == name)
                             {
-                                if (node.Ctx is ExprContext.Load)
+                                if (nameNode.Ctx is ExprContext.Load)
                                     throw new AstException($"name '{name}' is used prior to global declaration");
                                 else
                                     throw new AstException($"name '{name}' is assigned to before global declaration");
@@ -253,8 +262,9 @@ partial class Parser
 
                     CurrentScope.SetGlobal(name);
                 }
-                return AstNode.Global(names);
-
+                var node = AstNode.Global(names);
+                node.MetaInfo = metaInfo;
+                return node;
             }
             else if (keyword is "nonlocal")
             {
@@ -276,11 +286,11 @@ partial class Parser
                         if (variableType is PyVariableType.Local)
                             throw new AstException($"name '{name}' is assigned to before nonlocal declaration");
 
-                        foreach (var node in CurrentScope.TrackedNameNodes)
+                        foreach (var nameNode in CurrentScope.TrackedNameNodes)
                         {
-                            if (node.Identifier == name)
+                            if (nameNode.Identifier == name)
                             {
-                                if (node.Ctx is ExprContext.Load)
+                                if (nameNode.Ctx is ExprContext.Load)
                                     throw new AstException($"name '{name}' is used prior to nonlocal declaration");
                                 else
                                     throw new AstException($"name '{name}' is assigned to before nonlocal declaration");
@@ -290,7 +300,9 @@ partial class Parser
 
                     CurrentScope.SetNonlocal(name);
                 }
-                return AstNode.Nonlocal(names);
+                var node = AstNode.Nonlocal(names);
+                node.MetaInfo = metaInfo;
+                return node;
             }
         }
 
@@ -312,7 +324,9 @@ partial class Parser
                 allTargets = exprList.All(IsValidTarget);
             }
 
-            return AstNode.Assign(UnwrapOrMakeTuple(exprList, endsWithComma), targets);
+            var node = AstNode.Assign(UnwrapOrMakeTuple(exprList, endsWithComma), targets);
+            node.MetaInfo = metaInfo;
+            return node;
         }
 
         if (IsAugOperator(CurrentTokenType))
@@ -345,10 +359,10 @@ partial class Parser
             MoveNextToken();
             var list = ParseExpressionList(StopPredicates.UntilNewLineOrSemicolon, out var comma);
             var value = UnwrapOrMakeTuple(list, comma);
-            return new AugAssignNode(target, op, value);
+            return new AugAssignNode(target, op, value) { MetaInfo = metaInfo };
         }
 
-        return new ExprNode(UnwrapOrMakeTuple(exprList, endsWithComma));
+        return new ExprNode(UnwrapOrMakeTuple(exprList, endsWithComma)) { MetaInfo = metaInfo };
     }
 
     private List<string> ParseIdentifiers()
@@ -463,8 +477,9 @@ partial class Parser
 
     private IfNode ParseIfStmt(string startsWithKeyword)
     {
+        var metaInfo = CreateMetaInfo();
         EnsureKeywordThenMove(startsWithKeyword);
-        var ifNode = new IfNode(ParseExpression());
+        var ifNode = new IfNode(ParseExpression()) { MetaInfo = metaInfo };
         EnsureTokenTypeThenMove(TokenType.Colon);
         ifNode.Body.AddRange(ParseSuite(startsWithKeyword));
         if (IsCurrentKeyword("elif"))
@@ -482,8 +497,9 @@ partial class Parser
 
     private WhileNode ParseWhileStmt()
     {
+        var metaInfo = CreateMetaInfo();
         EnsureKeywordThenMove("while");
-        var whileNode = new WhileNode(ParseExpression());
+        var whileNode = new WhileNode(ParseExpression()) { MetaInfo = metaInfo };
         EnsureTokenTypeThenMove(TokenType.Colon);
         CurrentScope.EnterLoop();
         whileNode.Body.AddRange(ParseSuite("while"));
@@ -499,8 +515,9 @@ partial class Parser
 
     private TryNode ParseTryStmt()
     {
+        var metaInfo = CreateMetaInfo();
         EnsureKeywordThenMove("try");
-        var tryNode = new TryNode();
+        var tryNode = new TryNode() { MetaInfo = metaInfo };
         EnsureTokenTypeThenMove(TokenType.Colon);
         tryNode.Body.AddRange(ParseSuite("try"));
         if (!IsCurrentKeyword("except") && !IsCurrentKeyword("finally"))
@@ -549,13 +566,14 @@ partial class Parser
 
     private ForNode ParseForStmt()
     {
+        var metaInfo = CreateMetaInfo();
         EnsureKeywordThenMove("for");
         var targetList = ParseTargetList(StopPredicates.UntilKeywordIn, out var endsWithComma);
         var target = UnwrapOrMakeTuple(targetList, endsWithComma);
         EnsureKeywordThenMove("in");
         var iter = ParseExpression();
         EnsureTokenTypeThenMove(TokenType.Colon);
-        var forNode = new ForNode(target, iter);
+        var forNode = new ForNode(target, iter) { MetaInfo = metaInfo };
         CurrentScope.EnterLoop();
         forNode.Body.AddRange(ParseSuite("for"));
         CurrentScope.ExitLoop();

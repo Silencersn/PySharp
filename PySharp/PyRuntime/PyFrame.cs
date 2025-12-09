@@ -9,8 +9,10 @@ namespace PySharp.PyRuntime;
 
 public sealed class FrameInfo
 {
-    public MetaInfo MetaInfo { get; }
+    public MetaInfo MetaInfo { get; internal set; }
     public string Name { get; }
+    public int Lineno { get; set; }
+    public string? CurrentLine { get; set; }
 
     public FrameInfo(MetaInfo metaInfo, string name)
     {
@@ -31,7 +33,7 @@ public sealed class PyFrame
         _locals = Globals!;
         Info = new FrameInfo(default, "<module>");
     }
-    private PyFrame(PyFrame back, Dictionary<string, PyObject> globals, Dictionary<string, PyObject?>? locals, Dictionary<string, PyCellObject>? closure, FrameInfo? info)
+    private PyFrame(PyFrame back, Dictionary<string, PyObject> globals, Dictionary<string, PyObject?>? locals, Dictionary<string, PyCellObject>? closure, FrameInfo info)
     {
         Back = back;
         Globals = globals;
@@ -53,7 +55,7 @@ public sealed class PyFrame
     internal FrozenDictionary<string, PyVariableType>? _variables = null;
     internal DictAdapter ProxyGlobals => field ??= new DictAdapter(Globals!);
     internal DictAdapter ProxyLocals => field ??= new DictAdapter(Locals);
-    public FrameInfo? Info { get; }
+    public FrameInfo Info { get; internal set; }
 
     internal static PyFrame CreateModuleFrame(PyFrame? back)
     {
@@ -66,7 +68,7 @@ public sealed class PyFrame
 
     internal PyFrame TempFrame()
     {
-        var tempFrame = new PyFrame(this, Globals, _locals?.ToDictionary(), _closure, null)
+        var tempFrame = new PyFrame(this, Globals, _locals?.ToDictionary(), _closure, Info)
         {
             _variables = _variables
         };

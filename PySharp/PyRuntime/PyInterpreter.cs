@@ -13,10 +13,6 @@ public static class PyInterpreter
         return Lexer.Tokenize(code);
     }
 
-    public static ModuleNode Parse(IEnumerable<TokenInfo> tokens, PyEnvironment? environment = null)
-    {
-        return Parser.Parse(tokens, environment);
-    }
 
     public static PyModuleObject? RunFile(string filename, PyEnvironment? environment = null)
     {
@@ -31,10 +27,10 @@ public static class PyInterpreter
             .System.AppendSysPath(Path.GetDirectoryName(Path.GetFullPath(filename))).AppendArgument(filename)
             .Build();
 
-        return RunCode(code, moduleName, environment);
+        return RunCode(code, moduleName, environment, Path.GetFullPath(filename));
     }
 
-    public static PyModuleObject? RunCode(string code, string? moduleName = null, PyEnvironment? environment = null)
+    public static PyModuleObject? RunCode(string code, string? moduleName = null, PyEnvironment? environment = null, string? sourceName = null)
     {
         ArgumentNullException.ThrowIfNull(code);
 
@@ -49,7 +45,7 @@ public static class PyInterpreter
         PyModuleObject? module = null;
         try
         {
-            module = RunCodeWithinEnvironment(code, moduleName ?? string.Empty, false);
+            module = RunCodeWithinEnvironment(code, moduleName ?? string.Empty, false, sourceName ?? "<string>");
             Debug.Assert(PyVirtualMachine.CurrentFrame.IsRoot);
         }
         catch (Exception ex)
@@ -86,10 +82,11 @@ public static class PyInterpreter
         return module;
     }
 
-    public static PyModuleObject RunCodeWithinEnvironment(string code, string moduleName, bool newFrame)
+    public static PyModuleObject RunCodeWithinEnvironment(string code, string moduleName, bool newFrame, string sourceName)
     {
         var tokens = Tokenize(code);
-        var node = Parse(tokens, PyVirtualMachine.PyEnvironment);
+        var node = Parser.Parse(sourceName, tokens, PyVirtualMachine.PyEnvironment);
+        PyVirtualMachine.PyEnvironment.CurrentFrame.Info.MetaInfo = node.MetaInfo;
         return PyVirtualMachine.Execute(node, moduleName, newFrame);
     }
 
@@ -108,7 +105,7 @@ public static class PyInterpreter
         using var context = new PyEnvironmentContext(environment);
 
         var tokenStream = new TokenInteractiveStream(environment.In, environment.Out);
-        var parser = new Parser(tokenStream, environment.OptimizationOptions);
+        var parser = new Parser("<stdin>", tokenStream, environment.OptimizationOptions);
 
         while (true)
         {
@@ -121,7 +118,7 @@ public static class PyInterpreter
             {
                 environment.Error.WriteLine(e.Message);
                 tokenStream = new TokenInteractiveStream(environment.In, environment.Out);
-                parser = new Parser(tokenStream, environment.OptimizationOptions);
+                parser = new Parser("<stdin>", tokenStream, environment.OptimizationOptions);
                 continue;
             }
 

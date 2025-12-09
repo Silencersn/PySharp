@@ -18,6 +18,18 @@ public abstract class AstStmtNode : AstNode
     {
         return this;
     }
+
+    public sealed override void Execute(PyFrame frame)
+    {
+        if (MetaInfo.Lineno is not 0 && frame.Info is not null)
+        {
+            frame.Info.Lineno = MetaInfo.Lineno;
+            frame.Info.CurrentLine = MetaInfo.FirstLine;
+        }
+        ExecuteStmt(frame);
+    }
+
+    public abstract void ExecuteStmt(PyFrame frame);
 }
 
 public class AssignNode : AstStmtNode
@@ -31,7 +43,7 @@ public class AssignNode : AstStmtNode
     public ImmutableArray<AstExprNode> Targets { get; }
     public AstExprNode Value { get; }
 
-    public override void Execute(PyFrame frame)
+    public override void ExecuteStmt(PyFrame frame)
     {
         var value = Value.GetExprValue(frame);
         Debug.Assert(value is not PyExceptionObject { Raised: true });
@@ -70,7 +82,7 @@ public class AssertNode : AstStmtNode
     public AstExprNode Test { get; }
     public AstExprNode? Msg { get; }
 
-    public override void Execute(PyFrame frame)
+    public override void ExecuteStmt(PyFrame frame)
     {
         var test = Test.GetExprValue(frame);
         if (!PySpecialMethods.TryGetBool(test, out var b))
@@ -123,7 +135,7 @@ public class DeleteNode : AstStmtNode
         Targets = targets;
     }
 
-    public override void Execute(PyFrame frame)
+    public override void ExecuteStmt(PyFrame frame)
     {
         foreach (var target in Targets)
         {
@@ -145,7 +157,7 @@ public class AugAssignNode : AstStmtNode
     public AstOperatorNode Op { get; }
     public AstExprNode Value { get; }
 
-    public override void Execute(PyFrame frame)
+    public override void ExecuteStmt(PyFrame frame)
     {
         Target.SetTargetValue(Op.GetOpValue(Target.GetExprValue(frame), Value.GetExprValue(frame)).PyThrowIfNullOrNotImplemented(), frame);
     }
@@ -170,7 +182,7 @@ public class ExprNode : AstStmtNode
         Value = value;
     }
 
-    public override void Execute(PyFrame frame)
+    public override void ExecuteStmt(PyFrame frame)
     {
         var value = Value.GetExprValue(frame);
         if (PyVirtualMachine.IsInteractive)
@@ -231,7 +243,7 @@ public class IfNode : AstStmtNode
         OrElse = orElse;
     }
 
-    public override void Execute(PyFrame frame)
+    public override void ExecuteStmt(PyFrame frame)
     {
         if (Test.GetBoolValue(frame))
         {
@@ -290,7 +302,7 @@ public class IfNode : AstStmtNode
 
 public class BreakNode : AstStmtNode
 {
-    public override void Execute(PyFrame frame)
+    public override void ExecuteStmt(PyFrame frame)
     {
         throw new AstBreakException();
     }
@@ -299,7 +311,7 @@ public class BreakNode : AstStmtNode
 }
 public class ContinueNode : AstStmtNode
 {
-    public override void Execute(PyFrame frame)
+    public override void ExecuteStmt(PyFrame frame)
     {
         throw new AstContinueException();
     }
@@ -315,7 +327,7 @@ public class ReturnNode : AstStmtNode
         Value = value;
     }
 
-    public override void Execute(PyFrame frame)
+    public override void ExecuteStmt(PyFrame frame)
     {
         throw new AstReturnException(Value?.GetExprValue(frame) ?? PyNoneObject.None);
     }
@@ -339,7 +351,7 @@ public class ReturnNode : AstStmtNode
 }
 public class PassNode : AstStmtNode
 {
-    public override void Execute(PyFrame frame)
+    public override void ExecuteStmt(PyFrame frame)
     {
     }
 
@@ -365,7 +377,7 @@ public class WhileNode : AstStmtNode
         Test = test;
     }
 
-    public override void Execute(PyFrame frame)
+    public override void ExecuteStmt(PyFrame frame)
     {
         bool isBreak = false;
 
@@ -423,7 +435,7 @@ public class ForNode : AstStmtNode
     public List<AstStmtNode> Body { get; } = [];
     public List<AstStmtNode> OrElse { get; } = [];
 
-    public override void Execute(PyFrame frame)
+    public override void ExecuteStmt(PyFrame frame)
     {
         bool isBreak = false;
 
@@ -484,7 +496,7 @@ public class RaiseNode : AstStmtNode
     public AstExprNode? Exc { get; }
     public AstExprNode? Cause { get; }
 
-    public override void Execute(PyFrame frame)
+    public override void ExecuteStmt(PyFrame frame)
     {
         if (Exc is null)
         {
@@ -529,7 +541,7 @@ public class TryNode : AstStmtNode
     public List<AstStmtNode> OrElse { get; } = [];
     public List<AstStmtNode> FinalBody { get; } = [];
 
-    public override void Execute(PyFrame frame)
+    public override void ExecuteStmt(PyFrame frame)
     {
         bool catched = false;
         try
@@ -599,7 +611,7 @@ public class ImportNode : AstStmtNode
 {
     public List<AstAliasNode> Names { get; } = [];
 
-    public override void Execute(PyFrame frame)
+    public override void ExecuteStmt(PyFrame frame)
     {
         foreach (var name in Names)
         {
@@ -636,7 +648,7 @@ public class ImportFromNode : AstStmtNode
     public List<AstAliasNode> Names { get; }
     public int Level { get; }
 
-    public override void Execute(PyFrame frame)
+    public override void ExecuteStmt(PyFrame frame)
     {
         if (Level > 0)
             // TODO: relative import
@@ -713,7 +725,7 @@ public sealed class GlobalNode : AstStmtNode
 
     public ImmutableArray<string> Names { get; }
 
-    public override void Execute(PyFrame frame)
+    public override void ExecuteStmt(PyFrame frame)
     {
     }
 
@@ -741,7 +753,7 @@ public sealed class NonlocalNode : AstStmtNode
             .AppendFields(("names", Names));
     }
 
-    public override void Execute(PyFrame frame)
+    public override void ExecuteStmt(PyFrame frame)
     {
     }
 }
@@ -829,7 +841,7 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda
     string[] IFunctionOrLambda.CapturedVariables { get; set; } = null!;
     string[] IFunctionOrLambda.LocalVariables { get; set; } = null!;
 
-    public override void Execute(PyFrame frame)
+    public override void ExecuteStmt(PyFrame frame)
     {
         var caller = new FunctionCaller(this, frame, frame =>
         {
@@ -881,7 +893,7 @@ public sealed class ClassDefNode : AstStmtNode, IAstVariableScopeOwner
     FrozenDictionary<string, PyVariableType> IAstVariableScopeOwner.Variables { get; set; } = null!;
     private readonly FrameInfo _info;
 
-    public override void Execute(PyFrame frame)
+    public override void ExecuteStmt(PyFrame frame)
     {
         var newFrame = frame.CreateFuncCallFrame(_info);
         newFrame._variables = ((IAstVariableScopeOwner)this).Variables;

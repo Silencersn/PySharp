@@ -53,7 +53,7 @@ partial class PyEnvironment
 
             var content = FileSystem.ReadAllText(filename);
 
-            module = PyInterpreter.RunCodeWithinEnvironment(content, qualifiedName, true);
+            module = PyInterpreter.RunCodeWithinEnvironment(content, qualifiedName, true, Path.GetFullPath(filename));
             module.OnImport(this);
             Modules.Add(qualifiedName, module);
             return true;

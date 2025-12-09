@@ -7,15 +7,16 @@ namespace PySharp.AstNodes;
 
 public sealed partial class Parser
 {
-    public static ModuleNode Parse(IEnumerable<TokenInfo> tokens, PyEnvironment? environment = null)
+    public static ModuleNode Parse(string sourceName, IEnumerable<TokenInfo> tokens, PyEnvironment? environment = null)
     {
+        ArgumentNullException.ThrowIfNull(sourceName);
         ArgumentNullException.ThrowIfNull(tokens);
 
         if (environment is null)
-            return new Parser(OptimizationOptions.O0, tokens).ParseModuleNode();
+            return new Parser(sourceName, OptimizationOptions.O0, tokens).ParseModuleNode();
 
         using var context = new PyEnvironmentContext(environment);
-        var result = new Parser(environment.OptimizationOptions, tokens).ParseModuleNode();
+        var result = new Parser(sourceName, environment.OptimizationOptions, tokens).ParseModuleNode();
         return result;
     }
 
@@ -43,6 +44,7 @@ public sealed partial class Parser
         return AugOperators.Contains(type);
     }
 
+    private readonly string _sourceName;
     private readonly OptimizationOptions _options;
     private readonly TokenStream _tokenStream;
     private bool _isEnd;
@@ -76,16 +78,14 @@ public sealed partial class Parser
     [DebuggerBrowsable(DebuggerBrowsableState.Never)]
     private TokenType CurrentTokenType => CurrentToken.Type;
 
-    internal Parser(TokenStream tokenStream, OptimizationOptions? options = null)
+    internal Parser(string sourceName, TokenStream tokenStream, OptimizationOptions? options = null)
     {
         _options = options ?? OptimizationOptions.O0;
         _tokenStream = tokenStream;
         _isEnd = false;
+        _sourceName = sourceName;
     }
-    internal Parser(OptimizationOptions options, IEnumerable<TokenInfo> tokens) : this(new TokenArrayStream(tokens), options)
-    {
-    }
-    internal Parser(IEnumerable<TokenInfo> tokens) : this(OptimizationOptions.O0, tokens)
+    internal Parser(string sourceName, OptimizationOptions options, IEnumerable<TokenInfo> tokens) : this(sourceName, new TokenArrayStream(tokens), options)
     {
     }
 
@@ -124,6 +124,7 @@ public sealed partial class Parser
     {
         return new MetaInfo()
         {
+            SourceName = _sourceName,
             FirstLine = CurrentToken.Line,
             Lineno = CurrentToken.Start.Line
         };
@@ -133,7 +134,7 @@ public sealed partial class Parser
     {
         EnsureTokenTypeThenMove(TokenType.Encoding);
 
-        var module = new ModuleNode();
+        var module = new ModuleNode() { MetaInfo = CreateMetaInfo() };
 
         while (CurrentTokenType is not TokenType.EndMarker)
         {
@@ -151,6 +152,7 @@ public sealed partial class Parser
     {
         EnsureTokenTypeThenMove(TokenType.Encoding);
 
+        var metaInfo = CreateMetaInfo();
         var exprList = ParseExpressionList(StopPredicates.UntilNewLine, out var endsWithComma);
         var expr = UnwrapOrMakeTuple(exprList, endsWithComma);
 
@@ -158,11 +160,13 @@ public sealed partial class Parser
         FillUnknownVariables(CurrentScope);
         FillClosureVariables(CurrentScope);
 
-        return new ExpressionNode(expr).Reduce(_options);
+        var node = new ExpressionNode(expr) { MetaInfo = metaInfo };
+        return node.Reduce(_options);
     }
 
     public InteractiveNode ParseInteractiveNode()
     {
+        var metaInfo = CreateMetaInfo();
         _isParsingInteractiveNode = true;
         var list = ParseStatement();
         _isParsingInteractiveNode = false;
@@ -172,7 +176,8 @@ public sealed partial class Parser
         FillClosureVariables(CurrentScope);
         CurrentScope.Children.Clear();
 
-        return new InteractiveNode(list).Reduce(_options);
+        var node = new InteractiveNode(list) { MetaInfo = metaInfo };
+        return node.Reduce(_options);
     }
 
     private static void FillUnknownVariables(VariableScope scope)

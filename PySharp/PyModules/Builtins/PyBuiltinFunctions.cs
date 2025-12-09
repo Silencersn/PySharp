@@ -111,7 +111,7 @@ public static partial class PyBuiltinFunctions
         if (arguments.Args[0] is not PyStrObject str)
             return PyVirtualMachine.RaiseTypeError(null);
 
-        var parser = new Parser(Lexer.Tokenize(str.Value));
+        var parser = new Parser("<string>", PyVirtualMachine.PyEnvironment.OptimizationOptions, Lexer.Tokenize(str.Value));
         var node = parser.ParseExpressionNode();
 
         var frame = PyVirtualMachine.CurrentFrame;
@@ -128,7 +128,7 @@ public static partial class PyBuiltinFunctions
         try
         {
             var tokens = Lexer.Tokenize(str.Value);
-            node = Parser.Parse(tokens, PyVirtualMachine.PyEnvironment);
+            node = Parser.Parse("<string>", tokens, PyVirtualMachine.PyEnvironment);
         }
         catch (TokenizationException)
         {

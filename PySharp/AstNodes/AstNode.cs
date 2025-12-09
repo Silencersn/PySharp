@@ -4,7 +4,7 @@ namespace PySharp.AstNodes;
 
 public struct MetaInfo
 {
-    public string? Filename;
+    public string? SourceName;
     public string? FirstLine;
     public int Lineno;
 }

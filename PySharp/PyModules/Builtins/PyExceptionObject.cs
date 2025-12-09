@@ -19,6 +19,7 @@ public sealed class PyExceptionObject : PyObject
     public PyExceptionObject? Cause { get; internal set; }
     public string? CauseReason { get; internal set; }
     public IReadOnlyList<PyObject> Args { get; }
+    public string? Traceback { get; internal set; }
 
     public override PyObject? Repr()
     {
@@ -63,6 +64,13 @@ public sealed class PyExceptionObject : PyObject
                 .AppendLine()
                 .AppendLine(CauseReason)
                 .AppendLine();
+
+        if (Traceback is not null)
+        {
+            builder
+                .AppendLine("Traceback (most recent call last):")
+                .AppendLine(Traceback);
+        }
 
         builder.Append(PyType.Name);
         if (PySpecialMethods.TryGetStr(this, out var s))
