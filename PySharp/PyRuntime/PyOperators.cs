@@ -459,11 +459,11 @@ public static class PyOperators
 
     public static PyBoolObject Is(PyObject left, PyObject right)
     {
-        return PyBoolObject.FromBoolean(left.PyId == right.PyId);
+        return PyBoolObject.FromBoolean(ReferenceEquals(left, right));
     }
     public static PyBoolObject IsNot(PyObject left, PyObject right)
     {
-        return PyBoolObject.FromBoolean(left.PyId != right.PyId);
+        return PyBoolObject.FromBoolean(!ReferenceEquals(left, right));
     }
 
     public static PyObject? GetAttr(PyObject target, string name)
