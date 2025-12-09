@@ -570,6 +570,7 @@ partial class Parser
         EnsureKeywordThenMove("for");
         var targetList = ParseTargetList(StopPredicates.UntilKeywordIn, out var endsWithComma);
         var target = UnwrapOrMakeTuple(targetList, endsWithComma);
+        TrySetTargetLocal(target);
         EnsureKeywordThenMove("in");
         var iter = ParseExpression();
         EnsureTokenTypeThenMove(TokenType.Colon);
@@ -584,6 +585,24 @@ partial class Parser
             forNode.OrElse.AddRange(ParseSuite("else"));
         }
         return forNode;
+
+        void TrySetTargetLocal(AstExprNode node)
+        {
+            if (node is NameNode nameNode)
+            {
+                CurrentScope.TrySetLocalIfNotExistsOrUnknown(nameNode.Identifier);
+            }
+            else if (node is TupleNode tupleNode)
+            {
+                foreach (var elt in tupleNode.Elts)
+                    TrySetTargetLocal(elt);
+            }
+            else if (node is ListNode listNode)
+            {
+                foreach (var elt in listNode.Elts)
+                    TrySetTargetLocal(elt);
+            }
+        }
     }
 
     private FunctionDefNode ParseFuncDef(IEnumerable<AstExprNode> decorators)
