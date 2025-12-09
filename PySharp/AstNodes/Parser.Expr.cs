@@ -776,6 +776,7 @@ partial class Parser
     /// <returns></returns>
     private LambdaNode ParseLambdaExpr()
     {
+        var metaInfo = CreateMetaInfo();
         EnsureKeywordThenMove("lambda");
 
         AstArgumentsNode args;
@@ -793,6 +794,7 @@ partial class Parser
         StartParsingLambda();
         lambdaNode.Body = ParseExpression();
         EndParsingLambda();
+        lambdaNode.MetaInfo = metaInfo;
         return lambdaNode;
 
         void StartParsingLambda()

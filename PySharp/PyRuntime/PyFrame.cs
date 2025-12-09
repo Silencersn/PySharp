@@ -9,10 +9,12 @@ namespace PySharp.PyRuntime;
 
 public sealed class FrameInfo
 {
+    public MetaInfo MetaInfo { get; }
     public string Name { get; }
 
-    public FrameInfo(string name)
+    public FrameInfo(MetaInfo metaInfo, string name)
     {
+        MetaInfo = metaInfo;
         Name = name;
     }
 }
@@ -27,7 +29,7 @@ public sealed class PyFrame
         Back = back;
         Globals = [];
         _locals = Globals!;
-        Info = new FrameInfo("<module>");
+        Info = new FrameInfo(default, "<module>");
     }
     private PyFrame(PyFrame back, Dictionary<string, PyObject> globals, Dictionary<string, PyObject?>? locals, Dictionary<string, PyCellObject>? closure, FrameInfo? info)
     {

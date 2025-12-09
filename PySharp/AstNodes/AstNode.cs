@@ -2,8 +2,17 @@
 
 namespace PySharp.AstNodes;
 
+public struct MetaInfo
+{
+    public string? Filename;
+    public string? FirstLine;
+    public int Lineno;
+}
+
 public abstract partial class AstNode
 {
+    public MetaInfo MetaInfo { get; internal set; }
+
     public virtual void Execute(PyFrame frame)
     {
         throw new NotSupportedException();

@@ -120,6 +120,14 @@ public sealed partial class Parser
         EnsureTokenType(type);
         MoveNextToken();
     }
+    private MetaInfo CreateMetaInfo()
+    {
+        return new MetaInfo()
+        {
+            FirstLine = CurrentToken.Line,
+            Lineno = CurrentToken.Start.Line
+        };
+    }
 
     public ModuleNode ParseModuleNode()
     {

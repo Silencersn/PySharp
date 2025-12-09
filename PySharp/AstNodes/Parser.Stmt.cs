@@ -570,17 +570,20 @@ partial class Parser
 
     private FunctionDefNode ParseFuncDef(IEnumerable<AstExprNode> decorators)
     {
+        var metaInfo = CreateMetaInfo();
         EnsureKeywordThenMove("def");
         var name = ParseIdentifier();
         EnsureTokenTypeThenMove(TokenType.LeftParen);
         var args = CurrentTokenType is TokenType.RightParen ? new() : ParseParameterList(StopPredicates.UntilRightParen);
         EnsureTokenTypeThenMove(TokenType.RightParen);
         EnsureTokenTypeThenMove(TokenType.Colon);
+
         var funcDef = new FunctionDefNode(name, args);
         funcDef.DecoratorList.AddRange(decorators);
         StartParsingFuncDef();
         funcDef.Body.AddRange(ParseSuite("def"));
         EndParsingFuncDef();
+        funcDef.MetaInfo = metaInfo;
         return funcDef;
 
         void StartParsingFuncDef()
@@ -599,6 +602,7 @@ partial class Parser
 
     private ClassDefNode ParseClassDef(IEnumerable<AstExprNode> decorators)
     {
+        var metaInfo = CreateMetaInfo();
         EnsureKeywordThenMove("class");
         var name = ParseIdentifier();
         var args = new List<AstExprNode>();
@@ -613,7 +617,7 @@ partial class Parser
 
         EnsureTokenTypeThenMove(TokenType.Colon);
 
-        var classDefNode = new ClassDefNode(name);
+        var classDefNode = new ClassDefNode(metaInfo, name);
         classDefNode.Bases.AddRange(args);
         classDefNode.Keywords.AddRange(kwargs);
         classDefNode.DecoratorList.AddRange(decorators);

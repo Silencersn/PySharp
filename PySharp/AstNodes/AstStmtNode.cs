@@ -848,7 +848,7 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda
         });
         var func = new PyFunctionObject(Identifier, caller.Call, frame.IntenalClosure?.Values);
         caller._func = func;
-        caller._info = new FrameInfo(func.Name);
+        caller._info = new FrameInfo(MetaInfo, func.Name);
 
         frame.SetValue(Identifier, AstUtils.ApplyDeractors(func, DecoratorList, frame));
     }
@@ -866,10 +866,11 @@ public sealed class ClassDefNode : AstStmtNode, IAstVariableScopeOwner
 {
     public new string Name { get; }
 
-    internal ClassDefNode(string name)
+    internal ClassDefNode(MetaInfo metaInfo, string name)
     {
+        MetaInfo = metaInfo;
         Name = name;
-        _info = new FrameInfo(name);
+        _info = new FrameInfo(metaInfo, name);
     }
 
     public List<AstExprNode> Bases { get; } = [];
