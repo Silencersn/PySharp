@@ -75,17 +75,16 @@ public partial class PyObject : IEquatable<PyObject>
 
     private static int _pyNextId = 0;
 
-    private readonly int _pyId;
+    private int? _pyId;
     internal ConcurrentDictionary<string, PyObject>? _pyMembers;
 
     public virtual PyTypeObject PyType => PyBuiltinTypes.Object;
-    public int PyId => _pyId;
+    public int PyId => _pyId ??= Interlocked.Increment(ref _pyNextId);
 
     internal IDictionary<string, PyObject> PyAttributes => _pyMembers ??= [];
 
     public PyObject()
     {
-        _pyId = Interlocked.Increment(ref _pyNextId);
     }
 
     internal static bool PyObjectHasAttribute(PyObject pyObj, string name)
