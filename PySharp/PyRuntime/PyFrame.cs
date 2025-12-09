@@ -2,6 +2,7 @@
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime.Calls;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.Diagnostics.CodeAnalysis;
 
@@ -24,7 +25,7 @@ public sealed class FrameInfo
 public sealed class PyFrame
 {
     private Dictionary<string, PyCellObject>? _closure = null;
-    private Dictionary<string, PyObject?>? _locals = null;
+    private IDictionary<string, PyObject?>? _locals = null;
 
     private PyFrame(PyFrame? back)
     {
@@ -33,14 +34,14 @@ public sealed class PyFrame
         _locals = Globals!;
         Info = new FrameInfo(default, "<module>");
     }
-    private PyFrame(Dictionary<string, PyObject> globals)
+    private PyFrame(ConcurrentDictionary<string, PyObject> globals)
     {
         Back = null;
         Globals = globals;
         _locals = null;
         Info = new FrameInfo(default, $"<thread-{Environment.CurrentManagedThreadId}>");
     }
-    private PyFrame(PyFrame back, Dictionary<string, PyObject> globals, Dictionary<string, PyObject?>? locals, Dictionary<string, PyCellObject>? closure, FrameInfo info)
+    private PyFrame(PyFrame back, ConcurrentDictionary<string, PyObject> globals, Dictionary<string, PyObject?>? locals, Dictionary<string, PyCellObject>? closure, FrameInfo info)
     {
         Back = back;
         Globals = globals;
@@ -52,8 +53,8 @@ public sealed class PyFrame
     public PyFrame? Back { get; }
     [MemberNotNullWhen(false, nameof(Back))]
     public bool IsRoot => Back is null;
-    public Dictionary<string, PyObject> Globals { get; }
-    public Dictionary<string, PyObject?> Locals => _locals ??= [];
+    public ConcurrentDictionary<string, PyObject> Globals { get; }
+    public IDictionary<string, PyObject?> Locals => _locals ??= new Dictionary<string, PyObject?>();
     public Dictionary<string, PyCellObject> Closures => _closure ??= [];
     internal Dictionary<string, PyCellObject>? IntenalClosure => _closure;
     public Stack<PyExceptionObject> Exceptions => field ??= [];
@@ -254,10 +255,10 @@ public sealed class PyFrame
 
     internal sealed class DictAdapter : IDictionary<PyObject, PyObject>
     {
-        private readonly Dictionary<string, PyObject?> _origDict;
+        private readonly IDictionary<string, PyObject?> _origDict;
         private readonly Dictionary<PyObject, PyObject> _extraDict;
 
-        public DictAdapter(Dictionary<string, PyObject?> dict)
+        public DictAdapter(IDictionary<string, PyObject?> dict)
         {
             _origDict = dict;
             _extraDict = [];
