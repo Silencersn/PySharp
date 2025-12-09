@@ -31,6 +31,23 @@ public partial class PyThreadObject : PyObject
         PyStart();
         return PyNoneObject.None;
     }
+
+    [PyFunctionArgsDef("timeout=None")]
+    internal PyObject? JoinImpl(PyArguments arguments)
+    {
+        if (!PyInteropService.TryGetFloat(arguments[0], out var timeout))
+            return null;
+
+        timeout = Math.Max(timeout, 0);
+        PyJoin(timeout);
+        return PyNoneObject.None;
+    }
+
+    [PyFunctionArgsDef()]
+    internal PyBoolObject IsAliveImpl(PyArguments arguments)
+    {
+        return PyBoolObject.FromBoolean(PyIsAlive());
+    }
 }
 
 public sealed class PyThreadObjectType : PyPrimitiveTypeObject<PyThreadObjectType, PyThreadObject>
@@ -42,6 +59,8 @@ public sealed class PyThreadObjectType : PyPrimitiveTypeObject<PyThreadObjectTyp
     public PyThreadObjectType()
     {
         AppendMethodDescriptor<PyThreadObject>("start", nameof(PyThreadObject.StartImpl));
+        AppendMethodDescriptor<PyThreadObject>("join", nameof(PyThreadObject.JoinImpl));
+        AppendMethodDescriptor<PyThreadObject>("is_alive", nameof(PyThreadObject.IsAliveImpl));
     }
 
     [PyFunctionArgsDef("group=None", "target=None", "name=None", "args=()", "kwargs={}", "*", "daemon=None", "context=None")]
