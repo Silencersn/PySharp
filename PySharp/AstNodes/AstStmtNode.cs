@@ -21,12 +21,19 @@ public abstract class AstStmtNode : AstNode
 
     public sealed override void Execute(PyFrame frame)
     {
-        if (MetaInfo.Lineno is not 0)
+        try
         {
-            frame.Info.Lineno = MetaInfo.Lineno;
-            frame.Info.CurrentLine = MetaInfo.FirstLine;
+            ExecuteStmt(frame);
         }
-        ExecuteStmt(frame);
+        catch
+        {
+            if (MetaInfo.Lineno is not 0)
+            {
+                frame.Info.Lineno = MetaInfo.Lineno;
+                frame.Info.CurrentLine = MetaInfo.FirstLine;
+            }
+            throw;
+        }
     }
 
     public abstract void ExecuteStmt(PyFrame frame);
@@ -553,6 +560,7 @@ public class TryNode : AstStmtNode
         }
         catch (PyRuntimeException e)
         {
+            e.PyException.WithTraceback();
             while (PyVirtualMachine.CurrentFrame != frame)
                 PyVirtualMachine.ExitFrame();
 
