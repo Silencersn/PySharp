@@ -16,17 +16,15 @@ partial class PyThreadObject : PyObject
             throw new InvalidOperationException();
 
         var backFrame = PyVirtualMachine.CurrentFrame;
+        
         _thread = new Thread(() =>
         {
-            Task.Run(() =>
-            {
-                var frame = backFrame.CreateThreadRootFrame();
-                PyVirtualMachine.EnterFrame(frame);
-                frame.Info.MetaInfo = backFrame.Info.MetaInfo;
-                PyInterpreter.PyTryCatch(PyRun);
-                PyVirtualMachine.ExitFrame();
-                Debug.Assert(PyVirtualMachine.CurrentFrame.IsRoot);
-            }, PyVirtualMachine.PyEnvironment.CancellationTokenSource.Token).Wait();
+            var frame = backFrame.CreateThreadRootFrame();
+            PyVirtualMachine.EnterFrame(frame);
+            frame.Info.MetaInfo = backFrame.Info.MetaInfo;
+            PyInterpreter.PyTryCatch(PyRun);
+            Debug.Assert(PyVirtualMachine.CurrentFrame.IsRoot);
+            // no need to PyVirtualMachine.ExitFrame()
         });
         PyVirtualMachine.PyEnvironment.Threads.Add(_thread);
         _thread.Start();

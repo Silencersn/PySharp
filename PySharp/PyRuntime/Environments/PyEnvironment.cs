@@ -80,7 +80,6 @@ public sealed partial class PyEnvironment
     internal TextWriter Error { get; }
     internal Dictionary<string, PyModuleObject?> Modules { get; } = [];
     internal HashSet<Thread> Threads { get; } = [];
-    internal CancellationTokenSource CancellationTokenSource { get; } = new();
 
     private readonly ThreadLocal<PyFrame> _currentFrameThreadLocal = new();
     internal PyFrame CurrentFrame
@@ -101,7 +100,8 @@ public sealed partial class PyEnvironment
         var args = new PyExitEventArgs(ExitCode, CurrentError);
         Exit?.Invoke(args);
 
-        CancellationTokenSource.Cancel();
+        foreach (var thread in Threads)
+            thread.Interrupt();
         foreach (var thread in Threads)
             thread.Join();
     }
