@@ -35,7 +35,10 @@ public static class PyInterpreter
                     else if (PyVirtualMachine.PyEnvironment.ExitCode is 0)
                     {
                         PyVirtualMachine.PyEnvironment.ExitCode = 1;
+                        var color = Console.ForegroundColor;
+                        Console.ForegroundColor = ConsoleColor.Red;
                         PyVirtualMachine.Error.WriteLine(PyVirtualMachine.CurrentException.ToMessage());
+                        Console.ForegroundColor = color;
                     }
                     break;
                 }
@@ -92,7 +95,6 @@ public static class PyInterpreter
     {
         var tokens = Tokenize(code);
         var node = Parser.Parse(sourceName, tokens, PyVirtualMachine.PyEnvironment);
-        PyVirtualMachine.PyEnvironment.CurrentFrame.Info.MetaInfo = node.MetaInfo;
         return PyVirtualMachine.Execute(node, moduleName, newFrame);
     }
 
@@ -128,17 +130,11 @@ public static class PyInterpreter
                 continue;
             }
 
-            try
+            PyTryCatch(() =>
             {
                 node.Execute(PyVirtualMachine.CurrentFrame);
                 Debug.Assert(PyVirtualMachine.CurrentFrame.IsRoot);
-            }
-            catch (PyRuntimeException e)
-            {
-                if (e.PyException.PyType == PyStandardExceptionTypes.SystemExit)
-                    return;
-                environment.Error.WriteLine(e.Message);
-            }
+            });
         }
     }
 }

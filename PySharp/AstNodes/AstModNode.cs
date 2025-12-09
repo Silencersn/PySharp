@@ -18,6 +18,7 @@ public class ModuleNode : AstModNode
 
     public override void Execute(PyFrame frame)
     {
+        frame.Info.MetaInfo = MetaInfo;
         foreach (var stmt in Body)
         {
             stmt.Execute(frame);
@@ -80,6 +81,7 @@ public class InteractiveNode : AstModNode
 
     public override void Execute(PyFrame frame)
     {
+        frame.Info.MetaInfo = MetaInfo;
         foreach (var stmt in Body)
         {
             stmt.Execute(frame);
