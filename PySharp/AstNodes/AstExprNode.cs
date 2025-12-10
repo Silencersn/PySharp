@@ -12,6 +12,9 @@ public abstract class AstExprNode : AstNode, IAstNodeLocation
 {
     public PyObject GetExprValue(PyFrame frame)
     {
+        if (this is IAstExprNodeWithoutMetaInfo)
+            return ExecuteExpr(frame);
+
         var previousProvider = frame.ExprMetaInfoProvider;
         frame.ExprMetaInfoProvider = this;
         var value = ExecuteExpr(frame);
@@ -33,6 +36,8 @@ internal interface IAstExprNodeBool
 {
     public (bool Result, PyObject Value) GetExprValueWithResult(PyFrame frame);
 }
+
+internal interface IAstExprNodeWithoutMetaInfo;
 
 public enum ExprContext
 {
@@ -85,7 +90,7 @@ public sealed class NameNode : AstExprNode, IExprContextNode, ITargetNode
     }
 }
 
-public sealed class ConstantNode : AstExprNode
+public sealed class ConstantNode : AstExprNode, IAstExprNodeWithoutMetaInfo
 {
     internal ConstantNode(PyObject value)
     {
@@ -346,7 +351,7 @@ public sealed class CallNode : AstExprNode
     }
 }
 
-public sealed class ListNode : AstExprNode, IExprContextNode
+public sealed class ListNode : AstExprNode, IExprContextNode, IAstExprNodeWithoutMetaInfo
 {
     internal ListNode(ImmutableArray<AstExprNode> elts)
     {
@@ -391,7 +396,7 @@ public sealed class ListNode : AstExprNode, IExprContextNode
     }
 }
 
-public sealed class TupleNode : AstExprNode, IExprContextNode
+public sealed class TupleNode : AstExprNode, IExprContextNode, IAstExprNodeWithoutMetaInfo
 {
     internal TupleNode(ImmutableArray<AstExprNode> elts)
     {
@@ -436,7 +441,7 @@ public sealed class TupleNode : AstExprNode, IExprContextNode
     }
 }
 
-public sealed class DictNode : AstExprNode
+public sealed class DictNode : AstExprNode, IAstExprNodeWithoutMetaInfo
 {
     internal DictNode(ImmutableArray<AstExprNode> keys, ImmutableArray<AstExprNode> values)
     {
@@ -491,7 +496,7 @@ public sealed class DictNode : AstExprNode
     }
 }
 
-public sealed class SetNode : AstExprNode
+public sealed class SetNode : AstExprNode, IAstExprNodeWithoutMetaInfo
 {
     internal SetNode(ImmutableArray<AstExprNode> elts)
     {
@@ -757,7 +762,7 @@ public sealed class CompareNode : AstExprNode, IAstExprNodeBool
     }
 }
 
-public sealed class IfExpNode : AstExprNode
+public sealed class IfExpNode : AstExprNode, IAstExprNodeWithoutMetaInfo
 {
     internal IfExpNode(AstExprNode test, AstExprNode body, AstExprNode orElse)
     {
@@ -786,7 +791,7 @@ public sealed class IfExpNode : AstExprNode
     }
 }
 
-public sealed class ListCompNode : AstExprNode
+public sealed class ListCompNode : AstExprNode, IAstExprNodeWithoutMetaInfo
 {
     internal ListCompNode(AstExprNode elt, ImmutableArray<AstComprehensionNode> generators)
     {
@@ -843,7 +848,7 @@ public sealed class ListCompNode : AstExprNode
     }
 }
 
-public sealed class SetCompNode : AstExprNode
+public sealed class SetCompNode : AstExprNode, IAstExprNodeWithoutMetaInfo
 {
     internal SetCompNode(AstExprNode elt, ImmutableArray<AstComprehensionNode> generators)
     {
@@ -900,7 +905,7 @@ public sealed class SetCompNode : AstExprNode
     }
 }
 
-public sealed class DictCompNode : AstExprNode
+public sealed class DictCompNode : AstExprNode, IAstExprNodeWithoutMetaInfo
 {
     internal DictCompNode(AstExprNode key, AstExprNode value, ImmutableArray<AstComprehensionNode> generators)
     {
@@ -961,7 +966,7 @@ public sealed class DictCompNode : AstExprNode
 
 }
 
-public sealed class GeneratorExpNode : AstExprNode
+public sealed class GeneratorExpNode : AstExprNode, IAstExprNodeWithoutMetaInfo
 {
     internal GeneratorExpNode(AstExprNode elt, ImmutableArray<AstComprehensionNode> generators)
     {
@@ -1049,7 +1054,7 @@ public sealed class LambdaNode : AstExprNode, IFunctionOrLambda
     }
 }
 
-public sealed class JoinedStrNode : AstExprNode
+public sealed class JoinedStrNode : AstExprNode, IAstExprNodeWithoutMetaInfo
 {
     internal JoinedStrNode(ImmutableArray<AstExprNode> values)
     {
