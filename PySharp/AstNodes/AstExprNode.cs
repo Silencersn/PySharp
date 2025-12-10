@@ -228,7 +228,7 @@ public sealed class SubscriptNode : AstExprNode, IExprContextNode, ITargetNode
     }
 }
 
-public sealed class SliceNode : AstExprNode
+public sealed class SliceNode : AstExprNode, IAstExprNodeWithoutMetaInfo
 {
     internal SliceNode(AstExprNode? lower, AstExprNode? upper, AstExprNode? step)
     {

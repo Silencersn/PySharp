@@ -376,6 +376,7 @@ partial class Parser
     /// <exception cref="AstException"></exception>
     private AstExprNode ParsePrimary()
     {
+        var metaInfo = CreateMetaInfo();
         var expr = ParseAtom();
         while (CurrentTokenType is TokenType.LeftSquareBracket or TokenType.LeftParen or TokenType.Dot)
         {
@@ -390,7 +391,7 @@ partial class Parser
                     // lst[*expr1, expr2 := expr3]
 
                     var list = ParseFlexibleExpressionList(StopPredicates.UntilRightSquareBracket, out var endsWithComma);
-                    expr = AstNode.Subscript(expr, UnwrapOrMakeTuple(list, endsWithComma));
+                    expr = AstNode.Subscript(expr, UnwrapOrMakeTuple(list, endsWithComma), CopyThenSetMetaInfoEnd(metaInfo));
                 }
                 catch (AstException)
                 {
@@ -399,7 +400,7 @@ partial class Parser
 
                     TokenStreamPosition = index;
                     var sliceList = ParseSliceList(out var endsWithComma);
-                    expr = AstNode.Subscript(expr, UnwrapOrMakeTuple(sliceList, endsWithComma));
+                    expr = AstNode.Subscript(expr, UnwrapOrMakeTuple(sliceList, endsWithComma), CopyThenSetMetaInfoEnd(metaInfo));
                 }
                 EnsureTokenTypeThenMove(TokenType.RightSquareBracket);
             }
@@ -413,7 +414,7 @@ partial class Parser
                     // primary "(" argument_list ")"
 
                     var (args, kwargs) = ParseArgumentList();
-                    expr = AstNode.Call(expr, args, kwargs);
+                    expr = AstNode.Call(expr, args, kwargs, CopyThenSetMetaInfoEnd(metaInfo));
                 }
                 catch (AstException)
                 {
@@ -421,7 +422,7 @@ partial class Parser
 
                     TokenStreamPosition = index;
                     var (elts, generators) = ParseComprehension();
-                    expr = AstNode.Call(expr, [AstNode.GeneratorExp(elts, generators)], []);
+                    expr = AstNode.Call(expr, [AstNode.GeneratorExp(elts, generators)], [], CopyThenSetMetaInfoEnd(metaInfo));
                 }
                 EnsureTokenTypeThenMove(TokenType.RightParen);
             }
@@ -430,7 +431,7 @@ partial class Parser
                 // primary.attr
 
                 MoveNextToken();
-                expr = AstNode.Attribute(expr, ParseIdentifier());
+                expr = AstNode.Attribute(expr, ParseIdentifier(), CopyThenSetMetaInfoEnd(metaInfo));
             }
             else
             {

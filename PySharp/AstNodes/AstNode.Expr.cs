@@ -40,20 +40,20 @@ partial class AstNode
         return Constant(PyFloatObject.FromDouble(value));
     }
 
-    public static AttributeNode Attribute(AstExprNode value, string attr)
+    public static AttributeNode Attribute(AstExprNode value, string attr, MetaInfo? metaInfo)
     {
         ArgumentNullException.ThrowIfNull(value);
         ArgumentNullException.ThrowIfNull(attr);
 
-        return new AttributeNode(value, attr);
+        return new AttributeNode(value, attr) { MetaInfo = metaInfo };
     }
 
-    public static SubscriptNode Subscript(AstExprNode value, AstExprNode slice)
+    public static SubscriptNode Subscript(AstExprNode value, AstExprNode slice, MetaInfo? metaInfo)
     {
         ArgumentNullException.ThrowIfNull(value);
         ArgumentNullException.ThrowIfNull(slice);
 
-        return new SubscriptNode(value, slice);
+        return new SubscriptNode(value, slice) { MetaInfo = metaInfo };
     }
 
     public static SliceNode Slice(AstExprNode? lower, AstExprNode? upper, AstExprNode? step)
@@ -61,13 +61,13 @@ partial class AstNode
         return new SliceNode(lower, upper, step);
     }
 
-    public static CallNode Call(AstExprNode func, IEnumerable<AstExprNode> args, IEnumerable<AstKeywordNode> keywords)
+    public static CallNode Call(AstExprNode func, IEnumerable<AstExprNode> args, IEnumerable<AstKeywordNode> keywords, MetaInfo? metaInfo)
     {
         ArgumentNullException.ThrowIfNull(func);
         ArgumentNullException.ThrowIfNull(args);
         ArgumentNullException.ThrowIfNull(keywords);
 
-        return new CallNode(func, [.. args], [.. keywords]);
+        return new CallNode(func, [.. args], [.. keywords]) { MetaInfo = metaInfo };
     }
 
     public static ListNode List(params IEnumerable<AstExprNode> elts)

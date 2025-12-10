@@ -145,6 +145,16 @@ public sealed partial class Parser
     {
         metaInfo.End = CurrentToken.End;
     }
+    private MetaInfo CopyThenSetMetaInfoEnd(MetaInfo metaInfo)
+    {
+        return new MetaInfo
+        {
+            SourceName = metaInfo.SourceName,
+            FirstLine = metaInfo.FirstLine,
+            Start = metaInfo.Start,
+            End = CurrentToken.End,
+        };
+    }
 
     public ModuleNode ParseModuleNode()
     {

@@ -1,6 +1,7 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Metadata;
 using System;
+using System.Diagnostics;
 using System.Text;
 
 namespace PySharp.PyModules.Builtins;
@@ -54,8 +55,10 @@ public sealed class PyExceptionObject : PyObject
                     var end = info.End.Line == info.Start.Line
                         ? info.End.Offset + offset
                         : line.Length;
+                    Debug.Assert(end > start);
 
-                    stack.Push($"    {new string(' ', start)}{new string('^', end - start)}");
+                    if (end - start < line.Length)
+                        stack.Push($"    {new string(' ', start)}{new string('^', end - start)}");
                     stack.Push($"    {line}");
                 }
                 stack.Push($"  File \"{info.SourceName ?? "<unknown>"}\", line {info.Start.Line}, in {frame.CallerName}");
