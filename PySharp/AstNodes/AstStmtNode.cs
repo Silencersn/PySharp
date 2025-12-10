@@ -22,7 +22,7 @@ public abstract class AstStmtNode : AstNode
 
     public sealed override void Execute(PyFrame frame)
     {
-        frame.MetaInfoProvider = this;
+        frame.StmtMetaInfoProvider = this;
         ExecuteStmt(frame);
     }
 

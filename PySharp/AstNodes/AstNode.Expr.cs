@@ -1,13 +1,14 @@
 ﻿using PySharp.PyModules.Builtins;
+using PySharp.PyRuntime.Metadata;
 using System.Numerics;
 
 namespace PySharp.AstNodes;
 
 partial class AstNode
 {
-    public static NameNode Name(string name)
+    public static NameNode Name(string name, MetaInfo? metaInfo)
     {
-        return new NameNode(name);
+        return new NameNode(name) { MetaInfo = metaInfo };
     }
 
     public static ConstantNode Constant(PyObject value)

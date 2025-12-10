@@ -1,5 +1,6 @@
 ﻿using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
+using PySharp.PyRuntime.Metadata;
 using PySharp.Tokenization;
 using System.Diagnostics;
 using System.Linq.Expressions;
@@ -28,6 +29,12 @@ partial class Parser
         var ret = CurrentToken.String;
         MoveNextToken();
         return ret;
+    }
+
+    private string ParseIdentifier(out MetaInfo metaInfo)
+    {
+        metaInfo = CreateMetaInfo();
+        return ParseIdentifier();
     }
 
     /// <summary>
@@ -129,7 +136,7 @@ partial class Parser
             {
                 // identifier
 
-                var nameNode = AstNode.Name(ParseIdentifier());
+                var nameNode = AstNode.Name(ParseIdentifier(out var metaInfo), metaInfo);
                 CurrentScope.TryAddUnknown(nameNode.Identifier);
                 CurrentScope.Track(nameNode);
                 return nameNode;

@@ -1,4 +1,6 @@
 ﻿using PySharp.PyRuntime;
+using PySharp.PyRuntime.Metadata;
+using System;
 using System.Text;
 
 namespace PySharp.PyModules.Builtins;
@@ -33,8 +35,32 @@ public sealed class PyExceptionObject : PyObject
         var frame = PyVirtualMachine.CurrentFrame;
         while (frame is not null)
         {
-            var info = frame.MetaInfoProvider?.MetaInfo;
-            if (info is not null)
+            MetaInfo? info;
+            if ((info = frame.ExprMetaInfoProvider?.MetaInfo) is not null)
+            {
+                if (info.FirstLine is not null)
+                {
+                    // actually, info.FirstLine may be multiline
+                    var lines = info.FirstLine.EnumerateLines();
+
+                    // first MoveNext must be true
+                    lines.MoveNext();
+
+                    var line = lines.Current;
+                    var preLength = line.Length;
+                    line = line.TrimStart();
+                    var offset = line.Length - preLength;
+                    var start = info.Start.Offset + offset;
+                    var end = info.End.Line == info.Start.Line
+                        ? info.End.Offset + offset
+                        : line.Length;
+
+                    stack.Push($"    {new string(' ', start)}{new string('^', end - start)}");
+                    stack.Push($"    {line}");
+                }
+                stack.Push($"  File \"{info.SourceName ?? "<unknown>"}\", line {info.Start.Line}, in {frame.CallerName}");
+            }
+            else if ((info = frame.StmtMetaInfoProvider?.MetaInfo) is not null)
             {
                 if (info.FirstLine is not null)
                     stack.Push($"    {info.FirstLine.Trim().TrimEnd('\r', '\n')}");

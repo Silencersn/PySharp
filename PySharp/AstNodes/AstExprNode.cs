@@ -10,7 +10,14 @@ namespace PySharp.AstNodes;
 
 public abstract class AstExprNode : AstNode, IAstNodeLocation
 {
-    public abstract PyObject GetExprValue(PyFrame frame);
+    public PyObject GetExprValue(PyFrame frame)
+    {
+        var previousProvider = frame.ExprMetaInfoProvider;
+        frame.ExprMetaInfoProvider = this;
+        var value = ExecuteExpr(frame);
+        frame.ExprMetaInfoProvider = previousProvider;
+        return value;
+    }
     public override AstExprNode Reduce(OptimizationOptions options)
     {
         return this;
@@ -19,6 +26,7 @@ public abstract class AstExprNode : AstNode, IAstNodeLocation
     {
         return null;
     }
+    public abstract PyObject ExecuteExpr(PyFrame frame);
 }
 
 internal interface IAstExprNodeBool
@@ -55,7 +63,7 @@ public sealed class NameNode : AstExprNode, IExprContextNode, ITargetNode
     public string Identifier { get; }
     public ExprContext Ctx { get; set; }
 
-    public override PyObject GetExprValue(PyFrame frame)
+    public override PyObject ExecuteExpr(PyFrame frame)
     {
         return frame.GetValue(Identifier);
     }
@@ -86,7 +94,7 @@ public sealed class ConstantNode : AstExprNode
 
     public PyObject Value { get; }
 
-    public override PyObject GetExprValue(PyFrame frame)
+    public override PyObject ExecuteExpr(PyFrame frame)
     {
         return Value;
     }
@@ -119,7 +127,7 @@ public sealed class AttributeNode : AstExprNode, IExprContextNode, ITargetNode
     public string Identifier { get; }
     public ExprContext Ctx { get; set; }
 
-    public override PyObject GetExprValue(PyFrame frame)
+    public override PyObject ExecuteExpr(PyFrame frame)
     {
         var value = Value.GetExprValue(frame);
         var attr = PyOperators.GetAttr(value, Identifier);
@@ -164,7 +172,7 @@ public sealed class SubscriptNode : AstExprNode, IExprContextNode, ITargetNode
     public new AstExprNode Slice { get; }
     public ExprContext Ctx { get; set; }
 
-    public override PyObject GetExprValue(PyFrame frame)
+    public override PyObject ExecuteExpr(PyFrame frame)
     {
         return GetItem(frame);
     }
@@ -228,7 +236,7 @@ public sealed class SliceNode : AstExprNode
     public AstExprNode? Upper { get; }
     public AstExprNode? Step { get; }
 
-    public override PyObject GetExprValue(PyFrame frame)
+    public override PyObject ExecuteExpr(PyFrame frame)
     {
         return new PySliceObject(
             Lower?.GetExprValue(frame) ?? PyNoneObject.None,
@@ -286,7 +294,7 @@ public sealed class CallNode : AstExprNode
     public ImmutableArray<AstExprNode> Args { get; }
     public ImmutableArray<AstKeywordNode> Keywords { get; }
 
-    public override PyObject GetExprValue(PyFrame frame)
+    public override PyObject ExecuteExpr(PyFrame frame)
     {
         var func = Func.GetExprValue(frame).PyThrowIfNull();
 
@@ -348,7 +356,7 @@ public sealed class ListNode : AstExprNode, IExprContextNode
     public ImmutableArray<AstExprNode> Elts { get; }
     public ExprContext Ctx { get; set; }
 
-    public override PyListObject GetExprValue(PyFrame frame)
+    public override PyListObject ExecuteExpr(PyFrame frame)
     {
         return new PyListObject(Elts.Select(item => item.GetExprValue(frame)));
     }
@@ -393,7 +401,7 @@ public sealed class TupleNode : AstExprNode, IExprContextNode
     public ImmutableArray<AstExprNode> Elts { get; }
     public ExprContext Ctx { get; set; }
 
-    public override PyTupleObject GetExprValue(PyFrame frame)
+    public override PyTupleObject ExecuteExpr(PyFrame frame)
     {
         return PyTupleObject.CreateTuple(Elts.Select(item => item.GetExprValue(frame)));
     }
@@ -441,7 +449,7 @@ public sealed class DictNode : AstExprNode
     public ImmutableArray<AstExprNode> Keys { get; }
     public ImmutableArray<AstExprNode> Values { get; }
 
-    public override PyDictObject GetExprValue(PyFrame frame)
+    public override PyDictObject ExecuteExpr(PyFrame frame)
     {
         return new PyDictObject(
             Keys
@@ -492,7 +500,7 @@ public sealed class SetNode : AstExprNode
 
     public ImmutableArray<AstExprNode> Elts { get; }
 
-    public override PySetObject GetExprValue(PyFrame frame)
+    public override PySetObject ExecuteExpr(PyFrame frame)
     {
         return new PySetObject(Elts.Select(item => item.GetExprValue(frame)));
     }
@@ -538,7 +546,7 @@ public sealed class BoolOpNode : AstExprNode, IAstExprNodeBool
     public AstBoolOpNode Op { get; }
     public ImmutableArray<AstExprNode> Values { get; }
 
-    public override PyObject GetExprValue(PyFrame frame)
+    public override PyObject ExecuteExpr(PyFrame frame)
     {
         return GetExprValueWithResult(frame).Value;
     }
@@ -631,7 +639,7 @@ public sealed class BinOpNode : AstExprNode
     public AstExprNode Left { get; }
     public AstExprNode Right { get; }
 
-    public override PyObject GetExprValue(PyFrame frame)
+    public override PyObject ExecuteExpr(PyFrame frame)
     {
         var left = Left.GetExprValue(frame);
         var right = Right.GetExprValue(frame);
@@ -673,7 +681,7 @@ public sealed class UnaryOpNode : AstExprNode
     public AstUnaryOpNode Op { get; }
     public AstExprNode Operand { get; }
 
-    public override PyObject GetExprValue(PyFrame frame)
+    public override PyObject ExecuteExpr(PyFrame frame)
     {
         return Op.GetUnaryOpValue(Operand.GetExprValue(frame)).PyThrowIfNull();
     }
@@ -714,7 +722,7 @@ public sealed class CompareNode : AstExprNode, IAstExprNodeBool
     public ImmutableArray<AstCmpopNode> Ops { get; }
     public ImmutableArray<AstExprNode> Comparators { get; }
 
-    public override PyObject GetExprValue(PyFrame frame)
+    public override PyObject ExecuteExpr(PyFrame frame)
     {
         return GetExprValueWithResult(frame).Value;
     }
@@ -762,7 +770,7 @@ public sealed class IfExpNode : AstExprNode
     public AstExprNode Body { get; }
     public AstExprNode OrElse { get; }
 
-    public override PyObject GetExprValue(PyFrame frame)
+    public override PyObject ExecuteExpr(PyFrame frame)
     {
         if (Test.GetExprValue(frame).Bool().PyCast<PyBoolObject>().BoolValue)
             return Body.GetExprValue(frame).PyThrowIfNull();
@@ -789,7 +797,7 @@ public sealed class ListCompNode : AstExprNode
     public AstExprNode Elt { get; }
     public ImmutableArray<AstComprehensionNode> Generators { get; }
 
-    public override PyObject GetExprValue(PyFrame frame)
+    public override PyObject ExecuteExpr(PyFrame frame)
     {
         var tempFrame = frame.TempFrame();
         var list = new List<PyObject>();
@@ -846,7 +854,7 @@ public sealed class SetCompNode : AstExprNode
     public AstExprNode Elt { get; }
     public ImmutableArray<AstComprehensionNode> Generators { get; }
 
-    public override PyObject GetExprValue(PyFrame frame)
+    public override PyObject ExecuteExpr(PyFrame frame)
     {
         var tempFrame = frame.TempFrame();
         var list = new List<PyObject>();
@@ -905,7 +913,7 @@ public sealed class DictCompNode : AstExprNode
     public AstExprNode Value { get; }
     public ImmutableArray<AstComprehensionNode> Generators { get; }
 
-    public override PyObject GetExprValue(PyFrame frame)
+    public override PyObject ExecuteExpr(PyFrame frame)
     {
         var tempFrame = frame.TempFrame();
         var list = new List<KeyValuePair<PyObject, PyObject>>();
@@ -964,7 +972,7 @@ public sealed class GeneratorExpNode : AstExprNode
     public AstExprNode Elt { get; }
     public ImmutableArray<AstComprehensionNode> Generators { get; }
 
-    public override PyObject GetExprValue(PyFrame frame)
+    public override PyObject ExecuteExpr(PyFrame frame)
     {
         var tempFrame = frame.TempFrame();
         var list = new List<PyObject>();
@@ -1025,7 +1033,7 @@ public sealed class LambdaNode : AstExprNode, IFunctionOrLambda
     string[] IFunctionOrLambda.CapturedVariables { get; set; } = null!;
     string[] IFunctionOrLambda.LocalVariables { get; set; } = null!;
 
-    public override PyObject GetExprValue(PyFrame frame)
+    public override PyObject ExecuteExpr(PyFrame frame)
     {
         var caller = new FunctionCaller(this, frame, Body.GetExprValue);
         var func = new PyFunctionObject("<lambda>", caller.Call, frame.IntenalClosure?.Values);
@@ -1050,7 +1058,7 @@ public sealed class JoinedStrNode : AstExprNode
 
     public ImmutableArray<AstExprNode> Values { get; }
 
-    public override PyObject GetExprValue(PyFrame frame)
+    public override PyObject ExecuteExpr(PyFrame frame)
     {
         var builder = new StringBuilder();
 
