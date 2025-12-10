@@ -15,6 +15,7 @@ public static class PyInterpreter
 
     internal static void PyTryCatch(Action action)
     {
+        var frame = PyVirtualMachine.CurrentFrame;
         try
         {
             action();
@@ -42,6 +43,10 @@ public static class PyInterpreter
                         PyVirtualMachine.Error.WriteLine(PyVirtualMachine.CurrentException.ToMessage());
                         Console.ForegroundColor = color;
                     }
+
+                    while (PyVirtualMachine.CurrentFrame != frame)
+                        PyVirtualMachine.ExitFrame();
+
                     break;
                 }
 
