@@ -33,13 +33,12 @@ public sealed class PyExceptionObject : PyObject
         var frame = PyVirtualMachine.CurrentFrame;
         while (frame is not null)
         {
-            var info = frame.Info;
+            var info = frame.MetaInfoProvider?.MetaInfo;
             if (info is not null)
             {
-                var metaInfo = info.MetaInfo;
-                if (info.CurrentLine is not null)
-                    stack.Push($"    {info.CurrentLine.Trim().TrimEnd('\r', '\n')}");
-                stack.Push($"  File \"{metaInfo.SourceName ?? "<unknown>"}\", line {info.Lineno}, in {info.Name}");
+                if (info.FirstLine is not null)
+                    stack.Push($"    {info.FirstLine.Trim().TrimEnd('\r', '\n')}");
+                stack.Push($"  File \"{info.SourceName ?? "<unknown>"}\", line {info.Lineno}, in {frame.CallerName}");
             }
 
             frame = frame.Back;

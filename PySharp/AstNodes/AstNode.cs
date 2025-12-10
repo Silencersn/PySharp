@@ -1,17 +1,11 @@
 ﻿using PySharp.PyRuntime;
+using PySharp.PyRuntime.Metadata;
 
 namespace PySharp.AstNodes;
 
-public struct MetaInfo
+public abstract partial class AstNode : IMetaInfoProvider
 {
-    public string? SourceName;
-    public string? FirstLine;
-    public int Lineno;
-}
-
-public abstract partial class AstNode
-{
-    public MetaInfo MetaInfo { get; internal set; }
+    public MetaInfo? MetaInfo { get; internal set; }
 
     public virtual void Execute(PyFrame frame)
     {

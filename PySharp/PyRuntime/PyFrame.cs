@@ -1,6 +1,7 @@
 ﻿using PySharp.AstNodes;
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime.Calls;
+using PySharp.PyRuntime.Metadata;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Frozen;
@@ -8,22 +9,10 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.PyRuntime;
 
-public sealed class FrameInfo
-{
-    public MetaInfo MetaInfo { get; internal set; }
-    public string Name { get; }
-    public int Lineno { get; set; }
-    public string? CurrentLine { get; set; }
-
-    public FrameInfo(MetaInfo metaInfo, string name)
-    {
-        MetaInfo = metaInfo;
-        Name = name;
-    }
-}
-
 public sealed class PyFrame
 {
+    internal string CallerName { get; }
+    internal IMetaInfoProvider? MetaInfoProvider { get; set; }
     private Dictionary<string, PyCellObject>? _closure = null;
     private IDictionary<string, PyObject?>? _locals = null;
 
@@ -32,22 +21,22 @@ public sealed class PyFrame
         Back = back;
         Globals = [];
         _locals = Globals!;
-        Info = new FrameInfo(default, "<module>");
+        CallerName = "<module>";
     }
     private PyFrame(ConcurrentDictionary<string, PyObject> globals)
     {
         Back = null;
         Globals = globals;
         _locals = null;
-        Info = new FrameInfo(default, $"<thread-{Environment.CurrentManagedThreadId}>");
+        CallerName = $"<thread-{Environment.CurrentManagedThreadId}>";
     }
-    private PyFrame(PyFrame back, ConcurrentDictionary<string, PyObject> globals, Dictionary<string, PyObject?>? locals, Dictionary<string, PyCellObject>? closure, FrameInfo info)
+    private PyFrame(PyFrame back, ConcurrentDictionary<string, PyObject> globals, Dictionary<string, PyObject?>? locals, Dictionary<string, PyCellObject>? closure, string callerName)
     {
         Back = back;
         Globals = globals;
         _locals = locals;
         _closure = closure;
-        Info = info;
+        CallerName = callerName;
     }
 
     public PyFrame? Back { get; }
@@ -63,15 +52,14 @@ public sealed class PyFrame
     internal FrozenDictionary<string, PyVariableType>? _variables = null;
     internal DictAdapter ProxyGlobals => field ??= new DictAdapter(Globals!);
     internal DictAdapter ProxyLocals => field ??= new DictAdapter(Locals);
-    public FrameInfo Info { get; internal set; }
 
     internal static PyFrame CreateModuleFrame(PyFrame? back)
     {
         return new PyFrame(back);
     }
-    internal PyFrame CreateFuncCallFrame(FrameInfo info)
+    internal PyFrame CreateFuncCallOrClassBuildFrame(string callerName)
     {
-        return new PyFrame(this, Globals, null, null, info);
+        return new PyFrame(this, Globals, null, null, callerName);
     }
     internal PyFrame CreateThreadRootFrame()
     {
@@ -80,7 +68,7 @@ public sealed class PyFrame
 
     internal PyFrame TempFrame()
     {
-        var tempFrame = new PyFrame(this, Globals, _locals?.ToDictionary(), _closure, Info)
+        var tempFrame = new PyFrame(this, Globals, _locals?.ToDictionary(), _closure, CallerName)
         {
             _variables = _variables
         };

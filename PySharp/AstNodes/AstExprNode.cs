@@ -1030,7 +1030,6 @@ public sealed class LambdaNode : AstExprNode, IFunctionOrLambda
         var caller = new FunctionCaller(this, frame, Body.GetExprValue);
         var func = new PyFunctionObject("<lambda>", caller.Call, frame.IntenalClosure?.Values);
         caller._func = func;
-        caller._info = new FrameInfo(MetaInfo, func.Name);
         return func;
     }
 

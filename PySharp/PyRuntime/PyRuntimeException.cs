@@ -1,5 +1,4 @@
 ﻿using PySharp.PyModules.Builtins;
-using System;
 
 namespace PySharp.PyRuntime;
 
@@ -11,7 +10,6 @@ public class PyRuntimeException : Exception
     public PyRuntimeException(PyExceptionObject exception)
     {
         ArgumentNullException.ThrowIfNull(exception);
-
         _exception = exception;
     }
 

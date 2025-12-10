@@ -2,6 +2,7 @@
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
+using PySharp.PyRuntime.Metadata;
 using PySharp.Tokenization;
 using System.Collections.Frozen;
 using System.Collections.Immutable;
@@ -21,19 +22,8 @@ public abstract class AstStmtNode : AstNode
 
     public sealed override void Execute(PyFrame frame)
     {
-        try
-        {
-            ExecuteStmt(frame);
-        }
-        catch
-        {
-            if (MetaInfo.Lineno is not 0)
-            {
-                frame.Info.Lineno = MetaInfo.Lineno;
-                frame.Info.CurrentLine = MetaInfo.FirstLine;
-            }
-            throw;
-        }
+        frame.MetaInfoProvider = this;
+        ExecuteStmt(frame);
     }
 
     public abstract void ExecuteStmt(PyFrame frame);
@@ -784,7 +774,6 @@ internal sealed class FunctionCaller
     private readonly PyArgsDef _def;
     private readonly Func<PyFrame, PyObject> _getResult;
     internal PyFunctionObject _func;
-    internal FrameInfo _info;
 
     internal FunctionCaller(IFunctionOrLambda node, PyFrame frame, Func<PyFrame, PyObject> getResult)
     {
@@ -794,7 +783,6 @@ internal sealed class FunctionCaller
 
         // deferred init
         _func = null!;
-        _info = null!;
     }
 
     public PyObject? Call(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
@@ -805,7 +793,7 @@ internal sealed class FunctionCaller
     private PyObject? CallGeneral(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var backFrame = PyVirtualMachine.CurrentFrame;
-        var frame = backFrame.CreateFuncCallFrame(_info);
+        var frame = backFrame.CreateFuncCallOrClassBuildFrame(_func.Name);
         frame._variables = _node.Variables;
 
         foreach (var localVariable in _node.LocalVariables)
@@ -868,7 +856,6 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda
         });
         var func = new PyFunctionObject(Identifier, caller.Call, frame.IntenalClosure?.Values);
         caller._func = func;
-        caller._info = new FrameInfo(MetaInfo, func.Name);
 
         frame.SetValue(Identifier, AstUtils.ApplyDeractors(func, DecoratorList, frame));
     }
@@ -890,7 +877,6 @@ public sealed class ClassDefNode : AstStmtNode, IAstVariableScopeOwner
     {
         MetaInfo = metaInfo;
         Name = name;
-        _info = new FrameInfo(metaInfo, name);
     }
 
     public List<AstExprNode> Bases { get; } = [];
@@ -899,11 +885,10 @@ public sealed class ClassDefNode : AstStmtNode, IAstVariableScopeOwner
     public List<AstExprNode> DecoratorList { get; } = [];
 
     FrozenDictionary<string, PyVariableType> IAstVariableScopeOwner.Variables { get; set; } = null!;
-    private readonly FrameInfo _info;
 
     public override void ExecuteStmt(PyFrame frame)
     {
-        var newFrame = frame.CreateFuncCallFrame(_info);
+        var newFrame = frame.CreateFuncCallOrClassBuildFrame(Name);
         newFrame._variables = ((IAstVariableScopeOwner)this).Variables;
         foreach (var (name, cell) in frame.Closures)
         {

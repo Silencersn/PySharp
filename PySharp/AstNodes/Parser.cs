@@ -1,4 +1,5 @@
 ﻿using PySharp.PyRuntime.Environments;
+using PySharp.PyRuntime.Metadata;
 using PySharp.Tokenization;
 using System.Collections.Frozen;
 using System.Diagnostics;
