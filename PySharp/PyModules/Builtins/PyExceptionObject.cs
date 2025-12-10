@@ -4,6 +4,7 @@ using PySharp.Tokenization;
 using System;
 using System.Diagnostics;
 using System.Text;
+using System.Xml.Linq;
 
 namespace PySharp.PyModules.Builtins;
 
@@ -24,10 +25,24 @@ public sealed class PyExceptionObject : PyObject
     public string? CauseReason { get; internal set; }
     public IReadOnlyList<PyObject> Args { get; }
     public string? Traceback { get; internal set; }
+    internal string? ThreadTracebackInfo { get; set; }
 
     internal PyExceptionObject WithTraceback(string? traceback = null)
     {
         Traceback = traceback ?? PrintTraceback();
+        var frame = PyVirtualMachine.CurrentFrame;
+        while (frame is not null)
+        {
+            var back = frame.Back;
+            if (back is not null && back.IsThreadRoot)
+            {
+                Debug.Assert(back.IsRoot);
+                ThreadTracebackInfo = $"Exception in thread Thread-{Environment.CurrentManagedThreadId} ({frame.CallerName}):";
+                break;
+            }
+            frame = back;
+        }
+
         return this;
     }
 
@@ -136,6 +151,12 @@ public sealed class PyExceptionObject : PyObject
                 .AppendLine()
                 .AppendLine(CauseReason)
                 .AppendLine();
+
+        if (ThreadTracebackInfo is not null)
+        {
+            builder
+                .AppendLine(ThreadTracebackInfo);
+        }
 
         if (Traceback is not null)
         {

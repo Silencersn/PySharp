@@ -17,6 +17,7 @@ public sealed class PyFrame
     internal IMetaInfoProvider? StmtMetaInfoProvider { get; set; }
     private Dictionary<string, PyCellObject>? _closure = null;
     private IDictionary<string, PyObject?>? _locals = null;
+    internal bool IsThreadRoot;
 
     private PyFrame(PyFrame? back)
     {
@@ -31,6 +32,7 @@ public sealed class PyFrame
         Globals = globals;
         _locals = null;
         CallerName = $"<thread-{Environment.CurrentManagedThreadId}>";
+        IsThreadRoot = true;
     }
     private PyFrame(PyFrame back, ConcurrentDictionary<string, PyObject> globals, Dictionary<string, PyObject?>? locals, Dictionary<string, PyCellObject>? closure, string callerName)
     {
