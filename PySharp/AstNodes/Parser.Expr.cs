@@ -212,23 +212,8 @@ partial class Parser
                     if (CurrentTokenType is TokenType.RightBrace)
                         throw new AstException("f-string: valid expression required before '}'");
 
-                    List<AstExprNode> list = [ParseConditionalExpression()];
-                    var endsWithComma = false;
-                    while (CurrentTokenType is TokenType.Comma)
-                    {
-                        MoveNextToken();
-                        if (CurrentTokenType is TokenType.RightBrace)
-                        {
-                            endsWithComma = true;
-                            break;
-                        }
-                        list.Add(ParseConditionalExpression());
-                    }
-
-                    if (list.Count is 1 && !endsWithComma)
-                        values.Add(list[0]);
-                    else
-                        values.Add(AstNode.Tuple(list));
+                    var list = ParseFlexibleExpressionList(StopPredicates.UntilRightBrace, out var endsWithComma);
+                    values.Add(UnwrapOrMakeTuple(list, endsWithComma));
                 }
                 MoveNextToken();
             }
