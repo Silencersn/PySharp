@@ -1,10 +1,13 @@
-﻿namespace PySharp.PyRuntime.Metadata;
+﻿using PySharp.Tokenization;
+
+namespace PySharp.PyRuntime.Metadata;
 
 public sealed class MetaInfo
 {
     public string? SourceName;
     public string? FirstLine;
-    public int Lineno;
+    public TokenPosition Start;
+    public TokenPosition End;
 }
 
 

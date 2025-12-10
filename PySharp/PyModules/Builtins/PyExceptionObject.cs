@@ -38,7 +38,7 @@ public sealed class PyExceptionObject : PyObject
             {
                 if (info.FirstLine is not null)
                     stack.Push($"    {info.FirstLine.Trim().TrimEnd('\r', '\n')}");
-                stack.Push($"  File \"{info.SourceName ?? "<unknown>"}\", line {info.Lineno}, in {frame.CallerName}");
+                stack.Push($"  File \"{info.SourceName ?? "<unknown>"}\", line {info.Start.Line}, in {frame.CallerName}");
             }
 
             frame = frame.Back;
