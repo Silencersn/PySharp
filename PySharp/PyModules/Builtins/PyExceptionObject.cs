@@ -1,5 +1,6 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Metadata;
+using PySharp.Tokenization;
 using System;
 using System.Diagnostics;
 using System.Text;
@@ -57,8 +58,25 @@ public sealed class PyExceptionObject : PyObject
                         : line.Length;
                     Debug.Assert(end > start);
 
-                    if (end - start < line.Length)
-                        stack.Push($"    {new string(' ', start)}{new string('^', end - start)}");
+                    if (info.CrucialStart == default || info.CrucialStart.Line != info.Start.Line)
+                    {
+                        if (end - start < line.Length)
+                            stack.Push($"    {new string(' ', start)}{new string('^', end - start)}");
+                    }
+                    else
+                    {
+                        Debug.Assert(info.CrucialStart.Line == info.Start.Line);
+
+                        var crucialStart = info.CrucialStart.Offset + offset;
+                        var crucialEnd = info.CrucialEnd.Line == info.Start.Line
+                            ? info.CrucialEnd.Offset + offset
+                            : line.Length;
+                        Debug.Assert(crucialEnd > crucialStart);
+                        Debug.Assert(end >= crucialEnd);
+                        Debug.Assert(crucialStart >= start);
+
+                        stack.Push($"    {new string(' ', start)}{new string('~', crucialStart - start)}{new string('^', crucialEnd - crucialStart)}{new string('~', end - crucialEnd)}");
+                    }
                     stack.Push($"    {line}");
                 }
                 stack.Push($"  File \"{info.SourceName ?? "<unknown>"}\", line {info.Start.Line}, in {frame.CallerName}");

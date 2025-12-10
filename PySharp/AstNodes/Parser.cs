@@ -145,7 +145,24 @@ public sealed partial class Parser
     {
         metaInfo.End = CurrentToken.End;
     }
-    private MetaInfo CopyThenSetMetaInfoEnd(MetaInfo metaInfo)
+    private MetaInfo CopyThenMarkCrucial(MetaInfo metaInfo)
+    {
+        return new MetaInfo
+        {
+            SourceName = metaInfo.SourceName,
+            FirstLine = metaInfo.FirstLine,
+            Start = metaInfo.Start,
+            End = metaInfo.End,
+            CrucialStart = CurrentToken.Start,
+        };
+    }
+    private MetaInfo WithAllEnd(MetaInfo metaInfo)
+    {
+        metaInfo.End = CurrentToken.End;
+        metaInfo.CrucialEnd = CurrentToken.End;
+        return metaInfo;
+    }
+    private MetaInfo CopyThenWithEnd(MetaInfo metaInfo)
     {
         return new MetaInfo
         {

@@ -376,12 +376,13 @@ partial class Parser
     /// <exception cref="AstException"></exception>
     private AstExprNode ParsePrimary()
     {
-        var metaInfo = CreateMetaInfo();
+        var startMetaInfo = CreateMetaInfo();
         var expr = ParseAtom();
         while (CurrentTokenType is TokenType.LeftSquareBracket or TokenType.LeftParen or TokenType.Dot)
         {
             if (CurrentTokenType is TokenType.LeftSquareBracket)
             {
+                var currentMetaInfo = CopyThenMarkCrucial(startMetaInfo);
                 MoveNextToken();
 
                 var index = TokenStreamPosition;
@@ -391,7 +392,7 @@ partial class Parser
                     // lst[*expr1, expr2 := expr3]
 
                     var list = ParseFlexibleExpressionList(StopPredicates.UntilRightSquareBracket, out var endsWithComma);
-                    expr = AstNode.Subscript(expr, UnwrapOrMakeTuple(list, endsWithComma), CopyThenSetMetaInfoEnd(metaInfo));
+                    expr = AstNode.Subscript(expr, UnwrapOrMakeTuple(list, endsWithComma), WithAllEnd(currentMetaInfo));
                 }
                 catch (AstException)
                 {
@@ -400,7 +401,7 @@ partial class Parser
 
                     TokenStreamPosition = index;
                     var sliceList = ParseSliceList(out var endsWithComma);
-                    expr = AstNode.Subscript(expr, UnwrapOrMakeTuple(sliceList, endsWithComma), CopyThenSetMetaInfoEnd(metaInfo));
+                    expr = AstNode.Subscript(expr, UnwrapOrMakeTuple(sliceList, endsWithComma), WithAllEnd(currentMetaInfo));
                 }
                 EnsureTokenTypeThenMove(TokenType.RightSquareBracket);
             }
@@ -414,7 +415,7 @@ partial class Parser
                     // primary "(" argument_list ")"
 
                     var (args, kwargs) = ParseArgumentList();
-                    expr = AstNode.Call(expr, args, kwargs, CopyThenSetMetaInfoEnd(metaInfo));
+                    expr = AstNode.Call(expr, args, kwargs, CopyThenWithEnd(startMetaInfo));
                 }
                 catch (AstException)
                 {
@@ -422,7 +423,7 @@ partial class Parser
 
                     TokenStreamPosition = index;
                     var (elts, generators) = ParseComprehension();
-                    expr = AstNode.Call(expr, [AstNode.GeneratorExp(elts, generators)], [], CopyThenSetMetaInfoEnd(metaInfo));
+                    expr = AstNode.Call(expr, [AstNode.GeneratorExp(elts, generators)], [], CopyThenWithEnd(startMetaInfo));
                 }
                 EnsureTokenTypeThenMove(TokenType.RightParen);
             }
@@ -431,7 +432,7 @@ partial class Parser
                 // primary.attr
 
                 MoveNextToken();
-                expr = AstNode.Attribute(expr, ParseIdentifier(), CopyThenSetMetaInfoEnd(metaInfo));
+                expr = AstNode.Attribute(expr, ParseIdentifier(), CopyThenWithEnd(startMetaInfo));
             }
             else
             {

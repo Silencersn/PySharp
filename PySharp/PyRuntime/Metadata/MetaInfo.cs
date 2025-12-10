@@ -8,6 +8,8 @@ public sealed class MetaInfo
     public string? FirstLine;
     public TokenPosition Start;
     public TokenPosition End;
+    public TokenPosition CrucialStart;
+    public TokenPosition CrucialEnd;
 }
 
 
