@@ -33,9 +33,10 @@ public static class PyInterpreter
                     {
                         PyVirtualMachine.ClearException();
                     }
-                    else if (PyVirtualMachine.PyEnvironment.ExitCode is 0)
+                    else
                     {
-                        PyVirtualMachine.PyEnvironment.ExitCode = 1;
+                        if (PyVirtualMachine.PyEnvironment.ExitCode is 0)
+                            PyVirtualMachine.PyEnvironment.ExitCode = 1;
                         var color = Console.ForegroundColor;
                         Console.ForegroundColor = ConsoleColor.Red;
                         PyVirtualMachine.Error.WriteLine(PyVirtualMachine.CurrentException.ToMessage());
@@ -113,21 +114,18 @@ public static class PyInterpreter
 
         using var context = new PyEnvironmentContext(environment);
 
-        var tokenStream = new TokenInteractiveStream(environment.In, environment.Out);
-        var parser = new Parser("<stdin>", tokenStream, environment.OptimizationOptions);
-
         while (true)
         {
             InteractiveNode node;
             try
             {
+                var tokenStream = new TokenInteractiveStream(environment.In, environment.Out);
+                var parser = new Parser("<stdin>", tokenStream, environment.OptimizationOptions);
                 node = parser.ParseInteractiveNode();
             }
             catch (PyRuntimeException e)
             {
                 environment.Error.WriteLine(e.Message);
-                tokenStream = new TokenInteractiveStream(environment.In, environment.Out);
-                parser = new Parser("<stdin>", tokenStream, environment.OptimizationOptions);
                 continue;
             }
 
