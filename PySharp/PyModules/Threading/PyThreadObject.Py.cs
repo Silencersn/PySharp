@@ -19,7 +19,14 @@ partial class PyThreadObject : PyObject
             var frame = backFrame.CreateThreadRootFrame();
             PyVirtualMachine.EnterFrame(frame);
             frame.StmtMetaInfoProvider = backFrame.StmtMetaInfoProvider;
-            PyInterpreter.PyTryCatch(PyRun);
+            try
+            {
+                PyInterpreter.PyTryCatch(PyRun);
+            }
+            catch (ThreadInterruptedException)
+            {
+
+            }
             Debug.Assert(PyVirtualMachine.CurrentFrame.IsRoot);
             // no need to PyVirtualMachine.ExitFrame()
             Debug.Assert(_thread is not null);

@@ -79,7 +79,7 @@ public sealed partial class PyEnvironment
     internal TextWriter Out { get; }
     internal TextWriter Error { get; }
     internal Dictionary<string, PyModuleObject?> Modules { get; } = [];
-    internal HashSet<Thread> Threads { get; } = [];
+    internal ConcurrentSet<Thread> Threads { get; } = [];
 
     private readonly ThreadLocal<PyFrame> _currentFrameThreadLocal = new();
     internal PyFrame CurrentFrame
@@ -101,6 +101,11 @@ public sealed partial class PyEnvironment
         Exit?.Invoke(args);
 
         foreach (var thread in Threads)
+            // this Interrupt calling may be failed
+            //
+            // if the thread could not be interrupted,
+            // just wait to stay consistent with CPython
+            //
             thread.Interrupt();
         foreach (var thread in Threads)
             thread.Join();
