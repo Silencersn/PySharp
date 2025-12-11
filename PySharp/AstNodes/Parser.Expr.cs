@@ -449,13 +449,15 @@ partial class Parser
     /// <returns></returns>
     private AstExprNode ParsePower()
     {
+        var metaInfo = CreateMetaInfo();
         var expr = IsCurrentKeyword("await") ? ParseAwaitExpr() : ParsePrimary();
 
         if (CurrentTokenType is TokenType.DoubleStar)
         {
+            MarkCrucialForOneToken(metaInfo);
             MoveNextToken();
             var uexpr = ParseUExpr();
-            return AstNode.BinOp(PowNode.Shared, expr, uexpr);
+            return AstNode.BinOp(PowNode.Shared, expr, uexpr, WithEndOfOtherNode(metaInfo, uexpr));
         }
 
         return expr;
@@ -469,6 +471,7 @@ partial class Parser
     {
         if (CurrentTokenType is TokenType.Minus or TokenType.Plus or TokenType.Tilde)
         {
+            var metaInfo = CreateMetaInfo();
             AstUnaryOpNode? op = CurrentTokenType switch
             {
                 TokenType.Minus => USubNode.Shared,
@@ -479,7 +482,7 @@ partial class Parser
             Debug.Assert(op is not null);
             MoveNextToken();
             var uexpr = ParseUExpr();
-            return AstNode.UnaryOp(op, uexpr);
+            return AstNode.UnaryOp(op, uexpr, WithEndOfOtherNode(metaInfo, uexpr));
         }
 
         return ParsePower();
@@ -493,10 +496,12 @@ partial class Parser
     /// <returns></returns>
     private AstExprNode ParseMExpr()
     {
+        var startMetaInfo = CreateMetaInfo();
         var left = ParseUExpr();
 
         while (CurrentTokenType is TokenType.Star or TokenType.Slash or TokenType.DoubleSlash or TokenType.Percent)
         {
+            var currentMetaInfo = CopyThenMarkCrucialForOneToken(startMetaInfo);
             AstOperatorNode? op = CurrentTokenType switch
             {
                 TokenType.Star => MulNode.Shared,
@@ -508,7 +513,7 @@ partial class Parser
             Debug.Assert(op is not null);
             MoveNextToken();
             var right = ParseMExpr();
-            left = AstNode.BinOp(op, left, right);
+            left = AstNode.BinOp(op, left, right, WithEndOfOtherNode(currentMetaInfo, right));
         }
 
         return left;
@@ -520,14 +525,16 @@ partial class Parser
     /// <returns></returns>
     private AstExprNode ParseAExpr()
     {
+        var startMetaInfo = CreateMetaInfo();
         var left = ParseMExpr();
 
         while (CurrentTokenType is TokenType.Plus or TokenType.Minus)
         {
+            var currentMetaInfo = CopyThenMarkCrucialForOneToken(startMetaInfo);
             var add = CurrentTokenType is TokenType.Plus;
             MoveNextToken();
             var right = ParseMExpr();
-            left = AstNode.BinOp(add ? AddNode.Shared : SubNode.Shared, left, right);
+            left = AstNode.BinOp(add ? AddNode.Shared : SubNode.Shared, left, right, WithEndOfOtherNode(currentMetaInfo, right));
         }
 
         return left;
@@ -539,14 +546,16 @@ partial class Parser
     /// <returns></returns>
     private AstExprNode ParseShiftExpr()
     {
+        var startMetaInfo = CreateMetaInfo();
         var left = ParseAExpr();
 
         while (CurrentTokenType is TokenType.LeftShift or TokenType.RightShift)
         {
+            var currentMetaInfo = CopyThenMarkCrucialForOneToken(startMetaInfo);
             var lshift = CurrentTokenType is TokenType.LeftShift;
             MoveNextToken();
             var right = ParseAExpr();
-            left = AstNode.BinOp(lshift ? LShiftNode.Shared : RShiftNode.Shared, left, right);
+            left = AstNode.BinOp(lshift ? LShiftNode.Shared : RShiftNode.Shared, left, right, WithEndOfOtherNode(currentMetaInfo, right));
         }
 
         return left;
@@ -558,13 +567,15 @@ partial class Parser
     /// <returns></returns>
     private AstExprNode ParseAndExpr()
     {
+        var startMetaInfo = CreateMetaInfo();
         var andExpr = ParseShiftExpr();
 
         while (CurrentTokenType is TokenType.Ampersand)
         {
+            var currentMetaInfo = CopyThenMarkCrucialForOneToken(startMetaInfo);
             MoveNextToken();
             var shiftExpr = ParseShiftExpr();
-            andExpr = AstNode.BinOp(BitAndNode.Shared, andExpr, shiftExpr);
+            andExpr = AstNode.BinOp(BitAndNode.Shared, andExpr, shiftExpr, WithEndOfOtherNode(currentMetaInfo, shiftExpr));
         }
 
         return andExpr;
@@ -576,13 +587,15 @@ partial class Parser
     /// <returns></returns>
     private AstExprNode ParseXorExpr()
     {
+        var startMetaInfo = CreateMetaInfo();
         var xorExpr = ParseAndExpr();
 
         while (CurrentTokenType is TokenType.Caret)
         {
+            var currentMetaInfo = CopyThenMarkCrucialForOneToken(startMetaInfo);
             MoveNextToken();
             var andExpr = ParseAndExpr();
-            xorExpr = AstNode.BinOp(BitXorNode.Shared, xorExpr, andExpr);
+            xorExpr = AstNode.BinOp(BitXorNode.Shared, xorExpr, andExpr, WithEndOfOtherNode(currentMetaInfo, andExpr));
         }
 
         return xorExpr;
@@ -594,13 +607,15 @@ partial class Parser
     /// <returns></returns>
     private AstExprNode ParseOrExpr()
     {
+        var startMetaInfo = CreateMetaInfo();
         var orExpr = ParseXorExpr();
 
         while (CurrentTokenType is TokenType.Pipe)
         {
+            var currentMetaInfo = CopyThenMarkCrucialForOneToken(startMetaInfo);
             MoveNextToken();
             var xorExpr = ParseXorExpr();
-            orExpr = AstNode.BinOp(BitOrNode.Shared, orExpr, xorExpr);
+            orExpr = AstNode.BinOp(BitOrNode.Shared, orExpr, xorExpr, WithEndOfOtherNode(currentMetaInfo, xorExpr));
         }
 
         return orExpr;
@@ -698,7 +713,7 @@ partial class Parser
         if (CurrentTokenType is TokenType.Name && CurrentToken.String is "not")
         {
             MoveNextToken();
-            return AstNode.UnaryOp(NotNode.Shared, ParseNotTest());
+            return AstNode.UnaryOp(NotNode.Shared, ParseNotTest(), null /* the operator 'not' does not need MetaInfo */);
         }
         return ParseComparison();
     }

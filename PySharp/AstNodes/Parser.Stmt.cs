@@ -1,5 +1,6 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.Tokenization;
+using System.Diagnostics;
 
 namespace PySharp.AstNodes;
 
@@ -331,13 +332,14 @@ partial class Parser
 
         if (IsAugOperator(CurrentTokenType))
         {
-            if (exprList.Count is not 1)
-                throw new AstException();
+            var target = UnwrapOrMakeTuple(exprList, endsWithComma);
 
-            if (!IsValidAugtarget(exprList[0]))
-                throw new AstException();
+            if (!IsValidAugtarget(target))
+            {
+                PyVirtualMachine.RaiseSyntaxError($"'{target.GetType().Name /* TODO: using 'list' instead of 'ListNode' */ }' is an illegal expression for augmented assignment");
+                throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+            }
 
-            var target = exprList[0];
             AstOperatorNode op = CurrentTokenType switch
             {
                 TokenType.PlusEqual => AddNode.Shared,
@@ -354,7 +356,7 @@ partial class Parser
                 TokenType.CaretEqual => BitXorNode.Shared,
                 TokenType.PipeEqual => BitOrNode.Shared,
 
-                _ => throw new AstException("why here?"),
+                _ => throw new UnreachableException(),
             };
             MoveNextToken();
             var list = ParseExpressionList(StopPredicates.UntilNewLineOrSemicolon, out var comma);

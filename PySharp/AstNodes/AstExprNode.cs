@@ -540,7 +540,7 @@ public sealed class SetNode : AstExprNode, IAstExprNodeWithoutMetaInfo
     }
 }
 
-public sealed class BoolOpNode : AstExprNode, IAstExprNodeBool
+public sealed class BoolOpNode : AstExprNode, IAstExprNodeBool, IAstExprNodeWithoutMetaInfo
 {
     internal BoolOpNode(AstBoolOpNode op, ImmutableArray<AstExprNode> values)
     {

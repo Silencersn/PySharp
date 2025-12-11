@@ -95,7 +95,7 @@ partial class AstNode
         return new SetNode([.. elts]);
     }
 
-    public static BoolOpNode BoolOp(AstBoolOpNode op, params IEnumerable<AstExprNode> values)
+    public static BoolOpNode BoolOp(AstBoolOpNode op, IEnumerable<AstExprNode> values)
     {
         ArgumentNullException.ThrowIfNull(op);
         ArgumentNullException.ThrowIfNull(values);
@@ -111,21 +111,21 @@ partial class AstNode
         return BoolOp(OrNode.Shared, values);
     }
 
-    public static BinOpNode BinOp(AstOperatorNode op, AstExprNode left, AstExprNode right)
+    public static BinOpNode BinOp(AstOperatorNode op, AstExprNode left, AstExprNode right, MetaInfo? metaInfo)
     {
         ArgumentNullException.ThrowIfNull(op);
         ArgumentNullException.ThrowIfNull(left);
         ArgumentNullException.ThrowIfNull(right);
 
-        return new BinOpNode(op, left, right);
+        return new BinOpNode(op, left, right) { MetaInfo = metaInfo };
     }
 
-    public static UnaryOpNode UnaryOp(AstUnaryOpNode op, AstExprNode operand)
+    public static UnaryOpNode UnaryOp(AstUnaryOpNode op, AstExprNode operand, MetaInfo? metaInfo)
     {
         ArgumentNullException.ThrowIfNull(op);
         ArgumentNullException.ThrowIfNull(operand);
 
-        return new UnaryOpNode(op, operand);
+        return new UnaryOpNode(op, operand) { MetaInfo = metaInfo };
     }
 
     public static CompareNode Compare(AstExprNode left, params IEnumerable<(AstCmpopNode Op, AstExprNode Comparator)> opsAndComparators)

@@ -156,10 +156,33 @@ public sealed partial class Parser
             CrucialStart = CurrentToken.Start,
         };
     }
+    private void MarkCrucialForOneToken(MetaInfo metaInfo)
+    {
+        metaInfo.CrucialStart = CurrentToken.Start;
+        metaInfo.CrucialEnd = CurrentToken.End;
+    }
+    private MetaInfo CopyThenMarkCrucialForOneToken(MetaInfo metaInfo)
+    {
+        return new MetaInfo
+        {
+            SourceName = metaInfo.SourceName,
+            FirstLine = metaInfo.FirstLine,
+            Start = metaInfo.Start,
+            End = metaInfo.End,
+            CrucialStart = CurrentToken.Start,
+            CrucialEnd = CurrentToken.End
+        };
+    }
     private MetaInfo WithAllEnd(MetaInfo metaInfo)
     {
         metaInfo.End = CurrentToken.End;
         metaInfo.CrucialEnd = CurrentToken.End;
+        return metaInfo;
+    }
+    private static MetaInfo WithEndOfOtherNode(MetaInfo metaInfo, AstNode otherNode)
+    {
+        Debug.Assert(otherNode.MetaInfo is not null);
+        metaInfo.End = otherNode.MetaInfo.End;
         return metaInfo;
     }
     private MetaInfo CopyThenWithEnd(MetaInfo metaInfo)
