@@ -25,7 +25,8 @@ partial class PyThreadObject : PyObject
             }
             catch (ThreadInterruptedException)
             {
-
+                while (PyVirtualMachine.CurrentFrame != frame)
+                    PyVirtualMachine.ExitFrame();
             }
             Debug.Assert(PyVirtualMachine.CurrentFrame.IsRoot);
             // no need to PyVirtualMachine.ExitFrame()
