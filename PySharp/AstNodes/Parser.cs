@@ -337,6 +337,25 @@ public sealed partial class Parser
                     .Where(pair => !scope.CapturedVariables.Contains(pair.Key))
                     .Select(pair => pair.Key)];
             }
+
+            if (scope.Owner is IFunctionOrClass functionOrClassNode)
+            {
+                Stack<string> names = [];
+                var currentScope = scope;
+                while (currentScope.Owner is not null)
+                {
+                    var nodeWithQualName = (IFunctionOrClass)currentScope.Owner;
+                    if (!ReferenceEquals(nodeWithQualName, functionOrClassNode) && nodeWithQualName is FunctionDefNode)
+                        names.Push("<locals>");
+                    names.Push(nodeWithQualName.Name);
+
+                    Debug.Assert(currentScope.Parent is not null);
+                    if (currentScope.Parent.Variables[nodeWithQualName.Name] is PyVariableType.Global || currentScope.Parent.IsRoot)
+                        break;
+                    currentScope = currentScope.Parent;
+                }
+                functionOrClassNode.QualifiedName = string.Join('.', names);
+            }
         }
     }
 }

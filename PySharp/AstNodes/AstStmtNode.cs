@@ -768,6 +768,12 @@ internal interface IFunctionOrLambda : IAstVariableScopeOwner
     string[] CapturedVariables { get; set; }
 }
 
+internal interface IFunctionOrClass : IAstVariableScopeOwner
+{
+    public string Name { get; }
+    public string QualifiedName { get; set; }
+}
+
 internal sealed class FunctionCaller
 {
     private readonly IFunctionOrLambda _node;
@@ -822,7 +828,7 @@ internal sealed class FunctionCaller
     }
 }
 
-public class FunctionDefNode : AstStmtNode, IFunctionOrLambda
+public class FunctionDefNode : AstStmtNode, IFunctionOrLambda, IFunctionOrClass
 {
     public FunctionDefNode(string identifier, AstArgumentsNode args)
     {
@@ -838,6 +844,8 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda
     FrozenDictionary<string, PyVariableType> IAstVariableScopeOwner.Variables { get; set; } = null!;
     string[] IFunctionOrLambda.CapturedVariables { get; set; } = null!;
     string[] IFunctionOrLambda.LocalVariables { get; set; } = null!;
+    string IFunctionOrClass.QualifiedName { get; set; } = null!;
+    string IFunctionOrClass.Name => Identifier;
 
     public override void ExecuteStmt(PyFrame frame)
     {
@@ -857,6 +865,7 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda
             return PyNoneObject.None;
         });
         var func = new PyFunctionObject(Identifier, caller.Call, frame.IntenalClosure?.Values);
+        func.PyAttributes.Add(PySpecialNames.QualName, PyStrObject.FromString(((IFunctionOrClass)this).QualifiedName));
         caller._func = func;
 
         frame.SetValue(Identifier, AstUtils.ApplyDeractors(func, DecoratorList, frame));
@@ -871,7 +880,7 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda
     }
 }
 
-public sealed class ClassDefNode : AstStmtNode, IAstVariableScopeOwner
+public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
 {
     public new string Name { get; }
 
@@ -887,6 +896,7 @@ public sealed class ClassDefNode : AstStmtNode, IAstVariableScopeOwner
     public List<AstExprNode> DecoratorList { get; } = [];
 
     FrozenDictionary<string, PyVariableType> IAstVariableScopeOwner.Variables { get; set; } = null!;
+    string IFunctionOrClass.QualifiedName { get; set; } = null!;
 
     public override void ExecuteStmt(PyFrame frame)
     {
@@ -915,7 +925,7 @@ public sealed class ClassDefNode : AstStmtNode, IAstVariableScopeOwner
             bases.Add(PyBuiltinTypes.Object);
 
         var attrs = ((IAstVariableScopeOwner)this).Variables.Keys.ToDictionary(static member => member, newFrame.GetValue);
-        var type = new CustomObjectType(Name, bases, attrs);
+        var type = new CustomObjectType(Name, ((IFunctionOrClass)this).QualifiedName, bases, attrs);
 
         foreach (var (name, value) in attrs)
             value.SetName(type, PyStrObject.FromString(name)).PyThrowIfNull();
@@ -928,7 +938,7 @@ public sealed class ClassDefNode : AstStmtNode, IAstVariableScopeOwner
         public override string Name { get; }
         public override IReadOnlyList<PyTypeObject> Bases { get; }
 
-        internal CustomObjectType(string name, IReadOnlyList<PyTypeObject> bases, IEnumerable<KeyValuePair<string, PyObject>> attributes) : base(name, bases)
+        internal CustomObjectType(string name, string qualName, IReadOnlyList<PyTypeObject> bases, IEnumerable<KeyValuePair<string, PyObject>> attributes) : base(name, bases)
         {
             Name = name;
             Bases = bases;
@@ -936,7 +946,7 @@ public sealed class ClassDefNode : AstStmtNode, IAstVariableScopeOwner
             AppendMethodDescriptor(PySpecialNames.Str, PyObjectStr, PySpecialMethodParametersType.NoArgs);
             AppendMethodDescriptor(PySpecialNames.Hash, PyObjectHash, PySpecialMethodParametersType.NoArgs);
             AppendMethodDescriptor(PySpecialNames.Bool, PyObjectBool, PySpecialMethodParametersType.NoArgs);
-            PyAttributes[PySpecialNames.Name] = PyStrObject.FromString(Name);
+            PyAttributes.Add(PySpecialNames.QualName, PyStrObject.FromString(qualName));
             foreach (var attribute in attributes)
             {
                 PyAttributes[attribute.Key] = attribute.Value;
