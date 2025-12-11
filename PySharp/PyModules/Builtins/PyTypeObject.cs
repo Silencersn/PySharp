@@ -291,6 +291,16 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
     {
         PyAttributes[name] = new PyMethodDescriptorObject(name, instanceDelegate.Method, paramType);
     }
+    internal void AppendMemberDescriptor<TPyObject>(string name, Func<TPyObject, PyObject?> getter) where TPyObject : PyObject
+    {
+        PyAttributes[name] = new PyMemberDescriptorObject(obj =>
+        {
+            if (obj is not TPyObject pyObj)
+                return PyVirtualMachine.RaiseTypeError(null);
+
+            return getter(pyObj);
+        });
+    }
 
     private static List<PyTypeObject> CreateMRO(PyTypeObject pyType, IEnumerable<PyTypeObject> bases)
     {
