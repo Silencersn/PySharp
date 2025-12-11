@@ -31,7 +31,7 @@ public sealed class PyExceptionObject : PyObject
         while (frame is not null)
         {
             var back = frame.Back;
-            if (back is not null && back.IsThreadRoot)
+            if (back is not null && back.FrameType is FrameType.ThreadRoot)
             {
                 Debug.Assert(back.IsRoot);
                 ThreadTracebackInfo = $"Exception in thread Thread-{Environment.CurrentManagedThreadId} ({frame.CallerName}):";

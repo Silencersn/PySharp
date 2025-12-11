@@ -5,9 +5,25 @@ using PySharp.PyRuntime.Metadata;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Frozen;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.PyRuntime;
+
+internal enum FrameType
+{
+    Unknown = 0,
+
+    MainRoot,
+    ThreadRoot,
+    Module,
+    Function,
+    Lambda,
+    Class,
+    Comprehension,
+    Eval,
+    Exec
+}
 
 public sealed class PyFrame
 {
@@ -17,7 +33,6 @@ public sealed class PyFrame
     internal IMetaInfoProvider? StmtMetaInfoProvider { get; set; }
     private Dictionary<string, PyCellObject>? _closure = null;
     private IDictionary<string, PyObject?>? _locals = null;
-    internal bool IsThreadRoot;
 
     private PyFrame(PyFrame? back)
     {
@@ -25,6 +40,7 @@ public sealed class PyFrame
         Globals = [];
         _locals = Globals!;
         CallerName = "<module>";
+        FrameType = back is null ? FrameType.MainRoot : FrameType.Module;
     }
     private PyFrame(ConcurrentDictionary<string, PyObject> globals)
     {
@@ -32,15 +48,22 @@ public sealed class PyFrame
         Globals = globals;
         _locals = null;
         CallerName = $"<thread-{Environment.CurrentManagedThreadId}>";
-        IsThreadRoot = true;
+        FrameType = FrameType.ThreadRoot;
     }
-    private PyFrame(PyFrame back, ConcurrentDictionary<string, PyObject> globals, Dictionary<string, PyObject?>? locals, Dictionary<string, PyCellObject>? closure, string callerName)
+    private PyFrame(
+        PyFrame back,
+        ConcurrentDictionary<string, PyObject> globals,
+        Dictionary<string, PyObject?>? locals,
+        Dictionary<string, PyCellObject>? closure,
+        string callerName,
+        FrameType frameType)
     {
         Back = back;
         Globals = globals;
         _locals = locals;
         _closure = closure;
         CallerName = callerName;
+        FrameType = frameType;
     }
 
     public PyFrame? Back { get; }
@@ -56,23 +79,26 @@ public sealed class PyFrame
     internal FrozenDictionary<string, PyVariableType>? _variables = null;
     internal DictAdapter ProxyGlobals => field ??= new DictAdapter(Globals!);
     internal DictAdapter ProxyLocals => field ??= new DictAdapter(Locals);
+    internal FrameType FrameType { get; }
 
     internal static PyFrame CreateModuleFrame(PyFrame? back)
     {
         return new PyFrame(back);
     }
-    internal PyFrame CreateFuncCallOrClassBuildFrame(string callerName)
+    internal PyFrame CreateFuncCallOrClassBuildFrame(string callerName, FrameType frameType)
     {
-        return new PyFrame(this, Globals, null, null, callerName);
+        Debug.Assert(frameType is FrameType.Function or FrameType.Lambda or FrameType.Class);
+        return new PyFrame(this, Globals, null, null, callerName, frameType);
     }
     internal PyFrame CreateThreadRootFrame()
     {
         return new PyFrame(Globals);
     }
 
-    internal PyFrame TempFrame()
+    internal PyFrame TempFrame(FrameType frameType)
     {
-        var tempFrame = new PyFrame(this, Globals, _locals?.ToDictionary(), _closure, CallerName)
+        Debug.Assert(frameType is FrameType.Comprehension or FrameType.Exec or FrameType.Eval);
+        var tempFrame = new PyFrame(this, Globals, _locals?.ToDictionary(), _closure, CallerName, frameType)
         {
             _variables = _variables
         };

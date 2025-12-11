@@ -773,6 +773,7 @@ internal sealed class FunctionCaller
     private readonly IFunctionOrLambda _node;
     private readonly PyArgsDef _def;
     private readonly Func<PyFrame, PyObject> _getResult;
+    private readonly FrameType _frameType;
     internal PyFunctionObject _func;
 
     internal FunctionCaller(IFunctionOrLambda node, PyFrame frame, Func<PyFrame, PyObject> getResult)
@@ -780,6 +781,7 @@ internal sealed class FunctionCaller
         _node = node;
         _def = PyArgsDef.FromAst(node.Args, frame);
         _getResult = getResult;
+        _frameType = _node is FunctionDefNode ? FrameType.Function : FrameType.Lambda;
 
         // deferred init
         _func = null!;
@@ -793,7 +795,7 @@ internal sealed class FunctionCaller
     private PyObject? CallGeneral(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var backFrame = PyVirtualMachine.CurrentFrame;
-        var frame = backFrame.CreateFuncCallOrClassBuildFrame(_func.Name);
+        var frame = backFrame.CreateFuncCallOrClassBuildFrame(_func.Name, _frameType);
         frame._variables = _node.Variables;
 
         foreach (var localVariable in _node.LocalVariables)
@@ -888,7 +890,7 @@ public sealed class ClassDefNode : AstStmtNode, IAstVariableScopeOwner
 
     public override void ExecuteStmt(PyFrame frame)
     {
-        var newFrame = frame.CreateFuncCallOrClassBuildFrame(Name);
+        var newFrame = frame.CreateFuncCallOrClassBuildFrame(Name, FrameType.Class);
         newFrame._variables = ((IAstVariableScopeOwner)this).Variables;
         foreach (var (name, cell) in frame.Closures)
         {

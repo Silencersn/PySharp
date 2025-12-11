@@ -804,7 +804,7 @@ public sealed class ListCompNode : AstExprNode, IAstExprNodeWithoutMetaInfo
 
     public override PyObject ExecuteExpr(PyFrame frame)
     {
-        var tempFrame = frame.TempFrame();
+        var tempFrame = frame.TempFrame(FrameType.Comprehension);
         var list = new List<PyObject>();
         For(0);
         return new PyListObject(list);
@@ -861,7 +861,7 @@ public sealed class SetCompNode : AstExprNode, IAstExprNodeWithoutMetaInfo
 
     public override PyObject ExecuteExpr(PyFrame frame)
     {
-        var tempFrame = frame.TempFrame();
+        var tempFrame = frame.TempFrame(FrameType.Comprehension);
         var list = new List<PyObject>();
         For(0);
         return new PySetObject(list);
@@ -920,7 +920,7 @@ public sealed class DictCompNode : AstExprNode, IAstExprNodeWithoutMetaInfo
 
     public override PyObject ExecuteExpr(PyFrame frame)
     {
-        var tempFrame = frame.TempFrame();
+        var tempFrame = frame.TempFrame(FrameType.Comprehension);
         var list = new List<KeyValuePair<PyObject, PyObject>>();
         For(0);
         return new PyDictObject(list);
@@ -979,7 +979,7 @@ public sealed class GeneratorExpNode : AstExprNode, IAstExprNodeWithoutMetaInfo
 
     public override PyObject ExecuteExpr(PyFrame frame)
     {
-        var tempFrame = frame.TempFrame();
+        var tempFrame = frame.TempFrame(FrameType.Comprehension);
         var list = new List<PyObject>();
         For(0);
         return PyTupleObject.CreateTuple(list);

@@ -115,7 +115,7 @@ public static partial class PyBuiltinFunctions
         var node = parser.ParseExpressionNode();
 
         var frame = PyVirtualMachine.CurrentFrame;
-        var tempFrame = frame.TempFrame();
+        var tempFrame = frame.TempFrame(FrameType.Eval);
         return node.Body.GetExprValue(tempFrame);
     }
     [PyFunctionArgsDef("source", "/", "globals=None", "locals=None", "*", "closure=None")]
@@ -142,7 +142,7 @@ public static partial class PyBuiltinFunctions
         }
 
         var frame = PyVirtualMachine.CurrentFrame;
-        var tempFrame = frame.TempFrame();
+        var tempFrame = frame.TempFrame(FrameType.Exec);
         node.Execute(tempFrame);
         return PyNoneObject.None;
     }
