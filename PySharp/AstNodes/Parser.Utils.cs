@@ -37,4 +37,24 @@ partial class Parser
 
         return false;
     }
+
+    private static void TrySetTargetContext(AstExprNode node)
+    {
+        if (node is NameNode nameNode)
+        {
+            nameNode.Ctx = ExprContext.Store;
+        }
+        else if (node is TupleNode tupleNode)
+        {
+            tupleNode.Ctx = ExprContext.Store;
+            foreach (var elt in tupleNode.Elts)
+                TrySetTargetContext(elt);
+        }
+        else if (node is ListNode listNode)
+        {
+            listNode.Ctx = ExprContext.Store;
+            foreach (var elt in listNode.Elts)
+                TrySetTargetContext(elt);
+        }
+    }
 }
