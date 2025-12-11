@@ -11,7 +11,7 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
     public virtual IReadOnlyList<PyTypeObject> Bases => [PyBuiltinTypes.Object];
     public IReadOnlyList<PyTypeObject> MRO { get; }
     public abstract string Name { get; }
-    public virtual string FullName => Name;
+    public virtual string FullName => Name; // TODO: FullName => <module_name>.Name
     public virtual string Document => string.Empty;
 
 
