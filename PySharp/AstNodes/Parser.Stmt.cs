@@ -69,6 +69,12 @@ partial class Parser
                 importNode.Names.Add(ParseAlias());
             }
 
+            if (IsCurrentKeyword("from"))
+            {
+                PyVirtualMachine.RaiseSyntaxError("Did you mean to use 'from ... import ...' instead?");
+                throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+            }
+
             importNode.MetaInfo = metaInfo;
             return importNode;
 
