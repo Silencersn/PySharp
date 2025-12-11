@@ -12,7 +12,7 @@ namespace PySharp.PyRuntime;
 public sealed class PyFrame
 {
     internal string CallerName { get; }
-    
+
     internal IMetaInfoProvider? ExprMetaInfoProvider { get; set; }
     internal IMetaInfoProvider? StmtMetaInfoProvider { get; set; }
     private Dictionary<string, PyCellObject>? _closure = null;

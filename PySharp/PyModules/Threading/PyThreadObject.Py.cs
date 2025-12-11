@@ -1,10 +1,7 @@
 ﻿using PySharp.AstNodes;
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Text;
 
 namespace PySharp.PyModules.Threading;
 
@@ -16,7 +13,7 @@ partial class PyThreadObject : PyObject
             throw new InvalidOperationException();
 
         var backFrame = PyVirtualMachine.CurrentFrame;
-        
+
         _thread = new Thread(() =>
         {
             var frame = backFrame.CreateThreadRootFrame();
@@ -46,7 +43,7 @@ partial class PyThreadObject : PyObject
         if (timeout < 0)
             _thread.Join();
         else
-        _thread.Join(TimeSpan.FromSeconds(timeout));
+            _thread.Join(TimeSpan.FromSeconds(timeout));
     }
 
     public bool PyIsAlive()

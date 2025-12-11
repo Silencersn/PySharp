@@ -2,9 +2,6 @@
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.PyAttributes;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace PySharp.PyModules.Threading;
 

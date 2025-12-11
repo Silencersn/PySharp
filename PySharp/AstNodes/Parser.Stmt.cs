@@ -224,7 +224,7 @@ partial class Parser
                     var msg = ParseExpression();
                     node = AstNode.Assert(test, msg);
                 }
-                else 
+                else
                 {
                     node = AstNode.Assert(test);
                 }
