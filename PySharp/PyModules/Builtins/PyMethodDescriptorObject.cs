@@ -42,11 +42,11 @@ public sealed class PyMethodDescriptorObject : PyObject, IPyDescriptor
 
     public override PyTypeObject PyType => PyBuiltinTypes.MethodDescriptor;
 
-    bool IPyDescriptor.HasGet => true;
+    bool IPyDescriptor.SupportsGet => true;
 
-    bool IPyDescriptor.HasSet => false;
+    bool IPyDescriptor.SupportsSet => false;
 
-    bool IPyDescriptor.HasDelete => false;
+    bool IPyDescriptor.SupportsDelete => false;
 
     internal PyMethodDescriptorObject(string name, MethodInfo method, PySpecialMethodParametersType paramType)
     {

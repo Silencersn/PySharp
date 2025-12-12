@@ -239,9 +239,9 @@ internal static class Utils
     {
         if (pyObj is IPyDescriptor descriptor)
         {
-            hasGet = descriptor.HasGet;
-            hasSet = descriptor.HasSet;
-            hasDelete = descriptor.HasDelete;
+            hasGet = descriptor.SupportsGet;
+            hasSet = descriptor.SupportsSet;
+            hasDelete = descriptor.SupportsDelete;
             return true;
         }
 

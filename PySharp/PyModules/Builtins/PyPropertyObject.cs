@@ -5,7 +5,7 @@ using System.Collections.Frozen;
 
 namespace PySharp.PyModules.Builtins;
 
-public sealed class PyPropertyObject : PyObject
+public sealed class PyPropertyObject : PyObject, IPyDescriptor
 {
     private PyObject _fget;
     private PyObject _fset;
@@ -13,6 +13,12 @@ public sealed class PyPropertyObject : PyObject
     private PyObject _doc;
 
     public override PyTypeObject PyType => PyBuiltinTypes.Property;
+
+    bool IPyDescriptor.SupportsGet => true;
+
+    bool IPyDescriptor.SupportsSet => true;
+
+    bool IPyDescriptor.SupportsDelete => true;
 
     public PyPropertyObject(PyObject fget, PyObject fset, PyObject fdel, PyObject doc)
     {

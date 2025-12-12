@@ -56,7 +56,7 @@ public interface IPyObjectRecursiveRepr
 
 internal interface IPyDescriptor
 {
-    internal bool HasGet { get; }
-    internal bool HasSet { get; }
-    internal bool HasDelete { get; }
+    internal bool SupportsGet { get; }
+    internal bool SupportsSet { get; }
+    internal bool SupportsDelete { get; }
 }
