@@ -1,5 +1,6 @@
 ﻿using PySharp.AstNodes;
 using PySharp.PyModules.Builtins;
+using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
@@ -38,118 +39,172 @@ public sealed class PyArgsDef
     public string? VarArg { get; }
     public string? KwArg { get; }
 
-    private static PyObject ParseLiteral(string literal)
+    private static PyObject ParseLiteral(ReadOnlySpan<char> literal)
     {
+        // literal should be no leading or trailing whitespaces
+
         if (literal is "None")
             return PyNoneObject.None;
 
         if (literal is "True" or "False")
             return PyBoolObject.FromBoolean(literal is "True");
 
-        var removedSpace = literal.Replace(" ", string.Empty);
-        if (removedSpace is "()")
-            return PyTupleObject.CreateTuple();
-
-        if (removedSpace is "[]")
-            return PyListObject.CreateList();
-
-        if (removedSpace is "{}")
-            return PyDictObject.CreateDict();
-
         if (literal[0] is '"' or '\'')
             return PyStrObject.FromLiteral(literal);
+
+        if (literal is "()")
+            return PyTupleObject.CreateTuple();
+
+        if (literal is "[]")
+            return PyListObject.CreateList();
+
+        if (literal is "{}")
+            return PyDictObject.CreateDict();
 
         if (PyIntObjectType.TryParse(literal, 0, out var resultInt))
             return PyIntObject.FromInteger(resultInt);
 
         if (double.TryParse(literal, out var resultDouble))
             return new PyFloatObject(resultDouble);
-
         throw new NotSupportedException();
     }
 
-    public static PyArgsDef FromDef(params ReadOnlySpan<string> parameters)
+    internal static PyArgsDef FromDef(params ReadOnlySpan<string> parameters)
     {
-        string[] posonlyArgs, args, kwonlyArgs;
-        PyObject?[] kwDefaults;
+        // this is for internal use,
+        // so it is assumed that all parameters conform to Python syntax
+
+        scoped ReadOnlySpan<string> posonlyArgs, args, kwonlyArgs;
         string? varArg = null, kwArg = null;
 
-        List<PyObject> defaults = [];
-        int index = parameters.IndexOf("/");
-        if (index is not -1)
+        // possible situation here:
+        // ...
+        // ... /
+        // ... *
+        // ... **
+        // ... / ... *
+        // ... / ... **
+        // ... * ... **
+        // ... / ... * ... **
+        //
+        var indexOfSlash = parameters.IndexOf("/");
+        if (indexOfSlash is not -1)
         {
-            posonlyArgs = parameters[..index].ToArray();
-            parameters = parameters[(index + 1)..];
-            for (int i = 0; i < posonlyArgs.Length; i++)
-            {
-                var arg = posonlyArgs[i];
-                var indexOfEqual = arg.IndexOf('=');
-                if (indexOfEqual is not -1)
-                {
-                    posonlyArgs[i] = arg[..indexOfEqual];
-                    var d = ParseLiteral(arg[(indexOfEqual + 1)..]);
-                    defaults.Add(d);
-                }
-            }
+            posonlyArgs = parameters[..indexOfSlash];
+            parameters = parameters[(indexOfSlash + 1)..];
         }
         else
         {
             posonlyArgs = [];
         }
 
-        index = -1;
+        // possible situation here:
+        // ...
+        // ... *
+        // ... **
+        // ... * ... **
+        //
+        var indexOfStar = -1;
         for (int i = 0; i < parameters.Length; i++)
         {
             if (parameters[i].StartsWith('*') && !parameters[i].StartsWith("**"))
             {
-                index = i;
-                if (parameters[i] is not "*")
-                    varArg = parameters[i][1..];
+                indexOfStar = i;
+                varArg = parameters[i] is "*" ? null : parameters[i][1..];
                 break;
             }
         }
-        if (index is not -1)
+        if (indexOfStar is not -1)
         {
-            kwonlyArgs = parameters[(index + 1)..].ToArray();
-            parameters = parameters[..index];
-            if (kwonlyArgs.Length > 0 && kwonlyArgs[^1].StartsWith("**"))
-            {
-                kwArg = kwonlyArgs[^1][2..];
-                kwonlyArgs = kwonlyArgs[..^1];
-            }
-
-            kwDefaults = new PyObject?[kwonlyArgs.Length];
-
-            for (int i = 0; i < kwonlyArgs.Length; i++)
-            {
-                var kwarg = kwonlyArgs[i];
-                var indexOfEqual = kwarg.IndexOf('=');
-                if (indexOfEqual is not -1)
-                {
-                    kwonlyArgs[i] = kwarg[..indexOfEqual];
-                    kwDefaults[i] = ParseLiteral(kwarg[(indexOfEqual + 1)..]);
-                }
-            }
+            args = parameters[..indexOfStar];
+            parameters = parameters[(indexOfStar + 1)..];
         }
         else
         {
-            kwonlyArgs = [];
-            kwDefaults = [];
+            // this assignment here will be overwritten,
+            // it's just to pass compilation.
+            args = [];
         }
 
-        args = parameters.ToArray();
+
+        // possible situation here:
+        // ...
+        // ... (<- args) **
+        // ... (<- kwonlyArgs) **
+        //
+        if (parameters.Length > 0 && parameters[^1].StartsWith("**"))
+        {
+            kwArg = parameters[^1][..^2];
+            parameters = parameters[..^1];
+        }
+
+        // possible situation here:
+        // ... (<- args)
+        // ... (<- kwonlyArgs) 
+        //
+        if (indexOfStar is not -1)
+        {
+            kwonlyArgs = parameters;
+        }
+        else
+        {
+            args = parameters;
+            kwonlyArgs = [];
+        }
+
+        List<PyObject> defaults = [];
+        string[] posonlyArgsResult = new string[posonlyArgs.Length];
+        for (int i = 0; i < posonlyArgs.Length; i++)
+        {
+            var arg = posonlyArgs[i];
+            var indexOfEqual = arg.IndexOf('=');
+            if (indexOfEqual is not -1)
+            {
+                posonlyArgsResult[i] = arg[..indexOfEqual];
+                var d = ParseLiteral(arg.AsSpan()[(indexOfEqual + 1)..]);
+                defaults.Add(d);
+            }
+            else
+            {
+                posonlyArgsResult[i] = arg;
+            }
+        }
+
+        string[] argsResult = new string[args.Length];
         for (int i = 0; i < args.Length; i++)
         {
             var arg = args[i];
             var indexOfEqual = arg.IndexOf('=');
             if (indexOfEqual is not -1)
             {
-                args[i] = arg[..indexOfEqual];
-                var d = ParseLiteral(arg[(indexOfEqual + 1)..]);
+                argsResult[i] = arg[..indexOfEqual];
+                var d = ParseLiteral(arg.AsSpan()[(indexOfEqual + 1)..]);
                 defaults.Add(d);
             }
+            else
+            {
+                argsResult[i] = arg;
+            }
         }
-        return new PyArgsDef(posonlyArgs, args, kwonlyArgs, kwDefaults, [.. defaults], varArg, kwArg);
+
+        PyObject?[] kwDefaults = new PyObject?[kwonlyArgs.Length];
+        string[] kwonlyArgsResult = new string[kwonlyArgs.Length];
+        for (int i = 0; i < kwonlyArgs.Length; i++)
+        {
+            var kwarg = kwonlyArgs[i];
+            var indexOfEqual = kwarg.IndexOf('=');
+            if (indexOfEqual is not -1)
+            {
+                kwonlyArgsResult[i] = kwarg[..indexOfEqual];
+                kwDefaults[i] = ParseLiteral(kwarg.AsSpan()[(indexOfEqual + 1)..]);
+            }
+            else
+            {
+                kwonlyArgsResult[i] = kwarg;
+            }
+        }
+
+        return new PyArgsDef(posonlyArgsResult, argsResult, kwonlyArgsResult, kwDefaults, [.. defaults], varArg, kwArg);
     }
 
     internal static PyArgsDef FromAst(AstArgumentsNode node, PyFrame frame)
