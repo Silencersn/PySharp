@@ -71,9 +71,24 @@ public sealed class PyMethodDescriptorObject : PyObject, IPyDescriptor
         if (instance is PyNoneObject)
             return this;
 
+        // class Demo:
+        //     __add__ = int.__add__
+        //
+        // demo = Demo()
+        // value = demo + 0
+        //
+        // must check the type
+        // if not, int.__add__ will be bound to the demo incorrectly
+        // however, int.__add__ is a virtual call of PyObject in C#
+        // so, it actually will call the Add of the type which is subclass of PyObject for supporting custom python types
+        // as a result, demo.__add__ calls it self
+        // leading to a StackOverflowException in C#
+        if (!_declaringType.IsInstance(instance))
+            return PyVirtualMachine.RaiseTypeError($"descriptor '{_name}' requires a '{_declaringType.Name}' object but received a '{instance.PyType.Name}'");
+
         if (_methods is not null)
             return new PyBuiltinFunctionOrMethodObject(_name, instance, pyType, [.. _methods.Select(method => ToPyFunctionDirectly(method, instance))]);
-
+        
         Debug.Assert(_method is not null);
         Debug.Assert(_paramType is not PySpecialMethodParametersType.Unknown);
         return new PyBuiltinFunctionOrMethodObject(_name, instance, pyType, ToPyFunction(_method, instance, _paramType));
