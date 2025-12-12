@@ -1,6 +1,5 @@
 ﻿using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
-using PySharp.PyRuntime.Metadata;
 using PySharp.Tokenization;
 using System.Diagnostics;
 using System.Linq.Expressions;

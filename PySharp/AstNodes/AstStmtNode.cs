@@ -975,6 +975,7 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
 
         public override PyObject? New(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
         {
+            // TODO: __new__
             return new CustomObject(this);
         }
     }
