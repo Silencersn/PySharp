@@ -17,7 +17,7 @@ internal enum PySpecialMethodParametersType
     ArgsKwargs,
 }
 
-public sealed class PyMethodDescriptorObject : PyObject
+public sealed class PyMethodDescriptorObject : PyObject, IPyDescriptor
 {
     private readonly string _name;
     private readonly MethodInfo? _method;
@@ -41,6 +41,12 @@ public sealed class PyMethodDescriptorObject : PyObject
     }
 
     public override PyTypeObject PyType => PyBuiltinTypes.MethodDescriptor;
+
+    bool IPyDescriptor.HasGet => true;
+
+    bool IPyDescriptor.HasSet => false;
+
+    bool IPyDescriptor.HasDelete => false;
 
     internal PyMethodDescriptorObject(string name, MethodInfo method, PySpecialMethodParametersType paramType)
     {

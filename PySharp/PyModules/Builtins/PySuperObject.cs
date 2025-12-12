@@ -100,7 +100,7 @@ public sealed class PySuperObjectType : PyTypeObject
     private static PyObject? NewImpl_1(PyArguments arguments)
     {
         if (!TryGetArgs(out var type, out var obj))
-            return PyVirtualMachine.RaiseException(PyStandardExceptionTypes.RuntimeError, "super(): no arguments");
+            return PyVirtualMachine.RaiseException(PyStandardExceptionTypes.RuntimeError, "super(): no arguments" /* TODO: super(): empty __class__ cell */);
 
         return PySuperObject.CreateSuper(type, obj);
 

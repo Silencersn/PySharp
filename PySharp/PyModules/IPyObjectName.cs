@@ -53,3 +53,10 @@ public interface IPyObjectRecursiveRepr
         return true;
     }
 }
+
+internal interface IPyDescriptor
+{
+    internal bool HasGet { get; }
+    internal bool HasSet { get; }
+    internal bool HasDelete { get; }
+}

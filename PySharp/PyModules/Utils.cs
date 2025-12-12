@@ -237,7 +237,13 @@ internal static class Utils
     }
     public static bool IsDescriptor(PyObject pyObj, out bool hasGet, out bool hasSet, out bool hasDelete)
     {
-        // TODO: optimize internal types
+        if (pyObj is IPyDescriptor descriptor)
+        {
+            hasGet = descriptor.HasGet;
+            hasSet = descriptor.HasSet;
+            hasDelete = descriptor.HasDelete;
+            return true;
+        }
 
         hasGet = PyObject.PyObjectHasAttribute(pyObj, PySpecialNames.Get);
         hasSet = PyObject.PyObjectHasAttribute(pyObj, PySpecialNames.Set);

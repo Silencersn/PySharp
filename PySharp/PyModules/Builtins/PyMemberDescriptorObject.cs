@@ -5,11 +5,17 @@ using System.Text;
 
 namespace PySharp.PyModules.Builtins;
 
-public sealed class PyMemberDescriptorObject : PyObject
+public sealed class PyMemberDescriptorObject : PyObject, IPyDescriptor
 {
     private readonly Func<PyObject, PyObject?> _getter;
 
     public override PyTypeObject PyType => PyMemberDescriptorObjectType.Shared;
+
+    bool IPyDescriptor.HasGet => true;
+
+    bool IPyDescriptor.HasSet => false; // TODO: make PyMemberDescriptorObject supports Set
+
+    bool IPyDescriptor.HasDelete => false;
 
     internal PyMemberDescriptorObject(Func<PyObject, PyObject?> getter)
     {
