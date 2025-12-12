@@ -11,33 +11,33 @@ partial class AstNode
         return new NameNode(name) { MetaInfo = metaInfo };
     }
 
-    public static ConstantNode Constant(PyObject value)
+    public static ConstantNode Constant(PyObject value, MetaInfo? metaInfo)
     {
         ArgumentNullException.ThrowIfNull(value);
 
-        return new ConstantNode(value);
+        return new ConstantNode(value) { MetaInfo = metaInfo };
     }
-    public static ConstantNode Constant(string value)
+    public static ConstantNode Constant(string value, MetaInfo? metaInfo)
     {
         ArgumentNullException.ThrowIfNull(value);
 
-        return Constant(PyStrObject.FromString(value));
+        return Constant(PyStrObject.FromString(value), metaInfo);
     }
-    public static ConstantNode Constant(long value)
+    public static ConstantNode Constant(long value, MetaInfo? metaInfo)
     {
-        return Constant(PyIntObject.FromInteger(value));
+        return Constant(PyIntObject.FromInteger(value), metaInfo);
     }
-    public static ConstantNode Constant(BigInteger value)
+    public static ConstantNode Constant(BigInteger value, MetaInfo? metaInfo)
     {
-        return Constant(PyIntObject.FromInteger(value));
+        return Constant(PyIntObject.FromInteger(value), metaInfo);
     }
-    public static ConstantNode Constant(bool value)
+    public static ConstantNode Constant(bool value, MetaInfo? metaInfo)
     {
-        return Constant(PyBoolObject.FromBoolean(value));
+        return Constant(PyBoolObject.FromBoolean(value), metaInfo);
     }
-    public static ConstantNode Constant(double value)
+    public static ConstantNode Constant(double value, MetaInfo? metaInfo)
     {
-        return Constant(PyFloatObject.FromDouble(value));
+        return Constant(PyFloatObject.FromDouble(value), metaInfo);
     }
 
     public static AttributeNode Attribute(AstExprNode value, string attr, MetaInfo? metaInfo)

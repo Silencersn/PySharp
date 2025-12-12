@@ -592,7 +592,7 @@ public sealed class BoolOpNode : AstExprNode, IAstExprNodeBool, IAstExprNodeNoSe
                     if (Op is AndNode && test is false)
                     {
                         if (allConatant)
-                            return Constant(false);
+                            return Constant(false, null);
 
                         reducedValues.Add(value);
                         break;
@@ -600,7 +600,7 @@ public sealed class BoolOpNode : AstExprNode, IAstExprNodeBool, IAstExprNodeNoSe
                     else if (Op is OrNode && test is true)
                     {
                         if (allConatant)
-                            return Constant(true);
+                            return Constant(true, null);
 
                         reducedValues.Add(value);
                         break;
@@ -611,9 +611,9 @@ public sealed class BoolOpNode : AstExprNode, IAstExprNodeBool, IAstExprNodeNoSe
             if (reducedValues.Count is 0)
             {
                 if (Op is AndNode)
-                    return Constant(true);
+                    return Constant(true, null);
                 else // if (Op is OrNode)
-                    return Constant(false);
+                    return Constant(false, null);
             }
             else if (reducedValues.Count is 1)
             {
@@ -662,7 +662,7 @@ public sealed class BinOpNode : AstExprNode
             {
                 var result = Operator.GetOpValue(leftConstant.Value, rightConstant.Value);
                 if (result is not (null or PyNotImplementedObject))
-                    return Constant(result);
+                    return Constant(result, null);
             }
         }
 
@@ -702,7 +702,7 @@ public sealed class UnaryOpNode : AstExprNode
             {
                 var result = Op.GetUnaryOpValue(operandConstant.Value);
                 if (result is not null)
-                    return Constant(result);
+                    return Constant(result, null);
             }
         }
 

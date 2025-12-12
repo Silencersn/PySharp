@@ -31,12 +31,6 @@ partial class Parser
         return ret;
     }
 
-    private string ParseIdentifier(out MetaInfo metaInfo)
-    {
-        metaInfo = CreateMetaInfo();
-        return ParseIdentifier();
-    }
-
     /// <summary>
     /// enclosure: <see cref="ParseParenthForm">parenth_form</see> | <see cref="ParseListDisplay">list_display</see> |
     ///            <see cref="ParseDictDisplay">dict_display</see> | <see cref="ParseSetDisplay">set_display</see> |
@@ -105,6 +99,7 @@ partial class Parser
     /// <exception cref="NotSupportedException"></exception>
     private AstExprNode ParseAtom()
     {
+        var metaInfo = CreateMetaInfo();
         if (CurrentTokenType is TokenType.Name)
         {
             if (IsKeyword(CurrentToken.String))
@@ -115,12 +110,12 @@ partial class Parser
                 {
                     var value = CurrentToken.String;
                     MoveNextToken();
-                    return AstNode.Constant(bool.Parse(value));
+                    return AstNode.Constant(bool.Parse(value), metaInfo);
                 }
                 else if (CurrentToken.String is "None")
                 {
                     MoveNextToken();
-                    return AstNode.Constant(PyNoneObject.None);
+                    return AstNode.Constant(PyNoneObject.None, metaInfo);
                 }
 
                 throw new AstException("invalid syntax");
@@ -130,13 +125,13 @@ partial class Parser
                 // __debug__
 
                 MoveNextToken();
-                return AstNode.Constant(_options.Debug);
+                return AstNode.Constant(_options.Debug, metaInfo);
             }
             else
             {
                 // identifier
 
-                var nameNode = AstNode.Name(ParseIdentifier(out var metaInfo), metaInfo);
+                var nameNode = AstNode.Name(ParseIdentifier(), metaInfo);
                 CurrentScope.TryAddUnknown(nameNode.Identifier);
                 CurrentScope.Track(nameNode);
                 return nameNode;
@@ -197,9 +192,10 @@ partial class Parser
                         return $"(unicode error) 'unicodeescape' codec can't decode bytes in position {info.Position}-{info.Position + info.Length - 1}: {message}";
                     }
                 }
+                metaInfo = CopyThenWithEnd(metaInfo);
                 MoveNextToken();
             }
-            return AstNode.Constant(_builderForTokenString.ToString());
+            return AstNode.Constant(_builderForTokenString.ToString(), metaInfo);
         }
         else if (CurrentTokenType is TokenType.FStringStart)
         {
@@ -211,7 +207,7 @@ partial class Parser
             {
                 if (CurrentTokenType is TokenType.FStringMiddle)
                 {
-                    values.Add(AstNode.Constant(PyStrObject.FromLiteralContent(CurrentToken.String)));
+                    values.Add(AstNode.Constant(PyStrObject.FromLiteralContent(CurrentToken.String), CreateMetaInfo()));
                 }
                 else
                 {
@@ -238,23 +234,23 @@ partial class Parser
             value = value.Replace("_", string.Empty);
 
             if (value.StartsWith("0x") || value.StartsWith("0X"))
-                return AstNode.Constant(Convert.ToInt64(value[2..], 16));
+                return AstNode.Constant(Convert.ToInt64(value[2..], 16), metaInfo);
 
             if (value.StartsWith("0o") || value.StartsWith("0O"))
-                return AstNode.Constant(Convert.ToInt64(value[2..], 8));
+                return AstNode.Constant(Convert.ToInt64(value[2..], 8), metaInfo);
 
             if (value.StartsWith("0b") || value.StartsWith("0B"))
-                return AstNode.Constant(Convert.ToInt64(value[2..], 2));
+                return AstNode.Constant(Convert.ToInt64(value[2..], 2), metaInfo);
 
             if (BigInteger.TryParse(value, out var bigint))
-                return AstNode.Constant(bigint);
+                return AstNode.Constant(bigint, metaInfo);
 
-            return AstNode.Constant(double.Parse(value));
+            return AstNode.Constant(double.Parse(value), metaInfo);
         }
         else if (CurrentTokenType is TokenType.Ellipsis)
         {
             MoveNextToken();
-            return AstNode.Constant(PyEllipsisObject.Ellipsis);
+            return AstNode.Constant(PyEllipsisObject.Ellipsis, metaInfo);
         }
         else if (CurrentTokenType is TokenType.LeftParen or TokenType.LeftSquareBracket or TokenType.LeftBrace)
         {
