@@ -2,6 +2,7 @@
 using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.PyAttributes;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.PyModules.Builtins;
 
@@ -98,10 +99,40 @@ public sealed class PySuperObjectType : PyTypeObject
     [PyFunctionArgsDef()]
     private static PyObject? NewImpl_1(PyArguments arguments)
     {
-        throw new NotImplementedException();
+        if (!TryGetArgs(out var type, out var obj))
+            return PyVirtualMachine.RaiseException(PyStandardExceptionTypes.RuntimeError, "super(): no arguments");
+
+        return PySuperObject.CreateSuper(type, obj);
+
+        static bool TryGetArgs([NotNullWhen(true)] out PyTypeObject? type, [NotNullWhen(true)] out PyObject? obj)
+        {
+            type = null;
+            obj = null;
+
+            var frame = PyVirtualMachine.CurrentFrame;
+            if (frame.InternalClosure is null)
+                return false;
+
+            if (!frame.InternalClosure.TryGetValue(PySpecialNames.Class, out var cell))
+                return false;
+
+            if (cell.Value is not PyTypeObject resultType)
+                return false;
+
+            if (frame.CallingArguments is null)
+                return false;
+
+            var (args, _) = frame.CallingArguments.Value;
+            if (args.Count is 0)
+                return false;
+
+            type = resultType;
+            obj = args[0];
+            return true;
+        }
     }
 
-    [PyFunctionArgsDef("type", "object_or_type", "/")]
+    [PyFunctionArgsDef("type", "object_or_type" /* TODO: object_or_type=None */, "/")]
     private static PyObject? NewImpl_2(PyArguments arguments)
     {
         if (arguments[0] is not PyTypeObject type)

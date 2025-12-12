@@ -316,6 +316,11 @@ public sealed class PyAssertionErrorObjectType : PyExceptionType<PyAssertionErro
     public override string Name => "AssertionError";
 }
 
+public sealed class PyRuntimeErrorObjectType : PyExceptionType<PyRuntimeErrorObjectType, PyExceptionObjectType>
+{
+    public override string Name => "RuntimeError";
+}
+
 #endregion Concrete Exceptions
 
 #region Warnings
@@ -358,4 +363,5 @@ public static class PyStandardExceptionTypes
     public static readonly PyZeroDivisionErrorObjectType ZeroDivisionError = PyZeroDivisionErrorObjectType.Shared;
     public static readonly PyAssertionErrorObjectType AssertionError = PyAssertionErrorObjectType.Shared;
     public static readonly PyUnboundLocalErrorObjectType UnboundLocalError = PyUnboundLocalErrorObjectType.Shared;
+    public static readonly PyRuntimeErrorObjectType RuntimeError = PyRuntimeErrorObjectType.Shared;
 }
