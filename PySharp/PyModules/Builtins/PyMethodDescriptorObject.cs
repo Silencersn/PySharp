@@ -19,6 +19,7 @@ internal enum PySpecialMethodParametersType
 
 public sealed class PyMethodDescriptorObject : PyObject, IPyDescriptor
 {
+    private readonly PyTypeObject _declaringType;
     private readonly string _name;
     private readonly MethodInfo? _method;
     private readonly PySpecialMethodParametersType _paramType;
@@ -48,14 +49,16 @@ public sealed class PyMethodDescriptorObject : PyObject, IPyDescriptor
 
     bool IPyDescriptor.SupportsDelete => false;
 
-    internal PyMethodDescriptorObject(string name, MethodInfo method, PySpecialMethodParametersType paramType)
+    internal PyMethodDescriptorObject(string name, PyTypeObject declaringType, MethodInfo method, PySpecialMethodParametersType paramType)
     {
+        _declaringType = declaringType;
         _name = name;
         _method = method;
         _paramType = paramType;
     }
-    internal PyMethodDescriptorObject(string name, IEnumerable<MethodInfo> methods)
+    internal PyMethodDescriptorObject(string name, PyTypeObject declaringType, IEnumerable<MethodInfo> methods)
     {
+        _declaringType = declaringType;
         _name = name;
         _methods = [.. methods];
     }
@@ -78,6 +81,12 @@ public sealed class PyMethodDescriptorObject : PyObject, IPyDescriptor
 
     public override PyObject? Call(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
+        if (args.Count is 0)
+            return PyVirtualMachine.RaiseTypeError($"descriptor '{_name}' of '{_declaringType.Name}' object needs an argument");
+
+        if (!_declaringType.IsInstance(args[0]))
+            return PyVirtualMachine.RaiseTypeError($"descriptor '{_name}' requires a '{_declaringType.Name}' object but received a '{args[0].PyType.Name}'");
+
         return UnboundMethod.Call(args, kwargs);
     }
 

@@ -271,16 +271,16 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
             return;
 
         var (pyName, method) = _nameToPyObjectMethod[methodName];
-        PyAttributes[pyName] = new PyMethodDescriptorObject(pyName, method, paramType);
+        PyAttributes[pyName] = new PyMethodDescriptorObject(pyName, this, method, paramType);
     }
     private void AppendSpecialMethodAsDescriptor(string methodName, PySpecialMethodParametersType paramType)
     {
         var (pyName, method) = _nameToPyObjectMethod[methodName];
-        PyAttributes[pyName] = new PyMethodDescriptorObject(pyName, method, paramType);
+        PyAttributes[pyName] = new PyMethodDescriptorObject(pyName, this, method, paramType);
     }
     internal void AppendMethodDescriptor<TPyObject>(string name, params string[] methodNames)
     {
-        PyAttributes[name] = new PyMethodDescriptorObject(name, methodNames.Select(name =>
+        PyAttributes[name] = new PyMethodDescriptorObject(name, this, methodNames.Select(name =>
         {
             var method = typeof(TPyObject).GetMethod(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             Debug.Assert(method is not null);
@@ -289,7 +289,7 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
     }
     internal void AppendMethodDescriptor(string name, Delegate instanceDelegate, PySpecialMethodParametersType paramType)
     {
-        PyAttributes[name] = new PyMethodDescriptorObject(name, instanceDelegate.Method, paramType);
+        PyAttributes[name] = new PyMethodDescriptorObject(name, this, instanceDelegate.Method, paramType);
     }
     internal void AppendMemberDescriptor<TPyObject>(string name, Func<TPyObject, PyObject?> getter) where TPyObject : PyObject
     {
