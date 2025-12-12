@@ -12,7 +12,7 @@ public abstract class AstExprNode : AstNode, IAstNodeLocation
 {
     public PyObject GetExprValue(PyFrame frame)
     {
-        if (this is IAstExprNodeWithoutMetaInfo)
+        if (this is IAstExprNodeNoSelfPythonException)
             return ExecuteExpr(frame);
 
         var previousProvider = frame.ExprMetaInfoProvider;
@@ -37,7 +37,10 @@ internal interface IAstExprNodeBool
     public (bool Result, PyObject Value) GetExprValueWithResult(PyFrame frame);
 }
 
-internal interface IAstExprNodeWithoutMetaInfo;
+/// <summary>
+/// All types that inherit this interface will not raise python exceptions themselves (exceptions may be thrown by child nodes)
+/// </summary>
+internal interface IAstExprNodeNoSelfPythonException;
 
 public enum ExprContext
 {
@@ -90,7 +93,7 @@ public sealed class NameNode : AstExprNode, IExprContextNode, ITargetNode
     }
 }
 
-public sealed class ConstantNode : AstExprNode, IAstExprNodeWithoutMetaInfo
+public sealed class ConstantNode : AstExprNode, IAstExprNodeNoSelfPythonException
 {
     internal ConstantNode(PyObject value)
     {
@@ -228,7 +231,7 @@ public sealed class SubscriptNode : AstExprNode, IExprContextNode, ITargetNode
     }
 }
 
-public sealed class SliceNode : AstExprNode, IAstExprNodeWithoutMetaInfo
+public sealed class SliceNode : AstExprNode, IAstExprNodeNoSelfPythonException
 {
     internal SliceNode(AstExprNode? lower, AstExprNode? upper, AstExprNode? step)
     {
@@ -351,7 +354,7 @@ public sealed class CallNode : AstExprNode
     }
 }
 
-public sealed class ListNode : AstExprNode, IExprContextNode, IAstExprNodeWithoutMetaInfo
+public sealed class ListNode : AstExprNode, IExprContextNode, IAstExprNodeNoSelfPythonException
 {
     internal ListNode(ImmutableArray<AstExprNode> elts)
     {
@@ -396,7 +399,7 @@ public sealed class ListNode : AstExprNode, IExprContextNode, IAstExprNodeWithou
     }
 }
 
-public sealed class TupleNode : AstExprNode, IExprContextNode, IAstExprNodeWithoutMetaInfo
+public sealed class TupleNode : AstExprNode, IExprContextNode, IAstExprNodeNoSelfPythonException
 {
     internal TupleNode(ImmutableArray<AstExprNode> elts)
     {
@@ -441,7 +444,7 @@ public sealed class TupleNode : AstExprNode, IExprContextNode, IAstExprNodeWitho
     }
 }
 
-public sealed class DictNode : AstExprNode, IAstExprNodeWithoutMetaInfo
+public sealed class DictNode : AstExprNode, IAstExprNodeNoSelfPythonException
 {
     internal DictNode(ImmutableArray<AstExprNode> keys, ImmutableArray<AstExprNode> values)
     {
@@ -496,7 +499,7 @@ public sealed class DictNode : AstExprNode, IAstExprNodeWithoutMetaInfo
     }
 }
 
-public sealed class SetNode : AstExprNode, IAstExprNodeWithoutMetaInfo
+public sealed class SetNode : AstExprNode, IAstExprNodeNoSelfPythonException
 {
     internal SetNode(ImmutableArray<AstExprNode> elts)
     {
@@ -540,7 +543,7 @@ public sealed class SetNode : AstExprNode, IAstExprNodeWithoutMetaInfo
     }
 }
 
-public sealed class BoolOpNode : AstExprNode, IAstExprNodeBool, IAstExprNodeWithoutMetaInfo
+public sealed class BoolOpNode : AstExprNode, IAstExprNodeBool, IAstExprNodeNoSelfPythonException
 {
     internal BoolOpNode(AstBoolOpNode op, ImmutableArray<AstExprNode> values)
     {
@@ -762,7 +765,7 @@ public sealed class CompareNode : AstExprNode, IAstExprNodeBool
     }
 }
 
-public sealed class IfExpNode : AstExprNode, IAstExprNodeWithoutMetaInfo
+public sealed class IfExpNode : AstExprNode, IAstExprNodeNoSelfPythonException
 {
     internal IfExpNode(AstExprNode test, AstExprNode body, AstExprNode orElse)
     {
@@ -791,7 +794,7 @@ public sealed class IfExpNode : AstExprNode, IAstExprNodeWithoutMetaInfo
     }
 }
 
-public sealed class ListCompNode : AstExprNode, IAstExprNodeWithoutMetaInfo
+public sealed class ListCompNode : AstExprNode, IAstExprNodeNoSelfPythonException
 {
     internal ListCompNode(AstExprNode elt, ImmutableArray<AstComprehensionNode> generators)
     {
@@ -848,7 +851,7 @@ public sealed class ListCompNode : AstExprNode, IAstExprNodeWithoutMetaInfo
     }
 }
 
-public sealed class SetCompNode : AstExprNode, IAstExprNodeWithoutMetaInfo
+public sealed class SetCompNode : AstExprNode, IAstExprNodeNoSelfPythonException
 {
     internal SetCompNode(AstExprNode elt, ImmutableArray<AstComprehensionNode> generators)
     {
@@ -905,7 +908,7 @@ public sealed class SetCompNode : AstExprNode, IAstExprNodeWithoutMetaInfo
     }
 }
 
-public sealed class DictCompNode : AstExprNode, IAstExprNodeWithoutMetaInfo
+public sealed class DictCompNode : AstExprNode, IAstExprNodeNoSelfPythonException
 {
     internal DictCompNode(AstExprNode key, AstExprNode value, ImmutableArray<AstComprehensionNode> generators)
     {
@@ -966,7 +969,7 @@ public sealed class DictCompNode : AstExprNode, IAstExprNodeWithoutMetaInfo
 
 }
 
-public sealed class GeneratorExpNode : AstExprNode, IAstExprNodeWithoutMetaInfo
+public sealed class GeneratorExpNode : AstExprNode, IAstExprNodeNoSelfPythonException
 {
     internal GeneratorExpNode(AstExprNode elt, ImmutableArray<AstComprehensionNode> generators)
     {
@@ -1054,7 +1057,7 @@ public sealed class LambdaNode : AstExprNode, IFunctionOrLambda
     }
 }
 
-public sealed class JoinedStrNode : AstExprNode, IAstExprNodeWithoutMetaInfo
+public sealed class JoinedStrNode : AstExprNode, IAstExprNodeNoSelfPythonException
 {
     internal JoinedStrNode(ImmutableArray<AstExprNode> values)
     {
