@@ -82,7 +82,7 @@ internal sealed class PyProxyObjectType : PyTypeObject
 {
     private readonly PyTypeObject _target;
 
-    public PyProxyObjectType(PyTypeObject target)
+    public PyProxyObjectType(PyTypeObject target) : base(target.Name, target.Bases)
     {
         _target = target;
     }

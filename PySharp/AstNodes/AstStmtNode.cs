@@ -1,5 +1,6 @@
 ﻿using PySharp.PyModules;
 using PySharp.PyModules.Builtins;
+using PySharp.PyModules.CSharp;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.Metadata;
@@ -7,6 +8,7 @@ using PySharp.Tokenization;
 using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Linq;
 using static PySharp.AstNodes.BreakNode;
 using static PySharp.AstNodes.ContinueNode;
 using static PySharp.AstNodes.ReturnNode;
@@ -912,13 +914,6 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
             if (baseType is not PyTypeObject typeObj)
                 throw new NotSupportedException();
 
-            if (typeObj is not CustomObjectType)
-            {
-                // currently, types defined in Python are prohibited from deriving from C#-level types other than CustomObjectType.
-                PyVirtualMachine.RaisePySharpException($"deriving from '{typeObj.Name}' is not supported currently");
-                throw new PyRuntimeException(PyVirtualMachine.CurrentException);
-            }
-
             return typeObj;
         }).ToList();
         if (bases.Count is 0)
@@ -951,6 +946,8 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
 
     private sealed class CustomObjectType : PyTypeObject
     {
+        private readonly List<PyTypeObject> _nonCustomBaseTypes;
+
         public override string Name { get; }
         public override IReadOnlyList<PyTypeObject> Bases { get; }
 
@@ -963,6 +960,7 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
             AppendMethodDescriptor(PySpecialNames.Hash, PyObjectHash, PySpecialMethodParametersType.NoArgs);
             AppendMethodDescriptor(PySpecialNames.Bool, PyObjectBool, PySpecialMethodParametersType.NoArgs);
             PyAttributes.Add(PySpecialNames.QualName, PyStrObject.FromString(qualName));
+            _nonCustomBaseTypes = [.. bases.Where(type => type is not CustomObjectType)];
         }
 
         internal void InitAttributes(IEnumerable<KeyValuePair<string, PyObject>> attributes)
@@ -975,18 +973,30 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
 
         public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
         {
+            Dictionary<PyTypeObject, PyObject> backingObjects = [];
+            foreach (var nonCustomBaseType in _nonCustomBaseTypes)
+            {
+                var backingObject = nonCustomBaseType.New(this, args, kwargs);
+                if (backingObject is null)
+                    return null;
+                if (backingObject.Init(args, kwargs) is null)
+                    return null;
+                backingObjects[nonCustomBaseType] = backingObject;
+            }
             // TODO: __new__
-            return new CustomObject(this);
+            return new CustomObject(this, backingObjects);
         }
     }
 
     private sealed class CustomObject : PyObject
     {
+        private readonly Dictionary<PyTypeObject, PyObject> _backingObjects;
         public override PyTypeObject PyType { get; }
 
-        internal CustomObject(PyTypeObject pyType)
+        internal CustomObject(PyTypeObject pyType, Dictionary<PyTypeObject, PyObject> backingObjects)
         {
             PyType = pyType;
+            _backingObjects = backingObjects;
         }
 
         private PyObject? CallSpecialMethodOrBase(
@@ -995,7 +1005,12 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
             IReadOnlyList<PyObject> args,
             IReadOnlyDictionary<string, PyObject>? kwargs = null)
         {
-            var method = PyObjectGetAttribute(this, methodName);
+            var method = PyObjectGetAttribute(this, methodName, baseType =>
+            {
+                if (_backingObjects.TryGetValue(baseType, out var obj))
+                    return obj;
+                return null;
+            });
             if (method is null)
             {
                 if (!PyVirtualMachine.IsExceptionOfTypeRaised(PyStandardExceptionTypes.AttributeError))

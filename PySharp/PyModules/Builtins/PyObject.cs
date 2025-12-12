@@ -104,13 +104,18 @@ public partial class PyObject : IEquatable<PyObject>
         return false;
     }
 
-    internal static PyObject? PyObjectGetAttribute(PyObject pyObj, string name)
+    internal static PyObject? PyObjectGetAttribute(PyObject pyObj, string name,
+        Func<PyTypeObject, PyObject?>? selector = null /* selector is used for support CustomObject._backingObjects */)
     {
         PyObject? attrFromType = null;
+        PyTypeObject? ownerType = null; // not null if attrFromType is not null
         foreach (var pyType in pyObj.PyType.MRO)
         {
             if (pyType.PyAttributes.TryGetValue(name, out attrFromType))
+            {
+                ownerType = pyType;
                 break;
+            }
         }
 
         PyObject? nonDataDescriptor = null;
@@ -119,7 +124,11 @@ public partial class PyObject : IEquatable<PyObject>
             if (hasGet)
             {
                 if (hasSet || hasDelete)
+                {
+                    if (selector is not null)
+                        pyObj = selector(ownerType!) ?? pyObj;
                     return attrFromType.Get(pyObj, pyObj.PyType);
+                }
 
                 nonDataDescriptor = attrFromType;
             }
@@ -129,7 +138,11 @@ public partial class PyObject : IEquatable<PyObject>
             return attr;
 
         if (nonDataDescriptor is not null)
+        {
+            if (selector is not null)
+                pyObj = selector(ownerType!) ?? pyObj;
             return nonDataDescriptor.Get(pyObj, pyObj.PyType);
+        }
 
         if (attrFromType is not null)
             return attrFromType;
