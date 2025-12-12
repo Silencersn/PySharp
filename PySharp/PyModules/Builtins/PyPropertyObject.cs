@@ -87,7 +87,7 @@ public sealed class PyPropertyObjectType : PyPrimitiveTypeObject<PyPropertyObjec
         return new PyPropertyObject(arguments[0], arguments[1], arguments[2], arguments[3]);
     }
 
-    public override PyObject? New(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return _new.Call(args, kwargs);
     }

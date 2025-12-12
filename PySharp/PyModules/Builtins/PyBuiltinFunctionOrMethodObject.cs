@@ -120,7 +120,7 @@ public sealed class PyBuiltinFunctionOrMethodObjectType : PyTypeObject
 {
     public override string Name => "builtin_function_or_method";
 
-    public override PyObject? New(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return PyVirtualMachine.RaiseTypeError(null);
     }

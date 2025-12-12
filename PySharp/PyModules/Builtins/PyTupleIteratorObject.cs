@@ -34,7 +34,7 @@ public sealed class PyTupleIteratorObjectType : PyTypeObject
 {
     public override string Name => "tuple_iterator";
 
-    public override PyObject? New(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return PyVirtualMachine.RaiseTypeError(null);
     }

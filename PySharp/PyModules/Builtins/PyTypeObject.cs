@@ -49,7 +49,7 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
 
     public override PyObject? Call(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        var pyObject = New(args, kwargs);
+        var pyObject = New(this, args, kwargs);
         if (pyObject is null)
             return null;
         if (pyObject.Init(args, kwargs) is null)
@@ -110,7 +110,7 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
         return PyTypeGetAttribute(this, item);
     }
 
-    public virtual PyObject? New(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    public virtual PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return PyVirtualMachine.RaiseTypeError($"cannot create '{Name}' instances");
     }
@@ -403,7 +403,7 @@ public sealed class PyTypeObjectType : PyTypeObject
 {
     public override string Name => "type";
 
-    public override PyObject? New(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var pack = new PyArgsPack(args, kwargs);
         if (!pack.ValidateCount(1, 0))

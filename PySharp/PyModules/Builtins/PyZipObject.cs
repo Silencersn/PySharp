@@ -105,7 +105,7 @@ public sealed class PyZipObjectType : PyTypeObject
         return new PyZipObject(iterables, b.BoolValue);
     }
 
-    public override PyObject? New(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return _new.Call(args, kwargs);
     }

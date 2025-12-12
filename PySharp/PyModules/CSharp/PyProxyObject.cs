@@ -93,10 +93,12 @@ internal sealed class PyProxyObjectType : PyTypeObject
     public override string FullName => _target.FullName;
     public override string Document => _target.Document;
 
-    public override PyObject? New(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        var obj = _target.New(args, kwargs);
+        var obj = _target.New(cls, args, kwargs);
         if (obj is null)
+            return null; 
+        if (obj.Init(args, kwargs) is null)
             return null;
         return new PyProxyObject(obj);
     }

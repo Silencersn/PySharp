@@ -280,7 +280,7 @@ public sealed class PyFloatObjectType : PyTypeObject
 {
     public override string Name => "float";
 
-    public override PyObject? New(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var pack = new PyArgsPack(args, kwargs);
         if (!pack.ValidateCount(1, 0))

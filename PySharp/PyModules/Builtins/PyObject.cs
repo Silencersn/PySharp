@@ -251,7 +251,7 @@ public sealed class PyObjectType : PyTypeObject
     public override string Name => "object";
     public override IReadOnlyList<PyTypeObject> Bases => [];
 
-    public override PyObject? New(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var pack = new PyArgsPack(args, kwargs);
         if (!pack.ValidateEmpty())

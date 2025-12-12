@@ -316,7 +316,7 @@ public sealed class PyIntObjectType : PyTypeObject
 
     }
 
-    public override PyObject? New(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return _new.Call(args, kwargs);
     }

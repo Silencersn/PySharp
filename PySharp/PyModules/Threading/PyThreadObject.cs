@@ -87,7 +87,7 @@ public sealed class PyThreadObjectType : PyPrimitiveTypeObject<PyThreadObjectTyp
         return new PyThreadObject(arguments[1], args._array, dict);
     }
 
-    public override PyObject? New(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return _new.Call(args, kwargs);
     }

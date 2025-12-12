@@ -141,7 +141,7 @@ public sealed class PySuperObjectType : PyTypeObject
         return PySuperObject.CreateSuper(type, arguments[1]);
     }
 
-    public override PyObject? New(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return _new.Call(args, kwargs);
     }

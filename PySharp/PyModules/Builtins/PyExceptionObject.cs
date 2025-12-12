@@ -194,7 +194,7 @@ public abstract class PyExceptionType : PyTypeObject
         return new PyExceptionObject(this, [.. pyObjects]);
     }
 
-    public sealed override PyObject? New(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    public sealed override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (kwargs.Count is not 0)
             return PyVirtualMachine.RaiseTypeError(null);

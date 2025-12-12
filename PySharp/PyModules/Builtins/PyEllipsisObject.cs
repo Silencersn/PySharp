@@ -20,7 +20,7 @@ public sealed class PyEllipsisObjectType : PyTypeObject
 {
     public override string Name => "ellipsis";
 
-    public override PyObject? New(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var pack = new PyArgsPack(args, kwargs);
         if (!pack.ValidateEmpty())
