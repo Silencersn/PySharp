@@ -264,6 +264,14 @@ public sealed class PyObjectType : PyTypeObject
     public override string Name => "object";
     public override IReadOnlyList<PyTypeObject> Bases => [];
 
+    public PyObjectType()
+    {
+        AppendMethodDescriptor(PySpecialNames.Repr, PyObjectRepr, PySpecialMethodParametersType.NoArgs);
+        AppendMethodDescriptor(PySpecialNames.Str, PyObjectStr, PySpecialMethodParametersType.NoArgs);
+        AppendMethodDescriptor(PySpecialNames.Hash, PyObjectHash, PySpecialMethodParametersType.NoArgs);
+        AppendMethodDescriptor(PySpecialNames.Bool, PyObjectBool, PySpecialMethodParametersType.NoArgs);
+    }
+
     public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var pack = new PyArgsPack(args, kwargs);
