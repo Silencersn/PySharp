@@ -292,6 +292,10 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
     {
         PyAttributes[name] = new PyMethodDescriptorObject(name, this, instanceDelegate.Method, paramType);
     }
+    internal void AppendMethodDescriptor(string name, MethodInfo instanceMethodInfo, PySpecialMethodParametersType paramType)
+    {
+        PyAttributes[name] = new PyMethodDescriptorObject(name, this, instanceMethodInfo, paramType);
+    }
     internal void AppendMemberDescriptor<TPyObject>(string name, Func<TPyObject, PyObject?> getter) where TPyObject : PyObject
     {
         PyAttributes[name] = new PyMemberDescriptorObject(obj =>
