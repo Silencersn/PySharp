@@ -263,16 +263,20 @@ public sealed class PyListObjectType : PyTypeObject
 
     public override string Name => "list";
 
-    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
-    {
-        var pack = new PyArgsPack(args, kwargs);
-        if (!pack.ValidateCount(1, 0))
-            return PyVirtualMachine.RaiseTypeError(null);
+    private static readonly PyBuiltinFunctionOrMethodObject _new = new(PySpecialNames.New, NewImpl);
 
-        var list = Utils.EnumeratedIterable(pack[0]);
+    [PyFunctionArgsDef("iterable=()", "/")]
+    private static PyListObject? NewImpl(PyArguments arguments)
+    {
+        var list = Utils.EnumeratedIterable(arguments[0]);
         if (list is null)
             return null;
 
         return new PyListObject(list);
+    }
+
+    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        return _new.Call(args, kwargs);
     }
 }

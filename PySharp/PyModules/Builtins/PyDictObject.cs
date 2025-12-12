@@ -149,13 +149,19 @@ public sealed class PyDictObjectType : PyTypeObject
         AppendMethodDescriptor<PyDictObject>("copy", nameof(PyDictObject.CopyImpl));
     }
 
-    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
-    {
-        var pack = new PyArgsPack(args, kwargs);
-        if (!pack.ValidateArgsCount(1))
-            return PyVirtualMachine.RaiseTypeError(null);
+    private static readonly PyBuiltinFunctionOrMethodObject _new = new(PySpecialNames.New, NewImpl_1, NewImpl_2);
 
-        var kvpiteratables = Utils.EnumeratedIterable(pack[0]);
+    [PyFunctionArgsDef("**kwargs")]
+    private static PyDictObject NewImpl_1(PyArguments arguments)
+    {
+        return PyDictObject.CreateDict(arguments.ExtraKwargs
+            .Select(pair => KeyValuePair.Create<PyObject, PyObject>(PyStrObject.FromString(pair.Key), pair.Value)));
+    }
+
+    [PyFunctionArgsDef("iterable", "/", "**kwargs")]
+    private static PyObject? NewImpl_2(PyArguments arguments)
+    {
+        var kvpiteratables = Utils.EnumeratedIterable(arguments[0]);
         if (kvpiteratables is null)
             return null;
 
@@ -163,30 +169,30 @@ public sealed class PyDictObjectType : PyTypeObject
         if (pairs is null)
             return null;
 
-        var dict = new Dictionary<PyObject, PyObject>();
-
-        foreach (var pair in pairs)
-        {
-            dict[pair.Key] = pair.Value;
-        }
+        List<KeyValuePair<PyObject, PyObject>> dict = [.. pairs];
 
         for (int i = 0; i < kvpiteratables.Count; i++)
         {
-            var kvp = Utils.EnumeratedIterable(kvpiteratables[i]);
-            if (kvp is null)
+            var pair = Utils.EnumeratedIterable(kvpiteratables[i]);
+            if (pair is null)
                 return null;
 
-            if (kvp!.Count is not 2)
-                return PyVirtualMachine.RaiseValueError($"dictionary update sequence element #{i} has length {kvp.Count}; 2 is required");
+            if (pair!.Count is not 2)
+                return PyVirtualMachine.RaiseValueError($"dictionary update sequence element #{i} has length {pair.Count}; 2 is required");
 
-            dict[kvp[0]] = kvp[1];
+            dict.Add(KeyValuePair.Create(pair[0], pair[1]));
         }
 
-        foreach (var kvp in kwargs)
+        foreach (var kwarg in arguments.ExtraKwargs)
         {
-            dict[PyStrObject.FromString(kvp.Key)] = kvp.Value;
+            dict.Add(KeyValuePair.Create<PyObject, PyObject>(PyStrObject.FromString(kwarg.Key), kwarg.Value));
         }
 
-        return new PyDictObject(dict);
+        return PyDictObject.CreateDict(dict);
+    }
+
+    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        return _new.Call(args, kwargs);
     }
 }
