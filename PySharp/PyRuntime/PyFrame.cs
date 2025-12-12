@@ -28,6 +28,7 @@ internal enum FrameType
 public sealed class PyFrame
 {
     internal string CallerName { get; }
+    internal PyObject? Caller { get; }
 
     internal IMetaInfoProvider? ExprMetaInfoProvider { get; set; }
     internal IMetaInfoProvider? StmtMetaInfoProvider { get; set; }
@@ -40,6 +41,7 @@ public sealed class PyFrame
         Globals = [];
         _locals = Globals!;
         CallerName = "<module>";
+        Caller = null;
         FrameType = back is null ? FrameType.MainRoot : FrameType.Module;
     }
     private PyFrame(ConcurrentDictionary<string, PyObject> globals)
@@ -48,6 +50,7 @@ public sealed class PyFrame
         Globals = globals;
         _locals = null;
         CallerName = $"<thread-{Environment.CurrentManagedThreadId}>";
+        Caller = null;
         FrameType = FrameType.ThreadRoot;
     }
     private PyFrame(
@@ -56,6 +59,7 @@ public sealed class PyFrame
         Dictionary<string, PyObject?>? locals,
         Dictionary<string, PyCellObject>? closure,
         string callerName,
+        PyObject? caller,
         FrameType frameType)
     {
         Back = back;
@@ -63,6 +67,7 @@ public sealed class PyFrame
         _locals = locals;
         _closure = closure;
         CallerName = callerName;
+        Caller = caller;
         FrameType = frameType;
     }
 
@@ -72,7 +77,7 @@ public sealed class PyFrame
     public ConcurrentDictionary<string, PyObject> Globals { get; }
     public IDictionary<string, PyObject?> Locals => _locals ??= new Dictionary<string, PyObject?>();
     public Dictionary<string, PyCellObject> Closures => _closure ??= [];
-    internal Dictionary<string, PyCellObject>? IntenalClosure => _closure;
+    internal Dictionary<string, PyCellObject>? InternalClosure => _closure;
     public Stack<PyExceptionObject> Exceptions => field ??= [];
     public PyExceptionObject CurrentException => Exceptions.Peek();
 
@@ -80,15 +85,16 @@ public sealed class PyFrame
     internal DictAdapter ProxyGlobals => field ??= new DictAdapter(Globals!);
     internal DictAdapter ProxyLocals => field ??= new DictAdapter(Locals);
     internal FrameType FrameType { get; }
+    internal (IReadOnlyList<PyObject> Args, IReadOnlyDictionary<string, PyObject> Kwargs)? CallingArguments { get; init; }
 
     internal static PyFrame CreateModuleFrame(PyFrame? back)
     {
         return new PyFrame(back);
     }
-    internal PyFrame CreateFuncCallOrClassBuildFrame(string callerName, FrameType frameType)
+    internal PyFrame CreateFuncCallOrClassBuildFrame(string callerName, PyObject caller, FrameType frameType, (IReadOnlyList<PyObject> Args, IReadOnlyDictionary<string, PyObject> Kwargs)? callingArguments = null)
     {
         Debug.Assert(frameType is FrameType.Function or FrameType.Lambda or FrameType.Class);
-        return new PyFrame(this, Globals, null, null, callerName, frameType);
+        return new PyFrame(this, Globals, null, null, callerName, caller, frameType) { CallingArguments = callingArguments };
     }
     internal PyFrame CreateThreadRootFrame()
     {
@@ -98,7 +104,7 @@ public sealed class PyFrame
     internal PyFrame TempFrame(FrameType frameType)
     {
         Debug.Assert(frameType is FrameType.Comprehension or FrameType.Exec or FrameType.Eval);
-        var tempFrame = new PyFrame(this, Globals, _locals?.ToDictionary(), _closure, CallerName, frameType)
+        var tempFrame = new PyFrame(this, Globals, _locals?.ToDictionary(), _closure, CallerName, Caller, frameType)
         {
             _variables = _variables
         };

@@ -1041,7 +1041,7 @@ public sealed class LambdaNode : AstExprNode, IFunctionOrLambda
     public override PyObject ExecuteExpr(PyFrame frame)
     {
         var caller = new FunctionCaller(this, frame, Body.GetExprValue);
-        var func = new PyFunctionObject("<lambda>", caller.Call, frame.IntenalClosure?.Values);
+        var func = new PyFunctionObject("<lambda>", caller.Call, frame.InternalClosure?.Values);
         caller._func = func;
         return func;
     }

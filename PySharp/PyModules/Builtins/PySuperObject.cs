@@ -93,10 +93,16 @@ public sealed class PySuperObjectType : PyTypeObject
 {
     public override string Name => "super";
 
-    private static readonly PyBuiltinFunctionOrMethodObject _new = new(PySpecialNames.New, NewImpl);
+    private static readonly PyBuiltinFunctionOrMethodObject _new = new(PySpecialNames.New, NewImpl_1, NewImpl_2);
+
+    [PyFunctionArgsDef()]
+    private static PyObject? NewImpl_1(PyArguments arguments)
+    {
+        throw new NotImplementedException();
+    }
 
     [PyFunctionArgsDef("type", "object_or_type", "/")]
-    private static PyObject? NewImpl(PyArguments arguments)
+    private static PyObject? NewImpl_2(PyArguments arguments)
     {
         if (arguments[0] is not PyTypeObject type)
             return PyVirtualMachine.RaiseTypeError($"super() argument 1 must be a type, not {arguments[0].PyType.Name}");

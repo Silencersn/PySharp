@@ -801,7 +801,7 @@ internal sealed class FunctionCaller
     private PyObject? CallGeneral(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var backFrame = PyVirtualMachine.CurrentFrame;
-        var frame = backFrame.CreateFuncCallOrClassBuildFrame(_func.Name, _frameType);
+        var frame = backFrame.CreateFuncCallOrClassBuildFrame(_func.Name, _func, _frameType, (args, kwargs));
         frame._variables = _node.Variables;
 
         foreach (var localVariable in _node.LocalVariables)
@@ -846,6 +846,7 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda, IFunctionOrClass
     string[] IFunctionOrLambda.LocalVariables { get; set; } = null!;
     string IFunctionOrClass.QualifiedName { get; set; } = null!;
     string IFunctionOrClass.Name => Identifier;
+    internal bool IncludeSuper { get; set; } = false;
 
     public override void ExecuteStmt(PyFrame frame)
     {
@@ -864,7 +865,11 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda, IFunctionOrClass
             }
             return PyNoneObject.None;
         });
-        var func = new PyFunctionObject(Identifier, caller.Call, frame.IntenalClosure?.Values);
+        var func = new PyFunctionObject(Identifier, caller.Call,
+            IncludeSuper && frame.FrameType is FrameType.Class
+            ? ((IEnumerable<PyCellObject>?)frame.InternalClosure?.Values ?? [])
+                .Append(PyCellObject.CreateCell(PySpecialNames.Class, frame.Caller))
+            : frame.InternalClosure?.Values);
         func.PyAttributes.Add(PySpecialNames.QualName, PyStrObject.FromString(((IFunctionOrClass)this).QualifiedName));
         caller._func = func;
 
@@ -900,7 +905,19 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
 
     public override void ExecuteStmt(PyFrame frame)
     {
-        var newFrame = frame.CreateFuncCallOrClassBuildFrame(Name, FrameType.Class);
+        var bases = Bases.Select(baseExpr =>
+        {
+            var baseType = baseExpr.GetExprValue(frame);
+            if (baseType is not PyTypeObject typeObj)
+                throw new NotSupportedException();
+            return typeObj;
+        }).ToList();
+        if (bases.Count is 0)
+            bases.Add(PyBuiltinTypes.Object);
+
+        var type = new CustomObjectType(Name, ((IFunctionOrClass)this).QualifiedName, bases);
+
+        var newFrame = frame.CreateFuncCallOrClassBuildFrame(Name, type, FrameType.Class);
         newFrame._variables = ((IAstVariableScopeOwner)this).Variables;
         foreach (var (name, cell) in frame.Closures)
         {
@@ -914,18 +931,8 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
         }
         PyVirtualMachine.ExitFrame();
 
-        var bases = Bases.Select(baseExpr =>
-        {
-            var baseType = baseExpr.GetExprValue(frame);
-            if (baseType is not PyTypeObject typeObj)
-                throw new NotSupportedException();
-            return typeObj;
-        }).ToList();
-        if (bases.Count is 0)
-            bases.Add(PyBuiltinTypes.Object);
-
         var attrs = ((IAstVariableScopeOwner)this).Variables.Keys.ToDictionary(static member => member, newFrame.GetValue);
-        var type = new CustomObjectType(Name, ((IFunctionOrClass)this).QualifiedName, bases, attrs);
+        type.InitAttributes(attrs);
 
         foreach (var (name, value) in attrs)
             value.SetName(type, PyStrObject.FromString(name)).PyThrowIfNull();
@@ -938,7 +945,7 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
         public override string Name { get; }
         public override IReadOnlyList<PyTypeObject> Bases { get; }
 
-        internal CustomObjectType(string name, string qualName, IReadOnlyList<PyTypeObject> bases, IEnumerable<KeyValuePair<string, PyObject>> attributes) : base(name, bases)
+        internal CustomObjectType(string name, string qualName, IReadOnlyList<PyTypeObject> bases) : base(name, bases)
         {
             Name = name;
             Bases = bases;
@@ -947,6 +954,10 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
             AppendMethodDescriptor(PySpecialNames.Hash, PyObjectHash, PySpecialMethodParametersType.NoArgs);
             AppendMethodDescriptor(PySpecialNames.Bool, PyObjectBool, PySpecialMethodParametersType.NoArgs);
             PyAttributes.Add(PySpecialNames.QualName, PyStrObject.FromString(qualName));
+        }
+
+        internal void InitAttributes(IEnumerable<KeyValuePair<string, PyObject>> attributes)
+        {
             foreach (var attribute in attributes)
             {
                 PyAttributes[attribute.Key] = attribute.Value;

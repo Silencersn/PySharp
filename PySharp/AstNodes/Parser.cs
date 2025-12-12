@@ -356,6 +356,27 @@ public sealed partial class Parser
                 }
                 functionOrClassNode.QualifiedName = string.Join('.', names);
             }
+
+            if (scope.Owner is FunctionDefNode funcDefNode)
+            {
+                funcDefNode.IncludeSuper = IncludeSuper(scope);
+
+                static bool IncludeSuper(VariableScope scope)
+                {
+                    Debug.Assert(scope.Owner is FunctionDefNode);
+
+                    if (scope.Variables.TryGetValue("super", out var type) && type is not PyVariableType.Parameter)
+                        return true;
+
+                    foreach (var child in scope.Children)
+                    {
+                        if (child.Owner is FunctionDefNode && IncludeSuper(child))
+                            return true;
+                    }
+
+                    return false;
+                }
+            }
         }
     }
 }

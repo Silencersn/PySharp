@@ -6,7 +6,8 @@ namespace PySharp.PyModules.Builtins;
 public sealed class PyFunctionObject : PyObject, IPyObjectName
 {
     private readonly PyUncompoundedFunction _function;
-    private readonly PyCellObject[]? _closure;
+    internal readonly PyCellObject[]? _closure;
+    internal PyObject? _pyClosure;
 
     public string Name { get; }
     internal ReadOnlySpan<PyCellObject> CapturedVariables => _closure;
@@ -19,10 +20,6 @@ public sealed class PyFunctionObject : PyObject, IPyObjectName
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
         _function = function;
         _closure = closure?.ToArray();
-        if (_closure is not null)
-            PyAttributes.Add(PySpecialNames.Closure, PyTupleObject.CreateProxy(_closure));
-        else
-            PyAttributes.Add(PySpecialNames.Closure, PyNoneObject.None);
     }
 
     public override PyObject? Repr()
@@ -47,4 +44,10 @@ public sealed class PyFunctionObject : PyObject, IPyObjectName
 public sealed class PyFunctionObjectType : PyPrimitiveTypeObject<PyFunctionObjectType, PyFunctionObject>
 {
     public override string Name => "function";
+
+    public PyFunctionObjectType()
+    {
+        AppendMemberDescriptor<PyFunctionObject>(PySpecialNames.Closure,
+            func => func._pyClosure ??= func._closure is not null ? PyTupleObject.CreateProxy(func._closure) : PyNoneObject.None);
+    }
 }
