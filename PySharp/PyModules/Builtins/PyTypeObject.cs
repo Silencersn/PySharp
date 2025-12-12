@@ -33,9 +33,10 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
 
     public bool IsInstance(PyObject obj)
     {
-        return IsSubclass(obj.PyType);
+        return obj.PyType.IsSubclassOf(this);
     }
-    public bool IsSubclass(PyTypeObject pyType)
+
+    public bool IsSubclassOf(PyTypeObject pyType)
     {
         foreach (var baseType in MRO)
         {

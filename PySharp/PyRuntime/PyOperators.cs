@@ -381,7 +381,7 @@ public static class PyOperators
         if (left is PyIntObject leftInt && right is PyIntObject rightInt && modulo is null or PyIntObject)
             return FastOperatorForInt(op, leftInt, rightInt, modulo as PyIntObject);
 
-        if (left.PyType.IsSubclass(right.PyType) && left.PyType != right.PyType)
+        if (left.PyType != right.PyType && right.PyType.IsSubclassOf(left.PyType))
             return RightReflectiveOperator(op, left, right, modulo);
         return LeftReflectiveOperator(op, left, right, modulo);
     }
