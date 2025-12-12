@@ -908,8 +908,17 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
         var bases = Bases.Select(baseExpr =>
         {
             var baseType = baseExpr.GetExprValue(frame);
+
             if (baseType is not PyTypeObject typeObj)
                 throw new NotSupportedException();
+
+            if (typeObj is not CustomObjectType)
+            {
+                // currently, types defined in Python are prohibited from deriving from C#-level types other than CustomObjectType.
+                PyVirtualMachine.RaisePySharpException($"deriving from '{typeObj.Name}' is not supported currently");
+                throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+            }
+
             return typeObj;
         }).ToList();
         if (bases.Count is 0)

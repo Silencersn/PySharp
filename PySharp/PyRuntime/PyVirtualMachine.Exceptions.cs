@@ -102,4 +102,17 @@ partial class PyVirtualMachine
     {
         return RaiseException(PyStandardExceptionTypes.StopIteration, arg);
     }
+
+
+    internal sealed class PySharpException : PyExceptionType
+    {
+        public static PySharpException Shared { get; } = new();
+        public override string Name => "PySharpException";
+    }
+
+    [MemberNotNull(nameof(CurrentException))]
+    internal static PyObject? RaisePySharpException(string arg)
+    {
+        return RaiseException(PySharpException.Shared, arg);
+    }
 }
