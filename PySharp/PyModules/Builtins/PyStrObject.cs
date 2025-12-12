@@ -107,105 +107,18 @@ public partial class PyStrObject : PyObject
         return Mul(other);
     }
 
-    internal static PyStrObject FromLiteral(string literal)
+    internal static PyStrObject FromLiteral(ReadOnlySpan<char> literal)
     {
-        return FromString(FromLiteralToString(literal));
+        if (!PyStrConverter.TryFromLiteralToString(literal, out var str, out _))
+            throw new ArgumentException($"failed to parse {literal}");
+        return FromString(str);
     }
 
-    internal static string FromLiteralToString(string literal)
+    internal static PyStrObject FromLiteralContent(ReadOnlySpan<char> text)
     {
-        string value = RemovePrefixAndWrapper(literal, out var prefix);
-        if (prefix.ContainsAny(['f', 'F', 'b', 'B']))
-            throw new ArgumentException("prefix is not supported", nameof(literal));
-
-        if (prefix.ContainsAny('r', 'R'))
-            return value;
-
-        var builder = new StringBuilder();
-        for (int i = 0; i < value.Length; i++)
-        {
-            var c = value[i];
-            if (c is '\\')
-            {
-                Debug.Assert(i < value.Length - 1);
-                c = value[++i];
-                builder.Append(c switch
-                {
-                    '\\' => "\\",
-                    '\'' => "'",
-                    '"' => "\"",
-                    'a' => "\a",
-                    'b' => "\b",
-                    'f' => "\f",
-                    'n' => "\n",
-                    'r' => "\r",
-                    't' => "\t",
-                    'v' => "\v",
-                    _ => $"\\{c}"
-                });
-            }
-            else
-            {
-                builder.Append(c);
-            }
-        }
-
-        return builder.ToString();
-
-        static string RemovePrefixAndWrapper(string str, out string prefix)
-        {
-            Debug.Assert(str.Length >= 2);
-
-            if (str[0] is '\'' or '"')
-                prefix = string.Empty;
-            else if (str[1] is '\'' or '"')
-                prefix = str[0].ToString();
-            else
-                prefix = str[..2];
-
-            if (str.EndsWith("\"\"\"") || str.EndsWith("'''"))
-                return str[(prefix.Length + 3)..^3];
-
-            return str[(prefix.Length + 1)..^1];
-        }
-    }
-    internal static PyStrObject FromLiteralContent(string literalContent)
-    {
-        return FromString(FromLiteralContentToString(literalContent));
-    }
-
-    internal static string FromLiteralContentToString(string literalContent)
-    {
-        var builder = new StringBuilder();
-        for (int i = 0; i < literalContent.Length; i++)
-        {
-            var c = literalContent[i];
-            if (c is '\\')
-            {
-                Debug.Assert(i < literalContent.Length - 1);
-                c = literalContent[++i];
-                builder.Append(c switch
-                {
-                    '\\' => "\\",
-                    '\'' => "'",
-                    '"' => "\"",
-                    'a' => "\a",
-                    'b' => "\b",
-                    'f' => "\f",
-                    'n' => "\n",
-                    'r' => "\r",
-                    't' => "\t",
-                    'v' => "\v",
-                    _ => $"\\{c}"
-                });
-            }
-            else
-            {
-                builder.Append(c);
-            }
-        }
-
-        return builder.ToString();
+        if (!PyStrConverter.TryFromTextToString(text, out var str, out _))
+            throw new ArgumentException($"failed to parse {text}");
+        return FromString(str);
     }
 
     public static PyStrObject FromString(string value)
@@ -519,6 +432,27 @@ public static class PyStrConverter
                     break;
             }
         }
+    }
+    
+    public static bool TryFromTextToString(ReadOnlySpan<char> text, [NotNullWhen(true)] out string? str, out ConvertErrorInfo info)
+    {
+        const int MaxStackLimit = 1024;
+        char[]? rentedArray = null;
+
+        Span<char> chars = text.Length <= MaxStackLimit ? stackalloc char[text.Length] : (rentedArray = ArrayPool<char>.Shared.Rent(text.Length));
+        if (!TryFromTextToString(text, chars, out var charsWritten, out info))
+        {
+            Debug.Assert(info.Error is not ConvertError.DestinationNotEnough);
+            str = null;
+            if (rentedArray is not null)
+                ArrayPool<char>.Shared.Return(rentedArray);
+            return false;
+        }
+
+        str = chars[..charsWritten].ToString();
+        if (rentedArray is not null)
+            ArrayPool<char>.Shared.Return(rentedArray);
+        return true;
     }
 
     public static bool TryFromLiteralToString(ReadOnlySpan<char> literal, Span<char> destination, out int charsWritten, out ConvertErrorInfo info)
