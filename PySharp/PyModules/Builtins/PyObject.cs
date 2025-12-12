@@ -87,6 +87,12 @@ public partial class PyObject : IEquatable<PyObject>
     {
     }
 
+    internal virtual PyObject GetActualInstanceForCallDescriptor(PyTypeObject baseType)
+    {
+        // this method is used to support CustomObject._backingObjects
+        return this;
+    }
+
     internal static bool PyObjectHasAttribute(PyObject pyObj, string name)
     {
         if (pyObj.PyAttributes.ContainsKey(name))
@@ -104,8 +110,7 @@ public partial class PyObject : IEquatable<PyObject>
         return false;
     }
 
-    internal static PyObject? PyObjectGetAttribute(PyObject pyObj, string name,
-        Func<PyTypeObject, PyObject?>? selector = null /* selector is used for support CustomObject._backingObjects */)
+    internal static PyObject? PyObjectGetAttribute(PyObject pyObj, string name)
     {
         PyObject? attrFromType = null;
         PyTypeObject? ownerType = null; // not null if attrFromType is not null
@@ -125,8 +130,8 @@ public partial class PyObject : IEquatable<PyObject>
             {
                 if (hasSet || hasDelete)
                 {
-                    if (selector is not null)
-                        pyObj = selector(ownerType!) ?? pyObj;
+                    Debug.Assert(ownerType is not null);
+                    pyObj = pyObj.GetActualInstanceForCallDescriptor(ownerType);
                     return attrFromType.Get(pyObj, pyObj.PyType);
                 }
 
@@ -139,8 +144,8 @@ public partial class PyObject : IEquatable<PyObject>
 
         if (nonDataDescriptor is not null)
         {
-            if (selector is not null)
-                pyObj = selector(ownerType!) ?? pyObj;
+            Debug.Assert(ownerType is not null);
+            pyObj = pyObj.GetActualInstanceForCallDescriptor(ownerType);
             return nonDataDescriptor.Get(pyObj, pyObj.PyType);
         }
 

@@ -8,7 +8,6 @@ using PySharp.Tokenization;
 using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Linq;
 using static PySharp.AstNodes.BreakNode;
 using static PySharp.AstNodes.ContinueNode;
 using static PySharp.AstNodes.ReturnNode;
@@ -999,18 +998,20 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
             _backingObjects = backingObjects;
         }
 
+        internal override PyObject GetActualInstanceForCallDescriptor(PyTypeObject baseType)
+        {
+            if (_backingObjects.TryGetValue(baseType, out var obj))
+                return obj;
+            return this;
+        }
+
         private PyObject? CallSpecialMethodOrBase(
             string methodName,
             Func<PyObject?> baseCall,
             IReadOnlyList<PyObject> args,
             IReadOnlyDictionary<string, PyObject>? kwargs = null)
         {
-            var method = PyObjectGetAttribute(this, methodName, baseType =>
-            {
-                if (_backingObjects.TryGetValue(baseType, out var obj))
-                    return obj;
-                return null;
-            });
+            var method = PyObjectGetAttribute(this, methodName);
             if (method is null)
             {
                 if (!PyVirtualMachine.IsExceptionOfTypeRaised(PyStandardExceptionTypes.AttributeError))
