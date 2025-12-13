@@ -8,9 +8,11 @@ using PySharp.Tokenization;
 using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using static PySharp.AstNodes.BreakNode;
 using static PySharp.AstNodes.ContinueNode;
 using static PySharp.AstNodes.ReturnNode;
+
 
 namespace PySharp.AstNodes;
 
@@ -943,7 +945,7 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
         frame.SetValue(Name, AstUtils.ApplyDeractors(type, DecoratorList, frame));
     }
 
-    private sealed class CustomObjectType : PyTypeObject
+    internal sealed class CustomObjectType : PyTypeObject
     {
         private readonly List<PyTypeObject> _nonCustomBaseTypes;
 
@@ -954,10 +956,7 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
         {
             Name = name;
             Bases = bases;
-            AppendMethodDescriptor(PySpecialNames.Repr, PyObjectRepr, PySpecialMethodParametersType.NoArgs);
-            AppendMethodDescriptor(PySpecialNames.Str, PyObjectStr, PySpecialMethodParametersType.NoArgs);
-            AppendMethodDescriptor(PySpecialNames.Hash, PyObjectHash, PySpecialMethodParametersType.NoArgs);
-            AppendMethodDescriptor(PySpecialNames.Bool, PyObjectBool, PySpecialMethodParametersType.NoArgs);
+            AppendSpecialMethodsAsDescriptors<PyObject>(nameof(Repr), nameof(Str), nameof(Bool), nameof(Hash));
             PyAttributes.Add(PySpecialNames.QualName, PyStrObject.FromString(qualName));
             _nonCustomBaseTypes = [.. bases.Where(type => type is not (CustomObjectType or PyObjectType))];
         }
@@ -987,7 +986,7 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
         }
     }
 
-    private sealed class CustomObject : PyObject
+    internal sealed class CustomObject : PyObject
     {
         private readonly Dictionary<PyTypeObject, PyObject> _backingObjects;
         public override PyTypeObject PyType { get; }

@@ -24,6 +24,7 @@ public sealed class PyMethodDescriptorObject : PyObject, IPyDescriptor
     private readonly MethodInfo? _method;
     private readonly PySpecialMethodParametersType _paramType;
     private readonly MethodInfo[]? _methods;
+
     private PyBuiltinFunctionOrMethodObject UnboundMethod
     {
         get
@@ -92,6 +93,8 @@ public sealed class PyMethodDescriptorObject : PyObject, IPyDescriptor
 
         Debug.Assert(_method is not null);
         Debug.Assert(_paramType is not PySpecialMethodParametersType.Unknown);
+        if (_method.IsStatic)
+            return new PyBuiltinFunctionOrMethodObject(_name, instance, pyType, ToPyFunctionFromStaticMethod(_method, instance, _paramType));
         return new PyBuiltinFunctionOrMethodObject(_name, instance, pyType, ToPyFunction(_method, instance, _paramType));
     }
 
@@ -113,6 +116,7 @@ public sealed class PyMethodDescriptorObject : PyObject, IPyDescriptor
 
     private static PyFunction ToPyFunction(MethodInfo method, PyObject target, PySpecialMethodParametersType paramType)
     {
+        Debug.Assert(!method.IsStatic);
         return paramType switch
         {
             PySpecialMethodParametersType.NoArgs => [PyFunctionArgsDef()] (arguments) =>
@@ -153,6 +157,51 @@ public sealed class PyMethodDescriptorObject : PyObject, IPyDescriptor
             _ => throw new NotSupportedException(),
         };
     }
+
+    private static PyFunction ToPyFunctionFromStaticMethod(MethodInfo method, PyObject target, PySpecialMethodParametersType paramType)
+    {
+        Debug.Assert(method.IsStatic);
+        return paramType switch
+        {
+            PySpecialMethodParametersType.NoArgs => [PyFunctionArgsDef()] (arguments) =>
+            {
+                return (PyObject?)method.Invoke(null, [target]);
+            }
+            ,
+            PySpecialMethodParametersType.Object => [PyFunctionArgsDef("obj0", "/")] (arguments) =>
+            {
+                return (PyObject?)method.Invoke(null, [target, arguments[0]]);
+            }
+            ,
+            PySpecialMethodParametersType.String => [PyFunctionArgsDef("str0", "/")] (arguments) =>
+            {
+                if (!Utils.TryCastStrAsArg(arguments[0], out var str0))
+                    return null;
+                return (PyObject?)method.Invoke(null, [target, str0]);
+            }
+            ,
+            PySpecialMethodParametersType.ObjectObject => [PyFunctionArgsDef("obj0", "obj1", "/")] (arguments) =>
+            {
+                return (PyObject?)method.Invoke(null, [target, arguments[0], arguments[1]]);
+            }
+            ,
+            PySpecialMethodParametersType.StringObject => [PyFunctionArgsDef("str0", "obj1", "/")] (arguments) =>
+            {
+                if (!Utils.TryCastStrAsArg(arguments[0], out var str0))
+                    return null;
+                return (PyObject?)method.Invoke(null, [target, str0, arguments[1]]);
+            }
+            ,
+            PySpecialMethodParametersType.ArgsKwargs => [PyFunctionArgsDef("*args", "**kwargs")] (arguments) =>
+            {
+                return (PyObject?)method.Invoke(null, [target, arguments.ExtraArgs, arguments.ExtraKwargs]);
+            }
+            ,
+
+            _ => throw new NotSupportedException(),
+        };
+    }
+
 
     private static PyFunction ToPyFunction(MethodInfo method)
     {

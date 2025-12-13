@@ -16,12 +16,12 @@ partial class PyObject
 
     public virtual PyObject? Repr()
     {
-        return PyObjectRepr();
+        return PyStrObject.FromString($"<{PyType.Name} object at 0x{PyId:X16}>");
     }
 
     public virtual PyObject? Str()
     {
-        return PyObjectStr();
+        return Repr();
     }
 
     public virtual PyObject? Hash()

@@ -64,12 +64,6 @@ public class PyIntObject : PyObject
         return new PyIntObject(value);
     }
 
-    public PyStrObject PyIntObjectRepr()
-    {
-        return PyStrObject.FromString(Value.ToString());
-    }
-
-
     public override PyIntObject Index()
     {
         return this;
@@ -82,7 +76,7 @@ public class PyIntObject : PyObject
 
     public override PyStrObject Repr()
     {
-        return PyIntObjectRepr();
+        return PyStrObject.FromString(Value.ToString());
     }
 
     public override PyBoolObject Bool()
@@ -279,12 +273,7 @@ public sealed class PyIntObjectType : PyTypeObject
 {
     public PyIntObjectType()
     {
-        AppendSpecialMethodsAsDescriptors<PyIntObject>();
-
-        // make sure the int.__repr__ is not a virtual call
-        // because bool overwrite __repr__
-        // so that super(bool, True).__repr__ can return '1' correctly
-        AppendMethodDescriptor(PySpecialNames.Repr, typeof(PyIntObject).GetMethod(nameof(PyIntObject.PyIntObjectRepr))!, PySpecialMethodParametersType.NoArgs);
+        AppendOverriddenSpecialMethodsAsDescriptors<PyIntObject>();
     }
 
     public override string Name => "int";

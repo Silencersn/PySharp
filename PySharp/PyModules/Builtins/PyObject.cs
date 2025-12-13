@@ -1,5 +1,6 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
+using PySharp.Utility;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -201,26 +202,6 @@ public partial class PyObject : IEquatable<PyObject>
         return PyNoneObject.None;
     }
 
-    internal PyStrObject PyObjectRepr()
-    {
-        return PyStrObject.FromString($"<{PyType.Name} object at 0x{PyId:X16}>");
-    }
-
-    internal PyObject? PyObjectStr()
-    {
-        return Repr();
-    }
-    internal PyIntObject PyObjectHash()
-    {
-        return PyIntObject.FromInteger(PyId);
-    }
-#pragma warning disable CA1822
-    internal PyBoolObject PyObjectBool()
-#pragma warning restore CA1822
-    {
-        return PyBoolObject.True;
-    }
-
     public override string ToString()
     {
         if (PySpecialMethods.TryGetRepr(this, out var s))
@@ -271,10 +252,7 @@ public sealed class PyObjectType : PyTypeObject
 
     public PyObjectType()
     {
-        AppendMethodDescriptor(PySpecialNames.Repr, PyObjectRepr, PySpecialMethodParametersType.NoArgs);
-        AppendMethodDescriptor(PySpecialNames.Str, PyObjectStr, PySpecialMethodParametersType.NoArgs);
-        AppendMethodDescriptor(PySpecialNames.Hash, PyObjectHash, PySpecialMethodParametersType.NoArgs);
-        AppendMethodDescriptor(PySpecialNames.Bool, PyObjectBool, PySpecialMethodParametersType.NoArgs);
+        AppendSpecialMethodsAsDescriptors<PyObject>(nameof(Repr), nameof(Str), nameof(Bool), nameof(Hash));
     }
 
     public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
