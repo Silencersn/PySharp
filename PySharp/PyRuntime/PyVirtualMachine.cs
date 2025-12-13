@@ -117,6 +117,7 @@ public static partial class PyVirtualMachine
 
             module.PyAttributes[pair.Key] = pair.Value;
         }
+        module.PyAttributes[PySpecialNames.Name] = PyStrObject.FromString(module.Name);
 
         if (newFrame)
             ExitFrame();
