@@ -13,6 +13,7 @@ partial class PyFrame
     {
         private readonly ConcurrentDictionary<string, PyObject> _globals;
         private DictAdapter? _globalsAdapter;
+        private PyDictObject? _pyDict;
 
         public PyFrameGlobals()
         {
@@ -22,5 +23,6 @@ partial class PyFrame
 
         public ConcurrentDictionary<string, PyObject> Globals => _globals;
         public DictAdapter GlobalsAdapter => _globalsAdapter ??= new DictAdapter(Globals!);
+        public PyDictObject PyDict => _pyDict ??= PyDictObject.CreateProxy(GlobalsAdapter);
     }
 }

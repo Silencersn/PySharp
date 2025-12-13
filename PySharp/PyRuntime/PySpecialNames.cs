@@ -89,6 +89,7 @@ public static class PySpecialNames
     public const string Class = "__class__";
     public const string MRO = "__mro__";
     public const string Closure = "__closure__";
+    public const string Globals = "__globals__";
     public const string Module = "__module__";
     public const string QualName = "__qualname__";
 
