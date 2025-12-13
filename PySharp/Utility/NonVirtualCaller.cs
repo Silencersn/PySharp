@@ -1,0 +1,72 @@
+﻿using System.Diagnostics;
+using System.Reflection;
+using System.Reflection.Emit;
+
+namespace PySharp.Utility;
+
+// this class is used to create non-virtual call for a virtual method
+// 
+// example:
+// class A { public virtual string GetText() => "from A"; }
+// class B : A { public override string GetText() => " from B"; }
+// MethodInfo[] methodInfos = NonVirtualCaller.Create(typeof(A), ["GetText"]);
+// var getText = methodInfos[0]; // it is from type A
+// var text = getText(null, [new B()]); // returns "from A" instead of "from B"
+//
+public static class NonVirtualCaller
+{
+    private static readonly AssemblyName _assemblyName;
+    private static readonly AssemblyBuilder _assemblyBuilder;
+    private static readonly ModuleBuilder _moduleBuilder;
+
+    static NonVirtualCaller()
+    {
+        _assemblyName = new AssemblyName(nameof(NonVirtualCaller));
+        _assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(_assemblyName, AssemblyBuilderAccess.Run);
+        _moduleBuilder = _assemblyBuilder.DefineDynamicModule(nameof(NonVirtualCaller));
+    }
+
+    public static MethodInfo[] Create(Type type, params string[] names)
+    {
+        // TODO: name of typeBuilder
+        var typeBuilder = _moduleBuilder.DefineType(type.FullName ?? type.Name, TypeAttributes.Public | TypeAttributes.Class);
+
+        for (int i = 0; i < names.Length; i++)
+        {
+            var name = names[i];
+
+            var methodInfo = type.GetMethod(name, BindingFlags.Public | BindingFlags.Instance);
+            Debug.Assert(methodInfo is not null);
+            var parameters = methodInfo.GetParameters();
+
+            var methodBuilder = typeBuilder.DefineMethod(
+                name,
+                MethodAttributes.Public | MethodAttributes.Static,
+                methodInfo.ReturnType,
+                [type, .. parameters.Select(parameter => parameter.ParameterType)]);
+
+            var il = methodBuilder.GetILGenerator();
+            il.Emit(OpCodes.Ldarg_0);
+            for (int argIndex = 1; argIndex <= parameters.Length; argIndex++)
+                il.Emit(OpCodes.Ldarg, argIndex);
+            il.Emit(OpCodes.Call, methodInfo);
+            il.Emit(OpCodes.Ret);
+        }
+
+        var dynamicType = typeBuilder.CreateType();
+        var methodInfos = new MethodInfo[names.Length];
+        for (int i = 0; i < names.Length; i++)
+        {
+            var name = names[i];
+            var dynamicMethod = dynamicType.GetMethod(name);
+            Debug.Assert(dynamicMethod is not null);
+            methodInfos[i] = dynamicMethod;
+        }
+        return methodInfos;
+    }
+
+    public static MethodInfo[] Create<T>(params string[] names)
+    {
+        return Create(typeof(T), names);
+    }
+}
