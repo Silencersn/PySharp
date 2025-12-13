@@ -252,7 +252,7 @@ public sealed class PyObjectType : PyTypeObject
 
     public PyObjectType()
     {
-        AppendSpecialMethodsAsDescriptors<PyObject>(nameof(Repr), nameof(Str), nameof(Bool), nameof(Hash));
+        AppendSpecialMethodsAsDescriptorsDirectly<PyObject>(nameof(Repr), nameof(Str), nameof(Bool), nameof(Hash));
     }
 
     public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)

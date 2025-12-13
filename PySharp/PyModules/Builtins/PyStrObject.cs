@@ -147,7 +147,7 @@ public sealed class PyStrObjectType : PyTypeObject
 
     public PyStrObjectType()
     {
-        AppendSpecialMethodsAsDescriptors<PyStrObject>();
+        AppendSpecialMethodsAsDescriptorsIfOverridden<PyStrObject>();
         AppendMethodDescriptor<PyStrObject>("join", nameof(PyStrObject.JoinImpl));
     }
 

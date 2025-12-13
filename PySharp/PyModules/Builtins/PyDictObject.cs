@@ -139,7 +139,7 @@ public sealed class PyDictObjectType : PyTypeObject
 
     public PyDictObjectType()
     {
-        AppendSpecialMethodsAsDescriptors<PyDictObject>();
+        AppendSpecialMethodsAsDescriptorsIfOverridden<PyDictObject>();
         AppendMethodDescriptor<PyDictObject>("items", nameof(PyDictObject.ItemsImpl));
         AppendMethodDescriptor<PyDictObject>("clear", nameof(PyDictObject.ClearImpl));
         AppendMethodDescriptor<PyDictObject>("get", nameof(PyDictObject.GetImpl));

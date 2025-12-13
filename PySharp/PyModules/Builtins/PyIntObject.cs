@@ -273,7 +273,7 @@ public sealed class PyIntObjectType : PyTypeObject
 {
     public PyIntObjectType()
     {
-        AppendOverriddenSpecialMethodsAsDescriptors<PyIntObject>();
+        AppendSpecialMethodsAsDescriptorsIfOverridden<PyIntObject>();
     }
 
     public override string Name => "int";

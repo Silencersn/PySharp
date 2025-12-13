@@ -956,7 +956,7 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
         {
             Name = name;
             Bases = bases;
-            AppendSpecialMethodsAsDescriptors<PyObject>(nameof(Repr), nameof(Str), nameof(Bool), nameof(Hash));
+            AppendSpecialMethodsAsDescriptorsDirectly<PyObject>(nameof(Repr), nameof(Str), nameof(Bool), nameof(Hash));
             PyAttributes.Add(PySpecialNames.QualName, PyStrObject.FromString(qualName));
             _nonCustomBaseTypes = [.. bases.Where(type => type is not (CustomObjectType or PyObjectType))];
         }

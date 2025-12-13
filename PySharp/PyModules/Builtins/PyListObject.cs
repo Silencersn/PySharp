@@ -246,7 +246,7 @@ public sealed class PyListObjectType : PyTypeObject
 {
     public PyListObjectType()
     {
-        AppendSpecialMethodsAsDescriptors<PyListObject>();
+        AppendSpecialMethodsAsDescriptorsIfOverridden<PyListObject>();
 
         AppendMethodDescriptor<PyListObject>("append", nameof(PyListObject.AppendImpl));
         AppendMethodDescriptor<PyListObject>("extend", nameof(PyListObject.ExtendImpl));
