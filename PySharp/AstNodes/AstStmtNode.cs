@@ -184,6 +184,11 @@ public class ExprNode : AstStmtNode
 
     public override void ExecuteStmt(PyFrame frame)
     {
+        _ = ExecuteExprStmt(frame);
+    }
+
+    internal PyObject ExecuteExprStmt(PyFrame frame)
+    {
         var value = Value.GetExprValue(frame);
         if (PyVirtualMachine.IsInteractive)
         {
@@ -193,6 +198,7 @@ public class ExprNode : AstStmtNode
                 PyVirtualMachine.Out.WriteLine(repr.Value);
             }
         }
+        return value;
     }
 
     public override ExprNode? Reduce(OptimizationOptions options)
@@ -875,6 +881,12 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda, IFunctionOrClass
             : frame.InternalClosure?.Values,
             frame._globals);
         func.PyAttributes.Add(PySpecialNames.QualName, PyStrObject.FromString(((IFunctionOrClass)this).QualifiedName));
+        if (Body.Count > 0 && Body[0] is ExprNode exprNode &&
+            exprNode.Value is ConstantNode constantNode &&
+            constantNode.Value is PyStrObject strObj)
+        {
+            func.PyAttributes[PySpecialNames.Doc] = strObj;
+        }
         caller._func = func;
 
         frame.SetValue(Identifier, AstUtils.ApplyDeractors(func, DecoratorList, frame));
@@ -922,6 +934,12 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
             bases.Add(PyBuiltinTypes.Object);
 
         var type = new CustomObjectType(Name, ((IFunctionOrClass)this).QualifiedName, bases);
+        if (Body.Count > 0 && Body[0] is ExprNode exprNode &&
+            exprNode.Value is ConstantNode constantNode &&
+            constantNode.Value is PyStrObject strObj)
+        {
+            type.PyAttributes[PySpecialNames.Doc] = strObj;
+        }
 
         var newFrame = frame.CreateFuncCallOrClassBuildFrame(Name, type, FrameType.Class);
         newFrame._variables = ((IAstVariableScopeOwner)this).Variables;

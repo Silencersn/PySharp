@@ -52,8 +52,8 @@ public sealed class PyFunctionObjectType : PyPrimitiveTypeObject<PyFunctionObjec
     public PyFunctionObjectType()
     {
         AppendMemberDescriptor<PyFunctionObject>(PySpecialNames.Closure,
-            func => func._pyClosure ??= func._closure is not null ? PyTupleObject.CreateProxy(func._closure) : PyNoneObject.None);
+            static func => func._pyClosure ??= func._closure is not null ? PyTupleObject.CreateProxy(func._closure) : PyNoneObject.None);
         AppendMemberDescriptor<PyFunctionObject>(PySpecialNames.Globals,
-            func => func._globals.PyDict);
+            static func => func._globals.PyDict);
     }
 }

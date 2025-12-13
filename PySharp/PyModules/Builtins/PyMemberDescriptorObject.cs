@@ -4,7 +4,7 @@ namespace PySharp.PyModules.Builtins;
 
 public sealed class PyMemberDescriptorObject : PyObject, IPyDescriptor
 {
-    private readonly Func<PyObject, PyObject?> _getter;
+    private readonly Func<PyObject, PyObject, PyObject?> _getter;
     private readonly Func<PyObject, PyObject, PyObject?>? _setter;
 
     public override PyTypeObject PyType => PyMemberDescriptorObjectType.Shared;
@@ -15,7 +15,7 @@ public sealed class PyMemberDescriptorObject : PyObject, IPyDescriptor
 
     bool IPyDescriptor.SupportsDelete => false;
 
-    internal PyMemberDescriptorObject(Func<PyObject, PyObject?> getter, Func<PyObject, PyObject, PyObject?>? setter = null)
+    internal PyMemberDescriptorObject(Func<PyObject, PyObject, PyObject?> getter, Func<PyObject, PyObject, PyObject?>? setter = null)
     {
         _getter = getter;
         _setter = setter;
@@ -26,7 +26,7 @@ public sealed class PyMemberDescriptorObject : PyObject, IPyDescriptor
         if (instance is PyNoneObject)
             return this;
 
-        return _getter(instance);
+        return _getter(instance, owner);
     }
 
     public override PyObject? Set(PyObject instance, PyObject value)

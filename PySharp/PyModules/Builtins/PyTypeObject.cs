@@ -22,6 +22,7 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
         MRO = [.. CreateMRO(this, Bases)];
         PyAttributes.Add(PySpecialNames.MRO, PyTupleObject.CreateTuple(MRO));
+        PyAttributes.Add(PySpecialNames.Doc, PyNoneObject.None);
     }
 
     internal PyTypeObject(string name, IReadOnlyList<PyTypeObject> bases)
@@ -30,6 +31,7 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(name));
         MRO = [.. CreateMRO(this, bases)];
         PyAttributes.Add(PySpecialNames.MRO, PyTupleObject.CreateTuple(MRO));
+        PyAttributes.Add(PySpecialNames.Doc, PyNoneObject.None);
     }
 
     public bool IsInstance(PyObject obj)
@@ -220,15 +222,27 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
     {
         PyAttributes[name] = new PyMethodDescriptorObject(name, this, instanceMethodInfo, paramType);
     }
-    internal void AppendMemberDescriptor<TPyObject>(string name, Func<TPyObject, PyObject?> getter) where TPyObject : PyObject
+    internal void AppendMemberDescriptor(string name, Func<PyObject, PyObject, PyObject?> getter, Func<PyObject, PyObject, PyObject?>? setter = null)
     {
-        PyAttributes[name] = new PyMemberDescriptorObject(obj =>
-        {
-            if (obj is not TPyObject pyObj)
-                return PyVirtualMachine.RaiseTypeError(null);
+        PyAttributes[name] = new PyMemberDescriptorObject(getter, setter);
+    }
+    internal void AppendMemberDescriptor<TPyObject>(string name, Func<TPyObject, PyObject?> getter, Func<TPyObject, PyObject, PyObject?>? setter = null) where TPyObject : PyObject
+    {
+        PyAttributes[name] = new PyMemberDescriptorObject(
+            (obj, _) =>
+            {
+                if (obj is not TPyObject pyObj)
+                    return PyVirtualMachine.RaiseTypeError(null);
 
-            return getter(pyObj);
-        });
+                return getter(pyObj);
+            },
+            setter is null ? null : (obj, value) =>
+            {
+                if (obj is not TPyObject pyObj)
+                    return PyVirtualMachine.RaiseTypeError(null);
+
+                return setter(pyObj, value);
+            });
     }
 
     private static List<PyTypeObject> CreateMRO(PyTypeObject pyType, IEnumerable<PyTypeObject> bases)
