@@ -1,5 +1,7 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
+using PySharp.Utility;
+using System.Collections.Concurrent;
 
 namespace PySharp.PyModules.Builtins;
 
@@ -8,18 +10,20 @@ public sealed class PyFunctionObject : PyObject, IPyObjectName
     private readonly PyUncompoundedFunction _function;
     internal readonly PyCellObject[]? _closure;
     internal PyObject? _pyClosure;
+    internal PyFrame.PyFrameGlobals _globals;
 
     public string Name { get; }
     internal ReadOnlySpan<PyCellObject> CapturedVariables => _closure;
 
     public override PyTypeObject PyType => PyBuiltinTypes.Function;
 
-    public PyFunctionObject(string name, PyUncompoundedFunction function, IEnumerable<PyCellObject>? closure)
+    internal PyFunctionObject(string name, PyUncompoundedFunction function, IEnumerable<PyCellObject>? closure, PyFrame.PyFrameGlobals globals)
     {
         Name = name;
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
         _function = function;
         _closure = closure?.ToArray();
+        _globals = globals;
     }
 
     public override PyObject? Repr()

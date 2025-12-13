@@ -804,7 +804,7 @@ internal sealed class FunctionCaller
     private PyObject? CallGeneral(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var backFrame = PyVirtualMachine.CurrentFrame;
-        var frame = backFrame.CreateFuncCallOrClassBuildFrame(_func.Name, _func, _frameType, (args, kwargs));
+        var frame = backFrame.CreateFuncCallOrClassBuildFrame(_func.Name, _func, _frameType, (args, kwargs), _func._globals);
         frame._variables = _node.Variables;
 
         foreach (var localVariable in _node.LocalVariables)
@@ -872,7 +872,8 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda, IFunctionOrClass
             IncludeSuper && frame.FrameType is FrameType.Class
             ? ((IEnumerable<PyCellObject>?)frame.InternalClosure?.Values ?? [])
                 .Append(PyCellObject.CreateCell(PySpecialNames.Class, frame.Caller))
-            : frame.InternalClosure?.Values);
+            : frame.InternalClosure?.Values,
+            frame._globals);
         func.PyAttributes.Add(PySpecialNames.QualName, PyStrObject.FromString(((IFunctionOrClass)this).QualifiedName));
         caller._func = func;
 

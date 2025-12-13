@@ -105,7 +105,9 @@ public static partial class PyVirtualMachine
         moduleNode.Execute(CurrentFrame);
 
         // module will be reloaded
-        module.PyAttributes.Clear();
+        module._pyMembers = CurrentFrame._globals.Globals;
+        Debug.Assert(ReferenceEquals(module.PyAttributes, CurrentFrame._globals.Globals));
+
 
         foreach (var pair in CurrentFrame.Globals)
         {

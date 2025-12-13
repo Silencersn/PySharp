@@ -551,7 +551,7 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef()]
     private static PyDictObject GlobalsImpl(PyArguments arguments)
     {
-        return PyDictObject.CreateProxy(PyVirtualMachine.CurrentFrame.ProxyGlobals);
+        return PyDictObject.CreateProxy(PyVirtualMachine.CurrentFrame.GlobalsAdapter);
     }
 
     [PyFunctionArgsDef("name", "globals=None", "locals=None", "fromlist=()", "level=0")]
