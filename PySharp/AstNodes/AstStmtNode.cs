@@ -959,7 +959,7 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
             AppendMethodDescriptor(PySpecialNames.Hash, PyObjectHash, PySpecialMethodParametersType.NoArgs);
             AppendMethodDescriptor(PySpecialNames.Bool, PyObjectBool, PySpecialMethodParametersType.NoArgs);
             PyAttributes.Add(PySpecialNames.QualName, PyStrObject.FromString(qualName));
-            _nonCustomBaseTypes = [.. bases.Where(type => type is not CustomObjectType)];
+            _nonCustomBaseTypes = [.. bases.Where(type => type is not (CustomObjectType or PyObjectType))];
         }
 
         internal void InitAttributes(IEnumerable<KeyValuePair<string, PyObject>> attributes)
