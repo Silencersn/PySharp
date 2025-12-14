@@ -119,6 +119,9 @@ partial class Parser
 
         // ConstantNode or FormattedValueNode
         List<AstExprNode> nodes = [];
+        bool hasFString = false;
+        var startMetaInfo = CreateMetaInfo();
+        var metaInfo = startMetaInfo;
 
         while (CurrentTokenType is TokenType.String or TokenType.FStringStart)
         {
@@ -127,11 +130,11 @@ partial class Parser
                 var str = FromLiteralToString(CurrentToken.String, false);
                 var node = AstNode.Constant(str, CreateMetaInfo());
                 nodes.Add(node);
-                MoveNextToken();
             }
             else
             {
                 EnsureTokenTypeThenMove(TokenType.FStringStart);
+                hasFString = true;
 
                 while (CurrentTokenType is not TokenType.FStringEnd)
                 {
@@ -149,8 +152,10 @@ partial class Parser
                     MoveNextToken();
                 }
 
-                MoveNextToken();
             }
+
+            metaInfo = CopyThenWithEnd(startMetaInfo);
+            MoveNextToken();
         }
 
         List<AstExprNode> combinedNodes = [];
@@ -174,7 +179,17 @@ partial class Parser
         }
         TryAppendCombinedConstantNode();
 
-        return AstNode.JoinedStr(combinedNodes);
+        if (!hasFString)
+        {
+            Debug.Assert(combinedNodes.Count is 0 or 1);
+
+            if (combinedNodes.Count is 0)
+                return AstNode.Constant(string.Empty, metaInfo);
+
+            return combinedNodes[0];
+        }
+
+        return AstNode.JoinedStr(combinedNodes, metaInfo);
 
         void TryAppendCombinedConstantNode()
         {

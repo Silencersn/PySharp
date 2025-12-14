@@ -175,10 +175,10 @@ partial class AstNode
         return new DictCompNode(key, value, [.. generators]);
     }
 
-    public static JoinedStrNode JoinedStr(params IEnumerable<AstExprNode> values)
+    public static JoinedStrNode JoinedStr(IEnumerable<AstExprNode> values, MetaInfo? metaInfo)
     {
         ArgumentNullException.ThrowIfNull(values);
 
-        return new JoinedStrNode([.. values]);
+        return new JoinedStrNode([.. values]) { MetaInfo = metaInfo };
     }
 }
