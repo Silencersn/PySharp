@@ -881,12 +881,8 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda, IFunctionOrClass
             : frame.InternalClosure?.Values,
             frame._globals);
         func.PyAttributes.Add(PySpecialNames.QualName, PyStrObject.FromString(((IFunctionOrClass)this).QualifiedName));
-        if (Body.Count > 0 && Body[0] is ExprNode exprNode &&
-            exprNode.Value is ConstantNode constantNode &&
-            constantNode.Value is PyStrObject strObj)
-        {
-            func.PyAttributes[PySpecialNames.Doc] = strObj;
-        }
+        if (AstUtils.TryGetDoc(Body, out var doc))
+            func.PyAttributes[PySpecialNames.Doc] = doc;
         caller._func = func;
 
         frame.SetValue(Identifier, AstUtils.ApplyDeractors(func, DecoratorList, frame));
@@ -934,12 +930,8 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
             bases.Add(PyBuiltinTypes.Object);
 
         var type = new CustomObjectType(Name, ((IFunctionOrClass)this).QualifiedName, bases);
-        if (Body.Count > 0 && Body[0] is ExprNode exprNode &&
-            exprNode.Value is ConstantNode constantNode &&
-            constantNode.Value is PyStrObject strObj)
-        {
-            type.PyAttributes[PySpecialNames.Doc] = strObj;
-        }
+        if (AstUtils.TryGetDoc(Body, out var doc))
+            type.PyAttributes[PySpecialNames.Doc] = doc;
 
         var newFrame = frame.CreateFuncCallOrClassBuildFrame(Name, type, FrameType.Class);
         newFrame._variables = ((IAstVariableScopeOwner)this).Variables;

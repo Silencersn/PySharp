@@ -161,4 +161,19 @@ internal static class AstUtils
         }
         return target;
     }
+
+    public static bool TryGetDoc(IReadOnlyList<AstStmtNode> stmtNodes, [NotNullWhen(true)] out PyStrObject? doc)
+    {
+        if (stmtNodes.Count > 0 &&
+            stmtNodes[0] is ExprNode exprNode &&
+            exprNode.Value is ConstantNode constantNode &&
+            constantNode.Value is PyStrObject strObj)
+        {
+            doc = strObj;
+            return true;
+        }
+
+        doc = null;
+        return false;
+    }
 }
