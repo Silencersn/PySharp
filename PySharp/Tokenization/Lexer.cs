@@ -37,6 +37,7 @@ public sealed partial class Lexer
         public int ParenLevelWhenEntering;
         public bool IsTriple => Wrapper.Length is 3;
         public bool IsRaw { get; }
+        public Regex WrapperRegex { get; }
 
         public FStringInfo(string prefix, string wrapper, int parenLevelWhenEntering)
         {
@@ -45,6 +46,14 @@ public sealed partial class Lexer
             Wrapper = wrapper;
             ParenLevelWhenEntering = parenLevelWhenEntering;
             IsRaw = prefix.ContainsAny('r', 'R');
+            WrapperRegex = wrapper switch
+            {
+                "\'" => LexerRegexes.Single,
+                "\"" => LexerRegexes.Double,
+                "\'\'\'" => LexerRegexes.Single3,
+                "\"\"\"" => LexerRegexes.Double3,
+                _ => throw new UnreachableException()
+            };
         }
     }
     private LexerState _rootState;
@@ -219,13 +228,17 @@ public sealed partial class Lexer
                     break;
 
                 case LexerState.FStringMiddle:
-                    var indexOfLeftBrace = content.IndexOf('{', _offset);
-                    var indexOfWrapper = content.IndexOf(CurrentFStringInfo.Wrapper, _offset);
-                    if (indexOfWrapper is -1)
-                        throw new TokenizationException("internal error: f-string no end");
-
                     var info = CurrentFStringInfo;
-                    if (indexOfLeftBrace is -1 || indexOfLeftBrace > indexOfWrapper)
+
+                    var m = info.WrapperRegex.Match(content, _offset);
+                    if (!m.Success)
+                        throw new TokenizationException("internal error: f-string no end");
+                    int indexOfWrapper = m.Index + m.Length - info.Wrapper.Length;
+                    var indexOfLeftBrace = content.IndexOf('{', _offset);
+                    var indexOfRightBrace = content.IndexOf('}', _offset);
+
+                    if (IsFirstNotFoundOrBehindSecond(indexOfLeftBrace, indexOfWrapper) &&
+                        IsFirstNotFoundOrBehindSecond(indexOfRightBrace, indexOfWrapper))
                     {
                         var value = content[_offset..indexOfWrapper];
 
@@ -261,7 +274,8 @@ public sealed partial class Lexer
                         _offset = indexOfWrapper + info.Wrapper.Length;
                         _fstringStack.Pop();
                     }
-                    else
+                    else if (indexOfLeftBrace is not -1 &&
+                        IsFirstNotFoundOrBehindSecond(indexOfRightBrace, indexOfLeftBrace))
                     {
                         var value = content[_offset..indexOfLeftBrace];
 
@@ -291,17 +305,78 @@ public sealed partial class Lexer
                         }
 
                         _offset = indexOfLeftBrace;
+
+                        bool isEscape = false;
+                        if (_offset + 1 < content.Length && content[_offset + 1] is '{')
+                        {
+                            _offset += 2;
+                            value += '{';
+                            isEscape = true;
+                        }
+
                         var end = new TokenPosition(_lineno, _offset - _offsetOfPreviousLine);
                         AppendToken(TokenType.FStringMiddle, value, start, end, currentLine);
-                        AppendToken(TokenType.Operator, "{");
-                        _offset = indexOfLeftBrace + 1;
-                        CurrentState = LexerState.FStringDefault;
+                        if (!isEscape)
+                        {
+                            AppendToken(TokenType.Operator, "{");
+                            _offset = indexOfLeftBrace + 1;
+                            CurrentState = LexerState.FStringDefault;
 
-                        // increment _parenLevel here
-                        // while other operators including RightBrace
-                        // should be processed by TokenizePseudoToken
-                        _parenLevel++;
+                            // increment _parenLevel here
+                            // while other operators including RightBrace
+                            // should be processed by TokenizePseudoToken
+                            _parenLevel++;
+                        }
                     }
+                    else if (indexOfRightBrace is not -1 &&
+                        IsFirstNotFoundOrBehindSecond(indexOfLeftBrace, indexOfRightBrace))
+                    {
+                        if (indexOfRightBrace + 1 < content.Length && content[indexOfRightBrace + 1] is not '}')
+                            throw new TokenizationException("f-string: single '}' is not allowed");
+
+                        var value = content[_offset..indexOfRightBrace];
+
+                        var start = new TokenPosition(_lineno, _offset - _offsetOfPreviousLine);
+                        var currentLine = _currentLine;
+                        Debug.Assert(currentLine is not null);
+
+                        // all the \r\n should be \n
+                        value = value.Replace("\r", string.Empty);
+
+                        if (!info.IsRaw)
+                            // explicit line joining
+                            value = value.Replace("\\\n", string.Empty);
+
+                        var countOfNewLine = value.Count('\n');
+                        if (countOfNewLine > 0)
+                        {
+                            if (!info.IsTriple && !info.IsRaw)
+                                throw new TokenizationException("internal error: unexpected newline in single or double non-raw f-string");
+
+                            _lineno += countOfNewLine;
+                            _offset = content.LastIndexOf('\n', indexOfRightBrace) + 1;
+                            var lastLine = GetCurrentLine(out var offsetOfNextLine);
+                            currentLine = content[_offsetOfPreviousLine..offsetOfNextLine];
+                            _offsetOfPreviousLine = _offset;
+                            _currentLine = lastLine;
+                        }
+
+                        _offset = indexOfRightBrace + 2;
+                        value += '}';
+                        var end = new TokenPosition(_lineno, _offset - _offsetOfPreviousLine);
+                        AppendToken(TokenType.FStringMiddle, value, start, end, currentLine);
+                    }
+                    else
+                    {
+                        throw new UnreachableException();
+                    }
+
+                    static bool IsFirstNotFoundOrBehindSecond(int indexOfFirst, int indexOfSecond)
+                    {
+                        Debug.Assert(indexOfSecond is not -1);
+                        return indexOfFirst is -1 || indexOfFirst > indexOfSecond;
+                    }
+
                     break;
 
                 default:
