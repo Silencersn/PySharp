@@ -203,6 +203,7 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
             [nameof(Iter)] = (PySpecialNames.Iter, PySpecialMethodParametersType.NoArgs),
             [nameof(Next)] = (PySpecialNames.Next, PySpecialMethodParametersType.NoArgs),
             [nameof(SetName)] = (PySpecialNames.SetName, PySpecialMethodParametersType.ObjectObject),
+            [nameof(Init)] = (PySpecialNames.Init, PySpecialMethodParametersType.ArgsKwargs),
         }.ToFrozenDictionary();
 
     internal void AppendMethodDescriptor<TPyObject>(string name, params string[] methodNames)
