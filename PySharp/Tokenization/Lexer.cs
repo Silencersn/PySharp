@@ -1,5 +1,6 @@
 ﻿using PySharp.PyRuntime;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -9,9 +10,14 @@ public sealed partial class Lexer
 {
     private enum LexerState
     {
-        None = 0,
+        Unknown = 0,
+
+        Default,
         TokenizingMultiLineSingleOrDoubleString,
-        TokenizingTripleString
+        TokenizingTripleString,
+
+        FStringMiddle,
+        FStringDefault
     }
 
     public static IReadOnlyList<TokenInfo> Tokenize(string content)
@@ -23,7 +29,44 @@ public sealed partial class Lexer
         return lexer._tokens;
     }
 
-    private LexerState _lexerState;
+    private sealed class FStringInfo
+    {
+        public LexerState State;
+        public string Prefix;
+        public string Wrapper;
+        public int ParenLevelWhenEntering;
+        public bool IsTriple => Wrapper.Length is 3;
+
+        public FStringInfo(string prefix, string wrapper, int parenLevelWhenEntering)
+        {
+            State = LexerState.FStringMiddle;
+            Prefix = prefix;
+            Wrapper = wrapper;
+            ParenLevelWhenEntering = parenLevelWhenEntering;
+        }
+    }
+    private LexerState _rootState;
+    private readonly Stack<FStringInfo> _fstringStack;
+    private FStringInfo CurrentFStringInfo => _fstringStack.Peek();
+    private LexerState CurrentState
+    {
+        get
+        {
+            if (_fstringStack.Count is 0)
+                return _rootState;
+            return CurrentFStringInfo.State;
+        }
+        set
+        {
+            if (_fstringStack.Count is 0)
+            {
+                _rootState = value;
+                return;
+            }
+
+            CurrentFStringInfo.State = value;
+        }
+    }
 
     private readonly List<TokenInfo> _tokens;
     private int _lineno;
@@ -58,7 +101,8 @@ public sealed partial class Lexer
         _parenLevel = 0;
         _currentLine = null;
         _currentContent = null;
-        _lexerState = LexerState.None;
+        _fstringStack = [];
+        CurrentState = LexerState.Default;
     }
 
     internal void InternalStart()
@@ -109,7 +153,7 @@ public sealed partial class Lexer
         _offset = 0;
         while (_offset < content.Length)
         {
-            switch (_lexerState)
+            switch (CurrentState)
             {
                 case LexerState.TokenizingMultiLineSingleOrDoubleString:
                     TokenizeMultiLineSingleOrDoubleString();
@@ -119,7 +163,16 @@ public sealed partial class Lexer
                     TokenizeTripleString();
                     break;
 
-                default:
+                case LexerState.Default or LexerState.FStringDefault:
+                    if (IsFString(content, _offset, out var start, out var whiteLength))
+                    {
+                        _currentLine ??= GetCurrentLine();
+                        AppendToken(TokenType.FStringStart, start);
+                        _fstringStack.Push(new FStringInfo(start[0..1], start[1..], _parenLevel));
+                        _offset += start.Length + whiteLength;
+                        break;
+                    }
+
                     var match = LexerRegexes.PseudoToken.Match(content, _offset);
                     if (match.Index != _offset)
                         throw new TokenizationException("internal error: no match");
@@ -131,9 +184,84 @@ public sealed partial class Lexer
                         SetNewLine();
                         _needSetNewLine = false;
                     }
+
+                    if (CurrentState is LexerState.FStringDefault && CurrentFStringInfo.ParenLevelWhenEntering == _parenLevel)
+                    {
+                        var lastToken = _tokens[^1];
+                        if (lastToken.Type is TokenType.RightBrace)
+                        {
+                            CurrentState = LexerState.FStringMiddle;
+                        }
+                    }
                     break;
+
+                case LexerState.FStringMiddle:
+                    var indexOfLeftBrace = content.IndexOf('{', _offset);
+                    var indexOfWrapper = content.IndexOf(CurrentFStringInfo.Wrapper, _offset);
+                    if (indexOfWrapper is -1)
+                        throw new TokenizationException("internal error: f-string no end");
+
+                    var info = CurrentFStringInfo;
+                    if (indexOfLeftBrace is -1 || indexOfLeftBrace > indexOfWrapper)
+                    {
+                        var value = content[_offset..indexOfWrapper];
+
+                        if (!info.IsTriple && value.Contains('\n'))
+                            throw new TokenizationException("internal error: unexpected newline in single or double f-string");
+
+                        AppendToken(TokenType.FStringMiddle, value);
+                        AppendToken(TokenType.FStringEnd, info.Wrapper);
+                        _offset = indexOfWrapper + info.Wrapper.Length;
+                        _fstringStack.Pop();
+                    }
+                    else
+                    {
+                        var value = content[_offset..indexOfLeftBrace];
+
+                        if (!info.IsTriple && value.Contains('\n'))
+                            throw new TokenizationException("internal error: unexpected newline in single or double f-string");
+
+                        AppendToken(TokenType.FStringMiddle, value);
+                        AppendToken(TokenType.Operator, "{");
+                        _offset = indexOfLeftBrace + 1;
+                        CurrentState = LexerState.FStringDefault;
+
+                        // increment _parenLevel here
+                        // while other operators including RightBrace
+                        // should be processed by TokenizePseudoToken
+                        _parenLevel++;
+                    }
+                    break;
+
+                default:
+                    throw new UnreachableException();
             }
         }
+    }
+
+    private static bool IsFString(string content, int offset, [NotNullWhen(true)] out string? start, out int whiteLength)
+    {
+        // string prefix 'rf' is not supported currently
+
+        var current = content.AsSpan()[offset..];
+        var length = current.Length;
+        current = current.TrimStart();
+        whiteLength = length - current.Length;
+
+        // TODO: 'f' or 'F'
+        if (current.StartsWith("f\"\"\"") || current.StartsWith("f\'\'\'"))
+        {
+            start = current[..4].ToString();
+            return true;
+        }
+        else if (current.StartsWith("f\"") || current.StartsWith("f\'"))
+        {
+            start = current[..2].ToString();
+            return true;
+        }
+
+        start = null;
+        return false;
     }
 
     private static bool IsStrictMatch(Regex regex, Group group)
@@ -192,6 +320,7 @@ public sealed partial class Lexer
     private void AppendNewLineToken(string str)
     {
         bool isNewLine = false;
+        Debug.Assert(_parenLevel >= 0);
         if (_parenLevel is 0)
         {
             for (int i = _tokens.Count - 1; i >= 0; i--)
@@ -266,13 +395,13 @@ public sealed partial class Lexer
         AppendToken(TokenType.String, fullString, _stringStart, end, _currentLine);
         _currentLine = lastLine;
         _offset = m.Index + m.Length;
-        _lexerState = LexerState.None;
+        CurrentState = LexerState.Default;
     }
 
     private void TokenizeMultiLineSingleOrDoubleString()
     {
         Debug.Assert(_currentContent is not null);
-        Debug.Assert(_lexerState is LexerState.TokenizingMultiLineSingleOrDoubleString);
+        Debug.Assert(CurrentState is LexerState.TokenizingMultiLineSingleOrDoubleString);
         Debug.Assert(_wrapper is '\'' or '"');
 
         _lineno++;
@@ -282,7 +411,7 @@ public sealed partial class Lexer
     private void TokenizeTripleString()
     {
         Debug.Assert(_currentContent is not null);
-        Debug.Assert(_lexerState is LexerState.TokenizingTripleString);
+        Debug.Assert(CurrentState is LexerState.TokenizingTripleString);
         Debug.Assert(_wrapper is '\'' or '"');
 
         TokenizeMultiLineString(_wrapper is '"' ? LexerRegexes.Double3 : LexerRegexes.Single3);
@@ -436,7 +565,7 @@ public sealed partial class Lexer
                 _offset = group.Index;
                 _stringStart = new TokenPosition(_lineno, _offset - _offsetOfPreviousLine);
                 _preString = group.Value;
-                _lexerState = LexerState.TokenizingTripleString;
+                CurrentState = LexerState.TokenizingTripleString;
             }
         }
         else if (IsStrictMatch(LexerRegexes.Number, group))
@@ -477,7 +606,7 @@ public sealed partial class Lexer
                 {
                     _stringStart = new TokenPosition(_lineno, _offset - _offsetOfPreviousLine);
                     _preString = group.Value;
-                    _lexerState = LexerState.TokenizingMultiLineSingleOrDoubleString;
+                    CurrentState = LexerState.TokenizingMultiLineSingleOrDoubleString;
                 }
                 else
                 {
