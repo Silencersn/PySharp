@@ -18,19 +18,15 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
 
     internal PyTypeObject()
     {
-        PyAttributes.Add(PySpecialNames.Bases, PyTupleObject.CreateTuple(Bases));
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
         MRO = [.. CreateMRO(this, Bases)];
-        PyAttributes.Add(PySpecialNames.MRO, PyTupleObject.CreateTuple(MRO));
         PyAttributes.Add(PySpecialNames.Doc, PyNoneObject.None);
     }
 
     internal PyTypeObject(string name, IReadOnlyList<PyTypeObject> bases)
     {
-        PyAttributes.Add(PySpecialNames.Bases, PyTupleObject.CreateTuple(bases));
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(name));
         MRO = [.. CreateMRO(this, bases)];
-        PyAttributes.Add(PySpecialNames.MRO, PyTupleObject.CreateTuple(MRO));
         PyAttributes.Add(PySpecialNames.Doc, PyNoneObject.None);
     }
 
@@ -345,6 +341,21 @@ public abstract class PyPrimitiveTypeObject<TSelf, TObject> : PyTypeObject where
 public sealed class PyTypeObjectType : PyTypeObject
 {
     public override string Name => "type";
+
+    public PyTypeObjectType()
+    {
+        AppendMemberDescriptor<PyTypeObject>(PySpecialNames.Bases,
+            static typeObj => PyTupleObject.CreateTuple(typeObj.Bases),
+            static (typeObj, value) => throw new NotImplementedException());
+
+        AppendMemberDescriptor<PyTypeObject>(PySpecialNames.Name,
+            static typeObj => PyStrObject.FromString(typeObj.Name),
+            static (typeObj, value) => throw new NotImplementedException());
+
+        AppendMemberDescriptor<PyTypeObject>(PySpecialNames.MRO,
+            static typeObj => PyTupleObject.CreateTuple(typeObj.MRO),
+            static (typeObj, value) => throw new NotImplementedException());
+    }
 
     public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
