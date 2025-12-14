@@ -1090,3 +1090,25 @@ public sealed class JoinedStrNode : AstExprNode, IAstExprNodeNoSelfPythonExcepti
         Values.EnumerateNodes(action);
     }
 }
+
+public sealed class FormattedValueNode : AstExprNode
+{
+    internal FormattedValueNode(AstExprNode value, int conversion, AstExprNode? formatSpec)
+    {
+        Value = value;
+        Conversion = conversion;
+        FormatSpec = formatSpec;
+    }
+
+    public AstExprNode Value { get; }
+    public int Conversion { get; }
+    public AstExprNode? FormatSpec { get; }
+
+    public override PyObject ExecuteExpr(PyFrame frame)
+    {
+        if (Conversion is not -1 || FormatSpec is not null)
+            throw new NotImplementedException();
+
+        return Value.GetExprValue(frame);
+    }
+}

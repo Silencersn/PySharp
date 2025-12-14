@@ -89,6 +89,171 @@ partial class Parser
         throw new NotSupportedException();
     }
 
+    private AstExprNode ParseFExpression()
+    {
+        if (IsCurrentKeyword("yield"))
+            throw new NotSupportedException();
+
+        var list = ParseFlexibleExpressionList(StopPredicates.UntilRightBrace, out var endsWithComma);
+        return UnwrapOrMakeTuple(list, endsWithComma);
+    }
+
+    private FormattedValueNode ParseReplacementField()
+    {
+        EnsureTokenTypeThenMove(TokenType.LeftBrace);
+        if (CurrentTokenType is TokenType.RightBrace)
+            throw new AstException("f-string: valid expression required before '}'");
+
+        var fexpr = ParseFExpression();
+
+        if (CurrentTokenType is not TokenType.RightBrace)
+            // TODO: format
+            throw new NotSupportedException();
+
+        return new FormattedValueNode(fexpr, -1, null) { MetaInfo = fexpr.MetaInfo }; // TODO: MetaInfo
+    }
+
+    private AstExprNode ParseString()
+    {
+        Debug.Assert(CurrentTokenType is TokenType.String or TokenType.FStringStart);
+
+        // ConstantNode or FormattedValueNode
+        List<AstExprNode> nodes = [];
+
+        while (CurrentTokenType is TokenType.String or TokenType.FStringStart)
+        {
+            if (CurrentTokenType is TokenType.String)
+            {
+                var str = FromLiteralToString(CurrentToken.String, false);
+                var node = AstNode.Constant(str, CreateMetaInfo());
+                nodes.Add(node);
+                MoveNextToken();
+            }
+            else
+            {
+                EnsureTokenTypeThenMove(TokenType.FStringStart);
+
+                while (CurrentTokenType is not TokenType.FStringEnd)
+                {
+                    if (CurrentTokenType is TokenType.FStringMiddle)
+                    {
+                        var str = FromLiteralToString(CurrentToken.String, true);
+                        var node = AstNode.Constant(str, CreateMetaInfo());
+                        nodes.Add(node);
+                    }
+                    else
+                    {
+                        var node = ParseReplacementField();
+                        nodes.Add(node);
+                    }
+                    MoveNextToken();
+                }
+
+                MoveNextToken();
+            }
+        }
+
+        List<AstExprNode> combinedNodes = [];
+        _builderForTokenString.Clear();
+        foreach (var node in nodes)
+        {
+            if (node is ConstantNode constantNode)
+            {
+                Debug.Assert(constantNode.Value is PyStrObject);
+                _builderForTokenString.Append(((PyStrObject)constantNode.Value).Value);
+            }
+            else if (node is FormattedValueNode formattedValueNode)
+            {
+                TryAppendCombinedConstantNode();
+                combinedNodes.Add(formattedValueNode);
+            }
+            else
+            {
+                throw new UnreachableException();
+            }
+        }
+        TryAppendCombinedConstantNode();
+
+        return AstNode.JoinedStr(combinedNodes);
+
+        void TryAppendCombinedConstantNode()
+        {
+            if (_builderForTokenString.Length is 0)
+                return;
+
+            var combinedNode = AstNode.Constant(_builderForTokenString.ToString(), null /* TODO: need MetaInfo ? */ );
+            combinedNodes.Add(combinedNode);
+            _builderForTokenString.Clear();
+        }
+
+
+        static string FromLiteralToString(string literal, bool isFString)
+        {
+            // TODO: prefix 'b'
+
+            bool successful;
+            string? str;
+            PyStrConverter.ConvertErrorInfo info;
+            if (isFString)
+                successful = PyStrConverter.TryFromTextToString(literal, out str, out info);
+            else
+                successful = PyStrConverter.TryFromLiteralToString(literal, out str, out info);
+
+            if (successful)
+            {
+                if (info.Error is PyStrConverter.ConvertError.InvalidEscapeSequence)
+                {
+                    if (!PyVirtualMachine.TryWarn<PySyntaxWarningObjectType>($"invalid escape sequence '\\{info.Char}'"))
+                        throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                }
+
+                Debug.Assert(str is not null);
+                return str;
+            }
+            else
+            {
+                // correctness is ensured by the lexer
+                Debug.Assert(info.Error is not (
+                    PyStrConverter.ConvertError.EndsWithEscape or
+                    PyStrConverter.ConvertError.DestinationNotEnough or
+                    PyStrConverter.ConvertError.WrongFormat or
+                    PyStrConverter.ConvertError.InvalidEscapeSequence));
+
+                switch (info.Error)
+                {
+                    case PyStrConverter.ConvertError.LowerXSequence:
+                        PyVirtualMachine.RaiseSyntaxError(MakeUnicodeErrorInfo("truncated \\xXX escape"));
+                        throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+
+                    case PyStrConverter.ConvertError.LowerUSequence:
+                        PyVirtualMachine.RaiseSyntaxError(MakeUnicodeErrorInfo("truncated \\uXXXX escape"));
+                        throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+
+                    case PyStrConverter.ConvertError.UpperUSequence:
+                        PyVirtualMachine.RaiseSyntaxError(MakeUnicodeErrorInfo("truncated \\UXXXXXXXX escape"));
+                        throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+
+                    case PyStrConverter.ConvertError.SurrogatesNotAllowed:
+                        PyVirtualMachine.RaiseSyntaxError($"'utf-8' codec can't encode character '\\u{(uint)info.Char:x4}' in position {info.Position}: surrogates not allowed");
+                        throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+
+                    case PyStrConverter.ConvertError.IllegalUnicodeCharacter:
+                        PyVirtualMachine.RaiseSyntaxError(MakeUnicodeErrorInfo("illegal Unicode character"));
+                        throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+
+                    default:
+                        throw new UnreachableException();
+                }
+
+                string MakeUnicodeErrorInfo(string message)
+                {
+                    return $"(unicode error) 'unicodeescape' codec can't decode bytes in position {info.Position}-{info.Position + info.Length - 1}: {message}";
+                }
+            }
+
+        }
+    }
+
     /// <summary>
     /// atom: <see cref="ParseIdentifier">identifier</see> | literal | <see cref="ParseEnclosure">enclosure</see>
     /// </summary>
@@ -136,91 +301,9 @@ partial class Parser
                 return nameNode;
             }
         }
-        else if (CurrentTokenType is TokenType.String)
+        else if (CurrentTokenType is TokenType.String or TokenType.FStringStart)
         {
-            // string literal
-            // prefix 'b' is not supported currently, only allows None, 'r', and 'u'
-
-            _builderForTokenString.Clear();
-            while (CurrentTokenType is TokenType.String)
-            {
-                if (PyStrConverter.TryFromLiteralToString(CurrentToken.String, out var str, out var info))
-                {
-                    _builderForTokenString.Append(str);
-
-                    if (info.Error is PyStrConverter.ConvertError.InvalidEscapeSequence)
-                    {
-                        if (!PyVirtualMachine.TryWarn<PySyntaxWarningObjectType>($"invalid escape sequence '\\{info.Char}'"))
-                            throw new PyRuntimeException(PyVirtualMachine.CurrentException);
-                    }
-                }
-                else
-                {
-                    // correctness is ensured by the lexer
-                    Debug.Assert(info.Error is not (
-                        PyStrConverter.ConvertError.EndsWithEscape or
-                        PyStrConverter.ConvertError.DestinationNotEnough or
-                        PyStrConverter.ConvertError.WrongFormat or
-                        PyStrConverter.ConvertError.InvalidEscapeSequence));
-
-                    switch (info.Error)
-                    {
-                        case PyStrConverter.ConvertError.LowerXSequence:
-                            PyVirtualMachine.RaiseSyntaxError(MakeUnicodeErrorInfo("truncated \\xXX escape"));
-                            throw new PyRuntimeException(PyVirtualMachine.CurrentException);
-
-                        case PyStrConverter.ConvertError.LowerUSequence:
-                            PyVirtualMachine.RaiseSyntaxError(MakeUnicodeErrorInfo("truncated \\uXXXX escape"));
-                            throw new PyRuntimeException(PyVirtualMachine.CurrentException);
-
-                        case PyStrConverter.ConvertError.UpperUSequence:
-                            PyVirtualMachine.RaiseSyntaxError(MakeUnicodeErrorInfo("truncated \\UXXXXXXXX escape"));
-                            throw new PyRuntimeException(PyVirtualMachine.CurrentException);
-
-                        case PyStrConverter.ConvertError.SurrogatesNotAllowed:
-                            PyVirtualMachine.RaiseSyntaxError($"'utf-8' codec can't encode character '\\u{(uint)info.Char:x4}' in position {info.Position}: surrogates not allowed");
-                            throw new PyRuntimeException(PyVirtualMachine.CurrentException);
-
-                        case PyStrConverter.ConvertError.IllegalUnicodeCharacter:
-                            PyVirtualMachine.RaiseSyntaxError(MakeUnicodeErrorInfo("illegal Unicode character"));
-                            throw new PyRuntimeException(PyVirtualMachine.CurrentException);
-                    }
-
-                    string MakeUnicodeErrorInfo(string message)
-                    {
-                        return $"(unicode error) 'unicodeescape' codec can't decode bytes in position {info.Position}-{info.Position + info.Length - 1}: {message}";
-                    }
-                }
-                metaInfo = CopyThenWithEnd(metaInfo);
-                MoveNextToken();
-            }
-            return AstNode.Constant(_builderForTokenString.ToString(), metaInfo);
-        }
-        else if (CurrentTokenType is TokenType.FStringStart)
-        {
-            // f-string literal
-
-            var values = new List<AstExprNode>();
-            MoveNextToken();
-            while (CurrentTokenType is not TokenType.FStringEnd)
-            {
-                if (CurrentTokenType is TokenType.FStringMiddle)
-                {
-                    values.Add(AstNode.Constant(PyStrObject.FromLiteralContent(CurrentToken.String), CreateMetaInfo()));
-                }
-                else
-                {
-                    EnsureTokenTypeThenMove(TokenType.LeftBrace);
-                    if (CurrentTokenType is TokenType.RightBrace)
-                        throw new AstException("f-string: valid expression required before '}'");
-
-                    var list = ParseFlexibleExpressionList(StopPredicates.UntilRightBrace, out var endsWithComma);
-                    values.Add(UnwrapOrMakeTuple(list, endsWithComma));
-                }
-                MoveNextToken();
-            }
-            MoveNextToken();
-            return AstNode.JoinedStr(values);
+            return ParseString();
         }
         else if (CurrentTokenType is TokenType.Number)
         {

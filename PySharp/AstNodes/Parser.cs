@@ -179,9 +179,11 @@ public sealed partial class Parser
         metaInfo.CrucialEnd = CurrentToken.End;
         return metaInfo;
     }
-    private static MetaInfo WithEndOfOtherNode(MetaInfo metaInfo, AstNode otherNode)
+    private static MetaInfo? WithEndOfOtherNode(MetaInfo metaInfo, AstNode otherNode)
     {
-        Debug.Assert(otherNode.MetaInfo is not null);
+        if (otherNode.MetaInfo is null)
+            return null;
+
         metaInfo.End = otherNode.MetaInfo.End;
         return metaInfo;
     }
