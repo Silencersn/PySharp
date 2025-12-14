@@ -186,7 +186,9 @@ partial class Parser
             if (combinedNodes.Count is 0)
                 return AstNode.Constant(string.Empty, metaInfo);
 
-            return combinedNodes[0];
+            var node = combinedNodes[0];
+            node.MetaInfo = metaInfo;
+            return node;
         }
 
         return AstNode.JoinedStr(combinedNodes, metaInfo);
@@ -196,7 +198,8 @@ partial class Parser
             if (_builderForTokenString.Length is 0)
                 return;
 
-            var combinedNode = AstNode.Constant(_builderForTokenString.ToString(), null /* TODO: need MetaInfo ? */ );
+            var combinedNode = AstNode.Constant(_builderForTokenString.ToString(),
+                null /* MetaInfo will be added after the combining is complete */ );
             combinedNodes.Add(combinedNode);
             _builderForTokenString.Clear();
         }
