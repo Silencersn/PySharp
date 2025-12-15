@@ -100,7 +100,7 @@ public static partial class PyBuiltinFunctions
     // S
     // set -> PySetObject
     public static readonly PyBuiltinFunctionOrMethodObject SetAttr = new("setattr", SetAttrImpl);
-    // slice -> PySliceObject TODO: __new__
+    // slice -> PySliceObject
     // TODO: sorted()
     // TODO: staticmethod()
     // str -> PyStrObject
