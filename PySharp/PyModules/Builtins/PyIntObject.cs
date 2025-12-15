@@ -10,12 +10,15 @@ public class PyIntObject : PyObject
 {
     private static readonly PyIntObject[] _negatives;
     private static readonly PyIntObject[] _positives;
+    public static PyIntObject Zero { get; }
+    public static PyIntObject One { get; }
+    public static PyIntObject MinusOne { get; }
 
     static PyIntObject()
     {
         _negatives = new PyIntObject[6];
         _positives = new PyIntObject[257];
-
+        
         for (int i = 0; i < _negatives.Length; i++)
         {
             _negatives[i] = new PyIntObject(-i);
@@ -24,6 +27,10 @@ public class PyIntObject : PyObject
         {
             _positives[i] = new PyIntObject(i);
         }
+
+        Zero = _positives[0];
+        One = _positives[1];
+        MinusOne = _negatives[1];
     }
 
     public override PyTypeObject PyType => PyIntObjectType.Shared;
@@ -118,52 +125,37 @@ public class PyIntObject : PyObject
     {
         if (other is not PyIntObject intObj)
             return base.Add(other);
-
-        return FromInteger(Value + intObj.Value);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.Add, this, intObj);
     }
     public override PyObject? Sub(PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.Sub(other);
-
-        return FromInteger(Value - intObj.Value);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.Sub, this, intObj);
     }
     public override PyObject? Mul(PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.Mul(other);
-
-        return FromInteger(Value * intObj.Value);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.Mul, this, intObj);
     }
     public override PyObject? TrueDiv(PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.TrueDiv(other);
-
-        if (intObj.Value == 0)
-            return PyVirtualMachine.RaiseZeroDivisionError("division by zero");
-
-        return PyFloatObject.FromDouble((double)Value / (double)intObj.Value);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.TrueDiv, this, intObj);
     }
     public override PyObject? FloorDiv(PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.FloorDiv(other);
-
-        if (intObj.Value == 0)
-            return PyVirtualMachine.RaiseZeroDivisionError("division by zero");
-
-        var (q, r) = BigInteger.DivRem(Value, intObj.Value);
-        if (r.IsZero || BigInteger.IsPositive(q))
-            return FromInteger(q);
-        return FromInteger(q - 1);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.FloorDiv, this, intObj);
     }
     public override PyObject? Mod(PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.Mod(other);
-
-        return FromInteger(Value % intObj.Value);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.Mod, this, intObj);
     }
     public override PyObject? DivMod(PyObject other)
     {
@@ -177,95 +169,68 @@ public class PyIntObject : PyObject
     {
         if (other is not PyIntObject intObj)
             return base.Pow(other, modulo);
-
-        if (modulo is PyNoneObject)
-        {
-            if (intObj.Value >= 0)
-                return FromInteger(BigInteger.Pow(Value, intObj.Int32Value));
-
-            return PyFloatObject.FromDouble(double.Pow((double)Value, intObj.Int32Value));
-        }
-        else
-        {
-            if (modulo is not PyIntObject moduloObj)
-                return base.Pow(other, modulo);
-
-            if (intObj.Value >= 0)
-                return FromInteger(BigInteger.ModPow(Value, intObj.Value, moduloObj.Value));
-
-            return PyFloatObject.FromDouble(double.Pow((double)Value, intObj.Int32Value) % (double)moduloObj.Value);
-        }
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.Pow, this, intObj, modulo);
     }
     public override PyObject? LShift(PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.LShift(other);
-
-        return FromInteger(Value << intObj.Int32Value);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.LShift, this, intObj);
     }
     public override PyObject? RShift(PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.RShift(other);
-
-        return FromInteger(Value >> intObj.Int32Value);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.RShift, this, intObj);
     }
     public override PyObject? And(PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.And(other);
-
-        return FromInteger(Value & intObj.Value);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.And, this, intObj);
     }
     public override PyObject? Xor(PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.Xor(other);
-
-        return FromInteger(Value ^ intObj.Value);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.Xor, this, intObj);
     }
     public override PyObject? Or(PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.Or(other);
-
-        return FromInteger(Value | intObj.Value);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.Or, this, intObj);
     }
 
     public override PyObject? Lt(PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.Lt(other);
-
-        return PyBoolObject.FromBoolean(Value < intObj.Value);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.Lt, this, intObj);
     }
     public override PyObject? Gt(PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.Gt(other);
-
-        return PyBoolObject.FromBoolean(Value > intObj.Value);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.Gt, this, intObj);
     }
     public override PyObject? Le(PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.Le(other);
-
-        return PyBoolObject.FromBoolean(Value <= intObj.Value);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.Le, this, intObj);
     }
     public override PyObject? Ge(PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.Ge(other);
-
-        return PyBoolObject.FromBoolean(Value >= intObj.Value);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.Ge, this, intObj);
     }
     public override PyObject? Eq(PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.Eq(other);
-
-        return PyBoolObject.FromBoolean(Value == intObj.Value);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.Eq, this, intObj);
     }
 }
 
