@@ -33,6 +33,7 @@ public class PyBuiltinsModuleObject : PyModuleObject
         AddObjToAttrs(PyBuiltinFunctions.IsInstance); // isinstance
         AddObjToAttrs(PyBuiltinFunctions.IsSubclass); // issubclass
         AddObjToAttrs(PyBuiltinFunctions.Callable); // callable
+        AddObjToAttrs(PyBuiltinFunctions.Id); // id
 
         AddObjToAttrs(PyBuiltinTypes.Object); // object
         AddObjToAttrs(PyBuiltinTypes.Str); // str

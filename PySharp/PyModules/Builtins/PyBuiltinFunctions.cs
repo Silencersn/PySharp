@@ -59,7 +59,7 @@ public static partial class PyBuiltinFunctions
     // TODO: hex()
 
     // I
-    // TODO: id()
+    public static readonly PyBuiltinFunctionOrMethodObject Id = new("id", IdImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Input = new("input", InputImpl_1, InputImpl_2);
     // int -> PyIntObject
     public static readonly PyBuiltinFunctionOrMethodObject IsInstance = new("isinstance", IsInstanceImpl);
@@ -735,5 +735,11 @@ public static partial class PyBuiltinFunctions
 
         PyVirtualMachine.ClearException();
         return PyBoolObject.False;
+    }
+
+    [PyFunctionArgsDef("object", "/")]
+    private static PyIntObject IdImpl(PyArguments arguments)
+    {
+        return PyIntObject.FromInteger(arguments[0].PyId);
     }
 }
