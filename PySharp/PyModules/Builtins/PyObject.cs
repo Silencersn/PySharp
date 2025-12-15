@@ -76,12 +76,12 @@ public partial class PyObject : IEquatable<PyObject>
     private static int _pyNextId = 0;
 
     private int? _pyId;
-    internal ConcurrentDictionary<string, PyObject>? _pyMembers;
+    internal IDictionary<string, PyObject>? _pyAttributes;
 
     public virtual PyTypeObject PyType => PyBuiltinTypes.Object;
     public int PyId => _pyId ??= Interlocked.Increment(ref _pyNextId);
 
-    internal IDictionary<string, PyObject> PyAttributes => _pyMembers ??= [];
+    internal IDictionary<string, PyObject> PyAttributes => _pyAttributes ??= CreateAttributesContainer();
 
     public PyObject()
     {
@@ -93,13 +93,20 @@ public partial class PyObject : IEquatable<PyObject>
         return this;
     }
 
+    internal virtual IDictionary<string, PyObject> CreateAttributesContainer()
+    {
+        return new ConcurrentDictionary<string, PyObject>();
+    }
+
     internal static bool PyObjectHasAttribute(PyObject pyObj, string name)
     {
-        if (pyObj.PyAttributes.ContainsKey(name))
+        if (pyObj._pyAttributes is not null && pyObj._pyAttributes.ContainsKey(name))
             return true;
 
         foreach (var pyType in pyObj.PyType.MRO)
         {
+            // check pyObj while not check pyType
+            // because pyType._pyAttributes is always not null
             if (pyType.PyAttributes.ContainsKey(name))
                 return true;
         }
@@ -110,27 +117,32 @@ public partial class PyObject : IEquatable<PyObject>
         return false;
     }
 
-    internal static PyObject? PyObjectGetAttribute(PyObject pyObj, string name)
+    private static bool TryFindAttrFromMRO(PyObject pyObj, string name, [NotNullWhen(true)] out PyObject? attrFromType, [NotNullWhen(true)] out PyTypeObject? ownerType)
     {
-        PyObject? attrFromType = null;
-        PyTypeObject? ownerType = null; // not null if attrFromType is not null
         foreach (var pyType in pyObj.PyType.MRO)
         {
             if (pyType.PyAttributes.TryGetValue(name, out attrFromType))
             {
                 ownerType = pyType;
-                break;
+                return true;
             }
         }
 
+        attrFromType = null;
+        ownerType = null;
+        return false;
+    }
+
+    internal static PyObject? PyObjectGetAttribute(PyObject pyObj, string name)
+    {
         PyObject? nonDataDescriptor = null;
-        if (attrFromType is not null && Utils.IsDescriptor(attrFromType, out var hasGet, out var hasSet, out var hasDelete))
+        if (TryFindAttrFromMRO(pyObj, name, out var attrFromType, out var ownerType) &&
+            Utils.IsDescriptor(attrFromType, out var hasGet, out var hasSet, out var hasDelete))
         {
             if (hasGet)
             {
                 if (hasSet || hasDelete)
                 {
-                    Debug.Assert(ownerType is not null);
                     pyObj = pyObj.GetActualInstanceForCallDescriptor(ownerType);
                     return attrFromType.Get(pyObj, pyObj.PyType);
                 }
@@ -139,7 +151,7 @@ public partial class PyObject : IEquatable<PyObject>
             }
         }
 
-        if (pyObj.PyAttributes.TryGetValue(name, out var attr))
+        if (pyObj._pyAttributes is not null && pyObj._pyAttributes.TryGetValue(name, out var attr))
             return attr;
 
         if (nonDataDescriptor is not null)
@@ -162,17 +174,14 @@ public partial class PyObject : IEquatable<PyObject>
 
     internal static PyObject? PyObjectSetAttribute(PyObject pyObj, string name, PyObject value)
     {
-        PyObject? attrFromType = null;
-        foreach (var pyType in pyObj.PyType.MRO)
-        {
-            if (pyType.PyAttributes.TryGetValue(name, out attrFromType))
-                break;
-        }
-
-        if (attrFromType is not null && Utils.IsDescriptor(attrFromType, out var hasGet, out var hasSet, out var hasDelete))
+        if (TryFindAttrFromMRO(pyObj, name, out var attrFromType, out var ownerType) &&
+            Utils.IsDescriptor(attrFromType, out _, out var hasSet, out _))
         {
             if (hasSet)
+            {
+                pyObj = pyObj.GetActualInstanceForCallDescriptor(ownerType);
                 return attrFromType.Set(pyObj, value);
+            }
         }
 
         pyObj.PyAttributes[name] = value;
@@ -181,17 +190,14 @@ public partial class PyObject : IEquatable<PyObject>
 
     internal static PyObject? PyObjectDeleteAttribute(PyObject pyObj, string name)
     {
-        PyObject? attrFromType = null;
-        foreach (var pyType in pyObj.PyType.MRO)
+        if (TryFindAttrFromMRO(pyObj, name, out var attrFromType, out var ownerType) &&
+            Utils.IsDescriptor(attrFromType, out _, out _, out var hasDelete))
         {
-            if (pyType.PyAttributes.TryGetValue(name, out attrFromType))
-                break;
-        }
-
-        if (attrFromType is not null && Utils.IsDescriptor(attrFromType, out var hasGet, out var hasSet, out var hasDelete))
-        {
-            if (hasSet)
+            if (hasDelete)
+            {
+                pyObj = pyObj.GetActualInstanceForCallDescriptor(ownerType);
                 return attrFromType.Delete(pyObj);
+            }
         }
 
         var removed = pyObj.PyAttributes.Remove(name);

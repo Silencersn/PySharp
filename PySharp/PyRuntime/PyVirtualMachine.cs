@@ -105,7 +105,7 @@ public static partial class PyVirtualMachine
         moduleNode.Execute(CurrentFrame);
 
         // module will be reloaded
-        module._pyMembers = CurrentFrame._globals.Globals;
+        module._pyAttributes = CurrentFrame._globals.Globals;
         Debug.Assert(ReferenceEquals(module.PyAttributes, CurrentFrame._globals.Globals));
         if (AstUtils.TryGetDoc(moduleNode.Body, out var doc))
             module.PyAttributes[PySpecialNames.Doc] = doc;
