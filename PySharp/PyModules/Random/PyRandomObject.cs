@@ -43,7 +43,7 @@ public partial class PyRandomObject : PyObject
     [PyFunctionArgsDef("stop", "/")]
     internal PyObject? RandRangeImpl_1(PyArguments arguments)
     {
-        if (!PyInteropService.TryGetIndex(arguments[0], out var stop))
+        if (!PyInteropService.TryGetIndex(arguments[0], out BigInteger stop))
             return null;
 
         if (stop <= 0)
@@ -58,13 +58,13 @@ public partial class PyRandomObject : PyObject
     [PyFunctionArgsDef("start", "stop", "step=1", "/")]
     internal PyObject? RandRangeImpl_2(PyArguments arguments)
     {
-        if (!PyInteropService.TryGetIndex(arguments[0], out var start))
+        if (!PyInteropService.TryGetIndex(arguments[0], out BigInteger start))
             return null;
 
-        if (!PyInteropService.TryGetIndex(arguments[1], out var stop))
+        if (!PyInteropService.TryGetIndex(arguments[1], out BigInteger stop))
             return null;
 
-        if (!PyInteropService.TryGetIndex(arguments[2], out var step))
+        if (!PyInteropService.TryGetIndex(arguments[2], out BigInteger step))
             return null;
 
         if (step == 0)
@@ -87,10 +87,10 @@ public partial class PyRandomObject : PyObject
     [PyFunctionArgsDef("a", "b")]
     internal PyObject? RandIntImpl(PyArguments arguments)
     {
-        if (!PyInteropService.TryGetIndex(arguments[0], out var a))
+        if (!PyInteropService.TryGetIndex(arguments[0], out BigInteger a))
             return null;
 
-        if (!PyInteropService.TryGetIndex(arguments[1], out var b))
+        if (!PyInteropService.TryGetIndex(arguments[1], out BigInteger b))
             return null;
 
         if (a > b)
@@ -125,7 +125,7 @@ public sealed class PyRandomObjectType : PyPrimitiveTypeObject<PyRandomObjectTyp
 
         if (args.Count is 1)
         {
-            if (!PyInteropService.TryGetIndex(args[0], out var seed))
+            if (!PyInteropService.TryGetIndex(args[0], out int seed))
                 return null;
 
             return new PyRandomObject(new System.Random(seed));

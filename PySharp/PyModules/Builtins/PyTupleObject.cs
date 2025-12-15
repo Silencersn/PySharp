@@ -41,7 +41,7 @@ public class PyTupleObject : PyObject, IPyObjectRecursiveRepr
 
     public override PyObject? GetItem(PyObject item)
     {
-        if (!PyInteropService.TryGetIndex(item, out var index))
+        if (!PyInteropService.TryGetIndex(item, out int index))
             return null;
 
         if (!Utils.TryGetItem(_array, index, "IndexError: tuple index out of range", out var result))

@@ -1,5 +1,6 @@
 ﻿using PySharp.PyModules.Builtins;
 using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
 
 namespace PySharp.PyRuntime;
 
@@ -93,7 +94,17 @@ public static class PyInteropService
         i = 0;
         return false;
     }
+    public static bool TryGetIndex(PyObject obj, out BigInteger i)
+    {
+        if (PySpecialMethods.TryGetIndex(obj, out var pyObj))
+        {
+            i = pyObj.Int32Value;
+            return true;
+        }
 
+        i = 0;
+        return false;
+    }
 
     public static bool TryGetLt(PyObject left, PyObject right, out bool result)
     {

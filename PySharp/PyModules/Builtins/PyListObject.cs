@@ -27,7 +27,7 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr
 
     public override PyObject? GetItem(PyObject item)
     {
-        if (!PyInteropService.TryGetIndex(item, out var index))
+        if (!PyInteropService.TryGetIndex(item, out int index))
             return null;
 
         if (!Utils.TryGetItem(_list, index, "list index out of range", out var result))
@@ -38,7 +38,7 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr
 
     public override PyObject? SetItem(PyObject key, PyObject value)
     {
-        if (!PyInteropService.TryGetIndex(key, out var index))
+        if (!PyInteropService.TryGetIndex(key, out int index))
             return null;
 
         if (!Utils.TrySetItem(_list, index, value, "list index out of range"))
@@ -88,7 +88,7 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr
     [PyFunctionArgsDef("i", "x", "/")]
     internal PyNoneObject? InsertImpl(PyArguments arguments)
     {
-        if (!PyInteropService.TryGetIndex(arguments[0], out var index))
+        if (!PyInteropService.TryGetIndex(arguments[0], out int index))
             return null;
 
         PyInsert(index, arguments[1]);
@@ -107,7 +107,7 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr
     [PyFunctionArgsDef("i=-1", "/")]
     internal PyObject? PopImpl(PyArguments arguments)
     {
-        if (!PyInteropService.TryGetIndex(arguments[0], out var index))
+        if (!PyInteropService.TryGetIndex(arguments[0], out int index))
             return null;
 
         if (Utils.IsIndexOutOfRange(index, _list.Count))
@@ -141,7 +141,7 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr
     [PyFunctionArgsDef("x", "start", "/")]
     internal PyObject? IndexImpl_2(PyArguments arguments)
     {
-        if (!PyInteropService.TryGetIndex(arguments[1], out var start))
+        if (!PyInteropService.TryGetIndex(arguments[1], out int start))
             return null;
 
         var index = PyIndex(arguments[0], start);
@@ -159,10 +159,10 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr
     [PyFunctionArgsDef("x", "start", "end", "/")]
     internal PyObject? IndexImpl_3(PyArguments arguments)
     {
-        if (!PyInteropService.TryGetIndex(arguments[1], out var start))
+        if (!PyInteropService.TryGetIndex(arguments[1], out int start))
             return null;
 
-        if (!PyInteropService.TryGetIndex(arguments[2], out var end))
+        if (!PyInteropService.TryGetIndex(arguments[2], out int end))
             return null;
 
         var index = PyIndex(arguments[0], start, end);

@@ -147,7 +147,7 @@ public sealed class PyQueueObjectType : PyPrimitiveTypeObject<PyQueueObjectType,
     [PyFunctionArgsDef("maxsize=0")]
     private static PyQueueObject? NewImpl(PyArguments arguments)
     {
-        if (!PyInteropService.TryGetIndex(arguments[0], out var maxSize))
+        if (!PyInteropService.TryGetIndex(arguments[0], out int maxSize))
             return null;
 
         return new PyQueueObject(maxSize);

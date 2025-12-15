@@ -61,7 +61,7 @@ public partial class PyStrObject : PyObject
 
     public override PyObject? GetItem(PyObject item)
     {
-        if (!PyInteropService.TryGetIndex(item, out var index))
+        if (!PyInteropService.TryGetIndex(item, out int index))
             return null;
 
         index = Utils.MapIndex(index, PyLength);
@@ -96,7 +96,7 @@ public partial class PyStrObject : PyObject
 
     public override PyObject? Mul(PyObject other)
     {
-        if (!PyInteropService.TryGetIndex(other, out var repeatCount))
+        if (!PyInteropService.TryGetIndex(other, out int repeatCount))
             return PyNotImplementedObject.NotImplemented;
 
         return FromString(string.Concat(Enumerable.Repeat(Value, repeatCount)));

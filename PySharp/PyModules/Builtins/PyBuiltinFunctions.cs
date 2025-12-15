@@ -4,6 +4,7 @@ using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.PyAttributes;
 using PySharp.Tokenization;
 using System.Diagnostics;
+using System.Numerics;
 using System.Text;
 
 namespace PySharp.PyModules.Builtins;
@@ -599,7 +600,7 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef("codepoint", "/")]
     private static PyObject? ChrImpl(PyArguments arguments)
     {
-        if (!PyInteropService.TryGetIndex(arguments[0], out var value))
+        if (!PyInteropService.TryGetIndex(arguments[0], out int value))
             return null;
 
         if (!Rune.TryCreate(value, out var rune))
