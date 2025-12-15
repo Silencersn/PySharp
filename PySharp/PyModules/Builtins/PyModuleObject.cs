@@ -47,7 +47,7 @@ public class PyModuleObject : PyObject, IPyObjectName
     }
 }
 
-public sealed class PyModuleObjectType : PyTypeObject
+public sealed class PyModuleObjectType : PyPrimitiveTypeObject<PyModuleObjectType, PyModuleObject>
 {
     public override string Name => "module";
 

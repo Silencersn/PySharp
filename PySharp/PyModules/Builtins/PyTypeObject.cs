@@ -114,25 +114,29 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
         return PyVirtualMachine.RaiseTypeError($"cannot create '{Name}' instances");
     }
 
+    private void AppendSpecialMethodsAsDescriptors(IEnumerable<MethodInfo> methodInfos)
+    {
+        foreach (var methodInfo in methodInfos)
+        {
+            var (pyName, paramType) = _nameToPySpecialMethodParametersType[methodInfo.Name];
+
+            // it is assumed that the key to be added does not exist in PyAttributes
+            // if any key exists, it should be added in another way
+            PyAttributes.Add(pyName, new PyMethodDescriptorObject(pyName, this, methodInfo, paramType));
+        }
+    }
+
     internal void AppendSpecialMethodsAsDescriptorsIfOverridden<TPyObject>() where TPyObject : PyObject
     {
         var names = _nameToPySpecialMethodParametersType.Keys.Where(name => Utils.IsPyObjectMethodOverridden(typeof(TPyObject), name));
         var methodInfos = NonVirtualCaller.Create<TPyObject>([.. names]);
-        foreach (var methodInfo in methodInfos)
-        {
-            var (pyName, paramType) = _nameToPySpecialMethodParametersType[methodInfo.Name];
-            PyAttributes[pyName] = new PyMethodDescriptorObject(pyName, this, methodInfo, paramType);
-        }
+        AppendSpecialMethodsAsDescriptors(methodInfos);
     }
 
     internal void AppendSpecialMethodsAsDescriptorsDirectly<TPyObject>(params string[] names) where TPyObject : PyObject
     {
         var methodInfos = NonVirtualCaller.Create<TPyObject>(names);
-        foreach (var methodInfo in methodInfos)
-        {
-            var (pyName, paramType) = _nameToPySpecialMethodParametersType[methodInfo.Name];
-            PyAttributes[pyName] = new PyMethodDescriptorObject(pyName, this, methodInfo, paramType);
-        }
+        AppendSpecialMethodsAsDescriptors(methodInfos);
     }
 
     private static readonly FrozenDictionary<string, (string PyName, PySpecialMethodParametersType ParamType)> _nameToPySpecialMethodParametersType =
@@ -338,14 +342,12 @@ public abstract class PyPrimitiveTypeObject<TSelf, TObject> : PyTypeObject where
     }
 }
 
-public sealed class PyTypeObjectType : PyTypeObject
+public sealed class PyTypeObjectType : PyPrimitiveTypeObject<PyTypeObjectType, PyTypeObject>
 {
     public override string Name => "type";
 
     public PyTypeObjectType()
     {
-        AppendSpecialMethodsAsDescriptorsIfOverridden<PyTypeObject>();
-
         AppendMemberDescriptor<PyTypeObject>(PySpecialNames.Bases,
             static typeObj => PyTupleObject.CreateTuple(typeObj.Bases),
             static (typeObj, value) => throw new NotImplementedException());

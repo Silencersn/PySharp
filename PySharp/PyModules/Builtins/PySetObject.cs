@@ -28,3 +28,5 @@ public class PySetObject : PyObject, IPyObjectRecursiveRepr
         return Utils.CollectionRecursiveRepr(this, _set, "{", "}", ids);
     }
 }
+
+// TODO: type

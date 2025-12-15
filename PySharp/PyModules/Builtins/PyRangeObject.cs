@@ -64,7 +64,7 @@ public class PyRangeObject : PyObject
     }
 }
 
-public sealed class PyRangeObjectType : PyTypeObject
+public sealed class PyRangeObjectType : PyPrimitiveTypeObject<PyRangeObjectType, PyRangeObject>
 {
     public override string Name => "range";
 

@@ -8,6 +8,8 @@ public class PyNoneObject : PyObject
     public static PyNoneObject None { get; } = new PyNoneObject();
     private static readonly PyStrObject _repr = PyStrObject.FromString("None");
 
+    public override PyTypeObject PyType => PyNoneObjectType.Shared;
+
     public override PyStrObject Repr()
     {
         return _repr;
@@ -19,7 +21,7 @@ public class PyNoneObject : PyObject
     }
 }
 
-public sealed class PyNoneObjectType : PyTypeObject
+public sealed class PyNoneObjectType : PyPrimitiveTypeObject<PyNoneObjectType, PyNoneObject>
 {
     public override string Name => "NoneType";
 

@@ -7,6 +7,8 @@ public class PyStrIteratorObject : PyObject
 {
     private StringRuneEnumerator _enumerator;
 
+    public override PyTypeObject PyType => PyStrIteratorObjectType.Shared;
+
     internal PyStrIteratorObject(string str)
     {
         _enumerator = str.EnumerateRunes();
@@ -24,4 +26,9 @@ public class PyStrIteratorObject : PyObject
 
         return PyStrObject.FromRune(_enumerator.Current);
     }
+}
+
+public sealed class PyStrIteratorObjectType : PyPrimitiveTypeObject<PyStrIteratorObjectType, PyStrIteratorObject>
+{
+    public override string Name => "str_iterator";
 }

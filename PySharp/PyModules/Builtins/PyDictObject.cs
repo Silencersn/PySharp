@@ -8,7 +8,7 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
 {
     internal readonly IDictionary<PyObject, PyObject> _dict;
 
-    public override PyTypeObject PyType => PyBuiltinTypes.Dict;
+    public override PyTypeObject PyType => PyDictObjectType.Shared;
 
     public PyDictObject()
     {
@@ -133,13 +133,12 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
     }
 }
 
-public sealed class PyDictObjectType : PyTypeObject
+public sealed class PyDictObjectType : PyPrimitiveTypeObject<PyDictObjectType, PyDictObject>
 {
     public override string Name => "dict";
 
     public PyDictObjectType()
     {
-        AppendSpecialMethodsAsDescriptorsIfOverridden<PyDictObject>();
         AppendMethodDescriptor<PyDictObject>("items", nameof(PyDictObject.ItemsImpl));
         AppendMethodDescriptor<PyDictObject>("clear", nameof(PyDictObject.ClearImpl));
         AppendMethodDescriptor<PyDictObject>("get", nameof(PyDictObject.GetImpl));

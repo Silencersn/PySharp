@@ -55,15 +55,10 @@ public sealed class PyMapObjectType : PyPrimitiveTypeObject<PyMapObjectType, PyM
 {
     public override string Name => "map";
 
-    public PyMapObjectType()
-    {
-        AppendSpecialMethodsAsDescriptorsIfOverridden<PyMapObject>();
-    }
-
     private static readonly PyBuiltinFunctionOrMethodObject _new = new(PySpecialNames.New, NewImpl);
 
     [PyFunctionArgsDef("function", "/", "*iterables", "strict=False")]
-    private static PyObject? NewImpl(PyArguments arguments)
+    private static PyMapObject? NewImpl(PyArguments arguments)
     {
         var function = arguments[0];
         if (!PyInteropService.TryGetBool(arguments["strict"], out var strict))

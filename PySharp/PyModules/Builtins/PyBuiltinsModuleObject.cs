@@ -35,21 +35,21 @@ public class PyBuiltinsModuleObject : PyModuleObject
         AddObjToAttrs(PyBuiltinFunctions.Callable); // callable
         AddObjToAttrs(PyBuiltinFunctions.Id); // id
 
-        AddObjToAttrs(PyBuiltinTypes.Object); // object
-        AddObjToAttrs(PyBuiltinTypes.Str); // str
-        AddObjToAttrs(PyBuiltinTypes.Int); // int
-        AddObjToAttrs(PyBuiltinTypes.Float); // float
-        AddObjToAttrs(PyBuiltinTypes.Tuple); // tuple
-        AddObjToAttrs(PyBuiltinTypes.Dict); // dict
-        AddObjToAttrs(PyBuiltinTypes.Bool); // bool
-        AddObjToAttrs(PyBuiltinTypes.List); // list
-        AddObjToAttrs(PyBuiltinTypes.Type); // type
-        AddObjToAttrs(PyBuiltinTypes.Range); // range
-        AddObjToAttrs(PyBuiltinTypes.Zip); // zip
-        AddObjToAttrs(PyBuiltinTypes.Property); // property
-        AddObjToAttrs(PyBuiltinTypes.Super); // super
-        AddObjToAttrs(PyBuiltinTypes.Slice); // slice
-        AddObjToAttrs(PyBuiltinTypes.Map); // map
+        AddObjToAttrs(PyObjectType.Shared); // object
+        AddObjToAttrs(PyStrObjectType.Shared); // str
+        AddObjToAttrs(PyIntObjectType.Shared); // int
+        AddObjToAttrs(PyFloatObjectType.Shared); // float
+        AddObjToAttrs(PyTupleObjectType.Shared); // tuple
+        AddObjToAttrs(PyDictObjectType.Shared); // dict
+        AddObjToAttrs(PyBoolObjectType.Shared); // bool
+        AddObjToAttrs(PyListObjectType.Shared); // list
+        AddObjToAttrs(PyTypeObjectType.Shared); // type
+        AddObjToAttrs(PyRangeObjectType.Shared); // range
+        AddObjToAttrs(PyZipObjectType.Shared); // zip
+        AddObjToAttrs(PyPropertyObjectType.Shared); // property
+        AddObjToAttrs(PySuperObjectType.Shared); // super
+        AddObjToAttrs(PySliceObjectType.Shared); // slice
+        AddObjToAttrs(PyMapObjectType.Shared); // map
 
         AddObjToAttrs("Ellipsis", PyEllipsisObject.Ellipsis); // Ellipsis
 

@@ -11,7 +11,7 @@ public sealed class PyBoolObject : PyIntObject
     public bool BoolValue { get; }
     private readonly PyStrObject _repr;
 
-    public override PyTypeObject PyType => PyBuiltinTypes.Bool;
+    public override PyTypeObject PyType => PyBoolObjectType.Shared;
 
     private PyBoolObject(bool value) : base(value ? 1 : 0)
     {
@@ -40,11 +40,11 @@ public sealed class PyBoolObject : PyIntObject
     }
 }
 
-public sealed class PyBoolObjectType : PyTypeObject
+public sealed class PyBoolObjectType : PyPrimitiveTypeObject<PyBoolObjectType, PyBoolObject>
 {
     public override string Name => "bool";
 
-    public override IReadOnlyList<PyTypeObject> Bases => [PyBuiltinTypes.Int];
+    public override IReadOnlyList<PyTypeObject> Bases => [PyIntObjectType.Shared];
 
     public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {

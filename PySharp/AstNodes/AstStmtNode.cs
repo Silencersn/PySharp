@@ -925,7 +925,7 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
             return typeObj;
         }).ToList();
         if (bases.Count is 0)
-            bases.Add(PyBuiltinTypes.Object);
+            bases.Add(PyObjectType.Shared);
 
         var type = new CustomObjectType(Name, ((IFunctionOrClass)this).QualifiedName, bases);
         if (AstUtils.TryGetDoc(Body, out var doc))

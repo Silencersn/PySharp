@@ -9,7 +9,7 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr
 {
     internal readonly List<PyObject> _list;
 
-    public override PyTypeObject PyType => PyBuiltinTypes.List;
+    public override PyTypeObject PyType => PyListObjectType.Shared;
 
     public PyListObject()
     {
@@ -242,12 +242,10 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr
     }
 }
 
-public sealed class PyListObjectType : PyTypeObject
+public sealed class PyListObjectType : PyPrimitiveTypeObject<PyListObjectType, PyListObject>
 {
     public PyListObjectType()
     {
-        AppendSpecialMethodsAsDescriptorsIfOverridden<PyListObject>();
-
         AppendMethodDescriptor<PyListObject>("append", nameof(PyListObject.AppendImpl));
         AppendMethodDescriptor<PyListObject>("extend", nameof(PyListObject.ExtendImpl));
         AppendMethodDescriptor<PyListObject>("insert", nameof(PyListObject.InsertImpl));

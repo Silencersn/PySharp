@@ -10,6 +10,8 @@ public class PySliceObject : PyObject
     public PyObject Stop { get; }
     public PyObject Step { get; }
 
+    public override PyTypeObject PyType => PySliceObjectType.Shared;
+
     public PySliceObject(PyObject start, PyObject stop, PyObject step)
     {
         ArgumentNullException.ThrowIfNull(start);

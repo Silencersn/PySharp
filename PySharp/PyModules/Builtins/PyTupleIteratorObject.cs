@@ -30,12 +30,7 @@ public class PyTupleIteratorObject : PyObject
     }
 }
 
-public sealed class PyTupleIteratorObjectType : PyTypeObject
+public sealed class PyTupleIteratorObjectType : PyPrimitiveTypeObject<PyTupleIteratorObjectType, PyTupleIteratorObject>
 {
     public override string Name => "tuple_iterator";
-
-    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
-    {
-        return PyVirtualMachine.RaiseTypeError(null);
-    }
 }

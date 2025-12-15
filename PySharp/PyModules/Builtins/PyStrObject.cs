@@ -141,13 +141,12 @@ public partial class PyStrObject : PyObject
     }
 }
 
-public sealed class PyStrObjectType : PyTypeObject
+public sealed class PyStrObjectType : PyPrimitiveTypeObject<PyStrObjectType, PyStrObject>
 {
     public override string Name => "str";
 
     public PyStrObjectType()
     {
-        AppendSpecialMethodsAsDescriptorsIfOverridden<PyStrObject>();
         AppendMethodDescriptor<PyStrObject>("join", nameof(PyStrObject.JoinImpl));
     }
 

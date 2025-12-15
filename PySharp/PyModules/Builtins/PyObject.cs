@@ -244,7 +244,7 @@ public partial class PyObject : IEquatable<PyObject>
     }
 }
 
-public sealed class PyObjectType : PyTypeObject
+public sealed class PyObjectType : PyPrimitiveTypeObject<PyObjectType, PyObject>
 {
     public override string Name => "object";
     public override IReadOnlyList<PyTypeObject> Bases => [];

@@ -101,7 +101,7 @@ public class PySuperObject : PyObject
 }
 
 
-public sealed class PySuperObjectType : PyTypeObject
+public sealed class PySuperObjectType : PyPrimitiveTypeObject<PySuperObjectType, PySuperObject>
 {
     public override string Name => "super";
 

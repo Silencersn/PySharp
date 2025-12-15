@@ -8,7 +8,7 @@ public class PyFloatObject : PyObject
 {
     public double Value { get; set; }
 
-    public override PyTypeObject PyType => PyBuiltinTypes.Float;
+    public override PyTypeObject PyType => PyFloatObjectType.Shared;
 
     public PyFloatObject()
     {
@@ -276,7 +276,7 @@ public class PyFloatObject : PyObject
     }
 }
 
-public sealed class PyFloatObjectType : PyTypeObject
+public sealed class PyFloatObjectType : PyPrimitiveTypeObject<PyFloatObjectType, PyFloatObject>
 {
     public override string Name => "float";
 

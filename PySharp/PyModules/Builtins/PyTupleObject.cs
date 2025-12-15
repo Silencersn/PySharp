@@ -76,7 +76,7 @@ public class PyTupleObject : PyObject, IPyObjectRecursiveRepr
     }
 }
 
-public sealed class PyTupleObjectType : PyTypeObject
+public sealed class PyTupleObjectType : PyPrimitiveTypeObject<PyTupleObjectType, PyTupleObject>
 {
     public override string Name => "tuple";
 

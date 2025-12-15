@@ -41,3 +41,5 @@ public class PyDictItemIterator : PyObject
         return PyVirtualMachine.RaiseStopIteration();
     }
 }
+
+// TODO: type

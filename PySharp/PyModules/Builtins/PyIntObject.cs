@@ -26,7 +26,7 @@ public class PyIntObject : PyObject
         }
     }
 
-    public override PyTypeObject PyType => PyBuiltinTypes.Int;
+    public override PyTypeObject PyType => PyIntObjectType.Shared;
 
     public BigInteger Value { get; }
     public int Int32Value => (int)Value;
@@ -269,13 +269,8 @@ public class PyIntObject : PyObject
     }
 }
 
-public sealed class PyIntObjectType : PyTypeObject
+public sealed class PyIntObjectType : PyPrimitiveTypeObject<PyIntObjectType, PyIntObject>
 {
-    public PyIntObjectType()
-    {
-        AppendSpecialMethodsAsDescriptorsIfOverridden<PyIntObject>();
-    }
-
     public override string Name => "int";
 
     private static readonly PyBuiltinFunctionOrMethodObject _new = new(PySpecialNames.New, NewImpl_1, NewImpl_2);

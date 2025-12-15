@@ -7,6 +7,8 @@ public class PyListIteratorObject : PyObject
     private readonly PyListObject _list;
     private int _index;
 
+    public override PyTypeObject PyType => PyListIteratorObjectType.Shared;
+
     public PyListIteratorObject(PyListObject pyListObject)
     {
         ArgumentNullException.ThrowIfNull(pyListObject);
@@ -32,12 +34,7 @@ public class PyListIteratorObject : PyObject
     }
 }
 
-public sealed class PyListIteratorObjectType : PyTypeObject
+public sealed class PyListIteratorObjectType : PyPrimitiveTypeObject<PyListIteratorObjectType, PyListIteratorObject>
 {
     public override string Name => "list_iterator";
-
-    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
-    {
-        return PyVirtualMachine.RaiseTypeError(null);
-    }
 }
