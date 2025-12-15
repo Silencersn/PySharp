@@ -13,7 +13,7 @@ public partial class PyRandomObject : PyObject
 
     private readonly System.Random _random;
 
-    public override PyTypeObject PyType => PyRandomObjectType.Shared;
+    public override PyTypeObject DefaultPyType => PyRandomObjectType.Shared;
 
     public PyRandomObject(System.Random random)
     {

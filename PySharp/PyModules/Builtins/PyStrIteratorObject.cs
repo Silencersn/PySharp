@@ -7,7 +7,7 @@ public class PyStrIteratorObject : PyObject
 {
     private StringRuneEnumerator _enumerator;
 
-    public override PyTypeObject PyType => PyStrIteratorObjectType.Shared;
+    public override PyTypeObject DefaultPyType => PyStrIteratorObjectType.Shared;
 
     internal PyStrIteratorObject(string str)
     {

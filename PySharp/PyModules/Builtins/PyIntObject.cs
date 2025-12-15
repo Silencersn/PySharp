@@ -33,7 +33,7 @@ public class PyIntObject : PyObject
         MinusOne = _negatives[1];
     }
 
-    public override PyTypeObject PyType => PyIntObjectType.Shared;
+    public override PyTypeObject DefaultPyType => PyIntObjectType.Shared;
 
     public BigInteger Value { get; }
     public int Int32Value => (int)Value;

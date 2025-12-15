@@ -11,7 +11,7 @@ public sealed class PyBoolObject : PyIntObject
     public bool BoolValue { get; }
     private readonly PyStrObject _repr;
 
-    public override PyTypeObject PyType => PyBoolObjectType.Shared;
+    public override PyTypeObject DefaultPyType => PyBoolObjectType.Shared;
 
     private PyBoolObject(bool value) : base(value ? 1 : 0)
     {

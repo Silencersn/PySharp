@@ -8,7 +8,7 @@ public sealed class PyEllipsisObject : PyObject
     public static PyEllipsisObject Ellipsis { get; } = new PyEllipsisObject();
     private static readonly PyStrObject _repr = PyStrObject.FromString("Ellipsis");
 
-    public override PyTypeObject PyType => PyEllipsisObjectType.Shared;
+    public override PyTypeObject DefaultPyType => PyEllipsisObjectType.Shared;
 
     public override PyObject? Repr()
     {

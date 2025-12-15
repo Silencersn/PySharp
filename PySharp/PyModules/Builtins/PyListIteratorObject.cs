@@ -7,7 +7,7 @@ public class PyListIteratorObject : PyObject
     private readonly PyListObject _list;
     private int _index;
 
-    public override PyTypeObject PyType => PyListIteratorObjectType.Shared;
+    public override PyTypeObject DefaultPyType => PyListIteratorObjectType.Shared;
 
     public PyListIteratorObject(PyListObject pyListObject)
     {

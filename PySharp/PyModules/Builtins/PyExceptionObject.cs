@@ -7,13 +7,13 @@ namespace PySharp.PyModules.Builtins;
 
 public sealed class PyExceptionObject : PyObject
 {
-    public override PyExceptionType PyType { get; }
+    public override PyExceptionType DefaultPyType { get; }
 
     public PyExceptionObject(PyExceptionType exceptionType, params IEnumerable<PyObject> args)
     {
         ArgumentNullException.ThrowIfNull(exceptionType);
 
-        PyType = exceptionType;
+        DefaultPyType = exceptionType;
         Args = [.. args];
     }
 

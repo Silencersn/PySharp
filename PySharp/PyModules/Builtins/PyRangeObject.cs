@@ -6,7 +6,7 @@ namespace PySharp.PyModules.Builtins;
 
 public class PyRangeObject : PyObject
 {
-    public override PyTypeObject PyType => PyBuiltinTypes.Range;
+    public override PyTypeObject DefaultPyType => PyBuiltinTypes.Range;
 
     private readonly BigInteger _start, _stop, _step;
 

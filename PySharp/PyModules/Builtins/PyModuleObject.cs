@@ -10,7 +10,7 @@ public class PyModuleObject : PyObject, IPyObjectName
 {
     public string Name { get; }
 
-    public override PyTypeObject PyType => PyBuiltinTypes.Module;
+    public override PyTypeObject DefaultPyType => PyBuiltinTypes.Module;
 
     public PyModuleObject(string name)
     {

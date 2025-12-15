@@ -10,7 +10,7 @@ public class PyZipObject : PyObject
     private readonly bool _strict;
     private bool _end;
 
-    public override PyTypeObject PyType => PyZipObjectType.Shared;
+    public override PyTypeObject DefaultPyType => PyZipObjectType.Shared;
 
     internal PyZipObject(IEnumerable<PyObject> iterables, bool strict)
     {

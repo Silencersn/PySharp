@@ -8,7 +8,7 @@ public class PyFloatObject : PyObject
 {
     public double Value { get; set; }
 
-    public override PyTypeObject PyType => PyFloatObjectType.Shared;
+    public override PyTypeObject DefaultPyType => PyFloatObjectType.Shared;
 
     public PyFloatObject()
     {

@@ -42,7 +42,7 @@ public sealed class PyMethodDescriptorObject : PyObject, IPyDescriptor
         }
     }
 
-    public override PyTypeObject PyType => PyMethodDescriptorObjectType.Shared;
+    public override PyTypeObject DefaultPyType => PyMethodDescriptorObjectType.Shared;
 
     bool IPyDescriptor.SupportsGet => true;
 

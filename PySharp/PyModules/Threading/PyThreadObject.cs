@@ -12,7 +12,7 @@ public partial class PyThreadObject : PyObject
     private readonly IReadOnlyDictionary<string, PyObject> _kwargs;
     private Thread? _thread;
 
-    public override PyTypeObject PyType => PyThreadObjectType.Shared;
+    public override PyTypeObject DefaultPyType => PyThreadObjectType.Shared;
 
     internal PyThreadObject(PyObject target, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {

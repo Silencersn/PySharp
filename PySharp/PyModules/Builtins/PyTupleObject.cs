@@ -7,7 +7,7 @@ public class PyTupleObject : PyObject, IPyObjectRecursiveRepr
 {
     internal readonly PyObject[] _array;
 
-    public override PyTypeObject PyType => PyBuiltinTypes.Tuple;
+    public override PyTypeObject DefaultPyType => PyBuiltinTypes.Tuple;
     public static PyTupleObject Empty { get; } = new([]);
 
     private PyTupleObject(PyObject[] array)

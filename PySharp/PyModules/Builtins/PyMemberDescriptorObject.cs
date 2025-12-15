@@ -7,7 +7,7 @@ public sealed class PyMemberDescriptorObject : PyObject, IPyDescriptor
     private readonly Func<PyObject, PyObject, PyObject?> _getter;
     private readonly Func<PyObject, PyObject, PyObject?>? _setter;
 
-    public override PyTypeObject PyType => PyMemberDescriptorObjectType.Shared;
+    public override PyTypeObject DefaultPyType => PyMemberDescriptorObjectType.Shared;
 
     bool IPyDescriptor.SupportsGet => true;
 

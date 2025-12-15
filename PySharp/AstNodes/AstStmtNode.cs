@@ -1002,11 +1002,11 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
     internal sealed class CustomObject : PyObject
     {
         private readonly Dictionary<PyTypeObject, PyObject> _backingObjects;
-        public override PyTypeObject PyType { get; }
+        public override PyTypeObject DefaultPyType { get; }
 
         internal CustomObject(PyTypeObject pyType, Dictionary<PyTypeObject, PyObject> backingObjects)
         {
-            PyType = pyType;
+            DefaultPyType = pyType;
             _backingObjects = backingObjects;
         }
 

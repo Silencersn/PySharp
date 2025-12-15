@@ -5,7 +5,7 @@ public sealed class PyMethodObject : PyObject
     internal readonly PyFunctionObject _functionObj;
     internal readonly PyObject _target;
 
-    public override PyTypeObject PyType => PyMethodObjectType.Shared;
+    public override PyTypeObject DefaultPyType => PyMethodObjectType.Shared;
 
     internal PyMethodObject(PyFunctionObject functionObj, PyObject target)
     {

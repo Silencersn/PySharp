@@ -9,7 +9,7 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr
 {
     internal readonly List<PyObject> _list;
 
-    public override PyTypeObject PyType => PyListObjectType.Shared;
+    public override PyTypeObject DefaultPyType => PyListObjectType.Shared;
 
     public PyListObject()
     {

@@ -13,7 +13,7 @@ public sealed class PyFunctionObject : PyObject, IPyObjectName
     public string Name { get; }
     internal ReadOnlySpan<PyCellObject> CapturedVariables => _closure;
 
-    public override PyTypeObject PyType => PyFunctionObjectType.Shared;
+    public override PyTypeObject DefaultPyType => PyFunctionObjectType.Shared;
 
     internal PyFunctionObject(string name, PyUncompoundedFunction function, IEnumerable<PyCellObject>? closure, PyFrame.PyFrameGlobals globals)
     {

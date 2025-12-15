@@ -6,7 +6,7 @@ internal sealed class PyProxyObject : PyObject
 {
     private readonly PyObject _target;
 
-    public override PyTypeObject PyType => _target.PyType;
+    public override PyTypeObject DefaultPyType => _target.PyType;
 
     public PyProxyObject(PyObject target)
     {
@@ -88,7 +88,7 @@ internal sealed class PyProxyObjectType : PyTypeObject
     }
 
     public override string Name => _target.Name;
-    public override PyTypeObject PyType => _target.PyType;
+    public override PyTypeObject DefaultPyType => _target.PyType;
     public override IReadOnlyList<PyTypeObject> Bases => _target.Bases;
     public override string FullName => _target.FullName;
     public override string Document => _target.Document;

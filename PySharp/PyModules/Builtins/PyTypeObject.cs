@@ -14,7 +14,7 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
     public abstract string Name { get; }
     public virtual string FullName => Name; // TODO: FullName => <module_name>.Name
     public virtual string Document => string.Empty;
-    public override PyTypeObject PyType => PyBuiltinTypes.Type;
+    public override PyTypeObject DefaultPyType => PyBuiltinTypes.Type;
 
     internal PyTypeObject()
     {

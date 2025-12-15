@@ -6,7 +6,7 @@ public class PyRangeIteratorObject : PyObject
 {
     private readonly IEnumerator<PyIntObject> _enumerator;
 
-    public override PyTypeObject PyType => PyRangeIteratorObjectType.Shared;
+    public override PyTypeObject DefaultPyType => PyRangeIteratorObjectType.Shared;
 
     internal PyRangeIteratorObject(IEnumerable<PyIntObject> enumerable)
     {

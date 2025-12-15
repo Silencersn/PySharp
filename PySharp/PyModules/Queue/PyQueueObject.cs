@@ -14,7 +14,7 @@ public sealed partial class PyQueueObject : PyObject
     private TaskCompletionSource? _source;
     private int _unfinished_tasks;
 
-    public override PyTypeObject PyType => PyQueueObjectType.Shared;
+    public override PyTypeObject DefaultPyType => PyQueueObjectType.Shared;
 
     internal PyQueueObject(int maxSize)
     {

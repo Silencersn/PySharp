@@ -8,7 +8,7 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
 {
     internal readonly IDictionary<PyObject, PyObject> _dict;
 
-    public override PyTypeObject PyType => PyDictObjectType.Shared;
+    public override PyTypeObject DefaultPyType => PyDictObjectType.Shared;
 
     public PyDictObject()
     {

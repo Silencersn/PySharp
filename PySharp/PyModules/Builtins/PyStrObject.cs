@@ -26,7 +26,7 @@ public partial class PyStrObject : PyObject
 
     public static PyStrObject Empty { get; } = new PyStrObject(string.Empty);
 
-    public override PyTypeObject PyType => PyBuiltinTypes.Str;
+    public override PyTypeObject DefaultPyType => PyBuiltinTypes.Str;
 
     private PyStrObject(string value)
     {
