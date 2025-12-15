@@ -31,6 +31,7 @@ public class PyBuiltinsModuleObject : PyModuleObject
         AddObjToAttrs(PyBuiltinFunctions.Globals); // globals
         AddObjToAttrs(PyBuiltinFunctions.Import); // __import__
         AddObjToAttrs(PyBuiltinFunctions.IsInstance); // isinstance
+        AddObjToAttrs(PyBuiltinFunctions.IsSubclass); // issubclass
 
         AddObjToAttrs(PyBuiltinTypes.Object); // object
         AddObjToAttrs(PyBuiltinTypes.Str); // str

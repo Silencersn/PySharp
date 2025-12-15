@@ -63,7 +63,7 @@ public static partial class PyBuiltinFunctions
     public static readonly PyBuiltinFunctionOrMethodObject Input = new("input", InputImpl_1, InputImpl_2);
     // int -> PyIntObject
     public static readonly PyBuiltinFunctionOrMethodObject IsInstance = new("isinstance", IsInstanceImpl);
-    // TODO: issubclass()
+    public static readonly PyBuiltinFunctionOrMethodObject IsSubclass = new("issubclass", IsSubclassImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Iter = new("iter", PySpecialMethods.Iter);
 
     // L
@@ -684,4 +684,43 @@ public static partial class PyBuiltinFunctions
             return false;
         }
     }
+
+    [PyFunctionArgsDef("class", "classinfo", "/")]
+    private static PyObject? IsSubclassImpl(PyArguments arguments)
+    {
+        if (arguments[0] is not PyTypeObject typeObj)
+            return PyVirtualMachine.RaiseTypeError("issubclass() arg 1 must be a class");
+
+        var ret = IsSubclassForUnknown(typeObj, arguments[1]);
+        if (ret is null)
+            return null;
+        return PyBoolObject.FromBoolean(ret.Value);
+
+        static bool? IsSubclassForUnknown(PyTypeObject obj, PyObject classInfo)
+        {
+            return classInfo switch
+            {
+                PyTypeObject type => IsSubclassForType(obj, type),
+                PyTupleObject types => IsSubclassForTuple(obj, types),
+                _ => (bool?)(object?)PyVirtualMachine.RaiseTypeError("issubclass() arg 2 must be a type or a tuple of types")
+            };
+        }
+
+        static bool? IsSubclassForType(PyTypeObject obj, PyTypeObject type)
+        {
+            return obj.IsSubclassOf(type);
+        }
+
+        static bool? IsSubclassForTuple(PyTypeObject obj, PyTupleObject types)
+        {
+            foreach (var type in types._array)
+            {
+                var ret = IsSubclassForUnknown(obj, type);
+                if (ret is null or true)
+                    return ret;
+            }
+            return false;
+        }
+    }
+
 }
