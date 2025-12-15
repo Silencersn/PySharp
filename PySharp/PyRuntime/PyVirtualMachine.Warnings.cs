@@ -8,7 +8,10 @@ partial class PyVirtualMachine
     [MemberNotNullWhen(false, nameof(CurrentException))]
     public static bool TryWarn(PyExceptionType warningType, string message)
     {
+        var color = Console.ForegroundColor;
+        Console.ForegroundColor = ConsoleColor.Red;
         PyEnvironment.Error.WriteLine(warningType.Create(PyStrObject.FromString(message)).ToMessage());
+        Console.ForegroundColor = color;
         return true;
     }
     [MemberNotNullWhen(false, nameof(CurrentException))]
