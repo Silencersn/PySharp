@@ -25,7 +25,7 @@ public static partial class PyBuiltinFunctions
     // TODO: bytes()
 
     // C
-    // TODO: callable()
+    public static readonly PyBuiltinFunctionOrMethodObject Callable = new("callable", CallableImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Chr = new("chr", ChrImpl);
     // TODO: classmethod()
     // TODO: compile()
@@ -723,4 +723,17 @@ public static partial class PyBuiltinFunctions
         }
     }
 
+    [PyFunctionArgsDef("object", "/")]
+    private static PyBoolObject? CallableImpl(PyArguments arguments)
+    {
+        var attr = PyOperators.GetAttr(arguments[0], PySpecialNames.Call);
+        if (attr is not null)
+            return PyBoolObject.True;
+
+        if (!PyVirtualMachine.IsExceptionOfTypeRaised(PyStandardExceptionTypes.AttributeError))
+            return null;
+
+        PyVirtualMachine.ClearException();
+        return PyBoolObject.False;
+    }
 }

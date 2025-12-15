@@ -344,6 +344,8 @@ public sealed class PyTypeObjectType : PyTypeObject
 
     public PyTypeObjectType()
     {
+        AppendSpecialMethodsAsDescriptorsIfOverridden<PyTypeObject>();
+
         AppendMemberDescriptor<PyTypeObject>(PySpecialNames.Bases,
             static typeObj => PyTupleObject.CreateTuple(typeObj.Bases),
             static (typeObj, value) => throw new NotImplementedException());
