@@ -1,6 +1,5 @@
 ﻿using PySharp.PyModules;
 using PySharp.PyModules.Builtins;
-using PySharp.PyModules.CSharp;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.Metadata;
@@ -8,7 +7,6 @@ using PySharp.Tokenization;
 using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using static PySharp.AstNodes.BreakNode;
 using static PySharp.AstNodes.ContinueNode;
 using static PySharp.AstNodes.ReturnNode;

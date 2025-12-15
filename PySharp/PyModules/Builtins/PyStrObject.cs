@@ -433,7 +433,7 @@ public static class PyStrConverter
             }
         }
     }
-    
+
     public static bool TryFromTextToString(ReadOnlySpan<char> text, [NotNullWhen(true)] out string? str, out ConvertErrorInfo info)
     {
         const int MaxStackLimit = 1024;

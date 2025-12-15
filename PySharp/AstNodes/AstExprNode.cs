@@ -745,7 +745,7 @@ public sealed class CompareNode : AstExprNode, IAstExprNodeBool
             var op = Ops[i];
             var right = Comparators[i].GetExprValue(frame);
             var value = op.GetCompareValue(left, right).PyThrowIfNull();
-            var boolValue = ((PyBoolObject)PySpecialMethods.GetBool(value).PyThrowIfNull()).BoolValue;
+            var boolValue = PySpecialMethods.GetBool(value).PyThrowIfNull().BoolValue;
 
             if (!boolValue)
                 return (boolValue, value);

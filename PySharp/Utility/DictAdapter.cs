@@ -121,7 +121,7 @@ internal sealed class DictAdapter : IDictionary<PyObject, PyObject>
     bool ICollection<KeyValuePair<PyObject, PyObject>>.Remove(KeyValuePair<PyObject, PyObject> item)
     {
         if (item.Key is PyStrObject strObj)
-            return ((ICollection<KeyValuePair<string, PyObject?>>)_origDict).Remove(KeyValuePair.Create<string, PyObject?>(strObj.Value, item.Value));
+            return _origDict.Remove(KeyValuePair.Create<string, PyObject?>(strObj.Value, item.Value));
         return ((ICollection<KeyValuePair<PyObject, PyObject>>)_extraDict).Remove(item);
     }
 

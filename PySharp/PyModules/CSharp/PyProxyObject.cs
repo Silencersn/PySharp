@@ -97,7 +97,7 @@ internal sealed class PyProxyObjectType : PyTypeObject
     {
         var obj = _target.New(cls, args, kwargs);
         if (obj is null)
-            return null; 
+            return null;
         if (obj.Init(args, kwargs) is null)
             return null;
         return new PyProxyObject(obj);
