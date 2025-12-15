@@ -406,13 +406,26 @@ public static class PyOperators
         return ReflectiveOperator(PyOperatorTypes.Ge, left, right);
     }
 
+    private static bool AreSameObjectAtPythonLevel(PyObject left, PyObject right)
+    {
+        if (ReferenceEquals(left, right))
+            return true;
+
+        if (left._pyId is not null && left._pyId == right._pyId)
+            // because of backing objects of CustomObject
+            // different PyObject at c# level may be the same PyObject at python level
+            return true;
+
+        return false;
+    }
+
     public static PyBoolObject Is(PyObject left, PyObject right)
     {
-        return PyBoolObject.FromBoolean(ReferenceEquals(left, right));
+        return PyBoolObject.FromBoolean(AreSameObjectAtPythonLevel(left, right));
     }
     public static PyBoolObject IsNot(PyObject left, PyObject right)
     {
-        return PyBoolObject.FromBoolean(!ReferenceEquals(left, right));
+        return PyBoolObject.FromBoolean(!AreSameObjectAtPythonLevel(left, right));
     }
 
     public static PyObject? GetAttr(PyObject target, string name)

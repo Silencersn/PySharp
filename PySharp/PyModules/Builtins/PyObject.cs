@@ -75,7 +75,7 @@ public partial class PyObject : IEquatable<PyObject>
 
     private static int _pyNextId = 0;
 
-    private int? _pyId;
+    internal int? _pyId;
     internal IDictionary<string, PyObject>? _pyAttributes;
 
     public virtual PyTypeObject PyType => PyBuiltinTypes.Object;

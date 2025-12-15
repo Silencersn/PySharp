@@ -29,7 +29,7 @@ public class NotEqNode : AstCmpopNode
     {
         var ne = PyOperators.Ne(left, right);
         if (ne is PyNotImplementedObject)
-            return PyOperators.Is(left, right);
+            return PyOperators.IsNot(left, right);
         return ne;
     }
 }
@@ -80,7 +80,7 @@ public class IsNode : AstCmpopNode
 
     public override PyObject? GetCompareValue(PyObject left, PyObject right)
     {
-        return PyBoolObject.FromBoolean(left.PyId == right.PyId);
+        return PyOperators.Is(left, right);
     }
 }
 
@@ -90,7 +90,7 @@ public class IsNotNode : AstCmpopNode
 
     public override PyObject? GetCompareValue(PyObject left, PyObject right)
     {
-        return PyBoolObject.FromBoolean(left.PyId != right.PyId);
+        return PyOperators.IsNot(left, right);
     }
 }
 

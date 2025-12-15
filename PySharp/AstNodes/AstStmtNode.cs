@@ -980,17 +980,22 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
         public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
         {
             Dictionary<PyTypeObject, PyObject> backingObjects = [];
+            var obj = new CustomObject(cls, backingObjects);
             foreach (var nonCustomBaseType in _nonCustomBaseTypes)
             {
-                var backingObject = nonCustomBaseType.New(this, args, kwargs);
+                var backingObject = nonCustomBaseType.New(cls, args, kwargs);
                 if (backingObject is null)
                     return null;
                 if (backingObject.Init(args, kwargs) is null)
                     return null;
+
+                // backingObject and obj should use the same __dict__ and id
+                backingObject._pyAttributes = obj.PyAttributes;
+                backingObject._pyId = obj.PyId;
                 backingObjects[nonCustomBaseType] = backingObject;
             }
             // TODO: __new__
-            return new CustomObject(this, backingObjects);
+            return obj;
         }
     }
 
