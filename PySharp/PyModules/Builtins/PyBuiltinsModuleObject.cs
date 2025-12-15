@@ -49,6 +49,7 @@ public class PyBuiltinsModuleObject : PyModuleObject
         AddObjToAttrs(PyBuiltinTypes.Property); // property
         AddObjToAttrs(PyBuiltinTypes.Super); // super
         AddObjToAttrs(PyBuiltinTypes.Slice); // slice
+        AddObjToAttrs(PyBuiltinTypes.Map); // map
 
         AddObjToAttrs("Ellipsis", PyEllipsisObject.Ellipsis); // Ellipsis
 

@@ -22,4 +22,5 @@ public static class PyBuiltinTypes
     public static readonly PyMethodObjectType Method = PyMethodObjectType.Shared; // method
     public static readonly PyMethodDescriptorObjectType MethodDescriptor = PyMethodDescriptorObjectType.Shared; // method_descriptor
     public static readonly PySliceObjectType Slice = PySliceObjectType.Shared; // slice;
+    public static readonly PyMapObjectType Map = PyMapObjectType.Shared; // map;
 }

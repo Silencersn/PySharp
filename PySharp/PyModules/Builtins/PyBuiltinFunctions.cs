@@ -72,7 +72,7 @@ public static partial class PyBuiltinFunctions
     public static readonly PyBuiltinFunctionOrMethodObject Locals = new("locals", LocalsImpl);
 
     // M
-    // TODO: map()
+    // map -> PyMapObject
     public static readonly PyBuiltinFunctionOrMethodObject Max = new("max", MaxImpl_1, MaxImpl_2, MaxImpl_3);
     // TODO: memoryview()
     public static readonly PyBuiltinFunctionOrMethodObject Min = new("min", MinImpl_1, MinImpl_2, MinImpl_3);
