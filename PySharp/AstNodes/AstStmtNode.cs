@@ -992,6 +992,7 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
                 // backingObject and obj should use the same __dict__ and id
                 backingObject._pyAttributes = obj.PyAttributes;
                 backingObject._pyId = obj.PyId;
+                backingObject._pyType = obj.PyType;
                 backingObjects[nonCustomBaseType] = backingObject;
             }
             // TODO: __new__

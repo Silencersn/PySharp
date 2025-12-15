@@ -77,8 +77,9 @@ public partial class PyObject : IEquatable<PyObject>
 
     internal int? _pyId;
     internal IDictionary<string, PyObject>? _pyAttributes;
+    internal PyTypeObject? _pyType;
 
-    public PyTypeObject PyType => DefaultPyType;
+    public PyTypeObject PyType => _pyType ?? DefaultPyType;
     public virtual PyTypeObject DefaultPyType => PyBuiltinTypes.Object;
     public int PyId => _pyId ??= Interlocked.Increment(ref _pyNextId);
 
