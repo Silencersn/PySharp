@@ -5,3 +5,5 @@ dotnet_diagnostic.IDE0060.severity = silent
 
 # IDE0290: 使用主构造函数
 dotnet_diagnostic.IDE0290.severity = silent
+
+csharp_style_namespace_declarations = file_scoped
