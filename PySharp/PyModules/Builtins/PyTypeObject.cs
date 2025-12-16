@@ -9,13 +9,13 @@ namespace PySharp.PyModules.Builtins;
 
 public abstract class PyTypeObject : PyObject, IPyObjectName
 {
-    public virtual IReadOnlyList<PyTypeObject> Bases => [PyBuiltinTypes.Object];
+    public virtual IReadOnlyList<PyTypeObject> Bases => [PyObjectType.Shared];
     public IReadOnlyList<PyTypeObject> MRO { get; }
     public abstract string Name { get; }
     public virtual string FullName => Name; // TODO: FullName => <module_name>.Name
     public virtual string Document => string.Empty;
     public virtual bool IsSealed => false;
-    public override PyTypeObject DefaultPyType => PyBuiltinTypes.Type;
+    public override PyTypeObject DefaultPyType => PyTypeObjectType.Shared;
 
     internal PyTypeObject()
     {
@@ -54,7 +54,7 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
         var pyObject = New(this, args, kwargs);
         if (pyObject is null)
             return null;
-        if (pyObject.Init(args, kwargs) is null)
+        if (IsInstance(pyObject) && pyObject.Init(args, kwargs) is null)
             return null;
         return pyObject;
     }
@@ -114,6 +114,7 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
 
     public virtual PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
+        // TODO: int.__new__(str): str is not a subtype of int
         return PyVirtualMachine.RaiseTypeError($"cannot create '{Name}' instances");
     }
 

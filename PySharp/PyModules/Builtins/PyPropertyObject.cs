@@ -12,7 +12,7 @@ public sealed class PyPropertyObject : PyObject, IPyDescriptor
     private PyObject _fdel;
     private PyObject _doc;
 
-    public override PyTypeObject DefaultPyType => PyBuiltinTypes.Property;
+    public override PyTypeObject DefaultPyType => PyPropertyObjectType.Shared;
 
     bool IPyDescriptor.SupportsGet => true;
 
