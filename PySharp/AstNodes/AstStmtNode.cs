@@ -957,8 +957,6 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
 
     internal sealed class CustomObjectType : PyTypeObject
     {
-        private readonly List<PyTypeObject> _nonCustomBaseTypes;
-
         public override string Name { get; }
         public override IReadOnlyList<PyTypeObject> Bases { get; }
         public override Type LayoutType { get; }
@@ -968,7 +966,6 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
             Name = name;
             Bases = bases;
             PyAttributes.Add(PySpecialNames.QualName, PyStrObject.FromString(qualName));
-            _nonCustomBaseTypes = [.. bases.Where(type => type is not (CustomObjectType or PyObjectType))];
             LayoutType = layoutType;
         }
 

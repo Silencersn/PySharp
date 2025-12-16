@@ -47,40 +47,28 @@ public class PySuperObject : PyObject
     private PyObject? GetProxyAttr(string name, PyObject instance, PyObject owner)
     {
         PyObject? attrFromType = null;
-        PyTypeObject? ownerType = null; // not null if attrFromType is not null
         foreach (var pyType in _searchList)
         {
             if (pyType.PyAttributes.TryGetValue(name, out attrFromType))
-            {
-                ownerType = pyType;
-                break;
-            }
-        }
+				break;
+		}
 
-        PyObject? nonDataDescriptor = null;
+		PyObject? nonDataDescriptor = null;
         if (attrFromType is not null && Utils.IsDescriptor(attrFromType, out var hasGet, out var hasSet, out var hasDelete))
         {
             if (hasGet)
             {
                 if (hasSet || hasDelete)
-                {
-                    Debug.Assert(ownerType is not null);
-                    instance = instance.GetActualInstanceForCallDescriptor(ownerType);
-                    return attrFromType.Get(instance, owner);
-                }
+					return attrFromType.Get(instance, owner);
 
-                nonDataDescriptor = attrFromType;
+				nonDataDescriptor = attrFromType;
             }
         }
 
         if (nonDataDescriptor is not null)
-        {
-            Debug.Assert(ownerType is not null);
-            instance = instance.GetActualInstanceForCallDescriptor(ownerType);
-            return nonDataDescriptor.Get(instance, owner);
-        }
+			return nonDataDescriptor.Get(instance, owner);
 
-        if (attrFromType is not null)
+		if (attrFromType is not null)
             return attrFromType;
 
         return base.GetAttributeImpl(name);
