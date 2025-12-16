@@ -41,11 +41,17 @@ partial class PyObject
 
     protected internal virtual PyObject? SetAttrImpl(string key, PyObject value)
     {
+        if (IsImmutable)
+            return PyVirtualMachine.RaiseTypeError($"cannot set '{key}' attribute of immutable type '{PyType.Name}'");
+
         return PyObjectSetAttribute(this, key, value);
     }
 
     protected internal virtual PyObject? DelAttrImpl(string item)
     {
+        if (IsImmutable)
+            return PyVirtualMachine.RaiseTypeError($"cannot set '{item}' attribute of immutable type '{PyType.Name}'");
+
         return PyObjectDeleteAttribute(this, item);
     }
 

@@ -929,6 +929,7 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
 
         PyTypeObject.ValidateBases(bases, out var layoutType);
         var type = new CustomObjectType(Name, ((IFunctionOrClass)this).QualifiedName, bases, layoutType);
+
         if (AstUtils.TryGetDoc(Body, out var doc))
             type.PyAttributes[PySpecialNames.Doc] = doc;
 
@@ -960,6 +961,8 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
         public override string Name { get; }
         public override IReadOnlyList<PyTypeObject> Bases { get; }
         public override Type LayoutType { get; }
+        internal override bool IsTypeImmutable => false;
+        internal override bool IsImmutable => false;
 
         internal CustomObjectType(string name, string qualName, IReadOnlyList<PyTypeObject> bases, Type layoutType) : base(name, bases)
         {
@@ -978,8 +981,16 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
         }
 
         protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
-        {
-            return Bases[0].New(cls, args, kwargs);
+		{
+			var callable = PyObjectGetAttribute(this, PySpecialNames.New);
+            if (callable is not null)
+				return callable.Call([cls, ..args], kwargs);
+
+			if (callable is null && !PyVirtualMachine.IsExceptionOfTypeRaised(PyAttributeErrorObjectType.Shared))
+                return null;
+
+			PyVirtualMachine.ClearException();
+			return Bases[0].New(cls, args, kwargs);
         }
     }
 }

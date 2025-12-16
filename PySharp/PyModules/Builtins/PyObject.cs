@@ -1,5 +1,6 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
+using PySharp.Utility;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -85,6 +86,7 @@ public partial class PyObject : IEquatable<PyObject>
 
     internal IDictionary<string, PyObject> PyAttributes => _pyAttributes ??= new ConcurrentDictionary<string, PyObject>();
     internal bool IsSelfDefaultType => ReferenceEquals(PyType, DefaultPyType);
+    internal virtual bool IsImmutable => PyType.IsImmutable;
 
     public PyObject()
     {
@@ -246,11 +248,8 @@ public sealed class PyObjectType : PyPrimitiveTypeObject<PyObjectType, PyObject>
 
     protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        var pack = new PyArgsPack(args, kwargs);
-        if (!pack.ValidateEmpty())
-        {
-            return PyVirtualMachine.RaiseTypeError(null);
-        }
+        if (args.Count is not 0 || kwargs.Count is not 0)
+            return PyVirtualMachine.RaiseTypeError("object.__new__() takes exactly one argument (the type to instantiate)");
 
         return new PyObject();
     }

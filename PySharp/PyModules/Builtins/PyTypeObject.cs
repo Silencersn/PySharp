@@ -1,5 +1,6 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
+using PySharp.PyRuntime.PyAttributes;
 using PySharp.Utility;
 using System.Collections.Frozen;
 using System.Diagnostics;
@@ -17,6 +18,7 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
     public virtual bool IsSealed => false;
     public override PyTypeObject DefaultPyType => PyTypeObjectType.Shared;
     public abstract Type LayoutType { get; }
+    internal virtual bool IsTypeImmutable => true;
 
     internal PyTypeObject()
     {
@@ -119,6 +121,13 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
 
     public PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
+        if (!cls.IsSubclassOf(this))
+            return PyVirtualMachine.RaiseTypeError($"{Name}.__new__({cls.Name}): {cls.Name} is not a subtype of {Name}");
+
+        if (cls.LayoutType.IsSubclassOf(LayoutType))
+            return PyVirtualMachine.RaiseTypeError($"{Name}.__new__({cls.Name}) is not safe, use {cls.Name}.__new__()");
+        Debug.Assert(cls.LayoutType == LayoutType || LayoutType.IsSubclassOf(cls.LayoutType));
+
         var obj = NewImpl(cls, args, kwargs);
         if (obj is null)
             return null;
@@ -375,6 +384,16 @@ public abstract class PyPrimitiveTypeObject<TSelf, TObject> : PyTypeObject where
     private protected PyPrimitiveTypeObject()
     {
         AppendSpecialMethodsAsDescriptorsIfOverridden<TObject>();
+
+        // todo staticmethod
+        PyAttributes.Add(PySpecialNames.New, new PyBuiltinFunctionOrMethodObject(PySpecialNames.New,
+            [PyFunctionArgsDef("cls", "*args", "**kwargs")] (arguments) =>
+            {
+                if (arguments[0] is not PyTypeObject typeObj)
+                    return PyVirtualMachine.RaiseTypeError(null);
+
+                return New(typeObj, arguments.ExtraArgs, arguments.ExtraKwargs);
+            }));
     }
 }
 

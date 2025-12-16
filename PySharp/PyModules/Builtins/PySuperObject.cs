@@ -3,88 +3,85 @@ using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.PyAttributes;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Xml.Linq;
 
 namespace PySharp.PyModules.Builtins;
 
+// pure python equivalents (from https://www.python.org/download/releases/2.2.3/descrintro/#cooperation): 
+// class Super(object):
+//     def __init__(self, type, obj=None):
+//         self.__type__ = type
+//         self.__obj__ = obj
+//     def __get__(self, obj, type=None):
+//         if self.__obj__ is None and obj is not None:
+//             return Super(self.__type__, obj)
+//         else:
+//             return self
+//     def __getattr__(self, attr):
+//         if isinstance(self.__obj__, self.__type__):
+//             starttype = self.__obj__.__class__
+//         else:
+//             starttype = self.__obj__
+//         mro = iter(starttype.__mro__)
+//         for cls in mro:
+//             if cls is self.__type__:
+//                 break
+//         # Note: mro is an iterator, so the second loop
+//         # picks up where the first one left off!
+//         for cls in mro:
+//             if attr in cls.__dict__:
+//                 x = cls.__dict__[attr]
+//                 if hasattr(x, "__get__"):
+//                     x = x.__get__(self.__obj__)
+//                 return x
+//         raise AttributeError(attr)
+// 
 public class PySuperObject : PyObject
 {
-    private readonly PyTypeObject? _type;
-    private readonly PyObject? _object;
-    private readonly IReadOnlyList<PyTypeObject> _searchList;
+    private readonly PyTypeObject _type;
+    private readonly PyObject _object;
 
-    public PySuperObject(PyTypeObject? type, PyObject? obj, IReadOnlyList<PyTypeObject> searchList)
+    private PySuperObject(PyTypeObject type, PyObject obj)
     {
         _type = type;
         _object = obj;
-        _searchList = searchList;
     }
 
     public static PySuperObject? CreateSuper(PyTypeObject type, PyObject objectOrType)
     {
-        if (objectOrType is PyTypeObject pyTypeObject)
-        {
-            var mro = pyTypeObject.MRO;
-            for (int i = 0; i < mro.Count; i++)
-            {
-                if (mro[i] == type)
-                    return new PySuperObject(pyTypeObject, null, [.. mro.Skip(i + 1)]);
-            }
-        }
-        else
-        {
-            var mro = objectOrType.PyType.MRO;
-            for (int i = 0; i < mro.Count; i++)
-            {
-                if (mro[i] == type)
-                    return new PySuperObject(null, objectOrType, [.. mro.Skip(i + 1)]);
-            }
-        }
+        if (objectOrType is PyTypeObject pyTypeObject && pyTypeObject.IsSubclassOf(type))
+			return new PySuperObject(type, objectOrType);
 
-        PyVirtualMachine.RaiseTypeError("super(type, obj): obj must be an instance or subtype of type");
+        if (type.IsInstance(objectOrType))
+			return new PySuperObject(type, objectOrType);
+
+		PyVirtualMachine.RaiseTypeError("super(type, obj): obj must be an instance or subtype of type");
         return null;
-    }
-
-    private PyObject? GetProxyAttr(string name, PyObject instance, PyObject owner)
-    {
-        PyObject? attrFromType = null;
-        foreach (var pyType in _searchList)
-        {
-            if (pyType.PyAttributes.TryGetValue(name, out attrFromType))
-                break;
-        }
-
-        PyObject? nonDataDescriptor = null;
-        if (attrFromType is not null && Utils.IsDescriptor(attrFromType, out var hasGet, out var hasSet, out var hasDelete))
-        {
-            if (hasGet)
-            {
-                if (hasSet || hasDelete)
-                    return attrFromType.Get(instance, owner);
-
-                nonDataDescriptor = attrFromType;
-            }
-        }
-
-        if (nonDataDescriptor is not null)
-            return nonDataDescriptor.Get(instance, owner);
-
-        if (attrFromType is not null)
-            return attrFromType;
-
-        return base.GetAttributeImpl(name);
     }
 
     protected internal override PyObject? GetAttributeImpl(string item)
     {
-        if (_object is not null)
+        PyTypeObject startType = _type.IsInstance(_object) ? _object.PyType : (PyTypeObject)_object;
+        
+        var iter = startType.MRO.GetEnumerator();
+        while (iter.MoveNext())
         {
-            return GetProxyAttr(item, _object, _object.PyType);
+            if (iter.Current == _type)
+                break;
         }
-        else
+        while (iter.MoveNext())
         {
-            Debug.Assert(_type is not null);
-            return GetProxyAttr(item, PyNoneObject.None, _type);
+            var pyType = iter.Current;
+            if (pyType.PyAttributes.TryGetValue(item, out var attr))
+            {
+                if (Utils.IsDescriptor(attr, out var hasGet, out _, out _) && hasGet)
+                    return attr.Get(_object, PyNoneObject.None);
+
+                return attr;
+            }
         }
+
+        return PyVirtualMachine.RaiseAttributeError(item);
     }
 }
 
