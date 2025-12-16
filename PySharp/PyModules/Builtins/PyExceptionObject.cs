@@ -105,7 +105,7 @@ public sealed class PyExceptionObject : PyObject
         return string.Join(Environment.NewLine, stack);
     }
 
-    public override PyObject? Repr()
+    protected internal override PyObject? ReprImpl()
     {
         var builder = new StringBuilder();
         builder.Append(PyType.Name);
@@ -126,7 +126,7 @@ public sealed class PyExceptionObject : PyObject
         return PyStrObject.FromString(builder.ToString());
     }
 
-    public override PyObject? Str()
+    protected internal override PyObject? StrImpl()
     {
         //return Arg?.Str() ?? PyStrObject.Empty;
         if (Args.Count is 0)
@@ -196,7 +196,7 @@ public abstract class PyExceptionType : PyTypeObject
         return new PyExceptionObject(this, [.. pyObjects]);
     }
 
-    public sealed override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+	protected internal sealed override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (kwargs.Count is not 0)
             return PyVirtualMachine.RaiseTypeError(null);

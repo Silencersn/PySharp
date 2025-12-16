@@ -29,12 +29,12 @@ public sealed class PyBoolObject : PyIntObject
         return value ? True : False;
     }
 
-    public override PyStrObject Repr()
+	protected internal override PyStrObject ReprImpl()
     {
         return _repr;
     }
 
-    public override PyBoolObject Bool()
+	protected internal override PyBoolObject BoolImpl()
     {
         return this;
     }
@@ -46,7 +46,7 @@ public sealed class PyBoolObjectType : PyPrimitiveTypeObject<PyBoolObjectType, P
     public override bool IsSealed => true;
     public override IReadOnlyList<PyTypeObject> Bases => [PyIntObjectType.Shared];
 
-    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var pack = new PyArgsPack(args, kwargs);
         if (!pack.ValidateCount(1, 0))

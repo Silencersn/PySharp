@@ -980,7 +980,7 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
             }
         }
 
-        public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+        protected internal override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
         {
             return New(Bases[0], cls, args, kwargs);
 		}

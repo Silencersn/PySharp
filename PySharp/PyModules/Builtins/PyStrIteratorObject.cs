@@ -14,12 +14,12 @@ public class PyStrIteratorObject : PyObject
         _enumerator = str.EnumerateRunes();
     }
 
-    public override PyObject? Iter()
+    protected internal override PyObject? IterImpl()
     {
         return this;
     }
 
-    public override PyObject? Next()
+    protected internal override PyObject? NextImpl()
     {
         if (!_enumerator.MoveNext())
             return PyVirtualMachine.RaiseStopIteration();

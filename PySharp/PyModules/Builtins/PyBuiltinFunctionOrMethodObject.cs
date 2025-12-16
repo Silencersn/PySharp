@@ -97,7 +97,7 @@ public class PyBuiltinFunctionOrMethodObject : PyObject, IPyObjectName
         }
     }
 
-    public override PyObject? Repr()
+    protected internal override PyObject? ReprImpl()
     {
         if (IsMethod)
         {
@@ -110,7 +110,7 @@ public class PyBuiltinFunctionOrMethodObject : PyObject, IPyObjectName
         return PyStrObject.FromString($"<built-in function {Name}>");
     }
 
-    public override PyObject? Call(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? CallImpl(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return Function.Invoke(args, kwargs);
     }
@@ -120,7 +120,7 @@ public sealed class PyBuiltinFunctionOrMethodObjectType : PyPrimitiveTypeObject<
 {
     public override string Name => "builtin_function_or_method";
 
-    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return PyVirtualMachine.RaiseTypeError(null);
     }

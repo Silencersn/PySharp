@@ -84,7 +84,7 @@ public partial class PyObject : IEquatable<PyObject>
     public int PyId => _pyId ??= Interlocked.Increment(ref _pyNextId);
 
     internal IDictionary<string, PyObject> PyAttributes => _pyAttributes ??= CreateAttributesContainer();
-    internal bool IsSelfDefaultType => PyType == DefaultPyType;
+    internal bool IsSelfDefaultType => ReferenceEquals(PyType, DefaultPyType);
 
     public PyObject()
     {
@@ -147,7 +147,7 @@ public partial class PyObject : IEquatable<PyObject>
                 if (hasSet || hasDelete)
                 {
                     pyObj = pyObj.GetActualInstanceForCallDescriptor(ownerType);
-                    return attrFromType.Get(pyObj, pyObj.PyType);
+                    return attrFromType.GetImpl(pyObj, pyObj.PyType);
                 }
 
                 nonDataDescriptor = attrFromType;
@@ -161,7 +161,7 @@ public partial class PyObject : IEquatable<PyObject>
         {
             Debug.Assert(ownerType is not null);
             pyObj = pyObj.GetActualInstanceForCallDescriptor(ownerType);
-            return nonDataDescriptor.Get(pyObj, pyObj.PyType);
+            return nonDataDescriptor.GetImpl(pyObj, pyObj.PyType);
         }
 
         if (attrFromType is not null)
@@ -183,7 +183,7 @@ public partial class PyObject : IEquatable<PyObject>
             if (hasSet)
             {
                 pyObj = pyObj.GetActualInstanceForCallDescriptor(ownerType);
-                return attrFromType.Set(pyObj, value);
+                return attrFromType.SetImpl(pyObj, value);
             }
         }
 
@@ -199,7 +199,7 @@ public partial class PyObject : IEquatable<PyObject>
             if (hasDelete)
             {
                 pyObj = pyObj.GetActualInstanceForCallDescriptor(ownerType);
-                return attrFromType.Delete(pyObj);
+                return attrFromType.DeleteImpl(pyObj);
             }
         }
 
@@ -261,14 +261,14 @@ public sealed class PyObjectType : PyPrimitiveTypeObject<PyObjectType, PyObject>
     public PyObjectType()
     {
         AppendSpecialMethodsAsDescriptorsDirectly<PyObject>(
-            nameof(Repr), nameof(Str), nameof(Bool), nameof(Hash),
-            nameof(Eq), nameof(Ne), nameof(Lt), nameof(Le), nameof(Gt), nameof(Ge),
-            nameof(GetAttribute), nameof(SetAttr), nameof(DelAttr),
-            nameof(Init)
+            nameof(ReprImpl), nameof(StrImpl), nameof(BoolImpl), nameof(HashImpl),
+            nameof(EqImpl), nameof(NeImpl), nameof(LtImpl), nameof(LeImpl), nameof(GtImpl), nameof(GeImpl),
+            nameof(GetAttributeImpl), nameof(SetAttrImpl), nameof(DelAttrImpl),
+            nameof(InitImpl)
         );
     }
 
-    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var pack = new PyArgsPack(args, kwargs);
         if (!pack.ValidateEmpty())

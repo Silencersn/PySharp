@@ -74,7 +74,7 @@ public class PyBuiltinsModuleObject : PyModuleObject
         AddObjToAttrs(PyStandardExceptionTypes.UnboundLocalError); // UnboundLocalError
     }
 
-    public override PyObject? Repr()
+    protected internal override PyObject? ReprImpl()
     {
         return PyStrObject.FromString($"<module '{Name}' (built-in)>");
     }

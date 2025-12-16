@@ -19,12 +19,12 @@ public class PyZipObject : PyObject
         _end = false;
     }
 
-    public override PyObject? Iter()
+    protected internal override PyObject? IterImpl()
     {
         return this;
     }
 
-    public override PyObject? Next()
+    protected internal override PyObject? NextImpl()
     {
         if (_end)
             return PyVirtualMachine.RaiseStopIteration();
@@ -107,7 +107,7 @@ public sealed class PyZipObjectType : PyPrimitiveTypeObject<PyZipObjectType, PyZ
         return new PyZipObject(iterables, b.BoolValue);
     }
 
-    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return _new.Call(args, kwargs);
     }

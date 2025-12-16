@@ -228,7 +228,8 @@ internal static class Utils
     }
     public static bool IsPyObjectMethodOverride(Type type, string name, out MethodInfo method)
     {
-        return (method = type.GetMethod(name)!).DeclaringType != typeof(PyObject);
+        var types = typeof(PyObject).GetMethod(name, BindingFlags.NonPublic | BindingFlags.Instance)!.GetParameters().Select(parameter => parameter.ParameterType).ToArray();
+        return (method = type.GetMethod(name, BindingFlags.NonPublic | BindingFlags.Instance, types)!).DeclaringType != typeof(PyObject);
     }
 
     public static bool IsDescriptor(PyObject pyObj)

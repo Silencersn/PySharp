@@ -31,12 +31,12 @@ public class PyModuleObject : PyObject, IPyObjectName
         PyAttributes[name] = pyObject;
     }
 
-    public override PyObject? Repr()
+    protected internal override PyObject? ReprImpl()
     {
         return PyStrObject.FromString($"<module '{Name}'>");
     }
 
-    public override PyObject? GetAttr(string item)
+    protected internal override PyObject? GetAttrImpl(string item)
     {
         return PyVirtualMachine.RaiseAttributeError($"module '{Name}' has no attribute '{item}'");
     }
@@ -51,7 +51,7 @@ public sealed class PyModuleObjectType : PyPrimitiveTypeObject<PyModuleObjectTyp
 {
     public override string Name => "module";
 
-    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var pack = new PyArgsPack(args, kwargs);
         if (pack.TryParseOneArgOrOneKwarg("name", out var arg))

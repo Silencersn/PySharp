@@ -40,7 +40,7 @@ public static class NonVirtualCaller
         {
             var name = names[i];
 
-            var methodInfo = type.GetMethod(name, BindingFlags.Public | BindingFlags.Instance);
+            var methodInfo = type.GetMethod(name, BindingFlags.NonPublic | BindingFlags.Instance);
             Debug.Assert(methodInfo is not null);
             var parameters = methodInfo.GetParameters();
 

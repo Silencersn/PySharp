@@ -21,7 +21,7 @@ public sealed class PyMemberDescriptorObject : PyObject, IPyDescriptor
         _setter = setter;
     }
 
-    public override PyObject? Get(PyObject instance, PyObject owner)
+    protected internal override PyObject? GetImpl(PyObject instance, PyObject owner)
     {
         if (instance is PyNoneObject)
             return this;
@@ -29,7 +29,7 @@ public sealed class PyMemberDescriptorObject : PyObject, IPyDescriptor
         return _getter(instance, owner);
     }
 
-    public override PyObject? Set(PyObject instance, PyObject value)
+    protected internal override PyObject? SetImpl(PyObject instance, PyObject value)
     {
         if (_setter is null)
             return PyVirtualMachine.RaiseAttributeError("readonly attribute");

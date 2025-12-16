@@ -14,12 +14,12 @@ public class PyTupleIteratorObject : PyObject
         _index = -1;
     }
 
-    public override PyObject? Iter()
+    protected internal override PyObject? IterImpl()
     {
         return this;
     }
 
-    public override PyObject? Next()
+    protected internal override PyObject? NextImpl()
     {
         if (_index is -2 || ++_index >= _tuple._array.Length)
         {

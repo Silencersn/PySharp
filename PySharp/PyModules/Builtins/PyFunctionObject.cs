@@ -24,17 +24,17 @@ public sealed class PyFunctionObject : PyObject, IPyObjectName
         _globals = globals;
     }
 
-    public override PyObject? Repr()
+    protected internal override PyObject? ReprImpl()
     {
         return PyStrObject.FromString($"<function {Name} at 0x{PyId:X16}>");
     }
 
-    public override PyObject? Call(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? CallImpl(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return _function.Invoke(args, kwargs);
     }
 
-    public override PyObject? Get(PyObject instance, PyObject owner)
+    protected internal override PyObject? GetImpl(PyObject instance, PyObject owner)
     {
         if (instance is PyNoneObject)
             return this;

@@ -29,101 +29,101 @@ public class PyFloatObject : PyObject
         return new PyFloatObject(value);
     }
 
-    public override PyStrObject Repr()
+	protected internal override PyObject? ReprImpl()
     {
         return PyStrObject.FromString(Value.ToString());
     }
 
-    public override PyObject? Hash()
+    protected internal override PyObject? HashImpl()
     {
         return PyIntObject.FromInteger(Value.GetHashCode());
     }
 
-    public override PyBoolObject Bool()
+	protected internal override PyObject? BoolImpl()
     {
-        return Value is not 0;
+        return PyBoolObject.FromBoolean(Value is not 0);
     }
 
-    public override PyObject? Int()
+    protected internal override PyObject? IntImpl()
     {
         return new PyIntObject((BigInteger)Value);
     }
 
-    public override PyObject? Float()
+    protected internal override PyObject? FloatImpl()
     {
         return this;
     }
 
-    public override PyObject? Neg()
+    protected internal override PyObject? NegImpl()
     {
         return FromDouble(-Value);
     }
 
-    public override PyObject? Pos()
+    protected internal override PyObject? PosImpl()
     {
         return this;
     }
 
-    public override PyObject? Abs()
+    protected internal override PyObject? AbsImpl()
     {
-        return Value >= 0 ? this : Neg();
+        return Value >= 0 ? this : NegImpl();
     }
 
-    public override PyObject? Add(PyObject other)
+    protected internal override PyObject? AddImpl(PyObject other)
     {
         return other switch
         {
             PyIntObject intObj => FromDouble(Value + (double)intObj.Value),
             PyFloatObject floatObj => FromDouble(Value + floatObj.Value),
-            _ => base.Add(other),
+            _ => base.AddImpl(other),
         };
     }
-    public override PyObject? Sub(PyObject other)
+    protected internal override PyObject? SubImpl(PyObject other)
     {
         return other switch
         {
             PyIntObject intObj => FromDouble(Value - (double)intObj.Value),
             PyFloatObject floatObj => FromDouble(Value - floatObj.Value),
-            _ => base.Sub(other),
+            _ => base.SubImpl(other),
         };
     }
-    public override PyObject? Mul(PyObject other)
+    protected internal override PyObject? MulImpl(PyObject other)
     {
         return other switch
         {
             PyIntObject intObj => FromDouble(Value * (double)intObj.Value),
             PyFloatObject floatObj => FromDouble(Value * floatObj.Value),
-            _ => base.Mul(other),
+            _ => base.MulImpl(other),
         };
     }
-    public override PyObject? TrueDiv(PyObject other)
+    protected internal override PyObject? TrueDivImpl(PyObject other)
     {
         return other switch
         {
             PyIntObject intObj => FromDouble(Value / (double)intObj.Value),
             PyFloatObject floatObj => FromDouble(Value / floatObj.Value),
-            _ => base.TrueDiv(other),
+            _ => base.TrueDivImpl(other),
         };
     }
-    public override PyObject? FloorDiv(PyObject other)
+    protected internal override PyObject? FloorDivImpl(PyObject other)
     {
         return other switch
         {
             PyIntObject intObj => FromDouble(double.Floor(Value / (double)intObj.Value)),
             PyFloatObject floatObj => FromDouble(double.Floor(Value / floatObj.Value)),
-            _ => base.FloorDiv(other),
+            _ => base.FloorDivImpl(other),
         };
     }
-    public override PyObject? DivMod(PyObject other)
+    protected internal override PyObject? DivModImpl(PyObject other)
     {
-        var q = FloorDiv(other);
+        var q = FloorDivImpl(other);
         if (q is null)
             return null;
 
         if (q is PyNotImplementedObject)
             return PyNotImplementedObject.NotImplemented;
 
-        var r = Mod(other);
+        var r = ModImpl(other);
         if (r is null)
             return null;
 
@@ -132,16 +132,16 @@ public class PyFloatObject : PyObject
 
         return PyTupleObject.CreateTuple(q, r);
     }
-    public override PyObject? Mod(PyObject other)
+    protected internal override PyObject? ModImpl(PyObject other)
     {
         return other switch
         {
             PyIntObject intObj => FromDouble(Value % (double)intObj.Value),
             PyFloatObject floatObj => FromDouble(Value % floatObj.Value),
-            _ => base.Mod(other),
+            _ => base.ModImpl(other),
         };
     }
-    public override PyObject? Pow(PyObject other, PyObject modulo)
+    protected internal override PyObject? PowImpl(PyObject other, PyObject modulo)
     {
         if (modulo is not PyNoneObject)
             return PyNotImplementedObject.NotImplemented;
@@ -150,55 +150,55 @@ public class PyFloatObject : PyObject
         {
             PyIntObject intObj => FromDouble(double.Pow(Value, (double)intObj.Value)),
             PyFloatObject floatObj => FromDouble(double.Pow(Value, floatObj.Value)),
-            _ => base.Pow(other, modulo),
+            _ => base.PowImpl(other, modulo),
         };
     }
 
-    public override PyObject? RAdd(PyObject other)
+    protected internal override PyObject? RAddImpl(PyObject other)
     {
-        return Add(other);
+        return AddImpl(other);
     }
-    public override PyObject? RSub(PyObject other)
+    protected internal override PyObject? RSubImpl(PyObject other)
     {
         return other switch
         {
             PyIntObject intObj => FromDouble((double)intObj.Value - Value),
             PyFloatObject floatObj => FromDouble(floatObj.Value - Value),
-            _ => base.RSub(other),
+            _ => base.RSubImpl(other),
         };
     }
-    public override PyObject? RMul(PyObject other)
+    protected internal override PyObject? RMulImpl(PyObject other)
     {
-        return Mul(other);
+        return MulImpl(other);
     }
-    public override PyObject? RTrueDiv(PyObject other)
+    protected internal override PyObject? RTrueDivImpl(PyObject other)
     {
         return other switch
         {
             PyIntObject intObj => FromDouble((double)intObj.Value / Value),
             PyFloatObject floatObj => FromDouble(floatObj.Value / Value),
-            _ => base.RTrueDiv(other),
+            _ => base.RTrueDivImpl(other),
         };
     }
-    public override PyObject? RFloorDiv(PyObject other)
+    protected internal override PyObject? RFloorDivImpl(PyObject other)
     {
         return other switch
         {
             PyIntObject intObj => FromDouble(double.Floor((double)intObj.Value / Value)),
             PyFloatObject floatObj => FromDouble(double.Floor(floatObj.Value / Value)),
-            _ => base.RFloorDiv(other),
+            _ => base.RFloorDivImpl(other),
         };
     }
-    public override PyObject? RDivMod(PyObject other)
+    protected internal override PyObject? RDivModImpl(PyObject other)
     {
-        var q = RFloorDiv(other);
+        var q = RFloorDivImpl(other);
         if (q is null)
             return null;
 
         if (q is PyNotImplementedObject)
             return PyNotImplementedObject.NotImplemented;
 
-        var r = RMod(other);
+        var r = RModImpl(other);
         if (r is null)
             return null;
 
@@ -207,16 +207,16 @@ public class PyFloatObject : PyObject
 
         return PyTupleObject.CreateTuple(q, r);
     }
-    public override PyObject? RMod(PyObject other)
+    protected internal override PyObject? RModImpl(PyObject other)
     {
         return other switch
         {
             PyIntObject intObj => FromDouble((double)intObj.Value % Value),
             PyFloatObject floatObj => FromDouble(floatObj.Value % Value),
-            _ => base.Mod(other),
+            _ => base.ModImpl(other),
         };
     }
-    public override PyObject? RPow(PyObject other, PyObject modulo)
+    protected internal override PyObject? RPowImpl(PyObject other, PyObject modulo)
     {
         if (modulo is not PyNoneObject)
             return PyNotImplementedObject.NotImplemented;
@@ -225,53 +225,53 @@ public class PyFloatObject : PyObject
         {
             PyIntObject intObj => FromDouble(double.Pow((double)intObj.Value, Value)),
             PyFloatObject floatObj => FromDouble(double.Pow(floatObj.Value, Value)),
-            _ => base.Pow(other, modulo),
+            _ => base.PowImpl(other, modulo),
         };
     }
 
-    public override PyObject? Lt(PyObject other)
+    protected internal override PyObject? LtImpl(PyObject other)
     {
         return other switch
         {
             PyIntObject intObj => PyBoolObject.FromBoolean(Value < (double)intObj.Value),
             PyFloatObject floatObj => PyBoolObject.FromBoolean(Value < floatObj.Value),
-            _ => base.Lt(other),
+            _ => base.LtImpl(other),
         };
     }
-    public override PyObject? Gt(PyObject other)
+    protected internal override PyObject? GtImpl(PyObject other)
     {
         return other switch
         {
             PyIntObject intObj => PyBoolObject.FromBoolean(Value > (double)intObj.Value),
             PyFloatObject floatObj => PyBoolObject.FromBoolean(Value > floatObj.Value),
-            _ => base.Gt(other),
+            _ => base.GtImpl(other),
         };
     }
-    public override PyObject? Le(PyObject other)
+    protected internal override PyObject? LeImpl(PyObject other)
     {
         return other switch
         {
             PyIntObject intObj => PyBoolObject.FromBoolean(Value <= (double)intObj.Value),
             PyFloatObject floatObj => PyBoolObject.FromBoolean(Value <= floatObj.Value),
-            _ => base.Le(other),
+            _ => base.LeImpl(other),
         };
     }
-    public override PyObject? Ge(PyObject other)
+    protected internal override PyObject? GeImpl(PyObject other)
     {
         return other switch
         {
             PyIntObject intObj => PyBoolObject.FromBoolean(Value >= (double)intObj.Value),
             PyFloatObject floatObj => PyBoolObject.FromBoolean(Value >= floatObj.Value),
-            _ => base.Ge(other),
+            _ => base.GeImpl(other),
         };
     }
-    public override PyObject? Eq(PyObject other)
+    protected internal override PyObject? EqImpl(PyObject other)
     {
         return other switch
         {
             PyIntObject intObj => PyBoolObject.FromBoolean(Value == (double)intObj.Value),
             PyFloatObject floatObj => PyBoolObject.FromBoolean(Value == floatObj.Value),
-            _ => base.Eq(other),
+            _ => base.EqImpl(other),
         };
     }
 }
@@ -280,7 +280,7 @@ public sealed class PyFloatObjectType : PyPrimitiveTypeObject<PyFloatObjectType,
 {
     public override string Name => "float";
 
-    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var pack = new PyArgsPack(args, kwargs);
         if (!pack.ValidateCount(1, 0))

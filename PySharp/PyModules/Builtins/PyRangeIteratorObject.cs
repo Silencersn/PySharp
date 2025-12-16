@@ -13,12 +13,12 @@ public class PyRangeIteratorObject : PyObject
         _enumerator = enumerable.GetEnumerator();
     }
 
-    public override PyObject? Iter()
+    protected internal override PyObject? IterImpl()
     {
         return this;
     }
 
-    public override PyObject? Next()
+    protected internal override PyObject? NextImpl()
     {
         if (!_enumerator.MoveNext())
             return PyVirtualMachine.RaiseStopIteration();
@@ -31,7 +31,7 @@ public sealed class PyRangeIteratorObjectType : PyPrimitiveTypeObject<PyRangeIte
 {
     public override string Name => "range_iterator";
 
-    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return PyVirtualMachine.RaiseTypeError(null);
     }

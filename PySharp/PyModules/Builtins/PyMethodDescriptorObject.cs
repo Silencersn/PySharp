@@ -64,7 +64,7 @@ public sealed class PyMethodDescriptorObject : PyObject, IPyDescriptor
         _methods = [.. methods];
     }
 
-    public override PyObject? Get(PyObject instance, PyObject owner)
+    protected internal override PyObject? GetImpl(PyObject instance, PyObject owner)
     {
         if (owner is not PyTypeObject pyType)
             return PyVirtualMachine.RaiseTypeError(null);
@@ -98,7 +98,7 @@ public sealed class PyMethodDescriptorObject : PyObject, IPyDescriptor
         return new PyBuiltinFunctionOrMethodObject(_name, instance, pyType, ToPyFunction(_method, instance, _paramType));
     }
 
-    public override PyObject? Call(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? CallImpl(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (args.Count is 0)
             return PyVirtualMachine.RaiseTypeError($"descriptor '{_name}' of '{_declaringType.Name}' object needs an argument");

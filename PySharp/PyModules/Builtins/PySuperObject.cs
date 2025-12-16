@@ -83,10 +83,10 @@ public class PySuperObject : PyObject
         if (attrFromType is not null)
             return attrFromType;
 
-        return base.GetAttribute(name);
+        return base.GetAttributeImpl(name);
     }
 
-    public override PyObject? GetAttribute(string item)
+    protected internal override PyObject? GetAttributeImpl(string item)
     {
         if (_object is not null)
         {
@@ -152,7 +152,7 @@ public sealed class PySuperObjectType : PyPrimitiveTypeObject<PySuperObjectType,
         return PySuperObject.CreateSuper(type, arguments[1]);
     }
 
-    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return _new.Call(args, kwargs);
     }

@@ -34,12 +34,12 @@ public class PyTupleObject : PyObject, IPyObjectRecursiveRepr
         return new PyTupleObject(array);
     }
 
-    public override PyObject? Iter()
+    protected internal override PyObject? IterImpl()
     {
         return new PyTupleIteratorObject(this);
     }
 
-    public override PyObject? GetItem(PyObject item)
+    protected internal override PyObject? GetItemImpl(PyObject item)
     {
         if (!PyInteropService.TryGetIndex(item, out int index))
             return null;
@@ -50,22 +50,22 @@ public class PyTupleObject : PyObject, IPyObjectRecursiveRepr
         return result;
     }
 
-    public override PyBoolObject Contains(PyObject item)
+    protected internal override PyBoolObject ContainsImpl(PyObject item)
     {
         return PyBoolObject.FromBoolean(_array.Contains(item));
     }
 
-    public override PyBoolObject Bool()
+    protected internal override PyBoolObject BoolImpl()
     {
         return _array.Length > 0;
     }
 
-    public override PyObject? Repr()
+    protected internal override PyObject? ReprImpl()
     {
         return IPyObjectRecursiveRepr.RecursiveRepr(this);
     }
 
-    public override PyIntObject Len()
+    protected internal override PyIntObject LenImpl()
     {
         return PyIntObject.FromInteger(_array.Length);
     }
@@ -80,7 +80,7 @@ public sealed class PyTupleObjectType : PyPrimitiveTypeObject<PyTupleObjectType,
 {
     public override string Name => "tuple";
 
-    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var pack = new PyArgsPack(args, kwargs);
         if (!pack.ValidateCount(1, 0))

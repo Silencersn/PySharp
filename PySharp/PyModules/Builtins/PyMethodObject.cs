@@ -1,4 +1,6 @@
-﻿namespace PySharp.PyModules.Builtins;
+﻿using PySharp.PyRuntime;
+
+namespace PySharp.PyModules.Builtins;
 
 public sealed class PyMethodObject : PyObject
 {
@@ -13,12 +15,12 @@ public sealed class PyMethodObject : PyObject
         _target = target;
     }
 
-    public override PyObject? Call(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? CallImpl(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return _functionObj.Call([_target, .. args], kwargs);
     }
 
-    public override PyObject? GetAttr(string item)
+    protected internal override PyObject? GetAttrImpl(string item)
     {
         return _functionObj.GetAttribute(item);
     }

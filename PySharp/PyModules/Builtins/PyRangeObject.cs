@@ -50,7 +50,7 @@ public class PyRangeObject : PyObject
         return new PyRangeObject(start, stop, step);
     }
 
-    public override PyObject? Repr()
+    protected internal override PyObject? ReprImpl()
     {
         if (_step == 1)
             return PyStrObject.FromString($"range({_start}, {_stop})");
@@ -58,7 +58,7 @@ public class PyRangeObject : PyObject
         return PyStrObject.FromString($"range({_start}, {_stop}, {_step})");
     }
 
-    public override PyObject? Iter()
+    protected internal override PyObject? IterImpl()
     {
         return new PyRangeIteratorObject(EnumerateRange());
     }
@@ -68,7 +68,7 @@ public sealed class PyRangeObjectType : PyPrimitiveTypeObject<PyRangeObjectType,
 {
     public override string Name => "range";
 
-    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (kwargs.Count is not 0)
             return PyVirtualMachine.RaiseTypeError(null);

@@ -49,7 +49,7 @@ public sealed class PySliceObjectType : PyPrimitiveTypeObject<PySliceObjectType,
         return new PySliceObject(arguments[0], arguments[1], arguments[2]);
     }
 
-    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return _new.Call(args, kwargs);
     }

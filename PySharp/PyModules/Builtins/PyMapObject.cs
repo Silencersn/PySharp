@@ -18,12 +18,12 @@ public sealed class PyMapObject : PyObject
         _strict = strict;
     }
 
-    public override PyObject? Iter()
+    protected internal override PyObject? IterImpl()
     {
         return this;
     }
 
-    public override PyObject? Next()
+    protected internal override PyObject? NextImpl()
     {
         List<PyObject> args = [];
         foreach (var iter in _iters)
@@ -77,7 +77,7 @@ public sealed class PyMapObjectType : PyPrimitiveTypeObject<PyMapObjectType, PyM
         return new PyMapObject(function, [.. iters], strict);
     }
 
-    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return _new.Call(args, kwargs);
     }

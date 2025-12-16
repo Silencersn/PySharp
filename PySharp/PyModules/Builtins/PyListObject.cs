@@ -25,7 +25,7 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr
         return new PyListObject(objects);
     }
 
-    public override PyObject? GetItem(PyObject item)
+    protected internal override PyObject? GetItemImpl(PyObject item)
     {
         if (!PyInteropService.TryGetIndex(item, out int index))
             return null;
@@ -36,7 +36,7 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr
         return result;
     }
 
-    public override PyObject? SetItem(PyObject key, PyObject value)
+    protected internal override PyObject? SetItemImpl(PyObject key, PyObject value)
     {
         if (!PyInteropService.TryGetIndex(key, out int index))
             return null;
@@ -47,17 +47,17 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr
         return PyNoneObject.None;
     }
 
-    public override PyObject? Contains(PyObject item)
+    protected internal override PyObject? ContainsImpl(PyObject item)
     {
         return PyBoolObject.FromBoolean(_list.Contains(item));
     }
 
-    public override PyBoolObject Bool()
+	protected internal override PyBoolObject BoolImpl()
     {
         return _list.Count > 0;
     }
 
-    public override PyObject? Repr()
+    protected internal override PyObject? ReprImpl()
     {
         return IPyObjectRecursiveRepr.RecursiveRepr(this);
     }
@@ -223,20 +223,20 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr
         return PyCopy();
     }
 
-    public override PyObject? Iter()
+    protected internal override PyObject? IterImpl()
     {
         return new PyListIteratorObject(this);
     }
 
-    public override PyObject? Len()
+    protected internal override PyObject? LenImpl()
     {
         return PyIntObject.FromInteger(_list.Count);
     }
 
-    public override PyObject? Eq(PyObject other)
+    protected internal override PyObject? EqImpl(PyObject other)
     {
         if (other is not PyListObject otherList)
-            return base.Eq(other);
+            return base.EqImpl(other);
 
         return PyBoolObject.FromBoolean(_list.SequenceEqual(otherList._list, PyObjectRuntimeEqualityComparer.Shared));
     }
@@ -273,7 +273,7 @@ public sealed class PyListObjectType : PyPrimitiveTypeObject<PyListObjectType, P
         return new PyListObject(list);
     }
 
-    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return _new.Call(args, kwargs);
     }

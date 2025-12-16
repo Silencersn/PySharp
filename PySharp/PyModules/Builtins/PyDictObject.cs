@@ -35,36 +35,36 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
         return new PyDictObject(dict, true);
     }
 
-    public override PyObject? GetItem(PyObject item)
+    protected internal override PyObject? GetItemImpl(PyObject item)
     {
         if (_dict.TryGetValue(item, out PyObject? value))
             return value;
 
-        return Missing(item);
+        return MissingImpl(item);
     }
 
-    public override PyObject? SetItem(PyObject key, PyObject value)
+    protected internal override PyObject? SetItemImpl(PyObject key, PyObject value)
     {
         PySetItem(key, value);
         return PyNoneObject.None;
     }
 
-    public override PyObject? Contains(PyObject item)
+    protected internal override PyObject? ContainsImpl(PyObject item)
     {
         return PyBoolObject.FromBoolean(_dict.ContainsKey(item));
     }
 
-    public override PyObject? Len()
+    protected internal override PyObject? LenImpl()
     {
         return PyIntObject.FromInteger(_dict.Count);
     }
 
-    public override PyBoolObject Bool()
+	protected internal override PyBoolObject BoolImpl()
     {
         return PyBoolObject.FromBoolean(_dict.Count > 0);
     }
 
-    public override PyObject? Repr()
+    protected internal override PyObject? ReprImpl()
     {
         return IPyObjectRecursiveRepr.RecursiveRepr(this);
     }
@@ -190,7 +190,7 @@ public sealed class PyDictObjectType : PyPrimitiveTypeObject<PyDictObjectType, P
         return PyDictObject.CreateDict(dict);
     }
 
-    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return _new.Call(args, kwargs);
     }

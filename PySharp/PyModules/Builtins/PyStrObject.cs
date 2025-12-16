@@ -34,32 +34,32 @@ public partial class PyStrObject : PyObject
         PyLength = -1;
     }
 
-    public override PyStrObject Repr()
+    protected internal override PyStrObject ReprImpl()
     {
         return FromString(PyStrConverter.FromStringToLiteral(Value));
     }
 
-    public override PyStrObject Str()
+    protected internal override PyStrObject StrImpl()
     {
         return this;
     }
 
-    public override PyBoolObject Bool()
+    protected internal override PyBoolObject BoolImpl()
     {
         return Value.Length > 0;
     }
 
-    public override PyIntObject Len()
+    protected internal override PyIntObject LenImpl()
     {
         return PyIntObject.FromInteger(PyLength);
     }
 
-    public override PyObject? Iter()
+    protected internal override PyObject? IterImpl()
     {
         return new PyStrIteratorObject(Value);
     }
 
-    public override PyObject? GetItem(PyObject item)
+    protected internal override PyObject? GetItemImpl(PyObject item)
     {
         if (!PyInteropService.TryGetIndex(item, out int index))
             return null;
@@ -71,7 +71,7 @@ public partial class PyStrObject : PyObject
         return FromRune(Value.EnumerateRunes().ElementAt(index));
     }
 
-    public override PyObject? Add(PyObject other)
+    protected internal override PyObject? AddImpl(PyObject other)
     {
         if (other is PyStrObject strObj)
             return FromString(Value + strObj.Value);
@@ -79,14 +79,14 @@ public partial class PyStrObject : PyObject
         return PyVirtualMachine.RaiseTypeError($"can only concatenate str (not \"{other.PyType.Name}\") to str");
     }
 
-    public override PyObject? Eq(PyObject other)
+    protected internal override PyObject? EqImpl(PyObject other)
     {
         if (other is PyStrObject strObj)
             return PyBoolObject.FromBoolean(Value == strObj.Value);
         return PyNotImplementedObject.NotImplemented;
     }
 
-    public override PyObject? Lt(PyObject other)
+    protected internal override PyObject? LtImpl(PyObject other)
     {
         if (other is not PyStrObject strObj)
             return PyNotImplementedObject.NotImplemented;
@@ -94,7 +94,7 @@ public partial class PyStrObject : PyObject
         return PyBoolObject.FromBoolean(Value.CompareTo(strObj.Value) < 0);
     }
 
-    public override PyObject? Mul(PyObject other)
+    protected internal override PyObject? MulImpl(PyObject other)
     {
         if (!PyInteropService.TryGetIndex(other, out int repeatCount))
             return PyNotImplementedObject.NotImplemented;
@@ -102,9 +102,9 @@ public partial class PyStrObject : PyObject
         return FromString(string.Concat(Enumerable.Repeat(Value, repeatCount)));
     }
 
-    public override PyObject? RMul(PyObject other)
+    protected internal override PyObject? RMulImpl(PyObject other)
     {
-        return Mul(other);
+        return MulImpl(other);
     }
 
     internal static PyStrObject FromLiteral(ReadOnlySpan<char> literal)
@@ -150,7 +150,7 @@ public sealed class PyStrObjectType : PyPrimitiveTypeObject<PyStrObjectType, PyS
         AppendMethodDescriptor<PyStrObject>("join", nameof(PyStrObject.JoinImpl));
     }
 
-    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var pack = new PyArgsPack(args, kwargs);
         if (!pack.ValidateCount(1, 0))

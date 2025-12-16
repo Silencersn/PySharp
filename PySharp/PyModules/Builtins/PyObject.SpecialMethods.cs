@@ -1,316 +1,445 @@
 ﻿using PySharp.PyRuntime;
+using System;
+using System.Collections.Frozen;
+using System.Collections.Generic;
+using System.Text;
 
 namespace PySharp.PyModules.Builtins;
 
 partial class PyObject
 {
-    public virtual PyObject? Init(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    public PyObject? Repr()
     {
-        return PyNoneObject.None;
+        if (IsSelfDefaultType)
+            return ReprImpl();
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Repr);
+        return callable?.Call([], FrozenDictionary<string, PyObject>.Empty);
     }
-
-    public virtual PyObject? Call(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    public PyObject? Str()
     {
-        return PyVirtualMachine.RaiseTypeError(null);
+        if (IsSelfDefaultType)
+            return StrImpl();
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Str);
+        return callable?.Call([], FrozenDictionary<string, PyObject>.Empty);
     }
-
-    public virtual PyObject? Repr()
+    public PyObject? Hash()
     {
-        return PyStrObject.FromString($"<{PyType.Name} object at 0x{PyId:X16}>");
+        if (IsSelfDefaultType)
+            return HashImpl();
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Hash);
+        return callable?.Call([], FrozenDictionary<string, PyObject>.Empty);
     }
-
-    public virtual PyObject? Str()
+    public PyObject? Bool()
     {
-        return PySpecialCaller.Repr(this);
+        if (IsSelfDefaultType)
+            return BoolImpl();
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Bool);
+        return callable?.Call([], FrozenDictionary<string, PyObject>.Empty);
     }
-
-    public virtual PyObject? Hash()
+    public PyObject? Int()
     {
-        return PyIntObject.FromInteger(PyId);
+        if (IsSelfDefaultType)
+            return IntImpl();
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Int);
+        return callable?.Call([], FrozenDictionary<string, PyObject>.Empty);
     }
-
-    public virtual PyObject? GetAttribute(string item)
+    public PyObject? Float()
     {
-        return PyObjectGetAttribute(this, item);
+        if (IsSelfDefaultType)
+            return FloatImpl();
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Float);
+        return callable?.Call([], FrozenDictionary<string, PyObject>.Empty);
     }
-
-    public virtual PyObject? GetAttr(string item)
+    public PyObject? Complex()
     {
-        return PyVirtualMachine.RaiseAttributeError($"'{PyType.Name}' object has no attribute '{item}'");
+        if (IsSelfDefaultType)
+            return ComplexImpl();
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Complex);
+        return callable?.Call([], FrozenDictionary<string, PyObject>.Empty);
     }
-
-    public virtual PyObject? SetAttr(string key, PyObject value)
+    public PyObject? Index()
     {
-        return PyObjectSetAttribute(this, key, value);
+        if (IsSelfDefaultType)
+            return IndexImpl();
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Index);
+        return callable?.Call([], FrozenDictionary<string, PyObject>.Empty);
     }
-
-    public virtual PyObject? DelAttr(string item)
+    public PyObject? Len()
     {
-        return PyObjectDeleteAttribute(this, item);
+        if (IsSelfDefaultType)
+            return LenImpl();
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Len);
+        return callable?.Call([], FrozenDictionary<string, PyObject>.Empty);
     }
-
-    public virtual PyObject? Bool()
+    public PyObject? Iter()
     {
-        return PyBoolObject.True;
+        if (IsSelfDefaultType)
+            return IterImpl();
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Iter);
+        return callable?.Call([], FrozenDictionary<string, PyObject>.Empty);
     }
-
-    public virtual PyObject? Int()
+    public PyObject? Next()
     {
-        // TOOD: is this implementation correct?
-        var index = PySpecialCaller.Index(this);
-        if (index is null)
-            return null;
-
-        if (!PySpecialMethods.TryGetIndex(index, out var i))
-            return null;
-
-        return i;
+        if (IsSelfDefaultType)
+            return NextImpl();
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Next);
+        return callable?.Call([], FrozenDictionary<string, PyObject>.Empty);
     }
-    public virtual PyObject? Float()
+    public PyObject? Abs()
     {
-        // TOOD: is this implementation correct?
-        var index = PySpecialCaller.Index(this);
-        if (index is null)
-            return null;
-
-        if (!PySpecialMethods.TryGetIndex(index, out var i))
-            return null;
-
-        return PyFloatObject.FromDouble((double)i.Value);
+        if (IsSelfDefaultType)
+            return AbsImpl();
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Abs);
+        return callable?.Call([], FrozenDictionary<string, PyObject>.Empty);
     }
-    public virtual PyObject? Complex()
+    public PyObject? Neg()
     {
-        // TOOD: is this implementation correct?
-        var index = PySpecialCaller.Index(this);
-        if (index is null)
-            return null;
-
-        if (!PySpecialMethods.TryGetIndex(index, out var i))
-            return null;
-
-        throw new NotImplementedException();
+        if (IsSelfDefaultType)
+            return NegImpl();
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Neg);
+        return callable?.Call([], FrozenDictionary<string, PyObject>.Empty);
     }
-
-    public virtual PyObject? Index()
+    public PyObject? Pos()
     {
-        return PyVirtualMachine.RaiseTypeError(null);
+        if (IsSelfDefaultType)
+            return PosImpl();
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Pos);
+        return callable?.Call([], FrozenDictionary<string, PyObject>.Empty);
     }
-
-    public virtual PyObject? Contains(PyObject item)
+    public PyObject? Invert()
     {
-        return PyVirtualMachine.RaiseTypeError(null);
+        if (IsSelfDefaultType)
+            return InvertImpl();
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Invert);
+        return callable?.Call([], FrozenDictionary<string, PyObject>.Empty);
     }
-
-    public virtual PyObject? GetItem(PyObject item)
+    public PyObject? Contains(PyObject item)
     {
-        return PyVirtualMachine.RaiseTypeError(null);
+        if (IsSelfDefaultType)
+            return ContainsImpl(item);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Contains);
+        return callable?.Call([item], FrozenDictionary<string, PyObject>.Empty);
     }
-
-    public virtual PyObject? SetItem(PyObject key, PyObject value)
+    public PyObject? GetItem(PyObject key)
     {
-        return PyVirtualMachine.RaiseTypeError(null);
+        if (IsSelfDefaultType)
+            return GetItemImpl(key);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.GetItem);
+        return callable?.Call([key], FrozenDictionary<string, PyObject>.Empty);
     }
-
-    public virtual PyObject? DelItem(PyObject key)
+    public PyObject? SetItem(PyObject key, PyObject value)
     {
-        return PyVirtualMachine.RaiseTypeError(null);
+        if (IsSelfDefaultType)
+            return SetItemImpl(key, value);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.SetItem);
+        return callable?.Call([key, value], FrozenDictionary<string, PyObject>.Empty);
     }
-
-    public virtual PyObject? Len()
+    public PyObject? DelItem(PyObject key)
     {
-        return PyVirtualMachine.RaiseTypeError(null);
+        if (IsSelfDefaultType)
+            return DelItemImpl(key);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.DelItem);
+        return callable?.Call([key], FrozenDictionary<string, PyObject>.Empty);
     }
-
-    public virtual PyObject? Iter()
+    public PyObject? Add(PyObject other)
     {
-        return PyVirtualMachine.RaiseTypeError(null);
+        if (IsSelfDefaultType)
+            return AddImpl(other);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Add);
+        return callable?.Call([other], FrozenDictionary<string, PyObject>.Empty);
     }
-
-    public virtual PyObject? Next()
+    public PyObject? Sub(PyObject other)
     {
-        return PyVirtualMachine.RaiseTypeError(null);
+        if (IsSelfDefaultType)
+            return SubImpl(other);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Sub);
+        return callable?.Call([other], FrozenDictionary<string, PyObject>.Empty);
     }
-
-    public virtual PyObject? Neg()
+    public PyObject? Mul(PyObject other)
     {
-        return PyVirtualMachine.RaiseTypeError(null);
+        if (IsSelfDefaultType)
+            return MulImpl(other);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Mul);
+        return callable?.Call([other], FrozenDictionary<string, PyObject>.Empty);
     }
-
-    public virtual PyObject? Pos()
+    public PyObject? TrueDiv(PyObject other)
     {
-        return PyVirtualMachine.RaiseTypeError(null);
+        if (IsSelfDefaultType)
+            return TrueDivImpl(other);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.TrueDiv);
+        return callable?.Call([other], FrozenDictionary<string, PyObject>.Empty);
     }
-
-    public virtual PyObject? Invert()
+    public PyObject? FloorDiv(PyObject other)
     {
-        return PyVirtualMachine.RaiseTypeError(null);
+        if (IsSelfDefaultType)
+            return FloorDivImpl(other);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.FloorDiv);
+        return callable?.Call([other], FrozenDictionary<string, PyObject>.Empty);
     }
-
-    public virtual PyObject? Abs()
+    public PyObject? Mod(PyObject other)
     {
-        return PyVirtualMachine.RaiseTypeError(null);
+        if (IsSelfDefaultType)
+            return ModImpl(other);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Mod);
+        return callable?.Call([other], FrozenDictionary<string, PyObject>.Empty);
     }
-
-    public virtual PyObject? Add(PyObject other)
+    public PyObject? DivMod(PyObject other)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return DivModImpl(other);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.DivMod);
+        return callable?.Call([other], FrozenDictionary<string, PyObject>.Empty);
     }
-    public virtual PyObject? Sub(PyObject other)
+    public PyObject? Pow(PyObject other, PyObject modulo)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return PowImpl(other, modulo);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Pow);
+        return callable?.Call([other, modulo], FrozenDictionary<string, PyObject>.Empty);
     }
-    public virtual PyObject? Mul(PyObject other)
+    public PyObject? LShift(PyObject other)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return LShiftImpl(other);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.LShift);
+        return callable?.Call([other], FrozenDictionary<string, PyObject>.Empty);
     }
-    public virtual PyObject? TrueDiv(PyObject other)
+    public PyObject? RShift(PyObject other)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return RShiftImpl(other);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.RShift);
+        return callable?.Call([other], FrozenDictionary<string, PyObject>.Empty);
     }
-    public virtual PyObject? FloorDiv(PyObject other)
+    public PyObject? And(PyObject other)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return AndImpl(other);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.And);
+        return callable?.Call([other], FrozenDictionary<string, PyObject>.Empty);
     }
-    public virtual PyObject? Mod(PyObject other)
+    public PyObject? Xor(PyObject other)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return XorImpl(other);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Xor);
+        return callable?.Call([other], FrozenDictionary<string, PyObject>.Empty);
     }
-    public virtual PyObject? DivMod(PyObject other)
+    public PyObject? Or(PyObject other)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return OrImpl(other);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Or);
+        return callable?.Call([other], FrozenDictionary<string, PyObject>.Empty);
     }
-    public virtual PyObject? Pow(PyObject other, PyObject modulo)
+    public PyObject? RAdd(PyObject other)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return RAddImpl(other);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.RAdd);
+        return callable?.Call([other], FrozenDictionary<string, PyObject>.Empty);
     }
-    public virtual PyObject? LShift(PyObject other)
+    public PyObject? RSub(PyObject other)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return RSubImpl(other);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.RSub);
+        return callable?.Call([other], FrozenDictionary<string, PyObject>.Empty);
     }
-    public virtual PyObject? RShift(PyObject other)
+    public PyObject? RMul(PyObject other)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return RMulImpl(other);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.RMul);
+        return callable?.Call([other], FrozenDictionary<string, PyObject>.Empty);
     }
-    public virtual PyObject? And(PyObject other)
+    public PyObject? RTrueDiv(PyObject other)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return RTrueDivImpl(other);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.RTrueDiv);
+        return callable?.Call([other], FrozenDictionary<string, PyObject>.Empty);
     }
-    public virtual PyObject? Xor(PyObject other)
+    public PyObject? RFloorDiv(PyObject other)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return RFloorDivImpl(other);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.RFloorDiv);
+        return callable?.Call([other], FrozenDictionary<string, PyObject>.Empty);
     }
-    public virtual PyObject? Or(PyObject other)
+    public PyObject? RMod(PyObject other)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return RModImpl(other);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.RMod);
+        return callable?.Call([other], FrozenDictionary<string, PyObject>.Empty);
     }
-
-    public virtual PyObject? RAdd(PyObject other)
+    public PyObject? RDivMod(PyObject other)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return RDivModImpl(other);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.RDivMod);
+        return callable?.Call([other], FrozenDictionary<string, PyObject>.Empty);
     }
-    public virtual PyObject? RSub(PyObject other)
+    public PyObject? RPow(PyObject other, PyObject modulo)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return RPowImpl(other, modulo);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.RPow);
+        return callable?.Call([other, modulo], FrozenDictionary<string, PyObject>.Empty);
     }
-    public virtual PyObject? RMul(PyObject other)
+    public PyObject? RLShift(PyObject other)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return RLShiftImpl(other);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.RLShift);
+        return callable?.Call([other], FrozenDictionary<string, PyObject>.Empty);
     }
-    public virtual PyObject? RTrueDiv(PyObject other)
+    public PyObject? RRShift(PyObject other)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return RRShiftImpl(other);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.RRShift);
+        return callable?.Call([other], FrozenDictionary<string, PyObject>.Empty);
     }
-    public virtual PyObject? RFloorDiv(PyObject other)
+    public PyObject? RAnd(PyObject other)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return RAndImpl(other);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.RAnd);
+        return callable?.Call([other], FrozenDictionary<string, PyObject>.Empty);
     }
-    public virtual PyObject? RMod(PyObject other)
+    public PyObject? RXor(PyObject other)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return RXorImpl(other);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.RXor);
+        return callable?.Call([other], FrozenDictionary<string, PyObject>.Empty);
     }
-    public virtual PyObject? RDivMod(PyObject other)
+    public PyObject? ROr(PyObject other)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return ROrImpl(other);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.ROr);
+        return callable?.Call([other], FrozenDictionary<string, PyObject>.Empty);
     }
-    public virtual PyObject? RPow(PyObject other, PyObject modulo)
+    public PyObject? Lt(PyObject other)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return LtImpl(other);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Lt);
+        return callable?.Call([other], FrozenDictionary<string, PyObject>.Empty);
     }
-    public virtual PyObject? RLShift(PyObject other)
+    public PyObject? Le(PyObject other)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return LeImpl(other);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Le);
+        return callable?.Call([other], FrozenDictionary<string, PyObject>.Empty);
     }
-    public virtual PyObject? RRShift(PyObject other)
+    public PyObject? Eq(PyObject other)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return EqImpl(other);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Eq);
+        return callable?.Call([other], FrozenDictionary<string, PyObject>.Empty);
     }
-    public virtual PyObject? RAnd(PyObject other)
+    public PyObject? Ne(PyObject other)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return NeImpl(other);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Ne);
+        return callable?.Call([other], FrozenDictionary<string, PyObject>.Empty);
     }
-    public virtual PyObject? RXor(PyObject other)
+    public PyObject? Gt(PyObject other)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return GtImpl(other);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Gt);
+        return callable?.Call([other], FrozenDictionary<string, PyObject>.Empty);
     }
-    public virtual PyObject? ROr(PyObject other)
+    public PyObject? Ge(PyObject other)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return GeImpl(other);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Ge);
+        return callable?.Call([other], FrozenDictionary<string, PyObject>.Empty);
     }
-
-    public virtual PyObject? Lt(PyObject other)
+    public PyObject? Get(PyObject instance, PyObject owner)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return GetImpl(instance, owner);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Get);
+        return callable?.Call([instance, owner], FrozenDictionary<string, PyObject>.Empty);
     }
-    public virtual PyObject? Le(PyObject other)
+    public PyObject? Set(PyObject instance, PyObject value)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return SetImpl(instance, value);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Set);
+        return callable?.Call([instance, value], FrozenDictionary<string, PyObject>.Empty);
     }
-    public virtual PyObject? Eq(PyObject other)
+    public PyObject? Delete(PyObject instance)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return DeleteImpl(instance);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Delete);
+        return callable?.Call([instance], FrozenDictionary<string, PyObject>.Empty);
     }
-    public virtual PyObject? Ne(PyObject other)
+    public PyObject? SetName(PyObject owner, PyObject name)
     {
-        var eq = PySpecialCaller.Eq(this, other);
-        if (eq is null)
-            return null;
-
-        if (PySpecialMethods.TryGetBool(eq, out var b))
-            return b.BoolValue ? PyBoolObject.False : PyBoolObject.True;
-
-        return null;
+        if (IsSelfDefaultType)
+            return SetNameImpl(owner, name);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.SetName);
+        return callable?.Call([owner, name], FrozenDictionary<string, PyObject>.Empty);
     }
-    public virtual PyObject? Gt(PyObject other)
+    public PyObject? Call(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return CallImpl(args, kwargs);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Call);
+        return callable?.Call(args, kwargs);
     }
-    public virtual PyObject? Ge(PyObject other)
+    public PyObject? Missing(PyObject key)
     {
-        return PyNotImplementedObject.NotImplemented;
+        if (IsSelfDefaultType)
+            return MissingImpl(key);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Missing);
+        return callable?.Call([key], FrozenDictionary<string, PyObject>.Empty);
     }
-
-    public virtual PyObject? Missing(PyObject key)
+    public PyObject? GetAttr(string name)
     {
-        return PyVirtualMachine.RaiseKeyError(key);
+        if (IsSelfDefaultType)
+            return GetAttrImpl(name);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.GetAttr);
+        return callable?.Call([PyStrObject.FromString(name)], FrozenDictionary<string, PyObject>.Empty);
     }
-
-    public virtual PyObject? Get(PyObject instance, PyObject owner)
+    public PyObject? SetAttr(string name, PyObject value)
     {
-        throw new NotImplementedException();
+        if (IsSelfDefaultType)
+            return SetAttrImpl(name, value);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.SetAttr);
+        return callable?.Call([PyStrObject.FromString(name), value], FrozenDictionary<string, PyObject>.Empty);
     }
-
-    public virtual PyObject? Set(PyObject instance, PyObject value)
+    public PyObject? DelAttr(string name)
     {
-        throw new NotImplementedException();
+        if (IsSelfDefaultType)
+            return DelAttrImpl(name);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.DelAttr);
+        return callable?.Call([PyStrObject.FromString(name)], FrozenDictionary<string, PyObject>.Empty);
     }
-
-    public virtual PyObject? Delete(PyObject instance)
+    public PyObject? Init(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        throw new NotImplementedException();
+        if (IsSelfDefaultType)
+            return InitImpl(args, kwargs);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Init);
+        return callable?.Call(args, kwargs);
     }
-
-    public virtual PyObject? SetName(PyObject owner, PyObject name)
+    public PyObject? GetAttribute(string name)
     {
-        return PyNoneObject.None;
+        if (IsSelfDefaultType)
+            return GetAttributeImpl(name);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.GetAttribute);
+        return callable?.Call([PyStrObject.FromString(name)], FrozenDictionary<string, PyObject>.Empty);
     }
 }

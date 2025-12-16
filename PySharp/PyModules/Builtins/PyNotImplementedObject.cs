@@ -10,7 +10,7 @@ public class PyNotImplementedObject : PyObject
 
     public override PyTypeObject DefaultPyType => PyNotImplementedObjectType.Shared;
 
-    public override PyStrObject Repr()
+	protected internal override PyStrObject ReprImpl()
     {
         return _repr;
     }
@@ -21,7 +21,7 @@ public sealed class PyNotImplementedObjectType : PyPrimitiveTypeObject<PyNotImpl
     public override string Name => "NotImplementedType";
     public override bool IsSealed => true;
 
-    public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var pack = new PyArgsPack(args, kwargs);
         if (!pack.ValidateEmpty())

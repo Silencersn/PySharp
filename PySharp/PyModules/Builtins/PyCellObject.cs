@@ -10,7 +10,7 @@ public class PyCellObject : PyObject
         Name = name;
         Value = value;
     }
-    public override PyObject? Repr()
+    protected internal override PyObject? ReprImpl()
     {
         if (Value is null)
             return PyStrObject.FromString($"<cell at 0x{PyId:X16}: empty>");

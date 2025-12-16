@@ -11,7 +11,7 @@ public class PyDictItemsObject : PyObject
         _dict = dict;
     }
 
-    public override PyObject? Iter()
+    protected internal override PyObject? IterImpl()
     {
         return new PyDictItemIterator(this);
     }
@@ -28,12 +28,12 @@ public class PyDictItemIterator : PyObject
         _keyEnumerator = items._dict._dict.Keys.GetEnumerator();
     }
 
-    public override PyObject? Iter()
+    protected internal override PyObject? IterImpl()
     {
         return this;
     }
 
-    public override PyObject? Next()
+    protected internal override PyObject? NextImpl()
     {
         if (_keyEnumerator.MoveNext())
             return PyTupleObject.CreateTuple(_keyEnumerator.Current, _items._dict._dict[_keyEnumerator.Current]);
