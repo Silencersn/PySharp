@@ -102,6 +102,11 @@ partial class PyVirtualMachine
     {
         return RaiseException(PyStandardExceptionTypes.StopIteration, arg);
     }
+    [MemberNotNull(nameof(CurrentException))]
+    internal static PyObject? RaiseRuntimeError(string? arg = null)
+    {
+        return RaiseException(PyStandardExceptionTypes.RuntimeError, arg);
+    }
 
 
     internal sealed class PySharpException : PyExceptionType

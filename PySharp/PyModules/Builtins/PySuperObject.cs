@@ -36,7 +36,7 @@ namespace PySharp.PyModules.Builtins;
 //                 return x
 //         raise AttributeError(attr)
 // 
-public class PySuperObject : PyObject
+public class PySuperObject : PyObject, IPyDescriptor
 {
     private readonly PyTypeObject _type;
     private readonly PyObject _object;
@@ -46,6 +46,12 @@ public class PySuperObject : PyObject
         _type = type;
         _object = obj;
     }
+
+    bool IPyDescriptor.SupportsGet => true;
+
+    bool IPyDescriptor.SupportsSet => false;
+
+    bool IPyDescriptor.SupportsDelete => false;
 
     public static PySuperObject? CreateSuper(PyTypeObject type, PyObject objectOrType)
     {
@@ -83,6 +89,13 @@ public class PySuperObject : PyObject
 
         return PyVirtualMachine.RaiseAttributeError(item);
     }
+
+    protected internal override PyObject? GetImpl(PyObject instance, PyObject owner)
+    {
+        if (_object is PyNoneObject && instance is not PyNoneObject)
+            return new PySuperObject(_type, instance);
+        return this;
+    }
 }
 
 
@@ -95,40 +108,28 @@ public sealed class PySuperObjectType : PyPrimitiveTypeObject<PySuperObjectType,
     [PyFunctionArgsDef()]
     private static PyObject? NewImpl_1(PyArguments arguments)
     {
-        if (!TryGetArgs(out var type, out var obj))
-            return PyVirtualMachine.RaiseException(PyStandardExceptionTypes.RuntimeError, "super(): no arguments" /* TODO: super(): empty __class__ cell */);
+        var frame = PyVirtualMachine.CurrentFrame;
+        if (frame.CallingArguments is null)
+            // TODO: in what situations would this happen?
+            return PyVirtualMachine.RaiseRuntimeError("super(): no arguments");
 
-        return PySuperObject.CreateSuper(type, obj);
+        var (args, _) = frame.CallingArguments.Value;
+        if (args.Count is 0)
+            return PyVirtualMachine.RaiseRuntimeError("super(): no arguments");
 
-        static bool TryGetArgs([NotNullWhen(true)] out PyTypeObject? type, [NotNullWhen(true)] out PyObject? obj)
-        {
-            type = null;
-            obj = null;
+        if (frame.InternalClosure is null || !frame.InternalClosure.TryGetValue(PySpecialNames.Class, out var cell))
+            return PyVirtualMachine.RaiseRuntimeError("super(): __class__ cell not found");
 
-            var frame = PyVirtualMachine.CurrentFrame;
-            if (frame.InternalClosure is null)
-                return false;
+        if (cell.Value is null)
+            return PyVirtualMachine.RaiseRuntimeError("super(): empty __class__ cell");
 
-            if (!frame.InternalClosure.TryGetValue(PySpecialNames.Class, out var cell))
-                return false;
+        if (cell.Value is not PyTypeObject type)
+            return PyVirtualMachine.RaiseRuntimeError($"super(): __class__ is not a type ({cell.Value.PyType.Name})");
 
-            if (cell.Value is not PyTypeObject resultType)
-                return false;
-
-            if (frame.CallingArguments is null)
-                return false;
-
-            var (args, _) = frame.CallingArguments.Value;
-            if (args.Count is 0)
-                return false;
-
-            type = resultType;
-            obj = args[0];
-            return true;
-        }
+        return PySuperObject.CreateSuper(type, args[0]);
     }
 
-    [PyFunctionArgsDef("type", "object_or_type" /* TODO: object_or_type=None */, "/")]
+    [PyFunctionArgsDef("type", "object_or_type=None", "/")]
     private static PyObject? NewImpl_2(PyArguments arguments)
     {
         if (arguments[0] is not PyTypeObject type)
