@@ -1,8 +1,5 @@
 ﻿using PySharp.PyRuntime;
-using System;
 using System.Collections.Frozen;
-using System.Collections.Generic;
-using System.Text;
 
 namespace PySharp.PyModules.Builtins;
 

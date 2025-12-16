@@ -928,7 +928,7 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
             bases.Add(PyObjectType.Shared);
 
         PyTypeObject.ValidateBases(bases, out var layoutType);
-		var type = new CustomObjectType(Name, ((IFunctionOrClass)this).QualifiedName, bases, layoutType);
+        var type = new CustomObjectType(Name, ((IFunctionOrClass)this).QualifiedName, bases, layoutType);
         if (AstUtils.TryGetDoc(Body, out var doc))
             type.PyAttributes[PySpecialNames.Doc] = doc;
 
@@ -980,6 +980,6 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
         protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
         {
             return Bases[0].New(cls, args, kwargs);
-		}
+        }
     }
 }

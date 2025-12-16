@@ -50,25 +50,25 @@ public class PySuperObject : PyObject
         foreach (var pyType in _searchList)
         {
             if (pyType.PyAttributes.TryGetValue(name, out attrFromType))
-				break;
-		}
+                break;
+        }
 
-		PyObject? nonDataDescriptor = null;
+        PyObject? nonDataDescriptor = null;
         if (attrFromType is not null && Utils.IsDescriptor(attrFromType, out var hasGet, out var hasSet, out var hasDelete))
         {
             if (hasGet)
             {
                 if (hasSet || hasDelete)
-					return attrFromType.Get(instance, owner);
+                    return attrFromType.Get(instance, owner);
 
-				nonDataDescriptor = attrFromType;
+                nonDataDescriptor = attrFromType;
             }
         }
 
         if (nonDataDescriptor is not null)
-			return nonDataDescriptor.Get(instance, owner);
+            return nonDataDescriptor.Get(instance, owner);
 
-		if (attrFromType is not null)
+        if (attrFromType is not null)
             return attrFromType;
 
         return base.GetAttributeImpl(name);

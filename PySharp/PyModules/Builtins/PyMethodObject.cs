@@ -1,6 +1,4 @@
-﻿using PySharp.PyRuntime;
-
-namespace PySharp.PyModules.Builtins;
+﻿namespace PySharp.PyModules.Builtins;
 
 public sealed class PyMethodObject : PyObject
 {

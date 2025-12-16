@@ -59,7 +59,7 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
         return PyIntObject.FromInteger(_dict.Count);
     }
 
-	protected internal override PyBoolObject BoolImpl()
+    protected internal override PyBoolObject BoolImpl()
     {
         return PyBoolObject.FromBoolean(_dict.Count > 0);
     }

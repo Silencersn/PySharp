@@ -22,7 +22,7 @@ public class PyIntObject : PyObject
     {
         _negatives = new PyIntObject[NegativePoolSize];
         _positives = new PyIntObject[PositivesPoolSize];
-        
+
         for (int i = 0; i < _negatives.Length; i++)
         {
             _negatives[i] = new PyIntObject(-i);
@@ -79,27 +79,27 @@ public class PyIntObject : PyObject
         return new PyIntObject(value);
     }
 
-	protected internal override PyObject? IndexImpl()
+    protected internal override PyObject? IndexImpl()
     {
         return this;
     }
 
-	protected internal override PyObject? HashImpl()
+    protected internal override PyObject? HashImpl()
     {
         return this;
     }
 
-	protected internal override PyObject? ReprImpl()
+    protected internal override PyObject? ReprImpl()
     {
         return PyStrObject.FromString(Value.ToString());
     }
 
-	protected internal override PyObject? BoolImpl()
+    protected internal override PyObject? BoolImpl()
     {
         return PyBoolObject.FromBoolean(Value != 0);
     }
 
-	protected internal override PyObject? IntImpl()
+    protected internal override PyObject? IntImpl()
     {
         return this;
     }

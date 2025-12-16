@@ -52,7 +52,7 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr
         return PyBoolObject.FromBoolean(_list.Contains(item));
     }
 
-	protected internal override PyBoolObject BoolImpl()
+    protected internal override PyBoolObject BoolImpl()
     {
         return _list.Count > 0;
     }

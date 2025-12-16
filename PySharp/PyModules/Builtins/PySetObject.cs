@@ -13,7 +13,7 @@ public class PySetObject : PyObject, IPyObjectRecursiveRepr
         _set = new HashSet<PyObject>(set, PyObjectRuntimeEqualityComparer.Shared);
     }
 
-	protected internal override PyBoolObject BoolImpl()
+    protected internal override PyBoolObject BoolImpl()
     {
         return _set.Count > 0;
     }

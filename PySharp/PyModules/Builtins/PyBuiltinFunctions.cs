@@ -4,7 +4,6 @@ using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.PyAttributes;
 using PySharp.Tokenization;
 using System.Diagnostics;
-using System.Numerics;
 using System.Text;
 
 namespace PySharp.PyModules.Builtins;

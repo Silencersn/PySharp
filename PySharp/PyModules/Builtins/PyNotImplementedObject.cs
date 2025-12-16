@@ -10,7 +10,7 @@ public class PyNotImplementedObject : PyObject
 
     public override PyTypeObject DefaultPyType => PyNotImplementedObjectType.Shared;
 
-	protected internal override PyStrObject ReprImpl()
+    protected internal override PyStrObject ReprImpl()
     {
         return _repr;
     }

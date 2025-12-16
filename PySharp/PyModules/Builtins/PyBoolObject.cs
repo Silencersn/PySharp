@@ -29,12 +29,12 @@ public sealed class PyBoolObject : PyIntObject
         return value ? True : False;
     }
 
-	protected internal override PyStrObject ReprImpl()
+    protected internal override PyStrObject ReprImpl()
     {
         return _repr;
     }
 
-	protected internal override PyBoolObject BoolImpl()
+    protected internal override PyBoolObject BoolImpl()
     {
         return this;
     }

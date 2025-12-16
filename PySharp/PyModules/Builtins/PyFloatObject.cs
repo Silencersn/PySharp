@@ -29,7 +29,7 @@ public class PyFloatObject : PyObject
         return new PyFloatObject(value);
     }
 
-	protected internal override PyObject? ReprImpl()
+    protected internal override PyObject? ReprImpl()
     {
         return PyStrObject.FromString(Value.ToString());
     }
@@ -39,7 +39,7 @@ public class PyFloatObject : PyObject
         return PyIntObject.FromInteger(Value.GetHashCode());
     }
 
-	protected internal override PyObject? BoolImpl()
+    protected internal override PyObject? BoolImpl()
     {
         return PyBoolObject.FromBoolean(Value is not 0);
     }
