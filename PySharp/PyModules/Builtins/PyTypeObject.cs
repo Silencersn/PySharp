@@ -14,19 +14,22 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
     public abstract string Name { get; }
     public virtual string FullName => Name; // TODO: FullName => <module_name>.Name
     public virtual string Document => string.Empty;
+    public virtual bool IsSealed => false;
     public override PyTypeObject DefaultPyType => PyBuiltinTypes.Type;
 
     internal PyTypeObject()
     {
-        PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
+        ValidateInheritable(Bases);
         MRO = [.. CreateMRO(this, Bases)];
+        PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
         PyAttributes.Add(PySpecialNames.Doc, PyNoneObject.None);
     }
 
     internal PyTypeObject(string name, IReadOnlyList<PyTypeObject> bases)
     {
-        PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(name));
+        ValidateInheritable(bases);
         MRO = [.. CreateMRO(this, bases)];
+        PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(name));
         PyAttributes.Add(PySpecialNames.Doc, PyNoneObject.None);
     }
 
@@ -244,6 +247,18 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
 
                 return setter(pyObj, value);
             });
+    }
+
+    private static void ValidateInheritable(IEnumerable<PyTypeObject> bases)
+    {
+        foreach (var baseType in bases)
+        {
+            if (baseType.IsSealed)
+            {
+                PyVirtualMachine.RaiseTypeError($"type '{baseType.Name}' is not an acceptable base type");
+                throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+            }
+        }
     }
 
     private static List<PyTypeObject> CreateMRO(PyTypeObject pyType, IEnumerable<PyTypeObject> bases)

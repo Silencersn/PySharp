@@ -43,7 +43,7 @@ public sealed class PyBoolObject : PyIntObject
 public sealed class PyBoolObjectType : PyPrimitiveTypeObject<PyBoolObjectType, PyBoolObject>
 {
     public override string Name => "bool";
-
+    public override bool IsSealed => true;
     public override IReadOnlyList<PyTypeObject> Bases => [PyIntObjectType.Shared];
 
     public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)

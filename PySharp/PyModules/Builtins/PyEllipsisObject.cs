@@ -19,6 +19,7 @@ public sealed class PyEllipsisObject : PyObject
 public sealed class PyEllipsisObjectType : PyPrimitiveTypeObject<PyEllipsisObjectType, PyEllipsisObject>
 {
     public override string Name => "ellipsis";
+    public override bool IsSealed => true;
 
     public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {

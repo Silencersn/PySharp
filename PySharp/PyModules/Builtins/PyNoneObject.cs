@@ -24,6 +24,7 @@ public class PyNoneObject : PyObject
 public sealed class PyNoneObjectType : PyPrimitiveTypeObject<PyNoneObjectType, PyNoneObject>
 {
     public override string Name => "NoneType";
+    public override bool IsSealed => true;
 
     public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {

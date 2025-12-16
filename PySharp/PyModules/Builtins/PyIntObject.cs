@@ -1,6 +1,7 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.PyAttributes;
+using System.Diagnostics;
 using System.Globalization;
 using System.Numerics;
 
@@ -8,6 +9,9 @@ namespace PySharp.PyModules.Builtins;
 
 public class PyIntObject : PyObject
 {
+    internal const int NegativePoolSize = 6;
+    internal const int PositivesPoolSize = 257;
+
     private static readonly PyIntObject[] _negatives;
     private static readonly PyIntObject[] _positives;
     public static PyIntObject Zero { get; }
@@ -16,8 +20,8 @@ public class PyIntObject : PyObject
 
     static PyIntObject()
     {
-        _negatives = new PyIntObject[6];
-        _positives = new PyIntObject[257];
+        _negatives = new PyIntObject[NegativePoolSize];
+        _positives = new PyIntObject[PositivesPoolSize];
         
         for (int i = 0; i < _negatives.Length; i++)
         {
@@ -46,12 +50,12 @@ public class PyIntObject : PyObject
 
     public static PyIntObject FromInteger(int value)
     {
-        if (value <= 256)
+        if (value < PositivesPoolSize)
         {
             if (value >= 0)
                 return _positives[value];
 
-            if (value >= -5)
+            if (value > -NegativePoolSize)
                 return _negatives[-value];
         }
 
@@ -59,15 +63,19 @@ public class PyIntObject : PyObject
     }
     public static PyIntObject FromInteger(BigInteger value)
     {
-        if (value <= 256)
+        if (value < PositivesPoolSize)
         {
             if (value >= 0)
                 return _positives[(int)value];
 
-            if (value >= -5)
+            if (value > -NegativePoolSize)
                 return _negatives[-(int)value];
         }
 
+        return new PyIntObject(value);
+    }
+    public static PyIntObject FromIntegerNoCache(BigInteger value)
+    {
         return new PyIntObject(value);
     }
 
@@ -278,7 +286,15 @@ public sealed class PyIntObjectType : PyPrimitiveTypeObject<PyIntObjectType, PyI
 
     public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        return _new.Call(args, kwargs);
+        var obj = _new.Call(args, kwargs);
+        if (obj is null)
+            return null;
+
+        Debug.Assert(obj is PyIntObject);
+        var value = ((PyIntObject)obj).Value;
+        if (cls != this && value > -PyIntObject.NegativePoolSize && value < PyIntObject.PositivesPoolSize)
+            return PyIntObject.FromIntegerNoCache(value);
+        return obj;
     }
 
     internal static bool TryParse(ReadOnlySpan<char> s, int numBase, out BigInteger result)
