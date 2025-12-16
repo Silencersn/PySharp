@@ -77,7 +77,7 @@ public sealed class PyMapObjectType : PyPrimitiveTypeObject<PyMapObjectType, PyM
         return new PyMapObject(function, [.. iters], strict);
     }
 
-    protected internal override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return _new.Call(args, kwargs);
     }

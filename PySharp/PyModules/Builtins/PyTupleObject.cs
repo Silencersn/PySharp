@@ -80,7 +80,7 @@ public sealed class PyTupleObjectType : PyPrimitiveTypeObject<PyTupleObjectType,
 {
     public override string Name => "tuple";
 
-    protected internal override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var pack = new PyArgsPack(args, kwargs);
         if (!pack.ValidateCount(1, 0))

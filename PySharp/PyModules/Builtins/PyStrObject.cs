@@ -150,7 +150,7 @@ public sealed class PyStrObjectType : PyPrimitiveTypeObject<PyStrObjectType, PyS
         AppendMethodDescriptor<PyStrObject>("join", nameof(PyStrObject.JoinImpl));
     }
 
-    protected internal override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var pack = new PyArgsPack(args, kwargs);
         if (!pack.ValidateCount(1, 0))

@@ -21,7 +21,7 @@ public sealed class PyNotImplementedObjectType : PyPrimitiveTypeObject<PyNotImpl
     public override string Name => "NotImplementedType";
     public override bool IsSealed => true;
 
-    protected internal override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var pack = new PyArgsPack(args, kwargs);
         if (!pack.ValidateEmpty())

@@ -153,7 +153,7 @@ public sealed class PyQueueObjectType : PyPrimitiveTypeObject<PyQueueObjectType,
         return new PyQueueObject(maxSize);
     }
 
-    protected internal override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return _new.Call(args, kwargs);
     }

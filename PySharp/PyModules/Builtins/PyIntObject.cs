@@ -284,7 +284,7 @@ public sealed class PyIntObjectType : PyPrimitiveTypeObject<PyIntObjectType, PyI
 
     }
 
-    protected internal override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var obj = _new.Call(args, kwargs);
         if (obj is null)

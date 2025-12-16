@@ -21,7 +21,7 @@ public sealed class PyEllipsisObjectType : PyPrimitiveTypeObject<PyEllipsisObjec
     public override string Name => "ellipsis";
     public override bool IsSealed => true;
 
-    protected internal override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var pack = new PyArgsPack(args, kwargs);
         if (!pack.ValidateEmpty())

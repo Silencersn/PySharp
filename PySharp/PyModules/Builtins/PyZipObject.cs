@@ -107,7 +107,7 @@ public sealed class PyZipObjectType : PyPrimitiveTypeObject<PyZipObjectType, PyZ
         return new PyZipObject(iterables, b.BoolValue);
     }
 
-    protected internal override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return _new.Call(args, kwargs);
     }

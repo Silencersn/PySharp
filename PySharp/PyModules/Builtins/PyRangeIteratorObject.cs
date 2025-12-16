@@ -31,7 +31,7 @@ public sealed class PyRangeIteratorObjectType : PyPrimitiveTypeObject<PyRangeIte
 {
     public override string Name => "range_iterator";
 
-    protected internal override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return PyVirtualMachine.RaiseTypeError(null);
     }

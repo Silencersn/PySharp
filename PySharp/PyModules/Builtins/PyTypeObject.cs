@@ -111,15 +111,15 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
         return PyTypeGetAttribute(this, item);
     }
 
-    protected internal virtual PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal virtual PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         // TODO: int.__new__(str): str is not a subtype of int
         return PyVirtualMachine.RaiseTypeError($"cannot create '{Name}' instances");
     }
 
-    public static PyObject? New(PyTypeObject self, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    public PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        var obj = self.New(cls, args, kwargs);
+        var obj = NewImpl(cls, args, kwargs);
         if (obj is null)
             return null;
         obj._pyType = cls;
@@ -397,7 +397,7 @@ public sealed class PyTypeObjectType : PyPrimitiveTypeObject<PyTypeObjectType, P
             static (typeObj, value) => throw new NotImplementedException());
     }
 
-    protected internal override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var pack = new PyArgsPack(args, kwargs);
         if (!pack.ValidateCount(1, 0))

@@ -115,7 +115,7 @@ public sealed class PyRandomObjectType : PyPrimitiveTypeObject<PyRandomObjectTyp
         AppendMethodDescriptor<PyRandomObject>("randint", nameof(PyRandomObject.RandIntImpl));
     }
 
-    protected internal override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (kwargs.Count is not 0)
             return PyVirtualMachine.RaiseTypeError(null);
