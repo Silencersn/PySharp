@@ -56,7 +56,8 @@ partial class PyObject
 
     public virtual PyObject? Int()
     {
-        var index = Index();
+        // TOOD: is this implementation correct?
+        var index = PySpecialCaller.Index(this);
         if (index is null)
             return null;
 
@@ -67,7 +68,8 @@ partial class PyObject
     }
     public virtual PyObject? Float()
     {
-        var index = Index();
+        // TOOD: is this implementation correct?
+        var index = PySpecialCaller.Index(this);
         if (index is null)
             return null;
 
@@ -78,7 +80,8 @@ partial class PyObject
     }
     public virtual PyObject? Complex()
     {
-        var index = Index();
+        // TOOD: is this implementation correct?
+        var index = PySpecialCaller.Index(this);
         if (index is null)
             return null;
 
@@ -268,7 +271,7 @@ partial class PyObject
     }
     public virtual PyObject? Ne(PyObject other)
     {
-        var eq = Eq(other);
+        var eq = PySpecialCaller.Eq(this, other);
         if (eq is null)
             return null;
 
