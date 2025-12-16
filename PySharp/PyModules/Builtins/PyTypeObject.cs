@@ -117,6 +117,15 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
         return PyVirtualMachine.RaiseTypeError($"cannot create '{Name}' instances");
     }
 
+    public static PyObject? New(PyTypeObject self, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        var obj = self.New(cls, args, kwargs);
+        if (obj is null)
+            return null;
+        obj._pyType = cls;
+        return obj;
+    }
+
     private void AppendSpecialMethodsAsDescriptors(IEnumerable<MethodInfo> methodInfos)
     {
         foreach (var methodInfo in methodInfos)

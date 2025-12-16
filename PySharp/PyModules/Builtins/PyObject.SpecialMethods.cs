@@ -21,7 +21,7 @@ partial class PyObject
 
     public virtual PyObject? Str()
     {
-        return Repr();
+        return PySpecialCaller.Repr(this);
     }
 
     public virtual PyObject? Hash()

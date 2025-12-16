@@ -84,6 +84,7 @@ public partial class PyObject : IEquatable<PyObject>
     public int PyId => _pyId ??= Interlocked.Increment(ref _pyNextId);
 
     internal IDictionary<string, PyObject> PyAttributes => _pyAttributes ??= CreateAttributesContainer();
+    internal bool IsSelfDefaultType => PyType == DefaultPyType;
 
     public PyObject()
     {

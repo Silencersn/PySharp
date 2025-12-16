@@ -28,12 +28,12 @@ public static class PySpecialMethods
 
     public static bool TryGetStr(PyObject obj, [NotNullWhen(true)] out PyStrObject? s)
     {
-        return TryGetSpecialMethod(obj.Str, o => $"{PySpecialNames.Str} returned non-string (type {o.PyType.Name})", out s);
+        return TryGetSpecialMethod(() => PySpecialCaller.Str(obj), o => $"{PySpecialNames.Str} returned non-string (type {o.PyType.Name})", out s);
     }
 
     public static bool TryGetRepr(PyObject obj, [NotNullWhen(true)] out PyStrObject? s)
     {
-        return TryGetSpecialMethod(obj.Repr, o => $"{PySpecialNames.Repr} returned non-string (type {o.PyType.Name})", out s);
+        return TryGetSpecialMethod(() => PySpecialCaller.Repr(obj), o => $"{PySpecialNames.Repr} returned non-string (type {o.PyType.Name})", out s);
     }
 
     public static bool TryGetBool(PyObject obj, [NotNullWhen(true)] out PyBoolObject? b)
