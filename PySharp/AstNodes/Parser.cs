@@ -311,7 +311,7 @@ public sealed partial class Parser
             bool found = false;
             foreach (var wrapper in EnumerateFuncDefOrLambdaToRoot(scope))
             {
-                if (wrapper.Variables.ContainsKey(name))
+                if (wrapper.Variables.TryGetValue(name, out var variableType) && variableType is not PyVariableType.Closure)
                 {
                     wrapper.CapturedVariables.Add(name);
                     found = true;
