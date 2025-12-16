@@ -342,11 +342,6 @@ public interface ISharedInstance<TSelf> where TSelf : ISharedInstance<TSelf>
     static abstract TSelf Shared { get; }
 }
 
-public abstract class PyTypeObject<TSelf> : PyTypeObject, ISharedInstance<TSelf> where TSelf : PyTypeObject<TSelf>, ISharedInstance<TSelf>, new()
-{
-    public static TSelf Shared { get; } = new TSelf();
-}
-
 public abstract class PyPrimitiveTypeObject<TSelf, TObject> : PyTypeObject where TSelf : new() where TObject : PyObject
 {
     public static TSelf Shared { get; } = new TSelf();

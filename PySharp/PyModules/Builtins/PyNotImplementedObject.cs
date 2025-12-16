@@ -8,15 +8,18 @@ public class PyNotImplementedObject : PyObject
     public static PyNotImplementedObject NotImplemented { get; } = new PyNotImplementedObject();
     private static readonly PyStrObject _repr = PyStrObject.FromString("NotImplemented");
 
+    public override PyTypeObject DefaultPyType => PyNotImplementedObjectType.Shared;
+
     public override PyStrObject Repr()
     {
         return _repr;
     }
 }
 
-public sealed class PyNotImplementedObjectType : PyTypeObject
+public sealed class PyNotImplementedObjectType : PyPrimitiveTypeObject<PyNotImplementedObjectType, PyNotImplementedObject>
 {
     public override string Name => "NotImplementedType";
+    public override bool IsSealed => true;
 
     public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
