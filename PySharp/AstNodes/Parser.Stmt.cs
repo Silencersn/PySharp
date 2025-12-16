@@ -618,7 +618,7 @@ partial class Parser
         {
             CurrentScope.TrySetLocalIfNotExistsOrUnknown(name);
             Context.EnterScope(funcDef);
-            CurrentScope.AddParameters(args.PosonlyArgs.Concat(args.Args).Concat(args.KwonlyArgs).Select(static arg => arg.Arg));
+            CurrentScope.AddParameters(args);
         }
 
         void EndParsingFuncDef()

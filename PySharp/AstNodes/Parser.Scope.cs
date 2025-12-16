@@ -1,4 +1,7 @@
-﻿namespace PySharp.AstNodes;
+﻿using System.Reflection.Metadata;
+using System.Xml.Linq;
+
+namespace PySharp.AstNodes;
 
 partial class Parser
 {
@@ -41,12 +44,18 @@ partial class Parser
             return scope;
         }
 
-        public void AddParameters(IEnumerable<string> parameters)
+        public void AddParameters(AstArgumentsNode argumentsNode)
         {
-            foreach (var parameter in parameters)
-            {
-                _variableTypes.Add(parameter, PyVariableType.Parameter);
-            }
+            foreach (var node in argumentsNode.PosonlyArgs)
+                _variableTypes.Add(node.Arg, PyVariableType.Parameter);
+            foreach (var node in argumentsNode.Args)
+                _variableTypes.Add(node.Arg, PyVariableType.Parameter);
+            foreach (var node in argumentsNode.KwonlyArgs)
+                _variableTypes.Add(node.Arg, PyVariableType.Parameter);
+            if (argumentsNode.VarArg is not null)
+                _variableTypes.Add(argumentsNode.VarArg.Arg, PyVariableType.Parameter);
+            if (argumentsNode.KwArg is not null)
+                _variableTypes.Add(argumentsNode.KwArg.Arg, PyVariableType.Parameter);
         }
 
         public void TrySetLocalIfNotExistsOrUnknown(string variable)

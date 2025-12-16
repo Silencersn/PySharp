@@ -905,7 +905,7 @@ partial class Parser
         void StartParsingLambda()
         {
             Context.EnterScope(lambdaNode);
-            CurrentScope.AddParameters(args.PosonlyArgs.Concat(args.Args).Concat(args.KwonlyArgs).Select(static arg => arg.Arg));
+            CurrentScope.AddParameters(args);
         }
         void EndParsingLambda()
         {
