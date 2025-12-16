@@ -16,6 +16,7 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
     public virtual string Document => string.Empty;
     public virtual bool IsSealed => false;
     public override PyTypeObject DefaultPyType => PyTypeObjectType.Shared;
+    public abstract Type LayoutType { get; }
 
     internal PyTypeObject()
     {
@@ -346,6 +347,7 @@ public interface ISharedInstance<TSelf> where TSelf : ISharedInstance<TSelf>
 public abstract class PyPrimitiveTypeObject<TSelf, TObject> : PyTypeObject where TSelf : new() where TObject : PyObject
 {
     public static TSelf Shared { get; } = new TSelf();
+    public sealed override Type LayoutType => typeof(TObject);
 
     private protected PyPrimitiveTypeObject()
     {

@@ -116,7 +116,7 @@ public class PyBuiltinFunctionOrMethodObject : PyObject, IPyObjectName
     }
 }
 
-public sealed class PyBuiltinFunctionOrMethodObjectType : PyTypeObject
+public sealed class PyBuiltinFunctionOrMethodObjectType : PyPrimitiveTypeObject<PyBuiltinFunctionOrMethodObjectType, PyBuiltinFunctionOrMethodObject>
 {
     public override string Name => "builtin_function_or_method";
 

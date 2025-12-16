@@ -179,6 +179,8 @@ public sealed class PyExceptionObject : PyObject
 
 public abstract class PyExceptionType : PyTypeObject
 {
+    public sealed override Type LayoutType => typeof(PyExceptionObject);
+
     public PyExceptionObject Create()
     {
         return new PyExceptionObject(this);

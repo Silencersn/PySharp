@@ -960,6 +960,7 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
 
         public override string Name { get; }
         public override IReadOnlyList<PyTypeObject> Bases { get; }
+        public override Type LayoutType => typeof(PyObject); // TODO: dynamic
 
         internal CustomObjectType(string name, string qualName, IReadOnlyList<PyTypeObject> bases) : base(name, bases)
         {
@@ -979,7 +980,7 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
 
         public override PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
         {
-            Dictionary<PyTypeObject, PyObject> backingObjects = [];
+			Dictionary<PyTypeObject, PyObject> backingObjects = [];
             var obj = new CustomObject(cls, backingObjects);
             foreach (var nonCustomBaseType in _nonCustomBaseTypes)
             {
