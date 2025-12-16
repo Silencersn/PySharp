@@ -927,7 +927,8 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
         if (bases.Count is 0)
             bases.Add(PyObjectType.Shared);
 
-        var type = new CustomObjectType(Name, ((IFunctionOrClass)this).QualifiedName, bases);
+        PyTypeObject.ValidateBases(bases, out var layoutType);
+		var type = new CustomObjectType(Name, ((IFunctionOrClass)this).QualifiedName, bases, layoutType);
         if (AstUtils.TryGetDoc(Body, out var doc))
             type.PyAttributes[PySpecialNames.Doc] = doc;
 
@@ -960,14 +961,15 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
 
         public override string Name { get; }
         public override IReadOnlyList<PyTypeObject> Bases { get; }
-        public override Type LayoutType => typeof(PyObject); // TODO: dynamic
+        public override Type LayoutType { get; }
 
-        internal CustomObjectType(string name, string qualName, IReadOnlyList<PyTypeObject> bases) : base(name, bases)
+        internal CustomObjectType(string name, string qualName, IReadOnlyList<PyTypeObject> bases, Type layoutType) : base(name, bases)
         {
             Name = name;
             Bases = bases;
             PyAttributes.Add(PySpecialNames.QualName, PyStrObject.FromString(qualName));
             _nonCustomBaseTypes = [.. bases.Where(type => type is not (CustomObjectType or PyObjectType))];
+            LayoutType = layoutType;
         }
 
         internal void InitAttributes(IEnumerable<KeyValuePair<string, PyObject>> attributes)

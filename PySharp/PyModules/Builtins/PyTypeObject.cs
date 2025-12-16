@@ -20,7 +20,6 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
 
     internal PyTypeObject()
     {
-        ValidateInheritable(Bases);
         MRO = [.. CreateMRO(this, Bases)];
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
         PyAttributes.Add(PySpecialNames.Doc, PyNoneObject.None);
@@ -28,7 +27,6 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
 
     internal PyTypeObject(string name, IReadOnlyList<PyTypeObject> bases)
     {
-        ValidateInheritable(bases);
         MRO = [.. CreateMRO(this, bases)];
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(name));
         PyAttributes.Add(PySpecialNames.Doc, PyNoneObject.None);
@@ -251,14 +249,30 @@ public abstract class PyTypeObject : PyObject, IPyObjectName
             });
     }
 
-    private static void ValidateInheritable(IEnumerable<PyTypeObject> bases)
+    internal static void ValidateBases(IEnumerable<PyTypeObject> bases, out Type layoutType)
     {
+        // TODO: check mro here
+
+        layoutType = typeof(PyObject);
         foreach (var baseType in bases)
         {
             if (baseType.IsSealed)
             {
                 PyVirtualMachine.RaiseTypeError($"type '{baseType.Name}' is not an acceptable base type");
                 throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+            }
+
+            if (baseType.LayoutType != layoutType)
+            {
+                if (baseType.LayoutType.IsSubclassOf(layoutType))
+                {
+                    layoutType = baseType.LayoutType;
+                }
+                else if (!layoutType.IsAssignableFrom(baseType.LayoutType))
+                {
+                    PyVirtualMachine.RaiseTypeError("multiple bases have instance lay-out conflict");
+                    throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                }
             }
         }
     }
