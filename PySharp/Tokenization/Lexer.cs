@@ -237,12 +237,7 @@ public sealed partial class Lexer
                             }
                             else if (lastToken.Type is TokenType.RightBrace)
                             {
-                                //if (CurrentFStringInfo.FormatSpec.Count > 0 && CurrentFStringInfo.FormatSpec.Peek() == _parenLevel)
-                                //{
-                                //    CurrentFStringInfo.FormatSpec.Pop();
-                                //    CurrentState = LexerState.FStringMiddle;
-                                //}
-                                if (CurrentFStringInfo.FormatSpec.Count > 0)
+                                if (CurrentFStringInfo.FormatSpec.Count > 0 && CurrentFStringInfo.FormatSpec.Peek() == _parenLevel)
                                 {
                                     CurrentState = LexerState.FStringMiddle;
                                 }
@@ -266,35 +261,10 @@ public sealed partial class Lexer
                     {
                         if (CurrentFStringInfo.FormatSpec.Count > 0)
                             throw new NotImplementedException();
-
-                        var value = content[_offset..indexOfWrapper];
-
                         var start = new TokenPosition(_lineno, _offset - _offsetOfPreviousLine);
-                        var currentLine = _currentLine;
-                        Debug.Assert(currentLine is not null);
 
-                        // all the \r\n should be \n
-                        value = value.Replace("\r", string.Empty);
+                        ExtractMultiLineTextInFString(indexOfWrapper, info, out var value, out var currentLine);
 
-                        if (!info.IsRaw)
-                            // explicit line joining
-                            value = value.Replace("\\\n", string.Empty);
-
-                        var countOfNewLine = value.Count('\n');
-                        if (countOfNewLine > 0)
-                        {
-                            if (!info.IsTriple && !info.IsRaw)
-                                throw new TokenizationException("internal error: unexpected newline in single or double non-raw f-string");
-
-                            _lineno += countOfNewLine;
-                            _offset = content.LastIndexOf('\n', indexOfWrapper) + 1;
-                            var lastLine = GetCurrentLine(out var offsetOfNextLine);
-                            currentLine = content[_offsetOfPreviousLine..offsetOfNextLine];
-                            _offsetOfPreviousLine = _offset;
-                            _currentLine = lastLine;
-                        }
-
-                        _offset = indexOfWrapper;
                         var end = new TokenPosition(_lineno, _offset - _offsetOfPreviousLine);
                         AppendToken(TokenType.FStringMiddle, value, start, end, currentLine);
                         AppendToken(TokenType.FStringEnd, info.Wrapper);
@@ -304,34 +274,9 @@ public sealed partial class Lexer
                     else if (indexOfLeftBrace is not -1 &&
                         IsFirstNotFoundOrBehindSecond(indexOfRightBrace, indexOfLeftBrace))
                     {
-                        var value = content[_offset..indexOfLeftBrace];
-
                         var start = new TokenPosition(_lineno, _offset - _offsetOfPreviousLine);
-                        var currentLine = _currentLine;
-                        Debug.Assert(currentLine is not null);
 
-                        // all the \r\n should be \n
-                        value = value.Replace("\r", string.Empty);
-
-                        if (!info.IsRaw)
-                            // explicit line joining
-                            value = value.Replace("\\\n", string.Empty);
-
-                        var countOfNewLine = value.Count('\n');
-                        if (countOfNewLine > 0)
-                        {
-                            if (!info.IsTriple && !info.IsRaw)
-                                throw new TokenizationException("internal error: unexpected newline in single or double non-raw f-string");
-
-                            _lineno += countOfNewLine;
-                            _offset = content.LastIndexOf('\n', indexOfLeftBrace) + 1;
-                            var lastLine = GetCurrentLine(out var offsetOfNextLine);
-                            currentLine = content[_offsetOfPreviousLine..offsetOfNextLine];
-                            _offsetOfPreviousLine = _offset;
-                            _currentLine = lastLine;
-                        }
-
-                        _offset = indexOfLeftBrace;
+                        ExtractMultiLineTextInFString(indexOfLeftBrace, info, out var value, out var currentLine);
 
                         bool isEscape = false;
                         if (CurrentFStringInfo.FormatSpec.Count is 0 && _offset + 1 < content.Length && content[_offset + 1] is '{')
@@ -360,34 +305,10 @@ public sealed partial class Lexer
                     {
                         if (CurrentFStringInfo.FormatSpec.Count > 0)
                         {
-                            var value = content[_offset..indexOfRightBrace];
-
                             var start = new TokenPosition(_lineno, _offset - _offsetOfPreviousLine);
-                            var currentLine = _currentLine;
-                            Debug.Assert(currentLine is not null);
 
-                            // all the \r\n should be \n
-                            value = value.Replace("\r", string.Empty);
+                            ExtractMultiLineTextInFString(indexOfRightBrace, info, out var value, out var currentLine);
 
-                            if (!info.IsRaw)
-                                // explicit line joining
-                                value = value.Replace("\\\n", string.Empty);
-
-                            var countOfNewLine = value.Count('\n');
-                            if (countOfNewLine > 0)
-                            {
-                                if (!info.IsTriple && !info.IsRaw)
-                                    throw new TokenizationException("internal error: unexpected newline in single or double non-raw f-string");
-
-                                _lineno += countOfNewLine;
-                                _offset = content.LastIndexOf('\n', indexOfRightBrace) + 1;
-                                var lastLine = GetCurrentLine(out var offsetOfNextLine);
-                                currentLine = content[_offsetOfPreviousLine..offsetOfNextLine];
-                                _offsetOfPreviousLine = _offset;
-                                _currentLine = lastLine;
-                            }
-
-                            _offset = indexOfRightBrace;
                             var end = new TokenPosition(_lineno, _offset - _offsetOfPreviousLine);
                             AppendToken(TokenType.FStringMiddle, value, start, end, currentLine);
                             AppendToken(TokenType.Operator, "}");
@@ -395,40 +316,16 @@ public sealed partial class Lexer
                             CurrentFStringInfo.FormatSpec.Pop();
                             break;
                         }
-
-                        if (indexOfRightBrace + 1 < content.Length && content[indexOfRightBrace + 1] is not '}')
-                            throw new TokenizationException("f-string: single '}' is not allowed");
-
-
+                        else
                         {
-                            var value = content[_offset..indexOfRightBrace];
+                            if (indexOfRightBrace + 1 < content.Length && content[indexOfRightBrace + 1] is not '}')
+                                throw new TokenizationException("f-string: single '}' is not allowed");
 
                             var start = new TokenPosition(_lineno, _offset - _offsetOfPreviousLine);
-                            var currentLine = _currentLine;
-                            Debug.Assert(currentLine is not null);
 
-                            // all the \r\n should be \n
-                            value = value.Replace("\r", string.Empty);
+                            ExtractMultiLineTextInFString(indexOfRightBrace, info, out var value, out var currentLine);
 
-                            if (!info.IsRaw)
-                                // explicit line joining
-                                value = value.Replace("\\\n", string.Empty);
-
-                            var countOfNewLine = value.Count('\n');
-                            if (countOfNewLine > 0)
-                            {
-                                if (!info.IsTriple && !info.IsRaw)
-                                    throw new TokenizationException("internal error: unexpected newline in single or double non-raw f-string");
-
-                                _lineno += countOfNewLine;
-                                _offset = content.LastIndexOf('\n', indexOfRightBrace) + 1;
-                                var lastLine = GetCurrentLine(out var offsetOfNextLine);
-                                currentLine = content[_offsetOfPreviousLine..offsetOfNextLine];
-                                _offsetOfPreviousLine = _offset;
-                                _currentLine = lastLine;
-                            }
-
-                            _offset = indexOfRightBrace + 2;
+                            _offset += 2;
                             value += '}';
                             var end = new TokenPosition(_lineno, _offset - _offsetOfPreviousLine);
                             AppendToken(TokenType.FStringMiddle, value, start, end, currentLine);
@@ -454,6 +351,41 @@ public sealed partial class Lexer
     }
 
     private static readonly string[] FStringPrefixes = ["fr", "Fr", "fR", "FR", "rf", "rF", "Rf", "RF", "f", "F"];
+
+    private void ExtractMultiLineTextInFString(int untilIndex, FStringInfo info, out string value, out string currentLine)
+    {
+        Debug.Assert(_currentContent is not null);
+
+        value = _currentContent[_offset..untilIndex];
+
+        Debug.Assert(_currentLine is not null);
+        currentLine = _currentLine;
+        Debug.Assert(currentLine is not null);
+
+        // all the \r\n should be \n
+        value = value.Replace("\r", string.Empty);
+
+        if (!info.IsRaw)
+            // explicit line joining
+            value = value.Replace("\\\n", string.Empty);
+
+        var countOfNewLine = value.Count('\n');
+        if (countOfNewLine > 0)
+        {
+            if (!info.IsTriple && !info.IsRaw)
+                throw new TokenizationException("internal error: unexpected newline in single or double non-raw f-string");
+
+            _lineno += countOfNewLine;
+            _offset = _currentContent.LastIndexOf('\n', untilIndex) + 1;
+            var lastLine = GetCurrentLine(out var offsetOfNextLine);
+            currentLine = _currentContent[_offsetOfPreviousLine..offsetOfNextLine];
+            _offsetOfPreviousLine = _offset;
+            _currentLine = lastLine;
+        }
+
+        _offset = untilIndex;
+    }
+
     private static bool IsFString(string content, int offset, [NotNullWhen(true)] out string? wrapper, out int whiteLength, [NotNullWhen(true)] out string? prefix)
     {
         var current = content.AsSpan()[offset..];
@@ -646,93 +578,6 @@ public sealed partial class Lexer
         TokenizeMultiLineString(_wrapper is '"' ? LexerRegexes.Double3 : LexerRegexes.Single3);
     }
 
-    private void TokenizeSingleLineSingleOrDoubleFString(string prefix, Group strGroup)
-    {
-        Debug.Assert(_wrapper is '\'' or '"');
-
-        _offset = strGroup.Index;
-        AppendToken(TokenType.FStringStart, prefix + _wrapper);
-
-        var value = strGroup.Value[(prefix.Length + 1)..^1];
-
-        var builder = new StringBuilder();
-
-        for (int i = 0; i < value.Length; i++)
-        {
-            var c = value[i];
-
-            if (c is '{')
-            {
-                i++;
-                if (value[i] is '{')
-                {
-                    builder.Append('{');
-                    continue;
-                }
-                else
-                {
-                    var middle = builder.ToString();
-                    builder.Clear();
-                    _offset = strGroup.Index + prefix.Length + i - middle.Length;
-                    AppendToken(TokenType.FStringMiddle, middle);
-                    _offset += middle.Length;
-                    AppendToken(TokenType.Operator, "{");
-
-                    while (true)
-                    {
-                        var match = LexerRegexes.PseudoToken.Match(value, i);
-                        if (match.Index != i)
-                            throw new TokenizationException("internal error: no match");
-
-                        var group = match.Groups[1];
-                        _offset = strGroup.Index + prefix.Length + 1 + group.Index;
-                        if (IsStrictMatch(LexerRegexes.Number, group))
-                        {
-                            AppendToken(TokenType.Number, group.Value);
-                        }
-                        else if (IsStrictMatch(LexerRegexes.Special, group))
-                        {
-                            AppendToken(TokenType.Operator, group.Value);
-                            if (group.Value is "}")
-                            {
-                                i = group.Index + group.Length - 1;
-                                break;
-                            }
-                        }
-                        else if (IsStrictMatch(LexerRegexes.String, group))
-                        {
-                            AppendToken(TokenType.String, group.Value);
-                        }
-                        else if (IsStrictMatch(LexerRegexes.Name, group))
-                        {
-                            AppendToken(TokenType.Name, group.Value);
-                        }
-                        else
-                        {
-                            throw new NotSupportedException();
-                        }
-                        i = group.Index + group.Length;
-                    }
-                }
-            }
-            else
-            {
-                builder.Append(c);
-            }
-        }
-
-        if (builder.Length > 0)
-        {
-            var middle = builder.ToString();
-            builder.Clear();
-            _offset = strGroup.Index + strGroup.Length - 1 - middle.Length;
-            AppendToken(TokenType.FStringMiddle, middle);
-        }
-
-        _offset = strGroup.Index + strGroup.Length - 1;
-        AppendToken(TokenType.FStringEnd, _wrapper.ToString());
-    }
-
     private void TokenizePseudoToken(Match match)
     {
         _currentLine ??= GetCurrentLine();
@@ -823,26 +668,18 @@ public sealed partial class Lexer
         {
             var prefix = GetStringPrefix(group.Value, out _wrapper);
 
-            if (prefix.ContainsAny('f', 'F'))
+            _isRawString = prefix.ContainsAny('r', 'R');
+            _offset = group.Index;
+            if (group.Value.EndsWith("\\\r\n") || group.Value.EndsWith("\\\n"))
             {
-                TokenizeSingleLineSingleOrDoubleFString(prefix, group);
+                _stringStart = new TokenPosition(_lineno, _offset - _offsetOfPreviousLine);
+                _preString = group.Value;
+                CurrentState = LexerState.TokenizingMultiLineSingleOrDoubleString;
             }
             else
             {
-                _isRawString = prefix.ContainsAny('r', 'R');
-                _offset = group.Index;
-                if (group.Value.EndsWith("\\\r\n") || group.Value.EndsWith("\\\n"))
-                {
-                    _stringStart = new TokenPosition(_lineno, _offset - _offsetOfPreviousLine);
-                    _preString = group.Value;
-                    CurrentState = LexerState.TokenizingMultiLineSingleOrDoubleString;
-                }
-                else
-                {
-                    AppendToken(TokenType.String, group.Value);
-                }
+                AppendToken(TokenType.String, group.Value);
             }
-
         }
         else if (IsStrictMatch(LexerRegexes.Name, group))
         {
