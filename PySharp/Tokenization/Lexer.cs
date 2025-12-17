@@ -314,6 +314,7 @@ public sealed partial class Lexer
                             AppendToken(TokenType.Operator, "}");
                             _offset = indexOfRightBrace + 1;
                             CurrentFStringInfo.FormatSpec.Pop();
+                            _parenLevel--;
                             break;
                         }
                         else
