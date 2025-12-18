@@ -1106,9 +1106,24 @@ public sealed class FormattedValueNode : AstExprNode
 
     public override PyObject ExecuteExpr(PyFrame frame)
     {
-        if (Conversion is not -1 || FormatSpec is not null)
-            throw new NotImplementedException();
+        var result = Value.GetExprValue(frame);
 
-        return Value.GetExprValue(frame);
+        if (FormatSpec is not null)
+        {
+            var spec = FormatSpec.GetExprValue(frame);
+            Debug.Assert(spec is PyStrObject);
+            result = result.Format(((PyStrObject)spec).Value).PyThrowIfNull();
+        }
+
+        if (Conversion is -1 or 's') // TODO: does case -1 need convert?
+            result = PySpecialMethods.GetStr(result).PyThrowIfNull();
+        else if (Conversion is 'r')
+            result = PySpecialMethods.GetRepr(result).PyThrowIfNull();
+        else if (Conversion is 'a')
+            throw new NotImplementedException();
+        else
+            throw new UnreachableException();
+
+        return result;
     }
 }
