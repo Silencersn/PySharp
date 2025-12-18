@@ -439,4 +439,11 @@ partial class PyObject
         var callable = PyObjectGetAttribute(this, PySpecialNames.GetAttribute);
         return callable?.Call([PyStrObject.FromString(name)], FrozenDictionary<string, PyObject>.Empty);
     }
+    public PyObject? Format(string formatSpec)
+    {
+        if (IsSelfDefaultType)
+            return FormatImpl(formatSpec);
+        var callable = PyObjectGetAttribute(this, PySpecialNames.Format);
+        return callable?.Call([PyStrObject.FromString(formatSpec)], FrozenDictionary<string, PyObject>.Empty);
+    }
 }

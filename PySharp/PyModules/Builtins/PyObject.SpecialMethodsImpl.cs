@@ -319,4 +319,12 @@ partial class PyObject
     {
         return PyNoneObject.None;
     }
+
+    protected internal virtual PyObject? FormatImpl(string formatSpec)
+    {
+        if (formatSpec.Length is 0)
+            return Str();
+
+        return PyVirtualMachine.RaiseTypeError($"unsupported format string passed to {PyType.Name}.__format__");
+    }
 }

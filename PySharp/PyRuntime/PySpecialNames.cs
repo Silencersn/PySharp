@@ -12,6 +12,7 @@ public static class PySpecialNames
     public const string Iter = "__iter__";
     public const string Next = "__next__";
     public const string Abs = "__abs__";
+    public const string Format = "__format__";
 
     public const string Bool = "__bool__";
     public const string Str = "__str__";
