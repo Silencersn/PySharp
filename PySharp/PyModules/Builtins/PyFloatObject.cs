@@ -274,6 +274,69 @@ public class PyFloatObject : PyObject
             _ => base.EqImpl(other),
         };
     }
+
+    protected internal override PyObject? FormatImpl(string formatSpec)
+    {
+        if (!PyFormatSpec.TryParse(formatSpec, out var spec))
+            return PyVirtualMachine.RaiseValueError($"Invalid format specifier '{formatSpec}' for object of type '{PyType.Name}'");
+
+        int precision = spec.Precision ?? 6;
+
+        string text;
+        if (!double.IsNormal(Value))
+        {
+            if (double.IsInfinity(Value))
+                text = spec.Type is 'f' ? "inf" : "INF";
+            else
+                text = spec.Type is 'f' ? "nan" : "NAN";
+        }
+        else
+        {
+            switch (spec.Type)
+            {
+                case 'f' or 'F':
+                    Span<char> format = stackalloc char[2 /* #, (possible)  */ + 2 /* 0. */ + precision];
+                    var offset = 0;
+                    if (spec.WidthGrouping is not null)
+                    {
+                        "#,".CopyTo(format[offset..]);
+                        offset += 2;
+                    }
+                    "0.".CopyTo(format[offset..]);
+                    offset += 2;
+                    format.Slice(offset, precision).Fill('0');
+                    offset += precision;
+                    text = double.Abs(Value /* do not process sign here */).ToString(format[..offset].ToString());
+                    if (spec.WidthGrouping is '_')
+                        text = text.Replace(',', '_');
+                    break;
+
+                default:
+                    throw new NotImplementedException();
+            }
+        }
+
+        if (spec.Width is not null && spec.Align is '=')
+            throw new NotImplementedException();
+
+        if (Value < 0 && !double.IsNaN(Value))
+            text = '-' + text;
+        else if (spec.Sign is '+' or ' ')
+            text = spec.Sign + text;
+
+        if (spec.Width is not null)
+        {
+            var width = spec.Width.Value;
+            if (spec.Align is '<')
+                text = text.PadRight(width, spec.Fill ?? ' ');
+            else if (spec.Align is '^')
+                throw new NotImplementedException();
+            else
+                text = text.PadLeft(width, spec.Fill ?? ' ');
+        }
+
+        return PyStrObject.FromString(text);
+    }
 }
 
 public sealed class PyFloatObjectType : PyPrimitiveTypeObject<PyFloatObjectType, PyFloatObject>

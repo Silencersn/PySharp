@@ -1,42 +1,96 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 namespace PySharp.PyRuntime;
 
-internal record struct PyFormatSpec
+internal class PyFormatSpec
 {
-    public char Fill;
-    public char Align;
-    public char Sign;
+    public char? Fill { get; }
+    public char? Align { get; }
+    public char? Sign { get; }
+    public bool CoercePositiveZero { get; }
+    public bool AlternateForm { get; }
+    public bool SignAwareZeroPadding { get; }
+
+    public int? Width { get; }
+    public char? WidthGrouping { get; }
+
+    public int? Precision { get; }
+    public char? PrecisionGrouping { get; }
+
+    public char? Type { get; }
+
+    private PyFormatSpec(PyFormatSpecData data, int? width, int? precision)
+    {
+        Fill = data.Fill;
+        Align = data.Align;
+        Sign = data.Sign;
+        CoercePositiveZero = data.CharLetterZ;
+        AlternateForm = data.CharNumberSign;
+        SignAwareZeroPadding = data.CharDigitZero;
+        Width = width;
+        WidthGrouping = data.WidthGrouping;
+        Precision = precision;
+        PrecisionGrouping = data.PrecisionGrouping;
+        Type = data.Type;
+    }
+
+
+    public static bool TryParse(ReadOnlySpan<char> format, [NotNullWhen(true)] out PyFormatSpec? formatSpec)
+    {
+        formatSpec = null;
+
+        if (!PyFormatSpecData.TryParse(format, out var data))
+            return false;
+
+        int width = -1;
+        if (data.Width is not null && !int.TryParse(data.Width, out width))
+            return false;
+
+        int precision = -1;
+        if (data.Precision is not null && !int.TryParse(data.Precision, out precision))
+            return false;
+
+        formatSpec = new PyFormatSpec(data, width is -1 ? null : width, precision is -1 ? null : precision);
+        return true;
+    }
+}
+
+internal record struct PyFormatSpecData
+{
+    public char? Fill;
+    public char? Align;
+    public char? Sign;
     public bool CharLetterZ;
     public bool CharNumberSign;
     public bool CharDigitZero;
 
     public string? Width;
-    public char WidthGrouping;
+    public char? WidthGrouping;
 
     public string? Precision;
-    public char PrecisionGrouping;
+    public char? PrecisionGrouping;
 
-    public char Type;
+    public char? Type;
 
-    public static bool TryParse(ReadOnlySpan<char> format, out PyFormatSpec formatSpec)
+    public static bool TryParse(ReadOnlySpan<char> format, out PyFormatSpecData formatSpecData)
     {
-        formatSpec = default;
-        ParseOptions(ref format, ref formatSpec);
-        ParseWidthAndPrecision(ref format, ref formatSpec);
-        ParseType(ref format, ref formatSpec.Type);
+        formatSpecData = default;
+        ParseOptions(ref format, ref formatSpecData);
+        ParseWidthAndPrecision(ref format, ref formatSpecData);
+        ParseType(ref format, ref formatSpecData.Type);
         return format.Length is 0;
     }
 
-    private static void ParseOptions(ref ReadOnlySpan<char> format, ref PyFormatSpec formatSpec)
+    private static void ParseOptions(ref ReadOnlySpan<char> format, ref PyFormatSpecData formatSpecData)
     {
-        ParseFillAlign(ref format, ref formatSpec.Fill, ref formatSpec.Align);
-        ParseSign(ref format, ref formatSpec.Sign);
-        ParseOptionsFlags(ref format, ref formatSpec.CharLetterZ, ref formatSpec.CharNumberSign, ref formatSpec.CharDigitZero);
+        ParseFillAlign(ref format, ref formatSpecData.Fill, ref formatSpecData.Align);
+        ParseSign(ref format, ref formatSpecData.Sign);
+        ParseOptionsFlags(ref format, ref formatSpecData.CharLetterZ, ref formatSpecData.CharNumberSign, ref formatSpecData.CharDigitZero);
     }
-    private static void ParseFillAlign(ref ReadOnlySpan<char> format, ref char fill, ref char align)
+    private static void ParseFillAlign(ref ReadOnlySpan<char> format, ref char? fill, ref char? align)
     {
         if (format.Length > 1 && IsAlign(format[1]))
         {
@@ -50,7 +104,7 @@ internal record struct PyFormatSpec
             format = format[1..];
         }
     }
-    private static void ParseSign(ref ReadOnlySpan<char> format, ref char sign)
+    private static void ParseSign(ref ReadOnlySpan<char> format, ref char? sign)
     {
         if (format.Length > 0 && IsSign(format[0]))
         {
@@ -77,17 +131,17 @@ internal record struct PyFormatSpec
         }
     }
     
-    private static void ParseWidthAndPrecision(ref ReadOnlySpan<char> format, ref PyFormatSpec formatSpec)
+    private static void ParseWidthAndPrecision(ref ReadOnlySpan<char> format, ref PyFormatSpecData formatSpecData)
     {
-        ParseWidthWithGrouping(ref format, ref formatSpec.Width, ref formatSpec.WidthGrouping);
-        ParsePrecisionWithGrouping(ref format, ref formatSpec.Precision, ref formatSpec.PrecisionGrouping);
+        ParseWidthWithGrouping(ref format, ref formatSpecData.Width, ref formatSpecData.WidthGrouping);
+        ParsePrecisionWithGrouping(ref format, ref formatSpecData.Precision, ref formatSpecData.PrecisionGrouping);
     }
-    private static void ParseWidthWithGrouping(ref ReadOnlySpan<char> format, ref string? width, ref char grouping)
+    private static void ParseWidthWithGrouping(ref ReadOnlySpan<char> format, ref string? width, ref char? grouping)
     {
         ParseWidthOrPrecision(ref format, ref width);
         ParseGrouping(ref format, ref grouping);
     }
-    private static void ParsePrecisionWithGrouping(ref ReadOnlySpan<char> format, ref string? precision, ref char grouping)
+    private static void ParsePrecisionWithGrouping(ref ReadOnlySpan<char> format, ref string? precision, ref char? grouping)
     {
         if (format.Length > 0 && format[0] is '.')
         {
@@ -115,7 +169,7 @@ internal record struct PyFormatSpec
             format = format[length..];
         }
     }
-    private static void ParseGrouping(ref ReadOnlySpan<char> format, ref char grouping)
+    private static void ParseGrouping(ref ReadOnlySpan<char> format, ref char? grouping)
     {
         if (format.Length > 0 && IsGrouping(format[0]))
         {
@@ -123,7 +177,7 @@ internal record struct PyFormatSpec
             format = format[1..];
         }
     }
-    private static void ParseType(ref ReadOnlySpan<char> format, ref char type)
+    private static void ParseType(ref ReadOnlySpan<char> format, ref char? type)
     {
         if (format.Length > 0 && IsType(format[0]))
         {
