@@ -6,7 +6,7 @@ using System.Text;
 
 namespace PySharp.PyRuntime.Calls;
 
-partial class PyResult
+partial struct PyResult
 {
     internal static PyResult RaiseException(PyExceptionType exceptionType)
     {

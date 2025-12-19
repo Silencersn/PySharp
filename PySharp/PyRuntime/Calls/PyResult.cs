@@ -4,7 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.PyRuntime.Calls;
 
-public sealed partial class PyResult
+public readonly partial struct PyResult
 {
     private readonly PyObject? _value;
     private readonly PyExceptionObject? _exception;
