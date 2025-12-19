@@ -982,14 +982,9 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
 
         protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
 		{
-			var callable = PyObjectGetAttribute(this, PySpecialNames.New);
-            if (callable is not null)
+            if (PyAttributes.TryGetValue(PySpecialNames.New, out var callable))
 				return callable.Call([cls, ..args], kwargs);
 
-			if (callable is null && !PyVirtualMachine.IsExceptionOfTypeRaised(PyAttributeErrorObjectType.Shared))
-                return null;
-
-			PyVirtualMachine.ClearException();
 			return Bases[0].New(cls, args, kwargs);
         }
     }
