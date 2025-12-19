@@ -1,4 +1,5 @@
 ﻿using PySharp.PyRuntime;
+using PySharp.PyRuntime.Calls;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -9,333 +10,333 @@ public abstract class PyTypeObject<TObject> : PyTypeObject where TObject : PyObj
 {
     public sealed override Type LayoutType => typeof(TObject);
 
-    protected internal new virtual PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal new virtual PyResult New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        return PyVirtualMachine.RaiseTypeError($"cannot create '{Name}' instances");
+        return PyResult.RaiseTypeError($"cannot create '{Name}' instances");
     }
 
-    protected internal virtual PyObject? Init(TObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal virtual PyResult Init(TObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return PyNoneObject.None;
     }
 
-    protected internal virtual PyObject? Call(TObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal virtual PyResult Call(TObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        return PyVirtualMachine.RaiseTypeError(null);
+        return PyResult.RaiseTypeError(null);
     }
 
-    protected internal virtual PyObject? Repr(TObject self)
+    protected internal virtual PyResult Repr(TObject self)
     {
         return PyStrObject.FromString($"<{Name} object at 0x{self.PyId:X16}>");
     }
 
-    protected internal virtual PyObject? Str(TObject self)
+    protected internal virtual PyResult Str(TObject self)
     {
         return Repr(self);
     }
 
-    protected internal virtual PyObject? Hash(TObject self)
+    protected internal virtual PyResult Hash(TObject self)
     {
         return PyIntObject.FromInteger(self.PyId);
     }
 
-    protected internal virtual PyObject? GetAttribute(TObject self, string item)
+    protected internal virtual PyResult GetAttribute(TObject self, string item)
     {
-        return PyObjectGetAttribute(self, item);
+        return PyObjectGetAttribute(self, item) ?? PyResult.CaptureExceptionFromPVM();
     }
 
-    protected internal virtual PyObject? GetAttr(TObject self, string item)
+    protected internal virtual PyResult GetAttr(TObject self, string item)
     {
-        return PyVirtualMachine.RaiseAttributeError($"'{Name}' object has no attribute '{item}'");
+        return PyResult.RaiseAttributeError($"'{Name}' object has no attribute '{item}'");
     }
 
-    protected internal virtual PyObject? SetAttr(TObject self, string key, PyObject value)
-    {
-        if (self.IsImmutable)
-            return PyVirtualMachine.RaiseTypeError($"cannot set '{key}' attribute of immutable type '{Name}'");
-
-        return PyObjectSetAttribute(self, key, value);
-    }
-
-    protected internal virtual PyObject? DelAttr(TObject self, string item)
+    protected internal virtual PyResult SetAttr(TObject self, string key, PyObject value)
     {
         if (self.IsImmutable)
-            return PyVirtualMachine.RaiseTypeError($"cannot set '{item}' attribute of immutable type '{Name}'");
+            return PyResult.RaiseTypeError($"cannot set '{key}' attribute of immutable type '{Name}'");
 
-        return PyObjectDeleteAttribute(self, item);
+        return PyObjectSetAttribute(self, key, value) ?? PyResult.CaptureExceptionFromPVM();
     }
 
-    protected internal virtual PyObject? Bool(TObject self)
+    protected internal virtual PyResult DelAttr(TObject self, string item)
+    {
+        if (self.IsImmutable)
+            return PyResult.RaiseTypeError($"cannot set '{item}' attribute of immutable type '{Name}'");
+
+        return PyObjectDeleteAttribute(self, item) ?? PyResult.CaptureExceptionFromPVM();
+    }
+
+    protected internal virtual PyResult Bool(TObject self)
     {
         return PyBoolObject.True;
     }
 
-    protected internal virtual PyObject? Int(TObject self)
+    protected internal virtual PyResult Int(TObject self)
     {
         // TOOD: is this implementation correct?
         var index = Index(self);
-        if (index is null)
-            return null;
+        if (index.IsError)
+            return index;
 
-        if (!PySpecialMethods.TryGetIndex(index, out var i))
-            return null;
+        if (!PySpecialMethods.TryGetIndex(index.Value, out var i))
+            return PyResult.CaptureExceptionFromPVM();
 
         return i;
     }
-    protected internal virtual PyObject? Float(TObject self)
+    protected internal virtual PyResult Float(TObject self)
     {
         // TOOD: is this implementation correct?
         var index = Index(self);
-        if (index is null)
-            return null;
+        if (index.IsError)
+            return index;
 
-        if (!PySpecialMethods.TryGetIndex(index, out var i))
-            return null;
+        if (!PySpecialMethods.TryGetIndex(index.Value, out var i))
+            return PyResult.CaptureExceptionFromPVM();
 
         return PyFloatObject.FromDouble((double)i.Value);
     }
-    protected internal virtual PyObject? Complex(TObject self)
+    protected internal virtual PyResult Complex(TObject self)
     {
         // TOOD: is this implementation correct?
         var index = Index(self);
-        if (index is null)
-            return null;
+        if (index.IsError)
+            return index;
 
-        if (!PySpecialMethods.TryGetIndex(index, out var i))
-            return null;
+        if (!PySpecialMethods.TryGetIndex(index.Value, out var i))
+            return PyResult.CaptureExceptionFromPVM();
 
         throw new NotImplementedException();
     }
 
-    protected internal virtual PyObject? Index(TObject self)
+    protected internal virtual PyResult Index(TObject self)
     {
-        return PyVirtualMachine.RaiseTypeError(null);
+        return PyResult.RaiseTypeError(null);
     }
 
-    protected internal virtual PyObject? Contains(TObject self, PyObject item)
+    protected internal virtual PyResult Contains(TObject self, PyObject item)
     {
-        return PyVirtualMachine.RaiseTypeError(null);
+        return PyResult.RaiseTypeError(null);
     }
 
-    protected internal virtual PyObject? GetItem(TObject self, PyObject item)
+    protected internal virtual PyResult GetItem(TObject self, PyObject item)
     {
-        return PyVirtualMachine.RaiseTypeError(null);
+        return PyResult.RaiseTypeError(null);
     }
 
-    protected internal virtual PyObject? SetItem(TObject self, PyObject key, PyObject value)
+    protected internal virtual PyResult SetItem(TObject self, PyObject key, PyObject value)
     {
-        return PyVirtualMachine.RaiseTypeError(null);
+        return PyResult.RaiseTypeError(null);
     }
 
-    protected internal virtual PyObject? DelItem(TObject self, PyObject key)
+    protected internal virtual PyResult DelItem(TObject self, PyObject key)
     {
-        return PyVirtualMachine.RaiseTypeError(null);
+        return PyResult.RaiseTypeError(null);
     }
 
-    protected internal virtual PyObject? Len(TObject self)
+    protected internal virtual PyResult Len(TObject self)
     {
-        return PyVirtualMachine.RaiseTypeError(null);
+        return PyResult.RaiseTypeError(null);
     }
 
-    protected internal virtual PyObject? Iter(TObject self)
+    protected internal virtual PyResult Iter(TObject self)
     {
-        return PyVirtualMachine.RaiseTypeError(null);
+        return PyResult.RaiseTypeError(null);
     }
 
-    protected internal virtual PyObject? Next(TObject self)
+    protected internal virtual PyResult Next(TObject self)
     {
-        return PyVirtualMachine.RaiseTypeError(null);
+        return PyResult.RaiseTypeError(null);
     }
 
-    protected internal virtual PyObject? Neg(TObject self)
+    protected internal virtual PyResult Neg(TObject self)
     {
-        return PyVirtualMachine.RaiseTypeError(null);
+        return PyResult.RaiseTypeError(null);
     }
 
-    protected internal virtual PyObject? Pos(TObject self)
+    protected internal virtual PyResult Pos(TObject self)
     {
-        return PyVirtualMachine.RaiseTypeError(null);
+        return PyResult.RaiseTypeError(null);
     }
 
-    protected internal virtual PyObject? Invert(TObject self)
+    protected internal virtual PyResult Invert(TObject self)
     {
-        return PyVirtualMachine.RaiseTypeError(null);
+        return PyResult.RaiseTypeError(null);
     }
 
-    protected internal virtual PyObject? Abs(TObject self)
+    protected internal virtual PyResult Abs(TObject self)
     {
-        return PyVirtualMachine.RaiseTypeError(null);
+        return PyResult.RaiseTypeError(null);
     }
 
-    protected internal virtual PyObject? Add(TObject self, PyObject other)
+    protected internal virtual PyResult Add(TObject self, PyObject other)
     {
         return PyNotImplementedObject.NotImplemented;
     }
-    protected internal virtual PyObject? Sub(TObject self, PyObject other)
+    protected internal virtual PyResult Sub(TObject self, PyObject other)
     {
         return PyNotImplementedObject.NotImplemented;
     }
-    protected internal virtual PyObject? Mul(TObject self, PyObject other)
+    protected internal virtual PyResult Mul(TObject self, PyObject other)
     {
         return PyNotImplementedObject.NotImplemented;
     }
-    protected internal virtual PyObject? TrueDiv(TObject self, PyObject other)
+    protected internal virtual PyResult TrueDiv(TObject self, PyObject other)
     {
         return PyNotImplementedObject.NotImplemented;
     }
-    protected internal virtual PyObject? FloorDiv(TObject self, PyObject other)
+    protected internal virtual PyResult FloorDiv(TObject self, PyObject other)
     {
         return PyNotImplementedObject.NotImplemented;
     }
-    protected internal virtual PyObject? Mod(TObject self, PyObject other)
+    protected internal virtual PyResult Mod(TObject self, PyObject other)
     {
         return PyNotImplementedObject.NotImplemented;
     }
-    protected internal virtual PyObject? DivMod(TObject self, PyObject other)
+    protected internal virtual PyResult DivMod(TObject self, PyObject other)
     {
         return PyNotImplementedObject.NotImplemented;
     }
-    protected internal virtual PyObject? Pow(TObject self, PyObject other, PyObject modulo)
+    protected internal virtual PyResult Pow(TObject self, PyObject other, PyObject modulo)
     {
         return PyNotImplementedObject.NotImplemented;
     }
-    protected internal virtual PyObject? LShift(TObject self, PyObject other)
+    protected internal virtual PyResult LShift(TObject self, PyObject other)
     {
         return PyNotImplementedObject.NotImplemented;
     }
-    protected internal virtual PyObject? RShift(TObject self, PyObject other)
+    protected internal virtual PyResult RShift(TObject self, PyObject other)
     {
         return PyNotImplementedObject.NotImplemented;
     }
-    protected internal virtual PyObject? And(TObject self, PyObject other)
+    protected internal virtual PyResult And(TObject self, PyObject other)
     {
         return PyNotImplementedObject.NotImplemented;
     }
-    protected internal virtual PyObject? Xor(TObject self, PyObject other)
+    protected internal virtual PyResult Xor(TObject self, PyObject other)
     {
         return PyNotImplementedObject.NotImplemented;
     }
-    protected internal virtual PyObject? Or(TObject self, PyObject other)
-    {
-        return PyNotImplementedObject.NotImplemented;
-    }
-
-    protected internal virtual PyObject? RAdd(TObject self, PyObject other)
-    {
-        return PyNotImplementedObject.NotImplemented;
-    }
-    protected internal virtual PyObject? RSub(TObject self, PyObject other)
-    {
-        return PyNotImplementedObject.NotImplemented;
-    }
-    protected internal virtual PyObject? RMul(TObject self, PyObject other)
-    {
-        return PyNotImplementedObject.NotImplemented;
-    }
-    protected internal virtual PyObject? RTrueDiv(TObject self, PyObject other)
-    {
-        return PyNotImplementedObject.NotImplemented;
-    }
-    protected internal virtual PyObject? RFloorDiv(TObject self, PyObject other)
-    {
-        return PyNotImplementedObject.NotImplemented;
-    }
-    protected internal virtual PyObject? RMod(TObject self, PyObject other)
-    {
-        return PyNotImplementedObject.NotImplemented;
-    }
-    protected internal virtual PyObject? RDivMod(TObject self, PyObject other)
-    {
-        return PyNotImplementedObject.NotImplemented;
-    }
-    protected internal virtual PyObject? RPow(TObject self, PyObject other, PyObject modulo)
-    {
-        return PyNotImplementedObject.NotImplemented;
-    }
-    protected internal virtual PyObject? RLShift(TObject self, PyObject other)
-    {
-        return PyNotImplementedObject.NotImplemented;
-    }
-    protected internal virtual PyObject? RRShift(TObject self, PyObject other)
-    {
-        return PyNotImplementedObject.NotImplemented;
-    }
-    protected internal virtual PyObject? RAnd(TObject self, PyObject other)
-    {
-        return PyNotImplementedObject.NotImplemented;
-    }
-    protected internal virtual PyObject? RXor(TObject self, PyObject other)
-    {
-        return PyNotImplementedObject.NotImplemented;
-    }
-    protected internal virtual PyObject? ROr(TObject self, PyObject other)
+    protected internal virtual PyResult Or(TObject self, PyObject other)
     {
         return PyNotImplementedObject.NotImplemented;
     }
 
-    protected internal virtual PyObject? Lt(TObject self, PyObject other)
+    protected internal virtual PyResult RAdd(TObject self, PyObject other)
     {
         return PyNotImplementedObject.NotImplemented;
     }
-    protected internal virtual PyObject? Le(TObject self, PyObject other)
+    protected internal virtual PyResult RSub(TObject self, PyObject other)
     {
         return PyNotImplementedObject.NotImplemented;
     }
-    protected internal virtual PyObject? Eq(TObject self, PyObject other)
+    protected internal virtual PyResult RMul(TObject self, PyObject other)
     {
         return PyNotImplementedObject.NotImplemented;
     }
-    protected internal virtual PyObject? Ne(TObject self, PyObject other)
+    protected internal virtual PyResult RTrueDiv(TObject self, PyObject other)
+    {
+        return PyNotImplementedObject.NotImplemented;
+    }
+    protected internal virtual PyResult RFloorDiv(TObject self, PyObject other)
+    {
+        return PyNotImplementedObject.NotImplemented;
+    }
+    protected internal virtual PyResult RMod(TObject self, PyObject other)
+    {
+        return PyNotImplementedObject.NotImplemented;
+    }
+    protected internal virtual PyResult RDivMod(TObject self, PyObject other)
+    {
+        return PyNotImplementedObject.NotImplemented;
+    }
+    protected internal virtual PyResult RPow(TObject self, PyObject other, PyObject modulo)
+    {
+        return PyNotImplementedObject.NotImplemented;
+    }
+    protected internal virtual PyResult RLShift(TObject self, PyObject other)
+    {
+        return PyNotImplementedObject.NotImplemented;
+    }
+    protected internal virtual PyResult RRShift(TObject self, PyObject other)
+    {
+        return PyNotImplementedObject.NotImplemented;
+    }
+    protected internal virtual PyResult RAnd(TObject self, PyObject other)
+    {
+        return PyNotImplementedObject.NotImplemented;
+    }
+    protected internal virtual PyResult RXor(TObject self, PyObject other)
+    {
+        return PyNotImplementedObject.NotImplemented;
+    }
+    protected internal virtual PyResult ROr(TObject self, PyObject other)
+    {
+        return PyNotImplementedObject.NotImplemented;
+    }
+
+    protected internal virtual PyResult Lt(TObject self, PyObject other)
+    {
+        return PyNotImplementedObject.NotImplemented;
+    }
+    protected internal virtual PyResult Le(TObject self, PyObject other)
+    {
+        return PyNotImplementedObject.NotImplemented;
+    }
+    protected internal virtual PyResult Eq(TObject self, PyObject other)
+    {
+        return PyNotImplementedObject.NotImplemented;
+    }
+    protected internal virtual PyResult Ne(TObject self, PyObject other)
     {
         var eq = Eq(self, other);
-        if (eq is null)
-            return null;
+        if (eq.IsError)
+            return eq;
 
-        if (PySpecialMethods.TryGetBool(eq, out var b))
+        if (PySpecialMethods.TryGetBool(eq.Value, out var b))
             return b.BoolValue ? PyBoolObject.False : PyBoolObject.True;
 
-        return null;
+        return PyResult.CaptureExceptionFromPVM();
     }
-    protected internal virtual PyObject? Gt(TObject self, PyObject other)
+    protected internal virtual PyResult Gt(TObject self, PyObject other)
     {
         return PyNotImplementedObject.NotImplemented;
     }
-    protected internal virtual PyObject? Ge(TObject self, PyObject other)
+    protected internal virtual PyResult Ge(TObject self, PyObject other)
     {
         return PyNotImplementedObject.NotImplemented;
     }
 
-    protected internal virtual PyObject? Missing(TObject self, PyObject key)
+    protected internal virtual PyResult Missing(TObject self, PyObject key)
     {
-        return PyVirtualMachine.RaiseKeyError(key);
+        return PyResult.RaiseKeyError(key);
     }
 
-    protected internal virtual PyObject? Get(TObject self, PyObject instance, PyObject owner)
-    {
-        throw new NotImplementedException();
-    }
-
-    protected internal virtual PyObject? Set(TObject self, PyObject instance, PyObject value)
+    protected internal virtual PyResult Get(TObject self, PyObject instance, PyObject owner)
     {
         throw new NotImplementedException();
     }
 
-    protected internal virtual PyObject? Delete(TObject self, PyObject instance)
+    protected internal virtual PyResult Set(TObject self, PyObject instance, PyObject value)
     {
         throw new NotImplementedException();
     }
 
-    protected internal virtual PyObject? SetName(TObject self, PyObject owner, PyObject name)
+    protected internal virtual PyResult Delete(TObject self, PyObject instance)
+    {
+        throw new NotImplementedException();
+    }
+
+    protected internal virtual PyResult SetName(TObject self, PyObject owner, PyObject name)
     {
         return PyNoneObject.None;
     }
 
-    protected internal virtual PyObject? Format(TObject self, string formatSpec)
+    protected internal virtual PyResult Format(TObject self, string formatSpec)
     {
         if (formatSpec.Length is 0)
             return Str(self);
 
-        return PyVirtualMachine.RaiseTypeError($"unsupported format string passed to {Name}.__format__");
+        return PyResult.RaiseTypeError($"unsupported format string passed to {Name}.__format__");
     }
 
 }
