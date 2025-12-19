@@ -72,6 +72,7 @@ public sealed class PyMethodDescriptorObject : PyObject, IPyDescriptor
         if (instance is PyNoneObject)
             return this;
 
+        // TODO: comment need update
         // class Demo:
         //     __add__ = int.__add__
         //
