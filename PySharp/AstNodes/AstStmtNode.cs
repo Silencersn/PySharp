@@ -953,7 +953,10 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
             type.PyAttributes[attr.Key] = attr.Value;
 
         foreach (var (name, value) in attrs)
-            value.SetName(type, PyStrObject.FromString(name)).PyThrowIfNull();
+        {
+            if (PyObject.PyObjectHasAttribute(value.PyType, PySpecialNames.SetName))
+                value.SetName(type, PyStrObject.FromString(name)).PyThrowIfNull();
+        }
 
         frame.SetValue(Name, AstUtils.ApplyDeractors(type, DecoratorList, frame));
     }

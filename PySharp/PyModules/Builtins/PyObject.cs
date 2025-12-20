@@ -97,6 +97,18 @@ public partial class PyObject : IEquatable<PyObject>
     {
     }
 
+    internal static bool TryLookupAttrInMro(PyTypeObject pyType, string name, [NotNullWhen(true)] out PyObject? attr)
+    {
+        foreach (var baseType in pyType.MRO)
+        {
+            if (baseType.PyAttributes.TryGetValue(name, out attr))
+                return true;
+        }
+
+        attr = null;
+        return false;
+    }
+
     internal static bool PyObjectHasAttribute(PyObject pyObj, string name)
     {
         if (pyObj._pyAttributes is not null && pyObj._pyAttributes.ContainsKey(name))
@@ -272,6 +284,14 @@ public sealed class PyObjectType2 : PyTypeObject<PyObjectType2, PyObject>
 {
     public override string Name => "object";
     public override IReadOnlyList<PyTypeObject> Bases => [];
+
+    public PyObjectType2()
+    {
+        AppendMethodDescriptors(nameof(Repr), nameof(Str), nameof(Bool), nameof(Hash),
+            nameof(Eq), nameof(Ne), nameof(Lt), nameof(Le), nameof(Gt), nameof(Ge),
+            nameof(GetAttribute), nameof(SetAttr), nameof(DelAttr),
+            nameof(Init));
+    }
 
     protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {

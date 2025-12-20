@@ -79,7 +79,26 @@ partial class PyTypeObject<TObject>
             [nameof(Format)] = (PySpecialNames.Format, PySpecialMethodParametersType.String),
         }.ToFrozenDictionary();
 
-    private void AppendMethodDescriptors()
+    internal void AppendMethodDescriptors(params ReadOnlySpan<string> names)
+    {
+        var type = GetType();
+        //foreach (var (name, (pyName, paramType)) in _nameToPySpecialMethodParametersType)
+        foreach (var name in names)
+        {
+            var (pyName, paramType) = _nameToPySpecialMethodParametersType[name];
+
+            // TODO: same name
+            var method = type
+                .GetMethods(BindingFlags.NonPublic | BindingFlags.Instance)
+                .Single(method => method.Name == name && method.GetBaseDefinition().DeclaringType == typeof(PyTypeObject<TObject>));
+
+            Debug.Assert(method is not null);
+
+            PyAttributes.Add(pyName, new PyMethodDescriptorObject2(pyName, this, method, paramType));
+        }
+    }
+
+    private void AppendOverridenMethodDescriptors()
     {
         var type = GetType();
         foreach (var (name, (pyName, paramType)) in _nameToPySpecialMethodParametersType)

@@ -4,6 +4,7 @@ using PySharp.PyRuntime.Calls;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Reflection;
 using System.Text;
@@ -21,25 +22,17 @@ public static class UserDefinedType
     }
 }
 
-internal sealed class UserDefinedType<TObject> : PyTypeObject<TObject> where TObject : PyObject
+internal sealed partial class UserDefinedType<TObject> : PyTypeObject<TObject> where TObject : PyObject
 {
     public override string Name { get; }
     public override IReadOnlyList<PyTypeObject> Bases { get; }
     internal override bool IsTypeImmutable => false;
     internal override bool IsImmutable => false;
 
-    internal UserDefinedType(string name, string qualName, IReadOnlyList<PyTypeObject> bases) : base(name, bases)
+    internal UserDefinedType(string name, string qualName, IReadOnlyList<PyTypeObject> bases) : base(name, bases, false)
     {
         Name = name;
         Bases = bases;
         PyAttributes.Add(PySpecialNames.QualName, PyStrObject.FromString(qualName));
-    }
-
-    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
-    {
-        if (PyAttributes.TryGetValue(PySpecialNames.New, out var callable))
-            return callable.Call([cls, .. args], kwargs) ?? PyResult.CaptureExceptionFromPVM();
-
-        return Bases[0].New(context, cls, args, kwargs);
     }
 }
