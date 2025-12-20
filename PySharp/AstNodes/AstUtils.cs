@@ -24,7 +24,7 @@ internal static class AstUtils
     public static TPyObject PyThrowIfNull<TPyObject>([NotNull] this TPyObject? obj) where TPyObject : PyObject
     {
         if (obj is null)
-            throw new PyRuntimeException(PyVirtualMachine.CurrentException ?? throw new NotImplementedException());
+            throw new PyRuntimeException(PyVirtualMachine.CurrentException ?? throw new NotImplementedException("No Current Exception"));
         return obj;
     }
 

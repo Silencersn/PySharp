@@ -1,5 +1,6 @@
 ﻿using PySharp.PyModules;
 using PySharp.PyModules.Builtins;
+using PySharp.PyModules.CSharp;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.Metadata;
@@ -925,10 +926,10 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
             return typeObj;
         }).ToList();
         if (bases.Count is 0)
-            bases.Add(PyObjectType.Shared);
+            bases.Add(PyObjectType2.Shared);
 
         PyTypeObject.ValidateBases(bases, out var layoutType);
-        var type = new CustomObjectType(Name, ((IFunctionOrClass)this).QualifiedName, bases, layoutType);
+        var type = UserDefinedType.Create(layoutType, Name, ((IFunctionOrClass)this).QualifiedName, bases);
 
         if (AstUtils.TryGetDoc(Body, out var doc))
             type.PyAttributes[PySpecialNames.Doc] = doc;
@@ -948,44 +949,12 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
         PyVirtualMachine.ExitFrame();
 
         var attrs = ((IAstVariableScopeOwner)this).Variables.Keys.ToDictionary(static member => member, newFrame.GetValue);
-        type.InitAttributes(attrs);
+        foreach (var attr in attrs)
+            type.PyAttributes[attr.Key] = attr.Value;
 
         foreach (var (name, value) in attrs)
             value.SetName(type, PyStrObject.FromString(name)).PyThrowIfNull();
 
         frame.SetValue(Name, AstUtils.ApplyDeractors(type, DecoratorList, frame));
-    }
-
-    internal sealed class CustomObjectType : PyTypeObject
-    {
-        public override string Name { get; }
-        public override IReadOnlyList<PyTypeObject> Bases { get; }
-        public override Type LayoutType { get; }
-        internal override bool IsTypeImmutable => false;
-        internal override bool IsImmutable => false;
-
-        internal CustomObjectType(string name, string qualName, IReadOnlyList<PyTypeObject> bases, Type layoutType) : base(name, bases)
-        {
-            Name = name;
-            Bases = bases;
-            PyAttributes.Add(PySpecialNames.QualName, PyStrObject.FromString(qualName));
-            LayoutType = layoutType;
-        }
-
-        internal void InitAttributes(IEnumerable<KeyValuePair<string, PyObject>> attributes)
-        {
-            foreach (var attribute in attributes)
-            {
-                PyAttributes[attribute.Key] = attribute.Value;
-            }
-        }
-
-        protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
-		{
-            if (PyAttributes.TryGetValue(PySpecialNames.New, out var callable))
-				return callable.Call([cls, ..args], kwargs);
-
-			return Bases[0].New(cls, args, kwargs);
-        }
     }
 }

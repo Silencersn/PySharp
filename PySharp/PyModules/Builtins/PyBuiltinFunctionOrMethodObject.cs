@@ -18,6 +18,8 @@ public class PyBuiltinFunctionOrMethodObject : PyObject, IPyObjectName
     public PyObject? Self { get; }
     public PyTypeObject? SelfType { get; }
 
+    public override PyTypeObject DefaultPyType => PyBuiltinFunctionOrMethodObjectType.Shared;
+
     internal PyBuiltinFunctionOrMethodObject(string name, params PyFunction[] funcs)
     {
         Name = name;

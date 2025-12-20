@@ -84,7 +84,7 @@ public partial class PyObject : IEquatable<PyObject>
     internal PyTypeObject? _pyType;
 
     public PyTypeObject PyType => _pyType ?? DefaultPyType;
-    public virtual PyTypeObject DefaultPyType => PyObjectType.Shared;
+    public virtual PyTypeObject DefaultPyType => PyObjectType2.Shared;
     public int PyId => _pyId ??= Interlocked.Increment(ref _pyNextId);
 
     internal IDictionary<string, PyObject> PyAttributes => _pyAttributes ??= new ConcurrentDictionary<string, PyObject>();
@@ -294,5 +294,26 @@ public sealed class PyObjectType : PyPrimitiveTypeObject<PyObjectType, PyObject>
             return PyVirtualMachine.RaiseTypeError("object.__new__() takes exactly one argument (the type to instantiate)");
 
         return new PyObject();
+    }
+}
+
+public sealed class PyObjectType2 : PyTypeObject<PyObject>
+{
+    public static PyObjectType2 Shared { get; } = new PyObjectType2();
+    public override string Name => "object";
+    public override IReadOnlyList<PyTypeObject> Bases => [];
+
+    public PyObjectType2()
+    {
+    }
+
+    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        if (args.Count is not 0 || kwargs.Count is not 0)
+            return PyResult.RaiseTypeError("object.__new__() takes exactly one argument (the type to instantiate)");
+
+        var obj = new PyObject();
+        obj._pyType = cls;
+        return obj;
     }
 }
