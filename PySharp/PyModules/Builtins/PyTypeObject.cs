@@ -346,7 +346,7 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
                     List<Queue<PyTypeObject>> baseMrosToRemove = [];
                     foreach (var baseMro in baseMros)
                     {
-                        if (baseMro.Peek() == head)
+                        if (ReferenceEquals(baseMro.Peek(), head))
                         {
                             baseMro.Dequeue();
                             if (baseMro.Count is 0)
