@@ -17,6 +17,9 @@ public readonly partial struct PyResult
     [MemberNotNullWhen(true, nameof(Exception))]
     public bool IsError => _exception is not null;
 
+    [MemberNotNullWhen(true, nameof(Value))]
+    public bool IsNotImplemented => _value is PyNotImplementedObject;
+
     public PyObject? Value => _value;
     public PyExceptionObject? Exception => _exception;
 
