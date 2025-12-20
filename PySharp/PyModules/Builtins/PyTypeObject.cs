@@ -402,6 +402,8 @@ public sealed class PyTypeObjectType : PyPrimitiveTypeObject<PyTypeObjectType, P
 {
     public override string Name => "type";
 
+    internal override bool IsImmutable => true;
+
     public PyTypeObjectType()
     {
         AppendMemberDescriptor<PyTypeObject>(PySpecialNames.Bases,

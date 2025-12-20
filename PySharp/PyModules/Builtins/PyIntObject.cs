@@ -525,6 +525,8 @@ public class PyIntObjectType2 : PyTypeObject<PyIntObjectType2, PyIntObject>
         var value = ((PyIntObject)obj).Value;
         if (cls != this && value > -PyIntObject.NegativePoolSize && value < PyIntObject.PositivesPoolSize)
             return PyIntObject.FromIntegerNoCache(value);
+
+        obj._pyType = cls;
         return obj;
     }
 

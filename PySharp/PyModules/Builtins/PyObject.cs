@@ -273,17 +273,12 @@ public sealed class PyObjectType2 : PyTypeObject<PyObjectType2, PyObject>
     public override string Name => "object";
     public override IReadOnlyList<PyTypeObject> Bases => [];
 
-    public PyObjectType2()
-    {
-    }
-
     protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        if (args.Count is not 0 || kwargs.Count is not 0)
+        if (ReferenceEquals(cls, this) /* Do we need to consider an externally created PyObjectType? */
+            && (args.Count is not 0 || kwargs.Count is not 0))
             return PyResult.RaiseTypeError("object.__new__() takes exactly one argument (the type to instantiate)");
 
-        var obj = new PyObject();
-        obj._pyType = cls;
-        return obj;
+        return new PyObject { _pyType = cls };
     }
 }
