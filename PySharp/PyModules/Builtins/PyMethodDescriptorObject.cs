@@ -352,9 +352,6 @@ public sealed class PyMethodDescriptorObjectType2 : PyTypeObject<PyMethodDescrip
 
     protected internal override PyResult Get(PyCallContext context, PyMethodDescriptorObject2 self, PyObject instance, PyObject owner)
     {
-        if (owner is not PyTypeObject pyType)
-            return PyResult.RaiseTypeError(null);
-
         if (instance is PyNoneObject)
             return self;
 
@@ -363,7 +360,7 @@ public sealed class PyMethodDescriptorObjectType2 : PyTypeObject<PyMethodDescrip
 
         Debug.Assert(self._method is not null);
         Debug.Assert(self._paramType is not PySpecialMethodParametersType.Unknown);
-        return new PyBuiltinFunctionOrMethodObject2(self._name, instance, pyType, ToPyDelegate(self._declaringType, self._method, instance, self._paramType));
+        return new PyBuiltinFunctionOrMethodObject2(self._name, instance, instance.PyType, ToPyDelegate(self._declaringType, self._method, instance, self._paramType));
     }
 
     protected internal override PyResult Call(PyCallContext context, PyMethodDescriptorObject2 self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
