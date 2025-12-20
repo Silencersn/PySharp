@@ -20,7 +20,17 @@ public readonly partial struct PyResult
     [MemberNotNullWhen(true, nameof(Value))]
     public bool IsNotImplemented => _value is PyNotImplementedObject;
 
-    public PyObject? Value => _value;
+    public PyObject? Value
+    {
+        get
+        {
+            // TODO: temp, need removed
+            if (_value is null)
+                PyVirtualMachine.CurrentException = _exception;
+
+            return _value;
+        }
+    }
     public PyExceptionObject? Exception => _exception;
 
     private PyResult(PyObject value)

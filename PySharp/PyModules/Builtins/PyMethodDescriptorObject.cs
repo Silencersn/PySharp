@@ -273,6 +273,20 @@ public sealed class PyMethodDescriptorObject2 : PyObject
     internal readonly MethodInfo? _method;
     internal readonly PySpecialMethodParametersType _paramType;
 
+    internal PyBuiltinFunctionOrMethodObject UnboundMethod
+    {
+        get
+        {
+            if (field is null)
+            {
+                Debug.Assert(_method is not null);
+                Debug.Assert(_paramType is not PySpecialMethodParametersType.Unknown);
+                return field = new PyBuiltinFunctionOrMethodObject(_name, ToPyFunction(PyCallContext.Null, _declaringType, _method, _paramType));
+            }
+            return field;
+        }
+    }
+
     public override PyTypeObject DefaultPyType => PyMethodDescriptorObjectType2.Shared;
 
     internal PyMethodDescriptorObject2(string name, PyTypeObject declaringType, MethodInfo method, PySpecialMethodParametersType paramType)
@@ -285,6 +299,51 @@ public sealed class PyMethodDescriptorObject2 : PyObject
     internal PyMethodDescriptorObject2(string name, Delegate typeDelegate, PySpecialMethodParametersType paramType) : this(name, (PyTypeObject)typeDelegate.Target!, typeDelegate.Method, paramType)
     {
     }
+
+    internal static PyFunction ToPyFunction(PyCallContext context, PyTypeObject type, MethodInfo method, PySpecialMethodParametersType paramType)
+    {
+        Debug.Assert(!method.IsStatic);
+        return paramType switch
+        {
+            PySpecialMethodParametersType.NoArgs => [PyFunctionArgsDef("self")] (arguments) =>
+            {
+                return (PyObject?)method.Invoke(type, [context, arguments[0]]);
+            }
+            ,
+            PySpecialMethodParametersType.Object => [PyFunctionArgsDef("self", "obj0", "/")] (arguments) =>
+            {
+                return (PyObject?)method.Invoke(type, [context, arguments[0], arguments[1]]);
+            }
+            ,
+            PySpecialMethodParametersType.String => [PyFunctionArgsDef("self", "str0", "/")] (arguments) =>
+            {
+                if (!Utils.TryCastStrAsArg(arguments[1], out var str0))
+                    return null;
+                return (PyObject?)method.Invoke(type, [context, arguments[0], str0]);
+            }
+            ,
+            PySpecialMethodParametersType.ObjectObject => [PyFunctionArgsDef("self", "obj0", "obj1", "/")] (arguments) =>
+            {
+                return (PyObject?)method.Invoke(type, [context, arguments[0], arguments[1], arguments[2]]);
+            }
+            ,
+            PySpecialMethodParametersType.StringObject => [PyFunctionArgsDef("self", "str0", "obj1", "/")] (arguments) =>
+            {
+                if (!Utils.TryCastStrAsArg(arguments[1], out var str0))
+                    return null;
+                return (PyObject?)method.Invoke(type, [context, arguments[0], str0, arguments[2]]);
+            }
+            ,
+            PySpecialMethodParametersType.ArgsKwargs => [PyFunctionArgsDef("self", "*args", "**kwargs")] (arguments) =>
+            {
+                return (PyObject?)method.Invoke(type, [context, arguments[0], arguments.ExtraArgs, arguments.ExtraKwargs]);
+            }
+            ,
+
+            _ => throw new NotSupportedException(),
+        };
+    }
+
 }
 
 public sealed class PyMethodDescriptorObjectType2 : PyTypeObject<PyMethodDescriptorObject2>
@@ -309,7 +368,18 @@ public sealed class PyMethodDescriptorObjectType2 : PyTypeObject<PyMethodDescrip
         return new PyBuiltinFunctionOrMethodObject(self._name, instance, pyType, ToPyFunction(context, self._declaringType, self._method, instance, self._paramType));
     }
 
-    private static PyFunction ToPyFunction(PyCallContext context, PyTypeObject type, MethodInfo method, PyObject target, PySpecialMethodParametersType paramType)
+    protected internal override PyResult Call(PyCallContext context, PyMethodDescriptorObject2 self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        if (args.Count is 0)
+            return PyResult.RaiseTypeError($"descriptor '{self._name}' of '{self._declaringType.Name}' object needs an argument");
+
+        if (!self._declaringType.IsInstance(args[0]))
+            return PyResult.RaiseTypeError($"descriptor '{self._name}' requires a '{self._declaringType.Name}' object but received a '{args[0].PyType.Name}'");
+
+        return self.UnboundMethod.Call(args, kwargs) ?? PyResult.CaptureExceptionFromPVM();
+    }
+
+    internal static PyFunction ToPyFunction(PyCallContext context, PyTypeObject type, MethodInfo method, PyObject target, PySpecialMethodParametersType paramType)
     {
         Debug.Assert(!method.IsStatic);
         return paramType switch
