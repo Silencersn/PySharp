@@ -30,7 +30,15 @@ public static class PySpecialMethods
 
     public static bool TryGetStr(PyObject obj, [NotNullWhen(true)] out PyStrObject? s)
     {
-        return TryGetSpecialMethod(obj.Str, o => $"{PySpecialNames.Str} returned non-string (type {o.PyType.Name})", out s);
+        return TryGetSpecialMethod(() =>
+        {
+            if (obj.PyType.IsPyTypeObjectOfT)
+            {
+                var result = obj.PyType.Str(PyCallContext.Null, obj);
+                return result.Value;
+            }
+            return obj.Str();
+        }, o => $"{PySpecialNames.Str} returned non-string (type {o.PyType.Name})", out s);
     }
 
     public static bool TryGetRepr(PyObject obj, [NotNullWhen(true)] out PyStrObject? s)
@@ -38,9 +46,9 @@ public static class PySpecialMethods
         return TryGetSpecialMethod(() =>
         {
             // TODO: temp
-            if (obj.PyType is PyIntObjectType2 type2)
+            if (obj.PyType.IsPyTypeObjectOfT)
             {
-                var result = type2.Repr(PyCallContext.Null, (PyIntObject)obj);
+                var result = obj.PyType.Repr(PyCallContext.Null, obj);
                 return result.Value;
             }
 
@@ -50,28 +58,69 @@ public static class PySpecialMethods
 
     public static bool TryGetBool(PyObject obj, [NotNullWhen(true)] out PyBoolObject? b)
     {
-        return TryGetSpecialMethod(obj.Bool, o => $"{PySpecialNames.Bool} should return bool, returned {o.PyType.Name}", out b);
+        return TryGetSpecialMethod(() =>
+        {
+            if (obj.PyType.IsPyTypeObjectOfT)
+            {
+                var result = obj.PyType.Bool(PyCallContext.Null, obj);
+                return result.Value;
+            }
+            return obj.Bool();
+        }, o => $"{PySpecialNames.Bool} should return bool, returned {o.PyType.Name}", out b);
     }
 
     public static bool TryGetInt(PyObject obj, [NotNullWhen(true)] out PyIntObject? i)
     {
-        return TryGetSpecialMethod(obj.Int, o => $"{PySpecialNames.Int} returned non-int (type {o.PyType.Name})", out i);
+        return TryGetSpecialMethod(() =>
+        {
+            if (obj.PyType.IsPyTypeObjectOfT)
+            {
+                var result = obj.PyType.Int(PyCallContext.Null, obj);
+                return result.Value;
+            }
+            return obj.Int();
+        }, o => $"{PySpecialNames.Int} returned non-int (type {o.PyType.Name})", out i);
     }
 
     public static bool TryGetFloat(PyObject obj, [NotNullWhen(true)] out PyFloatObject? f)
     {
-        return TryGetSpecialMethod(obj.Float, o => $"{PySpecialNames.Float} returned non-float (type {o.PyType.Name})", out f);
+        return TryGetSpecialMethod(() =>
+        {
+            if (obj.PyType.IsPyTypeObjectOfT)
+            {
+                var result = obj.PyType.Float(PyCallContext.Null, obj);
+                return result.Value;
+            }
+            return obj.Float();
+        }, o => $"{PySpecialNames.Float} returned non-float (type {o.PyType.Name})", out f);
     }
 
     public static bool TryGetLen(PyObject obj, [NotNullWhen(true)] out PyIntObject? i)
     {
-        return TryGetSpecialMethod(obj.Len, o => $"{PySpecialNames.Len} returned non-int (type {o.PyType.Name})", out i);
+        return TryGetSpecialMethod(() =>
+        {
+            if (obj.PyType.IsPyTypeObjectOfT)
+            {
+                var result = obj.PyType.Len(PyCallContext.Null, obj);
+                return result.Value;
+            }
+            return obj.Len();
+        }, o => $"{PySpecialNames.Len} returned non-int (type {o.PyType.Name})", out i);
     }
 
     private static readonly BigInteger _maxHash = new(uint.MaxValue);
     public static bool TryGetHash(PyObject obj, [NotNullWhen(true)] out PyIntObject? i)
     {
-        if (!TryGetSpecialMethod(obj.Hash, o => $"{PySpecialNames.Hash} returned non-int (type {o.PyType.Name})", out i))
+        bool result = TryGetSpecialMethod(() =>
+        {
+            if (obj.PyType.IsPyTypeObjectOfT)
+            {
+                var r = obj.PyType.Hash(PyCallContext.Null, obj);
+                return r.Value;
+            }
+            return obj.Hash();
+        }, o => $"{PySpecialNames.Hash} returned non-int (type {o.PyType.Name})", out i);
+        if (!result)
             return false;
 
         var value = i.Value;
@@ -85,7 +134,15 @@ public static class PySpecialMethods
 
     public static bool TryGetIndex(PyObject obj, [NotNullWhen(true)] out PyIntObject? i)
     {
-        return TryGetSpecialMethod(obj.Index, o => $"{PySpecialNames.Index} returned non-int (type {o.PyType.Name})", out i);
+        return TryGetSpecialMethod(() =>
+        {
+            if (obj.PyType.IsPyTypeObjectOfT)
+            {
+                var result = obj.PyType.Index(PyCallContext.Null, obj);
+                return result.Value;
+            }
+            return obj.Index();
+        }, o => $"{PySpecialNames.Index} returned non-int (type {o.PyType.Name})", out i);
     }
 
     public static PyStrObject? GetStr(PyObject obj)

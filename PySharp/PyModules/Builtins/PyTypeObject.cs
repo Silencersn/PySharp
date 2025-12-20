@@ -8,7 +8,7 @@ using System.Reflection;
 
 namespace PySharp.PyModules.Builtins;
 
-public abstract class PyTypeObject : PyObject, IPyObjectName
+public abstract partial class PyTypeObject : PyObject, IPyObjectName
 {
     public virtual IReadOnlyList<PyTypeObject> Bases => [PyObjectType.Shared];
     public IReadOnlyList<PyTypeObject> MRO { get; }

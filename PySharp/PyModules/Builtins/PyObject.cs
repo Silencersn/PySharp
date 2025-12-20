@@ -32,6 +32,9 @@ public partial class PyObject : IEquatable<PyObject>
                 return x.PyId == y.PyId;
             }
 
+            if (eq is PyBoolObject boolObj)
+                return boolObj.BoolValue;
+
             if (PySpecialMethods.TryGetBool(eq, out var b))
                 return b.BoolValue;
 

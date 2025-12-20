@@ -516,6 +516,8 @@ public class PyIntObjectType2 : PyTypeObject<PyIntObject>
 
     protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
+        // TODO: set cls to type?
+
         var obj = _new.Call(args, kwargs);
         if (obj is null)
             return PyResult.CaptureExceptionFromPVM();
