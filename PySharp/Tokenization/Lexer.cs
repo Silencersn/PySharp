@@ -230,8 +230,10 @@ public sealed partial class Lexer
                         else
                         {
                             var lastToken = _tokens[^1];
-                            if (lastToken.Type is TokenType.Colon)
+                            if (lastToken.Type is TokenType.Colon && _parenLevel == CurrentFStringInfo.ParenLevelWhenEntering + 1)
                             {
+                                // TODO: too deep
+
                                 CurrentState = LexerState.FStringMiddle;
                                 CurrentFStringInfo.FormatSpec.Push(_parenLevel);
                             }
@@ -623,7 +625,10 @@ public sealed partial class Lexer
 
         if (IsStrictMatch(LexerRegexes.PseudoExtras, group))
         {
-            if (group.Value.StartsWith('\\'))
+            if (group.Length is 0)
+            {
+            }
+            else if (group.Value.StartsWith('\\'))
             {
                 _explicitLineJoining = true;
                 _needSetNewLine = true;
