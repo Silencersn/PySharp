@@ -1,4 +1,5 @@
 ﻿using PySharp.PyModules.Builtins;
+using PySharp.PyRuntime.Calls;
 using System.Diagnostics;
 
 namespace PySharp.PyRuntime;
@@ -293,71 +294,71 @@ public static class PyOperators
 
         return ret;
     }
-    private static PyObject? ReflectiveOperator(PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo = null)
+    private static PyResult ReflectiveOperator(PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo = null)
     {
         if (left is PyIntObject leftInt && right is PyIntObject rightInt)
             return PyMath.CalculatePyIntObject(op, leftInt, rightInt, modulo);
 
         if (left.PyType != right.PyType && right.PyType.IsSubclassOf(left.PyType))
-            return RightReflectiveOperator(op, left, right, modulo);
-        return LeftReflectiveOperator(op, left, right, modulo);
+            return RightReflectiveOperator(op, left, right, modulo) ?? PyResult.CaptureExceptionFromPVM();
+        return LeftReflectiveOperator(op, left, right, modulo) ?? PyResult.CaptureExceptionFromPVM();
     }
 
     public static PyObject? Add(PyObject left, PyObject right)
     {
-        return ReflectiveOperator(PyOperatorTypes.Add, left, right);
+        return ReflectiveOperator(PyOperatorTypes.Add, left, right).Value;
     }
     public static PyObject? Sub(PyObject left, PyObject right)
     {
-        return ReflectiveOperator(PyOperatorTypes.Sub, left, right);
+        return ReflectiveOperator(PyOperatorTypes.Sub, left, right).Value;
     }
     public static PyObject? Mul(PyObject left, PyObject right)
     {
-        return ReflectiveOperator(PyOperatorTypes.Mul, left, right);
+        return ReflectiveOperator(PyOperatorTypes.Mul, left, right).Value;
     }
     public static PyObject? TrueDiv(PyObject left, PyObject right)
     {
-        return ReflectiveOperator(PyOperatorTypes.TrueDiv, left, right);
+        return ReflectiveOperator(PyOperatorTypes.TrueDiv, left, right).Value;
     }
     public static PyObject? FloorDiv(PyObject left, PyObject right)
     {
-        return ReflectiveOperator(PyOperatorTypes.FloorDiv, left, right);
+        return ReflectiveOperator(PyOperatorTypes.FloorDiv, left, right).Value;
     }
     public static PyObject? Mod(PyObject left, PyObject right)
     {
-        return ReflectiveOperator(PyOperatorTypes.Mod, left, right);
+        return ReflectiveOperator(PyOperatorTypes.Mod, left, right).Value;
     }
     public static PyObject? Pow(PyObject left, PyObject right, PyObject modulo)
     {
-        return ReflectiveOperator(PyOperatorTypes.Pow, left, right, modulo);
+        return ReflectiveOperator(PyOperatorTypes.Pow, left, right, modulo).Value;
     }
     public static PyObject? LShift(PyObject left, PyObject right)
     {
-        return ReflectiveOperator(PyOperatorTypes.LShift, left, right);
+        return ReflectiveOperator(PyOperatorTypes.LShift, left, right).Value;
     }
     public static PyObject? RShift(PyObject left, PyObject right)
     {
-        return ReflectiveOperator(PyOperatorTypes.RShift, left, right);
+        return ReflectiveOperator(PyOperatorTypes.RShift, left, right).Value;
     }
     public static PyObject? And(PyObject left, PyObject right)
     {
-        return ReflectiveOperator(PyOperatorTypes.And, left, right);
+        return ReflectiveOperator(PyOperatorTypes.And, left, right).Value;
     }
     public static PyObject? Xor(PyObject left, PyObject right)
     {
-        return ReflectiveOperator(PyOperatorTypes.Xor, left, right);
+        return ReflectiveOperator(PyOperatorTypes.Xor, left, right).Value;
     }
     public static PyObject? Or(PyObject left, PyObject right)
     {
-        return ReflectiveOperator(PyOperatorTypes.Or, left, right);
+        return ReflectiveOperator(PyOperatorTypes.Or, left, right).Value;
     }
     public static PyObject? Lt(PyObject left, PyObject right)
     {
-        return ReflectiveOperator(PyOperatorTypes.Lt, left, right);
+        return ReflectiveOperator(PyOperatorTypes.Lt, left, right).Value;
     }
     public static PyObject? Le(PyObject left, PyObject right)
     {
-        return ReflectiveOperator(PyOperatorTypes.Le, left, right);
+        return ReflectiveOperator(PyOperatorTypes.Le, left, right).Value;
     }
     public static PyObject? Eq(PyObject left, PyObject right)
     {
@@ -398,11 +399,11 @@ public static class PyOperators
     }
     public static PyObject? Gt(PyObject left, PyObject right)
     {
-        return ReflectiveOperator(PyOperatorTypes.Gt, left, right);
+        return ReflectiveOperator(PyOperatorTypes.Gt, left, right).Value;
     }
     public static PyObject? Ge(PyObject left, PyObject right)
     {
-        return ReflectiveOperator(PyOperatorTypes.Ge, left, right);
+        return ReflectiveOperator(PyOperatorTypes.Ge, left, right).Value;
     }
 
     private static bool AreSameObjectAtPythonLevel(PyObject left, PyObject right)

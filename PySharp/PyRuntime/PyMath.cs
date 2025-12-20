@@ -1,4 +1,5 @@
 ﻿using PySharp.PyModules.Builtins;
+using PySharp.PyRuntime.Calls;
 using System.Diagnostics;
 using System.Numerics;
 
@@ -6,7 +7,7 @@ namespace PySharp.PyRuntime;
 
 internal static class PyMath
 {
-    public static PyObject? CalculatePyIntObject(PyOperatorTypes op, PyIntObject left, PyIntObject right, PyObject? modulo = null)
+    public static PyResult CalculatePyIntObject(PyOperatorTypes op, PyIntObject left, PyIntObject right, PyObject? modulo = null)
     {
         switch (op)
         {
@@ -21,12 +22,12 @@ internal static class PyMath
 
             case PyOperatorTypes.TrueDiv:
                 if (right.Value.IsZero)
-                    return PyVirtualMachine.RaiseZeroDivisionError("division by zero");
+                    return PyResult.RaiseZeroDivisionError("division by zero");
                 return PyFloatObject.FromDouble((double)left.Value / (double)right.Value);
 
             case PyOperatorTypes.FloorDiv:
                 if (right.Value.IsZero)
-                    return PyVirtualMachine.RaiseZeroDivisionError("division by zero");
+                    return PyResult.RaiseZeroDivisionError("division by zero");
                 var (q, r) = BigInteger.DivRem(left.Value, right.Value);
                 if (r.IsZero || BigInteger.IsPositive(q))
                     return PyIntObject.FromInteger(q);
@@ -34,7 +35,7 @@ internal static class PyMath
 
             case PyOperatorTypes.Mod:
                 if (right.Value.IsZero)
-                    return PyVirtualMachine.RaiseZeroDivisionError("integer modulo by zero");
+                    return PyResult.RaiseZeroDivisionError("integer modulo by zero");
 
                 if (left.Value.IsZero)
                     return PyIntObject.Zero;
@@ -58,7 +59,7 @@ internal static class PyMath
                         return PyNotImplementedObject.NotImplemented;
 
                     if (moduloObj.Value.IsZero)
-                        return PyVirtualMachine.RaiseValueError("pow() 3rd argument cannot be 0");
+                        return PyResult.RaiseValueError("pow() 3rd argument cannot be 0");
 
                     if (right.Value >= 0)
                         return PyIntObject.FromInteger(BigInteger.ModPow(left.Value, right.Value, moduloObj.Value));
