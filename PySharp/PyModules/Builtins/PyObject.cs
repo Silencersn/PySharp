@@ -297,9 +297,8 @@ public sealed class PyObjectType : PyPrimitiveTypeObject<PyObjectType, PyObject>
     }
 }
 
-public sealed class PyObjectType2 : PyTypeObject<PyObject>
+public sealed class PyObjectType2 : PyTypeObject<PyObjectType2, PyObject>
 {
-    public static PyObjectType2 Shared { get; } = new PyObjectType2();
     public override string Name => "object";
     public override IReadOnlyList<PyTypeObject> Bases => [];
 

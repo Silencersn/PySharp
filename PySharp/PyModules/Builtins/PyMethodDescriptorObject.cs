@@ -346,10 +346,8 @@ public sealed class PyMethodDescriptorObject2 : PyObject
 
 }
 
-public sealed class PyMethodDescriptorObjectType2 : PyTypeObject<PyMethodDescriptorObject2>
+public sealed class PyMethodDescriptorObjectType2 : PyTypeObject<PyMethodDescriptorObjectType2, PyMethodDescriptorObject2>
 {
-    public static PyMethodDescriptorObjectType2 Shared { get; } = new PyMethodDescriptorObjectType2();
-
     public override string Name => "method_descriptor";
 
     protected internal override PyResult Get(PyCallContext context, PyMethodDescriptorObject2 self, PyObject instance, PyObject owner)

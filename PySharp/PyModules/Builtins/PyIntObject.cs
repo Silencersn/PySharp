@@ -304,9 +304,8 @@ public sealed class PyIntObjectType : PyPrimitiveTypeObject<PyIntObjectType, PyI
     ];
 }
 
-public class PyIntObjectType2 : PyTypeObject<PyIntObject>
+public class PyIntObjectType2 : PyTypeObject<PyIntObjectType2, PyIntObject>
 {
-    public static PyTypeObject Shared { get; } = new PyIntObjectType2();
     public override string Name => "int";
 
     private static readonly PyBuiltinFunctionOrMethodObject _new = new(PySpecialNames.New, NewImpl_1, NewImpl_2);

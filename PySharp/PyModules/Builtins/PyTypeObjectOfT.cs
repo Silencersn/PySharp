@@ -29,9 +29,8 @@ public abstract partial class PyTypeObject<TObject> : PyTypeObject where TObject
     }
 }
 
-public sealed class PyTypeObjectType2 : PyTypeObject<PyTypeObject>
+public sealed class PyTypeObjectType2 : PyTypeObject<PyTypeObjectType2, PyTypeObject>
 {
-    public static PyTypeObjectType2 Shared { get; } = new();
     public override string Name => "type";
 
     protected internal override PyResult Call(PyCallContext context, PyTypeObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
@@ -50,4 +49,11 @@ public sealed class PyTypeObjectType2 : PyTypeObject<PyTypeObject>
 
         return pyObject;
     }
+}
+
+public abstract class PyTypeObject<TSelf, TObject> : PyTypeObject<TObject>
+    where TSelf : PyTypeObject<TSelf, TObject>, new()
+    where TObject : PyObject
+{
+    public static TSelf Shared { get; } = new();
 }
