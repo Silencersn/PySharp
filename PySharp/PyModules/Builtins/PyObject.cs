@@ -86,6 +86,7 @@ public partial class PyObject : IEquatable<PyObject>
 
     internal IDictionary<string, PyObject> PyAttributes => _pyAttributes ??= new ConcurrentDictionary<string, PyObject>();
     internal bool IsSelfDefaultType => ReferenceEquals(PyType, DefaultPyType);
+    [DebuggerBrowsable(DebuggerBrowsableState.Never)]
     internal virtual bool IsImmutable => PyType.IsImmutable;
 
     public PyObject()
@@ -157,6 +158,44 @@ public partial class PyObject : IEquatable<PyObject>
             return pyObj.PyType;
 
         return PyVirtualMachine.RaiseAttributeError($"'{pyObj.PyType.Name}' object has no attribute '{name}'");
+    }
+
+    internal static PyResult PyObjectGetSpecialMethod(PyCallContext context, PyObject pyObj, string name)
+    {
+        // TODO: This is just a temporary approach and should be removed once the object logic has been fully migrated.
+        PyObject? nonDataDescriptor = null;
+        if (TryFindAttrFromMRO(pyObj, name, out var attrFromType, out _) &&
+            Utils.IsDescriptor(attrFromType, out var hasGet, out var hasSet, out var hasDelete))
+        {
+            if (hasGet)
+            {
+                if (hasSet || hasDelete)
+                    return TempGet(attrFromType);
+
+                nonDataDescriptor = attrFromType;
+            }
+        }
+
+        if (nonDataDescriptor is not null)
+            return TempGet(nonDataDescriptor);
+
+        if (attrFromType is not null)
+            return attrFromType;
+
+        // special read-only attributes
+        // __class__
+        if (name is PySpecialNames.Class)
+            return pyObj.PyType;
+
+        return PyVirtualMachine.RaiseAttributeError($"'{pyObj.PyType.Name}' object has no attribute '{name}'") ?? PyResult.CaptureExceptionFromPVM();
+
+        PyResult TempGet(PyObject descripotr)
+        {
+            if (descripotr is PyMethodDescriptorObject2 methodDescriptor2)
+                return PyMethodDescriptorObjectType2.Shared.Get(context, methodDescriptor2, pyObj, pyObj.PyType);
+
+            return descripotr.GetImpl(pyObj, pyObj.PyType) ?? PyResult.CaptureExceptionFromPVM();
+        }
     }
 
     internal static PyObject? PyObjectSetAttribute(PyObject pyObj, string name, PyObject value)

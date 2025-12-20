@@ -3,12 +3,18 @@ using PySharp.PyRuntime.Calls;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace PySharp.PyModules.Builtins;
 
-public abstract class PyTypeObject<TObject> : PyTypeObject where TObject : PyObject
+public abstract partial class PyTypeObject<TObject> : PyTypeObject where TObject : PyObject
 {
     public sealed override Type LayoutType => typeof(TObject);
+
+    public PyTypeObject()
+    {
+        AppendMethodDescriptors();
+    }
 
     protected internal virtual PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {

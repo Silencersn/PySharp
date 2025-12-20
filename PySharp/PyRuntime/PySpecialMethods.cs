@@ -1,6 +1,8 @@
 ﻿using PySharp.PyModules.Builtins;
+using PySharp.PyRuntime.Calls;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
+using System.Resources;
 
 namespace PySharp.PyRuntime;
 
@@ -33,7 +35,17 @@ public static class PySpecialMethods
 
     public static bool TryGetRepr(PyObject obj, [NotNullWhen(true)] out PyStrObject? s)
     {
-        return TryGetSpecialMethod(obj.Repr, o => $"{PySpecialNames.Repr} returned non-string (type {o.PyType.Name})", out s);
+        return TryGetSpecialMethod(() =>
+        {
+            // TODO: temp
+            if (obj.PyType is PyIntObjectType2 type2)
+            {
+                var result = type2.Repr(PyCallContext.Null, (PyIntObject)obj);
+                return result.Value;
+            }
+
+            return obj.Repr();
+        }, o => $"{PySpecialNames.Repr} returned non-string (type {o.PyType.Name})", out s);
     }
 
     public static bool TryGetBool(PyObject obj, [NotNullWhen(true)] out PyBoolObject? b)
