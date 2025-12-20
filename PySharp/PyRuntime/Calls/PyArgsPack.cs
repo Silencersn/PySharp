@@ -5,6 +5,8 @@ namespace PySharp.PyRuntime.Calls;
 
 public delegate PyObject? PyFunction(PyArguments arguments);
 public delegate PyObject? PyUncompoundedFunction(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs);
+public delegate PyResult PyDelegate(PyCallContext context, PyArguments arguments);
+public delegate PyResult PyUncompoundedDelegate(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs);
 
 [Obsolete("Using PyArguments")]
 public sealed class PyArgsPack

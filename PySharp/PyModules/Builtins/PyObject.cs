@@ -1,6 +1,7 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.Utility;
+using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -140,7 +141,7 @@ public partial class PyObject : IEquatable<PyObject>
             if (hasGet)
             {
                 if (hasSet || hasDelete)
-                    return attrFromType.GetImpl(pyObj, pyObj.PyType);
+                    return TempGet(attrFromType).Value;
 
                 nonDataDescriptor = attrFromType;
             }
@@ -150,7 +151,7 @@ public partial class PyObject : IEquatable<PyObject>
             return attr;
 
         if (nonDataDescriptor is not null)
-            return nonDataDescriptor.GetImpl(pyObj, pyObj.PyType);
+            return TempGet(nonDataDescriptor).Value;
 
         if (attrFromType is not null)
             return attrFromType;
@@ -161,41 +162,11 @@ public partial class PyObject : IEquatable<PyObject>
             return pyObj.PyType;
 
         return PyVirtualMachine.RaiseAttributeError($"'{pyObj.PyType.Name}' object has no attribute '{name}'");
-    }
-
-    internal static PyResult PyObjectGetSpecialMethod(PyCallContext context, PyObject pyObj, string name)
-    {
-        // TODO: This is just a temporary approach and should be removed once the object logic has been fully migrated.
-        PyObject? nonDataDescriptor = null;
-        if (TryFindAttrFromMRO(pyObj, name, out var attrFromType, out _) &&
-            Utils.IsDescriptor(attrFromType, out var hasGet, out var hasSet, out var hasDelete))
-        {
-            if (hasGet)
-            {
-                if (hasSet || hasDelete)
-                    return TempGet(attrFromType);
-
-                nonDataDescriptor = attrFromType;
-            }
-        }
-
-        if (nonDataDescriptor is not null)
-            return TempGet(nonDataDescriptor);
-
-        if (attrFromType is not null)
-            return attrFromType;
-
-        // special read-only attributes
-        // __class__
-        if (name is PySpecialNames.Class)
-            return pyObj.PyType;
-
-        return PyVirtualMachine.RaiseAttributeError($"'{pyObj.PyType.Name}' object has no attribute '{name}'") ?? PyResult.CaptureExceptionFromPVM();
 
         PyResult TempGet(PyObject descripotr)
         {
-            if (descripotr is PyMethodDescriptorObject2 methodDescriptor2)
-                return PyMethodDescriptorObjectType2.Shared.Get(context, methodDescriptor2, pyObj, pyObj.PyType);
+            if (descripotr.PyType.IsPyTypeObjectOfT)
+                return descripotr.PyType.Get(PyCallContext.Null, descripotr, pyObj, pyObj.PyType);
 
             return descripotr.GetImpl(pyObj, pyObj.PyType) ?? PyResult.CaptureExceptionFromPVM();
         }

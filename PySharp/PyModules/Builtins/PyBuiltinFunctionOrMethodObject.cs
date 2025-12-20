@@ -127,3 +127,112 @@ public sealed class PyBuiltinFunctionOrMethodObjectType : PyPrimitiveTypeObject<
         return PyVirtualMachine.RaiseTypeError(null);
     }
 }
+
+public class PyBuiltinFunctionOrMethodObject2 : PyObject, IPyObjectName
+{
+    private Dictionary<MethodInfo, PyArgsDef>? _defCache;
+
+    public string Name { get; }
+    [MemberNotNullWhen(true, nameof(SelfType))]
+    public bool IsMethod { get; }
+    public PyUncompoundedDelegate PyDelegate { get; }
+    public PyObject? Self { get; }
+    public PyTypeObject? SelfType { get; }
+
+    public override PyTypeObject DefaultPyType => PyBuiltinFunctionOrMethodObjectType2.Shared;
+
+    internal PyBuiltinFunctionOrMethodObject2(string name, params PyDelegate[] funcs)
+    {
+        Name = name;
+        IsMethod = false;
+        Self = null;
+        PyDelegate = (context, args, kwargs) =>
+        {
+            EnsureDefCache(funcs);
+            foreach (var func in funcs)
+            {
+                if (_defCache[func.Method].TryParse(args, kwargs, out var result))
+                    return func.Invoke(context, result);
+            }
+
+            return PyResult.RaiseTypeError(null);
+        };
+        PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
+    }
+    internal PyBuiltinFunctionOrMethodObject2(string name, PyObject self, PyTypeObject type, params PyDelegate[] funcs)
+    {
+        Self = self;
+        SelfType = type;
+        Name = name;
+        IsMethod = true;
+        PyDelegate = (context, args, kwargs) =>
+        {
+            EnsureDefCache(funcs);
+            foreach (var func in funcs)
+            {
+                if (_defCache[func.Method].TryParse(args, kwargs, out var result))
+                    return func.Invoke(context, result);
+            }
+
+            return PyResult.RaiseTypeError(null);
+        };
+        PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
+        PyAttributes.Add(PySpecialNames.Self, Self);
+    }
+
+    internal PyBuiltinFunctionOrMethodObject2(string name, PyUncompoundedDelegate func)
+    {
+        Name = name;
+        PyDelegate = func;
+        IsMethod = false;
+        Self = null;
+        PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
+    }
+
+
+    [MemberNotNull(nameof(_defCache))]
+    private void EnsureDefCache(PyDelegate[] funcs)
+    {
+        if (_defCache is null)
+        {
+            lock (funcs)
+            {
+                if (_defCache is null)
+                {
+                    var cache = new Dictionary<MethodInfo, PyArgsDef>();
+                    foreach (var func in funcs)
+                    {
+                        var argsDef = func.Method.GetCustomAttribute<PyFunctionArgsDefAttribute>();
+                        Debug.Assert(argsDef is not null);
+                        var def = PyArgsDef.FromDef(argsDef.Parameters);
+                        cache[func.Method] = def;
+                    }
+                    _defCache = cache;
+                }
+            }
+        }
+    }
+}
+
+public sealed class PyBuiltinFunctionOrMethodObjectType2 : PyTypeObject<PyBuiltinFunctionOrMethodObjectType2, PyBuiltinFunctionOrMethodObject2>
+{
+    public override string Name => "builtin_function_or_method";
+
+    protected internal override PyResult Repr(PyCallContext context, PyBuiltinFunctionOrMethodObject2 self)
+    {
+        if (self.IsMethod)
+        {
+            if (self.Self is not null)
+                return PyStrObject.FromString($"<built-in method {self.Name} of {self.SelfType.Name} object at 0x{self.Self.PyId:X16}>");
+
+            return PyStrObject.FromString($"<method '{self.Name}' of '{self.SelfType.Name}' objects>");
+        }
+
+        return PyStrObject.FromString($"<built-in function {self.Name}>");
+    }
+
+    protected internal override PyResult Call(PyCallContext context, PyBuiltinFunctionOrMethodObject2 self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        return self.PyDelegate.Invoke(context, args, kwargs);
+    }
+}

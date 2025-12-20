@@ -273,7 +273,7 @@ public sealed class PyMethodDescriptorObject2 : PyObject
     internal readonly MethodInfo? _method;
     internal readonly PySpecialMethodParametersType _paramType;
 
-    internal PyBuiltinFunctionOrMethodObject UnboundMethod
+    internal PyBuiltinFunctionOrMethodObject2 UnboundMethod
     {
         get
         {
@@ -281,7 +281,7 @@ public sealed class PyMethodDescriptorObject2 : PyObject
             {
                 Debug.Assert(_method is not null);
                 Debug.Assert(_paramType is not PySpecialMethodParametersType.Unknown);
-                return field = new PyBuiltinFunctionOrMethodObject(_name, ToPyFunction(PyCallContext.Null, _declaringType, _method, _paramType));
+                return field = new PyBuiltinFunctionOrMethodObject2(_name, ToPyDelegate(_declaringType, _method, _paramType));
             }
             return field;
         }
@@ -300,43 +300,43 @@ public sealed class PyMethodDescriptorObject2 : PyObject
     {
     }
 
-    internal static PyFunction ToPyFunction(PyCallContext context, PyTypeObject type, MethodInfo method, PySpecialMethodParametersType paramType)
+    internal static PyDelegate ToPyDelegate(PyTypeObject type, MethodInfo method, PySpecialMethodParametersType paramType)
     {
         Debug.Assert(!method.IsStatic);
         return paramType switch
         {
-            PySpecialMethodParametersType.NoArgs => [PyFunctionArgsDef("self")] (arguments) =>
+            PySpecialMethodParametersType.NoArgs => [PyFunctionArgsDef("self")] (context, arguments) =>
             {
-                return (PyObject?)method.Invoke(type, [context, arguments[0]]);
+                return (PyResult)method.Invoke(type, [context, arguments[0]])!;
             }
             ,
-            PySpecialMethodParametersType.Object => [PyFunctionArgsDef("self", "obj0", "/")] (arguments) =>
+            PySpecialMethodParametersType.Object => [PyFunctionArgsDef("self", "obj0", "/")] (context, arguments) =>
             {
-                return (PyObject?)method.Invoke(type, [context, arguments[0], arguments[1]]);
+                return (PyResult)method.Invoke(type, [context, arguments[0], arguments[1]])!;
             }
             ,
-            PySpecialMethodParametersType.String => [PyFunctionArgsDef("self", "str0", "/")] (arguments) =>
+            PySpecialMethodParametersType.String => [PyFunctionArgsDef("self", "str0", "/")] (context, arguments) =>
             {
                 if (!Utils.TryCastStrAsArg(arguments[1], out var str0))
-                    return null;
-                return (PyObject?)method.Invoke(type, [context, arguments[0], str0]);
+                    return PyResult.CaptureExceptionFromPVM();
+                return (PyResult)method.Invoke(type, [context, arguments[0], str0])!;
             }
             ,
-            PySpecialMethodParametersType.ObjectObject => [PyFunctionArgsDef("self", "obj0", "obj1", "/")] (arguments) =>
+            PySpecialMethodParametersType.ObjectObject => [PyFunctionArgsDef("self", "obj0", "obj1", "/")] (context, arguments) =>
             {
-                return (PyObject?)method.Invoke(type, [context, arguments[0], arguments[1], arguments[2]]);
+                return (PyResult)method.Invoke(type, [context, arguments[0], arguments[1], arguments[2]])!;
             }
             ,
-            PySpecialMethodParametersType.StringObject => [PyFunctionArgsDef("self", "str0", "obj1", "/")] (arguments) =>
+            PySpecialMethodParametersType.StringObject => [PyFunctionArgsDef("self", "str0", "obj1", "/")] (context, arguments) =>
             {
                 if (!Utils.TryCastStrAsArg(arguments[1], out var str0))
-                    return null;
-                return (PyObject?)method.Invoke(type, [context, arguments[0], str0, arguments[2]]);
+                    return PyResult.CaptureExceptionFromPVM();
+                return (PyResult)method.Invoke(type, [context, arguments[0], str0, arguments[2]])!;
             }
             ,
-            PySpecialMethodParametersType.ArgsKwargs => [PyFunctionArgsDef("self", "*args", "**kwargs")] (arguments) =>
+            PySpecialMethodParametersType.ArgsKwargs => [PyFunctionArgsDef("self", "*args", "**kwargs")] (context, arguments) =>
             {
-                return (PyObject?)method.Invoke(type, [context, arguments[0], arguments.ExtraArgs, arguments.ExtraKwargs]);
+                return (PyResult)method.Invoke(type, [context, arguments[0], arguments.ExtraArgs, arguments.ExtraKwargs])!;
             }
             ,
 
@@ -352,7 +352,7 @@ public sealed class PyMethodDescriptorObjectType2 : PyTypeObject<PyMethodDescrip
 
     protected internal override PyResult Get(PyCallContext context, PyMethodDescriptorObject2 self, PyObject instance, PyObject owner)
     {
-        if (instance is not PyTypeObject pyType)
+        if (owner is not PyTypeObject pyType)
             return PyResult.RaiseTypeError(null);
 
         if (instance is PyNoneObject)
@@ -363,7 +363,7 @@ public sealed class PyMethodDescriptorObjectType2 : PyTypeObject<PyMethodDescrip
 
         Debug.Assert(self._method is not null);
         Debug.Assert(self._paramType is not PySpecialMethodParametersType.Unknown);
-        return new PyBuiltinFunctionOrMethodObject(self._name, instance, pyType, ToPyFunction(context, self._declaringType, self._method, instance, self._paramType));
+        return new PyBuiltinFunctionOrMethodObject2(self._name, instance, pyType, ToPyDelegate(self._declaringType, self._method, instance, self._paramType));
     }
 
     protected internal override PyResult Call(PyCallContext context, PyMethodDescriptorObject2 self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
@@ -377,43 +377,43 @@ public sealed class PyMethodDescriptorObjectType2 : PyTypeObject<PyMethodDescrip
         return self.UnboundMethod.Call(args, kwargs) ?? PyResult.CaptureExceptionFromPVM();
     }
 
-    internal static PyFunction ToPyFunction(PyCallContext context, PyTypeObject type, MethodInfo method, PyObject target, PySpecialMethodParametersType paramType)
+    internal static PyDelegate ToPyDelegate(PyTypeObject type, MethodInfo method, PyObject target, PySpecialMethodParametersType paramType)
     {
         Debug.Assert(!method.IsStatic);
         return paramType switch
         {
-            PySpecialMethodParametersType.NoArgs => [PyFunctionArgsDef()] (arguments) =>
+            PySpecialMethodParametersType.NoArgs => [PyFunctionArgsDef()] (context, arguments) =>
             {
-                return (PyObject?)method.Invoke(type, [context, target]);
+                return (PyResult)method.Invoke(type, [context, target])!;
             }
             ,
-            PySpecialMethodParametersType.Object => [PyFunctionArgsDef("obj0", "/")] (arguments) =>
+            PySpecialMethodParametersType.Object => [PyFunctionArgsDef("obj0", "/")] (context, arguments) =>
             {
-                return (PyObject?)method.Invoke(type, [context, target, arguments[0]]);
+                return (PyResult)method.Invoke(type, [context, target, arguments[0]])!;
             }
             ,
-            PySpecialMethodParametersType.String => [PyFunctionArgsDef("str0", "/")] (arguments) =>
+            PySpecialMethodParametersType.String => [PyFunctionArgsDef("str0", "/")] (context, arguments) =>
             {
                 if (!Utils.TryCastStrAsArg(arguments[0], out var str0))
-                    return null;
-                return (PyObject?)method.Invoke(type, [context, target, str0]);
+                    return PyResult.CaptureExceptionFromPVM();
+                return (PyResult)method.Invoke(type, [context, target, str0])!;
             }
             ,
-            PySpecialMethodParametersType.ObjectObject => [PyFunctionArgsDef("obj0", "obj1", "/")] (arguments) =>
+            PySpecialMethodParametersType.ObjectObject => [PyFunctionArgsDef("obj0", "obj1", "/")] (context, arguments) =>
             {
-                return (PyObject?)method.Invoke(type, [context, target, arguments[0], arguments[1]]);
+                return (PyResult)method.Invoke(type, [context, target, arguments[0], arguments[1]])!;
             }
             ,
-            PySpecialMethodParametersType.StringObject => [PyFunctionArgsDef("str0", "obj1", "/")] (arguments) =>
+            PySpecialMethodParametersType.StringObject => [PyFunctionArgsDef("str0", "obj1", "/")] (context, arguments) =>
             {
                 if (!Utils.TryCastStrAsArg(arguments[0], out var str0))
-                    return null;
-                return (PyObject?)method.Invoke(type, [context, target, str0, arguments[1]]);
+                    return PyResult.CaptureExceptionFromPVM();
+                return (PyResult)method.Invoke(type, [context, target, str0, arguments[1]])!;
             }
             ,
-            PySpecialMethodParametersType.ArgsKwargs => [PyFunctionArgsDef("*args", "**kwargs")] (arguments) =>
+            PySpecialMethodParametersType.ArgsKwargs => [PyFunctionArgsDef("*args", "**kwargs")] (context, arguments) =>
             {
-                return (PyObject?)method.Invoke(type, [context, target, arguments.ExtraArgs, arguments.ExtraKwargs]);
+                return (PyResult)method.Invoke(type, [context, target, arguments.ExtraArgs, arguments.ExtraKwargs])!;
             }
             ,
 
