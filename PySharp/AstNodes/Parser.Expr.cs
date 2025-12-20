@@ -638,7 +638,8 @@ partial class Parser
                 // primary.attr
 
                 MoveNextToken();
-                expr = AstNode.Attribute(expr, ParseIdentifier(), CopyThenWithEnd(startMetaInfo));
+                var metaInfo = CopyThenWithEnd(startMetaInfo);
+                expr = AstNode.Attribute(expr, ParseIdentifier(), metaInfo);
             }
             else
             {
