@@ -85,7 +85,7 @@ public partial class PyObject : IEquatable<PyObject>
     internal PyTypeObject? _pyType;
 
     public PyTypeObject PyType => _pyType ?? DefaultPyType;
-    public virtual PyTypeObject DefaultPyType => PyObjectType2.Shared;
+    public virtual PyTypeObject DefaultPyType => PyObjectType.Shared;
     public int PyId => _pyId ??= Interlocked.Increment(ref _pyNextId);
 
     internal IDictionary<string, PyObject> PyAttributes => _pyAttributes ??= new ConcurrentDictionary<string, PyObject>();
@@ -256,36 +256,36 @@ public partial class PyObject : IEquatable<PyObject>
     }
 }
 
-public sealed class PyObjectType : PyPrimitiveTypeObject<PyObjectType, PyObject>
+//public sealed class PyObjectType : PyPrimitiveTypeObject<PyObjectType, PyObject>
+//{
+//    public override string Name => "object";
+//    public override IReadOnlyList<PyTypeObject> Bases => [];
+
+//    public PyObjectType()
+//    {
+//        AppendSpecialMethodsAsDescriptorsDirectly<PyObject>(
+//            nameof(ReprImpl), nameof(StrImpl), nameof(BoolImpl), nameof(HashImpl),
+//            nameof(EqImpl), nameof(NeImpl), nameof(LtImpl), nameof(LeImpl), nameof(GtImpl), nameof(GeImpl),
+//            nameof(GetAttributeImpl), nameof(SetAttrImpl), nameof(DelAttrImpl),
+//            nameof(InitImpl)
+//        );
+//    }
+
+//    protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+//    {
+//        if (args.Count is not 0 || kwargs.Count is not 0)
+//            return PyVirtualMachine.RaiseTypeError("object.__new__() takes exactly one argument (the type to instantiate)");
+
+//        return new PyObject();
+//    }
+//}
+
+public sealed class PyObjectType : PyTypeObject<PyObjectType, PyObject>
 {
     public override string Name => "object";
     public override IReadOnlyList<PyTypeObject> Bases => [];
 
     public PyObjectType()
-    {
-        AppendSpecialMethodsAsDescriptorsDirectly<PyObject>(
-            nameof(ReprImpl), nameof(StrImpl), nameof(BoolImpl), nameof(HashImpl),
-            nameof(EqImpl), nameof(NeImpl), nameof(LtImpl), nameof(LeImpl), nameof(GtImpl), nameof(GeImpl),
-            nameof(GetAttributeImpl), nameof(SetAttrImpl), nameof(DelAttrImpl),
-            nameof(InitImpl)
-        );
-    }
-
-    protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
-    {
-        if (args.Count is not 0 || kwargs.Count is not 0)
-            return PyVirtualMachine.RaiseTypeError("object.__new__() takes exactly one argument (the type to instantiate)");
-
-        return new PyObject();
-    }
-}
-
-public sealed class PyObjectType2 : PyTypeObject<PyObjectType2, PyObject>
-{
-    public override string Name => "object";
-    public override IReadOnlyList<PyTypeObject> Bases => [];
-
-    public PyObjectType2()
     {
         AppendSpecialMethodDescriptors2(nameof(Repr), nameof(Str), nameof(Bool), nameof(Hash),
             nameof(Eq), nameof(Ne), nameof(Lt), nameof(Le), nameof(Gt), nameof(Ge),

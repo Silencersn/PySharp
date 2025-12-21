@@ -26,7 +26,7 @@ partial class PyTypeObject<TObject>
 
     protected internal virtual PyResult Str(PyCallContext context, TObject self)
     {
-        return Repr(context, self);
+        return self.PyType.Repr(context, self);
     }
 
     protected internal virtual PyResult Hash(PyCallContext context, TObject self)
@@ -68,7 +68,7 @@ partial class PyTypeObject<TObject>
     protected internal virtual PyResult Int(PyCallContext context, TObject self)
     {
         // TOOD: is this implementation correct?
-        var index = Index(context, self);
+        var index = self.PyType.Index(context, self);
         if (index.IsError)
             return index;
 
@@ -80,7 +80,7 @@ partial class PyTypeObject<TObject>
     protected internal virtual PyResult Float(PyCallContext context, TObject self)
     {
         // TOOD: is this implementation correct?
-        var index = Index(context, self);
+        var index = self.PyType.Index(context, self);
         if (index.IsError)
             return index;
 
@@ -92,7 +92,7 @@ partial class PyTypeObject<TObject>
     protected internal virtual PyResult Complex(PyCallContext context, TObject self)
     {
         // TOOD: is this implementation correct?
-        var index = Index(context, self);
+        var index = self.PyType.Index(context, self);
         if (index.IsError)
             return index;
 
@@ -328,7 +328,7 @@ partial class PyTypeObject<TObject>
     protected internal virtual PyResult Format(PyCallContext context, TObject self, string formatSpec)
     {
         if (formatSpec.Length is 0)
-            return Str(context, self);
+            return self.PyType.Str(context, self);
 
         return PyResult.RaiseTypeError($"unsupported format string passed to {Name}.__format__");
     }

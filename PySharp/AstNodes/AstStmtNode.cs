@@ -926,7 +926,7 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
             return typeObj;
         }).ToList();
         if (bases.Count is 0)
-            bases.Add(PyObjectType2.Shared);
+            bases.Add(PyObjectType.Shared);
 
         PyTypeObject.ValidateBases(bases, out var layoutType);
         var type = UserDefinedType.Create(layoutType, Name, ((IFunctionOrClass)this).QualifiedName, bases);
