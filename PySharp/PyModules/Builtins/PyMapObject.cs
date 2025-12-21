@@ -7,9 +7,9 @@ namespace PySharp.PyModules.Builtins;
 
 public sealed class PyMapObject : PyObject
 {
-    private readonly PyObject _function;
-    private readonly IEnumerator<PyObject?>[] _iters;
-    private readonly bool _strict;
+    internal readonly PyObject _function;
+    internal readonly IEnumerator<PyObject?>[] _iters;
+    internal readonly bool _strict;
 
     public PyMapObject(PyObject function, IEnumerator<PyObject?>[] iters, bool strict)
     {
@@ -17,41 +17,9 @@ public sealed class PyMapObject : PyObject
         _iters = iters;
         _strict = strict;
     }
-
-    protected internal override PyObject? IterImpl()
-    {
-        return this;
-    }
-
-    protected internal override PyObject? NextImpl()
-    {
-        List<PyObject> args = [];
-        foreach (var iter in _iters)
-        {
-            if (!iter.MoveNext())
-                break;
-
-            var arg = iter.Current;
-            if (arg is null)
-                return null;
-
-            args.Add(arg);
-        }
-
-        if (args.Count != _iters.Length)
-        {
-            if (_strict)
-                return PyVirtualMachine.RaiseValueError(null);
-
-            return PyVirtualMachine.RaiseStopIteration();
-        }
-
-        return _function.Call(args, FrozenDictionary<string, PyObject>.Empty);
-    }
 }
 
-
-public sealed class PyMapObjectType : PyPrimitiveTypeObject<PyMapObjectType, PyMapObject>
+public sealed class PyMapObjectType : PyTypeObject<PyMapObjectType, PyMapObject>
 {
     public override string Name => "map";
 
@@ -77,8 +45,41 @@ public sealed class PyMapObjectType : PyPrimitiveTypeObject<PyMapObjectType, PyM
         return new PyMapObject(function, [.. iters], strict);
     }
 
-    protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        return _new.Call(args, kwargs);
+        var obj = _new.Call(args, kwargs);
+        if (obj is null)
+            return PyResult.CaptureExceptionFromPVM();
+        obj._pyType = cls;
+        return obj;
+    }
+
+    protected internal override PyResult Iter(PyCallContext context, PyMapObject self)
+    {
+        return self;
+    }
+
+    protected internal override PyResult Next(PyCallContext context, PyMapObject self)
+    {
+        List<PyObject> args = [];
+        foreach (var iter in self._iters)
+        {
+            if (!iter.MoveNext())
+                break;
+            var arg = iter.Current;
+            if (arg is null)
+                return PyResult.CaptureExceptionFromPVM();
+            args.Add(arg);
+        }
+        if (args.Count != self._iters.Length)
+        {
+            if (self._strict)
+                return PyResult.RaiseValueError(null);
+            return PyResult.RaiseStopIteration();
+        }
+        var result = self._function.Call(args, FrozenDictionary<string, PyObject>.Empty);
+        if (result is null)
+            return PyResult.CaptureExceptionFromPVM();
+        return result;
     }
 }
