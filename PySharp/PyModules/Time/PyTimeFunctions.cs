@@ -6,10 +6,10 @@ namespace PySharp.PyModules.Time;
 
 public static class PyTimeFunctions
 {
-    public static readonly PyBuiltinFunctionOrMethodObject Time = new("time", TimeImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject2 Time = new("time", TimeImpl);
 
     [PyFunctionArgsDef()]
-    private static PyFloatObject TimeImpl(PyArguments arguments)
+    private static PyResult TimeImpl(PyCallContext context, PyArguments arguments)
     {
         var span = DateTime.UtcNow - DateTime.UnixEpoch;
         var seconds = span.TotalSeconds;
