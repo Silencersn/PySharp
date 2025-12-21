@@ -272,6 +272,7 @@ public sealed class PyMethodDescriptorObject2 : PyObject
     internal readonly string _name;
     internal readonly MethodInfo? _method;
     internal readonly PySpecialMethodParametersType _paramType;
+    internal readonly MethodInfo/*PyMethod<TObject>*/[]? _methods;
 
     internal PyBuiltinFunctionOrMethodObject2 UnboundMethod
     {
@@ -279,6 +280,9 @@ public sealed class PyMethodDescriptorObject2 : PyObject
         {
             if (field is null)
             {
+                if (_methods is not null)
+                    return field = new PyBuiltinFunctionOrMethodObject2(_name, _declaringType, _methods);
+
                 Debug.Assert(_method is not null);
                 Debug.Assert(_paramType is not PySpecialMethodParametersType.Unknown);
                 return field = new PyBuiltinFunctionOrMethodObject2(_name, ToPyDelegate(_declaringType, _method, _paramType));
@@ -298,6 +302,12 @@ public sealed class PyMethodDescriptorObject2 : PyObject
     }
     internal PyMethodDescriptorObject2(string name, Delegate typeDelegate, PySpecialMethodParametersType paramType) : this(name, (PyTypeObject)typeDelegate.Target!, typeDelegate.Method, paramType)
     {
+    }
+    internal PyMethodDescriptorObject2(string name, PyTypeObject type, params MethodInfo/*PyMethod<TObject>*/[] methods)
+    {
+        _declaringType = type;
+        _name = name;
+        _methods = methods;
     }
 
     internal static PyFunction ToPyDelegate(PyTypeObject type, MethodInfo method, PySpecialMethodParametersType paramType)
@@ -357,6 +367,9 @@ public sealed class PyMethodDescriptorObjectType2 : PyTypeObject<PyMethodDescrip
 
         if (!self._declaringType.IsInstance(instance))
             return PyResult.RaiseTypeError($"descriptor '{self._name}' requires a '{self._declaringType.Name}' object but received a '{instance.PyType.Name}'");
+
+        if (self._methods is not null)
+            return new PyBuiltinFunctionOrMethodObject2(self._name, instance, instance.PyType, self._methods);
 
         Debug.Assert(self._method is not null);
         Debug.Assert(self._paramType is not PySpecialMethodParametersType.Unknown);

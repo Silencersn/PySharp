@@ -15,13 +15,13 @@ public abstract partial class PyTypeObject<TObject> : PyTypeObject where TObject
 
     public PyTypeObject()
     {
-        AppendOverridenMethodDescriptors();
+        AppendOverridenSpecialMethodDescriptors2();
     }
 
     public PyTypeObject(string name, IReadOnlyList<PyTypeObject> bases, bool appendOverridenMethods) : base(name, bases)
     {
         if (appendOverridenMethods)
-            AppendOverridenMethodDescriptors();
+            AppendOverridenSpecialMethodDescriptors2();
     }
 
     protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)

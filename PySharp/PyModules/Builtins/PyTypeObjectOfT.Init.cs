@@ -1,4 +1,5 @@
 ﻿using PySharp.PyRuntime;
+using PySharp.PyRuntime.Calls;
 using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
@@ -11,6 +12,11 @@ namespace PySharp.PyModules.Builtins;
 
 partial class PyTypeObject<TObject>
 {
+    internal void AppendMethodDescriptor(string name, params IEnumerable<PyMethod<TObject>> methods)
+    {
+        PyAttributes.Add(name, new PyMethodDescriptorObject2(name, this, [.. methods.Select(method => method.Method)]));
+    }
+
     private static readonly FrozenDictionary<string, (string PyName, PySpecialMethodParametersType ParamType)> _nameToPySpecialMethodParametersType =
         new Dictionary<string, (string, PySpecialMethodParametersType)>
         {
@@ -79,7 +85,7 @@ partial class PyTypeObject<TObject>
             [nameof(Format)] = (PySpecialNames.Format, PySpecialMethodParametersType.String),
         }.ToFrozenDictionary();
 
-    internal void AppendMethodDescriptors(params ReadOnlySpan<string> names)
+    internal void AppendSpecialMethodDescriptors2(params ReadOnlySpan<string> names)
     {
         var type = GetType();
         //foreach (var (name, (pyName, paramType)) in _nameToPySpecialMethodParametersType)
@@ -98,7 +104,7 @@ partial class PyTypeObject<TObject>
         }
     }
 
-    private void AppendOverridenMethodDescriptors()
+    private void AppendOverridenSpecialMethodDescriptors2()
     {
         var type = GetType();
         foreach (var (name, (pyName, paramType)) in _nameToPySpecialMethodParametersType)

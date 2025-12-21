@@ -287,7 +287,7 @@ public sealed class PyObjectType2 : PyTypeObject<PyObjectType2, PyObject>
 
     public PyObjectType2()
     {
-        AppendMethodDescriptors(nameof(Repr), nameof(Str), nameof(Bool), nameof(Hash),
+        AppendSpecialMethodDescriptors2(nameof(Repr), nameof(Str), nameof(Bool), nameof(Hash),
             nameof(Eq), nameof(Ne), nameof(Lt), nameof(Le), nameof(Gt), nameof(Ge),
             nameof(GetAttribute), nameof(SetAttr), nameof(DelAttr),
             nameof(Init));

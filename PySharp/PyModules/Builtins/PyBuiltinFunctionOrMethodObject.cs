@@ -1,6 +1,7 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.PyAttributes;
+using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
@@ -148,7 +149,7 @@ public class PyBuiltinFunctionOrMethodObject2 : PyObject, IPyObjectName
         Self = null;
         PyDelegate = (context, args, kwargs) =>
         {
-            EnsureDefCache(funcs);
+            EnsureDefCache(funcs.Select(static func => func.Method));
             foreach (var func in funcs)
             {
                 if (_defCache[func.Method].TryParse(args, kwargs, out var result))
@@ -167,11 +168,55 @@ public class PyBuiltinFunctionOrMethodObject2 : PyObject, IPyObjectName
         IsMethod = true;
         PyDelegate = (context, args, kwargs) =>
         {
-            EnsureDefCache(funcs);
+            EnsureDefCache(funcs.Select(static func => func.Method));
             foreach (var func in funcs)
             {
                 if (_defCache[func.Method].TryParse(args, kwargs, out var result))
                     return func.Invoke(context, result);
+            }
+
+            return PyResult.RaiseTypeError(null);
+        };
+        PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
+        PyAttributes.Add(PySpecialNames.Self, Self);
+    }
+    internal PyBuiltinFunctionOrMethodObject2(string name, PyTypeObject type, params MethodInfo/*PyMethod<TObject>*/[] methods)
+    {
+        Name = name;
+        IsMethod = false;
+        PyDelegate = (context, args, kwargs) =>
+        {
+            if (args.Count is 0 || !type.IsInstance(args[0]))
+                return PyResult.RaiseTypeError(null);
+
+            EnsureDefCache(methods);
+
+            var self = args[0];
+            args = [.. args.Skip(1)];
+            foreach (var method in methods)
+            {
+                if (_defCache[method].TryParse(args, kwargs, out var result))
+                    return (PyResult)method.Invoke(method.IsStatic ? null : type, [context, self, result])!;
+            }
+
+            return PyResult.RaiseTypeError(null);
+        };
+        PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
+    }
+    internal PyBuiltinFunctionOrMethodObject2(string name, PyObject self, PyTypeObject type, MethodInfo/*PyMethod<TObject>*/[] methods)
+    {
+        Self = self;
+        SelfType = type;
+        Name = name;
+        IsMethod = true;
+        PyDelegate = (context, args, kwargs) =>
+        {
+            EnsureDefCache(methods);
+
+            foreach (var method in methods)
+            {
+                if (_defCache[method].TryParse(args, kwargs, out var result))
+                    return (PyResult)method.Invoke(method.IsStatic ? null : type, [context, self, result])!;
             }
 
             return PyResult.RaiseTypeError(null);
@@ -191,27 +236,28 @@ public class PyBuiltinFunctionOrMethodObject2 : PyObject, IPyObjectName
 
 
     [MemberNotNull(nameof(_defCache))]
-    private void EnsureDefCache(PyFunction[] funcs)
+    private void EnsureDefCache(IEnumerable<MethodInfo> methodInfos)
     {
         if (_defCache is null)
         {
-            lock (funcs)
+            lock (this)
             {
                 if (_defCache is null)
                 {
                     var cache = new Dictionary<MethodInfo, PyArgsDef>();
-                    foreach (var func in funcs)
+                    foreach (var methInfo in methodInfos)
                     {
-                        var argsDef = func.Method.GetCustomAttribute<PyFunctionArgsDefAttribute>();
+                        var argsDef = methInfo.GetCustomAttribute<PyFunctionArgsDefAttribute>();
                         Debug.Assert(argsDef is not null);
                         var def = PyArgsDef.FromDef(argsDef.Parameters);
-                        cache[func.Method] = def;
+                        cache[methInfo] = def;
                     }
                     _defCache = cache;
                 }
             }
         }
     }
+
 }
 
 public sealed class PyBuiltinFunctionOrMethodObjectType2 : PyTypeObject<PyBuiltinFunctionOrMethodObjectType2, PyBuiltinFunctionOrMethodObject2>
