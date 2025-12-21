@@ -25,44 +25,44 @@ public sealed class PyPropertyObject : PyObject, IPyDescriptor
         _fdel = fdel;
         _doc = doc;
     }
-
-    [PyFunctionArgsDef("fget")]
-    internal PyPropertyObject GetterImpl(PyArguments arguments)
-    {
-        _fget = arguments[0];
-        return this;
-    }
-
-    [PyFunctionArgsDef("fset")]
-    internal PyPropertyObject SetterImpl(PyArguments arguments)
-    {
-        _fset = arguments[0];
-        return this;
-    }
-
-    [PyFunctionArgsDef("deleter")]
-    internal PyPropertyObject DeleterImpl(PyArguments arguments)
-    {
-        _fdel = arguments[0];
-        return this;
-    }
 }
 
 public sealed class PyPropertyObjectType : PyTypeObject<PyPropertyObjectType, PyPropertyObject>
 {
     public override string Name => "property";
 
-    private static readonly PyBuiltinFunctionOrMethodObject _new = new(PySpecialNames.New, NewImpl);
+    private static readonly PyBuiltinFunctionOrMethodObject2 _new = new(PySpecialNames.New, NewImpl);
 
     public PyPropertyObjectType()
     {
-        AppendMethodDescriptor<PyPropertyObject>("getter", nameof(PyPropertyObject.GetterImpl));
-        AppendMethodDescriptor<PyPropertyObject>("setter", nameof(PyPropertyObject.SetterImpl));
-        AppendMethodDescriptor<PyPropertyObject>("deleter", nameof(PyPropertyObject.DeleterImpl));
+        AppendMethodDescriptor("getter", Getter);
+        AppendMethodDescriptor("setter", Setter);
+        AppendMethodDescriptor("deleter", Deleter);
+    }
+
+    [PyFunctionArgsDef("fget")]
+    internal PyResult Getter(PyCallContext context, PyPropertyObject self, PyArguments arguments)
+    {
+        self._fget = arguments[0];
+        return self;
+    }
+
+    [PyFunctionArgsDef("fset")]
+    internal PyResult Setter(PyCallContext context, PyPropertyObject self, PyArguments arguments)
+    {
+        self._fset = arguments[0];
+        return self;
+    }
+
+    [PyFunctionArgsDef("deleter")]
+    internal PyResult Deleter(PyCallContext context, PyPropertyObject self, PyArguments arguments)
+    {
+        self._fdel = arguments[0];
+        return self;
     }
 
     [PyFunctionArgsDef("fget=None", "fset=None", "fdel=None", "doc=None")]
-    private static PyPropertyObject NewImpl(PyArguments arguments)
+    private static PyResult NewImpl(PyCallContext context, PyArguments arguments)
     {
         return new PyPropertyObject(arguments[0], arguments[1], arguments[2], arguments[3]);
     }
@@ -71,34 +71,21 @@ public sealed class PyPropertyObjectType : PyTypeObject<PyPropertyObjectType, Py
     {
         if (instance is PyNoneObject)
             return self;
-        var result = self._fget.Call([instance], FrozenDictionary<string, PyObject>.Empty);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return self._fget.Call(context, [instance], FrozenDictionary<string, PyObject>.Empty);
     }
 
     protected internal override PyResult Set(PyCallContext context, PyPropertyObject self, PyObject instance, PyObject value)
     {
-        var result = self._fset.Call([instance, value], FrozenDictionary<string, PyObject>.Empty);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return self._fset.Call(context, [instance, value], FrozenDictionary<string, PyObject>.Empty);
     }
 
     protected internal override PyResult Delete(PyCallContext context, PyPropertyObject self, PyObject instance)
     {
-        var result = self._fdel.Call([instance], FrozenDictionary<string, PyObject>.Empty);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return self._fdel.Call(context, [instance], FrozenDictionary<string, PyObject>.Empty);
     }
 
     protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        var obj = _new.Call(args, kwargs);
-        if (obj is null)
-            return PyResult.CaptureExceptionFromPVM();
-        obj._pyType = cls;
-        return obj;
+        return _new.Call(context, args, kwargs);
     }
 }
