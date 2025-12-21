@@ -154,12 +154,6 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
         AppendSpecialMethodsAsDescriptors(methodInfos);
     }
 
-    internal void AppendSpecialMethodsAsDescriptorsDirectly<TPyObject>(params string[] names) where TPyObject : PyObject
-    {
-        var methodInfos = NonVirtualCaller.Create<TPyObject>(names);
-        AppendSpecialMethodsAsDescriptors(methodInfos);
-    }
-
     private static readonly FrozenDictionary<string, (string PyName, PySpecialMethodParametersType ParamType)> _nameToPySpecialMethodParametersType =
         new Dictionary<string, (string, PySpecialMethodParametersType)>
         {
@@ -228,27 +222,6 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
             [nameof(FormatImpl)] = (PySpecialNames.Format, PySpecialMethodParametersType.String),
         }.ToFrozenDictionary();
 
-    internal void AppendMethodDescriptor<TPyObject>(string name, params string[] methodNames)
-    {
-        PyAttributes[name] = new PyMethodDescriptorObject(name, this, methodNames.Select(name =>
-        {
-            var method = typeof(TPyObject).GetMethod(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, [typeof(PyArguments)]);
-            Debug.Assert(method is not null);
-            return method;
-        }));
-    }
-    internal void AppendMethodDescriptor(string name, Delegate instanceDelegate, PySpecialMethodParametersType paramType)
-    {
-        PyAttributes[name] = new PyMethodDescriptorObject(name, this, instanceDelegate.Method, paramType);
-    }
-    internal void AppendMethodDescriptor(string name, MethodInfo instanceMethodInfo, PySpecialMethodParametersType paramType)
-    {
-        PyAttributes[name] = new PyMethodDescriptorObject(name, this, instanceMethodInfo, paramType);
-    }
-    internal void AppendMemberDescriptor(string name, Func<PyObject, PyObject, PyObject?> getter, Func<PyObject, PyObject, PyObject?>? setter = null)
-    {
-        PyAttributes[name] = new PyMemberDescriptorObject(getter, setter);
-    }
     internal void AppendMemberDescriptor<TPyObject>(string name, Func<TPyObject, PyObject?> getter, Func<TPyObject, PyObject, PyObject?>? setter = null) where TPyObject : PyObject
     {
         PyAttributes[name] = new PyMemberDescriptorObject(
