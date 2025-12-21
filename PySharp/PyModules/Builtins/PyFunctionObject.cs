@@ -5,7 +5,7 @@ namespace PySharp.PyModules.Builtins;
 
 public sealed class PyFunctionObject : PyObject, IPyObjectName
 {
-    private readonly PyOldUncompoundedFunction _function;
+    internal readonly PyOldUncompoundedFunction _function;
     internal readonly PyCellObject[]? _closure;
     internal PyObject? _pyClosure;
     internal PyFrame.PyFrameGlobals _globals;
@@ -23,27 +23,9 @@ public sealed class PyFunctionObject : PyObject, IPyObjectName
         _closure = closure?.ToArray();
         _globals = globals;
     }
-
-    protected internal override PyObject? ReprImpl()
-    {
-        return PyStrObject.FromString($"<function {Name} at 0x{PyId:X16}>");
-    }
-
-    protected internal override PyObject? CallImpl(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
-    {
-        return _function.Invoke(args, kwargs);
-    }
-
-    protected internal override PyObject? GetImpl(PyObject instance, PyObject owner)
-    {
-        if (instance is PyNoneObject)
-            return this;
-
-        return new PyMethodObject(this, instance);
-    }
 }
 
-public sealed class PyFunctionObjectType : PyPrimitiveTypeObject<PyFunctionObjectType, PyFunctionObject>
+public sealed class PyFunctionObjectType : PyTypeObject<PyFunctionObjectType, PyFunctionObject>
 {
     public override string Name => "function";
 
@@ -53,5 +35,25 @@ public sealed class PyFunctionObjectType : PyPrimitiveTypeObject<PyFunctionObjec
             static func => func._pyClosure ??= func._closure is not null ? PyTupleObject.CreateProxy(func._closure) : PyNoneObject.None);
         AppendMemberDescriptor<PyFunctionObject>(PySpecialNames.Globals,
             static func => func._globals.PyDict);
+    }
+
+    protected internal override PyResult Repr(PyCallContext context, PyFunctionObject self)
+    {
+        return PyStrObject.FromString($"<function {self.Name} at 0x{self.PyId:X16}>");
+    }
+
+    protected internal override PyResult Call(PyCallContext context, PyFunctionObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        var result = self._function.Invoke(args, kwargs);
+        if (result is null)
+            return PyResult.CaptureExceptionFromPVM();
+        return result;
+    }
+
+    protected internal override PyResult Get(PyCallContext context, PyFunctionObject self, PyObject instance, PyObject owner)
+    {
+        if (instance is PyNoneObject)
+            return self;
+        return new PyMethodObject(self, instance);
     }
 }
