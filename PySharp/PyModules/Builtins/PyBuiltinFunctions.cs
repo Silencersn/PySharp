@@ -120,43 +120,6 @@ public static partial class PyBuiltinFunctions
     // _
     public static readonly PyBuiltinFunctionOrMethodObject2 Import = new(PySpecialNames.Import, ImportImpl);
 
-    /*
-     * 
-     * 
-     * OLD PRINT
-    [PyFunctionArgsDef("*objects", "sep=' '", "end='\\n'", "file=None", "flush=False")]
-    private static PyObject? PrintImpl(PyArguments arguments)
-    {
-        var sepObj = arguments.Kwargs["sep"];
-        if (!Utils.TryGetValue(sepObj, (PyStrObject str) => str.Value, "\n", out var sep))
-            return PyVirtualMachine.RaiseTypeError($"end must be None or a string, not {sepObj.PyType.Name}");
-
-        var endObj = arguments.Kwargs["end"];
-        if (!Utils.TryGetValue(endObj, (PyStrObject str) => str.Value, "\n", out var end))
-            return PyVirtualMachine.RaiseTypeError($"end must be None or a string, not {endObj.PyType.Name}");
-
-        if (!PySpecialMethods.TryGetBool(arguments.Kwargs["flush"], out var flushObj))
-            return null;
-
-        for (int i = 0; i < arguments.ExtraArgs.Count; i++)
-        {
-            if (i is not 0)
-                PyVirtualMachine.Out.Write(sep);
-
-            if (PySpecialMethods.TryGetStr(arguments.ExtraArgs[i], out var str))
-                PyVirtualMachine.Out.Write(str.Value);
-            else
-                return null;
-        }
-        PyVirtualMachine.Out.Write(end);
-        if (flushObj.BoolValue)
-            PyVirtualMachine.Out.Flush();
-
-        return PyNoneObject.None;
-    }
-
-     */
-
 
     [PyFunctionArgsDef("*objects", "sep=' '", "end='\\n'", "file=None", "flush=False")]
     private static PyResult PrintImpl(PyCallContext context, PyArguments arguments)
