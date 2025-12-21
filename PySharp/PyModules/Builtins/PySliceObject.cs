@@ -17,14 +17,13 @@ public class PySliceObject : PyObject
         ArgumentNullException.ThrowIfNull(start);
         ArgumentNullException.ThrowIfNull(stop);
         ArgumentNullException.ThrowIfNull(step);
-
         Start = start;
         Stop = stop;
         Step = step;
     }
 }
 
-public sealed class PySliceObjectType : PyPrimitiveTypeObject<PySliceObjectType, PySliceObject>
+public sealed class PySliceObjectType : PyTypeObject<PySliceObjectType, PySliceObject>
 {
     public override string Name => "slice";
 
@@ -49,9 +48,12 @@ public sealed class PySliceObjectType : PyPrimitiveTypeObject<PySliceObjectType,
         return new PySliceObject(arguments[0], arguments[1], arguments[2]);
     }
 
-    protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        return _new.Call(args, kwargs);
+        var obj = _new.Call(args, kwargs);
+        if (obj is null)
+            return PyResult.CaptureExceptionFromPVM();
+        obj._pyType = cls;
+        return obj;
     }
-
 }
