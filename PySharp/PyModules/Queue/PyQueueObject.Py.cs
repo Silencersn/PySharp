@@ -103,6 +103,9 @@ partial class PyQueueObject
     private readonly Lock _sourceLock = new();
     public void PyJoin()
     {
+        if (_unfinished_tasks is 0)
+            return;
+
         TaskCompletionSource source;
 
         // prevent TaskDone between creating and waiting
