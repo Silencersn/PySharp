@@ -1,40 +1,39 @@
 ﻿using PySharp.PyRuntime;
+using PySharp.PyRuntime.Calls;
 
 namespace PySharp.PyModules.Builtins;
 
 public class PyListIteratorObject : PyObject
 {
-    private readonly PyListObject _list;
-    private int _index;
+    internal readonly PyListObject _list;
+    internal int _index;
 
     public override PyTypeObject DefaultPyType => PyListIteratorObjectType.Shared;
 
     public PyListIteratorObject(PyListObject pyListObject)
     {
         ArgumentNullException.ThrowIfNull(pyListObject);
-
         _list = pyListObject;
         _index = -1;
     }
-
-    protected internal override PyObject? IterImpl()
-    {
-        return this;
-    }
-
-    protected internal override PyObject? NextImpl()
-    {
-        if (_index is -2 || ++_index >= _list._list.Count)
-        {
-            _index = -2;
-            return PyVirtualMachine.RaiseStopIteration();
-        }
-
-        return _list._list[_index];
-    }
 }
 
-public sealed class PyListIteratorObjectType : PyPrimitiveTypeObject<PyListIteratorObjectType, PyListIteratorObject>
+public sealed class PyListIteratorObjectType : PyTypeObject<PyListIteratorObjectType, PyListIteratorObject>
 {
     public override string Name => "list_iterator";
+
+    protected internal override PyResult Iter(PyCallContext context, PyListIteratorObject self)
+    {
+        return self;
+    }
+
+    protected internal override PyResult Next(PyCallContext context, PyListIteratorObject self)
+    {
+        if (self._index is -2 || ++self._index >= self._list._list.Count)
+        {
+            self._index = -2;
+            return PyResult.RaiseStopIteration();
+        }
+        return self._list._list[self._index];
+    }
 }
