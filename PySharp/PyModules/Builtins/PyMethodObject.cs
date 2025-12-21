@@ -1,4 +1,6 @@
-﻿namespace PySharp.PyModules.Builtins;
+﻿using PySharp.PyRuntime.Calls;
+
+namespace PySharp.PyModules.Builtins;
 
 public sealed class PyMethodObject : PyObject
 {
@@ -12,19 +14,9 @@ public sealed class PyMethodObject : PyObject
         _functionObj = functionObj;
         _target = target;
     }
-
-    protected internal override PyObject? CallImpl(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
-    {
-        return _functionObj.Call([_target, .. args], kwargs);
-    }
-
-    protected internal override PyObject? GetAttrImpl(string item)
-    {
-        return _functionObj.GetAttribute(item);
-    }
 }
 
-public sealed class PyMethodObjectType : PyPrimitiveTypeObject<PyMethodObjectType, PyMethodObject>
+public sealed class PyMethodObjectType : PyTypeObject<PyMethodObjectType, PyMethodObject>
 {
     public override string Name => "method";
 
@@ -32,5 +24,18 @@ public sealed class PyMethodObjectType : PyPrimitiveTypeObject<PyMethodObjectTyp
     {
         AppendMemberDescriptor<PyMethodObject>("__func__", method => method._functionObj);
         AppendMemberDescriptor<PyMethodObject>("__self__", method => method._target);
+    }
+
+    protected internal override PyResult Call(PyCallContext context, PyMethodObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        return self._functionObj.Call([self._target, .. args], kwargs) ?? PyResult.CaptureExceptionFromPVM();
+    }
+
+    protected internal override PyResult GetAttr(PyCallContext context, PyMethodObject self, string item)
+    {
+        var result = self._functionObj.GetAttribute(item);
+        if (result is null)
+            return PyResult.CaptureExceptionFromPVM();
+        return result;
     }
 }
