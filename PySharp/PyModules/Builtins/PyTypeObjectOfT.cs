@@ -26,7 +26,6 @@ public abstract partial class PyTypeObject<TObject> : PyTypeObject where TObject
             .Single(method => method.Name == "New" && method.GetBaseDefinition().DeclaringType == typeof(PyTypeObject));
         if (newMethod.DeclaringType != typeof(PyTypeObject<TObject>))
         {
-            Console.WriteLine(GetType());
             var method = new PyBuiltinFunctionOrMethodObject2(PySpecialNames.New, this, null! /* TODO */, [PyFunctionArgsDef("cls", "*args", "**kwargs")] (context, arguments) =>
             {
                 if (arguments[0] is not PyTypeObject cls)
