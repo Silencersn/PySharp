@@ -15,7 +15,7 @@ public class PySetObject : PyObject, IPyObjectRecursiveRepr
 
     protected internal override PyBoolObject BoolImpl()
     {
-        return _set.Count > 0;
+        return PyBoolObject.FromBoolean(_set.Count > 0);
     }
 
     protected internal override PyObject? ReprImpl()
