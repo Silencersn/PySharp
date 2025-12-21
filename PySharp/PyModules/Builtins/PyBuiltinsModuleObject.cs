@@ -37,7 +37,7 @@ public class PyBuiltinsModuleObject : PyModuleObject
 
         AddObjToAttrs(PyObjectType.Shared); // object
         AddObjToAttrs(PyStrObjectType.Shared); // str
-        AddObjToAttrs(PyIntObjectType2.Shared); // int
+        AddObjToAttrs(PyIntObjectType.Shared); // int
         AddObjToAttrs(PyFloatObjectType.Shared); // float
         AddObjToAttrs(PyTupleObjectType.Shared); // tuple
         AddObjToAttrs(PyDictObjectType.Shared); // dict

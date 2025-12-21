@@ -14,13 +14,13 @@ public class PyBuiltinFunctionOrMethodObject : PyObject, IPyObjectName
     public string Name { get; }
     [MemberNotNullWhen(true, nameof(SelfType))]
     public bool IsMethod { get; }
-    public PyUncompoundedFunction Function { get; }
+    public PyOldUncompoundedFunction Function { get; }
     public PyObject? Self { get; }
     public PyTypeObject? SelfType { get; }
 
     public override PyTypeObject DefaultPyType => PyBuiltinFunctionOrMethodObjectType.Shared;
 
-    internal PyBuiltinFunctionOrMethodObject(string name, params PyFunction[] funcs)
+    internal PyBuiltinFunctionOrMethodObject(string name, params PyOldFunction[] funcs)
     {
         Name = name;
         IsMethod = false;
@@ -38,7 +38,7 @@ public class PyBuiltinFunctionOrMethodObject : PyObject, IPyObjectName
         };
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
     }
-    internal PyBuiltinFunctionOrMethodObject(string name, PyObject self, PyTypeObject type, params PyFunction[] funcs)
+    internal PyBuiltinFunctionOrMethodObject(string name, PyObject self, PyTypeObject type, params PyOldFunction[] funcs)
     {
         Self = self;
         SelfType = type;
@@ -59,7 +59,7 @@ public class PyBuiltinFunctionOrMethodObject : PyObject, IPyObjectName
         PyAttributes.Add(PySpecialNames.Self, Self);
     }
 
-    internal PyBuiltinFunctionOrMethodObject(string name, PyUncompoundedFunction func)
+    internal PyBuiltinFunctionOrMethodObject(string name, PyOldUncompoundedFunction func)
     {
         Name = name;
         Function = func;
@@ -77,7 +77,7 @@ public class PyBuiltinFunctionOrMethodObject : PyObject, IPyObjectName
     }
 
     [MemberNotNull(nameof(_defCache))]
-    private void EnsureDefCache(PyFunction[] funcs)
+    private void EnsureDefCache(PyOldFunction[] funcs)
     {
         if (_defCache is null)
         {
@@ -141,7 +141,7 @@ public class PyBuiltinFunctionOrMethodObject2 : PyObject, IPyObjectName
 
     public override PyTypeObject DefaultPyType => PyBuiltinFunctionOrMethodObjectType2.Shared;
 
-    internal PyBuiltinFunctionOrMethodObject2(string name, params PyDelegate[] funcs)
+    internal PyBuiltinFunctionOrMethodObject2(string name, params PyFunction[] funcs)
     {
         Name = name;
         IsMethod = false;
@@ -159,7 +159,7 @@ public class PyBuiltinFunctionOrMethodObject2 : PyObject, IPyObjectName
         };
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
     }
-    internal PyBuiltinFunctionOrMethodObject2(string name, PyObject self, PyTypeObject type, params PyDelegate[] funcs)
+    internal PyBuiltinFunctionOrMethodObject2(string name, PyObject self, PyTypeObject type, params PyFunction[] funcs)
     {
         Self = self;
         SelfType = type;
@@ -191,7 +191,7 @@ public class PyBuiltinFunctionOrMethodObject2 : PyObject, IPyObjectName
 
 
     [MemberNotNull(nameof(_defCache))]
-    private void EnsureDefCache(PyDelegate[] funcs)
+    private void EnsureDefCache(PyFunction[] funcs)
     {
         if (_defCache is null)
         {

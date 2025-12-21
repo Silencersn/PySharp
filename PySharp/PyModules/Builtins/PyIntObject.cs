@@ -38,7 +38,7 @@ public class PyIntObject : PyObject
         MinusOne = _negatives[1];
     }
 
-    public override PyTypeObject DefaultPyType => PyIntObjectType2.Shared;
+    public override PyTypeObject DefaultPyType => PyIntObjectType.Shared;
 
     public BigInteger Value { get; internal set; }
     public int Int32Value => (int)Value;
@@ -81,268 +81,49 @@ public class PyIntObject : PyObject
     }
 }
 
-public sealed class PyIntObjectType : PyPrimitiveTypeObject<PyIntObjectType, PyIntObject>
+public class PyIntObjectType : PyTypeObject<PyIntObjectType, PyIntObject>
 {
     public override string Name => "int";
 
-    private static readonly PyBuiltinFunctionOrMethodObject _new = new(PySpecialNames.New, NewImpl_1, NewImpl_2);
+    private static readonly PyBuiltinFunctionOrMethodObject2 _new = new(PySpecialNames.New, NewImpl_1, NewImpl_2);
 
     [PyFunctionArgsDef("number=0", "/")]
-    private static PyObject? NewImpl_1(PyArguments arguments)
+    private static PyResult NewImpl_1(PyCallContext context, PyArguments arguments)
     {
         if (arguments.Args[0] is PyStrObject str)
         {
             if (!TryParse(str.Value, 10, out var result))
-                return PyVirtualMachine.RaiseValueError($"invalid literal for int() with base 10: '{str.Value}'");
+                return PyResult.RaiseValueError($"invalid literal for int() with base 10: '{str.Value}'");
 
             return PyIntObject.FromInteger(result);
         }
 
-        return PySpecialMethods.GetInt(arguments.Args[0]);
+        // TODO: __int__? __index__?
+        if (!PyInteropService.TryGetIndex(arguments[0], out BigInteger value))
+            return PyResult.CaptureExceptionFromPVM();
+
+        return PyIntObject.FromInteger(value);
     }
     [PyFunctionArgsDef("string", "/", "base=10")]
-    private static PyObject? NewImpl_2(PyArguments arguments)
+    private static PyResult NewImpl_2(PyCallContext context, PyArguments arguments)
     {
         if (arguments.Args[1] is not PyIntObject)
-            return PyVirtualMachine.RaiseTypeError($"'{arguments.Args[1].PyType.Name}' object cannot be interpreted as an integer");
+            return PyResult.RaiseTypeError($"'{arguments.Args[1].PyType.Name}' object cannot be interpreted as an integer");
 
         var numBase = (PyIntObject)arguments.Args[1];
 
         if (!((numBase.Value >= 2 && numBase.Value <= 36) || numBase.Value.IsZero))
-            return PyVirtualMachine.RaiseValueError("int() base must be >= 2 and <= 36, or 0");
+            return PyResult.RaiseValueError("int() base must be >= 2 and <= 36, or 0");
 
         if (arguments.Args[0] is PyStrObject str)
         {
             if (!TryParse(str.Value, numBase.Int32Value, out var result))
-                return PyVirtualMachine.RaiseValueError($"invalid literal for int() with base {numBase.Value}: '{str.Value}'");
+                return PyResult.RaiseValueError($"invalid literal for int() with base {numBase.Value}: '{str.Value}'");
 
             return PyIntObject.FromInteger(result);
         }
 
-        return PyVirtualMachine.RaiseTypeError("int() can't convert non-string with explicit base");
-
-    }
-
-    protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
-    {
-        var obj = _new.Call(args, kwargs);
-        if (obj is null)
-            return null;
-
-        Debug.Assert(obj is PyIntObject);
-        var value = ((PyIntObject)obj).Value;
-        if (cls != this && value > -PyIntObject.NegativePoolSize && value < PyIntObject.PositivesPoolSize)
-            return PyIntObject.FromIntegerNoCache(value);
-        return obj;
-    }
-
-    internal static bool TryParse(ReadOnlySpan<char> s, int numBase, out BigInteger result)
-    {
-        result = default;
-
-        s = s.Trim();
-        if (s.IsEmpty)
-            return false;
-
-        bool negative = false;
-        if (s[0] is '+' or '-')
-        {
-            negative = s[0] is '-';
-            s = s[1..];
-        }
-        if (s.IsEmpty)
-            return false;
-
-        if (!char.IsAsciiDigit(s[0]))
-            return false;
-
-        if (numBase is 0)
-        {
-            if (s.StartsWith("0x") || s.StartsWith("0X"))
-                numBase = 16;
-            else if (s.StartsWith("0b") || s.StartsWith("0B"))
-                numBase = 2;
-            else if (s.StartsWith("0o") || s.StartsWith("0O"))
-                numBase = 8;
-            else
-                numBase = 10;
-
-            if (numBase is not 10)
-            {
-                s = s[2..];
-                if (!ValidateAfterRemovingPrefix(s))
-                    return false;
-            }
-        }
-        else if (numBase is 16)
-        {
-            if (s.StartsWith("0x") || s.StartsWith("0X"))
-            {
-                s = s[2..];
-                if (!ValidateAfterRemovingPrefix(s))
-                    return false;
-            }
-        }
-        else if (numBase is 2)
-        {
-            if (s.StartsWith("0b") || s.StartsWith("0B"))
-            {
-                s = s[2..];
-                if (!ValidateAfterRemovingPrefix(s))
-                    return false;
-            }
-        }
-        else if (numBase is 8)
-        {
-            if (s.StartsWith("0o") || s.StartsWith("0O"))
-            {
-                s = s[2..];
-                if (!ValidateAfterRemovingPrefix(s))
-                    return false;
-            }
-        }
-
-        bool containsUnderline = s.Contains('_');
-        if (containsUnderline)
-        {
-            if (s[^1] is '_')
-                return false;
-
-            if (s.Contains("__", StringComparison.Ordinal))
-                return false;
-        }
-
-        if (numBase is 10 && !containsUnderline)
-        {
-            if (!TryParseBase10(s, out result))
-                return false;
-        }
-        else
-        {
-            if (!TryParseBaseN(s, numBase, out result))
-                return false;
-        }
-
-        result = negative ? -result : result;
-        return true;
-
-        static bool ValidateAfterRemovingPrefix(ReadOnlySpan<char> s)
-        {
-            if (s.IsEmpty)
-                return false;
-
-            if (s[0] is '_')
-            {
-                s = s[1..];
-                if (s.IsEmpty)
-                    return false;
-
-                if (s[0] is '_')
-                    return false;
-            }
-
-            return true;
-        }
-    }
-
-    private static bool TryParseBase10(ReadOnlySpan<char> s, out BigInteger result)
-    {
-        return BigInteger.TryParse(s, NumberStyles.None, provider: null, out result);
-    }
-
-    private static bool TryParseBaseN(ReadOnlySpan<char> s, int numBase, out BigInteger result)
-    {
-        result = 0;
-        foreach (var c in s)
-        {
-            if (c is '_')
-                continue;
-
-            if (!TryConvertHexCharToInt(c, out var value))
-                return false;
-
-            if (value >= numBase)
-                return false;
-
-            result *= numBase;
-            result += value;
-        }
-
-        return true;
-    }
-
-    private static bool TryConvertHexCharToInt(char c, out int value)
-    {
-        if (c >= CharToHexLookup.Length)
-        {
-            value = 0;
-            return false;
-        }
-
-        value = CharToHexLookup[c];
-        return value is not 0xFF;
-    }
-
-    public static ReadOnlySpan<byte> CharToHexLookup =>
-    [
-        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // 15
-        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // 31
-        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // 47
-        0x0,  0x1,  0x2,  0x3,  0x4,  0x5,  0x6,  0x7,  0x8,  0x9,  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // 63
-        0xFF, 0xA,  0xB,  0xC,  0xD,  0xE,  0xF,  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // 79
-        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // 95
-        0xFF, 0xa,  0xb,  0xc,  0xd,  0xe,  0xf,  0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // 111
-        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // 127
-        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // 143
-        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // 159
-        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // 175
-        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // 191
-        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // 207
-        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // 223
-        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // 239
-        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF  // 255
-    ];
-}
-
-public class PyIntObjectType2 : PyTypeObject<PyIntObjectType2, PyIntObject>
-{
-    public override string Name => "int";
-
-    private static readonly PyBuiltinFunctionOrMethodObject _new = new(PySpecialNames.New, NewImpl_1, NewImpl_2);
-
-    [PyFunctionArgsDef("number=0", "/")]
-    private static PyObject? NewImpl_1(PyArguments arguments)
-    {
-        if (arguments.Args[0] is PyStrObject str)
-        {
-            if (!TryParse(str.Value, 10, out var result))
-                return PyVirtualMachine.RaiseValueError($"invalid literal for int() with base 10: '{str.Value}'");
-
-            return PyIntObject.FromInteger(result);
-        }
-
-        return PySpecialMethods.GetInt(arguments.Args[0]);
-    }
-    [PyFunctionArgsDef("string", "/", "base=10")]
-    private static PyObject? NewImpl_2(PyArguments arguments)
-    {
-        if (arguments.Args[1] is not PyIntObject)
-            return PyVirtualMachine.RaiseTypeError($"'{arguments.Args[1].PyType.Name}' object cannot be interpreted as an integer");
-
-        var numBase = (PyIntObject)arguments.Args[1];
-
-        if (!((numBase.Value >= 2 && numBase.Value <= 36) || numBase.Value.IsZero))
-            return PyVirtualMachine.RaiseValueError("int() base must be >= 2 and <= 36, or 0");
-
-        if (arguments.Args[0] is PyStrObject str)
-        {
-            if (!TryParse(str.Value, numBase.Int32Value, out var result))
-                return PyVirtualMachine.RaiseValueError($"invalid literal for int() with base {numBase.Value}: '{str.Value}'");
-
-            return PyIntObject.FromInteger(result);
-        }
-
-        return PyVirtualMachine.RaiseTypeError("int() can't convert non-string with explicit base");
+        return PyResult.RaiseTypeError("int() can't convert non-string with explicit base");
 
     }
 

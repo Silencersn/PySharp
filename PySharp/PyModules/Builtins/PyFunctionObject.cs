@@ -5,7 +5,7 @@ namespace PySharp.PyModules.Builtins;
 
 public sealed class PyFunctionObject : PyObject, IPyObjectName
 {
-    private readonly PyUncompoundedFunction _function;
+    private readonly PyOldUncompoundedFunction _function;
     internal readonly PyCellObject[]? _closure;
     internal PyObject? _pyClosure;
     internal PyFrame.PyFrameGlobals _globals;
@@ -15,7 +15,7 @@ public sealed class PyFunctionObject : PyObject, IPyObjectName
 
     public override PyTypeObject DefaultPyType => PyFunctionObjectType.Shared;
 
-    internal PyFunctionObject(string name, PyUncompoundedFunction function, IEnumerable<PyCellObject>? closure, PyFrame.PyFrameGlobals globals)
+    internal PyFunctionObject(string name, PyOldUncompoundedFunction function, IEnumerable<PyCellObject>? closure, PyFrame.PyFrameGlobals globals)
     {
         Name = name;
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));

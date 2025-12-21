@@ -111,12 +111,12 @@ public sealed class PyMethodDescriptorObject : PyObject, IPyDescriptor
         return UnboundMethod.Call(args, kwargs);
     }
 
-    private static PyFunction ToPyFunctionDirectly(MethodInfo method, PyObject target)
+    private static PyOldFunction ToPyFunctionDirectly(MethodInfo method, PyObject target)
     {
-        return method.CreateDelegate<PyFunction>(target);
+        return method.CreateDelegate<PyOldFunction>(target);
     }
 
-    private static PyFunction ToPyFunction(MethodInfo method, PyObject target, PySpecialMethodParametersType paramType)
+    private static PyOldFunction ToPyFunction(MethodInfo method, PyObject target, PySpecialMethodParametersType paramType)
     {
         Debug.Assert(!method.IsStatic);
         return paramType switch
@@ -160,7 +160,7 @@ public sealed class PyMethodDescriptorObject : PyObject, IPyDescriptor
         };
     }
 
-    private static PyFunction ToPyFunctionFromStaticMethod(MethodInfo method, PyObject target, PySpecialMethodParametersType paramType)
+    private static PyOldFunction ToPyFunctionFromStaticMethod(MethodInfo method, PyObject target, PySpecialMethodParametersType paramType)
     {
         Debug.Assert(method.IsStatic);
         return paramType switch
@@ -205,7 +205,7 @@ public sealed class PyMethodDescriptorObject : PyObject, IPyDescriptor
     }
 
 
-    private static PyFunction ToPyFunction(MethodInfo method)
+    private static PyOldFunction ToPyFunction(MethodInfo method)
     {
         return [PyFunctionArgsDef("self", "*args", "**kwargs")] (arguments) =>
         {
@@ -214,7 +214,7 @@ public sealed class PyMethodDescriptorObject : PyObject, IPyDescriptor
         };
     }
 
-    private static PyFunction ToPyFunction(MethodInfo method, PySpecialMethodParametersType paramType)
+    private static PyOldFunction ToPyFunction(MethodInfo method, PySpecialMethodParametersType paramType)
     {
         return paramType switch
         {
@@ -300,7 +300,7 @@ public sealed class PyMethodDescriptorObject2 : PyObject
     {
     }
 
-    internal static PyDelegate ToPyDelegate(PyTypeObject type, MethodInfo method, PySpecialMethodParametersType paramType)
+    internal static PyFunction ToPyDelegate(PyTypeObject type, MethodInfo method, PySpecialMethodParametersType paramType)
     {
         Debug.Assert(!method.IsStatic);
         return paramType switch
@@ -374,7 +374,7 @@ public sealed class PyMethodDescriptorObjectType2 : PyTypeObject<PyMethodDescrip
         return self.UnboundMethod.Call(args, kwargs) ?? PyResult.CaptureExceptionFromPVM();
     }
 
-    internal static PyDelegate ToPyDelegate(PyTypeObject type, MethodInfo method, PyObject target, PySpecialMethodParametersType paramType)
+    internal static PyFunction ToPyDelegate(PyTypeObject type, MethodInfo method, PyObject target, PySpecialMethodParametersType paramType)
     {
         Debug.Assert(!method.IsStatic);
         return paramType switch

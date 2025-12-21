@@ -3,9 +3,12 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.PyRuntime.Calls;
 
-public delegate PyObject? PyFunction(PyArguments arguments);
-public delegate PyObject? PyUncompoundedFunction(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs);
-public delegate PyResult PyDelegate(PyCallContext context, PyArguments arguments);
+public delegate PyObject? PyOldFunction(PyArguments arguments);
+public delegate PyObject? PyOldUncompoundedFunction(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs);
+
+public delegate PyResult PyFunction(PyCallContext context, PyArguments arguments);
+public delegate PyResult PyMethod(PyCallContext context, PyObject self, PyArguments arguments);
+public delegate PyResult PyStaticMethod(PyCallContext context, PyTypeObject cls, PyArguments arguments);
 public delegate PyResult PyUncompoundedDelegate(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs);
 
 [Obsolete("Using PyArguments")]
