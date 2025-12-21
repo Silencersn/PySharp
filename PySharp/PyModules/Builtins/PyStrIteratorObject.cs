@@ -1,34 +1,33 @@
 ﻿using PySharp.PyRuntime;
+using PySharp.PyRuntime.Calls;
 using System.Text;
 
 namespace PySharp.PyModules.Builtins;
 
 public class PyStrIteratorObject : PyObject
 {
-    private StringRuneEnumerator _enumerator;
-
+    internal StringRuneEnumerator _enumerator;
     public override PyTypeObject DefaultPyType => PyStrIteratorObjectType.Shared;
 
     internal PyStrIteratorObject(string str)
     {
         _enumerator = str.EnumerateRunes();
     }
-
-    protected internal override PyObject? IterImpl()
-    {
-        return this;
-    }
-
-    protected internal override PyObject? NextImpl()
-    {
-        if (!_enumerator.MoveNext())
-            return PyVirtualMachine.RaiseStopIteration();
-
-        return PyStrObject.FromRune(_enumerator.Current);
-    }
 }
 
-public sealed class PyStrIteratorObjectType : PyPrimitiveTypeObject<PyStrIteratorObjectType, PyStrIteratorObject>
+public sealed class PyStrIteratorObjectType : PyTypeObject<PyStrIteratorObjectType, PyStrIteratorObject>
 {
     public override string Name => "str_iterator";
+
+    protected internal override PyResult Iter(PyCallContext context, PyStrIteratorObject self)
+    {
+        return self;
+    }
+
+    protected internal override PyResult Next(PyCallContext context, PyStrIteratorObject self)
+    {
+        if (!self._enumerator.MoveNext())
+            return PyResult.RaiseStopIteration();
+        return PyStrObject.FromRune(self._enumerator.Current);
+    }
 }
