@@ -105,6 +105,11 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
         return PyBoolObject.FromBoolean(self._list.Count > 0);
     }
 
+    protected internal override PyResult Iter(PyCallContext context, PyListObject self)
+    {
+        return new PyListIteratorObject(self);
+    }
+
     protected internal override PyResult Len(PyCallContext context, PyListObject self)
     {
         return PyIntObject.FromInteger(self._list.Count);
