@@ -135,93 +135,6 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
         return obj;
     }
 
-    private void AppendSpecialMethodsAsDescriptors(IEnumerable<MethodInfo> methodInfos)
-    {
-        foreach (var methodInfo in methodInfos)
-        {
-            var (pyName, paramType) = _nameToPySpecialMethodParametersType[methodInfo.Name];
-
-            // it is assumed that the key to be added does not exist in PyAttributes
-            // if any key exists, it should be added in another way
-            PyAttributes.Add(pyName, new PyMethodDescriptorObject(pyName, this, methodInfo, paramType));
-        }
-    }
-
-    internal void AppendSpecialMethodsAsDescriptorsIfOverridden<TPyObject>() where TPyObject : PyObject
-    {
-        var names = _nameToPySpecialMethodParametersType.Keys.Where(name => Utils.IsPyObjectMethodOverridden(typeof(TPyObject), name));
-        var methodInfos = NonVirtualCaller.Create<TPyObject>([.. names]);
-        AppendSpecialMethodsAsDescriptors(methodInfos);
-    }
-
-    private static readonly FrozenDictionary<string, (string PyName, PySpecialMethodParametersType ParamType)> _nameToPySpecialMethodParametersType =
-        new Dictionary<string, (string, PySpecialMethodParametersType)>
-        {
-            [nameof(ReprImpl)] = (PySpecialNames.Repr, PySpecialMethodParametersType.NoArgs),
-            [nameof(StrImpl)] = (PySpecialNames.Str, PySpecialMethodParametersType.NoArgs),
-            [nameof(HashImpl)] = (PySpecialNames.Hash, PySpecialMethodParametersType.NoArgs),
-            [nameof(BoolImpl)] = (PySpecialNames.Bool, PySpecialMethodParametersType.NoArgs),
-            [nameof(IntImpl)] = (PySpecialNames.Int, PySpecialMethodParametersType.NoArgs),
-            [nameof(FloatImpl)] = (PySpecialNames.Float, PySpecialMethodParametersType.NoArgs),
-            [nameof(ComplexImpl)] = (PySpecialNames.Complex, PySpecialMethodParametersType.NoArgs),
-            [nameof(IndexImpl)] = (PySpecialNames.Index, PySpecialMethodParametersType.NoArgs),
-            [nameof(CallImpl)] = (PySpecialNames.Call, PySpecialMethodParametersType.ArgsKwargs),
-            [nameof(GetAttributeImpl)] = (PySpecialNames.GetAttribute, PySpecialMethodParametersType.String),
-            [nameof(GetAttrImpl)] = (PySpecialNames.GetAttr, PySpecialMethodParametersType.String),
-            [nameof(SetAttrImpl)] = (PySpecialNames.SetAttr, PySpecialMethodParametersType.StringObject),
-            [nameof(DelAttrImpl)] = (PySpecialNames.DelAttr, PySpecialMethodParametersType.String),
-            [nameof(ContainsImpl)] = (PySpecialNames.Contains, PySpecialMethodParametersType.Object),
-            [nameof(GetItemImpl)] = (PySpecialNames.GetItem, PySpecialMethodParametersType.Object),
-            [nameof(SetItemImpl)] = (PySpecialNames.SetItem, PySpecialMethodParametersType.ObjectObject),
-            [nameof(DelItemImpl)] = (PySpecialNames.DelItem, PySpecialMethodParametersType.Object),
-            [nameof(MissingImpl)] = (PySpecialNames.Missing, PySpecialMethodParametersType.Object),
-            [nameof(NegImpl)] = (PySpecialNames.Neg, PySpecialMethodParametersType.NoArgs),
-            [nameof(PosImpl)] = (PySpecialNames.Pos, PySpecialMethodParametersType.NoArgs),
-            [nameof(InvertImpl)] = (PySpecialNames.Invert, PySpecialMethodParametersType.NoArgs),
-            [nameof(AbsImpl)] = (PySpecialNames.Abs, PySpecialMethodParametersType.NoArgs),
-            [nameof(AddImpl)] = (PySpecialNames.Add, PySpecialMethodParametersType.Object),
-            [nameof(SubImpl)] = (PySpecialNames.Sub, PySpecialMethodParametersType.Object),
-            [nameof(MulImpl)] = (PySpecialNames.Mul, PySpecialMethodParametersType.Object),
-            [nameof(TrueDivImpl)] = (PySpecialNames.TrueDiv, PySpecialMethodParametersType.Object),
-            [nameof(FloorDivImpl)] = (PySpecialNames.FloorDiv, PySpecialMethodParametersType.Object),
-            [nameof(ModImpl)] = (PySpecialNames.Mod, PySpecialMethodParametersType.Object),
-            [nameof(DivModImpl)] = (PySpecialNames.DivMod, PySpecialMethodParametersType.Object),
-            [nameof(PowImpl)] = (PySpecialNames.Pow, PySpecialMethodParametersType.ObjectObject),
-            [nameof(LShiftImpl)] = (PySpecialNames.LShift, PySpecialMethodParametersType.Object),
-            [nameof(RShiftImpl)] = (PySpecialNames.RShift, PySpecialMethodParametersType.Object),
-            [nameof(AndImpl)] = (PySpecialNames.And, PySpecialMethodParametersType.Object),
-            [nameof(XorImpl)] = (PySpecialNames.Xor, PySpecialMethodParametersType.Object),
-            [nameof(OrImpl)] = (PySpecialNames.Or, PySpecialMethodParametersType.Object),
-            [nameof(RAddImpl)] = (PySpecialNames.RAdd, PySpecialMethodParametersType.Object),
-            [nameof(RSubImpl)] = (PySpecialNames.RSub, PySpecialMethodParametersType.Object),
-            [nameof(RMulImpl)] = (PySpecialNames.RMul, PySpecialMethodParametersType.Object),
-            [nameof(RTrueDivImpl)] = (PySpecialNames.RTrueDiv, PySpecialMethodParametersType.Object),
-            [nameof(RFloorDivImpl)] = (PySpecialNames.RFloorDiv, PySpecialMethodParametersType.Object),
-            [nameof(RModImpl)] = (PySpecialNames.RMod, PySpecialMethodParametersType.Object),
-            [nameof(RDivModImpl)] = (PySpecialNames.RDivMod, PySpecialMethodParametersType.Object),
-            [nameof(RPowImpl)] = (PySpecialNames.RPow, PySpecialMethodParametersType.ObjectObject),
-            [nameof(RLShiftImpl)] = (PySpecialNames.RLShift, PySpecialMethodParametersType.Object),
-            [nameof(RRShiftImpl)] = (PySpecialNames.RRShift, PySpecialMethodParametersType.Object),
-            [nameof(RAndImpl)] = (PySpecialNames.RAnd, PySpecialMethodParametersType.Object),
-            [nameof(RXorImpl)] = (PySpecialNames.RXor, PySpecialMethodParametersType.Object),
-            [nameof(ROrImpl)] = (PySpecialNames.ROr, PySpecialMethodParametersType.Object),
-            [nameof(LtImpl)] = (PySpecialNames.Lt, PySpecialMethodParametersType.Object),
-            [nameof(LeImpl)] = (PySpecialNames.Le, PySpecialMethodParametersType.Object),
-            [nameof(EqImpl)] = (PySpecialNames.Eq, PySpecialMethodParametersType.Object),
-            [nameof(NeImpl)] = (PySpecialNames.Ne, PySpecialMethodParametersType.Object),
-            [nameof(GtImpl)] = (PySpecialNames.Gt, PySpecialMethodParametersType.Object),
-            [nameof(GeImpl)] = (PySpecialNames.Ge, PySpecialMethodParametersType.Object),
-            [nameof(GetImpl)] = (PySpecialNames.Get, PySpecialMethodParametersType.ObjectObject),
-            [nameof(SetImpl)] = (PySpecialNames.Set, PySpecialMethodParametersType.ObjectObject),
-            [nameof(DeleteImpl)] = (PySpecialNames.Delete, PySpecialMethodParametersType.Object),
-            [nameof(LenImpl)] = (PySpecialNames.Len, PySpecialMethodParametersType.NoArgs),
-            [nameof(IterImpl)] = (PySpecialNames.Iter, PySpecialMethodParametersType.NoArgs),
-            [nameof(NextImpl)] = (PySpecialNames.Next, PySpecialMethodParametersType.NoArgs),
-            [nameof(SetNameImpl)] = (PySpecialNames.SetName, PySpecialMethodParametersType.ObjectObject),
-            [nameof(InitImpl)] = (PySpecialNames.Init, PySpecialMethodParametersType.ArgsKwargs),
-            [nameof(FormatImpl)] = (PySpecialNames.Format, PySpecialMethodParametersType.String),
-        }.ToFrozenDictionary();
-
     internal void AppendMemberDescriptor<TPyObject>(string name, Func<TPyObject, PyObject?> getter, Func<TPyObject, PyObject, PyObject?>? setter = null) where TPyObject : PyObject
     {
         PyAttributes[name] = new PyMemberDescriptorObject(
@@ -350,28 +263,8 @@ public interface ISharedInstance<TSelf> where TSelf : ISharedInstance<TSelf>
     static abstract TSelf Shared { get; }
 }
 
-public abstract class PyPrimitiveTypeObject<TSelf, TObject> : PyTypeObject where TSelf : new() where TObject : PyObject
-{
-    public static TSelf Shared { get; } = new TSelf();
-    public sealed override Type LayoutType => typeof(TObject);
 
-    private protected PyPrimitiveTypeObject()
-    {
-        AppendSpecialMethodsAsDescriptorsIfOverridden<TObject>();
-
-        // todo staticmethod
-        PyAttributes.Add(PySpecialNames.New, new PyBuiltinFunctionOrMethodObject(PySpecialNames.New,
-            [PyFunctionArgsDef("cls", "*args", "**kwargs")] (arguments) =>
-            {
-                if (arguments[0] is not PyTypeObject typeObj)
-                    return PyVirtualMachine.RaiseTypeError(null);
-
-                return New(typeObj, arguments.ExtraArgs, arguments.ExtraKwargs);
-            }));
-    }
-}
-
-public sealed class PyTypeObjectType : PyPrimitiveTypeObject<PyTypeObjectType, PyTypeObject>
+public sealed class PyTypeObjectType : PyTypeObject<PyTypeObjectType, PyTypeObject>
 {
     public override string Name => "type";
 
