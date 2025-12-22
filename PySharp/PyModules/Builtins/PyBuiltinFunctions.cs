@@ -159,11 +159,11 @@ public static partial class PyBuiltinFunctions
         var expObj = arguments.Args[1];
         var modObj = arguments.Args[2];
 
-        var result = PyOperators.Pow(baseObj, expObj, modObj);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
+        var result = PyOperators.Pow(context, baseObj, expObj, modObj);
+        if (result.IsError)
+            return result;
 
-        if (result is PyNotImplementedObject)
+        if (result.IsNotImplemented)
             return PyResult.RaiseTypeError($"unsupported operand type(s) for ** or pow(): '{baseObj.PyType.Name}', '{expObj.PyType.Name}', 'int'");
 
         return result;
@@ -289,10 +289,10 @@ public static partial class PyBuiltinFunctions
                 result = element;
                 continue;
             }
-            var gt = PyOperators.Gt(element, result);
-            if (gt is null)
-                return PyResult.CaptureExceptionFromPVM();
-            if (!PySpecialMethods.TryGetBool(gt, out var b))
+            var gt = PyOperators.Gt(context, element, result);
+            if (gt.IsError)
+                return gt;
+            if (!PySpecialMethods.TryGetBool(gt.Value, out var b))
                 return PyResult.CaptureExceptionFromPVM();
             if (b.BoolValue)
                 result = element;
@@ -321,10 +321,10 @@ public static partial class PyBuiltinFunctions
                 result = element;
                 continue;
             }
-            var gt = PyOperators.Gt(element, result);
-            if (gt is null)
-                return PyResult.CaptureExceptionFromPVM();
-            if (!PySpecialMethods.TryGetBool(gt, out var b))
+            var gt = PyOperators.Gt(context, element, result);
+            if (gt.IsError)
+                return gt;
+            if (!PySpecialMethods.TryGetBool(gt.Value, out var b))
                 return PyResult.CaptureExceptionFromPVM();
             if (b.BoolValue)
                 result = element;
@@ -347,10 +347,10 @@ public static partial class PyBuiltinFunctions
                 result = element;
                 continue;
             }
-            var gt = PyOperators.Gt(element, result);
-            if (gt is null)
-                return PyResult.CaptureExceptionFromPVM();
-            if (!PySpecialMethods.TryGetBool(gt, out var b))
+            var gt = PyOperators.Gt(context, element, result);
+            if (gt.IsError)
+                return gt;
+            if (!PySpecialMethods.TryGetBool(gt.Value, out var b))
                 return PyResult.CaptureExceptionFromPVM();
             if (b.BoolValue)
                 result = element;
@@ -377,10 +377,10 @@ public static partial class PyBuiltinFunctions
                 result = element;
                 continue;
             }
-            var lt = PyOperators.Lt(element, result);
-            if (lt is null)
-                return PyResult.CaptureExceptionFromPVM();
-            if (!PySpecialMethods.TryGetBool(lt, out var b))
+            var lt = PyOperators.Lt(context, element, result);
+            if (lt.IsError)
+                return lt;
+            if (!PySpecialMethods.TryGetBool(lt.Value, out var b))
                 return PyResult.CaptureExceptionFromPVM();
             if (b.BoolValue)
                 result = element;
@@ -409,10 +409,10 @@ public static partial class PyBuiltinFunctions
                 result = element;
                 continue;
             }
-            var lt = PyOperators.Lt(element, result);
-            if (lt is null)
-                return PyResult.CaptureExceptionFromPVM();
-            if (!PySpecialMethods.TryGetBool(lt, out var b))
+            var lt = PyOperators.Lt(context, element, result);
+            if (lt.IsError)
+                return lt;
+            if (!PySpecialMethods.TryGetBool(lt.Value, out var b))
                 return PyResult.CaptureExceptionFromPVM();
             if (b.BoolValue)
                 result = element;
@@ -435,10 +435,10 @@ public static partial class PyBuiltinFunctions
                 result = element;
                 continue;
             }
-            var lt = PyOperators.Lt(element, result);
-            if (lt is null)
-                return PyResult.CaptureExceptionFromPVM();
-            if (!PySpecialMethods.TryGetBool(lt, out var b))
+            var lt = PyOperators.Lt(context, element, result);
+            if (lt.IsError)
+                return lt;
+            if (!PySpecialMethods.TryGetBool(lt.Value, out var b))
                 return PyResult.CaptureExceptionFromPVM();
             if (b.BoolValue)
                 result = element;
@@ -460,9 +460,10 @@ public static partial class PyBuiltinFunctions
         {
             if (item is null)
                 return PyResult.CaptureExceptionFromPVM();
-            result = PyOperators.Add(result, item);
-            if (result is null)
-                return PyResult.CaptureExceptionFromPVM();
+            var ret = PyOperators.Add(context, result, item);
+            if (ret.IsError)
+                return ret;
+            result = ret.Value;
         }
         return result;
     }

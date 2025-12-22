@@ -1,4 +1,5 @@
 ﻿using PySharp.PyRuntime;
+using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.Metadata;
 using System.Diagnostics;
 using System.Text;
@@ -196,10 +197,10 @@ public abstract class PyExceptionType : PyTypeObject
         return new PyExceptionObject(this, [.. pyObjects]);
     }
 
-    protected internal sealed override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (kwargs.Count is not 0)
-            return PyVirtualMachine.RaiseTypeError(null);
+            return PyResult.RaiseTypeError(null);
 
         return new PyExceptionObject(this, [.. args]);
     }
