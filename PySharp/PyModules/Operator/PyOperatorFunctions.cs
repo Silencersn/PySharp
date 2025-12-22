@@ -29,145 +29,92 @@ public static class PyOperatorFunctions
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult AddImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = PyOperators.Add(arguments.Args[0], arguments.Args[1]);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return PyOperators.Add(context, arguments.Args[0], arguments.Args[1]);
     }
+
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult SubImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = PyOperators.Sub(arguments.Args[0], arguments.Args[1]);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return PyOperators.Sub(context, arguments.Args[0], arguments.Args[1]);
     }
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult MulImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = PyOperators.Mul(arguments.Args[0], arguments.Args[1]);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return PyOperators.Mul(context, arguments.Args[0], arguments.Args[1]);
     }
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult TrueDivImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = PyOperators.TrueDiv(arguments.Args[0], arguments.Args[1]);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return PyOperators.TrueDiv(context, arguments.Args[0], arguments.Args[1]);
     }
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult FloorDivImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = PyOperators.FloorDiv(arguments.Args[0], arguments.Args[1]);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return PyOperators.FloorDiv(context, arguments.Args[0], arguments.Args[1]);
     }
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult ModImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = PyOperators.Mod(arguments.Args[0], arguments.Args[1]);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return PyOperators.Mod(context, arguments.Args[0], arguments.Args[1]);
     }
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult PowImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = PyOperators.Pow(arguments.Args[0], arguments.Args[1], PyNoneObject.None);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return PyOperators.Pow(context, arguments.Args[0], arguments.Args[1], PyNoneObject.None);
     }
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult LShiftImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = PyOperators.LShift(arguments.Args[0], arguments.Args[1]);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return PyOperators.LShift(context, arguments.Args[0], arguments.Args[1]);
     }
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult RShiftImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = PyOperators.RShift(arguments.Args[0], arguments.Args[1]);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return PyOperators.RShift(context, arguments.Args[0], arguments.Args[1]);
     }
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult AndImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = PyOperators.And(arguments.Args[0], arguments.Args[1]);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return PyOperators.And(context, arguments.Args[0], arguments.Args[1]);
     }
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult XorImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = PyOperators.Xor(arguments.Args[0], arguments.Args[1]);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return PyOperators.Xor(context, arguments.Args[0], arguments.Args[1]);
     }
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult OrImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = PyOperators.Or(arguments.Args[0], arguments.Args[1]);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return PyOperators.Or(context, arguments.Args[0], arguments.Args[1]);
     }
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult LtImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = PyOperators.Lt(arguments.Args[0], arguments.Args[1]);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return PyOperators.Lt(context, arguments.Args[0], arguments.Args[1]);
     }
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult LeImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = PyOperators.Le(arguments.Args[0], arguments.Args[1]);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return PyOperators.Le(context, arguments.Args[0], arguments.Args[1]);
     }
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult EqImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = PyOperators.Eq(arguments.Args[0], arguments.Args[1]);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return PyOperators.Eq(context, arguments.Args[0], arguments.Args[1]);
     }
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult NeImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = PyOperators.Ne(arguments.Args[0], arguments.Args[1]);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return PyOperators.Ne(context, arguments.Args[0], arguments.Args[1]);
     }
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult GtImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = PyOperators.Gt(arguments.Args[0], arguments.Args[1]);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return PyOperators.Gt(context, arguments.Args[0], arguments.Args[1]);
     }
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult GeImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = PyOperators.Ge(arguments.Args[0], arguments.Args[1]);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return PyOperators.Ge(context, arguments.Args[0], arguments.Args[1]);
     }
 }
