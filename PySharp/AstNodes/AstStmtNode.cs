@@ -158,7 +158,7 @@ public class AugAssignNode : AstStmtNode
 
     public override void ExecuteStmt(PyFrame frame)
     {
-        Target.SetTargetValue(Op.GetOpValue(Target.GetExprValue(frame), Value.GetExprValue(frame)).PyThrowIfNullOrNotImplemented(), frame);
+        Target.SetTargetValue(Op.GetOpValue(PyCallContext.Null, Target.GetExprValue(frame), Value.GetExprValue(frame)).PyUnwrapIncludedNotImplemented(), frame);
     }
 
     public override void EnumerateNodes(Action<AstNode> action)

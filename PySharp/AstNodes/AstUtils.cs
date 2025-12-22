@@ -1,6 +1,7 @@
 ﻿using PySharp.PyModules;
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
+using PySharp.PyRuntime.Calls;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
@@ -26,6 +27,27 @@ internal static class AstUtils
         if (obj is null)
             throw new PyRuntimeException(PyVirtualMachine.CurrentException ?? throw new NotImplementedException("No Current Exception"));
         return obj;
+    }
+
+    public static PyObject PyUnwrap(this PyResult result)
+    {
+        if (result.IsError)
+            throw new PyRuntimeException(result.Exception);
+
+        return result.Value;
+    }
+    public static PyObject PyUnwrapIncludedNotImplemented(this PyResult result)
+    {
+        if (result.IsError)
+            throw new PyRuntimeException(result.Exception);
+
+        if (result.IsNotImplemented)
+        {
+            PyVirtualMachine.RaiseTypeError(null);
+            throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+        }
+
+        return result.Value;
     }
 
     public static PyObject PyThrowIfNullOrNotImplemented([NotNull] this PyObject? obj)

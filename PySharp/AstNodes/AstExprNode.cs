@@ -1,6 +1,7 @@
 ﻿using PySharp.PyModules;
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
+using PySharp.PyRuntime.Calls;
 using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -652,22 +653,7 @@ public sealed class BinOpNode : AstExprNode
     {
         var left = Left.GetExprValue(frame);
         var right = Right.GetExprValue(frame);
-        return Operator.GetOpValue(left, right).PyThrowIfNullOrNotImplemented();
-    }
-
-    public override AstExprNode Reduce(OptimizationOptions options)
-    {
-        if (options.ConstantFolding)
-        {
-            if (Left.Reduce(options) is ConstantNode leftConstant && Right.Reduce(options) is ConstantNode rightConstant)
-            {
-                var result = Operator.GetOpValue(leftConstant.Value, rightConstant.Value);
-                if (result is not (null or PyNotImplementedObject))
-                    return Constant(result, null);
-            }
-        }
-
-        return this;
+        return Operator.GetOpValue(PyCallContext.Null, left, right).PyUnwrapIncludedNotImplemented();
     }
 
     public override void EnumerateNodes(Action<AstNode> action)
@@ -745,7 +731,7 @@ public sealed class CompareNode : AstExprNode, IAstExprNodeBool
         {
             var op = Ops[i];
             var right = Comparators[i].GetExprValue(frame);
-            var value = op.GetCompareValue(left, right).PyThrowIfNull();
+            var value = op.GetCompareValue(PyCallContext.Null, left, right).PyUnwrap();
             var boolValue = PySpecialMethods.GetBool(value).PyThrowIfNull().BoolValue;
 
             if (!boolValue)
