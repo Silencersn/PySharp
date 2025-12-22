@@ -20,21 +20,21 @@ public partial class PyObject : IEquatable<PyObject>
             if (y is null)
                 return false;
 
-            var eq = PyOperators.Eq(x, y);
-            if (eq is null)
+            var eq = PyOperators.Eq(PyCallContext.Null, x, y);
+            if (eq.IsError)
             {
                 Debug.Assert(PyVirtualMachine.CurrentException is not null);
                 throw new PyRuntimeException(PyVirtualMachine.CurrentException);
             }
-            else if (eq is PyNotImplementedObject)
+            else if (eq.IsNotImplemented)
             {
                 return x.PyId == y.PyId;
             }
 
-            if (eq is PyBoolObject boolObj)
+            if (eq.Value is PyBoolObject boolObj)
                 return boolObj.BoolValue;
 
-            if (PySpecialMethods.TryGetBool(eq, out var b))
+            if (PySpecialMethods.TryGetBool(eq.Value, out var b))
                 return b.BoolValue;
 
             Debug.Assert(PyVirtualMachine.CurrentException is not null);

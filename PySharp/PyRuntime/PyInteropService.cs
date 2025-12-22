@@ -1,4 +1,5 @@
 ﻿using PySharp.PyModules.Builtins;
+using PySharp.PyRuntime.Calls;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 
@@ -108,14 +109,14 @@ public static class PyInteropService
 
     public static bool TryGetLt(PyObject left, PyObject right, out bool result)
     {
-        var retObj = PyOperators.Lt(left, right);
-        if (retObj is null)
+        var retObj = PyOperators.Lt(PyCallContext.Null, left, right);
+        if (retObj.IsError)
         {
             result = false;
             return false;
         }
 
-        if (!TryGetBool(retObj, out result))
+        if (!TryGetBool(retObj.Value, out result))
             return false;
         return true;
     }
