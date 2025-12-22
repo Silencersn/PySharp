@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Text;
+﻿using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.PyRuntime;
 
@@ -130,7 +127,7 @@ internal record struct PyFormatSpecData
             format = format[1..];
         }
     }
-    
+
     private static void ParseWidthAndPrecision(ref ReadOnlySpan<char> format, ref PyFormatSpecData formatSpecData)
     {
         ParseWidthWithGrouping(ref format, ref formatSpecData.Width, ref formatSpecData.WidthGrouping);

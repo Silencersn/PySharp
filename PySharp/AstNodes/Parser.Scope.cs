@@ -1,7 +1,4 @@
-﻿using System.Reflection.Metadata;
-using System.Xml.Linq;
-
-namespace PySharp.AstNodes;
+﻿namespace PySharp.AstNodes;
 
 partial class Parser
 {

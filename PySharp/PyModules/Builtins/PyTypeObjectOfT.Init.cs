@@ -1,12 +1,8 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
-using System;
 using System.Collections.Frozen;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
-using System.Text;
-using System.Xml.Linq;
 
 namespace PySharp.PyModules.Builtins;
 
@@ -122,7 +118,7 @@ partial class PyTypeObject<TObject>
             var method = type
                 .GetMethods(BindingFlags.NonPublic | BindingFlags.Instance)
                 .Single(method => method.Name == name && method.GetBaseDefinition().DeclaringType == typeof(PyTypeObject<TObject>));
-            
+
             Debug.Assert(method is not null);
             if (method.DeclaringType == typeof(PyTypeObject<TObject>))
                 continue;

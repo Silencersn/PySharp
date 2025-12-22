@@ -1,9 +1,7 @@
-﻿using PySharp.PyRuntime;
-using PySharp.PyRuntime.Calls;
+﻿using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.PyAttributes;
 using System.Diagnostics;
 using System.Reflection;
-using System.Xml.Linq;
 
 namespace PySharp.PyModules.Builtins;
 

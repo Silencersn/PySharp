@@ -1,13 +1,8 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.PyAttributes;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
-using System.Text;
-using System.Xml.Linq;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace PySharp.PyModules.Builtins;
 
