@@ -16,7 +16,7 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
     public virtual string FullName => Name; // TODO: FullName => <module_name>.Name
     public virtual string Document => string.Empty;
     public virtual bool IsSealed => false;
-    public override PyTypeObject DefaultPyType => PyTypeObjectType.Shared;
+    public override PyTypeObject DefaultPyType => PyTypeObjectType2.Shared;
     public abstract Type LayoutType { get; }
     internal virtual bool IsTypeImmutable => true;
 
@@ -50,20 +50,6 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
         return false;
     }
 
-    protected internal override PyObject? CallImpl(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
-    {
-        var pyObject = New(this, args, kwargs);
-        if (pyObject is null)
-            return null;
-        if (IsInstance(pyObject) && pyObject.Init(args, kwargs) is null)
-            return null;
-        return pyObject;
-    }
-
-    protected internal override PyObject? ReprImpl()
-    {
-        return PyStrObject.FromString($"<class '{Name}'>");
-    }
 
     public static PyObject? PyTypeGetAttribute(PyTypeObject pyTypeObj, string name)
     {
@@ -106,33 +92,6 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
             return attrFromType;
 
         return PyVirtualMachine.RaiseAttributeError($"'{pyTypeObj.Name}' object has no attribute '{name}'");
-    }
-
-    protected internal override PyObject? GetAttributeImpl(string item)
-    {
-        return PyTypeGetAttribute(this, item);
-    }
-
-    protected internal virtual PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
-    {
-        // TODO: int.__new__(str): str is not a subtype of int
-        return PyVirtualMachine.RaiseTypeError($"cannot create '{Name}' instances");
-    }
-
-    public PyObject? New(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
-    {
-        if (!cls.IsSubclassOf(this))
-            return PyVirtualMachine.RaiseTypeError($"{Name}.__new__({cls.Name}): {cls.Name} is not a subtype of {Name}");
-
-        if (cls.LayoutType.IsSubclassOf(LayoutType))
-            return PyVirtualMachine.RaiseTypeError($"{Name}.__new__({cls.Name}) is not safe, use {cls.Name}.__new__()");
-        Debug.Assert(cls.LayoutType == LayoutType || LayoutType.IsSubclassOf(cls.LayoutType));
-
-        var obj = NewImpl(cls, args, kwargs);
-        if (obj is null)
-            return null;
-        obj._pyType = cls;
-        return obj;
     }
 
     internal void AppendMemberDescriptor<TPyObject>(string name, Func<TPyObject, PyObject?> getter, Func<TPyObject, PyObject, PyObject?>? setter = null) where TPyObject : PyObject
@@ -261,36 +220,4 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
 public interface ISharedInstance<TSelf> where TSelf : ISharedInstance<TSelf>
 {
     static abstract TSelf Shared { get; }
-}
-
-
-public sealed class PyTypeObjectType : PyTypeObject<PyTypeObjectType, PyTypeObject>
-{
-    public override string Name => "type";
-
-    internal override bool IsImmutable => true;
-
-    public PyTypeObjectType()
-    {
-        AppendMemberDescriptor<PyTypeObject>(PySpecialNames.Bases,
-            static typeObj => PyTupleObject.CreateTuple(typeObj.Bases),
-            static (typeObj, value) => throw new NotImplementedException());
-
-        AppendMemberDescriptor<PyTypeObject>(PySpecialNames.Name,
-            static typeObj => PyStrObject.FromString(typeObj.Name),
-            static (typeObj, value) => throw new NotImplementedException());
-
-        AppendMemberDescriptor<PyTypeObject>(PySpecialNames.MRO,
-            static typeObj => PyTupleObject.CreateTuple(typeObj.MRO),
-            static (typeObj, value) => throw new NotImplementedException());
-    }
-
-    protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
-    {
-        var pack = new PyArgsPack(args, kwargs);
-        if (!pack.ValidateCount(1, 0))
-            return PyVirtualMachine.RaiseTypeError(null);
-
-        return pack[0].PyType;
-    }
 }

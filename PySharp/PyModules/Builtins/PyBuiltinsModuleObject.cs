@@ -43,7 +43,7 @@ public class PyBuiltinsModuleObject : PyModuleObject
         AddObjToAttrs(PyDictObjectType.Shared); // dict
         AddObjToAttrs(PyBoolObjectType.Shared); // bool
         AddObjToAttrs(PyListObjectType.Shared); // list
-        AddObjToAttrs(PyTypeObjectType.Shared); // type
+        AddObjToAttrs(PyTypeObjectType2.Shared); // type
         AddObjToAttrs(PyRangeObjectType.Shared); // range
         AddObjToAttrs(PyZipObjectType.Shared); // zip
         AddObjToAttrs(PyPropertyObjectType.Shared); // property

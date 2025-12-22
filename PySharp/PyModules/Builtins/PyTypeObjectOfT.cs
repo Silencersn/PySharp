@@ -60,6 +60,21 @@ public sealed class PyTypeObjectType2 : PyTypeObject<PyTypeObjectType2, PyTypeOb
 {
     public override string Name => "type";
 
+    public PyTypeObjectType2()
+    {
+        AppendMemberDescriptor<PyTypeObject>(PySpecialNames.Bases,
+            static typeObj => PyTupleObject.CreateTuple(typeObj.Bases),
+            static (typeObj, value) => throw new NotImplementedException());
+
+        AppendMemberDescriptor<PyTypeObject>(PySpecialNames.Name,
+            static typeObj => PyStrObject.FromString(typeObj.Name),
+            static (typeObj, value) => throw new NotImplementedException());
+
+        AppendMemberDescriptor<PyTypeObject>(PySpecialNames.MRO,
+            static typeObj => PyTupleObject.CreateTuple(typeObj.MRO),
+            static (typeObj, value) => throw new NotImplementedException());
+    }
+
     protected internal override PyResult Call(PyCallContext context, PyTypeObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var result = self.New(context, self, args, kwargs);
@@ -75,6 +90,25 @@ public sealed class PyTypeObjectType2 : PyTypeObject<PyTypeObjectType2, PyTypeOb
         }
 
         return pyObject;
+    }
+
+    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        var pack = new PyArgsPack(args, kwargs);
+        if (!pack.ValidateCount(1, 0))
+            return PyResult.RaiseTypeError(null);
+
+        return pack[0].PyType;
+    }
+
+    protected internal override PyResult Repr(PyCallContext context, PyTypeObject self)
+    {
+        return PyStrObject.FromString($"<class '{self.Name}'>");
+    }
+
+    protected internal override PyResult GetAttribute(PyCallContext context, PyTypeObject self, string item)
+    {
+        return PyTypeGetAttribute(self, item) ?? PyResult.CaptureExceptionFromPVM();
     }
 }
 
