@@ -24,25 +24,24 @@ public sealed class PyZipObjectType : PyTypeObject<PyZipObjectType, PyZipObject>
 {
     public override string Name => "zip";
 
-    private static readonly PyBuiltinFunctionOrMethodObject _new = new(PySpecialNames.New, NewImpl);
+    private static readonly PyBuiltinFunctionOrMethodObject2 _new = new(PySpecialNames.New, NewImpl);
 
     [PyFunctionArgsDef("*iterables", "strict=False")]
-    private static PyZipObject? NewImpl(PyArguments arguments)
+    private static PyResult NewImpl(PyCallContext context, PyArguments arguments)
     {
-        if (!PySpecialMethods.TryGetBool(arguments.Kwargs["strict"], out var b))
-            return null;
+        if (!PyInteropService.TryGetBool(arguments["strict"], out var strict))
+            return PyResult.CaptureExceptionFromPVM();
 
         List<PyObject> iterables = [];
         foreach (var arg in arguments.ExtraArgs)
         {
             var iter = arg.Iter();
             if (iter is null)
-                return null;
-
+                return PyResult.CaptureExceptionFromPVM();
             iterables.Add(iter);
         }
 
-        return new PyZipObject(iterables, b.BoolValue);
+        return new PyZipObject(iterables, strict);
     }
 
     protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)

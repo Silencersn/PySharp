@@ -57,25 +57,25 @@ public sealed class PyDictObjectType : PyTypeObject<PyDictObjectType, PyDictObje
         AppendMethodDescriptor("copy", Copy);
     }
 
-    private static readonly PyBuiltinFunctionOrMethodObject _new = new(PySpecialNames.New, NewImpl_1, NewImpl_2);
+    private static readonly PyBuiltinFunctionOrMethodObject2 _new = new(PySpecialNames.New, NewImpl_1, NewImpl_2);
 
     [PyFunctionArgsDef("**kwargs")]
-    private static PyDictObject NewImpl_1(PyArguments arguments)
+    private static PyResult NewImpl_1(PyCallContext context, PyArguments arguments)
     {
         return PyDictObject.CreateDict(arguments.ExtraKwargs
             .Select(pair => KeyValuePair.Create<PyObject, PyObject>(PyStrObject.FromString(pair.Key), pair.Value)));
     }
 
     [PyFunctionArgsDef("iterable", "/", "**kwargs")]
-    private static PyObject? NewImpl_2(PyArguments arguments)
+    private static PyResult NewImpl_2(PyCallContext context, PyArguments arguments)
     {
         var kvpiteratables = Utils.EnumeratedIterable(arguments[0]);
         if (kvpiteratables is null)
-            return null;
+            return PyResult.CaptureExceptionFromPVM();
 
         var pairs = Utils.EnumeratedDictionary(kvpiteratables);
         if (pairs is null)
-            return null;
+            return PyResult.CaptureExceptionFromPVM();
 
         List<KeyValuePair<PyObject, PyObject>> dict = [.. pairs];
 
@@ -83,10 +83,10 @@ public sealed class PyDictObjectType : PyTypeObject<PyDictObjectType, PyDictObje
         {
             var pair = Utils.EnumeratedIterable(kvpiteratables[i]);
             if (pair is null)
-                return null;
+                return PyResult.CaptureExceptionFromPVM();
 
             if (pair!.Count is not 2)
-                return PyVirtualMachine.RaiseValueError($"dictionary update sequence element #{i} has length {pair.Count}; 2 is required");
+                return PyResult.RaiseValueError($"dictionary update sequence element #{i} has length {pair.Count}; 2 is required");
 
             dict.Add(KeyValuePair.Create(pair[0], pair[1]));
         }

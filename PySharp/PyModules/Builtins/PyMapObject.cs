@@ -23,22 +23,21 @@ public sealed class PyMapObjectType : PyTypeObject<PyMapObjectType, PyMapObject>
 {
     public override string Name => "map";
 
-    private static readonly PyBuiltinFunctionOrMethodObject _new = new(PySpecialNames.New, NewImpl);
+    private static readonly PyBuiltinFunctionOrMethodObject2 _new = new(PySpecialNames.New, NewImpl);
 
     [PyFunctionArgsDef("function", "/", "*iterables", "strict=False")]
-    private static PyMapObject? NewImpl(PyArguments arguments)
+    private static PyResult NewImpl(PyCallContext context, PyArguments arguments)
     {
         var function = arguments[0];
         if (!PyInteropService.TryGetBool(arguments["strict"], out var strict))
-            return null;
+            return PyResult.CaptureExceptionFromPVM();
 
         List<IEnumerator<PyObject?>> iters = [];
         foreach (var arg in arguments.ExtraArgs)
         {
             var iter = Utils.EnumerateIterable(arg);
             if (iter is null)
-                return null;
-
+                return PyResult.CaptureExceptionFromPVM();
             iters.Add(iter.GetEnumerator());
         }
 
