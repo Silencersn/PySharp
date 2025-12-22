@@ -16,7 +16,7 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
     public virtual string FullName => Name; // TODO: FullName => <module_name>.Name
     public virtual string Document => string.Empty;
     public virtual bool IsSealed => false;
-    public override PyTypeObject DefaultPyType => PyTypeObjectType2.Shared;
+    public override PyTypeObject DefaultPyType => PyTypeObjectType.Shared;
     public abstract Type LayoutType { get; }
     internal virtual bool IsTypeImmutable => true;
 

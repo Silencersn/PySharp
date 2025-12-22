@@ -24,7 +24,7 @@ public sealed class PyZipObjectType : PyTypeObject<PyZipObjectType, PyZipObject>
 {
     public override string Name => "zip";
 
-    private static readonly PyBuiltinFunctionOrMethodObject2 _new = new(PySpecialNames.New, NewImpl);
+    private static readonly PyBuiltinFunctionOrMethodObject _new = new(PySpecialNames.New, NewImpl);
 
     [PyFunctionArgsDef("*iterables", "strict=False")]
     private static PyResult NewImpl(PyCallContext context, PyArguments arguments)

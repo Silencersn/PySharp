@@ -57,7 +57,7 @@ public sealed class PyDictObjectType : PyTypeObject<PyDictObjectType, PyDictObje
         AppendMethodDescriptor("copy", Copy);
     }
 
-    private static readonly PyBuiltinFunctionOrMethodObject2 _new = new(PySpecialNames.New, NewImpl_1, NewImpl_2);
+    private static readonly PyBuiltinFunctionOrMethodObject _new = new(PySpecialNames.New, NewImpl_1, NewImpl_2);
 
     [PyFunctionArgsDef("**kwargs")]
     private static PyResult NewImpl_1(PyCallContext context, PyArguments arguments)

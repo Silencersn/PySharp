@@ -34,7 +34,7 @@ public sealed class PySliceObjectType : PyTypeObject<PySliceObjectType, PySliceO
         AppendMemberDescriptor<PySliceObject>("step", static slice => slice.Step);
     }
 
-    private static readonly PyBuiltinFunctionOrMethodObject2 _new = new(PySpecialNames.New, NewImpl_1, NewImpl_2);
+    private static readonly PyBuiltinFunctionOrMethodObject _new = new(PySpecialNames.New, NewImpl_1, NewImpl_2);
 
     [PyFunctionArgsDef("stop", "/")]
     private static PyResult NewImpl_1(PyCallContext context, PyArguments arguments)

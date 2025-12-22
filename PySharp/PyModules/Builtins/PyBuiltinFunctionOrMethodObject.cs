@@ -8,7 +8,7 @@ using System.Reflection;
 
 namespace PySharp.PyModules.Builtins;
 
-public class PyBuiltinFunctionOrMethodObject2 : PyObject, IPyObjectName
+public class PyBuiltinFunctionOrMethodObject : PyObject, IPyObjectName
 {
     private Dictionary<MethodInfo, PyArgsDef>? _defCache;
 
@@ -19,9 +19,9 @@ public class PyBuiltinFunctionOrMethodObject2 : PyObject, IPyObjectName
     public PyObject? Self { get; }
     public PyTypeObject? SelfType { get; }
 
-    public override PyTypeObject DefaultPyType => PyBuiltinFunctionOrMethodObjectType2.Shared;
+    public override PyTypeObject DefaultPyType => PyBuiltinFunctionOrMethodObjectType.Shared;
 
-    internal PyBuiltinFunctionOrMethodObject2(string name, params PyFunction[] funcs)
+    internal PyBuiltinFunctionOrMethodObject(string name, params PyFunction[] funcs)
     {
         Name = name;
         IsMethod = false;
@@ -39,7 +39,7 @@ public class PyBuiltinFunctionOrMethodObject2 : PyObject, IPyObjectName
         };
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
     }
-    internal PyBuiltinFunctionOrMethodObject2(string name, PyObject self, PyTypeObject type, params PyFunction[] funcs)
+    internal PyBuiltinFunctionOrMethodObject(string name, PyObject self, PyTypeObject type, params PyFunction[] funcs)
     {
         Self = self;
         SelfType = type;
@@ -59,7 +59,7 @@ public class PyBuiltinFunctionOrMethodObject2 : PyObject, IPyObjectName
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
         PyAttributes.Add(PySpecialNames.Self, Self);
     }
-    internal PyBuiltinFunctionOrMethodObject2(string name, PyTypeObject type, params MethodInfo/*PyMethod<TObject>*/[] methods)
+    internal PyBuiltinFunctionOrMethodObject(string name, PyTypeObject type, params MethodInfo/*PyMethod<TObject>*/[] methods)
     {
         Name = name;
         IsMethod = false;
@@ -82,7 +82,7 @@ public class PyBuiltinFunctionOrMethodObject2 : PyObject, IPyObjectName
         };
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
     }
-    internal PyBuiltinFunctionOrMethodObject2(string name, PyObject self, PyTypeObject type, MethodInfo/*PyMethod<TObject>*/[] methods)
+    internal PyBuiltinFunctionOrMethodObject(string name, PyObject self, PyTypeObject type, MethodInfo/*PyMethod<TObject>*/[] methods)
     {
         Self = self;
         SelfType = type;
@@ -104,7 +104,7 @@ public class PyBuiltinFunctionOrMethodObject2 : PyObject, IPyObjectName
         PyAttributes.Add(PySpecialNames.Self, Self);
     }
 
-    internal PyBuiltinFunctionOrMethodObject2(string name, PyUncompoundedDelegate func)
+    internal PyBuiltinFunctionOrMethodObject(string name, PyUncompoundedDelegate func)
     {
         Name = name;
         PyDelegate = func;
@@ -139,11 +139,11 @@ public class PyBuiltinFunctionOrMethodObject2 : PyObject, IPyObjectName
 
 }
 
-public sealed class PyBuiltinFunctionOrMethodObjectType2 : PyTypeObject<PyBuiltinFunctionOrMethodObjectType2, PyBuiltinFunctionOrMethodObject2>
+public sealed class PyBuiltinFunctionOrMethodObjectType : PyTypeObject<PyBuiltinFunctionOrMethodObjectType, PyBuiltinFunctionOrMethodObject>
 {
     public override string Name => "builtin_function_or_method";
 
-    protected internal override PyResult Repr(PyCallContext context, PyBuiltinFunctionOrMethodObject2 self)
+    protected internal override PyResult Repr(PyCallContext context, PyBuiltinFunctionOrMethodObject self)
     {
         if (self.IsMethod)
         {
@@ -156,7 +156,7 @@ public sealed class PyBuiltinFunctionOrMethodObjectType2 : PyTypeObject<PyBuilti
         return PyStrObject.FromString($"<built-in function {self.Name}>");
     }
 
-    protected internal override PyResult Call(PyCallContext context, PyBuiltinFunctionOrMethodObject2 self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyResult Call(PyCallContext context, PyBuiltinFunctionOrMethodObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return self.PyDelegate.Invoke(context, args, kwargs);
     }

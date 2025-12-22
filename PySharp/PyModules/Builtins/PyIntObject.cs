@@ -85,7 +85,7 @@ public class PyIntObjectType : PyTypeObject<PyIntObjectType, PyIntObject>
 {
     public override string Name => "int";
 
-    private static readonly PyBuiltinFunctionOrMethodObject2 _new = new(PySpecialNames.New, NewImpl_1, NewImpl_2);
+    private static readonly PyBuiltinFunctionOrMethodObject _new = new(PySpecialNames.New, NewImpl_1, NewImpl_2);
 
     [PyFunctionArgsDef("number=0", "/")]
     private static PyResult NewImpl_1(PyCallContext context, PyArguments arguments)

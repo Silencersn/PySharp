@@ -18,7 +18,7 @@ internal enum PySpecialMethodParametersType
     ArgsKwargs,
 }
 
-public sealed class PyMethodDescriptorObject2 : PyObject
+public sealed class PyMethodDescriptorObject : PyObject
 {
     internal readonly PyTypeObject _declaringType;
     internal readonly string _name;
@@ -26,36 +26,36 @@ public sealed class PyMethodDescriptorObject2 : PyObject
     internal readonly PySpecialMethodParametersType _paramType;
     internal readonly MethodInfo/*PyMethod<TObject>*/[]? _methods;
 
-    internal PyBuiltinFunctionOrMethodObject2 UnboundMethod
+    internal PyBuiltinFunctionOrMethodObject UnboundMethod
     {
         get
         {
             if (field is null)
             {
                 if (_methods is not null)
-                    return field = new PyBuiltinFunctionOrMethodObject2(_name, _declaringType, _methods);
+                    return field = new PyBuiltinFunctionOrMethodObject(_name, _declaringType, _methods);
 
                 Debug.Assert(_method is not null);
                 Debug.Assert(_paramType is not PySpecialMethodParametersType.Unknown);
-                return field = new PyBuiltinFunctionOrMethodObject2(_name, ToPyDelegate(_declaringType, _method, _paramType));
+                return field = new PyBuiltinFunctionOrMethodObject(_name, ToPyDelegate(_declaringType, _method, _paramType));
             }
             return field;
         }
     }
 
-    public override PyTypeObject DefaultPyType => PyMethodDescriptorObjectType2.Shared;
+    public override PyTypeObject DefaultPyType => PyMethodDescriptorObjectType.Shared;
 
-    internal PyMethodDescriptorObject2(string name, PyTypeObject declaringType, MethodInfo method, PySpecialMethodParametersType paramType)
+    internal PyMethodDescriptorObject(string name, PyTypeObject declaringType, MethodInfo method, PySpecialMethodParametersType paramType)
     {
         _declaringType = declaringType;
         _name = name;
         _method = method;
         _paramType = paramType;
     }
-    internal PyMethodDescriptorObject2(string name, Delegate typeDelegate, PySpecialMethodParametersType paramType) : this(name, (PyTypeObject)typeDelegate.Target!, typeDelegate.Method, paramType)
+    internal PyMethodDescriptorObject(string name, Delegate typeDelegate, PySpecialMethodParametersType paramType) : this(name, (PyTypeObject)typeDelegate.Target!, typeDelegate.Method, paramType)
     {
     }
-    internal PyMethodDescriptorObject2(string name, PyTypeObject type, params MethodInfo/*PyMethod<TObject>*/[] methods)
+    internal PyMethodDescriptorObject(string name, PyTypeObject type, params MethodInfo/*PyMethod<TObject>*/[] methods)
     {
         _declaringType = type;
         _name = name;
@@ -108,11 +108,11 @@ public sealed class PyMethodDescriptorObject2 : PyObject
 
 }
 
-public sealed class PyMethodDescriptorObjectType2 : PyTypeObject<PyMethodDescriptorObjectType2, PyMethodDescriptorObject2>
+public sealed class PyMethodDescriptorObjectType : PyTypeObject<PyMethodDescriptorObjectType, PyMethodDescriptorObject>
 {
     public override string Name => "method_descriptor";
 
-    protected internal override PyResult Get(PyCallContext context, PyMethodDescriptorObject2 self, PyObject instance, PyObject owner)
+    protected internal override PyResult Get(PyCallContext context, PyMethodDescriptorObject self, PyObject instance, PyObject owner)
     {
         if (instance is PyNoneObject)
             return self;
@@ -121,14 +121,14 @@ public sealed class PyMethodDescriptorObjectType2 : PyTypeObject<PyMethodDescrip
             return PyResult.RaiseTypeError($"descriptor '{self._name}' requires a '{self._declaringType.Name}' object but received a '{instance.PyType.Name}'");
 
         if (self._methods is not null)
-            return new PyBuiltinFunctionOrMethodObject2(self._name, instance, instance.PyType, self._methods);
+            return new PyBuiltinFunctionOrMethodObject(self._name, instance, instance.PyType, self._methods);
 
         Debug.Assert(self._method is not null);
         Debug.Assert(self._paramType is not PySpecialMethodParametersType.Unknown);
-        return new PyBuiltinFunctionOrMethodObject2(self._name, instance, instance.PyType, ToPyDelegate(self._declaringType, self._method, instance, self._paramType));
+        return new PyBuiltinFunctionOrMethodObject(self._name, instance, instance.PyType, ToPyDelegate(self._declaringType, self._method, instance, self._paramType));
     }
 
-    protected internal override PyResult Call(PyCallContext context, PyMethodDescriptorObject2 self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyResult Call(PyCallContext context, PyMethodDescriptorObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (args.Count is 0)
             return PyResult.RaiseTypeError($"descriptor '{self._name}' of '{self._declaringType.Name}' object needs an argument");

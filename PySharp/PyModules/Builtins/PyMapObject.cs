@@ -23,7 +23,7 @@ public sealed class PyMapObjectType : PyTypeObject<PyMapObjectType, PyMapObject>
 {
     public override string Name => "map";
 
-    private static readonly PyBuiltinFunctionOrMethodObject2 _new = new(PySpecialNames.New, NewImpl);
+    private static readonly PyBuiltinFunctionOrMethodObject _new = new(PySpecialNames.New, NewImpl);
 
     [PyFunctionArgsDef("function", "/", "*iterables", "strict=False")]
     private static PyResult NewImpl(PyCallContext context, PyArguments arguments)

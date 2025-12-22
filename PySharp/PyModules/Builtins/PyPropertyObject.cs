@@ -31,7 +31,7 @@ public sealed class PyPropertyObjectType : PyTypeObject<PyPropertyObjectType, Py
 {
     public override string Name => "property";
 
-    private static readonly PyBuiltinFunctionOrMethodObject2 _new = new(PySpecialNames.New, NewImpl);
+    private static readonly PyBuiltinFunctionOrMethodObject _new = new(PySpecialNames.New, NewImpl);
 
     public PyPropertyObjectType()
     {

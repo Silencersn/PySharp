@@ -15,7 +15,7 @@ public abstract partial class PyTypeObject<TObject> : PyTypeObject where TObject
 {
     public sealed override Type LayoutType => typeof(TObject);
     internal sealed override bool IsPyTypeObjectOfT => true;
-    public override PyTypeObject DefaultPyType => PyTypeObjectType2.Shared;
+    public override PyTypeObject DefaultPyType => PyTypeObjectType.Shared;
 
     public PyTypeObject()
     {
@@ -26,7 +26,7 @@ public abstract partial class PyTypeObject<TObject> : PyTypeObject where TObject
             .Single(method => method.Name == "New" && method.GetBaseDefinition().DeclaringType == typeof(PyTypeObject));
         if (newMethod.DeclaringType != typeof(PyTypeObject<TObject>))
         {
-            var method = new PyBuiltinFunctionOrMethodObject2(PySpecialNames.New, this, null! /* TODO */, [PyFunctionArgsDef("cls", "*args", "**kwargs")] (context, arguments) =>
+            var method = new PyBuiltinFunctionOrMethodObject(PySpecialNames.New, this, null! /* TODO */, [PyFunctionArgsDef("cls", "*args", "**kwargs")] (context, arguments) =>
             {
                 if (arguments[0] is not PyTypeObject cls)
                     return PyResult.RaiseTypeError(null);
@@ -56,11 +56,11 @@ public abstract partial class PyTypeObject<TObject> : PyTypeObject where TObject
     }
 }
 
-public sealed class PyTypeObjectType2 : PyTypeObject<PyTypeObjectType2, PyTypeObject>
+public sealed class PyTypeObjectType : PyTypeObject<PyTypeObjectType, PyTypeObject>
 {
     public override string Name => "type";
 
-    public PyTypeObjectType2()
+    public PyTypeObjectType()
     {
         AppendMemberDescriptor<PyTypeObject>(PySpecialNames.Bases,
             static typeObj => PyTupleObject.CreateTuple(typeObj.Bases),

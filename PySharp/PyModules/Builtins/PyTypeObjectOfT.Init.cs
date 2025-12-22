@@ -14,7 +14,7 @@ partial class PyTypeObject<TObject>
 {
     internal void AppendMethodDescriptor(string name, params IEnumerable<PyMethod<TObject>> methods)
     {
-        PyAttributes.Add(name, new PyMethodDescriptorObject2(name, this, [.. methods.Select(method => method.Method)]));
+        PyAttributes.Add(name, new PyMethodDescriptorObject(name, this, [.. methods.Select(method => method.Method)]));
     }
 
     private static readonly FrozenDictionary<string, (string PyName, PySpecialMethodParametersType ParamType)> _nameToPySpecialMethodParametersType =
@@ -100,7 +100,7 @@ partial class PyTypeObject<TObject>
 
             Debug.Assert(method is not null);
 
-            PyAttributes.Add(pyName, new PyMethodDescriptorObject2(pyName, this, method, paramType));
+            PyAttributes.Add(pyName, new PyMethodDescriptorObject(pyName, this, method, paramType));
         }
     }
 
@@ -127,7 +127,7 @@ partial class PyTypeObject<TObject>
             if (method.DeclaringType == typeof(PyTypeObject<TObject>))
                 continue;
 
-            PyAttributes.Add(pyName, new PyMethodDescriptorObject2(pyName, this, method, paramType));
+            PyAttributes.Add(pyName, new PyMethodDescriptorObject(pyName, this, method, paramType));
         }
     }
 }

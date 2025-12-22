@@ -68,7 +68,7 @@ public sealed class PySuperObjectType : PyTypeObject<PySuperObjectType, PySuperO
 {
     public override string Name => "super";
 
-    private static readonly PyBuiltinFunctionOrMethodObject2 _new = new(PySpecialNames.New, NewImpl_1, NewImpl_2);
+    private static readonly PyBuiltinFunctionOrMethodObject _new = new(PySpecialNames.New, NewImpl_1, NewImpl_2);
 
     [PyFunctionArgsDef()]
     private static PyResult NewImpl_1(PyCallContext context, PyArguments arguments)

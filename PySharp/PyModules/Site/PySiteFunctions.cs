@@ -7,8 +7,8 @@ namespace PySharp.PyModules.Site;
 
 public static class PySiteFunctions
 {
-    public static readonly PyBuiltinFunctionOrMethodObject2 Exit = new("exit", ExitImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject2 Quit = Exit;
+    public static readonly PyBuiltinFunctionOrMethodObject Exit = new("exit", ExitImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Quit = Exit;
 
     [PyFunctionArgsDef("code=None")]
     private static PyResult ExitImpl(PyCallContext context, PyArguments arguments)
