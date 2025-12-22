@@ -1,5 +1,6 @@
 ﻿using PySharp.AstNodes;
 using PySharp.PyModules.Builtins;
+using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.Environments;
 using PySharp.Tokenization;
 using System.Diagnostics;
@@ -136,7 +137,7 @@ public static class PyInterpreter
 
             PyTryCatch(() =>
             {
-                node.Execute(PyVirtualMachine.CurrentFrame);
+                node.Execute(PyCallContext.Null, PyVirtualMachine.CurrentFrame);
                 Debug.Assert(PyVirtualMachine.CurrentFrame.IsRoot);
             });
         }

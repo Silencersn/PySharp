@@ -5,7 +5,7 @@ namespace PySharp.PyModules.Builtins;
 
 public sealed class PyFunctionObject : PyObject, IPyObjectName
 {
-    internal readonly PyOldUncompoundedFunction _function;
+    internal readonly PyUncompoundedDelegate _function;
     internal readonly PyCellObject[]? _closure;
     internal PyObject? _pyClosure;
     internal PyFrame.PyFrameGlobals _globals;
@@ -15,7 +15,7 @@ public sealed class PyFunctionObject : PyObject, IPyObjectName
 
     public override PyTypeObject DefaultPyType => PyFunctionObjectType.Shared;
 
-    internal PyFunctionObject(string name, PyOldUncompoundedFunction function, IEnumerable<PyCellObject>? closure, PyFrame.PyFrameGlobals globals)
+    internal PyFunctionObject(string name, PyUncompoundedDelegate function, IEnumerable<PyCellObject>? closure, PyFrame.PyFrameGlobals globals)
     {
         Name = name;
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
@@ -44,10 +44,7 @@ public sealed class PyFunctionObjectType : PyTypeObject<PyFunctionObjectType, Py
 
     protected internal override PyResult Call(PyCallContext context, PyFunctionObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        var result = self._function.Invoke(args, kwargs);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return self._function.Invoke(context, args, kwargs);
     }
 
     protected internal override PyResult Get(PyCallContext context, PyFunctionObject self, PyObject instance, PyObject owner)

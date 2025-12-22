@@ -1,4 +1,5 @@
 ﻿using PySharp.PyRuntime;
+using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.Metadata;
 
 namespace PySharp.AstNodes;
@@ -7,7 +8,7 @@ public abstract partial class AstNode : IMetaInfoProvider
 {
     public MetaInfo? MetaInfo { get; internal set; }
 
-    public virtual void Execute(PyFrame frame)
+    public virtual void Execute(PyCallContext context, PyFrame frame)
     {
         throw new NotSupportedException();
     }

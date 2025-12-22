@@ -73,11 +73,11 @@ internal static class AstUtils
         throw new PyRuntimeException(PyVirtualMachine.CurrentException);
     }
 
-    public static void SetTargetValue(this AstExprNode target, PyObject value, PyFrame frame)
+    public static void SetTargetValue(this AstExprNode target, PyCallContext context, PyObject value, PyFrame frame)
     {
         if (target is ITargetNode targetNode)
         {
-            targetNode.SetVaue(value, frame);
+            targetNode.SetVaue(context, value, frame);
         }
         else if (target is TupleNode tupleNode)
         {
@@ -95,7 +95,7 @@ internal static class AstUtils
             }
             for (int i = 0; i < tupleNode.Elts.Length; i++)
             {
-                tupleNode.Elts[i].SetTargetValue(iter[i], frame);
+                tupleNode.Elts[i].SetTargetValue(context, iter[i], frame);
             }
         }
         else if (target is ListNode listNode)
@@ -113,7 +113,7 @@ internal static class AstUtils
             }
             for (int i = 0; i < listNode.Elts.Length; i++)
             {
-                listNode.Elts[i].SetTargetValue(iter[i], frame);
+                listNode.Elts[i].SetTargetValue(context, iter[i], frame);
             }
         }
         else
@@ -123,24 +123,24 @@ internal static class AstUtils
         }
     }
 
-    public static void DeleteTargetValue(this AstExprNode target, PyFrame frame)
+    public static void DeleteTargetValue(this AstExprNode target, PyCallContext context, PyFrame frame)
     {
         if (target is ITargetNode targetNode)
         {
-            targetNode.DeleteValue(frame);
+            targetNode.DeleteValue(context, frame);
         }
         else if (target is TupleNode tupleNode)
         {
             foreach (var elt in tupleNode.Elts)
             {
-                elt.DeleteTargetValue(frame);
+                elt.DeleteTargetValue(context, frame);
             }
         }
         else if (target is ListNode listNode)
         {
             foreach (var elt in listNode.Elts)
             {
-                elt.DeleteTargetValue(frame);
+                elt.DeleteTargetValue(context, frame);
             }
         }
         else
@@ -151,12 +151,12 @@ internal static class AstUtils
     }
 
 
-    public static bool GetBoolValue(this AstExprNode testNode, PyFrame frame)
+    public static bool GetBoolValue(this AstExprNode testNode, PyCallContext context, PyFrame frame)
     {
         if (testNode is IAstExprNodeBool node)
-            return node.GetExprValueWithResult(frame).Result;
+            return node.GetExprValueWithResult(context, frame).Result;
         else
-            return testNode.GetExprValue(frame).Bool().PyCast<PyBoolObject>().BoolValue;
+            return testNode.GetExprValue(context, frame).Bool().PyCast<PyBoolObject>().BoolValue;
     }
 
     public static void EnumerateNodes(this IEnumerable<AstNode> nodes, Action<AstNode> action)
@@ -167,14 +167,14 @@ internal static class AstUtils
         }
     }
 
-    public static PyObject ApplyDeractors(PyObject target, List<AstExprNode> decoratorList, PyFrame frame)
+    public static PyObject ApplyDeractors(PyObject target, List<AstExprNode> decoratorList, PyCallContext context, PyFrame frame)
     {
         if (decoratorList.Count > 0)
         {
             Stack<PyObject> decorators = [];
             foreach (var decorator in decoratorList)
             {
-                decorators.Push(decorator.GetExprValue(frame));
+                decorators.Push(decorator.GetExprValue(context, frame));
             }
             foreach (var decorator in decorators)
             {

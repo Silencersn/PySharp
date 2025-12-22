@@ -1,5 +1,6 @@
 ﻿using PySharp.AstNodes;
 using PySharp.PyModules.Builtins;
+using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.Environments;
 using System.Diagnostics;
 
@@ -102,7 +103,7 @@ public static partial class PyVirtualMachine
             PyEnvironment.Init(PyEnvironmentOptions.Default);
         }
 
-        moduleNode.Execute(CurrentFrame);
+        moduleNode.Execute(PyCallContext.Null, CurrentFrame);
 
         // module will be reloaded
         module._pyAttributes = CurrentFrame._globals.Globals;

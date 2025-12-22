@@ -200,7 +200,7 @@ public static partial class PyBuiltinFunctions
         var node = parser.ParseExpressionNode();
         var frame = PyVirtualMachine.CurrentFrame;
         var tempFrame = frame.TempFrame(FrameType.Eval);
-        var result = node.Body.GetExprValue(tempFrame);
+        var result = node.Body.GetExprValue(context, tempFrame);
         if (result is null)
             return PyResult.CaptureExceptionFromPVM();
         return result;
@@ -228,7 +228,7 @@ public static partial class PyBuiltinFunctions
         }
         var frame = PyVirtualMachine.CurrentFrame;
         var tempFrame = frame.TempFrame(FrameType.Exec);
-        node.Execute(tempFrame);
+        node.Execute(context, tempFrame);
         return PyNoneObject.None;
     }
 

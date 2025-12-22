@@ -11,14 +11,14 @@ namespace PySharp.AstNodes;
 
 public abstract class AstExprNode : AstNode, IAstNodeLocation
 {
-    public PyObject GetExprValue(PyFrame frame)
+    public PyObject GetExprValue(PyCallContext context, PyFrame frame)
     {
         if (this is IAstExprNodeNoSelfPythonException)
-            return ExecuteExpr(frame);
+            return ExecuteExpr(context, frame);
 
         var previousProvider = frame.ExprMetaInfoProvider;
         frame.ExprMetaInfoProvider = this;
-        var value = ExecuteExpr(frame);
+        var value = ExecuteExpr(context, frame);
         frame.ExprMetaInfoProvider = previousProvider;
         return value;
     }
@@ -30,12 +30,12 @@ public abstract class AstExprNode : AstNode, IAstNodeLocation
     {
         return null;
     }
-    public abstract PyObject ExecuteExpr(PyFrame frame);
+    public abstract PyObject ExecuteExpr(PyCallContext context, PyFrame frame);
 }
 
 internal interface IAstExprNodeBool
 {
-    public (bool Result, PyObject Value) GetExprValueWithResult(PyFrame frame);
+    public (bool Result, PyObject Value) GetExprValueWithResult(PyCallContext context, PyFrame frame);
 }
 
 /// <summary>
@@ -58,8 +58,8 @@ internal interface IExprContextNode
 
 internal interface ITargetNode
 {
-    void SetVaue(PyObject value, PyFrame frame);
-    void DeleteValue(PyFrame frame);
+    void SetVaue(PyCallContext context, PyObject value, PyFrame frame);
+    void DeleteValue(PyCallContext context, PyFrame frame);
 }
 
 public sealed class NameNode : AstExprNode, IExprContextNode, ITargetNode
@@ -72,7 +72,7 @@ public sealed class NameNode : AstExprNode, IExprContextNode, ITargetNode
     public string Identifier { get; }
     public ExprContext Ctx { get; set; }
 
-    public override PyObject ExecuteExpr(PyFrame frame)
+    public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
         return frame.GetValue(Identifier);
     }
@@ -83,12 +83,12 @@ public sealed class NameNode : AstExprNode, IExprContextNode, ITargetNode
             .AppendFormat("Name(id={0}, ctx={1}())", PyStrConverter.FromStringToLiteral(Identifier), Ctx);
     }
 
-    void ITargetNode.DeleteValue(PyFrame frame)
+    void ITargetNode.DeleteValue(PyCallContext context, PyFrame frame)
     {
         frame.RemoveValue(Identifier);
     }
 
-    void ITargetNode.SetVaue(PyObject value, PyFrame frame)
+    void ITargetNode.SetVaue(PyCallContext context, PyObject value, PyFrame frame)
     {
         frame.SetValue(Identifier, value);
     }
@@ -103,7 +103,7 @@ public sealed class ConstantNode : AstExprNode, IAstExprNodeNoSelfPythonExceptio
 
     public PyObject Value { get; }
 
-    public override PyObject ExecuteExpr(PyFrame frame)
+    public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
         return Value;
     }
@@ -136,9 +136,9 @@ public sealed class AttributeNode : AstExprNode, IExprContextNode, ITargetNode
     public string Identifier { get; }
     public ExprContext Ctx { get; set; }
 
-    public override PyObject ExecuteExpr(PyFrame frame)
+    public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        var value = Value.GetExprValue(frame);
+        var value = Value.GetExprValue(context, frame);
         var attr = PyOperators.GetAttr(value, Identifier);
         return attr.PyThrowIfNull();
     }
@@ -156,15 +156,15 @@ public sealed class AttributeNode : AstExprNode, IExprContextNode, ITargetNode
         Value.EnumerateNodes(action);
     }
 
-    void ITargetNode.SetVaue(PyObject value, PyFrame frame)
+    void ITargetNode.SetVaue(PyCallContext context, PyObject value, PyFrame frame)
     {
-        var obj = Value.GetExprValue(frame);
+        var obj = Value.GetExprValue(context, frame);
         PyOperators.SetAttr(obj, Identifier, value).PyThrowIfNull();
     }
 
-    void ITargetNode.DeleteValue(PyFrame frame)
+    void ITargetNode.DeleteValue(PyCallContext context, PyFrame frame)
     {
-        var obj = Value.GetExprValue(frame);
+        var obj = Value.GetExprValue(context, frame);
         PyOperators.DelAttr(obj, Identifier).PyThrowIfNull();
     }
 }
@@ -181,29 +181,29 @@ public sealed class SubscriptNode : AstExprNode, IExprContextNode, ITargetNode
     public new AstExprNode Slice { get; }
     public ExprContext Ctx { get; set; }
 
-    public override PyObject ExecuteExpr(PyFrame frame)
+    public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        return GetItem(frame);
+        return GetItem(context, frame);
     }
 
-    public PyObject GetItem(PyFrame frame)
+    public PyObject GetItem(PyCallContext context, PyFrame frame)
     {
-        var value = Value.GetExprValue(frame);
-        var slice = Slice.GetExprValue(frame);
+        var value = Value.GetExprValue(context, frame);
+        var slice = Slice.GetExprValue(context, frame);
         return value.GetItem(slice).PyThrowIfNull();
     }
 
-    public PyObject SetItem(PyFrame frame, PyObject obj)
+    public PyObject SetItem(PyCallContext context, PyFrame frame, PyObject obj)
     {
-        var value = Value.GetExprValue(frame);
-        var slice = Slice.GetExprValue(frame);
+        var value = Value.GetExprValue(context, frame);
+        var slice = Slice.GetExprValue(context, frame);
         return value.SetItem(slice, obj).PyThrowIfNull();
     }
 
-    public PyObject DelItem(PyFrame frame)
+    public PyObject DelItem(PyFrame frame, PyCallContext context)
     {
-        var value = Value.GetExprValue(frame);
-        var slice = Slice.GetExprValue(frame);
+        var value = Value.GetExprValue(context, frame);
+        var slice = Slice.GetExprValue(context, frame);
         return value.Delete(slice).PyThrowIfNull();
     }
 
@@ -221,14 +221,14 @@ public sealed class SubscriptNode : AstExprNode, IExprContextNode, ITargetNode
         Slice.EnumerateNodes(action);
     }
 
-    void ITargetNode.SetVaue(PyObject value, PyFrame frame)
+    void ITargetNode.SetVaue(PyCallContext context, PyObject value, PyFrame frame)
     {
-        SetItem(frame, value);
+        SetItem(context, frame, value);
     }
 
-    void ITargetNode.DeleteValue(PyFrame frame)
+    void ITargetNode.DeleteValue(PyCallContext context, PyFrame frame)
     {
-        DelItem(frame);
+        DelItem(frame, context);
     }
 }
 
@@ -245,12 +245,12 @@ public sealed class SliceNode : AstExprNode, IAstExprNodeNoSelfPythonException
     public AstExprNode? Upper { get; }
     public AstExprNode? Step { get; }
 
-    public override PyObject ExecuteExpr(PyFrame frame)
+    public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
         return new PySliceObject(
-            Lower?.GetExprValue(frame) ?? PyNoneObject.None,
-            Upper?.GetExprValue(frame) ?? PyNoneObject.None,
-            Step?.GetExprValue(frame) ?? PyNoneObject.None
+            Lower?.GetExprValue(context, frame) ?? PyNoneObject.None,
+            Upper?.GetExprValue(context, frame) ?? PyNoneObject.None,
+            Step?.GetExprValue(context, frame) ?? PyNoneObject.None
         );
     }
 
@@ -303,9 +303,9 @@ public sealed class CallNode : AstExprNode
     public ImmutableArray<AstExprNode> Args { get; }
     public ImmutableArray<AstKeywordNode> Keywords { get; }
 
-    public override PyObject ExecuteExpr(PyFrame frame)
+    public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        var func = Func.GetExprValue(frame).PyThrowIfNull();
+        var func = Func.GetExprValue(context, frame).PyThrowIfNull();
 
         IReadOnlyList<PyObject> args;
         IReadOnlyDictionary<string, PyObject> kwargs;
@@ -313,8 +313,8 @@ public sealed class CallNode : AstExprNode
         switch (_argsType)
         {
             case CallArgumentsType.ArgsKwargs:
-                args = [.. Args.Select(arg => arg.GetExprValue(frame))];
-                kwargs = Keywords.ToDictionary(keyword => keyword.Arg, keyword => keyword.Value.GetExprValue(frame));
+                args = [.. Args.Select(arg => arg.GetExprValue(context, frame))];
+                kwargs = Keywords.ToDictionary(keyword => keyword.Arg, keyword => keyword.Value.GetExprValue(context, frame));
                 break;
 
             case CallArgumentsType.NoArgsOrKwargs:
@@ -323,13 +323,13 @@ public sealed class CallNode : AstExprNode
                 break;
 
             case CallArgumentsType.ArgsOnly:
-                args = [.. Args.Select(arg => arg.GetExprValue(frame))];
+                args = [.. Args.Select(arg => arg.GetExprValue(context, frame))];
                 kwargs = FrozenDictionary<string, PyObject>.Empty;
                 break;
 
             case CallArgumentsType.KwargsOnly:
                 args = [];
-                kwargs = Keywords.ToDictionary(keyword => keyword.Arg, keyword => keyword.Value.GetExprValue(frame));
+                kwargs = Keywords.ToDictionary(keyword => keyword.Arg, keyword => keyword.Value.GetExprValue(context, frame));
                 break;
 
             default:
@@ -366,9 +366,9 @@ public sealed class ListNode : AstExprNode, IExprContextNode, IAstExprNodeNoSelf
     public ImmutableArray<AstExprNode> Elts { get; }
     public ExprContext Ctx { get; set; }
 
-    public override PyListObject ExecuteExpr(PyFrame frame)
+    public override PyListObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        return new PyListObject(Elts.Select(item => item.GetExprValue(frame)));
+        return new PyListObject(Elts.Select(item => item.GetExprValue(context, frame)));
     }
 
     public override bool? NoSideEffects()
@@ -411,9 +411,9 @@ public sealed class TupleNode : AstExprNode, IExprContextNode, IAstExprNodeNoSel
     public ImmutableArray<AstExprNode> Elts { get; }
     public ExprContext Ctx { get; set; }
 
-    public override PyTupleObject ExecuteExpr(PyFrame frame)
+    public override PyTupleObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        return PyTupleObject.CreateTuple(Elts.Select(item => item.GetExprValue(frame)));
+        return PyTupleObject.CreateTuple(Elts.Select(item => item.GetExprValue(context, frame)));
     }
 
     public override bool? NoSideEffects()
@@ -459,14 +459,14 @@ public sealed class DictNode : AstExprNode, IAstExprNodeNoSelfPythonException
     public ImmutableArray<AstExprNode> Keys { get; }
     public ImmutableArray<AstExprNode> Values { get; }
 
-    public override PyDictObject ExecuteExpr(PyFrame frame)
+    public override PyDictObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
         return new PyDictObject(
             Keys
             .Zip(Values)
             .Select(item => KeyValuePair.Create(
-                item.First.GetExprValue(frame),
-                item.Second.GetExprValue(frame)))
+                item.First.GetExprValue(context, frame),
+                item.Second.GetExprValue(context, frame)))
             );
     }
 
@@ -510,9 +510,9 @@ public sealed class SetNode : AstExprNode, IAstExprNodeNoSelfPythonException
 
     public ImmutableArray<AstExprNode> Elts { get; }
 
-    public override PySetObject ExecuteExpr(PyFrame frame)
+    public override PySetObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        return new PySetObject(Elts.Select(item => item.GetExprValue(frame)));
+        return new PySetObject(Elts.Select(item => item.GetExprValue(context, frame)));
     }
 
     public override bool? NoSideEffects()
@@ -556,15 +556,15 @@ public sealed class BoolOpNode : AstExprNode, IAstExprNodeBool, IAstExprNodeNoSe
     public AstBoolOpNode Op { get; }
     public ImmutableArray<AstExprNode> Values { get; }
 
-    public override PyObject ExecuteExpr(PyFrame frame)
+    public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        return GetExprValueWithResult(frame).Value;
+        return GetExprValueWithResult(context, frame).Value;
     }
 
-    public (bool Result, PyObject Value) GetExprValueWithResult(PyFrame frame)
+    public (bool Result, PyObject Value) GetExprValueWithResult(PyCallContext context, PyFrame frame)
     {
         ArgumentNullException.ThrowIfNull(frame);
-        var ret = Op.GetBoolOpValue(Values.Select(v => v.GetExprValue(frame)));
+        var ret = Op.GetBoolOpValue(Values.Select(v => v.GetExprValue(context, frame)));
         ret.Value.PyThrowIfNull();
         return ret!;
     }
@@ -649,10 +649,10 @@ public sealed class BinOpNode : AstExprNode
     public AstExprNode Left { get; }
     public AstExprNode Right { get; }
 
-    public override PyObject ExecuteExpr(PyFrame frame)
+    public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        var left = Left.GetExprValue(frame);
-        var right = Right.GetExprValue(frame);
+        var left = Left.GetExprValue(context, frame);
+        var right = Right.GetExprValue(context, frame);
         return Operator.GetOpValue(PyCallContext.Null, left, right).PyUnwrapIncludedNotImplemented();
     }
 
@@ -676,9 +676,9 @@ public sealed class UnaryOpNode : AstExprNode
     public AstUnaryOpNode Op { get; }
     public AstExprNode Operand { get; }
 
-    public override PyObject ExecuteExpr(PyFrame frame)
+    public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        return Op.GetUnaryOpValue(Operand.GetExprValue(frame)).PyThrowIfNull();
+        return Op.GetUnaryOpValue(Operand.GetExprValue(context, frame)).PyThrowIfNull();
     }
 
     public override AstExprNode Reduce(OptimizationOptions options)
@@ -717,20 +717,20 @@ public sealed class CompareNode : AstExprNode, IAstExprNodeBool
     public ImmutableArray<AstCmpopNode> Ops { get; }
     public ImmutableArray<AstExprNode> Comparators { get; }
 
-    public override PyObject ExecuteExpr(PyFrame frame)
+    public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        return GetExprValueWithResult(frame).Value;
+        return GetExprValueWithResult(context, frame).Value;
     }
 
-    public (bool Result, PyObject Value) GetExprValueWithResult(PyFrame frame)
+    public (bool Result, PyObject Value) GetExprValueWithResult(PyCallContext context, PyFrame frame)
     {
         PyObject lastValue = null!;
 
-        var left = Left.GetExprValue(frame);
+        var left = Left.GetExprValue(context, frame);
         for (int i = 0; i < Ops.Length; i++)
         {
             var op = Ops[i];
-            var right = Comparators[i].GetExprValue(frame);
+            var right = Comparators[i].GetExprValue(context, frame);
             var value = op.GetCompareValue(PyCallContext.Null, left, right).PyUnwrap();
             var boolValue = PySpecialMethods.GetBool(value).PyThrowIfNull().BoolValue;
 
@@ -765,11 +765,11 @@ public sealed class IfExpNode : AstExprNode, IAstExprNodeNoSelfPythonException
     public AstExprNode Body { get; }
     public AstExprNode OrElse { get; }
 
-    public override PyObject ExecuteExpr(PyFrame frame)
+    public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        if (Test.GetExprValue(frame).Bool().PyCast<PyBoolObject>().BoolValue)
-            return Body.GetExprValue(frame).PyThrowIfNull();
-        return OrElse.GetExprValue(frame).PyThrowIfNull();
+        if (Test.GetExprValue(context, frame).Bool().PyCast<PyBoolObject>().BoolValue)
+            return Body.GetExprValue(context, frame).PyThrowIfNull();
+        return OrElse.GetExprValue(context, frame).PyThrowIfNull();
     }
 
     public override void EnumerateNodes(Action<AstNode> action)
@@ -792,7 +792,7 @@ public sealed class ListCompNode : AstExprNode, IAstExprNodeNoSelfPythonExceptio
     public AstExprNode Elt { get; }
     public ImmutableArray<AstComprehensionNode> Generators { get; }
 
-    public override PyObject ExecuteExpr(PyFrame frame)
+    public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
         var tempFrame = frame.TempFrame(FrameType.Comprehension);
         var list = new List<PyObject>();
@@ -802,14 +802,14 @@ public sealed class ListCompNode : AstExprNode, IAstExprNodeNoSelfPythonExceptio
         void For(int index)
         {
             var generator = Generators[index];
-            var iter = Utils.EnumerateIterable(generator.Iter.GetExprValue(tempFrame)) ?? throw new PyRuntimeException(PyVirtualMachine.CurrentException!);
+            var iter = Utils.EnumerateIterable(generator.Iter.GetExprValue(context, tempFrame)) ?? throw new PyRuntimeException(PyVirtualMachine.CurrentException!);
             foreach (var item in iter)
             {
-                generator.Target.SetTargetValue(item.PyThrowIfNull(), tempFrame);
+                generator.Target.SetTargetValue(context, item.PyThrowIfNull(), tempFrame);
                 var shouldContinue = false;
                 foreach (var test in generator.Ifs)
                 {
-                    if (!test.GetBoolValue(tempFrame))
+                    if (!test.GetBoolValue(context, tempFrame))
                     {
                         shouldContinue = true;
                         break;
@@ -824,7 +824,7 @@ public sealed class ListCompNode : AstExprNode, IAstExprNodeNoSelfPythonExceptio
                 }
                 else if (index == Generators.Length - 1)
                 {
-                    list.Add(Elt.GetExprValue(tempFrame));
+                    list.Add(Elt.GetExprValue(context, tempFrame));
                 }
             }
         }
@@ -849,7 +849,7 @@ public sealed class SetCompNode : AstExprNode, IAstExprNodeNoSelfPythonException
     public AstExprNode Elt { get; }
     public ImmutableArray<AstComprehensionNode> Generators { get; }
 
-    public override PyObject ExecuteExpr(PyFrame frame)
+    public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
         var tempFrame = frame.TempFrame(FrameType.Comprehension);
         var list = new List<PyObject>();
@@ -859,14 +859,14 @@ public sealed class SetCompNode : AstExprNode, IAstExprNodeNoSelfPythonException
         void For(int index)
         {
             var generator = Generators[index];
-            var iter = Utils.EnumerateIterable(generator.Iter.GetExprValue(tempFrame)) ?? throw new PyRuntimeException(PyVirtualMachine.CurrentException!);
+            var iter = Utils.EnumerateIterable(generator.Iter.GetExprValue(context, tempFrame)) ?? throw new PyRuntimeException(PyVirtualMachine.CurrentException!);
             foreach (var item in iter)
             {
-                generator.Target.SetTargetValue(item.PyThrowIfNull(), tempFrame);
+                generator.Target.SetTargetValue(context, item.PyThrowIfNull(), tempFrame);
                 var shouldContinue = false;
                 foreach (var test in generator.Ifs)
                 {
-                    if (!test.GetBoolValue(tempFrame))
+                    if (!test.GetBoolValue(context, tempFrame))
                     {
                         shouldContinue = true;
                         break;
@@ -881,7 +881,7 @@ public sealed class SetCompNode : AstExprNode, IAstExprNodeNoSelfPythonException
                 }
                 else if (index == Generators.Length - 1)
                 {
-                    list.Add(Elt.GetExprValue(tempFrame));
+                    list.Add(Elt.GetExprValue(context, tempFrame));
                 }
             }
         }
@@ -908,7 +908,7 @@ public sealed class DictCompNode : AstExprNode, IAstExprNodeNoSelfPythonExceptio
     public AstExprNode Value { get; }
     public ImmutableArray<AstComprehensionNode> Generators { get; }
 
-    public override PyObject ExecuteExpr(PyFrame frame)
+    public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
         var tempFrame = frame.TempFrame(FrameType.Comprehension);
         var list = new List<KeyValuePair<PyObject, PyObject>>();
@@ -918,14 +918,14 @@ public sealed class DictCompNode : AstExprNode, IAstExprNodeNoSelfPythonExceptio
         void For(int index)
         {
             var generator = Generators[index];
-            var iter = Utils.EnumerateIterable(generator.Iter.GetExprValue(tempFrame)) ?? throw new PyRuntimeException(PyVirtualMachine.CurrentException!);
+            var iter = Utils.EnumerateIterable(generator.Iter.GetExprValue(context, tempFrame)) ?? throw new PyRuntimeException(PyVirtualMachine.CurrentException!);
             foreach (var item in iter)
             {
-                generator.Target.SetTargetValue(item.PyThrowIfNull(), tempFrame);
+                generator.Target.SetTargetValue(context, item.PyThrowIfNull(), tempFrame);
                 var shouldContinue = false;
                 foreach (var test in generator.Ifs)
                 {
-                    if (!test.GetBoolValue(tempFrame))
+                    if (!test.GetBoolValue(context, tempFrame))
                     {
                         shouldContinue = true;
                         break;
@@ -940,7 +940,7 @@ public sealed class DictCompNode : AstExprNode, IAstExprNodeNoSelfPythonExceptio
                 }
                 else if (index == Generators.Length - 1)
                 {
-                    list.Add(KeyValuePair.Create(Key.GetExprValue(tempFrame), Value.GetExprValue(tempFrame)));
+                    list.Add(KeyValuePair.Create(Key.GetExprValue(context, tempFrame), Value.GetExprValue(context, tempFrame)));
                 }
             }
         }
@@ -967,7 +967,7 @@ public sealed class GeneratorExpNode : AstExprNode, IAstExprNodeNoSelfPythonExce
     public AstExprNode Elt { get; }
     public ImmutableArray<AstComprehensionNode> Generators { get; }
 
-    public override PyObject ExecuteExpr(PyFrame frame)
+    public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
         var tempFrame = frame.TempFrame(FrameType.Comprehension);
         var list = new List<PyObject>();
@@ -977,14 +977,14 @@ public sealed class GeneratorExpNode : AstExprNode, IAstExprNodeNoSelfPythonExce
         void For(int index)
         {
             var generator = Generators[index];
-            var iter = Utils.EnumerateIterable(generator.Iter.GetExprValue(tempFrame)) ?? throw new PyRuntimeException(PyVirtualMachine.CurrentException!);
+            var iter = Utils.EnumerateIterable(generator.Iter.GetExprValue(context, tempFrame)) ?? throw new PyRuntimeException(PyVirtualMachine.CurrentException!);
             foreach (var item in iter)
             {
-                generator.Target.SetTargetValue(item.PyThrowIfNull(), tempFrame);
+                generator.Target.SetTargetValue(context, item.PyThrowIfNull(), tempFrame);
                 var shouldContinue = false;
                 foreach (var test in generator.Ifs)
                 {
-                    if (!test.GetBoolValue(tempFrame))
+                    if (!test.GetBoolValue(context, tempFrame))
                     {
                         shouldContinue = true;
                         break;
@@ -999,7 +999,7 @@ public sealed class GeneratorExpNode : AstExprNode, IAstExprNodeNoSelfPythonExce
                 }
                 else if (index == Generators.Length - 1)
                 {
-                    list.Add(Elt.GetExprValue(tempFrame));
+                    list.Add(Elt.GetExprValue(context, tempFrame));
                 }
             }
         }
@@ -1028,9 +1028,9 @@ public sealed class LambdaNode : AstExprNode, IFunctionOrLambda
     string[] IFunctionOrLambda.CapturedVariables { get; set; } = null!;
     string[] IFunctionOrLambda.LocalVariables { get; set; } = null!;
 
-    public override PyObject ExecuteExpr(PyFrame frame)
+    public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        var caller = new FunctionCaller(this, frame, Body.GetExprValue);
+        var caller = new FunctionCaller(context, this, frame, Body.GetExprValue);
         var func = new PyFunctionObject("<lambda>", caller.Call, frame.InternalClosure?.Values, frame._globals);
         caller._func = func;
         return func;
@@ -1053,13 +1053,13 @@ public sealed class JoinedStrNode : AstExprNode, IAstExprNodeNoSelfPythonExcepti
 
     public ImmutableArray<AstExprNode> Values { get; }
 
-    public override PyObject ExecuteExpr(PyFrame frame)
+    public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
         var builder = new StringBuilder();
 
         foreach (var expr in Values)
         {
-            if (!PySpecialMethods.TryGetStr(expr.GetExprValue(frame), out var s))
+            if (!PySpecialMethods.TryGetStr(expr.GetExprValue(context, frame), out var s))
             {
                 Debug.Assert(PyVirtualMachine.CurrentException is not null);
                 throw new PyRuntimeException(PyVirtualMachine.CurrentException);
@@ -1091,13 +1091,13 @@ public sealed class FormattedValueNode : AstExprNode
     public int Conversion { get; }
     public AstExprNode? FormatSpec { get; }
 
-    public override PyObject ExecuteExpr(PyFrame frame)
+    public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        var result = Value.GetExprValue(frame);
+        var result = Value.GetExprValue(context, frame);
 
         if (FormatSpec is not null)
         {
-            var spec = FormatSpec.GetExprValue(frame);
+            var spec = FormatSpec.GetExprValue(context, frame);
             Debug.Assert(spec is PyStrObject);
             result = result.Format(((PyStrObject)spec).Value).PyThrowIfNull();
         }
