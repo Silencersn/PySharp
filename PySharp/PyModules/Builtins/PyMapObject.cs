@@ -29,8 +29,8 @@ public sealed class PyMapObjectType : PyTypeObject<PyMapObjectType, PyMapObject>
     private static PyResult NewImpl(PyCallContext context, PyArguments arguments)
     {
         var function = arguments[0];
-        if (!PyInteropService.TryGetBool(arguments["strict"], out var strict))
-            return PyResult.CaptureExceptionFromPVM();
+        if (!PySpecialMethods.TryGetBool(context, arguments["strict"], out var strict, out var result))
+            return result;
 
         List<IEnumerator<PyObject?>> iters = [];
         foreach (var arg in arguments.ExtraArgs)
@@ -41,7 +41,7 @@ public sealed class PyMapObjectType : PyTypeObject<PyMapObjectType, PyMapObject>
             iters.Add(iter.GetEnumerator());
         }
 
-        return new PyMapObject(function, [.. iters], strict);
+        return new PyMapObject(function, [.. iters], strict.BoolValue);
     }
 
     protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)

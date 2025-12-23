@@ -65,11 +65,11 @@ public sealed class PyTupleObjectType : PyTypeObject<PyTupleObjectType, PyTupleO
 
     protected internal override PyResult GetItem(PyCallContext context, PyTupleObject self, PyObject item)
     {
-        if (!PyInteropService.TryGetIndex(item, out int index))
-            return PyResult.CaptureExceptionFromPVM();
-        if (!Utils.TryGetItem(self._array, index, "IndexError: tuple index out of range", out var result))
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        if (!PySpecialMethods.TryGetIndex(context, item, out var index, out var result))
+            return result;
+        if (!Utils.TryGetItem(self._array, index.Int32Value, "IndexError: tuple index out of range", out var itemResult))
+            return result;
+        return itemResult;
     }
 
     protected internal override PyResult Contains(PyCallContext context, PyTupleObject self, PyObject item)

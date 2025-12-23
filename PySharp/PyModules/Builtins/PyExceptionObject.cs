@@ -178,8 +178,8 @@ public abstract class PyExceptionType : PyTypeObject<PyExceptionObject>
 
         for (int i = 0; i < self.Args.Count; i++)
         {
-            if (!PyInteropService.TryGetRepr(self.Args[i], out var s))
-                return PyResult.CaptureExceptionFromPVM();
+            if (!PySpecialMethods.TryGetRepr(context, self.Args[i], out var s, out var result))
+                return result;
 
             if (i > 0)
                 builder.Append(", ");

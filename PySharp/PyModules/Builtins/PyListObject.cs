@@ -73,18 +73,18 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
 
     protected internal override PyResult GetItem(PyCallContext context, PyListObject self, PyObject item)
     {
-        if (!PyInteropService.TryGetIndex(item, out int index))
+        if (!PySpecialMethods.TryGetIndex(context, item, out var index, out var result))
+            return result;
+        if (!Utils.TryGetItem(self._list, index.Int32Value, "list index out of range", out var resultObj))
             return PyResult.CaptureExceptionFromPVM();
-        if (!Utils.TryGetItem(self._list, index, "list index out of range", out var result))
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return resultObj;
     }
 
     protected internal override PyResult SetItem(PyCallContext context, PyListObject self, PyObject key, PyObject value)
     {
-        if (!PyInteropService.TryGetIndex(key, out int index))
-            return PyResult.CaptureExceptionFromPVM();
-        if (!Utils.TrySetItem(self._list, index, value, "list index out of range"))
+        if (!PySpecialMethods.TryGetIndex(context, key, out var index, out var result))
+            return result;
+        if (!Utils.TrySetItem(self._list, index.Int32Value, value, "list index out of range"))
             return PyResult.CaptureExceptionFromPVM();
         return PyNoneObject.None;
     }
@@ -141,9 +141,9 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
     [PyFunctionArgsDef("i", "x", "/")]
     internal PyResult Insert(PyCallContext context, PyListObject self, PyArguments arguments)
     {
-        if (!PyInteropService.TryGetIndex(arguments[0], out int index))
+        if (!PySpecialMethods.TryGetIndex(context, arguments[0], out var index, out var result))
             return PyResult.CaptureExceptionFromPVM();
-        self.PyInsert(index, arguments[1]);
+        self.PyInsert(index.Int32Value, arguments[1]);
         return PyNoneObject.None;
     }
 
@@ -158,11 +158,11 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
     [PyFunctionArgsDef("i=-1", "/")]
     internal PyResult Pop(PyCallContext context, PyListObject self, PyArguments arguments)
     {
-        if (!PyInteropService.TryGetIndex(arguments[0], out int index))
-            return PyResult.CaptureExceptionFromPVM();
-        if (Utils.IsIndexOutOfRange(index, self._list.Count))
+        if (!PySpecialMethods.TryGetIndex(context, arguments[0], out var index, out var result))
+            return result;
+        if (Utils.IsIndexOutOfRange(index.Int32Value, self._list.Count))
             return PyResult.RaiseIndexError("IndexError: pop index out of range");
-        return self.PyPop(index);
+        return self.PyPop(index.Int32Value);
     }
 
     [PyFunctionArgsDef()]
@@ -178,8 +178,8 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
         var index = self.PyIndex(arguments[0]);
         if (index is -1)
         {
-            if (!PyInteropService.TryGetRepr(arguments[0], out var s))
-                return PyResult.CaptureExceptionFromPVM();
+            if (!PySpecialMethods.TryGetRepr(context, arguments[0], out var s, out var result))
+                return result;
             return PyResult.RaiseValueError($"ValueError: {s} is not in list");
         }
         return PyIntObject.FromInteger(index);
@@ -188,13 +188,13 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
     [PyFunctionArgsDef("x", "start", "/")]
     internal PyResult Index_2(PyCallContext context, PyListObject self, PyArguments arguments)
     {
-        if (!PyInteropService.TryGetIndex(arguments[1], out int start))
+        if (!PySpecialMethods.TryGetIndex(context, arguments[1], out var start, out var result))
             return PyResult.CaptureExceptionFromPVM();
-        var index = self.PyIndex(arguments[0], start);
+        var index = self.PyIndex(arguments[0], start.Int32Value);
         if (index is -1)
         {
-            if (!PyInteropService.TryGetRepr(arguments[0], out var s))
-                return PyResult.CaptureExceptionFromPVM();
+            if (!PySpecialMethods.TryGetRepr(context, arguments[0], out var s, out result))
+                return result;
             return PyResult.RaiseValueError($"ValueError: {s} is not in list");
         }
         return PyIntObject.FromInteger(index);
@@ -203,15 +203,15 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
     [PyFunctionArgsDef("x", "start", "end", "/")]
     internal PyResult Index_3(PyCallContext context, PyListObject self, PyArguments arguments)
     {
-        if (!PyInteropService.TryGetIndex(arguments[1], out int start))
-            return PyResult.CaptureExceptionFromPVM();
-        if (!PyInteropService.TryGetIndex(arguments[2], out int end))
-            return PyResult.CaptureExceptionFromPVM();
-        var index = self.PyIndex(arguments[0], start, end);
+        if (!PySpecialMethods.TryGetIndex(context, arguments[1], out var start, out var result))
+            return result;
+        if (!PySpecialMethods.TryGetIndex(context, arguments[2], out var end, out result))
+            return result;
+        var index = self.PyIndex(arguments[0], start.Int32Value, end.Int32Value);
         if (index is -1)
         {
-            if (!PyInteropService.TryGetRepr(arguments[0], out var s))
-                return PyResult.CaptureExceptionFromPVM();
+            if (!PySpecialMethods.TryGetRepr(context, arguments[0], out var s, out result))
+                return result;
             return PyResult.RaiseValueError($"ValueError: {s} is not in list");
         }
         return PyIntObject.FromInteger(index);
@@ -227,11 +227,11 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
     internal PyResult Sort(PyCallContext context, PyListObject self, PyArguments arguments)
     {
         var keySelector = arguments["key"];
-        if (!PyInteropService.TryGetBool(arguments["reverse"], out var reverse))
-            return PyResult.CaptureExceptionFromPVM();
+        if (!PySpecialMethods.TryGetBool(context, arguments["reverse"], out var reverse, out var result))
+            return result;
         if (keySelector is PyNoneObject)
         {
-            self.PySort(reverse: reverse);
+            self.PySort(reverse: reverse.BoolValue);
         }
         else
         {
@@ -243,7 +243,7 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
                     return key;
                 itemToKey[item] = key.Value;
             }
-            self.PySort(item => itemToKey[item], reverse);
+            self.PySort(item => itemToKey[item], reverse.BoolValue);
         }
         return PyNoneObject.None;
     }

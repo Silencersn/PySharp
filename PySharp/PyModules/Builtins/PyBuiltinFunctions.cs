@@ -530,9 +530,9 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef("codepoint", "/")]
     private static PyResult ChrImpl(PyCallContext context, PyArguments arguments)
     {
-        if (!PyInteropService.TryGetIndex(arguments[0], out int value))
-            return PyResult.CaptureExceptionFromPVM();
-        if (!Rune.TryCreate(value, out var rune))
+        if (!PySpecialMethods.TryGetIndex(context, arguments[0], out var value, out var result))
+            return result;
+        if (!Rune.TryCreate(value.Int32Value, out var rune))
             return PyResult.RaiseValueError("chr() arg not in range(0x110000)");
         return PyStrObject.FromRune(rune);
     }

@@ -91,17 +91,17 @@ public class PyIntObjectType : PyTypeObject<PyIntObjectType, PyIntObject>
     {
         if (arguments.Args[0] is PyStrObject str)
         {
-            if (!TryParse(str.Value, 10, out var result))
+            if (!TryParse(str.Value, 10, out var integer))
                 return PyResult.RaiseValueError($"invalid literal for int() with base 10: '{str.Value}'");
 
-            return PyIntObject.FromInteger(result);
+            return PyIntObject.FromInteger(integer);
         }
 
         // TODO: __int__? __index__?
-        if (!PyInteropService.TryGetIndex(arguments[0], out BigInteger value))
-            return PyResult.CaptureExceptionFromPVM();
+        if (!PySpecialMethods.TryGetIndex(context, arguments[0], out var value, out var result))
+            return result;
 
-        return PyIntObject.FromInteger(value);
+        return PyIntObject.FromInteger(value.Value);
     }
     [PyFunctionArgsDef("string", "/", "base=10")]
     private static PyResult NewImpl_2(PyCallContext context, PyArguments arguments)

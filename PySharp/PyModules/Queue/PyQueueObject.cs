@@ -51,9 +51,9 @@ public sealed class PyQueueObjectType : PyTypeObject<PyQueueObjectType, PyQueueO
     [PyFunctionArgsDef("maxsize=0")]
     private static PyResult NewImpl(PyCallContext context, PyArguments arguments)
     {
-        if (!PyInteropService.TryGetIndex(arguments[0], out int maxSize))
+        if (!PySpecialMethods.TryGetIndex(context, arguments[0], out var maxSize, out var result))
             return PyResult.CaptureExceptionFromPVM();
-        return new PyQueueObject(maxSize);
+        return new PyQueueObject(maxSize.Int32Value);
     }
 
     protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
@@ -86,16 +86,16 @@ public sealed class PyQueueObjectType : PyTypeObject<PyQueueObjectType, PyQueueO
     [PyFunctionArgsDef("item", "block=True", "timeout=None")]
     internal PyResult Put(PyCallContext context, PyQueueObject self, PyArguments arguments)
     {
-        if (!PyInteropService.TryGetBool(arguments[1], out var block))
-            return PyResult.CaptureExceptionFromPVM();
+        if (!PySpecialMethods.TryGetBool(context, arguments[1], out var block, out var result))
+            return result;
         double? timeout;
         if (arguments[2] is PyNoneObject)
             timeout = null;
-        else if (PyInteropService.TryGetFloat(arguments[2], out var value))
-            timeout = value;
+        else if (PySpecialMethods.TryGetFloat(context, arguments[2], out var value, out result))
+            timeout = value.Value;
         else
-            return PyResult.CaptureExceptionFromPVM();
-        var ex = self.PyPut(arguments[0], block, timeout);
+            return result;
+        var ex = self.PyPut(arguments[0], block.BoolValue, timeout);
         if (ex is not null)
             return PyResult.RaiseException(ex);
         return PyNoneObject.None;
@@ -113,16 +113,16 @@ public sealed class PyQueueObjectType : PyTypeObject<PyQueueObjectType, PyQueueO
     [PyFunctionArgsDef("block=True", "timeout=None")]
     internal PyResult Get(PyCallContext context, PyQueueObject self, PyArguments arguments)
     {
-        if (!PyInteropService.TryGetBool(arguments[0], out var block))
-            return PyResult.CaptureExceptionFromPVM();
+        if (!PySpecialMethods.TryGetBool(context, arguments[0], out var block, out var result))
+            return result;
         double? timeout;
         if (arguments[1] is PyNoneObject)
             timeout = null;
-        else if (PyInteropService.TryGetFloat(arguments[1], out var value))
-            timeout = value;
+        else if (PySpecialMethods.TryGetFloat(context, arguments[1], out var value, out result))
+            timeout = value.Value;
         else
-            return PyResult.CaptureExceptionFromPVM();
-        var (item, ex) = self.PyGet(block, timeout);
+            return result;
+        var (item, ex) = self.PyGet(block.BoolValue, timeout);
         if (ex is not null)
             return PyResult.RaiseException(ex);
         Debug.Assert(item is not null);

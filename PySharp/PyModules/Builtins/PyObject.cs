@@ -66,13 +66,14 @@ public partial class PyObject : IEquatable<PyObject>
             if (y is null)
                 return 1;
 
-            if (!PyInteropService.TryGetLt(x, y, out var result))
+            var lt = x.Lt(PyCallContext.Null, y);
+            if (lt.IsError || !PySpecialMethods.TryGetBool(PyCallContext.Null, lt.Value, out var b, out var result))
             {
                 Debug.Assert(PyVirtualMachine.CurrentException is not null);
                 throw new PyRuntimeException(PyVirtualMachine.CurrentException);
             }
 
-            return result ? -1 : 1;
+            return b.BoolValue ? -1 : 1;
         }
     }
 

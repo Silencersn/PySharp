@@ -43,9 +43,9 @@ public sealed class PyRandomObjectType : PyTypeObject<PyRandomObjectType, PyRand
             return new PyRandomObject(new System.Random()) { _pyType = cls };
         if (args.Count is 1)
         {
-            if (!PyInteropService.TryGetIndex(args[0], out int seed))
-                return PyResult.CaptureExceptionFromPVM();
-            return new PyRandomObject(new System.Random(seed)) { _pyType = cls };
+            if (!PySpecialMethods.TryGetIndex(context, args[0], out var seed, out var result))
+                return result;
+            return new PyRandomObject(new System.Random(seed.Int32Value)) { _pyType = cls };
         }
         return PyResult.RaiseTypeError(null);
     }
@@ -59,34 +59,36 @@ public sealed class PyRandomObjectType : PyTypeObject<PyRandomObjectType, PyRand
     [PyFunctionArgsDef("a", "b")]
     internal PyResult Uniform(PyCallContext context, PyRandomObject self, PyArguments arguments)
     {
-        if (!PyInteropService.TryGetFloat(arguments[0], out var a))
-            return PyResult.CaptureExceptionFromPVM();
-        if (!PyInteropService.TryGetFloat(arguments[1], out var b))
-            return PyResult.CaptureExceptionFromPVM();
-        return PyFloatObject.FromDouble(self.PyUniform(a, b));
+        if (!PySpecialMethods.TryGetFloat(context, arguments[0], out var a, out var result))
+            return result;
+        if (!PySpecialMethods.TryGetFloat(context, arguments[1], out var b, out result))
+            return result;
+        return PyFloatObject.FromDouble(self.PyUniform(a.Value, b.Value));
     }
 
     [PyFunctionArgsDef("stop", "/")]
     internal PyResult RandRange_1(PyCallContext context, PyRandomObject self, PyArguments arguments)
     {
-        if (!PyInteropService.TryGetIndex(arguments[0], out BigInteger stop))
-            return PyResult.CaptureExceptionFromPVM();
-        if (stop <= 0)
+        if (!PySpecialMethods.TryGetIndex(context, arguments[0], out var stop, out var result))
+            return result;
+        if (stop.Value <= 0)
             return PyResult.RaiseValueError("empty range for randrange()");
-        var result = self.PyRandRange(BigInteger.Zero, stop, BigInteger.One);
-        Debug.Assert(result is not null);
-        return PyIntObject.FromInteger(result.Value);
+        var randResult = self.PyRandRange(BigInteger.Zero, stop.Value, BigInteger.One);
+        Debug.Assert(randResult is not null);
+        return PyIntObject.FromInteger(randResult.Value);
     }
 
     [PyFunctionArgsDef("start", "stop", "step=1", "/")]
     internal PyResult RandRange_2(PyCallContext context, PyRandomObject self, PyArguments arguments)
     {
-        if (!PyInteropService.TryGetIndex(arguments[0], out BigInteger start))
-            return PyResult.CaptureExceptionFromPVM();
-        if (!PyInteropService.TryGetIndex(arguments[1], out BigInteger stop))
-            return PyResult.CaptureExceptionFromPVM();
-        if (!PyInteropService.TryGetIndex(arguments[2], out BigInteger step))
-            return PyResult.CaptureExceptionFromPVM();
+        if (!PySpecialMethods.TryGetIndex(context, arguments[0], out var startObj, out var result))
+            return result;
+        if (!PySpecialMethods.TryGetIndex(context, arguments[1], out var stopObj, out result))
+            return result;
+        if (!PySpecialMethods.TryGetIndex(context, arguments[2], out var stepObj, out result))
+            return result;
+
+        var (start, stop, step) = (startObj.Value, stopObj.Value, stepObj.Value);
         if (step == 0)
             return PyResult.RaiseValueError("zero step for randrange()");
         if (step > 0 && start >= stop || step < 0 && stop >= start)
@@ -95,22 +97,22 @@ public sealed class PyRandomObjectType : PyTypeObject<PyRandomObjectType, PyRand
                 return PyResult.RaiseValueError($"empty range in randrange({start}, {stop})");
             return PyResult.RaiseValueError($"empty range in randrange({start}, {stop}, {step})");
         }
-        var result = self.PyRandRange(start, stop, step);
-        Debug.Assert(result is not null);
-        return PyIntObject.FromInteger(result.Value);
+        var randResult = self.PyRandRange(start, stop, step);
+        Debug.Assert(randResult is not null);
+        return PyIntObject.FromInteger(randResult.Value);
     }
 
     [PyFunctionArgsDef("a", "b")]
     internal PyResult RandInt(PyCallContext context, PyRandomObject self, PyArguments arguments)
     {
-        if (!PyInteropService.TryGetIndex(arguments[0], out BigInteger a))
-            return PyResult.CaptureExceptionFromPVM();
-        if (!PyInteropService.TryGetIndex(arguments[1], out BigInteger b))
-            return PyResult.CaptureExceptionFromPVM();
-        if (a > b)
-            return PyResult.RaiseValueError($"empty range in randrange({a}, {b + 1})");
-        var result = self.PyRandInt(a, b);
-        Debug.Assert(result is not null);
-        return PyIntObject.FromInteger(result.Value);
+        if (!PySpecialMethods.TryGetIndex(context, arguments[0], out var a, out var result))
+            return result;
+        if (!PySpecialMethods.TryGetIndex(context, arguments[1], out var b, out result))
+            return result;
+        if (a.Value > b.Value)
+            return PyResult.RaiseValueError($"empty range in randrange({a.Value}, {b.Value + 1})");
+        var randResult = self.PyRandInt(a.Value, b.Value);
+        Debug.Assert(randResult is not null);
+        return PyIntObject.FromInteger(randResult.Value);
     }
 }

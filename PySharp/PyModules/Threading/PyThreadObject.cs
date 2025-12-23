@@ -77,10 +77,10 @@ public sealed class PyThreadObjectType : PyTypeObject<PyThreadObjectType, PyThre
             self.PyJoin(-1);
             return PyNoneObject.None;
         }
-        if (!PyInteropService.TryGetFloat(arguments[0], out var timeout))
-            return PyResult.CaptureExceptionFromPVM();
-        timeout = Math.Max(timeout, 0);
-        self.PyJoin(timeout);
+        if (!PySpecialMethods.TryGetFloat(context, arguments[0], out var timeout, out var result))
+            return result;
+        timeout = Math.Max(timeout.Value, 0);
+        self.PyJoin(timeout.Value);
         return PyNoneObject.None;
     }
 
