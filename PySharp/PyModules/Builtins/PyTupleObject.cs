@@ -33,9 +33,9 @@ public class PyTupleObject : PyObject, IPyObjectRecursiveRepr
         return new PyTupleObject(array);
     }
 
-    PyObject? IPyObjectRecursiveRepr.RecursiveRepr(HashSet<int> ids)
+    PyResult IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<int> ids)
     {
-        return Utils.CollectionRecursiveRepr(this, _array, "(", ")", ids);
+        return Utils.CollectionRecursiveRepr(context, this, _array, "(", ")", ids);
     }
 }
 
@@ -84,7 +84,7 @@ public sealed class PyTupleObjectType : PyTypeObject<PyTupleObjectType, PyTupleO
 
     protected internal override PyResult Repr(PyCallContext context, PyTupleObject self)
     {
-        return IPyObjectRecursiveRepr.RecursiveRepr(self) ?? PyResult.CaptureExceptionFromPVM();
+        return IPyObjectRecursiveRepr.RecursiveRepr(context, self);
     }
 
     protected internal override PyResult Len(PyCallContext context, PyTupleObject self)

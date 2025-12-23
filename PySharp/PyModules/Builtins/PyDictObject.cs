@@ -35,9 +35,9 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
         return new PyDictObject(dict, true);
     }
 
-    PyObject? IPyObjectRecursiveRepr.RecursiveRepr(HashSet<int> ids)
+    PyResult IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<int> ids)
     {
-        return Utils.DictionaryRecursiveRepr(this, _dict, "{", "}", ids);
+        return Utils.DictionaryRecursiveRepr(context, this, _dict, "{", "}", ids);
     }
 }
 
@@ -127,7 +127,7 @@ public sealed class PyDictObjectType : PyTypeObject<PyDictObjectType, PyDictObje
 
     protected internal override PyResult Repr(PyCallContext context, PyDictObject self)
     {
-        return IPyObjectRecursiveRepr.RecursiveRepr(self) ?? PyResult.CaptureExceptionFromPVM();
+        return IPyObjectRecursiveRepr.RecursiveRepr(context, self);
     }
 
     protected internal override PyResult Bool(PyCallContext context, PyDictObject self)

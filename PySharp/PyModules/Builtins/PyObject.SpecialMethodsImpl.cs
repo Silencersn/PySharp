@@ -8,9 +8,4 @@ partial class PyObject
     {
         return PyStrObject.FromString($"<{PyType.Name} object at 0x{PyId:X16}>");
     }
-
-    protected internal virtual PyObject? BoolImpl()
-    {
-        return PyBoolObject.True;
-    }
 }

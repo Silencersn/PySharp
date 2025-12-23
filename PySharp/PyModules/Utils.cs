@@ -1,5 +1,6 @@
 ﻿using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
+using PySharp.PyRuntime.Calls;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Text;
@@ -154,7 +155,7 @@ internal static class Utils
         return true;
     }
 
-    public static PyObject? CollectionRecursiveRepr(PyObject collection, IEnumerable<PyObject> items, string startWrapper, string endWrapper, HashSet<int> ids)
+    public static PyResult CollectionRecursiveRepr(PyCallContext context, PyObject collection, IEnumerable<PyObject> items, string startWrapper, string endWrapper, HashSet<int> ids)
     {
         var builder = new StringBuilder().Append(startWrapper);
 
@@ -169,8 +170,8 @@ internal static class Utils
                 else
                     first = false;
 
-                if (!IPyObjectRecursiveRepr.TryGetRecursiveRepr(item, ids, out var str))
-                    return null;
+                if (!IPyObjectRecursiveRepr.TryGetRecursiveRepr(context, item, ids, out var str, out var result))
+                    return result;
 
                 builder.Append(str.Value);
             }
@@ -185,7 +186,7 @@ internal static class Utils
         return PyStrObject.FromString(builder.ToString());
     }
 
-    public static PyObject? DictionaryRecursiveRepr(PyObject collection, IEnumerable<KeyValuePair<PyObject, PyObject>> pairs, string startWrapper, string endWrapper, HashSet<int> ids)
+    public static PyResult DictionaryRecursiveRepr(PyCallContext context, PyObject collection, IEnumerable<KeyValuePair<PyObject, PyObject>> pairs, string startWrapper, string endWrapper, HashSet<int> ids)
     {
         var builder = new StringBuilder().Append(startWrapper);
 
@@ -200,11 +201,11 @@ internal static class Utils
                 else
                     first = false;
 
-                if (!IPyObjectRecursiveRepr.TryGetRecursiveRepr(pair.Key, ids, out var keyStr))
-                    return null;
+                if (!IPyObjectRecursiveRepr.TryGetRecursiveRepr(context, pair.Key, ids, out var keyStr, out var keyResult))
+                    return keyResult;
 
-                if (!IPyObjectRecursiveRepr.TryGetRecursiveRepr(pair.Value, ids, out var valueStr))
-                    return null;
+                if (!IPyObjectRecursiveRepr.TryGetRecursiveRepr(context, pair.Value, ids, out var valueStr, out var valueResult))
+                    return valueResult;
 
                 builder
                     .Append(keyStr.Value)

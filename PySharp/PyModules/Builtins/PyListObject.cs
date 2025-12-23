@@ -25,9 +25,9 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr
         return new PyListObject(objects);
     }
 
-    PyObject? IPyObjectRecursiveRepr.RecursiveRepr(HashSet<int> ids)
+    PyResult IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<int> ids)
     {
-        return Utils.CollectionRecursiveRepr(this, _list, "[", "]", ids);
+        return Utils.CollectionRecursiveRepr(context, this, _list, "[", "]", ids);
     }
 }
 
@@ -97,7 +97,7 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
 
     protected internal override PyResult Repr(PyCallContext context, PyListObject self)
     {
-        return IPyObjectRecursiveRepr.RecursiveRepr(self) ?? PyResult.CaptureExceptionFromPVM();
+        return IPyObjectRecursiveRepr.RecursiveRepr(context, self);
     }
 
     protected internal override PyResult Bool(PyCallContext context, PyListObject self)
