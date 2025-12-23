@@ -2,6 +2,8 @@
 
 public class PyBuiltinsModuleObject : PyModuleObject
 {
+    public override string? ReprPrompt => "(built-in)";
+
     public PyBuiltinsModuleObject() : base("builtins")
     {
         AddObjToAttrs(PyBuiltinFunctions.Print); // print
@@ -72,10 +74,5 @@ public class PyBuiltinsModuleObject : PyModuleObject
         AddObjToAttrs(PyStandardExceptionTypes.ZeroDivisionError); // ZeroDivisionError
         AddObjToAttrs(PyStandardExceptionTypes.AssertionError); // AssertionError
         AddObjToAttrs(PyStandardExceptionTypes.UnboundLocalError); // UnboundLocalError
-    }
-
-    protected internal override PyObject? ReprImpl()
-    {
-        return PyStrObject.FromString($"<module '{Name}' (built-in)>");
     }
 }

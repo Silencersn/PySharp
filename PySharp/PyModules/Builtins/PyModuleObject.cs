@@ -9,6 +9,7 @@ namespace PySharp.PyModules.Builtins;
 public class PyModuleObject : PyObject, IPyObjectName
 {
     public string Name { get; }
+    public virtual string? ReprPrompt => null;
     public override PyTypeObject DefaultPyType => PyModuleObjectType.Shared;
 
     public PyModuleObject(string name)
@@ -38,6 +39,8 @@ public sealed class PyModuleObjectType : PyTypeObject<PyModuleObjectType, PyModu
 
     protected internal override PyResult Repr(PyCallContext context, PyModuleObject self)
     {
+        if (self.ReprPrompt is not null)
+            return PyStrObject.FromString($"<module '{self.Name}' {self.ReprPrompt}>");
         return PyStrObject.FromString($"<module '{self.Name}'>");
     }
 
