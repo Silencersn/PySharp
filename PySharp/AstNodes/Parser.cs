@@ -213,7 +213,7 @@ public sealed partial class Parser
         FillUnknownVariables(CurrentScope);
         FillClosureVariables(CurrentScope);
 
-        return module.Reduce(_options);
+        return module;
     }
 
     public ExpressionNode ParseExpressionNode()
@@ -228,8 +228,7 @@ public sealed partial class Parser
         FillUnknownVariables(CurrentScope);
         FillClosureVariables(CurrentScope);
 
-        var node = new ExpressionNode(expr) { MetaInfo = metaInfo };
-        return node.Reduce(_options);
+        return new ExpressionNode(expr) { MetaInfo = metaInfo };
     }
 
     public InteractiveNode ParseInteractiveNode()
@@ -244,8 +243,7 @@ public sealed partial class Parser
         FillClosureVariables(CurrentScope);
         CurrentScope.Children.Clear();
 
-        var node = new InteractiveNode(list) { MetaInfo = metaInfo };
-        return node.Reduce(_options);
+        return new InteractiveNode(list) { MetaInfo = metaInfo };
     }
 
     private static void FillUnknownVariables(VariableScope scope)

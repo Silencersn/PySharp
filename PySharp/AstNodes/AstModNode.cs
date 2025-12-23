@@ -26,14 +26,6 @@ public class ModuleNode : AstModNode
         }
     }
 
-    public override ModuleNode Reduce(OptimizationOptions options)
-    {
-        if (options.NoOptimization)
-            return this;
-
-        return new ModuleNode([.. Body.Reduce(options)]);
-    }
-
     internal override void Dump(AstNodeDumper dumper)
     {
         dumper
@@ -62,14 +54,6 @@ public class ExpressionNode : AstModNode
         frame.StmtMetaInfoProvider = this;
         _ = Body.GetExprValue(context, frame);
     }
-
-    public override ExpressionNode Reduce(OptimizationOptions options)
-    {
-        if (options.NoOptimization)
-            return this;
-
-        return new ExpressionNode(Body.Reduce(options));
-    }
 }
 
 public class InteractiveNode : AstModNode
@@ -88,13 +72,5 @@ public class InteractiveNode : AstModNode
         {
             stmt.Execute(context, frame);
         }
-    }
-
-    public override InteractiveNode Reduce(OptimizationOptions options)
-    {
-        if (options.NoOptimization)
-            return this;
-
-        return new InteractiveNode([.. Body.Reduce(options)]);
     }
 }

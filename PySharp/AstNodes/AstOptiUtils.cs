@@ -4,21 +4,6 @@ namespace PySharp.AstNodes;
 
 internal static class AstOptiUtils
 {
-    public static IEnumerable<AstStmtNode> Reduce(this IEnumerable<AstStmtNode> stmts, OptimizationOptions options)
-    {
-        foreach (var stmt in stmts)
-        {
-            var reduced = stmt.Reduce(options);
-            if (reduced is null)
-                continue;
-
-            yield return reduced;
-
-            if (options.DeadCodeElimination && reduced is RaiseNode or BreakNode or ContinueNode or ReturnNode)
-                yield break;
-        }
-    }
-
     public static bool? TrgGetConstantBoolValue(this AstExprNode reducedTest)
     {
         return reducedTest switch

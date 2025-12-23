@@ -22,10 +22,7 @@ public abstract class AstExprNode : AstNode, IAstNodeLocation
         frame.ExprMetaInfoProvider = previousProvider;
         return value;
     }
-    public override AstExprNode Reduce(OptimizationOptions options)
-    {
-        return this;
-    }
+
     public virtual bool? NoSideEffects()
     {
         return null;
@@ -379,14 +376,6 @@ public sealed class ListNode : AstExprNode, IExprContextNode, IAstExprNodeNoSelf
         return null;
     }
 
-    public override ListNode Reduce(OptimizationOptions options)
-    {
-        if (options.NoOptimization)
-            return this;
-
-        return List(Elts.Select(elt => elt.Reduce(options)));
-    }
-
     internal override void Dump(AstNodeDumper dumper)
     {
         dumper
@@ -422,14 +411,6 @@ public sealed class TupleNode : AstExprNode, IExprContextNode, IAstExprNodeNoSel
             return true;
 
         return null;
-    }
-
-    public override TupleNode Reduce(OptimizationOptions options)
-    {
-        if (options.NoOptimization)
-            return this;
-
-        return Tuple(Elts.Select(elt => elt.Reduce(options)));
     }
 
     internal override void Dump(AstNodeDumper dumper)
@@ -478,14 +459,6 @@ public sealed class DictNode : AstExprNode, IAstExprNodeNoSelfPythonException
         return null;
     }
 
-    public override DictNode Reduce(OptimizationOptions options)
-    {
-        if (options.NoOptimization)
-            return this;
-
-        return Dict(Keys.Zip(Values).Select(t => KeyValuePair.Create(t.First.Reduce(options), t.Second.Reduce(options))));
-    }
-
     internal override void Dump(AstNodeDumper dumper)
     {
         dumper
@@ -522,15 +495,6 @@ public sealed class SetNode : AstExprNode, IAstExprNodeNoSelfPythonException
 
         return null;
     }
-
-    public override SetNode Reduce(OptimizationOptions options)
-    {
-        if (options.NoOptimization)
-            return this;
-
-        return Set(Elts.Select(elt => elt.Reduce(options)));
-    }
-
     internal override void Dump(AstNodeDumper dumper)
     {
         dumper
@@ -567,65 +531,6 @@ public sealed class BoolOpNode : AstExprNode, IAstExprNodeBool, IAstExprNodeNoSe
         var ret = Op.GetBoolOpValue(Values.Select(v => v.GetExprValue(context, frame)));
         ret.Value.PyThrowIfNull();
         return ret!;
-    }
-
-    public override AstExprNode Reduce(OptimizationOptions options)
-    {
-        if (options.NoOptimization)
-            return this;
-
-        var values = Values.Select(value => value.Reduce(options));
-
-        if (options.ShortCircuit)
-        {
-            var reducedValues = new List<AstExprNode>();
-
-            bool allConatant = true;
-            foreach (var value in values)
-            {
-                var test = value.TrgGetConstantBoolValue();
-                if (test is null)
-                {
-                    allConatant = false;
-                    reducedValues.Add(value);
-                }
-                else
-                {
-                    if (Op is AndNode && test is false)
-                    {
-                        if (allConatant)
-                            return Constant(false, null);
-
-                        reducedValues.Add(value);
-                        break;
-                    }
-                    else if (Op is OrNode && test is true)
-                    {
-                        if (allConatant)
-                            return Constant(true, null);
-
-                        reducedValues.Add(value);
-                        break;
-                    }
-                }
-            }
-
-            if (reducedValues.Count is 0)
-            {
-                if (Op is AndNode)
-                    return Constant(true, null);
-                else // if (Op is OrNode)
-                    return Constant(false, null);
-            }
-            else if (reducedValues.Count is 1)
-            {
-                return reducedValues[0];
-            }
-
-            values = reducedValues;
-        }
-
-        return BoolOp(Op, values);
     }
 
     public override void EnumerateNodes(Action<AstNode> action)

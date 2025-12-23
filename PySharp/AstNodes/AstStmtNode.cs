@@ -17,11 +17,6 @@ namespace PySharp.AstNodes;
 
 public abstract class AstStmtNode : AstNode
 {
-    public override AstStmtNode? Reduce(OptimizationOptions options)
-    {
-        return this;
-    }
-
     public sealed override void Execute(PyCallContext context, PyFrame frame)
     {
         frame.StmtMetaInfoProvider = this;
@@ -52,15 +47,6 @@ public class AssignNode : AstStmtNode
             target.SetTargetValue(context, value, frame);
         }
     }
-
-    public override AssignNode Reduce(OptimizationOptions options)
-    {
-        if (options.NoOptimization)
-            return this;
-
-        return Assign(Value.Reduce(options), Targets);
-    }
-
     public override void EnumerateNodes(Action<AstNode> action)
     {
         base.EnumerateNodes(action);
@@ -99,14 +85,6 @@ public class AssertNode : AstStmtNode
         var msg = Msg.GetExprValue(context, frame) ?? throw new PyRuntimeException(PyVirtualMachine.CurrentException!);
         PyVirtualMachine.RaiseAssertionError(msg);
         throw new PyRuntimeException(PyVirtualMachine.CurrentException);
-    }
-
-    public override AssertNode? Reduce(OptimizationOptions options)
-    {
-        if (options.NoOptimization)
-            return this;
-
-        return null;
     }
 
     internal override void Dump(AstNodeDumper dumper)
@@ -199,20 +177,6 @@ public class ExprNode : AstStmtNode
         }
         return value;
     }
-
-    public override ExprNode? Reduce(OptimizationOptions options)
-    {
-        if (options.NoOptimization)
-            return this;
-
-        var reducedValue = Value.Reduce(options);
-
-        if (options.CodeCleanup && reducedValue.NoSideEffects() is true)
-            return null;
-
-        return new ExprNode(reducedValue);
-    }
-
     internal override void Dump(AstNodeDumper dumper)
     {
         dumper
@@ -264,35 +228,6 @@ public class IfNode : AstStmtNode
                 stmt.Execute(context, frame);
             }
         }
-    }
-
-    public override AstStmtNode? Reduce(OptimizationOptions options)
-    {
-        if (options.NoOptimization)
-            return this;
-
-        var reducedTest = Test.Reduce(options);
-        var testResult = reducedTest.TrgGetConstantBoolValue();
-
-        if (options.DeadCodeElimination)
-        {
-            if (testResult is false)
-                return null;
-        }
-
-        var reducedBody = Body.Reduce(options).ToList();
-        var reducedOrElse = OrElse.Reduce(options).ToList();
-
-        if (options.CodeCleanup)
-        {
-            if (reducedBody.Count is 0 && reducedOrElse.Count is 0)
-            {
-                if (testResult is not null)
-                    return null;
-            }
-        }
-
-        return new IfNode(reducedTest, [.. reducedBody], [.. reducedOrElse]);
     }
 
     public override void EnumerateNodes(Action<AstNode> action)
@@ -358,14 +293,6 @@ public class PassNode : AstStmtNode
 {
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
-    }
-
-    public override PassNode? Reduce(OptimizationOptions options)
-    {
-        if (options.CodeCleanup)
-            return null;
-
-        return this;
     }
 }
 

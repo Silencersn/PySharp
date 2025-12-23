@@ -12,10 +12,6 @@ public abstract partial class AstNode : IMetaInfoProvider
     {
         throw new NotSupportedException();
     }
-    public virtual AstNode? Reduce(OptimizationOptions options)
-    {
-        return this;
-    }
 
     public override string ToString()
     {
