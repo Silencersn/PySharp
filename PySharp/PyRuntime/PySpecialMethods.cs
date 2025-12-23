@@ -192,26 +192,7 @@ public static class PySpecialMethods
         return false;
     }
 
-    public static bool TryCastType<TPyObject>(PyObject obj, string objName, string expectedType, TPyObject valueIfNone, [NotNullWhen(true)] out TPyObject? result) where TPyObject : PyObject
-    {
-        if (obj is TPyObject objOfT)
-        {
-            result = objOfT;
-            return true;
-        }
-
-        if (obj is PyNoneObject)
-        {
-            result = valueIfNone;
-            return true;
-        }
-
-        PyVirtualMachine.RaiseTypeError($"{objName} must be None or {expectedType}, not {obj.PyType.Name}");
-        result = null;
-        return false;
-    }
-
-    public static PyObject? DivMod(PyObject left, PyObject right)
+    public static PyResult DivMod(PyCallContext context, PyObject left, PyObject right)
     {
         var ret = left.DivMod(right);
         if (ret is not PyNotImplementedObject)
@@ -221,18 +202,18 @@ public static class PySpecialMethods
         return ret;
     }
 
-    public static PyObject? Abs(PyObject obj)
+    public static PyResult Abs(PyCallContext context, PyObject obj)
     {
-        return obj.Abs();
+        return obj.Abs(context);
     }
 
-    public static PyObject? Iter(PyObject obj)
+    public static PyResult Iter(PyCallContext context, PyObject obj)
     {
-        return obj.Iter();
+        return obj.Iter(context);
     }
 
-    public static PyObject? Next(PyObject obj)
+    public static PyResult Next(PyCallContext context, PyObject obj)
     {
-        return obj.Next();
+        return obj.Next(context);
     }
 }

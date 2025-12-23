@@ -20,6 +20,9 @@ public readonly partial struct PyResult
     [MemberNotNullWhen(true, nameof(Value))]
     public bool IsNotImplemented => _value is PyNotImplementedObject;
 
+    [MemberNotNullWhen(true, nameof(Exception))]
+    public bool IsStopIteration => _exception?.PyType is PyStopIterationObjectType;
+
     public PyObject? Value
     {
         get

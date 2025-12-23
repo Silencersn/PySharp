@@ -78,7 +78,7 @@ public static partial class PyBuiltinFunctions
     public static readonly PyBuiltinFunctionOrMethodObject Min = new("min", MinImpl_1, MinImpl_2, MinImpl_3);
 
     // N
-    public static readonly PyBuiltinFunctionOrMethodObject Next = new("next", NextImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Next = new("next", NextImpl_1, NextImpl_2);
 
     // O
     // object -> PyObject
@@ -171,10 +171,7 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult DivModImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = PySpecialMethods.DivMod(arguments.Args[0], arguments.Args[1]);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return PySpecialMethods.DivMod(context, arguments.Args[0], arguments.Args[1]);
     }
     [PyFunctionArgsDef()]
     private static PyResult InputImpl_1(PyCallContext context, PyArguments arguments)
@@ -691,10 +688,7 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef("object", "/")]
     private static PyResult IterImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = PySpecialMethods.Iter(arguments[0]);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return PySpecialMethods.Iter(context, arguments[0]);
     }
 
     [PyFunctionArgsDef("object", "/")]
@@ -706,13 +700,20 @@ public static partial class PyBuiltinFunctions
         return result;
     }
 
-    [PyFunctionArgsDef("iterator", "default=None")]
-    private static PyResult NextImpl(PyCallContext context, PyArguments arguments)
+    [PyFunctionArgsDef("iterator", "/")]
+    private static PyResult NextImpl_1(PyCallContext context, PyArguments arguments)
     {
         var iterator = arguments[0];
-        var result = PySpecialMethods.Next(iterator);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
+        return PySpecialMethods.Next(context, iterator);
+    }
+
+    [PyFunctionArgsDef("iterator", "default", "/")]
+    private static PyResult NextImpl_2(PyCallContext context, PyArguments arguments)
+    {
+        var iterator = arguments[0];
+        var result = PySpecialMethods.Next(context, iterator);
+        if (result.IsStopIteration)
+            return arguments[1];
         return result;
     }
 
@@ -729,9 +730,6 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef("x", "/")]
     private static PyResult AbsImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = PySpecialMethods.Abs(arguments[0]);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return PySpecialMethods.Abs(context, arguments[0]);
     }
 }
