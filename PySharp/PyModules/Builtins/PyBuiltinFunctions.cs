@@ -196,10 +196,15 @@ public static partial class PyBuiltinFunctions
         var node = parser.ParseExpressionNode();
         var frame = PyVirtualMachine.CurrentFrame;
         var tempFrame = frame.TempFrame(FrameType.Eval);
-        var result = node.Body.GetExprValue(context, tempFrame);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+
+        try
+        {
+            return node.Body.GetExprValue(context, tempFrame);
+        }
+        catch (PyRuntimeException e)
+        {
+            return PyResult.FromException(e.PyException);
+        }
     }
     [PyFunctionArgsDef("source", "/", "globals=None", "locals=None", "*", "closure=None")]
     private static PyResult ExecImpl(PyCallContext context, PyArguments arguments)
@@ -212,15 +217,13 @@ public static partial class PyBuiltinFunctions
             var tokens = Lexer.Tokenize(str.Value);
             node = Parser.Parse("<string>", tokens, PyVirtualMachine.PyEnvironment);
         }
-        catch (TokenizationException)
+        catch (TokenizationException e)
         {
-            PyVirtualMachine.RaiseSyntaxError(null);
-            return PyResult.CaptureExceptionFromPVM();
+            return PyResult.RaiseSyntaxError(e.Message);
         }
-        catch (AstException)
+        catch (AstException e)
         {
-            PyVirtualMachine.RaiseSyntaxError(null);
-            return PyResult.CaptureExceptionFromPVM();
+            return PyResult.RaiseSyntaxError(e.Message);
         }
         var frame = PyVirtualMachine.CurrentFrame;
         var tempFrame = frame.TempFrame(FrameType.Exec);
@@ -275,8 +278,6 @@ public static partial class PyBuiltinFunctions
         PyObject? result = null;
         foreach (var element in elements)
         {
-            if (element is null)
-                return PyResult.CaptureExceptionFromPVM();
             if (result is null)
             {
                 result = element;
@@ -306,11 +307,6 @@ public static partial class PyBuiltinFunctions
         PyObject result = arguments["default"];
         foreach (var element in elements)
         {
-            if (result is null)
-            {
-                result = element;
-                continue;
-            }
             var gt = PyOperators.Gt(context, element, result);
             if (gt.IsError)
                 return gt;
@@ -322,19 +318,14 @@ public static partial class PyBuiltinFunctions
         return result;
     }
 
-    [PyFunctionArgsDef("*args", "key=None")]
+    [PyFunctionArgsDef("arg1", "arg2", "/", "*args", "key=None")]
     private static PyResult MaxImpl_3(PyCallContext context, PyArguments arguments)
     {
         if (arguments["key"] is not PyNoneObject)
             throw new NotImplementedException();
-        PyObject? result = null;
-        foreach (var element in arguments.ExtraArgs)
+        PyObject result = arguments[0];
+        foreach (var element in arguments.ExtraArgs.Prepend(arguments[1]))
         {
-            if (result is null)
-            {
-                result = element;
-                continue;
-            }
             var gt = PyOperators.Gt(context, element, result);
             if (gt.IsError)
                 return gt;
@@ -343,7 +334,7 @@ public static partial class PyBuiltinFunctions
             if (b.BoolValue)
                 result = element;
         }
-        return result ?? PyResult.CaptureExceptionFromPVM();
+        return result;
     }
 
     [PyFunctionArgsDef("iterable", "/", "*", "key=None")]
@@ -386,11 +377,6 @@ public static partial class PyBuiltinFunctions
         PyObject result = arguments["default"];
         foreach (var element in elements)
         {
-            if (result is null)
-            {
-                result = element;
-                continue;
-            }
             var lt = PyOperators.Lt(context, element, result);
             if (lt.IsError)
                 return lt;
@@ -402,21 +388,14 @@ public static partial class PyBuiltinFunctions
         return result;
     }
 
-    [PyFunctionArgsDef("*args", "key=None")]
+    [PyFunctionArgsDef("arg1", "arg2", "/", "*args", "key=None")]
     private static PyResult MinImpl_3(PyCallContext context, PyArguments arguments)
     {
         if (arguments["key"] is not PyNoneObject)
             throw new NotImplementedException();
-        PyObject? result = null;
-        foreach (var element in arguments.ExtraArgs)
+        PyObject result = arguments[0];
+        foreach (var element in arguments.ExtraArgs.Prepend(arguments[1]))
         {
-            if (element is null)
-                return PyResult.CaptureExceptionFromPVM();
-            if (result is null)
-            {
-                result = element;
-                continue;
-            }
             var lt = PyOperators.Lt(context, element, result);
             if (lt.IsError)
                 return lt;
@@ -425,7 +404,7 @@ public static partial class PyBuiltinFunctions
             if (b.BoolValue)
                 result = element;
         }
-        return result ?? PyResult.CaptureExceptionFromPVM();
+        return result;
     }
 
     [PyFunctionArgsDef("iterable", "/", "start=0")]
@@ -451,8 +430,8 @@ public static partial class PyBuiltinFunctions
     private static PyResult GetAttrImpl_1(PyCallContext context, PyArguments arguments)
     {
         var obj = arguments[0];
-        if (!Utils.TryCastStrAsArg(arguments[1], out var name, "attribute name"))
-            return PyResult.CaptureExceptionFromPVM();
+        if (!Utils.TryCastStrAsArg(arguments[1], out var name, out var err, "attribute name"))
+            return err.Value;
         return PyOperators.GetAttr(context, obj, name);
     }
 
@@ -460,8 +439,8 @@ public static partial class PyBuiltinFunctions
     private static PyResult GetAttrImpl_2(PyCallContext context, PyArguments arguments)
     {
         var obj = arguments[0];
-        if (!Utils.TryCastStrAsArg(arguments[1], out var name, "attribute name"))
-            return PyResult.CaptureExceptionFromPVM();
+        if (!Utils.TryCastStrAsArg(arguments[1], out var name, out var err, "attribute name"))
+            return err.Value;
         var attr = PyOperators.GetAttr(context, obj, name);
         if (!attr.IsAttributeError)
             return attr;
@@ -471,16 +450,16 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef("object", "name", "value", "/")]
     private static PyResult SetAttrImpl(PyCallContext context, PyArguments arguments)
     {
-        if (!Utils.TryCastStrAsArg(arguments[1], out var name, "attribute name"))
-            return PyResult.CaptureExceptionFromPVM();
+        if (!Utils.TryCastStrAsArg(arguments[1], out var name, out var err, "attribute name"))
+            return err.Value;
         return PyOperators.SetAttr(context, arguments[0], name, arguments[2]);
     }
 
     [PyFunctionArgsDef("object", "name", "/")]
     private static PyResult HasAttrImpl(PyCallContext context, PyArguments arguments)
     {
-        if (!Utils.TryCastStrAsArg(arguments[1], out var name, "attribute name"))
-            return PyResult.CaptureExceptionFromPVM();
+        if (!Utils.TryCastStrAsArg(arguments[1], out var name, out var err, "attribute name"))
+            return err.Value;
         var attr = PyOperators.GetAttr(context, arguments[0], name);
         if (attr.IsSuccessful)
             return PyBoolObject.True;
@@ -565,7 +544,7 @@ public static partial class PyBuiltinFunctions
     {
         var ret = IsInstanceForUnknown(arguments[0], arguments[1]);
         if (ret is null)
-            return PyResult.CaptureExceptionFromPVM();
+            return PyResult.RaiseTypeError("isinstance() arg 2 must be a type or a tuple of types");
         return PyBoolObject.FromBoolean(ret.Value);
 
         static bool? IsInstanceForUnknown(PyObject obj, PyObject classInfo)
@@ -574,7 +553,7 @@ public static partial class PyBuiltinFunctions
             {
                 PyTypeObject type => IsInstanceForType(obj, type),
                 PyTupleObject types => IsInstanceForTuple(obj, types),
-                _ => (bool?)(object?)PyResult.RaiseTypeError("isinstance() arg 2 must be a type or a tuple of types")
+                _ => null
             };
         }
 
@@ -602,7 +581,7 @@ public static partial class PyBuiltinFunctions
             return PyResult.RaiseTypeError("issubclass() arg 1 must be a class");
         var ret = IsSubclassForUnknown(typeObj, arguments[1]);
         if (ret is null)
-            return PyResult.CaptureExceptionFromPVM();
+            return PyResult.RaiseTypeError("issubclass() arg 2 must be a type or a tuple of types");
         return PyBoolObject.FromBoolean(ret.Value);
 
         static bool? IsSubclassForUnknown(PyTypeObject obj, PyObject classInfo)
@@ -611,7 +590,7 @@ public static partial class PyBuiltinFunctions
             {
                 PyTypeObject type => IsSubclassForType(obj, type),
                 PyTupleObject types => IsSubclassForTuple(obj, types),
-                _ => (bool?)(object?)PyResult.RaiseTypeError("issubclass() arg 2 must be a type or a tuple of types")
+                _ => null
             };
         }
 

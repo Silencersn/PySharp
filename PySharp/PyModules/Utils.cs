@@ -264,16 +264,17 @@ internal static class Utils
         return hasGet || hasSet || hasDelete;
     }
 
-    public static bool TryCastStrAsArg(PyObject pyObj, [NotNullWhen(true)] out string? str, string? argName = null)
+    public static bool TryCastStrAsArg(PyObject pyObj, [NotNullWhen(true)] out string? str, [NotNullWhen(false)] out PyResult? err, string? argName = null)
     {
         if (pyObj is not PyStrObject strObj)
         {
-            PyVirtualMachine.RaiseTypeError($"{argName ?? "arg"} must be string, not {pyObj.PyType.Name}");
             str = null;
+            err = PyResult.RaiseTypeError($"{argName ?? "arg"} must be string, not {pyObj.PyType.Name}");
             return false;
         }
 
         str = strObj.Value;
+        err = null;
         return true;
     }
 }

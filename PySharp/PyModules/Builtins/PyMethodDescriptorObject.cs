@@ -77,8 +77,8 @@ public sealed class PyMethodDescriptorObject : PyObject
             ,
             PySpecialMethodParametersType.String => [PyFunctionArgsDef("self", "str0", "/")] (context, arguments) =>
             {
-                if (!Utils.TryCastStrAsArg(arguments[1], out var str0))
-                    return PyResult.CaptureExceptionFromPVM();
+                if (!Utils.TryCastStrAsArg(arguments[1], out var str0, out var err))
+                    return err.Value;
                 return (PyResult)method.Invoke(type, [context, arguments[0], str0])!;
             }
             ,
@@ -89,8 +89,8 @@ public sealed class PyMethodDescriptorObject : PyObject
             ,
             PySpecialMethodParametersType.StringObject => [PyFunctionArgsDef("self", "str0", "obj1", "/")] (context, arguments) =>
             {
-                if (!Utils.TryCastStrAsArg(arguments[1], out var str0))
-                    return PyResult.CaptureExceptionFromPVM();
+                if (!Utils.TryCastStrAsArg(arguments[1], out var str0, out var err))
+                    return err.Value;
                 return (PyResult)method.Invoke(type, [context, arguments[0], str0, arguments[2]])!;
             }
             ,
@@ -154,8 +154,8 @@ public sealed class PyMethodDescriptorObjectType : PyTypeObject<PyMethodDescript
             ,
             PySpecialMethodParametersType.String => [PyFunctionArgsDef("str0", "/")] (context, arguments) =>
             {
-                if (!Utils.TryCastStrAsArg(arguments[0], out var str0))
-                    return PyResult.CaptureExceptionFromPVM();
+                if (!Utils.TryCastStrAsArg(arguments[0], out var str0, out var err))
+                    return err.Value;
                 return (PyResult)method.Invoke(type, [context, target, str0])!;
             }
             ,
@@ -166,8 +166,8 @@ public sealed class PyMethodDescriptorObjectType : PyTypeObject<PyMethodDescript
             ,
             PySpecialMethodParametersType.StringObject => [PyFunctionArgsDef("str0", "obj1", "/")] (context, arguments) =>
             {
-                if (!Utils.TryCastStrAsArg(arguments[0], out var str0))
-                    return PyResult.CaptureExceptionFromPVM();
+                if (!Utils.TryCastStrAsArg(arguments[0], out var str0, out var err))
+                    return err.Value;
                 return (PyResult)method.Invoke(type, [context, target, str0, arguments[1]])!;
             }
             ,
