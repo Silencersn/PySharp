@@ -232,14 +232,13 @@ public static partial class PyBuiltinFunctions
     private static PyResult AllImpl(PyCallContext context, PyArguments arguments)
     {
         var iterable = arguments.Args[0];
-        var elements = Utils.EnumerateIterable(iterable);
-        if (elements is null)
-            return PyResult.CaptureExceptionFromPVM();
+        if (!Utils.TryEnumerateIterable(context, iterable, out var elements, out var err))
+            return err.Value;
         foreach (var element in elements)
         {
-            if (element is null)
-                return PyResult.CaptureExceptionFromPVM();
-            if (!PySpecialMethods.TryGetBool(context, element, out var value, out var result))
+            if (element.IsError)
+                return element;
+            if (!PySpecialMethods.TryGetBool(context, element.Value, out var value, out var result))
                 return result;
             if (!value.BoolValue)
                 return PyBoolObject.False;
@@ -251,14 +250,13 @@ public static partial class PyBuiltinFunctions
     private static PyResult AnyImpl(PyCallContext context, PyArguments arguments)
     {
         var iterable = arguments.Args[0];
-        var elements = Utils.EnumerateIterable(iterable);
-        if (elements is null)
-            return PyResult.CaptureExceptionFromPVM();
+        if (!Utils.TryEnumerateIterable(context, iterable, out var elements, out var err))
+            return err.Value;
         foreach (var element in elements)
         {
-            if (element is null)
-                return PyResult.CaptureExceptionFromPVM();
-            if (!PySpecialMethods.TryGetBool(context, element, out var value, out var result))
+            if (element.IsError)
+                return element;
+            if (!PySpecialMethods.TryGetBool(context, element.Value, out var value, out var result))
                 return result;
             if (value.BoolValue)
                 return PyBoolObject.True;
@@ -272,9 +270,8 @@ public static partial class PyBuiltinFunctions
         var iterable = arguments[0];
         if (arguments["key"] is not PyNoneObject)
             return PyResult.RaiseTypeError("max() with key not implemented");
-        var elements = Utils.EnumerateIterable(iterable);
-        if (elements is null)
-            return PyResult.CaptureExceptionFromPVM();
+        if (!Utils.TryEnumeratedIterable(context, iterable, out var elements, out var err))
+            return err.Value;
         PyObject? result = null;
         foreach (var element in elements)
         {
@@ -304,14 +301,11 @@ public static partial class PyBuiltinFunctions
         var iterable = arguments[0];
         if (arguments["key"] is not PyNoneObject)
             throw new NotImplementedException();
-        var elements = Utils.EnumerateIterable(iterable);
-        if (elements is null)
-            return PyResult.CaptureExceptionFromPVM();
+        if (!Utils.TryEnumeratedIterable(context, iterable, out var elements, out var err))
+            return err.Value;
         PyObject result = arguments["default"];
         foreach (var element in elements)
         {
-            if (element is null)
-                return PyResult.CaptureExceptionFromPVM();
             if (result is null)
             {
                 result = element;
@@ -336,8 +330,6 @@ public static partial class PyBuiltinFunctions
         PyObject? result = null;
         foreach (var element in arguments.ExtraArgs)
         {
-            if (element is null)
-                return PyResult.CaptureExceptionFromPVM();
             if (result is null)
             {
                 result = element;
@@ -360,14 +352,11 @@ public static partial class PyBuiltinFunctions
         var iterable = arguments[0];
         if (arguments["key"] is not PyNoneObject)
             throw new NotImplementedException();
-        var elements = Utils.EnumerateIterable(iterable);
-        if (elements is null)
-            return PyResult.CaptureExceptionFromPVM();
+        if (!Utils.TryEnumeratedIterable(context, iterable, out var elements, out var err))
+            return err.Value;
         PyObject? result = null;
         foreach (var element in elements)
         {
-            if (element is null)
-                return PyResult.CaptureExceptionFromPVM();
             if (result is null)
             {
                 result = element;
@@ -392,14 +381,11 @@ public static partial class PyBuiltinFunctions
         var iterable = arguments[0];
         if (arguments["key"] is not PyNoneObject)
             throw new NotImplementedException();
-        var elements = Utils.EnumerateIterable(iterable);
-        if (elements is null)
-            return PyResult.CaptureExceptionFromPVM();
+        if (!Utils.TryEnumeratedIterable(context, iterable, out var elements, out var err))
+            return err.Value;
         PyObject result = arguments["default"];
         foreach (var element in elements)
         {
-            if (element is null)
-                return PyResult.CaptureExceptionFromPVM();
             if (result is null)
             {
                 result = element;
@@ -448,14 +434,11 @@ public static partial class PyBuiltinFunctions
         var start = arguments["start"];
         if (start is PyStrObject)
             return PyResult.RaiseTypeError("sum() can't sum strings [use ''.join(seq) instead]");
-        var iterable = Utils.EnumerateIterable(arguments[0]);
-        if (iterable is null)
-            return PyResult.CaptureExceptionFromPVM();
+        if (!Utils.TryEnumeratedIterable(context, arguments[0], out var iterable, out var err))
+            return err.Value;
         var result = start;
         foreach (var item in iterable)
         {
-            if (item is null)
-                return PyResult.CaptureExceptionFromPVM();
             var ret = PyOperators.Add(context, result, item);
             if (ret.IsError)
                 return ret;

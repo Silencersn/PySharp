@@ -9,20 +9,17 @@ namespace PySharp.PyModules;
 
 internal static class Utils
 {
-    public static IEnumerable<PyObject?> EnumerateIterator(PyObject iterator)
+    public static IEnumerable<PyResult> EnumerateIterator(PyCallContext context, PyObject iterator)
     {
         while (true)
         {
-            var item = iterator.Next(PyCallContext.Null);
+            var item = iterator.Next(context);
             if (item.IsError)
             {
                 if (item.IsStopIteration)
-                {
-                    PyVirtualMachine.ClearException();
                     yield break;
-                }
 
-                yield return null;
+                yield return item;
                 yield break;
             }
 
@@ -30,67 +27,84 @@ internal static class Utils
         }
     }
 
-    public static IEnumerable<PyObject?>? EnumerateIterable(PyObject iterable)
+    public static bool TryEnumerateIterable(PyCallContext context, PyObject iterable, [NotNullWhen(true)] out IEnumerable<PyResult>? result, [NotNullWhen(false)] out PyResult? err)
     {
-        if (iterable is PyRangeObject rangeObj)
-            return rangeObj.EnumerateRange();
-
-        var iter = iterable.Iter(PyCallContext.Null);
+        var iter = iterable.Iter(context);
         if (iter.IsError)
-            return null;
+        {
+            result = null;
+            err = iter;
+            return false;
+        }
 
-        return EnumerateIterator(iter.Value);
+        result = EnumerateIterator(context, iter.Value);
+        err = null;
+        return true;
     }
 
-    public static IReadOnlyList<PyObject>? EnumeratedIterator(PyObject iterator)
+    public static bool EnumeratedIterator(PyCallContext context, PyObject iterator, [NotNullWhen(true)] out IReadOnlyList<PyObject>? result, [NotNullWhen(false)] out PyResult? err)
     {
         var list = new List<PyObject>();
         while (true)
         {
-            var item = iterator.Next(PyCallContext.Null);
+            var item = iterator.Next(context);
             if (item.IsError)
             {
                 if (item.IsStopIteration)
                     break;
 
-                return null;
+                result = null;
+                err = item;
+                return false;
             }
 
             list.Add(item.Value);
         }
-        return list;
+
+        result = list;
+        err = null;
+        return true;
     }
 
-    public static IReadOnlyList<PyObject>? EnumeratedIterable(PyObject iterable)
+    public static bool TryEnumeratedIterable(PyCallContext context, PyObject iterable, [NotNullWhen(true)] out IReadOnlyList<PyObject>? result, [NotNullWhen(false)] out PyResult? err)
     {
-        var iter = iterable.Iter(PyCallContext.Null);
+        var iter = iterable.Iter(context);
         if (iter.IsError)
-            return null;
+        {
+            result = null;
+            err = iter;
+            return false;
+        }
 
-        return EnumeratedIterator(iter.Value);
+        return EnumeratedIterator(context, iter.Value, out result, out err);
     }
 
-    public static IEnumerable<KeyValuePair<PyObject, PyObject>>? EnumeratedDictionary(IEnumerable<PyObject> iterable)
+    public static bool TryEnumeratedPairs(PyCallContext context, IEnumerable<PyObject> iterable, [NotNullWhen(true)] out IEnumerable<KeyValuePair<PyObject, PyObject>>? result, [NotNullWhen(false)] out PyResult? err)
     {
         var pairs = new List<KeyValuePair<PyObject, PyObject>>();
 
         int i = -1;
         foreach (var item in iterable)
         {
-            var kvp = EnumeratedIterable(item);
-            if (kvp is null)
-                return null;
-
-            if (kvp!.Count is not 2)
+            if (!TryEnumeratedIterable(context, item, out var pair, out err))
             {
-                PyVirtualMachine.RaiseValueError($"dictionary update sequence element #{i} has length {kvp.Count}; 2 is required");
-                return null;
+                result = null;
+                return false;
             }
 
-            pairs.Add(KeyValuePair.Create(kvp[0], kvp[1]));
+            if (pair.Count is not 2)
+            {
+                result = null;
+                err = PyResult.RaiseValueError($"dictionary update sequence element #{i} has length {pair.Count}; 2 is required");
+                return false;
+            }
+
+            pairs.Add(KeyValuePair.Create(pair[0], pair[1]));
         }
 
-        return pairs;
+        result = pairs;
+        err = null;
+        return true;
     }
 
     public static bool TryGetValue<T, TPyObject>(PyObject obj, Func<TPyObject, T> selector, T valueIfNone, out T result) where TPyObject : PyObject

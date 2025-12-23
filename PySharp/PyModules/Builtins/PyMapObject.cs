@@ -8,10 +8,10 @@ namespace PySharp.PyModules.Builtins;
 public sealed class PyMapObject : PyObject
 {
     internal readonly PyObject _function;
-    internal readonly IEnumerator<PyObject?>[] _iters;
+    internal readonly IEnumerator<PyResult>[] _iters;
     internal readonly bool _strict;
 
-    public PyMapObject(PyObject function, IEnumerator<PyObject?>[] iters, bool strict)
+    public PyMapObject(PyObject function, IEnumerator<PyResult>[] iters, bool strict)
     {
         _function = function;
         _iters = iters;
@@ -32,12 +32,11 @@ public sealed class PyMapObjectType : PyTypeObject<PyMapObjectType, PyMapObject>
         if (!PySpecialMethods.TryGetBool(context, arguments["strict"], out var strict, out var result))
             return result;
 
-        List<IEnumerator<PyObject?>> iters = [];
+        List<IEnumerator<PyResult>> iters = [];
         foreach (var arg in arguments.ExtraArgs)
         {
-            var iter = Utils.EnumerateIterable(arg);
-            if (iter is null)
-                return PyResult.CaptureExceptionFromPVM();
+            if (!Utils.TryEnumerateIterable(context, arg, out var iter, out var err))
+                return err.Value;
             iters.Add(iter.GetEnumerator());
         }
 
@@ -66,9 +65,9 @@ public sealed class PyMapObjectType : PyTypeObject<PyMapObjectType, PyMapObject>
             if (!iter.MoveNext())
                 break;
             var arg = iter.Current;
-            if (arg is null)
-                return PyResult.CaptureExceptionFromPVM();
-            args.Add(arg);
+            if (arg.IsError)
+                return arg;
+            args.Add(arg.Value);
         }
         if (args.Count != self._iters.Length)
         {

@@ -50,6 +50,13 @@ internal static class AstUtils
         return result.Value;
     }
 
+    [DoesNotReturn]
+    public static void PyThrow(this PyResult result)
+    {
+        Debug.Assert(result.IsError);
+        throw new PyRuntimeException(result.Exception);
+    }
+
     public static PyObject PyThrowIfNullOrNotImplemented([NotNull] this PyObject? obj)
     {
         if (obj is null)
@@ -81,12 +88,8 @@ internal static class AstUtils
         }
         else if (target is TupleNode tupleNode)
         {
-            var iter = Utils.EnumeratedIterable(value);
-            if (iter is null)
-            {
-                Debug.Assert(PyVirtualMachine.CurrentException is not null);
-                throw new PyRuntimeException(PyVirtualMachine.CurrentException);
-            }
+            if (!Utils.TryEnumeratedIterable(context, value, out var iter, out var err))
+                err.Value.PyThrow();
 
             if (tupleNode.Elts.Length != iter.Count)
             {
@@ -100,12 +103,9 @@ internal static class AstUtils
         }
         else if (target is ListNode listNode)
         {
-            var iter = Utils.EnumeratedIterable(value);
-            if (iter is null)
-            {
-                Debug.Assert(PyVirtualMachine.CurrentException is not null);
-                throw new PyRuntimeException(PyVirtualMachine.CurrentException);
-            }
+            if (!Utils.TryEnumeratedIterable(context, value, out var iter, out var err))
+                err.Value.PyThrow();
+
             if (listNode.Elts.Length != iter.Count)
             {
                 PyVirtualMachine.RaiseValueError("too many or too few values to unpack");

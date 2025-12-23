@@ -49,9 +49,8 @@ public sealed class PyTupleObjectType : PyTypeObject<PyTupleObjectType, PyTupleO
         if (!pack.ValidateCount(1, 0))
             return PyResult.RaiseTypeError(null);
 
-        var tuple = Utils.EnumeratedIterable(pack[0]);
-        if (tuple is null)
-            return PyResult.CaptureExceptionFromPVM();
+        if (!Utils.TryEnumeratedIterable(context, pack[0], out var tuple, out var err))
+            return err.Value;
 
         var obj = PyTupleObject.CreateTuple(tuple);
         obj._pyType = cls;

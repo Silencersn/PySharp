@@ -1,25 +1,22 @@
 ﻿using PySharp.PyRuntime;
+using PySharp.PyRuntime.Calls;
 using System.Text;
 
 namespace PySharp.PyModules.Builtins;
 
 partial class PyStrObject
 {
-    public PyObject? PyJoin(PyObject iterable)
+    public PyResult PyJoin(PyCallContext context, PyObject iterable)
     {
-        var items = Utils.EnumerateIterable(iterable);
-        if (items is null)
-            return null;
+        if (!Utils.TryEnumeratedIterable(context, iterable, out var items, out var err))
+            return err.Value;
 
         var builder = new StringBuilder();
         int index = 0;
         foreach (var item in items)
         {
-            if (item is null)
-                return null;
-
             if (item is not PyStrObject strObj)
-                return PyVirtualMachine.RaiseTypeError($"sequence item {index}: expected str instance, {item.PyType.Name} found");
+                return PyResult.RaiseTypeError($"sequence item {index}: expected str instance, {item.PyType.Name} found");
 
             if (index > 0)
                 builder.Append(Value);

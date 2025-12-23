@@ -55,9 +55,8 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
     [PyFunctionArgsDef("iterable=()", "/")]
     private static PyResult NewImpl(PyCallContext context, PyArguments arguments)
     {
-        var list = Utils.EnumeratedIterable(arguments[0]);
-        if (list is null)
-            return PyResult.CaptureExceptionFromPVM();
+        if (!Utils.TryEnumeratedIterable(context, arguments[0], out var list, out var err))
+            return err.Value;
 
         return new PyListObject(list);
     }
@@ -131,9 +130,8 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
     [PyFunctionArgsDef("iterable", "/")]
     internal PyResult Extend(PyCallContext context, PyListObject self, PyArguments arguments)
     {
-        var items = Utils.EnumeratedIterable(arguments[0]);
-        if (items is null)
-            return PyResult.CaptureExceptionFromPVM();
+        if (!Utils.TryEnumeratedIterable(context, arguments[0], out var items, out var err))
+            return err.Value;
         self.PyExtend(items);
         return PyNoneObject.None;
     }

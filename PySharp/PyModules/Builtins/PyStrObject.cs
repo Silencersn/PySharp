@@ -63,7 +63,7 @@ public sealed class PyStrObjectType : PyTypeObject<PyStrObjectType, PyStrObject>
     [PyFunctionArgsDef("iterable", "/")]
     internal PyResult Join(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        return self.PyJoin(arguments[0]) ?? PyResult.CaptureExceptionFromPVM();
+        return self.PyJoin(context, arguments[0]);
     }
     protected internal override PyResult Repr(PyCallContext context, PyStrObject self)
     {

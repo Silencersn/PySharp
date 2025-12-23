@@ -372,13 +372,16 @@ public class ForNode : AstStmtNode
         bool isBreak = false;
 
         var iter = Iter.GetExprValue(context, frame);
-        var list = Utils.EnumerateIterable(iter) ?? throw new PyRuntimeException(PyVirtualMachine.CurrentException!);
+        if (!Utils.TryEnumerateIterable(context, iter, out var list, out var err))
+        {
+            err.Value.PyThrow();
+        }
 
         try
         {
             foreach (var item in list)
             {
-                Target.SetTargetValue(context, item.PyThrowIfNull(), frame);
+                Target.SetTargetValue(context, item.PyUnwrap(), frame);
                 try
                 {
                     foreach (var stmt in Body)
@@ -603,8 +606,7 @@ public class ImportFromNode : AstStmtNode
             if (module.PyAttributes.TryGetValue(PySpecialNames.All, out var all))
             {
                 // unlike cpython, allows iterable
-                var list = Utils.EnumeratedIterable(all);
-                if (list is null)
+                if (!Utils.TryEnumeratedIterable(context, all, out var list, out _))
                 {
                     PyVirtualMachine.RaiseTypeError($"{Module /* TODO: should be module.__name__ */}.__all__ must be iterable");
                     throw new PyRuntimeException(PyVirtualMachine.CurrentException);

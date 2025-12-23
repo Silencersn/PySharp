@@ -68,27 +68,13 @@ public sealed class PyDictObjectType : PyTypeObject<PyDictObjectType, PyDictObje
     [PyFunctionArgsDef("iterable", "/", "**kwargs")]
     private static PyResult NewImpl_2(PyCallContext context, PyArguments arguments)
     {
-        var kvpiteratables = Utils.EnumeratedIterable(arguments[0]);
-        if (kvpiteratables is null)
-            return PyResult.CaptureExceptionFromPVM();
+        if (!Utils.TryEnumeratedIterable(context, arguments[0], out var kvpiteratables, out var err))
+            return err.Value;
 
-        var pairs = Utils.EnumeratedDictionary(kvpiteratables);
-        if (pairs is null)
-            return PyResult.CaptureExceptionFromPVM();
+        if (!Utils.TryEnumeratedPairs(context, kvpiteratables, out var pairs, out err))
+            return err.Value;
 
         List<KeyValuePair<PyObject, PyObject>> dict = [.. pairs];
-
-        for (int i = 0; i < kvpiteratables.Count; i++)
-        {
-            var pair = Utils.EnumeratedIterable(kvpiteratables[i]);
-            if (pair is null)
-                return PyResult.CaptureExceptionFromPVM();
-
-            if (pair!.Count is not 2)
-                return PyResult.RaiseValueError($"dictionary update sequence element #{i} has length {pair.Count}; 2 is required");
-
-            dict.Add(KeyValuePair.Create(pair[0], pair[1]));
-        }
 
         foreach (var kwarg in arguments.ExtraKwargs)
         {

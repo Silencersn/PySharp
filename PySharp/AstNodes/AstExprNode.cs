@@ -692,10 +692,11 @@ public sealed class ListCompNode : AstExprNode, IAstExprNodeNoSelfPythonExceptio
         void For(int index)
         {
             var generator = Generators[index];
-            var iter = Utils.EnumerateIterable(generator.Iter.GetExprValue(context, tempFrame)) ?? throw new PyRuntimeException(PyVirtualMachine.CurrentException!);
+            if (!Utils.TryEnumerateIterable(context, generator.Iter.GetExprValue(context, tempFrame), out var iter, out var err))
+                err.Value.PyThrow();
             foreach (var item in iter)
             {
-                generator.Target.SetTargetValue(context, item.PyThrowIfNull(), tempFrame);
+                generator.Target.SetTargetValue(context, item.PyUnwrap(), tempFrame);
                 var shouldContinue = false;
                 foreach (var test in generator.Ifs)
                 {
@@ -749,10 +750,11 @@ public sealed class SetCompNode : AstExprNode, IAstExprNodeNoSelfPythonException
         void For(int index)
         {
             var generator = Generators[index];
-            var iter = Utils.EnumerateIterable(generator.Iter.GetExprValue(context, tempFrame)) ?? throw new PyRuntimeException(PyVirtualMachine.CurrentException!);
+            if (!Utils.TryEnumerateIterable(context, generator.Iter.GetExprValue(context, tempFrame), out var iter, out var err))
+                err.Value.PyThrow();
             foreach (var item in iter)
             {
-                generator.Target.SetTargetValue(context, item.PyThrowIfNull(), tempFrame);
+                generator.Target.SetTargetValue(context, item.PyUnwrap(), tempFrame);
                 var shouldContinue = false;
                 foreach (var test in generator.Ifs)
                 {
@@ -808,10 +810,11 @@ public sealed class DictCompNode : AstExprNode, IAstExprNodeNoSelfPythonExceptio
         void For(int index)
         {
             var generator = Generators[index];
-            var iter = Utils.EnumerateIterable(generator.Iter.GetExprValue(context, tempFrame)) ?? throw new PyRuntimeException(PyVirtualMachine.CurrentException!);
+            if (!Utils.TryEnumerateIterable(context, generator.Iter.GetExprValue(context, tempFrame), out var iter, out var err))
+                err.Value.PyThrow();
             foreach (var item in iter)
             {
-                generator.Target.SetTargetValue(context, item.PyThrowIfNull(), tempFrame);
+                generator.Target.SetTargetValue(context, item.PyUnwrap(), tempFrame);
                 var shouldContinue = false;
                 foreach (var test in generator.Ifs)
                 {
@@ -867,10 +870,11 @@ public sealed class GeneratorExpNode : AstExprNode, IAstExprNodeNoSelfPythonExce
         void For(int index)
         {
             var generator = Generators[index];
-            var iter = Utils.EnumerateIterable(generator.Iter.GetExprValue(context, tempFrame)) ?? throw new PyRuntimeException(PyVirtualMachine.CurrentException!);
+            if (!Utils.TryEnumerateIterable(context, generator.Iter.GetExprValue(context, tempFrame), out var iter, out var err))
+                err.Value.PyThrow();
             foreach (var item in iter)
             {
-                generator.Target.SetTargetValue(context, item.PyThrowIfNull(), tempFrame);
+                generator.Target.SetTargetValue(context, item.PyUnwrap(), tempFrame);
                 var shouldContinue = false;
                 foreach (var test in generator.Ifs)
                 {
