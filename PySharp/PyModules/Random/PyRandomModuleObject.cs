@@ -7,10 +7,10 @@ public class PyRandomModuleObject : PyModuleObject
 {
     public PyRandomModuleObject() : base("random")
     {
-        AddObjToAttrs("random", PyRandomObject.Shared.GetAttribute(PyCallContext.Null, "random").Value);
-        AddObjToAttrs("uniform", PyRandomObject.Shared.GetAttribute(PyCallContext.Null, "uniform").Value);
-        AddObjToAttrs("randrange", PyRandomObject.Shared.GetAttribute(PyCallContext.Null, "randrange").Value);
-        AddObjToAttrs("randint", PyRandomObject.Shared.GetAttribute(PyCallContext.Null, "randint").Value);
+        AddObjToAttrs("random", PyRandomObject.Shared.GetAttribute(PyCallContext.NonContextDependency, "random").Value);
+        AddObjToAttrs("uniform", PyRandomObject.Shared.GetAttribute(PyCallContext.NonContextDependency, "uniform").Value);
+        AddObjToAttrs("randrange", PyRandomObject.Shared.GetAttribute(PyCallContext.NonContextDependency, "randrange").Value);
+        AddObjToAttrs("randint", PyRandomObject.Shared.GetAttribute(PyCallContext.NonContextDependency, "randint").Value);
         AddObjToAttrs(PyRandomObjectType.Shared);
     }
 }

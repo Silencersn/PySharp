@@ -113,7 +113,7 @@ public sealed class ConstantNode : AstExprNode, IAstExprNodeNoSelfPythonExceptio
     internal override void Dump(AstNodeDumper dumper)
     {
         dumper
-            .AppendFormat("Constant(value={0})", PySpecialMethods.TryGetRepr(PyCallContext.Null, Value, out var s, out var result) ? s.Value : "<ast-format repr failed>");
+            .AppendFormat("Constant(value={0})", PySpecialMethods.TryGetRepr(PyCallContext.NonContextDependency, Value, out var s, out var result) ? s.Value : "<ast-format repr failed>");
     }
 
 }
