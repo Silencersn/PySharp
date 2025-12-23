@@ -4,8 +4,8 @@ namespace PySharp.PyModules.Builtins;
 
 public sealed class PyMemberDescriptorObject : PyObject, IPyDescriptor
 {
-    internal readonly Func<PyObject, PyObject, PyObject?> _getter;
-    internal readonly Func<PyObject, PyObject, PyObject?>? _setter;
+    internal readonly Func<PyCallContext, PyObject, PyObject, PyResult> _getter;
+    internal readonly Func<PyCallContext, PyObject, PyObject, PyResult>? _setter;
 
     public override PyTypeObject DefaultPyType => PyMemberDescriptorObjectType.Shared;
 
@@ -13,7 +13,7 @@ public sealed class PyMemberDescriptorObject : PyObject, IPyDescriptor
     bool IPyDescriptor.SupportsSet => true;
     bool IPyDescriptor.SupportsDelete => false;
 
-    internal PyMemberDescriptorObject(Func<PyObject, PyObject, PyObject?> getter, Func<PyObject, PyObject, PyObject?>? setter = null)
+    internal PyMemberDescriptorObject(Func<PyCallContext, PyObject, PyObject, PyResult> getter, Func<PyCallContext, PyObject, PyObject, PyResult>? setter = null)
     {
         _getter = getter;
         _setter = setter;
@@ -28,19 +28,13 @@ public sealed class PyMemberDescriptorObjectType : PyTypeObject<PyMemberDescript
     {
         if (instance is PyNoneObject)
             return self;
-        var result = self._getter(instance, owner);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return self._getter(context, instance, owner);
     }
 
     protected internal override PyResult Set(PyCallContext context, PyMemberDescriptorObject self, PyObject instance, PyObject value)
     {
         if (self._setter is null)
             return PyResult.RaiseAttributeError("readonly attribute");
-        var result = self._setter(instance, value);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return self._setter(context, instance, value);
     }
 }

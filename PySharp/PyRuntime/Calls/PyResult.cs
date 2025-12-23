@@ -67,11 +67,4 @@ public readonly partial struct PyResult
         ArgumentNullException.ThrowIfNull(exception);
         return new PyResult(exception);
     }
-
-    // TODO: This is just a temporary approach and should be removed once the object logic has been fully migrated.
-    internal static PyResult CaptureExceptionFromPVM()
-    {
-        Debug.Assert(PyVirtualMachine.CurrentException is not null);
-        return FromException(PyVirtualMachine.CurrentException);
-    }
 }

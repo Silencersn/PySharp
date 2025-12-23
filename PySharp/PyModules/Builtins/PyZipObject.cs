@@ -96,7 +96,7 @@ public sealed class PyZipObjectType : PyTypeObject<PyZipObjectType, PyZipObject>
                 }
                 else
                 {
-                    return PyResult.CaptureExceptionFromPVM();
+                    return item;
                 }
             }
             else

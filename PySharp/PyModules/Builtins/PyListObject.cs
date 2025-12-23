@@ -74,17 +74,15 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
     {
         if (!PySpecialMethods.TryGetIndex(context, item, out var index, out var result))
             return result;
-        if (!Utils.TryGetItem(self._list, index.Int32Value, "list index out of range", out var resultObj))
-            return PyResult.CaptureExceptionFromPVM();
-        return resultObj;
+        return Utils.GetListItem(self._list, index.Int32Value, "list index out of range");
     }
 
     protected internal override PyResult SetItem(PyCallContext context, PyListObject self, PyObject key, PyObject value)
     {
         if (!PySpecialMethods.TryGetIndex(context, key, out var index, out var result))
             return result;
-        if (!Utils.TrySetItem(self._list, index.Int32Value, value, "list index out of range"))
-            return PyResult.CaptureExceptionFromPVM();
+        if (!Utils.TrySetListItem(self._list, index.Int32Value, value))
+            return PyResult.RaiseIndexError("list index out of range");
         return PyNoneObject.None;
     }
 
@@ -140,7 +138,7 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
     internal PyResult Insert(PyCallContext context, PyListObject self, PyArguments arguments)
     {
         if (!PySpecialMethods.TryGetIndex(context, arguments[0], out var index, out var result))
-            return PyResult.CaptureExceptionFromPVM();
+            return result;
         self.PyInsert(index.Int32Value, arguments[1]);
         return PyNoneObject.None;
     }
@@ -187,7 +185,7 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
     internal PyResult Index_2(PyCallContext context, PyListObject self, PyArguments arguments)
     {
         if (!PySpecialMethods.TryGetIndex(context, arguments[1], out var start, out var result))
-            return PyResult.CaptureExceptionFromPVM();
+            return result;
         var index = self.PyIndex(arguments[0], start.Int32Value);
         if (index is -1)
         {

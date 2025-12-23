@@ -142,25 +142,18 @@ internal static class Utils
         return index >= count || index < -count;
     }
 
-    public static bool TryGetItem(IList<PyObject> items, int index, string? msgIfOutOfRange, [NotNullWhen(true)] out PyObject? result)
+    public static PyResult GetListItem(IList<PyObject> items, int index, string? msgIfOutOfRange)
     {
         if (IsIndexOutOfRange(index, items.Count))
-        {
-            result = PyVirtualMachine.RaiseIndexError(msgIfOutOfRange);
-            return false;
-        }
+            return PyResult.RaiseIndexError(msgIfOutOfRange);
 
-        result = items[MapIndex(index, items.Count)];
-        return true;
+        return items[MapIndex(index, items.Count)];
     }
 
-    public static bool TrySetItem(IList<PyObject> items, int index, PyObject item, string? msgIfOutOfRange)
+    public static bool TrySetListItem(IList<PyObject> items, int index, PyObject item)
     {
         if (IsIndexOutOfRange(index, items.Count))
-        {
-            PyVirtualMachine.RaiseIndexError(msgIfOutOfRange);
             return false;
-        }
 
         items[MapIndex(index, items.Count)] = item;
         return true;

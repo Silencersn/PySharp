@@ -48,7 +48,7 @@ public class PySuperObject : PyObject, IPyDescriptor
     bool IPyDescriptor.SupportsSet => false;
     bool IPyDescriptor.SupportsDelete => false;
 
-    public static PySuperObject? CreateSuper(PyTypeObject type, PyObject objectOrType)
+    public static PyResult CreateSuper(PyTypeObject type, PyObject objectOrType)
     {
         if (objectOrType is PyTypeObject pyTypeObject && pyTypeObject.IsSubclassOf(type))
             return new PySuperObject(type, objectOrType);
@@ -56,8 +56,7 @@ public class PySuperObject : PyObject, IPyDescriptor
         if (type.IsInstance(objectOrType))
             return new PySuperObject(type, objectOrType);
 
-        PyVirtualMachine.RaiseTypeError("super(type, obj): obj must be an instance or subtype of type");
-        return null;
+        return PyResult.RaiseTypeError("super(type, obj): obj must be an instance or subtype of type");
     }
 }
 
@@ -88,10 +87,7 @@ public sealed class PySuperObjectType : PyTypeObject<PySuperObjectType, PySuperO
         if (cell.Value is not PyTypeObject type)
             return PyResult.RaiseRuntimeError($"super(): __class__ is not a type ({cell.Value.PyType.Name})");
 
-        var result = PySuperObject.CreateSuper(type, args[0]);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return PySuperObject.CreateSuper(type, args[0]);
     }
 
     [PyFunctionArgsDef("type", "object_or_type=None", "/")]
@@ -100,10 +96,7 @@ public sealed class PySuperObjectType : PyTypeObject<PySuperObjectType, PySuperO
         if (arguments[0] is not PyTypeObject type)
             return PyResult.RaiseTypeError($"super() argument 1 must be a type, not {arguments[0].PyType.Name}");
 
-        var result = PySuperObject.CreateSuper(type, arguments[1]);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return PySuperObject.CreateSuper(type, arguments[1]);
     }
 
     protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)

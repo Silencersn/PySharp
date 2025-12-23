@@ -90,20 +90,20 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
         return PyResult.RaiseAttributeError($"'{pyTypeObj.Name}' object has no attribute '{name}'");
     }
 
-    internal void AppendMemberDescriptor<TPyObject>(string name, Func<TPyObject, PyObject?> getter, Func<TPyObject, PyObject, PyObject?>? setter = null) where TPyObject : PyObject
+    internal void AppendMemberDescriptor<TPyObject>(string name, Func<TPyObject, PyResult> getter, Func<TPyObject, PyObject, PyResult>? setter = null) where TPyObject : PyObject
     {
         PyAttributes[name] = new PyMemberDescriptorObject(
-            (obj, _) =>
+            (_, obj, _) =>
             {
                 if (obj is not TPyObject pyObj)
-                    return PyVirtualMachine.RaiseTypeError(null);
+                    return PyResult.RaiseTypeError(null);
 
                 return getter(pyObj);
             },
-            setter is null ? null : (obj, value) =>
+            setter is null ? null : (_, obj, value) =>
             {
                 if (obj is not TPyObject pyObj)
-                    return PyVirtualMachine.RaiseTypeError(null);
+                    return PyResult.RaiseTypeError(null);
 
                 return setter(pyObj, value);
             });

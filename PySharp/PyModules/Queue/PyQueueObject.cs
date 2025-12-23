@@ -52,7 +52,7 @@ public sealed class PyQueueObjectType : PyTypeObject<PyQueueObjectType, PyQueueO
     private static PyResult NewImpl(PyCallContext context, PyArguments arguments)
     {
         if (!PySpecialMethods.TryGetIndex(context, arguments[0], out var maxSize, out var result))
-            return PyResult.CaptureExceptionFromPVM();
+            return result;
         return new PyQueueObject(maxSize.Int32Value);
     }
 
