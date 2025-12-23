@@ -75,7 +75,7 @@ public sealed class PyZipObjectType : PyTypeObject<PyZipObjectType, PyZipObject>
         for (int i = 0; i < self._iterables.Length; i++)
         {
             var iterable = self._iterables[i];
-            var item = iterable.Next(PyCallContext.Null);
+            var item = iterable.Next(context);
             if (item.IsError)
             {
                 if (item.IsStopIteration)

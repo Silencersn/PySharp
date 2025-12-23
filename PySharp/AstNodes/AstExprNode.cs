@@ -558,7 +558,7 @@ public sealed class BinOpNode : AstExprNode
     {
         var left = Left.GetExprValue(context, frame);
         var right = Right.GetExprValue(context, frame);
-        return Operator.GetOpValue(PyCallContext.Null, left, right).PyUnwrapIncludedNotImplemented();
+        return Operator.GetOpValue(context, left, right).PyUnwrapIncludedNotImplemented();
     }
 
     public override void EnumerateNodes(Action<AstNode> action)
@@ -621,7 +621,7 @@ public sealed class CompareNode : AstExprNode, IAstExprNodeBool
         {
             var op = Ops[i];
             var right = Comparators[i].GetExprValue(context, frame);
-            var value = op.GetCompareValue(PyCallContext.Null, left, right).PyUnwrap();
+            var value = op.GetCompareValue(context, left, right).PyUnwrap();
             var boolValue = (PyBoolObject)PySpecialMethods.GetBool(context, value).PyUnwrap();
 
             if (!boolValue.BoolValue)
