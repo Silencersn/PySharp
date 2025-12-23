@@ -678,22 +678,7 @@ public sealed class UnaryOpNode : AstExprNode
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        return Op.GetUnaryOpValue(Operand.GetExprValue(context, frame)).PyThrowIfNull();
-    }
-
-    public override AstExprNode Reduce(OptimizationOptions options)
-    {
-        if (options.ConstantFolding)
-        {
-            if (Operand.Reduce(options) is ConstantNode operandConstant)
-            {
-                var result = Op.GetUnaryOpValue(operandConstant.Value);
-                if (result is not null)
-                    return Constant(result, null);
-            }
-        }
-
-        return this;
+        return Op.GetUnaryOpValue(context, Operand.GetExprValue(context, frame)).PyUnwrap();
     }
 
     public override void EnumerateNodes(Action<AstNode> action)
