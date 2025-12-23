@@ -28,19 +28,4 @@ partial class PyObject
     {
         return PyVirtualMachine.RaiseTypeError(null);
     }
-
-    protected internal virtual PyObject? GetImpl(PyObject instance, PyObject owner)
-    {
-        throw new NotImplementedException();
-    }
-
-    protected internal virtual PyObject? SetImpl(PyObject instance, PyObject value)
-    {
-        throw new NotImplementedException();
-    }
-
-    protected internal virtual PyObject? DeleteImpl(PyObject instance)
-    {
-        throw new NotImplementedException();
-    }
 }

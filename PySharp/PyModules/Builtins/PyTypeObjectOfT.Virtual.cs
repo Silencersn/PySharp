@@ -32,7 +32,7 @@ partial class PyTypeObject<TObject>
 
     protected internal virtual PyResult GetAttribute(PyCallContext context, TObject self, string item)
     {
-        return PyObjectGetAttribute(self, item) ?? PyResult.CaptureExceptionFromPVM();
+        return PyObjectGetAttribute(context, self, item);
     }
 
     protected internal virtual PyResult GetAttr(PyCallContext context, TObject self, string item)
@@ -45,7 +45,7 @@ partial class PyTypeObject<TObject>
         if (self.IsImmutable)
             return PyResult.RaiseTypeError($"cannot set '{key}' attribute of immutable type '{Name}'");
 
-        return PyObjectSetAttribute(self, key, value) ?? PyResult.CaptureExceptionFromPVM();
+        return PyObjectSetAttribute(context, self, key, value);
     }
 
     protected internal virtual PyResult DelAttr(PyCallContext context, TObject self, string item)
@@ -53,7 +53,7 @@ partial class PyTypeObject<TObject>
         if (self.IsImmutable)
             return PyResult.RaiseTypeError($"cannot set '{item}' attribute of immutable type '{Name}'");
 
-        return PyObjectDeleteAttribute(self, item) ?? PyResult.CaptureExceptionFromPVM();
+        return PyObjectDeleteAttribute(context, self, item);
     }
 
     protected internal virtual PyResult Bool(PyCallContext context, TObject self)

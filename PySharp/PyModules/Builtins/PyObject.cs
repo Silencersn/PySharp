@@ -126,32 +126,16 @@ public partial class PyObject : IEquatable<PyObject>
         return false;
     }
 
-    private static bool TryFindAttrFromMRO(PyObject pyObj, string name, [NotNullWhen(true)] out PyObject? attrFromType, [NotNullWhen(true)] out PyTypeObject? ownerType)
-    {
-        foreach (var pyType in pyObj.PyType.MRO)
-        {
-            if (pyType.PyAttributes.TryGetValue(name, out attrFromType))
-            {
-                ownerType = pyType;
-                return true;
-            }
-        }
-
-        attrFromType = null;
-        ownerType = null;
-        return false;
-    }
-
-    internal static PyObject? PyObjectGetAttribute(PyObject pyObj, string name)
+    internal static PyResult PyObjectGetAttribute(PyCallContext context, PyObject pyObj, string name)
     {
         PyObject? nonDataDescriptor = null;
-        if (TryFindAttrFromMRO(pyObj, name, out var attrFromType, out _) &&
+        if (TryLookupAttrInMro(pyObj.PyType, name, out var attrFromType) &&
             Utils.IsDescriptor(attrFromType, out var hasGet, out var hasSet, out var hasDelete))
         {
             if (hasGet)
             {
                 if (hasSet || hasDelete)
-                    return TempGet(attrFromType).Value;
+                    return attrFromType.Get(context, pyObj, pyObj.PyType);
 
                 nonDataDescriptor = attrFromType;
             }
@@ -161,7 +145,7 @@ public partial class PyObject : IEquatable<PyObject>
             return attr;
 
         if (nonDataDescriptor is not null)
-            return TempGet(nonDataDescriptor).Value;
+            return nonDataDescriptor.Get(context, pyObj, pyObj.PyType);
 
         if (attrFromType is not null)
             return attrFromType;
@@ -171,42 +155,34 @@ public partial class PyObject : IEquatable<PyObject>
         if (name is PySpecialNames.Class)
             return pyObj.PyType;
 
-        return PyVirtualMachine.RaiseAttributeError($"'{pyObj.PyType.Name}' object has no attribute '{name}'");
-
-        PyResult TempGet(PyObject descripotr)
-        {
-            if (descripotr.PyType.IsPyTypeObjectOfT)
-                return descripotr.PyType.Get(PyCallContext.Null, descripotr, pyObj, pyObj.PyType);
-
-            return descripotr.GetImpl(pyObj, pyObj.PyType) ?? PyResult.CaptureExceptionFromPVM();
-        }
+        return PyResult.RaiseAttributeError($"'{pyObj.PyType.Name}' object has no attribute '{name}'");
     }
 
-    internal static PyObject? PyObjectSetAttribute(PyObject pyObj, string name, PyObject value)
+    internal static PyResult PyObjectSetAttribute(PyCallContext context, PyObject pyObj, string name, PyObject value)
     {
-        if (TryFindAttrFromMRO(pyObj, name, out var attrFromType, out _) &&
+        if (TryLookupAttrInMro(pyObj.PyType, name, out var attrFromType) &&
             Utils.IsDescriptor(attrFromType, out _, out var hasSet, out _))
         {
             if (hasSet)
-                return attrFromType.SetImpl(pyObj, value);
+                return attrFromType.Set(context, pyObj, value);
         }
 
         pyObj.PyAttributes[name] = value;
         return PyNoneObject.None;
     }
 
-    internal static PyObject? PyObjectDeleteAttribute(PyObject pyObj, string name)
+    internal static PyResult PyObjectDeleteAttribute(PyCallContext context, PyObject pyObj, string name)
     {
-        if (TryFindAttrFromMRO(pyObj, name, out var attrFromType, out _) &&
+        if (TryLookupAttrInMro(pyObj.PyType, name, out var attrFromType) &&
             Utils.IsDescriptor(attrFromType, out _, out _, out var hasDelete))
         {
             if (hasDelete)
-                return attrFromType.DeleteImpl(pyObj);
+                return attrFromType.Delete(context, pyObj);
         }
 
         var removed = pyObj.PyAttributes.Remove(name);
         if (!removed)
-            return PyVirtualMachine.RaiseAttributeError($"'{pyObj.PyType.Name}' object has no attribute '{name}'");
+            return PyResult.RaiseAttributeError($"'{pyObj.PyType.Name}' object has no attribute '{name}'");
 
         return PyNoneObject.None;
     }
