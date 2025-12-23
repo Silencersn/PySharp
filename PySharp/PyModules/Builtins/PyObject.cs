@@ -230,30 +230,6 @@ public partial class PyObject : IEquatable<PyObject>
     }
 }
 
-//public sealed class PyObjectType : PyPrimitiveTypeObject<PyObjectType, PyObject>
-//{
-//    public override string Name => "object";
-//    public override IReadOnlyList<PyTypeObject> Bases => [];
-
-//    public PyObjectType()
-//    {
-//        AppendSpecialMethodsAsDescriptorsDirectly<PyObject>(
-//            nameof(ReprImpl), nameof(StrImpl), nameof(BoolImpl), nameof(HashImpl),
-//            nameof(EqImpl), nameof(NeImpl), nameof(LtImpl), nameof(LeImpl), nameof(GtImpl), nameof(GeImpl),
-//            nameof(GetAttributeImpl), nameof(SetAttrImpl), nameof(DelAttrImpl),
-//            nameof(InitImpl)
-//        );
-//    }
-
-//    protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
-//    {
-//        if (args.Count is not 0 || kwargs.Count is not 0)
-//            return PyVirtualMachine.RaiseTypeError("object.__new__() takes exactly one argument (the type to instantiate)");
-
-//        return new PyObject();
-//    }
-//}
-
 public sealed class PyObjectType : PyTypeObject<PyObjectType, PyObject>
 {
     public override string Name => "object";
