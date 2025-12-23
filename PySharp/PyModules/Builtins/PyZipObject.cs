@@ -35,10 +35,10 @@ public sealed class PyZipObjectType : PyTypeObject<PyZipObjectType, PyZipObject>
         List<PyObject> iterables = [];
         foreach (var arg in arguments.ExtraArgs)
         {
-            var iter = arg.Iter();
-            if (iter is null)
-                return PyResult.CaptureExceptionFromPVM();
-            iterables.Add(iter);
+            var iter = arg.Iter(context);
+            if (iter.IsError)
+                return iter;
+            iterables.Add(iter.Value);
         }
 
         return new PyZipObject(iterables, strict);
@@ -75,12 +75,11 @@ public sealed class PyZipObjectType : PyTypeObject<PyZipObjectType, PyZipObject>
         for (int i = 0; i < self._iterables.Length; i++)
         {
             var iterable = self._iterables[i];
-            var item = iterable.Next();
-            if (item is null)
+            var item = iterable.Next(PyCallContext.Null);
+            if (item.IsError)
             {
-                if (PyVirtualMachine.IsExceptionOfTypeRaised(PyStandardExceptionTypes.StopIteration))
+                if (item.IsStopIteration)
                 {
-                    PyVirtualMachine.ClearException();
                     allHaveItem = false;
                     self._end = true;
                     if (!allNoItem)
@@ -105,7 +104,7 @@ public sealed class PyZipObjectType : PyTypeObject<PyZipObjectType, PyZipObject>
                 if (allNoItem && self._strict)
                     return PyResult.RaiseValueError($"zip() argument {i + 1} is longer than {(i > 1 ? $"arguments 1-{i}" : "argument 1")}");
 
-                list.Add(item);
+                list.Add(item.Value);
             }
         }
 

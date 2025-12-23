@@ -13,10 +13,10 @@ internal static class Utils
     {
         while (true)
         {
-            var item = iterator.Next();
-            if (item is null)
+            var item = iterator.Next(PyCallContext.Null);
+            if (item.IsError)
             {
-                if (PyVirtualMachine.IsExceptionOfTypeRaised(PyStandardExceptionTypes.StopIteration))
+                if (item.IsStopIteration)
                 {
                     PyVirtualMachine.ClearException();
                     yield break;
@@ -26,7 +26,7 @@ internal static class Utils
                 yield break;
             }
 
-            yield return item;
+            yield return item.Value;
         }
     }
 
@@ -35,11 +35,11 @@ internal static class Utils
         if (iterable is PyRangeObject rangeObj)
             return rangeObj.EnumerateRange();
 
-        var iter = iterable.Iter();
-        if (iter is null)
+        var iter = iterable.Iter(PyCallContext.Null);
+        if (iter.IsError)
             return null;
 
-        return EnumerateIterator(iter);
+        return EnumerateIterator(iter.Value);
     }
 
     public static IReadOnlyList<PyObject>? EnumeratedIterator(PyObject iterator)
@@ -47,30 +47,27 @@ internal static class Utils
         var list = new List<PyObject>();
         while (true)
         {
-            var item = iterator.Next();
-            if (item is null)
+            var item = iterator.Next(PyCallContext.Null);
+            if (item.IsError)
             {
-                if (PyVirtualMachine.IsExceptionOfTypeRaised(PyStandardExceptionTypes.StopIteration))
-                {
-                    PyVirtualMachine.ClearException();
+                if (item.IsStopIteration)
                     break;
-                }
 
                 return null;
             }
 
-            list.Add(item);
+            list.Add(item.Value);
         }
         return list;
     }
 
     public static IReadOnlyList<PyObject>? EnumeratedIterable(PyObject iterable)
     {
-        var iter = iterable.Iter();
-        if (iter is null)
+        var iter = iterable.Iter(PyCallContext.Null);
+        if (iter.IsError)
             return null;
 
-        return EnumeratedIterator(iter);
+        return EnumeratedIterator(iter.Value);
     }
 
     public static IEnumerable<KeyValuePair<PyObject, PyObject>>? EnumeratedDictionary(IEnumerable<PyObject> iterable)
