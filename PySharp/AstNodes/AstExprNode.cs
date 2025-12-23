@@ -113,7 +113,7 @@ public sealed class ConstantNode : AstExprNode, IAstExprNodeNoSelfPythonExceptio
     internal override void Dump(AstNodeDumper dumper)
     {
         dumper
-            .AppendFormat("Constant(value={0})", PySpecialMethods.TryGetRepr(Value, out var s) ? s.Value : "<ast-format repr failed>");
+            .AppendFormat("Constant(value={0})", PySpecialMethods.TryGetRepr(PyCallContext.Null, Value, out var s, out var result) ? s.Value : "<ast-format repr failed>");
     }
 
 }
@@ -528,7 +528,7 @@ public sealed class BoolOpNode : AstExprNode, IAstExprNodeBool, IAstExprNodeNoSe
     public (bool Result, PyObject Value) GetExprValueWithResult(PyCallContext context, PyFrame frame)
     {
         ArgumentNullException.ThrowIfNull(frame);
-        var ret = Op.GetBoolOpValue(Values.Select(v => v.GetExprValue(context, frame)));
+        var ret = Op.GetBoolOpValue(context, Values.Select(v => v.GetExprValue(context, frame)));
         ret.Value.PyThrowIfNull();
         return ret!;
     }
@@ -622,10 +622,10 @@ public sealed class CompareNode : AstExprNode, IAstExprNodeBool
             var op = Ops[i];
             var right = Comparators[i].GetExprValue(context, frame);
             var value = op.GetCompareValue(PyCallContext.Null, left, right).PyUnwrap();
-            var boolValue = PySpecialMethods.GetBool(value).PyThrowIfNull().BoolValue;
+            var boolValue = (PyBoolObject)PySpecialMethods.GetBool(context, value).PyUnwrap();
 
-            if (!boolValue)
-                return (boolValue, value);
+            if (!boolValue.BoolValue)
+                return (boolValue.BoolValue, value);
 
             lastValue = value;
         }
@@ -949,13 +949,12 @@ public sealed class JoinedStrNode : AstExprNode, IAstExprNodeNoSelfPythonExcepti
 
         foreach (var expr in Values)
         {
-            if (!PySpecialMethods.TryGetStr(expr.GetExprValue(context, frame), out var s))
+            if (!PySpecialMethods.TryGetStr(context, expr.GetExprValue(context, frame), out var s, out var result))
             {
-                Debug.Assert(PyVirtualMachine.CurrentException is not null);
-                throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                result.PyUnwrap();
             }
 
-            builder.Append(s.Value);
+            builder.Append(s!.Value);
         }
 
         return PyStrObject.FromString(builder.ToString());
@@ -989,13 +988,13 @@ public sealed class FormattedValueNode : AstExprNode
         {
             var spec = FormatSpec.GetExprValue(context, frame);
             Debug.Assert(spec is PyStrObject);
-            result = result.Format(((PyStrObject)spec).Value).PyThrowIfNull();
+            result = result.Format(context, ((PyStrObject)spec).Value).PyUnwrap();
         }
 
         if (Conversion is -1 or 's') // TODO: does case -1 need convert?
-            result = PySpecialMethods.GetStr(result).PyThrowIfNull();
+            result = PySpecialMethods.GetStr(context, result).PyUnwrap();
         else if (Conversion is 'r')
-            result = PySpecialMethods.GetRepr(result).PyThrowIfNull();
+            result = PySpecialMethods.GetRepr(context, result).PyUnwrap();
         else if (Conversion is 'a')
             throw new NotImplementedException();
         else

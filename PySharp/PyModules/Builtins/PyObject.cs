@@ -34,7 +34,7 @@ public partial class PyObject : IEquatable<PyObject>
             if (eq.Value is PyBoolObject boolObj)
                 return boolObj.BoolValue;
 
-            if (PySpecialMethods.TryGetBool(eq.Value, out var b))
+            if (PySpecialMethods.TryGetBool(PyCallContext.Null, eq.Value, out var b, out var result))
                 return b.BoolValue;
 
             Debug.Assert(PyVirtualMachine.CurrentException is not null);
@@ -43,7 +43,7 @@ public partial class PyObject : IEquatable<PyObject>
 
         public int GetHashCode([DisallowNull] PyObject obj)
         {
-            if (PySpecialMethods.TryGetHash(obj, out var hash))
+            if (PySpecialMethods.TryGetHash(PyCallContext.Null, obj, out var hash, out var result))
                 return hash.Int32Value;
 
             Debug.Assert(PyVirtualMachine.CurrentException is not null);
@@ -189,7 +189,7 @@ public partial class PyObject : IEquatable<PyObject>
 
     public override string ToString()
     {
-        if (PySpecialMethods.TryGetRepr(this, out var s))
+        if (PySpecialMethods.TryGetRepr(PyCallContext.Null, this, out var s, out var result))
             return $"{GetType().Name}{{id={PyId},repr={s.Value}}}";
         return $"{GetType().Name}{{id={PyId}}}";
     }
@@ -209,7 +209,7 @@ public partial class PyObject : IEquatable<PyObject>
 
     public override int GetHashCode()
     {
-        if (PySpecialMethods.TryGetHash(this, out var hash))
+        if (PySpecialMethods.TryGetHash(PyCallContext.Null, this, out var hash, out var result))
             return hash.Int32Value;
 
         PyVirtualMachine.ClearException();

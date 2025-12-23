@@ -127,7 +127,7 @@ public sealed class PyStrObjectType : PyTypeObject<PyStrObjectType, PyStrObject>
         var pack = new PyArgsPack(args, kwargs);
         if (!pack.ValidateCount(1, 0))
             return PyResult.RaiseTypeError(null);
-        return PySpecialMethods.GetStr(pack[0]) ?? PyResult.CaptureExceptionFromPVM();
+        return PySpecialMethods.GetStr(context, pack[0]);
     }
 }
 

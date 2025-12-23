@@ -304,7 +304,7 @@ public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatO
     {
         var pack = new PyArgsPack(args, kwargs);
         if (!pack.ValidateCount(1, 0))
-            return PyResult.CaptureExceptionFromPVM();
-        return PySpecialMethods.GetFloat(pack[0]) ?? PyResult.CaptureExceptionFromPVM();
+            return PyResult.RaiseTypeError(null);
+        return PySpecialMethods.GetFloat(context, pack[0]);
     }
 }

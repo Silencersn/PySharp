@@ -15,10 +15,10 @@ public class NotNode : AstUnaryOpNode
 
     public override PyResult GetUnaryOpValue(PyCallContext context, PyObject value)
     {
-        if (!PySpecialMethods.TryGetBool(value, out var b))
-            return PyResult.CaptureExceptionFromPVM();
+        if (!PySpecialMethods.TryGetBool(context, value, out var b, out var result))
+            return result;
         return PyBoolObject.FromBoolean(!b.BoolValue);
-    }
+	}
 }
 
 public class InvertNode : AstUnaryOpNode

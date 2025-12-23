@@ -109,8 +109,8 @@ public class NotInNode : AstCmpopNode
         if (contains.IsError)
             return contains;
 
-        if (!PySpecialMethods.TryGetBool(contains.Value, out var b))
-            return PyResult.CaptureExceptionFromPVM();
+        if (!PySpecialMethods.TryGetBool(context, contains.Value, out var b, out var result))
+            return result;
 
         return PyBoolObject.FromBoolean(!b.BoolValue);
     }

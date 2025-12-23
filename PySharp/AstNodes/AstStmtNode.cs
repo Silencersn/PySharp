@@ -70,10 +70,10 @@ public class AssertNode : AstStmtNode
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
         var test = Test.GetExprValue(context, frame);
-        if (!PySpecialMethods.TryGetBool(test, out var b))
-            throw new PyRuntimeException(PyVirtualMachine.CurrentException!);
+        if (!PySpecialMethods.TryGetBool(context, test, out var b, out var result))
+            result.PyUnwrap();
 
-        if (b.BoolValue)
+        if (b!.BoolValue)
             return;
 
         if (Msg is null)
@@ -171,7 +171,7 @@ public class ExprNode : AstStmtNode
         {
             if (value is not PyNoneObject)
             {
-                var repr = PySpecialMethods.GetRepr(value).PyThrowIfNull();
+                var repr = (PyStrObject)PySpecialMethods.GetRepr(context, value).PyUnwrap();
                 PyVirtualMachine.Out.WriteLine(repr.Value);
             }
         }

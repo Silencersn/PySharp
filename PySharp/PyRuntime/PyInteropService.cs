@@ -9,7 +9,7 @@ public static class PyInteropService
 {
     public static bool TryGetStr(PyObject obj, [NotNullWhen(true)] out string? s)
     {
-        if (PySpecialMethods.TryGetStr(obj, out var pyObj))
+        if (PySpecialMethods.TryGetStr(PyCallContext.Null, obj, out var pyObj, out var result))
         {
             s = pyObj.Value;
             return true;
@@ -20,7 +20,7 @@ public static class PyInteropService
     }
     public static bool TryGetRepr(PyObject obj, [NotNullWhen(true)] out string? s)
     {
-        if (PySpecialMethods.TryGetRepr(obj, out var pyObj))
+        if (PySpecialMethods.TryGetRepr(PyCallContext.Null, obj, out var pyObj, out var result))
         {
             s = pyObj.Value;
             return true;
@@ -31,7 +31,7 @@ public static class PyInteropService
     }
     public static bool TryGetBool(PyObject obj, out bool b)
     {
-        if (PySpecialMethods.TryGetBool(obj, out var pyObj))
+        if (PySpecialMethods.TryGetBool(PyCallContext.Null, obj, out var pyObj, out var result))
         {
             b = pyObj.BoolValue;
             return true;
@@ -42,7 +42,7 @@ public static class PyInteropService
     }
     public static bool TryGetInt(PyObject obj, out int i)
     {
-        if (PySpecialMethods.TryGetInt(obj, out var pyObj))
+        if (PySpecialMethods.TryGetInt(PyCallContext.Null, obj, out var pyObj, out var result))
         {
             i = pyObj.Int32Value;
             return true;
@@ -53,7 +53,7 @@ public static class PyInteropService
     }
     public static bool TryGetFloat(PyObject obj, out double f)
     {
-        if (PySpecialMethods.TryGetFloat(obj, out var pyObj))
+        if (PySpecialMethods.TryGetFloat(PyCallContext.Null, obj, out var pyObj, out var result))
         {
             f = pyObj.Value;
             return true;
@@ -64,7 +64,7 @@ public static class PyInteropService
     }
     public static bool TryGetLen(PyObject obj, out int i)
     {
-        if (PySpecialMethods.TryGetLen(obj, out var pyObj))
+        if (PySpecialMethods.TryGetLen(PyCallContext.Null, obj, out var pyObj, out var result))
         {
             i = pyObj.Int32Value;
             return true;
@@ -75,7 +75,7 @@ public static class PyInteropService
     }
     public static bool TryGetHash(PyObject obj, out int i)
     {
-        if (PySpecialMethods.TryGetHash(obj, out var pyObj))
+        if (PySpecialMethods.TryGetHash(PyCallContext.Null, obj, out var pyObj, out var result))
         {
             i = pyObj.Int32Value;
             return true;
@@ -86,7 +86,7 @@ public static class PyInteropService
     }
     public static bool TryGetIndex(PyObject obj, out int i)
     {
-        if (PySpecialMethods.TryGetIndex(obj, out var pyObj))
+        if (PySpecialMethods.TryGetIndex(PyCallContext.Null, obj, out var pyObj, out var result))
         {
             i = pyObj.Int32Value;
             return true;
@@ -97,7 +97,7 @@ public static class PyInteropService
     }
     public static bool TryGetIndex(PyObject obj, out BigInteger i)
     {
-        if (PySpecialMethods.TryGetIndex(obj, out var pyObj))
+        if (PySpecialMethods.TryGetIndex(PyCallContext.Null, obj, out var pyObj, out var result))
         {
             i = pyObj.Int32Value;
             return true;

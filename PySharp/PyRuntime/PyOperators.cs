@@ -407,8 +407,8 @@ public static class PyOperators
         if (boolRet.IsError)
             return boolRet;
 
-        if (!PySpecialMethods.TryGetBool(boolRet.Value, out var b))
-            return PyResult.CaptureExceptionFromPVM();
+        if (!PySpecialMethods.TryGetBool(context, boolRet.Value, out var b, out var result))
+            return result;
 
         return PyBoolObject.FromBoolean(!b.BoolValue);
     }

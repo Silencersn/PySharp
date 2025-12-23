@@ -1,4 +1,5 @@
-﻿using PySharp.PyRuntime;
+﻿using PySharp.AstNodes;
+using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 
 namespace PySharp.PyModules.Builtins;
@@ -68,8 +69,8 @@ partial class PyTypeObject<TObject>
         if (index.IsError)
             return index;
 
-        if (!PySpecialMethods.TryGetIndex(index.Value, out var i))
-            return PyResult.CaptureExceptionFromPVM();
+        if (!PySpecialMethods.TryGetIndex(context, index.Value, out var i, out var result))
+            return result;
 
         return i;
     }
@@ -80,8 +81,8 @@ partial class PyTypeObject<TObject>
         if (index.IsError)
             return index;
 
-        if (!PySpecialMethods.TryGetIndex(index.Value, out var i))
-            return PyResult.CaptureExceptionFromPVM();
+        if (!PySpecialMethods.TryGetIndex(context, index.Value, out var i, out var result))
+            return result;
 
         return PyFloatObject.FromDouble((double)i.Value);
     }
@@ -92,8 +93,8 @@ partial class PyTypeObject<TObject>
         if (index.IsError)
             return index;
 
-        if (!PySpecialMethods.TryGetIndex(index.Value, out var i))
-            return PyResult.CaptureExceptionFromPVM();
+        if (!PySpecialMethods.TryGetIndex(context, index.Value, out var i, out var result))
+            return result;
 
         throw new NotImplementedException();
     }
@@ -282,10 +283,10 @@ partial class PyTypeObject<TObject>
         if (eq.IsError)
             return eq;
 
-        if (PySpecialMethods.TryGetBool(eq.Value, out var b))
+        if (PySpecialMethods.TryGetBool(context, eq.Value, out var b, out var result))
             return b.BoolValue ? PyBoolObject.False : PyBoolObject.True;
 
-        return PyResult.CaptureExceptionFromPVM();
+        return result.PyUnwrap();
     }
     protected internal virtual PyResult Gt(PyCallContext context, TObject self, PyObject other)
     {

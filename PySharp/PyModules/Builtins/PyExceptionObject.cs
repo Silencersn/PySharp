@@ -131,7 +131,7 @@ public sealed class PyExceptionObject : PyObject
         }
 
         builder.Append(PyType.Name);
-        if (PySpecialMethods.TryGetStr(this, out var s))
+        if (PySpecialMethods.TryGetStr(PyCallContext.Null, this, out var s, out var result))
         {
             if (s.Value != string.Empty)
                 builder.Append(": ").Append(s.Value);

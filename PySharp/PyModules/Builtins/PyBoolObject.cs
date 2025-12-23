@@ -37,7 +37,7 @@ public sealed class PyBoolObjectType : PyTypeObject<PyBoolObjectType, PyBoolObje
         if (!pack.ValidateCount(1, 0))
             return PyResult.RaiseTypeError(null);
 
-        return PySpecialMethods.GetBool(pack[0]) ?? PyResult.CaptureExceptionFromPVM();
+        return PySpecialMethods.GetBool(context, pack[0]);
     }
 
     protected internal override PyResult Repr(PyCallContext context, PyBoolObject self)
