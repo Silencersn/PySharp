@@ -31,6 +31,6 @@ public sealed class PyTupleIteratorObjectType : PyTypeObject<PyTupleIteratorObje
             self._index = -2;
             return PyResult.RaiseStopIteration();
         }
-        return self._tuple.GetItem(PyIntObject.FromInteger(self._index)) ?? PyResult.CaptureExceptionFromPVM();
+        return self._tuple.GetItem(context, PyIntObject.FromInteger(self._index));
     }
 }

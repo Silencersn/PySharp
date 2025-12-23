@@ -471,10 +471,7 @@ public static partial class PyBuiltinFunctions
         var obj = arguments[0];
         if (!Utils.TryCastStrAsArg(arguments[1], out var name, "attribute name"))
             return PyResult.CaptureExceptionFromPVM();
-        var result = PyOperators.GetAttr(obj, name);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return PyOperators.GetAttr(context, obj, name);
     }
 
     [PyFunctionArgsDef("object", "name", "default", "/")]
@@ -483,10 +480,9 @@ public static partial class PyBuiltinFunctions
         var obj = arguments[0];
         if (!Utils.TryCastStrAsArg(arguments[1], out var name, "attribute name"))
             return PyResult.CaptureExceptionFromPVM();
-        var attr = PyOperators.GetAttr(obj, name);
-        if (attr is not null || !PyVirtualMachine.IsExceptionOfTypeRaised(PyStandardExceptionTypes.AttributeError))
-            return attr ?? PyResult.CaptureExceptionFromPVM();
-        PyVirtualMachine.ClearException();
+        var attr = PyOperators.GetAttr(context, obj, name);
+        if (!attr.IsAttributeError)
+            return attr;
         return arguments[2];
     }
 
@@ -495,10 +491,7 @@ public static partial class PyBuiltinFunctions
     {
         if (!Utils.TryCastStrAsArg(arguments[1], out var name, "attribute name"))
             return PyResult.CaptureExceptionFromPVM();
-        var result = PyOperators.SetAttr(arguments[0], name, arguments[2]);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return PyOperators.SetAttr(context, arguments[0], name, arguments[2]);
     }
 
     [PyFunctionArgsDef("object", "name", "/")]
@@ -506,13 +499,12 @@ public static partial class PyBuiltinFunctions
     {
         if (!Utils.TryCastStrAsArg(arguments[1], out var name, "attribute name"))
             return PyResult.CaptureExceptionFromPVM();
-        var attr = PyOperators.GetAttr(arguments[0], name);
-        if (attr is not null)
+        var attr = PyOperators.GetAttr(context, arguments[0], name);
+        if (attr.IsSuccessful)
             return PyBoolObject.True;
-        if (!PyVirtualMachine.IsExceptionOfTypeRaised(PyStandardExceptionTypes.AttributeError))
-            return PyResult.CaptureExceptionFromPVM();
-        PyVirtualMachine.ClearException();
-        return PyBoolObject.False;
+        if (attr.IsAttributeError)
+            return PyBoolObject.False;
+        return attr;
     }
 
     [PyFunctionArgsDef()]
@@ -661,13 +653,12 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef("object", "/")]
     private static PyResult CallableImpl(PyCallContext context, PyArguments arguments)
     {
-        var attr = PyOperators.GetAttr(arguments[0], PySpecialNames.Call);
-        if (attr is not null)
+        var attr = PyOperators.GetAttr(context, arguments[0], PySpecialNames.Call);
+        if (attr.IsSuccessful)
             return PyBoolObject.True;
-        if (!PyVirtualMachine.IsExceptionOfTypeRaised(PyStandardExceptionTypes.AttributeError))
-            return PyResult.CaptureExceptionFromPVM();
-        PyVirtualMachine.ClearException();
-        return PyBoolObject.False;
+        if (attr.IsAttributeError)
+            return PyBoolObject.False;
+        return attr;
     }
 
     [PyFunctionArgsDef("object", "/")]

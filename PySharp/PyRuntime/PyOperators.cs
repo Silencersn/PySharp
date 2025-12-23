@@ -435,20 +435,19 @@ public static class PyOperators
         return PyBoolObject.FromBoolean(!AreSameObjectAtPythonLevel(left, right));
     }
 
-    public static PyObject? GetAttr(PyObject target, string name)
+    public static PyResult GetAttr(PyCallContext context, PyObject target, string name)
     {
-        var attr = target.GetAttribute(name);
-        if (attr is not null || !PyVirtualMachine.IsExceptionOfTypeRaised(PyStandardExceptionTypes.AttributeError))
+        var attr = target.GetAttribute(context, name);
+        if (!attr.IsAttributeError)
             return attr;
-
-        return target.GetAttr(name);
+        return target.GetAttr(context, name);
     }
-    public static PyObject? SetAttr(PyObject target, string name, PyObject value)
+    public static PyResult SetAttr(PyCallContext context, PyObject target, string name, PyObject value)
     {
-        return target.SetAttr(name, value);
+        return target.SetAttr(context, name, value);
     }
-    public static PyObject? DelAttr(PyObject target, string name)
+    public static PyResult DelAttr(PyCallContext context, PyObject target, string name)
     {
-        return target.DelAttr(name);
+        return target.DelAttr(context, name);
     }
 }

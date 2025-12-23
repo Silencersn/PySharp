@@ -130,12 +130,7 @@ public sealed class PySuperObjectType : PyTypeObject<PySuperObjectType, PySuperO
             if (pyType.PyAttributes.TryGetValue(item, out var attr))
             {
                 if (Utils.IsDescriptor(attr, out var hasGet, out _, out _) && hasGet)
-                {
-                    var result = attr.Get(self._object, PyNoneObject.None);
-                    if (result is null)
-                        return PyResult.CaptureExceptionFromPVM();
-                    return result;
-                }
+                    return attr.Get(context, self._object, PyNoneObject.None);
                 return attr;
             }
         }

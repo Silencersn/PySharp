@@ -103,7 +103,7 @@ public sealed class PyTypeObjectType : PyTypeObject<PyTypeObjectType, PyTypeObje
 
     protected internal override PyResult GetAttribute(PyCallContext context, PyTypeObject self, string item)
     {
-        return PyTypeGetAttribute(self, item) ?? PyResult.CaptureExceptionFromPVM();
+        return PyTypeGetAttribute(context, self, item);
     }
 }
 

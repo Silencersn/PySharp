@@ -1,4 +1,5 @@
 ﻿using PySharp.PyRuntime;
+using PySharp.PyRuntime.Calls;
 using System.Diagnostics;
 
 namespace PySharp.PyModules.Builtins;
@@ -46,7 +47,7 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
     }
 
 
-    public static PyObject? PyTypeGetAttribute(PyTypeObject pyTypeObj, string name)
+    public static PyResult PyTypeGetAttribute(PyCallContext context, PyTypeObject pyTypeObj, string name)
     {
         PyObject? attrFromType = null;
         foreach (var pyType in pyTypeObj.PyType.MRO)
@@ -54,7 +55,7 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
             if (pyType.PyAttributes.TryGetValue(name, out attrFromType))
                 break;
         }
-
+        
         PyObject? nonDataDescriptor = null;
         {
             if (attrFromType is not null && Utils.IsDescriptor(attrFromType, out var hasGet, out var hasSet, out var hasDelete))
@@ -62,7 +63,7 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
                 if (hasGet)
                 {
                     if (hasSet || hasDelete)
-                        return attrFromType.Get(pyTypeObj, pyTypeObj.PyType);
+                        return attrFromType.Get(context, pyTypeObj, pyTypeObj.PyType);
 
                     nonDataDescriptor = attrFromType;
                 }
@@ -75,18 +76,18 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
                 continue;
 
             if (Utils.IsDescriptor(attr, out var hasGet, out _, out _) && hasGet)
-                return attr.Get(PyNoneObject.None, pyTypeObj);
+                return attr.Get(context, PyNoneObject.None, pyTypeObj);
 
             return attr;
         }
 
         if (nonDataDescriptor is not null)
-            return nonDataDescriptor.Get(pyTypeObj, pyTypeObj.PyType);
+            return nonDataDescriptor.Get(context, pyTypeObj, pyTypeObj.PyType);
 
         if (attrFromType is not null)
             return attrFromType;
 
-        return PyVirtualMachine.RaiseAttributeError($"'{pyTypeObj.Name}' object has no attribute '{name}'");
+        return PyResult.RaiseAttributeError($"'{pyTypeObj.Name}' object has no attribute '{name}'");
     }
 
     internal void AppendMemberDescriptor<TPyObject>(string name, Func<TPyObject, PyObject?> getter, Func<TPyObject, PyObject, PyObject?>? setter = null) where TPyObject : PyObject

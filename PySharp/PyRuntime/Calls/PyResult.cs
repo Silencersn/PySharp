@@ -23,6 +23,9 @@ public readonly partial struct PyResult
     [MemberNotNullWhen(true, nameof(Exception))]
     public bool IsStopIteration => _exception?.PyType is PyStopIterationObjectType;
 
+    [MemberNotNullWhen(true, nameof(Exception))]
+    public bool IsAttributeError => _exception?.PyType is PyAttributeErrorObjectType;
+
     public PyObject? Value
     {
         get

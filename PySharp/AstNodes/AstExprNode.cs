@@ -136,8 +136,8 @@ public sealed class AttributeNode : AstExprNode, IExprContextNode, ITargetNode
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
         var value = Value.GetExprValue(context, frame);
-        var attr = PyOperators.GetAttr(value, Identifier);
-        return attr.PyThrowIfNull();
+        var attr = PyOperators.GetAttr(context, value, Identifier);
+        return attr.PyUnwrap();
     }
 
     internal override void Dump(AstNodeDumper dumper)
@@ -156,13 +156,13 @@ public sealed class AttributeNode : AstExprNode, IExprContextNode, ITargetNode
     void ITargetNode.SetVaue(PyCallContext context, PyObject value, PyFrame frame)
     {
         var obj = Value.GetExprValue(context, frame);
-        PyOperators.SetAttr(obj, Identifier, value).PyThrowIfNull();
+        PyOperators.SetAttr(context, obj, Identifier, value).PyUnwrap();
     }
 
     void ITargetNode.DeleteValue(PyCallContext context, PyFrame frame)
     {
         var obj = Value.GetExprValue(context, frame);
-        PyOperators.DelAttr(obj, Identifier).PyThrowIfNull();
+        PyOperators.DelAttr(context, obj, Identifier).PyUnwrap();
     }
 }
 
@@ -187,21 +187,21 @@ public sealed class SubscriptNode : AstExprNode, IExprContextNode, ITargetNode
     {
         var value = Value.GetExprValue(context, frame);
         var slice = Slice.GetExprValue(context, frame);
-        return value.GetItem(slice).PyThrowIfNull();
+        return value.GetItem(context, slice).PyUnwrap();
     }
 
     public PyObject SetItem(PyCallContext context, PyFrame frame, PyObject obj)
     {
         var value = Value.GetExprValue(context, frame);
         var slice = Slice.GetExprValue(context, frame);
-        return value.SetItem(slice, obj).PyThrowIfNull();
+        return value.SetItem(context, slice, obj).PyUnwrap();
     }
 
     public PyObject DelItem(PyFrame frame, PyCallContext context)
     {
         var value = Value.GetExprValue(context, frame);
         var slice = Slice.GetExprValue(context, frame);
-        return value.Delete(slice).PyThrowIfNull();
+        return value.Delete(context, slice).PyUnwrap();
     }
 
     internal override void Dump(AstNodeDumper dumper)
