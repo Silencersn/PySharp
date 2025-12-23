@@ -156,7 +156,7 @@ internal static class AstUtils
         if (testNode is IAstExprNodeBool node)
             return node.GetExprValueWithResult(context, frame).Result;
         else
-            return testNode.GetExprValue(context, frame).Bool().PyCast<PyBoolObject>().BoolValue;
+            return testNode.GetExprValue(context, frame).Bool(context).PyUnwrap().PyCast<PyBoolObject>().BoolValue;
     }
 
     public static void EnumerateNodes(this IEnumerable<AstNode> nodes, Action<AstNode> action)

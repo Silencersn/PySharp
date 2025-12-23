@@ -33,9 +33,6 @@ public sealed class PyMethodObjectType : PyTypeObject<PyMethodObjectType, PyMeth
 
     protected internal override PyResult GetAttr(PyCallContext context, PyMethodObject self, string item)
     {
-        var result = self._functionObj.GetAttribute(item);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return self._functionObj.GetAttribute(context, item);
     }
 }

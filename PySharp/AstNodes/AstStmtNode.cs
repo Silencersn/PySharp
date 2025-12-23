@@ -618,7 +618,7 @@ public class ImportFromNode : AstStmtNode
                         throw new PyRuntimeException(PyVirtualMachine.CurrentException);
                     }
 
-                    var attr = module.GetAttribute(strObj.Value).PyThrowIfNull();
+                    var attr = module.GetAttribute(context, strObj.Value).PyUnwrap();
                     frame.SetValue(strObj.Value, attr);
                 }
             }
@@ -882,7 +882,7 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
         foreach (var (name, value) in attrs)
         {
             if (PyObject.PyObjectHasAttribute(value.PyType, PySpecialNames.SetName))
-                value.SetName(type, PyStrObject.FromString(name)).PyThrowIfNull();
+                value.SetName(context, type, PyStrObject.FromString(name)).PyUnwrap();
         }
 
         frame.SetValue(Name, AstUtils.ApplyDeractors(type, DecoratorList, context, frame));
