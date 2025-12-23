@@ -27,9 +27,8 @@ public sealed class PyNoneObjectType : PyTypeObject<PyNoneObjectType, PyNoneObje
 
     protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        var pack = new PyArgsPack(args, kwargs);
-        if (!pack.ValidateEmpty())
-            return PyResult.RaiseTypeError(null);
+        if (!PyArgsValidator.ValidateEmpty(args, kwargs, out var err))
+            return err.Value;
         return PyNoneObject.None;
     }
 }

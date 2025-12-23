@@ -48,18 +48,4 @@ public sealed class PyModuleObjectType : PyTypeObject<PyModuleObjectType, PyModu
     {
         return PyResult.RaiseAttributeError($"module '{self.Name}' has no attribute '{item}'");
     }
-
-    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
-    {
-        var pack = new PyArgsPack(args, kwargs);
-        if (pack.TryParseOneArgOrOneKwarg("name", out var arg))
-        {
-            if (arg is not PyStrObject str)
-                return PyResult.RaiseTypeError($"module() argument 'name' must be str, not {arg.PyType.Name}");
-            return new PyModuleObject(str.Value);
-        }
-        if (pack.Count is 0)
-            return PyResult.RaiseTypeError("module() missing required argument 'name' (pos 1)");
-        throw new NotImplementedException();
-    }
 }

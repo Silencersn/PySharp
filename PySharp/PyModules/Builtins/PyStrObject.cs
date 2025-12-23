@@ -125,10 +125,9 @@ public sealed class PyStrObjectType : PyTypeObject<PyStrObjectType, PyStrObject>
     }
     protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        var pack = new PyArgsPack(args, kwargs);
-        if (!pack.ValidateCount(1, 0))
-            return PyResult.RaiseTypeError(null);
-        return PySpecialMethods.GetStr(context, pack[0]);
+        if (!PyArgsValidator.ValidateSinglePositionalArg(args, kwargs, out var err))
+            return err.Value;
+        return PySpecialMethods.GetStr(context, args[0]);
     }
 }
 

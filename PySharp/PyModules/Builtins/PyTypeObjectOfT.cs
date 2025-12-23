@@ -89,11 +89,9 @@ public sealed class PyTypeObjectType : PyTypeObject<PyTypeObjectType, PyTypeObje
 
     protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        var pack = new PyArgsPack(args, kwargs);
-        if (!pack.ValidateCount(1, 0))
-            return PyResult.RaiseTypeError(null);
-
-        return pack[0].PyType;
+        if (!PyArgsValidator.ValidateSinglePositionalArg(args, kwargs, out var err))
+            return err.Value;
+        return args[0].PyType;
     }
 
     protected internal override PyResult Repr(PyCallContext context, PyTypeObject self)

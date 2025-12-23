@@ -45,11 +45,10 @@ public sealed class PyTupleObjectType : PyTypeObject<PyTupleObjectType, PyTupleO
 
     protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        var pack = new PyArgsPack(args, kwargs);
-        if (!pack.ValidateCount(1, 0))
-            return PyResult.RaiseTypeError(null);
+		if (!PyArgsValidator.ValidateSinglePositionalArg(args, kwargs, out var err))
+			return err.Value;
 
-        if (!Utils.TryEnumeratedIterable(context, pack[0], out var tuple, out var err))
+		if (!Utils.TryEnumeratedIterable(context, args[0], out var tuple, out err))
             return err.Value;
 
         var obj = PyTupleObject.CreateTuple(tuple);

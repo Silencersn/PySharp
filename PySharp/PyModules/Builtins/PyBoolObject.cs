@@ -33,11 +33,9 @@ public sealed class PyBoolObjectType : PyTypeObject<PyBoolObjectType, PyBoolObje
 
     protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        var pack = new PyArgsPack(args, kwargs);
-        if (!pack.ValidateCount(1, 0))
-            return PyResult.RaiseTypeError(null);
-
-        return PySpecialMethods.GetBool(context, pack[0]);
+        if (!PyArgsValidator.ValidateSinglePositionalArg(args, kwargs, out var err))
+            return err.Value;
+        return PySpecialMethods.GetBool(context, args[0]);
     }
 
     protected internal override PyResult Repr(PyCallContext context, PyBoolObject self)

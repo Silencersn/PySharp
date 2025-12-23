@@ -22,9 +22,8 @@ public sealed class PyEllipsisObjectType : PyTypeObject<PyEllipsisObjectType, Py
 
     protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        var pack = new PyArgsPack(args, kwargs);
-        if (!pack.ValidateEmpty())
-            return PyResult.CaptureExceptionFromPVM();
+        if (!PyArgsValidator.ValidateEmpty(args, kwargs, out var err))
+            return err.Value;
         return PyEllipsisObject.Ellipsis;
     }
 }
