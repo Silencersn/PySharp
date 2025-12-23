@@ -18,14 +18,4 @@ partial class PyObject
     {
         return PyBoolObject.True;
     }
-
-    protected internal virtual PyObject? IterImpl()
-    {
-        return PyVirtualMachine.RaiseTypeError(null);
-    }
-
-    protected internal virtual PyObject? NextImpl()
-    {
-        return PyVirtualMachine.RaiseTypeError(null);
-    }
 }
