@@ -46,10 +46,10 @@ public sealed class PyMapObjectType : PyTypeObject<PyMapObjectType, PyMapObject>
 
     protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        var obj = _new.Call(args, kwargs);
-        if (obj is null)
-            return PyResult.CaptureExceptionFromPVM();
-        obj._pyType = cls;
+        var obj = _new.Call(context, args, kwargs);
+        if (obj.IsError)
+            return obj;
+        obj.Value._pyType = cls;
         return obj;
     }
 
@@ -76,9 +76,6 @@ public sealed class PyMapObjectType : PyTypeObject<PyMapObjectType, PyMapObject>
                 return PyResult.RaiseValueError(null);
             return PyResult.RaiseStopIteration();
         }
-        var result = self._function.Call(args, FrozenDictionary<string, PyObject>.Empty);
-        if (result is null)
-            return PyResult.CaptureExceptionFromPVM();
-        return result;
+        return self._function.Call(context, args, FrozenDictionary<string, PyObject>.Empty);
     }
 }

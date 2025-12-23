@@ -178,7 +178,7 @@ internal static class AstUtils
             }
             foreach (var decorator in decorators)
             {
-                target = decorator.Call([target], new Dictionary<string, PyObject>()).PyThrowIfNull();
+                target = decorator.Call(context, [target], new Dictionary<string, PyObject>()).PyUnwrap();
             }
         }
         return target;

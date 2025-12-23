@@ -1,6 +1,7 @@
 ﻿using PySharp.AstNodes;
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
+using PySharp.PyRuntime.Calls;
 using System.Diagnostics;
 
 namespace PySharp.PyModules.Threading;
@@ -40,7 +41,11 @@ partial class PyThreadObject : PyObject
     public void PyRun()
     {
         if (_target is not PyNoneObject)
-            _target.Call(_args, _kwargs).PyThrowIfNull();
+        {
+            var result = _target.Call(PyCallContext.Null, _args, _kwargs);
+            if (result.IsError)
+                throw new PyRuntimeException(result.Exception);
+        }
     }
 
     public void PyJoin(double timeout = -1)

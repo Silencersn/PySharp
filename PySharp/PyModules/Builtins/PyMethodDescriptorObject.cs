@@ -134,7 +134,7 @@ public sealed class PyMethodDescriptorObjectType : PyTypeObject<PyMethodDescript
         if (!self._declaringType.IsInstance(args[0]))
             return PyResult.RaiseTypeError($"descriptor '{self._name}' requires a '{self._declaringType.Name}' object but received a '{args[0].PyType.Name}'");
 
-        return self.UnboundMethod.Call(args, kwargs) ?? PyResult.CaptureExceptionFromPVM();
+        return self.UnboundMethod.Call(context, args, kwargs);
     }
 
     internal static PyFunction ToPyDelegate(PyTypeObject type, MethodInfo method, PyObject target, PySpecialMethodParametersType paramType)

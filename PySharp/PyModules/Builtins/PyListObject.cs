@@ -64,11 +64,10 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
 
     protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        var obj = _new.Call(args, kwargs);
-        if (obj is null)
-            return PyResult.CaptureExceptionFromPVM();
-
-        obj._pyType = cls;
+        var obj = _new.Call(context, args, kwargs);
+        if (obj.IsError)
+            return obj;
+        obj.Value._pyType = cls;
         return obj;
     }
 
@@ -239,10 +238,10 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
             Dictionary<PyObject, PyObject> itemToKey = [];
             foreach (var item in self._list)
             {
-                var key = keySelector.Call([item], FrozenDictionary<string, PyObject>.Empty);
-                if (key is null)
-                    return PyResult.CaptureExceptionFromPVM();
-                itemToKey[item] = key;
+                var key = keySelector.Call(context, [item], FrozenDictionary<string, PyObject>.Empty);
+                if (key.IsError)
+                    return key;
+                itemToKey[item] = key.Value;
             }
             self.PySort(item => itemToKey[item], reverse);
         }

@@ -333,8 +333,8 @@ public sealed class CallNode : AstExprNode
                 throw new UnreachableException();
         }
 
-        var result = func.Call(args, kwargs);
-        return result.PyThrowIfNull();
+        var result = func.Call(context, args, kwargs);
+        return result.PyUnwrap();
     }
 
     internal override void Dump(AstNodeDumper dumper)

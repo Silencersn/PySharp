@@ -28,7 +28,7 @@ public sealed class PyMethodObjectType : PyTypeObject<PyMethodObjectType, PyMeth
 
     protected internal override PyResult Call(PyCallContext context, PyMethodObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        return self._functionObj.Call([self._target, .. args], kwargs) ?? PyResult.CaptureExceptionFromPVM();
+        return self._functionObj.Call(context, [self._target, .. args], kwargs);
     }
 
     protected internal override PyResult GetAttr(PyCallContext context, PyMethodObject self, string item)
