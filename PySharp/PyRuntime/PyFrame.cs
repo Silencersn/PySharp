@@ -262,9 +262,9 @@ public sealed partial class PyFrame
         }
     }
 
-    public void Import(string name, string? alias = null)
+    public void Import(PyCallContext context, string name, string? alias = null)
     {
-        if (!PyVirtualMachine.PyEnvironment.TryLoadModule(name, out var module))
+        if (!PyVirtualMachine.PyEnvironment.TryLoadModule(context, name, out var module))
         {
             PyVirtualMachine.RaiseException(PyStandardExceptionTypes.ModuleNotFoundError, $"No module named '{name}'");
             throw new PyRuntimeException(PyVirtualMachine.CurrentException);

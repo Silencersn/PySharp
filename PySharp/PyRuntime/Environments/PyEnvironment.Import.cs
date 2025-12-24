@@ -1,4 +1,5 @@
 ﻿using PySharp.PyModules.Builtins;
+using PySharp.PyRuntime.Calls;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
@@ -21,17 +22,17 @@ partial class PyEnvironment
         return module;
     }
 
-    internal bool TryLoadModule(string qualifiedName, [NotNullWhen(true)] out PyModuleObject? module)
+    internal bool TryLoadModule(PyCallContext context, string qualifiedName, [NotNullWhen(true)] out PyModuleObject? module)
     {
         if (Modules.TryGetValue(qualifiedName, out module))
             // the key may be assigned to None,
             // forcing the next import of the module to result in a ModuleNotFoundError
             return module is not null;
 
-        return TryLoadModuleNoCache(qualifiedName, out module);
+        return TryLoadModuleNoCache(context, qualifiedName, out module);
     }
 
-    internal bool TryLoadModuleNoCache(string qualifiedName, [NotNullWhen(true)] out PyModuleObject? module)
+    internal bool TryLoadModuleNoCache(PyCallContext context, string qualifiedName, [NotNullWhen(true)] out PyModuleObject? module)
     {
         module = PyStandardLibrary.TryCreateModule(qualifiedName);
         if (module is not null)
@@ -53,7 +54,7 @@ partial class PyEnvironment
 
             var content = FileSystem.ReadAllText(filename);
 
-            module = PyInterpreter.RunCodeWithinEnvironment(content, qualifiedName, true, Path.GetFullPath(filename));
+            module = PyInterpreter.RunCodeWithinEnvironment(context, content, qualifiedName, true, Path.GetFullPath(filename));
             module.OnImport(this);
             Modules.Add(qualifiedName, module);
             return true;

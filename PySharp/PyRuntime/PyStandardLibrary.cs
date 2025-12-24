@@ -6,6 +6,7 @@ using PySharp.PyModules.Site;
 using PySharp.PyModules.This;
 using PySharp.PyModules.Threading;
 using PySharp.PyModules.Time;
+using PySharp.PyRuntime.Calls;
 
 
 namespace PySharp.PyRuntime;
@@ -40,6 +41,6 @@ internal static class PyStandardLibrary
 
     private static PyModuleObject Execute(string name, string code)
     {
-        return PyInterpreter.RunCodeWithinEnvironment(code, name, true, $"{name}.py");
+        return PyInterpreter.RunCodeWithinEnvironment(PyCallContext.Null, code, name, true, $"{name}.py");
     }
 }

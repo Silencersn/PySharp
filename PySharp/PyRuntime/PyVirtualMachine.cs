@@ -89,13 +89,13 @@ public static partial class PyVirtualMachine
         throw new PyRuntimeException(CurrentException);
     }
 
-    internal static PyModuleObject Execute(ModuleNode moduleNode, string moduleName, bool newFrame)
+    internal static PyModuleObject Execute(PyCallContext context, ModuleNode moduleNode, string moduleName, bool newFrame)
     {
         var module = new PyModuleObject(moduleName);
-        ExecuteToObject(moduleNode, module, newFrame);
+        ExecuteToObject(context, moduleNode, module, newFrame);
         return module;
     }
-    internal static void ExecuteToObject(ModuleNode moduleNode, PyModuleObject module, bool newFrame)
+    internal static void ExecuteToObject(PyCallContext context, ModuleNode moduleNode, PyModuleObject module, bool newFrame)
     {
         if (newFrame)
         {

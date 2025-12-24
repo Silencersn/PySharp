@@ -534,7 +534,7 @@ public static partial class PyBuiltinFunctions
         if (arguments[0] is not PyStrObject strObj)
             return PyResult.RaiseTypeError("module name must be a string");
         var name = strObj.Value;
-        if (!PyVirtualMachine.PyEnvironment.TryLoadModule(name, out var module))
+        if (!PyVirtualMachine.PyEnvironment.TryLoadModule(context, name, out var module))
             return PyResult.RaiseException(PyStandardExceptionTypes.ModuleNotFoundError, $"No module named '{name}'");
         return module;
     }

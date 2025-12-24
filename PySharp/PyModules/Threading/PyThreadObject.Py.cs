@@ -8,7 +8,7 @@ namespace PySharp.PyModules.Threading;
 
 partial class PyThreadObject : PyObject
 {
-    public void PyStart()
+    public void PyStart(PyCallContext context)
     {
         if (_thread is not null)
             throw new InvalidOperationException();
@@ -22,7 +22,7 @@ partial class PyThreadObject : PyObject
             frame.StmtMetaInfoProvider = backFrame.StmtMetaInfoProvider;
             try
             {
-                PyInterpreter.PyTryCatch(PyRun);
+                PyInterpreter.PyTryCatch(context, () => PyRun(context));
             }
             catch (ThreadInterruptedException)
             {
@@ -38,11 +38,11 @@ partial class PyThreadObject : PyObject
         _thread.Start();
     }
 
-    public void PyRun()
+    public void PyRun(PyCallContext context)
     {
         if (_target is not PyNoneObject)
         {
-            var result = _target.Call(PyCallContext.Null, _args, _kwargs);
+            var result = _target.Call(context, _args, _kwargs);
             if (result.IsError)
                 throw new PyRuntimeException(result.Exception);
         }

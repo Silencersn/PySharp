@@ -551,7 +551,7 @@ public class ImportNode : AstStmtNode
     {
         foreach (var name in Names)
         {
-            frame.Import(name.Name, name.AsName ?? GetName(name.Name));
+            frame.Import(context, name.Name, name.AsName ?? GetName(name.Name));
         }
 
         static string GetName(string module)
@@ -593,7 +593,7 @@ public class ImportFromNode : AstStmtNode
         // Module must be not null when Level is 0
         Debug.Assert(Module is not null);
 
-        if (!PyVirtualMachine.PyEnvironment.TryLoadModule(Module, out var module))
+        if (!PyVirtualMachine.PyEnvironment.TryLoadModule(context, Module, out var module))
         {
             PyVirtualMachine.RaiseException(PyStandardExceptionTypes.ModuleNotFoundError, $"No module named '{Module}'");
             throw new PyRuntimeException(PyVirtualMachine.CurrentException);

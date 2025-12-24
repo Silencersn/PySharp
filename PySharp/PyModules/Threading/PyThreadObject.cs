@@ -65,7 +65,7 @@ public sealed class PyThreadObjectType : PyTypeObject<PyThreadObjectType, PyThre
     [PyFunctionArgsDef()]
     internal PyResult Start(PyCallContext context, PyThreadObject self, PyArguments arguments)
     {
-        self.PyStart();
+        self.PyStart(context);
         return PyNoneObject.None;
     }
 

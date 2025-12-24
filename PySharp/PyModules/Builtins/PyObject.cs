@@ -90,7 +90,7 @@ public partial class PyObject : IEquatable<PyObject>
     internal IDictionary<string, PyObject> PyAttributes => _pyAttributes ??= new ConcurrentDictionary<string, PyObject>();
     internal bool IsSelfDefaultType => ReferenceEquals(PyType, DefaultPyType);
     [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-    internal virtual bool IsImmutable => PyType.IsImmutable;
+    internal virtual bool IsImmutable => PyType.IsTypeImmutable;
 
     public PyObject()
     {

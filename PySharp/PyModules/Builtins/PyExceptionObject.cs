@@ -1,6 +1,7 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.Metadata;
+using System;
 using System.Diagnostics;
 using System.Text;
 
@@ -106,13 +107,13 @@ public sealed class PyExceptionObject : PyObject
         return string.Join(Environment.NewLine, stack);
     }
 
-    internal string ToMessage()
+    internal string ToMessage(PyCallContext context)
     {
         var builder = new StringBuilder();
 
         if (Cause is not null)
             builder
-                .AppendLine(Cause.ToMessage())
+                .AppendLine(Cause.ToMessage(context))
                 .AppendLine()
                 .AppendLine(CauseReason)
                 .AppendLine();
@@ -131,7 +132,7 @@ public sealed class PyExceptionObject : PyObject
         }
 
         builder.Append(PyType.Name);
-        if (PySpecialMethods.TryGetStr(PyCallContext.Null, this, out var s, out var result))
+        if (PySpecialMethods.TryGetStr(context, this, out var s, out var result))
         {
             if (s.Value != string.Empty)
                 builder.Append(": ").Append(s.Value);

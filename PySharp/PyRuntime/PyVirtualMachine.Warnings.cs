@@ -1,4 +1,5 @@
 ﻿using PySharp.PyModules.Builtins;
+using PySharp.PyRuntime.Calls;
 using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.PyRuntime;
@@ -10,7 +11,7 @@ partial class PyVirtualMachine
     {
         var color = Console.ForegroundColor;
         Console.ForegroundColor = ConsoleColor.Red;
-        PyEnvironment.Error.WriteLine(warningType.Create(PyStrObject.FromString(message)).ToMessage());
+        PyEnvironment.Error.WriteLine(warningType.Create(PyStrObject.FromString(message)).ToMessage(PyCallContext.Null));
         Console.ForegroundColor = color;
         return true;
     }
