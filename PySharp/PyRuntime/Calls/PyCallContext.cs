@@ -1,4 +1,6 @@
-﻿using PySharp.PyRuntime.Environments;
+﻿using PySharp.PyModules.Builtins;
+using PySharp.PyRuntime.Environments;
+using System.Diagnostics;
 
 namespace PySharp.PyRuntime.Calls;
 
@@ -23,6 +25,24 @@ public class PyCallContext
     internal TextWriter Error => PyEnvironment.Error;
     internal PyFrame CurrentFrame => PyEnvironment.CurrentFrame;
     internal bool IsInteractive => PyEnvironment.IsInteractive;
+
+    internal void EnterFrame(PyFrame frame)
+    {
+        PyEnvironment.CurrentFrame = frame;
+    }
+
+    internal void ExitFrame()
+    {
+        Debug.Assert(PyEnvironment.CurrentFrame.Back is not null);
+        PyEnvironment.CurrentFrame = PyEnvironment.CurrentFrame.Back;
+    }
+
+    internal void Exit(int exitCode)
+    {
+        PyEnvironment.ExitCode = exitCode;
+        throw new PyRuntimeException(PyStandardExceptionTypes.SystemExit.Create());
+    }
+
 
     internal static PyCallContext FromEnvironment(PyEnvironment environment)
     {

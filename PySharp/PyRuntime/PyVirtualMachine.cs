@@ -99,7 +99,7 @@ public static partial class PyVirtualMachine
     {
         if (newFrame)
         {
-            EnterFrame(PyFrame.CreateModuleFrame(CurrentFrame));
+            context.EnterFrame(PyFrame.CreateModuleFrame(CurrentFrame));
             PyEnvironment.Init(PyEnvironmentOptions.Default);
         }
 
@@ -122,6 +122,6 @@ public static partial class PyVirtualMachine
         module.PyAttributes[PySpecialNames.Name] = PyStrObject.FromString(module.Name);
 
         if (newFrame)
-            ExitFrame();
+            context.ExitFrame();
     }
 }

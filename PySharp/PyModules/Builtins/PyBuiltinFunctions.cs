@@ -192,7 +192,7 @@ public static partial class PyBuiltinFunctions
     {
         if (arguments.Args[0] is not PyStrObject str)
             return PyResult.RaiseTypeError(null);
-        var parser = new Parser("<string>", PyVirtualMachine.PyEnvironment.OptimizationOptions, Lexer.Tokenize(str.Value));
+        var parser = new Parser("<string>", context.PyEnvironment.OptimizationOptions, Lexer.Tokenize(str.Value));
         var node = parser.ParseExpressionNode();
         var frame = context.CurrentFrame;
         var tempFrame = frame.TempFrame(FrameType.Eval);
@@ -215,7 +215,7 @@ public static partial class PyBuiltinFunctions
         try
         {
             var tokens = Lexer.Tokenize(str.Value);
-            node = Parser.Parse("<string>", tokens, PyVirtualMachine.PyEnvironment);
+            node = Parser.Parse("<string>", tokens, context.PyEnvironment);
         }
         catch (TokenizationException e)
         {
@@ -534,7 +534,7 @@ public static partial class PyBuiltinFunctions
         if (arguments[0] is not PyStrObject strObj)
             return PyResult.RaiseTypeError("module name must be a string");
         var name = strObj.Value;
-        if (!PyVirtualMachine.PyEnvironment.TryLoadModule(context, name, out var module))
+        if (!context.PyEnvironment.TryLoadModule(context, name, out var module))
             return PyResult.RaiseException(PyStandardExceptionTypes.ModuleNotFoundError, $"No module named '{name}'");
         return module;
     }

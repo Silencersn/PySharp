@@ -23,7 +23,7 @@ public static class PySiteFunctions
         if (!exitCode.HasValue)
             return PyResult.RaiseTypeError(null);
 
-        PyVirtualMachine.Exit(exitCode.Value);
+        context.Exit(exitCode.Value);
         return PyNoneObject.None;
     }
 }

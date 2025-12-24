@@ -490,7 +490,7 @@ public class TryNode : AstStmtNode
         {
             e.PyException.WithTraceback(context);
             while (context.CurrentFrame != frame)
-                PyVirtualMachine.ExitFrame();
+                context.ExitFrame();
 
             frame.Exceptions.Push(e.PyException);
             catched = true;
@@ -593,7 +593,7 @@ public class ImportFromNode : AstStmtNode
         // Module must be not null when Level is 0
         Debug.Assert(Module is not null);
 
-        if (!PyVirtualMachine.PyEnvironment.TryLoadModule(context, Module, out var module))
+        if (!context.PyEnvironment.TryLoadModule(context, Module, out var module))
         {
             PyVirtualMachine.RaiseException(PyStandardExceptionTypes.ModuleNotFoundError, $"No module named '{Module}'");
             throw new PyRuntimeException(PyVirtualMachine.CurrentException);
@@ -748,11 +748,11 @@ internal sealed class FunctionCaller
         foreach (var cell in _func.CapturedVariables)
             frame.Closures.Add(cell.Name, cell);
 
-        PyVirtualMachine.EnterFrame(frame);
+        context.EnterFrame(frame);
 
         if (!_def.TryParse(args, kwargs, out var arguments))
         {
-            PyVirtualMachine.ExitFrame();
+            context.ExitFrame();
             return PyResult.RaiseTypeError("wrong arguments");
         }
 
@@ -760,7 +760,7 @@ internal sealed class FunctionCaller
 
         PyObject result = _getResult(context, frame);
 
-        PyVirtualMachine.ExitFrame();
+        context.ExitFrame();
         return result;
     }
 }
@@ -869,13 +869,13 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
         {
             newFrame.Closures.Add(name, cell);
         }
-        PyVirtualMachine.EnterFrame(newFrame);
+        context.EnterFrame(newFrame);
 
         foreach (var stmt in Body)
         {
             stmt.Execute(context, newFrame);
         }
-        PyVirtualMachine.ExitFrame();
+        context.ExitFrame();
 
         var attrs = ((IAstVariableScopeOwner)this).Variables.Keys.ToDictionary(static member => member, newFrame.GetValue);
         foreach (var attr in attrs)

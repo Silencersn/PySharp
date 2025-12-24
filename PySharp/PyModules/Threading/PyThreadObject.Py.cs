@@ -18,7 +18,7 @@ partial class PyThreadObject : PyObject
         _thread = new Thread(() =>
         {
             var frame = backFrame.CreateThreadRootFrame();
-            PyVirtualMachine.EnterFrame(frame);
+            context.EnterFrame(frame);
             frame.StmtMetaInfoProvider = backFrame.StmtMetaInfoProvider;
             try
             {
@@ -27,14 +27,14 @@ partial class PyThreadObject : PyObject
             catch (ThreadInterruptedException)
             {
                 while (context.CurrentFrame != frame)
-                    PyVirtualMachine.ExitFrame();
+                    context.ExitFrame();
             }
             Debug.Assert(context.CurrentFrame.IsRoot);
-            // no need to PyVirtualMachine.ExitFrame()
+            // no need to context.ExitFrame()
             Debug.Assert(_thread is not null);
-            PyVirtualMachine.PyEnvironment.Threads.Remove(_thread);
+            context.PyEnvironment.Threads.Remove(_thread);
         });
-        PyVirtualMachine.PyEnvironment.Threads.Add(_thread);
+        context.PyEnvironment.Threads.Add(_thread);
         _thread.Start();
     }
 

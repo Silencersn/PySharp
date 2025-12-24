@@ -37,8 +37,8 @@ public static class PyInterpreter
                     }
                     else
                     {
-                        if (PyVirtualMachine.PyEnvironment.ExitCode is 0)
-                            PyVirtualMachine.PyEnvironment.ExitCode = 1;
+                        if (context.PyEnvironment.ExitCode is 0)
+                            context.PyEnvironment.ExitCode = 1;
                         var color = Console.ForegroundColor;
                         Console.ForegroundColor = ConsoleColor.Red;
                         context.Error.WriteLine(PyVirtualMachine.CurrentException.ToMessage(context));
@@ -46,7 +46,7 @@ public static class PyInterpreter
                     }
 
                     while (context.CurrentFrame != frame)
-                        PyVirtualMachine.ExitFrame();
+                        context.ExitFrame();
 
                     break;
                 }
@@ -96,7 +96,7 @@ public static class PyInterpreter
             module = RunCodeWithinEnvironment(context, code, moduleName ?? string.Empty, false, sourceName ?? "<string>");
             Debug.Assert(context.CurrentFrame.IsRoot);
         });
-        PyVirtualMachine.PyEnvironment.OnExit();
+        context.PyEnvironment.OnExit();
         return module;
     }
 
