@@ -57,8 +57,6 @@ internal sealed class PyEnvironmentBuilder :
             NotImplyImportSite = !_importSite,
         };
 
-        environment.Init(options);
-
         if (_syncExit)
             environment.Exit += static args => Environment.Exit(args.ExitCode);
 

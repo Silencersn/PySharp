@@ -7,8 +7,8 @@ partial class PyCallContext
 {
     internal PyExceptionObject? CurrentException
     {
-        get => PyEnvironment.CurrentError;
-        set => PyEnvironment.CurrentError = value;
+        get => State.CurrentException;
+        set => State.CurrentException = value;
     }
 
     [MemberNotNull(nameof(CurrentException))]

@@ -7,7 +7,7 @@ namespace PySharp.PyRuntime.Environments;
 
 partial class PyEnvironment
 {
-    internal PyModuleObject LoadBuiltinModule(string name)
+    internal PyModuleObject LoadBuiltinModule(PyCallContext context, string name)
     {
         if (Modules.TryGetValue(name, out var module))
         {
@@ -15,9 +15,9 @@ partial class PyEnvironment
             return module;
         }
 
-        module = PyStandardLibrary.TryCreateModule(PyCallContext.FromEnvironment(this), name);
+        module = PyStandardLibrary.TryCreateModule(context, name);
         Debug.Assert(module is not null);
-        module.OnImport(this);
+        module.OnImport(context, this);
         Modules.Add(name, module);
         return module;
     }
@@ -34,10 +34,10 @@ partial class PyEnvironment
 
     internal bool TryLoadModuleNoCache(PyCallContext context, string qualifiedName, [NotNullWhen(true)] out PyModuleObject? module)
     {
-        module = PyStandardLibrary.TryCreateModule(PyCallContext.FromEnvironment(this), qualifiedName);
+        module = PyStandardLibrary.TryCreateModule(PyCallContext.FromLoadingModule(this), qualifiedName);
         if (module is not null)
         {
-            module.OnImport(this);
+            module.OnImport(context, this);
             Modules.Add(qualifiedName, module);
             return true;
         }
@@ -55,7 +55,7 @@ partial class PyEnvironment
             var content = FileSystem.ReadAllText(filename);
 
             module = PyInterpreter.RunCodeWithinEnvironment(context, content, qualifiedName, true, Path.GetFullPath(filename));
-            module.OnImport(this);
+            module.OnImport(context, this);
             Modules.Add(qualifiedName, module);
             return true;
         }

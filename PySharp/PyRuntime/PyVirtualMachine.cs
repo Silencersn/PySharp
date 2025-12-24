@@ -31,10 +31,7 @@ public static partial class PyVirtualMachine
     internal static void ExecuteToObject(PyCallContext context, ModuleNode moduleNode, PyModuleObject module, bool newFrame)
     {
         if (newFrame)
-        {
-            context.EnterFrame(PyFrame.CreateModuleFrame(context.CurrentFrame));
-            context.PyEnvironment.Init(PyEnvironmentOptions.Default);
-        }
+            context.EnterFrame(PyFrame.CreateModuleFrame(context, context.CurrentFrame));
 
         moduleNode.Execute(context, context.CurrentFrame);
 

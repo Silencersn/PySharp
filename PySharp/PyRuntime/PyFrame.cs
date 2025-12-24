@@ -88,9 +88,18 @@ public sealed partial class PyFrame
     internal FrameType FrameType { get; }
     internal (IReadOnlyList<PyObject> Args, IReadOnlyDictionary<string, PyObject> Kwargs)? CallingArguments { get; init; }
 
-    internal static PyFrame CreateModuleFrame(PyFrame? back)
+    internal static PyFrame CreateModuleFrame(PyCallContext context, PyFrame? back)
     {
-        return new PyFrame(back);
+        var frame = new PyFrame(back);
+        var builtins = context.PyEnvironment.LoadBuiltinModule(context, "builtins");
+        frame.SetValue(PySpecialNames.Builtins, builtins);
+        if (back is null)
+            frame.SetValue(PySpecialNames.Name, PyStrObject.FromString(PySpecialNames.Main));
+
+        // TODO: add flag to control whether adding site
+        _ = context.PyEnvironment.LoadBuiltinModule(context, "site");
+
+        return frame;
     }
     internal PyFrame CreateFuncCallOrClassBuildFrame(string callerName, PyObject caller, FrameType frameType,
         (IReadOnlyList<PyObject> Args, IReadOnlyDictionary<string, PyObject> Kwargs)? callingArguments = null,

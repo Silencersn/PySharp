@@ -30,7 +30,7 @@ public class PyModuleObject : PyObject, IPyObjectName
         PyAttributes[name] = pyObject;
     }
 
-    public virtual void OnImport(PyEnvironment environment) { }
+    public virtual void OnImport(PyCallContext context, PyEnvironment environment) { }
 }
 
 public sealed class PyModuleObjectType : PyTypeObject<PyModuleObjectType, PyModuleObject>

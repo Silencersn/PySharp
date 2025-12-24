@@ -17,9 +17,7 @@ public sealed partial class PyEnvironment
     static PyEnvironment()
     {
         Shared = new PyEnvironment();
-        Shared.Init(PyEnvironmentOptions.Default);
         ParsingEnvironment = new PyEnvironment();
-        ParsingEnvironment.Init(PyEnvironmentOptions.Default with { NotImplyImportSite = true });
     }
 
     internal PyEnvironment(
@@ -35,38 +33,16 @@ public sealed partial class PyEnvironment
         Error = stderr ?? TextWriter.Null;
         Paths = [];
         Args = [];
-        CurrentFrame = PyFrame.CreateModuleFrame(null);
         IsInteractive = isInteractive;
         FileSystem = fileSystem ?? MemoryFileSystem.CreateBuilder().Build();
         OptimizationOptions = optimizationOptions ?? OptimizationOptions.O0;
     }
 
-    internal void Init(PyEnvironmentOptions options)
-    {
-        var builtins = LoadBuiltinModule("builtins");
-        Debug.Assert(builtins is not null);
-        CurrentFrame.SetValue(PySpecialNames.Builtins, builtins);
-        CurrentFrame.SetValue(PySpecialNames.Name, PyStrObject.FromString(PySpecialNames.Main));
-        if (!options.NotImplyImportSite)
-        {
-            var site = LoadBuiltinModule("site");
-            Debug.Assert(site is not null);
-        }
-    }
-
-    internal PyExceptionObject? CurrentError { get; set; }
     internal TextReader In { get; }
     internal TextWriter Out { get; }
     internal TextWriter Error { get; }
     internal Dictionary<string, PyModuleObject?> Modules { get; } = [];
     internal ConcurrentSet<Thread> Threads { get; } = [];
-
-    private readonly ThreadLocal<PyFrame> _currentFrameThreadLocal = new();
-    internal PyFrame CurrentFrame
-    {
-        get => _currentFrameThreadLocal.Value ?? throw new InvalidOperationException();
-        set => _currentFrameThreadLocal.Value = value;
-    }
     internal List<string> Paths { get; }
     internal List<string> Args { get; }
     internal int ExitCode { get; set; }
@@ -77,7 +53,7 @@ public sealed partial class PyEnvironment
 
     internal void OnExit()
     {
-        var args = new PyExitEventArgs(ExitCode, CurrentError);
+        var args = new PyExitEventArgs(ExitCode, null /* TODO: how to process this arg? */);
         Exit?.Invoke(args);
 
         foreach (var thread in Threads)

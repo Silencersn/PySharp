@@ -87,7 +87,7 @@ public static class PyInterpreter
             .FileSystem.WithEmptyMemoryFileSystem()
             .Build();
 
-        var context = PyCallContext.FromEnvironment(environment);
+        var context = PyCallContext.FromLoadingModule(environment);
 
         PyModuleObject? module = null;
         PyTryCatch(context, () =>
@@ -118,7 +118,7 @@ public static class PyInterpreter
         environment.Out.WriteLine($"{nameof(PySharp)} (v{typeof(PyInterpreter).Assembly.GetName().Version}) on {Environment.OSVersion}");
 
 
-        var context = PyCallContext.FromEnvironment(environment);
+        var context = PyCallContext.FromLoadingModule(environment);
 
         while (true)
         {

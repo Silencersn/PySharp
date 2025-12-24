@@ -1,4 +1,5 @@
 ﻿using PySharp.PyModules.Builtins;
+using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.Environments;
 
 namespace PySharp.PyModules.Site;
@@ -13,9 +14,9 @@ public class PySiteModuleObject : PyModuleObject
         //PyStandardLibrary.Builtins.AddObjToAttrs(PySiteFunctions.Quit);
     }
 
-    public override void OnImport(PyEnvironment environment)
+    public override void OnImport(PyCallContext context, PyEnvironment environment)
     {
-        var builtins = environment.LoadBuiltinModule("builtins");
+        var builtins = environment.LoadBuiltinModule(context, "builtins");
         builtins.AddObjToAttrs(PySiteFunctions.Exit);
         builtins.AddObjToAttrs(PySiteFunctions.Quit);
     }
