@@ -13,10 +13,10 @@ partial class PyThreadObject : PyObject
             throw new InvalidOperationException();
 
         var metaInfoProvider = context.CurrentFrame.StmtMetaInfoProvider;
-        var threadContext = PyCallContext.FromCreatingThread(context);
 
         _thread = new Thread(() =>
         {
+            var threadContext = PyCallContext.FromCreatingThread(context);
             var frame = threadContext.State.CurrentFrame;
             frame.StmtMetaInfoProvider = metaInfoProvider;
             try
@@ -31,9 +31,9 @@ partial class PyThreadObject : PyObject
             Debug.Assert(threadContext.CurrentFrame.IsRoot);
             // no need to context.ExitFrame()
             Debug.Assert(_thread is not null);
-            threadContext.PyEnvironment.Threads.Remove(_thread);
+            context.PyEnvironment.Threads.Remove(_thread);
         });
-        threadContext.PyEnvironment.Threads.Add(_thread);
+        context.PyEnvironment.Threads.Add(_thread);
         _thread.Start();
     }
 
