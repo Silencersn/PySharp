@@ -1,4 +1,5 @@
 ﻿using PySharp.PyModules.Builtins;
+using PySharp.PyRuntime.Calls;
 using System.Diagnostics;
 
 namespace PySharp.PyRuntime;
@@ -55,354 +56,361 @@ public static class PyOperators
     }
 
 
-    private static PyObject? LeftReflectiveOperator(PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo)
+    private static PyResult LeftFirstReflectiveOperator(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo)
     {
-        PyObject? ret;
+        PyResult result;
+        var leftType = left.PyType;
+        var rightType = right.PyType;
         switch (op)
         {
             case PyOperatorTypes.Add:
-                ret = left.Add(right);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = right.RAdd(left);
+                result = leftType.Add(context, left, right);
+                if (!result.IsNotImplemented)
+                    return result; // result or error
+                result = rightType.RAdd(context, right, left);
                 break;
 
             case PyOperatorTypes.Sub:
-                ret = left.Sub(right);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = right.RSub(left);
+                result = leftType.Sub(context, left, right);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = rightType.RSub(context, right, left);
                 break;
 
             case PyOperatorTypes.Mul:
-                ret = left.Mul(right);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = right.RMul(left);
+                result = leftType.Mul(context, left, right);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = rightType.RMul(context, right, left);
                 break;
 
             case PyOperatorTypes.TrueDiv:
-                ret = left.TrueDiv(right);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = right.RTrueDiv(left);
+                result = leftType.TrueDiv(context, left, right);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = rightType.RTrueDiv(context, right, left);
                 break;
 
             case PyOperatorTypes.FloorDiv:
-                ret = left.FloorDiv(right);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = right.RFloorDiv(left);
+                result = leftType.FloorDiv(context, left, right);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = rightType.RFloorDiv(context, right, left);
                 break;
 
             case PyOperatorTypes.Mod:
-                ret = left.Mod(right);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = right.RMod(left);
+                result = leftType.Mod(context, left, right);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = rightType.RMod(context, right, left);
                 break;
 
             case PyOperatorTypes.Pow:
                 Debug.Assert(modulo is not null);
-                ret = left.Pow(right, modulo);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = right.RPow(left, modulo);
+                result = leftType.Pow(context, left, right, modulo);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = rightType.RPow(context, right, left, modulo);
                 break;
 
             case PyOperatorTypes.LShift:
-                ret = left.LShift(right);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = right.RLShift(left);
+                result = leftType.LShift(context, left, right);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = rightType.RLShift(context, right, left);
                 break;
 
             case PyOperatorTypes.RShift:
-                ret = left.RShift(right);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = right.RRShift(left);
+                result = leftType.RShift(context, left, right);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = rightType.RRShift(context, right, left);
                 break;
 
             case PyOperatorTypes.And:
-                ret = left.And(right);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = right.RAnd(left);
+                result = leftType.And(context, left, right);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = rightType.RAnd(context, right, left);
                 break;
 
             case PyOperatorTypes.Xor:
-                ret = left.Xor(right);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = right.RXor(left);
+                result = leftType.Xor(context, left, right);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = rightType.RXor(context, right, left);
                 break;
 
             case PyOperatorTypes.Or:
-                ret = left.Or(right);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = right.ROr(left);
+                result = leftType.Or(context, left, right);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = rightType.ROr(context, right, left);
                 break;
 
             case PyOperatorTypes.Lt:
-                ret = left.Lt(right);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = right.Gt(left);
+                result = leftType.Lt(context, left, right);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = rightType.Gt(context, right, left);
                 break;
 
             case PyOperatorTypes.Le:
-                ret = left.Le(right);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = right.Ge(left);
+                result = leftType.Le(context, left, right);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = rightType.Ge(context, right, left);
                 break;
 
             case PyOperatorTypes.Gt:
-                ret = left.Gt(right);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = right.Lt(left);
+                result = leftType.Gt(context, left, right);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = rightType.Lt(context, right, left);
                 break;
 
             case PyOperatorTypes.Ge:
-                ret = left.Ge(right);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = right.Le(left);
+                result = leftType.Ge(context, left, right);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = rightType.Le(context, right, left);
                 break;
 
             default:
-                return PyVirtualMachine.RaiseTypeError($"Operator '{OperatorToString(op)}' is not supported.");
+                return PyResult.RaiseTypeError($"Operator '{OperatorToString(op)}' is not supported.");
         }
 
-        if (ret is PyNotImplementedObject)
-            return PyVirtualMachine.RaiseTypeError($"'{OperatorToString(op)}' not supported between instances of '{left.PyType.Name}' and '{right.PyType.Name}'");
+        if (result.IsNotImplemented)
+            return PyResult.RaiseTypeError($"'{OperatorToString(op)}' not supported between instances of '{left.PyType.Name}' and '{right.PyType.Name}'");
 
-        return ret;
+        return result;
     }
-    private static PyObject? RightReflectiveOperator(PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo)
+
+    private static PyResult RightFirstReflectiveOperator(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo)
     {
-        PyObject? ret;
+        PyResult result;
+        var leftType = left.PyType;
+        var rightType = right.PyType;
         switch (op)
         {
             case PyOperatorTypes.Add:
-                ret = right.RAdd(left);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = left.Add(right);
+                result = rightType.RAdd(context, right, left);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = leftType.Add(context, left, right);
                 break;
             case PyOperatorTypes.Sub:
-                ret = right.RSub(left);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = left.Sub(right);
+                result = rightType.RSub(context, right, left);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = leftType.Sub(context, left, right);
                 break;
             case PyOperatorTypes.Mul:
-                ret = right.RMul(left);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = left.Mul(right);
+                result = rightType.RMul(context, right, left);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = leftType.Mul(context, left, right);
                 break;
             case PyOperatorTypes.TrueDiv:
-                ret = right.RTrueDiv(left);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = left.TrueDiv(right);
+                result = rightType.RTrueDiv(context, right, left);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = leftType.TrueDiv(context, left, right);
                 break;
             case PyOperatorTypes.FloorDiv:
-                ret = right.RFloorDiv(left);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = left.FloorDiv(right);
+                result = rightType.RFloorDiv(context, right, left);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = leftType.FloorDiv(context, left, right);
                 break;
             case PyOperatorTypes.Mod:
-                ret = right.RMod(left);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = left.Mod(right);
+                result = rightType.RMod(context, right, left);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = leftType.Mod(context, left, right);
                 break;
             case PyOperatorTypes.Pow:
                 Debug.Assert(modulo is not null);
-                ret = right.RPow(left, modulo);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = left.Pow(right, modulo);
+                result = rightType.RPow(context, right, left, modulo);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = leftType.Pow(context, left, right, modulo);
                 break;
             case PyOperatorTypes.LShift:
-                ret = right.RLShift(left);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = left.LShift(right);
+                result = rightType.RLShift(context, right, left);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = leftType.LShift(context, left, right);
                 break;
             case PyOperatorTypes.RShift:
-                ret = right.RRShift(left);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = left.RShift(right);
+                result = rightType.RRShift(context, right, left);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = leftType.RShift(context, left, right);
                 break;
             case PyOperatorTypes.And:
-                ret = right.RAnd(left);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = left.And(right);
+                result = rightType.RAnd(context, right, left);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = leftType.And(context, left, right);
                 break;
             case PyOperatorTypes.Xor:
-                ret = right.RXor(left);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = left.Xor(right);
+                result = rightType.RXor(context, right, left);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = leftType.Xor(context, left, right);
                 break;
             case PyOperatorTypes.Or:
-                ret = right.ROr(left);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = left.Or(right);
+                result = rightType.ROr(context, right, left);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = leftType.Or(context, left, right);
                 break;
             case PyOperatorTypes.Lt:
-                ret = right.Gt(left);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = left.Lt(right);
+                result = rightType.Gt(context, right, left);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = leftType.Lt(context, left, right);
                 break;
             case PyOperatorTypes.Le:
-                ret = right.Ge(left);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = left.Le(right);
+                result = rightType.Ge(context, right, left);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = leftType.Le(context, left, right);
                 break;
             case PyOperatorTypes.Gt:
-                ret = right.Lt(left);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = left.Gt(right);
+                result = rightType.Lt(context, right, left);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = leftType.Gt(context, left, right);
                 break;
             case PyOperatorTypes.Ge:
-                ret = right.Le(left);
-                if (ret is not PyNotImplementedObject)
-                    return ret;
-                ret = left.Ge(right);
+                result = rightType.Le(context, right, left);
+                if (!result.IsNotImplemented)
+                    return result;
+                result = leftType.Ge(context, left, right);
                 break;
             default:
-                return PyVirtualMachine.RaiseTypeError($"Operator '{OperatorToString(op)}' is not supported.");
+                return PyResult.RaiseTypeError($"Operator '{OperatorToString(op)}' is not supported.");
         }
 
-        if (ret is PyNotImplementedObject)
-            return PyVirtualMachine.RaiseTypeError($"'{OperatorToString(op)}' not supported between instances of '{right.PyType.Name}' and '{left.PyType.Name}'");
+        if (result.IsNotImplemented)
+            return PyResult.RaiseTypeError($"'{OperatorToString(op)}' not supported between instances of '{left.PyType.Name}' and '{right.PyType.Name}'");
 
-        return ret;
+        return result;
     }
-    private static PyObject? ReflectiveOperator(PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo = null)
+
+    private static PyResult ReflectiveOperator(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo = null)
     {
         if (left is PyIntObject leftInt && right is PyIntObject rightInt)
             return PyMath.CalculatePyIntObject(op, leftInt, rightInt, modulo);
 
         if (left.PyType != right.PyType && right.PyType.IsSubclassOf(left.PyType))
-            return RightReflectiveOperator(op, left, right, modulo);
-        return LeftReflectiveOperator(op, left, right, modulo);
+            return RightFirstReflectiveOperator(context, op, left, right, modulo);
+        return LeftFirstReflectiveOperator(context, op, left, right, modulo);
     }
 
-    public static PyObject? Add(PyObject left, PyObject right)
+    public static PyResult Add(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(PyOperatorTypes.Add, left, right);
+        return ReflectiveOperator(context, PyOperatorTypes.Add, left, right);
     }
-    public static PyObject? Sub(PyObject left, PyObject right)
+    public static PyResult Sub(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(PyOperatorTypes.Sub, left, right);
+        return ReflectiveOperator(context, PyOperatorTypes.Sub, left, right);
     }
-    public static PyObject? Mul(PyObject left, PyObject right)
+    public static PyResult Mul(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(PyOperatorTypes.Mul, left, right);
+        return ReflectiveOperator(context, PyOperatorTypes.Mul, left, right);
     }
-    public static PyObject? TrueDiv(PyObject left, PyObject right)
+    public static PyResult TrueDiv(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(PyOperatorTypes.TrueDiv, left, right);
+        return ReflectiveOperator(context, PyOperatorTypes.TrueDiv, left, right);
     }
-    public static PyObject? FloorDiv(PyObject left, PyObject right)
+    public static PyResult FloorDiv(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(PyOperatorTypes.FloorDiv, left, right);
+        return ReflectiveOperator(context, PyOperatorTypes.FloorDiv, left, right);
     }
-    public static PyObject? Mod(PyObject left, PyObject right)
+    public static PyResult Mod(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(PyOperatorTypes.Mod, left, right);
+        return ReflectiveOperator(context, PyOperatorTypes.Mod, left, right);
     }
-    public static PyObject? Pow(PyObject left, PyObject right, PyObject modulo)
+    public static PyResult Pow(PyCallContext context, PyObject left, PyObject right, PyObject modulo)
     {
-        return ReflectiveOperator(PyOperatorTypes.Pow, left, right, modulo);
+        return ReflectiveOperator(context, PyOperatorTypes.Pow, left, right, modulo);
     }
-    public static PyObject? LShift(PyObject left, PyObject right)
+    public static PyResult LShift(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(PyOperatorTypes.LShift, left, right);
+        return ReflectiveOperator(context, PyOperatorTypes.LShift, left, right);
     }
-    public static PyObject? RShift(PyObject left, PyObject right)
+    public static PyResult RShift(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(PyOperatorTypes.RShift, left, right);
+        return ReflectiveOperator(context, PyOperatorTypes.RShift, left, right);
     }
-    public static PyObject? And(PyObject left, PyObject right)
+    public static PyResult And(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(PyOperatorTypes.And, left, right);
+        return ReflectiveOperator(context, PyOperatorTypes.And, left, right);
     }
-    public static PyObject? Xor(PyObject left, PyObject right)
+    public static PyResult Xor(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(PyOperatorTypes.Xor, left, right);
+        return ReflectiveOperator(context, PyOperatorTypes.Xor, left, right);
     }
-    public static PyObject? Or(PyObject left, PyObject right)
+    public static PyResult Or(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(PyOperatorTypes.Or, left, right);
+        return ReflectiveOperator(context, PyOperatorTypes.Or, left, right);
     }
-    public static PyObject? Lt(PyObject left, PyObject right)
+    public static PyResult Lt(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(PyOperatorTypes.Lt, left, right);
+        return ReflectiveOperator(context, PyOperatorTypes.Lt, left, right);
     }
-    public static PyObject? Le(PyObject left, PyObject right)
+    public static PyResult Le(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(PyOperatorTypes.Le, left, right);
+        return ReflectiveOperator(context, PyOperatorTypes.Le, left, right);
     }
-    public static PyObject? Eq(PyObject left, PyObject right)
+    public static PyResult Gt(PyCallContext context, PyObject left, PyObject right)
     {
-        var ret = left.Eq(right);
-        if (ret is not PyNotImplementedObject)
+        return ReflectiveOperator(context, PyOperatorTypes.Gt, left, right);
+    }
+    public static PyResult Ge(PyCallContext context, PyObject left, PyObject right)
+    {
+        return ReflectiveOperator(context, PyOperatorTypes.Ge, left, right);
+    }
+
+    public static PyResult Eq(PyCallContext context, PyObject left, PyObject right)
+    {
+        var ret = left.Eq(context, right);
+        if (!ret.IsNotImplemented)
             return ret;
 
-        ret = right.Eq(left);
-        if (ret is PyNotImplementedObject)
+        ret = right.Eq(context, left);
+        if (ret.IsNotImplemented)
             return Is(left, right);
 
         return ret;
     }
-    public static PyObject? Ne(PyObject left, PyObject right)
+    public static PyResult Ne(PyCallContext context, PyObject left, PyObject right)
     {
-        var ret = left.Ne(right);
-        if (ret is not PyNotImplementedObject)
+        var ret = left.Ne(context, right);
+        if (!ret.IsNotImplemented)
             return ret;
 
-        ret = right.Ne(left);
-        if (ret is not PyNotImplementedObject)
+        ret = right.Ne(context, left);
+        if (!ret.IsNotImplemented)
             return ret;
 
-        var eq = Eq(left, right);
-        if (eq is null)
-            return null;
+        var eq = Eq(context, left, right);
+        if (eq.IsError)
+            return eq;
 
-        Debug.Assert(eq is not PyNotImplementedObject);
+        Debug.Assert(!eq.IsNotImplemented);
 
-        var boolRet = eq.Bool();
-        if (boolRet is null)
-            return null;
+        var boolRet = eq.Value.Bool(context);
+        if (boolRet.IsError)
+            return boolRet;
 
-        if (!PySpecialMethods.TryGetBool(boolRet, out var b))
-            return null;
+        if (!PySpecialMethods.TryGetBool(context, boolRet.Value, out var b, out var result))
+            return result;
 
         return PyBoolObject.FromBoolean(!b.BoolValue);
-    }
-    public static PyObject? Gt(PyObject left, PyObject right)
-    {
-        return ReflectiveOperator(PyOperatorTypes.Gt, left, right);
-    }
-    public static PyObject? Ge(PyObject left, PyObject right)
-    {
-        return ReflectiveOperator(PyOperatorTypes.Ge, left, right);
     }
 
     private static bool AreSameObjectAtPythonLevel(PyObject left, PyObject right)
@@ -427,20 +435,19 @@ public static class PyOperators
         return PyBoolObject.FromBoolean(!AreSameObjectAtPythonLevel(left, right));
     }
 
-    public static PyObject? GetAttr(PyObject target, string name)
+    public static PyResult GetAttr(PyCallContext context, PyObject target, string name)
     {
-        var attr = target.GetAttribute(name);
-        if (attr is not null || !PyVirtualMachine.IsExceptionOfTypeRaised(PyStandardExceptionTypes.AttributeError))
+        var attr = target.GetAttribute(context, name);
+        if (!attr.IsAttributeError)
             return attr;
-
-        return target.GetAttr(name);
+        return target.GetAttr(context, name);
     }
-    public static PyObject? SetAttr(PyObject target, string name, PyObject value)
+    public static PyResult SetAttr(PyCallContext context, PyObject target, string name, PyObject value)
     {
-        return target.SetAttr(name, value);
+        return target.SetAttr(context, name, value);
     }
-    public static PyObject? DelAttr(PyObject target, string name)
+    public static PyResult DelAttr(PyCallContext context, PyObject target, string name)
     {
-        return target.DelAttr(name);
+        return target.DelAttr(context, name);
     }
 }

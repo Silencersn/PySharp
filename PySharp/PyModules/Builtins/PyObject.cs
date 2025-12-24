@@ -1,6 +1,5 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
-using PySharp.Utility;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -21,31 +20,33 @@ public partial class PyObject : IEquatable<PyObject>
             if (y is null)
                 return false;
 
-            var eq = PyOperators.Eq(x, y);
-            if (eq is null)
+            var eq = PyOperators.Eq(PyCallContext.CSharpRuntime, x, y);
+            if (eq.IsError)
             {
-                Debug.Assert(PyVirtualMachine.CurrentException is not null);
-                throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                throw new PyRuntimeException(eq.Exception);
             }
-            else if (eq is PyNotImplementedObject)
+            else if (eq.IsNotImplemented)
             {
                 return x.PyId == y.PyId;
             }
 
-            if (PySpecialMethods.TryGetBool(eq, out var b))
+            if (eq.Value is PyBoolObject boolObj)
+                return boolObj.BoolValue;
+
+            if (PySpecialMethods.TryGetBool(PyCallContext.CSharpRuntime, eq.Value, out var b, out var result))
                 return b.BoolValue;
 
-            Debug.Assert(PyVirtualMachine.CurrentException is not null);
-            throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+            Debug.Assert(result.IsError);
+            throw new PyRuntimeException(result.Exception);
         }
 
         public int GetHashCode([DisallowNull] PyObject obj)
         {
-            if (PySpecialMethods.TryGetHash(obj, out var hash))
+            if (PySpecialMethods.TryGetHash(PyCallContext.CSharpRuntime, obj, out var hash, out var result))
                 return hash.Int32Value;
 
-            Debug.Assert(PyVirtualMachine.CurrentException is not null);
-            throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+            Debug.Assert(result.IsError);
+            throw new PyRuntimeException(result.Exception);
         }
     }
 
@@ -64,13 +65,17 @@ public partial class PyObject : IEquatable<PyObject>
             if (y is null)
                 return 1;
 
-            if (!PyInteropService.TryGetLt(x, y, out var result))
+            var lt = x.Lt(PyCallContext.CSharpRuntime, y);
+            if (lt.IsError)
+                throw new PyRuntimeException(lt.Exception);
+
+            if (!PySpecialMethods.TryGetBool(PyCallContext.CSharpRuntime, lt.Value, out var b, out var result))
             {
-                Debug.Assert(PyVirtualMachine.CurrentException is not null);
-                throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                Debug.Assert(result.IsError);
+                throw new PyRuntimeException(result.Exception);
             }
 
-            return result ? -1 : 1;
+            return b.BoolValue ? -1 : 1;
         }
     }
 
@@ -86,10 +91,23 @@ public partial class PyObject : IEquatable<PyObject>
 
     internal IDictionary<string, PyObject> PyAttributes => _pyAttributes ??= new ConcurrentDictionary<string, PyObject>();
     internal bool IsSelfDefaultType => ReferenceEquals(PyType, DefaultPyType);
-    internal virtual bool IsImmutable => PyType.IsImmutable;
+    [DebuggerBrowsable(DebuggerBrowsableState.Never)]
+    internal virtual bool IsImmutable => PyType.IsTypeImmutable;
 
     public PyObject()
     {
+    }
+
+    internal static bool TryLookupAttrInMro(PyTypeObject pyType, string name, [NotNullWhen(true)] out PyObject? attr)
+    {
+        foreach (var baseType in pyType.MRO)
+        {
+            if (baseType.PyAttributes.TryGetValue(name, out attr))
+                return true;
+        }
+
+        attr = null;
+        return false;
     }
 
     internal static bool PyObjectHasAttribute(PyObject pyObj, string name)
@@ -111,32 +129,16 @@ public partial class PyObject : IEquatable<PyObject>
         return false;
     }
 
-    private static bool TryFindAttrFromMRO(PyObject pyObj, string name, [NotNullWhen(true)] out PyObject? attrFromType, [NotNullWhen(true)] out PyTypeObject? ownerType)
-    {
-        foreach (var pyType in pyObj.PyType.MRO)
-        {
-            if (pyType.PyAttributes.TryGetValue(name, out attrFromType))
-            {
-                ownerType = pyType;
-                return true;
-            }
-        }
-
-        attrFromType = null;
-        ownerType = null;
-        return false;
-    }
-
-    internal static PyObject? PyObjectGetAttribute(PyObject pyObj, string name)
+    internal static PyResult PyObjectGetAttribute(PyCallContext context, PyObject pyObj, string name)
     {
         PyObject? nonDataDescriptor = null;
-        if (TryFindAttrFromMRO(pyObj, name, out var attrFromType, out _) &&
+        if (TryLookupAttrInMro(pyObj.PyType, name, out var attrFromType) &&
             Utils.IsDescriptor(attrFromType, out var hasGet, out var hasSet, out var hasDelete))
         {
             if (hasGet)
             {
                 if (hasSet || hasDelete)
-                    return attrFromType.GetImpl(pyObj, pyObj.PyType);
+                    return attrFromType.Get(context, pyObj, pyObj.PyType);
 
                 nonDataDescriptor = attrFromType;
             }
@@ -146,7 +148,7 @@ public partial class PyObject : IEquatable<PyObject>
             return attr;
 
         if (nonDataDescriptor is not null)
-            return nonDataDescriptor.GetImpl(pyObj, pyObj.PyType);
+            return nonDataDescriptor.Get(context, pyObj, pyObj.PyType);
 
         if (attrFromType is not null)
             return attrFromType;
@@ -156,41 +158,41 @@ public partial class PyObject : IEquatable<PyObject>
         if (name is PySpecialNames.Class)
             return pyObj.PyType;
 
-        return PyVirtualMachine.RaiseAttributeError($"'{pyObj.PyType.Name}' object has no attribute '{name}'");
+        return PyResult.RaiseAttributeError($"'{pyObj.PyType.Name}' object has no attribute '{name}'");
     }
 
-    internal static PyObject? PyObjectSetAttribute(PyObject pyObj, string name, PyObject value)
+    internal static PyResult PyObjectSetAttribute(PyCallContext context, PyObject pyObj, string name, PyObject value)
     {
-        if (TryFindAttrFromMRO(pyObj, name, out var attrFromType, out _) &&
+        if (TryLookupAttrInMro(pyObj.PyType, name, out var attrFromType) &&
             Utils.IsDescriptor(attrFromType, out _, out var hasSet, out _))
         {
             if (hasSet)
-                return attrFromType.SetImpl(pyObj, value);
+                return attrFromType.Set(context, pyObj, value);
         }
 
         pyObj.PyAttributes[name] = value;
         return PyNoneObject.None;
     }
 
-    internal static PyObject? PyObjectDeleteAttribute(PyObject pyObj, string name)
+    internal static PyResult PyObjectDeleteAttribute(PyCallContext context, PyObject pyObj, string name)
     {
-        if (TryFindAttrFromMRO(pyObj, name, out var attrFromType, out _) &&
+        if (TryLookupAttrInMro(pyObj.PyType, name, out var attrFromType) &&
             Utils.IsDescriptor(attrFromType, out _, out _, out var hasDelete))
         {
             if (hasDelete)
-                return attrFromType.DeleteImpl(pyObj);
+                return attrFromType.Delete(context, pyObj);
         }
 
         var removed = pyObj.PyAttributes.Remove(name);
         if (!removed)
-            return PyVirtualMachine.RaiseAttributeError($"'{pyObj.PyType.Name}' object has no attribute '{name}'");
+            return PyResult.RaiseAttributeError($"'{pyObj.PyType.Name}' object has no attribute '{name}'");
 
         return PyNoneObject.None;
     }
 
     public override string ToString()
     {
-        if (PySpecialMethods.TryGetRepr(this, out var s))
+        if (PySpecialMethods.TryGetRepr(PyCallContext.CSharpRuntime, this, out var s, out var result))
             return $"{GetType().Name}{{id={PyId},repr={s.Value}}}";
         return $"{GetType().Name}{{id={PyId}}}";
     }
@@ -210,10 +212,9 @@ public partial class PyObject : IEquatable<PyObject>
 
     public override int GetHashCode()
     {
-        if (PySpecialMethods.TryGetHash(this, out var hash))
+        if (PySpecialMethods.TryGetHash(PyCallContext.CSharpRuntime, this, out var hash, out var result))
             return hash.Int32Value;
 
-        PyVirtualMachine.ClearException();
         return PyId.GetHashCode();
     }
 
@@ -231,26 +232,25 @@ public partial class PyObject : IEquatable<PyObject>
     }
 }
 
-public sealed class PyObjectType : PyPrimitiveTypeObject<PyObjectType, PyObject>
+public sealed class PyObjectType : PyTypeObject<PyObjectType, PyObject>
 {
     public override string Name => "object";
     public override IReadOnlyList<PyTypeObject> Bases => [];
 
     public PyObjectType()
     {
-        AppendSpecialMethodsAsDescriptorsDirectly<PyObject>(
-            nameof(ReprImpl), nameof(StrImpl), nameof(BoolImpl), nameof(HashImpl),
-            nameof(EqImpl), nameof(NeImpl), nameof(LtImpl), nameof(LeImpl), nameof(GtImpl), nameof(GeImpl),
-            nameof(GetAttributeImpl), nameof(SetAttrImpl), nameof(DelAttrImpl),
-            nameof(InitImpl)
-        );
+        AppendSpecialMethodDescriptors(nameof(Repr), nameof(Str), nameof(Bool), nameof(Hash),
+            nameof(Eq), nameof(Ne), nameof(Lt), nameof(Le), nameof(Gt), nameof(Ge),
+            nameof(GetAttribute), nameof(SetAttr), nameof(DelAttr),
+            nameof(Init));
     }
 
-    protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        if (args.Count is not 0 || kwargs.Count is not 0)
-            return PyVirtualMachine.RaiseTypeError("object.__new__() takes exactly one argument (the type to instantiate)");
+        if (ReferenceEquals(cls, this) /* Do we need to consider an externally created PyObjectType? */
+            && (args.Count is not 0 || kwargs.Count is not 0))
+            return PyResult.RaiseTypeError("object.__new__() takes exactly one argument (the type to instantiate)");
 
-        return new PyObject();
+        return new PyObject { _pyType = cls };
     }
 }

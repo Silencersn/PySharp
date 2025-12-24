@@ -6,9 +6,9 @@ namespace PySharp.PyModules.Builtins;
 
 public class PyZipObject : PyObject
 {
-    private readonly PyObject[] _iterables;
-    private readonly bool _strict;
-    private bool _end;
+    internal readonly PyObject[] _iterables;
+    internal readonly bool _strict;
+    internal bool _end;
 
     public override PyTypeObject DefaultPyType => PyZipObjectType.Shared;
 
@@ -18,97 +18,99 @@ public class PyZipObject : PyObject
         _strict = strict;
         _end = false;
     }
+}
 
-    protected internal override PyObject? IterImpl()
+public sealed class PyZipObjectType : PyTypeObject<PyZipObjectType, PyZipObject>
+{
+    public override string Name => "zip";
+
+    private static readonly PyBuiltinFunctionOrMethodObject _new = new(PySpecialNames.New, NewImpl);
+
+    [PyFunctionArgsDef("*iterables", "strict=False")]
+    private static PyResult NewImpl(PyCallContext context, PyArguments arguments)
     {
-        return this;
+        if (!PySpecialMethods.TryGetBool(context, arguments["strict"], out var strict, out var result))
+            return result;
+
+        List<PyObject> iterables = [];
+        foreach (var arg in arguments.ExtraArgs)
+        {
+            var iter = arg.Iter(context);
+            if (iter.IsError)
+                return iter;
+            iterables.Add(iter.Value);
+        }
+
+        return new PyZipObject(iterables, strict.BoolValue);
     }
 
-    protected internal override PyObject? NextImpl()
+    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        if (_end)
-            return PyVirtualMachine.RaiseStopIteration();
+        var obj = _new.Call(context, args, kwargs);
+        if (obj.IsError)
+            return obj;
+        obj.Value._pyType = cls;
+        return obj;
+    }
 
-        if (_iterables.Length is 0)
+    protected internal override PyResult Iter(PyCallContext context, PyZipObject self)
+    {
+        return self;
+    }
+
+    protected internal override PyResult Next(PyCallContext context, PyZipObject self)
+    {
+        if (self._end)
+            return PyResult.RaiseStopIteration();
+
+        if (self._iterables.Length is 0)
         {
-            _end = true;
+            self._end = true;
             return PyTupleObject.CreateTuple();
         }
 
         var list = new List<PyObject>();
         var allHaveItem = true;
         var allNoItem = false;
-        for (int i = 0; i < _iterables.Length; i++)
+        for (int i = 0; i < self._iterables.Length; i++)
         {
-            var iterable = _iterables[i];
-            var item = iterable.Next();
-            if (item is null)
+            var iterable = self._iterables[i];
+            var item = iterable.Next(context);
+            if (item.IsError)
             {
-                if (PyVirtualMachine.IsExceptionOfTypeRaised(PyStandardExceptionTypes.StopIteration))
+                if (item.IsStopIteration)
                 {
-                    PyVirtualMachine.ClearException();
                     allHaveItem = false;
-                    _end = true;
+                    self._end = true;
                     if (!allNoItem)
                     {
                         if (i is 0)
                         {
                             allNoItem = true;
                         }
-                        else if (_strict)
+                        else if (self._strict)
                         {
-                            return PyVirtualMachine.RaiseValueError($"zip() argument {i + 1} is shorter than {(i > 1 ? $"arguments 1-{i}" : "argument 1")}");
+                            return PyResult.RaiseValueError($"zip() argument {i + 1} is shorter than {(i > 1 ? $"arguments 1-{i}" : "argument 1")}");
                         }
                     }
                 }
                 else
                 {
-                    return null;
+                    return item;
                 }
             }
             else
             {
-                if (allNoItem && _strict)
-                    return PyVirtualMachine.RaiseValueError($"zip() argument {i + 1} is longer than {(i > 1 ? $"arguments 1-{i}" : "argument 1")}");
+                if (allNoItem && self._strict)
+                    return PyResult.RaiseValueError($"zip() argument {i + 1} is longer than {(i > 1 ? $"arguments 1-{i}" : "argument 1")}");
 
-                list.Add(item);
+                list.Add(item.Value);
             }
         }
 
         if (!allHaveItem)
-            return PyVirtualMachine.RaiseStopIteration();
+            return PyResult.RaiseStopIteration();
 
         return PyTupleObject.CreateTuple(list);
-    }
-}
-
-public sealed class PyZipObjectType : PyPrimitiveTypeObject<PyZipObjectType, PyZipObject>
-{
-    public override string Name => "zip";
-
-    private static readonly PyBuiltinFunctionOrMethodObject _new = new(PySpecialNames.New, ZipImpl);
-
-    [PyFunctionArgsDef("*iterables", "strict=False")]
-    private static PyZipObject? ZipImpl(PyArguments arguments)
-    {
-        if (!PySpecialMethods.TryGetBool(arguments.Kwargs["strict"], out var b))
-            return null;
-
-        List<PyObject> iterables = [];
-        foreach (var arg in arguments.ExtraArgs)
-        {
-            var iter = arg.Iter();
-            if (iter is null)
-                return null;
-
-            iterables.Add(iter);
-        }
-
-        return new PyZipObject(iterables, b.BoolValue);
-    }
-
-    protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
-    {
-        return _new.Call(args, kwargs);
     }
 }

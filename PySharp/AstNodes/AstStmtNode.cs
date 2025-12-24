@@ -1,5 +1,6 @@
 ﻿using PySharp.PyModules;
 using PySharp.PyModules.Builtins;
+using PySharp.PyModules.CSharp;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.Metadata;
@@ -16,18 +17,13 @@ namespace PySharp.AstNodes;
 
 public abstract class AstStmtNode : AstNode
 {
-    public override AstStmtNode? Reduce(OptimizationOptions options)
-    {
-        return this;
-    }
-
-    public sealed override void Execute(PyFrame frame)
+    public sealed override void Execute(PyCallContext context, PyFrame frame)
     {
         frame.StmtMetaInfoProvider = this;
-        ExecuteStmt(frame);
+        ExecuteStmt(context, frame);
     }
 
-    public abstract void ExecuteStmt(PyFrame frame);
+    public abstract void ExecuteStmt(PyCallContext context, PyFrame frame);
 }
 
 public class AssignNode : AstStmtNode
@@ -41,25 +37,16 @@ public class AssignNode : AstStmtNode
     public ImmutableArray<AstExprNode> Targets { get; }
     public AstExprNode Value { get; }
 
-    public override void ExecuteStmt(PyFrame frame)
+    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
-        var value = Value.GetExprValue(frame);
+        var value = Value.GetExprValue(context, frame);
         Debug.Assert(value is not PyExceptionObject { Raised: true });
 
         foreach (var target in Targets)
         {
-            target.SetTargetValue(value, frame);
+            target.SetTargetValue(context, value, frame);
         }
     }
-
-    public override AssignNode Reduce(OptimizationOptions options)
-    {
-        if (options.NoOptimization)
-            return this;
-
-        return Assign(Value.Reduce(options), Targets);
-    }
-
     public override void EnumerateNodes(Action<AstNode> action)
     {
         base.EnumerateNodes(action);
@@ -80,32 +67,22 @@ public class AssertNode : AstStmtNode
     public AstExprNode Test { get; }
     public AstExprNode? Msg { get; }
 
-    public override void ExecuteStmt(PyFrame frame)
+    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
-        var test = Test.GetExprValue(frame);
-        if (!PySpecialMethods.TryGetBool(test, out var b))
-            throw new PyRuntimeException(PyVirtualMachine.CurrentException!);
+        var test = Test.GetExprValue(context, frame);
+        if (!PySpecialMethods.TryGetBool(context, test, out var b, out var result))
+            result.PyUnwrap();
 
-        if (b.BoolValue)
+        if (b!.BoolValue)
             return;
 
         if (Msg is null)
         {
-            PyVirtualMachine.RaiseAssertionError(null as string);
-            throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+            throw PyCallContext.ThrowAssertionError(null as string);
         }
 
-        var msg = Msg.GetExprValue(frame) ?? throw new PyRuntimeException(PyVirtualMachine.CurrentException!);
-        PyVirtualMachine.RaiseAssertionError(msg);
-        throw new PyRuntimeException(PyVirtualMachine.CurrentException);
-    }
-
-    public override AssertNode? Reduce(OptimizationOptions options)
-    {
-        if (options.NoOptimization)
-            return this;
-
-        return null;
+        var msg = Msg.GetExprValue(context, frame);
+        throw PyCallContext.ThrowAssertionError(msg);
     }
 
     internal override void Dump(AstNodeDumper dumper)
@@ -133,11 +110,11 @@ public class DeleteNode : AstStmtNode
         Targets = targets;
     }
 
-    public override void ExecuteStmt(PyFrame frame)
+    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
         foreach (var target in Targets)
         {
-            target.DeleteTargetValue(frame);
+            target.DeleteTargetValue(context, frame);
         }
     }
 }
@@ -155,9 +132,9 @@ public class AugAssignNode : AstStmtNode
     public AstOperatorNode Op { get; }
     public AstExprNode Value { get; }
 
-    public override void ExecuteStmt(PyFrame frame)
+    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
-        Target.SetTargetValue(Op.GetOpValue(Target.GetExprValue(frame), Value.GetExprValue(frame)).PyThrowIfNullOrNotImplemented(), frame);
+        Target.SetTargetValue(context, Op.GetOpValue(context, Target.GetExprValue(context, frame), Value.GetExprValue(context, frame)).PyUnwrapIncludedNotImplemented(context), frame);
     }
 
     public override void EnumerateNodes(Action<AstNode> action)
@@ -180,38 +157,24 @@ public class ExprNode : AstStmtNode
         Value = value;
     }
 
-    public override void ExecuteStmt(PyFrame frame)
+    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
-        _ = ExecuteExprStmt(frame);
+        _ = ExecuteExprStmt(context, frame);
     }
 
-    internal PyObject ExecuteExprStmt(PyFrame frame)
+    internal PyObject ExecuteExprStmt(PyCallContext context, PyFrame frame)
     {
-        var value = Value.GetExprValue(frame);
-        if (PyVirtualMachine.IsInteractive)
+        var value = Value.GetExprValue(context, frame);
+        if (context.IsInteractive)
         {
             if (value is not PyNoneObject)
             {
-                var repr = PySpecialMethods.GetRepr(value).PyThrowIfNull();
-                PyVirtualMachine.Out.WriteLine(repr.Value);
+                var repr = (PyStrObject)PySpecialMethods.GetRepr(context, value).PyUnwrap();
+                context.Out.WriteLine(repr.Value);
             }
         }
         return value;
     }
-
-    public override ExprNode? Reduce(OptimizationOptions options)
-    {
-        if (options.NoOptimization)
-            return this;
-
-        var reducedValue = Value.Reduce(options);
-
-        if (options.CodeCleanup && reducedValue.NoSideEffects() is true)
-            return null;
-
-        return new ExprNode(reducedValue);
-    }
-
     internal override void Dump(AstNodeDumper dumper)
     {
         dumper
@@ -247,51 +210,22 @@ public class IfNode : AstStmtNode
         OrElse = orElse;
     }
 
-    public override void ExecuteStmt(PyFrame frame)
+    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
-        if (Test.GetBoolValue(frame))
+        if (Test.GetBoolValue(context, frame))
         {
             foreach (var stmt in Body)
             {
-                stmt.Execute(frame);
+                stmt.Execute(context, frame);
             }
         }
         else
         {
             foreach (var stmt in OrElse)
             {
-                stmt.Execute(frame);
+                stmt.Execute(context, frame);
             }
         }
-    }
-
-    public override AstStmtNode? Reduce(OptimizationOptions options)
-    {
-        if (options.NoOptimization)
-            return this;
-
-        var reducedTest = Test.Reduce(options);
-        var testResult = reducedTest.TrgGetConstantBoolValue();
-
-        if (options.DeadCodeElimination)
-        {
-            if (testResult is false)
-                return null;
-        }
-
-        var reducedBody = Body.Reduce(options).ToList();
-        var reducedOrElse = OrElse.Reduce(options).ToList();
-
-        if (options.CodeCleanup)
-        {
-            if (reducedBody.Count is 0 && reducedOrElse.Count is 0)
-            {
-                if (testResult is not null)
-                    return null;
-            }
-        }
-
-        return new IfNode(reducedTest, [.. reducedBody], [.. reducedOrElse]);
     }
 
     public override void EnumerateNodes(Action<AstNode> action)
@@ -306,7 +240,7 @@ public class IfNode : AstStmtNode
 
 public class BreakNode : AstStmtNode
 {
-    public override void ExecuteStmt(PyFrame frame)
+    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
         throw new AstBreakException();
     }
@@ -315,7 +249,7 @@ public class BreakNode : AstStmtNode
 }
 public class ContinueNode : AstStmtNode
 {
-    public override void ExecuteStmt(PyFrame frame)
+    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
         throw new AstContinueException();
     }
@@ -331,9 +265,9 @@ public class ReturnNode : AstStmtNode
         Value = value;
     }
 
-    public override void ExecuteStmt(PyFrame frame)
+    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
-        throw new AstReturnException(Value?.GetExprValue(frame) ?? PyNoneObject.None);
+        throw new AstReturnException(Value?.GetExprValue(context, frame) ?? PyNoneObject.None);
     }
 
     public override void EnumerateNodes(Action<AstNode> action)
@@ -355,16 +289,8 @@ public class ReturnNode : AstStmtNode
 }
 public class PassNode : AstStmtNode
 {
-    public override void ExecuteStmt(PyFrame frame)
+    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
-    }
-
-    public override PassNode? Reduce(OptimizationOptions options)
-    {
-        if (options.CodeCleanup)
-            return null;
-
-        return this;
     }
 }
 
@@ -381,19 +307,19 @@ public class WhileNode : AstStmtNode
         Test = test;
     }
 
-    public override void ExecuteStmt(PyFrame frame)
+    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
         bool isBreak = false;
 
         try
         {
-            while (Test.GetBoolValue(frame))
+            while (Test.GetBoolValue(context, frame))
             {
                 try
                 {
                     foreach (var stmt in Body)
                     {
-                        stmt.Execute(frame);
+                        stmt.Execute(context, frame);
                     }
                 }
                 catch (AstContinueException)
@@ -411,7 +337,7 @@ public class WhileNode : AstStmtNode
         {
             foreach (var stmt in OrElse)
             {
-                stmt.Execute(frame);
+                stmt.Execute(context, frame);
             }
         }
     }
@@ -439,23 +365,26 @@ public class ForNode : AstStmtNode
     public List<AstStmtNode> Body { get; } = [];
     public List<AstStmtNode> OrElse { get; } = [];
 
-    public override void ExecuteStmt(PyFrame frame)
+    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
         bool isBreak = false;
 
-        var iter = Iter.GetExprValue(frame);
-        var list = Utils.EnumerateIterable(iter) ?? throw new PyRuntimeException(PyVirtualMachine.CurrentException!);
+        var iter = Iter.GetExprValue(context, frame);
+        if (!Utils.TryEnumerateIterable(context, iter, out var list, out var err))
+        {
+            err.Value.PyThrow();
+        }
 
         try
         {
             foreach (var item in list)
             {
-                Target.SetTargetValue(item.PyThrowIfNull(), frame);
+                Target.SetTargetValue(context, item.PyUnwrap(), frame);
                 try
                 {
                     foreach (var stmt in Body)
                     {
-                        stmt.Execute(frame);
+                        stmt.Execute(context, frame);
                     }
                 }
                 catch (AstContinueException)
@@ -473,7 +402,7 @@ public class ForNode : AstStmtNode
         {
             foreach (var stmt in OrElse)
             {
-                stmt.Execute(frame);
+                stmt.Execute(context, frame);
             }
         }
     }
@@ -500,32 +429,32 @@ public class RaiseNode : AstStmtNode
     public AstExprNode? Exc { get; }
     public AstExprNode? Cause { get; }
 
-    public override void ExecuteStmt(PyFrame frame)
+    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
         if (Exc is null)
         {
-            PyVirtualMachine.CurrentException = frame.CurrentException;
+            context.CurrentException = frame.CurrentException;
             throw new PyRuntimeException(frame.CurrentException);
         }
 
-        var obj = Exc.GetExprValue(frame);
+        var obj = Exc.GetExprValue(context, frame);
         PyExceptionObject exc;
         if (obj is PyExceptionObject excObj)
             exc = excObj;
         else
-            exc = obj.PyCastExceptionType().Create();
+            exc = obj.PyCastExceptionType(context).Create();
 
         if (Cause is not null)
         {
-            var cause = Cause.GetExprValue(frame);
+            var cause = Cause.GetExprValue(context, frame);
             if (cause is PyExceptionObject exObj)
                 exc.Cause = exObj;
             else
-                exc.Cause = cause.PyCastExceptionType().Create();
+                exc.Cause = cause.PyCastExceptionType(context).Create();
             exc.CauseReason = "The above exception was the direct cause of the following exception:";
         }
 
-        PyVirtualMachine.CurrentException = exc;
+        context.CurrentException = exc;
         throw new PyRuntimeException(exc);
     }
 
@@ -545,34 +474,34 @@ public class TryNode : AstStmtNode
     public List<AstStmtNode> OrElse { get; } = [];
     public List<AstStmtNode> FinalBody { get; } = [];
 
-    public override void ExecuteStmt(PyFrame frame)
+    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
         bool catched = false;
         try
         {
             foreach (var stmt in Body)
             {
-                stmt.Execute(frame);
+                stmt.Execute(context, frame);
             }
         }
         catch (PyRuntimeException e)
         {
-            e.PyException.WithTraceback();
-            while (PyVirtualMachine.CurrentFrame != frame)
-                PyVirtualMachine.ExitFrame();
+            e.PyException.WithTraceback(context);
+            while (context.CurrentFrame != frame)
+                context.ExitFrame();
 
             frame.Exceptions.Push(e.PyException);
             catched = true;
             bool handled = false;
             foreach (var exceptor in Exceptors)
             {
-                if (handled = exceptor.TryHandle(frame, e.PyException))
+                if (handled = exceptor.TryHandle(context, frame, e.PyException))
                     break;
             }
             frame.Exceptions.Pop();
             if (!handled)
                 throw;
-            PyVirtualMachine.ClearException();
+            context.ClearException();
         }
         finally
         {
@@ -580,13 +509,13 @@ public class TryNode : AstStmtNode
             {
                 foreach (var stmt in OrElse)
                 {
-                    stmt.Execute(frame);
+                    stmt.Execute(context, frame);
                 }
             }
 
             foreach (var stmt in FinalBody)
             {
-                stmt.Execute(frame);
+                stmt.Execute(context, frame);
             }
         }
     }
@@ -616,11 +545,11 @@ public class ImportNode : AstStmtNode
 {
     public List<AstAliasNode> Names { get; } = [];
 
-    public override void ExecuteStmt(PyFrame frame)
+    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
         foreach (var name in Names)
         {
-            frame.Import(name.Name, name.AsName ?? GetName(name.Name));
+            frame.Import(context, name.Name, name.AsName ?? GetName(name.Name));
         }
 
         static string GetName(string module)
@@ -653,7 +582,7 @@ public class ImportFromNode : AstStmtNode
     public List<AstAliasNode> Names { get; }
     public int Level { get; }
 
-    public override void ExecuteStmt(PyFrame frame)
+    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
         if (Level > 0)
             // TODO: relative import
@@ -662,10 +591,10 @@ public class ImportFromNode : AstStmtNode
         // Module must be not null when Level is 0
         Debug.Assert(Module is not null);
 
-        if (!PyVirtualMachine.PyEnvironment.TryLoadModule(Module, out var module))
+        if (!context.PyEnvironment.TryLoadModule(context, Module, out var module))
         {
-            PyVirtualMachine.RaiseException(PyStandardExceptionTypes.ModuleNotFoundError, $"No module named '{Module}'");
-            throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+            context.RaiseException(PyStandardExceptionTypes.ModuleNotFoundError, $"No module named '{Module}'");
+            throw new PyRuntimeException(context.CurrentException);
         }
 
         if (Names.Count is 1 && Names[0].Name is "*")
@@ -675,22 +604,21 @@ public class ImportFromNode : AstStmtNode
             if (module.PyAttributes.TryGetValue(PySpecialNames.All, out var all))
             {
                 // unlike cpython, allows iterable
-                var list = Utils.EnumeratedIterable(all);
-                if (list is null)
+                if (!Utils.TryEnumeratedIterable(context, all, out var list, out _))
                 {
-                    PyVirtualMachine.RaiseTypeError($"{Module /* TODO: should be module.__name__ */}.__all__ must be iterable");
-                    throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                    context.RaiseTypeError($"{Module /* TODO: should be module.__name__ */}.__all__ must be iterable");
+                    throw new PyRuntimeException(context.CurrentException);
                 }
 
                 foreach (var item in list)
                 {
                     if (item is not PyStrObject strObj)
                     {
-                        PyVirtualMachine.RaiseTypeError($"Item in {Module /* TODO: should be module.__name__ */}.__all__ must be str, not {item.PyType.Name}");
-                        throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                        context.RaiseTypeError($"Item in {Module /* TODO: should be module.__name__ */}.__all__ must be str, not {item.PyType.Name}");
+                        throw new PyRuntimeException(context.CurrentException);
                     }
 
-                    var attr = module.GetAttribute(strObj.Value).PyThrowIfNull();
+                    var attr = module.GetAttribute(context, strObj.Value).PyUnwrap();
                     frame.SetValue(strObj.Value, attr);
                 }
             }
@@ -712,8 +640,8 @@ public class ImportFromNode : AstStmtNode
 
             if (!module.PyAttributes.TryGetValue(name.Name, out var value))
             {
-                PyVirtualMachine.RaiseException(PyStandardExceptionTypes.ImportError, $"cannot import name '{name.Name}' from '{Module /* TODO: should be module.__name__ */}'");
-                throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                context.RaiseException(PyStandardExceptionTypes.ImportError, $"cannot import name '{name.Name}' from '{Module /* TODO: should be module.__name__ */}'");
+                throw new PyRuntimeException(context.CurrentException);
             }
 
             frame.SetValue(name.AsName ?? name.Name, value);
@@ -730,7 +658,7 @@ public sealed class GlobalNode : AstStmtNode
 
     public ImmutableArray<string> Names { get; }
 
-    public override void ExecuteStmt(PyFrame frame)
+    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
     }
 
@@ -758,7 +686,7 @@ public sealed class NonlocalNode : AstStmtNode
             .AppendFields(("names", Names));
     }
 
-    public override void ExecuteStmt(PyFrame frame)
+    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
     }
 }
@@ -785,14 +713,14 @@ internal sealed class FunctionCaller
 {
     private readonly IFunctionOrLambda _node;
     private readonly PyArgsDef _def;
-    private readonly Func<PyFrame, PyObject> _getResult;
+    private readonly Func<PyCallContext, PyFrame, PyObject> _getResult;
     private readonly FrameType _frameType;
     internal PyFunctionObject _func;
 
-    internal FunctionCaller(IFunctionOrLambda node, PyFrame frame, Func<PyFrame, PyObject> getResult)
+    internal FunctionCaller(PyCallContext context, IFunctionOrLambda node, PyFrame frame, Func<PyCallContext, PyFrame, PyObject> getResult)
     {
         _node = node;
-        _def = PyArgsDef.FromAst(node.Args, frame);
+        _def = PyArgsDef.FromAst(node.Args, context, frame);
         _getResult = getResult;
         _frameType = _node is FunctionDefNode ? FrameType.Function : FrameType.Lambda;
 
@@ -800,14 +728,14 @@ internal sealed class FunctionCaller
         _func = null!;
     }
 
-    public PyObject? Call(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    public PyResult Call(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        return CallGeneral(args, kwargs);
+        return CallGeneral(context, args, kwargs);
     }
 
-    private PyObject? CallGeneral(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    private PyResult CallGeneral(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        var backFrame = PyVirtualMachine.CurrentFrame;
+        var backFrame = context.CurrentFrame;
         var frame = backFrame.CreateFuncCallOrClassBuildFrame(_func.Name, _func, _frameType, (args, kwargs), _func._globals);
         frame._variables = _node.Variables;
 
@@ -818,19 +746,19 @@ internal sealed class FunctionCaller
         foreach (var cell in _func.CapturedVariables)
             frame.Closures.Add(cell.Name, cell);
 
-        PyVirtualMachine.EnterFrame(frame);
+        context.EnterFrame(frame);
 
         if (!_def.TryParse(args, kwargs, out var arguments))
         {
-            PyVirtualMachine.ExitFrame();
-            return PyVirtualMachine.RaiseTypeError("wrong arguments");
+            context.ExitFrame();
+            return PyResult.RaiseTypeError("wrong arguments");
         }
 
         frame.InitArgs(_def, arguments);
 
-        PyObject result = _getResult(frame);
+        PyObject result = _getResult(context, frame);
 
-        PyVirtualMachine.ExitFrame();
+        context.ExitFrame();
         return result;
     }
 }
@@ -855,15 +783,15 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda, IFunctionOrClass
     string IFunctionOrClass.Name => Identifier;
     internal bool IncludeSuper { get; set; } = false;
 
-    public override void ExecuteStmt(PyFrame frame)
+    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
-        var caller = new FunctionCaller(this, frame, frame =>
+        var caller = new FunctionCaller(context, this, frame, (context, frame) =>
         {
             try
             {
                 foreach (var stmt in Body)
                 {
-                    stmt.Execute(frame);
+                    stmt.Execute(context, frame);
                 }
             }
             catch (AstReturnException e)
@@ -883,7 +811,7 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda, IFunctionOrClass
             func.PyAttributes[PySpecialNames.Doc] = doc;
         caller._func = func;
 
-        frame.SetValue(Identifier, AstUtils.ApplyDeractors(func, DecoratorList, frame));
+        frame.SetValue(Identifier, AstUtils.ApplyDeractors(func, DecoratorList, context, frame));
     }
 
     public override void EnumerateNodes(Action<AstNode> action)
@@ -913,11 +841,11 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
     FrozenDictionary<string, PyVariableType> IAstVariableScopeOwner.Variables { get; set; } = null!;
     string IFunctionOrClass.QualifiedName { get; set; } = null!;
 
-    public override void ExecuteStmt(PyFrame frame)
+    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
         var bases = Bases.Select(baseExpr =>
         {
-            var baseType = baseExpr.GetExprValue(frame);
+            var baseType = baseExpr.GetExprValue(context, frame);
 
             if (baseType is not PyTypeObject typeObj)
                 throw new NotSupportedException();
@@ -927,8 +855,8 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
         if (bases.Count is 0)
             bases.Add(PyObjectType.Shared);
 
-        PyTypeObject.ValidateBases(bases, out var layoutType);
-        var type = new CustomObjectType(Name, ((IFunctionOrClass)this).QualifiedName, bases, layoutType);
+        PyTypeObject.ValidateBases(context, bases, out var layoutType);
+        var type = UserDefinedType.Create(layoutType, Name, ((IFunctionOrClass)this).QualifiedName, bases);
 
         if (AstUtils.TryGetDoc(Body, out var doc))
             type.PyAttributes[PySpecialNames.Doc] = doc;
@@ -939,58 +867,24 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
         {
             newFrame.Closures.Add(name, cell);
         }
-        PyVirtualMachine.EnterFrame(newFrame);
+        context.EnterFrame(newFrame);
 
         foreach (var stmt in Body)
         {
-            stmt.Execute(newFrame);
+            stmt.Execute(context, newFrame);
         }
-        PyVirtualMachine.ExitFrame();
+        context.ExitFrame();
 
         var attrs = ((IAstVariableScopeOwner)this).Variables.Keys.ToDictionary(static member => member, newFrame.GetValue);
-        type.InitAttributes(attrs);
+        foreach (var attr in attrs)
+            type.PyAttributes[attr.Key] = attr.Value;
 
         foreach (var (name, value) in attrs)
-            value.SetName(type, PyStrObject.FromString(name)).PyThrowIfNull();
-
-        frame.SetValue(Name, AstUtils.ApplyDeractors(type, DecoratorList, frame));
-    }
-
-    internal sealed class CustomObjectType : PyTypeObject
-    {
-        public override string Name { get; }
-        public override IReadOnlyList<PyTypeObject> Bases { get; }
-        public override Type LayoutType { get; }
-        internal override bool IsTypeImmutable => false;
-        internal override bool IsImmutable => false;
-
-        internal CustomObjectType(string name, string qualName, IReadOnlyList<PyTypeObject> bases, Type layoutType) : base(name, bases)
         {
-            Name = name;
-            Bases = bases;
-            PyAttributes.Add(PySpecialNames.QualName, PyStrObject.FromString(qualName));
-            LayoutType = layoutType;
+            if (PyObject.PyObjectHasAttribute(value.PyType, PySpecialNames.SetName))
+                value.SetName(context, type, PyStrObject.FromString(name)).PyUnwrap();
         }
 
-        internal void InitAttributes(IEnumerable<KeyValuePair<string, PyObject>> attributes)
-        {
-            foreach (var attribute in attributes)
-            {
-                PyAttributes[attribute.Key] = attribute.Value;
-            }
-        }
-
-        protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
-		{
-			var callable = PyObjectGetAttribute(this, PySpecialNames.New);
-            if (callable is not null)
-				return callable.Call([cls, ..args], kwargs);
-
-			if (callable is null && !PyVirtualMachine.IsExceptionOfTypeRaised(PyAttributeErrorObjectType.Shared))
-                return null;
-
-			PyVirtualMachine.ClearException();
-			return Bases[0].New(cls, args, kwargs);
-        }
+        frame.SetValue(Name, AstUtils.ApplyDeractors(type, DecoratorList, context, frame));
     }
 }

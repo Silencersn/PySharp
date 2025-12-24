@@ -30,66 +30,61 @@ public class PyTupleObject : PyObject, IPyObjectRecursiveRepr
     public static PyTupleObject CreateProxy(PyObject[] array)
     {
         ArgumentNullException.ThrowIfNull(array);
-
         return new PyTupleObject(array);
     }
 
-    protected internal override PyObject? IterImpl()
+    PyResult IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<int> ids)
     {
-        return new PyTupleIteratorObject(this);
-    }
-
-    protected internal override PyObject? GetItemImpl(PyObject item)
-    {
-        if (!PyInteropService.TryGetIndex(item, out int index))
-            return null;
-
-        if (!Utils.TryGetItem(_array, index, "IndexError: tuple index out of range", out var result))
-            return null;
-
-        return result;
-    }
-
-    protected internal override PyBoolObject ContainsImpl(PyObject item)
-    {
-        return PyBoolObject.FromBoolean(_array.Contains(item));
-    }
-
-    protected internal override PyBoolObject BoolImpl()
-    {
-        return _array.Length > 0;
-    }
-
-    protected internal override PyObject? ReprImpl()
-    {
-        return IPyObjectRecursiveRepr.RecursiveRepr(this);
-    }
-
-    protected internal override PyIntObject LenImpl()
-    {
-        return PyIntObject.FromInteger(_array.Length);
-    }
-
-    PyObject? IPyObjectRecursiveRepr.RecursiveRepr(HashSet<int> ids)
-    {
-        return Utils.CollectionRecursiveRepr(this, _array, "(", ")", ids);
+        return Utils.CollectionRecursiveRepr(context, this, _array, "(", ")", ids);
     }
 }
 
-public sealed class PyTupleObjectType : PyPrimitiveTypeObject<PyTupleObjectType, PyTupleObject>
+public sealed class PyTupleObjectType : PyTypeObject<PyTupleObjectType, PyTupleObject>
 {
     public override string Name => "tuple";
 
-    protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        var pack = new PyArgsPack(args, kwargs);
-        if (!pack.ValidateCount(1, 0))
-            return PyVirtualMachine.RaiseTypeError(null);
+		if (!PyArgsValidator.ValidateSinglePositionalArg(args, kwargs, out var err))
+			return err.Value;
 
-        var tuple = Utils.EnumeratedIterable(pack[0]);
-        if (tuple is null)
-            return null;
+		if (!Utils.TryEnumeratedIterable(context, args[0], out var tuple, out err))
+            return err.Value;
 
-        return PyTupleObject.CreateTuple(tuple);
+        var obj = PyTupleObject.CreateTuple(tuple);
+        obj._pyType = cls;
+        return obj;
+    }
+
+    protected internal override PyResult Iter(PyCallContext context, PyTupleObject self)
+    {
+        return new PyTupleIteratorObject(self);
+    }
+
+    protected internal override PyResult GetItem(PyCallContext context, PyTupleObject self, PyObject item)
+    {
+        if (!PySpecialMethods.TryGetIndex(context, item, out var index, out var result))
+            return result;
+        return Utils.GetListItem(self._array, index.Int32Value, "IndexError: tuple index out of range");
+    }
+
+    protected internal override PyResult Contains(PyCallContext context, PyTupleObject self, PyObject item)
+    {
+        return PyBoolObject.FromBoolean(self._array.Contains(item));
+    }
+
+    protected internal override PyResult Bool(PyCallContext context, PyTupleObject self)
+    {
+        return PyBoolObject.FromBoolean(self._array.Length > 0);
+    }
+
+    protected internal override PyResult Repr(PyCallContext context, PyTupleObject self)
+    {
+        return IPyObjectRecursiveRepr.RecursiveRepr(context, self);
+    }
+
+    protected internal override PyResult Len(PyCallContext context, PyTupleObject self)
+    {
+        return PyIntObject.FromInteger(self._array.Length);
     }
 }

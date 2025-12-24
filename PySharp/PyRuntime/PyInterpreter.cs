@@ -1,5 +1,6 @@
 ﻿using PySharp.AstNodes;
 using PySharp.PyModules.Builtins;
+using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.Environments;
 using PySharp.Tokenization;
 using System.Diagnostics;
@@ -13,9 +14,9 @@ public static class PyInterpreter
         return Lexer.Tokenize(code);
     }
 
-    internal static void PyTryCatch(Action action)
+    internal static void PyTryCatch(PyCallContext context, Action action)
     {
-        var frame = PyVirtualMachine.CurrentFrame;
+        var frame = context.CurrentFrame;
         try
         {
             action();
@@ -27,25 +28,25 @@ public static class PyInterpreter
             {
                 if (currentException is PyRuntimeException pyRuntimeException)
                 {
-                    PyVirtualMachine.CurrentException ??= pyRuntimeException.PyException;
-                    PyVirtualMachine.CurrentException.WithTraceback();
+                    context.CurrentException ??= pyRuntimeException.PyException;
+                    context.CurrentException.WithTraceback(context);
 
                     if (pyRuntimeException.PyException.PyType == PyStandardExceptionTypes.SystemExit)
                     {
-                        PyVirtualMachine.ClearException();
+                        context.ClearException();
                     }
                     else
                     {
-                        if (PyVirtualMachine.PyEnvironment.ExitCode is 0)
-                            PyVirtualMachine.PyEnvironment.ExitCode = 1;
+                        if (context.PyEnvironment.ExitCode is 0)
+                            context.PyEnvironment.ExitCode = 1;
                         var color = Console.ForegroundColor;
                         Console.ForegroundColor = ConsoleColor.Red;
-                        PyVirtualMachine.Error.WriteLine(PyVirtualMachine.CurrentException.ToMessage());
+                        context.Error.WriteLine(context.CurrentException.ToMessage(context));
                         Console.ForegroundColor = color;
                     }
 
-                    while (PyVirtualMachine.CurrentFrame != frame)
-                        PyVirtualMachine.ExitFrame();
+                    while (context.CurrentFrame != frame)
+                        context.ExitFrame();
 
                     break;
                 }
@@ -86,23 +87,23 @@ public static class PyInterpreter
             .FileSystem.WithEmptyMemoryFileSystem()
             .Build();
 
-        using var context = new PyEnvironmentContext(environment);
+        var context = PyCallContext.FromEnvironment(environment);
 
         PyModuleObject? module = null;
-        PyTryCatch(() =>
+        PyTryCatch(context, () =>
         {
-            module = RunCodeWithinEnvironment(code, moduleName ?? string.Empty, false, sourceName ?? "<string>");
-            Debug.Assert(PyVirtualMachine.CurrentFrame.IsRoot);
+            module = RunCodeWithinEnvironment(context, code, moduleName ?? string.Empty, false, sourceName ?? "<string>");
+            Debug.Assert(context.CurrentFrame.IsRoot);
         });
-        PyVirtualMachine.PyEnvironment.OnExit();
+        context.PyEnvironment.OnExit();
         return module;
     }
 
-    public static PyModuleObject RunCodeWithinEnvironment(string code, string moduleName, bool newFrame, string sourceName)
+    public static PyModuleObject RunCodeWithinEnvironment(PyCallContext context, string code, string moduleName, bool newFrame, string sourceName)
     {
         var tokens = Tokenize(code);
-        var node = Parser.Parse(sourceName, tokens, PyVirtualMachine.PyEnvironment);
-        return PyVirtualMachine.Execute(node, moduleName, newFrame);
+        var node = Parser.Parse(sourceName, tokens, context);
+        return PyVirtualMachine.Execute(context, node, moduleName, newFrame);
     }
 
     public static void RunRepl()
@@ -117,7 +118,7 @@ public static class PyInterpreter
         environment.Out.WriteLine($"{nameof(PySharp)} (v{typeof(PyInterpreter).Assembly.GetName().Version}) on {Environment.OSVersion}");
 
 
-        using var context = new PyEnvironmentContext(environment);
+        var context = PyCallContext.FromEnvironment(environment);
 
         while (true)
         {
@@ -125,19 +126,19 @@ public static class PyInterpreter
             try
             {
                 var tokenStream = new TokenInteractiveStream(environment.In, environment.Out);
-                var parser = new Parser("<stdin>", tokenStream, environment.OptimizationOptions);
+                var parser = new Parser(context, "<stdin>", tokenStream, environment.OptimizationOptions);
                 node = parser.ParseInteractiveNode();
             }
             catch (PyRuntimeException e)
             {
-                environment.Error.WriteLine(e.Message);
+                environment.Error.WriteLine(e.PyException.ToMessage(context));
                 continue;
             }
 
-            PyTryCatch(() =>
+            PyTryCatch(context, () =>
             {
-                node.Execute(PyVirtualMachine.CurrentFrame);
-                Debug.Assert(PyVirtualMachine.CurrentFrame.IsRoot);
+                node.Execute(context, context.CurrentFrame);
+                Debug.Assert(context.CurrentFrame.IsRoot);
             });
         }
     }

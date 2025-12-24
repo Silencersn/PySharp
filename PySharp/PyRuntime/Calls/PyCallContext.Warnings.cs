@@ -1,21 +1,22 @@
 ﻿using PySharp.PyModules.Builtins;
+using PySharp.PyRuntime.Calls;
 using System.Diagnostics.CodeAnalysis;
 
-namespace PySharp.PyRuntime;
+namespace PySharp.PyRuntime.Calls;
 
-partial class PyVirtualMachine
+partial class PyCallContext
 {
     [MemberNotNullWhen(false, nameof(CurrentException))]
-    public static bool TryWarn(PyExceptionType warningType, string message)
+    public bool TryWarn(PyExceptionType warningType, string message)
     {
         var color = Console.ForegroundColor;
         Console.ForegroundColor = ConsoleColor.Red;
-        PyEnvironment.Error.WriteLine(warningType.Create(PyStrObject.FromString(message)).ToMessage());
+        PyEnvironment.Error.WriteLine(warningType.Create(PyStrObject.FromString(message)).ToMessage(this));
         Console.ForegroundColor = color;
         return true;
     }
     [MemberNotNullWhen(false, nameof(CurrentException))]
-    public static bool TryWarn<TWarning>(string message) where TWarning : PyExceptionType<TWarning>, ISharedInstance<TWarning>, new()
+    public bool TryWarn<TWarning>(string message) where TWarning : PyExceptionType<TWarning>, ISharedInstance<TWarning>, new()
     {
         return TryWarn(TWarning.Shared, message);
     }

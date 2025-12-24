@@ -19,144 +19,115 @@ public partial class PyStrObject : PyObject
         {
             if (field is not -1)
                 return field;
-
             return field = Value.EnumerateRunes().Count();
         }
     }
-
     public static PyStrObject Empty { get; } = new PyStrObject(string.Empty);
-
     public override PyTypeObject DefaultPyType => PyStrObjectType.Shared;
-
     private PyStrObject(string value)
     {
         Value = value;
         PyLength = -1;
     }
-
-    protected internal override PyStrObject ReprImpl()
-    {
-        return FromString(PyStrConverter.FromStringToLiteral(Value));
-    }
-
-    protected internal override PyStrObject StrImpl()
-    {
-        return this;
-    }
-
-    protected internal override PyBoolObject BoolImpl()
-    {
-        return Value.Length > 0;
-    }
-
-    protected internal override PyIntObject LenImpl()
-    {
-        return PyIntObject.FromInteger(PyLength);
-    }
-
-    protected internal override PyObject? IterImpl()
-    {
-        return new PyStrIteratorObject(Value);
-    }
-
-    protected internal override PyObject? GetItemImpl(PyObject item)
-    {
-        if (!PyInteropService.TryGetIndex(item, out int index))
-            return null;
-
-        index = Utils.MapIndex(index, PyLength);
-        if (index < 0 || index >= PyLength)
-            return PyVirtualMachine.RaiseIndexError("string index out of range");
-
-        return FromRune(Value.EnumerateRunes().ElementAt(index));
-    }
-
-    protected internal override PyObject? AddImpl(PyObject other)
-    {
-        if (other is PyStrObject strObj)
-            return FromString(Value + strObj.Value);
-
-        return PyVirtualMachine.RaiseTypeError($"can only concatenate str (not \"{other.PyType.Name}\") to str");
-    }
-
-    protected internal override PyObject? EqImpl(PyObject other)
-    {
-        if (other is PyStrObject strObj)
-            return PyBoolObject.FromBoolean(Value == strObj.Value);
-        return PyNotImplementedObject.NotImplemented;
-    }
-
-    protected internal override PyObject? LtImpl(PyObject other)
-    {
-        if (other is not PyStrObject strObj)
-            return PyNotImplementedObject.NotImplemented;
-
-        return PyBoolObject.FromBoolean(Value.CompareTo(strObj.Value) < 0);
-    }
-
-    protected internal override PyObject? MulImpl(PyObject other)
-    {
-        if (!PyInteropService.TryGetIndex(other, out int repeatCount))
-            return PyNotImplementedObject.NotImplemented;
-
-        return FromString(string.Concat(Enumerable.Repeat(Value, repeatCount)));
-    }
-
-    protected internal override PyObject? RMulImpl(PyObject other)
-    {
-        return MulImpl(other);
-    }
-
     internal static PyStrObject FromLiteral(ReadOnlySpan<char> literal)
     {
         if (!PyStrConverter.TryFromLiteralToString(literal, out var str, out _))
             throw new ArgumentException($"failed to parse {literal}");
         return FromString(str);
     }
-
     internal static PyStrObject FromLiteralContent(ReadOnlySpan<char> text)
     {
         if (!PyStrConverter.TryFromTextToString(text, out var str, out _))
             throw new ArgumentException($"failed to parse {text}");
         return FromString(str);
     }
-
     public static PyStrObject FromString(string value)
     {
         ArgumentNullException.ThrowIfNull(value);
-
         return new PyStrObject(value);
     }
-
     private static readonly ConcurrentDictionary<Rune, PyStrObject> _runeToPyStr = [];
     public static PyStrObject FromRune(Rune value)
     {
         return _runeToPyStr.GetOrAdd(value, static rune => FromString(rune.ToString()));
     }
-
-    [PyFunctionArgsDef("iterable", "/")]
-    internal PyObject? JoinImpl(PyArguments arguments)
-    {
-        return PyJoin(arguments[0]);
-    }
 }
 
-public sealed class PyStrObjectType : PyPrimitiveTypeObject<PyStrObjectType, PyStrObject>
+public sealed class PyStrObjectType : PyTypeObject<PyStrObjectType, PyStrObject>
 {
     public override string Name => "str";
-
     public PyStrObjectType()
     {
-        AppendMethodDescriptor<PyStrObject>("join", nameof(PyStrObject.JoinImpl));
+        AppendMethodDescriptor("join", Join);
     }
-
-    protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    [PyFunctionArgsDef("iterable", "/")]
+    internal PyResult Join(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        var pack = new PyArgsPack(args, kwargs);
-        if (!pack.ValidateCount(1, 0))
-            return PyVirtualMachine.RaiseTypeError(null);
-
-        return PySpecialMethods.GetStr(pack[0]);
+        return self.PyJoin(context, arguments[0]);
+    }
+    protected internal override PyResult Repr(PyCallContext context, PyStrObject self)
+    {
+        return PyStrObject.FromString(PyStrConverter.FromStringToLiteral(self.Value));
+    }
+    protected internal override PyResult Str(PyCallContext context, PyStrObject self)
+    {
+        return self;
+    }
+    protected internal override PyResult Bool(PyCallContext context, PyStrObject self)
+    {
+        return PyBoolObject.FromBoolean(self.Value.Length > 0);
+    }
+    protected internal override PyResult Len(PyCallContext context, PyStrObject self)
+    {
+        return PyIntObject.FromInteger(self.PyLength);
+    }
+    protected internal override PyResult Iter(PyCallContext context, PyStrObject self)
+    {
+        return new PyStrIteratorObject(self.Value);
+    }
+    protected internal override PyResult GetItem(PyCallContext context, PyStrObject self, PyObject item)
+    {
+        if (!PySpecialMethods.TryGetIndex(context, item, out var indexObj, out var result))
+            return result;
+        var index = indexObj.Int32Value;
+        index = Utils.MapIndex(index, self.PyLength);
+        if (index < 0 || index >= self.PyLength)
+            return PyResult.RaiseIndexError("string index out of range");
+        return PyStrObject.FromRune(self.Value.EnumerateRunes().ElementAt(index));
+    }
+    protected internal override PyResult Add(PyCallContext context, PyStrObject self, PyObject other)
+    {
+        if (other is PyStrObject strObj)
+            return PyStrObject.FromString(self.Value + strObj.Value);
+        return PyResult.RaiseTypeError($"can only concatenate str (not \"{other.PyType.Name}\") to str");
+    }
+    protected internal override PyResult Eq(PyCallContext context, PyStrObject self, PyObject other)
+    {
+        if (other is PyStrObject strObj)
+            return PyBoolObject.FromBoolean(self.Value == strObj.Value);
+        return PyNotImplementedObject.NotImplemented;
+    }
+    protected internal override PyResult Lt(PyCallContext context, PyStrObject self, PyObject other)
+    {
+        if (other is not PyStrObject strObj)
+            return PyNotImplementedObject.NotImplemented;
+        return PyBoolObject.FromBoolean(self.Value.CompareTo(strObj.Value) < 0);
+    }
+    protected internal override PyResult Mul(PyCallContext context, PyStrObject self, PyObject other)
+    {
+        if (!PySpecialMethods.TryGetIndex(context, other, out var repeatCount, out var result))
+            return PyNotImplementedObject.NotImplemented;
+        return PyStrObject.FromString(string.Concat(Enumerable.Repeat(self.Value, repeatCount.Int32Value)));
+    }
+    protected internal override PyResult RMul(PyCallContext context, PyStrObject self, PyObject other)
+    {
+        return Mul(context, self, other);
+    }
+    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        if (!PyArgsValidator.ValidateSinglePositionalArg(args, kwargs, out var err))
+            return err.Value;
+        return PySpecialMethods.GetStr(context, args[0]);
     }
 }
 

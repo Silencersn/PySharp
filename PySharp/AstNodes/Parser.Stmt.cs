@@ -41,8 +41,8 @@ partial class Parser
 
         if (module is null && level is 0)
         {
-            PyVirtualMachine.RaiseSyntaxError("invalid syntax");
-            throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+            _context.RaiseSyntaxError("invalid syntax");
+            throw new PyRuntimeException(_context.CurrentException);
         }
         return (module, level);
     }
@@ -71,8 +71,8 @@ partial class Parser
 
             if (IsCurrentKeyword("from"))
             {
-                PyVirtualMachine.RaiseSyntaxError("Did you mean to use 'from ... import ...' instead?");
-                throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                _context.RaiseSyntaxError("Did you mean to use 'from ... import ...' instead?");
+                throw new PyRuntimeException(_context.CurrentException);
             }
 
             importNode.MetaInfo = metaInfo;
@@ -342,8 +342,8 @@ partial class Parser
 
             if (!IsValidAugtarget(target))
             {
-                PyVirtualMachine.RaiseSyntaxError($"'{target.GetType().Name /* TODO: using 'list' instead of 'ListNode' */ }' is an illegal expression for augmented assignment");
-                throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                _context.RaiseSyntaxError($"'{target.GetType().Name /* TODO: using 'list' instead of 'ListNode' */ }' is an illegal expression for augmented assignment");
+                throw new PyRuntimeException(_context.CurrentException);
             }
             TrySetTargetContext(target);
 
@@ -466,8 +466,8 @@ partial class Parser
 
                     _ => $"'{keyword}' statement"
                 };
-                PyVirtualMachine.RaiseIndentationError($"expected an indented block after {statementName} on line {lineno}");
-                throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                _context.RaiseIndentationError($"expected an indented block after {statementName} on line {lineno}");
+                throw new PyRuntimeException(_context.CurrentException);
             }
             MoveNextToken();
 

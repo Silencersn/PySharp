@@ -1,8 +1,12 @@
-﻿namespace PySharp.PyModules.Builtins;
+﻿using PySharp.PyRuntime.Calls;
+
+namespace PySharp.PyModules.Builtins;
 
 public class PySetObject : PyObject, IPyObjectRecursiveRepr
 {
-    private readonly HashSet<PyObject> _set;
+    internal readonly HashSet<PyObject> _set;
+
+    public override PyTypeObject DefaultPyType => PySetObjectType.Shared;
 
     public PySetObject()
     {
@@ -13,20 +17,23 @@ public class PySetObject : PyObject, IPyObjectRecursiveRepr
         _set = new HashSet<PyObject>(set, PyObjectRuntimeEqualityComparer.Shared);
     }
 
-    protected internal override PyBoolObject BoolImpl()
+    PyResult IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<int> ids)
     {
-        return _set.Count > 0;
-    }
-
-    protected internal override PyObject? ReprImpl()
-    {
-        return IPyObjectRecursiveRepr.RecursiveRepr(this);
-    }
-
-    PyObject? IPyObjectRecursiveRepr.RecursiveRepr(HashSet<int> ids)
-    {
-        return Utils.CollectionRecursiveRepr(this, _set, "{", "}", ids);
+        return Utils.CollectionRecursiveRepr(context, this, _set, "{", "}", ids);
     }
 }
 
-// TODO: type
+public sealed class PySetObjectType : PyTypeObject<PySetObjectType, PySetObject>
+{
+    public override string Name => "set";
+
+    protected internal override PyResult Repr(PyCallContext context, PySetObject self)
+    {
+        return IPyObjectRecursiveRepr.RecursiveRepr(context, self);
+    }
+
+    protected internal override PyResult Bool(PyCallContext context, PySetObject self)
+    {
+        return PyBoolObject.FromBoolean(self._set.Count > 0);
+    }
+}

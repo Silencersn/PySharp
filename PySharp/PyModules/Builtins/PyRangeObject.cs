@@ -1,4 +1,4 @@
-﻿using PySharp.PyRuntime;
+﻿using PySharp.PyRuntime.Calls;
 using System.Diagnostics;
 using System.Numerics;
 
@@ -13,7 +13,6 @@ public class PyRangeObject : PyObject
     private PyRangeObject(BigInteger start, BigInteger stop, BigInteger step)
     {
         Debug.Assert(step != 0);
-
         _start = start;
         _stop = stop;
         _step = step;
@@ -49,64 +48,54 @@ public class PyRangeObject : PyObject
     {
         return new PyRangeObject(start, stop, step);
     }
-
-    protected internal override PyObject? ReprImpl()
-    {
-        if (_step == 1)
-            return PyStrObject.FromString($"range({_start}, {_stop})");
-
-        return PyStrObject.FromString($"range({_start}, {_stop}, {_step})");
-    }
-
-    protected internal override PyObject? IterImpl()
-    {
-        return new PyRangeIteratorObject(EnumerateRange());
-    }
 }
 
-public sealed class PyRangeObjectType : PyPrimitiveTypeObject<PyRangeObjectType, PyRangeObject>
+public sealed class PyRangeObjectType : PyTypeObject<PyRangeObjectType, PyRangeObject>
 {
     public override string Name => "range";
 
-    protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyResult Repr(PyCallContext context, PyRangeObject self)
+    {
+        if (self.Step == 1)
+            return PyStrObject.FromString($"range({self.Start}, {self.Stop})");
+        return PyStrObject.FromString($"range({self.Start}, {self.Stop}, {self.Step})");
+    }
+
+    protected internal override PyResult Iter(PyCallContext context, PyRangeObject self)
+    {
+        return new PyRangeIteratorObject(self.EnumerateRange());
+    }
+
+    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (kwargs.Count is not 0)
-            return PyVirtualMachine.RaiseTypeError(null);
-
+            return PyResult.RaiseTypeError(null);
         if (args.Count is 1)
         {
             if (args[0] is not PyIntObject stopObj)
-                return PyVirtualMachine.RaiseTypeError(null);
-
+                return PyResult.RaiseTypeError(null);
             return PyRangeObject.CreateRange(stopObj.Value);
         }
         else if (args.Count is 2)
         {
             if (args[0] is not PyIntObject startObj)
-                return PyVirtualMachine.RaiseTypeError(null);
-
+                return PyResult.RaiseTypeError(null);
             if (args[1] is not PyIntObject stopObj)
-                return PyVirtualMachine.RaiseTypeError(null);
-
+                return PyResult.RaiseTypeError(null);
             return PyRangeObject.CreateRange(startObj.Value, stopObj.Value, BigInteger.One);
         }
         else if (args.Count is 3)
         {
             if (args[0] is not PyIntObject startObj)
-                return PyVirtualMachine.RaiseTypeError(null);
-
+                return PyResult.RaiseTypeError(null);
             if (args[1] is not PyIntObject stopObj)
-                return PyVirtualMachine.RaiseTypeError(null);
-
+                return PyResult.RaiseTypeError(null);
             if (args[2] is not PyIntObject stepObj)
-                return PyVirtualMachine.RaiseTypeError(null);
-
+                return PyResult.RaiseTypeError(null);
             if (stepObj.Value.IsZero)
-                return PyVirtualMachine.RaiseValueError("range() arg 3 must not be zero");
-
+                return PyResult.RaiseValueError("range() arg 3 must not be zero");
             return PyRangeObject.CreateRange(startObj.Value, stopObj.Value, stepObj.Value);
         }
-
-        return PyVirtualMachine.RaiseTypeError(null);
+        return PyResult.RaiseTypeError(null);
     }
 }

@@ -1,4 +1,5 @@
 ﻿using PySharp.PyModules.Builtins;
+using PySharp.PyRuntime.Calls;
 
 namespace PySharp.PyRuntime;
 
@@ -13,7 +14,7 @@ public class PyRuntimeException : Exception
         _exception = exception;
     }
 
-    public override string Message => _message ??= _exception.ToMessage();
+    public override string Message => _message ??= _exception.ToMessage(PyCallContext.CSharpRuntime);
 
     public PyExceptionObject PyException => _exception;
 }

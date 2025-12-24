@@ -206,14 +206,14 @@ public sealed class PyArgsDef
         return new PyArgsDef(posonlyArgsResult, argsResult, kwonlyArgsResult, kwDefaults, [.. defaults], varArg, kwArg);
     }
 
-    internal static PyArgsDef FromAst(AstArgumentsNode node, PyFrame frame)
+    internal static PyArgsDef FromAst(AstArgumentsNode node, PyCallContext context, PyFrame frame)
     {
         return new PyArgsDef(
             [.. node.PosonlyArgs.Select(arg => arg.Arg)],
             [.. node.Args.Select(arg => arg.Arg)],
             [.. node.KwonlyArgs.Select(arg => arg.Arg)],
-            [.. node.KwDefaults.Select(d => d?.GetExprValue(frame).PyThrowIfNull())],
-            [.. node.Defaults.Select(d => d.GetExprValue(frame).PyThrowIfNull())],
+            [.. node.KwDefaults.Select(d => d?.GetExprValue(context, frame).PyThrowIfNull(context))],
+            [.. node.Defaults.Select(d => d.GetExprValue(context, frame).PyThrowIfNull(context))],
             node.VarArg?.Arg,
             node.KwArg?.Arg
             );

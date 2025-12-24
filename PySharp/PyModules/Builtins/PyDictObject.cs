@@ -35,152 +35,46 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
         return new PyDictObject(dict, true);
     }
 
-    protected internal override PyObject? GetItemImpl(PyObject item)
+    PyResult IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<int> ids)
     {
-        if (_dict.TryGetValue(item, out PyObject? value))
-            return value;
-
-        return MissingImpl(item);
-    }
-
-    protected internal override PyObject? SetItemImpl(PyObject key, PyObject value)
-    {
-        PySetItem(key, value);
-        return PyNoneObject.None;
-    }
-
-    protected internal override PyObject? ContainsImpl(PyObject item)
-    {
-        return PyBoolObject.FromBoolean(_dict.ContainsKey(item));
-    }
-
-    protected internal override PyObject? LenImpl()
-    {
-        return PyIntObject.FromInteger(_dict.Count);
-    }
-
-    protected internal override PyBoolObject BoolImpl()
-    {
-        return PyBoolObject.FromBoolean(_dict.Count > 0);
-    }
-
-    protected internal override PyObject? ReprImpl()
-    {
-        return IPyObjectRecursiveRepr.RecursiveRepr(this);
-    }
-
-    PyObject? IPyObjectRecursiveRepr.RecursiveRepr(HashSet<int> ids)
-    {
-        return Utils.DictionaryRecursiveRepr(this, _dict, "{", "}", ids);
-    }
-
-    [PyFunctionArgsDef()]
-    internal PyDictItemsObject ItemsImpl(PyArguments arguments)
-    {
-        return PyItems();
-    }
-
-    [PyFunctionArgsDef()]
-    internal PyNoneObject ClearImpl(PyArguments arguments)
-    {
-        PyClear();
-        return PyNoneObject.None;
-    }
-
-    [PyFunctionArgsDef("key", "default=None", "/")]
-    internal PyObject GetImpl(PyArguments arguments)
-    {
-        if (PyTryGet(arguments[0], out var value))
-            return value;
-        return arguments[1];
-    }
-
-    [PyFunctionArgsDef("key", "default=None", "/")]
-    internal PyObject SetDefaultImpl(PyArguments arguments)
-    {
-        return PySetDefault(arguments[0], arguments[1]);
-    }
-
-    [PyFunctionArgsDef("key", "/")]
-    internal PyObject? PopImpl_1(PyArguments arguments)
-    {
-        var key = arguments[0];
-        if (PyTryPop(key, out var value))
-            return value;
-        return PyVirtualMachine.RaiseKeyError(key);
-    }
-
-    [PyFunctionArgsDef("key", "default", "/")]
-    internal PyObject PopImpl_2(PyArguments arguments)
-    {
-        if (PyTryPop(arguments[0], out var value))
-            return value;
-        return arguments[1];
-    }
-
-    [PyFunctionArgsDef()]
-    internal PyObject? PopItemImpl(PyArguments arguments)
-    {
-        if (PyTryPopItem(out var key, out var value))
-            return PyTupleObject.CreateTuple(key, value);
-        return PyVirtualMachine.RaiseKeyError("popitem(): dictionary is empty");
-    }
-
-    [PyFunctionArgsDef()]
-    internal PyDictObject CopyImpl(PyArguments arguments)
-    {
-        return PyCopy();
+        return Utils.DictionaryRecursiveRepr(context, this, _dict, "{", "}", ids);
     }
 }
 
-public sealed class PyDictObjectType : PyPrimitiveTypeObject<PyDictObjectType, PyDictObject>
+public sealed class PyDictObjectType : PyTypeObject<PyDictObjectType, PyDictObject>
 {
     public override string Name => "dict";
 
     public PyDictObjectType()
     {
-        AppendMethodDescriptor<PyDictObject>("items", nameof(PyDictObject.ItemsImpl));
-        AppendMethodDescriptor<PyDictObject>("clear", nameof(PyDictObject.ClearImpl));
-        AppendMethodDescriptor<PyDictObject>("get", nameof(PyDictObject.GetImpl));
-        AppendMethodDescriptor<PyDictObject>("setdefault", nameof(PyDictObject.SetDefaultImpl));
-        AppendMethodDescriptor<PyDictObject>("pop", nameof(PyDictObject.PopImpl_1), nameof(PyDictObject.PopImpl_2));
-        AppendMethodDescriptor<PyDictObject>("popitem", nameof(PyDictObject.PopItemImpl));
-        AppendMethodDescriptor<PyDictObject>("copy", nameof(PyDictObject.CopyImpl));
+        AppendMethodDescriptor("items", Items);
+        AppendMethodDescriptor("clear", Clear);
+        AppendMethodDescriptor("get", Get);
+        AppendMethodDescriptor("setdefault", SetDefault);
+        AppendMethodDescriptor("pop", Pop_1, Pop_2);
+        AppendMethodDescriptor("popitem", PopItem);
+        AppendMethodDescriptor("copy", Copy);
     }
 
     private static readonly PyBuiltinFunctionOrMethodObject _new = new(PySpecialNames.New, NewImpl_1, NewImpl_2);
 
     [PyFunctionArgsDef("**kwargs")]
-    private static PyDictObject NewImpl_1(PyArguments arguments)
+    private static PyResult NewImpl_1(PyCallContext context, PyArguments arguments)
     {
         return PyDictObject.CreateDict(arguments.ExtraKwargs
             .Select(pair => KeyValuePair.Create<PyObject, PyObject>(PyStrObject.FromString(pair.Key), pair.Value)));
     }
 
     [PyFunctionArgsDef("iterable", "/", "**kwargs")]
-    private static PyObject? NewImpl_2(PyArguments arguments)
+    private static PyResult NewImpl_2(PyCallContext context, PyArguments arguments)
     {
-        var kvpiteratables = Utils.EnumeratedIterable(arguments[0]);
-        if (kvpiteratables is null)
-            return null;
+        if (!Utils.TryEnumeratedIterable(context, arguments[0], out var kvpiteratables, out var err))
+            return err.Value;
 
-        var pairs = Utils.EnumeratedDictionary(kvpiteratables);
-        if (pairs is null)
-            return null;
+        if (!Utils.TryEnumeratedPairs(context, kvpiteratables, out var pairs, out err))
+            return err.Value;
 
         List<KeyValuePair<PyObject, PyObject>> dict = [.. pairs];
-
-        for (int i = 0; i < kvpiteratables.Count; i++)
-        {
-            var pair = Utils.EnumeratedIterable(kvpiteratables[i]);
-            if (pair is null)
-                return null;
-
-            if (pair!.Count is not 2)
-                return PyVirtualMachine.RaiseValueError($"dictionary update sequence element #{i} has length {pair.Count}; 2 is required");
-
-            dict.Add(KeyValuePair.Create(pair[0], pair[1]));
-        }
 
         foreach (var kwarg in arguments.ExtraKwargs)
         {
@@ -190,8 +84,103 @@ public sealed class PyDictObjectType : PyPrimitiveTypeObject<PyDictObjectType, P
         return PyDictObject.CreateDict(dict);
     }
 
-    protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        return _new.Call(args, kwargs);
+        var obj = _new.Call(context, args, kwargs);
+        if (obj.IsError)
+            return obj;
+        obj.Value._pyType = cls;
+        return obj;
+    }
+
+    protected internal override PyResult GetItem(PyCallContext context, PyDictObject self, PyObject item)
+    {
+        if (self._dict.TryGetValue(item, out PyObject? value))
+            return value;
+        return Missing(context, self, item);
+    }
+
+    protected internal override PyResult SetItem(PyCallContext context, PyDictObject self, PyObject key, PyObject value)
+    {
+        self.PySetItem(key, value);
+        return PyNoneObject.None;
+    }
+
+    protected internal override PyResult Contains(PyCallContext context, PyDictObject self, PyObject item)
+    {
+        return PyBoolObject.FromBoolean(self._dict.ContainsKey(item));
+    }
+
+    protected internal override PyResult Repr(PyCallContext context, PyDictObject self)
+    {
+        return IPyObjectRecursiveRepr.RecursiveRepr(context, self);
+    }
+
+    protected internal override PyResult Bool(PyCallContext context, PyDictObject self)
+    {
+        return PyBoolObject.FromBoolean(self._dict.Count > 0);
+    }
+
+    protected internal override PyResult Len(PyCallContext context, PyDictObject self)
+    {
+        return PyIntObject.FromInteger(self._dict.Count);
+    }
+
+    [PyFunctionArgsDef()]
+    internal PyResult Items(PyCallContext context, PyDictObject self, PyArguments arguments)
+    {
+        return self.PyItems();
+    }
+
+    [PyFunctionArgsDef()]
+    internal PyResult Clear(PyCallContext context, PyDictObject self, PyArguments arguments)
+    {
+        self.PyClear();
+        return PyNoneObject.None;
+    }
+
+    [PyFunctionArgsDef("key", "default=None", "/")]
+    internal PyResult Get(PyCallContext context, PyDictObject self, PyArguments arguments)
+    {
+        if (self.PyTryGet(arguments[0], out var value))
+            return value;
+        return arguments[1];
+    }
+
+    [PyFunctionArgsDef("key", "default=None", "/")]
+    internal PyResult SetDefault(PyCallContext context, PyDictObject self, PyArguments arguments)
+    {
+        return self.PySetDefault(arguments[0], arguments[1]);
+    }
+
+    [PyFunctionArgsDef("key", "/")]
+    internal PyResult Pop_1(PyCallContext context, PyDictObject self, PyArguments arguments)
+    {
+        var key = arguments[0];
+        if (self.PyTryPop(key, out var value))
+            return value;
+        return PyResult.RaiseKeyError(key);
+    }
+
+    [PyFunctionArgsDef("key", "default", "/")]
+    internal PyResult Pop_2(PyCallContext context, PyDictObject self, PyArguments arguments)
+    {
+        if (self.PyTryPop(arguments[0], out var value))
+            return value;
+        return arguments[1];
+    }
+
+    [PyFunctionArgsDef()]
+    internal PyResult PopItem(PyCallContext context, PyDictObject self, PyArguments arguments)
+    {
+        if (self.PyTryPopItem(out var key, out var value))
+            return PyTupleObject.CreateTuple(key, value);
+        return PyResult.RaiseKeyError("popitem(): dictionary is empty");
+    }
+
+    [PyFunctionArgsDef()]
+    internal PyResult Copy(PyCallContext context, PyDictObject self, PyArguments arguments)
+    {
+        return self.PyCopy();
     }
 }

@@ -1,11 +1,12 @@
 ﻿using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
+using PySharp.PyRuntime.Calls;
 
 namespace PySharp.AstNodes;
 
 public abstract class AstExceptHandlerNode : AstNode
 {
-    public abstract bool TryHandle(PyFrame frame, PyExceptionObject exception);
+    public abstract bool TryHandle(PyCallContext context, PyFrame frame, PyExceptionObject exception);
 }
 
 public class ExceptHandlerNode : AstExceptHandlerNode
@@ -20,14 +21,14 @@ public class ExceptHandlerNode : AstExceptHandlerNode
     public string? Identifier { get; }
     public List<AstStmtNode> Body { get; } = [];
 
-    public override bool TryHandle(PyFrame frame, PyExceptionObject exception)
+    public override bool TryHandle(PyCallContext context, PyFrame frame, PyExceptionObject exception)
     {
-        if (Type?.GetExprValue(frame) is not PyExceptionType type)
+        if (Type?.GetExprValue(context, frame) is not PyExceptionType type)
         {
-            PyVirtualMachine.RaiseTypeError(null);
-            throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+            context.RaiseTypeError(null);
+            throw new PyRuntimeException(context.CurrentException);
         }
-
+        
         if (Type is null || type is not null && type.IsInstance(exception))
         {
             if (Identifier is not null)
@@ -35,7 +36,7 @@ public class ExceptHandlerNode : AstExceptHandlerNode
 
             foreach (var stmt in Body)
             {
-                stmt.Execute(frame);
+                stmt.Execute(context, frame);
             }
 
             if (Identifier is not null)

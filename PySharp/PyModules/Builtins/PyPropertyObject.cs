@@ -7,17 +7,15 @@ namespace PySharp.PyModules.Builtins;
 
 public sealed class PyPropertyObject : PyObject, IPyDescriptor
 {
-    private PyObject _fget;
-    private PyObject _fset;
-    private PyObject _fdel;
-    private PyObject _doc;
+    internal PyObject _fget;
+    internal PyObject _fset;
+    internal PyObject _fdel;
+    internal PyObject _doc;
 
     public override PyTypeObject DefaultPyType => PyPropertyObjectType.Shared;
 
     bool IPyDescriptor.SupportsGet => true;
-
     bool IPyDescriptor.SupportsSet => true;
-
     bool IPyDescriptor.SupportsDelete => true;
 
     public PyPropertyObject(PyObject fget, PyObject fset, PyObject fdel, PyObject doc)
@@ -27,48 +25,9 @@ public sealed class PyPropertyObject : PyObject, IPyDescriptor
         _fdel = fdel;
         _doc = doc;
     }
-
-    protected internal override PyObject? GetImpl(PyObject instance, PyObject owner)
-    {
-        if (instance is PyNoneObject)
-            return this;
-
-        return _fget.Call([instance], FrozenDictionary<string, PyObject>.Empty);
-    }
-
-    protected internal override PyObject? SetImpl(PyObject instance, PyObject value)
-    {
-        return _fset.Call([instance, value], FrozenDictionary<string, PyObject>.Empty);
-    }
-
-    protected internal override PyObject? DeleteImpl(PyObject instance)
-    {
-        return _fdel.Call([instance], FrozenDictionary<string, PyObject>.Empty);
-    }
-
-    [PyFunctionArgsDef("fget")]
-    internal PyPropertyObject GetterImpl(PyArguments arguments)
-    {
-        _fget = arguments[0];
-        return this;
-    }
-
-    [PyFunctionArgsDef("fset")]
-    internal PyPropertyObject SetterImpl(PyArguments arguments)
-    {
-        _fset = arguments[0];
-        return this;
-    }
-
-    [PyFunctionArgsDef("deleter")]
-    internal PyPropertyObject DeleterImpl(PyArguments arguments)
-    {
-        _fdel = arguments[0];
-        return this;
-    }
 }
 
-public sealed class PyPropertyObjectType : PyPrimitiveTypeObject<PyPropertyObjectType, PyPropertyObject>
+public sealed class PyPropertyObjectType : PyTypeObject<PyPropertyObjectType, PyPropertyObject>
 {
     public override string Name => "property";
 
@@ -76,19 +35,57 @@ public sealed class PyPropertyObjectType : PyPrimitiveTypeObject<PyPropertyObjec
 
     public PyPropertyObjectType()
     {
-        AppendMethodDescriptor<PyPropertyObject>("getter", nameof(PyPropertyObject.GetterImpl));
-        AppendMethodDescriptor<PyPropertyObject>("setter", nameof(PyPropertyObject.SetterImpl));
-        AppendMethodDescriptor<PyPropertyObject>("deleter", nameof(PyPropertyObject.DeleterImpl));
+        AppendMethodDescriptor("getter", Getter);
+        AppendMethodDescriptor("setter", Setter);
+        AppendMethodDescriptor("deleter", Deleter);
+    }
+
+    [PyFunctionArgsDef("fget")]
+    internal PyResult Getter(PyCallContext context, PyPropertyObject self, PyArguments arguments)
+    {
+        self._fget = arguments[0];
+        return self;
+    }
+
+    [PyFunctionArgsDef("fset")]
+    internal PyResult Setter(PyCallContext context, PyPropertyObject self, PyArguments arguments)
+    {
+        self._fset = arguments[0];
+        return self;
+    }
+
+    [PyFunctionArgsDef("deleter")]
+    internal PyResult Deleter(PyCallContext context, PyPropertyObject self, PyArguments arguments)
+    {
+        self._fdel = arguments[0];
+        return self;
     }
 
     [PyFunctionArgsDef("fget=None", "fset=None", "fdel=None", "doc=None")]
-    private static PyPropertyObject NewImpl(PyArguments arguments)
+    private static PyResult NewImpl(PyCallContext context, PyArguments arguments)
     {
         return new PyPropertyObject(arguments[0], arguments[1], arguments[2], arguments[3]);
     }
 
-    protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyResult Get(PyCallContext context, PyPropertyObject self, PyObject instance, PyObject owner)
     {
-        return _new.Call(args, kwargs);
+        if (instance is PyNoneObject)
+            return self;
+        return self._fget.Call(context, [instance], FrozenDictionary<string, PyObject>.Empty);
+    }
+
+    protected internal override PyResult Set(PyCallContext context, PyPropertyObject self, PyObject instance, PyObject value)
+    {
+        return self._fset.Call(context, [instance, value], FrozenDictionary<string, PyObject>.Empty);
+    }
+
+    protected internal override PyResult Delete(PyCallContext context, PyPropertyObject self, PyObject instance)
+    {
+        return self._fdel.Call(context, [instance], FrozenDictionary<string, PyObject>.Empty);
+    }
+
+    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        return _new.Call(context, args, kwargs);
     }
 }

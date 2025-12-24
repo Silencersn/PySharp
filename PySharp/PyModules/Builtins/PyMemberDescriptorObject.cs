@@ -1,45 +1,40 @@
-﻿using PySharp.PyRuntime;
+﻿using PySharp.PyRuntime.Calls;
 
 namespace PySharp.PyModules.Builtins;
 
 public sealed class PyMemberDescriptorObject : PyObject, IPyDescriptor
 {
-    private readonly Func<PyObject, PyObject, PyObject?> _getter;
-    private readonly Func<PyObject, PyObject, PyObject?>? _setter;
+    internal readonly Func<PyCallContext, PyObject, PyObject, PyResult> _getter;
+    internal readonly Func<PyCallContext, PyObject, PyObject, PyResult>? _setter;
 
     public override PyTypeObject DefaultPyType => PyMemberDescriptorObjectType.Shared;
 
     bool IPyDescriptor.SupportsGet => true;
-
     bool IPyDescriptor.SupportsSet => true;
-
     bool IPyDescriptor.SupportsDelete => false;
 
-    internal PyMemberDescriptorObject(Func<PyObject, PyObject, PyObject?> getter, Func<PyObject, PyObject, PyObject?>? setter = null)
+    internal PyMemberDescriptorObject(Func<PyCallContext, PyObject, PyObject, PyResult> getter, Func<PyCallContext, PyObject, PyObject, PyResult>? setter = null)
     {
         _getter = getter;
         _setter = setter;
     }
-
-    protected internal override PyObject? GetImpl(PyObject instance, PyObject owner)
-    {
-        if (instance is PyNoneObject)
-            return this;
-
-        return _getter(instance, owner);
-    }
-
-    protected internal override PyObject? SetImpl(PyObject instance, PyObject value)
-    {
-        if (_setter is null)
-            return PyVirtualMachine.RaiseAttributeError("readonly attribute");
-
-        return _setter(instance, value);
-    }
 }
 
-
-public sealed class PyMemberDescriptorObjectType : PyPrimitiveTypeObject<PyMemberDescriptorObjectType, PyMemberDescriptorObject>
+public sealed class PyMemberDescriptorObjectType : PyTypeObject<PyMemberDescriptorObjectType, PyMemberDescriptorObject>
 {
     public override string Name => "member_descriptor";
+
+    protected internal override PyResult Get(PyCallContext context, PyMemberDescriptorObject self, PyObject instance, PyObject owner)
+    {
+        if (instance is PyNoneObject)
+            return self;
+        return self._getter(context, instance, owner);
+    }
+
+    protected internal override PyResult Set(PyCallContext context, PyMemberDescriptorObject self, PyObject instance, PyObject value)
+    {
+        if (self._setter is null)
+            return PyResult.RaiseAttributeError("readonly attribute");
+        return self._setter(context, instance, value);
+    }
 }

@@ -26,136 +26,132 @@ public sealed partial class PyQueueObject : PyObject
         _source = null;
         _unfinished_tasks = 0;
     }
-
-    [PyFunctionArgsDef()]
-    internal PyObject? QSizeImpl(PyArguments arguments)
-    {
-        return PyIntObject.FromInteger(PyQSize());
-    }
-
-    [PyFunctionArgsDef()]
-    internal PyObject? EmptyImpl(PyArguments arguments)
-    {
-        return PyBoolObject.FromBoolean(PyEmpty());
-    }
-
-    [PyFunctionArgsDef()]
-    internal PyObject? FullImpl(PyArguments arguments)
-    {
-        return PyBoolObject.FromBoolean(PyFull());
-    }
-
-    [PyFunctionArgsDef("item", "block=True", "timeout=None")]
-    internal PyObject? PutImpl(PyArguments arguments)
-    {
-        if (!PyInteropService.TryGetBool(arguments[1], out var block))
-            return null;
-
-        double? timeout;
-        if (arguments[2] is PyNoneObject)
-            timeout = null;
-        else if (PyInteropService.TryGetFloat(arguments[2], out var value)) // TODO: negative value
-            timeout = value;
-        else
-            return null;
-
-        var ex = PyPut(arguments[0], block, timeout);
-        if (ex is not null)
-            return PyVirtualMachine.RaiseException(ex);
-        return PyNoneObject.None;
-    }
-
-    [PyFunctionArgsDef("item")]
-    internal PyObject? PutNoWaitImpl(PyArguments arguments)
-    {
-        var ex = PyPut(arguments[0], false, null);
-        if (ex is not null)
-            return PyVirtualMachine.RaiseException(ex);
-        return PyNoneObject.None;
-    }
-
-    [PyFunctionArgsDef("block=True", "timeout=None")]
-    internal PyObject? GetImpl(PyArguments arguments)
-    {
-        if (!PyInteropService.TryGetBool(arguments[0], out var block))
-            return null;
-
-        double? timeout;
-        if (arguments[1] is PyNoneObject)
-            timeout = null;
-        else if (PyInteropService.TryGetFloat(arguments[1], out var value)) // TODO: negative value
-            timeout = value;
-        else
-            return null;
-
-        var (item, ex) = PyGet(block, timeout);
-        if (ex is not null)
-            return PyVirtualMachine.RaiseException(ex);
-
-        Debug.Assert(item is not null);
-        return item;
-    }
-
-    [PyFunctionArgsDef()]
-    internal PyObject? GetNoWaitImpl(PyArguments arguments)
-    {
-        var (item, ex) = PyGet(false, null);
-        if (ex is not null)
-            return PyVirtualMachine.RaiseException(ex);
-
-        Debug.Assert(item is not null);
-        return item;
-    }
-
-    [PyFunctionArgsDef()]
-    internal PyObject? TaskDoneImpl(PyArguments arguments)
-    {
-        if (PyTryTaskDone())
-            return PyNoneObject.None;
-
-        return PyVirtualMachine.RaiseValueError("task_done() called too many times");
-    }
-
-    [PyFunctionArgsDef()]
-    internal PyObject? JoinImpl(PyArguments arguments)
-    {
-        PyJoin();
-        return PyNoneObject.None;
-    }
 }
 
-public sealed class PyQueueObjectType : PyPrimitiveTypeObject<PyQueueObjectType, PyQueueObject>
+public sealed class PyQueueObjectType : PyTypeObject<PyQueueObjectType, PyQueueObject>
 {
     public override string Name => "Queue";
     public override string FullName => $"queue.{Name}";
 
     public PyQueueObjectType()
     {
-        AppendMethodDescriptor<PyQueueObject>("qsize", nameof(PyQueueObject.QSizeImpl));
-        AppendMethodDescriptor<PyQueueObject>("empty", nameof(PyQueueObject.EmptyImpl));
-        AppendMethodDescriptor<PyQueueObject>("full", nameof(PyQueueObject.FullImpl));
-        AppendMethodDescriptor<PyQueueObject>("put", nameof(PyQueueObject.PutImpl));
-        AppendMethodDescriptor<PyQueueObject>("put_nowait", nameof(PyQueueObject.PutNoWaitImpl));
-        AppendMethodDescriptor<PyQueueObject>("get", nameof(PyQueueObject.GetImpl));
-        AppendMethodDescriptor<PyQueueObject>("get_nowait", nameof(PyQueueObject.GetNoWaitImpl));
-        AppendMethodDescriptor<PyQueueObject>("task_done", nameof(PyQueueObject.TaskDoneImpl));
-        AppendMethodDescriptor<PyQueueObject>("join", nameof(PyQueueObject.JoinImpl));
+        AppendMethodDescriptor("qsize", QSize);
+        AppendMethodDescriptor("empty", Empty);
+        AppendMethodDescriptor("full", Full);
+        AppendMethodDescriptor("put", Put);
+        AppendMethodDescriptor("put_nowait", PutNoWait);
+        AppendMethodDescriptor("get", Get);
+        AppendMethodDescriptor("get_nowait", GetNoWait);
+        AppendMethodDescriptor("task_done", TaskDone);
+        AppendMethodDescriptor("join", Join);
     }
 
     private static readonly PyBuiltinFunctionOrMethodObject _new = new(PySpecialNames.New, NewImpl);
 
     [PyFunctionArgsDef("maxsize=0")]
-    private static PyQueueObject? NewImpl(PyArguments arguments)
+    private static PyResult NewImpl(PyCallContext context, PyArguments arguments)
     {
-        if (!PyInteropService.TryGetIndex(arguments[0], out int maxSize))
-            return null;
-
-        return new PyQueueObject(maxSize);
+        if (!PySpecialMethods.TryGetIndex(context, arguments[0], out var maxSize, out var result))
+            return result;
+        return new PyQueueObject(maxSize.Int32Value);
     }
 
-    protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        return _new.Call(args, kwargs);
+        var obj = _new.Call(context, args, kwargs);
+        if (obj.IsError)
+            return obj;
+        obj.Value._pyType = cls;
+        return obj;
+    }
+
+    [PyFunctionArgsDef()]
+    internal PyResult QSize(PyCallContext context, PyQueueObject self, PyArguments arguments)
+    {
+        return PyIntObject.FromInteger(self.PyQSize());
+    }
+
+    [PyFunctionArgsDef()]
+    internal PyResult Empty(PyCallContext context, PyQueueObject self, PyArguments arguments)
+    {
+        return PyBoolObject.FromBoolean(self.PyEmpty());
+    }
+
+    [PyFunctionArgsDef()]
+    internal PyResult Full(PyCallContext context, PyQueueObject self, PyArguments arguments)
+    {
+        return PyBoolObject.FromBoolean(self.PyFull());
+    }
+
+    [PyFunctionArgsDef("item", "block=True", "timeout=None")]
+    internal PyResult Put(PyCallContext context, PyQueueObject self, PyArguments arguments)
+    {
+        if (!PySpecialMethods.TryGetBool(context, arguments[1], out var block, out var result))
+            return result;
+        double? timeout;
+        if (arguments[2] is PyNoneObject)
+            timeout = null;
+        else if (PySpecialMethods.TryGetFloat(context, arguments[2], out var value, out result))
+            timeout = value.Value;
+        else
+            return result;
+        var ex = self.PyPut(arguments[0], block.BoolValue, timeout);
+        if (ex is not null)
+            return PyResult.RaiseException(ex);
+        return PyNoneObject.None;
+    }
+
+    [PyFunctionArgsDef("item")]
+    internal PyResult PutNoWait(PyCallContext context, PyQueueObject self, PyArguments arguments)
+    {
+        var ex = self.PyPut(arguments[0], false, null);
+        if (ex is not null)
+            return PyResult.RaiseException(ex);
+        return PyNoneObject.None;
+    }
+
+    [PyFunctionArgsDef("block=True", "timeout=None")]
+    internal PyResult Get(PyCallContext context, PyQueueObject self, PyArguments arguments)
+    {
+        if (!PySpecialMethods.TryGetBool(context, arguments[0], out var block, out var result))
+            return result;
+        double? timeout;
+        if (arguments[1] is PyNoneObject)
+            timeout = null;
+        else if (PySpecialMethods.TryGetFloat(context, arguments[1], out var value, out result))
+            timeout = value.Value;
+        else
+            return result;
+        var (item, ex) = self.PyGet(block.BoolValue, timeout);
+        if (ex is not null)
+            return PyResult.RaiseException(ex);
+        Debug.Assert(item is not null);
+        return item;
+    }
+
+    [PyFunctionArgsDef()]
+    internal PyResult GetNoWait(PyCallContext context, PyQueueObject self, PyArguments arguments)
+    {
+        var (item, ex) = self.PyGet(false, null);
+        if (ex is not null)
+            return PyResult.RaiseException(ex);
+        Debug.Assert(item is not null);
+        return item;
+    }
+
+    [PyFunctionArgsDef()]
+    internal PyResult TaskDone(PyCallContext context, PyQueueObject self, PyArguments arguments)
+    {
+        if (self.PyTryTaskDone())
+            return PyNoneObject.None;
+        return PyResult.RaiseValueError("task_done() called too many times");
+    }
+
+    [PyFunctionArgsDef()]
+    internal PyResult Join(PyCallContext context, PyQueueObject self, PyArguments arguments)
+    {
+        self.PyJoin();
+        return PyNoneObject.None;
     }
 }
 

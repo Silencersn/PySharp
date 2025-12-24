@@ -11,7 +11,7 @@ public static class PySiteFunctions
     public static readonly PyBuiltinFunctionOrMethodObject Quit = Exit;
 
     [PyFunctionArgsDef("code=None")]
-    private static PyObject? ExitImpl(PyArguments arguments)
+    private static PyResult ExitImpl(PyCallContext context, PyArguments arguments)
     {
         int? exitCode = arguments.Args[0] switch
         {
@@ -21,9 +21,9 @@ public static class PySiteFunctions
         };
 
         if (!exitCode.HasValue)
-            return PyVirtualMachine.RaiseTypeError(null);
+            return PyResult.RaiseTypeError(null);
 
-        PyVirtualMachine.Exit(exitCode.Value);
+        context.Exit(exitCode.Value);
         return PyNoneObject.None;
     }
 }

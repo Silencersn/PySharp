@@ -5,6 +5,8 @@ namespace PySharp.PyModules.Site;
 
 public class PySiteModuleObject : PyModuleObject
 {
+    public override string? ReprPrompt => "(frozen)";
+
     public PySiteModuleObject() : base("site")
     {
         //PyStandardLibrary.Builtins.AddObjToAttrs(PySiteFunctions.Exit);

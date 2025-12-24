@@ -1,32 +1,29 @@
-﻿using PySharp.PyRuntime;
-using PySharp.PyRuntime.Calls;
+﻿using PySharp.PyRuntime.Calls;
 
 namespace PySharp.PyModules.Builtins;
 
 public class PyNotImplementedObject : PyObject
 {
     public static PyNotImplementedObject NotImplemented { get; } = new PyNotImplementedObject();
-    private static readonly PyStrObject _repr = PyStrObject.FromString("NotImplemented");
-
     public override PyTypeObject DefaultPyType => PyNotImplementedObjectType.Shared;
-
-    protected internal override PyStrObject ReprImpl()
-    {
-        return _repr;
-    }
+    private PyNotImplementedObject() { }
 }
 
-public sealed class PyNotImplementedObjectType : PyPrimitiveTypeObject<PyNotImplementedObjectType, PyNotImplementedObject>
+public sealed class PyNotImplementedObjectType : PyTypeObject<PyNotImplementedObjectType, PyNotImplementedObject>
 {
     public override string Name => "NotImplementedType";
     public override bool IsSealed => true;
+    private static readonly PyStrObject _repr = PyStrObject.FromString("NotImplemented");
 
-    protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyResult Repr(PyCallContext context, PyNotImplementedObject self)
     {
-        var pack = new PyArgsPack(args, kwargs);
-        if (!pack.ValidateEmpty())
-            return PyVirtualMachine.RaiseTypeError(null);
+        return _repr;
+    }
 
+    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        if (!PyArgsValidator.ValidateEmpty(args, kwargs, out var err))
+            return err.Value;
         return PyNotImplementedObject.NotImplemented;
     }
 }

@@ -1,5 +1,7 @@
 ﻿using PySharp.PyRuntime;
+using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.Metadata;
+using System;
 using System.Diagnostics;
 using System.Text;
 
@@ -24,10 +26,10 @@ public sealed class PyExceptionObject : PyObject
     public string? Traceback { get; internal set; }
     internal string? ThreadTracebackInfo { get; set; }
 
-    internal PyExceptionObject WithTraceback(string? traceback = null)
+    internal PyExceptionObject WithTraceback(PyCallContext context, string? traceback = null)
     {
-        Traceback = traceback ?? PrintTraceback();
-        var frame = PyVirtualMachine.CurrentFrame;
+        Traceback = traceback ?? PrintTraceback(context);
+        var frame = context.CurrentFrame;
         while (frame is not null)
         {
             var back = frame.Back;
@@ -43,10 +45,10 @@ public sealed class PyExceptionObject : PyObject
         return this;
     }
 
-    public static string PrintTraceback()
+    public static string PrintTraceback(PyCallContext context)
     {
         Stack<string> stack = [];
-        var frame = PyVirtualMachine.CurrentFrame;
+        var frame = context.CurrentFrame;
         while (frame is not null)
         {
             MetaInfo? info;
@@ -105,46 +107,13 @@ public sealed class PyExceptionObject : PyObject
         return string.Join(Environment.NewLine, stack);
     }
 
-    protected internal override PyObject? ReprImpl()
-    {
-        var builder = new StringBuilder();
-        builder.Append(PyType.Name);
-        builder.Append('(');
-
-        for (int i = 0; i < Args.Count; i++)
-        {
-            if (!PyInteropService.TryGetRepr(Args[i], out var s))
-                return null;
-
-            if (i > 0)
-                builder.Append(", ");
-            builder.Append(s);
-        }
-
-        builder.Append(')');
-
-        return PyStrObject.FromString(builder.ToString());
-    }
-
-    protected internal override PyObject? StrImpl()
-    {
-        //return Arg?.Str() ?? PyStrObject.Empty;
-        if (Args.Count is 0)
-            return PyStrObject.Empty;
-
-        if (Args.Count is 1)
-            return Args[0].Str();
-
-        return PyTupleObject.CreateTuple(Args).Str();
-    }
-
-    internal string ToMessage()
+    internal string ToMessage(PyCallContext context)
     {
         var builder = new StringBuilder();
 
         if (Cause is not null)
             builder
-                .AppendLine(Cause.ToMessage())
+                .AppendLine(Cause.ToMessage(context))
                 .AppendLine()
                 .AppendLine(CauseReason)
                 .AppendLine();
@@ -163,7 +132,7 @@ public sealed class PyExceptionObject : PyObject
         }
 
         builder.Append(PyType.Name);
-        if (PySpecialMethods.TryGetStr(this, out var s))
+        if (PySpecialMethods.TryGetStr(context, this, out var s, out var result))
         {
             if (s.Value != string.Empty)
                 builder.Append(": ").Append(s.Value);
@@ -177,10 +146,8 @@ public sealed class PyExceptionObject : PyObject
     }
 }
 
-public abstract class PyExceptionType : PyTypeObject
+public abstract class PyExceptionType : PyTypeObject<PyExceptionObject>
 {
-    public sealed override Type LayoutType => typeof(PyExceptionObject);
-
     public PyExceptionObject Create()
     {
         return new PyExceptionObject(this);
@@ -196,12 +163,44 @@ public abstract class PyExceptionType : PyTypeObject
         return new PyExceptionObject(this, [.. pyObjects]);
     }
 
-    protected internal sealed override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (kwargs.Count is not 0)
-            return PyVirtualMachine.RaiseTypeError(null);
+            return PyResult.RaiseTypeError(null);
 
         return new PyExceptionObject(this, [.. args]);
+    }
+
+    protected internal override PyResult Repr(PyCallContext context, PyExceptionObject self)
+    {
+        var builder = new StringBuilder();
+        builder.Append(PyType.Name);
+        builder.Append('(');
+
+        for (int i = 0; i < self.Args.Count; i++)
+        {
+            if (!PySpecialMethods.TryGetRepr(context, self.Args[i], out var s, out var result))
+                return result;
+
+            if (i > 0)
+                builder.Append(", ");
+            builder.Append(s);
+        }
+
+        builder.Append(')');
+
+        return PyStrObject.FromString(builder.ToString());
+    }
+
+    protected internal override PyResult Str(PyCallContext context, PyExceptionObject self)
+    {
+        if (self.Args.Count is 0)
+            return PyStrObject.Empty;
+
+        if (self.Args.Count is 1)
+            return self.Args[0].Str(context);
+
+        return PyTupleObject.CreateTuple(self.Args).Str(context);
     }
 }
 

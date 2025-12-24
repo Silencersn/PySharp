@@ -39,7 +39,7 @@ public class PyIntObject : PyObject
 
     public override PyTypeObject DefaultPyType => PyIntObjectType.Shared;
 
-    public BigInteger Value { get; }
+    public BigInteger Value { get; internal set; }
     public int Int32Value => (int)Value;
 
     internal PyIntObject(BigInteger value)
@@ -78,223 +78,52 @@ public class PyIntObject : PyObject
     {
         return new PyIntObject(value);
     }
-
-    protected internal override PyObject? IndexImpl()
-    {
-        return this;
-    }
-
-    protected internal override PyObject? HashImpl()
-    {
-        return this;
-    }
-
-    protected internal override PyObject? ReprImpl()
-    {
-        return PyStrObject.FromString(Value.ToString());
-    }
-
-    protected internal override PyObject? BoolImpl()
-    {
-        return PyBoolObject.FromBoolean(Value != 0);
-    }
-
-    protected internal override PyObject? IntImpl()
-    {
-        return this;
-    }
-
-    protected internal override PyObject? FloatImpl()
-    {
-        return PyFloatObject.FromDouble((double)Value);
-    }
-
-    protected internal override PyObject? NegImpl()
-    {
-        return FromInteger(-Value);
-    }
-
-    protected internal override PyObject? PosImpl()
-    {
-        return this;
-    }
-
-    protected internal override PyObject? AbsImpl()
-    {
-        return Value >= 0 ? this : NegImpl();
-    }
-
-    protected internal override PyObject? InvertImpl()
-    {
-        return FromInteger(~Value);
-    }
-
-    protected internal override PyObject? AddImpl(PyObject other)
-    {
-        if (other is not PyIntObject intObj)
-            return base.AddImpl(other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.Add, this, intObj);
-    }
-    protected internal override PyObject? SubImpl(PyObject other)
-    {
-        if (other is not PyIntObject intObj)
-            return base.SubImpl(other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.Sub, this, intObj);
-    }
-    protected internal override PyObject? MulImpl(PyObject other)
-    {
-        if (other is not PyIntObject intObj)
-            return base.MulImpl(other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.Mul, this, intObj);
-    }
-    protected internal override PyObject? TrueDivImpl(PyObject other)
-    {
-        if (other is not PyIntObject intObj)
-            return base.TrueDivImpl(other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.TrueDiv, this, intObj);
-    }
-    protected internal override PyObject? FloorDivImpl(PyObject other)
-    {
-        if (other is not PyIntObject intObj)
-            return base.FloorDivImpl(other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.FloorDiv, this, intObj);
-    }
-    protected internal override PyObject? ModImpl(PyObject other)
-    {
-        if (other is not PyIntObject intObj)
-            return base.ModImpl(other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.Mod, this, intObj);
-    }
-    protected internal override PyObject? DivModImpl(PyObject other)
-    {
-        if (other is not PyIntObject intObj)
-            return base.DivModImpl(other);
-
-        var (q, r) = BigInteger.DivRem(Value, intObj.Value);
-        return PyTupleObject.CreateTuple(FromInteger(q), FromInteger(r));
-    }
-    protected internal override PyObject? PowImpl(PyObject other, PyObject modulo)
-    {
-        if (other is not PyIntObject intObj)
-            return base.PowImpl(other, modulo);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.Pow, this, intObj, modulo);
-    }
-    protected internal override PyObject? LShiftImpl(PyObject other)
-    {
-        if (other is not PyIntObject intObj)
-            return base.LShiftImpl(other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.LShift, this, intObj);
-    }
-    protected internal override PyObject? RShiftImpl(PyObject other)
-    {
-        if (other is not PyIntObject intObj)
-            return base.RShiftImpl(other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.RShift, this, intObj);
-    }
-    protected internal override PyObject? AndImpl(PyObject other)
-    {
-        if (other is not PyIntObject intObj)
-            return base.AndImpl(other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.And, this, intObj);
-    }
-    protected internal override PyObject? XorImpl(PyObject other)
-    {
-        if (other is not PyIntObject intObj)
-            return base.XorImpl(other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.Xor, this, intObj);
-    }
-    protected internal override PyObject? OrImpl(PyObject other)
-    {
-        if (other is not PyIntObject intObj)
-            return base.OrImpl(other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.Or, this, intObj);
-    }
-
-    protected internal override PyObject? LtImpl(PyObject other)
-    {
-        if (other is not PyIntObject intObj)
-            return base.LtImpl(other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.Lt, this, intObj);
-    }
-    protected internal override PyObject? GtImpl(PyObject other)
-    {
-        if (other is not PyIntObject intObj)
-            return base.GtImpl(other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.Gt, this, intObj);
-    }
-    protected internal override PyObject? LeImpl(PyObject other)
-    {
-        if (other is not PyIntObject intObj)
-            return base.LeImpl(other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.Le, this, intObj);
-    }
-    protected internal override PyObject? GeImpl(PyObject other)
-    {
-        if (other is not PyIntObject intObj)
-            return base.GeImpl(other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.Ge, this, intObj);
-    }
-    protected internal override PyObject? EqImpl(PyObject other)
-    {
-        if (other is not PyIntObject intObj)
-            return base.EqImpl(other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.Eq, this, intObj);
-    }
 }
 
-public sealed class PyIntObjectType : PyPrimitiveTypeObject<PyIntObjectType, PyIntObject>
+public class PyIntObjectType : PyTypeObject<PyIntObjectType, PyIntObject>
 {
     public override string Name => "int";
 
     private static readonly PyBuiltinFunctionOrMethodObject _new = new(PySpecialNames.New, NewImpl_1, NewImpl_2);
 
     [PyFunctionArgsDef("number=0", "/")]
-    private static PyObject? NewImpl_1(PyArguments arguments)
+    private static PyResult NewImpl_1(PyCallContext context, PyArguments arguments)
     {
         if (arguments.Args[0] is PyStrObject str)
         {
-            if (!TryParse(str.Value, 10, out var result))
-                return PyVirtualMachine.RaiseValueError($"invalid literal for int() with base 10: '{str.Value}'");
+            if (!TryParse(str.Value, 10, out var integer))
+                return PyResult.RaiseValueError($"invalid literal for int() with base 10: '{str.Value}'");
 
-            return PyIntObject.FromInteger(result);
+            return PyIntObject.FromInteger(integer);
         }
 
-        return PySpecialMethods.GetInt(arguments.Args[0]);
+        // TODO: __int__? __index__?
+        if (!PySpecialMethods.TryGetIndex(context, arguments[0], out var value, out var result))
+            return result;
+
+        return PyIntObject.FromInteger(value.Value);
     }
     [PyFunctionArgsDef("string", "/", "base=10")]
-    private static PyObject? NewImpl_2(PyArguments arguments)
+    private static PyResult NewImpl_2(PyCallContext context, PyArguments arguments)
     {
         if (arguments.Args[1] is not PyIntObject)
-            return PyVirtualMachine.RaiseTypeError($"'{arguments.Args[1].PyType.Name}' object cannot be interpreted as an integer");
+            return PyResult.RaiseTypeError($"'{arguments.Args[1].PyType.Name}' object cannot be interpreted as an integer");
 
         var numBase = (PyIntObject)arguments.Args[1];
 
         if (!((numBase.Value >= 2 && numBase.Value <= 36) || numBase.Value.IsZero))
-            return PyVirtualMachine.RaiseValueError("int() base must be >= 2 and <= 36, or 0");
+            return PyResult.RaiseValueError("int() base must be >= 2 and <= 36, or 0");
 
         if (arguments.Args[0] is PyStrObject str)
         {
             if (!TryParse(str.Value, numBase.Int32Value, out var result))
-                return PyVirtualMachine.RaiseValueError($"invalid literal for int() with base {numBase.Value}: '{str.Value}'");
+                return PyResult.RaiseValueError($"invalid literal for int() with base {numBase.Value}: '{str.Value}'");
 
             return PyIntObject.FromInteger(result);
         }
 
-        return PyVirtualMachine.RaiseTypeError("int() can't convert non-string with explicit base");
+        return PyResult.RaiseTypeError("int() can't convert non-string with explicit base");
 
-    }
-
-    protected internal override PyObject? NewImpl(PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
-    {
-        var obj = _new.Call(args, kwargs);
-        if (obj is null)
-            return null;
-
-        Debug.Assert(obj is PyIntObject);
-        var value = ((PyIntObject)obj).Value;
-        if (cls != this && value > -PyIntObject.NegativePoolSize && value < PyIntObject.PositivesPoolSize)
-            return PyIntObject.FromIntegerNoCache(value);
-        return obj;
     }
 
     internal static bool TryParse(ReadOnlySpan<char> s, int numBase, out BigInteger result)
@@ -463,4 +292,180 @@ public sealed class PyIntObjectType : PyPrimitiveTypeObject<PyIntObjectType, PyI
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, // 239
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF  // 255
     ];
+
+    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        var result = _new.Call(context, args, kwargs);
+        if (result.IsError)
+            return result;
+
+        var obj = result.Value;
+        Debug.Assert(obj is PyIntObject);
+        var value = ((PyIntObject)obj).Value;
+        if (cls != this && value > -PyIntObject.NegativePoolSize && value < PyIntObject.PositivesPoolSize)
+            return PyIntObject.FromIntegerNoCache(value);
+
+        obj._pyType = cls;
+        return obj;
+    }
+
+    protected internal override PyResult Index(PyCallContext context, PyIntObject self)
+    {
+        return self;
+    }
+
+    protected internal override PyResult Hash(PyCallContext context, PyIntObject self)
+    {
+        return self;
+    }
+
+    protected internal override PyResult Repr(PyCallContext context, PyIntObject self)
+    {
+        return PyStrObject.FromString(self.Value.ToString());
+    }
+
+    protected internal override PyResult Bool(PyCallContext context, PyIntObject self)
+    {
+        return PyBoolObject.FromBoolean(self.Value != 0);
+    }
+
+    protected internal override PyResult Int(PyCallContext context, PyIntObject self)
+    {
+        return self;
+    }
+
+    protected internal override PyResult Float(PyCallContext context, PyIntObject self)
+    {
+        return PyFloatObject.FromDouble((double)self.Value);
+    }
+
+    protected internal override PyResult Neg(PyCallContext context, PyIntObject self)
+    {
+        return PyIntObject.FromInteger(-self.Value);
+    }
+
+    protected internal override PyResult Pos(PyCallContext context, PyIntObject self)
+    {
+        return self;
+    }
+
+    protected internal override PyResult Abs(PyCallContext context, PyIntObject self)
+    {
+        return self.Value >= 0 ? self : PyIntObject.FromInteger(-self.Value);
+    }
+
+    protected internal override PyResult Invert(PyCallContext context, PyIntObject self)
+    {
+        return PyIntObject.FromInteger(~self.Value);
+    }
+
+    protected internal override PyResult Add(PyCallContext context, PyIntObject self, PyObject other)
+    {
+        if (other is not PyIntObject intObj)
+            return base.Add(context, self, other);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.Add, self, intObj);
+    }
+    protected internal override PyResult Sub(PyCallContext context, PyIntObject self, PyObject other)
+    {
+        if (other is not PyIntObject intObj)
+            return base.Sub(context, self, other);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.Sub, self, intObj);
+    }
+    protected internal override PyResult Mul(PyCallContext context, PyIntObject self, PyObject other)
+    {
+        if (other is not PyIntObject intObj)
+            return base.Mul(context, self, other);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.Mul, self, intObj);
+    }
+    protected internal override PyResult TrueDiv(PyCallContext context, PyIntObject self, PyObject other)
+    {
+        if (other is not PyIntObject intObj)
+            return base.TrueDiv(context, self, other);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.TrueDiv, self, intObj);
+    }
+    protected internal override PyResult FloorDiv(PyCallContext context, PyIntObject self, PyObject other)
+    {
+        if (other is not PyIntObject intObj)
+            return base.FloorDiv(context, self, other);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.FloorDiv, self, intObj);
+    }
+    protected internal override PyResult Mod(PyCallContext context, PyIntObject self, PyObject other)
+    {
+        if (other is not PyIntObject intObj)
+            return base.Mod(context, self, other);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.Mod, self, intObj);
+    }
+    protected internal override PyResult DivMod(PyCallContext context, PyIntObject self, PyObject other)
+    {
+        if (other is not PyIntObject intObj)
+            return base.DivMod(context, self, other);
+        var (q, r) = BigInteger.DivRem(self.Value, intObj.Value);
+        return PyTupleObject.CreateTuple(PyIntObject.FromInteger(q), PyIntObject.FromInteger(r));
+    }
+    protected internal override PyResult Pow(PyCallContext context, PyIntObject self, PyObject other, PyObject modulo)
+    {
+        if (other is not PyIntObject intObj)
+            return base.Pow(context, self, other, modulo);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.Pow, self, intObj, modulo);
+    }
+    protected internal override PyResult LShift(PyCallContext context, PyIntObject self, PyObject other)
+    {
+        if (other is not PyIntObject intObj)
+            return base.LShift(context, self, other);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.LShift, self, intObj);
+    }
+    protected internal override PyResult RShift(PyCallContext context, PyIntObject self, PyObject other)
+    {
+        if (other is not PyIntObject intObj)
+            return base.RShift(context, self, other);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.RShift, self, intObj);
+    }
+    protected internal override PyResult And(PyCallContext context, PyIntObject self, PyObject other)
+    {
+        if (other is not PyIntObject intObj)
+            return base.And(context, self, other);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.And, self, intObj);
+    }
+    protected internal override PyResult Xor(PyCallContext context, PyIntObject self, PyObject other)
+    {
+        if (other is not PyIntObject intObj)
+            return base.Xor(context, self, other);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.Xor, self, intObj);
+    }
+    protected internal override PyResult Or(PyCallContext context, PyIntObject self, PyObject other)
+    {
+        if (other is not PyIntObject intObj)
+            return base.Or(context, self, other);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.Or, self, intObj);
+    }
+    protected internal override PyResult Lt(PyCallContext context, PyIntObject self, PyObject other)
+    {
+        if (other is not PyIntObject intObj)
+            return base.Lt(context, self, other);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.Lt, self, intObj);
+    }
+    protected internal override PyResult Gt(PyCallContext context, PyIntObject self, PyObject other)
+    {
+        if (other is not PyIntObject intObj)
+            return base.Gt(context, self, other);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.Gt, self, intObj);
+    }
+    protected internal override PyResult Le(PyCallContext context, PyIntObject self, PyObject other)
+    {
+        if (other is not PyIntObject intObj)
+            return base.Le(context, self, other);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.Le, self, intObj);
+    }
+    protected internal override PyResult Ge(PyCallContext context, PyIntObject self, PyObject other)
+    {
+        if (other is not PyIntObject intObj)
+            return base.Ge(context, self, other);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.Ge, self, intObj);
+    }
+    protected internal override PyResult Eq(PyCallContext context, PyIntObject self, PyObject other)
+    {
+        if (other is not PyIntObject intObj)
+            return base.Eq(context, self, other);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.Eq, self, intObj);
+    }
 }

@@ -1,4 +1,5 @@
 ﻿using PySharp.PyRuntime;
+using PySharp.PyRuntime.Calls;
 
 namespace PySharp.AstNodes;
 
@@ -16,21 +17,13 @@ public class ModuleNode : AstModNode
 
     public List<AstStmtNode> Body { get; } = [];
 
-    public override void Execute(PyFrame frame)
+    public override void Execute(PyCallContext context, PyFrame frame)
     {
         frame.StmtMetaInfoProvider = this;
         foreach (var stmt in Body)
         {
-            stmt.Execute(frame);
+            stmt.Execute(context, frame);
         }
-    }
-
-    public override ModuleNode Reduce(OptimizationOptions options)
-    {
-        if (options.NoOptimization)
-            return this;
-
-        return new ModuleNode([.. Body.Reduce(options)]);
     }
 
     internal override void Dump(AstNodeDumper dumper)
@@ -56,18 +49,10 @@ public class ExpressionNode : AstModNode
         Body = body;
     }
 
-    public override void Execute(PyFrame frame)
+    public override void Execute(PyCallContext context, PyFrame frame)
     {
         frame.StmtMetaInfoProvider = this;
-        _ = Body.GetExprValue(frame);
-    }
-
-    public override ExpressionNode Reduce(OptimizationOptions options)
-    {
-        if (options.NoOptimization)
-            return this;
-
-        return new ExpressionNode(Body.Reduce(options));
+        _ = Body.GetExprValue(context, frame);
     }
 }
 
@@ -80,20 +65,12 @@ public class InteractiveNode : AstModNode
         Body = body;
     }
 
-    public override void Execute(PyFrame frame)
+    public override void Execute(PyCallContext context, PyFrame frame)
     {
         frame.StmtMetaInfoProvider = this;
         foreach (var stmt in Body)
         {
-            stmt.Execute(frame);
+            stmt.Execute(context, frame);
         }
-    }
-
-    public override InteractiveNode Reduce(OptimizationOptions options)
-    {
-        if (options.NoOptimization)
-            return this;
-
-        return new InteractiveNode([.. Body.Reduce(options)]);
     }
 }

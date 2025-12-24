@@ -1,4 +1,5 @@
 ﻿using PySharp.PyModules.Builtins;
+using PySharp.PyRuntime.Calls;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 
@@ -6,19 +7,19 @@ namespace PySharp.PyRuntime;
 
 public static class PySpecialMethods
 {
-    private static bool TryGetSpecialMethod<TPyObject>(Func<PyObject?> func, Func<PyObject, string> msgCreator, [NotNullWhen(true)] out TPyObject? o) where TPyObject : PyObject
+    private static bool TryGetSpecialMethod<TPyObject>(Func<PyResult> func, Func<PyObject, string> msgCreatorIfWrongType, [NotNullWhen(true)] out TPyObject? o, out PyResult result) where TPyObject : PyObject
     {
-        var obj = func();
-        if (obj is null)
+        result = func();
+        if (result.IsError)
         {
             o = null;
             return false;
         }
 
-        if (obj is not TPyObject objOfT)
+        if (result.Value is not TPyObject objOfT)
         {
             o = null;
-            PyVirtualMachine.RaiseTypeError(msgCreator(obj));
+            result = PyResult.RaiseTypeError(msgCreatorIfWrongType(result.Value));
             return false;
         }
 
@@ -26,40 +27,41 @@ public static class PySpecialMethods
         return true;
     }
 
-    public static bool TryGetStr(PyObject obj, [NotNullWhen(true)] out PyStrObject? s)
+
+    public static bool TryGetStr(PyCallContext context, PyObject obj, [NotNullWhen(true)] out PyStrObject? s, out PyResult result)
     {
-        return TryGetSpecialMethod(obj.Str, o => $"{PySpecialNames.Str} returned non-string (type {o.PyType.Name})", out s);
+        return TryGetSpecialMethod(() => obj.Str(context), o => $"{PySpecialNames.Str} returned non-string (type {o.PyType.Name})", out s, out result);
     }
 
-    public static bool TryGetRepr(PyObject obj, [NotNullWhen(true)] out PyStrObject? s)
+    public static bool TryGetRepr(PyCallContext context, PyObject obj, [NotNullWhen(true)] out PyStrObject? s, out PyResult result)
     {
-        return TryGetSpecialMethod(obj.Repr, o => $"{PySpecialNames.Repr} returned non-string (type {o.PyType.Name})", out s);
+        return TryGetSpecialMethod(() => obj.Repr(context), o => $"{PySpecialNames.Repr} returned non-string (type {o.PyType.Name})", out s, out result);
     }
 
-    public static bool TryGetBool(PyObject obj, [NotNullWhen(true)] out PyBoolObject? b)
+    public static bool TryGetBool(PyCallContext context, PyObject obj, [NotNullWhen(true)] out PyBoolObject? b, out PyResult result)
     {
-        return TryGetSpecialMethod(obj.Bool, o => $"{PySpecialNames.Bool} should return bool, returned {o.PyType.Name}", out b);
+        return TryGetSpecialMethod(() => obj.Bool(context), o => $"{PySpecialNames.Bool} should return bool, returned {o.PyType.Name}", out b, out result);
     }
 
-    public static bool TryGetInt(PyObject obj, [NotNullWhen(true)] out PyIntObject? i)
+    public static bool TryGetInt(PyCallContext context, PyObject obj, [NotNullWhen(true)] out PyIntObject? i, out PyResult result)
     {
-        return TryGetSpecialMethod(obj.Int, o => $"{PySpecialNames.Int} returned non-int (type {o.PyType.Name})", out i);
+        return TryGetSpecialMethod(() => obj.Int(context), o => $"{PySpecialNames.Int} returned non-int (type {o.PyType.Name})", out i, out result);
     }
 
-    public static bool TryGetFloat(PyObject obj, [NotNullWhen(true)] out PyFloatObject? f)
+    public static bool TryGetFloat(PyCallContext context, PyObject obj, [NotNullWhen(true)] out PyFloatObject? f, out PyResult result)
     {
-        return TryGetSpecialMethod(obj.Float, o => $"{PySpecialNames.Float} returned non-float (type {o.PyType.Name})", out f);
+        return TryGetSpecialMethod(() => obj.Float(context), o => $"{PySpecialNames.Float} returned non-float (type {o.PyType.Name})", out f, out result);
     }
 
-    public static bool TryGetLen(PyObject obj, [NotNullWhen(true)] out PyIntObject? i)
+    public static bool TryGetLen(PyCallContext context, PyObject obj, [NotNullWhen(true)] out PyIntObject? i, out PyResult result)
     {
-        return TryGetSpecialMethod(obj.Len, o => $"{PySpecialNames.Len} returned non-int (type {o.PyType.Name})", out i);
+        return TryGetSpecialMethod(() => obj.Len(context), o => $"{PySpecialNames.Len} returned non-int (type {o.PyType.Name})", out i, out result);
     }
 
     private static readonly BigInteger _maxHash = new(uint.MaxValue);
-    public static bool TryGetHash(PyObject obj, [NotNullWhen(true)] out PyIntObject? i)
+    public static bool TryGetHash(PyCallContext context, PyObject obj, [NotNullWhen(true)] out PyIntObject? i, out PyResult result)
     {
-        if (!TryGetSpecialMethod(obj.Hash, o => $"{PySpecialNames.Hash} returned non-int (type {o.PyType.Name})", out i))
+        if (!TryGetSpecialMethod(() => obj.Hash(context), o => $"{PySpecialNames.Hash} returned non-int (type {o.PyType.Name})", out i, out result))
             return false;
 
         var value = i.Value;
@@ -71,100 +73,75 @@ public static class PySpecialMethods
         return true;
     }
 
-    public static bool TryGetIndex(PyObject obj, [NotNullWhen(true)] out PyIntObject? i)
+    public static bool TryGetIndex(PyCallContext context, PyObject obj, [NotNullWhen(true)] out PyIntObject? i, out PyResult result)
     {
-        return TryGetSpecialMethod(obj.Index, o => $"{PySpecialNames.Index} returned non-int (type {o.PyType.Name})", out i);
+        return TryGetSpecialMethod(() => obj.Index(context), o => $"{PySpecialNames.Index} returned non-int (type {o.PyType.Name})", out i, out result);
     }
 
-    public static PyStrObject? GetStr(PyObject obj)
+    public static PyResult GetStr(PyCallContext context, PyObject obj)
     {
-        return TryGetStr(obj, out var s) ? s : null;
+        TryGetStr(context, obj, out _, out var result);
+        return result;
     }
 
-    public static PyStrObject? GetRepr(PyObject obj)
+    public static PyResult GetRepr(PyCallContext context, PyObject obj)
     {
-        return TryGetRepr(obj, out var s) ? s : null;
+        TryGetRepr(context, obj, out _, out var result);
+        return result;
     }
 
-    public static PyBoolObject? GetBool(PyObject obj)
+    public static PyResult GetBool(PyCallContext context, PyObject obj)
     {
-        return TryGetBool(obj, out var s) ? s : null;
+        TryGetBool(context, obj, out _, out var result);
+        return result;
     }
 
-    public static PyIntObject? GetInt(PyObject obj)
+    public static PyResult GetInt(PyCallContext context, PyObject obj)
     {
-        return TryGetInt(obj, out var s) ? s : null;
+        TryGetInt(context, obj, out _, out var result);
+        return result;
     }
 
-    public static PyFloatObject? GetFloat(PyObject obj)
+    public static PyResult GetFloat(PyCallContext context, PyObject obj)
     {
-        return TryGetFloat(obj, out var s) ? s : null;
+        TryGetFloat(context, obj, out _, out var result);
+        return result;
     }
 
-    public static PyIntObject? GetLen(PyObject obj)
+    public static PyResult GetLen(PyCallContext context, PyObject obj)
     {
-        return TryGetLen(obj, out var s) ? s : null;
+        TryGetLen(context, obj, out _, out var result);
+        return result;
     }
 
-    public static PyIntObject? GetHash(PyObject obj)
+    public static PyResult GetHash(PyCallContext context, PyObject obj)
     {
-        return TryGetHash(obj, out var s) ? s : null;
+        TryGetHash(context, obj, out _, out var result);
+        return result;
     }
 
-    public static bool TryCastType<TPyObject>(PyObject obj, string objName, string expectedType, [NotNullWhen(true)] out TPyObject? result) where TPyObject : PyObject
+    public static PyResult DivMod(PyCallContext context, PyObject left, PyObject right)
     {
-        if (obj is TPyObject objOfT)
-        {
-            result = objOfT;
-            return true;
-        }
-
-        PyVirtualMachine.RaiseTypeError($"{objName} must be {expectedType}, not {obj.PyType.Name}");
-        result = null;
-        return false;
-    }
-
-    public static bool TryCastType<TPyObject>(PyObject obj, string objName, string expectedType, TPyObject valueIfNone, [NotNullWhen(true)] out TPyObject? result) where TPyObject : PyObject
-    {
-        if (obj is TPyObject objOfT)
-        {
-            result = objOfT;
-            return true;
-        }
-
-        if (obj is PyNoneObject)
-        {
-            result = valueIfNone;
-            return true;
-        }
-
-        PyVirtualMachine.RaiseTypeError($"{objName} must be None or {expectedType}, not {obj.PyType.Name}");
-        result = null;
-        return false;
-    }
-
-    public static PyObject? DivMod(PyObject left, PyObject right)
-    {
-        var ret = left.DivMod(right);
-        if (ret is not PyNotImplementedObject)
+        var ret = left.DivMod(context, right);
+        if (!ret.IsNotImplemented)
             return ret;
 
-        ret = right.RDivMod(left);
+        ret = right.RDivMod(context, left);
         return ret;
     }
 
-    public static PyObject? Abs(PyObject obj)
+    public static PyResult Abs(PyCallContext context, PyObject obj)
     {
-        return obj.Abs();
+        return obj.Abs(context);
     }
 
-    public static PyObject? Iter(PyObject obj)
+    public static PyResult Iter(PyCallContext context, PyObject obj)
     {
-        return obj.Iter();
+        return obj.Iter(context);
     }
 
-    public static PyObject? Next(PyObject obj)
+    public static PyResult Next(PyCallContext context, PyObject obj)
     {
-        return obj.Next();
+        return obj.Next(context);
     }
 }
