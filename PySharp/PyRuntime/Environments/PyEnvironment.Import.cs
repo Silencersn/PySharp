@@ -15,7 +15,7 @@ partial class PyEnvironment
             return module;
         }
 
-        module = PyStandardLibrary.TryCreateModule(name);
+        module = PyStandardLibrary.TryCreateModule(PyCallContext.FromEnvironment(this), name);
         Debug.Assert(module is not null);
         module.OnImport(this);
         Modules.Add(name, module);
@@ -34,7 +34,7 @@ partial class PyEnvironment
 
     internal bool TryLoadModuleNoCache(PyCallContext context, string qualifiedName, [NotNullWhen(true)] out PyModuleObject? module)
     {
-        module = PyStandardLibrary.TryCreateModule(qualifiedName);
+        module = PyStandardLibrary.TryCreateModule(PyCallContext.FromEnvironment(this), qualifiedName);
         if (module is not null)
         {
             module.OnImport(this);

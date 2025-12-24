@@ -6,7 +6,7 @@ namespace PySharp.PyRuntime.Calls;
 
 public sealed partial class PyCallContext
 {
-    internal static PyCallContext Null { get; } = new("[Null]", null!);
+    internal static PyCallContext NotImplemented { get; } = new("[Not Implemented]", null!);
     internal static PyCallContext NonContextDependency { get; } = new("[Non Context Dependency]", null!);
     internal static PyCallContext CSharpRuntime { get; } = new("[CSharp Runtime]", null!);
 

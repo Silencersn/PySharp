@@ -7,40 +7,32 @@ using PySharp.PyModules.This;
 using PySharp.PyModules.Threading;
 using PySharp.PyModules.Time;
 using PySharp.PyRuntime.Calls;
+using System;
 
 
 namespace PySharp.PyRuntime;
 
 internal static class PyStandardLibrary
 {
-    public static PyModuleObject Builtins => new PyBuiltinsModuleObject();
-    public static PyModuleObject Operator => new PyOperatorModuleObject();
-    public static PyModuleObject Site => new PySiteModuleObject();
-    public static PyModuleObject Time => new PyTimeModuleObject();
-    public static PyModuleObject Random => new PyRandomModuleObject();
-    public static PyModuleObject This => Execute("this", PyThisModuleObject.Code);
-    public static PyModuleObject Threading => new PyThreadingModuleObject();
-    public static PyModuleObject Queue => new PyQueueModuleObject();
-
-    public static PyModuleObject? TryCreateModule(string name)
+    public static PyModuleObject? TryCreateModule(PyCallContext context, string name)
     {
         return name switch
         {
-            "builtins" => Builtins,
-            "site" => Site,
-            "operator" => Operator,
-            "time" => Time,
-            "random" => Random,
-            "this" => This,
-            "threading" => Threading,
-            "queue" => Queue,
+            "builtins" => new PyBuiltinsModuleObject(),
+            "site" => new PySiteModuleObject(),
+            "operator" => new PyOperatorModuleObject(),
+            "time" => new PyTimeModuleObject(),
+            "random" => new PyRandomModuleObject(),
+            "this" => Execute(context, "this", PyThisModuleObject.Code),
+            "threading" => new PyThreadingModuleObject(),
+            "queue" => new PyQueueModuleObject(),
 
             _ => null
         };
     }
 
-    private static PyModuleObject Execute(string name, string code)
+    private static PyModuleObject Execute(PyCallContext context, string name, string code)
     {
-        return PyInterpreter.RunCodeWithinEnvironment(PyCallContext.Null, code, name, true, $"{name}.py");
+        return PyInterpreter.RunCodeWithinEnvironment(context, code, name, true, $"{name}.py");
     }
 }
