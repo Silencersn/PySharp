@@ -20,7 +20,7 @@ public partial class PyObject : IEquatable<PyObject>
             if (y is null)
                 return false;
 
-            var eq = PyOperators.Eq(PyCallContext.Null, x, y);
+            var eq = PyOperators.Eq(PyCallContext.CSharpRuntime, x, y);
             if (eq.IsError)
             {
                 throw new PyRuntimeException(eq.Exception);
@@ -33,7 +33,7 @@ public partial class PyObject : IEquatable<PyObject>
             if (eq.Value is PyBoolObject boolObj)
                 return boolObj.BoolValue;
 
-            if (PySpecialMethods.TryGetBool(PyCallContext.Null, eq.Value, out var b, out var result))
+            if (PySpecialMethods.TryGetBool(PyCallContext.CSharpRuntime, eq.Value, out var b, out var result))
                 return b.BoolValue;
 
             Debug.Assert(result.IsError);
@@ -42,7 +42,7 @@ public partial class PyObject : IEquatable<PyObject>
 
         public int GetHashCode([DisallowNull] PyObject obj)
         {
-            if (PySpecialMethods.TryGetHash(PyCallContext.Null, obj, out var hash, out var result))
+            if (PySpecialMethods.TryGetHash(PyCallContext.CSharpRuntime, obj, out var hash, out var result))
                 return hash.Int32Value;
 
             Debug.Assert(result.IsError);
@@ -65,11 +65,11 @@ public partial class PyObject : IEquatable<PyObject>
             if (y is null)
                 return 1;
 
-            var lt = x.Lt(PyCallContext.Null, y);
+            var lt = x.Lt(PyCallContext.CSharpRuntime, y);
             if (lt.IsError)
                 throw new PyRuntimeException(lt.Exception);
 
-            if (!PySpecialMethods.TryGetBool(PyCallContext.Null, lt.Value, out var b, out var result))
+            if (!PySpecialMethods.TryGetBool(PyCallContext.CSharpRuntime, lt.Value, out var b, out var result))
             {
                 Debug.Assert(result.IsError);
                 throw new PyRuntimeException(result.Exception);
@@ -192,7 +192,7 @@ public partial class PyObject : IEquatable<PyObject>
 
     public override string ToString()
     {
-        if (PySpecialMethods.TryGetRepr(PyCallContext.Null, this, out var s, out var result))
+        if (PySpecialMethods.TryGetRepr(PyCallContext.CSharpRuntime, this, out var s, out var result))
             return $"{GetType().Name}{{id={PyId},repr={s.Value}}}";
         return $"{GetType().Name}{{id={PyId}}}";
     }
@@ -212,7 +212,7 @@ public partial class PyObject : IEquatable<PyObject>
 
     public override int GetHashCode()
     {
-        if (PySpecialMethods.TryGetHash(PyCallContext.Null, this, out var hash, out var result))
+        if (PySpecialMethods.TryGetHash(PyCallContext.CSharpRuntime, this, out var hash, out var result))
             return hash.Int32Value;
 
         return PyId.GetHashCode();

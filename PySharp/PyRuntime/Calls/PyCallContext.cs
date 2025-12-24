@@ -8,6 +8,7 @@ public sealed partial class PyCallContext
 {
     internal static PyCallContext Null { get; } = new("[Null]", null!);
     internal static PyCallContext NonContextDependency { get; } = new("[Non Context Dependency]", null!);
+    internal static PyCallContext CSharpRuntime { get; } = new("[CSharp Runtime]", null!);
 
     private readonly string _prompt;
     private readonly PyEnvironment _environment;

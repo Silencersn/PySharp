@@ -131,7 +131,7 @@ public static class PyInterpreter
             }
             catch (PyRuntimeException e)
             {
-                environment.Error.WriteLine(e.Message);
+                environment.Error.WriteLine(e.PyException.ToMessage(context));
                 continue;
             }
 
