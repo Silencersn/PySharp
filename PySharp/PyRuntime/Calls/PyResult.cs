@@ -26,17 +26,7 @@ public readonly partial struct PyResult
     [MemberNotNullWhen(true, nameof(Exception))]
     public bool IsAttributeError => _exception?.PyType is PyAttributeErrorObjectType;
 
-    public PyObject? Value
-    {
-        get
-        {
-            // TODO: temp, need removed
-            if (_value is null)
-                PyVirtualMachine.CurrentException = _exception;
-
-            return _value;
-        }
-    }
+    public PyObject? Value => _value;
     public PyExceptionObject? Exception => _exception;
 
     private PyResult(PyObject value)

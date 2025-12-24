@@ -1,5 +1,6 @@
 ﻿using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
+using PySharp.PyRuntime.Calls;
 using PySharp.Tokenization;
 using System.Diagnostics;
 using System.Linq.Expressions;
@@ -200,13 +201,13 @@ partial class Parser
             MoveNextToken();
             if (CurrentTokenType is not TokenType.Name)
             {
-                PyVirtualMachine.RaiseSyntaxError("f-string: missing conversion character");
-                throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                _context.RaiseSyntaxError("f-string: missing conversion character");
+                throw new PyRuntimeException(_context.CurrentException);
             }
             if (CurrentToken.String is not ("s" or "r" or "a"))
             {
-                PyVirtualMachine.RaiseSyntaxError($"f-string: invalid conversion character '{CurrentToken.String}': expected 's', 'r', or 'a'");
-                throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                _context.RaiseSyntaxError($"f-string: invalid conversion character '{CurrentToken.String}': expected 's', 'r', or 'a'");
+                throw new PyRuntimeException(_context.CurrentException);
             }
             conversion = CurrentToken.String[0];
             MoveNextToken();
@@ -333,7 +334,7 @@ partial class Parser
             if (info.Error is PyStrConverter.ConvertError.InvalidEscapeSequence)
             {
                 if (!PyVirtualMachine.TryWarn<PySyntaxWarningObjectType>($"invalid escape sequence '\\{info.Char}'"))
-                    throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                    throw new NotImplementedException(); // TODO
             }
 
             Debug.Assert(str is not null);
@@ -351,24 +352,19 @@ partial class Parser
             switch (info.Error)
             {
                 case PyStrConverter.ConvertError.LowerXSequence:
-                    PyVirtualMachine.RaiseSyntaxError(MakeUnicodeErrorInfo("truncated \\xXX escape"));
-                    throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                    throw PyCallContext.ThrowSyntaxError(MakeUnicodeErrorInfo("truncated \\xXX escape"));
 
                 case PyStrConverter.ConvertError.LowerUSequence:
-                    PyVirtualMachine.RaiseSyntaxError(MakeUnicodeErrorInfo("truncated \\uXXXX escape"));
-                    throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                    throw PyCallContext.ThrowSyntaxError(MakeUnicodeErrorInfo("truncated \\uXXXX escape"));
 
                 case PyStrConverter.ConvertError.UpperUSequence:
-                    PyVirtualMachine.RaiseSyntaxError(MakeUnicodeErrorInfo("truncated \\UXXXXXXXX escape"));
-                    throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                    throw PyCallContext.ThrowSyntaxError(MakeUnicodeErrorInfo("truncated \\UXXXXXXXX escape"));
 
                 case PyStrConverter.ConvertError.SurrogatesNotAllowed:
-                    PyVirtualMachine.RaiseSyntaxError($"'utf-8' codec can't encode character '\\u{(uint)info.Char:x4}' in position {info.Position}: surrogates not allowed");
-                    throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                    throw PyCallContext.ThrowSyntaxError($"'utf-8' codec can't encode character '\\u{(uint)info.Char:x4}' in position {info.Position}: surrogates not allowed");
 
                 case PyStrConverter.ConvertError.IllegalUnicodeCharacter:
-                    PyVirtualMachine.RaiseSyntaxError(MakeUnicodeErrorInfo("illegal Unicode character"));
-                    throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                    throw PyCallContext.ThrowSyntaxError(MakeUnicodeErrorInfo("illegal Unicode character"));
 
                 default:
                     throw new UnreachableException();
@@ -470,8 +466,8 @@ partial class Parser
         {
             if (CurrentTokenType is TokenType.Indent)
             {
-                PyVirtualMachine.RaiseIndentationError("unexpected indent");
-                throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                _context.RaiseIndentationError("unexpected indent");
+                throw new PyRuntimeException(_context.CurrentException);
             }
 
             throw new NotSupportedException();

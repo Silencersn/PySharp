@@ -9,23 +9,23 @@ namespace PySharp.AstNodes;
 
 internal static class AstUtils
 {
-    public static TPyObject PyCast<TPyObject>(this PyObject? obj)
+    public static TPyObject PyCast<TPyObject>(this PyObject? obj, PyCallContext context)
     {
-        obj.PyThrowIfNull();
+        obj.PyThrowIfNull(context);
 
         if (obj is not TPyObject objOfT)
         {
-            PyVirtualMachine.RaiseTypeError(null);
-            throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+            context.RaiseTypeError(null);
+            throw new PyRuntimeException(context.CurrentException);
         }
 
         return objOfT;
     }
 
-    public static TPyObject PyThrowIfNull<TPyObject>([NotNull] this TPyObject? obj) where TPyObject : PyObject
+    public static TPyObject PyThrowIfNull<TPyObject>([NotNull] this TPyObject? obj, PyCallContext context) where TPyObject : PyObject
     {
         if (obj is null)
-            throw new PyRuntimeException(PyVirtualMachine.CurrentException ?? throw new NotImplementedException("No Current Exception"));
+            throw new PyRuntimeException(context.CurrentException ?? throw new NotImplementedException("No Current Exception"));
         return obj;
     }
 
@@ -36,15 +36,15 @@ internal static class AstUtils
 
         return result.Value;
     }
-    public static PyObject PyUnwrapIncludedNotImplemented(this PyResult result)
+    public static PyObject PyUnwrapIncludedNotImplemented(this PyResult result, PyCallContext context)
     {
         if (result.IsError)
             throw new PyRuntimeException(result.Exception);
 
         if (result.IsNotImplemented)
         {
-            PyVirtualMachine.RaiseTypeError(null);
-            throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+            context.RaiseTypeError(null);
+            throw new PyRuntimeException(context.CurrentException);
         }
 
         return result.Value;
@@ -57,27 +57,13 @@ internal static class AstUtils
         throw new PyRuntimeException(result.Exception);
     }
 
-    public static PyObject PyThrowIfNullOrNotImplemented([NotNull] this PyObject? obj)
+    public static PyExceptionType PyCastExceptionType(this PyObject? obj, PyCallContext context)
     {
-        if (obj is null)
-            throw new PyRuntimeException(PyVirtualMachine.CurrentException ?? throw new NotImplementedException());
-
-        if (obj is PyNotImplementedObject)
-        {
-            PyVirtualMachine.RaiseTypeError(null);
-            throw new PyRuntimeException(PyVirtualMachine.CurrentException);
-        }
-
-        return obj;
-    }
-
-    public static PyExceptionType PyCastExceptionType(this PyObject? obj)
-    {
-        obj.PyThrowIfNull();
+        obj.PyThrowIfNull(context);
         if (obj is PyExceptionType objectType)
             return objectType;
-        PyVirtualMachine.RaiseTypeError("exceptions must derive from BaseException");
-        throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+        context.RaiseTypeError("exceptions must derive from BaseException");
+        throw new PyRuntimeException(context.CurrentException);
     }
 
     public static void SetTargetValue(this AstExprNode target, PyCallContext context, PyObject value, PyFrame frame)
@@ -93,8 +79,8 @@ internal static class AstUtils
 
             if (tupleNode.Elts.Length != iter.Count)
             {
-                PyVirtualMachine.RaiseValueError("too many or too few values to unpack");
-                throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                context.RaiseValueError("too many or too few values to unpack");
+                throw new PyRuntimeException(context.CurrentException);
             }
             for (int i = 0; i < tupleNode.Elts.Length; i++)
             {
@@ -108,8 +94,8 @@ internal static class AstUtils
 
             if (listNode.Elts.Length != iter.Count)
             {
-                PyVirtualMachine.RaiseValueError("too many or too few values to unpack");
-                throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                context.RaiseValueError("too many or too few values to unpack");
+                throw new PyRuntimeException(context.CurrentException);
             }
             for (int i = 0; i < listNode.Elts.Length; i++)
             {
@@ -156,7 +142,7 @@ internal static class AstUtils
         if (testNode is IAstExprNodeBool node)
             return node.GetExprValueWithResult(context, frame).Result;
         else
-            return testNode.GetExprValue(context, frame).Bool(context).PyUnwrap().PyCast<PyBoolObject>().BoolValue;
+            return testNode.GetExprValue(context, frame).Bool(context).PyUnwrap().PyCast<PyBoolObject>(context).BoolValue;
     }
 
     public static void EnumerateNodes(this IEnumerable<AstNode> nodes, Action<AstNode> action)

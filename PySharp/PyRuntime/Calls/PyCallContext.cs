@@ -4,7 +4,7 @@ using System.Diagnostics;
 
 namespace PySharp.PyRuntime.Calls;
 
-public class PyCallContext
+public sealed partial class PyCallContext
 {
     internal static PyCallContext Null { get; } = new("[Null]", null!);
     internal static PyCallContext NonContextDependency { get; } = new("[Non Context Dependency]", null!);

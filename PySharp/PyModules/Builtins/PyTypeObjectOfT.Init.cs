@@ -1,5 +1,6 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
+using PySharp.PyRuntime.PyAttributes;
 using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Reflection;
@@ -81,7 +82,7 @@ partial class PyTypeObject<TObject>
             [nameof(Format)] = (PySpecialNames.Format, PySpecialMethodParametersType.String),
         }.ToFrozenDictionary();
 
-    internal void AppendSpecialMethodDescriptors2(params ReadOnlySpan<string> names)
+    internal void AppendSpecialMethodDescriptors(params ReadOnlySpan<string> names)
     {
         var type = GetType();
         //foreach (var (name, (pyName, paramType)) in _nameToPySpecialMethodParametersType)
@@ -100,7 +101,7 @@ partial class PyTypeObject<TObject>
         }
     }
 
-    private void AppendOverridenSpecialMethodDescriptors2()
+    private void AppendOverridenSpecialMethodDescriptors()
     {
         var type = GetType();
         foreach (var (name, (pyName, paramType)) in _nameToPySpecialMethodParametersType)
@@ -124,6 +125,31 @@ partial class PyTypeObject<TObject>
                 continue;
 
             PyAttributes.Add(pyName, new PyMethodDescriptorObject(pyName, this, method, paramType));
+        }
+    }
+
+    private void AppendNew()
+    {
+        var newMethod = GetType()
+            .GetMethods(BindingFlags.NonPublic | BindingFlags.Instance)
+            .Single(method => method.Name == "New" && method.GetBaseDefinition().DeclaringType == typeof(PyTypeObject));
+        if (newMethod.DeclaringType != typeof(PyTypeObject<TObject>))
+        {
+            var method = new PyBuiltinFunctionOrMethodObject(PySpecialNames.New, this, null! /* TODO */, [PyFunctionArgsDef("cls", "*args", "**kwargs")] (context, arguments) =>
+            {
+                if (arguments[0] is not PyTypeObject cls)
+                    return PyResult.RaiseTypeError(null);
+
+                if (!cls.IsSubclassOf(this))
+                    return PyResult.RaiseTypeError($"{Name}.__new__({cls.Name}): {cls.Name} is not a subtype of {Name}");
+
+                if (cls.LayoutType.IsSubclassOf(LayoutType))
+                    return PyResult.RaiseTypeError($"{Name}.__new__({cls.Name}) is not safe, use {cls.Name}.__new__()");
+                Debug.Assert(cls.LayoutType == LayoutType || LayoutType.IsSubclassOf(cls.LayoutType));
+
+                return New(context, cls, arguments.ExtraArgs, arguments.ExtraKwargs);
+            });
+            PyAttributes.Add(PySpecialNames.New, method);
         }
     }
 }

@@ -23,8 +23,7 @@ public partial class PyObject : IEquatable<PyObject>
             var eq = PyOperators.Eq(PyCallContext.Null, x, y);
             if (eq.IsError)
             {
-                Debug.Assert(PyVirtualMachine.CurrentException is not null);
-                throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                throw new PyRuntimeException(eq.Exception);
             }
             else if (eq.IsNotImplemented)
             {
@@ -37,8 +36,8 @@ public partial class PyObject : IEquatable<PyObject>
             if (PySpecialMethods.TryGetBool(PyCallContext.Null, eq.Value, out var b, out var result))
                 return b.BoolValue;
 
-            Debug.Assert(PyVirtualMachine.CurrentException is not null);
-            throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+            Debug.Assert(result.IsError);
+            throw new PyRuntimeException(result.Exception);
         }
 
         public int GetHashCode([DisallowNull] PyObject obj)
@@ -46,8 +45,8 @@ public partial class PyObject : IEquatable<PyObject>
             if (PySpecialMethods.TryGetHash(PyCallContext.Null, obj, out var hash, out var result))
                 return hash.Int32Value;
 
-            Debug.Assert(PyVirtualMachine.CurrentException is not null);
-            throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+            Debug.Assert(result.IsError);
+            throw new PyRuntimeException(result.Exception);
         }
     }
 
@@ -67,10 +66,13 @@ public partial class PyObject : IEquatable<PyObject>
                 return 1;
 
             var lt = x.Lt(PyCallContext.Null, y);
-            if (lt.IsError || !PySpecialMethods.TryGetBool(PyCallContext.Null, lt.Value, out var b, out var result))
+            if (lt.IsError)
+                throw new PyRuntimeException(lt.Exception);
+
+            if (!PySpecialMethods.TryGetBool(PyCallContext.Null, lt.Value, out var b, out var result))
             {
-                Debug.Assert(PyVirtualMachine.CurrentException is not null);
-                throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                Debug.Assert(result.IsError);
+                throw new PyRuntimeException(result.Exception);
             }
 
             return b.BoolValue ? -1 : 1;
@@ -213,7 +215,6 @@ public partial class PyObject : IEquatable<PyObject>
         if (PySpecialMethods.TryGetHash(PyCallContext.Null, this, out var hash, out var result))
             return hash.Int32Value;
 
-        PyVirtualMachine.ClearException();
         return PyId.GetHashCode();
     }
 
@@ -238,7 +239,7 @@ public sealed class PyObjectType : PyTypeObject<PyObjectType, PyObject>
 
     public PyObjectType()
     {
-        AppendSpecialMethodDescriptors2(nameof(Repr), nameof(Str), nameof(Bool), nameof(Hash),
+        AppendSpecialMethodDescriptors(nameof(Repr), nameof(Str), nameof(Bool), nameof(Hash),
             nameof(Eq), nameof(Ne), nameof(Lt), nameof(Le), nameof(Gt), nameof(Ge),
             nameof(GetAttribute), nameof(SetAttr), nameof(DelAttr),
             nameof(Init));

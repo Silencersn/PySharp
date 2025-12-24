@@ -78,13 +78,13 @@ public class AssertNode : AstStmtNode
 
         if (Msg is null)
         {
-            PyVirtualMachine.RaiseAssertionError(null as string);
-            throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+            context.RaiseAssertionError(null as string);
+            throw new PyRuntimeException(context.CurrentException);
         }
 
-        var msg = Msg.GetExprValue(context, frame) ?? throw new PyRuntimeException(PyVirtualMachine.CurrentException!);
+        var msg = Msg.GetExprValue(context, frame) ?? throw new PyRuntimeException(context.CurrentException!);
         PyVirtualMachine.RaiseAssertionError(msg);
-        throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+        throw new PyRuntimeException(context.CurrentException);
     }
 
     internal override void Dump(AstNodeDumper dumper)
@@ -136,7 +136,7 @@ public class AugAssignNode : AstStmtNode
 
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
-        Target.SetTargetValue(context, Op.GetOpValue(context, Target.GetExprValue(context, frame), Value.GetExprValue(context, frame)).PyUnwrapIncludedNotImplemented(), frame);
+        Target.SetTargetValue(context, Op.GetOpValue(context, Target.GetExprValue(context, frame), Value.GetExprValue(context, frame)).PyUnwrapIncludedNotImplemented(context), frame);
     }
 
     public override void EnumerateNodes(Action<AstNode> action)
@@ -435,7 +435,7 @@ public class RaiseNode : AstStmtNode
     {
         if (Exc is null)
         {
-            PyVirtualMachine.CurrentException = frame.CurrentException;
+            context.CurrentException = frame.CurrentException;
             throw new PyRuntimeException(frame.CurrentException);
         }
 
@@ -444,7 +444,7 @@ public class RaiseNode : AstStmtNode
         if (obj is PyExceptionObject excObj)
             exc = excObj;
         else
-            exc = obj.PyCastExceptionType().Create();
+            exc = obj.PyCastExceptionType(context).Create();
 
         if (Cause is not null)
         {
@@ -452,11 +452,11 @@ public class RaiseNode : AstStmtNode
             if (cause is PyExceptionObject exObj)
                 exc.Cause = exObj;
             else
-                exc.Cause = cause.PyCastExceptionType().Create();
+                exc.Cause = cause.PyCastExceptionType(context).Create();
             exc.CauseReason = "The above exception was the direct cause of the following exception:";
         }
 
-        PyVirtualMachine.CurrentException = exc;
+        context.CurrentException = exc;
         throw new PyRuntimeException(exc);
     }
 
@@ -503,7 +503,7 @@ public class TryNode : AstStmtNode
             frame.Exceptions.Pop();
             if (!handled)
                 throw;
-            PyVirtualMachine.ClearException();
+            context.ClearException();
         }
         finally
         {
@@ -595,8 +595,8 @@ public class ImportFromNode : AstStmtNode
 
         if (!context.PyEnvironment.TryLoadModule(context, Module, out var module))
         {
-            PyVirtualMachine.RaiseException(PyStandardExceptionTypes.ModuleNotFoundError, $"No module named '{Module}'");
-            throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+            context.RaiseException(PyStandardExceptionTypes.ModuleNotFoundError, $"No module named '{Module}'");
+            throw new PyRuntimeException(context.CurrentException);
         }
 
         if (Names.Count is 1 && Names[0].Name is "*")
@@ -608,16 +608,16 @@ public class ImportFromNode : AstStmtNode
                 // unlike cpython, allows iterable
                 if (!Utils.TryEnumeratedIterable(context, all, out var list, out _))
                 {
-                    PyVirtualMachine.RaiseTypeError($"{Module /* TODO: should be module.__name__ */}.__all__ must be iterable");
-                    throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                    context.RaiseTypeError($"{Module /* TODO: should be module.__name__ */}.__all__ must be iterable");
+                    throw new PyRuntimeException(context.CurrentException);
                 }
 
                 foreach (var item in list)
                 {
                     if (item is not PyStrObject strObj)
                     {
-                        PyVirtualMachine.RaiseTypeError($"Item in {Module /* TODO: should be module.__name__ */}.__all__ must be str, not {item.PyType.Name}");
-                        throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                        context.RaiseTypeError($"Item in {Module /* TODO: should be module.__name__ */}.__all__ must be str, not {item.PyType.Name}");
+                        throw new PyRuntimeException(context.CurrentException);
                     }
 
                     var attr = module.GetAttribute(context, strObj.Value).PyUnwrap();
@@ -642,8 +642,8 @@ public class ImportFromNode : AstStmtNode
 
             if (!module.PyAttributes.TryGetValue(name.Name, out var value))
             {
-                PyVirtualMachine.RaiseException(PyStandardExceptionTypes.ImportError, $"cannot import name '{name.Name}' from '{Module /* TODO: should be module.__name__ */}'");
-                throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                context.RaiseException(PyStandardExceptionTypes.ImportError, $"cannot import name '{name.Name}' from '{Module /* TODO: should be module.__name__ */}'");
+                throw new PyRuntimeException(context.CurrentException);
             }
 
             frame.SetValue(name.AsName ?? name.Name, value);
@@ -857,7 +857,7 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
         if (bases.Count is 0)
             bases.Add(PyObjectType.Shared);
 
-        PyTypeObject.ValidateBases(bases, out var layoutType);
+        PyTypeObject.ValidateBases(context, bases, out var layoutType);
         var type = UserDefinedType.Create(layoutType, Name, ((IFunctionOrClass)this).QualifiedName, bases);
 
         if (AstUtils.TryGetDoc(Body, out var doc))

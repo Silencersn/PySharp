@@ -28,12 +28,12 @@ public static class PyInterpreter
             {
                 if (currentException is PyRuntimeException pyRuntimeException)
                 {
-                    PyVirtualMachine.CurrentException ??= pyRuntimeException.PyException;
-                    PyVirtualMachine.CurrentException.WithTraceback(context);
+                    context.CurrentException ??= pyRuntimeException.PyException;
+                    context.CurrentException.WithTraceback(context);
 
                     if (pyRuntimeException.PyException.PyType == PyStandardExceptionTypes.SystemExit)
                     {
-                        PyVirtualMachine.ClearException();
+                        context.ClearException();
                     }
                     else
                     {
@@ -41,7 +41,7 @@ public static class PyInterpreter
                             context.PyEnvironment.ExitCode = 1;
                         var color = Console.ForegroundColor;
                         Console.ForegroundColor = ConsoleColor.Red;
-                        context.Error.WriteLine(PyVirtualMachine.CurrentException.ToMessage(context));
+                        context.Error.WriteLine(context.CurrentException.ToMessage(context));
                         Console.ForegroundColor = color;
                     }
 
@@ -103,7 +103,7 @@ public static class PyInterpreter
     public static PyModuleObject RunCodeWithinEnvironment(PyCallContext context, string code, string moduleName, bool newFrame, string sourceName)
     {
         var tokens = Tokenize(code);
-        var node = Parser.Parse(sourceName, tokens, context.PyEnvironment);
+        var node = Parser.Parse(sourceName, tokens, context);
         return PyVirtualMachine.Execute(context, node, moduleName, newFrame);
     }
 
@@ -128,7 +128,7 @@ public static class PyInterpreter
             try
             {
                 var tokenStream = new TokenInteractiveStream(environment.In, environment.Out);
-                var parser = new Parser("<stdin>", tokenStream, environment.OptimizationOptions);
+                var parser = new Parser(context, "<stdin>", tokenStream, environment.OptimizationOptions);
                 node = parser.ParseInteractiveNode();
             }
             catch (PyRuntimeException e)

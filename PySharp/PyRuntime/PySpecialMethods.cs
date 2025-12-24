@@ -120,19 +120,6 @@ public static class PySpecialMethods
         return result;
     }
 
-    public static bool TryCastType<TPyObject>(PyObject obj, string objName, string expectedType, [NotNullWhen(true)] out TPyObject? result) where TPyObject : PyObject
-    {
-        if (obj is TPyObject objOfT)
-        {
-            result = objOfT;
-            return true;
-        }
-
-        PyVirtualMachine.RaiseTypeError($"{objName} must be {expectedType}, not {obj.PyType.Name}");
-        result = null;
-        return false;
-    }
-
     public static PyResult DivMod(PyCallContext context, PyObject left, PyObject right)
     {
         var ret = left.DivMod(context, right);

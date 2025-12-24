@@ -109,7 +109,7 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
             });
     }
 
-    internal static void ValidateBases(IEnumerable<PyTypeObject> bases, out Type layoutType)
+    internal static void ValidateBases(PyCallContext context, IEnumerable<PyTypeObject> bases, out Type layoutType)
     {
         // TODO: check mro here
 
@@ -118,8 +118,8 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
         {
             if (baseType.IsSealed)
             {
-                PyVirtualMachine.RaiseTypeError($"type '{baseType.Name}' is not an acceptable base type");
-                throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                context.RaiseTypeError($"type '{baseType.Name}' is not an acceptable base type");
+                throw new PyRuntimeException(context.CurrentException);
             }
 
             if (baseType.LayoutType != layoutType)
@@ -130,8 +130,8 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
                 }
                 else if (!layoutType.IsAssignableFrom(baseType.LayoutType))
                 {
-                    PyVirtualMachine.RaiseTypeError("multiple bases have instance lay-out conflict");
-                    throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                    context.RaiseTypeError("multiple bases have instance lay-out conflict");
+                    throw new PyRuntimeException(context.CurrentException);
                 }
             }
         }
@@ -203,8 +203,7 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
                 }
                 else if (i == baseMros.Count - 1)
                 {
-                    PyVirtualMachine.RaiseTypeError("Cannot create a consistent method resolution order (MRO)");
-                    throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                    throw new PyRuntimeException(PyStandardExceptionTypes.TypeError.Create(PyStrObject.FromString("Cannot create a consistent method resolution order (MRO)")));
                 }
             }
         }

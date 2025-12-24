@@ -1,4 +1,5 @@
-﻿using PySharp.PyRuntime.Environments;
+﻿using PySharp.PyRuntime.Calls;
+using PySharp.PyRuntime.Environments;
 using PySharp.PyRuntime.Metadata;
 using PySharp.Tokenization;
 using System.Collections.Frozen;
@@ -8,16 +9,13 @@ namespace PySharp.AstNodes;
 
 public sealed partial class Parser
 {
-    public static ModuleNode Parse(string sourceName, IEnumerable<TokenInfo> tokens, PyEnvironment? environment = null)
+    public static ModuleNode Parse(string sourceName, IEnumerable<TokenInfo> tokens, PyCallContext context)
     {
         ArgumentNullException.ThrowIfNull(sourceName);
         ArgumentNullException.ThrowIfNull(tokens);
 
-        if (environment is null)
-            return new Parser(sourceName, OptimizationOptions.O0, tokens).ParseModuleNode();
-
-        using var context = new PyEnvironmentContext(environment);
-        var result = new Parser(sourceName, environment.OptimizationOptions, tokens).ParseModuleNode();
+        using var _ = new PyEnvironmentContext(context.PyEnvironment);
+        var result = new Parser(context, sourceName, context.PyEnvironment.OptimizationOptions, tokens).ParseModuleNode();
         return result;
     }
 
@@ -45,6 +43,7 @@ public sealed partial class Parser
         return AugOperators.Contains(type);
     }
 
+    private readonly PyCallContext _context;
     private readonly string _sourceName;
     private readonly OptimizationOptions _options;
     private readonly TokenStream _tokenStream;
@@ -79,14 +78,15 @@ public sealed partial class Parser
     [DebuggerBrowsable(DebuggerBrowsableState.Never)]
     private TokenType CurrentTokenType => CurrentToken.Type;
 
-    internal Parser(string sourceName, TokenStream tokenStream, OptimizationOptions? options = null)
+    internal Parser(PyCallContext context, string sourceName, TokenStream tokenStream, OptimizationOptions? options = null)
     {
+        _context = context;
         _options = options ?? OptimizationOptions.O0;
         _tokenStream = tokenStream;
         _isEnd = false;
         _sourceName = sourceName;
     }
-    internal Parser(string sourceName, OptimizationOptions options, IEnumerable<TokenInfo> tokens) : this(sourceName, new TokenArrayStream(tokens), options)
+    internal Parser(PyCallContext context, string sourceName, OptimizationOptions options, IEnumerable<TokenInfo> tokens) : this(context, sourceName, new TokenArrayStream(tokens), options)
     {
     }
 

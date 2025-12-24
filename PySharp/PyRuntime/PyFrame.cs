@@ -181,8 +181,7 @@ public sealed partial class PyFrame
             {
                 if (value is null)
                 {
-                    PyVirtualMachine.RaiseException(PyStandardExceptionTypes.UnboundLocalError, $"cannot access local variable '{name}' where it is not associated with a value");
-                    throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                    throw PyCallContext.ThrowException(PyStandardExceptionTypes.UnboundLocalError, $"cannot access local variable '{name}' where it is not associated with a value");
                 }
 
                 return value;
@@ -192,15 +191,13 @@ public sealed partial class PyFrame
             {
                 if (cell.Value is null)
                 {
-                    PyVirtualMachine.RaiseException(PyStandardExceptionTypes.UnboundLocalError, $"cannot access local variable '{name}' where it is not associated with a value");
-                    throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                    throw PyCallContext.ThrowException(PyStandardExceptionTypes.UnboundLocalError, $"cannot access local variable '{name}' where it is not associated with a value");
                 }
 
                 return cell.Value;
             }
 
-            PyVirtualMachine.RaiseException(PyStandardExceptionTypes.NameError, $"name '{name}' is not defined");
-            throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+            throw PyCallContext.ThrowException(PyStandardExceptionTypes.NameError, $"name '{name}' is not defined");
         }
         else if (variableType is PyVariableType.Global)
         {
@@ -210,8 +207,7 @@ public sealed partial class PyFrame
             if (TryGetValueFromBuiltins(name, out value))
                 return value;
 
-            PyVirtualMachine.RaiseException(PyStandardExceptionTypes.NameError, $"name '{name}' is not defined");
-            throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+            throw PyCallContext.ThrowException(PyStandardExceptionTypes.NameError, $"name '{name}' is not defined");
         }
         else if (variableType is PyVariableType.Closure)
         {
@@ -222,8 +218,7 @@ public sealed partial class PyFrame
             if (value is not null)
                 return value;
 
-            PyVirtualMachine.RaiseException(PyStandardExceptionTypes.NameError, $"cannot access free variable '{name}' where it is not associated with a value in enclosing scope");
-            throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+            throw PyCallContext.ThrowException(PyStandardExceptionTypes.NameError, $"cannot access free variable '{name}' where it is not associated with a value in enclosing scope");
         }
 
         throw new NotImplementedException();
@@ -266,8 +261,8 @@ public sealed partial class PyFrame
     {
         if (!context.PyEnvironment.TryLoadModule(context, name, out var module))
         {
-            PyVirtualMachine.RaiseException(PyStandardExceptionTypes.ModuleNotFoundError, $"No module named '{name}'");
-            throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+            context.RaiseException(PyStandardExceptionTypes.ModuleNotFoundError, $"No module named '{name}'");
+            throw new PyRuntimeException(context.CurrentException);
         }
 
         SetValue(alias ?? name, module);

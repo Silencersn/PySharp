@@ -1,4 +1,5 @@
 ﻿using PySharp.PyRuntime;
+using PySharp.PyRuntime.Calls;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
@@ -615,8 +616,7 @@ public sealed partial class Lexer
 
                     if (indentationLevel != _indentationLevels.Peek())
                     {
-                        PyVirtualMachine.RaiseIndentationError("unindent does not match any outer indentation level");
-                        throw new PyRuntimeException(PyVirtualMachine.CurrentException);
+                        throw PyCallContext.ThrowIndentationError("unindent does not match any outer indentation level");
                     }
                 }
             }

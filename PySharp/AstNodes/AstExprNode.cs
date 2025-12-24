@@ -302,7 +302,7 @@ public sealed class CallNode : AstExprNode
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        var func = Func.GetExprValue(context, frame).PyThrowIfNull();
+        var func = Func.GetExprValue(context, frame).PyThrowIfNull(context);
 
         IReadOnlyList<PyObject> args;
         IReadOnlyDictionary<string, PyObject> kwargs;
@@ -529,7 +529,7 @@ public sealed class BoolOpNode : AstExprNode, IAstExprNodeBool, IAstExprNodeNoSe
     {
         ArgumentNullException.ThrowIfNull(frame);
         var ret = Op.GetBoolOpValue(context, Values.Select(v => v.GetExprValue(context, frame)));
-        ret.Value.PyThrowIfNull();
+        ret.Value.PyThrowIfNull(context);
         return ret!;
     }
 
@@ -558,7 +558,7 @@ public sealed class BinOpNode : AstExprNode
     {
         var left = Left.GetExprValue(context, frame);
         var right = Right.GetExprValue(context, frame);
-        return Operator.GetOpValue(context, left, right).PyUnwrapIncludedNotImplemented();
+        return Operator.GetOpValue(context, left, right).PyUnwrapIncludedNotImplemented(context);
     }
 
     public override void EnumerateNodes(Action<AstNode> action)
@@ -657,9 +657,9 @@ public sealed class IfExpNode : AstExprNode, IAstExprNodeNoSelfPythonException
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        if (Test.GetExprValue(context, frame).Bool(context).PyUnwrap().PyCast<PyBoolObject>().BoolValue)
-            return Body.GetExprValue(context, frame).PyThrowIfNull();
-        return OrElse.GetExprValue(context, frame).PyThrowIfNull();
+        if (Test.GetExprValue(context, frame).Bool(context).PyUnwrap().PyCast<PyBoolObject>(context).BoolValue)
+            return Body.GetExprValue(context, frame).PyThrowIfNull(context);
+        return OrElse.GetExprValue(context, frame).PyThrowIfNull(context);
     }
 
     public override void EnumerateNodes(Action<AstNode> action)
