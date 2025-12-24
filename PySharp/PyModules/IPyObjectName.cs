@@ -18,7 +18,7 @@ public interface IPyObjectRecursiveRepr
     public static PyResult RecursiveRepr(PyCallContext context, PyObject pyObj)
     {
         ArgumentNullException.ThrowIfNull(pyObj);
-        
+
         return RecursiveRepr(context, pyObj, []);
     }
 

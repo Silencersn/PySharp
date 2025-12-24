@@ -28,7 +28,7 @@ public class ExceptHandlerNode : AstExceptHandlerNode
             context.RaiseTypeError(null);
             throw new PyRuntimeException(context.CurrentException);
         }
-        
+
         if (Type is null || type is not null && type.IsInstance(exception))
         {
             if (Identifier is not null)

@@ -1,5 +1,4 @@
 ﻿using PySharp.PyRuntime.Calls;
-using PySharp.PyRuntime.Environments;
 using PySharp.PyRuntime.Metadata;
 using PySharp.Tokenization;
 using System.Collections.Frozen;
@@ -96,16 +95,7 @@ public sealed partial class Parser
 
         _tokenStream.MoveNextToken();
     }
-    private void MoveNextToken(out MetaInfo metaInfo)
-    {
-        metaInfo = CreateMetaInfo();
-        MoveNextToken();
-    }
-    private void MoveNextToken(MetaInfo metaInfo)
-    {
-        SetMetaInfoEnd(metaInfo);
-        MoveNextToken();
-    }
+
     private void EnsureTokenType(TokenType type)
     {
         if (CurrentTokenType != type)

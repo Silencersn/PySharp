@@ -7,7 +7,6 @@ using PySharp.PyModules.This;
 using PySharp.PyModules.Threading;
 using PySharp.PyModules.Time;
 using PySharp.PyRuntime.Calls;
-using System;
 
 
 namespace PySharp.PyRuntime;

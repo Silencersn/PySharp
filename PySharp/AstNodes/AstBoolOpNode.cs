@@ -16,7 +16,7 @@ public class AndNode : AstBoolOpNode
     public override (bool Result, PyObject? Value) GetBoolOpValue(PyCallContext context, IEnumerable<PyObject> values)
     {
         PyObject lastValue = null!;
-        
+
         foreach (var value in values)
         {
             if (!PySpecialMethods.TryGetBool(context, value, out var b, out var result))

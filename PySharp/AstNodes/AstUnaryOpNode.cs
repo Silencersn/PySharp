@@ -18,7 +18,7 @@ public class NotNode : AstUnaryOpNode
         if (!PySpecialMethods.TryGetBool(context, value, out var b, out var result))
             return result;
         return PyBoolObject.FromBoolean(!b.BoolValue);
-	}
+    }
 }
 
 public class InvertNode : AstUnaryOpNode

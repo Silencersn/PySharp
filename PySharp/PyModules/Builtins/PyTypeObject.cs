@@ -55,7 +55,7 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
             if (pyType.PyAttributes.TryGetValue(name, out attrFromType))
                 break;
         }
-        
+
         PyObject? nonDataDescriptor = null;
         {
             if (attrFromType is not null && Utils.IsDescriptor(attrFromType, out var hasGet, out var hasSet, out var hasDelete))
