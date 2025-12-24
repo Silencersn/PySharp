@@ -138,15 +138,15 @@ public static partial class PyBuiltinFunctions
         for (int i = 0; i < arguments.ExtraArgs.Count; i++)
         {
             if (i is not 0)
-                PyVirtualMachine.Out.Write(sep);
+                context.Out.Write(sep);
 
             if (!PySpecialMethods.TryGetStr(context, arguments.ExtraArgs[i], out var str, out result))
                 return result;
-            PyVirtualMachine.Out.Write(str.Value);
+            context.Out.Write(str.Value);
         }
-        PyVirtualMachine.Out.Write(end);
+        context.Out.Write(end);
         if (flushObj.BoolValue)
-            PyVirtualMachine.Out.Flush();
+            context.Out.Flush();
 
         return PyNoneObject.None;
     }
@@ -175,7 +175,7 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef()]
     private static PyResult InputImpl_1(PyCallContext context, PyArguments arguments)
     {
-        var str = PyStrObject.FromString(PyVirtualMachine.In.ReadLine() ?? string.Empty);
+        var str = PyStrObject.FromString(context.In.ReadLine() ?? string.Empty);
         return str;
     }
     [PyFunctionArgsDef("prompt", "/")]
@@ -183,8 +183,8 @@ public static partial class PyBuiltinFunctions
     {
         if (!PySpecialMethods.TryGetStr(context, arguments.Args[0], out var s, out var result))
             return result;
-        PyVirtualMachine.Out.Write(s.Value);
-        var str = PyStrObject.FromString(PyVirtualMachine.In.ReadLine() ?? string.Empty);
+        context.Out.Write(s.Value);
+        var str = PyStrObject.FromString(context.In.ReadLine() ?? string.Empty);
         return str;
     }
     [PyFunctionArgsDef("source", "/", "globals=None", "locals=None")]
@@ -194,7 +194,7 @@ public static partial class PyBuiltinFunctions
             return PyResult.RaiseTypeError(null);
         var parser = new Parser("<string>", PyVirtualMachine.PyEnvironment.OptimizationOptions, Lexer.Tokenize(str.Value));
         var node = parser.ParseExpressionNode();
-        var frame = PyVirtualMachine.CurrentFrame;
+        var frame = context.CurrentFrame;
         var tempFrame = frame.TempFrame(FrameType.Eval);
 
         try
@@ -225,7 +225,7 @@ public static partial class PyBuiltinFunctions
         {
             return PyResult.RaiseSyntaxError(e.Message);
         }
-        var frame = PyVirtualMachine.CurrentFrame;
+        var frame = context.CurrentFrame;
         var tempFrame = frame.TempFrame(FrameType.Exec);
         node.Execute(context, tempFrame);
         return PyNoneObject.None;
@@ -471,8 +471,8 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef()]
     private static PyResult DirImpl_1(PyCallContext context, PyArguments arguments)
     {
-        var result = PyListObject.CreateList(PyVirtualMachine.CurrentFrame.Locals
-            .Concat(PyVirtualMachine.CurrentFrame.Closures.Select(static pair => KeyValuePair.Create(pair.Key, pair.Value.Value)))
+        var result = PyListObject.CreateList(context.CurrentFrame.Locals
+            .Concat(context.CurrentFrame.Closures.Select(static pair => KeyValuePair.Create(pair.Key, pair.Value.Value)))
             .Where(static pair => pair.Value is not null)
             .Select(static pair => PyStrObject.FromString(pair.Key)));
         return result;
@@ -514,8 +514,8 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef()]
     private static PyResult LocalsImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = PyDictObject.CreateDict(PyVirtualMachine.CurrentFrame.Locals
-            .Concat(PyVirtualMachine.CurrentFrame.Closures.Select(static pair => KeyValuePair.Create(pair.Key, pair.Value.Value)))
+        var result = PyDictObject.CreateDict(context.CurrentFrame.Locals
+            .Concat(context.CurrentFrame.Closures.Select(static pair => KeyValuePair.Create(pair.Key, pair.Value.Value)))
             .Where(static pair => pair.Value is not null)
             .Select(static pair => KeyValuePair.Create((PyObject)PyStrObject.FromString(pair.Key), pair.Value!)));
         return result;
@@ -524,7 +524,7 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef()]
     private static PyResult GlobalsImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = PyDictObject.CreateProxy(PyVirtualMachine.CurrentFrame.GlobalsAdapter);
+        var result = PyDictObject.CreateProxy(context.CurrentFrame.GlobalsAdapter);
         return result;
     }
 

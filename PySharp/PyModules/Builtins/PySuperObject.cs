@@ -69,7 +69,7 @@ public sealed class PySuperObjectType : PyTypeObject<PySuperObjectType, PySuperO
     [PyFunctionArgsDef()]
     private static PyResult NewImpl_1(PyCallContext context, PyArguments arguments)
     {
-        var frame = PyVirtualMachine.CurrentFrame;
+        var frame = context.CurrentFrame;
         if (frame.CallingArguments is null)
             // TODO: in what situations would this happen?
             return PyResult.RaiseRuntimeError("super(): no arguments");

@@ -167,12 +167,12 @@ public class ExprNode : AstStmtNode
     internal PyObject ExecuteExprStmt(PyCallContext context, PyFrame frame)
     {
         var value = Value.GetExprValue(context, frame);
-        if (PyVirtualMachine.IsInteractive)
+        if (context.IsInteractive)
         {
             if (value is not PyNoneObject)
             {
                 var repr = (PyStrObject)PySpecialMethods.GetRepr(context, value).PyUnwrap();
-                PyVirtualMachine.Out.WriteLine(repr.Value);
+                context.Out.WriteLine(repr.Value);
             }
         }
         return value;
@@ -488,8 +488,8 @@ public class TryNode : AstStmtNode
         }
         catch (PyRuntimeException e)
         {
-            e.PyException.WithTraceback();
-            while (PyVirtualMachine.CurrentFrame != frame)
+            e.PyException.WithTraceback(context);
+            while (context.CurrentFrame != frame)
                 PyVirtualMachine.ExitFrame();
 
             frame.Exceptions.Push(e.PyException);
@@ -737,7 +737,7 @@ internal sealed class FunctionCaller
 
     private PyResult CallGeneral(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        var backFrame = PyVirtualMachine.CurrentFrame;
+        var backFrame = context.CurrentFrame;
         var frame = backFrame.CreateFuncCallOrClassBuildFrame(_func.Name, _func, _frameType, (args, kwargs), _func._globals);
         frame._variables = _node.Variables;
 

@@ -26,10 +26,10 @@ public sealed class PyExceptionObject : PyObject
     public string? Traceback { get; internal set; }
     internal string? ThreadTracebackInfo { get; set; }
 
-    internal PyExceptionObject WithTraceback(string? traceback = null)
+    internal PyExceptionObject WithTraceback(PyCallContext context, string? traceback = null)
     {
-        Traceback = traceback ?? PrintTraceback();
-        var frame = PyVirtualMachine.CurrentFrame;
+        Traceback = traceback ?? PrintTraceback(context);
+        var frame = context.CurrentFrame;
         while (frame is not null)
         {
             var back = frame.Back;
@@ -45,10 +45,10 @@ public sealed class PyExceptionObject : PyObject
         return this;
     }
 
-    public static string PrintTraceback()
+    public static string PrintTraceback(PyCallContext context)
     {
         Stack<string> stack = [];
-        var frame = PyVirtualMachine.CurrentFrame;
+        var frame = context.CurrentFrame;
         while (frame is not null)
         {
             MetaInfo? info;

@@ -13,7 +13,7 @@ partial class PyThreadObject : PyObject
         if (_thread is not null)
             throw new InvalidOperationException();
 
-        var backFrame = PyVirtualMachine.CurrentFrame;
+        var backFrame = context.CurrentFrame;
 
         _thread = new Thread(() =>
         {
@@ -26,10 +26,10 @@ partial class PyThreadObject : PyObject
             }
             catch (ThreadInterruptedException)
             {
-                while (PyVirtualMachine.CurrentFrame != frame)
+                while (context.CurrentFrame != frame)
                     PyVirtualMachine.ExitFrame();
             }
-            Debug.Assert(PyVirtualMachine.CurrentFrame.IsRoot);
+            Debug.Assert(context.CurrentFrame.IsRoot);
             // no need to PyVirtualMachine.ExitFrame()
             Debug.Assert(_thread is not null);
             PyVirtualMachine.PyEnvironment.Threads.Remove(_thread);

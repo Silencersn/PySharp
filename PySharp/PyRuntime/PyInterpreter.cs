@@ -16,7 +16,7 @@ public static class PyInterpreter
 
     internal static void PyTryCatch(PyCallContext context, Action action)
     {
-        var frame = PyVirtualMachine.CurrentFrame;
+        var frame = context.CurrentFrame;
         try
         {
             action();
@@ -29,7 +29,7 @@ public static class PyInterpreter
                 if (currentException is PyRuntimeException pyRuntimeException)
                 {
                     PyVirtualMachine.CurrentException ??= pyRuntimeException.PyException;
-                    PyVirtualMachine.CurrentException.WithTraceback();
+                    PyVirtualMachine.CurrentException.WithTraceback(context);
 
                     if (pyRuntimeException.PyException.PyType == PyStandardExceptionTypes.SystemExit)
                     {
@@ -41,11 +41,11 @@ public static class PyInterpreter
                             PyVirtualMachine.PyEnvironment.ExitCode = 1;
                         var color = Console.ForegroundColor;
                         Console.ForegroundColor = ConsoleColor.Red;
-                        PyVirtualMachine.Error.WriteLine(PyVirtualMachine.CurrentException.ToMessage(context));
+                        context.Error.WriteLine(PyVirtualMachine.CurrentException.ToMessage(context));
                         Console.ForegroundColor = color;
                     }
 
-                    while (PyVirtualMachine.CurrentFrame != frame)
+                    while (context.CurrentFrame != frame)
                         PyVirtualMachine.ExitFrame();
 
                     break;
@@ -94,7 +94,7 @@ public static class PyInterpreter
         PyTryCatch(context, () =>
         {
             module = RunCodeWithinEnvironment(context, code, moduleName ?? string.Empty, false, sourceName ?? "<string>");
-            Debug.Assert(PyVirtualMachine.CurrentFrame.IsRoot);
+            Debug.Assert(context.CurrentFrame.IsRoot);
         });
         PyVirtualMachine.PyEnvironment.OnExit();
         return module;
@@ -139,8 +139,8 @@ public static class PyInterpreter
 
             PyTryCatch(context, () =>
             {
-                node.Execute(context, PyVirtualMachine.CurrentFrame);
-                Debug.Assert(PyVirtualMachine.CurrentFrame.IsRoot);
+                node.Execute(context, context.CurrentFrame);
+                Debug.Assert(context.CurrentFrame.IsRoot);
             });
         }
     }

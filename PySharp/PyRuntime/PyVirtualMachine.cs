@@ -103,7 +103,7 @@ public static partial class PyVirtualMachine
             PyEnvironment.Init(PyEnvironmentOptions.Default);
         }
 
-        moduleNode.Execute(PyCallContext.Null, CurrentFrame);
+        moduleNode.Execute(context, CurrentFrame);
 
         // module will be reloaded
         module._pyAttributes = CurrentFrame._globals.Globals;

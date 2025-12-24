@@ -7,6 +7,8 @@ public class PyTupleIteratorObject : PyObject
     internal readonly PyTupleObject _tuple;
     internal int _index;
 
+    public override PyTypeObject DefaultPyType => PyTupleIteratorObjectType.Shared;
+
     public PyTupleIteratorObject(PyTupleObject pyTupleObject)
     {
         ArgumentNullException.ThrowIfNull(pyTupleObject);
