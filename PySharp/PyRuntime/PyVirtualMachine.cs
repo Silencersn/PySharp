@@ -22,73 +22,6 @@ public delegate void PyExitEventHandler(PyExitEventArgs args);
 
 public static partial class PyVirtualMachine
 {
-    private static volatile int _asyncContextCounter = 0;
-    private static PyEnvironment? _nonAsyncEnvironment;
-    private static readonly AsyncLocal<PyEnvironment?> _pyEnvironmentAsyncLocal = new();
-    internal static AsyncLocal<PyEnvironment?> PyEnvironmentAsyncLocal => _pyEnvironmentAsyncLocal;
-    private static PyEnvironment GetAsyncPyEnvironment()
-    {
-        return _pyEnvironmentAsyncLocal.Value ?? throw new InvalidOperationException($"The {nameof(Environments.PyEnvironment)} is necessary");
-    }
-    private static PyEnvironment GetNonAsyncPyEnvironment()
-    {
-        return _nonAsyncEnvironment ?? throw new InvalidOperationException($"The {nameof(Environments.PyEnvironment)} is necessary");
-    }
-    internal static bool IsAsyncContext => _asyncContextCounter > 0;
-    public static PyEnvironment PyEnvironment => IsAsyncContext ? GetAsyncPyEnvironment() : GetNonAsyncPyEnvironment();
-    internal static PyEnvironment? InternalPyEnvironment => IsAsyncContext ? _pyEnvironmentAsyncLocal.Value : _nonAsyncEnvironment;
-
-    public static void SetAsync(bool enable)
-    {
-        if (enable)
-        {
-            Interlocked.Increment(ref _asyncContextCounter);
-        }
-        else
-        {
-            if (_asyncContextCounter is 0)
-                throw new InvalidOperationException($"Cannot decrement {nameof(_asyncContextCounter)} below zero. SetAsync(false) called more times than SetAsync(true).");
-            Interlocked.Decrement(ref _asyncContextCounter);
-        }
-    }
-
-    internal static void SetPyEnvironment(PyEnvironment? environment)
-    {
-        if (IsAsyncContext)
-            PyEnvironmentAsyncLocal.Value = environment;
-        else
-            _nonAsyncEnvironment = environment;
-    }
-
-    internal static PyExceptionObject? CurrentException
-    {
-        get => PyEnvironment.CurrentError;
-        set => PyEnvironment.CurrentError = value;
-    }
-    internal static TextReader In => PyEnvironment.In;
-    internal static TextWriter Out => PyEnvironment.Out;
-    internal static TextWriter Error => PyEnvironment.Error;
-    internal static PyFrame CurrentFrame => PyEnvironment.CurrentFrame;
-    internal static bool IsInteractive => PyEnvironment.IsInteractive;
-
-    internal static void EnterFrame(PyFrame frame)
-    {
-        PyEnvironment.CurrentFrame = frame;
-    }
-
-    internal static void ExitFrame()
-    {
-        Debug.Assert(PyEnvironment.CurrentFrame.Back is not null);
-        PyEnvironment.CurrentFrame = PyEnvironment.CurrentFrame.Back;
-    }
-
-    internal static void Exit(int exitCode)
-    {
-        PyEnvironment.ExitCode = exitCode;
-        RaiseSystemExit();
-        throw new PyRuntimeException(CurrentException);
-    }
-
     internal static PyModuleObject Execute(PyCallContext context, ModuleNode moduleNode, string moduleName, bool newFrame)
     {
         var module = new PyModuleObject(moduleName);
@@ -99,19 +32,19 @@ public static partial class PyVirtualMachine
     {
         if (newFrame)
         {
-            context.EnterFrame(PyFrame.CreateModuleFrame(CurrentFrame));
-            PyEnvironment.Init(PyEnvironmentOptions.Default);
+            context.EnterFrame(PyFrame.CreateModuleFrame(context.CurrentFrame));
+            context.PyEnvironment.Init(PyEnvironmentOptions.Default);
         }
 
-        moduleNode.Execute(context, CurrentFrame);
+        moduleNode.Execute(context, context.CurrentFrame);
 
         // module will be reloaded
-        module._pyAttributes = CurrentFrame._globals.Globals;
-        Debug.Assert(ReferenceEquals(module.PyAttributes, CurrentFrame._globals.Globals));
+        module._pyAttributes = context.CurrentFrame._globals.Globals;
+        Debug.Assert(ReferenceEquals(module.PyAttributes, context.CurrentFrame._globals.Globals));
         if (AstUtils.TryGetDoc(moduleNode.Body, out var doc))
             module.PyAttributes[PySpecialNames.Doc] = doc;
 
-        foreach (var pair in CurrentFrame.Globals)
+        foreach (var pair in context.CurrentFrame.Globals)
         {
             // all statements have been executed,
             // there should be no uninitialized variables.

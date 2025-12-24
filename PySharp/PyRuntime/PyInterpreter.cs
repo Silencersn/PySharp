@@ -87,7 +87,6 @@ public static class PyInterpreter
             .FileSystem.WithEmptyMemoryFileSystem()
             .Build();
 
-        using var _ = new PyEnvironmentContext(environment);
         var context = PyCallContext.FromEnvironment(environment);
 
         PyModuleObject? module = null;
@@ -119,7 +118,6 @@ public static class PyInterpreter
         environment.Out.WriteLine($"{nameof(PySharp)} (v{typeof(PyInterpreter).Assembly.GetName().Version}) on {Environment.OSVersion}");
 
 
-        using var _ = new PyEnvironmentContext(environment);
         var context = PyCallContext.FromEnvironment(environment);
 
         while (true)

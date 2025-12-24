@@ -78,13 +78,11 @@ public class AssertNode : AstStmtNode
 
         if (Msg is null)
         {
-            context.RaiseAssertionError(null as string);
-            throw new PyRuntimeException(context.CurrentException);
+            throw PyCallContext.ThrowAssertionError(null as string);
         }
 
-        var msg = Msg.GetExprValue(context, frame) ?? throw new PyRuntimeException(context.CurrentException!);
-        PyVirtualMachine.RaiseAssertionError(msg);
-        throw new PyRuntimeException(context.CurrentException);
+        var msg = Msg.GetExprValue(context, frame);
+        throw PyCallContext.ThrowAssertionError(msg);
     }
 
     internal override void Dump(AstNodeDumper dumper)

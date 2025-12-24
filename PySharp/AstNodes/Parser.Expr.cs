@@ -107,7 +107,7 @@ partial class Parser
         {
             if (CurrentTokenType is TokenType.FStringMiddle)
             {
-                var str = FromLiteralToString(CurrentToken.String, true);
+                var str = FromLiteralToString(_context, CurrentToken.String, true);
                 var node = AstNode.Constant(str, CreateMetaInfo());
                 nodes.Add(node);
             }
@@ -234,7 +234,7 @@ partial class Parser
         {
             if (CurrentTokenType is TokenType.String)
             {
-                var str = FromLiteralToString(CurrentToken.String, false);
+                var str = FromLiteralToString(_context, CurrentToken.String, false);
                 var node = AstNode.Constant(str, CreateMetaInfo());
                 nodes.Add(node);
             }
@@ -247,7 +247,7 @@ partial class Parser
                 {
                     if (CurrentTokenType is TokenType.FStringMiddle)
                     {
-                        var str = FromLiteralToString(CurrentToken.String, true);
+                        var str = FromLiteralToString(_context, CurrentToken.String, true);
                         var node = AstNode.Constant(str, CreateMetaInfo());
                         nodes.Add(node);
                     }
@@ -317,7 +317,7 @@ partial class Parser
 
 
     }
-    static string FromLiteralToString(string literal, bool hasWrapper)
+    static string FromLiteralToString(PyCallContext context, string literal, bool hasWrapper)
     {
         // TODO: prefix 'b'
 
@@ -333,8 +333,8 @@ partial class Parser
         {
             if (info.Error is PyStrConverter.ConvertError.InvalidEscapeSequence)
             {
-                if (!PyVirtualMachine.TryWarn<PySyntaxWarningObjectType>($"invalid escape sequence '\\{info.Char}'"))
-                    throw new NotImplementedException(); // TODO
+                if (!context.TryWarn<PySyntaxWarningObjectType>($"invalid escape sequence '\\{info.Char}'"))
+                    throw new PyRuntimeException(context.CurrentException);
             }
 
             Debug.Assert(str is not null);

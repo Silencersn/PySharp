@@ -7,27 +7,6 @@ using System.Diagnostics;
 
 namespace PySharp.PyRuntime.Environments;
 
-public sealed class PyEnvironmentContext : IDisposable
-{
-    private bool _disposed;
-    private readonly PyEnvironment? _outerEnvironment;
-
-    public PyEnvironmentContext(PyEnvironment? environment)
-    {
-        _outerEnvironment = PyVirtualMachine.InternalPyEnvironment;
-        PyVirtualMachine.SetPyEnvironment(environment);
-    }
-
-    public void Dispose()
-    {
-        if (_disposed)
-            return;
-
-        _disposed = true;
-        PyVirtualMachine.SetPyEnvironment(_outerEnvironment);
-    }
-}
-
 public sealed partial class PyEnvironment
 {
     public static PyEnvironment Console => CreateBuilder().StandardIO.WithConsole().Build();

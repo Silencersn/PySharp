@@ -14,7 +14,6 @@ public sealed partial class Parser
         ArgumentNullException.ThrowIfNull(sourceName);
         ArgumentNullException.ThrowIfNull(tokens);
 
-        using var _ = new PyEnvironmentContext(context.PyEnvironment);
         var result = new Parser(context, sourceName, context.PyEnvironment.OptimizationOptions, tokens).ParseModuleNode();
         return result;
     }
