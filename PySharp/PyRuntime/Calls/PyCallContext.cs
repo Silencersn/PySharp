@@ -57,13 +57,20 @@ public sealed partial class PyCallContext
         throw new PyRuntimeException(PyStandardExceptionTypes.SystemExit.Create());
     }
 
-
     internal static PyCallContext FromLoadingModule(PyEnvironment environment)
     {
         var context = new PyCallContext("[From Loading Module]", environment);
         var frame = PyFrame.CreateModuleFrame(context, null);
         context.InitState(frame);
         return context;
+    }
+
+    internal static PyCallContext FromCreatingThread(PyCallContext context)
+    {
+        var frame = context.CurrentFrame.CreateThreadRootFrame();
+        var threadContext = new PyCallContext("[From Creating Thread]", context.PyEnvironment);
+        threadContext.InitState(frame);
+        return threadContext;
     }
 
     public override string ToString()
