@@ -815,18 +815,22 @@ internal sealed class GeneratorCaller : ICaller
         frame._tcsWaitAtStartOrYield = new TaskCompletionSource<PyObject>();
         frame.InitArgs(_def, arguments);
 
-        Task.Run(() =>
+        var task = new Task(() =>
         {
-            var ret = frame._tcsWaitAtStartOrYield.Task.Result;
-            if (ret is not PyNoneObject)
-                throw PyCallContext.ThrowTypeError("can't send non-None value to a just-started generator");
-
-            var result = _getResult(context, frame);
-            Debug.Assert(frame._tcsWaitAtSend is not null);
-            frame._tcsWaitAtSend.SetResult(PyResult.RaiseStopIteration(result));
+            try
+            {
+                var result = _getResult(context, frame);
+                Debug.Assert(frame._tcsWaitAtSend is not null);
+                frame._tcsWaitAtSend.SetResult(PyResult.RaiseStopIteration(result));
+            }
+            catch (PyRuntimeException e)
+            {
+                Debug.Assert(frame._tcsWaitAtSend is not null);
+                frame._tcsWaitAtSend.SetResult(PyResult.FromException(e.PyException));
+            }
         });
 
-        return new PyGeneratorObject(frame);
+        return new PyGeneratorObject(frame, task);
     }
 }
 

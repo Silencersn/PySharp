@@ -81,6 +81,10 @@ partial struct PyResult
     {
         return RaiseException(PyStandardExceptionTypes.StopIteration, arg);
     }
+    internal static PyResult RaiseStopIteration(PyObject? arg)
+    {
+        return RaiseException(PyStandardExceptionTypes.StopIteration, arg);
+    }
 
     internal static PyResult RaiseRuntimeError(string? arg = null)
     {
