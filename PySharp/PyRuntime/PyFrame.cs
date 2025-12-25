@@ -22,7 +22,9 @@ internal enum FrameType
     Class,
     Comprehension,
     Eval,
-    Exec
+    Exec,
+    YieldFunction,
+    YieldLambda
 }
 
 public sealed partial class PyFrame
@@ -72,7 +74,7 @@ public sealed partial class PyFrame
         FrameType = frameType;
     }
 
-    public PyFrame? Back { get; }
+    public PyFrame? Back { get; internal set; }
     [MemberNotNullWhen(false, nameof(Back))]
     public bool IsRoot => Back is null;
     public ConcurrentDictionary<string, PyObject> Globals => _globals.Globals;
@@ -105,7 +107,7 @@ public sealed partial class PyFrame
         (IReadOnlyList<PyObject> Args, IReadOnlyDictionary<string, PyObject> Kwargs)? callingArguments = null,
         PyFrameGlobals? globals = null)
     {
-        Debug.Assert(frameType is FrameType.Function or FrameType.Lambda or FrameType.Class);
+        Debug.Assert(frameType is FrameType.Function or FrameType.Lambda or FrameType.Class or FrameType.YieldFunction);
         return new PyFrame(this, globals ?? _globals, null, null, callerName, caller, frameType) { CallingArguments = callingArguments };
     }
     internal PyFrame CreateThreadRootFrame()

@@ -930,7 +930,7 @@ public sealed class LambdaNode : AstExprNode, IFunctionOrLambda
 
         var caller = new FunctionCaller(context, this, frame, Body.GetExprValue);
         var func = new PyFunctionObject("<lambda>", caller.Call, frame.InternalClosure?.Values, frame._globals);
-        caller._func = func;
+        caller.Func = func;
         return func;
     }
 
@@ -1023,7 +1023,12 @@ public sealed class YieldNode : AstExprNode
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        throw new NotImplementedException();
+        var value = Value?.GetExprValue(context, frame) ?? PyNoneObject.None;
+        Debug.Assert(frame.FrameType is FrameType.YieldFunction or FrameType.YieldLambda);
+        frame._tcsWaitAtStartOrYield = new();
+        Debug.Assert(frame._tcsWaitAtSend is not null);
+        frame._tcsWaitAtSend.SetResult(value);
+        return frame._tcsWaitAtStartOrYield.Task.Result;
     }
 }
 
