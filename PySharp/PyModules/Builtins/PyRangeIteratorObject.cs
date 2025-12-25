@@ -1,15 +1,17 @@
 ﻿using PySharp.PyRuntime.Calls;
+using System.Numerics;
 
 namespace PySharp.PyModules.Builtins;
 
 public class PyRangeIteratorObject : PyObject
 {
-    internal readonly IEnumerator<PyIntObject> _enumerator;
+    internal long _start, _step, _len;
     public override PyTypeObject DefaultPyType => PyRangeIteratorObjectType.Shared;
-
-    internal PyRangeIteratorObject(IEnumerable<PyIntObject> enumerable)
+    internal PyRangeIteratorObject(long start, long step, long len)
     {
-        _enumerator = enumerable.GetEnumerator();
+        _start = start;
+        _step = step;
+        _len = len;
     }
 }
 
@@ -24,9 +26,51 @@ public sealed class PyRangeIteratorObjectType : PyTypeObject<PyRangeIteratorObje
 
     protected internal override PyResult Next(PyCallContext context, PyRangeIteratorObject self)
     {
-        if (!self._enumerator.MoveNext())
+        if (self._len <= 0)
             return PyResult.RaiseStopIteration();
-        return self._enumerator.Current;
+
+        var result = self._start;
+        self._start += self._step;
+        self._len--;
+        return PyIntObject.FromInteger(result);
+    }
+
+    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        return PyResult.RaiseTypeError(null);
+    }
+}
+
+public class PyLongRangeIteratorObject : PyObject
+{
+    internal BigInteger _start, _step, _len;
+    public override PyTypeObject DefaultPyType => PyLongRangeIteratorObjectType.Shared;
+    internal PyLongRangeIteratorObject(BigInteger start, BigInteger step, BigInteger len)
+    {
+        _start = start;
+        _step = step;
+        _len = len;
+    }
+}
+
+public sealed class PyLongRangeIteratorObjectType : PyTypeObject<PyLongRangeIteratorObjectType, PyLongRangeIteratorObject>
+{
+    public override string Name => "longrange_iterator";
+
+    protected internal override PyResult Iter(PyCallContext context, PyLongRangeIteratorObject self)
+    {
+        return self;
+    }
+
+    protected internal override PyResult Next(PyCallContext context, PyLongRangeIteratorObject self)
+    {
+        if (self._len <= 0)
+            return PyResult.RaiseStopIteration();
+
+        var result = self._start;
+        self._start += self._step;
+        self._len--;
+        return PyIntObject.FromInteger(result);
     }
 
     protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)

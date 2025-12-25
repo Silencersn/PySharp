@@ -1,4 +1,5 @@
 ﻿using PySharp.PyRuntime.Calls;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Numerics;
 
@@ -8,7 +9,8 @@ public class PyRangeObject : PyObject
 {
     public override PyTypeObject DefaultPyType => PyRangeObjectType.Shared;
 
-    private readonly BigInteger _start, _stop, _step;
+    private readonly BigInteger _start, _stop, _step, _len;
+    internal readonly bool _isLong;
 
     private PyRangeObject(BigInteger start, BigInteger stop, BigInteger step)
     {
@@ -16,11 +18,19 @@ public class PyRangeObject : PyObject
         _start = start;
         _stop = stop;
         _step = step;
+        if (step > 0 && start < stop)
+            _len = (stop - start + step - 1) / step;
+        else if (step < 0 && start > stop)
+            _len = (start - stop - step - 1) / -step;
+
+        if (_start.GetByteCount() > 8 || _stop.GetByteCount() > 8 || _len.GetByteCount() > 8)
+            _isLong = true;
     }
 
     public BigInteger Start => _start;
     public BigInteger Stop => _stop;
     public BigInteger Step => _step;
+    public BigInteger RangeLen => _len;
 
     private IEnumerable<PyIntObject> EnumeratePositiveStepRange()
     {
@@ -46,6 +56,7 @@ public class PyRangeObject : PyObject
     }
     public static PyRangeObject CreateRange(BigInteger start, BigInteger stop, BigInteger step)
     {
+        ArgumentOutOfRangeException.ThrowIfZero(step);
         return new PyRangeObject(start, stop, step);
     }
 }
@@ -63,7 +74,10 @@ public sealed class PyRangeObjectType : PyTypeObject<PyRangeObjectType, PyRangeO
 
     protected internal override PyResult Iter(PyCallContext context, PyRangeObject self)
     {
-        return new PyRangeIteratorObject(self.EnumerateRange());
+        if (!self._isLong)
+            return new PyRangeIteratorObject((long)self.Start, (long)self.Step, (long)self.RangeLen);
+
+        return new PyLongRangeIteratorObject(self.Start, self.Step, self.RangeLen);
     }
 
     protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)

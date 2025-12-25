@@ -61,6 +61,19 @@ public class PyIntObject : PyObject
 
         return new PyIntObject(value);
     }
+    public static PyIntObject FromInteger(long value)
+    {
+        if (value < PositivesPoolSize)
+        {
+            if (value >= 0)
+                return _positives[value];
+
+            if (value > -NegativePoolSize)
+                return _negatives[-value];
+        }
+
+        return new PyIntObject(value);
+    }
     public static PyIntObject FromInteger(BigInteger value)
     {
         if (value < PositivesPoolSize)
