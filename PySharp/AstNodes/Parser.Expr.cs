@@ -1063,6 +1063,24 @@ partial class Parser
         return ParseOrExpr();
     }
 
+    private List<AstExprNode> ParseStarredExpressionList(StopPredicate predicate, out bool endsWithComma)
+    {
+        endsWithComma = false;
+        List<AstExprNode> list = [ParseStarredExpression()];
+        while (CurrentTokenType is TokenType.Comma)
+        {
+            MoveNextToken();
+
+            if (predicate(CurrentToken))
+            {
+                endsWithComma = true;
+                break;
+            }
+            list.Add(ParseStarredExpression());
+        }
+        return list;
+    }
+
     /// <summary>
     /// flexible_expression: <see cref="ParseAssignmentExpression">assignment_expression</see> | <see cref="ParseStarredExpression">starred_expression</see>
     /// </summary>
@@ -1537,7 +1555,25 @@ partial class Parser
     /// <returns></returns>
     private AstExprNode ParseYieldAtom()
     {
-        throw new NotSupportedException();
+        // TokenType.LeftParen should be consumed
+        var yieldExpr = ParseYieldExpression();
+        EnsureTokenTypeThenMove(TokenType.RightParen);
+        return yieldExpr;
+    }
+
+    private YieldFromNode ParseYieldFrom()
+    {
+        EnsureKeywordThenMove("from");
+        return new YieldFromNode(ParseExpression());
+    }
+
+    private AstExprNode ParseYieldExpression()
+    {
+        EnsureKeywordThenMove("yield");
+        if (IsCurrentKeyword("from"))
+            return ParseYieldFrom();
+        var list = ParseStarredExpressionList(StopPredicates.UntilRightParenOrNewLineOrSemicolon, out var endsWithComma);
+        return new YieldNode(UnwrapOrMakeTuple(list, endsWithComma));
     }
 
     /// <summary>

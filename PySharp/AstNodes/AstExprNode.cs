@@ -1007,3 +1007,34 @@ public sealed class FormattedValueNode : AstExprNode
         return result;
     }
 }
+
+public sealed class YieldNode : AstExprNode
+{
+    internal YieldNode(AstExprNode? value)
+    {
+        Value = value;
+    }
+
+    public AstExprNode? Value { get; }
+
+    public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+
+public sealed class YieldFromNode : AstExprNode
+{
+    internal YieldFromNode(AstExprNode value)
+    {
+        Value = value;
+    }
+
+    public AstExprNode Value { get; }
+
+    public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
+    {
+        throw new NotImplementedException();
+    }
+}

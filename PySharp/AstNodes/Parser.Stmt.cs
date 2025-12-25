@@ -313,6 +313,11 @@ partial class Parser
                 node.MetaInfo = metaInfo;
                 return node;
             }
+            else if (keyword is "yield")
+            {
+                var yieldExpr = ParseYieldExpression();
+                return new ExprNode(yieldExpr) { MetaInfo = metaInfo };
+            }
         }
 
 
