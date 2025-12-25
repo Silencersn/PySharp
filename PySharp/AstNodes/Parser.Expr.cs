@@ -1569,9 +1569,14 @@ partial class Parser
 
     private AstExprNode ParseYieldExpression()
     {
+        if (!CurrentScope.IsCurrentFuncDefOrLambda)
+            throw new AstException("'yield' outside function");
+
         EnsureKeywordThenMove("yield");
         if (IsCurrentKeyword("from"))
             return ParseYieldFrom();
+        if (StopPredicates.UntilRightParenOrNewLineOrSemicolon(CurrentToken))
+            return new YieldNode(null);
         var list = ParseStarredExpressionList(StopPredicates.UntilRightParenOrNewLineOrSemicolon, out var endsWithComma);
         return new YieldNode(UnwrapOrMakeTuple(list, endsWithComma));
     }
