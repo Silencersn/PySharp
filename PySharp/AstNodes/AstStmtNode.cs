@@ -736,6 +736,9 @@ internal sealed class FunctionCaller
 
     private PyResult CallGeneral(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
+        if (!_def.TryParse(args, kwargs, out var arguments))
+            return PyResult.RaiseTypeError("wrong arguments");
+
         var backFrame = context.CurrentFrame;
         var frame = backFrame.CreateFuncCallOrClassBuildFrame(_func.Name, _func, _frameType, (args, kwargs), _func._globals);
         frame._variables = _node.Variables;
