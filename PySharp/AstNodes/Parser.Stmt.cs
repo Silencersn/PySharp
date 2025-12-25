@@ -214,6 +214,8 @@ partial class Parser
             {
                 MoveNextToken();
                 var targetList = ParseTargetList(StopPredicates.UntilNewLineOrSemicolon, out _);
+                foreach (var target in targetList)
+                    TrySetTargetContext(target, ExprContext.Del);
                 return new DeleteNode([.. targetList]) { MetaInfo = metaInfo };
             }
             else if (keyword is "import" or "from")
@@ -345,7 +347,7 @@ partial class Parser
                 _context.RaiseSyntaxError($"'{target.GetType().Name /* TODO: using 'list' instead of 'ListNode' */ }' is an illegal expression for augmented assignment");
                 throw new PyRuntimeException(_context.CurrentException);
             }
-            TrySetTargetContext(target);
+            TrySetTargetContext(target, ExprContext.Store);
 
             AstOperatorNode op = CurrentTokenType switch
             {
@@ -579,7 +581,7 @@ partial class Parser
         EnsureKeywordThenMove("for");
         var targetList = ParseTargetList(StopPredicates.UntilKeywordIn, out var endsWithComma);
         var target = UnwrapOrMakeTuple(targetList, endsWithComma);
-        TrySetTargetContext(target);
+        TrySetTargetContext(target, ExprContext.Store);
         EnsureKeywordThenMove("in");
         var iter = ParseExpression();
         EnsureTokenTypeThenMove(TokenType.Colon);

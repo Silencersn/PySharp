@@ -38,23 +38,23 @@ partial class Parser
         return false;
     }
 
-    private static void TrySetTargetContext(AstExprNode node)
+    private static void TrySetTargetContext(AstExprNode node, ExprContext context)
     {
         if (node is NameNode nameNode)
         {
-            nameNode.Ctx = ExprContext.Store;
+            nameNode.Ctx = context;
         }
         else if (node is TupleNode tupleNode)
         {
-            tupleNode.Ctx = ExprContext.Store;
+            tupleNode.Ctx = context;
             foreach (var elt in tupleNode.Elts)
-                TrySetTargetContext(elt);
+                TrySetTargetContext(elt, context);
         }
         else if (node is ListNode listNode)
         {
-            listNode.Ctx = ExprContext.Store;
+            listNode.Ctx = context;
             foreach (var elt in listNode.Elts)
-                TrySetTargetContext(elt);
+                TrySetTargetContext(elt, context);
         }
     }
 }
