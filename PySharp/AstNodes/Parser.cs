@@ -130,10 +130,7 @@ public sealed partial class Parser
             End = CurrentToken.End,
         };
     }
-    private void SetMetaInfoEnd(MetaInfo metaInfo)
-    {
-        metaInfo.End = CurrentToken.End;
-    }
+
     private MetaInfo CopyThenMarkCrucial(MetaInfo metaInfo)
     {
         return new MetaInfo

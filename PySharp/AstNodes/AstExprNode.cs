@@ -67,7 +67,7 @@ public sealed class NameNode : AstExprNode, IExprContextNode, ITargetNode
     }
 
     public string Identifier { get; }
-    public ExprContext Ctx { get; set; }
+    public ExprContext Ctx { get; set; } = ExprContext.Load;
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
@@ -131,7 +131,7 @@ public sealed class AttributeNode : AstExprNode, IExprContextNode, ITargetNode
 
     public AstExprNode Value { get; }
     public string Identifier { get; }
-    public ExprContext Ctx { get; set; }
+    public ExprContext Ctx { get; set; } = ExprContext.Load;
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
@@ -176,7 +176,7 @@ public sealed class SubscriptNode : AstExprNode, IExprContextNode, ITargetNode
 
     public AstExprNode Value { get; }
     public new AstExprNode Slice { get; }
-    public ExprContext Ctx { get; set; }
+    public ExprContext Ctx { get; set; } = ExprContext.Load;
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
@@ -361,7 +361,7 @@ public sealed class ListNode : AstExprNode, IExprContextNode, IAstExprNodeNoSelf
     }
 
     public ImmutableArray<AstExprNode> Elts { get; }
-    public ExprContext Ctx { get; set; }
+    public ExprContext Ctx { get; set; } = ExprContext.Load;
 
     public override PyListObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
@@ -398,7 +398,7 @@ public sealed class TupleNode : AstExprNode, IExprContextNode, IAstExprNodeNoSel
     }
 
     public ImmutableArray<AstExprNode> Elts { get; }
-    public ExprContext Ctx { get; set; }
+    public ExprContext Ctx { get; set; } = ExprContext.Load;
 
     public override PyTupleObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
