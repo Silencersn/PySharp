@@ -315,7 +315,11 @@ partial class Parser
             }
             else if (keyword is "yield")
             {
+                if (!CurrentScope.IsCurrentFuncDefOrLambda)
+                    throw new AstException("'yield' outside function");
+
                 var yieldExpr = ParseYieldExpression();
+                ((IFunctionOrLambda)CurrentScope.Owner!).HasYield = true;
                 return new ExprNode(yieldExpr) { MetaInfo = metaInfo };
             }
         }

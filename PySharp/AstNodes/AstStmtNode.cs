@@ -701,6 +701,7 @@ internal interface IFunctionOrLambda : IAstVariableScopeOwner
     AstArgumentsNode Args { get; }
     string[] LocalVariables { get; set; }
     string[] CapturedVariables { get; set; }
+    bool HasYield { get; set; }
 }
 
 internal interface IFunctionOrClass : IAstVariableScopeOwner
@@ -779,12 +780,16 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda, IFunctionOrClass
     FrozenDictionary<string, PyVariableType> IAstVariableScopeOwner.Variables { get; set; } = null!;
     string[] IFunctionOrLambda.CapturedVariables { get; set; } = null!;
     string[] IFunctionOrLambda.LocalVariables { get; set; } = null!;
+    bool IFunctionOrLambda.HasYield { get; set; } = false;
     string IFunctionOrClass.QualifiedName { get; set; } = null!;
     string IFunctionOrClass.Name => Identifier;
     internal bool IncludeSuper { get; set; } = false;
 
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
+        if (((IFunctionOrLambda)this).HasYield)
+            throw new NotSupportedException();
+
         var caller = new FunctionCaller(context, this, frame, (context, frame) =>
         {
             try

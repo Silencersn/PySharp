@@ -921,9 +921,13 @@ public sealed class LambdaNode : AstExprNode, IFunctionOrLambda
     FrozenDictionary<string, PyVariableType> IAstVariableScopeOwner.Variables { get; set; } = null!;
     string[] IFunctionOrLambda.CapturedVariables { get; set; } = null!;
     string[] IFunctionOrLambda.LocalVariables { get; set; } = null!;
+    bool IFunctionOrLambda.HasYield { get; set; } = false;
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
+        if (((IFunctionOrLambda)this).HasYield)
+            throw new NotSupportedException();
+
         var caller = new FunctionCaller(context, this, frame, Body.GetExprValue);
         var func = new PyFunctionObject("<lambda>", caller.Call, frame.InternalClosure?.Values, frame._globals);
         caller._func = func;

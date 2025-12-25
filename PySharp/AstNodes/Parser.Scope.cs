@@ -18,6 +18,7 @@ partial class Parser
         public IList<VariableScope> Children => _children;
         public IAstVariableScopeOwner? Owner => _owner;
         public bool IsCurrentFuncDef => Owner is FunctionDefNode;
+        public bool IsCurrentFuncDefOrLambda => Owner is IFunctionOrLambda;
         public bool IsInFuncDef => IsCurrentFuncDef || (Parent?.IsInFuncDef ?? false);
         public List<NameNode> TrackedNameNodes => _nameNodeTracker;
         public bool IsInLoop => _isInLoop > 0;
