@@ -1044,6 +1044,21 @@ public sealed class YieldFromNode : AstExprNode
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        throw new NotImplementedException();
+        Debug.Assert(frame.FrameType is FrameType.YieldFunction or FrameType.YieldLambda);
+
+        var iter = Value.GetExprValue(context, frame);
+        if (!Utils.TryEnumerateIterable(context, iter, out var list, out var err))
+            err.Value.PyThrow();
+
+        foreach (var item in list)
+        {
+            var value = item.PyUnwrap();
+            frame._tcsWaitAtStartOrYield = new();
+            Debug.Assert(frame._tcsWaitAtSend is not null);
+            frame._tcsWaitAtSend.SetResult(value);
+            _ = frame._tcsWaitAtStartOrYield.Task.Result; // TODO: temp
+        }
+
+        return PyNoneObject.None; // TODO: temp
     }
 }
