@@ -1236,8 +1236,10 @@ partial class Parser
     /// <returns></returns>
     private (AstExprNode Elt, List<AstComprehensionNode> Generators) ParseComprehension()
     {
+        _comprehensionDepth++;
         var elt = ParseAssignmentExpression();
         var generators = ParseCompFor();
+        _comprehensionDepth--;
         return (elt, generators);
     }
 
@@ -1571,6 +1573,9 @@ partial class Parser
     {
         if (!CurrentScope.IsCurrentFuncDefOrLambda)
             throw new AstException("'yield' outside function");
+
+        if (_comprehensionDepth > 0)
+            throw new AstException("'yield' inside comprehension" /* TODO: a more specific name like: generator expression */);
 
         EnsureKeywordThenMove("yield");
         if (IsCurrentKeyword("from"))

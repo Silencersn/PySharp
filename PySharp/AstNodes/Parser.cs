@@ -47,6 +47,7 @@ public sealed partial class Parser
     private readonly TokenStream _tokenStream;
     private bool _isEnd;
     private bool _isParsingInteractiveNode;
+    private int _comprehensionDepth;
 
     private int TokenStreamPosition
     {
