@@ -812,7 +812,7 @@ internal sealed class GeneratorCaller : ICaller
 
 
         frame.Back = null;
-        frame._tcsWaitAtStartOrYield = new TaskCompletionSource<PyObject>();
+        frame._tcsWaitAtStartOrYield = new TaskCompletionSource<YieldCallerAction>();
         frame.InitArgs(_def, arguments);
 
         var task = new Task(() =>

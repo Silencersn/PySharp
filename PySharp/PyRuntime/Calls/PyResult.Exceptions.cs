@@ -4,6 +4,17 @@ namespace PySharp.PyRuntime.Calls;
 
 partial struct PyResult
 {
+    internal static PyResult RaiseExceptionFromTypeOrInstance(PyObject pyObject)
+    {
+        if (pyObject is PyExceptionType exceptionType)
+            return RaiseException(exceptionType);
+
+        else if (pyObject is PyExceptionObject exceptionObject)
+            return FromException(exceptionObject);
+
+        return RaiseTypeError($"exceptions must be classes or instances deriving from BaseException, not {pyObject.PyType.Name}");
+    }
+
     internal static PyResult RaiseException(PyExceptionType exceptionType)
     {
         return RaiseException(exceptionType, null as PyObject);

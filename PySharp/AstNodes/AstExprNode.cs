@@ -1028,7 +1028,25 @@ public sealed class YieldNode : AstExprNode
         frame._tcsWaitAtStartOrYield = new();
         Debug.Assert(frame._tcsWaitAtSend is not null);
         frame._tcsWaitAtSend.SetResult(value);
-        return frame._tcsWaitAtStartOrYield.Task.Result;
+        var callerAction = frame._tcsWaitAtStartOrYield.Task.Result;
+        switch (callerAction.Type)
+        {
+            case YieldCallerAction.ActionType.Next:
+                return PyNoneObject.None;
+
+            case YieldCallerAction.ActionType.Send:
+                return callerAction.Value!;
+
+            case YieldCallerAction.ActionType.Throw:
+                PyResult.RaiseExceptionFromTypeOrInstance(callerAction.Value!).PyThrow();
+                throw new UnreachableException();
+
+            case YieldCallerAction.ActionType.Close:
+                throw new NotImplementedException();
+
+            default:
+                throw new UnreachableException();
+        }
     }
 }
 
