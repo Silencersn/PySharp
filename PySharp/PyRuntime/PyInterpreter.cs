@@ -28,7 +28,7 @@ public static class PyInterpreter
             {
                 if (currentException is PyRuntimeException pyRuntimeException)
                 {
-                    context.CurrentException ??= pyRuntimeException.PyException;
+                    context.CurrentException = pyRuntimeException.PyException;
                     context.CurrentException.WithTraceback(context);
 
                     if (pyRuntimeException.PyException.PyType == PyStandardExceptionTypes.SystemExit)
