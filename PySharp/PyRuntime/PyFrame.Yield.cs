@@ -48,6 +48,7 @@ internal readonly struct YieldCallerAction
 
 partial class PyFrame
 {
+    internal bool _generatorCompleted;
     internal TaskCompletionSource<YieldCallerAction>? _tcsWaitAtStartOrYield;
     internal TaskCompletionSource<PyResult>? _tcsWaitAtSend;
 }

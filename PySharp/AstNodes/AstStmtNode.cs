@@ -821,11 +821,13 @@ internal sealed class GeneratorCaller : ICaller
             {
                 var result = _getResult(context, frame);
                 Debug.Assert(frame._tcsWaitAtSend is not null);
-                frame._tcsWaitAtSend.SetResult(PyResult.RaiseStopIteration(result is PyNoneObject ? null : result));
+                frame._generatorCompleted = true;
+                frame._tcsWaitAtSend.SetResult(result);
             }
             catch (PyRuntimeException e)
             {
                 Debug.Assert(frame._tcsWaitAtSend is not null);
+                frame._generatorCompleted = true;
                 frame._tcsWaitAtSend.SetResult(PyResult.FromException(e.PyException));
             }
         });

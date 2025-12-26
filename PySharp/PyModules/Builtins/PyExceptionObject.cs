@@ -246,6 +246,11 @@ public sealed class PySystemExitObjectType : PyExceptionType<PySystemExitObjectT
     public override string Name => "SystemExit";
 }
 
+public sealed class PyGeneratorExitObjectType : PyExceptionType<PyGeneratorExitObjectType, PyBaseExceptionObjectType>
+{
+    public override string Name => "GeneratorExit";
+}
+
 public sealed class PyTypeErrorObjectType : PyExceptionType<PyTypeErrorObjectType, PyExceptionObjectType>
 {
     public override string Name => "TypeError";
@@ -364,4 +369,5 @@ public static class PyStandardExceptionTypes
     public static readonly PyAssertionErrorObjectType AssertionError = PyAssertionErrorObjectType.Shared;
     public static readonly PyUnboundLocalErrorObjectType UnboundLocalError = PyUnboundLocalErrorObjectType.Shared;
     public static readonly PyRuntimeErrorObjectType RuntimeError = PyRuntimeErrorObjectType.Shared;
+    public static readonly PyGeneratorExitObjectType GeneratorExit = PyGeneratorExitObjectType.Shared;
 }

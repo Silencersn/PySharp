@@ -74,5 +74,6 @@ public class PyBuiltinsModuleObject : PyModuleObject
         AddObjToAttrs(PyStandardExceptionTypes.ZeroDivisionError); // ZeroDivisionError
         AddObjToAttrs(PyStandardExceptionTypes.AssertionError); // AssertionError
         AddObjToAttrs(PyStandardExceptionTypes.UnboundLocalError); // UnboundLocalError
+        AddObjToAttrs(PyStandardExceptionTypes.GeneratorExit); // GeneratorExit
     }
 }

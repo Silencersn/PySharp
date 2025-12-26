@@ -1,17 +1,14 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.PyAttributes;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Text;
 
 namespace PySharp.PyModules.Builtins;
 
 public sealed class PyGeneratorObject : PyObject
 {
     internal readonly PyFrame _frame;
-    internal readonly Task _task;
+    internal Task? _task;
 
     internal PyGeneratorObject(PyFrame frame, Task task)
     {
@@ -27,6 +24,7 @@ public sealed class PyGeneratorObject : PyObject
 
     private PyResult StartTask()
     {
+        Debug.Assert(_task is not null);
         _frame._tcsWaitAtSend = new();
         _task.Start();
         return _frame._tcsWaitAtSend.Task.Result;
@@ -34,6 +32,7 @@ public sealed class PyGeneratorObject : PyObject
 
     private PyResult ContinueTask(PyCallContext context, YieldCallerAction callerAction)
     {
+        Debug.Assert(_task is not null);
         _frame.Back = context.CurrentFrame;
         context.EnterFrame(_frame);
         _frame._tcsWaitAtSend = new();
@@ -45,18 +44,39 @@ public sealed class PyGeneratorObject : PyObject
         return result;
     }
 
+    private PyResult WrapIfReturn(PyResult result)
+    {
+        // raise
+        if (result.IsError)
+            return result;
+
+        // return
+        if (_frame._generatorCompleted)
+            return PyResult.RaiseStopIteration(result.Value);
+
+        // yield
+        return result;
+    }
+
     internal PyResult PyNext(PyCallContext context)
     {
+        if (_task is null)
+            return PyResult.RaiseStopIteration();
+
         if (_task.Status is TaskStatus.Created)
         {
             return StartTask();
         }
 
-        return ContinueTask(context, YieldCallerAction.Next());
+        var result = ContinueTask(context, YieldCallerAction.Next());
+        return WrapIfReturn(result);
     }
 
     internal PyResult PySend(PyCallContext context, PyObject pyObject)
     {
+        if (_task is null)
+            return PyResult.RaiseStopIteration();
+
         if (_task.Status is TaskStatus.Created)
         {
             if (pyObject is not PyNoneObject)
@@ -65,22 +85,45 @@ public sealed class PyGeneratorObject : PyObject
             return StartTask();
         }
 
-        return ContinueTask(context, YieldCallerAction.Send(pyObject));
+        var result = ContinueTask(context, YieldCallerAction.Send(pyObject));
+        return WrapIfReturn(result);
     }
 
     internal PyResult PyThrow(PyCallContext context, PyObject pyObject)
     {
+        if (_task is null)
+            return PyResult.RaiseStopIteration();
+
         if (_task.Status is TaskStatus.Created)
         {
             return PyResult.RaiseExceptionFromTypeOrInstance(pyObject);
         }
 
-        return ContinueTask(context, YieldCallerAction.Throw(pyObject));
+        var result = ContinueTask(context, YieldCallerAction.Throw(pyObject));
+        return WrapIfReturn(result);
     }
 
     internal PyResult PyClose(PyCallContext context)
     {
-        throw new NotImplementedException();
+        if (_task is null)
+            return PyNoneObject.None;
+
+        if (_task.Status is TaskStatus.Created)
+        {
+            _task = null;
+            return PyNoneObject.None;
+        }
+
+        var result = ContinueTask(context, YieldCallerAction.Throw(PyStandardExceptionTypes.GeneratorExit));
+        _task = null;
+
+        if (result.IsError)
+            return result;
+
+        if (!_frame._generatorCompleted)
+            return PyResult.RaiseRuntimeError("generator ignored GeneratorExit");
+
+        return result;
     }
 }
 
@@ -112,7 +155,7 @@ public sealed class PyGeneratorObjectType : PyTypeObject<PyGeneratorObjectType, 
         return self.PyThrow(context, arguments[0]);
     }
 
-    [PyFunctionArgsDef("")]
+    [PyFunctionArgsDef()]
     internal PyResult Close(PyCallContext context, PyGeneratorObject self, PyArguments arguments)
     {
         return self.PyClose(context);
