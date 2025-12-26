@@ -104,10 +104,4 @@ partial class PyCallContext
     {
         return ThrowableException(PyStandardExceptionTypes.ImportError, arg);
     }
-
-    internal PyRuntimeException ThrowablePySharpException(string arg)
-    {
-        return ThrowableException(PySharpException.Shared, arg);
-    }
-
 }

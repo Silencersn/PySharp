@@ -104,6 +104,20 @@ partial struct PyResult
         return RaiseException(PyStandardExceptionTypes.RuntimeError, arg);
     }
 
+    internal static PyResult RaiseGeneratorExit(string? arg = null)
+    {
+        return RaiseException(PyStandardExceptionTypes.GeneratorExit, arg);
+    }
+
+    internal static PyResult RaiseModuleNotFoundError(string? arg = null)
+    {
+        return RaiseException(PyStandardExceptionTypes.ModuleNotFoundError, arg);
+    }
+
+    internal static PyResult RaiseImportError(string? arg = null)
+    {
+        return RaiseException(PyStandardExceptionTypes.ImportError, arg);
+    }
 
     internal sealed class PySharpException : PyExceptionType
     {
