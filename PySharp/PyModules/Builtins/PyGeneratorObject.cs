@@ -9,6 +9,7 @@ namespace PySharp.PyModules.Builtins;
 public abstract class PyGeneratorObject : PyObject, IPyObjectName
 {
     public string Name { get; }
+    public override PyTypeObject DefaultPyType => PyGeneratorObjectType.Shared;
 
     public PyGeneratorObject(string name)
     {
@@ -26,8 +27,6 @@ public sealed class PyGeneratorExpressionObject : PyGeneratorObject
     private readonly PyFrame _frame;
     private IEnumerator<PyObject>? _enumerator;
     private bool _first;
-
-    public override PyTypeObject DefaultPyType => PyGeneratorObjectType.Shared;
 
     public PyGeneratorExpressionObject(PyFrame frame, IEnumerator<PyObject> enumerator) : base("<genexpr>")
     {
@@ -100,8 +99,6 @@ public sealed class PyUserDefinedGeneratorObject : PyGeneratorObject
         _frame = frame;
         _task = task;
     }
-
-    public override PyTypeObject DefaultPyType => PyGeneratorObjectType.Shared;
 
     private PyResult StartTask(PyCallContext context)
     {
