@@ -928,7 +928,17 @@ public sealed class LambdaNode : AstExprNode, IFunctionOrLambda
         if (((IFunctionOrLambda)this).HasYield)
             throw new NotSupportedException();
 
-        var caller = new FunctionCaller(context, this, frame, Body.GetExprValue);
+        var caller = new FunctionCaller(context, this, frame, (context, frame) =>
+        {
+            try
+            {
+                return Body.GetExprValue(context, frame);
+            }
+            catch (PyRuntimeException e)
+            {
+                return PyResult.FromException(e.PyException);
+            }
+        });
         var func = new PyFunctionObject("<lambda>", caller.Call, frame.InternalClosure?.Values, frame._globals);
         caller.Func = func;
         return func;

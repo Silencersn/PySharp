@@ -721,11 +721,11 @@ internal sealed class FunctionCaller : ICaller
 {
     private readonly IFunctionOrLambda _node;
     private readonly PyArgsDef _def;
-    private readonly Func<PyCallContext, PyFrame, PyObject> _getResult;
+    private readonly Func<PyCallContext, PyFrame, PyResult> _getResult;
     private readonly FrameType _frameType;
     public PyFunctionObject Func { get; set; }
 
-    internal FunctionCaller(PyCallContext context, IFunctionOrLambda node, PyFrame frame, Func<PyCallContext, PyFrame, PyObject> getResult)
+    internal FunctionCaller(PyCallContext context, IFunctionOrLambda node, PyFrame frame, Func<PyCallContext, PyFrame, PyResult> getResult)
     {
         _node = node;
         _def = PyArgsDef.FromAst(node.Args, context, frame);
@@ -762,7 +762,7 @@ internal sealed class FunctionCaller : ICaller
 
         frame.InitArgs(_def, arguments);
 
-        PyObject result = _getResult(context, frame);
+        var result = _getResult(context, frame);
 
         context.ExitFrame();
         return result;
@@ -774,11 +774,11 @@ internal sealed class GeneratorCaller : ICaller
 {
     private readonly IFunctionOrLambda _node;
     private readonly PyArgsDef _def;
-    private readonly Func<PyCallContext, PyFrame, PyObject> _getResult;
+    private readonly Func<PyCallContext, PyFrame, PyResult> _getResult;
     private readonly FrameType _frameType;
     public PyFunctionObject Func { get; set; }
 
-    internal GeneratorCaller(PyCallContext context, IFunctionOrLambda node, PyFrame frame, Func<PyCallContext, PyFrame, PyObject> getResult)
+    internal GeneratorCaller(PyCallContext context, IFunctionOrLambda node, PyFrame frame, Func<PyCallContext, PyFrame, PyResult> getResult)
     {
         _node = node;
         _def = PyArgsDef.FromAst(node.Args, context, frame);
@@ -861,36 +861,8 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda, IFunctionOrClass
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
         ICaller caller = ((IFunctionOrLambda)this).HasYield ?
-            new GeneratorCaller(context, this, frame, (context, frame) =>
-            {
-                try
-                {
-                    foreach (var stmt in Body)
-                    {
-                        stmt.Execute(context, frame);
-                    }
-                }
-                catch (AstReturnException e)
-                {
-                    return e.Value;
-                }
-                return PyNoneObject.None;
-            }) :
-            new FunctionCaller(context, this, frame, (context, frame) =>
-            {
-                try
-                {
-                    foreach (var stmt in Body)
-                    {
-                        stmt.Execute(context, frame);
-                    }
-                }
-                catch (AstReturnException e)
-                {
-                    return e.Value;
-                }
-                return PyNoneObject.None;
-            });
+            new GeneratorCaller(context, this, frame, GetResult) :
+            new FunctionCaller(context, this, frame, GetResult);
         var func = new PyFunctionObject(Identifier, caller.Call,
             IncludeSuper && frame.FrameType is FrameType.Class
             ? ((IEnumerable<PyCellObject>?)frame.InternalClosure?.Values ?? [])
@@ -903,6 +875,27 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda, IFunctionOrClass
         caller.Func = func;
 
         frame.SetValue(Identifier, AstUtils.ApplyDeractors(func, DecoratorList, context, frame));
+    }
+
+    private PyResult GetResult(PyCallContext context, PyFrame frame)
+    {
+        try
+        {
+            foreach (var stmt in Body)
+            {
+                stmt.Execute(context, frame);
+            }
+        }
+        catch (AstReturnException e)
+        {
+            return e.Value;
+        }
+        catch (PyRuntimeException e)
+        {
+            return PyResult.FromException(e.PyException);
+        }
+
+        return PyNoneObject.None;
     }
 
     public override void EnumerateNodes(Action<AstNode> action)
