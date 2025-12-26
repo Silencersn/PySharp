@@ -25,6 +25,8 @@ public sealed class PyGeneratorObject : PyObject
     private PyResult StartTask()
     {
         Debug.Assert(_task is not null);
+        Debug.Assert(!_frame._generatorCompleted);
+
         _frame._tcsWaitAtSend = new();
         _task.Start();
         return _frame._tcsWaitAtSend.Task.Result;
@@ -33,6 +35,8 @@ public sealed class PyGeneratorObject : PyObject
     private PyResult ContinueTask(PyCallContext context, YieldCallerAction callerAction)
     {
         Debug.Assert(_task is not null);
+        Debug.Assert(!_frame._generatorCompleted);
+
         _frame.Back = context.CurrentFrame;
         context.EnterFrame(_frame);
         _frame._tcsWaitAtSend = new();
@@ -48,11 +52,17 @@ public sealed class PyGeneratorObject : PyObject
     {
         // raise
         if (result.IsError)
+        {
+            _task = null;
             return result;
+        }
 
         // return
         if (_frame._generatorCompleted)
+        {
+            _task = null;
             return PyResult.RaiseStopIteration(result.Value);
+        }
 
         // yield
         return result;
