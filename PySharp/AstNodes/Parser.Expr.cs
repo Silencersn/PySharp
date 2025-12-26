@@ -2,6 +2,7 @@
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.Tokenization;
+using System;
 using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Numerics;
@@ -199,16 +200,13 @@ partial class Parser
         if (CurrentTokenType is TokenType.Exclamation)
         {
             MoveNextToken();
+
             if (CurrentTokenType is not TokenType.Name)
-            {
-                _context.RaiseSyntaxError("f-string: missing conversion character");
-                throw new PyRuntimeException(_context, _context.CurrentException);
-            }
+                throw _context.ThrowableSyntaxError("f-string: missing conversion character");
+
             if (CurrentToken.String is not ("s" or "r" or "a"))
-            {
-                _context.RaiseSyntaxError($"f-string: invalid conversion character '{CurrentToken.String}': expected 's', 'r', or 'a'");
-                throw new PyRuntimeException(_context, _context.CurrentException);
-            }
+                throw _context.ThrowableSyntaxError($"f-string: invalid conversion character '{CurrentToken.String}': expected 's', 'r', or 'a'");
+            
             conversion = CurrentToken.String[0];
             MoveNextToken();
         }
@@ -349,27 +347,15 @@ partial class Parser
                 PyStrConverter.ConvertError.WrongFormat or
                 PyStrConverter.ConvertError.InvalidEscapeSequence));
 
-            switch (info.Error)
+            throw info.Error switch
             {
-                case PyStrConverter.ConvertError.LowerXSequence:
-                    throw PyCallContext.ThrowSyntaxError(MakeUnicodeErrorInfo("truncated \\xXX escape"));
-
-                case PyStrConverter.ConvertError.LowerUSequence:
-                    throw PyCallContext.ThrowSyntaxError(MakeUnicodeErrorInfo("truncated \\uXXXX escape"));
-
-                case PyStrConverter.ConvertError.UpperUSequence:
-                    throw PyCallContext.ThrowSyntaxError(MakeUnicodeErrorInfo("truncated \\UXXXXXXXX escape"));
-
-                case PyStrConverter.ConvertError.SurrogatesNotAllowed:
-                    throw PyCallContext.ThrowSyntaxError($"'utf-8' codec can't encode character '\\u{(uint)info.Char:x4}' in position {info.Position}: surrogates not allowed");
-
-                case PyStrConverter.ConvertError.IllegalUnicodeCharacter:
-                    throw PyCallContext.ThrowSyntaxError(MakeUnicodeErrorInfo("illegal Unicode character"));
-
-                default:
-                    throw new UnreachableException();
-            }
-
+                PyStrConverter.ConvertError.LowerXSequence => context.ThrowableSyntaxError(MakeUnicodeErrorInfo("truncated \\xXX escape")),
+                PyStrConverter.ConvertError.LowerUSequence => context.ThrowableSyntaxError(MakeUnicodeErrorInfo("truncated \\uXXXX escape")),
+                PyStrConverter.ConvertError.UpperUSequence => context.ThrowableSyntaxError(MakeUnicodeErrorInfo("truncated \\UXXXXXXXX escape")),
+                PyStrConverter.ConvertError.SurrogatesNotAllowed => context.ThrowableSyntaxError($"'utf-8' codec can't encode character '\\u{(uint)info.Char:x4}' in position {info.Position}: surrogates not allowed"),
+                PyStrConverter.ConvertError.IllegalUnicodeCharacter => context.ThrowableSyntaxError(MakeUnicodeErrorInfo("illegal Unicode character")),
+                _ => new UnreachableException(),
+            };
             string MakeUnicodeErrorInfo(string message)
             {
                 return $"(unicode error) 'unicodeescape' codec can't decode bytes in position {info.Position}-{info.Position + info.Length - 1}: {message}";
@@ -465,10 +451,7 @@ partial class Parser
         else
         {
             if (CurrentTokenType is TokenType.Indent)
-            {
-                _context.RaiseIndentationError("unexpected indent");
-                throw new PyRuntimeException(_context, _context.CurrentException);
-            }
+                throw _context.ThrowableIndentationError("unexpected indent");
 
             throw new NotSupportedException();
         }

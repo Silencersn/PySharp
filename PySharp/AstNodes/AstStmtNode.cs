@@ -77,12 +77,10 @@ public class AssertNode : AstStmtNode
             return;
 
         if (Msg is null)
-        {
-            throw PyCallContext.ThrowAssertionError(null as string);
-        }
+            throw context.ThrowableAssertionError(null as string);
 
         var msg = Msg.GetExprValue(context, frame);
-        throw PyCallContext.ThrowAssertionError(msg);
+        throw context.ThrowableAssertionError(msg);
     }
 
     internal override void Dump(AstNodeDumper dumper)
@@ -592,10 +590,7 @@ public class ImportFromNode : AstStmtNode
         Debug.Assert(Module is not null);
 
         if (!context.PyEnvironment.TryLoadModule(context, Module, out var module))
-        {
-            context.RaiseException(PyStandardExceptionTypes.ModuleNotFoundError, $"No module named '{Module}'");
-            throw new PyRuntimeException(context, context.CurrentException);
-        }
+            throw context.ThrowableModuleNotFoundError($"No module named '{Module}'");
 
         if (Names.Count is 1 && Names[0].Name is "*")
         {
@@ -606,16 +601,14 @@ public class ImportFromNode : AstStmtNode
                 // unlike cpython, allows iterable
                 if (!Utils.TryEnumeratedIterable(context, all, out var list, out _))
                 {
-                    context.RaiseTypeError($"{Module /* TODO: should be module.__name__ */}.__all__ must be iterable");
-                    throw new PyRuntimeException(context, context.CurrentException);
+                    throw context.ThrowableTypeError($"{Module /* TODO: should be module.__name__ */}.__all__ must be iterable");
                 }
 
                 foreach (var item in list)
                 {
                     if (item is not PyStrObject strObj)
                     {
-                        context.RaiseTypeError($"Item in {Module /* TODO: should be module.__name__ */}.__all__ must be str, not {item.PyType.Name}");
-                        throw new PyRuntimeException(context, context.CurrentException);
+                        throw context.ThrowableTypeError($"Item in {Module /* TODO: should be module.__name__ */}.__all__ must be str, not {item.PyType.Name}");
                     }
 
                     var attr = module.GetAttribute(context, strObj.Value).PyUnwrap(context);
@@ -639,10 +632,7 @@ public class ImportFromNode : AstStmtNode
             Debug.Assert(name.Name is not "*");
 
             if (!module.PyAttributes.TryGetValue(name.Name, out var value))
-            {
-                context.RaiseException(PyStandardExceptionTypes.ImportError, $"cannot import name '{name.Name}' from '{Module /* TODO: should be module.__name__ */}'");
-                throw new PyRuntimeException(context, context.CurrentException);
-            }
+                throw context.ThrowableException(PyStandardExceptionTypes.ImportError, $"cannot import name '{name.Name}' from '{Module /* TODO: should be module.__name__ */}'");
 
             frame.SetValue(name.AsName ?? name.Name, value);
         }

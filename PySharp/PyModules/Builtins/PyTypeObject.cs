@@ -118,8 +118,7 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
         {
             if (baseType.IsSealed)
             {
-                context.RaiseTypeError($"type '{baseType.Name}' is not an acceptable base type");
-                throw new PyRuntimeException(context, context.CurrentException);
+                throw context.ThrowableTypeError($"type '{baseType.Name}' is not an acceptable base type");
             }
 
             if (baseType.LayoutType != layoutType)
@@ -130,8 +129,7 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
                 }
                 else if (!layoutType.IsAssignableFrom(baseType.LayoutType))
                 {
-                    context.RaiseTypeError("multiple bases have instance lay-out conflict");
-                    throw new PyRuntimeException(context, context.CurrentException);
+                    throw context.ThrowableTypeError("multiple bases have instance lay-out conflict");
                 }
             }
         }

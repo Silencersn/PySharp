@@ -113,7 +113,22 @@ partial class PyCallContext
     {
         return RaiseException(PyStandardExceptionTypes.RuntimeError, arg);
     }
-
+    [MemberNotNull(nameof(CurrentException))]
+    internal PyObject? RaiseGeneratorExit(string? arg = null)
+    {
+        return RaiseException(PyStandardExceptionTypes.GeneratorExit, arg);
+    }
+    [MemberNotNull(nameof(CurrentException))]
+    internal PyObject? RaiseModuleNotFoundError(string? arg = null)
+    {
+        return RaiseException(PyStandardExceptionTypes.ModuleNotFoundError, arg);
+    }
+    [MemberNotNull(nameof(CurrentException))]
+    internal PyObject? RaiseImportError(string? arg = null)
+    {
+        return RaiseException(PyStandardExceptionTypes.ImportError, arg);
+    }
+    
 
     internal sealed class PySharpException : PyExceptionType
     {

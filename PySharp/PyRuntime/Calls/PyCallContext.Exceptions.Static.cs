@@ -90,7 +90,6 @@ partial class PyCallContext
         return ThrowException(PyStandardExceptionTypes.RuntimeError, arg);
     }
 
-
     internal static PyRuntimeException ThrowPySharpException(string arg)
     {
         return ThrowException(PySharpException.Shared, arg);

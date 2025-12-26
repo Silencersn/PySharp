@@ -40,10 +40,8 @@ partial class Parser
             module = ParseModule();
 
         if (module is null && level is 0)
-        {
-            _context.RaiseSyntaxError("invalid syntax");
-            throw new PyRuntimeException(_context, _context.CurrentException);
-        }
+            throw _context.ThrowableSyntaxError("invalid syntax");
+
         return (module, level);
     }
 
@@ -70,10 +68,7 @@ partial class Parser
             }
 
             if (IsCurrentKeyword("from"))
-            {
-                _context.RaiseSyntaxError("Did you mean to use 'from ... import ...' instead?");
-                throw new PyRuntimeException(_context, _context.CurrentException);
-            }
+                throw _context.ThrowableSyntaxError("Did you mean to use 'from ... import ...' instead?");
 
             importNode.MetaInfo = metaInfo;
             return importNode;
@@ -348,10 +343,8 @@ partial class Parser
             var target = UnwrapOrMakeTuple(exprList, endsWithComma);
 
             if (!IsValidAugtarget(target))
-            {
-                _context.RaiseSyntaxError($"'{target.GetType().Name /* TODO: using 'list' instead of 'ListNode' */ }' is an illegal expression for augmented assignment");
-                throw new PyRuntimeException(_context, _context.CurrentException);
-            }
+                throw _context.ThrowableSyntaxError($"'{target.GetType().Name /* TODO: using 'list' instead of 'ListNode' */ }' is an illegal expression for augmented assignment");
+
             TrySetTargetContext(target, ExprContext.Store);
 
             AstOperatorNode op = CurrentTokenType switch
@@ -473,8 +466,7 @@ partial class Parser
 
                     _ => $"'{keyword}' statement"
                 };
-                _context.RaiseIndentationError($"expected an indented block after {statementName} on line {lineno}");
-                throw new PyRuntimeException(_context, _context.CurrentException);
+                throw _context.ThrowableIndentationError($"expected an indented block after {statementName} on line {lineno}");
             }
             MoveNextToken();
 

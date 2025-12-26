@@ -14,10 +14,7 @@ internal static class AstUtils
         obj.PyThrowIfNull(context);
 
         if (obj is not TPyObject objOfT)
-        {
-            context.RaiseTypeError(null);
-            throw new PyRuntimeException(context, context.CurrentException);
-        }
+            throw context.ThrowableTypeError(null);
 
         return objOfT;
     }
@@ -42,10 +39,7 @@ internal static class AstUtils
             throw new PyRuntimeException(context, result.Exception);
 
         if (result.IsNotImplemented)
-        {
-            context.RaiseTypeError(null);
-            throw new PyRuntimeException(context, context.CurrentException);
-        }
+            throw context.ThrowableTypeError(null);
 
         return result.Value;
     }
@@ -62,8 +56,7 @@ internal static class AstUtils
         obj.PyThrowIfNull(context);
         if (obj is PyExceptionType objectType)
             return objectType;
-        context.RaiseTypeError("exceptions must derive from BaseException");
-        throw new PyRuntimeException(context, context.CurrentException);
+        throw context.ThrowableTypeError("exceptions must derive from BaseException");
     }
 
     public static void SetTargetValue(this AstExprNode target, PyCallContext context, PyObject value, PyFrame frame)
@@ -79,8 +72,7 @@ internal static class AstUtils
 
             if (tupleNode.Elts.Length != iter.Count)
             {
-                context.RaiseValueError("too many or too few values to unpack");
-                throw new PyRuntimeException(context, context.CurrentException);
+                throw context.ThrowableValueError("too many or too few values to unpack");
             }
             for (int i = 0; i < tupleNode.Elts.Length; i++)
             {
@@ -94,8 +86,7 @@ internal static class AstUtils
 
             if (listNode.Elts.Length != iter.Count)
             {
-                context.RaiseValueError("too many or too few values to unpack");
-                throw new PyRuntimeException(context, context.CurrentException);
+                throw context.ThrowableValueError("too many or too few values to unpack");
             }
             for (int i = 0; i < listNode.Elts.Length; i++)
             {
@@ -104,8 +95,7 @@ internal static class AstUtils
         }
         else
         {
-            Debug.Fail("???");
-            throw new NotSupportedException();
+            throw new UnreachableException();
         }
     }
 
@@ -131,8 +121,7 @@ internal static class AstUtils
         }
         else
         {
-            Debug.Fail("???");
-            throw new NotSupportedException();
+            throw new UnreachableException();
         }
     }
 
