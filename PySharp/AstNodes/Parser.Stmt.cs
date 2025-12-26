@@ -316,7 +316,6 @@ partial class Parser
             else if (keyword is "yield")
             {
                 var yieldExpr = ParseYieldExpression();
-                ((IFunctionOrLambda)CurrentScope.Owner!).HasYield = true;
                 return new ExprNode(yieldExpr) { MetaInfo = metaInfo };
             }
         }

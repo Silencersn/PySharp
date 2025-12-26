@@ -1577,6 +1577,7 @@ partial class Parser
         if (_comprehensionDepth > 0)
             throw new AstException("'yield' inside comprehension" /* TODO: a more specific name like: generator expression */);
 
+        ((IFunctionOrLambda)CurrentScope.Owner!).HasYield = true;
         EnsureKeywordThenMove("yield");
         if (IsCurrentKeyword("from"))
             return ParseYieldFrom();
