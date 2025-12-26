@@ -124,11 +124,16 @@ public sealed class PyGeneratorObject : PyObject
             return PyNoneObject.None;
         }
 
-        var result = ContinueTask(context, YieldCallerAction.Throw(PyStandardExceptionTypes.GeneratorExit));
+        var result = ContinueTask(context, YieldCallerAction.Close());
         _task = null;
 
         if (result.IsError)
+        {
+            if (result.Exception.PyType is PyGeneratorExitObjectType)
+                return PyNoneObject.None;
+
             return result;
+        }
 
         if (!_frame._generatorCompleted)
             return PyResult.RaiseRuntimeError("generator ignored GeneratorExit");
@@ -156,6 +161,9 @@ public sealed class PyGeneratorObjectType : PyTypeObject<PyGeneratorObjectType, 
     [PyFunctionArgsDef("value")]
     internal PyResult Send(PyCallContext context, PyGeneratorObject self, PyArguments arguments)
     {
+        if (arguments[0] is PyNoneObject)
+            return self.PyNext(context);
+
         return self.PySend(context, arguments[0]);
     }
 

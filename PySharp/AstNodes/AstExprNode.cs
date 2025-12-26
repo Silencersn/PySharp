@@ -1035,14 +1035,16 @@ public sealed class YieldNode : AstExprNode
                 return PyNoneObject.None;
 
             case YieldCallerAction.ActionType.Send:
-                return callerAction.Value!;
+                Debug.Assert(callerAction.Value is not null);
+                return callerAction.Value;
 
             case YieldCallerAction.ActionType.Throw:
-                PyResult.RaiseExceptionFromTypeOrInstance(callerAction.Value!).PyThrow();
+                Debug.Assert(callerAction.Value is not null);
+                PyResult.RaiseExceptionFromTypeOrInstance(callerAction.Value).PyThrow();
                 throw new UnreachableException();
 
             case YieldCallerAction.ActionType.Close:
-                throw new NotImplementedException();
+                throw PyCallContext.ThrowException(PyStandardExceptionTypes.GeneratorExit);
 
             default:
                 throw new UnreachableException();
@@ -1064,19 +1066,50 @@ public sealed class YieldFromNode : AstExprNode
     {
         Debug.Assert(frame.FrameType is FrameType.YieldFunction or FrameType.YieldLambda);
 
-        var iter = Value.GetExprValue(context, frame);
-        if (!Utils.TryEnumerateIterable(context, iter, out var list, out var err))
-            err.Value.PyThrow();
-
-        foreach (var item in list)
+        var iter = Value.GetExprValue(context, frame).Iter(context).PyUnwrap();
+        var value = iter.Next(context).PyUnwrap();
+        while (true)
         {
-            var value = item.PyUnwrap();
             frame._tcsWaitAtStartOrYield = new();
             Debug.Assert(frame._tcsWaitAtSend is not null);
             frame._tcsWaitAtSend.SetResult(value);
-            _ = frame._tcsWaitAtStartOrYield.Task.Result; // TODO: temp
-        }
+            var callerAction = frame._tcsWaitAtStartOrYield.Task.Result;
+            switch (callerAction.Type)
+            {
+                case YieldCallerAction.ActionType.Next:
+                    var iterNextRet = iter.Next(context);
+                    if (iterNextRet.IsStopIteration)
+                        return iterNextRet.Exception.Args.ElementAtOrDefault(0) ?? PyNoneObject.None;
+                    value = iterNextRet.PyUnwrap();
+                    break;
 
-        return PyNoneObject.None; // TODO: temp
+                case YieldCallerAction.ActionType.Send:
+                    Debug.Assert(callerAction.Value is not null);
+                    var iterSendRet = PyOperators.GetAttr(context, iter, "send").PyUnwrap()
+                        .Call(context, [callerAction.Value], FrozenDictionary<string, PyObject>.Empty);
+                    if (iterSendRet.IsStopIteration)
+                        return iterSendRet.Exception.Args.ElementAtOrDefault(0) ?? PyNoneObject.None;
+                    value = iterSendRet.PyUnwrap();
+                    break;
+
+                case YieldCallerAction.ActionType.Throw:
+                    Debug.Assert(callerAction.Value is not null);
+                    var iterThrowRet = PyOperators.GetAttr(context, iter, "throw").PyUnwrap()
+                        .Call(context, [callerAction.Value], FrozenDictionary<string, PyObject>.Empty);
+                    if (iterThrowRet.IsStopIteration)
+                        return iterThrowRet.Exception.Args.ElementAtOrDefault(0) ?? PyNoneObject.None;
+                    value = iterThrowRet.PyUnwrap();
+                    break;
+
+                case YieldCallerAction.ActionType.Close:
+                    var close = PyOperators.GetAttr(context, iter, "close");
+                    if (!close.IsAttributeError)
+                        _ = close.PyUnwrap().Call(context, [], FrozenDictionary<string, PyObject>.Empty).PyUnwrap();
+                    throw PyCallContext.ThrowException(PyStandardExceptionTypes.GeneratorExit);
+
+                default:
+                    throw new UnreachableException();
+            }
+        }
     }
 }
