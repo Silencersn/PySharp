@@ -26,7 +26,7 @@ public class ExceptHandlerNode : AstExceptHandlerNode
         if (Type?.GetExprValue(context, frame) is not PyExceptionType type)
         {
             context.RaiseTypeError(null);
-            throw new PyRuntimeException(context.CurrentException);
+            throw new PyRuntimeException(context, context.CurrentException);
         }
 
         if (Type is null || type is not null && type.IsInstance(exception))

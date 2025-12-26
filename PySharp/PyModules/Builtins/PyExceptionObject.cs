@@ -25,9 +25,12 @@ public sealed class PyExceptionObject : PyObject
     public string? Traceback { get; internal set; }
     internal string? ThreadTracebackInfo { get; set; }
 
-    internal PyExceptionObject WithTraceback(PyCallContext context, string? traceback = null)
+    internal PyExceptionObject WithTraceback(PyCallContext context, bool overwriteExisting = false)
     {
-        Traceback = traceback ?? PrintTraceback(context);
+        if (Traceback is not null && !overwriteExisting)
+            return this;
+
+        Traceback = PrintTraceback(context);
         var frame = context.CurrentFrame;
         while (frame is not null)
         {

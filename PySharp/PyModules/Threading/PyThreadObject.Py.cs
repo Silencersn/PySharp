@@ -43,7 +43,7 @@ partial class PyThreadObject : PyObject
         {
             var result = _target.Call(context, _args, _kwargs);
             if (result.IsError)
-                throw new PyRuntimeException(result.Exception);
+                throw new PyRuntimeException(context, result.Exception);
         }
     }
 

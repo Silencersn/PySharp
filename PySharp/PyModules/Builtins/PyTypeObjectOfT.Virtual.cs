@@ -286,7 +286,7 @@ partial class PyTypeObject<TObject>
         if (PySpecialMethods.TryGetBool(context, eq.Value, out var b, out var result))
             return b.BoolValue ? PyBoolObject.False : PyBoolObject.True;
 
-        return result.PyUnwrap();
+        return result.PyUnwrap(context);
     }
     protected internal virtual PyResult Gt(PyCallContext context, TObject self, PyObject other)
     {

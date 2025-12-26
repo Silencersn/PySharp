@@ -54,7 +54,7 @@ public sealed partial class PyCallContext
     internal void Exit(int exitCode)
     {
         PyEnvironment.ExitCode = exitCode;
-        throw new PyRuntimeException(PyStandardExceptionTypes.SystemExit.Create());
+        throw new PyRuntimeException(this, PyStandardExceptionTypes.SystemExit.Create());
     }
 
     internal static PyCallContext FromLoadingModule(PyEnvironment environment)

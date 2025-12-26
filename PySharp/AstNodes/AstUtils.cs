@@ -16,7 +16,7 @@ internal static class AstUtils
         if (obj is not TPyObject objOfT)
         {
             context.RaiseTypeError(null);
-            throw new PyRuntimeException(context.CurrentException);
+            throw new PyRuntimeException(context, context.CurrentException);
         }
 
         return objOfT;
@@ -25,36 +25,36 @@ internal static class AstUtils
     public static TPyObject PyThrowIfNull<TPyObject>([NotNull] this TPyObject? obj, PyCallContext context) where TPyObject : PyObject
     {
         if (obj is null)
-            throw new PyRuntimeException(context.CurrentException ?? throw new NotImplementedException("No Current Exception"));
+            throw new PyRuntimeException(context, context.CurrentException ?? throw new NotImplementedException("No Current Exception"));
         return obj;
     }
 
-    public static PyObject PyUnwrap(this PyResult result)
+    public static PyObject PyUnwrap(this PyResult result, PyCallContext context)
     {
         if (result.IsError)
-            throw new PyRuntimeException(result.Exception);
+            throw new PyRuntimeException(context, result.Exception);
 
         return result.Value;
     }
     public static PyObject PyUnwrapIncludedNotImplemented(this PyResult result, PyCallContext context)
     {
         if (result.IsError)
-            throw new PyRuntimeException(result.Exception);
+            throw new PyRuntimeException(context, result.Exception);
 
         if (result.IsNotImplemented)
         {
             context.RaiseTypeError(null);
-            throw new PyRuntimeException(context.CurrentException);
+            throw new PyRuntimeException(context, context.CurrentException);
         }
 
         return result.Value;
     }
 
     [DoesNotReturn]
-    public static void PyThrow(this PyResult result)
+    public static void PyThrow(this PyResult result, PyCallContext context)
     {
         Debug.Assert(result.IsError);
-        throw new PyRuntimeException(result.Exception);
+        throw new PyRuntimeException(context, result.Exception);
     }
 
     public static PyExceptionType PyCastExceptionType(this PyObject? obj, PyCallContext context)
@@ -63,7 +63,7 @@ internal static class AstUtils
         if (obj is PyExceptionType objectType)
             return objectType;
         context.RaiseTypeError("exceptions must derive from BaseException");
-        throw new PyRuntimeException(context.CurrentException);
+        throw new PyRuntimeException(context, context.CurrentException);
     }
 
     public static void SetTargetValue(this AstExprNode target, PyCallContext context, PyObject value, PyFrame frame)
@@ -75,12 +75,12 @@ internal static class AstUtils
         else if (target is TupleNode tupleNode)
         {
             if (!Utils.TryEnumeratedIterable(context, value, out var iter, out var err))
-                err.Value.PyThrow();
+                err.Value.PyThrow(context);
 
             if (tupleNode.Elts.Length != iter.Count)
             {
                 context.RaiseValueError("too many or too few values to unpack");
-                throw new PyRuntimeException(context.CurrentException);
+                throw new PyRuntimeException(context, context.CurrentException);
             }
             for (int i = 0; i < tupleNode.Elts.Length; i++)
             {
@@ -90,12 +90,12 @@ internal static class AstUtils
         else if (target is ListNode listNode)
         {
             if (!Utils.TryEnumeratedIterable(context, value, out var iter, out var err))
-                err.Value.PyThrow();
+                err.Value.PyThrow(context);
 
             if (listNode.Elts.Length != iter.Count)
             {
                 context.RaiseValueError("too many or too few values to unpack");
-                throw new PyRuntimeException(context.CurrentException);
+                throw new PyRuntimeException(context, context.CurrentException);
             }
             for (int i = 0; i < listNode.Elts.Length; i++)
             {
@@ -142,7 +142,7 @@ internal static class AstUtils
         if (testNode is IAstExprNodeBool node)
             return node.GetExprValueWithResult(context, frame).Result;
         else
-            return testNode.GetExprValue(context, frame).Bool(context).PyUnwrap().PyCast<PyBoolObject>(context).BoolValue;
+            return testNode.GetExprValue(context, frame).Bool(context).PyUnwrap(context).PyCast<PyBoolObject>(context).BoolValue;
     }
 
     public static void EnumerateNodes(this IEnumerable<AstNode> nodes, Action<AstNode> action)
@@ -164,7 +164,7 @@ internal static class AstUtils
             }
             foreach (var decorator in decorators)
             {
-                target = decorator.Call(context, [target], new Dictionary<string, PyObject>()).PyUnwrap();
+                target = decorator.Call(context, [target], new Dictionary<string, PyObject>()).PyUnwrap(context);
             }
         }
         return target;

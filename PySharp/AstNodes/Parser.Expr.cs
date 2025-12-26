@@ -202,12 +202,12 @@ partial class Parser
             if (CurrentTokenType is not TokenType.Name)
             {
                 _context.RaiseSyntaxError("f-string: missing conversion character");
-                throw new PyRuntimeException(_context.CurrentException);
+                throw new PyRuntimeException(_context, _context.CurrentException);
             }
             if (CurrentToken.String is not ("s" or "r" or "a"))
             {
                 _context.RaiseSyntaxError($"f-string: invalid conversion character '{CurrentToken.String}': expected 's', 'r', or 'a'");
-                throw new PyRuntimeException(_context.CurrentException);
+                throw new PyRuntimeException(_context, _context.CurrentException);
             }
             conversion = CurrentToken.String[0];
             MoveNextToken();
@@ -334,7 +334,7 @@ partial class Parser
             if (info.Error is PyStrConverter.ConvertError.InvalidEscapeSequence)
             {
                 if (!context.TryWarn<PySyntaxWarningObjectType>($"invalid escape sequence '\\{info.Char}'"))
-                    throw new PyRuntimeException(context.CurrentException);
+                    throw new PyRuntimeException(context, context.CurrentException);
             }
 
             Debug.Assert(str is not null);
@@ -467,7 +467,7 @@ partial class Parser
             if (CurrentTokenType is TokenType.Indent)
             {
                 _context.RaiseIndentationError("unexpected indent");
-                throw new PyRuntimeException(_context.CurrentException);
+                throw new PyRuntimeException(_context, _context.CurrentException);
             }
 
             throw new NotSupportedException();

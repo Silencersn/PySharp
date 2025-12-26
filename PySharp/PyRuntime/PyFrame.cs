@@ -273,7 +273,7 @@ public sealed partial class PyFrame
         if (!context.PyEnvironment.TryLoadModule(context, name, out var module))
         {
             context.RaiseException(PyStandardExceptionTypes.ModuleNotFoundError, $"No module named '{name}'");
-            throw new PyRuntimeException(context.CurrentException);
+            throw new PyRuntimeException(context, context.CurrentException);
         }
 
         SetValue(alias ?? name, module);

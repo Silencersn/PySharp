@@ -71,7 +71,7 @@ public class AssertNode : AstStmtNode
     {
         var test = Test.GetExprValue(context, frame);
         if (!PySpecialMethods.TryGetBool(context, test, out var b, out var result))
-            result.PyUnwrap();
+            result.PyUnwrap(context);
 
         if (b!.BoolValue)
             return;
@@ -169,7 +169,7 @@ public class ExprNode : AstStmtNode
         {
             if (value is not PyNoneObject)
             {
-                var repr = (PyStrObject)PySpecialMethods.GetRepr(context, value).PyUnwrap();
+                var repr = (PyStrObject)PySpecialMethods.GetRepr(context, value).PyUnwrap(context);
                 context.Out.WriteLine(repr.Value);
             }
         }
@@ -372,14 +372,14 @@ public class ForNode : AstStmtNode
         var iter = Iter.GetExprValue(context, frame);
         if (!Utils.TryEnumerateIterable(context, iter, out var list, out var err))
         {
-            err.Value.PyThrow();
+            err.Value.PyThrow(context);
         }
 
         try
         {
             foreach (var item in list)
             {
-                Target.SetTargetValue(context, item.PyUnwrap(), frame);
+                Target.SetTargetValue(context, item.PyUnwrap(context), frame);
                 try
                 {
                     foreach (var stmt in Body)
@@ -434,7 +434,7 @@ public class RaiseNode : AstStmtNode
         if (Exc is null)
         {
             context.CurrentException = frame.CurrentException;
-            throw new PyRuntimeException(frame.CurrentException);
+            throw new PyRuntimeException(context, frame.CurrentException);
         }
 
         var obj = Exc.GetExprValue(context, frame);
@@ -455,7 +455,7 @@ public class RaiseNode : AstStmtNode
         }
 
         context.CurrentException = exc;
-        throw new PyRuntimeException(exc);
+        throw new PyRuntimeException(context, exc);
     }
 
     public override void EnumerateNodes(Action<AstNode> action)
@@ -594,7 +594,7 @@ public class ImportFromNode : AstStmtNode
         if (!context.PyEnvironment.TryLoadModule(context, Module, out var module))
         {
             context.RaiseException(PyStandardExceptionTypes.ModuleNotFoundError, $"No module named '{Module}'");
-            throw new PyRuntimeException(context.CurrentException);
+            throw new PyRuntimeException(context, context.CurrentException);
         }
 
         if (Names.Count is 1 && Names[0].Name is "*")
@@ -607,7 +607,7 @@ public class ImportFromNode : AstStmtNode
                 if (!Utils.TryEnumeratedIterable(context, all, out var list, out _))
                 {
                     context.RaiseTypeError($"{Module /* TODO: should be module.__name__ */}.__all__ must be iterable");
-                    throw new PyRuntimeException(context.CurrentException);
+                    throw new PyRuntimeException(context, context.CurrentException);
                 }
 
                 foreach (var item in list)
@@ -615,10 +615,10 @@ public class ImportFromNode : AstStmtNode
                     if (item is not PyStrObject strObj)
                     {
                         context.RaiseTypeError($"Item in {Module /* TODO: should be module.__name__ */}.__all__ must be str, not {item.PyType.Name}");
-                        throw new PyRuntimeException(context.CurrentException);
+                        throw new PyRuntimeException(context, context.CurrentException);
                     }
 
-                    var attr = module.GetAttribute(context, strObj.Value).PyUnwrap();
+                    var attr = module.GetAttribute(context, strObj.Value).PyUnwrap(context);
                     frame.SetValue(strObj.Value, attr);
                 }
             }
@@ -641,7 +641,7 @@ public class ImportFromNode : AstStmtNode
             if (!module.PyAttributes.TryGetValue(name.Name, out var value))
             {
                 context.RaiseException(PyStandardExceptionTypes.ImportError, $"cannot import name '{name.Name}' from '{Module /* TODO: should be module.__name__ */}'");
-                throw new PyRuntimeException(context.CurrentException);
+                throw new PyRuntimeException(context, context.CurrentException);
             }
 
             frame.SetValue(name.AsName ?? name.Name, value);
@@ -967,7 +967,7 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
         foreach (var (name, value) in attrs)
         {
             if (PyObject.PyObjectHasAttribute(value.PyType, PySpecialNames.SetName))
-                value.SetName(context, type, PyStrObject.FromString(name)).PyUnwrap();
+                value.SetName(context, type, PyStrObject.FromString(name)).PyUnwrap(context);
         }
 
         frame.SetValue(Name, AstUtils.ApplyDeractors(type, DecoratorList, context, frame));

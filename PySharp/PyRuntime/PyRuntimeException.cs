@@ -8,6 +8,12 @@ public class PyRuntimeException : Exception
     private readonly PyExceptionObject _exception;
     private string? _message;
 
+    public PyRuntimeException(PyCallContext context, PyExceptionObject exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+        _exception = exception.WithTraceback(context);
+    }
+
     public PyRuntimeException(PyExceptionObject exception)
     {
         ArgumentNullException.ThrowIfNull(exception);
