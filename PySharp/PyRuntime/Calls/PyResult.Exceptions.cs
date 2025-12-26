@@ -4,6 +4,8 @@ namespace PySharp.PyRuntime.Calls;
 
 partial struct PyResult
 {
+    // TODO: allow user defined error types
+
     internal static PyResult RaiseExceptionFromTypeOrInstance(PyObject pyObject)
     {
         if (pyObject is PyExceptionType exceptionType)

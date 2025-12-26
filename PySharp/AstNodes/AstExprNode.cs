@@ -2,6 +2,7 @@
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
+using System.Collections;
 using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -864,11 +865,9 @@ public sealed class GeneratorExpNode : AstExprNode, IAstExprNodeNoSelfPythonExce
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
         var tempFrame = frame.TempFrame(FrameType.Comprehension);
-        var list = new List<PyObject>();
-        For(0);
-        return PyTupleObject.CreateTuple(list);
+        return new PyGeneratorExpressionObject(tempFrame, For(0).GetEnumerator());
 
-        void For(int index)
+        IEnumerable<PyObject> For(int index)
         {
             var generator = Generators[index];
             if (!Utils.TryEnumerateIterable(context, generator.Iter.GetExprValue(context, tempFrame), out var iter, out var err))
@@ -890,11 +889,13 @@ public sealed class GeneratorExpNode : AstExprNode, IAstExprNodeNoSelfPythonExce
 
                 if (index < Generators.Length - 1)
                 {
-                    For(index + 1);
+                    foreach (var elt in For(index + 1))
+                        yield return elt;
                 }
                 else if (index == Generators.Length - 1)
                 {
-                    list.Add(Elt.GetExprValue(context, tempFrame));
+                    var elt = Elt.GetExprValue(context, tempFrame);
+                    yield return elt;
                 }
             }
         }
