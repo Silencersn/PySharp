@@ -430,10 +430,7 @@ public class RaiseNode : AstStmtNode
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
         if (Exc is null)
-        {
-            context.CurrentException = frame.CurrentException;
             throw new PyRuntimeException(context, frame.CurrentException);
-        }
 
         var obj = Exc.GetExprValue(context, frame);
         PyExceptionObject exc;
@@ -452,7 +449,6 @@ public class RaiseNode : AstStmtNode
             exc.CauseReason = "The above exception was the direct cause of the following exception:";
         }
 
-        context.CurrentException = exc;
         throw new PyRuntimeException(context, exc);
     }
 
@@ -950,7 +946,7 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
         }
         context.ExitFrame();
 
-        var attrs = ((IAstVariableScopeOwner)this).Variables.Keys.ToDictionary(static member => member, newFrame.GetValue);
+        var attrs = ((IAstVariableScopeOwner)this).Variables.Keys.ToDictionary(static member => member, member => newFrame.GetValue(context, member));
         foreach (var attr in attrs)
             type.PyAttributes[attr.Key] = attr.Value;
 

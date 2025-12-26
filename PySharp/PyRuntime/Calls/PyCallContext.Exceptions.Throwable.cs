@@ -100,8 +100,17 @@ partial class PyCallContext
     {
         return ThrowableException(PyStandardExceptionTypes.ModuleNotFoundError, arg);
     }
+    
     internal PyRuntimeException ThrowableImportError(string? arg = null)
     {
         return ThrowableException(PyStandardExceptionTypes.ImportError, arg);
+    }
+    internal PyRuntimeException ThrowableUnboundLocalError(string? arg = null)
+    {
+        return ThrowableException(PyStandardExceptionTypes.UnboundLocalError, arg);
+    }
+    internal PyRuntimeException ThrowableNameError(string? arg = null)
+    {
+        return ThrowableException(PyStandardExceptionTypes.NameError, arg);
     }
 }

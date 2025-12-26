@@ -73,7 +73,7 @@ public sealed class NameNode : AstExprNode, IExprContextNode, ITargetNode
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        return frame.GetValue(Identifier);
+        return frame.GetValue(context, Identifier);
     }
 
     internal override void Dump(AstNodeDumper dumper)
@@ -304,7 +304,7 @@ public sealed class CallNode : AstExprNode
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        var func = Func.GetExprValue(context, frame).PyThrowIfNull(context);
+        var func = Func.GetExprValue(context, frame);
 
         IReadOnlyList<PyObject> args;
         IReadOnlyDictionary<string, PyObject> kwargs;
@@ -1118,7 +1118,7 @@ public sealed class YieldFromNode : AstExprNode
                     var close = PyOperators.GetAttr(context, iter, "close");
                     if (!close.IsAttributeError)
                         _ = close.PyUnwrap(context).Call(context, [], FrozenDictionary<string, PyObject>.Empty).PyUnwrap(context);
-                    throw PyCallContext.ThrowException(PyStandardExceptionTypes.GeneratorExit);
+                    throw context.ThrowableGeneratorExit();
 
                 default:
                     throw new UnreachableException();

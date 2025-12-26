@@ -28,10 +28,9 @@ public static class PyInterpreter
             {
                 if (currentException is PyRuntimeException pyRuntimeException)
                 {
-                    context.CurrentException = pyRuntimeException.PyException;
-                    context.CurrentException.WithTraceback(context);
+                    var exc = pyRuntimeException.PyException.WithTraceback(context);
 
-                    if (pyRuntimeException.PyException.PyType == PyStandardExceptionTypes.SystemExit)
+                    if (exc.PyType == PyStandardExceptionTypes.SystemExit)
                     {
                         context.ClearException();
                     }
@@ -41,7 +40,7 @@ public static class PyInterpreter
                             context.PyEnvironment.ExitCode = 1;
                         var color = Console.ForegroundColor;
                         Console.ForegroundColor = ConsoleColor.Red;
-                        context.Error.WriteLine(context.CurrentException.ToMessage(context));
+                        context.Error.WriteLine(exc.ToMessage(context));
                         Console.ForegroundColor = color;
                     }
 

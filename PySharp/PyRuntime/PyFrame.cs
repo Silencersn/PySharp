@@ -159,16 +159,12 @@ public sealed partial class PyFrame
         return true;
     }
 
-    internal PyObject GetValue(string identifier)
+    internal PyObject GetValue(PyCallContext context, string identifier)
     {
         if (_variables is not null)
-        {
-            return GetVariableValue(identifier, _variables[identifier]);
-        }
-        else
-        {
-            return GetVariableValue(identifier, PyVariableType.Global);
-        }
+            return GetVariableValue(context, identifier, _variables[identifier]);
+
+        return GetVariableValue(context, identifier, PyVariableType.Global);
     }
 
     internal void SetValue(string identifier, PyObject value)
@@ -184,16 +180,14 @@ public sealed partial class PyFrame
         return;
     }
 
-    internal PyObject GetVariableValue(string name, PyVariableType variableType)
+    internal PyObject GetVariableValue(PyCallContext context, string name, PyVariableType variableType)
     {
         if (variableType is PyVariableType.Local or PyVariableType.Parameter)
         {
             if (_locals is not null && _locals.TryGetValue(name, out var value))
             {
                 if (value is null)
-                {
-                    throw PyCallContext.ThrowException(PyStandardExceptionTypes.UnboundLocalError, $"cannot access local variable '{name}' where it is not associated with a value");
-                }
+                    throw context.ThrowableUnboundLocalError($"cannot access local variable '{name}' where it is not associated with a value");
 
                 return value;
             }
@@ -201,14 +195,12 @@ public sealed partial class PyFrame
             if (_closure is not null && _closure.TryGetValue(name, out var cell))
             {
                 if (cell.Value is null)
-                {
-                    throw PyCallContext.ThrowException(PyStandardExceptionTypes.UnboundLocalError, $"cannot access local variable '{name}' where it is not associated with a value");
-                }
+                    throw context.ThrowableUnboundLocalError($"cannot access local variable '{name}' where it is not associated with a value");
 
                 return cell.Value;
             }
 
-            throw PyCallContext.ThrowException(PyStandardExceptionTypes.NameError, $"name '{name}' is not defined");
+            throw context.ThrowableNameError($"name '{name}' is not defined");
         }
         else if (variableType is PyVariableType.Global)
         {
@@ -218,7 +210,7 @@ public sealed partial class PyFrame
             if (TryGetValueFromBuiltins(name, out value))
                 return value;
 
-            throw PyCallContext.ThrowException(PyStandardExceptionTypes.NameError, $"name '{name}' is not defined");
+            throw context.ThrowableNameError($"name '{name}' is not defined");
         }
         else if (variableType is PyVariableType.Closure)
         {
@@ -229,7 +221,7 @@ public sealed partial class PyFrame
             if (value is not null)
                 return value;
 
-            throw PyCallContext.ThrowException(PyStandardExceptionTypes.NameError, $"cannot access free variable '{name}' where it is not associated with a value in enclosing scope");
+            throw context.ThrowableNameError($"cannot access free variable '{name}' where it is not associated with a value in enclosing scope");
         }
 
         throw new NotImplementedException();

@@ -5,7 +5,6 @@ namespace PySharp.PyRuntime.Calls;
 
 partial class PyCallContext
 {
-    [MemberNotNullWhen(false, nameof(CurrentException))]
     public bool TryWarn(PyExceptionType warningType, string message)
     {
         var color = Console.ForegroundColor;
@@ -14,7 +13,7 @@ partial class PyCallContext
         Console.ForegroundColor = color;
         return true;
     }
-    [MemberNotNullWhen(false, nameof(CurrentException))]
+
     public bool TryWarn<TWarning>(string message) where TWarning : PyExceptionType<TWarning>, ISharedInstance<TWarning>, new()
     {
         return TryWarn(TWarning.Shared, message);
