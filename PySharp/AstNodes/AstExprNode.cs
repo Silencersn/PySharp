@@ -6,6 +6,7 @@ using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Text;
+using static PySharp.AstNodes.ReturnNode;
 
 namespace PySharp.AstNodes;
 
@@ -925,23 +926,24 @@ public sealed class LambdaNode : AstExprNode, IFunctionOrLambda
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        if (((IFunctionOrLambda)this).HasYield)
-            throw new NotSupportedException();
-
-        var caller = new FunctionCaller(context, this, frame, (context, frame) =>
-        {
-            try
-            {
-                return Body.GetExprValue(context, frame);
-            }
-            catch (PyRuntimeException e)
-            {
-                return PyResult.FromException(e.PyException);
-            }
-        });
+        ICaller caller = ((IFunctionOrLambda)this).HasYield ?
+            new GeneratorCaller(context, this, frame, GetResult) :
+            new FunctionCaller(context, this, frame, GetResult);
         var func = new PyFunctionObject("<lambda>", caller.Call, frame.InternalClosure?.Values, frame._globals);
         caller.Func = func;
         return func;
+    }
+
+    private PyResult GetResult(PyCallContext context, PyFrame frame)
+    {
+        try
+        {
+            return Body.GetExprValue(context, frame);
+        }
+        catch (PyRuntimeException e)
+        {
+            return PyResult.FromException(e.PyException);
+        }
     }
 
     public override void EnumerateNodes(Action<AstNode> action)

@@ -832,7 +832,8 @@ internal sealed class GeneratorCaller : ICaller
             }
         });
 
-        return new PyGeneratorObject(frame, task);
+        var name = (_node as FunctionDefNode)?.Identifier ?? "<lambda>";
+        return new PyGeneratorObject(name, frame, task);
     }
 }
 

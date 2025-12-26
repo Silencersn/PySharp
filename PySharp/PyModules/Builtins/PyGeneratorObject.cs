@@ -5,17 +5,19 @@ using System.Diagnostics;
 
 namespace PySharp.PyModules.Builtins;
 
-public sealed class PyGeneratorObject : PyObject
+public sealed class PyGeneratorObject : PyObject, IPyObjectName
 {
     internal readonly PyFrame _frame;
     internal Task? _task;
+    public string Name { get; }
 
-    internal PyGeneratorObject(PyFrame frame, Task task)
+    internal PyGeneratorObject(string name, PyFrame frame, Task task)
     {
         Debug.Assert(frame.Back is null);
         Debug.Assert(frame.FrameType is FrameType.YieldFunction or FrameType.YieldLambda);
         Debug.Assert(task.Status is TaskStatus.Created);
 
+        Name = name;
         _frame = frame;
         _task = task;
     }
@@ -151,6 +153,11 @@ public sealed class PyGeneratorObjectType : PyTypeObject<PyGeneratorObjectType, 
         AppendMethodDescriptor("send", Send);
         AppendMethodDescriptor("throw", Throw);
         AppendMethodDescriptor("close", Close);
+    }
+
+    protected internal override PyResult Repr(PyCallContext context, PyGeneratorObject self)
+    {
+        return PyStrObject.FromString($"<generator object {self.Name} at 0x{self.PyId:X16}>");
     }
 
     protected internal override PyResult Iter(PyCallContext context, PyGeneratorObject self)

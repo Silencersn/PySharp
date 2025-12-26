@@ -107,7 +107,7 @@ public sealed partial class PyFrame
         (IReadOnlyList<PyObject> Args, IReadOnlyDictionary<string, PyObject> Kwargs)? callingArguments = null,
         PyFrameGlobals? globals = null)
     {
-        Debug.Assert(frameType is FrameType.Function or FrameType.Lambda or FrameType.Class or FrameType.YieldFunction);
+        Debug.Assert(frameType is FrameType.Function or FrameType.Lambda or FrameType.Class or FrameType.YieldFunction or FrameType.YieldLambda);
         return new PyFrame(this, globals ?? _globals, null, null, callerName, caller, frameType) { CallingArguments = callingArguments };
     }
     internal PyFrame CreateThreadRootFrame()
