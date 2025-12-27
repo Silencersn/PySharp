@@ -18,7 +18,7 @@ public sealed class PyExceptionObject : PyObject
         Args = [.. args];
     }
 
-    public bool IsCauseNone { get; internal set; }
+    public bool SuppressContext { get; internal set; }
     public PyExceptionObject? Cause { get; internal set; }
     public PyExceptionObject? Context { get; internal set; }
     public string? CauseReason { get; internal set; }
@@ -120,7 +120,7 @@ public sealed class PyExceptionObject : PyObject
                 .AppendLine()
                 .AppendLine(CauseReason)
                 .AppendLine();
-        else if (!IsCauseNone && Context is not null)
+        else if (!SuppressContext && Context is not null)
             builder
                 .AppendLine(Context.ToMessage(context))
                 .AppendLine()

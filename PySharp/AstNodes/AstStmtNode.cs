@@ -438,7 +438,7 @@ public class RaiseNode : AstStmtNode
             var cause = Cause.GetExprValue(context, frame);
             if (cause is PyNoneObject)
             {
-                exc.IsCauseNone = true;
+                exc.SuppressContext = true;
             }
             else
             {
