@@ -19,6 +19,7 @@ public sealed class PyExceptionObject : PyObject
     }
 
     public PyExceptionObject? Cause { get; internal set; }
+    public PyExceptionObject? Context { get; internal set; }
     public string? CauseReason { get; internal set; }
     public IReadOnlyList<PyObject> Args { get; }
     public string? Traceback { get; internal set; }
@@ -117,6 +118,12 @@ public sealed class PyExceptionObject : PyObject
                 .AppendLine(Cause.ToMessage(context))
                 .AppendLine()
                 .AppendLine(CauseReason)
+                .AppendLine();
+        else if (Context is not null)
+            builder
+                .AppendLine(Context.ToMessage(context))
+                .AppendLine()
+                .AppendLine("During handling of the above exception, another exception occurred:")
                 .AppendLine();
 
         if (ThreadTracebackInfo is not null)
