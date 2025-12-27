@@ -1056,7 +1056,7 @@ public sealed class YieldNode : AstExprNode
                 throw new UnreachableException();
 
             case YieldCallerAction.ActionType.Close:
-                throw context.ThrowableException(PyStandardExceptionTypes.GeneratorExit);
+                throw context.ThrowableGeneratorExit();
 
             default:
                 throw new UnreachableException();

@@ -30,7 +30,7 @@ public static class PyInterpreter
                 {
                     var exc = pyRuntimeException.PyException.WithTraceback(context);
 
-                    if (exc.PyType == PyStandardExceptionTypes.SystemExit)
+                    if (PyStandardExceptionTypes.SystemExit.IsInstance(exc))
                     {
                     }
                     else

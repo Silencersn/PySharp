@@ -216,7 +216,7 @@ public sealed class PyUserDefinedGeneratorObject : PyGeneratorObject
 
         if (result.IsError)
         {
-            if (result.Exception.PyType is PyGeneratorExitObjectType)
+            if (PyGeneratorExitObjectType.Shared.IsInstance(result.Exception))
                 return PyNoneObject.None;
 
             return result;

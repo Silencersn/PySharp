@@ -20,10 +20,10 @@ public readonly partial struct PyResult
     public bool IsNotImplemented => _value is PyNotImplementedObject;
 
     [MemberNotNullWhen(true, nameof(Exception))]
-    public bool IsStopIteration => _exception?.PyType is PyStopIterationObjectType;
+    public bool IsStopIteration => _exception is not null && PyStopIterationObjectType.Shared.IsInstance(_exception);
 
     [MemberNotNullWhen(true, nameof(Exception))]
-    public bool IsAttributeError => _exception?.PyType is PyAttributeErrorObjectType;
+    public bool IsAttributeError => _exception is not null && PyAttributeErrorObjectType.Shared.IsInstance(_exception);
 
     public PyObject? Value => _value;
     public PyExceptionObject? Exception => _exception;

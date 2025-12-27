@@ -627,7 +627,7 @@ public class ImportFromNode : AstStmtNode
             Debug.Assert(name.Name is not "*");
 
             if (!module.PyAttributes.TryGetValue(name.Name, out var value))
-                throw context.ThrowableException(PyStandardExceptionTypes.ImportError, $"cannot import name '{name.Name}' from '{Module /* TODO: should be module.__name__ */}'");
+                throw context.ThrowableImportError($"cannot import name '{name.Name}' from '{Module /* TODO: should be module.__name__ */}'");
 
             frame.SetValue(name.AsName ?? name.Name, value);
         }
