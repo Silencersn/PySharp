@@ -58,47 +58,20 @@ public class PyBuiltinFunctionOrMethodObject : PyObject, IPyObjectName
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
         PyAttributes.Add(PySpecialNames.Self, Self);
     }
-    internal PyBuiltinFunctionOrMethodObject(string name, PyTypeObject type, params MethodInfo/*PyMethod<TObject>*/[] methods)
+    internal PyBuiltinFunctionOrMethodObject(string name, PyTypeObject type, PyUncompoundedDelegate uncompoundedDelegate)
     {
         Name = name;
         IsMethod = false;
-        PyDelegate = (context, args, kwargs) =>
-        {
-            if (args.Count is 0 || !type.IsInstance(args[0]))
-                return PyResult.RaiseTypeError(null);
-
-            EnsureDefCache(methods);
-
-            var self = args[0];
-            args = [.. args.Skip(1)];
-            foreach (var method in methods)
-            {
-                if (_defCache[method].TryParse(args, kwargs, out var result))
-                    return (PyResult)method.Invoke(method.IsStatic ? null : type, [context, self, result])!;
-            }
-
-            return PyResult.RaiseTypeError(null);
-        };
+        PyDelegate = uncompoundedDelegate;
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
     }
-    internal PyBuiltinFunctionOrMethodObject(string name, PyObject self, PyTypeObject type, MethodInfo/*PyMethod<TObject>*/[] methods)
+    internal PyBuiltinFunctionOrMethodObject(string name, PyObject self, PyTypeObject type, PyUncompoundedDelegate uncompoundedDelegate)
     {
         Self = self;
         SelfType = type;
         Name = name;
         IsMethod = true;
-        PyDelegate = (context, args, kwargs) =>
-        {
-            EnsureDefCache(methods);
-
-            foreach (var method in methods)
-            {
-                if (_defCache[method].TryParse(args, kwargs, out var result))
-                    return (PyResult)method.Invoke(method.IsStatic ? null : type, [context, self, result])!;
-            }
-
-            return PyResult.RaiseTypeError(null);
-        };
+        PyDelegate = (context, args, kwargs) => uncompoundedDelegate(context, [self, .. args], kwargs);
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
         PyAttributes.Add(PySpecialNames.Self, Self);
     }

@@ -1,4 +1,7 @@
 ﻿using PySharp.PyModules.Builtins;
+using PySharp.PyRuntime.PyAttributes;
+using System.Diagnostics;
+using System.Reflection;
 
 namespace PySharp.PyRuntime.Calls;
 
@@ -46,5 +49,50 @@ public static class PyDelegateConverter
 
             return deleter(context, selfOfT);
         };
+    }
+
+    public static PyUncompoundedDelegate Combine<TObject>(params PyMethod<TObject>[] methods) where TObject : PyObject
+    {    
+        PyArgsDef[]? defs = null;
+
+        return (context, args, kwargs) =>
+        {
+            if (args.Count is 0 || args[0] is not TObject selfOfT)
+                return PyResult.RaiseTypeError(null);
+
+            EnsureDefCache();
+            Debug.Assert(defs is not null);
+
+            args = [.. args.Skip(1)];
+            for (int i = 0; i < defs.Length; i++)
+            {
+                if (defs[i].TryParse(args, kwargs, out var result))
+                    return methods[i].Invoke(context, selfOfT, result);
+            }
+
+            return PyResult.RaiseTypeError(null);
+        };
+
+        void EnsureDefCache()
+        {
+            if (defs is null)
+            {
+                lock (methods)
+                {
+                    if (defs is null)
+                    {
+                        var cache = new PyArgsDef[methods.Length];
+                        for (int i = 0; i < cache.Length; i++)
+                        {
+                            var argsDef = methods[i].Method.GetCustomAttribute<PyFunctionArgsDefAttribute>();
+                            Debug.Assert(argsDef is not null);
+                            var def = PyArgsDef.FromDef(argsDef.Parameters);
+                            cache[i] = def;
+                        }
+                        defs = cache;
+                    }
+                }
+            }
+        }
     }
 }

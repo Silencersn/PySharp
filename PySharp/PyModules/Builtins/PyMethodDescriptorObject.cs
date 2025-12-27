@@ -22,7 +22,7 @@ public sealed class PyMethodDescriptorObject : PyObject
     internal readonly string _name;
     internal readonly MethodInfo? _method;
     internal readonly PySpecialMethodParametersType _paramType;
-    internal readonly MethodInfo/*PyMethod<TObject>*/[]? _methods;
+    internal readonly PyUncompoundedDelegate? _uncompoundedDelegate;
 
     internal PyBuiltinFunctionOrMethodObject UnboundMethod
     {
@@ -30,8 +30,8 @@ public sealed class PyMethodDescriptorObject : PyObject
         {
             if (field is null)
             {
-                if (_methods is not null)
-                    return field = new PyBuiltinFunctionOrMethodObject(_name, _declaringType, _methods);
+                if (_uncompoundedDelegate is not null)
+                    return field = new PyBuiltinFunctionOrMethodObject(_name, _declaringType, _uncompoundedDelegate);
 
                 Debug.Assert(_method is not null);
                 Debug.Assert(_paramType is not PySpecialMethodParametersType.Unknown);
@@ -53,11 +53,11 @@ public sealed class PyMethodDescriptorObject : PyObject
     internal PyMethodDescriptorObject(string name, Delegate typeDelegate, PySpecialMethodParametersType paramType) : this(name, (PyTypeObject)typeDelegate.Target!, typeDelegate.Method, paramType)
     {
     }
-    internal PyMethodDescriptorObject(string name, PyTypeObject type, params MethodInfo/*PyMethod<TObject>*/[] methods)
+    internal PyMethodDescriptorObject(string name, PyTypeObject type, PyUncompoundedDelegate uncompoundedDelegate)
     {
         _declaringType = type;
         _name = name;
-        _methods = methods;
+        _uncompoundedDelegate = uncompoundedDelegate;
     }
 
     internal static PyFunction ToPyDelegate(PyTypeObject type, MethodInfo method, PySpecialMethodParametersType paramType)
@@ -118,8 +118,8 @@ public sealed class PyMethodDescriptorObjectType : PyTypeObject<PyMethodDescript
         if (!self._declaringType.IsInstance(instance))
             return PyResult.RaiseTypeError($"descriptor '{self._name}' requires a '{self._declaringType.Name}' object but received a '{instance.PyType.Name}'");
 
-        if (self._methods is not null)
-            return new PyBuiltinFunctionOrMethodObject(self._name, instance, instance.PyType, self._methods);
+        if (self._uncompoundedDelegate is not null)
+            return new PyBuiltinFunctionOrMethodObject(self._name, instance, instance.PyType, self._uncompoundedDelegate);
 
         Debug.Assert(self._method is not null);
         Debug.Assert(self._paramType is not PySpecialMethodParametersType.Unknown);
