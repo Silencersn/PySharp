@@ -32,7 +32,6 @@ public static class PyInterpreter
 
                     if (exc.PyType == PyStandardExceptionTypes.SystemExit)
                     {
-                        context.ClearException();
                     }
                     else
                     {

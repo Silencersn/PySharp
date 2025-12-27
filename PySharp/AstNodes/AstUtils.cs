@@ -9,21 +9,12 @@ namespace PySharp.AstNodes;
 
 internal static class AstUtils
 {
-    public static TPyObject PyCast<TPyObject>(this PyObject? obj, PyCallContext context)
+    public static TPyObject PyCast<TPyObject>(this PyObject obj, PyCallContext context)
     {
-        obj.PyThrowIfNull(context);
-
         if (obj is not TPyObject objOfT)
             throw context.ThrowableTypeError(null);
 
         return objOfT;
-    }
-
-    public static TPyObject PyThrowIfNull<TPyObject>([NotNull] this TPyObject? obj, PyCallContext context) where TPyObject : PyObject
-    {
-        if (obj is null)
-            throw new PyRuntimeException(context, context.CurrentException ?? throw new NotImplementedException("No Current Exception"));
-        return obj;
     }
 
     public static PyObject PyUnwrap(this PyResult result, PyCallContext context)
@@ -51,9 +42,8 @@ internal static class AstUtils
         throw new PyRuntimeException(context, result.Exception);
     }
 
-    public static PyExceptionType PyCastExceptionType(this PyObject? obj, PyCallContext context)
+    public static PyExceptionType PyCastExceptionType(this PyObject obj, PyCallContext context)
     {
-        obj.PyThrowIfNull(context);
         if (obj is PyExceptionType objectType)
             return objectType;
         throw context.ThrowableTypeError("exceptions must derive from BaseException");

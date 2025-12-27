@@ -212,8 +212,8 @@ public sealed class PyArgsDef
             [.. node.PosonlyArgs.Select(arg => arg.Arg)],
             [.. node.Args.Select(arg => arg.Arg)],
             [.. node.KwonlyArgs.Select(arg => arg.Arg)],
-            [.. node.KwDefaults.Select(d => d?.GetExprValue(context, frame).PyThrowIfNull(context))],
-            [.. node.Defaults.Select(d => d.GetExprValue(context, frame).PyThrowIfNull(context))],
+            [.. node.KwDefaults.Select(d => d?.GetExprValue(context, frame))],
+            [.. node.Defaults.Select(d => d.GetExprValue(context, frame))],
             node.VarArg?.Arg,
             node.KwArg?.Arg
             );

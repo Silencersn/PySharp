@@ -8,7 +8,6 @@ namespace PySharp.PyRuntime.Calls;
 internal sealed class PyCallContextState
 {
     private PyFrame _currentFrame;
-    private PyExceptionObject? _currentException;
 
     internal PyCallContextState(PyFrame rootFrame)
     {
@@ -19,10 +18,5 @@ internal sealed class PyCallContextState
     {
         get => _currentFrame;
         set => _currentFrame = value;
-    }
-    public PyExceptionObject? CurrentException
-    {
-        get => _currentException;
-        set => _currentException = value;
     }
 }

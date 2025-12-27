@@ -495,7 +495,6 @@ public class TryNode : AstStmtNode
             frame.Exceptions.Pop();
             if (!handled)
                 throw;
-            context.ClearException();
         }
         finally
         {
