@@ -18,7 +18,6 @@ public sealed class PyExceptionObject : PyObject
         Args = [.. args];
     }
 
-    public bool Raised { get; internal set; }
     public PyExceptionObject? Cause { get; internal set; }
     public string? CauseReason { get; internal set; }
     public IReadOnlyList<PyObject> Args { get; }

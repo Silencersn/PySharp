@@ -42,13 +42,6 @@ internal static class AstUtils
         throw new PyRuntimeException(context, result.Exception);
     }
 
-    public static PyExceptionType PyCastExceptionType(this PyObject obj, PyCallContext context)
-    {
-        if (obj is PyExceptionType objectType)
-            return objectType;
-        throw context.ThrowableTypeError("exceptions must derive from BaseException");
-    }
-
     public static void SetTargetValue(this AstExprNode target, PyCallContext context, PyObject value, PyFrame frame)
     {
         if (target is ITargetNode targetNode)

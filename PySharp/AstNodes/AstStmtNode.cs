@@ -40,7 +40,6 @@ public class AssignNode : AstStmtNode
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
         var value = Value.GetExprValue(context, frame);
-        Debug.Assert(value is not PyExceptionObject { Raised: true });
 
         foreach (var target in Targets)
         {
@@ -53,7 +52,6 @@ public class AssignNode : AstStmtNode
         Targets.EnumerateNodes(action);
         Value.EnumerateNodes(action);
     }
-
 }
 
 public class AssertNode : AstStmtNode
