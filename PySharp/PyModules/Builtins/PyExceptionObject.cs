@@ -170,7 +170,7 @@ public abstract class PyExceptionType : PyTypeObject<PyExceptionObject>
         if (kwargs.Count is not 0)
             return PyResult.RaiseTypeError(null);
 
-        return new PyExceptionObject(this, [.. args]);
+        return new PyExceptionObject(cls, [.. args]);
     }
 
     protected internal override PyResult Repr(PyCallContext context, PyExceptionObject self)

@@ -433,23 +433,28 @@ public class RaiseNode : AstStmtNode
             throw new PyRuntimeException(context, frame.CurrentException);
 
         var obj = Exc.GetExprValue(context, frame);
-        PyExceptionObject exc;
-        if (obj is PyExceptionObject excObj)
-            exc = excObj;
-        else
-            exc = obj.PyCastExceptionType(context).Create();
+        var exc = ToException(context, obj);
 
         if (Cause is not null)
         {
             var cause = Cause.GetExprValue(context, frame);
-            if (cause is PyExceptionObject exObj)
-                exc.Cause = exObj;
-            else
-                exc.Cause = cause.PyCastExceptionType(context).Create();
+            exc.Cause = ToException(context, cause);
             exc.CauseReason = "The above exception was the direct cause of the following exception:";
         }
 
         throw new PyRuntimeException(context, exc);
+
+        static PyExceptionObject ToException(PyCallContext context, PyObject pyObj)
+        {
+            if (pyObj is PyExceptionObject excObj)
+                return excObj;
+
+            else if (pyObj is PyTypeObject typeObj && typeObj.IsSubclassOf(PyBaseExceptionObjectType.Shared))
+                return new PyExceptionObject(typeObj);
+
+            else
+                throw context.ThrowableTypeError($"exceptions must derive from BaseException");
+        }
     }
 
     public override void EnumerateNodes(Action<AstNode> action)
