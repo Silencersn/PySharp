@@ -16,7 +16,7 @@ partial class PyTypeObject<TObject>
 
     internal void AppendMethodDescriptor(string name, params PyMethod<TObject>[] methods)
     {
-        PyAttributes.Add(name, new PyMethodDescriptorObject(name, this, PyDelegateConverter.Combine(methods)));
+        PyAttributes.Add(name, new PyMethodDescriptorObject(name, this, PyDelegateConverter.CreateOverloadDispatcher(methods)));
     }
 
     private static readonly FrozenDictionary<string, (string PyName, PySpecialMethodParametersType ParamType)> _nameToPySpecialMethodParametersType =

@@ -17,7 +17,6 @@ public delegate PyResult PyMemberSetter<TObject>(PyCallContext context, TObject 
 public delegate PyResult PyMemberDeleter(PyCallContext context, PyObject self);
 public delegate PyResult PyMemberDeleter<TObject>(PyCallContext context, TObject self) where TObject : PyObject;
 
-
 public static class PyDelegateConverter
 {
     public static PyMemberGetter ToNonGeneric<TObject>(this PyMemberGetter<TObject> getter) where TObject : PyObject
@@ -51,7 +50,7 @@ public static class PyDelegateConverter
         };
     }
 
-    public static PyUncompoundedDelegate Combine<TObject>(params PyMethod<TObject>[] methods) where TObject : PyObject
+    public static PyUncompoundedDelegate CreateOverloadDispatcher<TObject>(params PyMethod<TObject>[] methods) where TObject : PyObject
     {    
         PyArgsDef[]? defs = null;
 
