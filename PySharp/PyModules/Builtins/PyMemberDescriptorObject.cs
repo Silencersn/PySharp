@@ -4,19 +4,23 @@ namespace PySharp.PyModules.Builtins;
 
 public sealed class PyMemberDescriptorObject : PyObject, IPyDescriptor
 {
-    internal readonly Func<PyCallContext, PyObject, PyObject, PyResult> _getter;
-    internal readonly Func<PyCallContext, PyObject, PyObject, PyResult>? _setter;
+    internal readonly PyTypeObject _declaringType;
+    internal readonly PyMemberGetter _getter;
+    internal readonly PyMemberSetter? _setter;
+    internal readonly PyMemberDeleter? _deleter;
 
     public override PyTypeObject DefaultPyType => PyMemberDescriptorObjectType.Shared;
 
     bool IPyDescriptor.SupportsGet => true;
     bool IPyDescriptor.SupportsSet => true;
-    bool IPyDescriptor.SupportsDelete => false;
+    bool IPyDescriptor.SupportsDelete => true;
 
-    internal PyMemberDescriptorObject(Func<PyCallContext, PyObject, PyObject, PyResult> getter, Func<PyCallContext, PyObject, PyObject, PyResult>? setter = null)
+    internal PyMemberDescriptorObject(PyTypeObject declaringType, PyMemberGetter getter, PyMemberSetter? setter, PyMemberDeleter? deleter)
     {
+        _declaringType = declaringType;
         _getter = getter;
         _setter = setter;
+        _deleter = deleter;
     }
 }
 
@@ -28,13 +32,32 @@ public sealed class PyMemberDescriptorObjectType : PyTypeObject<PyMemberDescript
     {
         if (instance is PyNoneObject)
             return self;
-        return self._getter(context, instance, owner);
+
+        if (!instance.PyType.IsSubclassOf(self._declaringType))
+            return PyResult.RaiseTypeError(null);
+
+        return self._getter(context, instance);
     }
 
     protected internal override PyResult Set(PyCallContext context, PyMemberDescriptorObject self, PyObject instance, PyObject value)
     {
         if (self._setter is null)
             return PyResult.RaiseAttributeError("readonly attribute");
+
+        if (!instance.PyType.IsSubclassOf(self._declaringType))
+            return PyResult.RaiseTypeError(null);
+
         return self._setter(context, instance, value);
+    }
+
+    protected internal override PyResult Delete(PyCallContext context, PyMemberDescriptorObject self, PyObject instance)
+    {
+        if (self._deleter is null)
+            return PyResult.RaiseAttributeError("readonly attribute");
+
+        if (!instance.PyType.IsSubclassOf(self._declaringType))
+            return PyResult.RaiseTypeError(null);
+
+        return self._deleter(context, instance);
     }
 }

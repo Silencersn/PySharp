@@ -31,10 +31,10 @@ public sealed class PyFunctionObjectType : PyTypeObject<PyFunctionObjectType, Py
 
     public PyFunctionObjectType()
     {
-        AppendMemberDescriptor<PyFunctionObject>(PySpecialNames.Closure,
-            static func => func._pyClosure ??= func._closure is not null ? PyTupleObject.CreateProxy(func._closure) : PyNoneObject.None);
-        AppendMemberDescriptor<PyFunctionObject>(PySpecialNames.Globals,
-            static func => func._globals.PyDict);
+        AppendMemberDescriptor(PySpecialNames.Closure,
+            static (_, func) => func._pyClosure ??= func._closure is not null ? PyTupleObject.CreateProxy(func._closure) : PyNoneObject.None);
+        AppendMemberDescriptor(PySpecialNames.Globals,
+            static (_, func) => func._globals.PyDict);
     }
 
     protected internal override PyResult Repr(PyCallContext context, PyFunctionObject self)

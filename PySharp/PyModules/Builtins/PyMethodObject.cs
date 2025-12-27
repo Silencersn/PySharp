@@ -22,8 +22,8 @@ public sealed class PyMethodObjectType : PyTypeObject<PyMethodObjectType, PyMeth
 
     public PyMethodObjectType()
     {
-        AppendMemberDescriptor<PyMethodObject>("__func__", method => method._functionObj);
-        AppendMemberDescriptor<PyMethodObject>("__self__", method => method._target);
+        AppendMemberDescriptor("__func__", static (_, method) => method._functionObj);
+        AppendMemberDescriptor("__self__", static (_, method) => method._target);
     }
 
     protected internal override PyResult Call(PyCallContext context, PyMethodObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)

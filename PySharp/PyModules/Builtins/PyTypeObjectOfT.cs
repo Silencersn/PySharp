@@ -36,17 +36,17 @@ public sealed class PyTypeObjectType : PyTypeObject<PyTypeObjectType, PyTypeObje
 
     public PyTypeObjectType()
     {
-        AppendMemberDescriptor<PyTypeObject>(PySpecialNames.Bases,
-            static typeObj => PyTupleObject.CreateTuple(typeObj.Bases),
-            static (typeObj, value) => throw new NotImplementedException());
+        AppendMemberDescriptor(PySpecialNames.Bases,
+            static (_, typeObj) => PyTupleObject.CreateTuple(typeObj.Bases),
+            static (_, typeObj, value) => throw new NotImplementedException());
 
-        AppendMemberDescriptor<PyTypeObject>(PySpecialNames.Name,
-            static typeObj => PyStrObject.FromString(typeObj.Name),
-            static (typeObj, value) => throw new NotImplementedException());
+        AppendMemberDescriptor(PySpecialNames.Name,
+            static (_, typeObj) => PyStrObject.FromString(typeObj.Name),
+            static (_, typeObj, value) => throw new NotImplementedException());
 
-        AppendMemberDescriptor<PyTypeObject>(PySpecialNames.MRO,
-            static typeObj => PyTupleObject.CreateTuple(typeObj.MRO),
-            static (typeObj, value) => throw new NotImplementedException());
+        AppendMemberDescriptor(PySpecialNames.MRO,
+            static (_, typeObj) => PyTupleObject.CreateTuple(typeObj.MRO),
+            static (_, typeObj, value) => throw new NotImplementedException());
     }
 
     protected internal override PyResult Call(PyCallContext context, PyTypeObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)

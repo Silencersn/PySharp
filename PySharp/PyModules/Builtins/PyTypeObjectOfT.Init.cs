@@ -9,6 +9,11 @@ namespace PySharp.PyModules.Builtins;
 
 partial class PyTypeObject<TObject>
 {
+    internal void AppendMemberDescriptor(string name, PyMemberGetter<TObject> getter, PyMemberSetter<TObject>? setter = null, PyMemberDeleter<TObject>? deleter = null)
+    {
+        PyAttributes[name] = new PyMemberDescriptorObject(this, getter.ToNonGeneric(), setter?.ToNonGeneric(), deleter?.ToNonGeneric());
+    }
+
     internal void AppendMethodDescriptor(string name, params IEnumerable<PyMethod<TObject>> methods)
     {
         PyAttributes.Add(name, new PyMethodDescriptorObject(name, this, [.. methods.Select(method => method.Method)]));

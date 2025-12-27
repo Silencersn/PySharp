@@ -29,9 +29,9 @@ public sealed class PySliceObjectType : PyTypeObject<PySliceObjectType, PySliceO
 
     public PySliceObjectType()
     {
-        AppendMemberDescriptor<PySliceObject>("start", static slice => slice.Start);
-        AppendMemberDescriptor<PySliceObject>("stop", static slice => slice.Stop);
-        AppendMemberDescriptor<PySliceObject>("step", static slice => slice.Step);
+        AppendMemberDescriptor("start", static (_, slice) => slice.Start);
+        AppendMemberDescriptor("stop", static (_, slice) => slice.Stop);
+        AppendMemberDescriptor("step", static (_, slice) => slice.Step);
     }
 
     private static readonly PyBuiltinFunctionOrMethodObject _new = new(PySpecialNames.New, NewImpl_1, NewImpl_2);

@@ -90,24 +90,24 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
         return PyResult.RaiseAttributeError($"'{pyTypeObj.Name}' object has no attribute '{name}'");
     }
 
-    internal void AppendMemberDescriptor<TPyObject>(string name, Func<TPyObject, PyResult> getter, Func<TPyObject, PyObject, PyResult>? setter = null) where TPyObject : PyObject
-    {
-        PyAttributes[name] = new PyMemberDescriptorObject(
-            (_, obj, _) =>
-            {
-                if (obj is not TPyObject pyObj)
-                    return PyResult.RaiseTypeError(null);
+    //internal void AppendMemberDescriptor<TPyObject>(string name, Func<TPyObject, PyResult> getter, Func<TPyObject, PyObject, PyResult>? setter = null) where TPyObject : PyObject
+    //{
+    //    PyAttributes[name] = new PyMemberDescriptorObject(
+    //        (_, obj, _) =>
+    //        {
+    //            if (obj is not TPyObject pyObj)
+    //                return PyResult.RaiseTypeError(null);
 
-                return getter(pyObj);
-            },
-            setter is null ? null : (_, obj, value) =>
-            {
-                if (obj is not TPyObject pyObj)
-                    return PyResult.RaiseTypeError(null);
+    //            return getter(pyObj);
+    //        },
+    //        setter is null ? null : (_, obj, value) =>
+    //        {
+    //            if (obj is not TPyObject pyObj)
+    //                return PyResult.RaiseTypeError(null);
 
-                return setter(pyObj, value);
-            });
-    }
+    //            return setter(pyObj, value);
+    //        });
+    //}
 
     internal static void ValidateBases(PyCallContext context, IEnumerable<PyTypeObject> bases, out Type layoutType)
     {
