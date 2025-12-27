@@ -23,10 +23,7 @@ public class ExceptHandlerNode : AstExceptHandlerNode
 
     public override bool TryHandle(PyCallContext context, PyFrame frame, PyExceptionObject exception)
     {
-        if (Type?.GetExprValue(context, frame) is not PyExceptionType type)
-            throw context.ThrowableTypeError(null);
-
-        if (Type is null || type is not null && type.IsInstance(exception))
+        if (IsMatch())
         {
             if (Identifier is not null)
                 frame.SetValue(Identifier, exception);
@@ -43,5 +40,16 @@ public class ExceptHandlerNode : AstExceptHandlerNode
         }
 
         return false;
+
+        bool IsMatch()
+        {
+            if (Type is null)
+                return true;
+
+            if (Type.GetExprValue(context, frame) is not PyTypeObject typeObj || !typeObj.IsSubclassOf(PyBaseExceptionObjectType.Shared))
+                throw context.ThrowableTypeError("catching classes that do not inherit from BaseException is not allowed");
+
+            return typeObj.IsInstance(exception);
+        }
     }
 }
