@@ -74,23 +74,61 @@ public static class PyDelegateConverter
 
         void EnsureDefCache()
         {
-            if (defs is null)
+            if (defs is not null)
+                return;
+
+            lock (methods)
             {
-                lock (methods)
+                if (defs is not null)
+                    return;
+
+                var cache = new PyArgsDef[methods.Length];
+                for (int i = 0; i < cache.Length; i++)
                 {
-                    if (defs is null)
-                    {
-                        var cache = new PyArgsDef[methods.Length];
-                        for (int i = 0; i < cache.Length; i++)
-                        {
-                            var argsDef = methods[i].Method.GetCustomAttribute<PyFunctionArgsDefAttribute>();
-                            Debug.Assert(argsDef is not null);
-                            var def = PyArgsDef.FromDef(argsDef.Parameters);
-                            cache[i] = def;
-                        }
-                        defs = cache;
-                    }
+                    var argsDef = methods[i].Method.GetCustomAttribute<PyFunctionArgsDefAttribute>();
+                    Debug.Assert(argsDef is not null);
+                    cache[i] = PyArgsDef.FromDef(argsDef.Parameters);
                 }
+                defs = cache;
+            }
+        }
+    }
+    public static PyUncompoundedDelegate CreateOverloadDispatcher(params PyFunction[] functions)
+    {
+        PyArgsDef[]? defs = null;
+
+        return (context, args, kwargs) =>
+        {
+            EnsureDefCache();
+            Debug.Assert(defs is not null);
+
+            for (int i = 0; i < defs.Length; i++)
+            {
+                if (defs[i].TryParse(args, kwargs, out var result))
+                    return functions[i].Invoke(context, result);
+            }
+
+            return PyResult.RaiseTypeError(null);
+        };
+
+        void EnsureDefCache()
+        {
+            if (defs is not null)
+                return;
+
+            lock (functions)
+            {
+                if (defs is not null)
+                    return;
+
+                var cache = new PyArgsDef[functions.Length];
+                for (int i = 0; i < cache.Length; i++)
+                {
+                    var argsDef = functions[i].Method.GetCustomAttribute<PyFunctionArgsDefAttribute>();
+                    Debug.Assert(argsDef is not null);
+                    cache[i] = PyArgsDef.FromDef(argsDef.Parameters);
+                }
+                defs = cache;
             }
         }
     }

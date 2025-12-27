@@ -9,8 +9,6 @@ namespace PySharp.PyModules.Builtins;
 
 public class PyBuiltinFunctionOrMethodObject : PyObject, IPyObjectName
 {
-    private Dictionary<MethodInfo, PyArgsDef>? _defCache;
-
     public string Name { get; }
     [MemberNotNullWhen(true, nameof(SelfType))]
     public bool IsMethod { get; }
@@ -25,17 +23,7 @@ public class PyBuiltinFunctionOrMethodObject : PyObject, IPyObjectName
         Name = name;
         IsMethod = false;
         Self = null;
-        PyDelegate = (context, args, kwargs) =>
-        {
-            EnsureDefCache(funcs.Select(static func => func.Method));
-            foreach (var func in funcs)
-            {
-                if (_defCache[func.Method].TryParse(args, kwargs, out var result))
-                    return func.Invoke(context, result);
-            }
-
-            return PyResult.RaiseTypeError(null);
-        };
+        PyDelegate = PyDelegateConverter.CreateOverloadDispatcher(funcs);
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
     }
     internal PyBuiltinFunctionOrMethodObject(string name, PyObject self, PyTypeObject type, params PyFunction[] funcs)
@@ -44,21 +32,11 @@ public class PyBuiltinFunctionOrMethodObject : PyObject, IPyObjectName
         SelfType = type;
         Name = name;
         IsMethod = true;
-        PyDelegate = (context, args, kwargs) =>
-        {
-            EnsureDefCache(funcs.Select(static func => func.Method));
-            foreach (var func in funcs)
-            {
-                if (_defCache[func.Method].TryParse(args, kwargs, out var result))
-                    return func.Invoke(context, result);
-            }
-
-            return PyResult.RaiseTypeError(null);
-        };
+        PyDelegate = PyDelegateConverter.CreateOverloadDispatcher(funcs);
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
         PyAttributes.Add(PySpecialNames.Self, Self);
     }
-    internal PyBuiltinFunctionOrMethodObject(string name, PyTypeObject type, PyUncompoundedDelegate uncompoundedDelegate)
+    internal PyBuiltinFunctionOrMethodObject(string name, PyUncompoundedDelegate uncompoundedDelegate)
     {
         Name = name;
         IsMethod = false;
@@ -75,40 +53,6 @@ public class PyBuiltinFunctionOrMethodObject : PyObject, IPyObjectName
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
         PyAttributes.Add(PySpecialNames.Self, Self);
     }
-
-    internal PyBuiltinFunctionOrMethodObject(string name, PyUncompoundedDelegate func)
-    {
-        Name = name;
-        PyDelegate = func;
-        IsMethod = false;
-        Self = null;
-        PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
-    }
-
-
-    [MemberNotNull(nameof(_defCache))]
-    private void EnsureDefCache(IEnumerable<MethodInfo> methodInfos)
-    {
-        if (_defCache is null)
-        {
-            lock (this)
-            {
-                if (_defCache is null)
-                {
-                    var cache = new Dictionary<MethodInfo, PyArgsDef>();
-                    foreach (var methInfo in methodInfos)
-                    {
-                        var argsDef = methInfo.GetCustomAttribute<PyFunctionArgsDefAttribute>();
-                        Debug.Assert(argsDef is not null);
-                        var def = PyArgsDef.FromDef(argsDef.Parameters);
-                        cache[methInfo] = def;
-                    }
-                    _defCache = cache;
-                }
-            }
-        }
-    }
-
 }
 
 public sealed class PyBuiltinFunctionOrMethodObjectType : PyTypeObject<PyBuiltinFunctionOrMethodObjectType, PyBuiltinFunctionOrMethodObject>

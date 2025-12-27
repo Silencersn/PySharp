@@ -31,7 +31,7 @@ public sealed class PyMethodDescriptorObject : PyObject
             if (field is null)
             {
                 if (_uncompoundedDelegate is not null)
-                    return field = new PyBuiltinFunctionOrMethodObject(_name, _declaringType, _uncompoundedDelegate);
+                    return field = new PyBuiltinFunctionOrMethodObject(_name, _uncompoundedDelegate);
 
                 Debug.Assert(_method is not null);
                 Debug.Assert(_paramType is not PySpecialMethodParametersType.Unknown);
