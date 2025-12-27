@@ -436,8 +436,15 @@ public class RaiseNode : AstStmtNode
         if (Cause is not null)
         {
             var cause = Cause.GetExprValue(context, frame);
-            exc.Cause = ToException(context, cause);
-            exc.CauseReason = "The above exception was the direct cause of the following exception:";
+            if (cause is PyNoneObject)
+            {
+                exc.IsCauseNone = true;
+            }
+            else
+            {
+                exc.Cause = ToException(context, cause);
+                exc.CauseReason = "The above exception was the direct cause of the following exception:";
+            }
         }
 
         if (frame.Exceptions.TryPeek(out var pre))
