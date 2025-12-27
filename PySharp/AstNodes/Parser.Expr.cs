@@ -2,7 +2,6 @@
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.Tokenization;
-using System;
 using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Numerics;
@@ -206,7 +205,7 @@ partial class Parser
 
             if (CurrentToken.String is not ("s" or "r" or "a"))
                 throw _context.ThrowableSyntaxError($"f-string: invalid conversion character '{CurrentToken.String}': expected 's', 'r', or 'a'");
-            
+
             conversion = CurrentToken.String[0];
             MoveNextToken();
         }

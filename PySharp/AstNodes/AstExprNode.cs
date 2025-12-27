@@ -2,12 +2,10 @@
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
-using System.Collections;
 using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Text;
-using static PySharp.AstNodes.ReturnNode;
 
 namespace PySharp.AstNodes;
 

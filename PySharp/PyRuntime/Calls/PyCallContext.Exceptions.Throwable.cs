@@ -1,5 +1,4 @@
 ﻿using PySharp.PyModules.Builtins;
-using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.PyRuntime.Calls;
 
@@ -100,7 +99,7 @@ partial class PyCallContext
     {
         return ThrowableException(PyStandardExceptionTypes.ModuleNotFoundError, arg);
     }
-    
+
     internal PyRuntimeException ThrowableImportError(string? arg = null)
     {
         return ThrowableException(PyStandardExceptionTypes.ImportError, arg);

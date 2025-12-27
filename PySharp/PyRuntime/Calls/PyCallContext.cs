@@ -1,5 +1,4 @@
-﻿using PySharp.PyModules.Builtins;
-using PySharp.PyRuntime.Environments;
+﻿using PySharp.PyRuntime.Environments;
 using System.Diagnostics;
 
 namespace PySharp.PyRuntime.Calls;

@@ -1,6 +1,5 @@
 ﻿using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime.Calls;
-using System;
 using System.Collections;
 
 namespace PySharp.PyRuntime.Collection;
