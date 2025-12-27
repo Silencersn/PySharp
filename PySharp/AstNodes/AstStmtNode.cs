@@ -439,6 +439,12 @@ public class RaiseNode : AstStmtNode
             exc.Cause = ToException(context, cause);
             exc.CauseReason = "The above exception was the direct cause of the following exception:";
         }
+        else if (exc.Cause is null /* TODO: storage in another property instead of Cause */ && frame.Exceptions.TryPeek(out var pre))
+        {
+            exc.Cause = pre;
+            exc.CauseReason = "During handling of the above exception, another exception occurred:";
+        }
+
 
         throw new PyRuntimeException(context, exc);
 
