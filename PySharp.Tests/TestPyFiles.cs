@@ -125,4 +125,11 @@ public sealed class TestPyFiles
         var module = PyInterpreter.RunFile(Path.Combine(PyFilesPath, "test_float.py"));
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestIntParse()
+    {
+        var module = PyInterpreter.RunFile(Path.Combine(PyFilesPath, "test_int_parse.py"));
+        Assert.IsNotNull(module);
+    }
 }

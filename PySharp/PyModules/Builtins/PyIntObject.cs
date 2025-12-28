@@ -156,7 +156,7 @@ public class PyIntObjectType : PyTypeObject<PyIntObjectType, PyIntObject>
         if (s.IsEmpty)
             return false;
 
-        if (!char.IsAsciiDigit(s[0]))
+        if (!char.IsAsciiHexDigit(s[0]))
             return false;
 
         if (numBase is 0)
