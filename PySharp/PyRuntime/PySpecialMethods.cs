@@ -63,8 +63,8 @@ public static class PySpecialMethods
         if (!TryGetSpecialMethod(() => obj.Hash(context), o => $"{PySpecialNames.Hash} returned non-int (type {o.PyType.Name})", out i, out result))
             return false;
 
-        var value = i.Value;
-        if (value == -1)
+        var value = unchecked((int)i.Value);
+        if (value is -1)
             value = -2;
 
         i = PyIntObject.FromInteger(value);
