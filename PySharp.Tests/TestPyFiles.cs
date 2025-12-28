@@ -90,4 +90,11 @@ public sealed class TestPyFiles
         var module = PyInterpreter.RunFile(Path.Combine(PyFilesPath, "test_dict.py"));
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestBuiltinFuncs()
+    {
+        var module = PyInterpreter.RunFile(Path.Combine(PyFilesPath, "test_builtin_funcs.py"));
+        Assert.IsNotNull(module);
+    }
 }
