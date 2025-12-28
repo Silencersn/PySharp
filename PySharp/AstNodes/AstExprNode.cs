@@ -1002,21 +1002,21 @@ public sealed class FormattedValueNode : AstExprNode
     {
         var result = Value.GetExprValue(context, frame);
 
+        if (Conversion is 's')
+            result = PySpecialMethods.GetStr(context, result).PyUnwrap(context);
+        else if (Conversion is 'r')
+            result = PySpecialMethods.GetRepr(context, result).PyUnwrap(context);
+        else if (Conversion is 'a')
+            throw new NotImplementedException();
+        else if (Conversion is not -1)
+            throw new UnreachableException();
+
         if (FormatSpec is not null)
         {
             var spec = FormatSpec.GetExprValue(context, frame);
             Debug.Assert(spec is PyStrObject);
             result = result.Format(context, ((PyStrObject)spec).Value).PyUnwrap(context);
         }
-
-        if (Conversion is -1 or 's') // TODO: does case -1 need convert?
-            result = PySpecialMethods.GetStr(context, result).PyUnwrap(context);
-        else if (Conversion is 'r')
-            result = PySpecialMethods.GetRepr(context, result).PyUnwrap(context);
-        else if (Conversion is 'a')
-            throw new NotImplementedException();
-        else
-            throw new UnreachableException();
 
         return result;
     }

@@ -327,7 +327,7 @@ partial class PyTypeObject<TObject>
         if (formatSpec.Length is 0)
             return self.PyType.Str(context, self);
 
-        return PyResult.RaiseTypeError($"unsupported format string passed to {Name}.__format__");
+        return PyResult.RaiseValueError($"unsupported format string passed to {Name}.__format__");
     }
 
 }
