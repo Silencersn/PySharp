@@ -48,4 +48,11 @@ public sealed class TestPyFiles
         var module = PyInterpreter.RunFile(Path.Combine(PyFilesPath, "test_decorator.py"));
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestFString()
+    {
+        var module = PyInterpreter.RunFile(Path.Combine(PyFilesPath, "test_fstring.py"));
+        Assert.IsNotNull(module);
+    }
 }
