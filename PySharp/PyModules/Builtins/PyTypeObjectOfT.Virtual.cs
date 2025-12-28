@@ -279,7 +279,7 @@ partial class PyTypeObject<TObject>
     }
     protected internal virtual PyResult Ne(PyCallContext context, TObject self, PyObject other)
     {
-        var eq = Eq(context, self, other);
+        var eq = self.Eq(context, other);
         if (eq.IsError)
             return eq;
 
