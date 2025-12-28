@@ -104,4 +104,11 @@ public sealed class TestPyFiles
         var module = PyInterpreter.RunFile(Path.Combine(PyFilesPath, "test_closure.py"));
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestComprehension()
+    {
+        var module = PyInterpreter.RunFile(Path.Combine(PyFilesPath, "test_comprehension.py"));
+        Assert.IsNotNull(module);
+    }
 }
