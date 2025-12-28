@@ -118,7 +118,7 @@ public sealed partial class PyFrame
     internal PyFrame TempFrame(FrameType frameType)
     {
         Debug.Assert(frameType is FrameType.Comprehension or FrameType.Exec or FrameType.Eval);
-        var tempFrame = new PyFrame(this, _globals, _locals?.ToDictionary(), _closure, CallerName, Caller, frameType)
+        var tempFrame = new PyFrame(this, _globals.Clone(), _locals?.ToDictionary(), _closure, CallerName, Caller, frameType)
         {
             _variables = _variables
         };

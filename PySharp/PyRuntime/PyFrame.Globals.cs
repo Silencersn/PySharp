@@ -15,11 +15,19 @@ partial class PyFrame
         public PyFrameGlobals()
         {
             _globals = [];
-            _globalsAdapter = null;
+        }
+        public PyFrameGlobals(ConcurrentDictionary<string, PyObject> globals)
+        {
+            _globals = globals;
         }
 
         public ConcurrentDictionary<string, PyObject> Globals => _globals;
         public DictAdapter GlobalsAdapter => _globalsAdapter ??= new DictAdapter(Globals!);
         public PyDictObject PyDict => _pyDict ??= PyDictObject.CreateProxy(GlobalsAdapter);
+
+        public PyFrameGlobals Clone()
+        {
+            return new PyFrameGlobals(new(_globals));
+        }
     }
 }
