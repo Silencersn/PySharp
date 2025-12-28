@@ -4,8 +4,10 @@ namespace PySharp.Tokenization;
 
 public static partial class LexerRegexes
 {
-    [GeneratedRegex(LexerRegexPatterns.Whitespace)]
-    public static partial Regex Whitespace { get; }
+    // some currently unused regexes are commented here to reduce code generated
+
+    //[GeneratedRegex(LexerRegexPatterns.Whitespace)]
+    //public static partial Regex Whitespace { get; }
 
     [GeneratedRegex(LexerRegexPatterns.Comment)]
     public static partial Regex Comment { get; }
@@ -19,8 +21,8 @@ public static partial class LexerRegexes
     [GeneratedRegex(LexerRegexPatterns.Number)]
     public static partial Regex Number { get; }
 
-    [GeneratedRegex(LexerRegexPatterns.Special)]
-    public static partial Regex Special { get; }
+    //[GeneratedRegex(LexerRegexPatterns.Special)]
+    //public static partial Regex Special { get; }
 
     [GeneratedRegex(LexerRegexPatterns.Funny)]
     public static partial Regex Funny { get; }
@@ -39,18 +41,18 @@ public static partial class LexerRegexes
     public static partial Regex Double3 { get; }
 
 
-    [GeneratedRegex(LexerRegexPatterns.StringPrefix)]
-    public static partial Regex StringPrefix { get; }
+    //[GeneratedRegex(LexerRegexPatterns.StringPrefix)]
+    //public static partial Regex StringPrefix { get; }
 
-    [GeneratedRegex(LexerRegexPatterns.String)]
-    public static partial Regex String { get; }
+    //[GeneratedRegex(LexerRegexPatterns.String)]
+    //public static partial Regex String { get; }
 
     [GeneratedRegex(LexerRegexPatterns.ContStr)]
     public static partial Regex ContStr { get; }
 
 
-    [GeneratedRegex(LexerRegexPatterns.Token)]
-    public static partial Regex Token { get; }
+    //[GeneratedRegex(LexerRegexPatterns.Token)]
+    //public static partial Regex Token { get; }
 
 
     [GeneratedRegex(LexerRegexPatterns.PseudoExtras)]
