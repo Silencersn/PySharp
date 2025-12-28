@@ -36,4 +36,9 @@ public sealed class PySetObjectType : PyTypeObject<PySetObjectType, PySetObject>
     {
         return PyBoolObject.FromBoolean(self._set.Count > 0);
     }
+
+    protected internal override PyResult Contains(PyCallContext context, PySetObject self, PyObject item)
+    {
+        return PyBoolObject.FromBoolean(self._set.Contains(item));
+    }
 }
