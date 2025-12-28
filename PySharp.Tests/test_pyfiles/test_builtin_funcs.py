@@ -36,4 +36,10 @@ assert getattr([1, 2, 3], 'append', None) is not None
 class MyObj: pass
 o = MyObj()
 setattr(o, 'foo', 42)
-assert hasattr(o, 'foo') and o.foo == 42
+assert hasattr(o, 'foo') and getattr(o, 'foo') == 42
+print(1, 2, 3, sep='a', end='', flush=True)
+assert max([], default=1) == 1
+assert min([], default=1) == 1
+assert dir(0)
+assert isinstance(1, (float, int))
+assert issubclass(int, (float, int))
