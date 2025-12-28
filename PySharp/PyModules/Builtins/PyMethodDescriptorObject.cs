@@ -31,11 +31,11 @@ public sealed class PyMethodDescriptorObject : PyObject
             if (field is null)
             {
                 if (_uncompoundedDelegate is not null)
-                    return field = new PyBuiltinFunctionOrMethodObject(_name, _uncompoundedDelegate);
+                    return field = PyBuiltinFunctionOrMethodObject.CreateFunction(_name, _uncompoundedDelegate);
 
                 Debug.Assert(_method is not null);
                 Debug.Assert(_paramType is not PySpecialMethodParametersType.Unknown);
-                return field = new PyBuiltinFunctionOrMethodObject(_name, ToPyDelegate(_declaringType, _method, _paramType));
+                return field = PyBuiltinFunctionOrMethodObject.CreateFunction(_name, ToUnboundMethod(_declaringType, _method, _paramType));
             }
             return field;
         }
@@ -60,7 +60,7 @@ public sealed class PyMethodDescriptorObject : PyObject
         _uncompoundedDelegate = uncompoundedDelegate;
     }
 
-    internal static PyFunction ToPyDelegate(PyTypeObject type, MethodInfo method, PySpecialMethodParametersType paramType)
+    internal static PyFunction ToUnboundMethod(PyTypeObject type, MethodInfo method, PySpecialMethodParametersType paramType)
     {
         Debug.Assert(!method.IsStatic);
         return paramType switch
@@ -119,11 +119,11 @@ public sealed class PyMethodDescriptorObjectType : PyTypeObject<PyMethodDescript
             return PyResult.RaiseTypeError($"descriptor '{self._name}' requires a '{self._declaringType.Name}' object but received a '{instance.PyType.Name}'");
 
         if (self._uncompoundedDelegate is not null)
-            return new PyBuiltinFunctionOrMethodObject(self._name, instance, instance.PyType, self._uncompoundedDelegate);
+            return PyBuiltinFunctionOrMethodObject.CreateBoundMethodFromUnbound(self._name, instance, instance.PyType, self._uncompoundedDelegate);
 
         Debug.Assert(self._method is not null);
         Debug.Assert(self._paramType is not PySpecialMethodParametersType.Unknown);
-        return new PyBuiltinFunctionOrMethodObject(self._name, instance, instance.PyType, ToPyDelegate(self._declaringType, self._method, instance, self._paramType));
+        return PyBuiltinFunctionOrMethodObject.CreateBoundMethodFromBound(self._name, instance, instance.PyType, ToBoundMethod(self._declaringType, self._method, instance, self._paramType));
     }
 
     protected internal override PyResult Call(PyCallContext context, PyMethodDescriptorObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
@@ -137,7 +137,7 @@ public sealed class PyMethodDescriptorObjectType : PyTypeObject<PyMethodDescript
         return self.UnboundMethod.Call(context, args, kwargs);
     }
 
-    internal static PyFunction ToPyDelegate(PyTypeObject type, MethodInfo method, PyObject target, PySpecialMethodParametersType paramType)
+    internal static PyFunction ToBoundMethod(PyTypeObject type, MethodInfo method, PyObject target, PySpecialMethodParametersType paramType)
     {
         Debug.Assert(!method.IsStatic);
         return paramType switch

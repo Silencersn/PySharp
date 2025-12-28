@@ -46,7 +46,7 @@ public sealed class PyQueueObjectType : PyTypeObject<PyQueueObjectType, PyQueueO
         AppendMethodDescriptor("join", Join);
     }
 
-    private static readonly PyBuiltinFunctionOrMethodObject _new = new(PySpecialNames.New, NewImpl);
+    private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
 
     [PyFunctionArgsDef("maxsize=0")]
     private static PyResult NewImpl(PyCallContext context, PyArguments arguments)

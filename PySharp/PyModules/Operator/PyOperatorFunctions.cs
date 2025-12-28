@@ -7,24 +7,24 @@ namespace PySharp.PyModules.Operator;
 
 public static class PyOperatorFunctions
 {
-    public static readonly PyBuiltinFunctionOrMethodObject Add = new("add", AddImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Sub = new("sub", SubImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Mul = new("mul", MulImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject TrueDiv = new("truediv", TrueDivImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject FloorDiv = new("floordiv", FloorDivImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Mod = new("mod", ModImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Pow = new("pow", PowImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject LShift = new("lshift", LShiftImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject RShift = new("rshift", RShiftImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject And = new("and_", AndImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Xor = new("xor", XorImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Or = new("or_", OrImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Lt = new("lt", LtImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Le = new("le", LeImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Eq = new("eq", EqImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Ne = new("ne", NeImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Gt = new("gt", GtImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Ge = new("ge", GeImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Add = PyBuiltinFunctionOrMethodObject.CreateFunction("add", AddImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Sub = PyBuiltinFunctionOrMethodObject.CreateFunction("sub", SubImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Mul = PyBuiltinFunctionOrMethodObject.CreateFunction("mul", MulImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject TrueDiv = PyBuiltinFunctionOrMethodObject.CreateFunction("truediv", TrueDivImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject FloorDiv = PyBuiltinFunctionOrMethodObject.CreateFunction("floordiv", FloorDivImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Mod = PyBuiltinFunctionOrMethodObject.CreateFunction("mod", ModImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Pow = PyBuiltinFunctionOrMethodObject.CreateFunction("pow", PowImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject LShift = PyBuiltinFunctionOrMethodObject.CreateFunction("lshift", LShiftImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject RShift = PyBuiltinFunctionOrMethodObject.CreateFunction("rshift", RShiftImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject And = PyBuiltinFunctionOrMethodObject.CreateFunction("and_", AndImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Xor = PyBuiltinFunctionOrMethodObject.CreateFunction("xor", XorImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Or = PyBuiltinFunctionOrMethodObject.CreateFunction("or_", OrImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Lt = PyBuiltinFunctionOrMethodObject.CreateFunction("lt", LtImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Le = PyBuiltinFunctionOrMethodObject.CreateFunction("le", LeImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Eq = PyBuiltinFunctionOrMethodObject.CreateFunction("eq", EqImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Ne = PyBuiltinFunctionOrMethodObject.CreateFunction("ne", NeImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Gt = PyBuiltinFunctionOrMethodObject.CreateFunction("gt", GtImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Ge = PyBuiltinFunctionOrMethodObject.CreateFunction("ge", GeImpl);
 
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult AddImpl(PyCallContext context, PyArguments arguments)

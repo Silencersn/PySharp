@@ -27,7 +27,7 @@ public sealed class PyThreadObjectType : PyTypeObject<PyThreadObjectType, PyThre
 {
     public override string Name => "Thread";
 
-    private static readonly PyBuiltinFunctionOrMethodObject _new = new(PySpecialNames.New, NewImpl);
+    private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
 
     public PyThreadObjectType()
     {

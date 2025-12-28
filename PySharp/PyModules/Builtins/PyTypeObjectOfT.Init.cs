@@ -140,7 +140,7 @@ partial class PyTypeObject<TObject>
             .Single(method => method.Name == "New" && method.GetBaseDefinition().DeclaringType == typeof(PyTypeObject));
         if (newMethod.DeclaringType != typeof(PyTypeObject<TObject>))
         {
-            var method = new PyBuiltinFunctionOrMethodObject(PySpecialNames.New, this, null! /* TODO */, [PyFunctionArgsDef("cls", "*args", "**kwargs")] (context, arguments) =>
+            var method = PyBuiltinFunctionOrMethodObject.CreateBoundMethodFromBound(PySpecialNames.New, this, null! /* TODO */, [PyFunctionArgsDef("cls", "*args", "**kwargs")] (context, arguments) =>
             {
                 if (arguments[0] is not PyTypeObject cls)
                     return PyResult.RaiseTypeError(null);

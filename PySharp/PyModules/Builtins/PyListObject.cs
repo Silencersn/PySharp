@@ -50,7 +50,7 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
         AppendMethodDescriptor("copy", Copy);
     }
 
-    private static readonly PyBuiltinFunctionOrMethodObject _new = new(PySpecialNames.New, NewImpl);
+    private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
 
     [PyFunctionArgsDef("iterable=()", "/")]
     private static PyResult NewImpl(PyCallContext context, PyArguments arguments)

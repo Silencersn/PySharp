@@ -6,7 +6,7 @@ namespace PySharp.PyModules.Time;
 
 public static class PyTimeFunctions
 {
-    public static readonly PyBuiltinFunctionOrMethodObject Time = new("time", TimeImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Time = PyBuiltinFunctionOrMethodObject.CreateFunction("time", TimeImpl);
 
     [PyFunctionArgsDef()]
     private static PyResult TimeImpl(PyCallContext context, PyArguments arguments)

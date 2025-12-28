@@ -11,10 +11,10 @@ namespace PySharp.PyModules.Builtins;
 public static partial class PyBuiltinFunctions
 {
     // A
-    public static readonly PyBuiltinFunctionOrMethodObject Abs = new("abs", AbsImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Abs = PyBuiltinFunctionOrMethodObject.CreateFunction("abs", AbsImpl);
     // TODO: aiter()
-    public static readonly PyBuiltinFunctionOrMethodObject All = new("all", AllImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Any = new("any", AnyImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject All = PyBuiltinFunctionOrMethodObject.CreateFunction("all", AllImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Any = PyBuiltinFunctionOrMethodObject.CreateFunction("any", AnyImpl);
     // TODO: ascii()
 
     // B
@@ -25,8 +25,8 @@ public static partial class PyBuiltinFunctions
     // TODO: bytes()
 
     // C
-    public static readonly PyBuiltinFunctionOrMethodObject Callable = new("callable", CallableImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Chr = new("chr", ChrImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Callable = PyBuiltinFunctionOrMethodObject.CreateFunction("callable", CallableImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Chr = PyBuiltinFunctionOrMethodObject.CreateFunction("chr", ChrImpl);
     // TODO: classmethod()
     // TODO: compile()
     // TODO: complex()
@@ -34,13 +34,13 @@ public static partial class PyBuiltinFunctions
     // D
     // TODO: delattr()
     // dict -> PyDictObject
-    public static readonly PyBuiltinFunctionOrMethodObject Dir = new("dir", DirImpl_1, DirImpl_2);
-    public static readonly PyBuiltinFunctionOrMethodObject DivMod = new("divmod", DivModImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Dir = PyBuiltinFunctionOrMethodObject.CreateFunction("dir", DirImpl_1, DirImpl_2);
+    public static readonly PyBuiltinFunctionOrMethodObject DivMod = PyBuiltinFunctionOrMethodObject.CreateFunction("divmod", DivModImpl);
 
     // E
     // TODO: enumerate()
-    public static readonly PyBuiltinFunctionOrMethodObject Eval = new("eval", EvalImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Exec = new("exec", ExecImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Eval = PyBuiltinFunctionOrMethodObject.CreateFunction("eval", EvalImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Exec = PyBuiltinFunctionOrMethodObject.CreateFunction("exec", ExecImpl);
 
     // F
     // TODO: filter
@@ -49,62 +49,62 @@ public static partial class PyBuiltinFunctions
     // TODO: frozenset()
 
     // G
-    public static readonly PyBuiltinFunctionOrMethodObject GetAttr = new("getattr", GetAttrImpl_1, GetAttrImpl_2);
-    public static readonly PyBuiltinFunctionOrMethodObject Globals = new("globals", GlobalsImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject GetAttr = PyBuiltinFunctionOrMethodObject.CreateFunction("getattr", GetAttrImpl_1, GetAttrImpl_2);
+    public static readonly PyBuiltinFunctionOrMethodObject Globals = PyBuiltinFunctionOrMethodObject.CreateFunction("globals", GlobalsImpl);
 
     // H
-    public static readonly PyBuiltinFunctionOrMethodObject HasAttr = new("hasattr", HasAttrImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Hash = new("hash", HashImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject HasAttr = PyBuiltinFunctionOrMethodObject.CreateFunction("hasattr", HasAttrImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Hash = PyBuiltinFunctionOrMethodObject.CreateFunction("hash", HashImpl);
     // TODO: help()
     // TODO: hex()
 
     // I
-    public static readonly PyBuiltinFunctionOrMethodObject Id = new("id", IdImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Input = new("input", InputImpl_1, InputImpl_2);
+    public static readonly PyBuiltinFunctionOrMethodObject Id = PyBuiltinFunctionOrMethodObject.CreateFunction("id", IdImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Input = PyBuiltinFunctionOrMethodObject.CreateFunction("input", InputImpl_1, InputImpl_2);
     // int -> PyIntObject
-    public static readonly PyBuiltinFunctionOrMethodObject IsInstance = new("isinstance", IsInstanceImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject IsSubclass = new("issubclass", IsSubclassImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Iter = new("iter", IterImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject IsInstance = PyBuiltinFunctionOrMethodObject.CreateFunction("isinstance", IsInstanceImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject IsSubclass = PyBuiltinFunctionOrMethodObject.CreateFunction("issubclass", IsSubclassImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Iter = PyBuiltinFunctionOrMethodObject.CreateFunction("iter", IterImpl);
 
     // L
-    public static readonly PyBuiltinFunctionOrMethodObject Len = new("len", LenImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Len = PyBuiltinFunctionOrMethodObject.CreateFunction("len", LenImpl);
     // list -> PyListObject
-    public static readonly PyBuiltinFunctionOrMethodObject Locals = new("locals", LocalsImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Locals = PyBuiltinFunctionOrMethodObject.CreateFunction("locals", LocalsImpl);
 
     // M
     // map -> PyMapObject
-    public static readonly PyBuiltinFunctionOrMethodObject Max = new("max", MaxImpl_1, MaxImpl_2, MaxImpl_3);
+    public static readonly PyBuiltinFunctionOrMethodObject Max = PyBuiltinFunctionOrMethodObject.CreateFunction("max", MaxImpl_1, MaxImpl_2, MaxImpl_3);
     // TODO: memoryview()
-    public static readonly PyBuiltinFunctionOrMethodObject Min = new("min", MinImpl_1, MinImpl_2, MinImpl_3);
+    public static readonly PyBuiltinFunctionOrMethodObject Min = PyBuiltinFunctionOrMethodObject.CreateFunction("min", MinImpl_1, MinImpl_2, MinImpl_3);
 
     // N
-    public static readonly PyBuiltinFunctionOrMethodObject Next = new("next", NextImpl_1, NextImpl_2);
+    public static readonly PyBuiltinFunctionOrMethodObject Next = PyBuiltinFunctionOrMethodObject.CreateFunction("next", NextImpl_1, NextImpl_2);
 
     // O
     // object -> PyObject
     // TODO: oct()
     // TODO: open()
-    public static readonly PyBuiltinFunctionOrMethodObject Ord = new("ord", OrdImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Ord = PyBuiltinFunctionOrMethodObject.CreateFunction("ord", OrdImpl);
 
     // P
-    public static readonly PyBuiltinFunctionOrMethodObject Pow = new("pow", PowImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Print = new("print", PrintImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Pow = PyBuiltinFunctionOrMethodObject.CreateFunction("pow", PowImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Print = PyBuiltinFunctionOrMethodObject.CreateFunction("print", PrintImpl);
     // property -> PyPropertyObject
 
     // R
     // range -> PyRangeObject
-    public static readonly PyBuiltinFunctionOrMethodObject Repr = new("repr", ReprImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Repr = PyBuiltinFunctionOrMethodObject.CreateFunction("repr", ReprImpl);
     // TODO: reversed()
     // TODO: round()
 
     // S
     // set -> PySetObject
-    public static readonly PyBuiltinFunctionOrMethodObject SetAttr = new("setattr", SetAttrImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject SetAttr = PyBuiltinFunctionOrMethodObject.CreateFunction("setattr", SetAttrImpl);
     // slice -> PySliceObject
     // TODO: sorted()
     // TODO: staticmethod()
     // str -> PyStrObject
-    public static readonly PyBuiltinFunctionOrMethodObject Sum = new("sum", SumImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Sum = PyBuiltinFunctionOrMethodObject.CreateFunction("sum", SumImpl);
     // super -> PySuperObject
 
     // T
@@ -118,7 +118,7 @@ public static partial class PyBuiltinFunctions
     // zip -> PyZipObject
 
     // _
-    public static readonly PyBuiltinFunctionOrMethodObject Import = new(PySpecialNames.Import, ImportImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Import = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.Import, ImportImpl);
 
 
     [PyFunctionArgsDef("*objects", "sep=' '", "end='\\n'", "file=None", "flush=False")]
