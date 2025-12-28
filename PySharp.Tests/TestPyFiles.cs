@@ -57,6 +57,13 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestFStringFormat()
+    {
+        var module = PyInterpreter.RunFile(Path.Combine(PyFilesPath, "test_fstring_format.py"));
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestOperators()
     {
         var module = PyInterpreter.RunFile(Path.Combine(PyFilesPath, "test_operators.py"));
