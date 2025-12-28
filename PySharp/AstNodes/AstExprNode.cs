@@ -23,10 +23,6 @@ public abstract class AstExprNode : AstNode, IAstNodeLocation
         return value;
     }
 
-    public virtual bool? NoSideEffects()
-    {
-        return null;
-    }
     public abstract PyObject ExecuteExpr(PyCallContext context, PyFrame frame);
 }
 
@@ -103,11 +99,6 @@ public sealed class ConstantNode : AstExprNode, IAstExprNodeNoSelfPythonExceptio
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
         return Value;
-    }
-
-    public override bool? NoSideEffects()
-    {
-        return true;
     }
 
     internal override void Dump(AstNodeDumper dumper)
@@ -368,14 +359,6 @@ public sealed class ListNode : AstExprNode, IExprContextNode, IAstExprNodeNoSelf
         return new PyListObject(Elts.Select(item => item.GetExprValue(context, frame)));
     }
 
-    public override bool? NoSideEffects()
-    {
-        if (Elts.All(elt => elt.NoSideEffects() is true))
-            return true;
-
-        return null;
-    }
-
     internal override void Dump(AstNodeDumper dumper)
     {
         dumper
@@ -403,14 +386,6 @@ public sealed class TupleNode : AstExprNode, IExprContextNode, IAstExprNodeNoSel
     public override PyTupleObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
         return PyTupleObject.CreateTuple(Elts.Select(item => item.GetExprValue(context, frame)));
-    }
-
-    public override bool? NoSideEffects()
-    {
-        if (Elts.All(elt => elt.NoSideEffects() is true))
-            return true;
-
-        return null;
     }
 
     internal override void Dump(AstNodeDumper dumper)
@@ -451,14 +426,6 @@ public sealed class DictNode : AstExprNode, IAstExprNodeNoSelfPythonException
             );
     }
 
-    public override bool? NoSideEffects()
-    {
-        if (Keys.All(elt => elt.NoSideEffects() is true) && Values.All(elt => elt.NoSideEffects() is true))
-            return true;
-
-        return null;
-    }
-
     internal override void Dump(AstNodeDumper dumper)
     {
         dumper
@@ -488,13 +455,6 @@ public sealed class SetNode : AstExprNode, IAstExprNodeNoSelfPythonException
         return new PySetObject(Elts.Select(item => item.GetExprValue(context, frame)));
     }
 
-    public override bool? NoSideEffects()
-    {
-        if (Elts.All(elt => elt.NoSideEffects() is true))
-            return true;
-
-        return null;
-    }
     internal override void Dump(AstNodeDumper dumper)
     {
         dumper
