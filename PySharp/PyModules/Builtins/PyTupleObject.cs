@@ -90,8 +90,8 @@ public sealed class PyTupleObjectType : PyTypeObject<PyTupleObjectType, PyTupleO
 
     protected internal override PyResult Eq(PyCallContext context, PyTupleObject self, PyObject other)
     {
-        if (other is not PyTupleObject otherList)
+        if (other is not PyTupleObject otherTuple)
             return base.Eq(context, self, other);
-        return PyBoolObject.FromBoolean(self._array.SequenceEqual(otherList._array, PyObjectRuntimeEqualityComparer.Shared));
+        return PyBoolObject.FromBoolean(self._array.SequenceEqual(otherTuple._array, PyObjectRuntimeEqualityComparer.Shared));
     }
 }
