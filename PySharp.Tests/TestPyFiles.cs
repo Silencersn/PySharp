@@ -139,4 +139,11 @@ public sealed class TestPyFiles
         var module = PyInterpreter.RunFile(Path.Combine(PyFilesPath, "test_import.py"));
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestStringLiteral()
+    {
+        var module = PyInterpreter.RunFile(Path.Combine(PyFilesPath, "test_string_literal.py"));
+        Assert.IsNotNull(module);
+    }
 }
