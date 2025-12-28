@@ -62,4 +62,18 @@ public sealed class TestPyFiles
         var module = PyInterpreter.RunFile(Path.Combine(PyFilesPath, "test_operators.py"));
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestProperty()
+    {
+        var module = PyInterpreter.RunFile(Path.Combine(PyFilesPath, "test_property.py"));
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestYield()
+    {
+        var module = PyInterpreter.RunFile(Path.Combine(PyFilesPath, "test_yield.py"));
+        Assert.IsNotNull(module);
+    }
 }
