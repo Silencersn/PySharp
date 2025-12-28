@@ -1,6 +1,7 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.PyModules.Builtins;
 
@@ -18,14 +19,14 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
 
     internal PyTypeObject()
     {
-        MRO = [.. CreateMRO(this, Bases)];
+        MRO = [this, .. CreateMROWithoutSelf(Bases)];
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
         PyAttributes.Add(PySpecialNames.Doc, PyNoneObject.None);
     }
 
     internal PyTypeObject(string name, IReadOnlyList<PyTypeObject> bases)
     {
-        MRO = [.. CreateMRO(this, bases)];
+        MRO = [this, .. CreateMROWithoutSelf(bases)];
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(name));
         PyAttributes.Add(PySpecialNames.Doc, PyNoneObject.None);
     }
@@ -90,29 +91,8 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
         return PyResult.RaiseAttributeError($"'{pyTypeObj.Name}' object has no attribute '{name}'");
     }
 
-    //internal void AppendMemberDescriptor<TPyObject>(string name, Func<TPyObject, PyResult> getter, Func<TPyObject, PyObject, PyResult>? setter = null) where TPyObject : PyObject
-    //{
-    //    PyAttributes[name] = new PyMemberDescriptorObject(
-    //        (_, obj, _) =>
-    //        {
-    //            if (obj is not TPyObject pyObj)
-    //                return PyResult.RaiseTypeError(null);
-
-    //            return getter(pyObj);
-    //        },
-    //        setter is null ? null : (_, obj, value) =>
-    //        {
-    //            if (obj is not TPyObject pyObj)
-    //                return PyResult.RaiseTypeError(null);
-
-    //            return setter(pyObj, value);
-    //        });
-    //}
-
     internal static void ValidateBases(PyCallContext context, IEnumerable<PyTypeObject> bases, out Type layoutType)
     {
-        // TODO: check mro here
-
         layoutType = typeof(PyObject);
         foreach (var baseType in bases)
         {
@@ -133,18 +113,23 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
                 }
             }
         }
+
+        if (!TryCreateMROWithoutSelf(bases, out _))
+            throw context.ThrowableTypeError("Cannot create a consistent method resolution order (MRO)");
     }
 
-    private static List<PyTypeObject> CreateMRO(PyTypeObject pyType, IEnumerable<PyTypeObject> bases)
+    private static bool TryCreateMROWithoutSelf(IEnumerable<PyTypeObject> bases, [NotNullWhen(true)] out List<PyTypeObject>? mro)
     {
         // L[C(B1 ... BN)] = C + merge(L[B1] ... L[BN], B1 ... BN)
-        List<PyTypeObject> resultMro = [pyType];
+        mro = [];
 
         // B1 ... BN
         var baseTypes = new Queue<PyTypeObject>(bases);
         if (baseTypes.Count is 0)
+        {
             // the type of object
-            return resultMro;
+            return true;
+        }
 
         // L[B1] ... L[BN]
         List<Queue<PyTypeObject>> baseMros = [.. baseTypes.Select(baseType => new Queue<PyTypeObject>(baseType.MRO))];
@@ -181,7 +166,7 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
                 }
                 if (notInOtherTails)
                 {
-                    resultMro.Add(head);
+                    mro.Add(head);
                     List<Queue<PyTypeObject>> baseMrosToRemove = [];
                     foreach (var baseMro in baseMros)
                     {
@@ -201,12 +186,22 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
                 }
                 else if (i == baseMros.Count - 1)
                 {
-                    throw new PyRuntimeException(PyStandardExceptionTypes.TypeError.Create(PyStrObject.FromString("Cannot create a consistent method resolution order (MRO)")));
+                    mro = null;
+                    return false;
                 }
             }
         }
 
-        return resultMro;
+        return true;
+    }
+
+
+    private static List<PyTypeObject> CreateMROWithoutSelf(IEnumerable<PyTypeObject> bases)
+    {
+        if (TryCreateMROWithoutSelf(bases, out var mro))
+            return mro;
+
+        throw new UnreachableException();
     }
 }
 
