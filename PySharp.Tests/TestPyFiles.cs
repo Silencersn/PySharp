@@ -76,4 +76,18 @@ public sealed class TestPyFiles
         var module = PyInterpreter.RunFile(Path.Combine(PyFilesPath, "test_yield.py"));
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestList()
+    {
+        var module = PyInterpreter.RunFile(Path.Combine(PyFilesPath, "test_list.py"));
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestDict()
+    {
+        var module = PyInterpreter.RunFile(Path.Combine(PyFilesPath, "test_dict.py"));
+        Assert.IsNotNull(module);
+    }
 }
