@@ -92,12 +92,10 @@ partial class PyTypeObject<TObject>
     internal void AppendSpecialMethodDescriptors(params ReadOnlySpan<string> names)
     {
         var type = GetType();
-        //foreach (var (name, (pyName, paramType)) in _nameToPySpecialMethodParametersType)
         foreach (var name in names)
         {
             var (pyName, paramType) = _nameToPySpecialMethodParametersType[name];
 
-            // TODO: same name
             var method = type
                 .GetMethods(BindingFlags.NonPublic | BindingFlags.Instance)
                 .Single(method => method.Name == name && method.GetBaseDefinition().DeclaringType == typeof(PyTypeObject<TObject>));
@@ -113,16 +111,6 @@ partial class PyTypeObject<TObject>
         var type = GetType();
         foreach (var (name, (pyName, paramType)) in _nameToPySpecialMethodParametersType)
         {
-            // //TODO: temp
-            //var defaultMethod = typeof(PyTypeObject<TObject>)
-            //    .GetMethods(BindingFlags.NonPublic | BindingFlags.Instance)
-            //    .Single(method => method.Name == name && method.DeclaringType == typeof(PyTypeObject<TObject>) && !method.IsFinal);
-            //Debug.Assert(defaultMethod is not null);
-
-            //var types = defaultMethod.GetParameters().Select(parameter => parameter.ParameterType).ToArray();
-            //var method = type.GetMethod(name, BindingFlags.NonPublic | BindingFlags.Instance, types);
-
-            // TODO: same name
             var method = type
                 .GetMethods(BindingFlags.NonPublic | BindingFlags.Instance)
                 .Single(method => method.Name == name && method.GetBaseDefinition().DeclaringType == typeof(PyTypeObject<TObject>));

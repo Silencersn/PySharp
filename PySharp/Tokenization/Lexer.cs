@@ -412,7 +412,6 @@ public sealed partial class Lexer
         }
         current = current[prefix.Length..];
 
-        // TODO: 'f' or 'F'
         if (current.StartsWith("\"\"\"") || current.StartsWith("\'\'\'"))
         {
             wrapper = current[..3].ToString();

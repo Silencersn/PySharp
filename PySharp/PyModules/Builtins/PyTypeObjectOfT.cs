@@ -6,7 +6,6 @@ namespace PySharp.PyModules.Builtins;
 public abstract partial class PyTypeObject<TObject> : PyTypeObject where TObject : PyObject
 {
     public sealed override Type LayoutType => typeof(TObject);
-    internal sealed override bool IsPyTypeObjectOfT => true;
     public override PyTypeObject DefaultPyType => PyTypeObjectType.Shared;
 
     public PyTypeObject()
