@@ -410,7 +410,7 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef("iterable", "/", "start=0")]
     private static PyResult SumImpl(PyCallContext context, PyArguments arguments)
     {
-        var start = arguments["start"];
+        var start = arguments[1];
         if (start is PyStrObject)
             return PyResult.RaiseTypeError("sum() can't sum strings [use ''.join(seq) instead]");
         if (!Utils.TryEnumeratedIterable(context, arguments[0], out var iterable, out var err))
