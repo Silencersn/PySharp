@@ -41,6 +41,7 @@ public class PyIntObject : PyObject
 
     public BigInteger Value { get; internal set; }
     public int Int32Value => (int)Value;
+    public int UncheckedInt32Value => unchecked((int)Value);
 
     internal PyIntObject(BigInteger value)
     {

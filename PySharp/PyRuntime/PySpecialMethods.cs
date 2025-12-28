@@ -58,7 +58,6 @@ public static class PySpecialMethods
         return TryGetSpecialMethod(() => obj.Len(context), o => $"{PySpecialNames.Len} returned non-int (type {o.PyType.Name})", out i, out result);
     }
 
-    private static readonly BigInteger _maxHash = new(uint.MaxValue);
     public static bool TryGetHash(PyCallContext context, PyObject obj, [NotNullWhen(true)] out PyIntObject? i, out PyResult result)
     {
         if (!TryGetSpecialMethod(() => obj.Hash(context), o => $"{PySpecialNames.Hash} returned non-int (type {o.PyType.Name})", out i, out result))
@@ -68,7 +67,6 @@ public static class PySpecialMethods
         if (value == -1)
             value = -2;
 
-        value &= _maxHash;
         i = PyIntObject.FromInteger(value);
         return true;
     }

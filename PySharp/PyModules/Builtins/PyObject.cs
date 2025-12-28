@@ -213,7 +213,7 @@ public partial class PyObject : IEquatable<PyObject>
     public override int GetHashCode()
     {
         if (PySpecialMethods.TryGetHash(PyCallContext.CSharpRuntime, this, out var hash, out var result))
-            return hash.Int32Value;
+            return hash.UncheckedInt32Value;
 
         return PyId.GetHashCode();
     }

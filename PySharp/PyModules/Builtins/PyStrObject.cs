@@ -73,6 +73,11 @@ public sealed class PyStrObjectType : PyTypeObject<PyStrObjectType, PyStrObject>
     {
         return self;
     }
+
+    protected internal override PyResult Hash(PyCallContext context, PyStrObject self)
+    {
+        return PyIntObject.FromInteger(self.Value.GetHashCode());
+    }
     protected internal override PyResult Bool(PyCallContext context, PyStrObject self)
     {
         return PyBoolObject.FromBoolean(self.Value.Length > 0);
