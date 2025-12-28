@@ -25,7 +25,7 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
     // by default, it is a string,
     // but CPython allows it to be set to a non-string
     // could not be deleted
-    public virtual PyObject Module { get; set; } = PyStrObject.Empty;
+    public virtual PyObject Module { get; internal set; } = PyStrObject.Empty;
 
     public virtual string Document => string.Empty;
     public virtual bool IsSealed => false;

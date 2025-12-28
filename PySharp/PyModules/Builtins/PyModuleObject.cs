@@ -22,6 +22,8 @@ public class PyModuleObject : PyObject, IPyObjectName
     internal void AddObjToAttrs<TPyObject>(TPyObject pyObject) where TPyObject : PyObject, IPyObjectName
     {
         PyAttributes[pyObject.Name] = pyObject;
+        if (pyObject is PyTypeObject pyType)
+            pyType.Module = PyStrObject.FromString(Name);
     }
 
     internal void AddObjToAttrs<TPyObject>(string name, [NotNull] TPyObject? pyObject) where TPyObject : PyObject

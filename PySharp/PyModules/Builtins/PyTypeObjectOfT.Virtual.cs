@@ -18,7 +18,7 @@ partial class PyTypeObject<TObject>
 
     protected internal virtual PyResult Repr(PyCallContext context, TObject self)
     {
-        return PyStrObject.FromString($"<{Name} object at 0x{self.PyId:X16}>");
+        return PyStrObject.FromString($"<{FullName} object at 0x{self.PyId:X16}>");
     }
 
     protected internal virtual PyResult Str(PyCallContext context, TObject self)

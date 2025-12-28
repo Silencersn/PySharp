@@ -140,7 +140,7 @@ public sealed class PyExceptionObject : PyObject
                 .AppendLine(Traceback);
         }
 
-        builder.Append(PyType.Name);
+        builder.Append(PyType.FullName);
         if (PySpecialMethods.TryGetStr(context, this, out var s, out var result))
         {
             if (s.Value != string.Empty)
