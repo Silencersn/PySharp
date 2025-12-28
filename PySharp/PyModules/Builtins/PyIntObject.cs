@@ -111,8 +111,7 @@ public class PyIntObjectType : PyTypeObject<PyIntObjectType, PyIntObject>
             return PyIntObject.FromInteger(integer);
         }
 
-        // TODO: __int__? __index__?
-        if (!PySpecialMethods.TryGetIndex(context, arguments[0], out var value, out var result))
+        if (!PySpecialMethods.TryGetInt(context, arguments[0], out var value, out var result))
             return result;
 
         return PyIntObject.FromInteger(value.Value);
