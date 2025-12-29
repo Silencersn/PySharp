@@ -40,30 +40,26 @@ partial class PyFrame
         return builtins.PyAttributes.TryGetValue(name, out value);
     }
 
-    public PyResult LoadLocalOrClosure(string name)
+    public PyResult LoadLocal(string name)
     {
-        if (TryLoadFromLocal(name, out var value))
-        {
-            if (value is null)
-                return PyResult.RaiseUnboundLocalError($"cannot access local variable '{name}' where it is not associated with a value");
+        if (!TryLoadFromLocal(name, out var value))
+            return PyResult.RaiseNameError($"name '{name}' is not defined");
 
-            return value;
-        }
+        if (value is null)
+            return PyResult.RaiseUnboundLocalError($"cannot access local variable '{name}' where it is not associated with a value");
 
-        return LoadClosure(name);
+        return value;
     }
 
     public PyResult LoadClosure(string name)
     {
-        if (TryLoadFromClosure(name, out var value))
-        {
-            if (value is null)
-                return PyResult.RaiseUnboundLocalError($"cannot access free variable '{name}' where it is not associated with a value in enclosing scope");
+        if (!TryLoadFromClosure(name, out var value))
+            return PyResult.RaiseNameError($"name '{name}' is not defined");
 
-            return value;
-        }
+        if (value is null)
+            return PyResult.RaiseUnboundLocalError($"cannot access free variable '{name}' where it is not associated with a value in enclosing scope");
 
-        return PyResult.RaiseNameError($"name '{name}' is not defined");
+        return value;
     }
 
     public PyResult LoadGlobal(string name)
@@ -79,14 +75,12 @@ partial class PyFrame
 
     public PyResult LoadName(string name)
     {
-        if (TryLoadFromLocal(name, out var value))
-        {
-            if (value is null)
-                return PyResult.RaiseUnboundLocalError($"cannot access local variable '{name}' where it is not associated with a value");
+        if (!TryLoadFromLocal(name, out var value))
+            return LoadGlobal(name);
 
-            return value;
-        }
+        if (value is null)
+            return PyResult.RaiseUnboundLocalError($"cannot access local variable '{name}' where it is not associated with a value");
 
-        return LoadGlobal(name);
+        return value;
     }
 }

@@ -154,7 +154,7 @@ public sealed partial class PyFrame
 
         return _variables[name] switch
         {
-            PyVariableType.Local or PyVariableType.Parameter => LoadLocalOrClosure(name), // TODO: split to LOAD_FAST and LOAD_DEREF
+            PyVariableType.Local or PyVariableType.Parameter => LoadLocal(name),
             PyVariableType.Global => LoadGlobal(name),
             PyVariableType.Closure => LoadClosure(name),
             _ => throw new UnreachableException()
