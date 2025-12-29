@@ -546,7 +546,11 @@ public enum PyVariableType
     Global,
     Closure,
     Nonlocal = Closure,
-    Parameter
+    Parameter,
+
+    // only appears during or after the semantic analysis phase
+    CapturedLocal,
+    CapturedParameter
 }
 
 public class ImportNode : AstStmtNode

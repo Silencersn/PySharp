@@ -3,7 +3,6 @@ using PySharp.PyRuntime.Metadata;
 using PySharp.Tokenization;
 using System.Collections.Frozen;
 using System.Diagnostics;
-
 namespace PySharp.AstNodes;
 
 public sealed partial class Parser
@@ -197,8 +196,7 @@ public sealed partial class Parser
         }
 
         Debug.Assert(CurrentScope.IsRoot);
-        FillUnknownVariables(CurrentScope);
-        FillClosureVariables(CurrentScope);
+        SemanticAnalysis(CurrentScope);
 
         return module;
     }
@@ -212,8 +210,7 @@ public sealed partial class Parser
         var expr = UnwrapOrMakeTuple(exprList, endsWithComma);
 
         Debug.Assert(CurrentScope.IsRoot);
-        FillUnknownVariables(CurrentScope);
-        FillClosureVariables(CurrentScope);
+        SemanticAnalysis(CurrentScope);
 
         return new ExpressionNode(expr) { MetaInfo = metaInfo };
     }
@@ -226,11 +223,17 @@ public sealed partial class Parser
         _isParsingInteractiveNode = false;
 
         Debug.Assert(CurrentScope.IsRoot);
-        FillUnknownVariables(CurrentScope);
-        FillClosureVariables(CurrentScope);
+        SemanticAnalysis(CurrentScope);
         CurrentScope.Children.Clear();
 
         return new InteractiveNode(list) { MetaInfo = metaInfo };
+    }
+
+    private static void SemanticAnalysis(VariableScope scope)
+    {
+        FillUnknownVariables(scope);
+        FillCapturedVariables(scope);
+        FillNodeProperties(scope);
     }
 
     private static void FillUnknownVariables(VariableScope scope)
@@ -286,7 +289,7 @@ public sealed partial class Parser
         }
     }
 
-    private static void FillClosureVariables(VariableScope scope)
+    private static void FillCapturedVariables(VariableScope scope)
     {
         foreach (var (name, type) in scope.Variables)
         {
@@ -309,61 +312,78 @@ public sealed partial class Parser
 
         foreach (var child in scope.Children)
         {
-            FillClosureVariables(child);
+            FillCapturedVariables(child);
+        }
+    }
+
+    private static void FillNodeProperties(VariableScope scope)
+    {
+        foreach (var child in scope.Children)
+            FillNodeProperties(child);
+
+        if (scope.Owner is null)
+            return;
+
+        SetCapturedVariableTypes(scope);
+
+        scope.Owner.Variables = scope.Variables.ToFrozenDictionary();
+
+        if (scope.Owner is IFunctionOrLambda node)
+        {
+            node.CapturedVariables = [.. scope.CapturedVariables];
+            node.LocalVariables = [.. node.Variables
+                    .Where(pair => pair.Value is PyVariableType.Local or PyVariableType.Parameter)
+                    .Select(pair => pair.Key)];
         }
 
-        if (scope.Owner is not null)
+        if (scope.Owner is IFunctionOrClass functionOrClassNode)
         {
-            scope.Owner.Variables = scope.Variables.ToFrozenDictionary();
-
-            if (scope.Owner is IFunctionOrLambda node)
+            Stack<string> names = [];
+            var currentScope = scope;
+            while (currentScope.Owner is not null)
             {
-                node.CapturedVariables = [.. scope.CapturedVariables];
-                node.LocalVariables = [.. node.Variables
-                    .Where(pair => pair.Value is PyVariableType.Local or PyVariableType.Parameter)
-                    .Where(pair => !scope.CapturedVariables.Contains(pair.Key))
-                    .Select(pair => pair.Key)];
+                var nodeWithQualName = (IFunctionOrClass)currentScope.Owner;
+                if (!ReferenceEquals(nodeWithQualName, functionOrClassNode) && nodeWithQualName is FunctionDefNode)
+                    names.Push("<locals>");
+                names.Push(nodeWithQualName.Name);
+
+                Debug.Assert(currentScope.Parent is not null);
+                if (currentScope.Parent.Variables[nodeWithQualName.Name] is PyVariableType.Global || currentScope.Parent.IsRoot)
+                    break;
+                currentScope = currentScope.Parent;
             }
+            functionOrClassNode.QualifiedName = string.Join('.', names);
+        }
 
-            if (scope.Owner is IFunctionOrClass functionOrClassNode)
+        if (scope.Owner is FunctionDefNode funcDefNode)
+        {
+            funcDefNode.IncludeSuper = IncludeSuper(scope);
+
+            static bool IncludeSuper(VariableScope scope)
             {
-                Stack<string> names = [];
-                var currentScope = scope;
-                while (currentScope.Owner is not null)
+                Debug.Assert(scope.Owner is FunctionDefNode);
+
+                if (scope.Variables.TryGetValue("super", out var type) && type is not (PyVariableType.Parameter or PyVariableType.CapturedParameter))
+                    return true;
+
+                foreach (var child in scope.Children)
                 {
-                    var nodeWithQualName = (IFunctionOrClass)currentScope.Owner;
-                    if (!ReferenceEquals(nodeWithQualName, functionOrClassNode) && nodeWithQualName is FunctionDefNode)
-                        names.Push("<locals>");
-                    names.Push(nodeWithQualName.Name);
-
-                    Debug.Assert(currentScope.Parent is not null);
-                    if (currentScope.Parent.Variables[nodeWithQualName.Name] is PyVariableType.Global || currentScope.Parent.IsRoot)
-                        break;
-                    currentScope = currentScope.Parent;
-                }
-                functionOrClassNode.QualifiedName = string.Join('.', names);
-            }
-
-            if (scope.Owner is FunctionDefNode funcDefNode)
-            {
-                funcDefNode.IncludeSuper = IncludeSuper(scope);
-
-                static bool IncludeSuper(VariableScope scope)
-                {
-                    Debug.Assert(scope.Owner is FunctionDefNode);
-
-                    if (scope.Variables.TryGetValue("super", out var type) && type is not PyVariableType.Parameter)
+                    if (child.Owner is FunctionDefNode && IncludeSuper(child))
                         return true;
-
-                    foreach (var child in scope.Children)
-                    {
-                        if (child.Owner is FunctionDefNode && IncludeSuper(child))
-                            return true;
-                    }
-
-                    return false;
                 }
+
+                return false;
             }
+        }
+    }
+
+    private static void SetCapturedVariableTypes(VariableScope scope)
+    {
+        foreach (var capturedVariable in scope.CapturedVariables)
+        {
+            var variableType = scope.Variables[capturedVariable];
+            Debug.Assert(variableType is PyVariableType.Local or PyVariableType.Parameter);
+            scope.Variables[capturedVariable] = variableType is PyVariableType.Local ? PyVariableType.CapturedLocal : PyVariableType.CapturedParameter;
         }
     }
 }

@@ -156,7 +156,7 @@ public sealed partial class PyFrame
         {
             PyVariableType.Local or PyVariableType.Parameter => LoadLocal(name),
             PyVariableType.Global => LoadGlobal(name),
-            PyVariableType.Closure => LoadClosure(name),
+            PyVariableType.Closure or PyVariableType.CapturedLocal or PyVariableType.CapturedParameter => LoadClosure(name),
             _ => throw new UnreachableException()
         };
     }
@@ -222,7 +222,7 @@ public sealed partial class PyFrame
     }
     internal void SetVariableValue(string name, PyVariableType variableType, PyObject value)
     {
-        if (variableType is PyVariableType.Local or PyVariableType.Parameter)
+        if (variableType is PyVariableType.Local or PyVariableType.Parameter or PyVariableType.CapturedLocal or PyVariableType.CapturedParameter)
         {
             if (Closures.TryGetValue(name, out PyCellObject? cell))
                 cell.Value = value;
