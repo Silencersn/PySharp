@@ -229,7 +229,7 @@ public sealed partial class Parser
         return new InteractiveNode(list) { MetaInfo = metaInfo };
     }
 
-    private static void SemanticAnalysis(VariableScope scope)
+    private void SemanticAnalysis(VariableScope scope)
     {
         FillUnknownVariables(scope);
         FillCapturedVariables(scope);
@@ -289,7 +289,7 @@ public sealed partial class Parser
         }
     }
 
-    private static void FillCapturedVariables(VariableScope scope)
+    private void FillCapturedVariables(VariableScope scope)
     {
         foreach (var (name, type) in scope.Variables)
         {
@@ -307,7 +307,7 @@ public sealed partial class Parser
                 }
             }
             if (!found)
-                Debug.Fail($"Closure variable '{name}' not found in enclosing scopes");
+                throw _context.ThrowableSyntaxError($"no binding for nonlocal '{name}' found");
         }
 
         foreach (var child in scope.Children)
