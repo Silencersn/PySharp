@@ -156,7 +156,8 @@ public sealed partial class PyFrame
         {
             PyVariableType.Local or PyVariableType.Parameter => LoadLocal(name),
             PyVariableType.Global => LoadGlobal(name),
-            PyVariableType.Closure or PyVariableType.CapturedLocal or PyVariableType.CapturedParameter => LoadClosure(name),
+            PyVariableType.CapturedLocal or PyVariableType.CapturedParameter => LoadClosure(name, true),
+            PyVariableType.Closure => LoadClosure(name, false),
             _ => throw new UnreachableException()
         };
     }
@@ -174,52 +175,6 @@ public sealed partial class PyFrame
         return;
     }
 
-    internal PyObject GetVariableValue(PyCallContext context, string name, PyVariableType variableType)
-    {
-        if (variableType is PyVariableType.Local or PyVariableType.Parameter)
-        {
-            if (_locals is not null && _locals.TryGetValue(name, out var value))
-            {
-                if (value is null)
-                    throw context.ThrowableUnboundLocalError($"cannot access local variable '{name}' where it is not associated with a value");
-
-                return value;
-            }
-
-            if (_closure is not null && _closure.TryGetValue(name, out var cell))
-            {
-                if (cell.Value is null)
-                    throw context.ThrowableUnboundLocalError($"cannot access local variable '{name}' where it is not associated with a value");
-
-                return cell.Value;
-            }
-
-            throw context.ThrowableNameError($"name '{name}' is not defined");
-        }
-        else if (variableType is PyVariableType.Global)
-        {
-            if (Globals.TryGetValue(name, out var value))
-                return value;
-
-            if (TryLoadFromBuiltins(name, out value))
-                return value;
-
-            throw context.ThrowableNameError($"name '{name}' is not defined");
-        }
-        else if (variableType is PyVariableType.Closure)
-        {
-            //Debug.Assert(_capturedFrames is not null);
-            //return _capturedFrames[name].GetVariableValue(name, PyVariableType.Local);
-
-            var value = Closures[name].Value;
-            if (value is not null)
-                return value;
-
-            throw context.ThrowableNameError($"cannot access free variable '{name}' where it is not associated with a value in enclosing scope");
-        }
-
-        throw new NotImplementedException();
-    }
     internal void SetVariableValue(string name, PyVariableType variableType, PyObject value)
     {
         if (variableType is PyVariableType.Local or PyVariableType.Parameter or PyVariableType.CapturedLocal or PyVariableType.CapturedParameter)

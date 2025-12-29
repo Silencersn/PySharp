@@ -51,13 +51,18 @@ partial class PyFrame
         return value;
     }
 
-    public PyResult LoadClosure(string name)
+    public PyResult LoadClosure(string name, bool isLocal)
     {
         if (!TryLoadFromClosure(name, out var value))
             return PyResult.RaiseNameError($"name '{name}' is not defined");
 
         if (value is null)
+        {
+            if (isLocal)
+                return PyResult.RaiseUnboundLocalError($"cannot access local variable '{name}' where it is not associated with a value");
+            
             return PyResult.RaiseUnboundLocalError($"cannot access free variable '{name}' where it is not associated with a value in enclosing scope");
+        }
 
         return value;
     }
