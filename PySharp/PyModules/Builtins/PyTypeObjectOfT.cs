@@ -3,6 +3,17 @@ using PySharp.PyRuntime.Calls;
 
 namespace PySharp.PyModules.Builtins;
 
+/// <summary>
+/// 
+/// </summary>
+/// <typeparam name="TObject">
+/// This generic parameter is intended solely for storing data, similar to how CPython uses memory layouts.
+/// In general, any type derived from PyObject can be used as TObject.
+/// However, in this Python implementation, each standard library data class is paired one-to-one with its corresponding type class.
+/// If you define a non-standard type in C# using a standard library data class as TObject
+/// (e.g., MyType : PyTypeObject&lt;PyIntObject&gt;), some internal details in the standard library will still treat it as an int.
+/// Please exercise caution when choosing a standard library data class as this generic parameter.
+/// </typeparam>
 public abstract partial class PyTypeObject<TObject> : PyTypeObject where TObject : PyObject
 {
     public sealed override Type LayoutType => typeof(TObject);
