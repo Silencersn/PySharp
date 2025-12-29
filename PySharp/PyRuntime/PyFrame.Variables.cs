@@ -1,0 +1,92 @@
+﻿using PySharp.PyModules.Builtins;
+using PySharp.PyRuntime.Calls;
+using PySharp.Utility;
+using System;
+using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
+
+namespace PySharp.PyRuntime;
+
+partial class PyFrame
+{
+    private bool TryLoadFromLocal(string name, [MaybeNullWhen(true)] out PyObject? value)
+    {
+        value = null;
+        if (_locals is null)
+            return false;
+
+        return _locals.TryGetValue(name, out value);
+    }
+
+    private bool TryLoadFromClosure(string name, [MaybeNullWhen(true)] out PyObject? value)
+    {
+        value = null;
+        if (_closure is null)
+            return false;
+
+        if (!_closure.TryGetValue(name, out var cell))
+            return false;
+
+        value = cell.Value;
+        return true;
+    }
+
+    private bool TryLoadFromBuiltins(string name, [NotNullWhen(true)] out PyObject? value)
+    {
+        value = null;
+        if (!Globals.TryGetValue(PySpecialNames.Builtins, out var builtins))
+            return false;
+
+        return builtins.PyAttributes.TryGetValue(name, out value);
+    }
+
+    public PyResult LoadLocalOrClosure(string name)
+    {
+        if (TryLoadFromLocal(name, out var value))
+        {
+            if (value is null)
+                return PyResult.RaiseUnboundLocalError($"cannot access local variable '{name}' where it is not associated with a value");
+
+            return value;
+        }
+
+        return LoadClosure(name);
+    }
+
+    public PyResult LoadClosure(string name)
+    {
+        if (TryLoadFromClosure(name, out var value))
+        {
+            if (value is null)
+                return PyResult.RaiseUnboundLocalError($"cannot access free variable '{name}' where it is not associated with a value in enclosing scope");
+
+            return value;
+        }
+
+        return PyResult.RaiseNameError($"name '{name}' is not defined");
+    }
+
+    public PyResult LoadGlobal(string name)
+    {
+        if (Globals.TryGetValue(name, out var value))
+            return value;
+
+        if (TryLoadFromBuiltins(name, out value))
+            return value;
+
+        return PyResult.RaiseNameError($"name '{name}' is not defined");
+    }
+
+    public PyResult LoadName(string name)
+    {
+        if (TryLoadFromLocal(name, out var value))
+        {
+            if (value is null)
+                return PyResult.RaiseUnboundLocalError($"cannot access local variable '{name}' where it is not associated with a value");
+
+            return value;
+        }
+
+        return LoadGlobal(name);
+    }
+}

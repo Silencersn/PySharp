@@ -960,7 +960,7 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
         }
         context.ExitFrame();
 
-        var attrs = ((IAstVariableScopeOwner)this).Variables.Keys.ToDictionary(static member => member, member => newFrame.GetValue(context, member));
+        var attrs = ((IAstVariableScopeOwner)this).Variables.Keys.ToDictionary(static member => member, member => newFrame.GetValue(member).PyUnwrap(context));
         foreach (var attr in attrs)
             type.PyAttributes[attr.Key] = attr.Value;
 

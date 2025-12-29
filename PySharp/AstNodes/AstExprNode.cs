@@ -67,7 +67,7 @@ public sealed class NameNode : AstExprNode, IExprContextNode, ITargetNode
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        return frame.GetValue(context, Identifier);
+        return frame.GetValue(Identifier).PyUnwrap(context);
     }
 
     internal override void Dump(AstNodeDumper dumper)

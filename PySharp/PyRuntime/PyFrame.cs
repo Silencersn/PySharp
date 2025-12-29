@@ -147,35 +147,29 @@ public sealed partial class PyFrame
             SetValue(def.KwArg, PyDictObject.CreateDict(arguments.ExtraKwargs.Select(static kvp => KeyValuePair.Create((PyObject)PyStrObject.FromString(kvp.Key), kvp.Value))));
     }
 
-    private bool TryGetValueFromBuiltins(string identifier, [NotNullWhen(true)] out PyObject? value)
+    internal PyResult GetValue(string name)
     {
-        value = null;
-        if (!Globals.TryGetValue(PySpecialNames.Builtins, out var builtins))
-            return false;
+        if (_variables is null)
+            return LoadName(name);
 
-        if (!builtins.PyAttributes.TryGetValue(identifier, out value))
-            return false;
-
-        return true;
+        return _variables[name] switch
+        {
+            PyVariableType.Local or PyVariableType.Parameter => LoadLocalOrClosure(name), // TODO: split to LOAD_FAST and LOAD_DEREF
+            PyVariableType.Global => LoadGlobal(name),
+            PyVariableType.Closure => LoadClosure(name),
+            _ => throw new UnreachableException()
+        };
     }
 
-    internal PyObject GetValue(PyCallContext context, string identifier)
-    {
-        if (_variables is not null)
-            return GetVariableValue(context, identifier, _variables[identifier]);
-
-        return GetVariableValue(context, identifier, PyVariableType.Global);
-    }
-
-    internal void SetValue(string identifier, PyObject value)
+    internal void SetValue(string name, PyObject value)
     {
         if (_variables is not null)
         {
-            SetVariableValue(identifier, _variables[identifier], value);
+            SetVariableValue(name, _variables[name], value);
         }
         else
         {
-            SetVariableValue(identifier, PyVariableType.Global, value);
+            SetVariableValue(name, PyVariableType.Local, value);
         }
         return;
     }
@@ -207,7 +201,7 @@ public sealed partial class PyFrame
             if (Globals.TryGetValue(name, out var value))
                 return value;
 
-            if (TryGetValueFromBuiltins(name, out value))
+            if (TryLoadFromBuiltins(name, out value))
                 return value;
 
             throw context.ThrowableNameError($"name '{name}' is not defined");
@@ -241,14 +235,11 @@ public sealed partial class PyFrame
         }
         else if (variableType is PyVariableType.Closure)
         {
-            //Debug.Assert(_capturedFrames is not null);
-            //_capturedFrames[name].SetVariableValue(name, PyVariableType.Local, value);
-
             Closures[name].Value = value;
         }
         else
         {
-            throw new NotImplementedException();
+            throw new UnreachableException();
         }
     }
 

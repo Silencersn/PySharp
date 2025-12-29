@@ -118,11 +118,11 @@ partial struct PyResult
     {
         return RaiseException(PyStandardExceptionTypes.ImportError, arg);
     }
-    internal static PyResult ThrowableUnboundLocalError(string? arg = null)
+    internal static PyResult RaiseUnboundLocalError(string? arg = null)
     {
         return RaiseException(PyStandardExceptionTypes.UnboundLocalError, arg);
     }
-    internal static PyResult ThrowableNameError(string? arg = null)
+    internal static PyResult RaiseNameError(string? arg = null)
     {
         return RaiseException(PyStandardExceptionTypes.NameError, arg);
     }
