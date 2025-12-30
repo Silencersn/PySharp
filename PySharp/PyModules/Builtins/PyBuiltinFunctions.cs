@@ -217,10 +217,6 @@ public static partial class PyBuiltinFunctions
             var tokens = Lexer.Tokenize(context, str.Value);
             node = Parser.Parse("<string>", tokens, context);
         }
-        catch (TokenizationException e)
-        {
-            return PyResult.RaiseSyntaxError(e.Message);
-        }
         catch (AstException e)
         {
             return PyResult.RaiseSyntaxError(e.Message);

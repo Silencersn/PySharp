@@ -80,6 +80,8 @@ public sealed partial class Lexer
         }
     }
 
+    private PyCallContext _context;
+
     private readonly List<TokenInfo> _tokens;
     private int _lineno;
     private int _offsetOfPreviousLine;
@@ -103,6 +105,7 @@ public sealed partial class Lexer
 
     internal Lexer(PyCallContext context)
     {
+        _context = context;
         _tokens = [];
         _lineno = 0;
         _offsetOfPreviousLine = 0;
@@ -208,7 +211,7 @@ public sealed partial class Lexer
 
                     var match = LexerRegexes.PseudoToken.Match(content, _offset);
                     if (match.Index != _offset)
-                        throw new TokenizationException("internal error: no match");
+                        throw _context.ThrowableSyntaxError("invalid syntax");
 
                     TokenizePseudoToken(match);
                     _offset = match.Index + match.Length;
@@ -254,7 +257,8 @@ public sealed partial class Lexer
 
                     var m = info.WrapperRegex.Match(content, _offset);
                     if (!m.Success)
-                        throw new TokenizationException("internal error: f-string no end");
+                        throw _context.ThrowableSyntaxError($"unterminated triple-quoted f-string literal (detected at line {_lineno})");
+
                     int indexOfWrapper = m.Index + m.Length - info.Wrapper.Length;
                     var indexOfLeftBrace = content.IndexOf('{', _offset);
                     var indexOfRightBrace = content.IndexOf('}', _offset);
@@ -263,7 +267,7 @@ public sealed partial class Lexer
                         IsFirstNotFoundOrBehindSecond(indexOfRightBrace, indexOfWrapper))
                     {
                         if (CurrentFStringInfo.FormatSpec.Count > 0)
-                            throw new NotImplementedException();
+                            throw _context.ThrowableSyntaxError("f-string: expecting '}', or format specs");
                         var start = new TokenPosition(_lineno, _offset - _offsetOfPreviousLine);
 
                         ExtractMultiLineTextInFString(indexOfWrapper, info, out var value, out var currentLine);
@@ -323,7 +327,7 @@ public sealed partial class Lexer
                         else
                         {
                             if (indexOfRightBrace + 1 < content.Length && content[indexOfRightBrace + 1] is not '}')
-                                throw new TokenizationException("f-string: single '}' is not allowed");
+                                throw _context.ThrowableSyntaxError("f-string: single '}' is not allowed");
 
                             var start = new TokenPosition(_lineno, _offset - _offsetOfPreviousLine);
 
@@ -377,7 +381,7 @@ public sealed partial class Lexer
         if (countOfNewLine > 0)
         {
             if (!info.IsTriple && !info.IsRaw)
-                throw new TokenizationException("internal error: unexpected newline in single or double non-raw f-string");
+                throw _context.ThrowableSyntaxError($"unterminated string literal (detected at line {_lineno})");
 
             _lineno += countOfNewLine;
             _offset = _currentContent.LastIndexOf('\n', untilIndex) + 1;
@@ -529,13 +533,18 @@ public sealed partial class Lexer
         return currentLine;
     }
 
-    private void TokenizeMultiLineString(Regex wrapper)
+    private void TokenizeMultiLineString(Regex wrapper, bool isTriple)
     {
         Debug.Assert(_currentContent is not null);
 
         var m = wrapper.Match(_currentContent, _offset);
         if (!m.Success)
-            throw new TokenizationException("unterminated string literal");
+        {
+            if (isTriple)
+                throw _context.ThrowableSyntaxError($"unterminated triple-quoted string literal (detected at line {_lineno})");
+
+            throw _context.ThrowableSyntaxError($"unterminated string literal (detected at line {_lineno})");
+        }
 
         Debug.Assert(_preString is not null);
         var pastString = _currentContent[_offset..(m.Index + m.Length)];
@@ -569,7 +578,7 @@ public sealed partial class Lexer
         Debug.Assert(_wrapper is '\'' or '"');
 
         _lineno++;
-        TokenizeMultiLineString(_wrapper is '"' ? LexerRegexes.Double : LexerRegexes.Single);
+        TokenizeMultiLineString(_wrapper is '"' ? LexerRegexes.Double : LexerRegexes.Single, false);
     }
 
     private void TokenizeTripleString()
@@ -578,7 +587,7 @@ public sealed partial class Lexer
         Debug.Assert(CurrentState is LexerState.TokenizingTripleString);
         Debug.Assert(_wrapper is '\'' or '"');
 
-        TokenizeMultiLineString(_wrapper is '"' ? LexerRegexes.Double3 : LexerRegexes.Single3);
+        TokenizeMultiLineString(_wrapper is '"' ? LexerRegexes.Double3 : LexerRegexes.Single3, true);
     }
 
     private void TokenizePseudoToken(Match match)
@@ -615,10 +624,7 @@ public sealed partial class Lexer
                     }
 
                     if (indentationLevel != _indentationLevels.Peek())
-                    {
-                        var exc = PyStandardExceptionTypes.IndentationError.Create(PyStrObject.FromString("unindent does not match any outer indentation level"));
-                        throw new PyRuntimeException(exc);
-                    }
+                        throw _context.ThrowableIndentationError("unindent does not match any outer indentation level");
                 }
             }
         }
