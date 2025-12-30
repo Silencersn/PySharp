@@ -18,9 +18,14 @@ public abstract class AstExprNode : AstNode, IAstNodeLocation
 
         var previousProvider = frame.ExprMetaInfoProvider;
         frame.ExprMetaInfoProvider = this;
-        var value = ExecuteExpr(context, frame);
-        frame.ExprMetaInfoProvider = previousProvider;
-        return value;
+        try
+        {
+            return ExecuteExpr(context, frame);
+        }
+        finally
+        {
+            frame.ExprMetaInfoProvider = previousProvider;
+        }
     }
 
     public abstract PyObject ExecuteExpr(PyCallContext context, PyFrame frame);
