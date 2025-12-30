@@ -280,7 +280,7 @@ partial class PyTypeObject<TObject>
     protected internal virtual PyResult Ne(PyCallContext context, TObject self, PyObject other)
     {
         var eq = self.Eq(context, other);
-        if (eq.IsError)
+        if (eq.IsError || eq.IsNotImplemented)
             return eq;
 
         if (PySpecialMethods.TryGetBool(context, eq.Value, out var b, out var result))

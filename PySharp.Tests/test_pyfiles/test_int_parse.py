@@ -84,7 +84,31 @@ try:
     assert False
 except ValueError:
     pass
-
+try:
+    int('0b_', 0)
+    assert False
+except ValueError:
+    pass
+try:
+    int('+', 0)
+    assert False
+except ValueError:
+    pass
+try:
+    int('_', 0)
+    assert False
+except ValueError:
+    pass
+try:
+    int('\uFFFF', 0)
+    assert False
+except ValueError:
+    pass
+try:
+    int('0b\uFFFF', 0)
+    assert False
+except ValueError:
+    pass
 try:
     int(None, None)
     assert False

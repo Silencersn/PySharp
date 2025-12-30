@@ -26,4 +26,10 @@ public sealed class PyNotImplementedObjectType : PyTypeObject<PyNotImplementedOb
             return err.Value;
         return PyNotImplementedObject.NotImplemented;
     }
+
+    protected internal override PyResult Bool(PyCallContext context, PyNotImplementedObject self)
+    {
+        context.TryWarn<PyDeprecationWarningObjectType>("NotImplemented should not be used in a boolean context");
+        return base.Bool(context, self);
+    }
 }

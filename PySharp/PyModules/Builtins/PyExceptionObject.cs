@@ -355,6 +355,11 @@ public sealed class PySyntaxWarningObjectType : PyExceptionType<PySyntaxWarningO
     public override string Name => "SyntaxWarning";
 }
 
+public sealed class PyDeprecationWarningObjectType : PyExceptionType<PyDeprecationWarningObjectType, PyWarningObjectType>
+{
+    public override string Name => "DeprecationWarning";
+}
+
 #endregion
 
 public static class PyStandardExceptionTypes

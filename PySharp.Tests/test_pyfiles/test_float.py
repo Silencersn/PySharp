@@ -95,6 +95,24 @@ except ZeroDivisionError:
 	pass
 
 try:
+	c = 1 // 0
+	assert False
+except ZeroDivisionError:
+	pass
+
+try:
+	c = 1.0 // 0
+	assert False
+except ZeroDivisionError:
+	pass
+
+try:
+	c = 1 // 0.0
+	assert False
+except ZeroDivisionError:
+	pass
+
+try:
 	c = 1 % 0
 	assert False
 except ZeroDivisionError:
@@ -111,3 +129,31 @@ try:
 	assert False
 except ZeroDivisionError:
 	pass
+
+a = 3
+b = 2.5
+
+assert repr(a + b) == '5.5'
+assert str(a + b) == '5.5'
+assert a + b == 5.5
+assert a - b == 0.5
+assert a * b == 7.5
+assert a / b == 1.2
+assert a // b == 1.0
+assert a % b == 0.5
+assert divmod(a, b) == (1.0, 0.5)
+assert pow(a, b) == 15.588457268119896
+assert (b + a) == 5.5
+assert (b - a) == -0.5
+assert (b * a) == 7.5
+assert (b / a) == 0.8333333333333334
+assert (b // a) == 0.0
+assert (b % a) == 2.5
+assert divmod(b, a) == (0.0, 2.5)
+assert pow(b, a) == 15.625
+assert a < 4.0
+assert a <= 3.0
+assert a == 3.0
+assert a != 2.5
+assert a > 2.0
+assert a >= 3.0
