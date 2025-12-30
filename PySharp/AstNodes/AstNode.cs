@@ -40,4 +40,37 @@ public interface IAstNodeLocation
 }
 
 
+internal readonly struct MetaInfoProviderSetter : IDisposable
+{
+    private readonly bool _trueForStmtFalseForExpr;
+    private readonly PyFrame _frame;
+    private readonly IMetaInfoProvider? _previous;
 
+    public MetaInfoProviderSetter(PyFrame frame, IMetaInfoProvider provider, bool trueForStmtFalseForExpr)
+    {
+        _frame = frame;
+        if (trueForStmtFalseForExpr)
+        {
+            _previous = frame.StmtMetaInfoProvider;
+            frame.StmtMetaInfoProvider = provider;
+        }
+        else
+        {
+            _previous = frame.ExprMetaInfoProvider;
+            frame.ExprMetaInfoProvider = provider;
+        }
+        _trueForStmtFalseForExpr = trueForStmtFalseForExpr;
+    }
+
+    void IDisposable.Dispose()
+    {
+        if (_trueForStmtFalseForExpr)
+        {
+            _frame.StmtMetaInfoProvider = _previous;
+        }
+        else
+        {
+            _frame.ExprMetaInfoProvider = _previous;
+        }
+    }
+}
