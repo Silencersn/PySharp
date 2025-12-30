@@ -31,7 +31,7 @@ public sealed class PyExceptionObject : PyObject
         if (Traceback is not null && !overwriteExisting)
             return this;
 
-        Traceback = PrintTraceback(context);
+        Traceback = PyTraceback.PrintTraceback(context);
         var frame = context.CurrentFrame;
         while (frame is not null)
         {
@@ -46,75 +46,6 @@ public sealed class PyExceptionObject : PyObject
         }
 
         return this;
-    }
-
-    public static string PrintTraceback(PyCallContext context)
-    {
-        Stack<string> stack = [];
-        var frame = context.CurrentFrame;
-        while (frame is not null)
-        {
-            var provider = frame.MetaInfoProvider;
-            MetaInfo? info = provider?.MetaInfo;
-            if (provider is null || info is null)
-            {
-                frame = frame.Back;
-                continue;
-            }
-
-            if (!provider.OnlyStartInfo)
-            {
-                if (info.FirstLine is not null)
-                {
-                    // actually, info.FirstLine may be multiline
-                    var lines = info.FirstLine.EnumerateLines();
-
-                    // first MoveNext must be true
-                    lines.MoveNext();
-
-                    var line = lines.Current;
-                    var preLength = line.Length;
-                    line = line.TrimStart();
-                    var offset = line.Length - preLength;
-                    var start = info.Start.Offset + offset;
-                    var end = info.End.Line == info.Start.Line
-                        ? info.End.Offset + offset
-                        : line.Length;
-                    Debug.Assert(end > start);
-
-                    if (info.CrucialStart == default || info.CrucialStart.Line != info.Start.Line)
-                    {
-                        if (end - start < line.Length)
-                            stack.Push($"    {new string(' ', start)}{new string('^', end - start)}");
-                    }
-                    else
-                    {
-                        Debug.Assert(info.CrucialStart.Line == info.Start.Line);
-
-                        var crucialStart = info.CrucialStart.Offset + offset;
-                        var crucialEnd = info.CrucialEnd.Line == info.Start.Line
-                            ? info.CrucialEnd.Offset + offset
-                            : line.Length;
-                        Debug.Assert(crucialEnd > crucialStart);
-                        Debug.Assert(end >= crucialEnd);
-                        Debug.Assert(crucialStart >= start);
-
-                        stack.Push($"    {new string(' ', start)}{new string('~', crucialStart - start)}{new string('^', crucialEnd - crucialStart)}{new string('~', end - crucialEnd)}");
-                    }
-                    stack.Push($"    {line}");
-                }
-                stack.Push($"  File \"{info.SourceName ?? "<unknown>"}\", line {info.Start.Line}, in {frame.CallerName}");
-            }
-            else
-            {
-                if (info.FirstLine is not null)
-                    stack.Push($"    {info.FirstLine.Trim().TrimEnd('\r', '\n')}");
-                stack.Push($"  File \"{info.SourceName ?? "<unknown>"}\", line {info.Start.Line}, in {frame.CallerName}");
-            }
-
-            frame = frame.Back;
-        }
-        return string.Join(Environment.NewLine, stack);
     }
 
     internal string ToMessage(PyCallContext context)
@@ -144,7 +75,7 @@ public sealed class PyExceptionObject : PyObject
         {
             builder
                 .AppendLine("Traceback (most recent call last):")
-                .AppendLine(Traceback);
+                .Append(Traceback);
         }
 
         builder.Append(PyType.FullName);
