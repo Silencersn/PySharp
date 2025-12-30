@@ -44,7 +44,6 @@ public sealed partial class Parser : IMetaInfoProvider
     private readonly string _sourceName;
     private readonly OptimizationOptions _options;
     private readonly TokenStream _tokenStream;
-    private bool _isEnd;
     private bool _isParsingInteractiveNode;
     private int _comprehensionDepth;
 
@@ -67,9 +66,6 @@ public sealed partial class Parser : IMetaInfoProvider
                 _tokenStream.MoveNextToken();
             }
 
-            if (_tokenStream.CurrentToken.Type is TokenType.EndMarker)
-                _isEnd = true;
-
             return _tokenStream.CurrentToken;
         }
     }
@@ -84,7 +80,6 @@ public sealed partial class Parser : IMetaInfoProvider
         _context = context;
         _options = options ?? OptimizationOptions.O0;
         _tokenStream = tokenStream;
-        _isEnd = false;
         _sourceName = sourceName;
         _context.CurrentFrame.MetaInfoProvider = this;
     }
@@ -94,7 +89,7 @@ public sealed partial class Parser : IMetaInfoProvider
 
     private void MoveNextToken()
     {
-        if (_isEnd)
+        if (_tokenStream.CurrentToken.Type is TokenType.EndMarker)
             return;
 
         _tokenStream.MoveNextToken();
