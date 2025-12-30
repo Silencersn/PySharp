@@ -7,6 +7,7 @@ assert int('0x1A', 16) == 26
 assert int('0_1_2_3') == 123
 assert int('0b1_0_1_0', 2) == 10
 assert int('0x1_A', 16) == 26
+assert int('0x_1_A', 16) == 26
 assert int('0o7_7', 8) == 63
 assert int('  42  ') == 42
 assert int('0') == 0
@@ -24,6 +25,11 @@ except ValueError:
     pass
 try:
     int('0x1G', 16)
+    assert False
+except ValueError:
+    pass
+try:
+    int('0x__1', 16)
     assert False
 except ValueError:
     pass
@@ -76,4 +82,23 @@ try:
     int('10', 37)
     assert False
 except ValueError:
+    pass
+
+try:
+    int(None, None)
+    assert False
+except TypeError:
+    pass
+
+try:
+    int(None)
+    assert False
+except TypeError:
+    pass
+
+    
+try:
+    int(None, 10)
+    assert False
+except TypeError:
     pass

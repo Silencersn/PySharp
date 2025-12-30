@@ -75,3 +75,39 @@ assert a >= 3.5
 assert f'{3.14159:.2f}' == '3.14'
 assert f'{3.14159:+.2f}' == '+3.14' and f'{-3.14159:+.2f}' == '-3.14'
 assert float(5) == 5.0
+
+try:
+	c = 1 / 0
+	assert False
+except ZeroDivisionError:
+	pass
+
+try:
+	c = 1.0 / 0
+	assert False
+except ZeroDivisionError:
+	pass
+
+try:
+	c = 1 / 0.0
+	assert False
+except ZeroDivisionError:
+	pass
+
+try:
+	c = 1 % 0
+	assert False
+except ZeroDivisionError:
+	pass
+
+try:
+	c = 1.0 % 0
+	assert False
+except ZeroDivisionError:
+	pass
+
+try:
+	c = 1 % 0.0
+	assert False
+except ZeroDivisionError:
+	pass

@@ -27,7 +27,7 @@ internal static class PyMath
 
             case PyOperatorTypes.FloorDiv:
                 if (right.Value.IsZero)
-                    return PyResult.RaiseZeroDivisionError("division by zero");
+                    return PyResult.RaiseZeroDivisionError("integer division or modulo by zero");
                 var (q, r) = BigInteger.DivRem(left.Value, right.Value);
                 if (r.IsZero || BigInteger.IsPositive(q))
                     return PyIntObject.FromInteger(q);

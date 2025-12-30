@@ -43,3 +43,10 @@ assert min([], default=1) == 1
 assert dir(0)
 assert isinstance(1, (float, int))
 assert issubclass(int, (float, int))
+assert list(zip([1, 2, 3], [4, 5, 6])) == [(1, 4), (2, 5), (3, 6)]
+
+try:
+	list(zip([1, 2], [3], strict=True))
+	assert False
+except ValueError:
+	pass
