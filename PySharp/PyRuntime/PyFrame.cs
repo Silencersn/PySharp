@@ -32,8 +32,7 @@ public sealed partial class PyFrame
     internal string CallerName { get; }
     internal PyObject? Caller { get; }
 
-    internal IMetaInfoProvider? ExprMetaInfoProvider { get; set; }
-    internal IMetaInfoProvider? StmtMetaInfoProvider { get; set; }
+    internal IMetaInfoProvider? MetaInfoProvider { get; set; }
     private Dictionary<string, PyCellObject>? _closure = null;
     private IDictionary<string, PyObject?>? _locals = null;
     internal PyFrameGlobals _globals;

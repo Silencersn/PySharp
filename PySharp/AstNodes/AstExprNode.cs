@@ -16,7 +16,7 @@ public abstract class AstExprNode : AstNode, IAstNodeLocation
         if (this is IAstExprNodeNoSelfPythonException)
             return ExecuteExpr(context, frame);
 
-        using var withMetaInfo = new MetaInfoProviderSetter(frame, this, false);
+        using var withMetaInfo = new MetaInfoProviderSetter(frame, this);
         return ExecuteExpr(context, frame);
     }
 

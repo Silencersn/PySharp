@@ -19,7 +19,7 @@ public class ModuleNode : AstModNode
 
     public override void Execute(PyCallContext context, PyFrame frame)
     {
-        frame.StmtMetaInfoProvider = this;
+        using var withMetaInfo = new MetaInfoProviderSetter(frame, this);
         foreach (var stmt in Body)
         {
             stmt.Execute(context, frame);
@@ -51,7 +51,7 @@ public class ExpressionNode : AstModNode
 
     public override void Execute(PyCallContext context, PyFrame frame)
     {
-        using var withMetaInfo = new MetaInfoProviderSetter(frame, this, true);
+        using var withMetaInfo = new MetaInfoProviderSetter(frame, this);
         _ = Body.GetExprValue(context, frame);
     }
 }
@@ -67,7 +67,7 @@ public class InteractiveNode : AstModNode
 
     public override void Execute(PyCallContext context, PyFrame frame)
     {
-        using var withMetaInfo = new MetaInfoProviderSetter(frame, this, true);
+        using var withMetaInfo = new MetaInfoProviderSetter(frame, this);
         foreach (var stmt in Body)
         {
             stmt.Execute(context, frame);

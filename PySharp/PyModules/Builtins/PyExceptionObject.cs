@@ -54,8 +54,15 @@ public sealed class PyExceptionObject : PyObject
         var frame = context.CurrentFrame;
         while (frame is not null)
         {
-            MetaInfo? info;
-            if ((info = frame.ExprMetaInfoProvider?.MetaInfo) is not null)
+            var provider = frame.MetaInfoProvider;
+            MetaInfo? info = provider?.MetaInfo;
+            if (provider is null || info is null)
+            {
+                frame = frame.Back;
+                continue;
+            }
+
+            if (!provider.OnlyStartInfo)
             {
                 if (info.FirstLine is not null)
                 {
@@ -98,7 +105,7 @@ public sealed class PyExceptionObject : PyObject
                 }
                 stack.Push($"  File \"{info.SourceName ?? "<unknown>"}\", line {info.Start.Line}, in {frame.CallerName}");
             }
-            else if ((info = frame.StmtMetaInfoProvider?.MetaInfo) is not null)
+            else
             {
                 if (info.FirstLine is not null)
                     stack.Push($"    {info.FirstLine.Trim().TrimEnd('\r', '\n')}");

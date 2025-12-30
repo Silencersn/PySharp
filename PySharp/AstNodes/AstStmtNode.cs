@@ -19,7 +19,7 @@ public abstract class AstStmtNode : AstNode
 {
     public sealed override void Execute(PyCallContext context, PyFrame frame)
     {
-        using var withMetaInfo = new MetaInfoProviderSetter(frame, this, true);
+        using var withMetaInfo = new MetaInfoProviderSetter(frame, this);
         ExecuteStmt(context, frame);
     }
 
@@ -74,7 +74,7 @@ public class AssertNode : AstStmtNode
         if (b!.BoolValue)
             return;
 
-        frame.ExprMetaInfoProvider = Test;
+        using var withMetaInfo = new MetaInfoProviderSetter(frame, Test);
 
         if (Msg is null)
             throw context.ThrowableAssertionError(null as string);
