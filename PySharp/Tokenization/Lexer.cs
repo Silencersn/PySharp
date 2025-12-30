@@ -106,7 +106,7 @@ public sealed partial class Lexer : IMetaInfoProvider
     internal IList<TokenInfo> Tokens => _tokens;
 
     bool IMetaInfoProvider.OnlyStartInfo => true;
-    MetaInfo? IMetaInfoProvider.MetaInfo => new() { SourceName = _sourceName, FirstLine = _currentLine };
+    MetaInfo? IMetaInfoProvider.MetaInfo => new() { SourceName = _sourceName, FirstLine = _currentLine, Start = new(_lineno, 0) };
 
     internal Lexer(PyCallContext context, string sourceName)
     {
