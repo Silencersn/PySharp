@@ -94,9 +94,9 @@ public sealed partial class PyFrame
     {
         var frame = new PyFrame(back);
         var builtins = context.PyEnvironment.LoadBuiltinModule(context, "builtins");
-        frame.SetValue(PySpecialNames.Builtins, builtins);
+        frame.SetVariable(PySpecialNames.Builtins, builtins);
         if (back is null)
-            frame.SetValue(PySpecialNames.Name, PyStrObject.FromString(PySpecialNames.Main));
+            frame.SetVariable(PySpecialNames.Name, PyStrObject.FromString(PySpecialNames.Main));
 
         // TODO: add flag to control whether adding site
         _ = context.PyEnvironment.LoadBuiltinModule(context, "site");
@@ -129,25 +129,25 @@ public sealed partial class PyFrame
     {
         for (int i = 0; i < def.PosonlyArgs.Length; i++)
         {
-            SetValue(def.PosonlyArgs[i], arguments.Args[i]);
+            SetVariable(def.PosonlyArgs[i], arguments.Args[i]);
         }
         for (int i = 0; i < def.Args.Length; i++)
         {
             var index = i + def.PosonlyArgs.Length;
-            SetValue(def.Args[i], arguments.Args[index]);
+            SetVariable(def.Args[i], arguments.Args[index]);
         }
         foreach (var kwarg in arguments.Kwargs)
         {
-            SetValue(kwarg.Key, kwarg.Value);
+            SetVariable(kwarg.Key, kwarg.Value);
         }
 
         if (def.VarArg is not null)
-            SetValue(def.VarArg, PyTupleObject.CreateTuple(arguments.ExtraArgs));
+            SetVariable(def.VarArg, PyTupleObject.CreateTuple(arguments.ExtraArgs));
         if (def.KwArg is not null)
-            SetValue(def.KwArg, PyDictObject.CreateDict(arguments.ExtraKwargs.Select(static kvp => KeyValuePair.Create((PyObject)PyStrObject.FromString(kvp.Key), kvp.Value))));
+            SetVariable(def.KwArg, PyDictObject.CreateDict(arguments.ExtraKwargs.Select(static kvp => KeyValuePair.Create((PyObject)PyStrObject.FromString(kvp.Key), kvp.Value))));
     }
 
-    internal PyResult GetValue(string name)
+    internal PyResult GetVariable(string name)
     {
         if (_variables is null)
             return LoadName(name);
@@ -162,7 +162,7 @@ public sealed partial class PyFrame
         };
     }
 
-    internal void SetValue(string name, PyObject value)
+    internal void SetVariable(string name, PyObject value)
     {
         if (_variables is null)
         {
@@ -189,11 +189,26 @@ public sealed partial class PyFrame
         }
     }
 
+    internal PyResult DeleteVariable(string name)
+    {
+        if (_variables is null)
+            return DeleteName(name);
+
+        return _variables[name] switch
+        {
+            PyVariableType.Local or PyVariableType.Parameter => DeleteLocal(name),
+            PyVariableType.Global => DeleteGlobal(name),
+            PyVariableType.CapturedLocal or PyVariableType.CapturedParameter => DeleteClosure(name, true),
+            PyVariableType.Closure => DeleteClosure(name, false),
+            _ => throw new UnreachableException()
+        };
+    }
+
     public void FromModuleImportAll(PyModuleObject module)
     {
         foreach (var attr in module.PyAttributes)
         {
-            SetValue(attr.Key, attr.Value);
+            SetVariable(attr.Key, attr.Value);
         }
     }
 
@@ -202,7 +217,7 @@ public sealed partial class PyFrame
         if (!context.PyEnvironment.TryLoadModule(context, name, out var module))
             throw context.ThrowableModuleNotFoundError($"No module named '{name}'");
 
-        SetValue(alias ?? name, module);
+        SetVariable(alias ?? name, module);
     }
 
     public void RemoveValue(string identifier)

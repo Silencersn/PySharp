@@ -626,7 +626,7 @@ public class ImportFromNode : AstStmtNode
                     }
 
                     var attr = module.GetAttribute(context, strObj.Value).PyUnwrap(context);
-                    frame.SetValue(strObj.Value, attr);
+                    frame.SetVariable(strObj.Value, attr);
                 }
             }
             else
@@ -635,7 +635,7 @@ public class ImportFromNode : AstStmtNode
                 {
                     // only import names that do not start with '_'
                     if (!kvp.Key.StartsWith('_'))
-                        frame.SetValue(kvp.Key, kvp.Value);
+                        frame.SetVariable(kvp.Key, kvp.Value);
                 }
             }
             return;
@@ -648,7 +648,7 @@ public class ImportFromNode : AstStmtNode
             if (!module.PyAttributes.TryGetValue(name.Name, out var value))
                 throw context.ThrowableImportError($"cannot import name '{name.Name}' from '{Module /* TODO: should be module.__name__ */}'");
 
-            frame.SetValue(name.AsName ?? name.Name, value);
+            frame.SetVariable(name.AsName ?? name.Name, value);
         }
     }
 }
@@ -879,7 +879,7 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda, IFunctionOrClass
             func.PyAttributes[PySpecialNames.Doc] = doc;
         caller.Func = func;
 
-        frame.SetValue(Identifier, AstUtils.ApplyDeractors(func, DecoratorList, context, frame));
+        frame.SetVariable(Identifier, AstUtils.ApplyDeractors(func, DecoratorList, context, frame));
     }
 
     private PyResult GetResult(PyCallContext context, PyFrame frame)
@@ -964,7 +964,7 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
         }
         context.ExitFrame();
 
-        var attrs = ((IAstVariableScopeOwner)this).Variables.Keys.ToDictionary(static member => member, member => newFrame.GetValue(member).PyUnwrap(context));
+        var attrs = ((IAstVariableScopeOwner)this).Variables.Keys.ToDictionary(static member => member, member => newFrame.GetVariable(member).PyUnwrap(context));
         foreach (var attr in attrs)
             type.PyAttributes[attr.Key] = attr.Value;
 
@@ -974,6 +974,6 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
                 value.SetName(context, type, PyStrObject.FromString(name)).PyUnwrap(context);
         }
 
-        frame.SetValue(Name, AstUtils.ApplyDeractors(type, DecoratorList, context, frame));
+        frame.SetVariable(Name, AstUtils.ApplyDeractors(type, DecoratorList, context, frame));
     }
 }

@@ -26,7 +26,7 @@ public class ExceptHandlerNode : AstExceptHandlerNode
         if (IsMatch())
         {
             if (Identifier is not null)
-                frame.SetValue(Identifier, exception);
+                frame.SetVariable(Identifier, exception);
 
             foreach (var stmt in Body)
             {
@@ -34,7 +34,7 @@ public class ExceptHandlerNode : AstExceptHandlerNode
             }
 
             if (Identifier is not null)
-                frame.RemoveValue(Identifier);
+                frame.DeleteVariable(Identifier).PyUnwrap(context);
 
             return true;
         }

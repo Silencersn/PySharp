@@ -67,7 +67,7 @@ public sealed class NameNode : AstExprNode, IExprContextNode, ITargetNode
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        return frame.GetValue(Identifier).PyUnwrap(context);
+        return frame.GetVariable(Identifier).PyUnwrap(context);
     }
 
     internal override void Dump(AstNodeDumper dumper)
@@ -78,12 +78,12 @@ public sealed class NameNode : AstExprNode, IExprContextNode, ITargetNode
 
     void ITargetNode.DeleteValue(PyCallContext context, PyFrame frame)
     {
-        frame.RemoveValue(Identifier);
+        frame.DeleteVariable(Identifier).PyUnwrap(context);
     }
 
     void ITargetNode.SetVaue(PyCallContext context, PyObject value, PyFrame frame)
     {
-        frame.SetValue(Identifier, value);
+        frame.SetVariable(Identifier, value);
     }
 }
 
