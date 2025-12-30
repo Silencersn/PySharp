@@ -83,7 +83,7 @@ public sealed class NameNode : AstExprNode, IExprContextNode, ITargetNode
 
     void ITargetNode.SetVaue(PyCallContext context, PyObject value, PyFrame frame)
     {
-        frame.SetVariable(Identifier, value);
+        frame.SetVariable(Identifier, value).PyUnwrap(context);
     }
 }
 

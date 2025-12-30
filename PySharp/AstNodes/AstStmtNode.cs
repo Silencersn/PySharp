@@ -626,7 +626,7 @@ public class ImportFromNode : AstStmtNode
                     }
 
                     var attr = module.GetAttribute(context, strObj.Value).PyUnwrap(context);
-                    frame.SetVariable(strObj.Value, attr);
+                    frame.SetVariable(strObj.Value, attr).PyUnwrap(context);
                 }
             }
             else
@@ -635,7 +635,7 @@ public class ImportFromNode : AstStmtNode
                 {
                     // only import names that do not start with '_'
                     if (!kvp.Key.StartsWith('_'))
-                        frame.SetVariable(kvp.Key, kvp.Value);
+                        frame.SetVariable(kvp.Key, kvp.Value).PyUnwrap(context);
                 }
             }
             return;
@@ -648,7 +648,7 @@ public class ImportFromNode : AstStmtNode
             if (!module.PyAttributes.TryGetValue(name.Name, out var value))
                 throw context.ThrowableImportError($"cannot import name '{name.Name}' from '{Module /* TODO: should be module.__name__ */}'");
 
-            frame.SetVariable(name.AsName ?? name.Name, value);
+            frame.SetVariable(name.AsName ?? name.Name, value).PyUnwrap(context);
         }
     }
 }
@@ -879,7 +879,7 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda, IFunctionOrClass
             func.PyAttributes[PySpecialNames.Doc] = doc;
         caller.Func = func;
 
-        frame.SetVariable(Identifier, AstUtils.ApplyDeractors(func, DecoratorList, context, frame));
+        frame.SetVariable(Identifier, AstUtils.ApplyDeractors(func, DecoratorList, context, frame)).PyUnwrap(context);
     }
 
     private PyResult GetResult(PyCallContext context, PyFrame frame)
@@ -974,6 +974,6 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
                 value.SetName(context, type, PyStrObject.FromString(name)).PyUnwrap(context);
         }
 
-        frame.SetVariable(Name, AstUtils.ApplyDeractors(type, DecoratorList, context, frame));
+        frame.SetVariable(Name, AstUtils.ApplyDeractors(type, DecoratorList, context, frame)).PyUnwrap(context);
     }
 }

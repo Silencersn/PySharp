@@ -147,7 +147,7 @@ public sealed partial class PyFrame
             SetVariable(def.KwArg, PyDictObject.CreateDict(arguments.ExtraKwargs.Select(static kvp => KeyValuePair.Create((PyObject)PyStrObject.FromString(kvp.Key), kvp.Value))));
     }
 
-    internal PyResult GetVariable(string name)
+    public PyResult GetVariable(string name)
     {
         if (_variables is null)
             return LoadName(name);
@@ -162,34 +162,21 @@ public sealed partial class PyFrame
         };
     }
 
-    internal void SetVariable(string name, PyObject value)
+    public PyResult SetVariable(string name, PyObject value)
     {
         if (_variables is null)
+            return StorgeName(name, value);
+
+        return _variables[name] switch
         {
-            StorgeName(name, value);
-            return;
-        }
-
-        switch (_variables[name])
-        {
-            case PyVariableType.Local:
-            case PyVariableType.Parameter:
-                StorgeLocal(name, value);
-                break;
-
-            case PyVariableType.Global:
-                StorgeGlobal(name, value);
-                break;
-
-            case PyVariableType.CapturedLocal:
-            case PyVariableType.CapturedParameter:
-            case PyVariableType.Closure:
-                StorgeClosure(name, value);
-                break;
-        }
+            PyVariableType.Local or PyVariableType.Parameter => StorgeLocal(name, value),
+            PyVariableType.Global => StorgeGlobal(name, value),
+            PyVariableType.CapturedLocal or PyVariableType.CapturedParameter or PyVariableType.Closure => StorgeClosure(name, value),
+            _ => throw new UnreachableException()
+        };
     }
 
-    internal PyResult DeleteVariable(string name)
+    public PyResult DeleteVariable(string name)
     {
         if (_variables is null)
             return DeleteName(name);

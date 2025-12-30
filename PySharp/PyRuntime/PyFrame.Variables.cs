@@ -89,24 +89,30 @@ partial class PyFrame
         return value;
     }
 
-    public void StorgeLocal(string name, PyObject value)
+    public PyResult StorgeLocal(string name, PyObject value)
     {
         Locals[name] = value;
+        return PyNoneObject.None;
     }
 
-    public void StorgeClosure(string name, PyObject value)
+    public PyResult StorgeClosure(string name, PyObject value)
     {
-        Closures[name].Value = value;
+        if (_closure is null || !Closures.TryGetValue(name, out var cell))
+            return PyResult.RaisePySharpException("closure not found");
+
+        cell.Value = value;
+        return PyNoneObject.None;
     }
 
-    public void StorgeGlobal(string name, PyObject value)
+    public PyResult StorgeGlobal(string name, PyObject value)
     {
         Globals[name] = value;
+        return PyNoneObject.None;
     }
 
-    public void StorgeName(string name, PyObject value)
+    public PyResult StorgeName(string name, PyObject value)
     {
-        Locals[name] = value;
+        return StorgeLocal(name, value);
     }
 
     public PyResult DeleteLocal(string name)
