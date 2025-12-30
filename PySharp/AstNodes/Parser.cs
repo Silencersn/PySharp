@@ -5,7 +5,7 @@ using System.Collections.Frozen;
 using System.Diagnostics;
 namespace PySharp.AstNodes;
 
-public sealed partial class Parser
+public sealed partial class Parser : IMetaInfoProvider
 {
     public static ModuleNode Parse(string sourceName, IEnumerable<TokenInfo> tokens, PyCallContext context)
     {
@@ -76,6 +76,9 @@ public sealed partial class Parser
     [DebuggerBrowsable(DebuggerBrowsableState.Never)]
     private TokenType CurrentTokenType => CurrentToken.Type;
 
+    bool IMetaInfoProvider.OnlyStartInfo => true;
+    MetaInfo? IMetaInfoProvider.MetaInfo => CreateMetaInfo();
+
     internal Parser(PyCallContext context, string sourceName, TokenStream tokenStream, OptimizationOptions? options = null)
     {
         _context = context;
@@ -83,6 +86,7 @@ public sealed partial class Parser
         _tokenStream = tokenStream;
         _isEnd = false;
         _sourceName = sourceName;
+        _context.CurrentFrame.MetaInfoProvider = this;
     }
     internal Parser(PyCallContext context, string sourceName, OptimizationOptions options, IEnumerable<TokenInfo> tokens) : this(context, sourceName, new TokenArrayStream(tokens), options)
     {
