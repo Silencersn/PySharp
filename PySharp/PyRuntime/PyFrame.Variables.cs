@@ -1,8 +1,5 @@
 ﻿using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime.Calls;
-using PySharp.Utility;
-using System;
-using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.PyRuntime;
@@ -60,7 +57,7 @@ partial class PyFrame
         {
             if (isLocal)
                 return PyResult.RaiseUnboundLocalError($"cannot access local variable '{name}' where it is not associated with a value");
-            
+
             return PyResult.RaiseUnboundLocalError($"cannot access free variable '{name}' where it is not associated with a value in enclosing scope");
         }
 

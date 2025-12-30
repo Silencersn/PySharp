@@ -1,7 +1,6 @@
 ﻿using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime.Calls;
 using System.Diagnostics.CodeAnalysis;
-using System.Numerics;
 
 namespace PySharp.PyRuntime;
 

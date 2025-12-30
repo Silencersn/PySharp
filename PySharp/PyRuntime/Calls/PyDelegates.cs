@@ -51,7 +51,7 @@ public static class PyDelegateConverter
     }
 
     public static PyUncompoundedDelegate CreateOverloadDispatcher<TObject>(params PyMethod<TObject>[] methods) where TObject : PyObject
-    {    
+    {
         PyArgsDef[]? defs = null;
 
         return (context, args, kwargs) =>
