@@ -1,13 +1,14 @@
 ﻿using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
+using PySharp.PyRuntime.Metadata;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
 
 namespace PySharp.Tokenization;
 
-public sealed partial class Lexer
+public sealed partial class Lexer : IMetaInfoProvider
 {
     private enum LexerState
     {
@@ -80,7 +81,7 @@ public sealed partial class Lexer
         }
     }
 
-    private PyCallContext _context;
+    private readonly PyCallContext _context;
 
     private readonly List<TokenInfo> _tokens;
     private int _lineno;
@@ -103,9 +104,13 @@ public sealed partial class Lexer
 
     internal IList<TokenInfo> Tokens => _tokens;
 
+    bool IMetaInfoProvider.OnlyStartInfo => true;
+    MetaInfo? IMetaInfoProvider.MetaInfo => new() { FirstLine = _currentLine };
+
     internal Lexer(PyCallContext context)
     {
         _context = context;
+        _context.CurrentFrame.MetaInfoProvider = this;
         _tokens = [];
         _lineno = 0;
         _offsetOfPreviousLine = 0;
@@ -144,6 +149,12 @@ public sealed partial class Lexer
 
     internal void InternalEnd()
     {
+        if (CurrentState is LexerState.TokenizingMultiLineSingleOrDoubleString)
+            throw _context.ThrowableSyntaxError($"unterminated string literal (detected at line {_lineno})");
+
+        if (CurrentState is LexerState.TokenizingTripleString)
+            throw _context.ThrowableSyntaxError($"unterminated triple-quoted string literal (detected at line {_lineno})");
+
         Debug.Assert(_tokens.Count > 0);
 
         if (_tokens[^1].Type is not (TokenType.NewLine or TokenType.NL))
