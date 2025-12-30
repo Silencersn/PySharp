@@ -57,7 +57,7 @@ public sealed partial class Parser : IMetaInfoProvider
     private VariableScope CurrentScope => Context.CurrentScope;
 
     [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-    private TokenInfo CurrentToken
+    internal TokenInfo CurrentToken
     {
         get
         {

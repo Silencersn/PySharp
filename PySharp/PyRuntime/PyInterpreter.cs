@@ -117,11 +117,50 @@ public static class PyInterpreter
         {
             PyTryCatch(context, () =>
             {
-                var tokenStream = new TokenInteractiveStream(context, environment.In, environment.Out, "<stdin>");
-                var parser = new Parser(context, "<stdin>", tokenStream, environment.OptimizationOptions);
-                var node = parser.ParseInteractiveNode();
-                node.Execute(context, context.CurrentFrame);
-                Debug.Assert(context.CurrentFrame.IsRoot);
+                var lexer = new Lexer(context, "<stdin>");
+                bool isFirstLine = true;
+                while (true)
+                {
+                    environment.Out.Write(isFirstLine ? ">>> " : "... ");
+                    var line = environment.In.ReadLine() ?? throw new EndOfStreamException();
+                    isFirstLine = false;
+                    if (string.IsNullOrWhiteSpace(line))
+                    {
+                        lexer.InternalClearIndentation();
+                        lexer.Tokens.Add(new TokenInfo(TokenType.NewLine, string.Empty, default, default, string.Empty));
+                        lexer.Tokens.Add(new TokenInfo(TokenType.EndMarker, string.Empty, default, default, string.Empty));
+                    }
+                    else
+                    {
+                        lexer.InternalTokenize(line + Environment.NewLine);
+                        lexer.Tokens.Add(new TokenInfo(TokenType.EndMarker, string.Empty, default, default, string.Empty));
+                    }
+
+                    var parser = new Parser(context, "<stdin>", environment.OptimizationOptions, lexer.Tokens);
+                    try
+                    {
+                        var node = parser.ParseInteractiveNode();
+                        node.Execute(context, context.CurrentFrame);
+                        Debug.Assert(context.CurrentFrame.IsRoot);
+                        break;
+                    }
+                    catch (PyRuntimeException e)
+                    {
+                        Debug.Assert(PyStandardExceptionTypes.SyntaxError.IsInstance(e.PyException));
+
+                        if (parser.CurrentToken.Type is not TokenType.EndMarker)
+                            throw;
+
+                        lexer.Tokens.RemoveAt(lexer.Tokens.Count - 1); // remove EndMarker
+                    }
+                    catch (AstException) // TODO: remove AstException
+                    {
+                        if (parser.CurrentToken.Type is not TokenType.EndMarker)
+                            throw;
+
+                        lexer.Tokens.RemoveAt(lexer.Tokens.Count - 1); // remove EndMarker
+                    }
+                }
             });
         }
     }
