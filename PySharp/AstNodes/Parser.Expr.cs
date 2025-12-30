@@ -87,7 +87,7 @@ partial class Parser
             return ParseSetDisplay();
         }
 
-        throw new NotSupportedException();
+        throw _context.ThrowableSyntaxError("invalid syntax");
     }
 
     private AstExprNode ParseFExpression()
@@ -452,7 +452,7 @@ partial class Parser
             if (CurrentTokenType is TokenType.Indent)
                 throw _context.ThrowableIndentationError("unexpected indent");
 
-            throw new NotSupportedException();
+            throw _context.ThrowableSyntaxError("invalid syntax");
         }
 
     }

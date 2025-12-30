@@ -115,21 +115,11 @@ public static class PyInterpreter
 
         while (true)
         {
-            InteractiveNode node;
-            try
+            PyTryCatch(context, () =>
             {
                 var tokenStream = new TokenInteractiveStream(context, environment.In, environment.Out);
                 var parser = new Parser(context, "<stdin>", tokenStream, environment.OptimizationOptions);
-                node = parser.ParseInteractiveNode();
-            }
-            catch (PyRuntimeException e)
-            {
-                environment.Error.WriteLine(e.PyException.ToMessage(context));
-                continue;
-            }
-
-            PyTryCatch(context, () =>
-            {
+                var node = parser.ParseInteractiveNode();
                 node.Execute(context, context.CurrentFrame);
                 Debug.Assert(context.CurrentFrame.IsRoot);
             });
