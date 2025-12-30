@@ -314,14 +314,14 @@ partial class Parser
 
 
     }
-    static string FromLiteralToString(PyCallContext context, string literal, bool hasWrapper)
+    static string FromLiteralToString(PyCallContext context, string literal, bool nonWrapper)
     {
         // TODO: prefix 'b'
 
         bool successful;
         string? str;
         PyStrConverter.ConvertErrorInfo info;
-        if (hasWrapper)
+        if (nonWrapper)
             successful = PyStrConverter.TryFromTextToString(literal, out str, out info);
         else
             successful = PyStrConverter.TryFromLiteralToString(literal, out str, out info);

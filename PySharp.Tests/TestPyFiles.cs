@@ -153,4 +153,11 @@ public sealed class TestPyFiles
         var module = PyInterpreter.RunFile(Path.Combine(PyFilesPath, "test_int.py"));
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestLongStr()
+    {
+        var module = PyInterpreter.RunFile(Path.Combine(PyFilesPath, "test_long_str.py"));
+        Assert.IsNotNull(module);
+    }
 }

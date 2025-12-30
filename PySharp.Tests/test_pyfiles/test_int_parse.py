@@ -2,7 +2,9 @@
 assert int('-456') == -456
 assert int('+789') == 789
 assert int('0b1010', 2) == 10
+assert int('0B1010', 2) == 10
 assert int('0o77', 8) == 63
+assert int('0O77', 8) == 63
 assert int('0x1A', 16) == 26
 assert int('0_1_2_3') == 123
 assert int('0b1_0_1_0', 2) == 10
