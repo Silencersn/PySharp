@@ -164,37 +164,28 @@ public sealed partial class PyFrame
 
     internal void SetValue(string name, PyObject value)
     {
-        if (_variables is not null)
+        if (_variables is null)
         {
-            SetVariableValue(name, _variables[name], value);
+            StorgeName(name, value);
+            return;
         }
-        else
-        {
-            SetVariableValue(name, PyVariableType.Local, value);
-        }
-        return;
-    }
 
-    internal void SetVariableValue(string name, PyVariableType variableType, PyObject value)
-    {
-        if (variableType is PyVariableType.Local or PyVariableType.Parameter or PyVariableType.CapturedLocal or PyVariableType.CapturedParameter)
+        switch (_variables[name])
         {
-            if (Closures.TryGetValue(name, out PyCellObject? cell))
-                cell.Value = value;
-            else
-                Locals[name] = value;
-        }
-        else if (variableType is PyVariableType.Global)
-        {
-            Globals[name] = value;
-        }
-        else if (variableType is PyVariableType.Closure)
-        {
-            Closures[name].Value = value;
-        }
-        else
-        {
-            throw new UnreachableException();
+            case PyVariableType.Local:
+            case PyVariableType.Parameter:
+                StorgeLocal(name, value);
+                break;
+
+            case PyVariableType.Global:
+                StorgeGlobal(name, value);
+                break;
+
+            case PyVariableType.CapturedLocal:
+            case PyVariableType.CapturedParameter:
+            case PyVariableType.Closure:
+                StorgeClosure(name, value);
+                break;
         }
     }
 

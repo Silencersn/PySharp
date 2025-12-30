@@ -88,4 +88,24 @@ partial class PyFrame
 
         return value;
     }
+
+    public void StorgeLocal(string name, PyObject value)
+    {
+        Locals[name] = value;
+    }
+
+    public void StorgeClosure(string name, PyObject value)
+    {
+        Closures[name].Value = value;
+    }
+
+    public void StorgeGlobal(string name, PyObject value)
+    {
+        Globals[name] = value;
+    }
+
+    public void StorgeName(string name, PyObject value)
+    {
+        Locals[name] = value;
+    }
 }
