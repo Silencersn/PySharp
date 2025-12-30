@@ -9,11 +9,6 @@ namespace PySharp.PyRuntime;
 
 public static class PyInterpreter
 {
-    public static IReadOnlyList<TokenInfo> Tokenize(string code)
-    {
-        return Lexer.Tokenize(code);
-    }
-
     internal static void PyTryCatch(PyCallContext context, Action action)
     {
         var frame = context.CurrentFrame;
@@ -99,7 +94,7 @@ public static class PyInterpreter
 
     public static PyModuleObject RunCodeWithinEnvironment(PyCallContext context, string code, string moduleName, bool newFrame, string sourceName)
     {
-        var tokens = Tokenize(code);
+        var tokens = Lexer.Tokenize(context, code);
         var node = Parser.Parse(sourceName, tokens, context);
         return PyVirtualMachine.Execute(context, node, moduleName, newFrame);
     }
@@ -123,7 +118,7 @@ public static class PyInterpreter
             InteractiveNode node;
             try
             {
-                var tokenStream = new TokenInteractiveStream(environment.In, environment.Out);
+                var tokenStream = new TokenInteractiveStream(context, environment.In, environment.Out);
                 var parser = new Parser(context, "<stdin>", tokenStream, environment.OptimizationOptions);
                 node = parser.ParseInteractiveNode();
             }

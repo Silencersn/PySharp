@@ -1,5 +1,6 @@
 ﻿using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
+using PySharp.PyRuntime.Calls;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
@@ -20,9 +21,9 @@ public sealed partial class Lexer
         FStringDefault,
     }
 
-    public static IReadOnlyList<TokenInfo> Tokenize(string content)
+    public static IReadOnlyList<TokenInfo> Tokenize(PyCallContext context, string content)
     {
-        var lexer = new Lexer();
+        var lexer = new Lexer(context);
         lexer.InternalStart();
         lexer.InternalTokenize(content);
         lexer.InternalEnd();
@@ -100,7 +101,7 @@ public sealed partial class Lexer
 
     internal IList<TokenInfo> Tokens => _tokens;
 
-    internal Lexer()
+    internal Lexer(PyCallContext context)
     {
         _tokens = [];
         _lineno = 0;

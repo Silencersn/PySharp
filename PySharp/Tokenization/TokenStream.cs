@@ -1,4 +1,6 @@
-﻿namespace PySharp.Tokenization;
+﻿using PySharp.PyRuntime.Calls;
+
+namespace PySharp.Tokenization;
 
 public abstract class TokenStream
 {
@@ -56,14 +58,14 @@ public sealed class TokenInteractiveStream : TokenStream
     private readonly Lexer _lexer;
     private int _position;
 
-    public TokenInteractiveStream(TextReader input, TextWriter output)
+    public TokenInteractiveStream(PyCallContext context, TextReader input, TextWriter output)
     {
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(output);
 
         _in = input;
         _out = output;
-        _lexer = new Lexer();
+        _lexer = new Lexer(context);
         _lexer.InternalStart();
         MoveNextToken();
     }
