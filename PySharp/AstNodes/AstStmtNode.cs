@@ -163,7 +163,7 @@ public class ExprNode : AstStmtNode
     internal PyObject ExecuteExprStmt(PyCallContext context, PyFrame frame)
     {
         var value = Value.GetExprValue(context, frame);
-        if (context.IsInteractive)
+        if (context.IsInteractive && frame.IsRoot)
         {
             if (value is not PyNoneObject)
             {
