@@ -192,7 +192,7 @@ public static partial class PyBuiltinFunctions
     {
         if (arguments.Args[0] is not PyStrObject str)
             return PyResult.RaiseTypeError(null);
-        var parser = new Parser(context, "<string>", context.PyEnvironment.OptimizationOptions, Lexer.Tokenize(context, str.Value));
+        var parser = new Parser(context, "<string>", context.PyEnvironment.OptimizationOptions, Lexer.Tokenize(context, str.Value, "<string>"));
         var node = parser.ParseExpressionNode();
         var frame = context.CurrentFrame;
         var tempFrame = frame.TempFrame(FrameType.Eval);
@@ -214,7 +214,7 @@ public static partial class PyBuiltinFunctions
         ModuleNode node;
         try
         {
-            var tokens = Lexer.Tokenize(context, str.Value);
+            var tokens = Lexer.Tokenize(context, str.Value, "<string>");
             node = Parser.Parse("<string>", tokens, context);
         }
         catch (AstException e)

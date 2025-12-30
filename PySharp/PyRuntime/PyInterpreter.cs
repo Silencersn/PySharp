@@ -94,7 +94,7 @@ public static class PyInterpreter
 
     public static PyModuleObject RunCodeWithinEnvironment(PyCallContext context, string code, string moduleName, bool newFrame, string sourceName)
     {
-        var tokens = Lexer.Tokenize(context, code);
+        var tokens = Lexer.Tokenize(context, code, sourceName);
         var node = Parser.Parse(sourceName, tokens, context);
         return PyVirtualMachine.Execute(context, node, moduleName, newFrame);
     }
@@ -117,7 +117,7 @@ public static class PyInterpreter
         {
             PyTryCatch(context, () =>
             {
-                var tokenStream = new TokenInteractiveStream(context, environment.In, environment.Out);
+                var tokenStream = new TokenInteractiveStream(context, environment.In, environment.Out, "<stdin>");
                 var parser = new Parser(context, "<stdin>", tokenStream, environment.OptimizationOptions);
                 var node = parser.ParseInteractiveNode();
                 node.Execute(context, context.CurrentFrame);

@@ -58,14 +58,14 @@ public sealed class TokenInteractiveStream : TokenStream
     private readonly Lexer _lexer;
     private int _position;
 
-    public TokenInteractiveStream(PyCallContext context, TextReader input, TextWriter output)
+    public TokenInteractiveStream(PyCallContext context, TextReader input, TextWriter output, string sourceName)
     {
         ArgumentNullException.ThrowIfNull(input);
         ArgumentNullException.ThrowIfNull(output);
 
         _in = input;
         _out = output;
-        _lexer = new Lexer(context);
+        _lexer = new Lexer(context, sourceName);
         _lexer.InternalStart();
         MoveNextToken();
     }
