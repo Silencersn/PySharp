@@ -191,14 +191,6 @@ public sealed partial class PyFrame
         };
     }
 
-    public void FromModuleImportAll(PyModuleObject module)
-    {
-        foreach (var attr in module.PyAttributes)
-        {
-            SetVariable(attr.Key, attr.Value);
-        }
-    }
-
     public void Import(PyCallContext context, string name, string? alias = null)
     {
         if (!context.PyEnvironment.TryLoadModule(context, name, out var module))
@@ -206,12 +198,4 @@ public sealed partial class PyFrame
 
         SetVariable(alias ?? name, module);
     }
-
-    public void RemoveValue(string identifier)
-    {
-        ArgumentNullException.ThrowIfNull(identifier);
-
-        Locals.Remove(identifier);
-    }
-
 }
