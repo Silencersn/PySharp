@@ -125,7 +125,7 @@ internal static class AstUtils
         }
     }
 
-    public static PyObject ApplyDeractors(PyObject target, List<AstExprNode> decoratorList, PyCallContext context, PyFrame frame)
+    public static PyObject ApplyDecorators(PyObject target, List<AstExprNode> decoratorList, PyCallContext context, PyFrame frame)
     {
         if (decoratorList.Count > 0)
         {

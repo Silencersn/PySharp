@@ -165,13 +165,13 @@ public sealed partial class PyFrame
     public PyResult SetVariable(string name, PyObject value)
     {
         if (_variables is null)
-            return StorgeName(name, value);
+            return StoreName(name, value);
 
         return _variables[name] switch
         {
-            PyVariableType.Local or PyVariableType.Parameter => StorgeLocal(name, value),
-            PyVariableType.Global => StorgeGlobal(name, value),
-            PyVariableType.CapturedLocal or PyVariableType.CapturedParameter or PyVariableType.Closure => StorgeClosure(name, value),
+            PyVariableType.Local or PyVariableType.Parameter => StoreLocal(name, value),
+            PyVariableType.Global => StoreGlobal(name, value),
+            PyVariableType.CapturedLocal or PyVariableType.CapturedParameter or PyVariableType.Closure => StoreClosure(name, value),
             _ => throw new UnreachableException()
         };
     }

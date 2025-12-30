@@ -879,7 +879,7 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda, IFunctionOrClass
             func.PyAttributes[PySpecialNames.Doc] = doc;
         caller.Func = func;
 
-        frame.SetVariable(Identifier, AstUtils.ApplyDeractors(func, DecoratorList, context, frame)).PyUnwrap(context);
+        frame.SetVariable(Identifier, AstUtils.ApplyDecorators(func, DecoratorList, context, frame)).PyUnwrap(context);
     }
 
     private PyResult GetResult(PyCallContext context, PyFrame frame)
@@ -974,6 +974,6 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
                 value.SetName(context, type, PyStrObject.FromString(name)).PyUnwrap(context);
         }
 
-        frame.SetVariable(Name, AstUtils.ApplyDeractors(type, DecoratorList, context, frame)).PyUnwrap(context);
+        frame.SetVariable(Name, AstUtils.ApplyDecorators(type, DecoratorList, context, frame)).PyUnwrap(context);
     }
 }
