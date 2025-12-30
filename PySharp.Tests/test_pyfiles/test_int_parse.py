@@ -18,6 +18,7 @@ assert int('0b11', 0) == 3
 assert int('0o11', 0) == 9
 assert int('10', 10) == 10
 assert int('A', 16) == 10
+assert int('G', 17) == 16
 try:
     int('')
     assert False
