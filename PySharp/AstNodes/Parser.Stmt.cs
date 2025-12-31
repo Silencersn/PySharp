@@ -342,7 +342,7 @@ partial class Parser
             var target = UnwrapOrMakeTuple(exprList, endsWithComma);
 
             if (!IsValidAugtarget(target))
-                throw _context.ThrowableSyntaxError($"'{target.GetType().Name /* TODO: using 'list' instead of 'ListNode' */ }' is an illegal expression for augmented assignment");
+                throw _context.ThrowableSyntaxError($"'{AstUtils.GetExprNodeName(target)}' is an illegal expression for augmented assignment");
 
             TrySetTargetContext(target, ExprContext.Store);
 

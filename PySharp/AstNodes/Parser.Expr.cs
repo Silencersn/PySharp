@@ -1091,7 +1091,7 @@ partial class Parser
 
         var target = ParsePrimary();
         if (!IsValidTarget(target))
-            throw _context.ThrowableSyntaxError($"cannot assign to {target.GetType().Name /* TODO: not use name of type */}");
+            throw _context.ThrowableSyntaxError($"cannot assign to {AstUtils.GetExprNodeName(target)}");
         return target;
     }
 

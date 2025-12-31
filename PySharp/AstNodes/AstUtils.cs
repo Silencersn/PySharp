@@ -9,6 +9,36 @@ namespace PySharp.AstNodes;
 
 internal static class AstUtils
 {
+    public static string GetExprNodeName(AstExprNode exprNode)
+    {
+        return exprNode switch
+        {
+            // NamedExprNode => "named expression",
+            LambdaNode => "lambda",
+            IfExpNode => "conditional expression",
+            DictNode => "dict literal",
+            SetNode => "set display",
+            ListCompNode => "list comprehension",
+            DictCompNode => "dict comprehension",
+            SetCompNode => "set comprehension",
+            GeneratorExpNode => "generator expression",
+            // AwaitNode => "await expression",
+            YieldNode or YieldFromNode => "yield expression",
+            CompareNode => "comparison",
+            CallNode => "function call",
+            JoinedStrNode => "f-string expression",
+            ConstantNode node => node.Value switch
+            {
+                PyNoneObject => "None",
+                PyBoolObject boolObj => boolObj.BoolValue ? "True" : "False", // TODO: __debug__
+                _ => "literal"
+            },
+            ListNode => "list",
+            TupleNode => "tuple",
+            _ => "expression",
+        };
+    }
+
     public static TPyObject PyCast<TPyObject>(this PyObject obj, PyCallContext context)
     {
         if (obj is not TPyObject objOfT)
