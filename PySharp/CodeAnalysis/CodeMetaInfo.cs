@@ -1,8 +1,6 @@
-﻿using PySharp.CodeAnalysis;
+﻿namespace PySharp.CodeAnalysis;
 
-namespace PySharp.PyRuntime.Metadata;
-
-public sealed class MetaInfo
+public sealed class CodeMetaInfo
 {
     public CodeSource? Source;
     public ReadOnlySpan<char> FirstLine => Source?.Code.TryGetLine(Start.Line, false, out var line) ?? false ? line : [];

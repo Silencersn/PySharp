@@ -2,14 +2,13 @@
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
-using PySharp.PyRuntime.Metadata;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
 
 namespace PySharp.Tokenization;
 
-public sealed partial class Lexer : IMetaInfoProvider
+public sealed partial class Lexer : ICodeMetaInfoProvider
 {
     private enum LexerState
     {
@@ -105,9 +104,9 @@ public sealed partial class Lexer : IMetaInfoProvider
 
     internal IList<TokenInfo> Tokens => _tokens;
 
-    bool IMetaInfoProvider.OnlyStartInfo => true;
+    bool ICodeMetaInfoProvider.OnlyStartInfo => true;
     private string CurrentLine => _codeSource.Code.TryGetLine(_lineno, true, out var line) ? line.ToString() : string.Empty;
-    MetaInfo? IMetaInfoProvider.MetaInfo => new()
+    CodeMetaInfo? ICodeMetaInfoProvider.MetaInfo => new()
     {
         Source = _codeSource,
         Start = new(_lineno, 0)

@@ -1,14 +1,14 @@
-﻿using PySharp.PyRuntime;
+﻿using PySharp.CodeAnalysis;
+using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
-using PySharp.PyRuntime.Metadata;
 
 namespace PySharp.AstNodes;
 
-public abstract partial class AstNode : IMetaInfoProvider
+public abstract partial class AstNode : ICodeMetaInfoProvider
 {
-    public MetaInfo? MetaInfo { get; internal set; }
+    public CodeMetaInfo? MetaInfo { get; internal set; }
 
-    bool IMetaInfoProvider.OnlyStartInfo => this is AstStmtNode;
+    bool ICodeMetaInfoProvider.OnlyStartInfo => this is AstStmtNode;
 
     public virtual void Execute(PyCallContext context, PyFrame frame)
     {
@@ -45,9 +45,9 @@ public interface IAstNodeLocation
 internal readonly struct MetaInfoProviderSetter : IDisposable
 {
     private readonly PyFrame _frame;
-    private readonly IMetaInfoProvider? _previous;
+    private readonly ICodeMetaInfoProvider? _previous;
 
-    public MetaInfoProviderSetter(PyFrame frame, IMetaInfoProvider provider)
+    public MetaInfoProviderSetter(PyFrame frame, ICodeMetaInfoProvider provider)
     {
         _frame = frame;
         _previous = _frame.MetaInfoProvider;

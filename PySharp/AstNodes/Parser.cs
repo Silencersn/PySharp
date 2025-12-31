@@ -1,12 +1,11 @@
 ﻿using PySharp.CodeAnalysis;
 using PySharp.PyRuntime.Calls;
-using PySharp.PyRuntime.Metadata;
 using PySharp.Tokenization;
 using System.Collections.Frozen;
 using System.Diagnostics;
 namespace PySharp.AstNodes;
 
-public sealed partial class Parser : IMetaInfoProvider
+public sealed partial class Parser : ICodeMetaInfoProvider
 {
     public static ModuleNode Parse(CodeSource codeSource, IEnumerable<TokenInfo> tokens, PyCallContext context)
     {
@@ -72,8 +71,8 @@ public sealed partial class Parser : IMetaInfoProvider
 
     private TokenType CurrentTokenType => CurrentToken.Type;
 
-    bool IMetaInfoProvider.OnlyStartInfo => true;
-    MetaInfo? IMetaInfoProvider.MetaInfo => CreateMetaInfo();
+    bool ICodeMetaInfoProvider.OnlyStartInfo => true;
+    CodeMetaInfo? ICodeMetaInfoProvider.MetaInfo => CreateMetaInfo();
 
     internal Parser(PyCallContext context, CodeSource codeSource, TokenStream tokenStream, OptimizationOptions? options = null)
     {
@@ -119,9 +118,9 @@ public sealed partial class Parser : IMetaInfoProvider
         EnsureTokenType(type);
         MoveNextToken();
     }
-    private MetaInfo CreateMetaInfo()
+    private CodeMetaInfo CreateMetaInfo()
     {
-        return new MetaInfo()
+        return new CodeMetaInfo()
         {
             Source = _codeSource,
             Start = CurrentToken.Start,
@@ -129,9 +128,9 @@ public sealed partial class Parser : IMetaInfoProvider
         };
     }
 
-    private MetaInfo CopyThenMarkCrucial(MetaInfo metaInfo)
+    private CodeMetaInfo CopyThenMarkCrucial(CodeMetaInfo metaInfo)
     {
-        return new MetaInfo
+        return new CodeMetaInfo
         {
             Source = metaInfo.Source,
             Start = metaInfo.Start,
@@ -139,14 +138,14 @@ public sealed partial class Parser : IMetaInfoProvider
             CrucialStart = CurrentToken.Start,
         };
     }
-    private void MarkCrucialForOneToken(MetaInfo metaInfo)
+    private void MarkCrucialForOneToken(CodeMetaInfo metaInfo)
     {
         metaInfo.CrucialStart = CurrentToken.Start;
         metaInfo.CrucialEnd = CurrentToken.End;
     }
-    private MetaInfo CopyThenMarkCrucialForOneToken(MetaInfo metaInfo)
+    private CodeMetaInfo CopyThenMarkCrucialForOneToken(CodeMetaInfo metaInfo)
     {
-        return new MetaInfo
+        return new CodeMetaInfo
         {
             Source = metaInfo.Source,
             Start = metaInfo.Start,
@@ -155,13 +154,13 @@ public sealed partial class Parser : IMetaInfoProvider
             CrucialEnd = CurrentToken.End
         };
     }
-    private MetaInfo WithAllEnd(MetaInfo metaInfo)
+    private CodeMetaInfo WithAllEnd(CodeMetaInfo metaInfo)
     {
         metaInfo.End = CurrentToken.End;
         metaInfo.CrucialEnd = CurrentToken.End;
         return metaInfo;
     }
-    private static MetaInfo? WithEndOfOtherNode(MetaInfo metaInfo, AstNode otherNode)
+    private static CodeMetaInfo? WithEndOfOtherNode(CodeMetaInfo metaInfo, AstNode otherNode)
     {
         if (otherNode.MetaInfo is null)
             return null;
@@ -169,9 +168,9 @@ public sealed partial class Parser : IMetaInfoProvider
         metaInfo.End = otherNode.MetaInfo.End;
         return metaInfo;
     }
-    private MetaInfo CopyThenWithEnd(MetaInfo metaInfo)
+    private CodeMetaInfo CopyThenWithEnd(CodeMetaInfo metaInfo)
     {
-        return new MetaInfo
+        return new CodeMetaInfo
         {
             Source = metaInfo.Source,
             Start = metaInfo.Start,

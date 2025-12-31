@@ -1,5 +1,5 @@
-﻿using PySharp.PyRuntime.Calls;
-using PySharp.PyRuntime.Metadata;
+﻿using PySharp.CodeAnalysis;
+using PySharp.PyRuntime.Calls;
 using System.Diagnostics;
 using System.Text;
 
@@ -9,7 +9,7 @@ internal static class PyTraceback
 {
     public static string PrintTraceback(PyCallContext context)
     {
-        Stack<(IMetaInfoProvider Provider, string CallerName)> stack = [];
+        Stack<(ICodeMetaInfoProvider Provider, string CallerName)> stack = [];
         var frame = context.CurrentFrame;
         while (frame is not null)
         {
@@ -23,7 +23,7 @@ internal static class PyTraceback
         return PrintTraceback(stack);
     }
 
-    private static string PrintTraceback(IEnumerable<(IMetaInfoProvider Provider, string CallerName)> frames)
+    private static string PrintTraceback(IEnumerable<(ICodeMetaInfoProvider Provider, string CallerName)> frames)
     {
         var builder = new StringBuilder();
         foreach (var (provider, callerName) in frames)
@@ -33,7 +33,7 @@ internal static class PyTraceback
         return builder.ToString();
     }
 
-    private static void PrintTraceback(StringBuilder builder, IMetaInfoProvider provider, string callerName)
+    private static void PrintTraceback(StringBuilder builder, ICodeMetaInfoProvider provider, string callerName)
     {
         if (provider.MetaInfo is null)
             return;

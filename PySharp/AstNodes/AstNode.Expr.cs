@@ -1,46 +1,46 @@
-﻿using PySharp.PyModules.Builtins;
-using PySharp.PyRuntime.Metadata;
+﻿using PySharp.CodeAnalysis;
+using PySharp.PyModules.Builtins;
 using System.Numerics;
 
 namespace PySharp.AstNodes;
 
 partial class AstNode
 {
-    public static NameNode Name(string name, MetaInfo? metaInfo)
+    public static NameNode Name(string name, CodeMetaInfo? metaInfo)
     {
         return new NameNode(name) { MetaInfo = metaInfo };
     }
 
-    public static ConstantNode Constant(PyObject value, MetaInfo? metaInfo)
+    public static ConstantNode Constant(PyObject value, CodeMetaInfo? metaInfo)
     {
         ArgumentNullException.ThrowIfNull(value);
 
         return new ConstantNode(value) { MetaInfo = metaInfo };
     }
-    public static ConstantNode Constant(string value, MetaInfo? metaInfo)
+    public static ConstantNode Constant(string value, CodeMetaInfo? metaInfo)
     {
         ArgumentNullException.ThrowIfNull(value);
 
         return Constant(PyStrObject.FromString(value), metaInfo);
     }
-    public static ConstantNode Constant(long value, MetaInfo? metaInfo)
+    public static ConstantNode Constant(long value, CodeMetaInfo? metaInfo)
     {
         return Constant(PyIntObject.FromInteger(value), metaInfo);
     }
-    public static ConstantNode Constant(BigInteger value, MetaInfo? metaInfo)
+    public static ConstantNode Constant(BigInteger value, CodeMetaInfo? metaInfo)
     {
         return Constant(PyIntObject.FromInteger(value), metaInfo);
     }
-    public static ConstantNode Constant(bool value, MetaInfo? metaInfo)
+    public static ConstantNode Constant(bool value, CodeMetaInfo? metaInfo)
     {
         return Constant(PyBoolObject.FromBoolean(value), metaInfo);
     }
-    public static ConstantNode Constant(double value, MetaInfo? metaInfo)
+    public static ConstantNode Constant(double value, CodeMetaInfo? metaInfo)
     {
         return Constant(PyFloatObject.FromDouble(value), metaInfo);
     }
 
-    public static AttributeNode Attribute(AstExprNode value, string attr, MetaInfo? metaInfo)
+    public static AttributeNode Attribute(AstExprNode value, string attr, CodeMetaInfo? metaInfo)
     {
         ArgumentNullException.ThrowIfNull(value);
         ArgumentNullException.ThrowIfNull(attr);
@@ -48,7 +48,7 @@ partial class AstNode
         return new AttributeNode(value, attr) { MetaInfo = metaInfo };
     }
 
-    public static SubscriptNode Subscript(AstExprNode value, AstExprNode slice, MetaInfo? metaInfo)
+    public static SubscriptNode Subscript(AstExprNode value, AstExprNode slice, CodeMetaInfo? metaInfo)
     {
         ArgumentNullException.ThrowIfNull(value);
         ArgumentNullException.ThrowIfNull(slice);
@@ -61,7 +61,7 @@ partial class AstNode
         return new SliceNode(lower, upper, step);
     }
 
-    public static CallNode Call(AstExprNode func, IEnumerable<AstExprNode> args, IEnumerable<AstKeywordNode> keywords, MetaInfo? metaInfo)
+    public static CallNode Call(AstExprNode func, IEnumerable<AstExprNode> args, IEnumerable<AstKeywordNode> keywords, CodeMetaInfo? metaInfo)
     {
         ArgumentNullException.ThrowIfNull(func);
         ArgumentNullException.ThrowIfNull(args);
@@ -111,7 +111,7 @@ partial class AstNode
         return BoolOp(OrNode.Shared, values);
     }
 
-    public static BinOpNode BinOp(AstOperatorNode op, AstExprNode left, AstExprNode right, MetaInfo? metaInfo)
+    public static BinOpNode BinOp(AstOperatorNode op, AstExprNode left, AstExprNode right, CodeMetaInfo? metaInfo)
     {
         ArgumentNullException.ThrowIfNull(op);
         ArgumentNullException.ThrowIfNull(left);
@@ -120,7 +120,7 @@ partial class AstNode
         return new BinOpNode(op, left, right) { MetaInfo = metaInfo };
     }
 
-    public static UnaryOpNode UnaryOp(AstUnaryOpNode op, AstExprNode operand, MetaInfo? metaInfo)
+    public static UnaryOpNode UnaryOp(AstUnaryOpNode op, AstExprNode operand, CodeMetaInfo? metaInfo)
     {
         ArgumentNullException.ThrowIfNull(op);
         ArgumentNullException.ThrowIfNull(operand);
@@ -175,7 +175,7 @@ partial class AstNode
         return new DictCompNode(key, value, [.. generators]);
     }
 
-    public static JoinedStrNode JoinedStr(IEnumerable<AstExprNode> values, MetaInfo? metaInfo)
+    public static JoinedStrNode JoinedStr(IEnumerable<AstExprNode> values, CodeMetaInfo? metaInfo)
     {
         ArgumentNullException.ThrowIfNull(values);
 

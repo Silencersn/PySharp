@@ -1,9 +1,9 @@
-﻿using PySharp.PyModules;
+﻿using PySharp.CodeAnalysis;
+using PySharp.PyModules;
 using PySharp.PyModules.Builtins;
 using PySharp.PyModules.CSharp;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
-using PySharp.PyRuntime.Metadata;
 using PySharp.Tokenization;
 using System.Collections.Frozen;
 using System.Collections.Immutable;
@@ -918,7 +918,7 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
 {
     public new string Name { get; }
 
-    internal ClassDefNode(MetaInfo metaInfo, string name)
+    internal ClassDefNode(CodeMetaInfo metaInfo, string name)
     {
         MetaInfo = metaInfo;
         Name = name;

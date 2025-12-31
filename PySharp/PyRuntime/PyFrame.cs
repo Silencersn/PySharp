@@ -1,7 +1,7 @@
 ﻿using PySharp.AstNodes;
+using PySharp.CodeAnalysis;
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime.Calls;
-using PySharp.PyRuntime.Metadata;
 using PySharp.Utility;
 using System.Collections.Concurrent;
 using System.Collections.Frozen;
@@ -32,7 +32,7 @@ public sealed partial class PyFrame
     internal string CallerName { get; }
     internal PyObject? Caller { get; }
 
-    internal IMetaInfoProvider? MetaInfoProvider { get; set; }
+    internal ICodeMetaInfoProvider? MetaInfoProvider { get; set; }
     private Dictionary<string, PyCellObject>? _closure = null;
     private IDictionary<string, PyObject?>? _locals = null;
     internal PyFrameGlobals _globals;
