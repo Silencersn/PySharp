@@ -23,9 +23,9 @@ public sealed partial class Lexer : IMetaInfoProvider
         FStringDefault,
     }
 
-    public static IReadOnlyList<TokenInfo> Tokenize(PyCallContext context, string content, string sourceName)
+    public static IReadOnlyList<TokenInfo> Tokenize(PyCallContext context, string content, CodeSource codeSource)
     {
-        var lexer = new Lexer(context, sourceName);
+        var lexer = new Lexer(context, codeSource);
         lexer.InternalStart();
         lexer.InternalTokenize(content);
         lexer.InternalEnd();
@@ -83,7 +83,7 @@ public sealed partial class Lexer : IMetaInfoProvider
     }
 
     private readonly PyCallContext _context;
-    private readonly string _sourceName;
+    private readonly CodeSource _codeSource;
 
     private readonly List<TokenInfo> _tokens;
     private int _lineno;
@@ -107,13 +107,13 @@ public sealed partial class Lexer : IMetaInfoProvider
     internal IList<TokenInfo> Tokens => _tokens;
 
     bool IMetaInfoProvider.OnlyStartInfo => true;
-    MetaInfo? IMetaInfoProvider.MetaInfo => new() { SourceName = _sourceName, FirstLine = _currentLine, Start = new(_lineno, 0) };
+    MetaInfo? IMetaInfoProvider.MetaInfo => new() { Source = _codeSource, FirstLine = _currentLine, Start = new(_lineno, 0) };
 
-    internal Lexer(PyCallContext context, string sourceName)
+    internal Lexer(PyCallContext context, CodeSource codeSource)
     {
         _context = context;
         _context.CurrentFrame.MetaInfoProvider = this;
-        _sourceName = sourceName;
+        _codeSource = codeSource;
         _tokens = [];
         _lineno = 0;
         _offsetOfPreviousLine = 0;

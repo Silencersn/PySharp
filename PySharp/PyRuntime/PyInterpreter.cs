@@ -1,4 +1,5 @@
 ﻿using PySharp.AstNodes;
+using PySharp.CodeAnalysis;
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.Environments;
@@ -94,8 +95,9 @@ public static class PyInterpreter
 
     public static PyModuleObject RunCodeWithinEnvironment(PyCallContext context, string code, string moduleName, bool newFrame, string sourceName)
     {
-        var tokens = Lexer.Tokenize(context, code, sourceName);
-        var node = Parser.Parse(sourceName, tokens, context);
+        var codeSource = new CodeSource(sourceName, code);
+        var tokens = Lexer.Tokenize(context, code, codeSource);
+        var node = Parser.Parse(codeSource, tokens, context);
         return PyVirtualMachine.Execute(context, node, moduleName, newFrame);
     }
 
@@ -117,7 +119,8 @@ public static class PyInterpreter
         {
             PyTryCatch(context, () =>
             {
-                var lexer = new Lexer(context, "<stdin>");
+                var codeSource = new CodeSource("<stdin>", string.Empty /* TODO: adapt repr */);
+                var lexer = new Lexer(context, codeSource);
                 bool isFirstLine = true;
                 while (true)
                 {
@@ -136,7 +139,7 @@ public static class PyInterpreter
                         lexer.Tokens.Add(new TokenInfo(TokenType.EndMarker, string.Empty, default, default, string.Empty));
                     }
 
-                    var parser = new Parser(context, "<stdin>", environment.OptimizationOptions, lexer.Tokens);
+                    var parser = new Parser(context, codeSource, environment.OptimizationOptions, lexer.Tokens);
                     try
                     {
                         var node = parser.ParseInteractiveNode();

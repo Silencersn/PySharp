@@ -39,7 +39,7 @@ internal static class PyTraceback
             return;
 
         var info = provider.MetaInfo;
-        builder.AppendLine($"  File \"{info.SourceName ?? "<unknown>"}\", line {info.Start.Line}, in {callerName}");
+        builder.AppendLine($"  File \"{info.Source?.Name ?? "<unknown>"}\", line {info.Start.Line}, in {callerName}");
 
         if (provider.OnlyStartInfo)
         {

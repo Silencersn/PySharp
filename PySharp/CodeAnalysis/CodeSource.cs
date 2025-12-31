@@ -9,9 +9,9 @@ public sealed class CodeSource
     public string Name { get; }
     public CodeText Code { get; }
 
-    public CodeSource(string name, CodeText code)
+    public CodeSource(string name, string code)
     {
         Name = name;
-        Code = code;
+        Code = new CodeText(code);
     }
 }

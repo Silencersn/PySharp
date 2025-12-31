@@ -4,7 +4,7 @@ namespace PySharp.PyRuntime.Metadata;
 
 public sealed class MetaInfo
 {
-    public string? SourceName;
+    public CodeSource? Source;
     public string? FirstLine;
     public CodeTextPosition Start;
     public CodeTextPosition End;

@@ -1,4 +1,5 @@
-﻿using PySharp.PyRuntime.Calls;
+﻿using PySharp.CodeAnalysis;
+using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.Metadata;
 using PySharp.Tokenization;
 using System.Collections.Frozen;
@@ -7,12 +8,12 @@ namespace PySharp.AstNodes;
 
 public sealed partial class Parser : IMetaInfoProvider
 {
-    public static ModuleNode Parse(string sourceName, IEnumerable<TokenInfo> tokens, PyCallContext context)
+    public static ModuleNode Parse(CodeSource codeSource, IEnumerable<TokenInfo> tokens, PyCallContext context)
     {
-        ArgumentNullException.ThrowIfNull(sourceName);
+        ArgumentNullException.ThrowIfNull(codeSource);
         ArgumentNullException.ThrowIfNull(tokens);
 
-        var result = new Parser(context, sourceName, context.PyEnvironment.OptimizationOptions, tokens).ParseModuleNode();
+        var result = new Parser(context, codeSource, context.PyEnvironment.OptimizationOptions, tokens).ParseModuleNode();
         return result;
     }
 
@@ -41,7 +42,7 @@ public sealed partial class Parser : IMetaInfoProvider
     }
 
     private readonly PyCallContext _context;
-    private readonly string _sourceName;
+    private readonly CodeSource _codeSource;
     private readonly OptimizationOptions _options;
     private readonly TokenStream _tokenStream;
     private bool _isParsingInteractiveNode;
@@ -74,15 +75,15 @@ public sealed partial class Parser : IMetaInfoProvider
     bool IMetaInfoProvider.OnlyStartInfo => true;
     MetaInfo? IMetaInfoProvider.MetaInfo => CreateMetaInfo();
 
-    internal Parser(PyCallContext context, string sourceName, TokenStream tokenStream, OptimizationOptions? options = null)
+    internal Parser(PyCallContext context, CodeSource codeSource, TokenStream tokenStream, OptimizationOptions? options = null)
     {
         _context = context;
         _options = options ?? OptimizationOptions.O0;
         _tokenStream = tokenStream;
-        _sourceName = sourceName;
+        _codeSource = codeSource;
         _context.CurrentFrame.MetaInfoProvider = this;
     }
-    internal Parser(PyCallContext context, string sourceName, OptimizationOptions options, IEnumerable<TokenInfo> tokens) : this(context, sourceName, new TokenArrayStream(tokens), options)
+    internal Parser(PyCallContext context, CodeSource codeSource, OptimizationOptions options, IEnumerable<TokenInfo> tokens) : this(context, codeSource, new TokenArrayStream(tokens), options)
     {
     }
 
@@ -122,7 +123,7 @@ public sealed partial class Parser : IMetaInfoProvider
     {
         return new MetaInfo()
         {
-            SourceName = _sourceName,
+            Source = _codeSource,
             FirstLine = CurrentToken.Line,
             Start = CurrentToken.Start,
             End = CurrentToken.End,
@@ -133,7 +134,7 @@ public sealed partial class Parser : IMetaInfoProvider
     {
         return new MetaInfo
         {
-            SourceName = metaInfo.SourceName,
+            Source = metaInfo.Source,
             FirstLine = metaInfo.FirstLine,
             Start = metaInfo.Start,
             End = metaInfo.End,
@@ -149,7 +150,7 @@ public sealed partial class Parser : IMetaInfoProvider
     {
         return new MetaInfo
         {
-            SourceName = metaInfo.SourceName,
+            Source = metaInfo.Source,
             FirstLine = metaInfo.FirstLine,
             Start = metaInfo.Start,
             End = metaInfo.End,
@@ -175,7 +176,7 @@ public sealed partial class Parser : IMetaInfoProvider
     {
         return new MetaInfo
         {
-            SourceName = metaInfo.SourceName,
+            Source = metaInfo.Source,
             FirstLine = metaInfo.FirstLine,
             Start = metaInfo.Start,
             End = CurrentToken.End,
