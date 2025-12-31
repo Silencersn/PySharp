@@ -1,13 +1,9 @@
-﻿using System.Collections.Frozen;
+﻿using PySharp.CodeAnalysis;
+using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Text;
 
 namespace PySharp.Tokenization;
-
-public readonly record struct TokenPosition(int Line, int Offset)
-{
-    public override string ToString() => $"({Line}, {Offset})";
-}
 
 public sealed record class TokenInfo
 {
@@ -65,11 +61,11 @@ public sealed record class TokenInfo
 
     public TokenType Type { get; }
     public string String { get; }
-    public TokenPosition Start { get; }
-    public TokenPosition End { get; }
+    public CodeTextPosition Start { get; }
+    public CodeTextPosition End { get; }
     public string Line { get; }
 
-    public TokenInfo(TokenType type, string str, TokenPosition start, TokenPosition end, string line)
+    public TokenInfo(TokenType type, string str, CodeTextPosition start, CodeTextPosition end, string line)
     {
         Debug.Assert((uint)type < (uint)TokenType.Count);
         Debug.Assert(str is not null);

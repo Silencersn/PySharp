@@ -6,6 +6,8 @@ namespace PySharp.CodeAnalysis;
 
 public readonly record struct CodeTextLineSpan
 {
+    public static readonly CodeTextLineSpan Empty;
+
     public readonly int Start;
     public readonly int Length;
     public readonly int LineBreakLength;

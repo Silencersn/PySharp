@@ -15,7 +15,7 @@ public sealed class CodeText
 
         _text = text;
 
-        List<CodeTextLineSpan> lineInfos = [];
+        List<CodeTextLineSpan> lineInfos = [CodeTextLineSpan.Empty];
         int currentIndex = 0;
         while (true)
         {
@@ -35,12 +35,12 @@ public sealed class CodeText
         _lineSpans = [.. lineInfos];
     }
 
-    public ReadOnlySpan<char> GetLine(int linenoStartsFromZero, bool includingLineBreak)
+    public ReadOnlySpan<char> GetLine(int linenoStartsFromOne, bool includingLineBreak)
     {
-        ArgumentOutOfRangeException.ThrowIfNegative(linenoStartsFromZero);
-        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(linenoStartsFromZero, _lineSpans.Length);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(linenoStartsFromOne, 0);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(linenoStartsFromOne, _lineSpans.Length);
 
-        var lineSpan = _lineSpans[linenoStartsFromZero];
+        var lineSpan = _lineSpans[linenoStartsFromOne];
         return _text.AsSpan()
             .Slice(lineSpan.Start, includingLineBreak ? (lineSpan.Length + lineSpan.LineBreakLength) : lineSpan.Length);
     }
