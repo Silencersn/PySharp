@@ -112,4 +112,9 @@ partial class PyCallContext
     {
         return ThrowableException(PyStandardExceptionTypes.NameError, arg);
     }
+
+    internal PyRuntimeException ThrowablePySharpException(string arg)
+    {
+        return ThrowableException(PyResult.PySharpException.Shared, arg);
+    }
 }

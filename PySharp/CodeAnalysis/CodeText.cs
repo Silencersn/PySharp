@@ -96,4 +96,58 @@ public sealed class CodeText
 
         return InternalGetMultiLines(startLine, endLine);
     }
+
+    private ReadOnlySpan<char> InternalGetRange(CodeTextPosition start, CodeTextPosition end)
+    {
+        int absStart = _lineSpans[start.Line].Start + start.Offset;
+        int absEnd = _lineSpans[end.Line].Start + end.Offset;
+        return _text.AsSpan(absStart, absEnd - absStart);
+    }
+
+    public ReadOnlySpan<char> GetRange(CodeTextPosition start, CodeTextPosition end)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(start.Line, 0);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(start.Line, _lineSpans.Length);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(end.Line, 0);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(end.Line, _lineSpans.Length);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(start.Line, end.Line);
+
+        var startLineSpan = _lineSpans[start.Line];
+        var endLineSpan = _lineSpans[end.Line];
+        ArgumentOutOfRangeException.ThrowIfLessThan(start.Offset, 0);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(start.Offset, startLineSpan.Length);
+        ArgumentOutOfRangeException.ThrowIfLessThan(end.Offset, 0);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(end.Offset, endLineSpan.Length);
+        if (start.Line == end.Line)
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(start.Offset, end.Offset);
+
+        return InternalGetRange(start, end);
+    }
+
+    public bool TryGetRange(CodeTextPosition start, CodeTextPosition end, out ReadOnlySpan<char> range)
+    {
+        if (!ValidateLineNumber(start.Line) || !ValidateLineNumber(end.Line))
+        {
+            range = [];
+            return false;
+        }
+        var startLineSpan = _lineSpans[start.Line];
+        var endLineSpan = _lineSpans[end.Line];
+
+        if (start.Offset < 0 || start.Offset > startLineSpan.Length ||
+            end.Offset < 0 || end.Offset > endLineSpan.Length)
+        {
+            range = [];
+            return false;
+        }
+
+        if (start.Line > end.Line || (start.Line == end.Line && start.Offset > end.Offset))
+        {
+            range = [];
+            return false;
+        }
+
+        range = InternalGetRange(start, end);
+        return true;
+    }
 }

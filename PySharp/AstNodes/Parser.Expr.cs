@@ -129,66 +129,22 @@ partial class Parser
     private FormattedValueNode ParseFStringReplacementFieldWithoutBraces(out ConstantNode? debugSpecifier)
     {
         if (CurrentTokenType is TokenType.RightBrace)
-            throw new AstException("f-string: valid expression required before '}'");
+            throw _context.ThrowableSyntaxError("f-string: valid expression required before '}'");
 
         var start = CurrentToken.Start;
         var metaInfo = CreateMetaInfo();
-        var startPosition = TokenStreamPosition;
         var fexpr = ParseFExpression();
-
 
         if (CurrentTokenType is TokenType.Equal)
         {
             MoveNextToken();
             var end = CurrentToken.Start;
             metaInfo = CopyThenWithEnd(metaInfo);
-            var endPosition = TokenStreamPosition;
 
-            TokenStreamPosition = startPosition;
+            if (!_codeSource.Code.TryGetRange(start, end, out var range))
+                throw _context.ThrowablePySharpException("incorrect code text position");
 
-            var content = new StringBuilder();
-            var currentLine = 0;
-            while (TokenStreamPosition < endPosition - 1)
-            {
-                var currentToken = _tokenStream.CurrentToken;
-                var line = currentToken.Line;
-                var index = 0;
-                var nextIndex = line.IndexOf('\n') + 1;
-                for (int i = currentToken.Start.Line; i <= currentToken.End.Line; i++)
-                {
-                    if (i > currentLine)
-                    {
-                        if (i == start.Line)
-                        {
-                            if (i == end.Line)
-                            {
-                                content.Append(line[(index + start.Offset)..(index + end.Offset)]);
-                                break;
-                            }
-                            else
-                            {
-                                content.Append(line[(index + start.Offset)..nextIndex]);
-                            }
-                        }
-                        else if (i == end.Line)
-                        {
-                            content.Append(line[index..(index + end.Offset)]);
-                            break;
-                        }
-                        else
-                        {
-                            content.Append(line[index..nextIndex]);
-                        }
-                    }
-
-                    index = nextIndex;
-                    nextIndex = line[nextIndex..].IndexOf('\n') + 1;
-                }
-                currentLine = currentToken.End.Line;
-                _tokenStream.MoveNextToken();
-            }
-            TokenStreamPosition = endPosition;
-            debugSpecifier = AstNode.Constant(content.ToString(), metaInfo);
+            debugSpecifier = AstNode.Constant(range.ToString(), metaInfo);
         }
         else
         {
