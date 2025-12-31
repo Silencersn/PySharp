@@ -194,13 +194,13 @@ public static partial class PyBuiltinFunctions
         if (arguments.Args[0] is not PyStrObject str)
             return PyResult.RaiseTypeError(null);
         var codeSource = new CodeSource("<string>", str.Value);
-        var parser = new Parser(context, codeSource, context.PyEnvironment.OptimizationOptions, Lexer.Tokenize(context, str.Value, codeSource));
-        var node = parser.ParseExpressionNode();
-        var frame = context.CurrentFrame;
-        var tempFrame = frame.TempFrame(FrameType.Eval);
 
         try
         {
+            var tokens = Lexer.Tokenize(context, codeSource);
+            var node = Parser.ParseExpression(context, codeSource, tokens);
+            var frame = context.CurrentFrame;
+            var tempFrame = frame.TempFrame(FrameType.Eval);
             return node.Body.GetExprValue(context, tempFrame);
         }
         catch (PyRuntimeException e)
@@ -213,21 +213,21 @@ public static partial class PyBuiltinFunctions
     {
         if (arguments.Args[0] is not PyStrObject str)
             return PyResult.RaiseTypeError(null);
-        ModuleNode node;
+        var codeSource = new CodeSource("<string>", str.Value);
+
         try
         {
-            var codeSource = new CodeSource("<string>", str.Value);
-            var tokens = Lexer.Tokenize(context, str.Value, codeSource);
-            node = Parser.Parse(codeSource, tokens, context);
+            var tokens = Lexer.Tokenize(context, codeSource);
+            var node = Parser.ParseModule(context, codeSource, tokens);
+            var frame = context.CurrentFrame;
+            var tempFrame = frame.TempFrame(FrameType.Exec);
+            node.Execute(context, tempFrame);
+            return PyNoneObject.None;
         }
-        catch (AstException e)
+        catch (PyRuntimeException e)
         {
-            return PyResult.RaiseSyntaxError(e.Message);
+            return PyResult.FromException(e.PyException);
         }
-        var frame = context.CurrentFrame;
-        var tempFrame = frame.TempFrame(FrameType.Exec);
-        node.Execute(context, tempFrame);
-        return PyNoneObject.None;
     }
 
     [PyFunctionArgsDef("iterable")]

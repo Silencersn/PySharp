@@ -7,13 +7,21 @@ namespace PySharp.AstNodes;
 
 public sealed partial class Parser : ICodeMetaInfoProvider
 {
-    public static ModuleNode Parse(CodeSource codeSource, IEnumerable<TokenInfo> tokens, PyCallContext context)
+    public static ModuleNode ParseModule(PyCallContext context, CodeSource codeSource, IEnumerable<TokenInfo> tokens)
     {
+        ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(codeSource);
         ArgumentNullException.ThrowIfNull(tokens);
 
-        var result = new Parser(context, codeSource, context.PyEnvironment.OptimizationOptions, tokens).ParseModuleNode();
-        return result;
+        return new Parser(context, codeSource, tokens).ParseModuleNode();
+    }
+    public static ExpressionNode ParseExpression(PyCallContext context, CodeSource codeSource, IEnumerable<TokenInfo> tokens)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(codeSource);
+        ArgumentNullException.ThrowIfNull(tokens);
+
+        return new Parser(context, codeSource, tokens).ParseExpressionNode();
     }
 
     private static readonly FrozenSet<string> Keywords = [
@@ -74,15 +82,15 @@ public sealed partial class Parser : ICodeMetaInfoProvider
     bool ICodeMetaInfoProvider.OnlyStartInfo => true;
     CodeMetaInfo? ICodeMetaInfoProvider.MetaInfo => CreateMetaInfo();
 
-    internal Parser(PyCallContext context, CodeSource codeSource, TokenStream tokenStream, OptimizationOptions? options = null)
+    internal Parser(PyCallContext context, CodeSource codeSource, TokenStream tokenStream)
     {
         _context = context;
-        _options = options ?? OptimizationOptions.O0;
+        _options = _context.PyEnvironment.OptimizationOptions;
         _tokenStream = tokenStream;
         _codeSource = codeSource;
         _context.CurrentFrame.MetaInfoProvider = this;
     }
-    internal Parser(PyCallContext context, CodeSource codeSource, OptimizationOptions options, IEnumerable<TokenInfo> tokens) : this(context, codeSource, new TokenArrayStream(tokens), options)
+    internal Parser(PyCallContext context, CodeSource codeSource, IEnumerable<TokenInfo> tokens) : this(context, codeSource, new TokenArrayStream(tokens))
     {
     }
 

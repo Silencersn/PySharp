@@ -96,8 +96,8 @@ public static class PyInterpreter
     public static PyModuleObject RunCodeWithinEnvironment(PyCallContext context, string code, string moduleName, bool newFrame, string sourceName)
     {
         var codeSource = new CodeSource(sourceName, code);
-        var tokens = Lexer.Tokenize(context, code, codeSource);
-        var node = Parser.Parse(codeSource, tokens, context);
+        var tokens = Lexer.Tokenize(context, codeSource);
+        var node = Parser.ParseModule(context, codeSource, tokens);
         return PyVirtualMachine.Execute(context, node, moduleName, newFrame);
     }
 
@@ -144,7 +144,7 @@ public static class PyInterpreter
                         lexer.Tokens.Add(new TokenInfo(TokenType.EndMarker, string.Empty, default, default, codeSource));
                     }
 
-                    var parser = new Parser(context, codeSource, environment.OptimizationOptions, lexer.Tokens);
+                    var parser = new Parser(context, codeSource, lexer.Tokens);
                     try
                     {
                         node = parser.ParseInteractiveNode();

@@ -20,11 +20,14 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         FStringDefault,
     }
 
-    public static IReadOnlyList<TokenInfo> Tokenize(PyCallContext context, string content, CodeSource codeSource)
+    public static IReadOnlyList<TokenInfo> Tokenize(PyCallContext context, CodeSource codeSource)
     {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(codeSource);
+
         var lexer = new Lexer(context, codeSource);
         lexer.InternalStart();
-        lexer.InternalTokenize(content);
+        lexer.InternalTokenize(codeSource.Code.Text);
         lexer.InternalEnd();
         return lexer._tokens;
     }
