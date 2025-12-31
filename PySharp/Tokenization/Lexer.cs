@@ -110,7 +110,6 @@ public sealed partial class Lexer : IMetaInfoProvider
     MetaInfo? IMetaInfoProvider.MetaInfo => new()
     {
         Source = _codeSource,
-        FirstLine = CurrentLine,
         Start = new(_lineno, 0)
     };
 

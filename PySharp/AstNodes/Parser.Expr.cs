@@ -182,7 +182,7 @@ partial class Parser
                     }
 
                     index = nextIndex;
-                    nextIndex = line.IndexOf('\n', nextIndex) + 1;
+                    nextIndex = line[nextIndex..].IndexOf('\n') + 1;
                 }
                 currentLine = currentToken.End.Line;
                 _tokenStream.MoveNextToken();

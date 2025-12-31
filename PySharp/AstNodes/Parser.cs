@@ -124,7 +124,6 @@ public sealed partial class Parser : IMetaInfoProvider
         return new MetaInfo()
         {
             Source = _codeSource,
-            FirstLine = CurrentToken.Line,
             Start = CurrentToken.Start,
             End = CurrentToken.End,
         };
@@ -135,7 +134,6 @@ public sealed partial class Parser : IMetaInfoProvider
         return new MetaInfo
         {
             Source = metaInfo.Source,
-            FirstLine = metaInfo.FirstLine,
             Start = metaInfo.Start,
             End = metaInfo.End,
             CrucialStart = CurrentToken.Start,
@@ -151,7 +149,6 @@ public sealed partial class Parser : IMetaInfoProvider
         return new MetaInfo
         {
             Source = metaInfo.Source,
-            FirstLine = metaInfo.FirstLine,
             Start = metaInfo.Start,
             End = metaInfo.End,
             CrucialStart = CurrentToken.Start,
@@ -177,7 +174,6 @@ public sealed partial class Parser : IMetaInfoProvider
         return new MetaInfo
         {
             Source = metaInfo.Source,
-            FirstLine = metaInfo.FirstLine,
             Start = metaInfo.Start,
             End = CurrentToken.End,
         };

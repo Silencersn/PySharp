@@ -1,4 +1,5 @@
 ﻿using PySharp.CodeAnalysis;
+using PySharp.PyModules.Builtins;
 using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Text;
@@ -64,17 +65,20 @@ public sealed record class TokenInfo
     public string String { get; }
     public CodeTextPosition Start { get; }
     public CodeTextPosition End { get; }
-    public string Line
+    public ReadOnlySpan<char> Line
     {
         get
         {
-            var builder = new StringBuilder();
-            for (int i = Start.Line; i <= End.Line; i++)
-            {
-                if (Source.Code.TryGetLine(i, true, out var line))
-                    builder.Append(line);
-            }
-            return builder.ToString();
+            var startLine = Start.Line;
+            var endLine = End.Line;
+
+            if (startLine < 1 || startLine > Source.Code.LineCount)
+                return [];
+            if (endLine < 1 || endLine > Source.Code.LineCount)
+                return [];
+
+            Debug.Assert(startLine <= endLine);
+            return Source.Code.GetMultiLines(startLine, endLine);
         }
     }
 
@@ -108,7 +112,7 @@ public sealed record class TokenInfo
 
             .Append(nameof(String))
             .Append('=')
-            .Append(ToLiteral(String))
+            .Append(PyStrConverter.FromStringToLiteral(String))
 
             .Append(", ")
 
@@ -125,31 +129,10 @@ public sealed record class TokenInfo
             .Append(", ")
             .Append(nameof(Line))
             .Append('=')
-            .Append(ToLiteral(Line))
+            .Append(PyStrConverter.FromStringToLiteral(Line))
 
             .Append(')');
 
-        return builder.ToString();
-    }
-
-    private static string ToLiteral(string input)
-    {
-        var builder = new StringBuilder();
-        builder.Append('"');
-        foreach (char c in input)
-        {
-            switch (c)
-            {
-                case '\\': builder.Append("\\\\"); break;
-                case '\"': builder.Append("\\\""); break;
-                case '\n': builder.Append("\\n"); break;
-                case '\r': builder.Append("\\r"); break;
-                case '\t': builder.Append("\\t"); break;
-                case '\0': builder.Append("\\0"); break;
-                default: builder.Append(c); break;
-            }
-        }
-        builder.Append('"');
         return builder.ToString();
     }
 }

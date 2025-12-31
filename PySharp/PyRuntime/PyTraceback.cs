@@ -43,14 +43,12 @@ internal static class PyTraceback
 
         if (provider.OnlyStartInfo)
         {
-            if (info.FirstLine is not null)
-                builder.AppendLine($"    {info.FirstLine.Trim().TrimEnd('\r', '\n')}");
+            if (info.FirstLine.Length > 0) // TODO: trimmed
+                builder.AppendLine($"    {info.FirstLine.Trim().TrimEnd(['\r', '\n'])}");
             return;
         }
 
-        if (info.FirstLine is null)
-            return;
-
+        // TODO: make FirstLine single line
         // actually, info.FirstLine may be multiline
         var lines = info.FirstLine.EnumerateLines();
 
