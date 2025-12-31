@@ -105,7 +105,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
     private void EnsureTokenType(TokenType type)
     {
         if (CurrentTokenType != type)
-            throw new AstException($"expected token is {type} instead of {CurrentTokenType}");
+            throw _context.ThrowableSyntaxError($"invalid syntax");
     }
     private bool IsCurrentKeyword(string keyword)
     {
@@ -118,7 +118,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
     {
         EnsureTokenType(TokenType.Name);
         if (CurrentToken.String != keyword)
-            throw new AstException($"expected keyword '{keyword}' while actual is '{CurrentToken.String}'");
+            throw _context.ThrowableSyntaxError($"invalid syntax");
         MoveNextToken();
     }
     private void EnsureTokenTypeThenMove(TokenType type)

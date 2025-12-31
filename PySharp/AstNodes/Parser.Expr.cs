@@ -20,12 +20,12 @@ partial class Parser
     /// identifier: &lt;NAME, except keywords&gt;
     /// </summary>
     /// <returns></returns>
-    /// <exception cref="AstException"></exception>
+    /// <exception cref="PyRuntimeException"></exception>
     private string ParseIdentifier()
     {
         EnsureTokenType(TokenType.Name);
         if (IsKeyword(CurrentToken.String))
-            throw new AstException("should be id not kw");
+            throw _context.ThrowableSyntaxError("invalid syntax");
         var ret = CurrentToken.String;
         MoveNextToken();
         return ret;
@@ -324,7 +324,7 @@ partial class Parser
     /// </summary>
     /// <returns></returns>
     /// <exception cref="NotImplementedException"></exception>
-    /// <exception cref="AstException"></exception>
+    /// <exception cref="PyRuntimeException"></exception>
     /// <exception cref="NotSupportedException"></exception>
     private AstExprNode ParseAtom()
     {
@@ -347,7 +347,7 @@ partial class Parser
                     return AstNode.Constant(PyNoneObject.None, metaInfo);
                 }
 
-                throw new AstException("invalid syntax");
+                throw _context.ThrowableSyntaxError("invalid syntax");
             }
             else if (CurrentToken.String is PySpecialNames.Debug)
             {
@@ -513,7 +513,7 @@ partial class Parser
     /// <br/> call: primary "(" [<see cref="ParseArgumentList">argument_list</see> | <see cref="ParseComprehension">comprehension</see>] ")"
     /// </summary>
     /// <returns></returns>
-    /// <exception cref="AstException"></exception>
+    /// <exception cref="PyRuntimeException"></exception>
     private AstExprNode ParsePrimary()
     {
         var startMetaInfo = CreateMetaInfo();
@@ -534,7 +534,7 @@ partial class Parser
                     var list = ParseFlexibleExpressionList(StopPredicates.UntilRightSquareBracket, out var endsWithComma);
                     expr = AstNode.Subscript(expr, UnwrapOrMakeTuple(list, endsWithComma), WithAllEnd(currentMetaInfo));
                 }
-                catch (AstException)
+                catch (PyRuntimeException)
                 {
                     // parse slicing
                     // lst[expr:expr, ::, expr]
@@ -557,7 +557,7 @@ partial class Parser
                     var (args, kwargs) = ParseArgumentList();
                     expr = AstNode.Call(expr, args, kwargs, CopyThenWithEnd(startMetaInfo));
                 }
-                catch (AstException)
+                catch (PyRuntimeException)
                 {
                     // primary "(" comprehension ")"
 
@@ -1080,7 +1080,7 @@ partial class Parser
     ///         | "*" target
     /// </summary>
     /// <returns></returns>
-    /// <exception cref="AstException"></exception>
+    /// <exception cref="PyRuntimeException"></exception>
     private AstExprNode ParseTarget()
     {
         if (CurrentTokenType is TokenType.Star)
@@ -1091,7 +1091,7 @@ partial class Parser
 
         var target = ParsePrimary();
         if (!IsValidTarget(target))
-            throw new AstException("invalid target in assignment");
+            throw _context.ThrowableSyntaxError($"cannot assign to {target.GetType().Name /* TODO: not use name of type */}");
         return target;
     }
 
@@ -1363,13 +1363,23 @@ partial class Parser
         void ParseParameter()
         {
             if (state is StateEnd)
-                throw new AstException("should be no more args");
+                throw _context.ThrowableSyntaxError($"arguments cannot follow var-keyword argument");
 
             switch (CurrentTokenType)
             {
                 case TokenType.Slash:
                     if (state is not StateArgs)
-                        throw new AstException("should not be '/'");
+                    {
+                        if (state is StateAfterPosonly)
+                            throw _context.ThrowableSyntaxError("/ may appear only once");
+                        else if (state is StateKwonly)
+                            throw _context.ThrowableSyntaxError("/ must be ahead of *");
+                        else
+                            throw new UnreachableException();
+                    }
+
+                    if (arguments.Args.Count is 0)
+                        throw _context.ThrowableSyntaxError("at least one argument must precede /");
 
                     MoveNextToken();
                     arguments.PosonlyArgs.AddRange(arguments.Args);
@@ -1379,7 +1389,7 @@ partial class Parser
 
                 case TokenType.Star:
                     if (state is StateKwonly)
-                        throw new AstException("should not be '*'");
+                        throw _context.ThrowableSyntaxError("* may appear only once");
 
                     MoveNextToken();
                     if (CurrentTokenType is TokenType.Name)
@@ -1400,7 +1410,7 @@ partial class Parser
                     {
                         var arg = new AstArgNode(ParseIdentifier());
                         if (names.Contains(arg.Arg))
-                            throw new AstException($"duplicate argument '{arg.Arg}' in function definition");
+                            throw _context.ThrowableSyntaxError($"duplicate argument '{arg.Arg}' in function definition");
                         else
                             names.Add(arg.Arg);
                         AstExprNode? defaultValue;
@@ -1413,7 +1423,7 @@ partial class Parser
                         }
                         else if (needDefault)
                         {
-                            throw new AstException("need default value");
+                            throw _context.ThrowableSyntaxError("parameter without a default follows parameter with a default");
                         }
                         else
                         {
@@ -1435,12 +1445,7 @@ partial class Parser
                     break;
 
                 default:
-                    if (state is StateArgs)
-                        throw new AstException("should be id, '/' or '*'");
-                    else if (state is StateAfterPosonly)
-                        throw new AstException("should be id or '*'");
-                    else
-                        throw new AstException("should be id");
+                    throw _context.ThrowableSyntaxError("invalid syntax");
             }
         }
     }
@@ -1510,10 +1515,10 @@ partial class Parser
     private AstExprNode ParseYieldExpression()
     {
         if (!CurrentScope.IsCurrentFuncDefOrLambda)
-            throw new AstException("'yield' outside function");
+            throw _context.ThrowableSyntaxError("'yield' outside function");
 
         if (_comprehensionDepth > 0)
-            throw new AstException("'yield' inside comprehension" /* TODO: a more specific name like: generator expression */);
+            throw _context.ThrowableSyntaxError("'yield' inside comprehension" /* TODO: a more specific name like: generator expression */);
 
         ((IFunctionOrLambda)CurrentScope.Owner!).HasYield = true;
         EnsureKeywordThenMove("yield");
@@ -1532,7 +1537,7 @@ partial class Parser
     /// <br/> keyword_item: <see cref="ParseIdentifier">identifier</see> "=" <see cref="ParseExpression">expression</see>
     /// </summary>
     /// <returns></returns>
-    /// <exception cref="AstException"></exception>
+    /// <exception cref="PyRuntimeException"></exception>
     private (List<AstExprNode> Args, List<AstKeywordNode> Kwargs) ParseArgumentList()
     {
         var args = new List<AstExprNode>();
@@ -1548,10 +1553,10 @@ partial class Parser
                 iskw = true;
 
                 if (arg is not NameNode argName)
-                    throw new AstException("expression cannot contain assignment, perhaps you meant \"==\"?");
+                    throw _context.ThrowableSyntaxError("expression cannot contain assignment, perhaps you meant \"==\"?");
 
                 if (keys.Contains(argName.Identifier))
-                    throw new AstException($"keyword argument repeated: {argName.Identifier}");
+                    throw _context.ThrowableSyntaxError($"keyword argument repeated: {argName.Identifier}");
                 else
                     keys.Add(argName.Identifier);
 
@@ -1562,7 +1567,7 @@ partial class Parser
             }
             else if (iskw)
             {
-                throw new AstException("positional argument follows keyword argument");
+                throw _context.ThrowableSyntaxError("positional argument follows keyword argument");
             }
             else
             {
@@ -1572,7 +1577,7 @@ partial class Parser
             if (CurrentTokenType is TokenType.Comma)
                 MoveNextToken();
             else if (CurrentTokenType is not TokenType.RightParen)
-                throw new AstException("'(' was never closed");
+                throw _context.ThrowableSyntaxError("'(' was never closed");
         }
 
         return (args, kwargs);

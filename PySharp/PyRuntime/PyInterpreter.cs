@@ -152,15 +152,9 @@ public static class PyInterpreter
                     }
                     catch (PyRuntimeException e)
                     {
-                        Debug.Assert(PyStandardExceptionTypes.SyntaxError.IsInstance(e.PyException));
-
-                        if (parser.CurrentToken.Type is not TokenType.EndMarker)
+                        if (!PyStandardExceptionTypes.SyntaxError.IsInstance(e.PyException))
                             throw;
 
-                        lexer.Tokens.RemoveAt(lexer.Tokens.Count - 1); // remove EndMarker
-                    }
-                    catch (AstException) // TODO: remove AstException
-                    {
                         if (parser.CurrentToken.Type is not TokenType.EndMarker)
                             throw;
 

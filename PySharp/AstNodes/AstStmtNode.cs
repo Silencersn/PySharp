@@ -8,10 +8,6 @@ using PySharp.Tokenization;
 using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using static PySharp.AstNodes.BreakNode;
-using static PySharp.AstNodes.ContinueNode;
-using static PySharp.AstNodes.ReturnNode;
-
 
 namespace PySharp.AstNodes;
 
@@ -236,6 +232,11 @@ public class IfNode : AstStmtNode
 
 }
 
+public abstract class AstControlException : Exception;
+public sealed class AstBreakException : AstControlException;
+public sealed class AstContinueException : AstControlException;
+public sealed class AstReturnException(PyObject value) : AstControlException { public PyObject Value { get; } = value ?? throw new ArgumentNullException(nameof(value)); }
+
 public class BreakNode : AstStmtNode
 {
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
@@ -243,7 +244,6 @@ public class BreakNode : AstStmtNode
         throw new AstBreakException();
     }
 
-    public sealed class AstBreakException : AstException;
 }
 public class ContinueNode : AstStmtNode
 {
@@ -252,7 +252,6 @@ public class ContinueNode : AstStmtNode
         throw new AstContinueException();
     }
 
-    public sealed class AstContinueException : AstException;
 }
 public class ReturnNode : AstStmtNode
 {
@@ -272,17 +271,6 @@ public class ReturnNode : AstStmtNode
     {
         base.EnumerateNodes(action);
         Value?.EnumerateNodes(action);
-    }
-
-
-    public sealed class AstReturnException : AstException
-    {
-        public PyObject Value { get; }
-
-        internal AstReturnException(PyObject value)
-        {
-            Value = value;
-        }
     }
 }
 public class PassNode : AstStmtNode

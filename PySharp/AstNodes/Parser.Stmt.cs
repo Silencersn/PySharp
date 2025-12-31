@@ -150,7 +150,7 @@ partial class Parser
             if (keyword is "break")
             {
                 if (!CurrentScope.IsInLoop)
-                    throw new AstException("'break' outside loop");
+                    throw _context.ThrowableSyntaxError("'break' outside loop");
 
                 MoveNextToken();
                 return new BreakNode() { MetaInfo = metaInfo };
@@ -158,7 +158,7 @@ partial class Parser
             else if (keyword is "continue")
             {
                 if (!CurrentScope.IsInLoop)
-                    throw new AstException("'continue' outside loop");
+                    throw _context.ThrowableSyntaxError("'continue' outside loop");
 
                 MoveNextToken();
                 return new ContinueNode() { MetaInfo = metaInfo };
@@ -187,7 +187,7 @@ partial class Parser
             else if (keyword is "return")
             {
                 if (!CurrentScope.IsCurrentFuncDef)
-                    throw new AstException("'return' outside function");
+                    throw _context.ThrowableSyntaxError("'return' outside function");
 
                 MoveNextToken();
                 if (CurrentTokenType is TokenType.NewLine or TokenType.Semicolon)
@@ -243,22 +243,22 @@ partial class Parser
                     if (CurrentScope.TryGetVariableType(name, out var variableType))
                     {
                         if (variableType is PyVariableType.Parameter)
-                            throw new AstException($"name '{name}' is parameter and global");
+                            throw _context.ThrowableSyntaxError($"name '{name}' is parameter and global");
 
                         if (variableType is PyVariableType.Nonlocal)
-                            throw new AstException($"name '{name}' is nonlocal and global");
+                            throw _context.ThrowableSyntaxError($"name '{name}' is nonlocal and global");
 
                         if (variableType is PyVariableType.Local)
-                            throw new AstException($"name '{name}' is assigned to before nonlocal declaration");
+                            throw _context.ThrowableSyntaxError($"name '{name}' is assigned to before nonlocal declaration");
 
                         foreach (var nameNode in CurrentScope.TrackedNameNodes)
                         {
                             if (nameNode.Identifier == name)
                             {
                                 if (nameNode.Ctx is ExprContext.Load)
-                                    throw new AstException($"name '{name}' is used prior to global declaration");
+                                    throw _context.ThrowableSyntaxError($"name '{name}' is used prior to global declaration");
                                 else
-                                    throw new AstException($"name '{name}' is assigned to before global declaration");
+                                    throw _context.ThrowableSyntaxError($"name '{name}' is assigned to before global declaration");
                             }
                         }
                     }
@@ -272,7 +272,7 @@ partial class Parser
             else if (keyword is "nonlocal")
             {
                 if (!CurrentScope.IsInFuncDef)
-                    throw new AstException("nonlocal declaration not allowed at module level");
+                    throw _context.ThrowableSyntaxError("nonlocal declaration not allowed at module level");
 
                 MoveNextToken();
                 var names = ParseIdentifiers();
@@ -281,22 +281,22 @@ partial class Parser
                     if (CurrentScope.TryGetVariableType(name, out var variableType))
                     {
                         if (variableType is PyVariableType.Parameter)
-                            throw new AstException($"name '{name}' is parameter and nonlocal");
+                            throw _context.ThrowableSyntaxError($"name '{name}' is parameter and nonlocal");
 
                         if (variableType is PyVariableType.Global)
-                            throw new AstException($"name '{name}' is nonlocal and global");
+                            throw _context.ThrowableSyntaxError($"name '{name}' is nonlocal and global");
 
                         if (variableType is PyVariableType.Local)
-                            throw new AstException($"name '{name}' is assigned to before nonlocal declaration");
+                            throw _context.ThrowableSyntaxError($"name '{name}' is assigned to before nonlocal declaration");
 
                         foreach (var nameNode in CurrentScope.TrackedNameNodes)
                         {
                             if (nameNode.Identifier == name)
                             {
                                 if (nameNode.Ctx is ExprContext.Load)
-                                    throw new AstException($"name '{name}' is used prior to nonlocal declaration");
+                                    throw _context.ThrowableSyntaxError($"name '{name}' is used prior to nonlocal declaration");
                                 else
-                                    throw new AstException($"name '{name}' is assigned to before nonlocal declaration");
+                                    throw _context.ThrowableSyntaxError($"name '{name}' is assigned to before nonlocal declaration");
                             }
                         }
                     }
@@ -324,7 +324,7 @@ partial class Parser
             while (CurrentTokenType is TokenType.Equal)
             {
                 if (!allTargets)
-                    throw new AstException("illegal expression on left side of =");
+                    throw _context.ThrowableSyntaxError("illegal expression on left side of =");
 
                 targets.Add(UnwrapOrMakeTuple(exprList, endsWithComma));
                 MoveNextToken();
@@ -415,7 +415,7 @@ partial class Parser
         }
 
         if (decorators.Count > 0 && (CurrentTokenType is not TokenType.Name || CurrentToken.String is not ("def" or "class")))
-            throw new AstException("invalid syntax");
+            throw _context.ThrowableSyntaxError("invalid syntax");
 
         if (CurrentTokenType is TokenType.Name && CompoundStmtStartsWith.Contains(CurrentToken.String))
             return [ParseCompoundStmt(decorators)];
@@ -528,7 +528,7 @@ partial class Parser
         EnsureTokenTypeThenMove(TokenType.Colon);
         tryNode.Body.AddRange(ParseSuite("try"));
         if (!IsCurrentKeyword("except") && !IsCurrentKeyword("finally"))
-            throw new AstException("should be 'except' or 'finally'");
+            throw _context.ThrowableSyntaxError("expected 'except' or 'finally' block");
         if (IsCurrentKeyword("except"))
         {
             while (IsCurrentKeyword("except"))
