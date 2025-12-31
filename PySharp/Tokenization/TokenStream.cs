@@ -1,6 +1,4 @@
-﻿using PySharp.PyRuntime.Calls;
-
-namespace PySharp.Tokenization;
+﻿namespace PySharp.Tokenization;
 
 public abstract class TokenStream
 {
