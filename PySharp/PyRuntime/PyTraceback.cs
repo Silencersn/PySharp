@@ -39,26 +39,24 @@ internal static class PyTraceback
             return;
 
         var info = provider.MetaInfo;
-        builder.AppendLine($"  File \"{info.Source?.Name ?? "<unknown>"}\", line {info.Start.Line}, in {callerName}");
+        builder
+            .AppendFormat("  File \"{0}\", line {1}, in {2}", info.Source?.Name ?? "<unknown>", info.Start.Line, callerName)
+            .AppendLine();
+
+        var origLine = info.FirstLine.TrimEnd();
+        var line = origLine.TrimStart();
 
         if (provider.OnlyStartInfo)
         {
-            if (info.FirstLine.Length > 0) // TODO: trimmed
-                builder.AppendLine($"    {info.FirstLine.Trim().TrimEnd(['\r', '\n'])}");
+            if (line.Length > 0)
+                builder
+                    .Append(' ', 4)
+                    .Append(line)
+                    .AppendLine();
             return;
         }
 
-        // TODO: make FirstLine single line
-        // actually, info.FirstLine may be multiline
-        var lines = info.FirstLine.EnumerateLines();
-
-        // first MoveNext must be true
-        lines.MoveNext();
-
-        var line = lines.Current;
-        var preLength = line.Length;
-        line = line.TrimStart();
-        var offset = line.Length - preLength;
+        var offset = line.Length - origLine.Length;
         var start = info.Start.Offset + offset;
         var end = info.End.Line == info.Start.Line
             ? info.End.Offset + offset
@@ -70,7 +68,10 @@ internal static class PyTraceback
         if (info.CrucialStart == default || info.CrucialStart.Line != info.Start.Line)
         {
             if (end - start < line.Length)
-                builder.AppendLine($"    {new string(' ', start)}{new string('^', end - start)}");
+                builder
+                    .Append(' ', 4 + start)
+                    .Append('^', end - start)
+                    .AppendLine();
         }
         else
         {
@@ -84,7 +85,12 @@ internal static class PyTraceback
             Debug.Assert(end >= crucialEnd);
             Debug.Assert(crucialStart >= start);
 
-            builder.AppendLine($"    {new string(' ', start)}{new string('~', crucialStart - start)}{new string('^', crucialEnd - crucialStart)}{new string('~', end - crucialEnd)}");
+            builder
+                .Append(' ', 4 + start)
+                .Append('~', crucialStart - start)
+                .Append('^', crucialEnd - crucialStart)
+                .Append('~', end - crucialEnd)
+                .AppendLine();
         }
     }
 }
