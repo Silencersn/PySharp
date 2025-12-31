@@ -1,10 +1,13 @@
-﻿namespace PySharp.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
+
+namespace PySharp.CodeAnalysis;
 
 public sealed class CodeText
 {
-    private readonly string _text;
-    private readonly CodeTextLineSpan[] _lineSpans;
+    private string _text;
+    private CodeTextLineSpan[] _lineSpans;
 
+    internal string Text => _text;
     public int LineCount => _lineSpans.Length - 1;
 
     public CodeText(string text)
@@ -12,7 +15,12 @@ public sealed class CodeText
         ArgumentNullException.ThrowIfNull(text);
 
         _text = text;
+        UpdateLineSpans();
+    }
 
+    [MemberNotNull(nameof(_lineSpans))]
+    private void UpdateLineSpans()
+    {
         List<CodeTextLineSpan> lineInfos = [CodeTextLineSpan.Empty];
         int currentIndex = 0;
         while (true)
@@ -31,6 +39,21 @@ public sealed class CodeText
             currentIndex = nextIndex + lineBreakLength;
         }
         _lineSpans = [.. lineInfos];
+    }
+
+    internal void UpdateText(string newText)
+    {
+        if (!newText.StartsWith(_text, StringComparison.Ordinal))
+            throw new InvalidOperationException();
+
+        _text = newText;
+        UpdateLineSpans();
+    }
+
+    internal void AppendText(string text)
+    {
+        _text += text;
+        UpdateLineSpans();
     }
 
     private bool ValidateLineNumber(int lineNumber)

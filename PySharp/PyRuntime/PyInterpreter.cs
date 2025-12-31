@@ -119,8 +119,11 @@ public static class PyInterpreter
         {
             PyTryCatch(context, () =>
             {
-                var codeSource = new CodeSource("<stdin>", string.Empty /* TODO: adapt repr */);
+                InteractiveNode node;
+
+                var codeSource = new CodeSource("<stdin>", string.Empty);
                 var lexer = new Lexer(context, codeSource);
+                lexer.InternalStart();
                 bool isFirstLine = true;
                 while (true)
                 {
@@ -135,16 +138,16 @@ public static class PyInterpreter
                     }
                     else
                     {
-                        lexer.InternalTokenize(line + Environment.NewLine);
+                        line += Environment.NewLine;
+                        codeSource.Code.AppendText(line);
+                        lexer.InternalTokenize(line);
                         lexer.Tokens.Add(new TokenInfo(TokenType.EndMarker, string.Empty, default, default, codeSource));
                     }
 
                     var parser = new Parser(context, codeSource, environment.OptimizationOptions, lexer.Tokens);
                     try
                     {
-                        var node = parser.ParseInteractiveNode();
-                        node.Execute(context, context.CurrentFrame);
-                        Debug.Assert(context.CurrentFrame.IsRoot);
+                        node = parser.ParseInteractiveNode();
                         break;
                     }
                     catch (PyRuntimeException e)
@@ -164,6 +167,9 @@ public static class PyInterpreter
                         lexer.Tokens.RemoveAt(lexer.Tokens.Count - 1); // remove EndMarker
                     }
                 }
+
+                node.Execute(context, context.CurrentFrame);
+                Debug.Assert(context.CurrentFrame.IsRoot);
             });
         }
     }

@@ -211,6 +211,8 @@ public sealed partial class Parser : ICodeMetaInfoProvider
 
     public InteractiveNode ParseInteractiveNode()
     {
+        EnsureTokenTypeThenMove(TokenType.Encoding);
+
         var metaInfo = CreateMetaInfo();
         _isParsingInteractiveNode = true;
         var list = ParseStatement();
