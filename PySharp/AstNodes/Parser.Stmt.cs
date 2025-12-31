@@ -487,7 +487,7 @@ partial class Parser
         var metaInfo = CreateMetaInfo();
         EnsureKeywordThenMove(startsWithKeyword);
         var ifNode = new IfNode(ParseExpression()) { MetaInfo = metaInfo };
-        EnsureTokenTypeThenMove(TokenType.Colon);
+        EnsureTokenTypeThenMoveForTest(TokenType.Colon, ifNode.Test);
         ifNode.Body.AddRange(ParseSuite(startsWithKeyword));
         if (IsCurrentKeyword("elif"))
         {
@@ -507,7 +507,7 @@ partial class Parser
         var metaInfo = CreateMetaInfo();
         EnsureKeywordThenMove("while");
         var whileNode = new WhileNode(ParseExpression()) { MetaInfo = metaInfo };
-        EnsureTokenTypeThenMove(TokenType.Colon);
+        EnsureTokenTypeThenMoveForTest(TokenType.Colon, whileNode.Test);
         CurrentScope.EnterLoop();
         whileNode.Body.AddRange(ParseSuite("while"));
         CurrentScope.ExitLoop();

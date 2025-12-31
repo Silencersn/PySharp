@@ -93,7 +93,7 @@ partial class Parser
     private AstExprNode ParseFExpression()
     {
         if (IsCurrentKeyword("yield"))
-            throw new NotSupportedException();
+            return ParseYieldExpression();
 
         var list = ParseFlexibleExpressionList(StopPredicates.UntilRightBrace, out var endsWithComma);
         return UnwrapOrMakeTuple(list, endsWithComma);

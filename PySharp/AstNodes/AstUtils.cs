@@ -33,6 +33,9 @@ internal static class AstUtils
                 PyBoolObject boolObj => boolObj.BoolValue ? "True" : "False", // TODO: __debug__
                 _ => "literal"
             },
+            AttributeNode => "attribute",
+            SubscriptNode => "subscript",
+            NameNode => "name",
             ListNode => "list",
             TupleNode => "tuple",
             _ => "expression",

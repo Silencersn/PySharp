@@ -101,11 +101,24 @@ public sealed partial class Parser : ICodeMetaInfoProvider
 
         _tokenStream.MoveNextToken();
     }
-
     private void EnsureTokenType(TokenType type)
     {
         if (CurrentTokenType != type)
-            throw _context.ThrowableSyntaxError($"invalid syntax");
+            throw _context.ThrowableSyntaxError("invalid syntax");
+    }
+    private void EnsureTokenTypeForTest(TokenType type, AstExprNode? testExpr)
+    {
+        if (CurrentTokenType != type)
+        {
+            if (testExpr is not null && CurrentTokenType is TokenType.Equal)
+            {
+                if (testExpr is NameNode)
+                    throw _context.ThrowableSyntaxError("invalid syntax. Maybe you meant '==' or ':=' instead of '='?");
+
+                throw _context.ThrowableSyntaxError($"cannot assign to {AstUtils.GetExprNodeName(testExpr)} here. Maybe you meant '==' instead of '='?");
+            }
+            throw _context.ThrowableSyntaxError("invalid syntax");
+        }
     }
     private bool IsCurrentKeyword(string keyword)
     {
@@ -118,12 +131,17 @@ public sealed partial class Parser : ICodeMetaInfoProvider
     {
         EnsureTokenType(TokenType.Name);
         if (CurrentToken.String != keyword)
-            throw _context.ThrowableSyntaxError($"invalid syntax");
+            throw _context.ThrowableSyntaxError("invalid syntax");
         MoveNextToken();
     }
     private void EnsureTokenTypeThenMove(TokenType type)
     {
         EnsureTokenType(type);
+        MoveNextToken();
+    }
+    private void EnsureTokenTypeThenMoveForTest(TokenType type, AstExprNode? testExpr)
+    {
+        EnsureTokenTypeForTest(type, testExpr);
         MoveNextToken();
     }
     private CodeMetaInfo CreateMetaInfo()
