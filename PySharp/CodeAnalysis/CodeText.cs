@@ -1,0 +1,47 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace PySharp.CodeAnalysis;
+
+public sealed class CodeText
+{
+    private readonly string _text;
+    private readonly CodeTextLineSpan[] _lineSpans;
+
+    public CodeText(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+
+        _text = text;
+
+        List<CodeTextLineSpan> lineInfos = [];
+        int currentIndex = 0;
+        while (true)
+        {
+            int nextIndex = _text.IndexOfAny(['\r', '\n'], currentIndex);
+            if (nextIndex is -1)
+            {
+                lineInfos.Add(new CodeTextLineSpan(currentIndex, _text.Length - currentIndex, 0));
+                break;
+            }
+
+            int lineBreakLength = 1;
+            if (_text[nextIndex] is '\r' && nextIndex + 1 < _text.Length && _text[nextIndex + 1] is '\n')
+                lineBreakLength++;
+            lineInfos.Add(new CodeTextLineSpan(currentIndex, nextIndex - currentIndex, lineBreakLength));
+            currentIndex = nextIndex + lineBreakLength;
+        }
+        _lineSpans = [.. lineInfos];
+    }
+
+    public ReadOnlySpan<char> GetLine(int linenoStartsFromZero, bool includingLineBreak)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(linenoStartsFromZero);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(linenoStartsFromZero, _lineSpans.Length);
+
+        var lineSpan = _lineSpans[linenoStartsFromZero];
+        return _text.AsSpan()
+            .Slice(lineSpan.Start, includingLineBreak ? (lineSpan.Length + lineSpan.LineBreakLength) : lineSpan.Length);
+    }
+}
