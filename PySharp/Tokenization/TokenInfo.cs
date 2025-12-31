@@ -59,18 +59,32 @@ public sealed record class TokenInfo
         ["~"] = TokenType.Tilde
     }.ToFrozenDictionary();
 
+    private CodeSource Source { get; }
     public TokenType Type { get; }
     public string String { get; }
     public CodeTextPosition Start { get; }
     public CodeTextPosition End { get; }
-    public string Line { get; }
+    public string Line
+    {
+        get
+        {
+            var builder = new StringBuilder();
+            for (int i = Start.Line; i <= End.Line; i++)
+            {
+                if (Source.Code.TryGetLine(i, true, out var line))
+                    builder.Append(line);
+            }
+            return builder.ToString();
+        }
+    }
 
-    public TokenInfo(TokenType type, string str, CodeTextPosition start, CodeTextPosition end, string line)
+    internal TokenInfo(TokenType type, string str, CodeTextPosition start, CodeTextPosition end, CodeSource source)
     {
         Debug.Assert((uint)type < (uint)TokenType.Count);
         Debug.Assert(str is not null);
-        Debug.Assert(line is not null);
+        Debug.Assert(source is not null);
 
+        Source = source;
         if (type is TokenType.Operator)
             type = ExactTokenTypes[str];
 
@@ -78,7 +92,6 @@ public sealed record class TokenInfo
         String = str;
         Start = start;
         End = end;
-        Line = line;
     }
 
     public override string ToString()

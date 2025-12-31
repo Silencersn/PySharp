@@ -38,10 +38,24 @@ public sealed class CodeText
     public ReadOnlySpan<char> GetLine(int linenoStartsFromOne, bool includingLineBreak)
     {
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(linenoStartsFromOne, 0);
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(linenoStartsFromOne, _lineSpans.Length);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(linenoStartsFromOne, _lineSpans.Length);
 
         var lineSpan = _lineSpans[linenoStartsFromOne];
         return _text.AsSpan()
             .Slice(lineSpan.Start, includingLineBreak ? (lineSpan.Length + lineSpan.LineBreakLength) : lineSpan.Length);
+    }
+
+    public bool TryGetLine(int linenoStartsFromOne, bool includingLineBreak, out ReadOnlySpan<char> line)
+    {
+        if (linenoStartsFromOne <= 0 || linenoStartsFromOne >= _lineSpans.Length)
+        {
+            line = [];
+            return false;
+        }
+
+        var lineSpan = _lineSpans[linenoStartsFromOne];
+        line = _text.AsSpan()
+            .Slice(lineSpan.Start, includingLineBreak ? (lineSpan.Length + lineSpan.LineBreakLength) : lineSpan.Length);
+        return true;
     }
 }

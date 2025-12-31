@@ -101,13 +101,18 @@ public sealed partial class Lexer : IMetaInfoProvider
     private CodeTextPosition _stringStart;
 
     private int _parenLevel;
-    private string? _currentLine;
     private string? _currentContent;
 
     internal IList<TokenInfo> Tokens => _tokens;
 
     bool IMetaInfoProvider.OnlyStartInfo => true;
-    MetaInfo? IMetaInfoProvider.MetaInfo => new() { Source = _codeSource, FirstLine = _currentLine, Start = new(_lineno, 0) };
+    private string CurrentLine => _codeSource.Code.TryGetLine(_lineno, true, out var line) ? line.ToString() : string.Empty;
+    MetaInfo? IMetaInfoProvider.MetaInfo => new()
+    {
+        Source = _codeSource,
+        FirstLine = CurrentLine,
+        Start = new(_lineno, 0)
+    };
 
     internal Lexer(PyCallContext context, CodeSource codeSource)
     {
@@ -122,7 +127,6 @@ public sealed partial class Lexer : IMetaInfoProvider
         _indentationLevels = [];
         _indentationLevels.Push(0);
         _parenLevel = 0;
-        _currentLine = null;
         _currentContent = null;
         _fstringStack = [];
         CurrentState = LexerState.Default;
@@ -130,7 +134,7 @@ public sealed partial class Lexer : IMetaInfoProvider
 
     internal void InternalStart()
     {
-        AppendToken(TokenType.Encoding, "utf-8", default, default, string.Empty);
+        AppendToken(TokenType.Encoding, "utf-8", default, default);
         SetNewLine();
     }
 
@@ -144,7 +148,7 @@ public sealed partial class Lexer : IMetaInfoProvider
                 string.Empty,
                 new CodeTextPosition(_lineno, 0),
                 new CodeTextPosition(_lineno, 0),
-                string.Empty
+                _codeSource
                 );
             _tokens.Add(token);
         }
@@ -162,8 +166,6 @@ public sealed partial class Lexer : IMetaInfoProvider
 
         if (_tokens[^1].Type is not (TokenType.NewLine or TokenType.NL))
         {
-            if (_tokens[^1].Type is TokenType.Encoding)
-                _currentLine = string.Empty;
             AppendNewLineToken(string.Empty);
         }
 
@@ -172,7 +174,7 @@ public sealed partial class Lexer : IMetaInfoProvider
         if (_offset != _offsetOfPreviousLine)
             _lineno++;
         var pos = new CodeTextPosition(_lineno, 0);
-        AppendToken(TokenType.EndMarker, string.Empty, pos, pos, string.Empty);
+        AppendToken(TokenType.EndMarker, string.Empty, pos, pos);
     }
 
     internal void InternalTokenize(string content)
@@ -195,7 +197,6 @@ public sealed partial class Lexer : IMetaInfoProvider
                 case LexerState.Default or LexerState.FStringDefault:
                     if (IsFString(content, _offset, out var wrapper, out var whiteLength, out var prefix))
                     {
-                        _currentLine ??= GetCurrentLine();
                         var fStringOffset = _offset + whiteLength;
 
                         if (whiteLength > 0 && content.AsSpan().Slice(_offset, whiteLength).Contains('\n'))
@@ -213,7 +214,6 @@ public sealed partial class Lexer : IMetaInfoProvider
                                 _offset++;
                             }
                             SetNewLine();
-                            _currentLine = GetCurrentLine();
                         }
 
                         _offset = fStringOffset;
@@ -284,10 +284,10 @@ public sealed partial class Lexer : IMetaInfoProvider
                             throw _context.ThrowableSyntaxError("f-string: expecting '}', or format specs");
                         var start = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
 
-                        ExtractMultiLineTextInFString(indexOfWrapper, info, out var value, out var currentLine);
+                        ExtractMultiLineTextInFString(indexOfWrapper, info, out var value);
 
                         var end = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
-                        AppendToken(TokenType.FStringMiddle, value, start, end, currentLine);
+                        AppendToken(TokenType.FStringMiddle, value, start, end);
                         AppendToken(TokenType.FStringEnd, info.Wrapper);
                         _offset = indexOfWrapper + info.Wrapper.Length;
                         _fstringStack.Pop();
@@ -297,7 +297,7 @@ public sealed partial class Lexer : IMetaInfoProvider
                     {
                         var start = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
 
-                        ExtractMultiLineTextInFString(indexOfLeftBrace, info, out var value, out var currentLine);
+                        ExtractMultiLineTextInFString(indexOfLeftBrace, info, out var value);
 
                         bool isEscape = false;
                         if (CurrentFStringInfo.FormatSpec.Count is 0 && _offset + 1 < content.Length && content[_offset + 1] is '{')
@@ -308,7 +308,7 @@ public sealed partial class Lexer : IMetaInfoProvider
                         }
 
                         var end = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
-                        AppendToken(TokenType.FStringMiddle, value, start, end, currentLine);
+                        AppendToken(TokenType.FStringMiddle, value, start, end);
                         if (!isEscape)
                         {
                             AppendToken(TokenType.Operator, "{");
@@ -328,10 +328,10 @@ public sealed partial class Lexer : IMetaInfoProvider
                         {
                             var start = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
 
-                            ExtractMultiLineTextInFString(indexOfRightBrace, info, out var value, out var currentLine);
+                            ExtractMultiLineTextInFString(indexOfRightBrace, info, out var value);
 
                             var end = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
-                            AppendToken(TokenType.FStringMiddle, value, start, end, currentLine);
+                            AppendToken(TokenType.FStringMiddle, value, start, end);
                             AppendToken(TokenType.Operator, "}");
                             _offset = indexOfRightBrace + 1;
                             CurrentFStringInfo.FormatSpec.Pop();
@@ -345,12 +345,12 @@ public sealed partial class Lexer : IMetaInfoProvider
 
                             var start = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
 
-                            ExtractMultiLineTextInFString(indexOfRightBrace, info, out var value, out var currentLine);
+                            ExtractMultiLineTextInFString(indexOfRightBrace, info, out var value);
 
                             _offset += 2;
                             value += '}';
                             var end = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
-                            AppendToken(TokenType.FStringMiddle, value, start, end, currentLine);
+                            AppendToken(TokenType.FStringMiddle, value, start, end);
                         }
                     }
                     else
@@ -374,15 +374,12 @@ public sealed partial class Lexer : IMetaInfoProvider
 
     private static readonly string[] FStringPrefixes = ["fr", "Fr", "fR", "FR", "rf", "rF", "Rf", "RF", "f", "F"];
 
-    private void ExtractMultiLineTextInFString(int untilIndex, FStringInfo info, out string value, out string currentLine)
+    private void ExtractMultiLineTextInFString(int untilIndex, FStringInfo info, out string value)
     {
         Debug.Assert(_currentContent is not null);
 
         value = _currentContent[_offset..untilIndex];
 
-        Debug.Assert(_currentLine is not null);
-        currentLine = _currentLine;
-        Debug.Assert(currentLine is not null);
 
         // all the \r\n should be \n
         value = value.Replace("\r", string.Empty);
@@ -399,10 +396,7 @@ public sealed partial class Lexer : IMetaInfoProvider
 
             _lineno += countOfNewLine;
             _offset = _currentContent.LastIndexOf('\n', untilIndex) + 1;
-            var lastLine = GetCurrentLine(out var offsetOfNextLine);
-            currentLine = _currentContent[_offsetOfPreviousLine..offsetOfNextLine];
             _offsetOfPreviousLine = _offset;
-            _currentLine = lastLine;
         }
 
         _offset = untilIndex;
@@ -479,24 +473,22 @@ public sealed partial class Lexer : IMetaInfoProvider
         return str[..2];
     }
 
-    private void AppendToken(TokenType type, string str, CodeTextPosition start, CodeTextPosition end, string line)
+    private void AppendToken(TokenType type, string str, CodeTextPosition start, CodeTextPosition end)
     {
         var token = new TokenInfo(
             type,
             str,
             start,
             end,
-            line
-            );
+            _codeSource);
         _tokens.Add(token);
     }
 
     private void AppendToken(TokenType type, string str)
     {
-        Debug.Assert(_currentLine is not null);
         var start = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
         var end = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine + str.Length);
-        AppendToken(type, str, start, end, _currentLine);
+        AppendToken(type, str, start, end);
     }
 
     private void AppendNewLineToken(string str)
@@ -526,25 +518,7 @@ public sealed partial class Lexer : IMetaInfoProvider
     {
         _lineno++;
         _offsetOfPreviousLine = _offset;
-        _currentLine = null;
         _needIndentation = true;
-    }
-
-    private string GetCurrentLine()
-    {
-        return GetCurrentLine(out _);
-    }
-
-    private string GetCurrentLine(out int offsetOfNextLine)
-    {
-        Debug.Assert(_currentContent is not null);
-        var m = NewLineRegex.Match(_currentContent, _offset);
-        string currentLine;
-        if (m.Success)
-            currentLine = _currentContent[_offset..(offsetOfNextLine = m.Index + m.Length)];
-        else
-            currentLine = _currentContent[_offset..(offsetOfNextLine = _currentContent.Length)];
-        return currentLine;
     }
 
     private void TokenizeMultiLineString(Regex wrapper, bool isTriple)
@@ -573,14 +547,10 @@ public sealed partial class Lexer : IMetaInfoProvider
 
         _lineno += pastString.AsSpan().Count('\n');
 
-        var lastLine = GetCurrentLine(out var offsetOfNextLine);
-        _currentLine = _currentContent[_offsetOfPreviousLine..offsetOfNextLine];
         _offsetOfPreviousLine = _currentContent.LastIndexOf('\n', m.Index + m.Length - 1, m.Index + m.Length - _offset + 1) + 1;
         var end = new CodeTextPosition(_lineno, (m.Index + m.Length) - _offsetOfPreviousLine);
 
-        Debug.Assert(_currentLine is not null);
-        AppendToken(TokenType.String, fullString, _stringStart, end, _currentLine);
-        _currentLine = lastLine;
+        AppendToken(TokenType.String, fullString, _stringStart, end);
         _offset = m.Index + m.Length;
         CurrentState = LexerState.Default;
     }
@@ -606,8 +576,6 @@ public sealed partial class Lexer : IMetaInfoProvider
 
     private void TokenizePseudoToken(Match match)
     {
-        _currentLine ??= GetCurrentLine();
-
         var group = match.Groups[1];
 
         if (_needIndentation)
@@ -618,7 +586,7 @@ public sealed partial class Lexer : IMetaInfoProvider
             {
                 _explicitLineJoining = false;
             }
-            else if (_parenLevel is 0 && !IsIgnored(_currentLine.TrimEnd('\r', '\n')))
+            else if (_parenLevel is 0 && !IsIgnored(CurrentLine.TrimEnd('\r', '\n')))
             {
                 var indentationLevel = group.Index - match.Index;
 
@@ -634,7 +602,7 @@ public sealed partial class Lexer : IMetaInfoProvider
                     {
                         _ = _indentationLevels.Pop();
                         var pos = new CodeTextPosition(_lineno, 0);
-                        AppendToken(TokenType.Dedent, string.Empty, pos, pos, string.Empty);
+                        AppendToken(TokenType.Dedent, string.Empty, pos, pos);
                     }
 
                     if (indentationLevel != _indentationLevels.Peek())

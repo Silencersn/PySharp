@@ -56,7 +56,7 @@ public sealed partial class PyCallContext
         throw ThrowableSystemExit();
     }
 
-    internal static PyCallContext FromLoadingModule(PyEnvironment environment)
+    public static PyCallContext FromLoadingModule(PyEnvironment environment)
     {
         var context = new PyCallContext("[From Loading Module]", environment);
         var frame = PyFrame.CreateModuleFrame(context, null);

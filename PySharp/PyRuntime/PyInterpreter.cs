@@ -130,13 +130,13 @@ public static class PyInterpreter
                     if (string.IsNullOrWhiteSpace(line))
                     {
                         lexer.InternalClearIndentation();
-                        lexer.Tokens.Add(new TokenInfo(TokenType.NewLine, string.Empty, default, default, string.Empty));
-                        lexer.Tokens.Add(new TokenInfo(TokenType.EndMarker, string.Empty, default, default, string.Empty));
+                        lexer.Tokens.Add(new TokenInfo(TokenType.NewLine, string.Empty, default, default, codeSource));
+                        lexer.Tokens.Add(new TokenInfo(TokenType.EndMarker, string.Empty, default, default, codeSource));
                     }
                     else
                     {
                         lexer.InternalTokenize(line + Environment.NewLine);
-                        lexer.Tokens.Add(new TokenInfo(TokenType.EndMarker, string.Empty, default, default, string.Empty));
+                        lexer.Tokens.Add(new TokenInfo(TokenType.EndMarker, string.Empty, default, default, codeSource));
                     }
 
                     var parser = new Parser(context, codeSource, environment.OptimizationOptions, lexer.Tokens);
