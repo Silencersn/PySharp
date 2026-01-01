@@ -104,7 +104,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
     private string? _currentContent;
 
     internal IList<TokenInfo> Tokens => _tokens;
-    private string CurrentLine => _codeSource.Code.GetLineOrDefault(_lineno, true).ToString();
+    private ReadOnlySpan<char> CurrentLine => _codeSource.Code.GetLineOrDefault(_lineno, false);
     CodeMetaInfo? ICodeMetaInfoProvider.MetaInfo => new()
     {
         Source = _codeSource,
@@ -450,10 +450,11 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         return match.Success && match.Length == group.Length;
     }
 
-    private static bool IsIgnored(string line)
+    private static bool IsIgnored(ReadOnlySpan<char> line)
     {
-        var m = LexerRegexes.Ignore.Match(line);
-        return m.Success && m.Index is 0 && m.Length == line.Length;
+        Debug.Assert(!line.ContainsAny(['\n', '\r']));
+        line = line.TrimStart();
+        return line.Length is 0 || line[0] is '#';
     }
 
     private static string GetStringPrefix(string str, out char firstWrapper)
@@ -590,7 +591,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             {
                 _explicitLineJoining = false;
             }
-            else if (_parenLevel is 0 && !IsIgnored(CurrentLine.TrimEnd('\r', '\n')))
+            else if (_parenLevel is 0 && !IsIgnored(CurrentLine))
             {
                 var indentationLevel = group.Index - match.Index;
 

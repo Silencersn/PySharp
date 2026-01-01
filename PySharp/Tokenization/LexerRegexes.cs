@@ -12,8 +12,8 @@ public static partial class LexerRegexes
     [GeneratedRegex(LexerRegexPatterns.Comment)]
     public static partial Regex Comment { get; }
 
-    [GeneratedRegex(LexerRegexPatterns.Ignore)]
-    public static partial Regex Ignore { get; }
+    //[GeneratedRegex(LexerRegexPatterns.Ignore)]
+    //public static partial Regex Ignore { get; }
 
     [GeneratedRegex(LexerRegexPatterns.Name)]
     public static partial Regex Name { get; }
