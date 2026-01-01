@@ -6,6 +6,7 @@ public readonly record struct CodeTextPosition
 
     public readonly int Line;
     public readonly int Offset;
+    public readonly bool IsEmpty => this == Empty;
 
     public CodeTextPosition(int line, int offset)
     {

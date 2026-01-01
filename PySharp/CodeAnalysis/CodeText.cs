@@ -75,6 +75,11 @@ public sealed class CodeText
         return InternalGetLine(linenoStartsFromOne, includingLineBreak);
     }
 
+    public ReadOnlySpan<char> GetLineOrDefault(int linenoStartsFromOne, bool includingLineBreak)
+    {
+        return TryGetLine(linenoStartsFromOne, includingLineBreak, out var line) ? line : [];
+    }
+
     public bool TryGetLine(int linenoStartsFromOne, bool includingLineBreak, out ReadOnlySpan<char> line)
     {
         if (!ValidateLineNumber(linenoStartsFromOne))

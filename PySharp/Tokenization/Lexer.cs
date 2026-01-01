@@ -104,7 +104,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
     private string? _currentContent;
 
     internal IList<TokenInfo> Tokens => _tokens;
-    private string CurrentLine => _codeSource.Code.TryGetLine(_lineno, true, out var line) ? line.ToString() : string.Empty;
+    private string CurrentLine => _codeSource.Code.GetLineOrDefault(_lineno, true).ToString();
     CodeMetaInfo? ICodeMetaInfoProvider.MetaInfo => new()
     {
         Source = _codeSource,
