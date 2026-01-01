@@ -48,7 +48,7 @@ internal interface IExprContextNode
 
 internal interface ITargetNode
 {
-    void SetVaue(PyCallContext context, PyObject value, PyFrame frame);
+    void SetValue(PyCallContext context, PyObject value, PyFrame frame);
     void DeleteValue(PyCallContext context, PyFrame frame);
 }
 
@@ -79,12 +79,18 @@ public sealed class NameNode : AstExprNode, IExprContextNode, ITargetNode
 
     void ITargetNode.DeleteValue(PyCallContext context, PyFrame frame)
     {
-        frame.DeleteVariable(Identifier).PyUnwrap(context);
+        if (FastIndex is not -1)
+            frame.DeleteFast(FastIndex).PyUnwrap(context);
+        else
+            frame.DeleteVariable(Identifier).PyUnwrap(context);
     }
 
-    void ITargetNode.SetVaue(PyCallContext context, PyObject value, PyFrame frame)
+    void ITargetNode.SetValue(PyCallContext context, PyObject value, PyFrame frame)
     {
-        frame.SetVariable(Identifier, value).PyUnwrap(context);
+        if (FastIndex is not -1)
+            frame.StoreFast(FastIndex, value).PyUnwrap(context);
+        else
+            frame.SetVariable(Identifier, value).PyUnwrap(context);
     }
 }
 
@@ -145,7 +151,7 @@ public sealed class AttributeNode : AstExprNode, IExprContextNode, ITargetNode
         Value.EnumerateNodes(action);
     }
 
-    void ITargetNode.SetVaue(PyCallContext context, PyObject value, PyFrame frame)
+    void ITargetNode.SetValue(PyCallContext context, PyObject value, PyFrame frame)
     {
         var obj = Value.GetExprValue(context, frame);
         PyOperators.SetAttr(context, obj, Identifier, value).PyUnwrap(context);
@@ -210,7 +216,7 @@ public sealed class SubscriptNode : AstExprNode, IExprContextNode, ITargetNode
         Slice.EnumerateNodes(action);
     }
 
-    void ITargetNode.SetVaue(PyCallContext context, PyObject value, PyFrame frame)
+    void ITargetNode.SetValue(PyCallContext context, PyObject value, PyFrame frame)
     {
         SetItem(context, frame, value);
     }

@@ -94,6 +94,16 @@ partial class PyFrame
         return value;
     }
 
+    internal PyResult StoreFast(int index, PyObject value)
+    {
+        var locals = _locals.LocalsPlus;
+        if (index < 0 || index >= locals.Length)
+            return PyResult.RaisePySharpException("out of range");
+
+        locals[index] = value;
+        return PyNoneObject.None;
+    }
+
     public PyResult StoreLocal(string name, PyObject value)
     {
         Locals[name] = value;
@@ -118,6 +128,19 @@ partial class PyFrame
     public PyResult StoreName(string name, PyObject value)
     {
         return StoreLocal(name, value);
+    }
+
+    internal PyResult DeleteFast(int index)
+    {
+        var locals = _locals.LocalsPlus;
+        if (index < 0 || index >= locals.Length)
+            return PyResult.RaisePySharpException("out of range");
+
+        if (locals[index] is null)
+            return PyResult.RaiseUnboundLocalError($"cannot access local variable '[{index /* TODO: name */}]' where it is not associated with a value");
+        
+        locals[index] = null;
+        return PyNoneObject.None;
     }
 
     public PyResult DeleteLocal(string name)

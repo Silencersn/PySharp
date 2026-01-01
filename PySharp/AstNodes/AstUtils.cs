@@ -79,7 +79,7 @@ internal static class AstUtils
     {
         if (target is ITargetNode targetNode)
         {
-            targetNode.SetVaue(context, value, frame);
+            targetNode.SetValue(context, value, frame);
         }
         else if (target is TupleNode tupleNode)
         {
