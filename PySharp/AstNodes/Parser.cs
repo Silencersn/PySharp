@@ -359,6 +359,12 @@ public sealed partial class Parser : ICodeMetaInfoProvider
             node.LocalVariables = [.. scope.Variables
                     .Where(pair => pair.Value is PyVariableType.Local or PyVariableType.Parameter)
                     .Select(pair => pair.Key)];
+            node.LocalVariablesToIndex = node.LocalVariables.Index().ToFrozenDictionary(v => v.Item, v => v.Index);
+            foreach (var nameNode in scope.TrackedNameNodes)
+            {
+                if (node.LocalVariablesToIndex.TryGetValue(nameNode.Identifier, out var index))
+                    nameNode.FastIndex = index;
+            }
         }
 
         if (scope.Owner is IFunctionOrClass functionOrClassNode)

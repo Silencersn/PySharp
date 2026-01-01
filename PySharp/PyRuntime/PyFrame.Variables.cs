@@ -33,6 +33,18 @@ partial class PyFrame
         return builtins.PyAttributes.TryGetValue(name, out value);
     }
 
+    internal PyResult LoadFast(int index)
+    {
+        var locals = _locals.LocalsPlus;
+        if (index < 0 || index >= locals.Length)
+            return PyResult.RaisePySharpException("out of range");
+
+        var value = locals[index];
+        if (value is null)
+            return PyResult.RaiseUnboundLocalError($"cannot access local variable '[{index /* TODO: name */}]' where it is not associated with a value");
+        return value;
+    }
+
     public PyResult LoadLocal(string name)
     {
         if (!TryLoadFromLocal(name, out var value))

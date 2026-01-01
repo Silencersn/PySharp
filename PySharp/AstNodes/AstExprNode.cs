@@ -61,9 +61,13 @@ public sealed class NameNode : AstExprNode, IExprContextNode, ITargetNode
 
     public string Identifier { get; }
     public ExprContext Ctx { get; set; } = ExprContext.Load;
+    internal int FastIndex { get; set; } = -1;
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
+        if (FastIndex is not -1)
+            return frame.LoadFast(FastIndex).PyUnwrap(context);
+
         return frame.GetVariable(Identifier).PyUnwrap(context);
     }
 
@@ -877,6 +881,7 @@ public sealed class LambdaNode : AstExprNode, IFunctionOrLambda
     FrozenDictionary<string, PyVariableType> IAstVariableScopeOwner.Variables { get; set; } = null!;
     string[] IFunctionOrLambda.CapturedVariables { get; set; } = null!;
     string[] IFunctionOrLambda.LocalVariables { get; set; } = null!;
+    FrozenDictionary<string, int> IFunctionOrLambda.LocalVariablesToIndex { get; set; } = null!;
     bool IFunctionOrLambda.HasYield { get; set; } = false;
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)

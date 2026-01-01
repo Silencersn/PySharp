@@ -13,7 +13,7 @@ partial class PyFrame
 {
     internal sealed class PyFrameLocals
     {
-        private readonly PyObject?[] _localPlus;
+        private readonly PyObject?[] _localsPlus;
         private readonly FrozenDictionary<string, int> _localVariablesToIndex;
         internal readonly PyFrameGlobals? _globals;
         private IDictionary<string, PyObject?>? _locals;
@@ -23,12 +23,12 @@ partial class PyFrame
         public PyFrameLocals(FrozenDictionary<string, int> localVariablesToIndex)
         {
             _localVariablesToIndex = localVariablesToIndex;
-            _localPlus = new PyObject[_localVariablesToIndex.Count];
+            _localsPlus = new PyObject[_localVariablesToIndex.Count];
         }
         public PyFrameLocals(PyFrameGlobals globals)
         {
             _globals = globals;
-            _localPlus = [];
+            _localsPlus = [];
             _localVariablesToIndex = FrozenDictionary<string, int>.Empty;
             _locals = globals.Globals!;
             _localsAdapter = globals.GlobalsAdapter;
@@ -37,17 +37,18 @@ partial class PyFrame
         private PyFrameLocals(FrozenDictionary<string, int> localVariablesToIndex, PyObject?[] localPlus)
         {
             _localVariablesToIndex = localVariablesToIndex;
-            _localPlus = localPlus;
+            _localsPlus = localPlus;
         }
 
-        public IDictionary<string, PyObject?> Locals => _locals ??= new LocalDictionary(_localPlus, _localVariablesToIndex);
+        internal PyObject?[] LocalsPlus => _localsPlus;
+        public IDictionary<string, PyObject?> Locals => _locals ??= new LocalDictionary(_localsPlus, _localVariablesToIndex);
         public DictAdapter LocalsAdapter => _localsAdapter ??= new DictAdapter(Locals);
         public PyDictObject PyDict => _pyDict ??= PyDictObject.CreateProxy(LocalsAdapter);
 
         public PyFrameLocals Clone()
         {
-            var newLocalPlus = new PyObject?[_localPlus.Length];
-            Array.Copy(_localPlus, newLocalPlus, _localPlus.Length);
+            var newLocalPlus = new PyObject?[_localsPlus.Length];
+            Array.Copy(_localsPlus, newLocalPlus, _localsPlus.Length);
 
             var clone = new PyFrameLocals(_localVariablesToIndex, newLocalPlus);
 
