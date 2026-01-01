@@ -1,4 +1,5 @@
 ﻿using PySharp.CodeAnalysis;
+using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.Tokenization;
 using System.Collections.Frozen;
@@ -106,17 +107,19 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         if (CurrentTokenType != type)
             throw _context.ThrowableSyntaxError("invalid syntax");
     }
+    private PyRuntimeException ThrowableSyntaxErrorCausedByInvalidEqualAfterExpr(AstExprNode expr)
+    {
+        if (expr is NameNode)
+            return _context.ThrowableSyntaxError("invalid syntax. Maybe you meant '==' or ':=' instead of '='?");
+
+        return _context.ThrowableSyntaxError($"cannot assign to {AstUtils.GetExprNodeName(expr)} here. Maybe you meant '==' instead of '='?");
+    }
     private void EnsureTokenTypeForTest(TokenType type, AstExprNode? testExpr)
     {
         if (CurrentTokenType != type)
         {
             if (testExpr is not null && CurrentTokenType is TokenType.Equal)
-            {
-                if (testExpr is NameNode)
-                    throw _context.ThrowableSyntaxError("invalid syntax. Maybe you meant '==' or ':=' instead of '='?");
-
-                throw _context.ThrowableSyntaxError($"cannot assign to {AstUtils.GetExprNodeName(testExpr)} here. Maybe you meant '==' instead of '='?");
-            }
+                throw ThrowableSyntaxErrorCausedByInvalidEqualAfterExpr(testExpr);
             throw _context.ThrowableSyntaxError("invalid syntax");
         }
     }

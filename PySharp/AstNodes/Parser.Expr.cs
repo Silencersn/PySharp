@@ -95,7 +95,7 @@ partial class Parser
         if (IsCurrentKeyword("yield"))
             return ParseYieldExpression();
 
-        var list = ParseFlexibleExpressionList(StopPredicates.UntilRightBrace, out var endsWithComma);
+        var list = ParseFlexibleExpressionList(StopPredicates.UntilRightBraceOrEqual, out var endsWithComma);
         return UnwrapOrMakeTuple(list, endsWithComma);
     }
 
@@ -1538,6 +1538,10 @@ partial class Parser
             }
             list.Add(parse());
         }
+
+        if (CurrentTokenType is TokenType.Equal && !predicate(CurrentToken))
+            throw ThrowableSyntaxErrorCausedByInvalidEqualAfterExpr(list[^1]);
+
         return list;
     }
 }
