@@ -222,6 +222,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                         break;
                     }
 
+                    // TODO: process trailing '\n' of content
                     var match = LexerRegexes.PseudoToken.Match(content, _offset);
                     if (match.Index != _offset)
                         throw _context.ThrowableSyntaxError("invalid syntax");

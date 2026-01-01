@@ -34,14 +34,14 @@ public sealed partial class PyFrame
 
     internal ICodeMetaInfoProvider? MetaInfoProvider { get; set; }
     private Dictionary<string, PyCellObject>? _closure = null;
-    private IDictionary<string, PyObject?>? _locals = null;
+    private PyFrameLocals _locals;
     internal PyFrameGlobals _globals;
 
     private PyFrame(PyFrame? back)
     {
         Back = back;
         _globals = new PyFrameGlobals();
-        _locals = Globals!;
+        _locals = new PyFrameLocals(_globals);
         CallerName = "<module>";
         Caller = null;
         FrameType = back is null ? FrameType.MainRoot : FrameType.Module;
@@ -50,7 +50,7 @@ public sealed partial class PyFrame
     {
         Back = null;
         _globals = globals;
-        _locals = null;
+        _locals = new PyFrameLocals(FrozenDictionary<string, int>.Empty);
         CallerName = $"<thread-{Environment.CurrentManagedThreadId}>";
         Caller = null;
         FrameType = FrameType.ThreadRoot;
@@ -58,7 +58,7 @@ public sealed partial class PyFrame
     private PyFrame(
         PyFrame back,
         PyFrameGlobals globals,
-        Dictionary<string, PyObject?>? locals,
+        PyFrameLocals locals,
         Dictionary<string, PyCellObject>? closure,
         string callerName,
         PyObject? caller,
@@ -77,7 +77,7 @@ public sealed partial class PyFrame
     [MemberNotNullWhen(false, nameof(Back))]
     public bool IsRoot => Back is null;
     public ConcurrentDictionary<string, PyObject> Globals => _globals.Globals;
-    public IDictionary<string, PyObject?> Locals => _locals ??= new Dictionary<string, PyObject?>();
+    public IDictionary<string, PyObject?> Locals => _locals.Locals;
     public Dictionary<string, PyCellObject> Closures => _closure ??= [];
     internal Dictionary<string, PyCellObject>? InternalClosure => _closure;
     public Stack<PyExceptionObject> Exceptions => field ??= [];
@@ -104,10 +104,11 @@ public sealed partial class PyFrame
     }
     internal PyFrame CreateFuncCallOrClassBuildFrame(string callerName, PyObject caller, FrameType frameType,
         (IReadOnlyList<PyObject> Args, IReadOnlyDictionary<string, PyObject> Kwargs)? callingArguments = null,
-        PyFrameGlobals? globals = null)
+        PyFrameGlobals? globals = null,
+        FrozenDictionary<string, int>? localVariablesToIndex = null)
     {
         Debug.Assert(frameType is FrameType.Function or FrameType.Lambda or FrameType.Class or FrameType.YieldFunction or FrameType.YieldLambda);
-        return new PyFrame(this, globals ?? _globals, null, null, callerName, caller, frameType) { CallingArguments = callingArguments };
+        return new PyFrame(this, globals ?? _globals, new(localVariablesToIndex ?? FrozenDictionary<string, int>.Empty), null, callerName, caller, frameType) { CallingArguments = callingArguments };
     }
     internal PyFrame CreateThreadRootFrame()
     {
@@ -117,7 +118,14 @@ public sealed partial class PyFrame
     internal PyFrame TempFrame(FrameType frameType)
     {
         Debug.Assert(frameType is FrameType.Comprehension or FrameType.Exec or FrameType.Eval);
-        var tempFrame = new PyFrame(this, _globals.Clone(), _locals?.ToDictionary(), _closure, CallerName, Caller, frameType)
+
+        var tempGlobals = _globals.Clone();
+        PyFrameLocals tempLocals;
+        if (ReferenceEquals(_locals._globals, _globals))
+            tempLocals = new(tempGlobals);
+        else
+            tempLocals = _locals.Clone();
+        var tempFrame = new PyFrame(this, tempGlobals, tempLocals, _closure, CallerName, Caller, frameType)
         {
             _variables = _variables
         };

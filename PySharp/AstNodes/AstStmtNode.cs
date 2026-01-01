@@ -716,6 +716,7 @@ internal sealed class FunctionCaller : ICaller
     private readonly PyArgsDef _def;
     private readonly Func<PyCallContext, PyFrame, PyResult> _getResult;
     private readonly FrameType _frameType;
+    private readonly FrozenDictionary<string, int> _localVariablesToIndex;
     public PyFunctionObject Func { get; set; }
 
     internal FunctionCaller(PyCallContext context, IFunctionOrLambda node, PyFrame frame, Func<PyCallContext, PyFrame, PyResult> getResult)
@@ -725,6 +726,7 @@ internal sealed class FunctionCaller : ICaller
         _getResult = getResult;
         _frameType = _node is FunctionDefNode ? FrameType.Function : FrameType.Lambda;
 
+        _localVariablesToIndex = _node.LocalVariables.Index().ToFrozenDictionary(v => v.Item, v => v.Index);
         // deferred init
         Func = null!;
     }
@@ -740,7 +742,7 @@ internal sealed class FunctionCaller : ICaller
             return PyResult.RaiseTypeError("wrong arguments");
 
         var backFrame = context.CurrentFrame;
-        var frame = backFrame.CreateFuncCallOrClassBuildFrame(Func.Name, Func, _frameType, (args, kwargs), Func._globals);
+        var frame = backFrame.CreateFuncCallOrClassBuildFrame(Func.Name, Func, _frameType, (args, kwargs), Func._globals, _localVariablesToIndex);
         frame._variables = _node.Variables;
 
         foreach (var localVariable in _node.LocalVariables)
@@ -769,6 +771,7 @@ internal sealed class GeneratorCaller : ICaller
     private readonly PyArgsDef _def;
     private readonly Func<PyCallContext, PyFrame, PyResult> _getResult;
     private readonly FrameType _frameType;
+    private readonly FrozenDictionary<string, int> _localVariablesToIndex;
     public PyFunctionObject Func { get; set; }
 
     internal GeneratorCaller(PyCallContext context, IFunctionOrLambda node, PyFrame frame, Func<PyCallContext, PyFrame, PyResult> getResult)
@@ -777,6 +780,7 @@ internal sealed class GeneratorCaller : ICaller
         _def = PyArgsDef.FromAst(node.Args, context, frame);
         _getResult = getResult;
         _frameType = _node is FunctionDefNode ? FrameType.YieldFunction : FrameType.YieldLambda;
+        _localVariablesToIndex = _node.LocalVariables.Index().ToFrozenDictionary(v => v.Item, v => v.Index);
 
         // deferred init
         Func = null!;
@@ -793,7 +797,7 @@ internal sealed class GeneratorCaller : ICaller
             return PyResult.RaiseTypeError("wrong arguments");
 
         var backFrame = context.CurrentFrame;
-        var frame = backFrame.CreateFuncCallOrClassBuildFrame(Func.Name, Func, _frameType, (args, kwargs), Func._globals);
+        var frame = backFrame.CreateFuncCallOrClassBuildFrame(Func.Name, Func, _frameType, (args, kwargs), Func._globals, _localVariablesToIndex);
         frame._variables = _node.Variables;
 
         foreach (var localVariable in _node.LocalVariables)

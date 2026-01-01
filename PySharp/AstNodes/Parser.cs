@@ -356,7 +356,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         if (scope.Owner is IFunctionOrLambda node)
         {
             node.CapturedVariables = [.. scope.CapturedVariables];
-            node.LocalVariables = [.. node.Variables
+            node.LocalVariables = [.. scope.Variables
                     .Where(pair => pair.Value is PyVariableType.Local or PyVariableType.Parameter)
                     .Select(pair => pair.Key)];
         }

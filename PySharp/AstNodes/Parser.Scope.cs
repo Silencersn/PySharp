@@ -7,12 +7,12 @@ partial class Parser
         private readonly IAstVariableScopeOwner? _owner;
         private readonly VariableScope? _parent;
         private readonly List<VariableScope> _children = [];
-        private readonly Dictionary<string, PyVariableType> _variableTypes = [];
+        private readonly OrderedDictionary<string, PyVariableType> _variableTypes = [];
         private readonly List<NameNode> _nameNodeTracker = [];
         private int _isInLoop;
         private readonly HashSet<string> _closureVariables = [];
 
-        public Dictionary<string, PyVariableType> Variables => _variableTypes;
+        public OrderedDictionary<string, PyVariableType> Variables => _variableTypes;
         public bool IsRoot => _parent is null;
         public VariableScope? Parent => _parent;
         public IList<VariableScope> Children => _children;

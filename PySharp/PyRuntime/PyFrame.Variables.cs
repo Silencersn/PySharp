@@ -8,11 +8,7 @@ partial class PyFrame
 {
     private bool TryLoadFromLocal(string name, [MaybeNullWhen(true)] out PyObject? value)
     {
-        value = null;
-        if (_locals is null)
-            return false;
-
-        return _locals.TryGetValue(name, out value);
+        return Locals.TryGetValue(name, out value);
     }
 
     private bool TryLoadFromClosure(string name, [MaybeNullWhen(true)] out PyObject? value)
@@ -114,7 +110,7 @@ partial class PyFrame
 
     public PyResult DeleteLocal(string name)
     {
-        if (_locals is not null && _locals.Remove(name))
+        if (Locals.Remove(name))
             return PyNoneObject.None;
 
         return PyResult.RaiseUnboundLocalError($"cannot access local variable '{name}' where it is not associated with a value");
