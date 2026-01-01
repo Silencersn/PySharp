@@ -51,8 +51,8 @@ public static partial class LexerRegexes
     public static partial Regex ContStr { get; }
 
 
-    //[GeneratedRegex(LexerRegexPatterns.Token)]
-    //public static partial Regex Token { get; }
+    [GeneratedRegex(LexerRegexPatterns.Token)]
+    public static partial Regex Token { get; }
 
 
     [GeneratedRegex(LexerRegexPatterns.PseudoExtras)]

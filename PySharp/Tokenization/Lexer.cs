@@ -222,12 +222,18 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                         break;
                     }
 
-                    // TODO: process trailing '\n' of content
                     var match = LexerRegexes.PseudoToken.Match(content, _offset);
                     if (match.Index != _offset)
                         throw _context.ThrowableSyntaxError("invalid syntax");
 
-                    TokenizePseudoToken(match);
+                    if (match.Length is 0)
+                    {
+                        match = LexerRegexes.Token.Match(content, _offset);
+                        if (match.Index != _offset || match.Length is 0)
+                            throw _context.ThrowableSyntaxError("invalid syntax");
+                    }
+
+                    TokenizeToken(match);
                     _offset = match.Index + match.Length;
                     if (_needSetNewLine)
                     {
@@ -574,7 +580,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         TokenizeMultiLineString(_wrapper is '"' ? LexerRegexes.Double3 : LexerRegexes.Single3, true);
     }
 
-    private void TokenizePseudoToken(Match match)
+    private void TokenizeToken(Match match)
     {
         var group = match.Groups[1];
 
