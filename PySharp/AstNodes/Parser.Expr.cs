@@ -526,13 +526,15 @@ partial class Parser
                 MoveNextToken();
 
                 var index = TokenStreamPosition;
+                AstExprNode nextExpr;
                 try
                 {
                     // try parse subscription
                     // lst[*expr1, expr2 := expr3]
 
                     var list = ParseFlexibleExpressionList(StopPredicates.UntilRightSquareBracket, out var endsWithComma);
-                    expr = AstNode.Subscript(expr, UnwrapOrMakeTuple(list, endsWithComma), WithAllEnd(currentMetaInfo));
+                    nextExpr = AstNode.Subscript(expr, UnwrapOrMakeTuple(list, endsWithComma), WithAllEnd(currentMetaInfo));
+                    EnsureTokenTypeThenMove(TokenType.RightSquareBracket);
                 }
                 catch (PyRuntimeException)
                 {
@@ -541,9 +543,10 @@ partial class Parser
 
                     TokenStreamPosition = index;
                     var sliceList = ParseSliceList(out var endsWithComma);
-                    expr = AstNode.Subscript(expr, UnwrapOrMakeTuple(sliceList, endsWithComma), WithAllEnd(currentMetaInfo));
-                }
+                    nextExpr = AstNode.Subscript(expr, UnwrapOrMakeTuple(sliceList, endsWithComma), WithAllEnd(currentMetaInfo));
                 EnsureTokenTypeThenMove(TokenType.RightSquareBracket);
+            }
+                expr = nextExpr;
             }
             else if (CurrentTokenType is TokenType.LeftParen)
             {
