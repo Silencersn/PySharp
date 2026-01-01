@@ -8,8 +8,6 @@ public abstract partial class AstNode : ICodeMetaInfoProvider
 {
     public CodeMetaInfo? MetaInfo { get; internal set; }
 
-    bool ICodeMetaInfoProvider.OnlyStartInfo => this is AstStmtNode;
-
     public virtual void Execute(PyCallContext context, PyFrame frame)
     {
         throw new NotSupportedException();

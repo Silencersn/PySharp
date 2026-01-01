@@ -46,13 +46,15 @@ internal static class PyTraceback
         var origLine = info.FirstLine.TrimEnd();
         var line = origLine.TrimStart();
 
-        if (provider.OnlyStartInfo)
+        if (line.Length is 0)
+            return;
+
+        if (!info.HasRange)
         {
-            if (line.Length > 0)
-                builder
-                    .Append(' ', 4)
-                    .Append(line)
-                    .AppendLine();
+            builder
+                .Append(' ', 4)
+                .Append(line)
+                .AppendLine();
             return;
         }
 
@@ -65,32 +67,30 @@ internal static class PyTraceback
 
         builder.AppendLine($"    {line}");
 
-        if (info.CrucialStart == default || info.CrucialStart.Line != info.Start.Line)
+        if (!info.HasCrucialRange || info.CrucialStart.Line != info.Start.Line)
         {
             if (end - start < line.Length)
+                // if the line is full of '^', do not draw
                 builder
                     .Append(' ', 4 + start)
                     .Append('^', end - start)
                     .AppendLine();
+            return;
         }
-        else
-        {
-            Debug.Assert(info.CrucialStart.Line == info.Start.Line);
 
-            var crucialStart = info.CrucialStart.Offset + offset;
-            var crucialEnd = info.CrucialEnd.Line == info.Start.Line
-                ? info.CrucialEnd.Offset + offset
-                : line.Length;
-            Debug.Assert(crucialEnd > crucialStart);
-            Debug.Assert(end >= crucialEnd);
-            Debug.Assert(crucialStart >= start);
+        var crucialStart = info.CrucialStart.Offset + offset;
+        var crucialEnd = info.CrucialEnd.Line == info.Start.Line
+            ? info.CrucialEnd.Offset + offset
+            : line.Length;
+        Debug.Assert(crucialEnd > crucialStart);
+        Debug.Assert(end >= crucialEnd);
+        Debug.Assert(crucialStart >= start);
 
-            builder
-                .Append(' ', 4 + start)
-                .Append('~', crucialStart - start)
-                .Append('^', crucialEnd - crucialStart)
-                .Append('~', end - crucialEnd)
-                .AppendLine();
-        }
+        builder
+            .Append(' ', 4 + start)
+            .Append('~', crucialStart - start)
+            .Append('^', crucialEnd - crucialStart)
+            .Append('~', end - crucialEnd)
+            .AppendLine();
     }
 }

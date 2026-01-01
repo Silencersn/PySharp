@@ -80,7 +80,6 @@ public sealed partial class Parser : ICodeMetaInfoProvider
 
     private TokenType CurrentTokenType => CurrentToken.Type;
 
-    bool ICodeMetaInfoProvider.OnlyStartInfo => true;
     CodeMetaInfo? ICodeMetaInfoProvider.MetaInfo => CreateMetaInfo();
 
     internal Parser(PyCallContext context, CodeSource codeSource, TokenStream tokenStream)

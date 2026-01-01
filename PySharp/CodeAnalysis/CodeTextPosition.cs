@@ -2,6 +2,8 @@
 
 public readonly record struct CodeTextPosition
 {
+    public static readonly CodeTextPosition Empty;
+
     public readonly int Line;
     public readonly int Offset;
 
