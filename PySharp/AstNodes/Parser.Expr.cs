@@ -477,19 +477,7 @@ partial class Parser
     /// <returns></returns>
     private List<AstExprNode> ParseSliceList(out bool endsWithComma)
     {
-        List<AstExprNode> list = [ParseSliceItem()];
-        endsWithComma = false;
-        while (CurrentTokenType is TokenType.Comma)
-        {
-            MoveNextToken();
-            if (CurrentTokenType is TokenType.RightSquareBracket)
-            {
-                endsWithComma = true;
-                break;
-            }
-            list.Add(ParseSliceItem());
-        }
-        return list;
+        return ParseSomeExpressionList(ParseSliceItem, StopPredicates.UntilRightSquareBracket, out endsWithComma);
     }
 
     /// <summary>
@@ -544,8 +532,8 @@ partial class Parser
                     TokenStreamPosition = index;
                     var sliceList = ParseSliceList(out var endsWithComma);
                     nextExpr = AstNode.Subscript(expr, UnwrapOrMakeTuple(sliceList, endsWithComma), WithAllEnd(currentMetaInfo));
-                EnsureTokenTypeThenMove(TokenType.RightSquareBracket);
-            }
+                    EnsureTokenTypeThenMove(TokenType.RightSquareBracket);
+                }
                 expr = nextExpr;
             }
             else if (CurrentTokenType is TokenType.LeftParen)
@@ -1006,20 +994,7 @@ partial class Parser
 
     private List<AstExprNode> ParseStarredExpressionList(StopPredicate predicate, out bool endsWithComma)
     {
-        endsWithComma = false;
-        List<AstExprNode> list = [ParseStarredExpression()];
-        while (CurrentTokenType is TokenType.Comma)
-        {
-            MoveNextToken();
-
-            if (predicate(CurrentToken))
-            {
-                endsWithComma = true;
-                break;
-            }
-            list.Add(ParseStarredExpression());
-        }
-        return list;
+        return ParseSomeExpressionList(ParseStarredExpression, predicate, out endsWithComma);
     }
 
     /// <summary>
@@ -1042,20 +1017,7 @@ partial class Parser
     /// <param name="endsWithComma"></param>
     private List<AstExprNode> ParseFlexibleExpressionList(StopPredicate predicate, out bool endsWithComma)
     {
-        endsWithComma = false;
-        List<AstExprNode> list = [ParseFlexibleExpression()];
-        while (CurrentTokenType is TokenType.Comma)
-        {
-            MoveNextToken();
-
-            if (predicate(CurrentToken))
-            {
-                endsWithComma = true;
-                break;
-            }
-            list.Add(ParseFlexibleExpression());
-        }
-        return list;
+        return ParseSomeExpressionList(ParseFlexibleExpression, predicate, out endsWithComma);
     }
 
     /// <summary>
@@ -1106,19 +1068,7 @@ partial class Parser
     /// <returns></returns>
     private List<AstExprNode> ParseTargetList(StopPredicate predicate, out bool endsWithComma)
     {
-        endsWithComma = false;
-        List<AstExprNode> list = [ParseTarget()];
-        while (CurrentTokenType is TokenType.Comma)
-        {
-            MoveNextToken();
-            if (predicate(CurrentToken))
-            {
-                endsWithComma = true;
-                break;
-            }
-            list.Add(ParseTarget());
-        }
-        return list;
+        return ParseSomeExpressionList(ParseTarget, predicate, out endsWithComma);
     }
 
     //private List<AstExprNode> ParseTargetListUntilTokens(params ReadOnlySpan<TokenType> stopTokens)
@@ -1461,19 +1411,7 @@ partial class Parser
     /// <returns></returns>
     private List<AstExprNode> ParseExpressionList(StopPredicate predicate, out bool endsWithComma)
     {
-        endsWithComma = false;
-        List<AstExprNode> list = [ParseExpression()];
-        while (CurrentTokenType is TokenType.Comma)
-        {
-            MoveNextToken();
-            if (predicate(CurrentToken))
-            {
-                endsWithComma = true;
-                break;
-            }
-            list.Add(ParseExpression());
-        }
-        return list;
+        return ParseSomeExpressionList(ParseExpression, predicate, out endsWithComma);
     }
 
     /// <summary>
@@ -1584,5 +1522,22 @@ partial class Parser
         }
 
         return (args, kwargs);
+    }
+
+    private List<AstExprNode> ParseSomeExpressionList(Func<AstExprNode> parse, StopPredicate predicate, out bool endsWithComma)
+    {
+        endsWithComma = false;
+        List<AstExprNode> list = [parse()];
+        while (CurrentTokenType is TokenType.Comma)
+        {
+            MoveNextToken();
+            if (predicate(CurrentToken))
+            {
+                endsWithComma = true;
+                break;
+            }
+            list.Add(parse());
+        }
+        return list;
     }
 }
