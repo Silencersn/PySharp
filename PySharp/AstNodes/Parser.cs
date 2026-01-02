@@ -163,14 +163,6 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         };
     }
 
-    private static CodeMetaInfo? WithEndOfOtherNode(CodeMetaInfo metaInfo, AstNode otherNode)
-    {
-        if (otherNode.MetaInfo is null)
-            return null;
-
-        metaInfo.End = otherNode.MetaInfo.End;
-        return metaInfo;
-    }
     private CodeMetaInfo CopyThenWithEnd(CodeMetaInfo metaInfo)
     {
         return new CodeMetaInfo

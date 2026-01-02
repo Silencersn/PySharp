@@ -46,7 +46,7 @@ partial class Parser
         }
         public AstMetaInfo WithPreviousEnd()
         {
-            var position = _parser._tokenStream.Position;
+            var position = _parser._tokenStream.Position - 1;
             while (IsUselessToken(_parser._tokenStream.GetTokenAt(position)))
                 position--;
             return new(_parser, StartTokenPosition, position, CrucialStartTokenPosition, CrucialEndTokenPosition);

@@ -615,7 +615,7 @@ partial class Parser
     {
         if (CurrentTokenType is TokenType.Minus or TokenType.Plus or TokenType.Tilde)
         {
-            var metaInfo = CreateMetaInfo();
+            var metaInfo = CreateAstMetaInfo();
             AstUnaryOpNode? op = CurrentTokenType switch
             {
                 TokenType.Minus => USubNode.Shared,
@@ -626,7 +626,7 @@ partial class Parser
             Debug.Assert(op is not null);
             MoveNextToken();
             var uexpr = ParseUExpr();
-            return AstNode.UnaryOp(op, uexpr, WithEndOfOtherNode(metaInfo, uexpr));
+            return AstNode.UnaryOp(op, uexpr, metaInfo.WithPreviousEnd());
         }
 
         return ParsePower();
@@ -657,7 +657,7 @@ partial class Parser
             Debug.Assert(op is not null);
             MoveNextToken();
             var right = ParseMExpr();
-            left = AstNode.BinOp(op, left, right, WithEndOfOtherNode(currentMetaInfo, right));
+            left = AstNode.BinOp(op, left, right, currentMetaInfo.WithPreviousEnd());
         }
 
         return left;
@@ -678,7 +678,7 @@ partial class Parser
             var add = CurrentTokenType is TokenType.Plus;
             MoveNextToken();
             var right = ParseMExpr();
-            left = AstNode.BinOp(add ? AddNode.Shared : SubNode.Shared, left, right, WithEndOfOtherNode(currentMetaInfo, right));
+            left = AstNode.BinOp(add ? AddNode.Shared : SubNode.Shared, left, right, currentMetaInfo.WithPreviousEnd());
         }
 
         return left;
@@ -699,7 +699,7 @@ partial class Parser
             var lshift = CurrentTokenType is TokenType.LeftShift;
             MoveNextToken();
             var right = ParseAExpr();
-            left = AstNode.BinOp(lshift ? LShiftNode.Shared : RShiftNode.Shared, left, right, WithEndOfOtherNode(currentMetaInfo, right));
+            left = AstNode.BinOp(lshift ? LShiftNode.Shared : RShiftNode.Shared, left, right, currentMetaInfo.WithPreviousEnd());
         }
 
         return left;
@@ -719,7 +719,7 @@ partial class Parser
             var currentMetaInfo = startMetaInfo.WithCrucial();
             MoveNextToken();
             var shiftExpr = ParseShiftExpr();
-            andExpr = AstNode.BinOp(BitAndNode.Shared, andExpr, shiftExpr, WithEndOfOtherNode(currentMetaInfo, shiftExpr));
+            andExpr = AstNode.BinOp(BitAndNode.Shared, andExpr, shiftExpr, currentMetaInfo.WithPreviousEnd());
         }
 
         return andExpr;
@@ -739,7 +739,7 @@ partial class Parser
             var currentMetaInfo = startMetaInfo.WithCrucial();
             MoveNextToken();
             var andExpr = ParseAndExpr();
-            xorExpr = AstNode.BinOp(BitXorNode.Shared, xorExpr, andExpr, WithEndOfOtherNode(currentMetaInfo, andExpr));
+            xorExpr = AstNode.BinOp(BitXorNode.Shared, xorExpr, andExpr, currentMetaInfo.WithPreviousEnd());
         }
 
         return xorExpr;
@@ -759,7 +759,7 @@ partial class Parser
             var currentMetaInfo = startMetaInfo.WithCrucial();
             MoveNextToken();
             var xorExpr = ParseXorExpr();
-            orExpr = AstNode.BinOp(BitOrNode.Shared, orExpr, xorExpr, WithEndOfOtherNode(currentMetaInfo, xorExpr));
+            orExpr = AstNode.BinOp(BitOrNode.Shared, orExpr, xorExpr, currentMetaInfo.WithPreviousEnd());
         }
 
         return orExpr;
@@ -772,7 +772,7 @@ partial class Parser
     /// <returns></returns>
     private AstExprNode ParseComparison()
     {
-        var metaInfo = CreateMetaInfo();
+        var metaInfo = CreateAstMetaInfo();
         var expr = ParseOrExpr();
         var ops = new List<AstCmpopNode>();
         var comptors = new List<AstExprNode>();
@@ -844,7 +844,7 @@ partial class Parser
         }
 
         if (ops.Count > 0)
-            return AstNode.Compare(expr, ops.Zip(comptors), WithEndOfOtherNode(metaInfo, comptors[^1]));
+            return AstNode.Compare(expr, ops.Zip(comptors), metaInfo.WithPreviousEnd());
 
         return expr;
     }
@@ -913,7 +913,7 @@ partial class Parser
     /// <returns></returns>
     private AstExprNode ParseConditionalExpression()
     {
-        var metaInfo = CreateMetaInfo();
+        var metaInfo = CreateAstMetaInfo();
         var body = ParseOrTest();
         if (IsCurrentKeyword("if"))
         {
@@ -921,7 +921,7 @@ partial class Parser
             var test = ParseOrTest();
             EnsureKeywordThenMove("else");
             var orelse = ParseExpression();
-            return AstNode.IfExp(test, body, orelse, WithEndOfOtherNode(metaInfo, orelse));
+            return AstNode.IfExp(test, body, orelse, metaInfo.WithPreviousEnd());
         }
         return body;
     }
@@ -1509,19 +1509,19 @@ partial class Parser
             throw _context.ThrowableSyntaxError("'yield' inside comprehension" /* TODO: a more specific name like: generator expression */);
 
         ((IFunctionOrLambda)CurrentScope.Owner!).HasYield = true;
-        var metaInfo = CreateMetaInfo();
+        var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("yield");
         if (IsCurrentKeyword("from"))
         {
             MoveNextToken();
             var expr = ParseExpression();
-            return AstNode.YieldFrom(expr, WithEndOfOtherNode(metaInfo, expr));
+            return AstNode.YieldFrom(expr, metaInfo.WithPreviousEnd());
         }
         if (StopPredicates.UntilRightParenOrNewLineOrSemicolon(CurrentToken))
             return AstNode.Yield(null, CopyThenWithEnd(metaInfo));
         var list = ParseStarredExpressionList(StopPredicates.UntilRightParenOrNewLineOrSemicolon, out var endsWithComma);
         var value = UnwrapOrMakeTuple(list, endsWithComma);
-        return AstNode.Yield(value, WithEndOfOtherNode(metaInfo, value));
+        return AstNode.Yield(value, metaInfo.WithPreviousEnd());
     }
 
     /// <summary>
