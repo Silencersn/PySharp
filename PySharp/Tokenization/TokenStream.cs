@@ -11,6 +11,7 @@ public abstract class TokenStream
     /// </summary>
     public abstract TokenInfo CurrentToken { get; }
     public abstract void MoveNextToken();
+    public abstract TokenInfo GetTokenAt(int index);
 }
 
 public sealed class TokenArrayStream : TokenStream
@@ -46,5 +47,10 @@ public sealed class TokenArrayStream : TokenStream
             throw new EndOfStreamException();
 
         _position++;
+    }
+
+    public override TokenInfo GetTokenAt(int index)
+    {
+        return _tokens[index];
     }
 }

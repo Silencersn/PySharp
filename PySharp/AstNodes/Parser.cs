@@ -58,7 +58,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
 
     private int TokenStreamPosition
     {
-        get => _tokenStream.Position;
+        get { SkipUselessToken(); return _tokenStream.Position; }
         set => _tokenStream.Position = value;
     }
 
@@ -69,11 +69,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
     {
         get
         {
-            while (_tokenStream.CurrentToken.Type is TokenType.NL or TokenType.Comment)
-            {
-                _tokenStream.MoveNextToken();
-            }
-
+            SkipUselessToken();
             return _tokenStream.CurrentToken;
         }
     }
@@ -94,12 +90,23 @@ public sealed partial class Parser : ICodeMetaInfoProvider
     {
     }
 
+    private static bool IsUselessToken(TokenInfo tokenInfo)
+    {
+        return tokenInfo.Type is TokenType.NL or TokenType.Comment;
+    }
+    private void SkipUselessToken()
+    {
+        while (IsUselessToken(_tokenStream.CurrentToken))
+            _tokenStream.MoveNextToken();
+    }
+
     private void MoveNextToken()
     {
         if (_tokenStream.CurrentToken.Type is TokenType.EndMarker)
             return;
 
         _tokenStream.MoveNextToken();
+        SkipUselessToken();
     }
     private void EnsureTokenType(TokenType type)
     {

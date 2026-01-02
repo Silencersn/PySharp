@@ -516,13 +516,13 @@ partial class Parser
     /// <exception cref="PyRuntimeException"></exception>
     private AstExprNode ParsePrimary()
     {
-        var startMetaInfo = CreateMetaInfo();
+        var startMetaInfo = CreateAstMetaInfo();
         var expr = ParseAtom();
         while (CurrentTokenType is TokenType.LeftSquareBracket or TokenType.LeftParen or TokenType.Dot)
         {
             if (CurrentTokenType is TokenType.LeftSquareBracket)
             {
-                var currentMetaInfo = CopyThenMarkCrucial(startMetaInfo);
+                var currentMetaInfo = startMetaInfo.WithCrucial();
                 MoveNextToken();
 
                 var index = TokenStreamPosition;
@@ -533,7 +533,7 @@ partial class Parser
                     // lst[*expr1, expr2 := expr3]
 
                     var list = ParseFlexibleExpressionList(StopPredicates.UntilRightSquareBracket, out var endsWithComma);
-                    nextExpr = AstNode.Subscript(expr, UnwrapOrMakeTuple(list, endsWithComma), WithAllEnd(currentMetaInfo));
+                    nextExpr = AstNode.Subscript(expr, UnwrapOrMakeTuple(list, endsWithComma), currentMetaInfo.WithAllEnd());
                     EnsureTokenTypeThenMove(TokenType.RightSquareBracket);
                 }
                 catch (PyRuntimeException)
@@ -543,7 +543,7 @@ partial class Parser
 
                     TokenStreamPosition = index;
                     var sliceList = ParseSliceList(out var endsWithComma);
-                    nextExpr = AstNode.Subscript(expr, UnwrapOrMakeTuple(sliceList, endsWithComma), WithAllEnd(currentMetaInfo));
+                    nextExpr = AstNode.Subscript(expr, UnwrapOrMakeTuple(sliceList, endsWithComma), currentMetaInfo.WithAllEnd());
                     EnsureTokenTypeThenMove(TokenType.RightSquareBracket);
                 }
                 expr = nextExpr;
@@ -558,16 +558,16 @@ partial class Parser
                     // primary "(" argument_list ")"
 
                     var (args, kwargs) = ParseArgumentList();
-                    expr = AstNode.Call(expr, args, kwargs, CopyThenWithEnd(startMetaInfo));
+                    expr = AstNode.Call(expr, args, kwargs, startMetaInfo.WithEnd());
                 }
                 catch (PyRuntimeException)
                 {
                     // primary "(" comprehension ")"
 
                     TokenStreamPosition = index;
-                    var metaInfo = CreateMetaInfo();
+                    var metaInfo = CreateAstMetaInfo();
                     var (elts, generators) = ParseComprehension();
-                    expr = AstNode.Call(expr, [AstNode.GeneratorExp(elts, generators, CopyThenWithEnd(metaInfo))], [], CopyThenWithEnd(startMetaInfo));
+                    expr = AstNode.Call(expr, [AstNode.GeneratorExp(elts, generators, metaInfo.WithPreviousEnd())], [], startMetaInfo.WithEnd());
                 }
                 EnsureTokenTypeThenMove(TokenType.RightParen);
             }
@@ -576,8 +576,7 @@ partial class Parser
                 // primary.attr
 
                 MoveNextToken();
-                var metaInfo = CopyThenWithEnd(startMetaInfo);
-                expr = AstNode.Attribute(expr, ParseIdentifier(), metaInfo);
+                expr = AstNode.Attribute(expr, ParseIdentifier(), startMetaInfo.WithPreviousEnd());
             }
             else
             {
