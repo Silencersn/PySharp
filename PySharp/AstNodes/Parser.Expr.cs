@@ -1159,12 +1159,15 @@ partial class Parser
     /// <returns></returns>
     private AstExprNode ParseListDisplay()
     {
+        var metaInfo = CreateMetaInfo();
+
         EnsureTokenTypeThenMove(TokenType.LeftSquareBracket);
 
         if (CurrentTokenType is TokenType.RightSquareBracket)
         {
+            metaInfo = CopyThenWithEnd(metaInfo);
             MoveNextToken();
-            return AstNode.List();
+            return AstNode.List([], metaInfo);
         }
 
         if (TestIsComprehension())
@@ -1174,7 +1177,7 @@ partial class Parser
             return AstNode.ListComp(elt, generators);
         }
 
-        var list = AstNode.List(ParseFlexibleExpressionList(StopPredicates.UntilRightSquareBracket, out _));
+        var list = AstNode.List(ParseFlexibleExpressionList(StopPredicates.UntilRightSquareBracket, out _), CopyThenWithEnd(metaInfo));
         EnsureTokenTypeThenMove(TokenType.RightSquareBracket);
         return list;
     }
