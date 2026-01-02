@@ -153,25 +153,6 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         EnsureTokenTypeForTest(type, testExpr);
         MoveNextToken();
     }
-    private CodeMetaInfo CreateMetaInfo()
-    {
-        return new CodeMetaInfo()
-        {
-            Source = _codeSource,
-            Start = CurrentToken.Start,
-            End = CurrentToken.End,
-        };
-    }
-
-    private CodeMetaInfo CopyThenWithEnd(CodeMetaInfo metaInfo)
-    {
-        return new CodeMetaInfo
-        {
-            Source = metaInfo.Source,
-            Start = metaInfo.Start,
-            End = CurrentToken.End,
-        };
-    }
 
     public ModuleNode ParseModuleNode()
     {

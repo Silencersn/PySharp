@@ -70,6 +70,16 @@ partial class Parser
         }
     }
 
+    private CodeMetaInfo CreateMetaInfo()
+    {
+        return new CodeMetaInfo()
+        {
+            Source = _codeSource,
+            Start = CurrentToken.Start,
+            End = CurrentToken.End,
+        };
+    }
+
     internal AstMetaInfo CreateAstMetaInfo()
     {
         return new AstMetaInfo(this, TokenStreamPosition);
