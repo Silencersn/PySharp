@@ -76,11 +76,11 @@ partial class AstNode
 
         return new ListNode([.. elts]) { MetaInfo = metaInfo };
     }
-    public static TupleNode Tuple(params IEnumerable<AstExprNode> elts)
+    public static TupleNode Tuple(IEnumerable<AstExprNode> elts, CodeMetaInfo? metaInfo)
     {
         ArgumentNullException.ThrowIfNull(elts);
 
-        return new TupleNode([.. elts]);
+        return new TupleNode([.. elts]) { MetaInfo = metaInfo };
     }
     public static DictNode Dict(params IEnumerable<KeyValuePair<AstExprNode, AstExprNode>> pairs)
     {

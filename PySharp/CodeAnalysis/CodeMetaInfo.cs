@@ -1,6 +1,6 @@
 ﻿namespace PySharp.CodeAnalysis;
 
-public sealed class CodeMetaInfo
+public sealed record class CodeMetaInfo
 {
     public required CodeSource Source { get; init; }
     public ReadOnlySpan<char> FirstLine => Source.Code.GetLineOrDefault(Start.Line, false);

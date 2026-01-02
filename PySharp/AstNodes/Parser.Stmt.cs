@@ -194,10 +194,7 @@ partial class Parser
                     return new ReturnNode() { MetaInfo = metaInfo };
 
                 var list = ParseExpressionList(StopPredicates.UntilNewLineOrSemicolon, out var comma);
-                if (list.Count is 1 && !comma)
-                    return new ReturnNode(list[0]) { MetaInfo = metaInfo };
-
-                return new ReturnNode(AstNode.Tuple(list)) { MetaInfo = metaInfo };
+                return new ReturnNode(UnwrapOrMakeTuple(list, comma)) { MetaInfo = metaInfo };
             }
             else if (keyword is "pass")
             {

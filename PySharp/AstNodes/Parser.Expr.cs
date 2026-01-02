@@ -1,4 +1,5 @@
-﻿using PySharp.PyModules.Builtins;
+﻿using PySharp.CodeAnalysis;
+using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.Tokenization;
@@ -45,19 +46,30 @@ partial class Parser
         }
         else if (CurrentTokenType is TokenType.LeftParen)
         {
-            EnsureTokenTypeThenMove(TokenType.LeftParen);
+            var index = TokenStreamPosition;
+            MoveNextToken();
+
+            if (IsCurrentKeyword("yield"))
+            {
+                TokenStreamPosition = index;
+                return ParseYieldAtom();
+            }
 
             // () is an empty tuple
             if (CurrentTokenType is TokenType.RightParen)
+            {
+                TokenStreamPosition = index;
                 return ParseParenthForm();
-
-            if (IsCurrentKeyword("yield"))
-                return ParseYieldAtom();
+            }
 
             // generator_expression
             if (TestIsComprehension())
+            {
+                TokenStreamPosition = index;
                 return ParseGeneratorExpression();
+            }
 
+            TokenStreamPosition = index;
             return ParseParenthForm();
         }
         else if (CurrentTokenType is TokenType.LeftBrace)
@@ -475,7 +487,7 @@ partial class Parser
     /// slice_list: <see cref="ParseSliceItem">slice_item</see> ("," <see cref="ParseSliceItem">slice_item</see>)* [","]
     /// </summary>
     /// <returns></returns>
-    private List<AstExprNode> ParseSliceList(out bool endsWithComma)
+    private List<AstExprNode> ParseSliceList(out TokenInfo? endsWithComma)
     {
         return ParseSomeExpressionList(ParseSliceItem, StopPredicates.UntilRightSquareBracket, out endsWithComma);
     }
@@ -992,7 +1004,7 @@ partial class Parser
         return ParseOrExpr();
     }
 
-    private List<AstExprNode> ParseStarredExpressionList(StopPredicate predicate, out bool endsWithComma)
+    private List<AstExprNode> ParseStarredExpressionList(StopPredicate predicate, out TokenInfo? endsWithComma)
     {
         return ParseSomeExpressionList(ParseStarredExpression, predicate, out endsWithComma);
     }
@@ -1015,7 +1027,7 @@ partial class Parser
     /// <param name="predicate"></param>
     /// <returns></returns>
     /// <param name="endsWithComma"></param>
-    private List<AstExprNode> ParseFlexibleExpressionList(StopPredicate predicate, out bool endsWithComma)
+    private List<AstExprNode> ParseFlexibleExpressionList(StopPredicate predicate, out TokenInfo? endsWithComma)
     {
         return ParseSomeExpressionList(ParseFlexibleExpression, predicate, out endsWithComma);
     }
@@ -1028,11 +1040,38 @@ partial class Parser
     /// <param name="list"></param>
     /// <param name="endsWithComma"></param>
     /// <returns></returns>
-    private static AstExprNode UnwrapOrMakeTuple(List<AstExprNode> list, bool endsWithComma)
+    private static AstExprNode UnwrapOrMakeTuple(List<AstExprNode> list, TokenInfo? endsWithComma)
     {
-        if (list.Count is 1 && !endsWithComma)
+        Debug.Assert(list.Count > 0);
+
+        if (list.Count is 1 && endsWithComma is null)
             return list[0];
-        return AstNode.Tuple(list);
+
+        CodeMetaInfo? metaInfo = null;
+
+        var startMetaInfo = list[0].MetaInfo;
+        if (startMetaInfo is not null)
+        {
+            metaInfo = new CodeMetaInfo
+            {
+                Source = startMetaInfo.Source,
+                Start = startMetaInfo.Start,
+            };
+            if (endsWithComma is not null)
+            {
+                metaInfo.End = endsWithComma.End;
+            }
+            else
+            {
+                var endMetaInfo = list[^1].MetaInfo;
+                if (endMetaInfo is not null)
+                    metaInfo.End = endMetaInfo.End;
+                else
+                    metaInfo = null;
+            }
+        }
+
+        return AstNode.Tuple(list, metaInfo);
     }
 
     /// <summary>
@@ -1066,7 +1105,7 @@ partial class Parser
     /// <param name="predicate"></param>
     /// <param name="endsWithComma"></param>
     /// <returns></returns>
-    private List<AstExprNode> ParseTargetList(StopPredicate predicate, out bool endsWithComma)
+    private List<AstExprNode> ParseTargetList(StopPredicate predicate, out TokenInfo? endsWithComma)
     {
         return ParseSomeExpressionList(ParseTarget, predicate, out endsWithComma);
     }
@@ -1289,9 +1328,7 @@ partial class Parser
     /// <returns></returns>
     private GeneratorExpNode ParseGeneratorExpression()
     {
-        // here is no need to EnsureTokenTypeThenMove(TokenType.LeftParen)
-        // because TokenType.LeftParen is consumed
-
+        EnsureTokenTypeThenMove(TokenType.LeftParen);
         var (elt, generators) = ParseComprehension();
         EnsureTokenTypeThenMove(TokenType.RightParen);
         return AstNode.GeneratorExp(elt, generators);
@@ -1412,7 +1449,7 @@ partial class Parser
     /// <param name="endsWithComma"></param>
     /// <param name="stopTokens"></param>
     /// <returns></returns>
-    private List<AstExprNode> ParseExpressionList(StopPredicate predicate, out bool endsWithComma)
+    private List<AstExprNode> ParseExpressionList(StopPredicate predicate, out TokenInfo? endsWithComma)
     {
         return ParseSomeExpressionList(ParseExpression, predicate, out endsWithComma);
     }
@@ -1423,14 +1460,14 @@ partial class Parser
     /// <returns></returns>
     private AstExprNode ParseParenthForm()
     {
-        // here is no need to EnsureTokenTypeThenMove(TokenType.LeftParen)
-        // because TokenType.LeftParen is consumed
+        var metaInfo = CreateMetaInfo();
+        EnsureTokenTypeThenMove(TokenType.LeftParen);
 
         // () is an empty tuple
         if (CurrentTokenType is TokenType.RightParen)
         {
             MoveNextToken();
-            return AstNode.Tuple();
+            return AstNode.Tuple([], CopyThenWithEnd(metaInfo));
         }
 
         var list = ParseFlexibleExpressionList(StopPredicates.UntilRightParen, out var endsWithComma);
@@ -1444,7 +1481,7 @@ partial class Parser
     /// <returns></returns>
     private AstExprNode ParseYieldAtom()
     {
-        // TokenType.LeftParen should be consumed
+        EnsureTokenTypeThenMove(TokenType.LeftParen);
         var yieldExpr = ParseYieldExpression();
         EnsureTokenTypeThenMove(TokenType.RightParen);
         return yieldExpr;
@@ -1527,16 +1564,16 @@ partial class Parser
         return (args, kwargs);
     }
 
-    private List<AstExprNode> ParseSomeExpressionList(Func<AstExprNode> parse, StopPredicate predicate, out bool endsWithComma)
+    private List<AstExprNode> ParseSomeExpressionList(Func<AstExprNode> parse, StopPredicate predicate, out TokenInfo? endsWithComma)
     {
-        endsWithComma = false;
+        endsWithComma = null;
         List<AstExprNode> list = [parse()];
         while (CurrentTokenType is TokenType.Comma)
         {
             MoveNextToken();
             if (predicate(CurrentToken))
             {
-                endsWithComma = true;
+                endsWithComma = CurrentToken;
                 break;
             }
             list.Add(parse());
