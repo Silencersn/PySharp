@@ -41,12 +41,6 @@ public class AssignNode : AstStmtNode
             target.SetTargetValue(context, value, frame);
         }
     }
-    public override void EnumerateNodes(Action<AstNode> action)
-    {
-        base.EnumerateNodes(action);
-        Targets.EnumerateNodes(action);
-        Value.EnumerateNodes(action);
-    }
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         foreach (var t in Targets) yield return t;
@@ -90,12 +84,6 @@ public class AssertNode : AstStmtNode
             .AppendFields(("test", Test), ("msg", Msg));
     }
 
-    public override void EnumerateNodes(Action<AstNode> action)
-    {
-        base.EnumerateNodes(action);
-        Test.EnumerateNodes(action);
-        Msg?.EnumerateNodes(action);
-    }
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         yield return Test;
@@ -144,13 +132,6 @@ public class AugAssignNode : AstStmtNode
         Target.SetTargetValue(context, Op.GetOpValue(context, Target.GetExprValue(context, frame), Value.GetExprValue(context, frame)).PyUnwrapIncludedNotImplemented(context), frame);
     }
 
-    public override void EnumerateNodes(Action<AstNode> action)
-    {
-        base.EnumerateNodes(action);
-        Target.EnumerateNodes(action);
-        Op.EnumerateNodes(action);
-        Value.EnumerateNodes(action);
-    }
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         yield return Target;
@@ -195,11 +176,6 @@ public class ExprNode : AstStmtNode
             .AppendFields(("value", Value));
     }
 
-    public override void EnumerateNodes(Action<AstNode> action)
-    {
-        base.EnumerateNodes(action);
-        Value.EnumerateNodes(action);
-    }
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         yield return Value;
@@ -244,13 +220,6 @@ public class IfNode : AstStmtNode
         }
     }
 
-    public override void EnumerateNodes(Action<AstNode> action)
-    {
-        base.EnumerateNodes(action);
-        Test.EnumerateNodes(action);
-        Body.EnumerateNodes(action);
-        OrElse.EnumerateNodes(action);
-    }
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         yield return Test;
@@ -302,11 +271,6 @@ public class ReturnNode : AstStmtNode
         throw new AstReturnException(Value?.GetExprValue(context, frame) ?? PyNoneObject.None);
     }
 
-    public override void EnumerateNodes(Action<AstNode> action)
-    {
-        base.EnumerateNodes(action);
-        Value?.EnumerateNodes(action);
-    }
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         if (Value is not null)
@@ -373,13 +337,6 @@ public class WhileNode : AstStmtNode
         }
     }
 
-    public override void EnumerateNodes(Action<AstNode> action)
-    {
-        base.EnumerateNodes(action);
-        Test.EnumerateNodes(action);
-        Body.EnumerateNodes(action);
-        OrElse.EnumerateNodes(action);
-    }
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         yield return Test;
@@ -443,14 +400,6 @@ public class ForNode : AstStmtNode
         }
     }
 
-    public override void EnumerateNodes(Action<AstNode> action)
-    {
-        base.EnumerateNodes(action);
-        Target.EnumerateNodes(action);
-        Iter.EnumerateNodes(action);
-        Body.EnumerateNodes(action);
-        OrElse.EnumerateNodes(action);
-    }
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         yield return Target;
@@ -513,11 +462,12 @@ public class RaiseNode : AstStmtNode
         }
     }
 
-    public override void EnumerateNodes(Action<AstNode> action)
+    public override IEnumerable<AstNode> EnumerateSubNodes()
     {
-        base.EnumerateNodes(action);
-        Exc?.EnumerateNodes(action);
-        Cause?.EnumerateNodes(action);
+        if (Exc is not null)
+            yield return Exc;
+        if (Cause is not null)
+            yield return Cause;
     }
 }
 
@@ -573,14 +523,6 @@ public class TryNode : AstStmtNode
         }
     }
 
-    public override void EnumerateNodes(Action<AstNode> action)
-    {
-        base.EnumerateNodes(action);
-        Body.EnumerateNodes(action);
-        Exceptors.EnumerateNodes(action);
-        OrElse.EnumerateNodes(action);
-        FinalBody.EnumerateNodes(action);
-    }
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         foreach (var stmt in Body) yield return stmt;
@@ -624,11 +566,6 @@ public class ImportNode : AstStmtNode
         }
     }
 
-    public override void EnumerateNodes(Action<AstNode> action)
-    {
-        base.EnumerateNodes(action);
-        Names.EnumerateNodes(action);
-    }
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         foreach (var n in Names) yield return n;
@@ -704,6 +641,11 @@ public class ImportFromNode : AstStmtNode
 
             frame.SetVariable(name.AsName ?? name.Name, value).PyUnwrap(context);
         }
+    }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        return Names;
     }
 }
 
@@ -951,18 +893,13 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda, IFunctionOrClass
         return PyNoneObject.None;
     }
 
-    public override void EnumerateNodes(Action<AstNode> action)
-    {
-        base.EnumerateNodes(action);
-        Args.EnumerateNodes(action);
-        Body.EnumerateNodes(action);
-        DecoratorList.EnumerateNodes(action);
-    }
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         yield return Args;
-        foreach (var stmt in Body) yield return stmt;
-        foreach (var d in DecoratorList) yield return d;
+        foreach (var stmt in Body)
+            yield return stmt;
+        foreach (var d in DecoratorList)
+            yield return d;
     }
 }
 

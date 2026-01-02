@@ -25,11 +25,6 @@ public abstract partial class AstNode : ICodeMetaInfoProvider
         throw new NotImplementedException();
     }
 
-    public virtual void EnumerateNodes(Action<AstNode> action)
-    {
-        action(this);
-    }
-
     public abstract IEnumerable<AstNode> EnumerateSubNodes();
 }
 

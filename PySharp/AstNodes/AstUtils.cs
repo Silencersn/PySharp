@@ -150,14 +150,6 @@ internal static class AstUtils
             return testNode.GetExprValue(context, frame).Bool(context).PyUnwrap(context).PyCast<PyBoolObject>(context).BoolValue;
     }
 
-    public static void EnumerateNodes(this IEnumerable<AstNode> nodes, Action<AstNode> action)
-    {
-        foreach (AstNode node in nodes)
-        {
-            node.EnumerateNodes(action);
-        }
-    }
-
     public static PyObject ApplyDecorators(PyObject target, List<AstExprNode> decoratorList, PyCallContext context, PyFrame frame)
     {
         if (decoratorList.Count > 0)

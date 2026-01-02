@@ -33,12 +33,6 @@ public class ModuleNode : AstModNode
             .AppendFields(("body", Body));
     }
 
-    public override void EnumerateNodes(Action<AstNode> action)
-    {
-        base.EnumerateNodes(action);
-        Body.EnumerateNodes(action);
-    }
-
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         return Body;
