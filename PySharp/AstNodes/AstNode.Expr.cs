@@ -82,17 +82,17 @@ partial class AstNode
 
         return new TupleNode([.. elts]) { MetaInfo = metaInfo };
     }
-    public static DictNode Dict(params IEnumerable<KeyValuePair<AstExprNode, AstExprNode>> pairs)
+    public static DictNode Dict(IEnumerable<KeyValuePair<AstExprNode, AstExprNode>> pairs, CodeMetaInfo? metaInfo)
     {
         ArgumentNullException.ThrowIfNull(pairs);
 
-        return new DictNode([.. pairs.Select(static pair => pair.Key)], [.. pairs.Select(static pair => pair.Value)]);
+        return new DictNode([.. pairs.Select(static pair => pair.Key)], [.. pairs.Select(static pair => pair.Value)]) { MetaInfo = metaInfo };
     }
-    public static SetNode Set(params IEnumerable<AstExprNode> elts)
+    public static SetNode Set(IEnumerable<AstExprNode> elts, CodeMetaInfo? metaInfo)
     {
         ArgumentNullException.ThrowIfNull(elts);
 
-        return new SetNode([.. elts]);
+        return new SetNode([.. elts]) { MetaInfo = metaInfo };
     }
 
     public static BoolOpNode BoolOp(AstBoolOpNode op, IEnumerable<AstExprNode> values)

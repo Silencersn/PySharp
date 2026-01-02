@@ -1227,6 +1227,8 @@ partial class Parser
     /// <returns></returns>
     private AstExprNode ParseSetDisplay()
     {
+        var metaInfo = CreateMetaInfo();
+
         EnsureTokenTypeThenMove(TokenType.LeftBrace);
 
         if (TestIsComprehension())
@@ -1236,7 +1238,7 @@ partial class Parser
             return AstNode.SetComp(elt, generators);
         }
 
-        var set = AstNode.Set(ParseFlexibleExpressionList(StopPredicates.UntilRightBrace, out _));
+        var set = AstNode.Set(ParseFlexibleExpressionList(StopPredicates.UntilRightBrace, out _), CopyThenWithEnd(metaInfo));
         EnsureTokenTypeThenMove(TokenType.RightBrace);
         return set;
     }
@@ -1282,12 +1284,14 @@ partial class Parser
     /// <returns></returns>
     private AstExprNode ParseDictDisplay()
     {
+        var metaInfo = CreateMetaInfo();
+
         EnsureTokenTypeThenMove(TokenType.LeftBrace);
 
         if (CurrentTokenType is TokenType.RightBrace)
         {
             MoveNextToken();
-            return AstNode.Dict();
+            return AstNode.Dict([], CopyThenWithEnd(metaInfo));
         }
 
         bool isComp;
@@ -1318,8 +1322,9 @@ partial class Parser
         {
             pairs.Add(KeyValuePair.Create(key, value));
         }
+        metaInfo = CopyThenWithEnd(metaInfo);
         EnsureTokenTypeThenMove(TokenType.RightBrace);
-        return AstNode.Dict(pairs);
+        return AstNode.Dict(pairs, metaInfo);
     }
 
     /// <summary>
