@@ -772,6 +772,7 @@ partial class Parser
     /// <returns></returns>
     private AstExprNode ParseComparison()
     {
+        var metaInfo = CreateMetaInfo();
         var expr = ParseOrExpr();
         var ops = new List<AstCmpopNode>();
         var comptors = new List<AstExprNode>();
@@ -843,7 +844,7 @@ partial class Parser
         }
 
         if (ops.Count > 0)
-            return AstNode.Compare(expr, ops.Zip(comptors));
+            return AstNode.Compare(expr, ops.Zip(comptors), WithEndOfOtherNode(metaInfo, comptors[^1]));
 
         return expr;
     }
@@ -912,6 +913,7 @@ partial class Parser
     /// <returns></returns>
     private AstExprNode ParseConditionalExpression()
     {
+        var metaInfo = CreateMetaInfo();
         var body = ParseOrTest();
         if (IsCurrentKeyword("if"))
         {
@@ -919,7 +921,7 @@ partial class Parser
             var test = ParseOrTest();
             EnsureKeywordThenMove("else");
             var orelse = ParseExpression();
-            return new IfExpNode(test, body, orelse);
+            return AstNode.IfExp(test, body, orelse, WithEndOfOtherNode(metaInfo, orelse));
         }
         return body;
     }

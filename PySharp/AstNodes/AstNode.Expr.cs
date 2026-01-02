@@ -128,21 +128,21 @@ partial class AstNode
         return new UnaryOpNode(op, operand) { MetaInfo = metaInfo };
     }
 
-    public static CompareNode Compare(AstExprNode left, params IEnumerable<(AstCmpopNode Op, AstExprNode Comparator)> opsAndComparators)
+    public static CompareNode Compare(AstExprNode left, IEnumerable<(AstCmpopNode Op, AstExprNode Comparator)> opsAndComparators, CodeMetaInfo? metaInfo)
     {
         ArgumentNullException.ThrowIfNull(left);
         ArgumentNullException.ThrowIfNull(opsAndComparators);
 
-        return new CompareNode(left, [.. opsAndComparators.Select(t => t.Op)], [.. opsAndComparators.Select(t => t.Comparator)]);
+        return new CompareNode(left, [.. opsAndComparators.Select(t => t.Op)], [.. opsAndComparators.Select(t => t.Comparator)]) { MetaInfo = metaInfo };
     }
 
-    public static IfExpNode IfExp(AstExprNode test, AstExprNode body, AstExprNode orElse)
+    public static IfExpNode IfExp(AstExprNode test, AstExprNode body, AstExprNode orElse, CodeMetaInfo? metaInfo)
     {
         ArgumentNullException.ThrowIfNull(test);
         ArgumentNullException.ThrowIfNull(body);
         ArgumentNullException.ThrowIfNull(orElse);
 
-        return new IfExpNode(test, body, orElse);
+        return new IfExpNode(test, body, orElse) { MetaInfo = metaInfo };
     }
 
     public static ListCompNode ListComp(AstExprNode elt, params IEnumerable<AstComprehensionNode> generators)
