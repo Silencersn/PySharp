@@ -182,7 +182,7 @@ partial class Parser
         if (CurrentTokenType is TokenType.Colon)
             format_spec = ParseFStringFullFormatSpec();
 
-        return new FormattedValueNode(fexpr, conversion, format_spec) { MetaInfo = fexpr.MetaInfo }; // TODO: MetaInfo
+        return AstNode.FormattedValue(fexpr, conversion, format_spec, fexpr.MetaInfo); // TODO: MetaInfo
     }
 
     private AstExprNode ParseString()
@@ -1501,12 +1501,6 @@ partial class Parser
         return yieldExpr;
     }
 
-    private YieldFromNode ParseYieldFrom()
-    {
-        EnsureKeywordThenMove("from");
-        return new YieldFromNode(ParseExpression());
-    }
-
     private AstExprNode ParseYieldExpression()
     {
         if (!CurrentScope.IsCurrentFuncDefOrLambda)
@@ -1516,13 +1510,19 @@ partial class Parser
             throw _context.ThrowableSyntaxError("'yield' inside comprehension" /* TODO: a more specific name like: generator expression */);
 
         ((IFunctionOrLambda)CurrentScope.Owner!).HasYield = true;
+        var metaInfo = CreateMetaInfo();
         EnsureKeywordThenMove("yield");
         if (IsCurrentKeyword("from"))
-            return ParseYieldFrom();
+        {
+            MoveNextToken();
+            var expr = ParseExpression();
+            return AstNode.YieldFrom(expr, WithEndOfOtherNode(metaInfo, expr));
+        }
         if (StopPredicates.UntilRightParenOrNewLineOrSemicolon(CurrentToken))
-            return new YieldNode(null);
+            return AstNode.Yield(null, CopyThenWithEnd(metaInfo));
         var list = ParseStarredExpressionList(StopPredicates.UntilRightParenOrNewLineOrSemicolon, out var endsWithComma);
-        return new YieldNode(UnwrapOrMakeTuple(list, endsWithComma));
+        var value = UnwrapOrMakeTuple(list, endsWithComma);
+        return AstNode.Yield(value, WithEndOfOtherNode(metaInfo, value));
     }
 
     /// <summary>

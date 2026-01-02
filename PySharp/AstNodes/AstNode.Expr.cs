@@ -181,4 +181,23 @@ partial class AstNode
 
         return new JoinedStrNode([.. values]) { MetaInfo = metaInfo };
     }
+
+    public static FormattedValueNode FormattedValue(AstExprNode value, int conversion, AstExprNode? formatSpec, CodeMetaInfo? metaInfo)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+
+        return new FormattedValueNode(value, conversion, formatSpec) { MetaInfo = metaInfo };
+    }
+
+    public static YieldNode Yield(AstExprNode? value, CodeMetaInfo? metaInfo)
+    {
+        return new YieldNode(value) { MetaInfo = metaInfo };
+    }
+
+    public static YieldFromNode YieldFrom(AstExprNode value, CodeMetaInfo? metaInfo)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+
+        return new YieldFromNode(value) { MetaInfo = metaInfo };
+    }
 }
