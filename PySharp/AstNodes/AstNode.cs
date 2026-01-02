@@ -31,16 +31,7 @@ public abstract partial class AstNode : ICodeMetaInfoProvider
     }
 }
 
-public interface IAstNodeLocation
-{
-    public int? Lineno => null;
-    public int? ColOffset => null;
-    public int? EndLineno => null;
-    public int? EndColOffset => null;
-}
-
-
-internal readonly struct MetaInfoProviderSetter : IDisposable
+internal readonly ref struct MetaInfoProviderSetter : IDisposable
 {
     private readonly PyFrame _frame;
     private readonly ICodeMetaInfoProvider? _previous;

@@ -9,7 +9,7 @@ using System.Text;
 
 namespace PySharp.AstNodes;
 
-public abstract class AstExprNode : AstNode, IAstNodeLocation
+public abstract class AstExprNode : AstNode
 {
     public PyObject GetExprValue(PyCallContext context, PyFrame frame)
     {

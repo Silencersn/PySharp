@@ -222,11 +222,11 @@ partial class Parser
                 {
                     MoveNextToken();
                     var msg = ParseExpression();
-                    node = AstNode.Assert(test, msg);
+                    node = AstNodeFactory.Assert(test, msg);
                 }
                 else
                 {
-                    node = AstNode.Assert(test);
+                    node = AstNodeFactory.Assert(test);
                 }
                 node.MetaInfo = metaInfo;
                 return node;
@@ -262,7 +262,7 @@ partial class Parser
 
                     CurrentScope.SetGlobal(name);
                 }
-                var node = AstNode.Global(names);
+                var node = AstNodeFactory.Global(names);
                 node.MetaInfo = metaInfo;
                 return node;
             }
@@ -300,7 +300,7 @@ partial class Parser
 
                     CurrentScope.SetNonlocal(name);
                 }
-                var node = AstNode.Nonlocal(names);
+                var node = AstNodeFactory.Nonlocal(names);
                 node.MetaInfo = metaInfo;
                 return node;
             }
@@ -329,7 +329,7 @@ partial class Parser
                 allTargets = exprList.All(IsValidTarget);
             }
 
-            var node = AstNode.Assign(UnwrapOrMakeTuple(exprList, endsWithComma), targets);
+            var node = AstNodeFactory.Assign(UnwrapOrMakeTuple(exprList, endsWithComma), targets);
             node.MetaInfo = metaInfo;
             return node;
         }

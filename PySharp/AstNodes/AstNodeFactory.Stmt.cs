@@ -1,7 +1,14 @@
 ﻿namespace PySharp.AstNodes;
 
-partial class AstNode
+partial class AstNodeFactory
 {
+    public static AssertNode Assert(AstExprNode test, AstExprNode? msg = null)
+    {
+        ArgumentNullException.ThrowIfNull(test);
+
+        return new AssertNode(test, msg);
+    }
+
     public static AssignNode Assign(AstExprNode value, params IEnumerable<AstExprNode> targets)
     {
         ArgumentNullException.ThrowIfNull(value);
@@ -16,13 +23,6 @@ partial class AstNode
         }
 
         return new AssignNode([.. targets], value);
-    }
-
-    public static AssertNode Assert(AstExprNode test, AstExprNode? msg = null)
-    {
-        ArgumentNullException.ThrowIfNull(test);
-
-        return new AssertNode(test, msg);
     }
 
     public static GlobalNode Global(params IEnumerable<string> names)
