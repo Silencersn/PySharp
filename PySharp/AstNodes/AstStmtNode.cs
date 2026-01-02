@@ -734,8 +734,6 @@ internal abstract class Caller
         var frame = backFrame.CreateFuncCallOrClassBuildFrame(Func.Name, Func, _frameType, (args, kwargs), Func._globals, _node.LocalVariablesToIndex);
         frame._variables = _node.Variables;
 
-        foreach (var localVariable in _node.LocalVariables)
-            frame.Locals[localVariable] = null;
         foreach (var capturedVariable in _node.CapturedVariables)
             frame.Closures[capturedVariable] = PyCellObject.CreateCell(capturedVariable, null);
         foreach (var cell in Func.CapturedVariables)
