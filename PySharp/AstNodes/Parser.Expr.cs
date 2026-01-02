@@ -388,20 +388,11 @@ partial class Parser
 
             var value = CurrentToken.String;
             MoveNextToken();
+
+            if (PyIntObjectType.TryParse(value, 0, out var integer))
+                return AstNodeFactory.Constant(integer, metaInfo);
+
             value = value.Replace("_", string.Empty);
-
-            if (value.StartsWith("0x") || value.StartsWith("0X"))
-                return AstNodeFactory.Constant(Convert.ToInt64(value[2..], 16), metaInfo);
-
-            if (value.StartsWith("0o") || value.StartsWith("0O"))
-                return AstNodeFactory.Constant(Convert.ToInt64(value[2..], 8), metaInfo);
-
-            if (value.StartsWith("0b") || value.StartsWith("0B"))
-                return AstNodeFactory.Constant(Convert.ToInt64(value[2..], 2), metaInfo);
-
-            if (BigInteger.TryParse(value, out var bigint))
-                return AstNodeFactory.Constant(bigint, metaInfo);
-
             return AstNodeFactory.Constant(double.Parse(value), metaInfo);
         }
         else if (CurrentTokenType is TokenType.Ellipsis)

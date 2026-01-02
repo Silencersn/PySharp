@@ -68,10 +68,6 @@ partial class AstNodeFactory
 
         return Constant(PyStrObject.FromString(value), metaInfo);
     }
-    public static ConstantNode Constant(long value, CodeMetaInfo? metaInfo)
-    {
-        return Constant(PyIntObject.FromInteger(value), metaInfo);
-    }
     public static ConstantNode Constant(BigInteger value, CodeMetaInfo? metaInfo)
     {
         return Constant(PyIntObject.FromInteger(value), metaInfo);
