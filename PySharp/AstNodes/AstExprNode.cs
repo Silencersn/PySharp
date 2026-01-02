@@ -892,7 +892,7 @@ public sealed class LambdaNode : AstExprNode, IFunctionOrLambda
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        ICaller caller = ((IFunctionOrLambda)this).HasYield ?
+        Caller caller = ((IFunctionOrLambda)this).HasYield ?
             new GeneratorCaller(context, this, frame, GetResult) :
             new FunctionCaller(context, this, frame, GetResult);
         var func = new PyFunctionObject("<lambda>", caller.Call, frame.InternalClosure?.Values, frame._globals);

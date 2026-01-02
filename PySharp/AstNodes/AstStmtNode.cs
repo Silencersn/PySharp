@@ -704,42 +704,32 @@ internal interface IFunctionOrClass : IAstVariableScopeOwner
     public string QualifiedName { get; set; }
 }
 
-internal interface ICaller
+internal abstract class Caller
 {
-    internal PyFunctionObject Func { get; set; }
-
-    PyResult Call(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs);
-}
-
-internal sealed class FunctionCaller : ICaller
-{
-    private readonly IFunctionOrLambda _node;
-    private readonly PyArgsDef _def;
-    private readonly Func<PyCallContext, PyFrame, PyResult> _getResult;
-    private readonly FrameType _frameType;
+    protected readonly IFunctionOrLambda _node;
+    protected readonly PyArgsDef _def;
+    protected readonly Func<PyCallContext, PyFrame, PyResult> _getResult;
+    protected readonly FrameType _frameType;
     public PyFunctionObject Func { get; set; }
 
-    internal FunctionCaller(PyCallContext context, IFunctionOrLambda node, PyFrame frame, Func<PyCallContext, PyFrame, PyResult> getResult)
+    internal Caller(PyCallContext context, IFunctionOrLambda node, PyFrame frame, Func<PyCallContext, PyFrame, PyResult> getResult)
     {
         _node = node;
         _def = PyArgsDef.FromAst(node.Args, context, frame);
         _getResult = getResult;
-        _frameType = _node is FunctionDefNode ? FrameType.Function : FrameType.Lambda;
+        if (this is FunctionCaller)
+            _frameType = _node is FunctionDefNode ? FrameType.Function : FrameType.Lambda;
+        else
+            _frameType = _node is FunctionDefNode ? FrameType.YieldFunction : FrameType.YieldLambda;
 
         // deferred init
         Func = null!;
     }
 
-    public PyResult Call(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
-    {
-        return CallGeneral(context, args, kwargs);
-    }
+    public abstract PyResult Call(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs);
 
-    private PyResult CallGeneral(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    public PyFrame CreateCallingFrame(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, PyArguments arguments)
     {
-        if (!_def.TryParse(args, kwargs, out var arguments))
-            return PyResult.RaiseTypeError("wrong arguments");
-
         var backFrame = context.CurrentFrame;
         var frame = backFrame.CreateFuncCallOrClassBuildFrame(Func.Name, Func, _frameType, (args, kwargs), Func._globals, _node.LocalVariablesToIndex);
         frame._variables = _node.Variables;
@@ -751,10 +741,30 @@ internal sealed class FunctionCaller : ICaller
         foreach (var cell in Func.CapturedVariables)
             frame.Closures.Add(cell.Name, cell);
 
-        context.EnterFrame(frame);
-
-
         frame.InitArgs(_def, arguments);
+        return frame;
+    }
+}
+
+internal sealed class FunctionCaller : Caller
+{
+    public FunctionCaller(PyCallContext context, IFunctionOrLambda node, PyFrame frame, Func<PyCallContext, PyFrame, PyResult> getResult) : base(context, node, frame, getResult)
+    {
+    }
+
+    public override PyResult Call(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        return CallGeneral(context, args, kwargs);
+    }
+
+    private PyResult CallGeneral(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        if (!_def.TryParse(args, kwargs, out var arguments))
+            return PyResult.RaiseTypeError("wrong arguments");
+
+        var frame = CreateCallingFrame(context, args, kwargs, arguments);
+
+        context.EnterFrame(frame);
 
         var result = _getResult(context, frame);
 
@@ -764,26 +774,13 @@ internal sealed class FunctionCaller : ICaller
 }
 
 
-internal sealed class GeneratorCaller : ICaller
+internal sealed class GeneratorCaller : Caller
 {
-    private readonly IFunctionOrLambda _node;
-    private readonly PyArgsDef _def;
-    private readonly Func<PyCallContext, PyFrame, PyResult> _getResult;
-    private readonly FrameType _frameType;
-    public PyFunctionObject Func { get; set; }
-
-    internal GeneratorCaller(PyCallContext context, IFunctionOrLambda node, PyFrame frame, Func<PyCallContext, PyFrame, PyResult> getResult)
+    public GeneratorCaller(PyCallContext context, IFunctionOrLambda node, PyFrame frame, Func<PyCallContext, PyFrame, PyResult> getResult) : base(context, node, frame, getResult)
     {
-        _node = node;
-        _def = PyArgsDef.FromAst(node.Args, context, frame);
-        _getResult = getResult;
-        _frameType = _node is FunctionDefNode ? FrameType.YieldFunction : FrameType.YieldLambda;
-
-        // deferred init
-        Func = null!;
     }
 
-    public PyResult Call(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    public override PyResult Call(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return CallGeneral(context, args, kwargs);
     }
@@ -793,21 +790,10 @@ internal sealed class GeneratorCaller : ICaller
         if (!_def.TryParse(args, kwargs, out var arguments))
             return PyResult.RaiseTypeError("wrong arguments");
 
-        var backFrame = context.CurrentFrame;
-        var frame = backFrame.CreateFuncCallOrClassBuildFrame(Func.Name, Func, _frameType, (args, kwargs), Func._globals, _node.LocalVariablesToIndex);
-        frame._variables = _node.Variables;
-
-        foreach (var localVariable in _node.LocalVariables)
-            frame.Locals[localVariable] = null;
-        foreach (var capturedVariable in _node.CapturedVariables)
-            frame.Closures[capturedVariable] = PyCellObject.CreateCell(capturedVariable, null);
-        foreach (var cell in Func.CapturedVariables)
-            frame.Closures.Add(cell.Name, cell);
-
+        var frame = CreateCallingFrame(context, args, kwargs, arguments);
 
         frame.Back = null;
         frame._tcsWaitAtStartOrYield = new TaskCompletionSource<YieldCallerAction>();
-        frame.InitArgs(_def, arguments);
 
         var task = new Task(() =>
         {
@@ -846,7 +832,7 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda, IFunctionOrClass
     public List<AstExprNode> DecoratorList { get; } = [];
 
     FrozenDictionary<string, PyVariableType> IAstVariableScopeOwner.Variables { get; set; } = null!;
-    string[] IFunctionOrLambda.CapturedVariables { get; set; } = null!; 
+    string[] IFunctionOrLambda.CapturedVariables { get; set; } = null!;
     string[] IFunctionOrLambda.LocalVariables { get; set; } = null!;
     FrozenDictionary<string, int> IFunctionOrLambda.LocalVariablesToIndex { get; set; } = null!;
     bool IFunctionOrLambda.HasYield { get; set; } = false;
@@ -856,7 +842,7 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda, IFunctionOrClass
 
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
-        ICaller caller = ((IFunctionOrLambda)this).HasYield ?
+        Caller caller = ((IFunctionOrLambda)this).HasYield ?
             new GeneratorCaller(context, this, frame, GetResult) :
             new FunctionCaller(context, this, frame, GetResult);
         var func = new PyFunctionObject(Identifier, caller.Call,
