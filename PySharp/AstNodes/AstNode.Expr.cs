@@ -145,34 +145,34 @@ partial class AstNode
         return new IfExpNode(test, body, orElse) { MetaInfo = metaInfo };
     }
 
-    public static ListCompNode ListComp(AstExprNode elt, params IEnumerable<AstComprehensionNode> generators)
+    public static ListCompNode ListComp(AstExprNode elt, IEnumerable<AstComprehensionNode> generators, CodeMetaInfo? metaInfo)
     {
         ArgumentNullException.ThrowIfNull(elt);
         ArgumentNullException.ThrowIfNull(generators);
 
-        return new ListCompNode(elt, [.. generators]);
+        return new ListCompNode(elt, [.. generators]) { MetaInfo = metaInfo };
     }
-    public static SetCompNode SetComp(AstExprNode elt, params IEnumerable<AstComprehensionNode> generators)
+    public static SetCompNode SetComp(AstExprNode elt, IEnumerable<AstComprehensionNode> generators, CodeMetaInfo? metaInfo)
     {
         ArgumentNullException.ThrowIfNull(elt);
         ArgumentNullException.ThrowIfNull(generators);
 
-        return new SetCompNode(elt, [.. generators]);
+        return new SetCompNode(elt, [.. generators]) { MetaInfo = metaInfo };
     }
-    public static GeneratorExpNode GeneratorExp(AstExprNode elt, params IEnumerable<AstComprehensionNode> generators)
+    public static GeneratorExpNode GeneratorExp(AstExprNode elt, IEnumerable<AstComprehensionNode> generators, CodeMetaInfo? metaInfo)
     {
         ArgumentNullException.ThrowIfNull(elt);
         ArgumentNullException.ThrowIfNull(generators);
 
-        return new GeneratorExpNode(elt, [.. generators]);
+        return new GeneratorExpNode(elt, [.. generators]) { MetaInfo = metaInfo };
     }
-    public static DictCompNode DictComp(AstExprNode key, AstExprNode value, params IEnumerable<AstComprehensionNode> generators)
+    public static DictCompNode DictComp(AstExprNode key, AstExprNode value, IEnumerable<AstComprehensionNode> generators, CodeMetaInfo? metaInfo)
     {
         ArgumentNullException.ThrowIfNull(key);
         ArgumentNullException.ThrowIfNull(value);
         ArgumentNullException.ThrowIfNull(generators);
 
-        return new DictCompNode(key, value, [.. generators]);
+        return new DictCompNode(key, value, [.. generators]) { MetaInfo = metaInfo };
     }
 
     public static JoinedStrNode JoinedStr(IEnumerable<AstExprNode> values, CodeMetaInfo? metaInfo)

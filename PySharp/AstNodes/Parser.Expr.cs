@@ -565,8 +565,9 @@ partial class Parser
                     // primary "(" comprehension ")"
 
                     TokenStreamPosition = index;
+                    var metaInfo = CreateMetaInfo();
                     var (elts, generators) = ParseComprehension();
-                    expr = AstNode.Call(expr, [AstNode.GeneratorExp(elts, generators)], [], CopyThenWithEnd(startMetaInfo));
+                    expr = AstNode.Call(expr, [AstNode.GeneratorExp(elts, generators, CopyThenWithEnd(metaInfo))], [], CopyThenWithEnd(startMetaInfo));
                 }
                 EnsureTokenTypeThenMove(TokenType.RightParen);
             }
@@ -1215,8 +1216,9 @@ partial class Parser
         if (TestIsComprehension())
         {
             var (elt, generators) = ParseComprehension();
+            metaInfo = CopyThenWithEnd(metaInfo);
             EnsureTokenTypeThenMove(TokenType.RightSquareBracket);
-            return AstNode.ListComp(elt, generators);
+            return AstNode.ListComp(elt, generators, metaInfo);
         }
 
         var list = AstNode.List(ParseFlexibleExpressionList(StopPredicates.UntilRightSquareBracket, out _), CopyThenWithEnd(metaInfo));
@@ -1237,8 +1239,9 @@ partial class Parser
         if (TestIsComprehension())
         {
             var (elt, generators) = ParseComprehension();
+            metaInfo = CopyThenWithEnd(metaInfo);
             EnsureTokenTypeThenMove(TokenType.RightBrace);
-            return AstNode.SetComp(elt, generators);
+            return AstNode.SetComp(elt, generators, metaInfo);
         }
 
         var set = AstNode.Set(ParseFlexibleExpressionList(StopPredicates.UntilRightBrace, out _), CopyThenWithEnd(metaInfo));
@@ -1315,8 +1318,9 @@ partial class Parser
         {
             var (key, value) = ParseDictItem();
             var generators = ParseCompFor();
+            metaInfo = CopyThenWithEnd(metaInfo);
             EnsureTokenTypeThenMove(TokenType.RightBrace);
-            return AstNode.DictComp(key, value, generators);
+            return AstNode.DictComp(key, value, generators, metaInfo);
         }
 
         List<KeyValuePair<AstExprNode, AstExprNode>> pairs = [];
@@ -1336,10 +1340,12 @@ partial class Parser
     /// <returns></returns>
     private GeneratorExpNode ParseGeneratorExpression()
     {
+        var metaInfo = CreateMetaInfo();
         EnsureTokenTypeThenMove(TokenType.LeftParen);
         var (elt, generators) = ParseComprehension();
+        metaInfo = CopyThenWithEnd(metaInfo);
         EnsureTokenTypeThenMove(TokenType.RightParen);
-        return AstNode.GeneratorExp(elt, generators);
+        return AstNode.GeneratorExp(elt, generators, metaInfo);
     }
 
     private AstArgumentsNode ParseParameterList(StopPredicate predicate)
