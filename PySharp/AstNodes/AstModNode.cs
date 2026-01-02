@@ -38,6 +38,11 @@ public class ModuleNode : AstModNode
         base.EnumerateNodes(action);
         Body.EnumerateNodes(action);
     }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        return Body;
+    }
 }
 
 public class ExpressionNode : AstModNode
@@ -53,6 +58,11 @@ public class ExpressionNode : AstModNode
     {
         using var withMetaInfo = new MetaInfoProviderSetter(frame, this);
         _ = Body.GetExprValue(context, frame);
+    }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Body;
     }
 }
 
@@ -72,5 +82,10 @@ public class InteractiveNode : AstModNode
         {
             stmt.Execute(context, frame);
         }
+    }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        return Body;
     }
 }

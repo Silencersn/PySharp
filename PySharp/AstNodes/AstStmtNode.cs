@@ -47,6 +47,11 @@ public class AssignNode : AstStmtNode
         Targets.EnumerateNodes(action);
         Value.EnumerateNodes(action);
     }
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        foreach (var t in Targets) yield return t;
+        yield return Value;
+    }
 }
 
 public class AssertNode : AstStmtNode
@@ -91,7 +96,12 @@ public class AssertNode : AstStmtNode
         Test.EnumerateNodes(action);
         Msg?.EnumerateNodes(action);
     }
-
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Test;
+        if (Msg is not null)
+            yield return Msg;
+    }
 }
 
 public class DeleteNode : AstStmtNode
@@ -109,6 +119,10 @@ public class DeleteNode : AstStmtNode
         {
             target.DeleteTargetValue(context, frame);
         }
+    }
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        foreach (var t in Targets) yield return t;
     }
 }
 
@@ -136,6 +150,12 @@ public class AugAssignNode : AstStmtNode
         Target.EnumerateNodes(action);
         Op.EnumerateNodes(action);
         Value.EnumerateNodes(action);
+    }
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Target;
+        yield return Op;
+        yield return Value;
     }
 }
 
@@ -180,7 +200,10 @@ public class ExprNode : AstStmtNode
         base.EnumerateNodes(action);
         Value.EnumerateNodes(action);
     }
-
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Value;
+    }
 }
 
 public class IfNode : AstStmtNode
@@ -228,7 +251,12 @@ public class IfNode : AstStmtNode
         Body.EnumerateNodes(action);
         OrElse.EnumerateNodes(action);
     }
-
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Test;
+        foreach (var stmt in Body) yield return stmt;
+        foreach (var stmt in OrElse) yield return stmt;
+    }
 }
 
 public abstract class AstControlException : Exception;
@@ -242,16 +270,24 @@ public class BreakNode : AstStmtNode
     {
         throw new AstBreakException();
     }
-
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        return [];
+    }
 }
+
 public class ContinueNode : AstStmtNode
 {
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
         throw new AstContinueException();
     }
-
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        return [];
+    }
 }
+
 public class ReturnNode : AstStmtNode
 {
     public AstExprNode? Value { get; set; }
@@ -271,11 +307,21 @@ public class ReturnNode : AstStmtNode
         base.EnumerateNodes(action);
         Value?.EnumerateNodes(action);
     }
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        if (Value is not null)
+            yield return Value;
+    }
 }
+
 public class PassNode : AstStmtNode
 {
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
+    }
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        return [];
     }
 }
 
@@ -334,7 +380,12 @@ public class WhileNode : AstStmtNode
         Body.EnumerateNodes(action);
         OrElse.EnumerateNodes(action);
     }
-
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Test;
+        foreach (var stmt in Body) yield return stmt;
+        foreach (var stmt in OrElse) yield return stmt;
+    }
 }
 
 public class ForNode : AstStmtNode
@@ -400,7 +451,13 @@ public class ForNode : AstStmtNode
         Body.EnumerateNodes(action);
         OrElse.EnumerateNodes(action);
     }
-
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Target;
+        yield return Iter;
+        foreach (var stmt in Body) yield return stmt;
+        foreach (var stmt in OrElse) yield return stmt;
+    }
 }
 
 public class RaiseNode : AstStmtNode
@@ -462,7 +519,6 @@ public class RaiseNode : AstStmtNode
         Exc?.EnumerateNodes(action);
         Cause?.EnumerateNodes(action);
     }
-
 }
 
 public class TryNode : AstStmtNode
@@ -525,7 +581,13 @@ public class TryNode : AstStmtNode
         OrElse.EnumerateNodes(action);
         FinalBody.EnumerateNodes(action);
     }
-
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        foreach (var stmt in Body) yield return stmt;
+        foreach (var ex in Exceptors) yield return ex;
+        foreach (var stmt in OrElse) yield return stmt;
+        foreach (var stmt in FinalBody) yield return stmt;
+    }
 }
 
 public enum PyVariableType
@@ -567,7 +629,10 @@ public class ImportNode : AstStmtNode
         base.EnumerateNodes(action);
         Names.EnumerateNodes(action);
     }
-
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        foreach (var n in Names) yield return n;
+    }
 }
 
 public class ImportFromNode : AstStmtNode
@@ -661,6 +726,10 @@ public sealed class GlobalNode : AstStmtNode
             .Append("Global")
             .AppendFields(("names", Names));
     }
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        return [];
+    }
 }
 
 public sealed class NonlocalNode : AstStmtNode
@@ -681,6 +750,10 @@ public sealed class NonlocalNode : AstStmtNode
 
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
+    }
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        return [];
     }
 }
 
@@ -885,11 +958,17 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda, IFunctionOrClass
         Body.EnumerateNodes(action);
         DecoratorList.EnumerateNodes(action);
     }
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Args;
+        foreach (var stmt in Body) yield return stmt;
+        foreach (var d in DecoratorList) yield return d;
+    }
 }
 
 public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
 {
-    public new string Name { get; }
+    public string Name { get; }
 
     internal ClassDefNode(CodeMetaInfo metaInfo, string name)
     {
@@ -950,5 +1029,12 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
         }
 
         frame.SetVariable(Name, AstUtils.ApplyDecorators(type, DecoratorList, context, frame)).PyUnwrap(context);
+    }
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        foreach (var b in Bases) yield return b;
+        foreach (var k in Keywords) yield return k;
+        foreach (var stmt in Body) yield return stmt;
+        foreach (var d in DecoratorList) yield return d;
     }
 }

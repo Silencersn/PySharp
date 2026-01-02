@@ -52,4 +52,12 @@ public class ExceptHandlerNode : AstExceptHandlerNode
             return typeObj.IsInstance(exception);
         }
     }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        if (Type is not null)
+            yield return Type;
+        foreach (var stmt in Body)
+            yield return stmt;
+    }
 }

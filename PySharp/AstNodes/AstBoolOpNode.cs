@@ -7,6 +7,11 @@ namespace PySharp.AstNodes;
 public abstract class AstBoolOpNode : AstNode
 {
     public abstract (bool Result, PyResult Value) GetBoolOpValue(PyCallContext context, IEnumerable<PyObject> values);
+
+    public sealed override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        return [];
+    }
 }
 
 public class AndNode : AstBoolOpNode

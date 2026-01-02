@@ -7,6 +7,11 @@ namespace PySharp.AstNodes;
 public abstract class AstUnaryOpNode : AstNode
 {
     public abstract PyResult GetUnaryOpValue(PyCallContext context, PyObject value);
+
+    public sealed override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        return [];
+    }
 }
 
 public class NotNode : AstUnaryOpNode

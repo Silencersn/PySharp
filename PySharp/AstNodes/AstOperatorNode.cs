@@ -7,6 +7,11 @@ namespace PySharp.AstNodes;
 public abstract class AstOperatorNode : AstNode
 {
     public abstract PyResult GetOpValue(PyCallContext context, PyObject left, PyObject right);
+
+    public sealed override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        return [];
+    }
 }
 
 public class AddNode : AstOperatorNode

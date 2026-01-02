@@ -29,6 +29,8 @@ public abstract partial class AstNode : ICodeMetaInfoProvider
     {
         action(this);
     }
+
+    public abstract IEnumerable<AstNode> EnumerateSubNodes();
 }
 
 internal readonly ref struct MetaInfoProviderSetter : IDisposable

@@ -7,6 +7,11 @@ namespace PySharp.AstNodes;
 public abstract class AstCmpopNode : AstNode
 {
     public abstract PyResult GetCompareValue(PyCallContext context, PyObject left, PyObject right);
+
+    public sealed override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        return [];
+    }
 }
 
 public class EqNode : AstCmpopNode

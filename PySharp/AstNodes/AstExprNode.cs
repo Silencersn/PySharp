@@ -92,6 +92,11 @@ public sealed class NameNode : AstExprNode, IExprContextNode, ITargetNode
         else
             frame.SetVariable(Identifier, value).PyUnwrap(context);
     }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        return [];
+    }
 }
 
 public sealed class ConstantNode : AstExprNode, IAstExprNodeNoSelfPythonException
@@ -114,6 +119,10 @@ public sealed class ConstantNode : AstExprNode, IAstExprNodeNoSelfPythonExceptio
             .AppendFormat("Constant(value={0})", PySpecialMethods.TryGetRepr(PyCallContext.NonContextDependency, Value, out var s, out var result) ? s.Value : "<ast-format repr failed>");
     }
 
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        return [];
+    }
 }
 
 public sealed class AttributeNode : AstExprNode, IExprContextNode, ITargetNode
@@ -151,6 +160,11 @@ public sealed class AttributeNode : AstExprNode, IExprContextNode, ITargetNode
         Value.EnumerateNodes(action);
     }
 
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Value;
+    }
+
     void ITargetNode.SetValue(PyCallContext context, PyObject value, PyFrame frame)
     {
         var obj = Value.GetExprValue(context, frame);
@@ -173,7 +187,7 @@ public sealed class SubscriptNode : AstExprNode, IExprContextNode, ITargetNode
     }
 
     public AstExprNode Value { get; }
-    public new AstExprNode Slice { get; }
+    public AstExprNode Slice { get; }
     public ExprContext Ctx { get; set; } = ExprContext.Load;
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
@@ -214,6 +228,12 @@ public sealed class SubscriptNode : AstExprNode, IExprContextNode, ITargetNode
         base.EnumerateNodes(action);
         Value.EnumerateNodes(action);
         Slice.EnumerateNodes(action);
+    }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Value;
+        yield return Slice;
     }
 
     void ITargetNode.SetValue(PyCallContext context, PyObject value, PyFrame frame)
@@ -262,6 +282,13 @@ public sealed class SliceNode : AstExprNode, IAstExprNodeNoSelfPythonException
         Lower?.EnumerateNodes(action);
         Upper?.EnumerateNodes(action);
         Step?.EnumerateNodes(action);
+    }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        if (Lower is not null) yield return Lower;
+        if (Upper is not null) yield return Upper;
+        if (Step is not null) yield return Step;
     }
 }
 
@@ -349,6 +376,13 @@ public sealed class CallNode : AstExprNode
         Args.EnumerateNodes(action);
         Keywords.EnumerateNodes(action);
     }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Func;
+        foreach (var arg in Args) yield return arg;
+        foreach (var kw in Keywords) yield return kw;
+    }
 }
 
 public sealed class ListNode : AstExprNode, IExprContextNode, IAstExprNodeNoSelfPythonException
@@ -378,6 +412,11 @@ public sealed class ListNode : AstExprNode, IExprContextNode, IAstExprNodeNoSelf
         base.EnumerateNodes(action);
         Elts.EnumerateNodes(action);
     }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        foreach (var elt in Elts) yield return elt;
+    }
 }
 
 public sealed class TupleNode : AstExprNode, IExprContextNode, IAstExprNodeNoSelfPythonException
@@ -406,6 +445,11 @@ public sealed class TupleNode : AstExprNode, IExprContextNode, IAstExprNodeNoSel
     {
         base.EnumerateNodes(action);
         Elts.EnumerateNodes(action);
+    }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        foreach (var elt in Elts) yield return elt;
     }
 }
 
@@ -446,6 +490,12 @@ public sealed class DictNode : AstExprNode, IAstExprNodeNoSelfPythonException
         Keys.EnumerateNodes(action);
         Values.EnumerateNodes(action);
     }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        foreach (var k in Keys) yield return k;
+        foreach (var v in Values) yield return v;
+    }
 }
 
 public sealed class SetNode : AstExprNode, IAstExprNodeNoSelfPythonException
@@ -473,6 +523,11 @@ public sealed class SetNode : AstExprNode, IAstExprNodeNoSelfPythonException
     {
         base.EnumerateNodes(action);
         Elts.EnumerateNodes(action);
+    }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        foreach (var elt in Elts) yield return elt;
     }
 }
 
@@ -505,6 +560,12 @@ public sealed class BoolOpNode : AstExprNode, IAstExprNodeBool, IAstExprNodeNoSe
         Op.EnumerateNodes(action);
         Values.EnumerateNodes(action);
     }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Op;
+        foreach (var v in Values) yield return v;
+    }
 }
 
 public sealed class BinOpNode : AstExprNode
@@ -534,6 +595,13 @@ public sealed class BinOpNode : AstExprNode
         Left.EnumerateNodes(action);
         Right.EnumerateNodes(action);
     }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Operator;
+        yield return Left;
+        yield return Right;
+    }
 }
 
 public sealed class UnaryOpNode : AstExprNode
@@ -557,6 +625,12 @@ public sealed class UnaryOpNode : AstExprNode
         base.EnumerateNodes(action);
         Op.EnumerateNodes(action);
         Operand.EnumerateNodes(action);
+    }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Op;
+        yield return Operand;
     }
 }
 
@@ -606,6 +680,13 @@ public sealed class CompareNode : AstExprNode, IAstExprNodeBool
         Ops.EnumerateNodes(action);
         Comparators.EnumerateNodes(action);
     }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Left;
+        foreach (var op in Ops) yield return op;
+        foreach (var cmp in Comparators) yield return cmp;
+    }
 }
 
 public sealed class IfExpNode : AstExprNode, IAstExprNodeNoSelfPythonException
@@ -634,6 +715,13 @@ public sealed class IfExpNode : AstExprNode, IAstExprNodeNoSelfPythonException
         Test.EnumerateNodes(action);
         Body.EnumerateNodes(action);
         OrElse.EnumerateNodes(action);
+    }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Test;
+        yield return Body;
+        yield return OrElse;
     }
 }
 
@@ -693,6 +781,12 @@ public sealed class ListCompNode : AstExprNode, IAstExprNodeNoSelfPythonExceptio
         Elt.EnumerateNodes(action);
         Generators.EnumerateNodes(action);
     }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Elt;
+        foreach (var gen in Generators) yield return gen;
+    }
 }
 
 public sealed class SetCompNode : AstExprNode, IAstExprNodeNoSelfPythonException
@@ -750,6 +844,12 @@ public sealed class SetCompNode : AstExprNode, IAstExprNodeNoSelfPythonException
         base.EnumerateNodes(action);
         Elt.EnumerateNodes(action);
         Generators.EnumerateNodes(action);
+    }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Elt;
+        foreach (var gen in Generators) yield return gen;
     }
 }
 
@@ -813,6 +913,13 @@ public sealed class DictCompNode : AstExprNode, IAstExprNodeNoSelfPythonExceptio
         Generators.EnumerateNodes(action);
     }
 
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Key;
+        yield return Value;
+        foreach (var gen in Generators) yield return gen;
+    }
+
 }
 
 public sealed class GeneratorExpNode : AstExprNode, IAstExprNodeNoSelfPythonException
@@ -872,6 +979,11 @@ public sealed class GeneratorExpNode : AstExprNode, IAstExprNodeNoSelfPythonExce
         Generators.EnumerateNodes(action);
     }
 
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Elt;
+        foreach (var gen in Generators) yield return gen;
+    }
 }
 
 public sealed class LambdaNode : AstExprNode, IFunctionOrLambda
@@ -918,6 +1030,12 @@ public sealed class LambdaNode : AstExprNode, IFunctionOrLambda
         Args.EnumerateNodes(action);
         Body.EnumerateNodes(action);
     }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Args;
+        yield return Body;
+    }
 }
 
 public sealed class JoinedStrNode : AstExprNode, IAstExprNodeNoSelfPythonException
@@ -950,6 +1068,11 @@ public sealed class JoinedStrNode : AstExprNode, IAstExprNodeNoSelfPythonExcepti
     {
         base.EnumerateNodes(action);
         Values.EnumerateNodes(action);
+    }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        foreach (var v in Values) yield return v;
     }
 }
 
@@ -987,6 +1110,12 @@ public sealed class FormattedValueNode : AstExprNode
         }
 
         return result;
+    }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Value;
+        if (FormatSpec is not null) yield return FormatSpec;
     }
 }
 
@@ -1028,8 +1157,13 @@ public sealed class YieldNode : AstExprNode
                 throw new UnreachableException();
         }
     }
-}
 
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        if (Value is not null)
+            yield return Value;
+    }
+}
 
 public sealed class YieldFromNode : AstExprNode
 {
@@ -1089,5 +1223,10 @@ public sealed class YieldFromNode : AstExprNode
                     throw new UnreachableException();
             }
         }
+    }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Value;
     }
 }
