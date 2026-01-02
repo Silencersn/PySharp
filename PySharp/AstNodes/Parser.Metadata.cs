@@ -26,7 +26,7 @@ partial class Parser
         public AstMetaInfo(Parser parser, int startTokenPosition, int endTokenPosition) : this(parser, startTokenPosition, endTokenPosition, 0, 0)
         {
         }
-        public AstMetaInfo(Parser parser, int tokenPosition) : this(parser, tokenPosition, tokenPosition, 0, 0)
+        public AstMetaInfo(Parser parser, int tokenPosition) : this(parser, tokenPosition, tokenPosition)
         {
         }
 

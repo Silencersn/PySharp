@@ -163,38 +163,6 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         };
     }
 
-    private CodeMetaInfo CopyThenMarkCrucial(CodeMetaInfo metaInfo)
-    {
-        return new CodeMetaInfo
-        {
-            Source = metaInfo.Source,
-            Start = metaInfo.Start,
-            End = metaInfo.End,
-            CrucialStart = CurrentToken.Start,
-        };
-    }
-    private void MarkCrucialForOneToken(CodeMetaInfo metaInfo)
-    {
-        metaInfo.CrucialStart = CurrentToken.Start;
-        metaInfo.CrucialEnd = CurrentToken.End;
-    }
-    private CodeMetaInfo CopyThenMarkCrucialForOneToken(CodeMetaInfo metaInfo)
-    {
-        return new CodeMetaInfo
-        {
-            Source = metaInfo.Source,
-            Start = metaInfo.Start,
-            End = metaInfo.End,
-            CrucialStart = CurrentToken.Start,
-            CrucialEnd = CurrentToken.End
-        };
-    }
-    private CodeMetaInfo WithAllEnd(CodeMetaInfo metaInfo)
-    {
-        metaInfo.End = CurrentToken.End;
-        metaInfo.CrucialEnd = CurrentToken.End;
-        return metaInfo;
-    }
     private static CodeMetaInfo? WithEndOfOtherNode(CodeMetaInfo metaInfo, AstNode otherNode)
     {
         if (otherNode.MetaInfo is null)
