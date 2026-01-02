@@ -95,20 +95,20 @@ partial class AstNode
         return new SetNode([.. elts]) { MetaInfo = metaInfo };
     }
 
-    public static BoolOpNode BoolOp(AstBoolOpNode op, IEnumerable<AstExprNode> values)
+    public static BoolOpNode BoolOp(AstBoolOpNode op, IEnumerable<AstExprNode> values, CodeMetaInfo? metaInfo)
     {
         ArgumentNullException.ThrowIfNull(op);
         ArgumentNullException.ThrowIfNull(values);
 
-        return new BoolOpNode(op, [.. values]);
+        return new BoolOpNode(op, [.. values]) { MetaInfo = metaInfo };
     }
-    public static BoolOpNode BoolAnd(params IEnumerable<AstExprNode> values)
+    public static BoolOpNode BoolAnd(IEnumerable<AstExprNode> values, CodeMetaInfo? metaInfo)
     {
-        return BoolOp(AndNode.Shared, values);
+        return BoolOp(AndNode.Shared, values, metaInfo);
     }
-    public static BoolOpNode BoolOr(params IEnumerable<AstExprNode> values)
+    public static BoolOpNode BoolOr(IEnumerable<AstExprNode> values, CodeMetaInfo? metaInfo)
     {
-        return BoolOp(OrNode.Shared, values);
+        return BoolOp(OrNode.Shared, values, metaInfo);
     }
 
     public static BinOpNode BinOp(AstOperatorNode op, AstExprNode left, AstExprNode right, CodeMetaInfo? metaInfo)

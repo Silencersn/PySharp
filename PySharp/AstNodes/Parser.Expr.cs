@@ -854,12 +854,12 @@ partial class Parser
     /// <returns></returns>
     private AstExprNode ParseNotTest()
     {
-        if (CurrentTokenType is TokenType.Name && CurrentToken.String is "not")
-        {
-            MoveNextToken();
-            return AstNode.UnaryOp(NotNode.Shared, ParseNotTest(), null /* the operator 'not' does not need MetaInfo */);
-        }
-        return ParseComparison();
+        if (!IsCurrentKeyword("not"))
+            return ParseComparison();
+
+        var metaInfo = CreateMetaInfo();
+        MoveNextToken();
+        return AstNode.UnaryOp(NotNode.Shared, ParseNotTest(), CopyThenWithEnd(metaInfo));
     }
 
     /// <summary>
@@ -868,18 +868,18 @@ partial class Parser
     /// <returns></returns>
     private AstExprNode ParseAndTest()
     {
+        var metaInfo = CreateMetaInfo();
         var result = ParseNotTest();
 
-        if (CurrentTokenType is TokenType.Name && CurrentToken.String is "and")
+        if (IsCurrentKeyword("and"))
         {
             List<AstExprNode> values = [result];
-            values.Add(result);
-            while (CurrentTokenType is TokenType.Name && CurrentToken.String is "and")
+            while (IsCurrentKeyword("and"))
             {
                 MoveNextToken();
                 values.Add(ParseNotTest());
             }
-            result = AstNode.BoolAnd(values);
+            result = AstNode.BoolAnd(values, CopyThenWithEnd(metaInfo));
         }
         return result;
     }
@@ -890,17 +890,18 @@ partial class Parser
     /// <returns></returns>
     private AstExprNode ParseOrTest()
     {
+        var metaInfo = CreateMetaInfo();
         var result = ParseAndTest();
 
-        if (CurrentTokenType is TokenType.Name && CurrentToken.String is "or")
+        if (IsCurrentKeyword("or"))
         {
             List<AstExprNode> values = [result];
-            while (CurrentTokenType is TokenType.Name && CurrentToken.String is "or")
+            while (IsCurrentKeyword("or"))
             {
                 MoveNextToken();
                 values.Add(ParseAndTest());
             }
-            result = AstNode.BoolOr(values);
+            result = AstNode.BoolOr(values, CopyThenWithEnd(metaInfo));
         }
         return result;
     }
