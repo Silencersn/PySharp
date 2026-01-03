@@ -131,7 +131,7 @@ public sealed class SemanticAnalyzer
                     if (currentComprehension is not null)
                         throw _context.ThrowableSyntaxError($"'yield' inside {AstUtils.GetExprNodeName(currentComprehension)}");
 
-                    if (currentScope is not FunctionVariableScope)
+                    if (currentScope is not CallableVariableScope)
                         throw _context.ThrowableSyntaxError("'yield' outside function");
 
                     break;
@@ -140,7 +140,7 @@ public sealed class SemanticAnalyzer
                     if (currentComprehension is not null)
                         throw _context.ThrowableSyntaxError($"'yield from' inside {AstUtils.GetExprNodeName(currentComprehension)}");
                     
-                    if (currentScope is not FunctionVariableScope)
+                    if (currentScope is not CallableVariableScope)
                         throw _context.ThrowableSyntaxError("'yield from' outside function");
 
                     break;
@@ -240,12 +240,6 @@ public sealed class SemanticAnalyzer
                 break;
 
             case AstArgNode n:
-                if (currentScope.Variables.ContainsKey(n.Arg))
-                    throw _context.ThrowableSyntaxError($"duplicate argument '{n.Arg}' in function definition");
-                currentScope.Variables[n.Arg] = PyVariableType.Parameter;
-                break;
-
-            case AstKeywordNode n:
                 if (currentScope.Variables.ContainsKey(n.Arg))
                     throw _context.ThrowableSyntaxError($"duplicate argument '{n.Arg}' in function definition");
                 currentScope.Variables[n.Arg] = PyVariableType.Parameter;

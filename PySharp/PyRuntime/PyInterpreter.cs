@@ -98,6 +98,7 @@ public static class PyInterpreter
         var codeSource = new CodeSource(sourceName, code);
         var tokens = Lexer.Tokenize(context, codeSource);
         var node = Parser.ParseModule(context, codeSource, tokens);
+        SemanticAnalyzer.Analyze(context, node);
         return PyVirtualMachine.Execute(context, node, moduleName, newFrame);
     }
 

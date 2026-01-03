@@ -199,6 +199,7 @@ public static partial class PyBuiltinFunctions
         {
             var tokens = Lexer.Tokenize(context, codeSource);
             var node = Parser.ParseExpression(context, codeSource, tokens);
+            SemanticAnalyzer.Analyze(context, node);
             var frame = context.CurrentFrame;
             var tempFrame = frame.TempFrame(FrameType.Eval);
             return node.Body.GetExprValue(context, tempFrame);
@@ -219,6 +220,7 @@ public static partial class PyBuiltinFunctions
         {
             var tokens = Lexer.Tokenize(context, codeSource);
             var node = Parser.ParseModule(context, codeSource, tokens);
+            SemanticAnalyzer.Analyze(context, node);
             var frame = context.CurrentFrame;
             var tempFrame = frame.TempFrame(FrameType.Exec);
             node.Execute(context, tempFrame);

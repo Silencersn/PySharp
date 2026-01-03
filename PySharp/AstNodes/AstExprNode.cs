@@ -884,10 +884,20 @@ public sealed class LambdaNode : AstExprNode, IFunctionOrLambda
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
+        if (VariableScope is null)
+            throw new InvalidOperationException();
+
         Caller caller = ((IFunctionOrLambda)this).HasYield ?
             new GeneratorCaller(context, this, frame, GetResult) :
             new FunctionCaller(context, this, frame, GetResult);
-        var func = new PyFunctionObject("<lambda>", caller.Call, frame.InternalClosure?.Values, frame._globals);
+
+        var func = new PyFunctionObject("<lambda>", caller.Call,
+            VariableScope.HasSuper && frame.FrameType is FrameType.Class
+            ? ((IEnumerable<PyCellObject>?)frame.InternalClosure?.Values ?? [])
+                .Append(PyCellObject.CreateCell(PySpecialNames.Class, frame.Caller))
+            : frame.InternalClosure?.Values,
+            frame._globals);
+
         caller.Func = func;
         return func;
     }

@@ -856,15 +856,20 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda, IFunctionOrClass
 
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
+        if (VariableScope is null)
+            throw new InvalidOperationException();
+
         Caller caller = ((IFunctionOrLambda)this).HasYield ?
             new GeneratorCaller(context, this, frame, GetResult) :
             new FunctionCaller(context, this, frame, GetResult);
+
         var func = new PyFunctionObject(Name, caller.Call,
-            IncludeSuper && frame.FrameType is FrameType.Class
+            VariableScope.HasSuper && frame.FrameType is FrameType.Class
             ? ((IEnumerable<PyCellObject>?)frame.InternalClosure?.Values ?? [])
                 .Append(PyCellObject.CreateCell(PySpecialNames.Class, frame.Caller))
             : frame.InternalClosure?.Values,
             frame._globals);
+
         func.PyAttributes.Add(PySpecialNames.QualName, PyStrObject.FromString(((IFunctionOrClass)this).QualifiedName));
         if (AstUtils.TryGetDoc(Body, out var doc))
             func.PyAttributes[PySpecialNames.Doc] = doc;
@@ -925,6 +930,9 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
 
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
+        if (VariableScope is null)
+            throw new InvalidOperationException();
+
         var bases = Bases.Select(baseExpr =>
         {
             var baseType = baseExpr.GetExprValue(context, frame);
