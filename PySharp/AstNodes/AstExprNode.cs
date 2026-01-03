@@ -865,7 +865,7 @@ public sealed class GeneratorExpNode : AstExprNode, IAstExprNodeNoSelfPythonExce
     }
 }
 
-public sealed class LambdaNode : AstExprNode, IFunctionOrLambda
+public sealed class LambdaNode : AstExprNode
 {
     internal LambdaNode(AstArgumentsNode args)
     {
@@ -883,8 +883,8 @@ public sealed class LambdaNode : AstExprNode, IFunctionOrLambda
             throw new InvalidOperationException();
 
         Caller caller = VariableScope.HasYield ?
-            new GeneratorCaller(context, this, VariableScope, frame, GetResult) :
-            new FunctionCaller(context, this, VariableScope, frame, GetResult);
+            new GeneratorCaller(context, VariableScope, frame, GetResult) :
+            new FunctionCaller(context, VariableScope, frame, GetResult);
 
         var func = new PyFunctionObject("<lambda>", caller.Call,
             VariableScope.HasSuper && frame.FrameType is FrameType.Class

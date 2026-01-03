@@ -700,37 +700,23 @@ public sealed class NonlocalNode : AstStmtNode
     }
 }
 
-internal interface IAstVariableScopeOwner
-{
-}
-
-internal interface IFunctionOrLambda : IAstVariableScopeOwner
-{
-}
-
-internal interface IFunctionOrClass : IAstVariableScopeOwner
-{
-}
-
 internal abstract class Caller
 {
-    protected readonly IFunctionOrLambda _node;
     protected readonly PyArgsDef _def;
     protected readonly Func<PyCallContext, PyFrame, PyResult> _getResult;
     protected readonly FrameType _frameType;
     protected readonly CallableVariableScope _variableScope;
     public PyFunctionObject Func { get; set; }
 
-    internal Caller(PyCallContext context, IFunctionOrLambda node, CallableVariableScope variableScope, PyFrame frame, Func<PyCallContext, PyFrame, PyResult> getResult)
+    internal Caller(PyCallContext context, CallableVariableScope variableScope, PyFrame frame, Func<PyCallContext, PyFrame, PyResult> getResult)
     {
-        _node = node;
         _def = PyArgsDef.FromAst(variableScope.ArgumentsNode, context, frame);
         _getResult = getResult;
         _variableScope = variableScope;
         if (this is FunctionCaller)
-            _frameType = _node is FunctionDefNode ? FrameType.Function : FrameType.Lambda;
+            _frameType = _variableScope.Owner is FunctionDefNode ? FrameType.Function : FrameType.Lambda;
         else
-            _frameType = _node is FunctionDefNode ? FrameType.YieldFunction : FrameType.YieldLambda;
+            _frameType = _variableScope.Owner is FunctionDefNode ? FrameType.YieldFunction : FrameType.YieldLambda;
 
         // deferred init
         Func = null!;
@@ -756,7 +742,7 @@ internal abstract class Caller
 
 internal sealed class FunctionCaller : Caller
 {
-    public FunctionCaller(PyCallContext context, IFunctionOrLambda node, CallableVariableScope variableScope, PyFrame frame, Func<PyCallContext, PyFrame, PyResult> getResult) : base(context, node, variableScope, frame, getResult)
+    public FunctionCaller(PyCallContext context, CallableVariableScope variableScope, PyFrame frame, Func<PyCallContext, PyFrame, PyResult> getResult) : base(context, variableScope, frame, getResult)
     {
     }
 
@@ -784,7 +770,7 @@ internal sealed class FunctionCaller : Caller
 
 internal sealed class GeneratorCaller : Caller
 {
-    public GeneratorCaller(PyCallContext context, IFunctionOrLambda node, CallableVariableScope variableScope, PyFrame frame, Func<PyCallContext, PyFrame, PyResult> getResult) : base(context, node, variableScope, frame, getResult)
+    public GeneratorCaller(PyCallContext context, CallableVariableScope variableScope, PyFrame frame, Func<PyCallContext, PyFrame, PyResult> getResult) : base(context, variableScope, frame, getResult)
     {
     }
 
@@ -826,7 +812,7 @@ internal sealed class GeneratorCaller : Caller
 }
 
 
-public class FunctionDefNode : AstStmtNode, IFunctionOrLambda, IFunctionOrClass
+public class FunctionDefNode : AstStmtNode
 {
     public FunctionDefNode(string identifier, AstArgumentsNode args)
     {
@@ -847,8 +833,8 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda, IFunctionOrClass
             throw new InvalidOperationException();
 
         Caller caller = VariableScope.HasYield ?
-            new GeneratorCaller(context, this, VariableScope, frame, GetResult) :
-            new FunctionCaller(context, this, VariableScope, frame, GetResult);
+            new GeneratorCaller(context, VariableScope, frame, GetResult) :
+            new FunctionCaller(context, VariableScope, frame, GetResult);
 
         var func = new PyFunctionObject(Name, caller.Call,
             VariableScope.HasSuper && frame.FrameType is FrameType.Class
@@ -897,7 +883,7 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda, IFunctionOrClass
     }
 }
 
-public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
+public sealed class ClassDefNode : AstStmtNode
 {
     public string Name { get; }
 
