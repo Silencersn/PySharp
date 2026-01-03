@@ -875,11 +875,6 @@ public sealed class LambdaNode : AstExprNode, IFunctionOrLambda
 
     public AstArgumentsNode Args { get; }
     public AstExprNode Body { get; internal set; }
-    FrozenDictionary<string, PyVariableType> IAstVariableScopeOwner.Variables { get; set; } = null!;
-    string[] IFunctionOrLambda.CapturedVariables { get; set; } = null!;
-    string[] IFunctionOrLambda.LocalVariables { get; set; } = null!;
-    FrozenDictionary<string, int> IFunctionOrLambda.LocalVariablesToIndex { get; set; } = null!;
-    bool IFunctionOrLambda.HasYield { get; set; } = false;
     internal LambdaVariableScope? VariableScope { get; set; }
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)

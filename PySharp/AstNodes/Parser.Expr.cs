@@ -1491,7 +1491,6 @@ partial class Parser
         if (_comprehensionDepth > 0)
             throw _context.ThrowableSyntaxError("'yield' inside comprehension" /* TODO: a more specific name like: generator expression */);
 
-        ((IFunctionOrLambda)CurrentScope.Owner!).HasYield = true;
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("yield");
         if (IsCurrentKeyword("from"))

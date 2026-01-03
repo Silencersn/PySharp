@@ -702,22 +702,14 @@ public sealed class NonlocalNode : AstStmtNode
 
 internal interface IAstVariableScopeOwner
 {
-    FrozenDictionary<string, PyVariableType> Variables { get; set; }
 }
 
 internal interface IFunctionOrLambda : IAstVariableScopeOwner
 {
-    AstArgumentsNode Args { get; }
-    string[] LocalVariables { get; set; }
-    FrozenDictionary<string, int> LocalVariablesToIndex { get; set; }
-    string[] CapturedVariables { get; set; }
-    bool HasYield { get; set; }
 }
 
 internal interface IFunctionOrClass : IAstVariableScopeOwner
 {
-    public string Name { get; }
-    public string QualifiedName { get; set; }
 }
 
 internal abstract class Caller
@@ -847,14 +839,6 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda, IFunctionOrClass
     public List<AstStmtNode> Body { get; } = [];
     public List<AstExprNode> DecoratorList { get; } = [];
 
-    FrozenDictionary<string, PyVariableType> IAstVariableScopeOwner.Variables { get; set; } = null!;
-    string[] IFunctionOrLambda.CapturedVariables { get; set; } = null!;
-    string[] IFunctionOrLambda.LocalVariables { get; set; } = null!;
-    FrozenDictionary<string, int> IFunctionOrLambda.LocalVariablesToIndex { get; set; } = null!;
-    bool IFunctionOrLambda.HasYield { get; set; } = false;
-    string IFunctionOrClass.QualifiedName { get; set; } = null!;
-    string IFunctionOrClass.Name => Name;
-    internal bool IncludeSuper { get; set; } = false;
     internal FunctionVariableScope? VariableScope { get; set; }
 
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
@@ -928,8 +912,6 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
     public List<AstStmtNode> Body { get; } = [];
     public List<AstExprNode> DecoratorList { get; } = [];
 
-    FrozenDictionary<string, PyVariableType> IAstVariableScopeOwner.Variables { get; set; } = null!;
-    string IFunctionOrClass.QualifiedName { get; set; } = null!;
     internal ClassVariableScope? VariableScope { get; set; }
 
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
@@ -970,7 +952,7 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
         }
         context.ExitFrame();
 
-        var attrs = ((IAstVariableScopeOwner)this).Variables.Keys.ToDictionary(static member => member, member => newFrame.GetVariable(member).PyUnwrap(context));
+        var attrs = VariableScope.Variables.Keys.ToDictionary(static member => member, member => newFrame.GetVariable(member).PyUnwrap(context));
         foreach (var attr in attrs)
             type.PyAttributes[attr.Key] = attr.Value;
 
