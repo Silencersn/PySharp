@@ -3,7 +3,10 @@ using PySharp.PyRuntime.Calls;
 
 namespace PySharp.AstNodes;
 
-public abstract class AstModNode : AstNode;
+public abstract class AstModNode : AstNode
+{
+    internal RootVariableScope? VariableScope { get; set; }
+}
 
 public class ModuleNode : AstModNode
 {

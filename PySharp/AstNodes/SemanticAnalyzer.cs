@@ -7,9 +7,18 @@ using System.Runtime.CompilerServices;
 
 namespace PySharp.AstNodes;
 
-internal sealed class SemanticAnalyzer
+public sealed class SemanticAnalyzer
 {
-    public static RootVariableScope Analyze(PyCallContext context, AstModNode root)
+    public static void Analyze(PyCallContext context, AstModNode root)
+    {
+        if (root.VariableScope is not null)
+            return;
+
+        var scope = InternalAnalyze(context, root);
+        scope.Bind();
+    }
+
+    internal static RootVariableScope InternalAnalyze(PyCallContext context, AstModNode root)
     {
         var analyzer = new SemanticAnalyzer(context);
         var scope = analyzer.BuildBasicScope(root);
@@ -21,7 +30,7 @@ internal sealed class SemanticAnalyzer
 
     private readonly PyCallContext _context;
 
-    public SemanticAnalyzer(PyCallContext context)
+    private SemanticAnalyzer(PyCallContext context)
     {
         _context = context;
     }
@@ -361,6 +370,15 @@ internal abstract class VariableScope
         Variables[name] = type is PyVariableType.Local
             ? PyVariableType.CapturedLocal : PyVariableType.CapturedParameter;
     }
+
+    public void Bind()
+    {
+        BindToOwner();
+        foreach (var childScope in Children)
+            childScope.Bind();
+    }
+
+    public abstract void BindToOwner();
 }
 
 internal sealed class RootVariableScope : VariableScope
@@ -372,6 +390,14 @@ internal sealed class RootVariableScope : VariableScope
     {
         Owner = owner;
     }
+
+    public override void BindToOwner()
+    {
+        if (Owner.VariableScope is not null && !ReferenceEquals(Owner.VariableScope, this))
+            throw new InvalidOperationException();
+
+        Owner.VariableScope = this;
+    }
 }
 
 internal sealed class ClassVariableScope : VariableScope
@@ -382,6 +408,14 @@ internal sealed class ClassVariableScope : VariableScope
     public ClassVariableScope(ClassDefNode owner, VariableScope parent) : base(parent)
     {
         Owner = owner;
+    }
+
+    public override void BindToOwner()
+    {
+        if (Owner.VariableScope is not null && !ReferenceEquals(Owner.VariableScope, this))
+            throw new InvalidOperationException();
+
+        Owner.VariableScope = this;
     }
 }
 
@@ -403,6 +437,14 @@ internal sealed class FunctionVariableScope : CallableVariableScope
     {
         Owner = owner;
     }
+
+    public override void BindToOwner()
+    {
+        if (Owner.VariableScope is not null && !ReferenceEquals(Owner.VariableScope, this))
+            throw new InvalidOperationException();
+
+        Owner.VariableScope = this;
+    }
 }
 
 internal sealed class LambdaVariableScope : CallableVariableScope
@@ -413,5 +455,13 @@ internal sealed class LambdaVariableScope : CallableVariableScope
     public LambdaVariableScope(LambdaNode owner, VariableScope parent) : base(parent)
     {
         Owner = owner;
+    }
+
+    public override void BindToOwner()
+    {
+        if (Owner.VariableScope is not null && !ReferenceEquals(Owner.VariableScope, this))
+            throw new InvalidOperationException();
+
+        Owner.VariableScope = this;
     }
 }

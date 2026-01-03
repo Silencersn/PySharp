@@ -852,6 +852,7 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda, IFunctionOrClass
     string IFunctionOrClass.QualifiedName { get; set; } = null!;
     string IFunctionOrClass.Name => Name;
     internal bool IncludeSuper { get; set; } = false;
+    internal FunctionVariableScope? VariableScope { get; set; }
 
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
@@ -920,6 +921,7 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
 
     FrozenDictionary<string, PyVariableType> IAstVariableScopeOwner.Variables { get; set; } = null!;
     string IFunctionOrClass.QualifiedName { get; set; } = null!;
+    internal ClassVariableScope? VariableScope { get; set; }
 
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
