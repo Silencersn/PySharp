@@ -250,7 +250,7 @@ partial class Parser
 
                         foreach (var nameNode in CurrentScope.TrackedNameNodes)
                         {
-                            if (nameNode.Identifier == name)
+                            if (nameNode.Id == name)
                             {
                                 if (nameNode.Ctx is ExprContext.Load)
                                     throw _context.ThrowableSyntaxError($"name '{name}' is used prior to global declaration");
@@ -288,7 +288,7 @@ partial class Parser
 
                         foreach (var nameNode in CurrentScope.TrackedNameNodes)
                         {
-                            if (nameNode.Identifier == name)
+                            if (nameNode.Id == name)
                             {
                                 if (nameNode.Ctx is ExprContext.Load)
                                     throw _context.ThrowableSyntaxError($"name '{name}' is used prior to nonlocal declaration");

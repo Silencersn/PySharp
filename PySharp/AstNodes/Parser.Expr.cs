@@ -371,7 +371,7 @@ partial class Parser
                 // identifier
 
                 var nameNode = AstNodeFactory.Name(ParseIdentifier(), metaInfo);
-                CurrentScope.TryAddUnknown(nameNode.Identifier);
+                CurrentScope.TryAddUnknown(nameNode.Id);
                 CurrentScope.Track(nameNode);
                 return nameNode;
             }
@@ -1532,15 +1532,15 @@ partial class Parser
                 if (arg is not NameNode argName)
                     throw _context.ThrowableSyntaxError("expression cannot contain assignment, perhaps you meant \"==\"?");
 
-                if (keys.Contains(argName.Identifier))
-                    throw _context.ThrowableSyntaxError($"keyword argument repeated: {argName.Identifier}");
+                if (keys.Contains(argName.Id))
+                    throw _context.ThrowableSyntaxError($"keyword argument repeated: {argName.Id}");
                 else
-                    keys.Add(argName.Identifier);
+                    keys.Add(argName.Id);
 
                 MoveNextToken();
                 var value = ParseExpression();
 
-                kwargs.Add(AstNodeFactory.Keyword(argName.Identifier, value));
+                kwargs.Add(AstNodeFactory.Keyword(argName.Id, value));
             }
             else if (iskw)
             {

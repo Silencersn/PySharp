@@ -103,7 +103,7 @@ public class AstKeywordNode : AstNode
         Value = value;
     }
 
-    public string Arg { get; }
+    public string Arg { get; } // TODO: string? Arg
     public AstExprNode Value { get; }
 
     internal override void Dump(AstNodeDumper dumper)

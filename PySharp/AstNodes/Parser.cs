@@ -256,7 +256,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
             if (pair.Value is not PyVariableType.Unknown)
                 continue;
 
-            if (nodes.Any(node => node.Ctx is ExprContext.Store or ExprContext.Del && node.Identifier == pair.Key))
+            if (nodes.Any(node => node.Ctx is ExprContext.Store or ExprContext.Del && node.Id == pair.Key))
                 scope.Variables[pair.Key] = PyVariableType.Local;
         }
     }
@@ -309,7 +309,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
             node.LocalVariablesToIndex = node.LocalVariables.Index().ToFrozenDictionary(v => v.Item, v => v.Index);
             foreach (var nameNode in scope.TrackedNameNodes)
             {
-                if (node.LocalVariablesToIndex.TryGetValue(nameNode.Identifier, out var index))
+                if (node.LocalVariablesToIndex.TryGetValue(nameNode.Id, out var index))
                     nameNode.FastIndex = index;
             }
         }

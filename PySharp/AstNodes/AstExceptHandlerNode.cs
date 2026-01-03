@@ -11,30 +11,30 @@ public abstract class AstExceptHandlerNode : AstNode
 
 public class ExceptHandlerNode : AstExceptHandlerNode
 {
-    public ExceptHandlerNode(AstExprNode? type, string? identifier)
+    public ExceptHandlerNode(AstExprNode? type, string? name)
     {
         Type = type;
-        Identifier = identifier;
+        Name = name;
     }
 
     public AstExprNode? Type { get; }
-    public string? Identifier { get; }
+    public string? Name { get; }
     public List<AstStmtNode> Body { get; } = [];
 
     public override bool TryHandle(PyCallContext context, PyFrame frame, PyExceptionObject exception)
     {
         if (IsMatch())
         {
-            if (Identifier is not null)
-                frame.SetVariable(Identifier, exception).PyUnwrap(context);
+            if (Name is not null)
+                frame.SetVariable(Name, exception).PyUnwrap(context);
 
             foreach (var stmt in Body)
             {
                 stmt.Execute(context, frame);
             }
 
-            if (Identifier is not null)
-                frame.DeleteVariable(Identifier).PyUnwrap(context);
+            if (Name is not null)
+                frame.DeleteVariable(Name).PyUnwrap(context);
 
             return true;
         }

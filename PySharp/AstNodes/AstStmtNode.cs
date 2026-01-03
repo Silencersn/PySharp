@@ -825,7 +825,7 @@ internal sealed class GeneratorCaller : Caller
             }
         });
 
-        var name = (_node as FunctionDefNode)?.Identifier ?? "<lambda>";
+        var name = (_node as FunctionDefNode)?.Name ?? "<lambda>";
         return new PyUserDefinedGeneratorObject(name, frame, task);
     }
 }
@@ -835,11 +835,11 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda, IFunctionOrClass
 {
     public FunctionDefNode(string identifier, AstArgumentsNode args)
     {
-        Identifier = identifier;
+        Name = identifier;
         Args = args;
     }
 
-    public string Identifier { get; }
+    public string Name { get; }
     public AstArgumentsNode Args { get; }
     public List<AstStmtNode> Body { get; } = [];
     public List<AstExprNode> DecoratorList { get; } = [];
@@ -850,7 +850,7 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda, IFunctionOrClass
     FrozenDictionary<string, int> IFunctionOrLambda.LocalVariablesToIndex { get; set; } = null!;
     bool IFunctionOrLambda.HasYield { get; set; } = false;
     string IFunctionOrClass.QualifiedName { get; set; } = null!;
-    string IFunctionOrClass.Name => Identifier;
+    string IFunctionOrClass.Name => Name;
     internal bool IncludeSuper { get; set; } = false;
 
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
@@ -858,7 +858,7 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda, IFunctionOrClass
         Caller caller = ((IFunctionOrLambda)this).HasYield ?
             new GeneratorCaller(context, this, frame, GetResult) :
             new FunctionCaller(context, this, frame, GetResult);
-        var func = new PyFunctionObject(Identifier, caller.Call,
+        var func = new PyFunctionObject(Name, caller.Call,
             IncludeSuper && frame.FrameType is FrameType.Class
             ? ((IEnumerable<PyCellObject>?)frame.InternalClosure?.Values ?? [])
                 .Append(PyCellObject.CreateCell(PySpecialNames.Class, frame.Caller))
@@ -869,7 +869,7 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda, IFunctionOrClass
             func.PyAttributes[PySpecialNames.Doc] = doc;
         caller.Func = func;
 
-        frame.SetVariable(Identifier, AstUtils.ApplyDecorators(func, DecoratorList, context, frame)).PyUnwrap(context);
+        frame.SetVariable(Name, AstUtils.ApplyDecorators(func, DecoratorList, context, frame)).PyUnwrap(context);
     }
 
     private PyResult GetResult(PyCallContext context, PyFrame frame)

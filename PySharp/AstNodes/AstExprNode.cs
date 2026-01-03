@@ -56,10 +56,10 @@ public sealed class NameNode : AstExprNode, IExprContextNode, ITargetNode
 {
     internal NameNode(string identifier)
     {
-        Identifier = identifier;
+        Id = identifier;
     }
 
-    public string Identifier { get; }
+    public string Id { get; }
     public ExprContext Ctx { get; set; } = ExprContext.Load;
     internal int FastIndex { get; set; } = -1;
 
@@ -68,13 +68,13 @@ public sealed class NameNode : AstExprNode, IExprContextNode, ITargetNode
         if (FastIndex is not -1)
             return frame.LoadFast(FastIndex).PyUnwrap(context);
 
-        return frame.GetVariable(Identifier).PyUnwrap(context);
+        return frame.GetVariable(Id).PyUnwrap(context);
     }
 
     internal override void Dump(AstNodeDumper dumper)
     {
         dumper
-            .AppendFormat("Name(id={0}, ctx={1}())", PyStrConverter.FromStringToLiteral(Identifier), Ctx);
+            .AppendFormat("Name(id={0}, ctx={1}())", PyStrConverter.FromStringToLiteral(Id), Ctx);
     }
 
     void ITargetNode.DeleteValue(PyCallContext context, PyFrame frame)
@@ -82,7 +82,7 @@ public sealed class NameNode : AstExprNode, IExprContextNode, ITargetNode
         if (FastIndex is not -1)
             frame.DeleteFast(FastIndex).PyUnwrap(context);
         else
-            frame.DeleteVariable(Identifier).PyUnwrap(context);
+            frame.DeleteVariable(Id).PyUnwrap(context);
     }
 
     void ITargetNode.SetValue(PyCallContext context, PyObject value, PyFrame frame)
@@ -90,7 +90,7 @@ public sealed class NameNode : AstExprNode, IExprContextNode, ITargetNode
         if (FastIndex is not -1)
             frame.StoreFast(FastIndex, value).PyUnwrap(context);
         else
-            frame.SetVariable(Identifier, value).PyUnwrap(context);
+            frame.SetVariable(Id, value).PyUnwrap(context);
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
