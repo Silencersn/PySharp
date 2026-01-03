@@ -81,7 +81,6 @@ partial class Parser
                     MoveNextToken();
                     id = ParseIdentifier();
                 }
-                CurrentScope.TrySetLocalIfNotExistsOrUnknown(id ?? module);
                 return new AstAliasNode(module, id);
             }
         }
@@ -135,7 +134,6 @@ partial class Parser
                     MoveNextToken();
                     asName = ParseIdentifier();
                 }
-                CurrentScope.TrySetLocalIfNotExistsOrUnknown(asName ?? name);
                 return new AstAliasNode(name, asName);
             }
         }
@@ -149,17 +147,11 @@ partial class Parser
             var keyword = CurrentToken.String;
             if (keyword is "break")
             {
-                if (!CurrentScope.IsInLoop)
-                    throw _context.ThrowableSyntaxError("'break' outside loop");
-
                 MoveNextToken();
                 return new BreakNode() { MetaInfo = metaInfo };
             }
             else if (keyword is "continue")
             {
-                if (!CurrentScope.IsInLoop)
-                    throw _context.ThrowableSyntaxError("'continue' outside loop");
-
                 MoveNextToken();
                 return new ContinueNode() { MetaInfo = metaInfo };
             }
@@ -186,9 +178,6 @@ partial class Parser
             }
             else if (keyword is "return")
             {
-                if (!CurrentScope.IsCurrentFuncDef)
-                    throw _context.ThrowableSyntaxError("'return' outside function");
-
                 MoveNextToken();
                 if (CurrentTokenType is TokenType.NewLine or TokenType.Semicolon)
                     return new ReturnNode() { MetaInfo = metaInfo };
@@ -235,71 +224,14 @@ partial class Parser
             {
                 MoveNextToken();
                 var names = ParseIdentifiers();
-                foreach (var name in names)
-                {
-                    if (CurrentScope.TryGetVariableType(name, out var variableType))
-                    {
-                        if (variableType is PyVariableType.Parameter)
-                            throw _context.ThrowableSyntaxError($"name '{name}' is parameter and global");
-
-                        if (variableType is PyVariableType.Nonlocal)
-                            throw _context.ThrowableSyntaxError($"name '{name}' is nonlocal and global");
-
-                        if (variableType is PyVariableType.Local)
-                            throw _context.ThrowableSyntaxError($"name '{name}' is assigned to before nonlocal declaration");
-
-                        foreach (var nameNode in CurrentScope.TrackedNameNodes)
-                        {
-                            if (nameNode.Id == name)
-                            {
-                                if (nameNode.Ctx is ExprContext.Load)
-                                    throw _context.ThrowableSyntaxError($"name '{name}' is used prior to global declaration");
-                                else
-                                    throw _context.ThrowableSyntaxError($"name '{name}' is assigned to before global declaration");
-                            }
-                        }
-                    }
-
-                    CurrentScope.SetGlobal(name);
-                }
                 var node = AstNodeFactory.Global(names);
                 node.MetaInfo = metaInfo;
                 return node;
             }
             else if (keyword is "nonlocal")
             {
-                if (!CurrentScope.IsInFuncDef)
-                    throw _context.ThrowableSyntaxError("nonlocal declaration not allowed at module level");
-
                 MoveNextToken();
                 var names = ParseIdentifiers();
-                foreach (var name in names)
-                {
-                    if (CurrentScope.TryGetVariableType(name, out var variableType))
-                    {
-                        if (variableType is PyVariableType.Parameter)
-                            throw _context.ThrowableSyntaxError($"name '{name}' is parameter and nonlocal");
-
-                        if (variableType is PyVariableType.Global)
-                            throw _context.ThrowableSyntaxError($"name '{name}' is nonlocal and global");
-
-                        if (variableType is PyVariableType.Local)
-                            throw _context.ThrowableSyntaxError($"name '{name}' is assigned to before nonlocal declaration");
-
-                        foreach (var nameNode in CurrentScope.TrackedNameNodes)
-                        {
-                            if (nameNode.Id == name)
-                            {
-                                if (nameNode.Ctx is ExprContext.Load)
-                                    throw _context.ThrowableSyntaxError($"name '{name}' is used prior to nonlocal declaration");
-                                else
-                                    throw _context.ThrowableSyntaxError($"name '{name}' is assigned to before nonlocal declaration");
-                            }
-                        }
-                    }
-
-                    CurrentScope.SetNonlocal(name);
-                }
                 var node = AstNodeFactory.Nonlocal(names);
                 node.MetaInfo = metaInfo;
                 return node;
@@ -505,9 +437,7 @@ partial class Parser
         EnsureKeywordThenMove("while");
         var whileNode = new WhileNode(ParseExpression()) { MetaInfo = metaInfo };
         EnsureTokenTypeThenMoveForTest(TokenType.Colon, whileNode.Test);
-        CurrentScope.EnterLoop();
         whileNode.Body.AddRange(ParseSuite("while"));
-        CurrentScope.ExitLoop();
         if (IsCurrentKeyword("else"))
         {
             MoveNextToken();
@@ -542,7 +472,6 @@ partial class Parser
                     {
                         EnsureKeywordThenMove("as");
                         id = ParseIdentifier();
-                        CurrentScope.TrySetLocalIfNotExistsOrUnknown(id);
                     }
                 }
 
@@ -579,9 +508,7 @@ partial class Parser
         var iter = ParseExpression();
         EnsureTokenTypeThenMove(TokenType.Colon);
         var forNode = new ForNode(target, iter) { MetaInfo = metaInfo };
-        CurrentScope.EnterLoop();
         forNode.Body.AddRange(ParseSuite("for"));
-        CurrentScope.ExitLoop();
         if (IsCurrentKeyword("else"))
         {
             MoveNextToken();
@@ -603,24 +530,9 @@ partial class Parser
 
         var funcDef = new FunctionDefNode(name, args);
         funcDef.DecoratorList.AddRange(decorators);
-        StartParsingFuncDef();
         funcDef.Body.AddRange(ParseSuite("def"));
-        EndParsingFuncDef();
         funcDef.MetaInfo = metaInfo;
         return funcDef;
-
-        void StartParsingFuncDef()
-        {
-            CurrentScope.TrySetLocalIfNotExistsOrUnknown(name);
-            Context.EnterScope(funcDef);
-            CurrentScope.AddParameters(args);
-        }
-
-        void EndParsingFuncDef()
-        {
-            var scope = Context.ExitScope();
-            FillLocalVariables(scope);
-        }
     }
 
     private ClassDefNode ParseClassDef(IEnumerable<AstExprNode> decorators)
@@ -644,21 +556,7 @@ partial class Parser
         classDefNode.Bases.AddRange(args);
         classDefNode.Keywords.AddRange(kwargs);
         classDefNode.DecoratorList.AddRange(decorators);
-        StartParsingClassDef();
         classDefNode.Body.AddRange(ParseSuite("class"));
-        EndParsingClassDef();
         return classDefNode;
-
-        void StartParsingClassDef()
-        {
-            CurrentScope.TrySetLocalIfNotExistsOrUnknown(name);
-            Context.EnterScope(classDefNode);
-        }
-
-        void EndParsingClassDef()
-        {
-            var scope = Context.ExitScope();
-            FillLocalVariables(scope);
-        }
     }
 }

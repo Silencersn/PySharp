@@ -62,9 +62,6 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         set => _tokenStream.Position = value;
     }
 
-    private ScopeContext Context { get; } = new();
-    private VariableScope CurrentScope => Context.CurrentScope;
-
     internal TokenInfo CurrentToken
     {
         get
@@ -165,9 +162,6 @@ public sealed partial class Parser : ICodeMetaInfoProvider
             module.Body.AddRange(ParseStatement());
         }
 
-        Debug.Assert(CurrentScope.IsRoot);
-        SemanticAnalysis(CurrentScope);
-
         return module;
     }
 
@@ -178,9 +172,6 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         var metaInfo = CreateMetaInfo();
         var exprList = ParseExpressionList(StopPredicates.UntilNewLine, out var endsWithComma);
         var expr = UnwrapOrMakeTuple(exprList, endsWithComma);
-
-        Debug.Assert(CurrentScope.IsRoot);
-        SemanticAnalysis(CurrentScope);
 
         return new ExpressionNode(expr) { MetaInfo = metaInfo };
     }
@@ -194,118 +185,6 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         var list = ParseStatement();
         _isParsingInteractiveNode = false;
 
-        Debug.Assert(CurrentScope.IsRoot);
-        SemanticAnalysis(CurrentScope);
-        CurrentScope.Children.Clear();
-
         return new InteractiveNode(list) { MetaInfo = metaInfo };
-    }
-
-    private void SemanticAnalysis(VariableScope scope)
-    {
-        FillUnknownVariables(scope);
-        FillCapturedVariables(scope);
-        FillNodeProperties(scope);
-    }
-
-    private static void FillUnknownVariables(VariableScope scope)
-    {
-        if (!scope.IsRoot)
-        {
-            foreach (var pair in scope.Variables)
-            {
-                if (pair.Value is not PyVariableType.Unknown)
-                    continue;
-
-                scope.Variables[pair.Key] = PyVariableType.Global;
-
-                foreach (var wrapper in EnumerateFuncDefOrLambdaToRoot(scope))
-                {
-                    if (wrapper.TryGetVariableType(pair.Key, out var type))
-                    {
-                        if (type is PyVariableType.Global)
-                            break;
-
-                        scope.Variables[pair.Key] = PyVariableType.Closure;
-                    }
-                }
-            }
-        }
-
-        foreach (var child in scope.Children)
-        {
-            FillUnknownVariables(child);
-        }
-    }
-
-    static IEnumerable<VariableScope> EnumerateFuncDefOrLambdaToRoot(VariableScope scope)
-    {
-        while (scope.Parent is not null)
-        {
-            scope = scope.Parent;
-            if (scope.Owner is FunctionDefNode or LambdaNode)
-                yield return scope;
-        }
-    }
-
-    private static void FillLocalVariables(VariableScope scope)
-    {
-        var nodes = scope.TrackedNameNodes;
-        foreach (var pair in scope.Variables)
-        {
-            if (pair.Value is not PyVariableType.Unknown)
-                continue;
-
-            if (nodes.Any(node => node.Ctx is ExprContext.Store or ExprContext.Del && node.Id == pair.Key))
-                scope.Variables[pair.Key] = PyVariableType.Local;
-        }
-    }
-
-    private void FillCapturedVariables(VariableScope scope)
-    {
-        foreach (var (name, type) in scope.Variables)
-        {
-            if (type is not PyVariableType.Closure)
-                continue;
-
-            bool found = false;
-            foreach (var wrapper in EnumerateFuncDefOrLambdaToRoot(scope))
-            {
-                if (wrapper.Variables.TryGetValue(name, out var variableType) && variableType is not PyVariableType.Closure)
-                {
-                    wrapper.CapturedVariables.Add(name);
-                    found = true;
-                    break;
-                }
-            }
-            if (!found)
-                throw _context.ThrowableSyntaxError($"no binding for nonlocal '{name}' found");
-        }
-
-        foreach (var child in scope.Children)
-        {
-            FillCapturedVariables(child);
-        }
-    }
-
-    private static void FillNodeProperties(VariableScope scope)
-    {
-        foreach (var child in scope.Children)
-            FillNodeProperties(child);
-
-        if (scope.Owner is null)
-            return;
-
-        SetCapturedVariableTypes(scope);
-    }
-
-    private static void SetCapturedVariableTypes(VariableScope scope)
-    {
-        foreach (var capturedVariable in scope.CapturedVariables)
-        {
-            var variableType = scope.Variables[capturedVariable];
-            Debug.Assert(variableType is PyVariableType.Local or PyVariableType.Parameter);
-            scope.Variables[capturedVariable] = variableType is PyVariableType.Local ? PyVariableType.CapturedLocal : PyVariableType.CapturedParameter;
-        }
     }
 }

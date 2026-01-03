@@ -371,8 +371,6 @@ partial class Parser
                 // identifier
 
                 var nameNode = AstNodeFactory.Name(ParseIdentifier(), metaInfo);
-                CurrentScope.TryAddUnknown(nameNode.Id);
-                CurrentScope.Track(nameNode);
                 return nameNode;
             }
         }
@@ -936,22 +934,9 @@ partial class Parser
 
         EnsureTokenTypeThenMove(TokenType.Colon);
         var lambdaNode = new LambdaNode(args);
-        StartParsingLambda();
         lambdaNode.Body = ParseExpression();
-        EndParsingLambda();
         lambdaNode.MetaInfo = metaInfo;
         return lambdaNode;
-
-        void StartParsingLambda()
-        {
-            Context.EnterScope(lambdaNode);
-            CurrentScope.AddParameters(args);
-        }
-        void EndParsingLambda()
-        {
-            var scope = Context.ExitScope();
-            FillLocalVariables(scope);
-        }
     }
 
     /// <summary>
@@ -1485,12 +1470,6 @@ partial class Parser
 
     private AstExprNode ParseYieldExpression()
     {
-        if (!CurrentScope.IsCurrentFuncDefOrLambda)
-            throw _context.ThrowableSyntaxError("'yield' outside function");
-
-        if (_comprehensionDepth > 0)
-            throw _context.ThrowableSyntaxError("'yield' inside comprehension" /* TODO: a more specific name like: generator expression */);
-
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("yield");
         if (IsCurrentKeyword("from"))
