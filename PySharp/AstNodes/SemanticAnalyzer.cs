@@ -1,9 +1,7 @@
 ﻿using PySharp.PyRuntime.Calls;
-using System;
+using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Runtime.CompilerServices;
 
 namespace PySharp.AstNodes;
 
@@ -40,41 +38,116 @@ public sealed class SemanticAnalyzer
         Stack<VariableScope> scopeStack = [];
         var rootScope = new RootVariableScope(root);
         VariableScope currentScope = rootScope;
-        scopeStack.Push(rootScope);
+
+        Stack<int> loopDepthStack = [];
+        int currentLoopDepth = 0;
+
+        Stack<AstExprNode?> comprehensionStack = [];
+        AstExprNode? currentComprehension = null;
+
         foreach (var subNode in root.EnumerateSubNodes())
             BuildBasicScopeImpl(subNode);
-        Debug.Assert(scopeStack.Count is 1);
+        Debug.Assert(scopeStack.Count is 0);
         return rootScope;
 
         void BuildBasicScopeImpl(AstNode node)
         {
+            CheckValid(node);
             TryAppendVariableTo(currentScope, node);
 
             VariableScope? scope = node switch
             {
                 ModuleNode n => throw new UnreachableException(),
-                ClassDefNode n => new ClassVariableScope(n, scopeStack.Peek()),
-                FunctionDefNode n => new FunctionVariableScope(n, scopeStack.Peek()),
-                LambdaNode n => new LambdaVariableScope(n, scopeStack.Peek()),
+                ClassDefNode n => new ClassVariableScope(n, currentScope),
+                FunctionDefNode n => new FunctionVariableScope(n, currentScope),
+                LambdaNode n => new LambdaVariableScope(n, currentScope),
                 _ => null
             };
 
             if (scope is not null)
             {
+                scopeStack.Push(currentScope);
                 currentScope = scope;
-                scopeStack.Push(scope);
+
+                loopDepthStack.Push(currentLoopDepth);
+                currentLoopDepth = 0;
+            }
+
+            if (node is ForNode or WhileNode)
+            {
+                currentLoopDepth++;
+            }
+
+            if (node is ListCompNode or SetCompNode or DictCompNode or GeneratorExpNode)
+            {
+                comprehensionStack.Push(currentComprehension);
+                currentComprehension = (AstExprNode)node;
             }
 
             foreach (var subNode in node.EnumerateSubNodes())
                 BuildBasicScopeImpl(subNode);
 
+            if (node is ListCompNode or SetCompNode or DictCompNode or GeneratorExpNode)
+            {
+                currentComprehension = comprehensionStack.Pop();
+            }
+
+            if (node is ForNode or WhileNode)
+            {
+                currentLoopDepth--;
+            }
+
             if (scope is not null)
             {
-                scopeStack.Pop();
-                currentScope = scopeStack.Peek();
+                currentScope = scopeStack.Pop();
+
+                Debug.Assert(currentComprehension is null);
+
+                Debug.Assert(currentLoopDepth is 0);
+                currentLoopDepth = loopDepthStack.Pop();
+            }
+        }
+
+        void CheckValid(AstNode node)
+        {
+            switch (node)
+            {
+                case BreakNode:
+                    if (currentLoopDepth is 0)
+                        throw _context.ThrowableSyntaxError("'break' outside loop");
+                    break;
+
+                case ContinueNode:
+                    if (currentLoopDepth is 0)
+                        throw _context.ThrowableSyntaxError("'continue' outside loop");
+                    break;
+
+                case ReturnNode:
+                    if (currentScope is not FunctionVariableScope)
+                        throw _context.ThrowableSyntaxError("'return' outside function");
+                    break;
+
+                case YieldNode:
+                    if (currentComprehension is not null)
+                        throw _context.ThrowableSyntaxError($"'yield' inside {AstUtils.GetExprNodeName(currentComprehension)}");
+
+                    if (currentScope is not FunctionVariableScope)
+                        throw _context.ThrowableSyntaxError("'yield' outside function");
+
+                    break;
+
+                case YieldFromNode:
+                    if (currentComprehension is not null)
+                        throw _context.ThrowableSyntaxError($"'yield from' inside {AstUtils.GetExprNodeName(currentComprehension)}");
+                    
+                    if (currentScope is not FunctionVariableScope)
+                        throw _context.ThrowableSyntaxError("'yield from' outside function");
+
+                    break;
             }
         }
     }
+
 
     internal void TryAppendVariableTo(VariableScope currentScope, AstNode node)
     {
@@ -422,6 +495,8 @@ internal sealed class ClassVariableScope : VariableScope
 internal abstract class CallableVariableScope : VariableScope
 {
     public bool HasSuper { get; internal set; }
+    public FrozenDictionary<string, int> LocalsTable { get; internal set; } = FrozenDictionary<string, int>.Empty;
+    public string[] VarNames { get; internal set; } = [];
 
     protected CallableVariableScope(VariableScope? parent) : base(parent)
     {
