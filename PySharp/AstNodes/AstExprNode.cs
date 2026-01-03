@@ -865,7 +865,7 @@ public sealed class GeneratorExpNode : AstExprNode, IAstExprNodeNoSelfPythonExce
     }
 }
 
-public sealed class LambdaNode : AstExprNode
+public sealed class LambdaNode : AstExprNode, IScopedSubNodesProvider
 {
     internal LambdaNode(AstArgumentsNode args)
     {
@@ -915,6 +915,36 @@ public sealed class LambdaNode : AstExprNode
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         yield return Args;
+        yield return Body;
+    }
+
+    IEnumerable<AstNode> IScopedSubNodesProvider.EnumerateSubNodesOuterScope()
+    {
+        foreach (var d in Args.KwDefaults)
+            if (d is not null)
+                yield return d;
+
+        foreach (var d in Args.Defaults)
+            yield return d;
+    }
+
+    IEnumerable<AstNode> IScopedSubNodesProvider.EnumerateSubNodesInnerScope()
+    {
+        foreach (var n in Args.PosonlyArgs)
+            yield return n;
+
+        foreach (var n in Args.Args)
+            yield return n;
+
+        if (Args.VarArg is not null)
+            yield return Args.VarArg;
+
+        foreach (var n in Args.KwonlyArgs)
+            yield return n;
+
+        if (Args.KwArg is not null)
+            yield return Args.KwArg;
+
         yield return Body;
     }
 }

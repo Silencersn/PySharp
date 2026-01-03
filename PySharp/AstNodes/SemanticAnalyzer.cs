@@ -66,26 +66,10 @@ public sealed class SemanticAnalyzer
 
             if (scope is not null)
             {
-                if (scope is CallableVariableScope callableScope)
+                if (node is IScopedSubNodesProvider provider)
                 {
-                    var argumentsNode = callableScope.ArgumentsNode;
-                    foreach (var expr in argumentsNode.EnumerateSubNodes().OfType<AstExprNode>())
-                    {
-                        if (expr is null)
-                            continue;
-
-                        CheckValid(expr);
-                        TryAppendVariableTo(currentScope, expr);
-                    }
-                }
-
-                if (scope.Owner is FunctionDefNode functionDefNode)
-                {
-                    foreach (var decorator in functionDefNode.DecoratorList)
-                    {
-                        CheckValid(decorator);
-                        TryAppendVariableTo(currentScope, decorator);
-                    }
+                    foreach (var subNode in provider.EnumerateSubNodesOuterScope())
+                        BuildBasicScopeImpl(subNode);
                 }
 
                 scopeStack.Push(currentScope);
@@ -106,27 +90,16 @@ public sealed class SemanticAnalyzer
                 currentComprehension = (AstExprNode)node;
             }
 
-            // TODO: add API to split EnumerateSubNodes into two parts by scope
-
-            IEnumerable<AstNode> subNodes = node.EnumerateSubNodes();
-            if (scope is not null)
             {
-                if (currentScope.Owner is FunctionDefNode functionDefNode)
-                    subNodes = [functionDefNode.Args, .. functionDefNode.Body]; // skip DecoratorList
-                if (currentScope.Owner is ClassDefNode classDefNode)
-                    subNodes = [.. classDefNode.Bases, .. classDefNode.Keywords, .. classDefNode.Body]; // skip DecoratorList
-            }
-
-            foreach (var subNode in subNodes)
-            {
-                if (subNode is AstArgumentsNode argumentsNode)
+                if (node is IScopedSubNodesProvider provider)
                 {
-                    foreach (var argNode in argumentsNode.EnumerateSubNodes().OfType<AstArgNode>())
-                        BuildBasicScopeImpl(argNode);
+                    foreach (var subNode in provider.EnumerateSubNodesInnerScope())
+                        BuildBasicScopeImpl(subNode);
                 }
                 else
                 {
-                    BuildBasicScopeImpl(subNode);
+                    foreach (var subNode in node.EnumerateSubNodes())
+                        BuildBasicScopeImpl(subNode);
                 }
             }
 

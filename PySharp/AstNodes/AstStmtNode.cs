@@ -811,8 +811,14 @@ internal sealed class GeneratorCaller : Caller
     }
 }
 
+internal interface IScopedSubNodesProvider
+{
+    IEnumerable<AstNode> EnumerateSubNodesOuterScope();
+    IEnumerable<AstNode> EnumerateSubNodesInnerScope();
+}
 
-public class FunctionDefNode : AstStmtNode
+
+public class FunctionDefNode : AstStmtNode, IScopedSubNodesProvider
 {
     public FunctionDefNode(string identifier, AstArgumentsNode args)
     {
@@ -875,15 +881,51 @@ public class FunctionDefNode : AstStmtNode
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
-        yield return Args;
-        foreach (var stmt in Body)
-            yield return stmt;
         foreach (var d in DecoratorList)
             yield return d;
+
+        yield return Args;
+
+        foreach (var stmt in Body)
+            yield return stmt;
+    }
+
+    IEnumerable<AstNode> IScopedSubNodesProvider.EnumerateSubNodesOuterScope()
+    {
+        foreach (var d in DecoratorList)
+            yield return d;
+
+        foreach (var d in Args.KwDefaults)
+            if (d is not null)
+                yield return d;
+
+        foreach (var d in Args.Defaults)
+            yield return d;
+    }
+
+    IEnumerable<AstNode> IScopedSubNodesProvider.EnumerateSubNodesInnerScope()
+    {
+        foreach (var n in Args.PosonlyArgs)
+            yield return n;
+
+        foreach (var n in Args.Args)
+            yield return n;
+
+        if (Args.VarArg is not null)
+            yield return Args.VarArg;
+
+        foreach (var n in Args.KwonlyArgs)
+            yield return n;
+
+        if (Args.KwArg is not null)
+            yield return Args.KwArg;
+
+        foreach (var stmt in Body)
+            yield return stmt;
     }
 }
 
-public sealed class ClassDefNode : AstStmtNode
+public sealed class ClassDefNode : AstStmtNode, IScopedSubNodesProvider
 {
     public string Name { get; }
 
@@ -952,9 +994,34 @@ public sealed class ClassDefNode : AstStmtNode
     }
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
-        foreach (var b in Bases) yield return b;
-        foreach (var k in Keywords) yield return k;
-        foreach (var stmt in Body) yield return stmt;
-        foreach (var d in DecoratorList) yield return d;
+        foreach (var d in DecoratorList)
+            yield return d;
+
+        foreach (var b in Bases)
+            yield return b;
+
+        foreach (var k in Keywords)
+            yield return k;
+
+        foreach (var stmt in Body)
+            yield return stmt;
+    }
+
+    IEnumerable<AstNode> IScopedSubNodesProvider.EnumerateSubNodesOuterScope()
+    {
+        foreach (var d in DecoratorList)
+            yield return d;
+
+        foreach (var b in Bases)
+            yield return b;
+
+        foreach (var k in Keywords)
+            yield return k;
+    }
+
+    IEnumerable<AstNode> IScopedSubNodesProvider.EnumerateSubNodesInnerScope()
+    {
+        foreach (var stmt in Body)
+            yield return stmt;
     }
 }
