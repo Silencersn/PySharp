@@ -4,6 +4,7 @@ using PySharp.PyModules.Builtins;
 using PySharp.PyModules.CSharp;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
+using System;
 using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -725,13 +726,15 @@ internal abstract class Caller
     protected readonly PyArgsDef _def;
     protected readonly Func<PyCallContext, PyFrame, PyResult> _getResult;
     protected readonly FrameType _frameType;
+    protected readonly CallableVariableScope _variableScope;
     public PyFunctionObject Func { get; set; }
 
-    internal Caller(PyCallContext context, IFunctionOrLambda node, PyFrame frame, Func<PyCallContext, PyFrame, PyResult> getResult)
+    internal Caller(PyCallContext context, IFunctionOrLambda node, CallableVariableScope variableScope, PyFrame frame, Func<PyCallContext, PyFrame, PyResult> getResult)
     {
         _node = node;
-        _def = PyArgsDef.FromAst(node.Args, context, frame);
+        _def = PyArgsDef.FromAst(variableScope.ArgumentsNode, context, frame);
         _getResult = getResult;
+        _variableScope = variableScope;
         if (this is FunctionCaller)
             _frameType = _node is FunctionDefNode ? FrameType.Function : FrameType.Lambda;
         else
@@ -746,10 +749,10 @@ internal abstract class Caller
     public PyFrame CreateCallingFrame(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, PyArguments arguments)
     {
         var backFrame = context.CurrentFrame;
-        var frame = backFrame.CreateFuncCallOrClassBuildFrame(Func.Name, Func, _frameType, (args, kwargs), Func._globals, _node.LocalVariablesToIndex);
-        frame._variables = _node.Variables;
+        var frame = backFrame.CreateFuncCallOrClassBuildFrame(Func.Name, Func, _frameType, (args, kwargs), Func._globals, _variableScope.LocalsTable);
+        frame._variables = _variableScope.Variables;
 
-        foreach (var capturedVariable in _node.CapturedVariables)
+        foreach (var capturedVariable in _variableScope.CapturedVariables)
             frame.Closures[capturedVariable] = PyCellObject.CreateCell(capturedVariable, null);
         foreach (var cell in Func.CapturedVariables)
             frame.Closures.Add(cell.Name, cell);
@@ -761,7 +764,7 @@ internal abstract class Caller
 
 internal sealed class FunctionCaller : Caller
 {
-    public FunctionCaller(PyCallContext context, IFunctionOrLambda node, PyFrame frame, Func<PyCallContext, PyFrame, PyResult> getResult) : base(context, node, frame, getResult)
+    public FunctionCaller(PyCallContext context, IFunctionOrLambda node, CallableVariableScope variableScope, PyFrame frame, Func<PyCallContext, PyFrame, PyResult> getResult) : base(context, node, variableScope, frame, getResult)
     {
     }
 
@@ -789,7 +792,7 @@ internal sealed class FunctionCaller : Caller
 
 internal sealed class GeneratorCaller : Caller
 {
-    public GeneratorCaller(PyCallContext context, IFunctionOrLambda node, PyFrame frame, Func<PyCallContext, PyFrame, PyResult> getResult) : base(context, node, frame, getResult)
+    public GeneratorCaller(PyCallContext context, IFunctionOrLambda node, CallableVariableScope variableScope, PyFrame frame, Func<PyCallContext, PyFrame, PyResult> getResult) : base(context, node, variableScope, frame, getResult)
     {
     }
 
@@ -825,8 +828,8 @@ internal sealed class GeneratorCaller : Caller
             }
         });
 
-        var name = (_node as FunctionDefNode)?.Name ?? "<lambda>";
-        return new PyUserDefinedGeneratorObject(name, frame, task);
+        Debug.Assert(_variableScope.Name is not null);
+        return new PyUserDefinedGeneratorObject(_variableScope.Name, frame, task);
     }
 }
 
@@ -859,9 +862,9 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda, IFunctionOrClass
         if (VariableScope is null)
             throw new InvalidOperationException();
 
-        Caller caller = ((IFunctionOrLambda)this).HasYield ?
-            new GeneratorCaller(context, this, frame, GetResult) :
-            new FunctionCaller(context, this, frame, GetResult);
+        Caller caller = VariableScope.HasYield ?
+            new GeneratorCaller(context, this, VariableScope, frame, GetResult) :
+            new FunctionCaller(context, this, VariableScope, frame, GetResult);
 
         var func = new PyFunctionObject(Name, caller.Call,
             VariableScope.HasSuper && frame.FrameType is FrameType.Class
@@ -870,7 +873,8 @@ public class FunctionDefNode : AstStmtNode, IFunctionOrLambda, IFunctionOrClass
             : frame.InternalClosure?.Values,
             frame._globals);
 
-        func.PyAttributes.Add(PySpecialNames.QualName, PyStrObject.FromString(((IFunctionOrClass)this).QualifiedName));
+        Debug.Assert(VariableScope.QualName is not null);
+        func.PyAttributes.Add(PySpecialNames.QualName, PyStrObject.FromString(VariableScope.QualName));
         if (AstUtils.TryGetDoc(Body, out var doc))
             func.PyAttributes[PySpecialNames.Doc] = doc;
         caller.Func = func;
@@ -946,13 +950,14 @@ public sealed class ClassDefNode : AstStmtNode, IFunctionOrClass
             bases.Add(PyObjectType.Shared);
 
         PyTypeObject.ValidateBases(context, bases, out var layoutType);
-        var type = UserDefinedType.Create(layoutType, Name, ((IFunctionOrClass)this).QualifiedName, bases);
+        Debug.Assert(VariableScope.QualName is not null);
+        var type = UserDefinedType.Create(layoutType, Name, VariableScope.QualName, bases);
 
         if (AstUtils.TryGetDoc(Body, out var doc))
             type.PyAttributes[PySpecialNames.Doc] = doc;
 
         var newFrame = frame.CreateFuncCallOrClassBuildFrame(Name, type, FrameType.Class);
-        newFrame._variables = ((IAstVariableScopeOwner)this).Variables;
+        newFrame._variables = VariableScope.Variables;
         foreach (var (name, cell) in frame.Closures)
         {
             newFrame.Closures.Add(name, cell);

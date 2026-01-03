@@ -127,9 +127,8 @@ partial struct PyResult
         return RaiseException(PyStandardExceptionTypes.NameError, arg);
     }
 
-    internal sealed class PySharpException : PyExceptionType
+    internal sealed class PySharpException : PyExceptionType<PySharpException, PyBaseExceptionObjectType>
     {
-        public static PySharpException Shared { get; } = new();
         public override string Name => "PySharpException";
     }
 

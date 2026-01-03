@@ -22,7 +22,7 @@ public sealed class SemanticAnalyzer
         var scope = analyzer.BuildBasicScope(root);
         FillUnknownVariables(scope);
         analyzer.CheckClosureAndFillCapturedVariables(scope);
-        FillHasSuper(scope);
+        FillCallableProperties(scope);
         return scope;
     }
 
@@ -66,6 +66,28 @@ public sealed class SemanticAnalyzer
 
             if (scope is not null)
             {
+                if (scope is CallableVariableScope callableScope)
+                {
+                    var argumentsNode = callableScope.ArgumentsNode;
+                    foreach (var expr in argumentsNode.EnumerateSubNodes().OfType<AstExprNode>())
+                    {
+                        if (expr is null)
+                            continue;
+
+                        CheckValid(expr);
+                        TryAppendVariableTo(currentScope, expr);
+                    }
+                }
+
+                if (scope.Owner is FunctionDefNode functionDefNode)
+                {
+                    foreach (var decorator in functionDefNode.DecoratorList)
+                    {
+                        CheckValid(decorator);
+                        TryAppendVariableTo(currentScope, decorator);
+                    }
+                }
+
                 scopeStack.Push(currentScope);
                 currentScope = scope;
 
@@ -84,8 +106,29 @@ public sealed class SemanticAnalyzer
                 currentComprehension = (AstExprNode)node;
             }
 
-            foreach (var subNode in node.EnumerateSubNodes())
-                BuildBasicScopeImpl(subNode);
+            // TODO: add API to split EnumerateSubNodes into two parts by scope
+
+            IEnumerable<AstNode> subNodes = node.EnumerateSubNodes();
+            if (scope is not null)
+            {
+                if (currentScope.Owner is FunctionDefNode functionDefNode)
+                    subNodes = [functionDefNode.Args, .. functionDefNode.Body]; // skip DecoratorList
+                if (currentScope.Owner is ClassDefNode classDefNode)
+                    subNodes = [.. classDefNode.Bases, .. classDefNode.Keywords, .. classDefNode.Body]; // skip DecoratorList
+            }
+
+            foreach (var subNode in subNodes)
+            {
+                if (subNode is AstArgumentsNode argumentsNode)
+                {
+                    foreach (var argNode in argumentsNode.EnumerateSubNodes().OfType<AstArgNode>())
+                        BuildBasicScopeImpl(argNode);
+                }
+                else
+                {
+                    BuildBasicScopeImpl(subNode);
+                }
+            }
 
             if (node is ListCompNode or SetCompNode or DictCompNode or GeneratorExpNode)
             {
@@ -131,23 +174,36 @@ public sealed class SemanticAnalyzer
                     if (currentComprehension is not null)
                         throw _context.ThrowableSyntaxError($"'yield' inside {AstUtils.GetExprNodeName(currentComprehension)}");
 
-                    if (currentScope is not CallableVariableScope)
+                    if (currentScope is not CallableVariableScope callableYieldScope)
                         throw _context.ThrowableSyntaxError("'yield' outside function");
 
+                    callableYieldScope.HasYield = true;
                     break;
 
                 case YieldFromNode:
                     if (currentComprehension is not null)
                         throw _context.ThrowableSyntaxError($"'yield from' inside {AstUtils.GetExprNodeName(currentComprehension)}");
-                    
-                    if (currentScope is not CallableVariableScope)
+
+                    if (currentScope is not CallableVariableScope callableYieldFromScope)
                         throw _context.ThrowableSyntaxError("'yield from' outside function");
 
+                    callableYieldFromScope.HasYield = true;
+                    break;
+
+                case CallNode n:
+                    for (int i = 0; i < n.Keywords.Length; i++)
+                    {
+                        var currentKeyword = n.Keywords[i];
+                        foreach (var previousKeyword in n.Keywords.Take(i))
+                        {
+                            if (previousKeyword.Arg == currentKeyword.Arg)
+                                throw _context.ThrowableSyntaxError($"keyword argument repeated: {currentKeyword.Arg}");
+                        }
+                    }
                     break;
             }
         }
     }
-
 
     internal void TryAppendVariableTo(VariableScope currentScope, AstNode node)
     {
@@ -322,19 +378,25 @@ public sealed class SemanticAnalyzer
         }
     }
 
-    internal static void FillHasSuper(RootVariableScope scope)
+    internal static void FillCallableProperties(RootVariableScope scope)
     {
-        FillHasSuperImpl(scope);
+        FillCallablePropertiesImpl(scope);
 
-        static void FillHasSuperImpl(VariableScope scope)
+        static void FillCallablePropertiesImpl(VariableScope scope)
         {
             foreach (var child in scope.Children)
-                FillHasSuperImpl(child);
+                FillCallablePropertiesImpl(child);
 
             if (scope is not CallableVariableScope callableScope)
                 return;
 
             callableScope.HasSuper = HasSuper(callableScope);
+            callableScope.VarNames = [.. callableScope.Variables
+                .Where(pair => pair.Value is PyVariableType.Local or PyVariableType.Parameter)
+                .Select(pair => pair.Key)];
+            callableScope.LocalsTable = callableScope.VarNames
+                .Index()
+                .ToFrozenDictionary(static indexed => indexed.Item, static indexed => indexed.Index);
         }
 
         static bool HasSuper(CallableVariableScope callableScope)
@@ -488,7 +550,9 @@ internal sealed class ClassVariableScope : VariableScope
 
 internal abstract class CallableVariableScope : VariableScope
 {
+    internal abstract AstArgumentsNode ArgumentsNode { get; }
     public bool HasSuper { get; internal set; }
+    public bool HasYield { get; internal set; }
     public FrozenDictionary<string, int> LocalsTable { get; internal set; } = FrozenDictionary<string, int>.Empty;
     public string[] VarNames { get; internal set; } = [];
 
@@ -499,6 +563,7 @@ internal abstract class CallableVariableScope : VariableScope
 
 internal sealed class FunctionVariableScope : CallableVariableScope
 {
+    internal override AstArgumentsNode ArgumentsNode => Owner.Args;
     public override FunctionDefNode Owner { get; }
     public override string? Name => Owner.Name;
 
@@ -518,6 +583,7 @@ internal sealed class FunctionVariableScope : CallableVariableScope
 
 internal sealed class LambdaVariableScope : CallableVariableScope
 {
+    internal override AstArgumentsNode ArgumentsNode => Owner.Args;
     public override LambdaNode Owner { get; }
     public override string? Name => "<lambda>";
 

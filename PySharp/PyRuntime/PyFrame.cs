@@ -83,7 +83,7 @@ public sealed partial class PyFrame
     public Stack<PyExceptionObject> Exceptions => field ??= [];
     public PyExceptionObject CurrentException => Exceptions.Peek();
 
-    internal FrozenDictionary<string, PyVariableType>? _variables = null;
+    internal IReadOnlyDictionary<string, PyVariableType>? _variables = null;
     internal DictAdapter GlobalsAdapter => _globals.GlobalsAdapter;
     internal DictAdapter LocalsAdapter => field ??= new DictAdapter(Locals);
     internal FrameType FrameType { get; }

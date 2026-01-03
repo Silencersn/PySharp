@@ -887,9 +887,9 @@ public sealed class LambdaNode : AstExprNode, IFunctionOrLambda
         if (VariableScope is null)
             throw new InvalidOperationException();
 
-        Caller caller = ((IFunctionOrLambda)this).HasYield ?
-            new GeneratorCaller(context, this, frame, GetResult) :
-            new FunctionCaller(context, this, frame, GetResult);
+        Caller caller = VariableScope.HasYield ?
+            new GeneratorCaller(context, this, VariableScope, frame, GetResult) :
+            new FunctionCaller(context, this, VariableScope, frame, GetResult);
 
         var func = new PyFunctionObject("<lambda>", caller.Call,
             VariableScope.HasSuper && frame.FrameType is FrameType.Class
@@ -897,6 +897,9 @@ public sealed class LambdaNode : AstExprNode, IFunctionOrLambda
                 .Append(PyCellObject.CreateCell(PySpecialNames.Class, frame.Caller))
             : frame.InternalClosure?.Values,
             frame._globals);
+
+        Debug.Assert(VariableScope.QualName is not null);
+        func.PyAttributes.Add(PySpecialNames.QualName, PyStrObject.FromString(VariableScope.QualName));
 
         caller.Func = func;
         return func;
