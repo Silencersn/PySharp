@@ -257,7 +257,7 @@ partial class Parser
 
                 targets.Add(UnwrapOrMakeTuple(exprList, endsWithComma));
                 MoveNextToken();
-                exprList = ParseExpressionList(StopPredicates.UntilNewLineOrSemicolonOrEqual, out endsWithComma);
+                exprList = ParseStarredExpressionList(StopPredicates.UntilNewLineOrSemicolonOrEqual, out endsWithComma);
                 allTargets = exprList.All(AstUtils.IsValidTarget);
             }
 

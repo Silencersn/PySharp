@@ -976,9 +976,13 @@ partial class Parser
     private AstExprNode ParseStarredExpression()
     {
         if (CurrentTokenType is TokenType.Star)
+        {
+            MoveNextToken();
+            _ = ParseOrExpr();
             throw new NotImplementedException();
+        }
 
-        return ParseOrExpr();
+        return ParseExpression();
     }
 
     private List<AstExprNode> ParseStarredExpressionList(StopPredicate predicate, out TokenInfo? endsWithComma)
