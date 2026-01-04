@@ -195,7 +195,7 @@ partial class Parser
                 MoveNextToken();
                 var targetList = ParseTargetList(StopPredicates.UntilNewLineOrSemicolon, out _);
                 foreach (var target in targetList)
-                    TrySetTargetContext(target, ExprContext.Del);
+                    AstUtils.SetContext(target, ExprContext.Del);
                 return new DeleteNode([.. targetList]) { MetaInfo = metaInfo };
             }
             else if (keyword is "import" or "from")
@@ -248,7 +248,7 @@ partial class Parser
 
         if (CurrentTokenType is TokenType.Equal)
         {
-            var allTargets = exprList.All(IsValidTarget);
+            var allTargets = exprList.All(AstUtils.IsValidTarget);
             List<AstExprNode> targets = [];
             while (CurrentTokenType is TokenType.Equal)
             {
@@ -258,10 +258,10 @@ partial class Parser
                 targets.Add(UnwrapOrMakeTuple(exprList, endsWithComma));
                 MoveNextToken();
                 exprList = ParseExpressionList(StopPredicates.UntilNewLineOrSemicolonOrEqual, out endsWithComma);
-                allTargets = exprList.All(IsValidTarget);
+                allTargets = exprList.All(AstUtils.IsValidTarget);
             }
 
-            var node = AstNodeFactory.Assign(UnwrapOrMakeTuple(exprList, endsWithComma), targets);
+            var node = AstNodeFactory.Assign(targets, UnwrapOrMakeTuple(exprList, endsWithComma));
             node.MetaInfo = metaInfo;
             return node;
         }
@@ -270,10 +270,9 @@ partial class Parser
         {
             var target = UnwrapOrMakeTuple(exprList, endsWithComma);
 
-            if (!IsValidAugtarget(target))
+            if (!AstUtils.IsValidAugtarget(target))
                 throw _context.ThrowableSyntaxError($"'{AstUtils.GetExprNodeName(target)}' is an illegal expression for augmented assignment");
-
-            TrySetTargetContext(target, ExprContext.Store);
+            AstUtils.SetContext(target, ExprContext.Store);
 
             AstOperatorNode op = CurrentTokenType switch
             {
@@ -503,7 +502,7 @@ partial class Parser
         EnsureKeywordThenMove("for");
         var targetList = ParseTargetList(StopPredicates.UntilKeywordIn, out var endsWithComma);
         var target = UnwrapOrMakeTuple(targetList, endsWithComma);
-        TrySetTargetContext(target, ExprContext.Store);
+        AstUtils.SetContext(target, ExprContext.Store);
         EnsureKeywordThenMove("in");
         var iter = ParseExpression();
         EnsureTokenTypeThenMove(TokenType.Colon);

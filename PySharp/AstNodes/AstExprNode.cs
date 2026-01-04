@@ -361,10 +361,23 @@ public sealed class ListNode : AstExprNode, IExprContextNode, IAstExprNodeNoSelf
     internal ListNode(ImmutableArray<AstExprNode> elts)
     {
         Elts = elts;
+        Ctx = ExprContext.Load;
     }
 
     public ImmutableArray<AstExprNode> Elts { get; }
-    public ExprContext Ctx { get; set; } = ExprContext.Load;
+    public ExprContext Ctx
+    {
+        get => field;
+        set
+        {
+            field = value;
+            foreach (var elt in Elts)
+            {
+                if (elt is IExprContextNode node)
+                    node.Ctx = value;
+            }
+        }
+    }
 
     public override PyListObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
@@ -389,11 +402,23 @@ public sealed class TupleNode : AstExprNode, IExprContextNode, IAstExprNodeNoSel
     internal TupleNode(ImmutableArray<AstExprNode> elts)
     {
         Elts = elts;
+        Ctx = ExprContext.Load;
     }
 
     public ImmutableArray<AstExprNode> Elts { get; }
-    public ExprContext Ctx { get; set; } = ExprContext.Load;
-
+    public ExprContext Ctx
+    {
+        get => field;
+        set
+        {
+            field = value;
+            foreach (var elt in Elts)
+            {
+                if (elt is IExprContextNode node)
+                    node.Ctx = value;
+            }
+        }
+    }
     public override PyTupleObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
         return PyTupleObject.CreateTuple(Elts.Select(item => item.GetExprValue(context, frame)));

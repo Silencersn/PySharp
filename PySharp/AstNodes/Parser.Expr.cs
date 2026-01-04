@@ -1071,7 +1071,7 @@ partial class Parser
         }
 
         var target = ParsePrimary();
-        if (!IsValidTarget(target))
+        if (!target.IsValidTarget())
             throw _context.ThrowableSyntaxError($"cannot assign to {AstUtils.GetExprNodeName(target)}");
         return target;
     }
@@ -1143,10 +1143,8 @@ partial class Parser
     /// <returns></returns>
     private (AstExprNode Elt, List<AstComprehensionNode> Generators) ParseComprehension()
     {
-        _comprehensionDepth++;
         var elt = ParseAssignmentExpression();
         var generators = ParseCompFor();
-        _comprehensionDepth--;
         return (elt, generators);
     }
 

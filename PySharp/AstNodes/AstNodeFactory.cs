@@ -8,10 +8,10 @@ public static partial class AstNodeFactory
         ArgumentNullException.ThrowIfNull(iter);
         ArgumentNullException.ThrowIfNull(ifs);
 
-        if (target is not IExprContextNode node)
+        if (!target.IsValidTarget())
             throw new InvalidOperationException();
 
-        node.Ctx = ExprContext.Store;
+        target.SetContext(ExprContext.Store);
 
         return new AstComprehensionNode(target, iter, [.. ifs]);
     }

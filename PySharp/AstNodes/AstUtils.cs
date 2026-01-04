@@ -181,4 +181,32 @@ internal static class AstUtils
         doc = null;
         return false;
     }
+
+    public static bool IsValidAugtarget(this AstExprNode node)
+    {
+        //return node is NameNode or SubscriptNode or AttributeNode;
+        return node is ITargetNode;
+    }
+
+    public static bool IsValidTarget(this AstExprNode node)
+    {
+        if (IsValidAugtarget(node))
+            return true;
+
+        if (node is TupleNode tupleNode)
+            return tupleNode.Elts.All(IsValidTarget);
+
+        if (node is ListNode listNode)
+            return listNode.Elts.All(IsValidTarget);
+
+        return false;
+    }
+
+    public static void SetContext(this AstExprNode node, ExprContext context)
+    {
+        if (node is not IExprContextNode ctxNode)
+            throw new InvalidOperationException();
+
+        ctxNode.Ctx = context;
+    }
 }

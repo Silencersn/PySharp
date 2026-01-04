@@ -1,4 +1,5 @@
 ﻿using PySharp.Tokenization;
+using System.Diagnostics;
 
 namespace PySharp.AstNodes;
 
@@ -18,45 +19,5 @@ partial class Parser
         public static bool UntilNewLineOrSemicolon(TokenInfo token) => token.Type is TokenType.NewLine or TokenType.Semicolon;
         public static bool UntilNewLineOrSemicolonOrEqual(TokenInfo token) => token.Type is TokenType.NewLine or TokenType.Semicolon or TokenType.Equal;
         public static bool UntilColon(TokenInfo token) => token.Type is TokenType.Colon;
-    }
-
-    private static bool IsValidAugtarget(AstExprNode node)
-    {
-        //return node is NameNode or SubscriptNode or AttributeNode;
-        return node is ITargetNode;
-    }
-
-    private static bool IsValidTarget(AstExprNode node)
-    {
-        if (IsValidAugtarget(node))
-            return true;
-
-        if (node is TupleNode tupleNode)
-            return tupleNode.Elts.All(IsValidTarget);
-
-        if (node is ListNode listNode)
-            return listNode.Elts.All(IsValidTarget);
-
-        return false;
-    }
-
-    private static void TrySetTargetContext(AstExprNode node, ExprContext context)
-    {
-        if (node is NameNode nameNode)
-        {
-            nameNode.Ctx = context;
-        }
-        else if (node is TupleNode tupleNode)
-        {
-            tupleNode.Ctx = context;
-            foreach (var elt in tupleNode.Elts)
-                TrySetTargetContext(elt, context);
-        }
-        else if (node is ListNode listNode)
-        {
-            listNode.Ctx = context;
-            foreach (var elt in listNode.Elts)
-                TrySetTargetContext(elt, context);
-        }
     }
 }

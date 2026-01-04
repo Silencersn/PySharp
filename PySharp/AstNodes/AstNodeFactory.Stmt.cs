@@ -9,17 +9,17 @@ partial class AstNodeFactory
         return new AssertNode(test, msg);
     }
 
-    public static AssignNode Assign(AstExprNode value, params IEnumerable<AstExprNode> targets)
+    public static AssignNode Assign(IEnumerable<AstExprNode> targets, AstExprNode value)
     {
         ArgumentNullException.ThrowIfNull(value);
         ArgumentNullException.ThrowIfNull(targets);
 
         foreach (var target in targets)
         {
-            if (target is not IExprContextNode node)
+            if (!target.IsValidTarget())
                 throw new InvalidOperationException();
 
-            node.Ctx = ExprContext.Store;
+            target.SetContext(ExprContext.Store);
         }
 
         return new AssignNode([.. targets], value);

@@ -54,7 +54,6 @@ public sealed partial class Parser : ICodeMetaInfoProvider
     private readonly OptimizationOptions _options;
     private readonly TokenStream _tokenStream;
     private bool _isParsingInteractiveNode;
-    private int _comprehensionDepth;
 
     private int TokenStreamPosition
     {
