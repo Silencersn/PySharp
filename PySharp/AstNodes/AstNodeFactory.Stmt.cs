@@ -1,4 +1,6 @@
-﻿namespace PySharp.AstNodes;
+﻿using System.Collections.Immutable;
+
+namespace PySharp.AstNodes;
 
 partial class AstNodeFactory
 {
@@ -88,5 +90,14 @@ partial class AstNodeFactory
         ArgumentNullException.ThrowIfNull(names);
 
         return new NonlocalNode(names.ToImmutableArray(true));
+    }
+
+    public static IfNode If(AstExprNode test, IEnumerable<AstStmtNode> body, IEnumerable<AstStmtNode> orElse)
+    {
+        ArgumentNullException.ThrowIfNull(test);
+        ArgumentNullException.ThrowIfNull(body);
+        ArgumentNullException.ThrowIfNull(orElse);
+
+        return new IfNode(test, body.ToImmutableArray(true), orElse.ToImmutableArray(true));
     }
 }

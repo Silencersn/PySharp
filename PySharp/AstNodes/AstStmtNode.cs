@@ -22,7 +22,7 @@ public abstract class AstStmtNode : AstNode
     public abstract void ExecuteStmt(PyCallContext context, PyFrame frame);
 }
 
-public class AssignNode : AstStmtNode
+public sealed class AssignNode : AstStmtNode
 {
     internal AssignNode(ImmutableArray<AstExprNode> targets, AstExprNode value)
     {
@@ -49,7 +49,7 @@ public class AssignNode : AstStmtNode
     }
 }
 
-public class AssertNode : AstStmtNode
+public sealed class AssertNode : AstStmtNode
 {
     internal AssertNode(AstExprNode test, AstExprNode? msg)
     {
@@ -93,7 +93,7 @@ public class AssertNode : AstStmtNode
     }
 }
 
-public class DeleteNode : AstStmtNode
+public sealed class DeleteNode : AstStmtNode
 {
     public ImmutableArray<AstExprNode> Targets { get; }
 
@@ -115,7 +115,7 @@ public class DeleteNode : AstStmtNode
     }
 }
 
-public class AugAssignNode : AstStmtNode
+public sealed class AugAssignNode : AstStmtNode
 {
     internal AugAssignNode(AstExprNode target, AstOperatorNode op, AstExprNode value)
     {
@@ -141,7 +141,7 @@ public class AugAssignNode : AstStmtNode
     }
 }
 
-public class ExprNode : AstStmtNode
+public sealed class ExprNode : AstStmtNode
 {
     public AstExprNode Value { get; }
 
@@ -181,20 +181,13 @@ public class ExprNode : AstStmtNode
     }
 }
 
-public class IfNode : AstStmtNode
+public sealed class IfNode : AstStmtNode
 {
     public AstExprNode Test { get; }
-    public List<AstStmtNode> Body { get; } = [];
-    public List<AstStmtNode> OrElse { get; } = [];
+    public ImmutableArray<AstStmtNode> Body { get; }
+    public ImmutableArray<AstStmtNode> OrElse { get; }
 
-    public IfNode(AstExprNode test)
-    {
-        ArgumentNullException.ThrowIfNull(test);
-
-        Test = test;
-    }
-
-    public IfNode(AstExprNode test, List<AstStmtNode> body, List<AstStmtNode> orElse)
+    internal IfNode(AstExprNode test, ImmutableArray<AstStmtNode> body, ImmutableArray<AstStmtNode> orElse)
     {
         Test = test;
         Body = body;
@@ -232,7 +225,7 @@ public sealed class AstBreakException : AstControlException;
 public sealed class AstContinueException : AstControlException;
 public sealed class AstReturnException(PyObject value) : AstControlException { public PyObject Value { get; } = value ?? throw new ArgumentNullException(nameof(value)); }
 
-public class BreakNode : AstStmtNode
+public sealed class BreakNode : AstStmtNode
 {
     internal BreakNode()
     {
@@ -248,7 +241,7 @@ public class BreakNode : AstStmtNode
     }
 }
 
-public class ContinueNode : AstStmtNode
+public sealed class ContinueNode : AstStmtNode
 {
     internal ContinueNode()
     {
@@ -264,7 +257,7 @@ public class ContinueNode : AstStmtNode
     }
 }
 
-public class ReturnNode : AstStmtNode
+public sealed class ReturnNode : AstStmtNode
 {
     public AstExprNode? Value { get; }
 
@@ -285,7 +278,7 @@ public class ReturnNode : AstStmtNode
     }
 }
 
-public class PassNode : AstStmtNode
+public sealed class PassNode : AstStmtNode
 {
     internal PassNode()
     {
@@ -420,7 +413,7 @@ public class ForNode : AstStmtNode
     }
 }
 
-public class RaiseNode : AstStmtNode
+public sealed class RaiseNode : AstStmtNode
 {
     internal RaiseNode(AstExprNode? exc, AstExprNode? cause)
     {

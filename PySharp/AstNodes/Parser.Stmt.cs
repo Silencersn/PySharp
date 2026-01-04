@@ -412,20 +412,21 @@ partial class Parser
     {
         var metaInfo = CreateMetaInfo();
         EnsureKeywordThenMove(startsWithKeyword);
-        var ifNode = new IfNode(ParseExpression()).With(metaInfo);
-        EnsureTokenTypeThenMoveForTest(TokenType.Colon, ifNode.Test);
-        ifNode.Body.AddRange(ParseSuite(startsWithKeyword));
+        var test = ParseAssignmentExpression();
+        EnsureTokenTypeThenMoveForTest(TokenType.Colon, test);
+        var body = ParseSuite(startsWithKeyword);
+        IEnumerable<AstStmtNode> orElse = [];
         if (IsCurrentKeyword("elif"))
         {
-            ifNode.OrElse.Add(ParseIfStmt("elif"));
+            orElse = [ParseIfStmt("elif")];
         }
         else if (IsCurrentKeyword("else"))
         {
             MoveNextToken();
             EnsureTokenTypeThenMove(TokenType.Colon);
-            ifNode.OrElse.AddRange(ParseSuite("else"));
+            orElse = ParseSuite("else");
         }
-        return ifNode;
+        return AstNodeFactory.If(test, body, orElse).With(metaInfo);
     }
 
     private WhileNode ParseWhileStmt()
