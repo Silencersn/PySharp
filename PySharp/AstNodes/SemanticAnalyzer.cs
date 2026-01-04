@@ -126,6 +126,8 @@ public sealed class SemanticAnalyzer
 
         void CheckValid(AstNode node)
         {
+            // TOTO: no return / continue / break in finally
+
             switch (node)
             {
                 case BreakNode:

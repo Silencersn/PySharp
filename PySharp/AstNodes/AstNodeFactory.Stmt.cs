@@ -119,4 +119,29 @@ partial class AstNodeFactory
 
         return new WhileNode(test, body.ToImmutableArray(true), orElse.ToImmutableArray(true));
     }
+
+    public static TryNode Try(IEnumerable<AstStmtNode> body, IEnumerable<AstExceptHandlerNode> exceptors, IEnumerable<AstStmtNode> orElse, IEnumerable<AstStmtNode> finalBody)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+        ArgumentNullException.ThrowIfNull(exceptors);
+        ArgumentNullException.ThrowIfNull(orElse);
+        ArgumentNullException.ThrowIfNull(finalBody);
+
+        return new TryNode(body.ToImmutableArray(true), exceptors.ToImmutableArray(true), orElse.ToImmutableArray(true), finalBody.ToImmutableArray(true));
+    }
+
+    public static ImportNode Import(IEnumerable<AstAliasNode> names)
+    {
+        ArgumentNullException.ThrowIfNull(names);
+
+        return new ImportNode(names.ToImmutableArray(true));
+    }
+
+    public static ImportFromNode ImportFrom(string? module, IEnumerable<AstAliasNode> names, int level)
+    {
+        ArgumentNullException.ThrowIfNull(names);
+        ArgumentOutOfRangeException.ThrowIfNegative(level);
+
+        return new ImportFromNode(module, names.ToImmutableArray(true), level);
+    }
 }

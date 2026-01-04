@@ -57,20 +57,18 @@ partial class Parser
         if (IsCurrentKeyword("import"))
         {
             MoveNextToken();
-            var importNode = new ImportNode();
-            importNode.Names.Add(ParseAlias());
+            List<AstAliasNode> names = [ParseAlias()];
 
             while (CurrentTokenType is TokenType.Comma)
             {
                 MoveNextToken();
-                importNode.Names.Add(ParseAlias());
+                names.Add(ParseAlias());
             }
 
             if (IsCurrentKeyword("from"))
                 throw _context.ThrowableSyntaxError("Did you mean to use 'from ... import ...' instead?");
 
-            importNode.MetaInfo = metaInfo;
-            return importNode;
+            return AstNodeFactory.Import(names).With(metaInfo);
 
             AstAliasNode ParseAlias()
             {
@@ -93,7 +91,7 @@ partial class Parser
             if (CurrentTokenType is TokenType.Star)
             {
                 MoveNextToken();
-                return new ImportFromNode(module, [new("*", null)], level).With(metaInfo);
+                return AstNodeFactory.ImportFrom(module, [new("*", null)], level).With(metaInfo);
             }
             else if (CurrentTokenType is TokenType.LeftParen)
             {
@@ -110,7 +108,7 @@ partial class Parser
                 }
 
                 EnsureTokenTypeThenMove(TokenType.RightParen);
-                return new ImportFromNode(module, names, level).With(metaInfo);
+                return AstNodeFactory.ImportFrom(module, names, level).With(metaInfo);
             }
             else
             {
@@ -122,7 +120,7 @@ partial class Parser
                     names.Add(ParseAlias());
                 }
 
-                return new ImportFromNode(module, names, level).With(metaInfo);
+                return AstNodeFactory.ImportFrom(module, names, level).With(metaInfo);
             }
 
             AstAliasNode ParseAlias()
@@ -450,11 +448,13 @@ partial class Parser
     {
         var metaInfo = CreateMetaInfo();
         EnsureKeywordThenMove("try");
-        var tryNode = new TryNode().With(metaInfo);
         EnsureTokenTypeThenMove(TokenType.Colon);
-        tryNode.Body.AddRange(ParseSuite("try"));
+        var body = ParseSuite("try");
         if (!IsCurrentKeyword("except") && !IsCurrentKeyword("finally"))
             throw _context.ThrowableSyntaxError("expected 'except' or 'finally' block");
+        List<ExceptHandlerNode> exceptors = [];
+        IEnumerable<AstStmtNode> orElse = [];
+        IEnumerable<AstStmtNode> finalBody = [];
         if (IsCurrentKeyword("except"))
         {
             while (IsCurrentKeyword("except"))
@@ -478,22 +478,22 @@ partial class Parser
 
                 var expectHandler = new ExceptHandlerNode(expr, id);
                 expectHandler.Body.AddRange(ParseSuite("except"));
-                tryNode.Exceptors.Add(expectHandler);
+                exceptors.Add(expectHandler);
             }
             if (IsCurrentKeyword("else"))
             {
                 MoveNextToken();
                 EnsureTokenTypeThenMove(TokenType.Colon);
-                tryNode.OrElse.AddRange(ParseSuite("else"));
+                orElse = ParseSuite("else");
             }
         }
         if (IsCurrentKeyword("finally"))
         {
             MoveNextToken();
             EnsureTokenTypeThenMove(TokenType.Colon);
-            tryNode.FinalBody.AddRange(ParseSuite("finally"));
+            finalBody = ParseSuite("finally");
         }
-        return tryNode;
+        return AstNodeFactory.Try(body, exceptors, orElse, finalBody).With(metaInfo);
     }
 
     private ForNode ParseForStmt()

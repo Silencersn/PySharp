@@ -349,7 +349,7 @@ public sealed class WhileNode : AstStmtNode
     }
 }
 
-public class ForNode : AstStmtNode
+public sealed class ForNode : AstStmtNode
 {
     internal ForNode(AstExprNode target, AstExprNode iter, ImmutableArray<AstStmtNode> body, ImmutableArray<AstStmtNode> orElse)
     {
@@ -477,12 +477,20 @@ public sealed class RaiseNode : AstStmtNode
     }
 }
 
-public class TryNode : AstStmtNode
+public sealed class TryNode : AstStmtNode
 {
-    public List<AstStmtNode> Body { get; } = [];
-    public List<AstExceptHandlerNode> Exceptors { get; } = [];
-    public List<AstStmtNode> OrElse { get; } = [];
-    public List<AstStmtNode> FinalBody { get; } = [];
+    internal TryNode(ImmutableArray<AstStmtNode> body, ImmutableArray<AstExceptHandlerNode> exceptors, ImmutableArray<AstStmtNode> orElse, ImmutableArray<AstStmtNode> finalBody)
+    {
+        Body = body;
+        Exceptors = exceptors;
+        OrElse = orElse;
+        FinalBody = finalBody;
+    }
+
+    public ImmutableArray<AstStmtNode> Body { get; }
+    public ImmutableArray<AstExceptHandlerNode> Exceptors { get; }
+    public ImmutableArray<AstStmtNode> OrElse { get; }
+    public ImmutableArray<AstStmtNode> FinalBody { get; }
 
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
@@ -554,7 +562,12 @@ public enum PyVariableType
 
 public class ImportNode : AstStmtNode
 {
-    public List<AstAliasNode> Names { get; } = [];
+    public ImmutableArray<AstAliasNode> Names { get; }
+
+    internal ImportNode(ImmutableArray<AstAliasNode> names)
+    {
+        Names = names;
+    }
 
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
@@ -580,7 +593,7 @@ public class ImportNode : AstStmtNode
 
 public class ImportFromNode : AstStmtNode
 {
-    public ImportFromNode(string? module, List<AstAliasNode> names, int level)
+    internal ImportFromNode(string? module, ImmutableArray<AstAliasNode> names, int level)
     {
         Module = module;
         Names = names;
@@ -588,7 +601,7 @@ public class ImportFromNode : AstStmtNode
     }
 
     public string? Module { get; }
-    public List<AstAliasNode> Names { get; }
+    public ImmutableArray<AstAliasNode> Names { get; }
     public int Level { get; }
 
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
@@ -603,7 +616,7 @@ public class ImportFromNode : AstStmtNode
         if (!context.PyEnvironment.TryLoadModule(context, Module, out var module))
             throw context.ThrowableModuleNotFoundError($"No module named '{Module}'");
 
-        if (Names.Count is 1 && Names[0].Name is "*")
+        if (Names.Length is 1 && Names[0].Name is "*")
         {
             // if module has __all__, import only those names
             // item in __all__ must be str
