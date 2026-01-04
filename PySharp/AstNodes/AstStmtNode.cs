@@ -293,17 +293,17 @@ public sealed class PassNode : AstStmtNode
     }
 }
 
-public class WhileNode : AstStmtNode
+public sealed class WhileNode : AstStmtNode
 {
     public AstExprNode Test { get; }
-    public List<AstStmtNode> Body { get; } = [];
-    public List<AstStmtNode> OrElse { get; } = [];
+    public ImmutableArray<AstStmtNode> Body { get; }
+    public ImmutableArray<AstStmtNode> OrElse { get; }
 
-    public WhileNode(AstExprNode test)
+    public WhileNode(AstExprNode test, ImmutableArray<AstStmtNode> body, ImmutableArray<AstStmtNode> orElse)
     {
-        ArgumentNullException.ThrowIfNull(test);
-
         Test = test;
+        Body = body;
+        OrElse = orElse;
     }
 
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
@@ -351,16 +351,18 @@ public class WhileNode : AstStmtNode
 
 public class ForNode : AstStmtNode
 {
-    public ForNode(AstExprNode target, AstExprNode iter)
+    internal ForNode(AstExprNode target, AstExprNode iter, ImmutableArray<AstStmtNode> body, ImmutableArray<AstStmtNode> orElse)
     {
         Target = target;
         Iter = iter;
+        Body = body;
+        OrElse = orElse;
     }
 
     public AstExprNode Target { get; }
     public AstExprNode Iter { get; }
-    public List<AstStmtNode> Body { get; } = [];
-    public List<AstStmtNode> OrElse { get; } = [];
+    public ImmutableArray<AstStmtNode> Body { get; }
+    public ImmutableArray<AstStmtNode> OrElse { get; }
 
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {

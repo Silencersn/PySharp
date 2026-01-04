@@ -100,4 +100,23 @@ partial class AstNodeFactory
 
         return new IfNode(test, body.ToImmutableArray(true), orElse.ToImmutableArray(true));
     }
+
+    public static ForNode For(AstExprNode target, AstExprNode iter, IEnumerable<AstStmtNode> body, IEnumerable<AstStmtNode> orElse)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        ArgumentNullException.ThrowIfNull(iter);
+        ArgumentNullException.ThrowIfNull(body);
+        ArgumentNullException.ThrowIfNull(orElse);
+
+        return new ForNode(target, iter, body.ToImmutableArray(true), orElse.ToImmutableArray(true));
+    }
+
+    public static WhileNode While(AstExprNode test, IEnumerable<AstStmtNode> body, IEnumerable<AstStmtNode> orElse)
+    {
+        ArgumentNullException.ThrowIfNull(test);
+        ArgumentNullException.ThrowIfNull(body);
+        ArgumentNullException.ThrowIfNull(orElse);
+
+        return new WhileNode(test, body.ToImmutableArray(true), orElse.ToImmutableArray(true));
+    }
 }

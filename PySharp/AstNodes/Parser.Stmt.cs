@@ -433,16 +433,17 @@ partial class Parser
     {
         var metaInfo = CreateMetaInfo();
         EnsureKeywordThenMove("while");
-        var whileNode = new WhileNode(ParseExpression()).With(metaInfo);
-        EnsureTokenTypeThenMoveForTest(TokenType.Colon, whileNode.Test);
-        whileNode.Body.AddRange(ParseSuite("while"));
+        var test = ParseAssignmentExpression();
+        EnsureTokenTypeThenMoveForTest(TokenType.Colon, test);
+        var body = ParseSuite("while");
+        IEnumerable<AstStmtNode> orElse = [];
         if (IsCurrentKeyword("else"))
         {
             MoveNextToken();
             EnsureTokenTypeThenMove(TokenType.Colon);
-            whileNode.OrElse.AddRange(ParseSuite("else"));
+            orElse = ParseSuite("else");
         }
-        return whileNode;
+        return AstNodeFactory.While(test, body, orElse).With(metaInfo);
     }
 
     private TryNode ParseTryStmt()
@@ -503,17 +504,18 @@ partial class Parser
         var target = UnwrapOrMakeTuple(targetList, endsWithComma);
         AstUtils.SetContext(target, ExprContext.Store);
         EnsureKeywordThenMove("in");
-        var iter = ParseExpression();
+        var items = ParseStarredExpressionList(StopPredicates.UntilColon, out endsWithComma);
+        var iter = UnwrapOrMakeTuple(items, endsWithComma);
         EnsureTokenTypeThenMove(TokenType.Colon);
-        var forNode = new ForNode(target, iter).With(metaInfo);
-        forNode.Body.AddRange(ParseSuite("for"));
+        var body = ParseSuite("for");
+        IEnumerable<AstStmtNode> orElse = [];
         if (IsCurrentKeyword("else"))
         {
             MoveNextToken();
             EnsureTokenTypeThenMove(TokenType.Colon);
-            forNode.OrElse.AddRange(ParseSuite("else"));
+            orElse = ParseSuite("else");
         }
-        return forNode;
+        return AstNodeFactory.For(target, iter, body, orElse).With(metaInfo);
     }
 
     private FunctionDefNode ParseFuncDef(IEnumerable<AstExprNode> decorators)
