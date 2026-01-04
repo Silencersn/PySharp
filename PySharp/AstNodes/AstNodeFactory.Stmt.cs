@@ -30,6 +30,24 @@ partial class AstNodeFactory
         return new DeleteNode(targetsArray);
     }
 
+    public static AugAssignNode AugAssign(AstExprNode target, AstOperatorNode op, AstExprNode value)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        ArgumentNullException.ThrowIfNull(op);
+        ArgumentNullException.ThrowIfNull(value);
+
+        target.CheckValidTargetThenSetContext(ExprContext.Store, true);
+
+        return new AugAssignNode(target, op, value);
+    }
+
+    public static ExprNode Expr(AstExprNode value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+
+        return new ExprNode(value);
+    }
+
     public static GlobalNode Global(params IEnumerable<string> names)
     {
         ArgumentNullException.ThrowIfNull(names);

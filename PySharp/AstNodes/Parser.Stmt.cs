@@ -93,7 +93,7 @@ partial class Parser
             if (CurrentTokenType is TokenType.Star)
             {
                 MoveNextToken();
-                return new ImportFromNode(module, [new("*", null)], level) { MetaInfo = metaInfo };
+                return new ImportFromNode(module, [new("*", null)], level).With(metaInfo);
             }
             else if (CurrentTokenType is TokenType.LeftParen)
             {
@@ -110,7 +110,7 @@ partial class Parser
                 }
 
                 EnsureTokenTypeThenMove(TokenType.RightParen);
-                return new ImportFromNode(module, names, level) { MetaInfo = metaInfo };
+                return new ImportFromNode(module, names, level).With(metaInfo);
             }
             else
             {
@@ -122,7 +122,7 @@ partial class Parser
                     names.Add(ParseAlias());
                 }
 
-                return new ImportFromNode(module, names, level) { MetaInfo = metaInfo };
+                return new ImportFromNode(module, names, level).With(metaInfo);
             }
 
             AstAliasNode ParseAlias()
@@ -148,12 +148,12 @@ partial class Parser
             if (keyword is "break")
             {
                 MoveNextToken();
-                return new BreakNode() { MetaInfo = metaInfo };
+                return new BreakNode().With(metaInfo);
             }
             else if (keyword is "continue")
             {
                 MoveNextToken();
-                return new ContinueNode() { MetaInfo = metaInfo };
+                return new ContinueNode().With(metaInfo);
             }
             else if (keyword is "raise")
             {
@@ -168,27 +168,27 @@ partial class Parser
 
                         var cause = ParseExpression();
 
-                        return new RaiseNode(exc, cause) { MetaInfo = metaInfo };
+                        return new RaiseNode(exc, cause).With(metaInfo);
                     }
 
-                    return new RaiseNode(exc, null) { MetaInfo = metaInfo };
+                    return new RaiseNode(exc, null).With(metaInfo);
                 }
 
-                return new RaiseNode(null, null) { MetaInfo = metaInfo };
+                return new RaiseNode(null, null).With(metaInfo);
             }
             else if (keyword is "return")
             {
                 MoveNextToken();
                 if (CurrentTokenType is TokenType.NewLine or TokenType.Semicolon)
-                    return new ReturnNode() { MetaInfo = metaInfo };
+                    return new ReturnNode().With(metaInfo);
 
                 var list = ParseExpressionList(StopPredicates.UntilNewLineOrSemicolon, out var comma);
-                return new ReturnNode(UnwrapOrMakeTuple(list, comma)) { MetaInfo = metaInfo };
+                return new ReturnNode(UnwrapOrMakeTuple(list, comma)).With(metaInfo);
             }
             else if (keyword is "pass")
             {
                 MoveNextToken();
-                return new PassNode() { MetaInfo = metaInfo };
+                return new PassNode().With(metaInfo);
             }
             else if (keyword is "del")
             {
@@ -237,7 +237,7 @@ partial class Parser
             else if (keyword is "yield")
             {
                 var yieldExpr = ParseYieldExpression();
-                return new ExprNode(yieldExpr) { MetaInfo = metaInfo };
+                return AstNodeFactory.Expr(yieldExpr).With(metaInfo);
             }
         }
 
@@ -293,10 +293,10 @@ partial class Parser
             MoveNextToken();
             var list = ParseExpressionList(StopPredicates.UntilNewLineOrSemicolon, out var comma);
             var value = UnwrapOrMakeTuple(list, comma);
-            return new AugAssignNode(target, op, value) { MetaInfo = metaInfo };
+            return AstNodeFactory.AugAssign(target, op, value).With(metaInfo);
         }
 
-        return new ExprNode(UnwrapOrMakeTuple(exprList, endsWithComma)) { MetaInfo = metaInfo };
+        return AstNodeFactory.Expr(UnwrapOrMakeTuple(exprList, endsWithComma)).With(metaInfo);
     }
 
     private List<string> ParseIdentifiers()
@@ -412,7 +412,7 @@ partial class Parser
     {
         var metaInfo = CreateMetaInfo();
         EnsureKeywordThenMove(startsWithKeyword);
-        var ifNode = new IfNode(ParseExpression()) { MetaInfo = metaInfo };
+        var ifNode = new IfNode(ParseExpression()).With(metaInfo);
         EnsureTokenTypeThenMoveForTest(TokenType.Colon, ifNode.Test);
         ifNode.Body.AddRange(ParseSuite(startsWithKeyword));
         if (IsCurrentKeyword("elif"))
@@ -432,7 +432,7 @@ partial class Parser
     {
         var metaInfo = CreateMetaInfo();
         EnsureKeywordThenMove("while");
-        var whileNode = new WhileNode(ParseExpression()) { MetaInfo = metaInfo };
+        var whileNode = new WhileNode(ParseExpression()).With(metaInfo);
         EnsureTokenTypeThenMoveForTest(TokenType.Colon, whileNode.Test);
         whileNode.Body.AddRange(ParseSuite("while"));
         if (IsCurrentKeyword("else"))
@@ -448,7 +448,7 @@ partial class Parser
     {
         var metaInfo = CreateMetaInfo();
         EnsureKeywordThenMove("try");
-        var tryNode = new TryNode() { MetaInfo = metaInfo };
+        var tryNode = new TryNode().With(metaInfo);
         EnsureTokenTypeThenMove(TokenType.Colon);
         tryNode.Body.AddRange(ParseSuite("try"));
         if (!IsCurrentKeyword("except") && !IsCurrentKeyword("finally"))
@@ -504,7 +504,7 @@ partial class Parser
         EnsureKeywordThenMove("in");
         var iter = ParseExpression();
         EnsureTokenTypeThenMove(TokenType.Colon);
-        var forNode = new ForNode(target, iter) { MetaInfo = metaInfo };
+        var forNode = new ForNode(target, iter).With(metaInfo);
         forNode.Body.AddRange(ParseSuite("for"));
         if (IsCurrentKeyword("else"))
         {

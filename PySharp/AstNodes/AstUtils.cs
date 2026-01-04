@@ -213,12 +213,20 @@ internal static class AstUtils
         ctxNode.Ctx = context;
     }
 
-    public static void CheckValidTargetThenSetContext(this AstExprNode node, ExprContext context)
+    public static void CheckValidTargetThenSetContext(this AstExprNode node, ExprContext context, bool isAugtarget = false)
     {
         ArgumentNullException.ThrowIfNull(node);
 
-        if (!IsValidTarget(node))
-            throw new InvalidOperationException();
+        if (isAugtarget)
+        {
+            if (!IsValidAugtarget(node))
+                throw new InvalidOperationException();
+        }
+        else
+        {
+            if (!IsValidTarget(node))
+                throw new InvalidOperationException();
+        }
 
         SetContext(node, context);
     }

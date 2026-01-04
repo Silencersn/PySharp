@@ -97,7 +97,7 @@ public class DeleteNode : AstStmtNode
 {
     public ImmutableArray<AstExprNode> Targets { get; }
 
-    public DeleteNode(ImmutableArray<AstExprNode> targets)
+    internal DeleteNode(ImmutableArray<AstExprNode> targets)
     {
         Targets = targets;
     }
@@ -117,7 +117,7 @@ public class DeleteNode : AstStmtNode
 
 public class AugAssignNode : AstStmtNode
 {
-    public AugAssignNode(AstExprNode target, AstOperatorNode op, AstExprNode value)
+    internal AugAssignNode(AstExprNode target, AstOperatorNode op, AstExprNode value)
     {
         Target = target;
         Op = op;
@@ -145,10 +145,8 @@ public class ExprNode : AstStmtNode
 {
     public AstExprNode Value { get; }
 
-    public ExprNode(AstExprNode value)
+    internal ExprNode(AstExprNode value)
     {
-        ArgumentNullException.ThrowIfNull(value);
-
         Value = value;
     }
 
