@@ -148,12 +148,12 @@ partial class Parser
             if (keyword is "break")
             {
                 MoveNextToken();
-                return new BreakNode().With(metaInfo);
+                return AstNodeFactory.Break().With(metaInfo);
             }
             else if (keyword is "continue")
             {
                 MoveNextToken();
-                return new ContinueNode().With(metaInfo);
+                return AstNodeFactory.Continue().With(metaInfo);
             }
             else if (keyword is "raise")
             {
@@ -180,10 +180,10 @@ partial class Parser
             {
                 MoveNextToken();
                 if (CurrentTokenType is TokenType.NewLine or TokenType.Semicolon)
-                    return new ReturnNode().With(metaInfo);
+                    return AstNodeFactory.Return().With(metaInfo);
 
                 var list = ParseExpressionList(StopPredicates.UntilNewLineOrSemicolon, out var comma);
-                return new ReturnNode(UnwrapOrMakeTuple(list, comma)).With(metaInfo);
+                return AstNodeFactory.Return(UnwrapOrMakeTuple(list, comma)).With(metaInfo);
             }
             else if (keyword is "pass")
             {

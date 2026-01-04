@@ -48,6 +48,21 @@ partial class AstNodeFactory
         return new ExprNode(value);
     }
 
+    public static BreakNode Break()
+    {
+        return new BreakNode();
+    }
+
+    public static ContinueNode Continue()
+    {
+        return new ContinueNode();
+    }
+
+    public static ReturnNode Return(AstExprNode? value = null)
+    {
+        return new ReturnNode(value);
+    }
+
     public static GlobalNode Global(params IEnumerable<string> names)
     {
         ArgumentNullException.ThrowIfNull(names);

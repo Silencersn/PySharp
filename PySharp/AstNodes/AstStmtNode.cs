@@ -234,6 +234,10 @@ public sealed class AstReturnException(PyObject value) : AstControlException { p
 
 public class BreakNode : AstStmtNode
 {
+    internal BreakNode()
+    {
+    }
+
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
         throw new AstBreakException();
@@ -246,6 +250,10 @@ public class BreakNode : AstStmtNode
 
 public class ContinueNode : AstStmtNode
 {
+    internal ContinueNode()
+    {
+    }
+
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
         throw new AstContinueException();
@@ -258,9 +266,9 @@ public class ContinueNode : AstStmtNode
 
 public class ReturnNode : AstStmtNode
 {
-    public AstExprNode? Value { get; set; }
+    public AstExprNode? Value { get; }
 
-    public ReturnNode(AstExprNode? value = null)
+    internal ReturnNode(AstExprNode? value)
     {
         Value = value;
     }
