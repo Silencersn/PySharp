@@ -1,4 +1,5 @@
-﻿using PySharp.PyModules;
+﻿using PySharp.CodeAnalysis;
+using PySharp.PyModules;
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
@@ -237,5 +238,11 @@ internal static class AstUtils
                 ArgumentNullException.ThrowIfNull(array[i]);
         }
         return array;
+    }
+
+    public static T With<T>(this T node, CodeMetaInfo? metaInfo) where T : AstNode
+    {
+        node.MetaInfo = metaInfo;
+        return node;
     }
 }

@@ -120,7 +120,7 @@ partial class Parser
             if (CurrentTokenType is TokenType.FStringMiddle)
             {
                 var str = FromLiteralToString(_context, CurrentToken.String, true);
-                var node = AstNodeFactory.Constant(str, CreateMetaInfo());
+                var node = AstNodeFactory.Constant(str).With(CreateMetaInfo());
                 nodes.Add(node);
             }
             else
@@ -135,7 +135,7 @@ partial class Parser
             Debug.Assert(CurrentTokenType is TokenType.FStringMiddle or TokenType.RightBrace);
             MoveNextToken();
         }
-        return AstNodeFactory.JoinedStr(nodes, null /* TODO: need MetaInfo? */);
+        return AstNodeFactory.JoinedStr(nodes); // TODO: need MetaInfo?
     }
 
     private FormattedValueNode ParseFStringReplacementFieldWithoutBraces(out ConstantNode? debugSpecifier)
@@ -155,7 +155,7 @@ partial class Parser
             if (!_codeSource.Code.TryGetRange(start, end, out var range))
                 throw _context.ThrowablePySharpException("incorrect code text position");
 
-            debugSpecifier = AstNodeFactory.Constant(range.ToString(), metaInfo.WithEnd());
+            debugSpecifier = AstNodeFactory.Constant(range.ToString()).With(metaInfo.WithEnd());
         }
         else
         {
@@ -181,7 +181,7 @@ partial class Parser
         if (CurrentTokenType is TokenType.Colon)
             format_spec = ParseFStringFullFormatSpec();
 
-        return AstNodeFactory.FormattedValue(fexpr, conversion, format_spec, fexpr.MetaInfo); // TODO: MetaInfo
+        return AstNodeFactory.FormattedValue(fexpr, conversion, format_spec).With(fexpr.MetaInfo); // TODO: MetaInfo
     }
 
     private AstExprNode ParseString()
@@ -198,7 +198,7 @@ partial class Parser
             if (CurrentTokenType is TokenType.String)
             {
                 var str = FromLiteralToString(_context, CurrentToken.String, false);
-                var node = AstNodeFactory.Constant(str, CreateMetaInfo());
+                var node = AstNodeFactory.Constant(str).With(CreateMetaInfo());
                 nodes.Add(node);
             }
             else
@@ -211,7 +211,7 @@ partial class Parser
                     if (CurrentTokenType is TokenType.FStringMiddle)
                     {
                         var str = FromLiteralToString(_context, CurrentToken.String, true);
-                        var node = AstNodeFactory.Constant(str, CreateMetaInfo());
+                        var node = AstNodeFactory.Constant(str).With(CreateMetaInfo());
                         nodes.Add(node);
                     }
                     else
@@ -258,22 +258,21 @@ partial class Parser
             Debug.Assert(combinedNodes.Count is 0 or 1);
 
             if (combinedNodes.Count is 0)
-                return AstNodeFactory.Constant(string.Empty, metaInfo);
+                return AstNodeFactory.Constant(string.Empty).With(metaInfo);
 
             var node = combinedNodes[0];
             node.MetaInfo = metaInfo;
             return node;
         }
 
-        return AstNodeFactory.JoinedStr(combinedNodes, metaInfo);
+        return AstNodeFactory.JoinedStr(combinedNodes).With(metaInfo);
 
         void TryAppendCombinedConstantNode()
         {
             if (_builderForTokenString.Length is 0)
                 return;
 
-            var combinedNode = AstNodeFactory.Constant(_builderForTokenString.ToString(),
-                null /* MetaInfo will be added after the combining is complete */ );
+            var combinedNode = AstNodeFactory.Constant(_builderForTokenString.ToString()); // MetaInfo will be added after the combining is complete
             combinedNodes.Add(combinedNode);
             _builderForTokenString.Clear();
         }
@@ -349,12 +348,12 @@ partial class Parser
                 {
                     var value = CurrentToken.String;
                     MoveNextToken();
-                    return AstNodeFactory.Constant(bool.Parse(value), metaInfo);
+                    return AstNodeFactory.Constant(bool.Parse(value)).With(metaInfo);
                 }
                 else if (CurrentToken.String is "None")
                 {
                     MoveNextToken();
-                    return AstNodeFactory.Constant(PyNoneObject.None, metaInfo);
+                    return AstNodeFactory.Constant(PyNoneObject.None).With(metaInfo);
                 }
 
                 throw _context.ThrowableSyntaxError("invalid syntax");
@@ -364,13 +363,13 @@ partial class Parser
                 // __debug__
 
                 MoveNextToken();
-                return AstNodeFactory.Constant(_options.Debug, metaInfo);
+                return AstNodeFactory.Constant(_options.Debug).With(metaInfo);
             }
             else
             {
                 // identifier
 
-                var nameNode = AstNodeFactory.Name(ParseIdentifier(), metaInfo);
+                var nameNode = AstNodeFactory.Name(ParseIdentifier()).With(metaInfo);
                 return nameNode;
             }
         }
@@ -388,15 +387,15 @@ partial class Parser
             MoveNextToken();
 
             if (PyIntObjectType.TryParse(value, 0, out var integer))
-                return AstNodeFactory.Constant(integer, metaInfo);
+                return AstNodeFactory.Constant(integer).With(metaInfo);
 
             value = value.Replace("_", string.Empty);
-            return AstNodeFactory.Constant(double.Parse(value), metaInfo);
+            return AstNodeFactory.Constant(double.Parse(value)).With(metaInfo);
         }
         else if (CurrentTokenType is TokenType.Ellipsis)
         {
             MoveNextToken();
-            return AstNodeFactory.Constant(PyEllipsisObject.Ellipsis, metaInfo);
+            return AstNodeFactory.Constant(PyEllipsisObject.Ellipsis).With(metaInfo);
         }
         else if (CurrentTokenType is TokenType.LeftParen or TokenType.LeftSquareBracket or TokenType.LeftBrace)
         {
@@ -520,7 +519,7 @@ partial class Parser
                     // lst[*expr1, expr2 := expr3]
 
                     var list = ParseFlexibleExpressionList(StopPredicates.UntilRightSquareBracket, out var endsWithComma);
-                    nextExpr = AstNodeFactory.Subscript(expr, UnwrapOrMakeTuple(list, endsWithComma), currentMetaInfo.WithAllEnd());
+                    nextExpr = AstNodeFactory.Subscript(expr, UnwrapOrMakeTuple(list, endsWithComma)).With(currentMetaInfo.WithAllEnd());
                     EnsureTokenTypeThenMove(TokenType.RightSquareBracket);
                 }
                 catch (PyRuntimeException)
@@ -530,7 +529,7 @@ partial class Parser
 
                     TokenStreamPosition = index;
                     var sliceList = ParseSliceList(out var endsWithComma);
-                    nextExpr = AstNodeFactory.Subscript(expr, UnwrapOrMakeTuple(sliceList, endsWithComma), currentMetaInfo.WithAllEnd());
+                    nextExpr = AstNodeFactory.Subscript(expr, UnwrapOrMakeTuple(sliceList, endsWithComma)).With(currentMetaInfo.WithAllEnd());
                     EnsureTokenTypeThenMove(TokenType.RightSquareBracket);
                 }
                 expr = nextExpr;
@@ -545,7 +544,7 @@ partial class Parser
                     // primary "(" argument_list ")"
 
                     var (args, kwargs) = ParseArgumentList();
-                    expr = AstNodeFactory.Call(expr, args, kwargs, startMetaInfo.WithEnd());
+                    expr = AstNodeFactory.Call(expr, args, kwargs).With(startMetaInfo.WithEnd());
                 }
                 catch (PyRuntimeException)
                 {
@@ -554,7 +553,7 @@ partial class Parser
                     TokenStreamPosition = index;
                     var metaInfo = CreateAstMetaInfo();
                     var (elts, generators) = ParseComprehension();
-                    expr = AstNodeFactory.Call(expr, [AstNodeFactory.GeneratorExp(elts, generators, metaInfo.WithPreviousEnd())], [], startMetaInfo.WithEnd());
+                    expr = AstNodeFactory.Call(expr, [AstNodeFactory.GeneratorExp(elts, generators).With(metaInfo.WithPreviousEnd())], []).With(startMetaInfo.WithEnd());
                 }
                 EnsureTokenTypeThenMove(TokenType.RightParen);
             }
@@ -563,7 +562,7 @@ partial class Parser
                 // primary.attr
 
                 MoveNextToken();
-                expr = AstNodeFactory.Attribute(expr, ParseIdentifier(), startMetaInfo.WithPreviousEnd());
+                expr = AstNodeFactory.Attribute(expr, ParseIdentifier()).With(startMetaInfo.WithPreviousEnd());
             }
             else
             {
@@ -588,7 +587,7 @@ partial class Parser
             metaInfo = metaInfo.WithCrucial();
             MoveNextToken();
             var uexpr = ParseUExpr();
-            return AstNodeFactory.BinOp(PowNode.Shared, expr, uexpr, metaInfo.WithPreviousEnd());
+            return AstNodeFactory.BinOp(PowNode.Shared, expr, uexpr).With(metaInfo.WithPreviousEnd());
         }
 
         return expr;
@@ -613,7 +612,7 @@ partial class Parser
             Debug.Assert(op is not null);
             MoveNextToken();
             var uexpr = ParseUExpr();
-            return AstNodeFactory.UnaryOp(op, uexpr, metaInfo.WithPreviousEnd());
+            return AstNodeFactory.UnaryOp(op, uexpr).With(metaInfo.WithPreviousEnd());
         }
 
         return ParsePower();
@@ -644,7 +643,7 @@ partial class Parser
             Debug.Assert(op is not null);
             MoveNextToken();
             var right = ParseMExpr();
-            left = AstNodeFactory.BinOp(op, left, right, currentMetaInfo.WithPreviousEnd());
+            left = AstNodeFactory.BinOp(op, left, right).With(currentMetaInfo.WithPreviousEnd());
         }
 
         return left;
@@ -665,7 +664,7 @@ partial class Parser
             var add = CurrentTokenType is TokenType.Plus;
             MoveNextToken();
             var right = ParseMExpr();
-            left = AstNodeFactory.BinOp(add ? AddNode.Shared : SubNode.Shared, left, right, currentMetaInfo.WithPreviousEnd());
+            left = AstNodeFactory.BinOp(add ? AddNode.Shared : SubNode.Shared, left, right).With(currentMetaInfo.WithPreviousEnd());
         }
 
         return left;
@@ -686,7 +685,7 @@ partial class Parser
             var lshift = CurrentTokenType is TokenType.LeftShift;
             MoveNextToken();
             var right = ParseAExpr();
-            left = AstNodeFactory.BinOp(lshift ? LShiftNode.Shared : RShiftNode.Shared, left, right, currentMetaInfo.WithPreviousEnd());
+            left = AstNodeFactory.BinOp(lshift ? LShiftNode.Shared : RShiftNode.Shared, left, right).With(currentMetaInfo.WithPreviousEnd());
         }
 
         return left;
@@ -706,7 +705,7 @@ partial class Parser
             var currentMetaInfo = startMetaInfo.WithCrucial();
             MoveNextToken();
             var shiftExpr = ParseShiftExpr();
-            andExpr = AstNodeFactory.BinOp(BitAndNode.Shared, andExpr, shiftExpr, currentMetaInfo.WithPreviousEnd());
+            andExpr = AstNodeFactory.BinOp(BitAndNode.Shared, andExpr, shiftExpr).With(currentMetaInfo.WithPreviousEnd());
         }
 
         return andExpr;
@@ -726,7 +725,7 @@ partial class Parser
             var currentMetaInfo = startMetaInfo.WithCrucial();
             MoveNextToken();
             var andExpr = ParseAndExpr();
-            xorExpr = AstNodeFactory.BinOp(BitXorNode.Shared, xorExpr, andExpr, currentMetaInfo.WithPreviousEnd());
+            xorExpr = AstNodeFactory.BinOp(BitXorNode.Shared, xorExpr, andExpr).With(currentMetaInfo.WithPreviousEnd());
         }
 
         return xorExpr;
@@ -746,7 +745,7 @@ partial class Parser
             var currentMetaInfo = startMetaInfo.WithCrucial();
             MoveNextToken();
             var xorExpr = ParseXorExpr();
-            orExpr = AstNodeFactory.BinOp(BitOrNode.Shared, orExpr, xorExpr, currentMetaInfo.WithPreviousEnd());
+            orExpr = AstNodeFactory.BinOp(BitOrNode.Shared, orExpr, xorExpr).With(currentMetaInfo.WithPreviousEnd());
         }
 
         return orExpr;
@@ -831,7 +830,7 @@ partial class Parser
         }
 
         if (ops.Count > 0)
-            return AstNodeFactory.Compare(expr, ops.Zip(comptors), metaInfo.WithPreviousEnd());
+            return AstNodeFactory.Compare(expr, ops.Zip(comptors)).With(metaInfo.WithPreviousEnd());
 
         return expr;
     }
@@ -847,7 +846,7 @@ partial class Parser
 
         var metaInfo = CreateAstMetaInfo();
         MoveNextToken();
-        return AstNodeFactory.UnaryOp(NotNode.Shared, ParseNotTest(), metaInfo.WithPreviousEnd());
+        return AstNodeFactory.UnaryOp(NotNode.Shared, ParseNotTest()).With(metaInfo.WithPreviousEnd());
     }
 
     /// <summary>
@@ -867,7 +866,7 @@ partial class Parser
                 MoveNextToken();
                 values.Add(ParseNotTest());
             }
-            result = AstNodeFactory.BoolAnd(values, metaInfo.WithPreviousEnd());
+            result = AstNodeFactory.BoolAnd(values).With(metaInfo.WithPreviousEnd());
         }
         return result;
     }
@@ -889,7 +888,7 @@ partial class Parser
                 MoveNextToken();
                 values.Add(ParseAndTest());
             }
-            result = AstNodeFactory.BoolOr(values, metaInfo.WithPreviousEnd());
+            result = AstNodeFactory.BoolOr(values).With(metaInfo.WithPreviousEnd());
         }
         return result;
     }
@@ -908,7 +907,7 @@ partial class Parser
             var test = ParseOrTest();
             EnsureKeywordThenMove("else");
             var orelse = ParseExpression();
-            return AstNodeFactory.IfExp(test, body, orelse, metaInfo.WithPreviousEnd());
+            return AstNodeFactory.IfExp(test, body, orelse).With(metaInfo.WithPreviousEnd());
         }
         return body;
     }
@@ -1052,7 +1051,7 @@ partial class Parser
             }
         }
 
-        return AstNodeFactory.Tuple(list, metaInfo);
+        return AstNodeFactory.Tuple(list).With(metaInfo);
     }
 
     /// <summary>
@@ -1184,19 +1183,19 @@ partial class Parser
         if (CurrentTokenType is TokenType.RightSquareBracket)
         {
             MoveNextToken();
-            return AstNodeFactory.List([], metaInfo.WithPreviousEnd());
+            return AstNodeFactory.List([]).With(metaInfo.WithPreviousEnd());
         }
 
         if (TestIsComprehension())
         {
             var (elt, generators) = ParseComprehension();
             EnsureTokenTypeThenMove(TokenType.RightSquareBracket);
-            return AstNodeFactory.ListComp(elt, generators, metaInfo.WithPreviousEnd());
+            return AstNodeFactory.ListComp(elt, generators).With(metaInfo.WithPreviousEnd());
         }
 
         var list = ParseFlexibleExpressionList(StopPredicates.UntilRightSquareBracket, out _);
         EnsureTokenTypeThenMove(TokenType.RightSquareBracket);
-        return AstNodeFactory.List(list, metaInfo.WithPreviousEnd());
+        return AstNodeFactory.List(list).With(metaInfo.WithPreviousEnd());
     }
 
     /// <summary>
@@ -1213,12 +1212,12 @@ partial class Parser
         {
             var (elt, generators) = ParseComprehension();
             EnsureTokenTypeThenMove(TokenType.RightBrace);
-            return AstNodeFactory.SetComp(elt, generators, metaInfo.WithPreviousEnd());
+            return AstNodeFactory.SetComp(elt, generators).With(metaInfo.WithPreviousEnd());
         }
 
         var set = ParseFlexibleExpressionList(StopPredicates.UntilRightBrace, out _);
         EnsureTokenTypeThenMove(TokenType.RightBrace);
-        return AstNodeFactory.Set(set, metaInfo.WithPreviousEnd());
+        return AstNodeFactory.Set(set).With(metaInfo.WithPreviousEnd());
     }
 
     /// <summary>
@@ -1269,7 +1268,7 @@ partial class Parser
         if (CurrentTokenType is TokenType.RightBrace)
         {
             MoveNextToken();
-            return AstNodeFactory.Dict([], metaInfo.WithPreviousEnd());
+            return AstNodeFactory.Dict([]).With(metaInfo.WithPreviousEnd());
         }
 
         bool isComp;
@@ -1291,7 +1290,7 @@ partial class Parser
             var (key, value) = ParseDictItem();
             var generators = ParseCompFor();
             EnsureTokenTypeThenMove(TokenType.RightBrace);
-            return AstNodeFactory.DictComp(key, value, generators, metaInfo.WithPreviousEnd());
+            return AstNodeFactory.DictComp(key, value, generators).With(metaInfo.WithPreviousEnd());
         }
 
         List<KeyValuePair<AstExprNode, AstExprNode>> pairs = [];
@@ -1301,7 +1300,7 @@ partial class Parser
             pairs.Add(KeyValuePair.Create(key, value));
         }
         EnsureTokenTypeThenMove(TokenType.RightBrace);
-        return AstNodeFactory.Dict(pairs, metaInfo.WithPreviousEnd());
+        return AstNodeFactory.Dict(pairs).With(metaInfo.WithPreviousEnd());
     }
 
     /// <summary>
@@ -1314,7 +1313,7 @@ partial class Parser
         EnsureTokenTypeThenMove(TokenType.LeftParen);
         var (elt, generators) = ParseComprehension();
         EnsureTokenTypeThenMove(TokenType.RightParen);
-        return AstNodeFactory.GeneratorExp(elt, generators, metaInfo.WithPreviousEnd());
+        return AstNodeFactory.GeneratorExp(elt, generators).With(metaInfo.WithPreviousEnd());
     }
 
     private AstArgumentsNode ParseParameterList(StopPredicate predicate)
@@ -1450,7 +1449,7 @@ partial class Parser
         if (CurrentTokenType is TokenType.RightParen)
         {
             MoveNextToken();
-            return AstNodeFactory.Tuple([], metaInfo.WithPreviousEnd());
+            return AstNodeFactory.Tuple([]).With(metaInfo.WithPreviousEnd());
         }
 
         var list = ParseFlexibleExpressionList(StopPredicates.UntilRightParen, out var endsWithComma);
@@ -1478,13 +1477,13 @@ partial class Parser
         {
             MoveNextToken();
             var expr = ParseExpression();
-            return AstNodeFactory.YieldFrom(expr, metaInfo.WithPreviousEnd());
+            return AstNodeFactory.YieldFrom(expr).With(metaInfo.WithPreviousEnd());
         }
         if (StopPredicates.UntilRightParenOrNewLineOrSemicolon(CurrentToken))
-            return AstNodeFactory.Yield(null, metaInfo);
+            return AstNodeFactory.Yield(null).With(metaInfo);
         var list = ParseStarredExpressionList(StopPredicates.UntilRightParenOrNewLineOrSemicolon, out var endsWithComma);
         var value = UnwrapOrMakeTuple(list, endsWithComma);
-        return AstNodeFactory.Yield(value, metaInfo.WithPreviousEnd());
+        return AstNodeFactory.Yield(value).With(metaInfo.WithPreviousEnd());
     }
 
     /// <summary>

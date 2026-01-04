@@ -193,10 +193,8 @@ partial class Parser
             else if (keyword is "del")
             {
                 MoveNextToken();
-                var targetList = ParseTargetList(StopPredicates.UntilNewLineOrSemicolon, out _);
-                foreach (var target in targetList)
-                    AstUtils.SetContext(target, ExprContext.Del);
-                return new DeleteNode([.. targetList]) { MetaInfo = metaInfo };
+                var targets = ParseTargetList(StopPredicates.UntilNewLineOrSemicolon, out _);
+                return AstNodeFactory.Delete(targets).With(metaInfo);
             }
             else if (keyword is "import" or "from")
             {

@@ -20,7 +20,15 @@ partial class AstNodeFactory
         return new AssignNode(targetsArray, value);
     }
 
+    public static DeleteNode Delete(params IEnumerable<AstExprNode> targets)
+    {
+        ArgumentNullException.ThrowIfNull(targets);
 
+        var targetsArray = targets.ToImmutableArray(true);
+        targetsArray.CheckValidTargetThenSetContext(ExprContext.Del);
+
+        return new DeleteNode(targetsArray);
+    }
 
     public static GlobalNode Global(params IEnumerable<string> names)
     {
