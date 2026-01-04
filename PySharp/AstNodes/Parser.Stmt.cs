@@ -527,12 +527,8 @@ partial class Parser
         var args = CurrentTokenType is TokenType.RightParen ? new() : ParseParameterList(StopPredicates.UntilRightParen);
         EnsureTokenTypeThenMove(TokenType.RightParen);
         EnsureTokenTypeThenMove(TokenType.Colon);
-
-        var funcDef = new FunctionDefNode(name, args);
-        funcDef.DecoratorList.AddRange(decorators);
-        funcDef.Body.AddRange(ParseSuite("def"));
-        funcDef.MetaInfo = metaInfo;
-        return funcDef;
+        var body = ParseSuite("def");
+        return AstNodeFactory.FunctionDef(name, args, body, decorators).With(metaInfo);
     }
 
     private ClassDefNode ParseClassDef(IEnumerable<AstExprNode> decorators)
@@ -540,23 +536,19 @@ partial class Parser
         var metaInfo = CreateMetaInfo();
         EnsureKeywordThenMove("class");
         var name = ParseIdentifier();
-        var args = new List<AstExprNode>();
-        var kwargs = new List<AstKeywordNode>();
+        var bases = new List<AstExprNode>();
+        var keywords = new List<AstKeywordNode>();
 
         if (CurrentTokenType is TokenType.LeftParen)
         {
             MoveNextToken();
-            (args, kwargs) = ParseArgumentList();
+            (bases, keywords) = ParseArgumentList();
             EnsureTokenTypeThenMove(TokenType.RightParen);
         }
 
         EnsureTokenTypeThenMove(TokenType.Colon);
 
-        var classDefNode = new ClassDefNode(metaInfo, name);
-        classDefNode.Bases.AddRange(args);
-        classDefNode.Keywords.AddRange(kwargs);
-        classDefNode.DecoratorList.AddRange(decorators);
-        classDefNode.Body.AddRange(ParseSuite("class"));
-        return classDefNode;
+        var body = ParseSuite("class");
+        return AstNodeFactory.ClassDef(name, bases, keywords, body, decorators).With(metaInfo);
     }
 }

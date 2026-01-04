@@ -560,7 +560,7 @@ public enum PyVariableType
     CapturedParameter
 }
 
-public class ImportNode : AstStmtNode
+public sealed class ImportNode : AstStmtNode
 {
     public ImmutableArray<AstAliasNode> Names { get; }
 
@@ -591,7 +591,7 @@ public class ImportNode : AstStmtNode
     }
 }
 
-public class ImportFromNode : AstStmtNode
+public sealed class ImportFromNode : AstStmtNode
 {
     internal ImportFromNode(string? module, ImmutableArray<AstAliasNode> names, int level)
     {
@@ -836,18 +836,20 @@ internal interface IScopedSubNodesProvider
 }
 
 
-public class FunctionDefNode : AstStmtNode, IScopedSubNodesProvider
+public sealed class FunctionDefNode : AstStmtNode, IScopedSubNodesProvider
 {
-    public FunctionDefNode(string identifier, AstArgumentsNode args)
+    internal FunctionDefNode(string name, AstArgumentsNode args, ImmutableArray<AstStmtNode> body, ImmutableArray<AstExprNode> decoratorList)
     {
-        Name = identifier;
+        Name = name;
         Args = args;
+        Body = body;
+        DecoratorList = decoratorList;
     }
 
     public string Name { get; }
     public AstArgumentsNode Args { get; }
-    public List<AstStmtNode> Body { get; } = [];
-    public List<AstExprNode> DecoratorList { get; } = [];
+    public ImmutableArray<AstStmtNode> Body { get; }
+    public ImmutableArray<AstExprNode> DecoratorList { get; }
 
     internal FunctionVariableScope? VariableScope { get; set; }
 
@@ -945,18 +947,20 @@ public class FunctionDefNode : AstStmtNode, IScopedSubNodesProvider
 
 public sealed class ClassDefNode : AstStmtNode, IScopedSubNodesProvider
 {
-    public string Name { get; }
-
-    internal ClassDefNode(CodeMetaInfo metaInfo, string name)
+    internal ClassDefNode(string name, ImmutableArray<AstExprNode> bases, ImmutableArray<AstKeywordNode> keywords, ImmutableArray<AstStmtNode> body, ImmutableArray<AstExprNode> decoratorList)
     {
-        MetaInfo = metaInfo;
         Name = name;
+        Bases = bases;
+        Keywords = keywords;
+        Body = body;
+        DecoratorList = decoratorList;
     }
 
-    public List<AstExprNode> Bases { get; } = [];
-    public List<AstKeywordNode> Keywords { get; } = [];
-    public List<AstStmtNode> Body { get; } = [];
-    public List<AstExprNode> DecoratorList { get; } = [];
+    public string Name { get; }
+    public ImmutableArray<AstExprNode> Bases { get; } = [];
+    public ImmutableArray<AstKeywordNode> Keywords { get; } = [];
+    public ImmutableArray<AstStmtNode> Body { get; } = [];
+    public ImmutableArray<AstExprNode> DecoratorList { get; } = [];
 
     internal ClassVariableScope? VariableScope { get; set; }
 

@@ -144,4 +144,25 @@ partial class AstNodeFactory
 
         return new ImportFromNode(module, names.ToImmutableArray(true), level);
     }
+
+    public static FunctionDefNode FunctionDef(string name, AstArgumentsNode args, IEnumerable<AstStmtNode> body, IEnumerable<AstExprNode> decoratorList)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        ArgumentNullException.ThrowIfNull(args);
+        ArgumentNullException.ThrowIfNull(body);
+        ArgumentNullException.ThrowIfNull(decoratorList);
+
+        return new FunctionDefNode(name, args, body.ToImmutableArray(true), decoratorList.ToImmutableArray(true));
+    }
+
+    public static ClassDefNode ClassDef(string name, IEnumerable<AstExprNode> bases, IEnumerable<AstKeywordNode> keywords, IEnumerable<AstStmtNode> body, IEnumerable<AstExprNode> decoratorList)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        ArgumentNullException.ThrowIfNull(bases);
+        ArgumentNullException.ThrowIfNull(keywords);
+        ArgumentNullException.ThrowIfNull(body);
+        ArgumentNullException.ThrowIfNull(decoratorList);
+
+        return new ClassDefNode(name, bases.ToImmutableArray(true), keywords.ToImmutableArray(true), body.ToImmutableArray(true), decoratorList.ToImmutableArray(true));
+    }
 }
