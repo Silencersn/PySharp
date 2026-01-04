@@ -197,4 +197,12 @@ partial class AstNodeFactory
 
         return new YieldFromNode(value);
     }
+
+    public static LambdaNode Lambda(AstArgumentsNode args, AstExprNode body)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+        ArgumentNullException.ThrowIfNull(body);
+
+        return new LambdaNode(args, body);
+    }
 }

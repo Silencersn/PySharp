@@ -892,14 +892,14 @@ public sealed class GeneratorExpNode : AstExprNode, IAstExprNodeNoSelfPythonExce
 
 public sealed class LambdaNode : AstExprNode, IScopedSubNodesProvider
 {
-    internal LambdaNode(AstArgumentsNode args)
+    internal LambdaNode(AstArgumentsNode args, AstExprNode body)
     {
         Args = args;
-        Body = null!;
+        Body = body;
     }
 
     public AstArgumentsNode Args { get; }
-    public AstExprNode Body { get; internal set; }
+    public AstExprNode Body { get; }
     internal LambdaVariableScope? VariableScope { get; set; }
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)

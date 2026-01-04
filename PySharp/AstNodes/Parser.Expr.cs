@@ -920,22 +920,9 @@ partial class Parser
     {
         var metaInfo = CreateMetaInfo();
         EnsureKeywordThenMove("lambda");
-
-        AstArgumentsNode args;
-        if (CurrentTokenType is TokenType.Colon)
-        {
-            args = new AstArgumentsNode();
-        }
-        else
-        {
-            args = ParseParameterList(StopPredicates.UntilColon);
-        }
-
+        var args = CurrentTokenType is TokenType.Colon ? new() : ParseParameterList(StopPredicates.UntilColon);
         EnsureTokenTypeThenMove(TokenType.Colon);
-        var lambdaNode = new LambdaNode(args);
-        lambdaNode.Body = ParseExpression();
-        lambdaNode.MetaInfo = metaInfo;
-        return lambdaNode;
+        return AstNodeFactory.Lambda(args, ParseExpression()).With(metaInfo);
     }
 
     /// <summary>
