@@ -1,19 +1,18 @@
-﻿namespace PySharp.AstNodes;
+﻿using System.Collections.Immutable;
+
+namespace PySharp.AstNodes;
 
 public static partial class AstNodeFactory
 {
-    public static AstComprehensionNode Comprehension(AstExprNode target, AstExprNode iter, params IEnumerable<AstExprNode> ifs)
+    public static AstComprehensionNode Comprehension(AstExprNode target, AstExprNode iter, IEnumerable<AstExprNode> ifs)
     {
         ArgumentNullException.ThrowIfNull(target);
         ArgumentNullException.ThrowIfNull(iter);
         ArgumentNullException.ThrowIfNull(ifs);
 
-        if (!target.IsValidTarget())
-            throw new InvalidOperationException();
+        target.CheckValidTargetThenSetContext(ExprContext.Store);
 
-        target.SetContext(ExprContext.Store);
-
-        return new AstComprehensionNode(target, iter, [.. ifs]);
+        return new AstComprehensionNode(target, iter, ifs.ToImmutableArray(true));
     }
 
     public static AstKeywordNode Keyword(string arg, AstExprNode value)

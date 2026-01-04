@@ -2,6 +2,8 @@
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
+using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
@@ -208,5 +210,32 @@ internal static class AstUtils
             throw new InvalidOperationException();
 
         ctxNode.Ctx = context;
+    }
+
+    public static void CheckValidTargetThenSetContext(this AstExprNode node, ExprContext context)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+
+        if (!IsValidTarget(node))
+            throw new InvalidOperationException();
+
+        SetContext(node, context);
+    }
+
+    public static void CheckValidTargetThenSetContext(this IEnumerable<AstExprNode> nodes, ExprContext context)
+    {
+        foreach (var node in nodes)
+            CheckValidTargetThenSetContext(node, context);
+    }
+
+    public static ImmutableArray<T> ToImmutableArray<T>(this IEnumerable<T> source, bool ensureElementsNotNull)
+    {
+        var array = source.ToImmutableArray();
+        if (ensureElementsNotNull)
+        {
+            for (int i = 0; i < array.Length; i++)
+                ArgumentNullException.ThrowIfNull(array[i]);
+        }
+        return array;
     }
 }

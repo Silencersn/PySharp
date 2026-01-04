@@ -14,28 +14,25 @@ partial class AstNodeFactory
         ArgumentNullException.ThrowIfNull(value);
         ArgumentNullException.ThrowIfNull(targets);
 
-        foreach (var target in targets)
-        {
-            if (!target.IsValidTarget())
-                throw new InvalidOperationException();
+        var targetsArray = targets.ToImmutableArray(true);
+        targetsArray.CheckValidTargetThenSetContext(ExprContext.Store);
 
-            target.SetContext(ExprContext.Store);
-        }
-
-        return new AssignNode([.. targets], value);
+        return new AssignNode(targetsArray, value);
     }
+
+
 
     public static GlobalNode Global(params IEnumerable<string> names)
     {
         ArgumentNullException.ThrowIfNull(names);
 
-        return new GlobalNode([.. names]);
+        return new GlobalNode(names.ToImmutableArray(true));
     }
 
     public static NonlocalNode Nonlocal(params IEnumerable<string> names)
     {
         ArgumentNullException.ThrowIfNull(names);
 
-        return new NonlocalNode([.. names]);
+        return new NonlocalNode(names.ToImmutableArray(true));
     }
 }

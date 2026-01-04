@@ -32,7 +32,7 @@ partial class AstNodeFactory
         ArgumentNullException.ThrowIfNull(op);
         ArgumentNullException.ThrowIfNull(values);
 
-        return new BoolOpNode(op, [.. values]) { MetaInfo = metaInfo };
+        return new BoolOpNode(op, values.ToImmutableArray(true)) { MetaInfo = metaInfo };
     }
     public static BoolOpNode BoolOr(IEnumerable<AstExprNode> values, CodeMetaInfo? metaInfo)
     {
@@ -45,7 +45,7 @@ partial class AstNodeFactory
         ArgumentNullException.ThrowIfNull(args);
         ArgumentNullException.ThrowIfNull(keywords);
 
-        return new CallNode(func, [.. args], [.. keywords]) { MetaInfo = metaInfo };
+        return new CallNode(func, args.ToImmutableArray(true), keywords.ToImmutableArray(true)) { MetaInfo = metaInfo };
     }
 
     public static CompareNode Compare(AstExprNode left, IEnumerable<(AstCmpopNode Op, AstExprNode Comparator)> opsAndComparators, CodeMetaInfo? metaInfo)
@@ -53,7 +53,7 @@ partial class AstNodeFactory
         ArgumentNullException.ThrowIfNull(left);
         ArgumentNullException.ThrowIfNull(opsAndComparators);
 
-        return new CompareNode(left, [.. opsAndComparators.Select(t => t.Op)], [.. opsAndComparators.Select(t => t.Comparator)]) { MetaInfo = metaInfo };
+        return new CompareNode(left, opsAndComparators.Select(t => t.Op).ToImmutableArray(true), opsAndComparators.Select(t => t.Comparator).ToImmutableArray(true)) { MetaInfo = metaInfo };
     }
 
     public static ConstantNode Constant(PyObject value, CodeMetaInfo? metaInfo)
@@ -84,7 +84,7 @@ partial class AstNodeFactory
     {
         ArgumentNullException.ThrowIfNull(pairs);
 
-        return new DictNode([.. pairs.Select(static pair => pair.Key)], [.. pairs.Select(static pair => pair.Value)]) { MetaInfo = metaInfo };
+        return new DictNode(pairs.Select(static pair => pair.Key).ToImmutableArray(true), pairs.Select(static pair => pair.Value).ToImmutableArray(true)) { MetaInfo = metaInfo };
     }
     public static DictCompNode DictComp(AstExprNode key, AstExprNode value, IEnumerable<AstComprehensionNode> generators, CodeMetaInfo? metaInfo)
     {
@@ -92,7 +92,7 @@ partial class AstNodeFactory
         ArgumentNullException.ThrowIfNull(value);
         ArgumentNullException.ThrowIfNull(generators);
 
-        return new DictCompNode(key, value, [.. generators]) { MetaInfo = metaInfo };
+        return new DictCompNode(key, value, generators.ToImmutableArray(true)) { MetaInfo = metaInfo };
     }
 
     public static FormattedValueNode FormattedValue(AstExprNode value, int conversion, AstExprNode? formatSpec, CodeMetaInfo? metaInfo)
@@ -106,7 +106,7 @@ partial class AstNodeFactory
         ArgumentNullException.ThrowIfNull(elt);
         ArgumentNullException.ThrowIfNull(generators);
 
-        return new GeneratorExpNode(elt, [.. generators]) { MetaInfo = metaInfo };
+        return new GeneratorExpNode(elt, generators.ToImmutableArray(true)) { MetaInfo = metaInfo };
     }
 
     public static IfExpNode IfExp(AstExprNode test, AstExprNode body, AstExprNode orElse, CodeMetaInfo? metaInfo)
@@ -122,14 +122,14 @@ partial class AstNodeFactory
     {
         ArgumentNullException.ThrowIfNull(values);
 
-        return new JoinedStrNode([.. values]) { MetaInfo = metaInfo };
+        return new JoinedStrNode(values.ToImmutableArray(true)) { MetaInfo = metaInfo };
     }
 
     public static ListNode List(IEnumerable<AstExprNode> elts, CodeMetaInfo? metaInfo)
     {
         ArgumentNullException.ThrowIfNull(elts);
 
-        return new ListNode([.. elts]) { MetaInfo = metaInfo };
+        return new ListNode(elts.ToImmutableArray(true)) { MetaInfo = metaInfo };
     }
 
     public static ListCompNode ListComp(AstExprNode elt, IEnumerable<AstComprehensionNode> generators, CodeMetaInfo? metaInfo)
@@ -137,7 +137,7 @@ partial class AstNodeFactory
         ArgumentNullException.ThrowIfNull(elt);
         ArgumentNullException.ThrowIfNull(generators);
 
-        return new ListCompNode(elt, [.. generators]) { MetaInfo = metaInfo };
+        return new ListCompNode(elt, generators.ToImmutableArray(true)) { MetaInfo = metaInfo };
     }
     public static NameNode Name(string name, CodeMetaInfo? metaInfo)
     {
@@ -149,14 +149,14 @@ partial class AstNodeFactory
     {
         ArgumentNullException.ThrowIfNull(elts);
 
-        return new SetNode([.. elts]) { MetaInfo = metaInfo };
+        return new SetNode(elts.ToImmutableArray(true)) { MetaInfo = metaInfo };
     }
     public static SetCompNode SetComp(AstExprNode elt, IEnumerable<AstComprehensionNode> generators, CodeMetaInfo? metaInfo)
     {
         ArgumentNullException.ThrowIfNull(elt);
         ArgumentNullException.ThrowIfNull(generators);
 
-        return new SetCompNode(elt, [.. generators]) { MetaInfo = metaInfo };
+        return new SetCompNode(elt, generators.ToImmutableArray(true)) { MetaInfo = metaInfo };
     }
 
     public static SliceNode Slice(AstExprNode? lower, AstExprNode? upper, AstExprNode? step)
@@ -175,7 +175,7 @@ partial class AstNodeFactory
     {
         ArgumentNullException.ThrowIfNull(elts);
 
-        return new TupleNode([.. elts]) { MetaInfo = metaInfo };
+        return new TupleNode(elts.ToImmutableArray(true)) { MetaInfo = metaInfo };
     }
 
     public static UnaryOpNode UnaryOp(AstUnaryOpNode op, AstExprNode operand, CodeMetaInfo? metaInfo)
