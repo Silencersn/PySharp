@@ -16,7 +16,8 @@ public abstract class AstOperatorNode : AstNode
 
 public class AddNode : AstOperatorNode
 {
-    public static AddNode Shared { get; } = new();
+    internal static AddNode Shared { get; } = new();
+    private AddNode() { }
 
     public override PyResult GetOpValue(PyCallContext context, PyObject left, PyObject right)
     {
@@ -26,7 +27,8 @@ public class AddNode : AstOperatorNode
 
 public class SubNode : AstOperatorNode
 {
-    public static SubNode Shared { get; } = new();
+    internal static SubNode Shared { get; } = new();
+    private SubNode() { }
 
     public override PyResult GetOpValue(PyCallContext context, PyObject left, PyObject right)
     {
@@ -36,7 +38,8 @@ public class SubNode : AstOperatorNode
 
 public class MulNode : AstOperatorNode
 {
-    public static MulNode Shared { get; } = new();
+    internal static MulNode Shared { get; } = new();
+    private MulNode() { }
 
     public override PyResult GetOpValue(PyCallContext context, PyObject left, PyObject right)
     {
@@ -46,7 +49,8 @@ public class MulNode : AstOperatorNode
 
 public class DivNode : AstOperatorNode
 {
-    public static DivNode Shared { get; } = new();
+    internal static DivNode Shared { get; } = new();
+    private DivNode() { }
 
     public override PyResult GetOpValue(PyCallContext context, PyObject left, PyObject right)
     {
@@ -56,7 +60,8 @@ public class DivNode : AstOperatorNode
 
 public class FloorDivNode : AstOperatorNode
 {
-    public static FloorDivNode Shared { get; } = new();
+    internal static FloorDivNode Shared { get; } = new();
+    private FloorDivNode() { }
 
     public override PyResult GetOpValue(PyCallContext context, PyObject left, PyObject right)
     {
@@ -66,7 +71,8 @@ public class FloorDivNode : AstOperatorNode
 
 public class ModNode : AstOperatorNode
 {
-    public static ModNode Shared { get; } = new();
+    internal static ModNode Shared { get; } = new();
+    private ModNode() { }
 
     public override PyResult GetOpValue(PyCallContext context, PyObject left, PyObject right)
     {
@@ -76,7 +82,8 @@ public class ModNode : AstOperatorNode
 
 public class PowNode : AstOperatorNode
 {
-    public static PowNode Shared { get; } = new();
+    internal static PowNode Shared { get; } = new();
+    private PowNode() { }
 
     public override PyResult GetOpValue(PyCallContext context, PyObject left, PyObject right)
     {
@@ -86,7 +93,8 @@ public class PowNode : AstOperatorNode
 
 public class LShiftNode : AstOperatorNode
 {
-    public static LShiftNode Shared { get; } = new();
+    internal static LShiftNode Shared { get; } = new();
+    private LShiftNode() { }
 
     public override PyResult GetOpValue(PyCallContext context, PyObject left, PyObject right)
     {
@@ -96,7 +104,8 @@ public class LShiftNode : AstOperatorNode
 
 public class RShiftNode : AstOperatorNode
 {
-    public static RShiftNode Shared { get; } = new();
+    internal static RShiftNode Shared { get; } = new();
+    private RShiftNode() { }
 
     public override PyResult GetOpValue(PyCallContext context, PyObject left, PyObject right)
     {
@@ -106,7 +115,8 @@ public class RShiftNode : AstOperatorNode
 
 public class BitOrNode : AstOperatorNode
 {
-    public static BitOrNode Shared { get; } = new();
+    internal static BitOrNode Shared { get; } = new();
+    private BitOrNode() { }
 
     public override PyResult GetOpValue(PyCallContext context, PyObject left, PyObject right)
     {
@@ -116,7 +126,8 @@ public class BitOrNode : AstOperatorNode
 
 public class BitXorNode : AstOperatorNode
 {
-    public static BitXorNode Shared { get; } = new();
+    internal static BitXorNode Shared { get; } = new();
+    private BitXorNode() { }
 
     public override PyResult GetOpValue(PyCallContext context, PyObject left, PyObject right)
     {
@@ -126,7 +137,8 @@ public class BitXorNode : AstOperatorNode
 
 public class BitAndNode : AstOperatorNode
 {
-    public static BitAndNode Shared { get; } = new();
+    internal static BitAndNode Shared { get; } = new();
+    private BitAndNode() { }
 
     public override PyResult GetOpValue(PyCallContext context, PyObject left, PyObject right)
     {

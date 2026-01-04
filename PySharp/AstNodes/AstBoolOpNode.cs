@@ -16,7 +16,8 @@ public abstract class AstBoolOpNode : AstNode
 
 public class AndNode : AstBoolOpNode
 {
-    public static AndNode Shared { get; } = new();
+    internal static AndNode Shared { get; } = new();
+    private AndNode() { }
 
     public override (bool Result, PyResult Value) GetBoolOpValue(PyCallContext context, IEnumerable<PyObject> values)
     {
@@ -39,7 +40,8 @@ public class AndNode : AstBoolOpNode
 
 public class OrNode : AstBoolOpNode
 {
-    public static OrNode Shared { get; } = new();
+    internal static OrNode Shared { get; } = new();
+    private OrNode() { }
 
     public override (bool Result, PyResult Value) GetBoolOpValue(PyCallContext context, IEnumerable<PyObject> values)
     {

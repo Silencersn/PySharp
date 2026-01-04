@@ -587,7 +587,7 @@ partial class Parser
             metaInfo = metaInfo.WithCrucial();
             MoveNextToken();
             var uexpr = ParseUExpr();
-            return AstNodeFactory.BinOp(PowNode.Shared, expr, uexpr).With(metaInfo.WithPreviousEnd());
+            return AstNodeFactory.BinOp(AstNodeFactory.Pow, expr, uexpr).With(metaInfo.WithPreviousEnd());
         }
 
         return expr;
@@ -604,9 +604,9 @@ partial class Parser
             var metaInfo = CreateAstMetaInfo();
             AstUnaryOpNode? op = CurrentTokenType switch
             {
-                TokenType.Minus => USubNode.Shared,
-                TokenType.Plus => UAddNode.Shared,
-                TokenType.Tilde => InvertNode.Shared,
+                TokenType.Minus => AstNodeFactory.USub,
+                TokenType.Plus => AstNodeFactory.UAdd,
+                TokenType.Tilde => AstNodeFactory.Invert,
                 _ => null,
             };
             Debug.Assert(op is not null);
@@ -634,10 +634,10 @@ partial class Parser
             var currentMetaInfo = startMetaInfo.WithCrucial();
             AstOperatorNode? op = CurrentTokenType switch
             {
-                TokenType.Star => MulNode.Shared,
-                TokenType.Slash => DivNode.Shared,
-                TokenType.DoubleSlash => FloorDivNode.Shared,
-                TokenType.Percent => ModNode.Shared,
+                TokenType.Star => AstNodeFactory.Mul,
+                TokenType.Slash => AstNodeFactory.Div,
+                TokenType.DoubleSlash => AstNodeFactory.FloorDiv,
+                TokenType.Percent => AstNodeFactory.Mod,
                 _ => null,
             };
             Debug.Assert(op is not null);
@@ -664,7 +664,7 @@ partial class Parser
             var add = CurrentTokenType is TokenType.Plus;
             MoveNextToken();
             var right = ParseMExpr();
-            left = AstNodeFactory.BinOp(add ? AddNode.Shared : SubNode.Shared, left, right).With(currentMetaInfo.WithPreviousEnd());
+            left = AstNodeFactory.BinOp(add ? AstNodeFactory.Add : AstNodeFactory.Sub, left, right).With(currentMetaInfo.WithPreviousEnd());
         }
 
         return left;
@@ -685,7 +685,7 @@ partial class Parser
             var lshift = CurrentTokenType is TokenType.LeftShift;
             MoveNextToken();
             var right = ParseAExpr();
-            left = AstNodeFactory.BinOp(lshift ? LShiftNode.Shared : RShiftNode.Shared, left, right).With(currentMetaInfo.WithPreviousEnd());
+            left = AstNodeFactory.BinOp(lshift ? AstNodeFactory.LShift : AstNodeFactory.RShift, left, right).With(currentMetaInfo.WithPreviousEnd());
         }
 
         return left;
@@ -705,7 +705,7 @@ partial class Parser
             var currentMetaInfo = startMetaInfo.WithCrucial();
             MoveNextToken();
             var shiftExpr = ParseShiftExpr();
-            andExpr = AstNodeFactory.BinOp(BitAndNode.Shared, andExpr, shiftExpr).With(currentMetaInfo.WithPreviousEnd());
+            andExpr = AstNodeFactory.BinOp(AstNodeFactory.BitAnd, andExpr, shiftExpr).With(currentMetaInfo.WithPreviousEnd());
         }
 
         return andExpr;
@@ -725,7 +725,7 @@ partial class Parser
             var currentMetaInfo = startMetaInfo.WithCrucial();
             MoveNextToken();
             var andExpr = ParseAndExpr();
-            xorExpr = AstNodeFactory.BinOp(BitXorNode.Shared, xorExpr, andExpr).With(currentMetaInfo.WithPreviousEnd());
+            xorExpr = AstNodeFactory.BinOp(AstNodeFactory.BitXor, xorExpr, andExpr).With(currentMetaInfo.WithPreviousEnd());
         }
 
         return xorExpr;
@@ -745,7 +745,7 @@ partial class Parser
             var currentMetaInfo = startMetaInfo.WithCrucial();
             MoveNextToken();
             var xorExpr = ParseXorExpr();
-            orExpr = AstNodeFactory.BinOp(BitOrNode.Shared, orExpr, xorExpr).With(currentMetaInfo.WithPreviousEnd());
+            orExpr = AstNodeFactory.BinOp(AstNodeFactory.BitOr, orExpr, xorExpr).With(currentMetaInfo.WithPreviousEnd());
         }
 
         return orExpr;
@@ -771,54 +771,54 @@ partial class Parser
                 if (IsCurrentKeyword("not"))
                 {
                     MoveNextToken();
-                    ops.Add(IsNotNode.Shared);
+                    ops.Add(AstNodeFactory.IsNot);
                 }
                 else
                 {
-                    ops.Add(IsNode.Shared);
+                    ops.Add(AstNodeFactory.Is);
                 }
             }
             else if (IsCurrentKeyword("in"))
             {
                 MoveNextToken();
-                ops.Add(InNode.Shared);
+                ops.Add(AstNodeFactory.In);
 
             }
             else if (IsCurrentKeyword("not"))
             {
                 MoveNextToken();
                 EnsureKeywordThenMove("in");
-                ops.Add(NotInNode.Shared);
+                ops.Add(AstNodeFactory.NotIn);
             }
             else if (CurrentTokenType is TokenType.Less)
             {
                 MoveNextToken();
-                ops.Add(LtNode.Shared);
+                ops.Add(AstNodeFactory.Lt);
             }
             else if (CurrentTokenType is TokenType.LessEqual)
             {
                 MoveNextToken();
-                ops.Add(LtENode.Shared);
+                ops.Add(AstNodeFactory.LtE);
             }
             else if (CurrentTokenType is TokenType.Greater)
             {
                 MoveNextToken();
-                ops.Add(GtNode.Shared);
+                ops.Add(AstNodeFactory.Gt);
             }
             else if (CurrentTokenType is TokenType.GreaterEqual)
             {
                 MoveNextToken();
-                ops.Add(GtENode.Shared);
+                ops.Add(AstNodeFactory.GtE);
             }
             else if (CurrentTokenType is TokenType.DoubleEqual)
             {
                 MoveNextToken();
-                ops.Add(EqNode.Shared);
+                ops.Add(AstNodeFactory.Eq);
             }
             else if (CurrentTokenType is TokenType.NotEqual)
             {
                 MoveNextToken();
-                ops.Add(NotEqNode.Shared);
+                ops.Add(AstNodeFactory.NotEq);
             }
             else
             {
@@ -846,7 +846,7 @@ partial class Parser
 
         var metaInfo = CreateAstMetaInfo();
         MoveNextToken();
-        return AstNodeFactory.UnaryOp(NotNode.Shared, ParseNotTest()).With(metaInfo.WithPreviousEnd());
+        return AstNodeFactory.UnaryOp(AstNodeFactory.Not, ParseNotTest()).With(metaInfo.WithPreviousEnd());
     }
 
     /// <summary>

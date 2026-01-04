@@ -16,7 +16,8 @@ public abstract class AstUnaryOpNode : AstNode
 
 public class NotNode : AstUnaryOpNode
 {
-    public static NotNode Shared { get; } = new();
+    internal static NotNode Shared { get; } = new();
+    private NotNode() { }
 
     public override PyResult GetUnaryOpValue(PyCallContext context, PyObject value)
     {
@@ -28,7 +29,8 @@ public class NotNode : AstUnaryOpNode
 
 public class InvertNode : AstUnaryOpNode
 {
-    public static InvertNode Shared { get; } = new();
+    internal static InvertNode Shared { get; } = new();
+    private InvertNode() { }
 
     public override PyResult GetUnaryOpValue(PyCallContext context, PyObject value)
     {
@@ -38,7 +40,8 @@ public class InvertNode : AstUnaryOpNode
 
 public class UAddNode : AstUnaryOpNode
 {
-    public static UAddNode Shared { get; } = new();
+    internal static UAddNode Shared { get; } = new();
+    private UAddNode() { }
 
     public override PyResult GetUnaryOpValue(PyCallContext context, PyObject value)
     {
@@ -48,7 +51,8 @@ public class UAddNode : AstUnaryOpNode
 
 public class USubNode : AstUnaryOpNode
 {
-    public static USubNode Shared { get; } = new();
+    internal static USubNode Shared { get; } = new();
+    private USubNode() { }
 
     public override PyResult GetUnaryOpValue(PyCallContext context, PyObject value)
     {

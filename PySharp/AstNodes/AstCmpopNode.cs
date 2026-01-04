@@ -16,7 +16,8 @@ public abstract class AstCmpopNode : AstNode
 
 public class EqNode : AstCmpopNode
 {
-    public static EqNode Shared { get; } = new();
+    internal static EqNode Shared { get; } = new();
+    private EqNode() { }
 
     public override PyResult GetCompareValue(PyCallContext context, PyObject left, PyObject right)
     {
@@ -26,7 +27,8 @@ public class EqNode : AstCmpopNode
 
 public class NotEqNode : AstCmpopNode
 {
-    public static NotEqNode Shared { get; } = new();
+    internal static NotEqNode Shared { get; } = new();
+    private NotEqNode() { }
 
     public override PyResult GetCompareValue(PyCallContext context, PyObject left, PyObject right)
     {
@@ -36,7 +38,8 @@ public class NotEqNode : AstCmpopNode
 
 public class LtNode : AstCmpopNode
 {
-    public static LtNode Shared { get; } = new();
+    internal static LtNode Shared { get; } = new();
+    private LtNode() { }
 
     public override PyResult GetCompareValue(PyCallContext context, PyObject left, PyObject right)
     {
@@ -46,7 +49,8 @@ public class LtNode : AstCmpopNode
 
 public class LtENode : AstCmpopNode
 {
-    public static LtENode Shared { get; } = new();
+    internal static LtENode Shared { get; } = new();
+    private LtENode() { }
 
     public override PyResult GetCompareValue(PyCallContext context, PyObject left, PyObject right)
     {
@@ -56,7 +60,8 @@ public class LtENode : AstCmpopNode
 
 public class GtNode : AstCmpopNode
 {
-    public static GtNode Shared { get; } = new();
+    internal static GtNode Shared { get; } = new();
+    private GtNode() { }
 
     public override PyResult GetCompareValue(PyCallContext context, PyObject left, PyObject right)
     {
@@ -66,7 +71,8 @@ public class GtNode : AstCmpopNode
 
 public class GtENode : AstCmpopNode
 {
-    public static GtENode Shared { get; } = new();
+    internal static GtENode Shared { get; } = new();
+    private GtENode() { }
 
     public override PyResult GetCompareValue(PyCallContext context, PyObject left, PyObject right)
     {
@@ -76,7 +82,8 @@ public class GtENode : AstCmpopNode
 
 public class IsNode : AstCmpopNode
 {
-    public static IsNode Shared { get; } = new();
+    internal static IsNode Shared { get; } = new();
+    private IsNode() { }
 
     public override PyResult GetCompareValue(PyCallContext context, PyObject left, PyObject right)
     {
@@ -86,7 +93,8 @@ public class IsNode : AstCmpopNode
 
 public class IsNotNode : AstCmpopNode
 {
-    public static IsNotNode Shared { get; } = new();
+    internal static IsNotNode Shared { get; } = new();
+    private IsNotNode() { }
 
     public override PyResult GetCompareValue(PyCallContext context, PyObject left, PyObject right)
     {
@@ -96,7 +104,8 @@ public class IsNotNode : AstCmpopNode
 
 public class InNode : AstCmpopNode
 {
-    public static InNode Shared { get; } = new();
+    internal static InNode Shared { get; } = new();
+    private InNode() { }
 
     public override PyResult GetCompareValue(PyCallContext context, PyObject left, PyObject right)
     {
@@ -106,7 +115,8 @@ public class InNode : AstCmpopNode
 
 public class NotInNode : AstCmpopNode
 {
-    public static NotInNode Shared { get; } = new();
+    internal static NotInNode Shared { get; } = new();
+    private NotInNode() { }
 
     public override PyResult GetCompareValue(PyCallContext context, PyObject left, PyObject right)
     {

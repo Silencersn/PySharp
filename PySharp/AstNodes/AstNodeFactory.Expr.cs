@@ -24,7 +24,7 @@ partial class AstNodeFactory
     }
     public static BoolOpNode BoolAnd(IEnumerable<AstExprNode> values)
     {
-        return BoolOp(AndNode.Shared, values);
+        return BoolOp(And, values);
     }
 
     public static BoolOpNode BoolOp(AstBoolOpNode op, IEnumerable<AstExprNode> values)
@@ -36,7 +36,7 @@ partial class AstNodeFactory
     }
     public static BoolOpNode BoolOr(IEnumerable<AstExprNode> values)
     {
-        return BoolOp(OrNode.Shared, values);
+        return BoolOp(Or, values);
     }
 
     public static CallNode Call(AstExprNode func, IEnumerable<AstExprNode> args, IEnumerable<AstKeywordNode> keywords)

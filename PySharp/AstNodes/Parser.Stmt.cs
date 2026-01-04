@@ -272,19 +272,19 @@ partial class Parser
 
             AstOperatorNode op = CurrentTokenType switch
             {
-                TokenType.PlusEqual => AddNode.Shared,
-                TokenType.MinusEqual => SubNode.Shared,
-                TokenType.StarEqual => MulNode.Shared,
+                TokenType.PlusEqual => AstNodeFactory.Add,
+                TokenType.MinusEqual => AstNodeFactory.Sub,
+                TokenType.StarEqual => AstNodeFactory.Mul,
                 TokenType.AtEqual => throw new NotImplementedException(),
-                TokenType.SlashEqual => DivNode.Shared,
-                TokenType.DoubleSlashEqual => FloorDivNode.Shared,
-                TokenType.PercentEqual => ModNode.Shared,
-                TokenType.DoubleStarEqual => PowNode.Shared,
-                TokenType.RightShiftEqual => LShiftNode.Shared,
-                TokenType.LeftShiftEqual => RShiftNode.Shared,
-                TokenType.AmpersandEqual => BitAndNode.Shared,
-                TokenType.CaretEqual => BitXorNode.Shared,
-                TokenType.PipeEqual => BitOrNode.Shared,
+                TokenType.SlashEqual => AstNodeFactory.Div,
+                TokenType.DoubleSlashEqual => AstNodeFactory.FloorDiv,
+                TokenType.PercentEqual => AstNodeFactory.Mod,
+                TokenType.DoubleStarEqual => AstNodeFactory.Pow,
+                TokenType.LeftShiftEqual => AstNodeFactory.LShift,
+                TokenType.RightShiftEqual => AstNodeFactory.RShift,
+                TokenType.AmpersandEqual => AstNodeFactory.BitAnd,
+                TokenType.CaretEqual => AstNodeFactory.BitXor,
+                TokenType.PipeEqual => AstNodeFactory.BitOr,
 
                 _ => throw new UnreachableException(),
             };
