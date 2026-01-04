@@ -168,13 +168,13 @@ partial class Parser
 
                         var cause = ParseExpression();
 
-                        return new RaiseNode(exc, cause).With(metaInfo);
+                        return AstNodeFactory.Raise(exc, cause).With(metaInfo);
                     }
 
-                    return new RaiseNode(exc, null).With(metaInfo);
+                    return AstNodeFactory.Raise(exc).With(metaInfo);
                 }
 
-                return new RaiseNode(null, null).With(metaInfo);
+                return AstNodeFactory.Raise().With(metaInfo);
             }
             else if (keyword is "return")
             {
@@ -188,7 +188,7 @@ partial class Parser
             else if (keyword is "pass")
             {
                 MoveNextToken();
-                return new PassNode().With(metaInfo);
+                return AstNodeFactory.Pass().With(metaInfo);
             }
             else if (keyword is "del")
             {

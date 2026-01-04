@@ -63,6 +63,19 @@ partial class AstNodeFactory
         return new ReturnNode(value);
     }
 
+    public static PassNode Pass()
+    {
+        return new PassNode();
+    }
+
+    public static RaiseNode Raise(AstExprNode? exc = null, AstExprNode? cause = null)
+    {
+        if (cause is not null && exc is null)
+            throw new InvalidOperationException();
+
+        return new RaiseNode(exc, cause);
+    }
+
     public static GlobalNode Global(params IEnumerable<string> names)
     {
         ArgumentNullException.ThrowIfNull(names);

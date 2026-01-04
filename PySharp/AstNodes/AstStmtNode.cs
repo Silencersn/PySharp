@@ -287,6 +287,10 @@ public class ReturnNode : AstStmtNode
 
 public class PassNode : AstStmtNode
 {
+    internal PassNode()
+    {
+    }
+
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
     }
@@ -418,7 +422,7 @@ public class ForNode : AstStmtNode
 
 public class RaiseNode : AstStmtNode
 {
-    public RaiseNode(AstExprNode? exc, AstExprNode? cause)
+    internal RaiseNode(AstExprNode? exc, AstExprNode? cause)
     {
         Exc = exc;
         Cause = cause;
