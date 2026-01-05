@@ -196,10 +196,6 @@ public sealed class SemanticAnalyzer
                 currentScope.AppendVariable(n.Name, ExprContextType.Store);
                 break;
 
-            case ImportFromNode n when n.Module is not null:
-                currentScope.AppendVariable(n.Module, ExprContextType.Store);
-                break;
-
             case GlobalNode n:
                 if (currentScope.IsRoot)
                     break;
