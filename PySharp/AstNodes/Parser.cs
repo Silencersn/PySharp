@@ -153,14 +153,13 @@ public sealed partial class Parser : ICodeMetaInfoProvider
     {
         EnsureTokenTypeThenMove(TokenType.Encoding);
 
-        var module = new ModuleNode() { MetaInfo = CreateAstMetaInfo() };
+        var metaInfo = CreateAstMetaInfo();
 
+        List<AstStmtNode> body = [];
         while (CurrentTokenType is not TokenType.EndMarker)
-        {
-            module.Body.AddRange(ParseStatement());
-        }
+            body.AddRange(ParseStatement());
 
-        return module;
+        return Ast.Module(body).With(metaInfo);
     }
 
     public ExpressionNode ParseExpressionNode()
@@ -169,9 +168,9 @@ public sealed partial class Parser : ICodeMetaInfoProvider
 
         var metaInfo = CreateAstMetaInfo();
         var exprList = ParseExpressionList(StopPredicates.UntilNewLine, out var endsWithComma);
-        var expr = UnwrapOrMakeTuple(exprList, endsWithComma);
+        var body = UnwrapOrMakeTuple(exprList, endsWithComma);
 
-        return new ExpressionNode(expr) { MetaInfo = metaInfo };
+        return Ast.Expression(body).With(metaInfo);
     }
 
     public InteractiveNode ParseInteractiveNode()
@@ -180,9 +179,9 @@ public sealed partial class Parser : ICodeMetaInfoProvider
 
         var metaInfo = CreateAstMetaInfo();
         _isParsingInteractiveNode = true;
-        var list = ParseStatement();
+        var body = ParseStatement();
         _isParsingInteractiveNode = false;
 
-        return new InteractiveNode(list) { MetaInfo = metaInfo };
+        return Ast.Interactive(body).With(metaInfo);
     }
 }

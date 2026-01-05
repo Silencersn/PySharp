@@ -1,5 +1,6 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
+using System.Collections.Immutable;
 
 namespace PySharp.AstNodes;
 
@@ -10,15 +11,12 @@ public abstract class AstModNode : AstNode
 
 public class ModuleNode : AstModNode
 {
-    internal ModuleNode()
-    {
-    }
-    internal ModuleNode(List<AstStmtNode> body)
+    internal ModuleNode(ImmutableArray<AstStmtNode> body)
     {
         Body = body;
     }
 
-    public List<AstStmtNode> Body { get; } = [];
+    public ImmutableArray<AstStmtNode> Body { get; }
 
     public override void Execute(PyCallContext context, PyFrame frame)
     {
@@ -42,7 +40,7 @@ public class ExpressionNode : AstModNode
 {
     public AstExprNode Body { get; }
 
-    public ExpressionNode(AstExprNode body)
+    internal ExpressionNode(AstExprNode body)
     {
         Body = body;
     }
@@ -64,9 +62,9 @@ public class ExpressionNode : AstModNode
 
 public class InteractiveNode : AstModNode
 {
-    public List<AstStmtNode> Body { get; }
+    public ImmutableArray<AstStmtNode> Body { get; }
 
-    public InteractiveNode(List<AstStmtNode> body)
+    internal InteractiveNode(ImmutableArray<AstStmtNode> body)
     {
         Body = body;
     }
