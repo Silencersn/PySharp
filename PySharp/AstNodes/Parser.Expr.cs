@@ -5,7 +5,6 @@ using PySharp.PyRuntime.Calls;
 using PySharp.Tokenization;
 using System.Diagnostics;
 using System.Linq.Expressions;
-using System.Numerics;
 using System.Text;
 
 namespace PySharp.AstNodes;
@@ -587,7 +586,7 @@ partial class Parser
             metaInfo = metaInfo.WithCrucial();
             MoveNextToken();
             var uexpr = ParseUExpr();
-            return AstNodeFactory.BinOp(AstNodeFactory.Pow, expr, uexpr).With(metaInfo.WithPreviousEnd());
+            return AstNodeFactory.BinOp(OperatorType.Pow, expr, uexpr).With(metaInfo.WithPreviousEnd());
         }
 
         return expr;
@@ -602,14 +601,13 @@ partial class Parser
         if (CurrentTokenType is TokenType.Minus or TokenType.Plus or TokenType.Tilde)
         {
             var metaInfo = CreateAstMetaInfo();
-            AstUnaryOpNode? op = CurrentTokenType switch
+            UnaryOpType op = CurrentTokenType switch
             {
-                TokenType.Minus => AstNodeFactory.USub,
-                TokenType.Plus => AstNodeFactory.UAdd,
-                TokenType.Tilde => AstNodeFactory.Invert,
-                _ => null,
+                TokenType.Minus => UnaryOpType.USub,
+                TokenType.Plus => UnaryOpType.UAdd,
+                TokenType.Tilde => UnaryOpType.Invert,
+                _ => throw new UnreachableException(),
             };
-            Debug.Assert(op is not null);
             MoveNextToken();
             var uexpr = ParseUExpr();
             return AstNodeFactory.UnaryOp(op, uexpr).With(metaInfo.WithPreviousEnd());
@@ -632,15 +630,14 @@ partial class Parser
         while (CurrentTokenType is TokenType.Star or TokenType.Slash or TokenType.DoubleSlash or TokenType.Percent)
         {
             var currentMetaInfo = startMetaInfo.WithCrucial();
-            AstOperatorNode? op = CurrentTokenType switch
+            OperatorType op = CurrentTokenType switch
             {
-                TokenType.Star => AstNodeFactory.Mul,
-                TokenType.Slash => AstNodeFactory.Div,
-                TokenType.DoubleSlash => AstNodeFactory.FloorDiv,
-                TokenType.Percent => AstNodeFactory.Mod,
-                _ => null,
+                TokenType.Star => OperatorType.Mul,
+                TokenType.Slash => OperatorType.Div,
+                TokenType.DoubleSlash => OperatorType.FloorDiv,
+                TokenType.Percent => OperatorType.Mod,
+                _ => throw new UnreachableException(),
             };
-            Debug.Assert(op is not null);
             MoveNextToken();
             var right = ParseMExpr();
             left = AstNodeFactory.BinOp(op, left, right).With(currentMetaInfo.WithPreviousEnd());
@@ -664,7 +661,7 @@ partial class Parser
             var add = CurrentTokenType is TokenType.Plus;
             MoveNextToken();
             var right = ParseMExpr();
-            left = AstNodeFactory.BinOp(add ? AstNodeFactory.Add : AstNodeFactory.Sub, left, right).With(currentMetaInfo.WithPreviousEnd());
+            left = AstNodeFactory.BinOp(add ? global::PySharp.AstNodes.OperatorType.Add : global::PySharp.AstNodes.OperatorType.Sub, left, right).With(currentMetaInfo.WithPreviousEnd());
         }
 
         return left;
@@ -685,7 +682,7 @@ partial class Parser
             var lshift = CurrentTokenType is TokenType.LeftShift;
             MoveNextToken();
             var right = ParseAExpr();
-            left = AstNodeFactory.BinOp(lshift ? AstNodeFactory.LShift : AstNodeFactory.RShift, left, right).With(currentMetaInfo.WithPreviousEnd());
+            left = AstNodeFactory.BinOp(lshift ? global::PySharp.AstNodes.OperatorType.LShift : global::PySharp.AstNodes.OperatorType.RShift, left, right).With(currentMetaInfo.WithPreviousEnd());
         }
 
         return left;
@@ -705,7 +702,7 @@ partial class Parser
             var currentMetaInfo = startMetaInfo.WithCrucial();
             MoveNextToken();
             var shiftExpr = ParseShiftExpr();
-            andExpr = AstNodeFactory.BinOp(AstNodeFactory.BitAnd, andExpr, shiftExpr).With(currentMetaInfo.WithPreviousEnd());
+            andExpr = AstNodeFactory.BinOp(OperatorType.BitAnd, andExpr, shiftExpr).With(currentMetaInfo.WithPreviousEnd());
         }
 
         return andExpr;
@@ -725,7 +722,7 @@ partial class Parser
             var currentMetaInfo = startMetaInfo.WithCrucial();
             MoveNextToken();
             var andExpr = ParseAndExpr();
-            xorExpr = AstNodeFactory.BinOp(AstNodeFactory.BitXor, xorExpr, andExpr).With(currentMetaInfo.WithPreviousEnd());
+            xorExpr = AstNodeFactory.BinOp(OperatorType.BitXor, xorExpr, andExpr).With(currentMetaInfo.WithPreviousEnd());
         }
 
         return xorExpr;
@@ -745,7 +742,7 @@ partial class Parser
             var currentMetaInfo = startMetaInfo.WithCrucial();
             MoveNextToken();
             var xorExpr = ParseXorExpr();
-            orExpr = AstNodeFactory.BinOp(AstNodeFactory.BitOr, orExpr, xorExpr).With(currentMetaInfo.WithPreviousEnd());
+            orExpr = AstNodeFactory.BinOp(OperatorType.BitOr, orExpr, xorExpr).With(currentMetaInfo.WithPreviousEnd());
         }
 
         return orExpr;
@@ -760,7 +757,7 @@ partial class Parser
     {
         var metaInfo = CreateAstMetaInfo();
         var expr = ParseOrExpr();
-        var ops = new List<AstCmpopNode>();
+        var ops = new List<CmpopType>();
         var comptors = new List<AstExprNode>();
 
         while (true)
@@ -771,54 +768,54 @@ partial class Parser
                 if (IsCurrentKeyword("not"))
                 {
                     MoveNextToken();
-                    ops.Add(AstNodeFactory.IsNot);
+                    ops.Add(CmpopType.IsNot);
                 }
                 else
                 {
-                    ops.Add(AstNodeFactory.Is);
+                    ops.Add(CmpopType.Is);
                 }
             }
             else if (IsCurrentKeyword("in"))
             {
                 MoveNextToken();
-                ops.Add(AstNodeFactory.In);
+                ops.Add(CmpopType.In);
 
             }
             else if (IsCurrentKeyword("not"))
             {
                 MoveNextToken();
                 EnsureKeywordThenMove("in");
-                ops.Add(AstNodeFactory.NotIn);
+                ops.Add(CmpopType.NotIn);
             }
             else if (CurrentTokenType is TokenType.Less)
             {
                 MoveNextToken();
-                ops.Add(AstNodeFactory.Lt);
+                ops.Add(CmpopType.Lt);
             }
             else if (CurrentTokenType is TokenType.LessEqual)
             {
                 MoveNextToken();
-                ops.Add(AstNodeFactory.LtE);
+                ops.Add(CmpopType.LtE);
             }
             else if (CurrentTokenType is TokenType.Greater)
             {
                 MoveNextToken();
-                ops.Add(AstNodeFactory.Gt);
+                ops.Add(CmpopType.Gt);
             }
             else if (CurrentTokenType is TokenType.GreaterEqual)
             {
                 MoveNextToken();
-                ops.Add(AstNodeFactory.GtE);
+                ops.Add(CmpopType.GtE);
             }
             else if (CurrentTokenType is TokenType.DoubleEqual)
             {
                 MoveNextToken();
-                ops.Add(AstNodeFactory.Eq);
+                ops.Add(CmpopType.Eq);
             }
             else if (CurrentTokenType is TokenType.NotEqual)
             {
                 MoveNextToken();
-                ops.Add(AstNodeFactory.NotEq);
+                ops.Add(CmpopType.NotEq);
             }
             else
             {
@@ -846,7 +843,7 @@ partial class Parser
 
         var metaInfo = CreateAstMetaInfo();
         MoveNextToken();
-        return AstNodeFactory.UnaryOp(AstNodeFactory.Not, ParseNotTest()).With(metaInfo.WithPreviousEnd());
+        return AstNodeFactory.UnaryOp(UnaryOpType.Not, ParseNotTest()).With(metaInfo.WithPreviousEnd());
     }
 
     /// <summary>

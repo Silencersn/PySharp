@@ -57,7 +57,7 @@ internal sealed class AstNodeDumper
         EnsureIndented();
         if (value is AstNode node)
             Append(node);
-        else if (value is ExprContext context)
+        else if (value is ExprContextType context)
             Append(context);
         else if (value is IEnumerable<AstNode> nodes)
             AppendNodes([.. nodes]);
@@ -73,7 +73,7 @@ internal sealed class AstNodeDumper
         return this;
     }
 
-    public AstNodeDumper Append(ExprContext context)
+    public AstNodeDumper Append(ExprContextType context)
     {
         return AppendFormat("{0}()", context);
     }

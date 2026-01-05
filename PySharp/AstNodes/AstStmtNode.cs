@@ -1,11 +1,8 @@
-﻿using PySharp.CodeAnalysis;
-using PySharp.PyModules;
+﻿using PySharp.PyModules;
 using PySharp.PyModules.Builtins;
 using PySharp.PyModules.CSharp;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
-using System;
-using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Diagnostics;
 
@@ -117,7 +114,7 @@ public sealed class DeleteNode : AstStmtNode
 
 public sealed class AugAssignNode : AstStmtNode
 {
-    internal AugAssignNode(AstExprNode target, AstOperatorNode op, AstExprNode value)
+    internal AugAssignNode(AstExprNode target, OperatorType op, AstExprNode value)
     {
         Target = target;
         Op = op;
@@ -125,18 +122,22 @@ public sealed class AugAssignNode : AstStmtNode
     }
 
     public AstExprNode Target { get; }
-    public AstOperatorNode Op { get; }
+    public OperatorType Op { get; }
     public AstExprNode Value { get; }
 
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
-        Target.SetTargetValue(context, Op.GetOpValue(context, Target.GetExprValue(context, frame), Value.GetExprValue(context, frame)).PyUnwrapIncludedNotImplemented(context), frame);
+        // TODO: __iadd__ ...
+
+        var left = Target.GetExprValue(context, frame);
+        var right = Value.GetExprValue(context, frame);
+        var value = BinOpNode.EvalOperator(context, Op, left, right).PyUnwrap(context);
+        Target.SetTargetValue(context, value, frame);
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         yield return Target;
-        yield return Op;
         yield return Value;
     }
 }

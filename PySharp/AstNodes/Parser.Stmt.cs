@@ -268,23 +268,23 @@ partial class Parser
 
             if (!AstUtils.IsValidAugtarget(target))
                 throw _context.ThrowableSyntaxError($"'{AstUtils.GetExprNodeName(target)}' is an illegal expression for augmented assignment");
-            AstUtils.SetContext(target, ExprContext.Store);
+            AstUtils.SetContext(target, ExprContextType.Store);
 
-            AstOperatorNode op = CurrentTokenType switch
+            OperatorType op = CurrentTokenType switch
             {
-                TokenType.PlusEqual => AstNodeFactory.Add,
-                TokenType.MinusEqual => AstNodeFactory.Sub,
-                TokenType.StarEqual => AstNodeFactory.Mul,
+                TokenType.PlusEqual => OperatorType.Add,
+                TokenType.MinusEqual => OperatorType.Sub,
+                TokenType.StarEqual => OperatorType.Mul,
                 TokenType.AtEqual => throw new NotImplementedException(),
-                TokenType.SlashEqual => AstNodeFactory.Div,
-                TokenType.DoubleSlashEqual => AstNodeFactory.FloorDiv,
-                TokenType.PercentEqual => AstNodeFactory.Mod,
-                TokenType.DoubleStarEqual => AstNodeFactory.Pow,
-                TokenType.LeftShiftEqual => AstNodeFactory.LShift,
-                TokenType.RightShiftEqual => AstNodeFactory.RShift,
-                TokenType.AmpersandEqual => AstNodeFactory.BitAnd,
-                TokenType.CaretEqual => AstNodeFactory.BitXor,
-                TokenType.PipeEqual => AstNodeFactory.BitOr,
+                TokenType.SlashEqual => OperatorType.Div,
+                TokenType.DoubleSlashEqual => OperatorType.FloorDiv,
+                TokenType.PercentEqual => OperatorType.Mod,
+                TokenType.DoubleStarEqual => OperatorType.Pow,
+                TokenType.LeftShiftEqual => OperatorType.LShift,
+                TokenType.RightShiftEqual => OperatorType.RShift,
+                TokenType.AmpersandEqual => OperatorType.BitAnd,
+                TokenType.CaretEqual => OperatorType.BitXor,
+                TokenType.PipeEqual => OperatorType.BitOr,
 
                 _ => throw new UnreachableException(),
             };
@@ -502,7 +502,7 @@ partial class Parser
         EnsureKeywordThenMove("for");
         var targetList = ParseTargetList(StopPredicates.UntilKeywordIn, out var endsWithComma);
         var target = UnwrapOrMakeTuple(targetList, endsWithComma);
-        AstUtils.SetContext(target, ExprContext.Store);
+        AstUtils.SetContext(target, ExprContextType.Store);
         EnsureKeywordThenMove("in");
         var items = ParseStarredExpressionList(StopPredicates.UntilColon, out endsWithComma);
         var iter = UnwrapOrMakeTuple(items, endsWithComma);

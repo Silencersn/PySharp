@@ -1,6 +1,4 @@
-﻿using System.Collections.Immutable;
-
-namespace PySharp.AstNodes;
+﻿namespace PySharp.AstNodes;
 
 partial class AstNodeFactory
 {
@@ -17,7 +15,7 @@ partial class AstNodeFactory
         ArgumentNullException.ThrowIfNull(targets);
 
         var targetsArray = targets.ToImmutableArray(true);
-        targetsArray.CheckValidTargetThenSetContext(ExprContext.Store);
+        targetsArray.CheckValidTargetThenSetContext(ExprContextType.Store);
 
         return new AssignNode(targetsArray, value);
     }
@@ -27,18 +25,17 @@ partial class AstNodeFactory
         ArgumentNullException.ThrowIfNull(targets);
 
         var targetsArray = targets.ToImmutableArray(true);
-        targetsArray.CheckValidTargetThenSetContext(ExprContext.Del);
+        targetsArray.CheckValidTargetThenSetContext(ExprContextType.Del);
 
         return new DeleteNode(targetsArray);
     }
 
-    public static AugAssignNode AugAssign(AstExprNode target, AstOperatorNode op, AstExprNode value)
+    public static AugAssignNode AugAssign(AstExprNode target, OperatorType op, AstExprNode value)
     {
         ArgumentNullException.ThrowIfNull(target);
-        ArgumentNullException.ThrowIfNull(op);
         ArgumentNullException.ThrowIfNull(value);
 
-        target.CheckValidTargetThenSetContext(ExprContext.Store, true);
+        target.CheckValidTargetThenSetContext(ExprContextType.Store, true);
 
         return new AugAssignNode(target, op, value);
     }

@@ -1,7 +1,4 @@
 ﻿using PySharp.CodeAnalysis;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace PySharp.AstNodes;
 
@@ -14,7 +11,7 @@ partial class Parser
         public readonly int EndTokenPosition;
         public readonly int CrucialStartTokenPosition;
         public readonly int CrucialEndTokenPosition;
-        
+
         public AstMetaInfo(Parser parser, int startTokenPosition, int endTokenPosition, int crucialStartTokenPosition, int crucialEndTokenPosition)
         {
             _parser = parser;

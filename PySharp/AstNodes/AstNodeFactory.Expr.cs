@@ -1,5 +1,4 @@
-﻿using PySharp.CodeAnalysis;
-using PySharp.PyModules.Builtins;
+﻿using PySharp.PyModules.Builtins;
 using System.Numerics;
 
 namespace PySharp.AstNodes;
@@ -14,29 +13,27 @@ partial class AstNodeFactory
         return new AttributeNode(value, attr);
     }
 
-    public static BinOpNode BinOp(AstOperatorNode op, AstExprNode left, AstExprNode right)
+    public static BinOpNode BinOp(OperatorType op, AstExprNode left, AstExprNode right)
     {
-        ArgumentNullException.ThrowIfNull(op);
         ArgumentNullException.ThrowIfNull(left);
         ArgumentNullException.ThrowIfNull(right);
 
         return new BinOpNode(op, left, right);
     }
-    public static BoolOpNode BoolAnd(IEnumerable<AstExprNode> values)
-    {
-        return BoolOp(And, values);
-    }
 
-    public static BoolOpNode BoolOp(AstBoolOpNode op, IEnumerable<AstExprNode> values)
+    public static BoolOpNode BoolOp(BoolOpType op, IEnumerable<AstExprNode> values)
     {
-        ArgumentNullException.ThrowIfNull(op);
         ArgumentNullException.ThrowIfNull(values);
 
         return new BoolOpNode(op, values.ToImmutableArray(true));
     }
+    public static BoolOpNode BoolAnd(IEnumerable<AstExprNode> values)
+    {
+        return BoolOp(BoolOpType.And, values);
+    }
     public static BoolOpNode BoolOr(IEnumerable<AstExprNode> values)
     {
-        return BoolOp(Or, values);
+        return BoolOp(BoolOpType.Or, values);
     }
 
     public static CallNode Call(AstExprNode func, IEnumerable<AstExprNode> args, IEnumerable<AstKeywordNode> keywords)
@@ -48,7 +45,7 @@ partial class AstNodeFactory
         return new CallNode(func, args.ToImmutableArray(true), keywords.ToImmutableArray(true));
     }
 
-    public static CompareNode Compare(AstExprNode left, IEnumerable<(AstCmpopNode Op, AstExprNode Comparator)> opsAndComparators)
+    public static CompareNode Compare(AstExprNode left, IEnumerable<(CmpopType Op, AstExprNode Comparator)> opsAndComparators)
     {
         ArgumentNullException.ThrowIfNull(left);
         ArgumentNullException.ThrowIfNull(opsAndComparators);
@@ -178,9 +175,8 @@ partial class AstNodeFactory
         return new TupleNode(elts.ToImmutableArray(true));
     }
 
-    public static UnaryOpNode UnaryOp(AstUnaryOpNode op, AstExprNode operand)
+    public static UnaryOpNode UnaryOp(UnaryOpType op, AstExprNode operand)
     {
-        ArgumentNullException.ThrowIfNull(op);
         ArgumentNullException.ThrowIfNull(operand);
 
         return new UnaryOpNode(op, operand);

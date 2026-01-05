@@ -189,15 +189,15 @@ public sealed class SemanticAnalyzer
                 break;
 
             case FunctionDefNode n:
-                currentScope.AppendVariable(n.Name, ExprContext.Store);
+                currentScope.AppendVariable(n.Name, ExprContextType.Store);
                 break;
 
             case ClassDefNode n:
-                currentScope.AppendVariable(n.Name, ExprContext.Store);
+                currentScope.AppendVariable(n.Name, ExprContextType.Store);
                 break;
 
             case ImportFromNode n when n.Module is not null:
-                currentScope.AppendVariable(n.Module, ExprContext.Store);
+                currentScope.AppendVariable(n.Module, ExprContextType.Store);
                 break;
 
             case GlobalNode n:
@@ -224,7 +224,7 @@ public sealed class SemanticAnalyzer
                             throw _context.ThrowableSyntaxError($"name '{name}' is nonlocal and global");
 
                         default:
-                            if (currentScope.FirstContext[name] is ExprContext.Load)
+                            if (currentScope.FirstContext[name] is ExprContextType.Load)
                                 throw _context.ThrowableSyntaxError($"name '{name}' is used prior to global declaration");
                             else
                                 throw _context.ThrowableSyntaxError($"name '{name}' is assigned to before global declaration");
@@ -257,7 +257,7 @@ public sealed class SemanticAnalyzer
                             throw _context.ThrowableSyntaxError($"name '{name}' is nonlocal and global");
 
                         default:
-                            if (currentScope.FirstContext[name] is ExprContext.Load)
+                            if (currentScope.FirstContext[name] is ExprContextType.Load)
                                 throw _context.ThrowableSyntaxError($"name '{name}' is used prior to nonlocal declaration");
                             else
                                 throw _context.ThrowableSyntaxError($"name '{name}' is assigned to before nonlocal declaration");
@@ -267,7 +267,7 @@ public sealed class SemanticAnalyzer
                 break;
 
             case ExceptHandlerNode n when n.Name is not null:
-                currentScope.AppendVariable(n.Name, ExprContext.Store);
+                currentScope.AppendVariable(n.Name, ExprContextType.Store);
                 break;
 
             case AstArgNode n:
@@ -277,7 +277,7 @@ public sealed class SemanticAnalyzer
                 break;
 
             case AstAliasNode n:
-                currentScope.AppendVariable(n.AsName ?? n.Name, ExprContext.Store);
+                currentScope.AppendVariable(n.AsName ?? n.Name, ExprContextType.Store);
                 break;
         }
     }
@@ -393,7 +393,7 @@ internal abstract class VariableScope
 
     // used for detecting global stmt and nonlocal stmt
     // root scope does not need to maintain this property
-    internal Dictionary<string, ExprContext> FirstContext { get; } = []; 
+    internal Dictionary<string, ExprContextType> FirstContext { get; } = [];
 
     public VariableScope? Parent { get; }
     public List<VariableScope> Children { get; } = [];
@@ -438,7 +438,7 @@ internal abstract class VariableScope
         Parent?.Children.Add(this);
     }
 
-    public void AppendVariable(string name, ExprContext ctx)
+    public void AppendVariable(string name, ExprContextType ctx)
     {
         if (IsRoot)
         {
@@ -449,12 +449,12 @@ internal abstract class VariableScope
         FirstContext.TryAdd(name, ctx);
         switch (ctx)
         {
-            case ExprContext.Load:
+            case ExprContextType.Load:
                 Variables.TryAdd(name, PyVariableType.Unknown);
                 break;
 
-            case ExprContext.Store:
-            case ExprContext.Del:
+            case ExprContextType.Store:
+            case ExprContextType.Del:
                 if (!Variables.TryGetValue(name, out var type) || type is PyVariableType.Unknown)
                     Variables[name] = PyVariableType.Local;
                 break;

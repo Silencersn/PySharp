@@ -3,7 +3,6 @@ using PySharp.PyModules;
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -205,7 +204,7 @@ internal static class AstUtils
         return false;
     }
 
-    public static void SetContext(this AstExprNode node, ExprContext context)
+    public static void SetContext(this AstExprNode node, ExprContextType context)
     {
         if (node is not IExprContextNode ctxNode)
             throw new InvalidOperationException();
@@ -213,7 +212,7 @@ internal static class AstUtils
         ctxNode.Ctx = context;
     }
 
-    public static void CheckValidTargetThenSetContext(this AstExprNode node, ExprContext context, bool isAugtarget = false)
+    public static void CheckValidTargetThenSetContext(this AstExprNode node, ExprContextType context, bool isAugtarget = false)
     {
         ArgumentNullException.ThrowIfNull(node);
 
@@ -231,7 +230,7 @@ internal static class AstUtils
         SetContext(node, context);
     }
 
-    public static void CheckValidTargetThenSetContext(this IEnumerable<AstExprNode> nodes, ExprContext context)
+    public static void CheckValidTargetThenSetContext(this IEnumerable<AstExprNode> nodes, ExprContextType context)
     {
         foreach (var node in nodes)
             CheckValidTargetThenSetContext(node, context);

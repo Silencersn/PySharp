@@ -33,17 +33,63 @@ internal interface IAstExprNodeBool
 /// </summary>
 internal interface IAstExprNodeNoSelfPythonException;
 
-public enum ExprContext
+public enum ExprContextType
 {
     Unknown = 0,
+
     Load,
     Store,
     Del
 }
 
+public enum BoolOpType
+{
+    And,
+    Or
+}
+
+public enum OperatorType
+{
+    Add,
+    Sub,
+    Mul,
+    MatMult,
+    Div,
+    Mod,
+    Pow,
+    LShift,
+    RShift,
+    BitOr,
+    BitXor,
+    BitAnd,
+    FloorDiv
+}
+
+public enum UnaryOpType
+{
+    Invert,
+    Not,
+    UAdd,
+    USub
+}
+
+public enum CmpopType
+{
+    Eq,
+    NotEq,
+    Lt,
+    LtE,
+    Gt,
+    GtE,
+    Is,
+    IsNot,
+    In,
+    NotIn
+}
+
 internal interface IExprContextNode
 {
-    public ExprContext Ctx { get; set; }
+    public ExprContextType Ctx { get; set; }
 }
 
 internal interface ITargetNode
@@ -60,7 +106,7 @@ public sealed class NameNode : AstExprNode, IExprContextNode, ITargetNode
     }
 
     public string Id { get; }
-    public ExprContext Ctx { get; set; } = ExprContext.Load;
+    public ExprContextType Ctx { get; set; } = ExprContextType.Load;
     internal int FastIndex { get; set; } = -1;
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
@@ -138,7 +184,7 @@ public sealed class AttributeNode : AstExprNode, IExprContextNode, ITargetNode
 
     public AstExprNode Value { get; }
     public string Identifier { get; }
-    public ExprContext Ctx { get; set; } = ExprContext.Load;
+    public ExprContextType Ctx { get; set; } = ExprContextType.Load;
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
@@ -182,7 +228,7 @@ public sealed class SubscriptNode : AstExprNode, IExprContextNode, ITargetNode
 
     public AstExprNode Value { get; }
     public AstExprNode Slice { get; }
-    public ExprContext Ctx { get; set; } = ExprContext.Load;
+    public ExprContextType Ctx { get; set; } = ExprContextType.Load;
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
@@ -361,11 +407,11 @@ public sealed class ListNode : AstExprNode, IExprContextNode, IAstExprNodeNoSelf
     internal ListNode(ImmutableArray<AstExprNode> elts)
     {
         Elts = elts;
-        Ctx = ExprContext.Load;
+        Ctx = ExprContextType.Load;
     }
 
     public ImmutableArray<AstExprNode> Elts { get; }
-    public ExprContext Ctx
+    public ExprContextType Ctx
     {
         get => field;
         set
@@ -402,11 +448,11 @@ public sealed class TupleNode : AstExprNode, IExprContextNode, IAstExprNodeNoSel
     internal TupleNode(ImmutableArray<AstExprNode> elts)
     {
         Elts = elts;
-        Ctx = ExprContext.Load;
+        Ctx = ExprContextType.Load;
     }
 
     public ImmutableArray<AstExprNode> Elts { get; }
-    public ExprContext Ctx
+    public ExprContextType Ctx
     {
         get => field;
         set
@@ -504,13 +550,13 @@ public sealed class SetNode : AstExprNode, IAstExprNodeNoSelfPythonException
 
 public sealed class BoolOpNode : AstExprNode, IAstExprNodeBool, IAstExprNodeNoSelfPythonException
 {
-    internal BoolOpNode(AstBoolOpNode op, ImmutableArray<AstExprNode> values)
+    internal BoolOpNode(BoolOpType op, ImmutableArray<AstExprNode> values)
     {
         Op = op;
         Values = values;
     }
 
-    public AstBoolOpNode Op { get; }
+    public BoolOpType Op { get; }
     public ImmutableArray<AstExprNode> Values { get; }
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
@@ -521,27 +567,65 @@ public sealed class BoolOpNode : AstExprNode, IAstExprNodeBool, IAstExprNodeNoSe
     public (bool Result, PyObject Value) GetExprValueWithResult(PyCallContext context, PyFrame frame)
     {
         ArgumentNullException.ThrowIfNull(frame);
-        var (result, value) = Op.GetBoolOpValue(context, Values.Select(v => v.GetExprValue(context, frame)));
+        var (result, value) = Op is BoolOpType.And
+            ? GetBoolAndValue(context, Values.Select(v => v.GetExprValue(context, frame)))
+            : GetBoolOrValue(context, Values.Select(v => v.GetExprValue(context, frame)));
         return (result, value.PyUnwrap(context));
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
-        yield return Op;
-        foreach (var v in Values) yield return v;
+        foreach (var v in Values)
+            yield return v;
+    }
+
+    public static (bool Result, PyResult Value) GetBoolAndValue(PyCallContext context, IEnumerable<PyObject> values)
+    {
+        PyObject lastValue = null!;
+
+        foreach (var value in values)
+        {
+            if (!PySpecialMethods.TryGetBool(context, value, out var b, out var result))
+                return (false, result);
+
+            if (!b.BoolValue)
+                return (false, value);
+
+            lastValue = value;
+        }
+
+        return (true, lastValue);
+    }
+
+    public static (bool Result, PyResult Value) GetBoolOrValue(PyCallContext context, IEnumerable<PyObject> values)
+    {
+        PyObject lastValue = null!;
+
+        foreach (var value in values)
+        {
+            if (!PySpecialMethods.TryGetBool(context, value, out var b, out var result))
+                return (false, result);
+
+            if (b.BoolValue)
+                return (true, value);
+
+            lastValue = value;
+        }
+
+        return (false, lastValue);
     }
 }
 
 public sealed class BinOpNode : AstExprNode
 {
-    internal BinOpNode(AstOperatorNode op, AstExprNode left, AstExprNode right)
+    internal BinOpNode(OperatorType op, AstExprNode left, AstExprNode right)
     {
         Left = left;
         Right = right;
         Operator = op;
     }
 
-    public AstOperatorNode Operator { get; }
+    public OperatorType Operator { get; }
     public AstExprNode Left { get; }
     public AstExprNode Right { get; }
 
@@ -549,12 +633,33 @@ public sealed class BinOpNode : AstExprNode
     {
         var left = Left.GetExprValue(context, frame);
         var right = Right.GetExprValue(context, frame);
-        return Operator.GetOpValue(context, left, right).PyUnwrapIncludedNotImplemented(context);
+
+        return EvalOperator(context, Operator, left, right).PyUnwrap(context);
+    }
+
+    internal static PyResult EvalOperator(PyCallContext context, OperatorType op, PyObject left, PyObject right)
+    {
+        return op switch
+        {
+            OperatorType.Add => PyOperators.Add(context, left, right),
+            OperatorType.Sub => PyOperators.Sub(context, left, right),
+            OperatorType.Mul => PyOperators.Mul(context, left, right),
+            OperatorType.MatMult => throw new NotImplementedException(), // PyOperators.MatMult(context, left, right),
+            OperatorType.Div => PyOperators.TrueDiv(context, left, right),
+            OperatorType.Mod => PyOperators.Mod(context, left, right),
+            OperatorType.Pow => PyOperators.Pow(context, left, right, PyNoneObject.None),
+            OperatorType.LShift => PyOperators.LShift(context, left, right),
+            OperatorType.RShift => PyOperators.RShift(context, left, right),
+            OperatorType.BitOr => PyOperators.Or(context, left, right),
+            OperatorType.BitXor => PyOperators.Xor(context, left, right),
+            OperatorType.BitAnd => PyOperators.And(context, left, right),
+            OperatorType.FloorDiv => PyOperators.FloorDiv(context, left, right),
+            _ => throw new UnreachableException(),
+        };
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
-        yield return Operator;
         yield return Left;
         yield return Right;
     }
@@ -562,30 +667,59 @@ public sealed class BinOpNode : AstExprNode
 
 public sealed class UnaryOpNode : AstExprNode
 {
-    internal UnaryOpNode(AstUnaryOpNode op, AstExprNode operand)
+    internal UnaryOpNode(UnaryOpType op, AstExprNode operand)
     {
         Op = op;
         Operand = operand;
     }
 
-    public AstUnaryOpNode Op { get; }
+    public UnaryOpType Op { get; }
     public AstExprNode Operand { get; }
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        return Op.GetUnaryOpValue(context, Operand.GetExprValue(context, frame)).PyUnwrap(context);
+        var value = Operand.GetExprValue(context, frame);
+        return (Op switch
+        {
+            UnaryOpType.Invert => Invert(context, value),
+            UnaryOpType.Not => Not(context, value),
+            UnaryOpType.UAdd => UAdd(context, value),
+            UnaryOpType.USub => USub(context, value),
+            _ => throw new UnreachableException(),
+        }).PyUnwrap(context);
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
-        yield return Op;
         yield return Operand;
     }
+
+    private static PyResult Not(PyCallContext context, PyObject value)
+    {
+        if (!PySpecialMethods.TryGetBool(context, value, out var b, out var result))
+            return result;
+        return PyBoolObject.FromBoolean(!b.BoolValue);
+    }
+
+    private static PyResult Invert(PyCallContext context, PyObject value)
+    {
+        return value.Invert(context);
+    }
+
+    private static PyResult UAdd(PyCallContext context, PyObject value)
+    {
+        return value.Pos(context);
+    }
+    private static PyResult USub(PyCallContext context, PyObject value)
+    {
+        return value.Neg(context);
+    }
+
 }
 
 public sealed class CompareNode : AstExprNode, IAstExprNodeBool
 {
-    internal CompareNode(AstExprNode left, ImmutableArray<AstCmpopNode> ops, ImmutableArray<AstExprNode> comparators)
+    internal CompareNode(AstExprNode left, ImmutableArray<CmpopType> ops, ImmutableArray<AstExprNode> comparators)
     {
         Left = left;
         Ops = ops;
@@ -593,7 +727,7 @@ public sealed class CompareNode : AstExprNode, IAstExprNodeBool
     }
 
     public AstExprNode Left { get; }
-    public ImmutableArray<AstCmpopNode> Ops { get; }
+    public ImmutableArray<CmpopType> Ops { get; }
     public ImmutableArray<AstExprNode> Comparators { get; }
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
@@ -610,7 +744,21 @@ public sealed class CompareNode : AstExprNode, IAstExprNodeBool
         {
             var op = Ops[i];
             var right = Comparators[i].GetExprValue(context, frame);
-            var value = op.GetCompareValue(context, left, right).PyUnwrap(context);
+            var value = (op switch
+            {
+                CmpopType.Eq => PyOperators.Eq(context, left, right),
+                CmpopType.NotEq => PyOperators.Ne(context, left, right),
+                CmpopType.Lt => PyOperators.Lt(context, left, right),
+                CmpopType.LtE => PyOperators.Le(context, left, right),
+                CmpopType.Gt => PyOperators.Gt(context, left, right),
+                CmpopType.GtE => PyOperators.Ge(context, left, right),
+                CmpopType.Is => PyOperators.Is(left, right),
+                CmpopType.IsNot => PyOperators.IsNot(left, right),
+                CmpopType.In => right.Contains(context, left),
+                CmpopType.NotIn => NotIn(context, left, right),
+                _ => throw new UnreachableException(),
+            }).PyUnwrap(context);
+
             var boolValue = (PyBoolObject)PySpecialMethods.GetBool(context, value).PyUnwrap(context);
 
             if (!boolValue.BoolValue)
@@ -620,12 +768,21 @@ public sealed class CompareNode : AstExprNode, IAstExprNodeBool
         }
 
         return (true, lastValue);
+
+        static PyResult NotIn(PyCallContext context, PyObject left, PyObject right)
+        {
+            var contains = right.Contains(context, left);
+            if (contains.IsError)
+                return contains;
+            if (!PySpecialMethods.TryGetBool(context, contains.Value, out var b, out var result))
+                return result;
+            return PyBoolObject.FromBoolean(!b.BoolValue);
+        }
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         yield return Left;
-        foreach (var op in Ops) yield return op;
         foreach (var cmp in Comparators) yield return cmp;
     }
 }

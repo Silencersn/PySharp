@@ -3,7 +3,6 @@ using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.Tokenization;
 using System.Collections.Frozen;
-using System.Diagnostics;
 namespace PySharp.AstNodes;
 
 public sealed partial class Parser : ICodeMetaInfoProvider
