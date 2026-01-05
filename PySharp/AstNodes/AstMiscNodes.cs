@@ -17,6 +17,17 @@ public class AstAliasNode : AstNode
     {
         return [];
     }
+
+    internal string GetLocalName()
+    {
+        if (AsName is not null)
+            return AsName;
+
+        var index = Name.IndexOf('.');
+        if (index is -1)
+            return Name;
+        return Name[..index];
+    }
 }
 
 

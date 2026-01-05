@@ -277,7 +277,7 @@ public sealed class SemanticAnalyzer
                 break;
 
             case AstAliasNode n:
-                currentScope.AppendVariable(n.AsName ?? n.Name, ExprContextType.Store);
+                currentScope.AppendVariable(n.GetLocalName(), ExprContextType.Store);
                 break;
         }
     }

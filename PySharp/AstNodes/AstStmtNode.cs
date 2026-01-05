@@ -561,15 +561,7 @@ public sealed class ImportNode : AstStmtNode
     {
         foreach (var name in Names)
         {
-            frame.Import(context, name.Name, name.AsName ?? GetName(name.Name));
-        }
-
-        static string GetName(string module)
-        {
-            if (!module.Contains('.'))
-                return module;
-
-            return module.Split('.')[0];
+            frame.Import(context, name.Name, name.GetLocalName());
         }
     }
 
