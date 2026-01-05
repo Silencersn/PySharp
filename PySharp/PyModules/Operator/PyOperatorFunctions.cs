@@ -95,7 +95,7 @@ public static class PyOperatorFunctions
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult LeImpl(PyCallContext context, PyArguments arguments)
     {
-        return PyOperators.Le(context, arguments.Args[0], arguments.Args[1]);
+        return PyOperators.LtE(context, arguments.Args[0], arguments.Args[1]);
     }
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult EqImpl(PyCallContext context, PyArguments arguments)
@@ -105,7 +105,7 @@ public static class PyOperatorFunctions
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult NeImpl(PyCallContext context, PyArguments arguments)
     {
-        return PyOperators.Ne(context, arguments.Args[0], arguments.Args[1]);
+        return PyOperators.NotEq(context, arguments.Args[0], arguments.Args[1]);
     }
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult GtImpl(PyCallContext context, PyArguments arguments)
@@ -115,6 +115,6 @@ public static class PyOperatorFunctions
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult GeImpl(PyCallContext context, PyArguments arguments)
     {
-        return PyOperators.Ge(context, arguments.Args[0], arguments.Args[1]);
+        return PyOperators.GtE(context, arguments.Args[0], arguments.Args[1]);
     }
 }

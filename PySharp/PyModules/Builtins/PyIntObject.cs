@@ -465,13 +465,13 @@ public class PyIntObjectType : PyTypeObject<PyIntObjectType, PyIntObject>
     {
         if (other is not PyIntObject intObj)
             return base.Le(context, self, other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.Le, self, intObj);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.LtE, self, intObj);
     }
     protected internal override PyResult Ge(PyCallContext context, PyIntObject self, PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.Ge(context, self, other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.Ge, self, intObj);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.GtE, self, intObj);
     }
     protected internal override PyResult Eq(PyCallContext context, PyIntObject self, PyObject other)
     {

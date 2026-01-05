@@ -19,11 +19,11 @@ public enum PyOperatorTypes
     BitOr,
     BitXor,
     Lt,
-    Le,
+    LtE,
     Eq,
-    Ne,
+    NotEq,
     Gt,
-    Ge
+    GtE
 }
 
 public static class PyOperators
@@ -46,11 +46,11 @@ public static class PyOperators
             PyOperatorTypes.BitOr => "|",
             PyOperatorTypes.BitXor => "^",
             PyOperatorTypes.Lt => "<",
-            PyOperatorTypes.Le => "<=",
+            PyOperatorTypes.LtE => "<=",
             PyOperatorTypes.Eq => "==",
-            PyOperatorTypes.Ne => "!=",
+            PyOperatorTypes.NotEq => "!=",
             PyOperatorTypes.Gt => ">",
-            PyOperatorTypes.Ge => ">=",
+            PyOperatorTypes.GtE => ">=",
             _ => throw new UnreachableException(),
         };
     }
@@ -155,7 +155,7 @@ public static class PyOperators
                 result = rightType.Gt(context, right, left);
                 break;
 
-            case PyOperatorTypes.Le:
+            case PyOperatorTypes.LtE:
                 result = leftType.Le(context, left, right);
                 if (!result.IsNotImplemented)
                     return result;
@@ -169,7 +169,7 @@ public static class PyOperators
                 result = rightType.Lt(context, right, left);
                 break;
 
-            case PyOperatorTypes.Ge:
+            case PyOperatorTypes.GtE:
                 result = leftType.Ge(context, left, right);
                 if (!result.IsNotImplemented)
                     return result;
@@ -272,7 +272,7 @@ public static class PyOperators
                     return result;
                 result = leftType.Lt(context, left, right);
                 break;
-            case PyOperatorTypes.Le:
+            case PyOperatorTypes.LtE:
                 result = rightType.Ge(context, right, left);
                 if (!result.IsNotImplemented)
                     return result;
@@ -284,7 +284,7 @@ public static class PyOperators
                     return result;
                 result = leftType.Gt(context, left, right);
                 break;
-            case PyOperatorTypes.Ge:
+            case PyOperatorTypes.GtE:
                 result = rightType.Le(context, right, left);
                 if (!result.IsNotImplemented)
                     return result;
@@ -362,17 +362,17 @@ public static class PyOperators
     {
         return ReflectiveOperator(context, PyOperatorTypes.Lt, left, right);
     }
-    public static PyResult Le(PyCallContext context, PyObject left, PyObject right)
+    public static PyResult LtE(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(context, PyOperatorTypes.Le, left, right);
+        return ReflectiveOperator(context, PyOperatorTypes.LtE, left, right);
     }
     public static PyResult Gt(PyCallContext context, PyObject left, PyObject right)
     {
         return ReflectiveOperator(context, PyOperatorTypes.Gt, left, right);
     }
-    public static PyResult Ge(PyCallContext context, PyObject left, PyObject right)
+    public static PyResult GtE(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(context, PyOperatorTypes.Ge, left, right);
+        return ReflectiveOperator(context, PyOperatorTypes.GtE, left, right);
     }
 
     public static PyResult Eq(PyCallContext context, PyObject left, PyObject right)
@@ -387,7 +387,7 @@ public static class PyOperators
 
         return ret;
     }
-    public static PyResult Ne(PyCallContext context, PyObject left, PyObject right)
+    public static PyResult NotEq(PyCallContext context, PyObject left, PyObject right)
     {
         var ret = left.Ne(context, right);
         if (!ret.IsNotImplemented)

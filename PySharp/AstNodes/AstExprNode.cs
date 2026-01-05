@@ -657,11 +657,11 @@ public sealed class CompareNode : AstExprNode, IAstExprNodeBool
             var value = (op switch
             {
                 CmpopType.Eq => PyOperators.Eq(context, left, right),
-                CmpopType.NotEq => PyOperators.Ne(context, left, right),
+                CmpopType.NotEq => PyOperators.NotEq(context, left, right),
                 CmpopType.Lt => PyOperators.Lt(context, left, right),
-                CmpopType.LtE => PyOperators.Le(context, left, right),
+                CmpopType.LtE => PyOperators.LtE(context, left, right),
                 CmpopType.Gt => PyOperators.Gt(context, left, right),
-                CmpopType.GtE => PyOperators.Ge(context, left, right),
+                CmpopType.GtE => PyOperators.GtE(context, left, right),
                 CmpopType.Is => PyOperators.Is(left, right),
                 CmpopType.IsNot => PyOperators.IsNot(left, right),
                 CmpopType.In => PyOperators.In(context, left, right),

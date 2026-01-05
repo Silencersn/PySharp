@@ -85,19 +85,19 @@ internal static class PyMath
             case PyOperatorTypes.Lt:
                 return PyBoolObject.FromBoolean(left.Value < right.Value);
 
-            case PyOperatorTypes.Le:
+            case PyOperatorTypes.LtE:
                 return PyBoolObject.FromBoolean(left.Value <= right.Value);
 
             case PyOperatorTypes.Eq:
                 return PyBoolObject.FromBoolean(left.Value == right.Value);
 
-            case PyOperatorTypes.Ne:
+            case PyOperatorTypes.NotEq:
                 return PyBoolObject.FromBoolean(left.Value != right.Value);
 
             case PyOperatorTypes.Gt:
                 return PyBoolObject.FromBoolean(left.Value > right.Value);
 
-            case PyOperatorTypes.Ge:
+            case PyOperatorTypes.GtE:
                 return PyBoolObject.FromBoolean(left.Value >= right.Value);
 
             default:
