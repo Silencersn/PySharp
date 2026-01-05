@@ -40,7 +40,7 @@ public static class PyOperatorFunctions
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult MulImpl(PyCallContext context, PyArguments arguments)
     {
-        return PyOperators.Mul(context, arguments.Args[0], arguments.Args[1]);
+        return PyOperators.Mult(context, arguments.Args[0], arguments.Args[1]);
     }
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult TrueDivImpl(PyCallContext context, PyArguments arguments)
@@ -75,17 +75,17 @@ public static class PyOperatorFunctions
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult AndImpl(PyCallContext context, PyArguments arguments)
     {
-        return PyOperators.And(context, arguments.Args[0], arguments.Args[1]);
+        return PyOperators.BitAnd(context, arguments.Args[0], arguments.Args[1]);
     }
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult XorImpl(PyCallContext context, PyArguments arguments)
     {
-        return PyOperators.Xor(context, arguments.Args[0], arguments.Args[1]);
+        return PyOperators.BitXor(context, arguments.Args[0], arguments.Args[1]);
     }
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult OrImpl(PyCallContext context, PyArguments arguments)
     {
-        return PyOperators.Or(context, arguments.Args[0], arguments.Args[1]);
+        return PyOperators.BitOr(context, arguments.Args[0], arguments.Args[1]);
     }
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult LtImpl(PyCallContext context, PyArguments arguments)

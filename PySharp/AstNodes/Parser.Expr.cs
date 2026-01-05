@@ -632,7 +632,7 @@ partial class Parser
             var currentMetaInfo = startMetaInfo.WithCrucial();
             OperatorType op = CurrentTokenType switch
             {
-                TokenType.Star => OperatorType.Mul,
+                TokenType.Star => OperatorType.Mult,
                 TokenType.Slash => OperatorType.Div,
                 TokenType.DoubleSlash => OperatorType.FloorDiv,
                 TokenType.Percent => OperatorType.Mod,

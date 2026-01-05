@@ -52,7 +52,7 @@ public enum OperatorType
 {
     Add,
     Sub,
-    Mul,
+    Mult,
     MatMult,
     Div,
     Mod,
@@ -575,16 +575,16 @@ public sealed class BinOpNode : AstExprNode
         {
             OperatorType.Add => PyOperators.Add(context, left, right),
             OperatorType.Sub => PyOperators.Sub(context, left, right),
-            OperatorType.Mul => PyOperators.Mul(context, left, right),
+            OperatorType.Mult => PyOperators.Mult(context, left, right),
             OperatorType.MatMult => throw new NotImplementedException(), // PyOperators.MatMult(context, left, right),
             OperatorType.Div => PyOperators.TrueDiv(context, left, right),
             OperatorType.Mod => PyOperators.Mod(context, left, right),
             OperatorType.Pow => PyOperators.Pow(context, left, right, PyNoneObject.None),
             OperatorType.LShift => PyOperators.LShift(context, left, right),
             OperatorType.RShift => PyOperators.RShift(context, left, right),
-            OperatorType.BitOr => PyOperators.Or(context, left, right),
-            OperatorType.BitXor => PyOperators.Xor(context, left, right),
-            OperatorType.BitAnd => PyOperators.And(context, left, right),
+            OperatorType.BitOr => PyOperators.BitOr(context, left, right),
+            OperatorType.BitXor => PyOperators.BitXor(context, left, right),
+            OperatorType.BitAnd => PyOperators.BitAnd(context, left, right),
             OperatorType.FloorDiv => PyOperators.FloorDiv(context, left, right),
             _ => throw new UnreachableException(),
         };
@@ -613,10 +613,10 @@ public sealed class UnaryOpNode : AstExprNode
         var value = Operand.GetExprValue(context, frame);
         return (Op switch
         {
-            UnaryOpType.Invert => Invert(context, value),
-            UnaryOpType.Not => Not(context, value),
-            UnaryOpType.UAdd => UAdd(context, value),
-            UnaryOpType.USub => USub(context, value),
+            UnaryOpType.Invert => PyOperators.Invert(context, value),
+            UnaryOpType.Not => PyOperators.Not(context, value),
+            UnaryOpType.UAdd => PyOperators.UAdd(context, value),
+            UnaryOpType.USub => PyOperators.USub(context, value),
             _ => throw new UnreachableException(),
         }).PyUnwrap(context);
     }
@@ -625,28 +625,6 @@ public sealed class UnaryOpNode : AstExprNode
     {
         yield return Operand;
     }
-
-    private static PyResult Not(PyCallContext context, PyObject value)
-    {
-        if (!PySpecialMethods.TryGetBool(context, value, out var b, out var result))
-            return result;
-        return PyBoolObject.FromBoolean(!b.BoolValue);
-    }
-
-    private static PyResult Invert(PyCallContext context, PyObject value)
-    {
-        return value.Invert(context);
-    }
-
-    private static PyResult UAdd(PyCallContext context, PyObject value)
-    {
-        return value.Pos(context);
-    }
-    private static PyResult USub(PyCallContext context, PyObject value)
-    {
-        return value.Neg(context);
-    }
-
 }
 
 public sealed class CompareNode : AstExprNode, IAstExprNodeBool
@@ -686,8 +664,8 @@ public sealed class CompareNode : AstExprNode, IAstExprNodeBool
                 CmpopType.GtE => PyOperators.Ge(context, left, right),
                 CmpopType.Is => PyOperators.Is(left, right),
                 CmpopType.IsNot => PyOperators.IsNot(left, right),
-                CmpopType.In => right.Contains(context, left),
-                CmpopType.NotIn => NotIn(context, left, right),
+                CmpopType.In => PyOperators.In(context, left, right),
+                CmpopType.NotIn => PyOperators.NotIn(context, left, right),
                 _ => throw new UnreachableException(),
             }).PyUnwrap(context);
 
@@ -700,16 +678,6 @@ public sealed class CompareNode : AstExprNode, IAstExprNodeBool
         }
 
         return (true, lastValue);
-
-        static PyResult NotIn(PyCallContext context, PyObject left, PyObject right)
-        {
-            var contains = right.Contains(context, left);
-            if (contains.IsError)
-                return contains;
-            if (!PySpecialMethods.TryGetBool(context, contains.Value, out var b, out var result))
-                return result;
-            return PyBoolObject.FromBoolean(!b.BoolValue);
-        }
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()

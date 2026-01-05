@@ -386,7 +386,7 @@ public class PyIntObjectType : PyTypeObject<PyIntObjectType, PyIntObject>
     {
         if (other is not PyIntObject intObj)
             return base.Mul(context, self, other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.Mul, self, intObj);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.Mult, self, intObj);
     }
     protected internal override PyResult TrueDiv(PyCallContext context, PyIntObject self, PyObject other)
     {
@@ -435,19 +435,19 @@ public class PyIntObjectType : PyTypeObject<PyIntObjectType, PyIntObject>
     {
         if (other is not PyIntObject intObj)
             return base.And(context, self, other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.And, self, intObj);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.BitAnd, self, intObj);
     }
     protected internal override PyResult Xor(PyCallContext context, PyIntObject self, PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.Xor(context, self, other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.Xor, self, intObj);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.BitXor, self, intObj);
     }
     protected internal override PyResult Or(PyCallContext context, PyIntObject self, PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.Or(context, self, other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.Or, self, intObj);
+        return PyMath.CalculatePyIntObject(PyOperatorTypes.BitOr, self, intObj);
     }
     protected internal override PyResult Lt(PyCallContext context, PyIntObject self, PyObject other)
     {

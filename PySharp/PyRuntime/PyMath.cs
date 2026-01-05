@@ -17,7 +17,7 @@ internal static class PyMath
             case PyOperatorTypes.Sub:
                 return PyIntObject.FromInteger(left.Value - right.Value);
 
-            case PyOperatorTypes.Mul:
+            case PyOperatorTypes.Mult:
                 return PyIntObject.FromInteger(left.Value * right.Value);
 
             case PyOperatorTypes.TrueDiv:
@@ -73,13 +73,13 @@ internal static class PyMath
             case PyOperatorTypes.RShift:
                 return PyIntObject.FromInteger(left.Value >> right.Int32Value);
 
-            case PyOperatorTypes.And:
+            case PyOperatorTypes.BitAnd:
                 return PyIntObject.FromInteger(left.Value & right.Value);
 
-            case PyOperatorTypes.Or:
+            case PyOperatorTypes.BitOr:
                 return PyIntObject.FromInteger(left.Value | right.Value);
 
-            case PyOperatorTypes.Xor:
+            case PyOperatorTypes.BitXor:
                 return PyIntObject.FromInteger(left.Value ^ right.Value);
 
             case PyOperatorTypes.Lt:

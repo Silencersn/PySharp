@@ -274,7 +274,7 @@ partial class Parser
             {
                 TokenType.PlusEqual => OperatorType.Add,
                 TokenType.MinusEqual => OperatorType.Sub,
-                TokenType.StarEqual => OperatorType.Mul,
+                TokenType.StarEqual => OperatorType.Mult,
                 TokenType.AtEqual => throw new NotImplementedException(),
                 TokenType.SlashEqual => OperatorType.Div,
                 TokenType.DoubleSlashEqual => OperatorType.FloorDiv,

@@ -8,16 +8,16 @@ public enum PyOperatorTypes
 {
     Add,
     Sub,
-    Mul,
+    Mult,
     TrueDiv,
     FloorDiv,
     Mod,
     Pow,
     LShift,
     RShift,
-    And,
-    Or,
-    Xor,
+    BitAnd,
+    BitOr,
+    BitXor,
     Lt,
     Le,
     Eq,
@@ -35,16 +35,16 @@ public static class PyOperators
         {
             PyOperatorTypes.Add => "+",
             PyOperatorTypes.Sub => "-",
-            PyOperatorTypes.Mul => "*",
+            PyOperatorTypes.Mult => "*",
             PyOperatorTypes.TrueDiv => "/",
             PyOperatorTypes.FloorDiv => "//",
             PyOperatorTypes.Mod => "%",
             PyOperatorTypes.Pow => "**",
             PyOperatorTypes.LShift => "<<",
             PyOperatorTypes.RShift => ">>",
-            PyOperatorTypes.And => "&",
-            PyOperatorTypes.Or => "|",
-            PyOperatorTypes.Xor => "^",
+            PyOperatorTypes.BitAnd => "&",
+            PyOperatorTypes.BitOr => "|",
+            PyOperatorTypes.BitXor => "^",
             PyOperatorTypes.Lt => "<",
             PyOperatorTypes.Le => "<=",
             PyOperatorTypes.Eq => "==",
@@ -77,7 +77,7 @@ public static class PyOperators
                 result = rightType.RSub(context, right, left);
                 break;
 
-            case PyOperatorTypes.Mul:
+            case PyOperatorTypes.Mult:
                 result = leftType.Mul(context, left, right);
                 if (!result.IsNotImplemented)
                     return result;
@@ -127,21 +127,21 @@ public static class PyOperators
                 result = rightType.RRShift(context, right, left);
                 break;
 
-            case PyOperatorTypes.And:
+            case PyOperatorTypes.BitAnd:
                 result = leftType.And(context, left, right);
                 if (!result.IsNotImplemented)
                     return result;
                 result = rightType.RAnd(context, right, left);
                 break;
 
-            case PyOperatorTypes.Xor:
+            case PyOperatorTypes.BitXor:
                 result = leftType.Xor(context, left, right);
                 if (!result.IsNotImplemented)
                     return result;
                 result = rightType.RXor(context, right, left);
                 break;
 
-            case PyOperatorTypes.Or:
+            case PyOperatorTypes.BitOr:
                 result = leftType.Or(context, left, right);
                 if (!result.IsNotImplemented)
                     return result;
@@ -205,7 +205,7 @@ public static class PyOperators
                     return result;
                 result = leftType.Sub(context, left, right);
                 break;
-            case PyOperatorTypes.Mul:
+            case PyOperatorTypes.Mult:
                 result = rightType.RMul(context, right, left);
                 if (!result.IsNotImplemented)
                     return result;
@@ -248,19 +248,19 @@ public static class PyOperators
                     return result;
                 result = leftType.RShift(context, left, right);
                 break;
-            case PyOperatorTypes.And:
+            case PyOperatorTypes.BitAnd:
                 result = rightType.RAnd(context, right, left);
                 if (!result.IsNotImplemented)
                     return result;
                 result = leftType.And(context, left, right);
                 break;
-            case PyOperatorTypes.Xor:
+            case PyOperatorTypes.BitXor:
                 result = rightType.RXor(context, right, left);
                 if (!result.IsNotImplemented)
                     return result;
                 result = leftType.Xor(context, left, right);
                 break;
-            case PyOperatorTypes.Or:
+            case PyOperatorTypes.BitOr:
                 result = rightType.ROr(context, right, left);
                 if (!result.IsNotImplemented)
                     return result;
@@ -318,9 +318,9 @@ public static class PyOperators
     {
         return ReflectiveOperator(context, PyOperatorTypes.Sub, left, right);
     }
-    public static PyResult Mul(PyCallContext context, PyObject left, PyObject right)
+    public static PyResult Mult(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(context, PyOperatorTypes.Mul, left, right);
+        return ReflectiveOperator(context, PyOperatorTypes.Mult, left, right);
     }
     public static PyResult TrueDiv(PyCallContext context, PyObject left, PyObject right)
     {
@@ -346,17 +346,17 @@ public static class PyOperators
     {
         return ReflectiveOperator(context, PyOperatorTypes.RShift, left, right);
     }
-    public static PyResult And(PyCallContext context, PyObject left, PyObject right)
+    public static PyResult BitAnd(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(context, PyOperatorTypes.And, left, right);
+        return ReflectiveOperator(context, PyOperatorTypes.BitAnd, left, right);
     }
-    public static PyResult Xor(PyCallContext context, PyObject left, PyObject right)
+    public static PyResult BitXor(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(context, PyOperatorTypes.Xor, left, right);
+        return ReflectiveOperator(context, PyOperatorTypes.BitXor, left, right);
     }
-    public static PyResult Or(PyCallContext context, PyObject left, PyObject right)
+    public static PyResult BitOr(PyCallContext context, PyObject left, PyObject right)
     {
-        return ReflectiveOperator(context, PyOperatorTypes.Or, left, right);
+        return ReflectiveOperator(context, PyOperatorTypes.BitOr, left, right);
     }
     public static PyResult Lt(PyCallContext context, PyObject left, PyObject right)
     {
@@ -413,26 +413,26 @@ public static class PyOperators
         return PyBoolObject.FromBoolean(!b.BoolValue);
     }
 
-    private static bool AreSameObjectAtPythonLevel(PyObject left, PyObject right)
-    {
-        if (ReferenceEquals(left, right))
-            return true;
-
-        if (left._pyId is not null && left._pyId == right._pyId)
-            // because of backing objects of CustomObject
-            // different PyObject at c# level may be the same PyObject at python level
-            return true;
-
-        return false;
-    }
-
     public static PyBoolObject Is(PyObject left, PyObject right)
     {
-        return PyBoolObject.FromBoolean(AreSameObjectAtPythonLevel(left, right));
+        return PyBoolObject.FromBoolean(ReferenceEquals(left, right));
     }
     public static PyBoolObject IsNot(PyObject left, PyObject right)
     {
-        return PyBoolObject.FromBoolean(!AreSameObjectAtPythonLevel(left, right));
+        return PyBoolObject.FromBoolean(!ReferenceEquals(left, right));
+    }
+
+    public static PyResult In(PyCallContext context, PyObject left, PyObject right)
+    {
+        return right.Contains(context, left);
+    }
+    public static PyResult NotIn(PyCallContext context, PyObject left, PyObject right)
+    {
+        var result = In(context, left, right);
+        if (result.IsError)
+            return result;
+
+        return Not(context, result.Value);
     }
 
     public static PyResult GetAttr(PyCallContext context, PyObject target, string name)
@@ -449,5 +449,26 @@ public static class PyOperators
     public static PyResult DelAttr(PyCallContext context, PyObject target, string name)
     {
         return target.DelAttr(context, name);
+    }
+
+    public static PyResult Not(PyCallContext context, PyObject value)
+    {
+        if (!PySpecialMethods.TryGetBool(context, value, out var b, out var result))
+            return result;
+        return PyBoolObject.FromBoolean(!b.BoolValue);
+    }
+
+    public static PyResult Invert(PyCallContext context, PyObject value)
+    {
+        return value.Invert(context);
+    }
+
+    public static PyResult UAdd(PyCallContext context, PyObject value)
+    {
+        return value.Pos(context);
+    }
+    public static PyResult USub(PyCallContext context, PyObject value)
+    {
+        return value.Neg(context);
     }
 }
