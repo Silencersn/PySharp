@@ -21,17 +21,70 @@ partial class Ast
         return new BinOpNode(op, left, right);
     }
 
+    public static BinOpNode Add(AstExprNode left, AstExprNode right)
+    {
+        return BinOp(OperatorType.Add, left, right);
+    }
+    public static BinOpNode Sub(AstExprNode left, AstExprNode right)
+    {
+        return BinOp(OperatorType.Sub, left, right);
+    }
+    public static BinOpNode Mult(AstExprNode left, AstExprNode right)
+    {
+        return BinOp(OperatorType.Mult, left, right);
+    }
+    public static BinOpNode MatMult(AstExprNode left, AstExprNode right)
+    {
+        return BinOp(OperatorType.MatMult, left, right);
+    }
+    public static BinOpNode Div(AstExprNode left, AstExprNode right)
+    {
+        return BinOp(OperatorType.Div, left, right);
+    }
+    public static BinOpNode Mod(AstExprNode left, AstExprNode right)
+    {
+        return BinOp(OperatorType.Mod, left, right);
+    }
+    public static BinOpNode Pow(AstExprNode left, AstExprNode right)
+    {
+        return BinOp(OperatorType.Pow, left, right);
+    }
+    public static BinOpNode LShift(AstExprNode left, AstExprNode right)
+    {
+        return BinOp(OperatorType.LShift, left, right);
+    }
+    public static BinOpNode RShift(AstExprNode left, AstExprNode right)
+    {
+        return BinOp(OperatorType.RShift, left, right);
+    }
+    public static BinOpNode BitOr(AstExprNode left, AstExprNode right)
+    {
+        return BinOp(OperatorType.BitOr, left, right);
+    }
+    public static BinOpNode BitXor(AstExprNode left, AstExprNode right)
+    {
+        return BinOp(OperatorType.BitXor, left, right);
+    }
+    public static BinOpNode BitAnd(AstExprNode left, AstExprNode right)
+    {
+        return BinOp(OperatorType.BitAnd, left, right);
+    }
+    public static BinOpNode FloorDiv(AstExprNode left, AstExprNode right)
+    {
+        return BinOp(OperatorType.FloorDiv, left, right);
+    }
+
     public static BoolOpNode BoolOp(BoolOpType op, IEnumerable<AstExprNode> values)
     {
         ArgumentNullException.ThrowIfNull(values);
 
         return new BoolOpNode(op, values.ToImmutableArray(true));
     }
-    public static BoolOpNode BoolAnd(IEnumerable<AstExprNode> values)
+    public static BoolOpNode And(IEnumerable<AstExprNode> values)
     {
         return BoolOp(BoolOpType.And, values);
     }
-    public static BoolOpNode BoolOr(IEnumerable<AstExprNode> values)
+    public static BoolOpNode Or(IEnumerable<AstExprNode> values)
     {
         return BoolOp(BoolOpType.Or, values);
     }
@@ -174,12 +227,28 @@ partial class Ast
 
         return new TupleNode(elts.ToImmutableArray(true));
     }
-
+    
     public static UnaryOpNode UnaryOp(UnaryOpType op, AstExprNode operand)
     {
         ArgumentNullException.ThrowIfNull(operand);
 
         return new UnaryOpNode(op, operand);
+    }
+    public static UnaryOpNode Invert(AstExprNode operand)
+    {
+        return UnaryOp(UnaryOpType.Invert, operand);
+    }
+    public static UnaryOpNode Not(AstExprNode operand)
+    {
+        return UnaryOp(UnaryOpType.Not, operand);
+    }
+    public static UnaryOpNode UAdd(AstExprNode operand)
+    {
+        return UnaryOp(UnaryOpType.UAdd, operand);
+    }
+    public static UnaryOpNode USub(AstExprNode operand)
+    {
+        return UnaryOp(UnaryOpType.USub, operand);
     }
 
     public static YieldNode Yield(AstExprNode? value)

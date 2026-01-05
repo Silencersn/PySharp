@@ -71,7 +71,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
 
     private TokenType CurrentTokenType => CurrentToken.Type;
 
-    CodeMetaInfo? ICodeMetaInfoProvider.MetaInfo => CreateMetaInfo();
+    CodeMetaInfo? ICodeMetaInfoProvider.MetaInfo => CreateAstMetaInfo();
 
     internal Parser(PyCallContext context, CodeSource codeSource, TokenStream tokenStream)
     {
@@ -153,7 +153,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
     {
         EnsureTokenTypeThenMove(TokenType.Encoding);
 
-        var module = new ModuleNode() { MetaInfo = CreateMetaInfo() };
+        var module = new ModuleNode() { MetaInfo = CreateAstMetaInfo() };
 
         while (CurrentTokenType is not TokenType.EndMarker)
         {
@@ -167,7 +167,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
     {
         EnsureTokenTypeThenMove(TokenType.Encoding);
 
-        var metaInfo = CreateMetaInfo();
+        var metaInfo = CreateAstMetaInfo();
         var exprList = ParseExpressionList(StopPredicates.UntilNewLine, out var endsWithComma);
         var expr = UnwrapOrMakeTuple(exprList, endsWithComma);
 
@@ -178,7 +178,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
     {
         EnsureTokenTypeThenMove(TokenType.Encoding);
 
-        var metaInfo = CreateMetaInfo();
+        var metaInfo = CreateAstMetaInfo();
         _isParsingInteractiveNode = true;
         var list = ParseStatement();
         _isParsingInteractiveNode = false;

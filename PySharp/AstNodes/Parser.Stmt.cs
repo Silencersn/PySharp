@@ -53,7 +53,7 @@ partial class Parser
     /// <returns></returns>
     private AstStmtNode ParseImportStmt()
     {
-        var metaInfo = CreateMetaInfo();
+        var metaInfo = CreateAstMetaInfo();
         if (IsCurrentKeyword("import"))
         {
             MoveNextToken();
@@ -139,7 +139,7 @@ partial class Parser
 
     private AstStmtNode ParseSimpleStmt()
     {
-        var metaInfo = CreateMetaInfo();
+        var metaInfo = CreateAstMetaInfo();
         if (CurrentTokenType is TokenType.Name && IsKeyword(CurrentToken.String))
         {
             var keyword = CurrentToken.String;
@@ -408,7 +408,7 @@ partial class Parser
 
     private IfNode ParseIfStmt(string startsWithKeyword)
     {
-        var metaInfo = CreateMetaInfo();
+        var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove(startsWithKeyword);
         var test = ParseAssignmentExpression();
         EnsureTokenTypeThenMoveForTest(TokenType.Colon, test);
@@ -429,7 +429,7 @@ partial class Parser
 
     private WhileNode ParseWhileStmt()
     {
-        var metaInfo = CreateMetaInfo();
+        var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("while");
         var test = ParseAssignmentExpression();
         EnsureTokenTypeThenMoveForTest(TokenType.Colon, test);
@@ -446,7 +446,7 @@ partial class Parser
 
     private TryNode ParseTryStmt()
     {
-        var metaInfo = CreateMetaInfo();
+        var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("try");
         EnsureTokenTypeThenMove(TokenType.Colon);
         var body = ParseSuite("try");
@@ -498,7 +498,7 @@ partial class Parser
 
     private ForNode ParseForStmt()
     {
-        var metaInfo = CreateMetaInfo();
+        var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("for");
         var targetList = ParseTargetList(StopPredicates.UntilKeywordIn, out var endsWithComma);
         var target = UnwrapOrMakeTuple(targetList, endsWithComma);
@@ -520,7 +520,7 @@ partial class Parser
 
     private FunctionDefNode ParseFuncDef(IEnumerable<AstExprNode> decorators)
     {
-        var metaInfo = CreateMetaInfo();
+        var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("def");
         var name = ParseIdentifier();
         EnsureTokenTypeThenMove(TokenType.LeftParen);
@@ -533,7 +533,7 @@ partial class Parser
 
     private ClassDefNode ParseClassDef(IEnumerable<AstExprNode> decorators)
     {
-        var metaInfo = CreateMetaInfo();
+        var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("class");
         var name = ParseIdentifier();
         var bases = new List<AstExprNode>();

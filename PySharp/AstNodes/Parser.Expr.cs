@@ -119,7 +119,7 @@ partial class Parser
             if (CurrentTokenType is TokenType.FStringMiddle)
             {
                 var str = FromLiteralToString(_context, CurrentToken.String, true);
-                var node = Ast.Constant(str).With(CreateMetaInfo());
+                var node = Ast.Constant(str).With(CreateAstMetaInfo());
                 nodes.Add(node);
             }
             else
@@ -197,7 +197,7 @@ partial class Parser
             if (CurrentTokenType is TokenType.String)
             {
                 var str = FromLiteralToString(_context, CurrentToken.String, false);
-                var node = Ast.Constant(str).With(CreateMetaInfo());
+                var node = Ast.Constant(str).With(CreateAstMetaInfo());
                 nodes.Add(node);
             }
             else
@@ -210,7 +210,7 @@ partial class Parser
                     if (CurrentTokenType is TokenType.FStringMiddle)
                     {
                         var str = FromLiteralToString(_context, CurrentToken.String, true);
-                        var node = Ast.Constant(str).With(CreateMetaInfo());
+                        var node = Ast.Constant(str).With(CreateAstMetaInfo());
                         nodes.Add(node);
                     }
                     else
@@ -336,7 +336,7 @@ partial class Parser
     /// <exception cref="NotSupportedException"></exception>
     private AstExprNode ParseAtom()
     {
-        var metaInfo = CreateMetaInfo();
+        var metaInfo = CreateAstMetaInfo();
         if (CurrentTokenType is TokenType.Name)
         {
             if (IsKeyword(CurrentToken.String))
@@ -661,7 +661,8 @@ partial class Parser
             var add = CurrentTokenType is TokenType.Plus;
             MoveNextToken();
             var right = ParseMExpr();
-            left = Ast.BinOp(add ? global::PySharp.AstNodes.OperatorType.Add : global::PySharp.AstNodes.OperatorType.Sub, left, right).With(currentMetaInfo.WithPreviousEnd());
+            left = add ? Ast.Add(left, right) : Ast.Sub(left, right);
+            left.With(currentMetaInfo.WithPreviousEnd());
         }
 
         return left;
@@ -682,7 +683,8 @@ partial class Parser
             var lshift = CurrentTokenType is TokenType.LeftShift;
             MoveNextToken();
             var right = ParseAExpr();
-            left = Ast.BinOp(lshift ? global::PySharp.AstNodes.OperatorType.LShift : global::PySharp.AstNodes.OperatorType.RShift, left, right).With(currentMetaInfo.WithPreviousEnd());
+            left = lshift ? Ast.LShift(left, right) : Ast.RShift(left, right);
+            left.With(currentMetaInfo.WithPreviousEnd());
         }
 
         return left;
@@ -702,7 +704,7 @@ partial class Parser
             var currentMetaInfo = startMetaInfo.WithCrucial();
             MoveNextToken();
             var shiftExpr = ParseShiftExpr();
-            andExpr = Ast.BinOp(OperatorType.BitAnd, andExpr, shiftExpr).With(currentMetaInfo.WithPreviousEnd());
+            andExpr = Ast.BitAnd(andExpr, shiftExpr).With(currentMetaInfo.WithPreviousEnd());
         }
 
         return andExpr;
@@ -722,7 +724,7 @@ partial class Parser
             var currentMetaInfo = startMetaInfo.WithCrucial();
             MoveNextToken();
             var andExpr = ParseAndExpr();
-            xorExpr = Ast.BinOp(OperatorType.BitXor, xorExpr, andExpr).With(currentMetaInfo.WithPreviousEnd());
+            xorExpr = Ast.BitXor(xorExpr, andExpr).With(currentMetaInfo.WithPreviousEnd());
         }
 
         return xorExpr;
@@ -742,7 +744,7 @@ partial class Parser
             var currentMetaInfo = startMetaInfo.WithCrucial();
             MoveNextToken();
             var xorExpr = ParseXorExpr();
-            orExpr = Ast.BinOp(OperatorType.BitOr, orExpr, xorExpr).With(currentMetaInfo.WithPreviousEnd());
+            orExpr = Ast.BitOr(orExpr, xorExpr).With(currentMetaInfo.WithPreviousEnd());
         }
 
         return orExpr;
@@ -843,7 +845,7 @@ partial class Parser
 
         var metaInfo = CreateAstMetaInfo();
         MoveNextToken();
-        return Ast.UnaryOp(UnaryOpType.Not, ParseNotTest()).With(metaInfo.WithPreviousEnd());
+        return Ast.Not(ParseNotTest()).With(metaInfo.WithPreviousEnd());
     }
 
     /// <summary>
@@ -863,7 +865,7 @@ partial class Parser
                 MoveNextToken();
                 values.Add(ParseNotTest());
             }
-            result = Ast.BoolAnd(values).With(metaInfo.WithPreviousEnd());
+            result = Ast.And(values).With(metaInfo.WithPreviousEnd());
         }
         return result;
     }
@@ -885,7 +887,7 @@ partial class Parser
                 MoveNextToken();
                 values.Add(ParseAndTest());
             }
-            result = Ast.BoolOr(values).With(metaInfo.WithPreviousEnd());
+            result = Ast.Or(values).With(metaInfo.WithPreviousEnd());
         }
         return result;
     }
@@ -915,7 +917,7 @@ partial class Parser
     /// <returns></returns>
     private LambdaNode ParseLambdaExpr()
     {
-        var metaInfo = CreateMetaInfo();
+        var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("lambda");
         var args = CurrentTokenType is TokenType.Colon ? new() : ParseParameterList(StopPredicates.UntilColon);
         EnsureTokenTypeThenMove(TokenType.Colon);
