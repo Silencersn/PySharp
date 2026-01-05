@@ -103,13 +103,6 @@ public class AstKeywordNode : AstNode
     public string Arg { get; } // TODO: string? Arg
     public AstExprNode Value { get; }
 
-    internal override void Dump(AstNodeDumper dumper)
-    {
-        dumper
-            .Append("Keyword")
-            .AppendFields(("arg", Arg), ("value", Value));
-    }
-
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         yield return Value;

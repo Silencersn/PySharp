@@ -3,7 +3,7 @@ using System.Numerics;
 
 namespace PySharp.AstNodes;
 
-partial class AstNodeFactory
+partial class Ast
 {
     public static AttributeNode Attribute(AstExprNode value, string attr)
     {

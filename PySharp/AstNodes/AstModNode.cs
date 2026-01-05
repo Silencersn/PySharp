@@ -32,13 +32,6 @@ public class ModuleNode : AstModNode
         }
     }
 
-    internal override void Dump(AstNodeDumper dumper)
-    {
-        dumper
-            .Append("Module")
-            .AppendFields(("body", Body));
-    }
-
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         return Body;

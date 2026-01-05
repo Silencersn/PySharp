@@ -117,12 +117,6 @@ public sealed class NameNode : AstExprNode, IExprContextNode, ITargetNode
         return frame.GetVariable(Id).PyUnwrap(context);
     }
 
-    internal override void Dump(AstNodeDumper dumper)
-    {
-        dumper
-            .AppendFormat("Name(id={0}, ctx={1}())", PyStrConverter.FromStringToLiteral(Id), Ctx);
-    }
-
     void ITargetNode.DeleteValue(PyCallContext context, PyFrame frame)
     {
         if (FastIndex is not -1)
@@ -159,12 +153,6 @@ public sealed class ConstantNode : AstExprNode, IAstExprNodeNoSelfPythonExceptio
         return Value;
     }
 
-    internal override void Dump(AstNodeDumper dumper)
-    {
-        dumper
-            .AppendFormat("Constant(value={0})", PySpecialMethods.TryGetRepr(PyCallContext.NonContextDependency, Value, out var s, out var result) ? s.Value : "<ast-format repr failed>");
-    }
-
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         return [];
@@ -191,13 +179,6 @@ public sealed class AttributeNode : AstExprNode, IExprContextNode, ITargetNode
         var value = Value.GetExprValue(context, frame);
         var attr = PyOperators.GetAttr(context, value, Identifier);
         return attr.PyUnwrap(context);
-    }
-
-    internal override void Dump(AstNodeDumper dumper)
-    {
-        dumper
-            .Append("Attribute")
-            .AppendFields(("value", Value), ("attr", PyStrConverter.FromStringToLiteral(Identifier)), ("ctx", Ctx));
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
@@ -256,13 +237,6 @@ public sealed class SubscriptNode : AstExprNode, IExprContextNode, ITargetNode
         return value.Delete(context, slice).PyUnwrap(context);
     }
 
-    internal override void Dump(AstNodeDumper dumper)
-    {
-        dumper
-            .Append("Subscript")
-            .AppendFields(("value", Value), ("slice", Slice), ("ctx", Ctx));
-    }
-
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         yield return Value;
@@ -300,13 +274,6 @@ public sealed class SliceNode : AstExprNode, IAstExprNodeNoSelfPythonException
             Upper?.GetExprValue(context, frame) ?? PyNoneObject.None,
             Step?.GetExprValue(context, frame) ?? PyNoneObject.None
         );
-    }
-
-    internal override void Dump(AstNodeDumper dumper)
-    {
-        dumper
-            .Append("Slice")
-            .AppendFields(("lower", Lower), ("upper", Upper), ("step", Step));
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
@@ -387,13 +354,6 @@ public sealed class CallNode : AstExprNode
         return result.PyUnwrap(context);
     }
 
-    internal override void Dump(AstNodeDumper dumper)
-    {
-        dumper
-            .Append("Call")
-            .AppendFields(("func", Func), ("args", Args), ("keywords", Keywords));
-    }
-
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         yield return Func;
@@ -430,13 +390,6 @@ public sealed class ListNode : AstExprNode, IExprContextNode, IAstExprNodeNoSelf
         return new PyListObject(Elts.Select(item => item.GetExprValue(context, frame)));
     }
 
-    internal override void Dump(AstNodeDumper dumper)
-    {
-        dumper
-            .Append("List")
-            .AppendFields(("elts", Elts), ("ctx", Ctx));
-    }
-
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         foreach (var elt in Elts) yield return elt;
@@ -470,13 +423,6 @@ public sealed class TupleNode : AstExprNode, IExprContextNode, IAstExprNodeNoSel
         return PyTupleObject.CreateTuple(Elts.Select(item => item.GetExprValue(context, frame)));
     }
 
-    internal override void Dump(AstNodeDumper dumper)
-    {
-        dumper
-            .Append("Tuple")
-            .AppendFields(("elts", Elts), ("ctx", Ctx));
-    }
-
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         foreach (var elt in Elts) yield return elt;
@@ -507,13 +453,6 @@ public sealed class DictNode : AstExprNode, IAstExprNodeNoSelfPythonException
             );
     }
 
-    internal override void Dump(AstNodeDumper dumper)
-    {
-        dumper
-            .Append("Dict")
-            .AppendFields(("keys", Keys), ("values", Values));
-    }
-
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         foreach (var k in Keys) yield return k;
@@ -533,13 +472,6 @@ public sealed class SetNode : AstExprNode, IAstExprNodeNoSelfPythonException
     public override PySetObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
         return new PySetObject(Elts.Select(item => item.GetExprValue(context, frame)));
-    }
-
-    internal override void Dump(AstNodeDumper dumper)
-    {
-        dumper
-            .Append("Set")
-            .AppendFields(("elts", Elts));
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()

@@ -75,13 +75,6 @@ public sealed class AssertNode : AstStmtNode
         throw context.ThrowableAssertionError(msg);
     }
 
-    internal override void Dump(AstNodeDumper dumper)
-    {
-        dumper
-            .Append("Assert")
-            .AppendFields(("test", Test), ("msg", Msg));
-    }
-
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         yield return Test;
@@ -168,12 +161,6 @@ public sealed class ExprNode : AstStmtNode
             }
         }
         return value;
-    }
-    internal override void Dump(AstNodeDumper dumper)
-    {
-        dumper
-            .Append("Expr")
-            .AppendFields(("value", Value));
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
@@ -682,12 +669,6 @@ public sealed class GlobalNode : AstStmtNode
     {
     }
 
-    internal override void Dump(AstNodeDumper dumper)
-    {
-        dumper
-            .Append("Global")
-            .AppendFields(("names", Names));
-    }
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         return [];
@@ -702,13 +683,6 @@ public sealed class NonlocalNode : AstStmtNode
     }
 
     public ImmutableArray<string> Names { get; }
-
-    internal override void Dump(AstNodeDumper dumper)
-    {
-        dumper
-            .Append("Nonlocal")
-            .AppendFields(("names", Names));
-    }
 
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {

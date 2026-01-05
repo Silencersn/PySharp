@@ -1,6 +1,6 @@
 ﻿namespace PySharp.AstNodes;
 
-partial class AstNodeFactory
+partial class Ast
 {
     public static AssertNode Assert(AstExprNode test, AstExprNode? msg = null)
     {

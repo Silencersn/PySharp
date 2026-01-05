@@ -68,7 +68,7 @@ partial class Parser
             if (IsCurrentKeyword("from"))
                 throw _context.ThrowableSyntaxError("Did you mean to use 'from ... import ...' instead?");
 
-            return AstNodeFactory.Import(names).With(metaInfo);
+            return Ast.Import(names).With(metaInfo);
 
             AstAliasNode ParseAlias()
             {
@@ -91,7 +91,7 @@ partial class Parser
             if (CurrentTokenType is TokenType.Star)
             {
                 MoveNextToken();
-                return AstNodeFactory.ImportFrom(module, [new("*", null)], level).With(metaInfo);
+                return Ast.ImportFrom(module, [new("*", null)], level).With(metaInfo);
             }
             else if (CurrentTokenType is TokenType.LeftParen)
             {
@@ -108,7 +108,7 @@ partial class Parser
                 }
 
                 EnsureTokenTypeThenMove(TokenType.RightParen);
-                return AstNodeFactory.ImportFrom(module, names, level).With(metaInfo);
+                return Ast.ImportFrom(module, names, level).With(metaInfo);
             }
             else
             {
@@ -120,7 +120,7 @@ partial class Parser
                     names.Add(ParseAlias());
                 }
 
-                return AstNodeFactory.ImportFrom(module, names, level).With(metaInfo);
+                return Ast.ImportFrom(module, names, level).With(metaInfo);
             }
 
             AstAliasNode ParseAlias()
@@ -146,12 +146,12 @@ partial class Parser
             if (keyword is "break")
             {
                 MoveNextToken();
-                return AstNodeFactory.Break().With(metaInfo);
+                return Ast.Break().With(metaInfo);
             }
             else if (keyword is "continue")
             {
                 MoveNextToken();
-                return AstNodeFactory.Continue().With(metaInfo);
+                return Ast.Continue().With(metaInfo);
             }
             else if (keyword is "raise")
             {
@@ -166,33 +166,33 @@ partial class Parser
 
                         var cause = ParseExpression();
 
-                        return AstNodeFactory.Raise(exc, cause).With(metaInfo);
+                        return Ast.Raise(exc, cause).With(metaInfo);
                     }
 
-                    return AstNodeFactory.Raise(exc).With(metaInfo);
+                    return Ast.Raise(exc).With(metaInfo);
                 }
 
-                return AstNodeFactory.Raise().With(metaInfo);
+                return Ast.Raise().With(metaInfo);
             }
             else if (keyword is "return")
             {
                 MoveNextToken();
                 if (CurrentTokenType is TokenType.NewLine or TokenType.Semicolon)
-                    return AstNodeFactory.Return().With(metaInfo);
+                    return Ast.Return().With(metaInfo);
 
                 var list = ParseExpressionList(StopPredicates.UntilNewLineOrSemicolon, out var comma);
-                return AstNodeFactory.Return(UnwrapOrMakeTuple(list, comma)).With(metaInfo);
+                return Ast.Return(UnwrapOrMakeTuple(list, comma)).With(metaInfo);
             }
             else if (keyword is "pass")
             {
                 MoveNextToken();
-                return AstNodeFactory.Pass().With(metaInfo);
+                return Ast.Pass().With(metaInfo);
             }
             else if (keyword is "del")
             {
                 MoveNextToken();
                 var targets = ParseTargetList(StopPredicates.UntilNewLineOrSemicolon, out _);
-                return AstNodeFactory.Delete(targets).With(metaInfo);
+                return Ast.Delete(targets).With(metaInfo);
             }
             else if (keyword is "import" or "from")
             {
@@ -207,11 +207,11 @@ partial class Parser
                 {
                     MoveNextToken();
                     var msg = ParseExpression();
-                    node = AstNodeFactory.Assert(test, msg);
+                    node = Ast.Assert(test, msg);
                 }
                 else
                 {
-                    node = AstNodeFactory.Assert(test);
+                    node = Ast.Assert(test);
                 }
                 node.MetaInfo = metaInfo;
                 return node;
@@ -220,7 +220,7 @@ partial class Parser
             {
                 MoveNextToken();
                 var names = ParseIdentifiers();
-                var node = AstNodeFactory.Global(names);
+                var node = Ast.Global(names);
                 node.MetaInfo = metaInfo;
                 return node;
             }
@@ -228,14 +228,14 @@ partial class Parser
             {
                 MoveNextToken();
                 var names = ParseIdentifiers();
-                var node = AstNodeFactory.Nonlocal(names);
+                var node = Ast.Nonlocal(names);
                 node.MetaInfo = metaInfo;
                 return node;
             }
             else if (keyword is "yield")
             {
                 var yieldExpr = ParseYieldExpression();
-                return AstNodeFactory.Expr(yieldExpr).With(metaInfo);
+                return Ast.Expr(yieldExpr).With(metaInfo);
             }
         }
 
@@ -257,7 +257,7 @@ partial class Parser
                 allTargets = exprList.All(AstUtils.IsValidTarget);
             }
 
-            var node = AstNodeFactory.Assign(targets, UnwrapOrMakeTuple(exprList, endsWithComma));
+            var node = Ast.Assign(targets, UnwrapOrMakeTuple(exprList, endsWithComma));
             node.MetaInfo = metaInfo;
             return node;
         }
@@ -291,10 +291,10 @@ partial class Parser
             MoveNextToken();
             var list = ParseExpressionList(StopPredicates.UntilNewLineOrSemicolon, out var comma);
             var value = UnwrapOrMakeTuple(list, comma);
-            return AstNodeFactory.AugAssign(target, op, value).With(metaInfo);
+            return Ast.AugAssign(target, op, value).With(metaInfo);
         }
 
-        return AstNodeFactory.Expr(UnwrapOrMakeTuple(exprList, endsWithComma)).With(metaInfo);
+        return Ast.Expr(UnwrapOrMakeTuple(exprList, endsWithComma)).With(metaInfo);
     }
 
     private List<string> ParseIdentifiers()
@@ -424,7 +424,7 @@ partial class Parser
             EnsureTokenTypeThenMove(TokenType.Colon);
             orElse = ParseSuite("else");
         }
-        return AstNodeFactory.If(test, body, orElse).With(metaInfo);
+        return Ast.If(test, body, orElse).With(metaInfo);
     }
 
     private WhileNode ParseWhileStmt()
@@ -441,7 +441,7 @@ partial class Parser
             EnsureTokenTypeThenMove(TokenType.Colon);
             orElse = ParseSuite("else");
         }
-        return AstNodeFactory.While(test, body, orElse).With(metaInfo);
+        return Ast.While(test, body, orElse).With(metaInfo);
     }
 
     private TryNode ParseTryStmt()
@@ -493,7 +493,7 @@ partial class Parser
             EnsureTokenTypeThenMove(TokenType.Colon);
             finalBody = ParseSuite("finally");
         }
-        return AstNodeFactory.Try(body, exceptors, orElse, finalBody).With(metaInfo);
+        return Ast.Try(body, exceptors, orElse, finalBody).With(metaInfo);
     }
 
     private ForNode ParseForStmt()
@@ -515,7 +515,7 @@ partial class Parser
             EnsureTokenTypeThenMove(TokenType.Colon);
             orElse = ParseSuite("else");
         }
-        return AstNodeFactory.For(target, iter, body, orElse).With(metaInfo);
+        return Ast.For(target, iter, body, orElse).With(metaInfo);
     }
 
     private FunctionDefNode ParseFuncDef(IEnumerable<AstExprNode> decorators)
@@ -528,7 +528,7 @@ partial class Parser
         EnsureTokenTypeThenMove(TokenType.RightParen);
         EnsureTokenTypeThenMove(TokenType.Colon);
         var body = ParseSuite("def");
-        return AstNodeFactory.FunctionDef(name, args, body, decorators).With(metaInfo);
+        return Ast.FunctionDef(name, args, body, decorators).With(metaInfo);
     }
 
     private ClassDefNode ParseClassDef(IEnumerable<AstExprNode> decorators)
@@ -549,6 +549,6 @@ partial class Parser
         EnsureTokenTypeThenMove(TokenType.Colon);
 
         var body = ParseSuite("class");
-        return AstNodeFactory.ClassDef(name, bases, keywords, body, decorators).With(metaInfo);
+        return Ast.ClassDef(name, bases, keywords, body, decorators).With(metaInfo);
     }
 }

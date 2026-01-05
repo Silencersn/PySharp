@@ -1,7 +1,7 @@
 ﻿namespace PySharp.AstNodes;
 
 
-public static partial class AstNodeFactory
+public static partial class Ast
 {
     public static AstComprehensionNode Comprehension(AstExprNode target, AstExprNode iter, IEnumerable<AstExprNode> ifs)
     {

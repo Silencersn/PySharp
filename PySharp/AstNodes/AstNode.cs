@@ -13,18 +13,6 @@ public abstract partial class AstNode : ICodeMetaInfoProvider
         throw new NotSupportedException();
     }
 
-    public override string ToString()
-    {
-        var dumper = new AstNodeDumper();
-        Dump(dumper);
-        return dumper.ToString();
-    }
-
-    internal virtual void Dump(AstNodeDumper dumper)
-    {
-        throw new NotImplementedException();
-    }
-
     public abstract IEnumerable<AstNode> EnumerateSubNodes();
 }
 
