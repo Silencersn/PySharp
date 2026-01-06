@@ -704,7 +704,7 @@ public sealed class IfExpNode : AstExprNode, IAstExprNodeNoSelfPythonException
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        if (Test.GetExprValue(context, frame).Bool(context).PyUnwrap(context).PyCast<PyBoolObject>(context).BoolValue)
+        if (PySpecialMethods.Bool(context, Test.GetExprValue(context, frame)).PyUnwrap(context).PyCast<PyBoolObject>(context).BoolValue)
             return Body.GetExprValue(context, frame);
         return OrElse.GetExprValue(context, frame);
     }

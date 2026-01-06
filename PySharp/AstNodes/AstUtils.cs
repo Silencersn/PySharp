@@ -160,7 +160,7 @@ internal static class AstUtils
         if (testNode is IAstExprNodeBool node)
             return node.GetExprValueWithResult(context, frame).Result;
         else
-            return testNode.GetExprValue(context, frame).Bool(context).PyUnwrap(context).PyCast<PyBoolObject>(context).BoolValue;
+            return PySpecialMethods.Bool(context, testNode.GetExprValue(context, frame)).PyUnwrap(context).PyCast<PyBoolObject>(context).BoolValue;
     }
 
     public static PyObject ApplyDecorators(PyObject target, ImmutableArray<AstExprNode> decoratorList, PyCallContext context, PyFrame frame)

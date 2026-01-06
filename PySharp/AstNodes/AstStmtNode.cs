@@ -976,6 +976,21 @@ public sealed class ClassDefNode : AstStmtNode, IScopedSubNodesProvider
         {
             if (PyObject.PyObjectHasAttribute(value.PyType, PySpecialNames.SetName))
                 value.SetName(context, type, PyStrObject.FromString(name)).PyUnwrap(context);
+
+            switch (name)
+            {
+                case PySpecialNames.Str: type.Slots.Str = value.ToUnaryFunction(); break;
+                case PySpecialNames.Repr: type.Slots.Repr = value.ToUnaryFunction(); break;
+                case PySpecialNames.Bool: type.Slots.Bool = value.ToUnaryFunction(); break;
+                case PySpecialNames.Hash: type.Slots.Hash = value.ToUnaryFunction(); break;
+                case PySpecialNames.Len: type.Slots.Len = value.ToUnaryFunction(); break;
+                case PySpecialNames.Index: type.Slots.Index = value.ToUnaryFunction(); break;
+                case PySpecialNames.Int: type.Slots.Int = value.ToUnaryFunction(); break;
+                case PySpecialNames.Float: type.Slots.Float = value.ToUnaryFunction(); break;
+
+                case PySpecialNames.Add: type.Slots.Add = value.ToBinaryFunction(); break;
+                case PySpecialNames.RAdd: type.Slots.RAdd = value.ToBinaryFunction(); break;
+            }
         }
 
         frame.SetVariable(Name, AstUtils.ApplyDecorators(type, DecoratorList, context, frame)).PyUnwrap(context);

@@ -146,9 +146,9 @@ public abstract class PyExceptionType : PyTypeObject<PyExceptionObject>
             return PyStrObject.Empty;
 
         if (self.Args.Count is 1)
-            return self.Args[0].Str(context);
+            return PySpecialMethods.Str(context, self.Args[0]);
 
-        return PyTupleObject.CreateTuple(self.Args).Str(context);
+        return PySpecialMethods.Str(context, PyTupleObject.CreateTuple(self.Args));
     }
 }
 

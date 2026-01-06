@@ -6,41 +6,9 @@ partial class PyObject
 {
     // TODO: find __xxxx__ in mro?
 
-    public PyResult Repr(PyCallContext context)
-    {
-        return PyType.Repr(context, this);
-    }
-    public PyResult Str(PyCallContext context)
-    {
-        return PyType.Str(context, this);
-    }
-    public PyResult Hash(PyCallContext context)
-    {
-        return PyType.Hash(context, this);
-    }
-    public PyResult Bool(PyCallContext context)
-    {
-        return PyType.Bool(context, this);
-    }
-    public PyResult Int(PyCallContext context)
-    {
-        return PyType.Int(context, this);
-    }
-    public PyResult Float(PyCallContext context)
-    {
-        return PyType.Float(context, this);
-    }
     public PyResult Complex(PyCallContext context)
     {
         return PyType.Complex(context, this);
-    }
-    public PyResult Index(PyCallContext context)
-    {
-        return PyType.Index(context, this);
-    }
-    public PyResult Len(PyCallContext context)
-    {
-        return PyType.Len(context, this);
     }
     public PyResult Iter(PyCallContext context)
     {

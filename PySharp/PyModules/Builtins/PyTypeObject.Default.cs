@@ -1,4 +1,5 @@
-﻿using PySharp.PyRuntime.Calls;
+﻿using PySharp.PyRuntime;
+using PySharp.PyRuntime.Calls;
 
 namespace PySharp.PyModules.Builtins;
 
@@ -10,7 +11,7 @@ partial class PyTypeObject
     }
     internal PyResult DefaultStr(PyCallContext context, PyObject self)
     {
-        return self.Repr(context);
+        return PySpecialMethods.Repr(context, self);
     }
     internal PyResult DefaultBool(PyCallContext context, PyObject self)
     {
