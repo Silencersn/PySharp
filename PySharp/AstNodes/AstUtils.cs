@@ -111,6 +111,10 @@ internal static class AstUtils
                 listNode.Elts[i].SetTargetValue(context, iter[i], frame);
             }
         }
+        else if (target is StarredNode starredNode)
+        {
+            throw new NotImplementedException();
+        }
         else
         {
             throw new UnreachableException();

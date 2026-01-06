@@ -270,4 +270,11 @@ partial class Ast
 
         return new LambdaNode(args, body);
     }
+
+    public static StarredNode Starred(AstExprNode value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+
+        return new StarredNode(value);
+    }
 }

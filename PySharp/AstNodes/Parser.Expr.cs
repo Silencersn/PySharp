@@ -960,14 +960,13 @@ partial class Parser
     /// <exception cref="NotImplementedException"></exception>
     private AstExprNode ParseStarredExpression()
     {
-        if (CurrentTokenType is TokenType.Star)
-        {
-            MoveNextToken();
-            _ = ParseOrExpr();
-            throw new NotImplementedException();
-        }
-
-        return ParseExpression();
+        if (CurrentTokenType is not TokenType.Star)
+            return ParseExpression();
+        
+        var metaInfo = CreateAstMetaInfo();
+        MoveNextToken();
+        var value = ParseOrExpr();
+        return Ast.Starred(value).With(metaInfo.WithPreviousEnd());
     }
 
     private List<AstExprNode> ParseStarredExpressionList(StopPredicate predicate, out TokenInfo? endsWithComma)
@@ -1489,7 +1488,7 @@ partial class Parser
 
         while (CurrentTokenType is not TokenType.RightParen)
         {
-            var arg = ParseExpression();
+            var arg = ParseFlexibleExpression();
             if (CurrentTokenType is TokenType.Equal)
             {
                 iskw = true;

@@ -1217,3 +1217,35 @@ public sealed class YieldFromNode : AstExprNode
         yield return Value;
     }
 }
+
+
+public sealed class StarredNode : AstExprNode, IExprContextNode
+{
+    internal StarredNode(AstExprNode value)
+    {
+        Value = value;
+        Ctx = ExprContextType.Load;
+    }
+
+    public AstExprNode Value { get; }
+    public ExprContextType Ctx
+    {
+        get => field;
+        set
+        {
+            field = value;
+            if (Value is IExprContextNode node)
+                node.Ctx = value;
+        }
+    }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Value;
+    }
+
+    public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
+    {
+        throw new NotImplementedException();
+    }
+}
