@@ -115,7 +115,7 @@ public class PyIntObjectType : PyTypeObject<PyIntObjectType, PyIntObject>
         if (result.IsError)
             return result;
 
-        return (PyIntObject)result.Value;
+        return result.Value;
     }
     [PyFunctionArgsDef("string", "/", "base=10")]
     private static PyResult NewImpl_2(PyCallContext context, PyArguments arguments)

@@ -1,11 +1,12 @@
 ﻿using PySharp.PyModules.Builtins;
 using System.Diagnostics.CodeAnalysis;
+using static PySharp.PyRuntime.Calls.PyResult;
 
 namespace PySharp.PyRuntime.Calls;
 
-public readonly partial struct PyResult
+public readonly partial struct PyResult<TObject> where TObject : PyObject
 {
-    private readonly PyObject? _value;
+    private readonly TObject? _value;
     private readonly PyExceptionObject? _exception;
 
     [MemberNotNullWhen(true, nameof(Value))]
@@ -25,10 +26,10 @@ public readonly partial struct PyResult
     [MemberNotNullWhen(true, nameof(Exception))]
     public bool IsAttributeError => _exception is not null && PyAttributeErrorObjectType.Shared.IsInstance(_exception);
 
-    public PyObject? Value => _value;
+    public TObject? Value => _value;
     public PyExceptionObject? Exception => _exception;
 
-    private PyResult(PyObject value)
+    private PyResult(TObject value)
     {
         _value = value;
         _exception = null;
@@ -40,31 +41,24 @@ public readonly partial struct PyResult
         _exception = exception;
     }
 
-    public static implicit operator PyResult(PyObject value)
+    public static implicit operator PyResult<TObject>(TObject value)
     {
         return FromValue(value);
     }
-
-    public PyResult<TObject> Of<TObject>() where TObject : PyObject
+    public static implicit operator PyResult(PyResult<TObject> result)
     {
-        if (IsError)
-            return PyResult<TObject>.FromException(Exception);
-
-        if (Value is TObject objOfT)
-            return objOfT;
-
-        throw new InvalidOperationException();
+        return result.IsSuccessful ? PyResult.FromValue(result.Value) : PyResult.FromException(result.Exception);
     }
 
-    public static PyResult FromValue(PyObject value)
+    public static PyResult<TObject> FromValue(TObject value)
     {
         ArgumentNullException.ThrowIfNull(value);
-        return new PyResult(value);
+        return new PyResult<TObject>(value);
     }
 
-    public static PyResult FromException(PyExceptionObject exception)
+    public static PyResult<TObject> FromException(PyExceptionObject exception)
     {
         ArgumentNullException.ThrowIfNull(exception);
-        return new PyResult(exception);
+        return new PyResult<TObject>(exception);
     }
 }
