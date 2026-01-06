@@ -59,6 +59,13 @@ internal static class AstUtils
 
         return result.Value;
     }
+    public static TObject PyUnwrap<TObject>(this PyResult<TObject> result, PyCallContext context) where TObject : PyObject
+    {
+        if (result.IsError)
+            throw new PyRuntimeException(context, result.Exception);
+
+        return result.Value;
+    }
     public static PyObject PyUnwrapIncludedNotImplemented(this PyResult result, PyCallContext context)
     {
         if (result.IsError)

@@ -12,6 +12,7 @@ partial class PyTypeObject
 
     internal sealed class PyTypeSlots
     {
+        internal PyUnaryFunction? Str;
         internal PyUnaryFunction? Repr;
         internal PyUnaryFunction? Int;
 

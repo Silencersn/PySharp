@@ -174,9 +174,11 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
         var index = self.PyIndex(arguments[0]);
         if (index is -1)
         {
-            if (!PySpecialMethods.TryGetRepr(context, arguments[0], out var s, out var result))
+            var result = PySpecialMethods.Repr(context, arguments[0]);
+            if (result.IsError)
                 return result;
-            return PyResult.RaiseValueError($"ValueError: {s} is not in list");
+
+            return PyResult.RaiseValueError($"ValueError: {result.Value.Value} is not in list");
         }
         return PyIntObject.FromInteger(index);
     }
@@ -189,9 +191,11 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
         var index = self.PyIndex(arguments[0], start.Int32Value);
         if (index is -1)
         {
-            if (!PySpecialMethods.TryGetRepr(context, arguments[0], out var s, out result))
-                return result;
-            return PyResult.RaiseValueError($"ValueError: {s} is not in list");
+            var reprResult = PySpecialMethods.Repr(context, arguments[0]);
+            if (reprResult.IsError)
+                return reprResult;
+
+            return PyResult.RaiseValueError($"ValueError: {reprResult.Value.Value} is not in list");
         }
         return PyIntObject.FromInteger(index);
     }
@@ -206,9 +210,11 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
         var index = self.PyIndex(arguments[0], start.Int32Value, end.Int32Value);
         if (index is -1)
         {
-            if (!PySpecialMethods.TryGetRepr(context, arguments[0], out var s, out result))
-                return result;
-            return PyResult.RaiseValueError($"ValueError: {s} is not in list");
+            var reprResult = PySpecialMethods.Repr(context, arguments[0]);
+            if (reprResult.IsError)
+                return reprResult;
+            
+            return PyResult.RaiseValueError($"ValueError: {reprResult.Value.Value} is not in list");
         }
         return PyIntObject.FromInteger(index);
     }

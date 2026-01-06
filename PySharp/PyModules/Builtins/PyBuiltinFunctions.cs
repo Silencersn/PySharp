@@ -141,9 +141,10 @@ public static partial class PyBuiltinFunctions
             if (i is not 0)
                 context.Out.Write(sep);
 
-            if (!PySpecialMethods.TryGetStr(context, arguments.ExtraArgs[i], out var str, out result))
-                return result;
-            context.Out.Write(str.Value);
+            var strResult = PySpecialMethods.Str(context, arguments.ExtraArgs[i]);
+            if (strResult.IsError)
+                return strResult;
+            context.Out.Write(strResult.Value.Value);
         }
         context.Out.Write(end);
         if (flushObj.BoolValue)
@@ -182,9 +183,11 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef("prompt", "/")]
     private static PyResult InputImpl_2(PyCallContext context, PyArguments arguments)
     {
-        if (!PySpecialMethods.TryGetStr(context, arguments.Args[0], out var s, out var result))
+        var result = PySpecialMethods.Str(context, arguments[0]);
+        if (result.IsError)
             return result;
-        context.Out.Write(s.Value);
+
+        context.Out.Write(result.Value.Value);
         var str = PyStrObject.FromString(context.In.ReadLine() ?? string.Empty);
         return str;
     }
@@ -667,7 +670,7 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef("object", "/")]
     private static PyResult ReprImpl(PyCallContext context, PyArguments arguments)
     {
-        return PySpecialMethods.GetRepr(context, arguments[0]);
+        return PySpecialMethods.Repr(context, arguments[0]);
     }
 
 

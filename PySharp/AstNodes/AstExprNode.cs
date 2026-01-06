@@ -1046,12 +1046,8 @@ public sealed class JoinedStrNode : AstExprNode, IAstExprNodeNoSelfPythonExcepti
 
         foreach (var expr in Values)
         {
-            if (!PySpecialMethods.TryGetStr(context, expr.GetExprValue(context, frame), out var s, out var result))
-            {
-                result.PyUnwrap(context);
-            }
-
-            builder.Append(s!.Value);
+            var result = PySpecialMethods.Str(context, expr.GetExprValue(context, frame));
+            builder.Append(result.PyUnwrap(context).Value);
         }
 
         return PyStrObject.FromString(builder.ToString());
@@ -1081,9 +1077,9 @@ public sealed class FormattedValueNode : AstExprNode
         var result = Value.GetExprValue(context, frame);
 
         if (Conversion is 's')
-            result = PySpecialMethods.GetStr(context, result).PyUnwrap(context);
+            result = PySpecialMethods.Str(context, result).PyUnwrap(context);
         else if (Conversion is 'r')
-            result = PySpecialMethods.GetRepr(context, result).PyUnwrap(context);
+            result = PySpecialMethods.Repr(context, result).PyUnwrap(context);
         else if (Conversion is 'a')
             throw new NotImplementedException();
         else if (Conversion is not -1)

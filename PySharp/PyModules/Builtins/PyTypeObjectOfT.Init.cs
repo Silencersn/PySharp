@@ -125,6 +125,7 @@ partial class PyTypeObject<TObject>
 
     private void AppendOverridenSpecialMethodDescriptors2()
     {
+        AppendUnaryFunction(ref Slots.Str, Str);
         AppendUnaryFunction(ref Slots.Repr, Repr);
         AppendUnaryFunction(ref Slots.Int, Int);
         AppendBinaryFunction(ref Slots.Add, Add);

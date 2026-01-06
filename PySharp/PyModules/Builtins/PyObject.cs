@@ -192,8 +192,9 @@ public partial class PyObject : IEquatable<PyObject>
 
     public override string ToString()
     {
-        if (PySpecialMethods.TryGetRepr(PyCallContext.CSharpRuntime, this, out var s, out var result))
-            return $"{GetType().Name}{{id={PyId},repr={s.Value}}}";
+        var result = PySpecialMethods.Repr(PyCallContext.CSharpRuntime, this);
+        if (result.IsSuccessful)
+            return $"{GetType().Name}{{id={PyId},repr={result.Value.Value}}}";
         return $"{GetType().Name}{{id={PyId}}}";
     }
 

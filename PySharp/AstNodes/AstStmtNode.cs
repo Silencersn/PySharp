@@ -156,7 +156,7 @@ public sealed class ExprNode : AstStmtNode
         {
             if (value is not PyNoneObject)
             {
-                var repr = (PyStrObject)PySpecialMethods.GetRepr(context, value).PyUnwrap(context);
+                var repr = PySpecialMethods.Repr(context, value).PyUnwrap(context);
                 context.Out.WriteLine(repr.Value);
             }
         }

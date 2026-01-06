@@ -132,7 +132,7 @@ public sealed class PyStrObjectType : PyTypeObject<PyStrObjectType, PyStrObject>
     {
         if (!PyArgsValidator.ValidateSinglePositionalArg(args, kwargs, out var err))
             return err.Value;
-        return PySpecialMethods.GetStr(context, args[0]);
+        return PySpecialMethods.Str(context, args[0]);
     }
 }
 

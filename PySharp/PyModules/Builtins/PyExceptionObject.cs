@@ -78,10 +78,11 @@ public sealed class PyExceptionObject : PyObject
         }
 
         builder.Append(PyType.FullName);
-        if (PySpecialMethods.TryGetStr(context, this, out var s, out var result))
+        var result = PySpecialMethods.Str(context, this);
+        if (result.IsSuccessful)
         {
-            if (s.Value != string.Empty)
-                builder.Append(": ").Append(s.Value);
+            if (result.Value.Value != string.Empty)
+                builder.Append(": ").Append(result.Value.Value);
         }
         else
         {
@@ -125,12 +126,13 @@ public abstract class PyExceptionType : PyTypeObject<PyExceptionObject>
 
         for (int i = 0; i < self.Args.Count; i++)
         {
-            if (!PySpecialMethods.TryGetRepr(context, self.Args[i], out var s, out var result))
+            var result = PySpecialMethods.Repr(context, self.Args[i]);
+            if (result.IsError)
                 return result;
 
             if (i > 0)
                 builder.Append(", ");
-            builder.Append(s);
+            builder.Append(result.Value.Value);
         }
 
         builder.Append(')');
