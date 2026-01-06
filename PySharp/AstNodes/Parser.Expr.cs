@@ -1488,32 +1488,10 @@ partial class Parser
 
         while (CurrentTokenType is not TokenType.RightParen)
         {
-            var arg = ParseFlexibleExpression();
-            if (CurrentTokenType is TokenType.Equal)
-            {
-                iskw = true;
-
-                if (arg is not NameNode argName)
-                    throw _context.ThrowableSyntaxError("expression cannot contain assignment, perhaps you meant \"==\"?");
-
-                if (keys.Contains(argName.Id))
-                    throw _context.ThrowableSyntaxError($"keyword argument repeated: {argName.Id}");
-                else
-                    keys.Add(argName.Id);
-
-                MoveNextToken();
-                var value = ParseExpression();
-
-                kwargs.Add(Ast.Keyword(argName.Id, value));
-            }
-            else if (iskw)
-            {
-                throw _context.ThrowableSyntaxError("positional argument follows keyword argument");
-            }
+            if (!iskw)
+                ParseArgOrKwarg();
             else
-            {
-                args.Add(arg);
-            }
+                ParseKwarg();
 
             if (CurrentTokenType is TokenType.Comma)
                 MoveNextToken();
@@ -1522,6 +1500,58 @@ partial class Parser
         }
 
         return (args, kwargs);
+
+        void ParseArgOrKwarg()
+        {
+            if (CurrentTokenType is TokenType.DoubleStar)
+            {
+                MoveNextToken();
+                iskw = true;
+                var value = ParseOrTest();
+                kwargs.Add(Ast.Keyword(null, value));
+                return;
+            }
+
+            var arg = ParseFlexibleExpression();
+            if (CurrentTokenType is TokenType.Equal)
+            {
+                iskw = true;
+
+                if (arg is not NameNode argName)
+                    throw _context.ThrowableSyntaxError("expression cannot contain assignment, perhaps you meant \"==\"?");
+                
+                keys.Add(argName.Id);
+
+                MoveNextToken();
+                var value = ParseExpression();
+
+                kwargs.Add(Ast.Keyword(argName.Id, value));
+            }
+            else
+            {
+                args.Add(arg);
+            }
+        }
+        void ParseKwarg()
+        {
+            if (CurrentTokenType is TokenType.DoubleStar)
+            {
+                MoveNextToken();
+                iskw = true;
+                var value = ParseOrTest();
+                kwargs.Add(Ast.Keyword(null, value));
+            }
+            else
+            {
+                var arg = ParseIdentifier();
+                if (CurrentTokenType is not TokenType.Equal)
+                    throw _context.ThrowableSyntaxError("positional argument follows keyword argument");
+
+                MoveNextToken();
+                var value = ParseExpression();
+                kwargs.Add(Ast.Keyword(arg, value));
+            }
+        }
     }
 
     private List<AstExprNode> ParseSomeExpressionList(Func<AstExprNode> parse, StopPredicate predicate, out TokenInfo? endsWithComma)

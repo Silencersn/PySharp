@@ -16,9 +16,8 @@ public static partial class Ast
         return new AstComprehensionNode(target, iter, ifs.ToImmutableArray(true));
     }
 
-    public static AstKeywordNode Keyword(string arg, AstExprNode value)
+    public static AstKeywordNode Keyword(string? arg, AstExprNode value)
     {
-        ArgumentNullException.ThrowIfNull(arg);
         ArgumentNullException.ThrowIfNull(value);
 
         return new AstKeywordNode(arg, value);

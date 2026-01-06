@@ -328,7 +328,7 @@ public sealed class CallNode : AstExprNode
         {
             case CallArgumentsType.ArgsKwargs:
                 args = AstUtils.EvalPyObjects(context, frame, Args);
-                kwargs = Keywords.ToDictionary(keyword => keyword.Arg, keyword => keyword.Value.GetExprValue(context, frame));
+                kwargs = AstUtils.EvalKeywords(context, frame, Keywords);
                 break;
 
             case CallArgumentsType.NoArgsOrKwargs:
@@ -343,7 +343,7 @@ public sealed class CallNode : AstExprNode
 
             case CallArgumentsType.KwargsOnly:
                 args = [];
-                kwargs = Keywords.ToDictionary(keyword => keyword.Arg, keyword => keyword.Value.GetExprValue(context, frame));
+                kwargs = AstUtils.EvalKeywords(context, frame, Keywords);
                 break;
 
             default:

@@ -274,4 +274,12 @@ internal static class AstUtils
         }
         return result;
     }
+
+    public static Dictionary<string, PyObject> EvalKeywords(PyCallContext context, PyFrame frame, IEnumerable<AstKeywordNode> keywords)
+    {
+        Dictionary<string, PyObject> result = [];
+        foreach (var keyword in keywords)
+            keyword.AddOrUnpackValueTo(result, context, frame);
+        return result;
+    }
 }

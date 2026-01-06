@@ -2,6 +2,7 @@
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using System.Collections.Immutable;
+using System.Diagnostics;
 
 namespace PySharp.AstNodes;
 
@@ -108,18 +109,40 @@ public class AstComprehensionNode : AstNode
 
 public class AstKeywordNode : AstNode
 {
-    internal AstKeywordNode(string arg, AstExprNode value)
+    internal AstKeywordNode(string? arg, AstExprNode value)
     {
         Arg = arg;
         Value = value;
     }
 
-    public string Arg { get; } // TODO: string? Arg
+    public string? Arg { get; }
     public AstExprNode Value { get; }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         yield return Value;
+    }
+
+    internal void AddOrUnpackValueTo(IDictionary<string, PyObject> targetDict, PyCallContext context, PyFrame frame)
+    {
+        if (Arg is not null)
+        {
+            var value = Value.GetExprValue(context, frame);
+            targetDict[Arg] = value;
+            return;
+        }
+
+        var mapping = Value.GetExprValue(context, frame);
+        if (mapping is not PyDictObject dict)
+            throw new NotImplementedException(); // TODO: support other mappings
+
+        foreach (var (key, value) in dict._dict)
+        {
+            if (key is not PyStrObject str)
+                throw context.ThrowableTypeError("keywords must be strings");
+
+            targetDict[str.Value] = value; // TODO: raise Error ?
+        }
     }
 }
 
