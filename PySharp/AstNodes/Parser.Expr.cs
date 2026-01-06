@@ -962,7 +962,7 @@ partial class Parser
     {
         if (CurrentTokenType is not TokenType.Star)
             return ParseExpression();
-        
+
         var metaInfo = CreateAstMetaInfo();
         MoveNextToken();
         var value = ParseOrExpr();
@@ -1519,7 +1519,7 @@ partial class Parser
 
                 if (arg is not NameNode argName)
                     throw _context.ThrowableSyntaxError("expression cannot contain assignment, perhaps you meant \"==\"?");
-                
+
                 keys.Add(argName.Id);
 
                 MoveNextToken();

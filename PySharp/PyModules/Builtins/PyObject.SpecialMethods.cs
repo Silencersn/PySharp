@@ -3,7 +3,7 @@
 namespace PySharp.PyModules.Builtins;
 
 partial class PyObject
-{        
+{
     // TODO: find __xxxx__ in mro?
 
     public PyResult Repr(PyCallContext context)

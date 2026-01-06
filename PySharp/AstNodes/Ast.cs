@@ -1,6 +1,4 @@
-﻿using System.Collections.Immutable;
-
-namespace PySharp.AstNodes;
+﻿namespace PySharp.AstNodes;
 
 
 public static partial class Ast

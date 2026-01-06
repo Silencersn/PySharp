@@ -227,7 +227,7 @@ partial class Ast
 
         return new TupleNode(elts.ToImmutableArray(true));
     }
-    
+
     public static UnaryOpNode UnaryOp(UnaryOpType op, AstExprNode operand)
     {
         ArgumentNullException.ThrowIfNull(operand);

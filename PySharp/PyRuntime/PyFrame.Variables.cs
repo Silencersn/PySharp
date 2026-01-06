@@ -138,7 +138,7 @@ partial class PyFrame
 
         if (locals[index] is null)
             return PyResult.RaiseUnboundLocalError($"cannot access local variable '[{index /* TODO: name */}]' where it is not associated with a value");
-        
+
         locals[index] = null;
         return PyNoneObject.None;
     }
