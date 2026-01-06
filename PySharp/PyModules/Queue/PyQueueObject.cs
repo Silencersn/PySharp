@@ -50,9 +50,10 @@ public sealed class PyQueueObjectType : PyTypeObject<PyQueueObjectType, PyQueueO
     [PyFunctionArgsDef("maxsize=0")]
     private static PyResult NewImpl(PyCallContext context, PyArguments arguments)
     {
-        if (!PySpecialMethods.TryGetIndex(context, arguments[0], out var maxSize, out var result))
+        var result = PySpecialMethods.Index(context, arguments[0]);
+        if (result.IsError)
             return result;
-        return new PyQueueObject(maxSize.Int32Value);
+        return new PyQueueObject(result.Value.Int32Value);
     }
 
     protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
@@ -90,11 +91,17 @@ public sealed class PyQueueObjectType : PyTypeObject<PyQueueObjectType, PyQueueO
             return blockResult;
         double? timeout;
         if (arguments[2] is PyNoneObject)
+        {
             timeout = null;
-        else if (PySpecialMethods.TryGetFloat(context, arguments[2], out var value, out var result))
-            timeout = value.Value;
+        }
         else
-            return result;
+        {
+            var result = PySpecialMethods.Float(context, arguments[2]);
+            if (result.IsError)
+                return result;
+
+            timeout = result.Value.Value;
+        }
         var ex = self.PyPut(arguments[0], blockResult.Value.BoolValue, timeout);
         if (ex is not null)
             return PyResult.RaiseException(ex);
@@ -118,11 +125,17 @@ public sealed class PyQueueObjectType : PyTypeObject<PyQueueObjectType, PyQueueO
             return blockResult;
         double? timeout;
         if (arguments[1] is PyNoneObject)
+        {
             timeout = null;
-        else if (PySpecialMethods.TryGetFloat(context, arguments[1], out var value, out var result))
-            timeout = value.Value;
+        }
         else
-            return result;
+        {
+            var result = PySpecialMethods.Float(context, arguments[1]);
+            if (result.IsError)
+                return result;
+
+            timeout = result.Value.Value;
+        }
         var (item, ex) = self.PyGet(blockResult.Value.BoolValue, timeout);
         if (ex is not null)
             return PyResult.RaiseException(ex);

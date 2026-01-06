@@ -505,9 +505,10 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef("codepoint", "/")]
     private static PyResult ChrImpl(PyCallContext context, PyArguments arguments)
     {
-        if (!PySpecialMethods.TryGetIndex(context, arguments[0], out var value, out var result))
+        var result = PySpecialMethods.Index(context, arguments[0]);
+        if (result.IsError)
             return result;
-        if (!Rune.TryCreate(value.Int32Value, out var rune))
+        if (!Rune.TryCreate(result.Value.Int32Value, out var rune))
             return PyResult.RaiseValueError("chr() arg not in range(0x110000)");
         return PyStrObject.FromRune(rune);
     }
@@ -656,7 +657,7 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef("object", "/")]
     private static PyResult LenImpl(PyCallContext context, PyArguments arguments)
     {
-        return PySpecialMethods.GetLen(context, arguments[0]);
+        return PySpecialMethods.Len(context, arguments[0]);
     }
 
     [PyFunctionArgsDef("iterator", "/")]

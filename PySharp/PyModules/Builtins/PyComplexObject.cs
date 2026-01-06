@@ -133,10 +133,11 @@ public sealed class PyComplexObjectType : PyTypeObject<PyComplexObjectType, PyCo
                 real = (double)i.Value;
             else
             {
-                if (PySpecialMethods.TryGetIndex(context, args[0], out i!, out var result))
-                    real = (double)i.Value;
-                else
-                    return PyResult.RaiseTypeError($"complex() first arg must be a number, not {args[0].PyType.Name}");
+                var result = PySpecialMethods.Index(context, args[0]);
+                if (result.IsError)
+                    return result;
+
+                real = (double)result.Value.Value;
             }
         }
         if (args.Count > 1)

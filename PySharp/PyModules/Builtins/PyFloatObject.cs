@@ -11,8 +11,10 @@ public class PyFloatObject : PyObject
 
     public PyFloatObject() { }
     public PyFloatObject(double value) : this() { Value = value; }
-    public static PyFloatObject FromDouble(double value) => new PyFloatObject(value);
-    public static implicit operator PyFloatObject(double value) => new PyFloatObject(value);
+    public static PyFloatObject FromDouble(double value)
+    {
+        return new PyFloatObject(value);
+    }
 }
 
 public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatObject>
@@ -313,6 +315,6 @@ public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatO
     {
         if (!PyArgsValidator.ValidateSinglePositionalArg(args, kwargs, out var err))
             return err.Value;
-        return PySpecialMethods.GetFloat(context, args[0]);
+        return PySpecialMethods.Float(context, args[0]);
     }
 }

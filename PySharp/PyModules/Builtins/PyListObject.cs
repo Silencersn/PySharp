@@ -72,16 +72,18 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
 
     protected internal override PyResult GetItem(PyCallContext context, PyListObject self, PyObject item)
     {
-        if (!PySpecialMethods.TryGetIndex(context, item, out var index, out var result))
+        var result = PySpecialMethods.Index(context, item);
+        if (result.IsError)
             return result;
-        return Utils.GetListItem(self._list, index.Int32Value, "list index out of range");
+        return Utils.GetListItem(self._list, result.Value.Int32Value, "list index out of range");
     }
 
     protected internal override PyResult SetItem(PyCallContext context, PyListObject self, PyObject key, PyObject value)
     {
-        if (!PySpecialMethods.TryGetIndex(context, key, out var index, out var result))
+        var result = PySpecialMethods.Index(context, key);
+        if (result.IsError)
             return result;
-        if (!Utils.TrySetListItem(self._list, index.Int32Value, value))
+        if (!Utils.TrySetListItem(self._list, result.Value.Int32Value, value))
             return PyResult.RaiseIndexError("list index out of range");
         return PyNoneObject.None;
     }
@@ -137,9 +139,10 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
     [PyFunctionArgsDef("i", "x", "/")]
     internal PyResult Insert(PyCallContext context, PyListObject self, PyArguments arguments)
     {
-        if (!PySpecialMethods.TryGetIndex(context, arguments[0], out var index, out var result))
+        var result = PySpecialMethods.Index(context, arguments[0]);
+        if (result.IsError)
             return result;
-        self.PyInsert(index.Int32Value, arguments[1]);
+        self.PyInsert(result.Value.Int32Value, arguments[1]);
         return PyNoneObject.None;
     }
 
@@ -154,11 +157,12 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
     [PyFunctionArgsDef("i=-1", "/")]
     internal PyResult Pop(PyCallContext context, PyListObject self, PyArguments arguments)
     {
-        if (!PySpecialMethods.TryGetIndex(context, arguments[0], out var index, out var result))
+        var result = PySpecialMethods.Index(context, arguments[0]);
+        if (result.IsError)
             return result;
-        if (Utils.IsIndexOutOfRange(index.Int32Value, self._list.Count))
+        if (Utils.IsIndexOutOfRange(result.Value.Int32Value, self._list.Count))
             return PyResult.RaiseIndexError("IndexError: pop index out of range");
-        return self.PyPop(index.Int32Value);
+        return self.PyPop(result.Value.Int32Value);
     }
 
     [PyFunctionArgsDef()]
@@ -186,9 +190,10 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
     [PyFunctionArgsDef("x", "start", "/")]
     internal PyResult Index_2(PyCallContext context, PyListObject self, PyArguments arguments)
     {
-        if (!PySpecialMethods.TryGetIndex(context, arguments[1], out var start, out var result))
+        var result = PySpecialMethods.Index(context, arguments[1]);
+        if (result.IsError)
             return result;
-        var index = self.PyIndex(arguments[0], start.Int32Value);
+        var index = self.PyIndex(arguments[0], result.Value.Int32Value);
         if (index is -1)
         {
             var reprResult = PySpecialMethods.Repr(context, arguments[0]);
@@ -203,11 +208,13 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
     [PyFunctionArgsDef("x", "start", "end", "/")]
     internal PyResult Index_3(PyCallContext context, PyListObject self, PyArguments arguments)
     {
-        if (!PySpecialMethods.TryGetIndex(context, arguments[1], out var start, out var result))
-            return result;
-        if (!PySpecialMethods.TryGetIndex(context, arguments[2], out var end, out result))
-            return result;
-        var index = self.PyIndex(arguments[0], start.Int32Value, end.Int32Value);
+        var startResult = PySpecialMethods.Index(context, arguments[1]);
+        if (startResult.IsError)
+            return startResult;
+        var endResult = PySpecialMethods.Index(context, arguments[2]);
+        if (endResult.IsError)
+            return endResult;
+        var index = self.PyIndex(arguments[0], startResult.Value.Int32Value, endResult.Value.Int32Value);
         if (index is -1)
         {
             var reprResult = PySpecialMethods.Repr(context, arguments[0]);

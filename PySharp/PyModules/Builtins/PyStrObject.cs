@@ -92,9 +92,10 @@ public sealed class PyStrObjectType : PyTypeObject<PyStrObjectType, PyStrObject>
     }
     protected internal override PyResult GetItem(PyCallContext context, PyStrObject self, PyObject item)
     {
-        if (!PySpecialMethods.TryGetIndex(context, item, out var indexObj, out var result))
+        var result = PySpecialMethods.Index(context, item);
+        if (result.IsError)
             return result;
-        var index = indexObj.Int32Value;
+        var index = result.Value.Int32Value;
         index = Utils.MapIndex(index, self.PyLength);
         if (index < 0 || index >= self.PyLength)
             return PyResult.RaiseIndexError("string index out of range");
@@ -120,9 +121,10 @@ public sealed class PyStrObjectType : PyTypeObject<PyStrObjectType, PyStrObject>
     }
     protected internal override PyResult Mul(PyCallContext context, PyStrObject self, PyObject other)
     {
-        if (!PySpecialMethods.TryGetIndex(context, other, out var repeatCount, out var result))
-            return PyNotImplementedObject.NotImplemented;
-        return PyStrObject.FromString(string.Concat(Enumerable.Repeat(self.Value, repeatCount.Int32Value)));
+        var result = PySpecialMethods.Index(context, other);
+        if (result.IsError)
+            return result;
+        return PyStrObject.FromString(string.Concat(Enumerable.Repeat(self.Value, result.Value.Int32Value)));
     }
     protected internal override PyResult RMul(PyCallContext context, PyStrObject self, PyObject other)
     {

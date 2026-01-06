@@ -69,10 +69,7 @@ partial class PyTypeObject<TObject>
         if (index.IsError)
             return index;
 
-        if (!PySpecialMethods.TryGetIndex(context, index.Value, out var i, out var result))
-            return result;
-
-        return i;
+        return PySpecialMethods.Index(context, index.Value);
     }
     protected internal virtual PyResult Float(PyCallContext context, TObject self)
     {
@@ -81,10 +78,11 @@ partial class PyTypeObject<TObject>
         if (index.IsError)
             return index;
 
-        if (!PySpecialMethods.TryGetIndex(context, index.Value, out var i, out var result))
+        var result = PySpecialMethods.Index(context, index.Value);
+        if (result.IsError)
             return result;
 
-        return PyFloatObject.FromDouble((double)i.Value);
+        return PyFloatObject.FromDouble((double)result.Value.Value);
     }
     protected internal virtual PyResult Complex(PyCallContext context, TObject self)
     {
@@ -93,7 +91,8 @@ partial class PyTypeObject<TObject>
         if (index.IsError)
             return index;
 
-        if (!PySpecialMethods.TryGetIndex(context, index.Value, out var i, out var result))
+        var result = PySpecialMethods.Index(context, index.Value);
+        if (result.IsError)
             return result;
 
         throw new NotImplementedException();

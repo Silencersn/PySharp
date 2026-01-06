@@ -20,85 +20,65 @@ public static class PySpecialMethods
 
     public static PyResult<PyStrObject> Str(PyCallContext context, PyObject obj)
     {
-        var str = obj.PyType.Slots.Str;
-        if (str is not null)
-            return CallUnaryFunction<PyStrObject>(context, obj, str, static o => $"{PySpecialNames.Str} returned non-string (type {o.PyType.Name})");
+        var func = obj.PyType.Slots.Str;
+        if (func is not null)
+            return CallUnaryFunction<PyStrObject>(context, obj, func, static o => $"{PySpecialNames.Str} returned non-string (type {o.PyType.FullName})");
 
-        return CallUnaryFunction<PyStrObject>(context, obj, obj.PyType.DefaultStr, static o => $"{PySpecialNames.Str} returned non-string (type {o.PyType.Name})");
+        return CallUnaryFunction<PyStrObject>(context, obj, obj.PyType.DefaultStr, static o => $"{PySpecialNames.Str} returned non-string (type {o.PyType.FullName})");
     }
 
     public static PyResult<PyStrObject> Repr(PyCallContext context, PyObject obj)
     {
-        var repr = obj.PyType.Slots.Repr;
-        if (repr is not null)
-            return CallUnaryFunction<PyStrObject>(context, obj, repr, static o => $"{PySpecialNames.Repr} returned non-string (type {o.PyType.Name})");
+        var func = obj.PyType.Slots.Repr;
+        if (func is not null)
+            return CallUnaryFunction<PyStrObject>(context, obj, func, static o => $"{PySpecialNames.Repr} returned non-string (type {o.PyType.FullName})");
 
-        return CallUnaryFunction<PyStrObject>(context, obj, obj.PyType.DefaultRepr, static o => $"{PySpecialNames.Repr} returned non-string (type {o.PyType.Name})");
+        return CallUnaryFunction<PyStrObject>(context, obj, obj.PyType.DefaultRepr, static o => $"{PySpecialNames.Repr} returned non-string (type {o.PyType.FullName})");
     }
 
     public static PyResult<PyBoolObject> Bool(PyCallContext context, PyObject obj)
     {
         var boolFunc = obj.PyType.Slots.Bool;
         if (boolFunc is not null)
-            return CallUnaryFunction<PyBoolObject>(context, obj, boolFunc, static o => $"{PySpecialNames.Bool} returned non-bool (type {o.PyType.Name})");
+            return CallUnaryFunction<PyBoolObject>(context, obj, boolFunc, static o => $"{PySpecialNames.Bool} returned non-bool (type {o.PyType.FullName})");
 
-        return CallUnaryFunction<PyBoolObject>(context, obj, obj.PyType.DefaultBool, static o => $"{PySpecialNames.Bool} returned non-bool (type {o.PyType.Name})");
+        return CallUnaryFunction<PyBoolObject>(context, obj, obj.PyType.DefaultBool, static o => $"{PySpecialNames.Bool} returned non-bool (type {o.PyType.FullName})");
     }
 
     public static PyResult<PyIntObject> Hash(PyCallContext context, PyObject obj)
     {
-        var hashFunc = obj.PyType.Slots.Hash;
-        if (hashFunc is not null)
-            return CallUnaryFunction<PyIntObject>(context, obj, hashFunc, static o => $"{PySpecialNames.Hash} returned non-int (type {o.PyType.Name})");
+        var func = obj.PyType.Slots.Hash;
+        if (func is not null)
+            return CallUnaryFunction<PyIntObject>(context, obj, func, static o => $"{PySpecialNames.Hash} returned non-int (type {o.PyType.FullName})");
 
-        return CallUnaryFunction<PyIntObject>(context, obj, obj.PyType.DefaultHash, static o => $"{PySpecialNames.Hash} returned non-int (type {o.PyType.Name})");
+        return CallUnaryFunction<PyIntObject>(context, obj, obj.PyType.DefaultHash, static o => $"{PySpecialNames.Hash} returned non-int (type {o.PyType.FullName})");
     }
 
-    private static bool TryGetSpecialMethod<TPyObject>(Func<PyResult> func, Func<PyObject, string> msgCreatorIfWrongType, [NotNullWhen(true)] out TPyObject? o, out PyResult result) where TPyObject : PyObject
+    public static PyResult<PyIntObject> Index(PyCallContext context, PyObject obj)
     {
-        result = func();
-        if (result.IsError)
-        {
-            o = null;
-            return false;
-        }
+        var func = obj.PyType.Slots.Index;
+        if (func is not null)
+            return CallUnaryFunction<PyIntObject>(context, obj, func, static o => $"{PySpecialNames.Index} returned non-int (type {o.PyType.FullName})");
 
-        if (result.Value is not TPyObject objOfT)
-        {
-            o = null;
-            result = PyResult.RaiseTypeError(msgCreatorIfWrongType(result.Value));
-            return false;
-        }
-
-        o = objOfT;
-        return true;
+        return PyResult.RaiseTypeError($"'{obj.PyType.FullName}' object cannot be interpreted as an integer").Of<PyIntObject>();
     }
 
-    public static bool TryGetFloat(PyCallContext context, PyObject obj, [NotNullWhen(true)] out PyFloatObject? f, out PyResult result)
+    public static PyResult<PyFloatObject> Float(PyCallContext context, PyObject obj)
     {
-        return TryGetSpecialMethod(() => obj.Float(context), o => $"{PySpecialNames.Float} returned non-float (type {o.PyType.Name})", out f, out result);
+        var func = obj.PyType.Slots.Float;
+        if (func is not null)
+            return CallUnaryFunction<PyFloatObject>(context, obj, func, static o => $"{PySpecialNames.Float} returned non-float (type {o.PyType.FullName})");
+
+        return PyResult.RaiseTypeError($"float() argument must be a string or a real number, not '{obj.PyType.FullName}'").Of<PyFloatObject>();
     }
 
-    public static bool TryGetLen(PyCallContext context, PyObject obj, [NotNullWhen(true)] out PyIntObject? i, out PyResult result)
+    public static PyResult<PyIntObject> Len(PyCallContext context, PyObject obj)
     {
-        return TryGetSpecialMethod(() => obj.Len(context), o => $"{PySpecialNames.Len} returned non-int (type {o.PyType.Name})", out i, out result);
-    }
+        var func = obj.PyType.Slots.Len;
+        if (func is not null)
+            return CallUnaryFunction<PyIntObject>(context, obj, func, static o => $"{PySpecialNames.Len} returned non-int (type {o.PyType.FullName})");
 
-    public static bool TryGetIndex(PyCallContext context, PyObject obj, [NotNullWhen(true)] out PyIntObject? i, out PyResult result)
-    {
-        return TryGetSpecialMethod(() => obj.Index(context), o => $"{PySpecialNames.Index} returned non-int (type {o.PyType.Name})", out i, out result);
-    }
-
-    public static PyResult GetFloat(PyCallContext context, PyObject obj)
-    {
-        TryGetFloat(context, obj, out _, out var result);
-        return result;
-    }
-
-    public static PyResult GetLen(PyCallContext context, PyObject obj)
-    {
-        TryGetLen(context, obj, out _, out var result);
-        return result;
+        return PyResult.RaiseTypeError($"object of type '{obj.PyType.FullName}' has no len()").Of<PyIntObject>();
     }
 
     public static PyResult DivMod(PyCallContext context, PyObject left, PyObject right)
