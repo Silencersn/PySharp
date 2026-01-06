@@ -1,5 +1,6 @@
 ﻿using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime.PyAttributes;
+using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Reflection;
 
@@ -16,6 +17,9 @@ public delegate PyResult PyMemberSetter(PyCallContext context, PyObject self, Py
 public delegate PyResult PyMemberSetter<TObject>(PyCallContext context, TObject self, PyObject value) where TObject : PyObject;
 public delegate PyResult PyMemberDeleter(PyCallContext context, PyObject self);
 public delegate PyResult PyMemberDeleter<TObject>(PyCallContext context, TObject self) where TObject : PyObject;
+
+public delegate PyResult PyUnaryFunction(PyCallContext context, PyObject self);
+public delegate PyResult PyBinaryFunction(PyCallContext context, PyObject self, PyObject other);
 
 public static class PyDelegateConverter
 {
@@ -131,5 +135,14 @@ public static class PyDelegateConverter
                 defs = cache;
             }
         }
+    }
+
+    public static PyUnaryFunction ToUnaryFunction(this PyObject obj)
+    {
+        return (context, self) => obj.Call(context, [self], FrozenDictionary<string, PyObject>.Empty);
+    }
+    public static PyBinaryFunction ToBinaryFunction(this PyObject obj)
+    {
+        return (context, self, other) => obj.Call(context, [self, other], FrozenDictionary<string, PyObject>.Empty);
     }
 }

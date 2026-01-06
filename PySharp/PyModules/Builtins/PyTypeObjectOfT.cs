@@ -22,6 +22,7 @@ public abstract partial class PyTypeObject<TObject> : PyTypeObject where TObject
     public PyTypeObject()
     {
         AppendOverridenSpecialMethodDescriptors();
+        AppendOverridenSpecialMethodDescriptors2();
         AppendNew();
     }
 
@@ -30,6 +31,7 @@ public abstract partial class PyTypeObject<TObject> : PyTypeObject where TObject
         if (appendOverridenMethods)
         {
             AppendOverridenSpecialMethodDescriptors();
+            AppendOverridenSpecialMethodDescriptors2();
             AppendNew();
         }
     }

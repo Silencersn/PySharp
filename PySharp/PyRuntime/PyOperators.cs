@@ -64,10 +64,19 @@ public static class PyOperators
         switch (op)
         {
             case PyOperatorTypes.Add:
-                result = leftType.Add(context, left, right);
-                if (!result.IsNotImplemented)
-                    return result; // result or error
-                result = rightType.RAdd(context, right, left);
+                if (leftType.Slots.Add is not null)
+                {
+                    result = leftType.Slots.Add(context, left, right);
+                    if (!result.IsNotImplemented)
+                        return result;
+                }
+                if (rightType.Slots.RAdd is not null)
+                {
+                    result = rightType.Slots.RAdd(context, right, left);
+                    if (!result.IsNotImplemented)
+                        return result;
+                }
+                result = PyNotImplementedObject.NotImplemented;
                 break;
 
             case PyOperatorTypes.Sub:

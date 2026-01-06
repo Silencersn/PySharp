@@ -111,10 +111,11 @@ public class PyIntObjectType : PyTypeObject<PyIntObjectType, PyIntObject>
             return PyIntObject.FromInteger(integer);
         }
 
-        if (!PySpecialMethods.TryGetInt(context, arguments[0], out var value, out var result))
+        var result = PyNumber.Int(context, arguments[0]);
+        if (result.IsError)
             return result;
 
-        return PyIntObject.FromInteger(value.Value);
+        return (PyIntObject)result.Value;
     }
     [PyFunctionArgsDef("string", "/", "base=10")]
     private static PyResult NewImpl_2(PyCallContext context, PyArguments arguments)

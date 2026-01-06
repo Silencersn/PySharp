@@ -123,6 +123,35 @@ partial class PyTypeObject<TObject>
         }
     }
 
+    private void AppendOverridenSpecialMethodDescriptors2()
+    {
+        AppendUnaryFunction(ref Slots.Repr, Repr);
+        AppendUnaryFunction(ref Slots.Int, Int);
+        AppendBinaryFunction(ref Slots.Add, Add);
+        AppendBinaryFunction(ref Slots.RAdd, RAdd);
+
+        bool IsOverriden(MethodInfo method)
+        {
+            var name = method.Name;
+            // TODO: cache
+            method = GetType()
+                .GetMethods(BindingFlags.NonPublic | BindingFlags.Instance)
+                .Single(method => method.Name == name && method.GetBaseDefinition().DeclaringType == typeof(PyTypeObject<TObject>));
+            return method.DeclaringType != typeof(PyTypeObject<TObject>);
+        }
+
+        void AppendUnaryFunction(ref PyUnaryFunction? field, PyUnaryFunction func)
+        {
+            if (IsOverriden(func.Method))
+                field = func;
+        }
+        void AppendBinaryFunction(ref PyBinaryFunction? field, PyBinaryFunction func)
+        {
+            if (IsOverriden(func.Method))
+                field = func;
+        }
+    }
+
     private void AppendNew()
     {
         var newMethod = GetType()

@@ -36,6 +36,7 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
     internal PyTypeObject()
     {
         MRO = [this, .. CreateMROWithoutSelf(Bases)];
+        Slots = Bases.Count > 0 ? Bases[0].Slots.Clone() : new PyTypeSlots();
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
         PyAttributes.Add(PySpecialNames.Doc, PyNoneObject.None);
     }
@@ -43,6 +44,7 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
     internal PyTypeObject(string name, IReadOnlyList<PyTypeObject> bases)
     {
         MRO = [this, .. CreateMROWithoutSelf(bases)];
+        Slots = bases.Count > 0 ? bases[0].Slots.Clone() : new PyTypeSlots();
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(name));
         PyAttributes.Add(PySpecialNames.Doc, PyNoneObject.None);
     }
