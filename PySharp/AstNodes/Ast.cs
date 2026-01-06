@@ -1,4 +1,6 @@
-﻿namespace PySharp.AstNodes;
+﻿using System.Collections.Immutable;
+
+namespace PySharp.AstNodes;
 
 
 public static partial class Ast
@@ -20,5 +22,10 @@ public static partial class Ast
         ArgumentNullException.ThrowIfNull(value);
 
         return new AstKeywordNode(arg, value);
+    }
+
+    public static ExceptHandlerNode ExceptHandler(AstExprNode? type, string? name, IEnumerable<AstStmtNode> body)
+    {
+        return new ExceptHandlerNode(type, name, body.ToImmutableArray(true));
     }
 }

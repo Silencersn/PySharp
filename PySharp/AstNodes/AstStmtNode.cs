@@ -467,7 +467,7 @@ public sealed class RaiseNode : AstStmtNode
 
 public sealed class TryNode : AstStmtNode
 {
-    internal TryNode(ImmutableArray<AstStmtNode> body, ImmutableArray<AstExceptHandlerNode> exceptors, ImmutableArray<AstStmtNode> orElse, ImmutableArray<AstStmtNode> finalBody)
+    internal TryNode(ImmutableArray<AstStmtNode> body, ImmutableArray<ExceptHandlerNode> exceptors, ImmutableArray<AstStmtNode> orElse, ImmutableArray<AstStmtNode> finalBody)
     {
         Body = body;
         Exceptors = exceptors;
@@ -476,7 +476,7 @@ public sealed class TryNode : AstStmtNode
     }
 
     public ImmutableArray<AstStmtNode> Body { get; }
-    public ImmutableArray<AstExceptHandlerNode> Exceptors { get; }
+    public ImmutableArray<ExceptHandlerNode> Exceptors { get; }
     public ImmutableArray<AstStmtNode> OrElse { get; }
     public ImmutableArray<AstStmtNode> FinalBody { get; }
 

@@ -117,7 +117,7 @@ partial class Ast
         return new WhileNode(test, body.ToImmutableArray(true), orElse.ToImmutableArray(true));
     }
 
-    public static TryNode Try(IEnumerable<AstStmtNode> body, IEnumerable<AstExceptHandlerNode> exceptors, IEnumerable<AstStmtNode> orElse, IEnumerable<AstStmtNode> finalBody)
+    public static TryNode Try(IEnumerable<AstStmtNode> body, IEnumerable<ExceptHandlerNode> exceptors, IEnumerable<AstStmtNode> orElse, IEnumerable<AstStmtNode> finalBody)
     {
         ArgumentNullException.ThrowIfNull(body);
         ArgumentNullException.ThrowIfNull(exceptors);

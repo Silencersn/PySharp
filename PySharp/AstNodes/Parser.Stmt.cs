@@ -476,9 +476,9 @@ partial class Parser
 
                 EnsureTokenTypeThenMove(TokenType.Colon);
 
-                var expectHandler = new ExceptHandlerNode(expr, id);
-                expectHandler.Body.AddRange(ParseSuite("except"));
-                exceptors.Add(expectHandler);
+                var exceptHandlerBody = ParseSuite("except");
+                var exceptHandler = Ast.ExceptHandler(expr, id, exceptHandlerBody);
+                exceptors.Add(exceptHandler);
             }
             if (IsCurrentKeyword("else"))
             {
