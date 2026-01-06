@@ -517,10 +517,11 @@ public sealed class BoolOpNode : AstExprNode, IAstExprNodeBool, IAstExprNodeNoSe
 
         foreach (var value in values)
         {
-            if (!PySpecialMethods.TryGetBool(context, value, out var b, out var result))
+            var result = PySpecialMethods.Bool(context, value);
+            if (result.IsError)
                 return (false, result);
 
-            if (!b.BoolValue)
+            if (!result.Value.BoolValue)
                 return (false, value);
 
             lastValue = value;
@@ -535,10 +536,11 @@ public sealed class BoolOpNode : AstExprNode, IAstExprNodeBool, IAstExprNodeNoSe
 
         foreach (var value in values)
         {
-            if (!PySpecialMethods.TryGetBool(context, value, out var b, out var result))
+            var result = PySpecialMethods.Bool(context, value);
+            if (result.IsError)
                 return (false, result);
 
-            if (b.BoolValue)
+            if (result.Value.BoolValue)
                 return (true, value);
 
             lastValue = value;
@@ -669,7 +671,7 @@ public sealed class CompareNode : AstExprNode, IAstExprNodeBool
                 _ => throw new UnreachableException(),
             }).PyUnwrap(context);
 
-            var boolValue = (PyBoolObject)PySpecialMethods.GetBool(context, value).PyUnwrap(context);
+            var boolValue = PySpecialMethods.Bool(context, value).PyUnwrap(context);
 
             if (!boolValue.BoolValue)
                 return (boolValue.BoolValue, value);

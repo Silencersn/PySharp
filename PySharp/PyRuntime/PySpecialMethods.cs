@@ -36,6 +36,24 @@ public static class PySpecialMethods
         return CallUnaryFunction<PyStrObject>(context, obj, obj.PyType.DefaultRepr, static o => $"{PySpecialNames.Repr} returned non-string (type {o.PyType.Name})");
     }
 
+    public static PyResult<PyBoolObject> Bool(PyCallContext context, PyObject obj)
+    {
+        var boolFunc = obj.PyType.Slots.Bool;
+        if (boolFunc is not null)
+            return CallUnaryFunction<PyBoolObject>(context, obj, boolFunc, static o => $"{PySpecialNames.Bool} returned non-bool (type {o.PyType.Name})");
+
+        return CallUnaryFunction<PyBoolObject>(context, obj, obj.PyType.DefaultBool, static o => $"{PySpecialNames.Bool} returned non-bool (type {o.PyType.Name})");
+    }
+
+    public static PyResult<PyIntObject> Hash(PyCallContext context, PyObject obj)
+    {
+        var hashFunc = obj.PyType.Slots.Hash;
+        if (hashFunc is not null)
+            return CallUnaryFunction<PyIntObject>(context, obj, hashFunc, static o => $"{PySpecialNames.Hash} returned non-int (type {o.PyType.Name})");
+
+        return CallUnaryFunction<PyIntObject>(context, obj, obj.PyType.DefaultHash, static o => $"{PySpecialNames.Hash} returned non-int (type {o.PyType.Name})");
+    }
+
     private static bool TryGetSpecialMethod<TPyObject>(Func<PyResult> func, Func<PyObject, string> msgCreatorIfWrongType, [NotNullWhen(true)] out TPyObject? o, out PyResult result) where TPyObject : PyObject
     {
         result = func();
@@ -56,11 +74,6 @@ public static class PySpecialMethods
         return true;
     }
 
-    public static bool TryGetBool(PyCallContext context, PyObject obj, [NotNullWhen(true)] out PyBoolObject? b, out PyResult result)
-    {
-        return TryGetSpecialMethod(() => obj.Bool(context), o => $"{PySpecialNames.Bool} should return bool, returned {o.PyType.Name}", out b, out result);
-    }
-
     public static bool TryGetFloat(PyCallContext context, PyObject obj, [NotNullWhen(true)] out PyFloatObject? f, out PyResult result)
     {
         return TryGetSpecialMethod(() => obj.Float(context), o => $"{PySpecialNames.Float} returned non-float (type {o.PyType.Name})", out f, out result);
@@ -71,28 +84,9 @@ public static class PySpecialMethods
         return TryGetSpecialMethod(() => obj.Len(context), o => $"{PySpecialNames.Len} returned non-int (type {o.PyType.Name})", out i, out result);
     }
 
-    public static bool TryGetHash(PyCallContext context, PyObject obj, [NotNullWhen(true)] out PyIntObject? i, out PyResult result)
-    {
-        if (!TryGetSpecialMethod(() => obj.Hash(context), o => $"{PySpecialNames.Hash} returned non-int (type {o.PyType.Name})", out i, out result))
-            return false;
-
-        var value = unchecked((int)i.Value);
-        if (value is -1)
-            value = -2;
-
-        i = PyIntObject.FromInteger(value);
-        return true;
-    }
-
     public static bool TryGetIndex(PyCallContext context, PyObject obj, [NotNullWhen(true)] out PyIntObject? i, out PyResult result)
     {
         return TryGetSpecialMethod(() => obj.Index(context), o => $"{PySpecialNames.Index} returned non-int (type {o.PyType.Name})", out i, out result);
-    }
-
-    public static PyResult GetBool(PyCallContext context, PyObject obj)
-    {
-        TryGetBool(context, obj, out _, out var result);
-        return result;
     }
 
     public static PyResult GetFloat(PyCallContext context, PyObject obj)
@@ -104,12 +98,6 @@ public static class PySpecialMethods
     public static PyResult GetLen(PyCallContext context, PyObject obj)
     {
         TryGetLen(context, obj, out _, out var result);
-        return result;
-    }
-
-    public static PyResult GetHash(PyCallContext context, PyObject obj)
-    {
-        TryGetHash(context, obj, out _, out var result);
         return result;
     }
 

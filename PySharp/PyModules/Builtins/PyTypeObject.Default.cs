@@ -12,5 +12,12 @@ partial class PyTypeObject
     {
         return self.Repr(context);
     }
-
+    internal PyResult DefaultBool(PyCallContext context, PyObject self)
+    {
+        return PyBoolObject.True;
+    }
+    internal PyResult DefaultHash(PyCallContext context, PyObject self)
+    {
+        return PyIntObject.FromInteger(self.GetHashCode());
+    }
 }

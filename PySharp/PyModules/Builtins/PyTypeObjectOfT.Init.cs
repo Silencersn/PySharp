@@ -127,7 +127,13 @@ partial class PyTypeObject<TObject>
     {
         AppendUnaryFunction(ref Slots.Str, Str);
         AppendUnaryFunction(ref Slots.Repr, Repr);
+        AppendUnaryFunction(ref Slots.Bool, Bool);
+        AppendUnaryFunction(ref Slots.Hash, Hash);
+        AppendUnaryFunction(ref Slots.Len, Len);
+        AppendUnaryFunction(ref Slots.Index, Index);
         AppendUnaryFunction(ref Slots.Int, Int);
+        AppendUnaryFunction(ref Slots.Float, Float);
+
         AppendBinaryFunction(ref Slots.Add, Add);
         AppendBinaryFunction(ref Slots.RAdd, RAdd);
 

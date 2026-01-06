@@ -85,16 +85,17 @@ public sealed class PyQueueObjectType : PyTypeObject<PyQueueObjectType, PyQueueO
     [PyFunctionArgsDef("item", "block=True", "timeout=None")]
     internal PyResult Put(PyCallContext context, PyQueueObject self, PyArguments arguments)
     {
-        if (!PySpecialMethods.TryGetBool(context, arguments[1], out var block, out var result))
-            return result;
+        var blockResult = PySpecialMethods.Bool(context, arguments[1]);
+        if (blockResult.IsError)
+            return blockResult;
         double? timeout;
         if (arguments[2] is PyNoneObject)
             timeout = null;
-        else if (PySpecialMethods.TryGetFloat(context, arguments[2], out var value, out result))
+        else if (PySpecialMethods.TryGetFloat(context, arguments[2], out var value, out var result))
             timeout = value.Value;
         else
             return result;
-        var ex = self.PyPut(arguments[0], block.BoolValue, timeout);
+        var ex = self.PyPut(arguments[0], blockResult.Value.BoolValue, timeout);
         if (ex is not null)
             return PyResult.RaiseException(ex);
         return PyNoneObject.None;
@@ -112,16 +113,17 @@ public sealed class PyQueueObjectType : PyTypeObject<PyQueueObjectType, PyQueueO
     [PyFunctionArgsDef("block=True", "timeout=None")]
     internal PyResult Get(PyCallContext context, PyQueueObject self, PyArguments arguments)
     {
-        if (!PySpecialMethods.TryGetBool(context, arguments[0], out var block, out var result))
-            return result;
+        var blockResult = PySpecialMethods.Bool(context, arguments[0]);
+        if (blockResult.IsError)
+            return blockResult;
         double? timeout;
         if (arguments[1] is PyNoneObject)
             timeout = null;
-        else if (PySpecialMethods.TryGetFloat(context, arguments[1], out var value, out result))
+        else if (PySpecialMethods.TryGetFloat(context, arguments[1], out var value, out var result))
             timeout = value.Value;
         else
             return result;
-        var (item, ex) = self.PyGet(block.BoolValue, timeout);
+        var (item, ex) = self.PyGet(blockResult.Value.BoolValue, timeout);
         if (ex is not null)
             return PyResult.RaiseException(ex);
         Debug.Assert(item is not null);

@@ -412,14 +412,11 @@ public static class PyOperators
 
         Debug.Assert(!eq.IsNotImplemented);
 
-        var boolRet = eq.Value.Bool(context);
-        if (boolRet.IsError)
-            return boolRet;
-
-        if (!PySpecialMethods.TryGetBool(context, boolRet.Value, out var b, out var result))
+        var result = PySpecialMethods.Bool(context, eq.Value);
+        if (result.IsError)
             return result;
 
-        return PyBoolObject.FromBoolean(!b.BoolValue);
+        return PyBoolObject.FromBoolean(!result.Value.BoolValue);
     }
 
     public static PyBoolObject Is(PyObject left, PyObject right)
@@ -462,9 +459,10 @@ public static class PyOperators
 
     public static PyResult Not(PyCallContext context, PyObject value)
     {
-        if (!PySpecialMethods.TryGetBool(context, value, out var b, out var result))
+        var result = PySpecialMethods.Bool(context, value);
+        if (result.IsError)
             return result;
-        return PyBoolObject.FromBoolean(!b.BoolValue);
+        return PyBoolObject.FromBoolean(!result.Value.BoolValue);
     }
 
     public static PyResult Invert(PyCallContext context, PyObject value)

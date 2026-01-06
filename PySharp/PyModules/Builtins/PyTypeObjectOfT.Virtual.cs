@@ -28,7 +28,7 @@ partial class PyTypeObject<TObject>
 
     protected internal virtual PyResult Hash(PyCallContext context, TObject self)
     {
-        return PyIntObject.FromInteger(self.PyId);
+        return DefaultHash(context, self);
     }
 
     protected internal virtual PyResult GetAttribute(PyCallContext context, TObject self, string item)
@@ -59,7 +59,7 @@ partial class PyTypeObject<TObject>
 
     protected internal virtual PyResult Bool(PyCallContext context, TObject self)
     {
-        return PyBoolObject.True;
+        return DefaultBool(context, self);
     }
 
     protected internal virtual PyResult Int(PyCallContext context, TObject self)
@@ -283,10 +283,8 @@ partial class PyTypeObject<TObject>
         if (eq.IsError || eq.IsNotImplemented)
             return eq;
 
-        if (PySpecialMethods.TryGetBool(context, eq.Value, out var b, out var result))
-            return b.BoolValue ? PyBoolObject.False : PyBoolObject.True;
-
-        return result.PyUnwrap(context);
+        var result = PySpecialMethods.Bool(context, eq.Value).PyUnwrap(context);
+        return result.BoolValue ? PyBoolObject.False : PyBoolObject.True;
     }
     protected internal virtual PyResult Gt(PyCallContext context, TObject self, PyObject other)
     {

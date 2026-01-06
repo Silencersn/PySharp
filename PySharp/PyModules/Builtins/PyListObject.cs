@@ -229,11 +229,12 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
     internal PyResult Sort(PyCallContext context, PyListObject self, PyArguments arguments)
     {
         var keySelector = arguments["key"];
-        if (!PySpecialMethods.TryGetBool(context, arguments["reverse"], out var reverse, out var result))
+        var result = PySpecialMethods.Bool(context, arguments["reverse"]);
+        if (result.IsError)
             return result;
         if (keySelector is PyNoneObject)
         {
-            self.PySort(reverse: reverse.BoolValue);
+            self.PySort(reverse: result.Value.BoolValue);
         }
         else
         {
@@ -245,7 +246,7 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
                     return key;
                 itemToKey[item] = key.Value;
             }
-            self.PySort(item => itemToKey[item], reverse.BoolValue);
+            self.PySort(item => itemToKey[item], result.Value.BoolValue);
         }
         return PyNoneObject.None;
     }

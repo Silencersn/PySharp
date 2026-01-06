@@ -14,7 +14,12 @@ partial class PyTypeObject
     {
         internal PyUnaryFunction? Str;
         internal PyUnaryFunction? Repr;
+        internal PyUnaryFunction? Bool;
+        internal PyUnaryFunction? Hash;
+        internal PyUnaryFunction? Len;
+        internal PyUnaryFunction? Index;
         internal PyUnaryFunction? Int;
+        internal PyUnaryFunction? Float;
 
         internal PyBinaryFunction? Add;
         internal PyBinaryFunction? RAdd;

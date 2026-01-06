@@ -35,7 +35,7 @@ public sealed class PyBoolObjectType : PyTypeObject<PyBoolObjectType, PyBoolObje
     {
         if (!PyArgsValidator.ValidateSinglePositionalArg(args, kwargs, out var err))
             return err.Value;
-        return PySpecialMethods.GetBool(context, args[0]);
+        return PySpecialMethods.Bool(context, args[0]);
     }
 
     protected internal override PyResult Repr(PyCallContext context, PyBoolObject self)

@@ -133,7 +133,8 @@ public static partial class PyBuiltinFunctions
         if (!Utils.TryGetValue(endObj, (PyStrObject str) => str.Value, "\n", out var end))
             return PyResult.RaiseTypeError($"end must be None or a string, not {endObj.PyType.Name}");
 
-        if (!PySpecialMethods.TryGetBool(context, arguments.Kwargs["flush"], out var flushObj, out var result))
+        var result = PySpecialMethods.Bool(context, arguments.Kwargs["flush"]);
+        if (result.IsError)
             return result;
 
         for (int i = 0; i < arguments.ExtraArgs.Count; i++)
@@ -147,7 +148,7 @@ public static partial class PyBuiltinFunctions
             context.Out.Write(strResult.Value.Value);
         }
         context.Out.Write(end);
-        if (flushObj.BoolValue)
+        if (result.Value.BoolValue)
             context.Out.Flush();
 
         return PyNoneObject.None;
@@ -245,9 +246,10 @@ public static partial class PyBuiltinFunctions
         {
             if (element.IsError)
                 return element;
-            if (!PySpecialMethods.TryGetBool(context, element.Value, out var value, out var result))
+            var result = PySpecialMethods.Bool(context, element.Value);
+            if (result.IsError)
                 return result;
-            if (!value.BoolValue)
+            if (!result.Value.BoolValue)
                 return PyBoolObject.False;
         }
         return PyBoolObject.True;
@@ -263,9 +265,10 @@ public static partial class PyBuiltinFunctions
         {
             if (element.IsError)
                 return element;
-            if (!PySpecialMethods.TryGetBool(context, element.Value, out var value, out var result))
+            var result = PySpecialMethods.Bool(context, element.Value);
+            if (result.IsError)
                 return result;
-            if (value.BoolValue)
+            if (result.Value.BoolValue)
                 return PyBoolObject.True;
         }
         return PyBoolObject.False;
@@ -290,9 +293,10 @@ public static partial class PyBuiltinFunctions
             var gt = PyOperators.Gt(context, element, result);
             if (gt.IsError)
                 return gt;
-            if (!PySpecialMethods.TryGetBool(context, gt.Value, out var b, out var bResult))
+            var bResult = PySpecialMethods.Bool(context, gt.Value);
+            if (bResult.IsError)
                 return bResult;
-            if (b.BoolValue)
+            if (bResult.Value.BoolValue)
                 result = element;
         }
         if (result is null)
@@ -314,9 +318,10 @@ public static partial class PyBuiltinFunctions
             var gt = PyOperators.Gt(context, element, result);
             if (gt.IsError)
                 return gt;
-            if (!PySpecialMethods.TryGetBool(context, gt.Value, out var b, out var bResult))
+            var bResult = PySpecialMethods.Bool(context, gt.Value);
+            if (bResult.IsError)
                 return bResult;
-            if (b.BoolValue)
+            if (bResult.Value.BoolValue)
                 result = element;
         }
         return result;
@@ -333,9 +338,10 @@ public static partial class PyBuiltinFunctions
             var gt = PyOperators.Gt(context, element, result);
             if (gt.IsError)
                 return gt;
-            if (!PySpecialMethods.TryGetBool(context, gt.Value, out var b, out var bResult))
+            var bResult = PySpecialMethods.Bool(context, gt.Value);
+            if (bResult.IsError)
                 return bResult;
-            if (b.BoolValue)
+            if (bResult.Value.BoolValue)
                 result = element;
         }
         return result;
@@ -360,9 +366,10 @@ public static partial class PyBuiltinFunctions
             var lt = PyOperators.Lt(context, element, result);
             if (lt.IsError)
                 return lt;
-            if (!PySpecialMethods.TryGetBool(context, lt.Value, out var b, out var bResult))
+            var bResult = PySpecialMethods.Bool(context, lt.Value);
+            if (bResult.IsError)
                 return bResult;
-            if (b.BoolValue)
+            if (bResult.Value.BoolValue)
                 result = element;
         }
         if (result is null)
@@ -384,9 +391,10 @@ public static partial class PyBuiltinFunctions
             var lt = PyOperators.Lt(context, element, result);
             if (lt.IsError)
                 return lt;
-            if (!PySpecialMethods.TryGetBool(context, lt.Value, out var b, out var bResult))
+            var bResult = PySpecialMethods.Bool(context, lt.Value);
+            if (bResult.IsError)
                 return bResult;
-            if (b.BoolValue)
+            if (bResult.Value.BoolValue)
                 result = element;
         }
         return result;
@@ -403,9 +411,10 @@ public static partial class PyBuiltinFunctions
             var lt = PyOperators.Lt(context, element, result);
             if (lt.IsError)
                 return lt;
-            if (!PySpecialMethods.TryGetBool(context, lt.Value, out var b, out var bResult))
+            var bResult = PySpecialMethods.Bool(context, lt.Value);
+            if (bResult.IsError)
                 return bResult;
-            if (b.BoolValue)
+            if (bResult.Value.BoolValue)
                 result = element;
         }
         return result;
@@ -635,7 +644,7 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef("object", "/")]
     private static PyResult HashImpl(PyCallContext context, PyArguments arguments)
     {
-        return PySpecialMethods.GetHash(context, arguments[0]);
+        return PySpecialMethods.Hash(context, arguments[0]);
     }
 
     [PyFunctionArgsDef("object", "/")]

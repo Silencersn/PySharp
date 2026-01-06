@@ -29,7 +29,7 @@ public interface IPyObjectRecursiveRepr
         if (pyObj is IPyObjectRecursiveRepr recursiveReprObj)
             return recursiveReprObj.RecursiveRepr(context, ids);
 
-        return pyObj.Repr(context);
+        return PySpecialMethods.Repr(context, pyObj);
     }
 
     public static bool TryGetRecursiveRepr(PyCallContext context, PyObject pyObj, HashSet<int> ids, [NotNullWhen(true)] out PyStrObject? s, out PyResult result)

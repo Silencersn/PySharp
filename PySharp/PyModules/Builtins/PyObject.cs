@@ -33,19 +33,19 @@ public partial class PyObject : IEquatable<PyObject>
             if (eq.Value is PyBoolObject boolObj)
                 return boolObj.BoolValue;
 
-            if (PySpecialMethods.TryGetBool(PyCallContext.CSharpRuntime, eq.Value, out var b, out var result))
-                return b.BoolValue;
+            var result = PySpecialMethods.Bool(PyCallContext.CSharpRuntime, eq.Value);
+            if (result.IsSuccessful)
+                return result.Value.BoolValue;
 
-            Debug.Assert(result.IsError);
             throw new PyRuntimeException(result.Exception);
         }
 
         public int GetHashCode([DisallowNull] PyObject obj)
         {
-            if (PySpecialMethods.TryGetHash(PyCallContext.CSharpRuntime, obj, out var hash, out var result))
-                return hash.Int32Value;
+            var result = PySpecialMethods.Hash(PyCallContext.CSharpRuntime, obj);
+            if (result.IsSuccessful)
+                return result.Value.Int32Value;
 
-            Debug.Assert(result.IsError);
             throw new PyRuntimeException(result.Exception);
         }
     }
@@ -69,13 +69,11 @@ public partial class PyObject : IEquatable<PyObject>
             if (lt.IsError)
                 throw new PyRuntimeException(lt.Exception);
 
-            if (!PySpecialMethods.TryGetBool(PyCallContext.CSharpRuntime, lt.Value, out var b, out var result))
-            {
-                Debug.Assert(result.IsError);
+            var result = PySpecialMethods.Bool(PyCallContext.CSharpRuntime, lt.Value);
+            if (result.IsError)
                 throw new PyRuntimeException(result.Exception);
-            }
 
-            return b.BoolValue ? -1 : 1;
+            return result.Value.BoolValue ? -1 : 1;
         }
     }
 
@@ -213,8 +211,9 @@ public partial class PyObject : IEquatable<PyObject>
 
     public override int GetHashCode()
     {
-        if (PySpecialMethods.TryGetHash(PyCallContext.CSharpRuntime, this, out var hash, out var result))
-            return hash.UncheckedInt32Value;
+        var result = PySpecialMethods.Hash(PyCallContext.CSharpRuntime, this);
+        if (result.IsSuccessful)
+            return result.Value.UncheckedInt32Value is -1 ? -2 : result.Value.UncheckedInt32Value;
 
         return PyId.GetHashCode();
     }

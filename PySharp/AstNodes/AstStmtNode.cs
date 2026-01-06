@@ -60,10 +60,9 @@ public sealed class AssertNode : AstStmtNode
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
         var test = Test.GetExprValue(context, frame);
-        if (!PySpecialMethods.TryGetBool(context, test, out var b, out var result))
-            result.PyUnwrap(context);
+        var result = PySpecialMethods.Bool(context, test).PyUnwrap(context);
 
-        if (b!.BoolValue)
+        if (result.BoolValue)
             return;
 
         using var withMetaInfo = new MetaInfoProviderSetter(frame, Test);

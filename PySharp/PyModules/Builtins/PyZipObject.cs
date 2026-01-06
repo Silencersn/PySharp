@@ -29,7 +29,8 @@ public sealed class PyZipObjectType : PyTypeObject<PyZipObjectType, PyZipObject>
     [PyFunctionArgsDef("*iterables", "strict=False")]
     private static PyResult NewImpl(PyCallContext context, PyArguments arguments)
     {
-        if (!PySpecialMethods.TryGetBool(context, arguments["strict"], out var strict, out var result))
+        var result = PySpecialMethods.Bool(context, arguments["strict"]);
+        if (result.IsError)
             return result;
 
         List<PyObject> iterables = [];
@@ -41,7 +42,7 @@ public sealed class PyZipObjectType : PyTypeObject<PyZipObjectType, PyZipObject>
             iterables.Add(iter.Value);
         }
 
-        return new PyZipObject(iterables, strict.BoolValue);
+        return new PyZipObject(iterables, result.Value.BoolValue);
     }
 
     protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
