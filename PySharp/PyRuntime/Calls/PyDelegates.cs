@@ -20,6 +20,7 @@ public delegate PyResult PyMemberDeleter<TObject>(PyCallContext context, TObject
 
 public delegate PyResult PyUnaryFunction(PyCallContext context, PyObject self);
 public delegate PyResult PyBinaryFunction(PyCallContext context, PyObject self, PyObject other);
+public delegate PyResult PyTernaryFunction(PyCallContext context, PyObject self, PyObject other, PyObject third);
 
 public static class PyDelegateConverter
 {
@@ -144,5 +145,9 @@ public static class PyDelegateConverter
     public static PyBinaryFunction ToBinaryFunction(this PyObject obj)
     {
         return (context, self, other) => obj.Call(context, [self, other], FrozenDictionary<string, PyObject>.Empty);
+    }
+    public static PyTernaryFunction ToTernaryFunction(this PyObject obj)
+    {
+        return (context, self, other, third) => obj.Call(context, [self, other, third], FrozenDictionary<string, PyObject>.Empty);
     }
 }

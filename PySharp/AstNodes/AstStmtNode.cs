@@ -988,8 +988,45 @@ public sealed class ClassDefNode : AstStmtNode, IScopedSubNodesProvider
                 case PySpecialNames.Int: type.Slots.Int = value.ToUnaryFunction(); break;
                 case PySpecialNames.Float: type.Slots.Float = value.ToUnaryFunction(); break;
 
+                // Binary operators
                 case PySpecialNames.Add: type.Slots.Add = value.ToBinaryFunction(); break;
+                case PySpecialNames.Sub: type.Slots.Sub = value.ToBinaryFunction(); break;
+                case PySpecialNames.Mul: type.Slots.Mul = value.ToBinaryFunction(); break;
+                case PySpecialNames.TrueDiv: type.Slots.TrueDiv = value.ToBinaryFunction(); break;
+                case PySpecialNames.FloorDiv: type.Slots.FloorDiv = value.ToBinaryFunction(); break;
+                case PySpecialNames.Mod: type.Slots.Mod = value.ToBinaryFunction(); break;
+                case PySpecialNames.DivMod: type.Slots.DivMod = value.ToBinaryFunction(); break;
+                case PySpecialNames.LShift: type.Slots.LShift = value.ToBinaryFunction(); break;
+                case PySpecialNames.RShift: type.Slots.RShift = value.ToBinaryFunction(); break;
+                case PySpecialNames.And: type.Slots.And = value.ToBinaryFunction(); break;
+                case PySpecialNames.Xor: type.Slots.Xor = value.ToBinaryFunction(); break;
+                case PySpecialNames.Or: type.Slots.Or = value.ToBinaryFunction(); break;
+
+                // Reverse binary operators
                 case PySpecialNames.RAdd: type.Slots.RAdd = value.ToBinaryFunction(); break;
+                case PySpecialNames.RSub: type.Slots.RSub = value.ToBinaryFunction(); break;
+                case PySpecialNames.RMul: type.Slots.RMul = value.ToBinaryFunction(); break;
+                case PySpecialNames.RTrueDiv: type.Slots.RTrueDiv = value.ToBinaryFunction(); break;
+                case PySpecialNames.RFloorDiv: type.Slots.RFloorDiv = value.ToBinaryFunction(); break;
+                case PySpecialNames.RMod: type.Slots.RMod = value.ToBinaryFunction(); break;
+                case PySpecialNames.RDivMod: type.Slots.RDivMod = value.ToBinaryFunction(); break;
+                case PySpecialNames.RLShift: type.Slots.RLShift = value.ToBinaryFunction(); break;
+                case PySpecialNames.RRShift: type.Slots.RRShift = value.ToBinaryFunction(); break;
+                case PySpecialNames.RAnd: type.Slots.RAnd = value.ToBinaryFunction(); break;
+                case PySpecialNames.RXor: type.Slots.RXor = value.ToBinaryFunction(); break;
+                case PySpecialNames.ROr: type.Slots.ROr = value.ToBinaryFunction(); break;
+
+                // Ternary operators
+                case PySpecialNames.Pow: type.Slots.Pow = value.ToTernaryFunction(); break;
+                case PySpecialNames.RPow: type.Slots.RPow = value.ToTernaryFunction(); break;
+
+                // Rich comparison operators
+                case PySpecialNames.Lt: type.Slots.Lt = value.ToBinaryFunction(); break;
+                case PySpecialNames.Le: type.Slots.Le = value.ToBinaryFunction(); break;
+                case PySpecialNames.Eq: type.Slots.Eq = value.ToBinaryFunction(); break;
+                case PySpecialNames.Ne: type.Slots.Ne = value.ToBinaryFunction(); break;
+                case PySpecialNames.Gt: type.Slots.Gt = value.ToBinaryFunction(); break;
+                case PySpecialNames.Ge: type.Slots.Ge = value.ToBinaryFunction(); break;
             }
         }
 

@@ -65,7 +65,7 @@ public partial class PyObject : IEquatable<PyObject>
             if (y is null)
                 return 1;
 
-            var lt = x.Lt(PyCallContext.CSharpRuntime, y);
+            var lt = PyOperators.Lt(PyCallContext.CSharpRuntime, x, y);
             if (lt.IsError)
                 throw new PyRuntimeException(lt.Exception);
 

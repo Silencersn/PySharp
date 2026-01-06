@@ -134,8 +134,45 @@ partial class PyTypeObject<TObject>
         AppendUnaryFunction(ref Slots.Int, Int);
         AppendUnaryFunction(ref Slots.Float, Float);
 
+        // Binary operators
         AppendBinaryFunction(ref Slots.Add, Add);
+        AppendBinaryFunction(ref Slots.Sub, Sub);
+        AppendBinaryFunction(ref Slots.Mul, Mul);
+        AppendBinaryFunction(ref Slots.TrueDiv, TrueDiv);
+        AppendBinaryFunction(ref Slots.FloorDiv, FloorDiv);
+        AppendBinaryFunction(ref Slots.Mod, Mod);
+        AppendBinaryFunction(ref Slots.DivMod, DivMod);
+        AppendBinaryFunction(ref Slots.LShift, LShift);
+        AppendBinaryFunction(ref Slots.RShift, RShift);
+        AppendBinaryFunction(ref Slots.And, And);
+        AppendBinaryFunction(ref Slots.Xor, Xor);
+        AppendBinaryFunction(ref Slots.Or, Or);
+
+        // Reverse binary operators
         AppendBinaryFunction(ref Slots.RAdd, RAdd);
+        AppendBinaryFunction(ref Slots.RSub, RSub);
+        AppendBinaryFunction(ref Slots.RMul, RMul);
+        AppendBinaryFunction(ref Slots.RTrueDiv, RTrueDiv);
+        AppendBinaryFunction(ref Slots.RFloorDiv, RFloorDiv);
+        AppendBinaryFunction(ref Slots.RMod, RMod);
+        AppendBinaryFunction(ref Slots.RDivMod, RDivMod);
+        AppendBinaryFunction(ref Slots.RLShift, RLShift);
+        AppendBinaryFunction(ref Slots.RRShift, RRShift);
+        AppendBinaryFunction(ref Slots.RAnd, RAnd);
+        AppendBinaryFunction(ref Slots.RXor, RXor);
+        AppendBinaryFunction(ref Slots.ROr, ROr);
+
+        // Ternary operators
+        AppendTernaryFunction(ref Slots.Pow, Pow);
+        AppendTernaryFunction(ref Slots.RPow, RPow);
+
+        // Rich comparison operators
+        AppendBinaryFunction(ref Slots.Lt, Lt);
+        AppendBinaryFunction(ref Slots.Le, Le);
+        AppendBinaryFunction(ref Slots.Eq, Eq);
+        AppendBinaryFunction(ref Slots.Ne, Ne);
+        AppendBinaryFunction(ref Slots.Gt, Gt);
+        AppendBinaryFunction(ref Slots.Ge, Ge);
 
         bool IsOverriden(MethodInfo method)
         {
@@ -153,6 +190,11 @@ partial class PyTypeObject<TObject>
                 field = func;
         }
         void AppendBinaryFunction(ref PyBinaryFunction? field, PyBinaryFunction func)
+        {
+            if (IsOverriden(func.Method))
+                field = func;
+        }
+        void AppendTernaryFunction(ref PyTernaryFunction? field, PyTernaryFunction func)
         {
             if (IsOverriden(func.Method))
                 field = func;
