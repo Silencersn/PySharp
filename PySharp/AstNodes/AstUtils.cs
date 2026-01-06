@@ -256,4 +256,22 @@ internal static class AstUtils
         node.MetaInfo = metaInfo;
         return node;
     }
+
+    public static List<PyObject> EvalPyObjects(PyCallContext context, PyFrame frame, IEnumerable<AstExprNode> exprs)
+    {
+        List<PyObject> result = [];
+        foreach (var expr in exprs)
+        {
+            if (expr is StarredNode starredNode)
+            {
+                result.AddRange(starredNode.Unpack(context, frame));
+            }
+            else
+            {
+                var value = expr.GetExprValue(context, frame);
+                result.Add(value);
+            }
+        }
+        return result;
+    }
 }

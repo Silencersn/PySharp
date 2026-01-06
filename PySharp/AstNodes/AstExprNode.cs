@@ -327,7 +327,7 @@ public sealed class CallNode : AstExprNode
         switch (_argsType)
         {
             case CallArgumentsType.ArgsKwargs:
-                args = [.. Args.Select(arg => arg.GetExprValue(context, frame))];
+                args = AstUtils.EvalPyObjects(context, frame, Args);
                 kwargs = Keywords.ToDictionary(keyword => keyword.Arg, keyword => keyword.Value.GetExprValue(context, frame));
                 break;
 
@@ -337,7 +337,7 @@ public sealed class CallNode : AstExprNode
                 break;
 
             case CallArgumentsType.ArgsOnly:
-                args = [.. Args.Select(arg => arg.GetExprValue(context, frame))];
+                args = AstUtils.EvalPyObjects(context, frame, Args);
                 kwargs = FrozenDictionary<string, PyObject>.Empty;
                 break;
 
@@ -387,7 +387,7 @@ public sealed class ListNode : AstExprNode, IExprContextNode, IAstExprNodeNoSelf
 
     public override PyListObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        return new PyListObject(Elts.Select(item => item.GetExprValue(context, frame)));
+        return new PyListObject(AstUtils.EvalPyObjects(context, frame, Elts));
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
@@ -420,7 +420,7 @@ public sealed class TupleNode : AstExprNode, IExprContextNode, IAstExprNodeNoSel
     }
     public override PyTupleObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        return PyTupleObject.CreateTuple(Elts.Select(item => item.GetExprValue(context, frame)));
+        return PyTupleObject.CreateTuple(AstUtils.EvalPyObjects(context, frame, Elts));
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
@@ -471,7 +471,7 @@ public sealed class SetNode : AstExprNode, IAstExprNodeNoSelfPythonException
 
     public override PySetObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        return new PySetObject(Elts.Select(item => item.GetExprValue(context, frame)));
+        return new PySetObject(AstUtils.EvalPyObjects(context, frame, Elts));
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
@@ -1246,6 +1246,14 @@ public sealed class StarredNode : AstExprNode, IExprContextNode
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        throw new NotImplementedException();
+        throw new NotSupportedException();
+    }
+
+    internal IReadOnlyList<PyObject> Unpack(PyCallContext context, PyFrame frame)
+    {
+        var value = Value.GetExprValue(context, frame);
+        if (!Utils.TryEnumeratedIterable(context, value, out var result, out var err))
+            err.Value.PyThrow(context);
+        return result;
     }
 }
