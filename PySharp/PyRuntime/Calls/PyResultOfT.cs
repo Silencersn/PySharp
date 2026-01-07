@@ -49,6 +49,16 @@ public readonly partial struct PyResult<TObject> where TObject : PyObject
     {
         return result.IsSuccessful ? PyResult.FromValue(result.Value) : PyResult.FromException(result.Exception);
     }
+    public PyResult<TOtherObject> Of<TOtherObject>() where TOtherObject : PyObject
+    {
+        if (IsError)
+            return PyResult<TOtherObject>.FromException(Exception);
+
+        if (Value is TOtherObject objOfOtherT)
+            return objOfOtherT;
+
+        throw new InvalidOperationException();
+    }
 
     public static PyResult<TObject> FromValue(TObject value)
     {

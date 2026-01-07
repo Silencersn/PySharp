@@ -139,6 +139,7 @@ partial class PyTypeObject<TObject>
         AppendFunction(ref Slots.GetItem, GetItem);
         AppendFunction(ref Slots.SetItem, SetItem);
         AppendFunction(ref Slots.DelItem, DelItem);
+        AppendFunction(ref Slots.Contains, Contains);
 
         // Binary operators
         AppendFunction(ref Slots.Add, Add);

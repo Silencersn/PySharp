@@ -993,6 +993,7 @@ public sealed class ClassDefNode : AstStmtNode, IScopedSubNodesProvider
                 case PySpecialNames.GetItem: type.Slots.GetItem = value.ToBinaryFunction(); break;
                 case PySpecialNames.SetItem: type.Slots.SetItem = value.ToTernaryFunction(); break;
                 case PySpecialNames.DelItem: type.Slots.DelItem = value.ToBinaryFunction(); break;
+                case PySpecialNames.Contains: type.Slots.Contains = value.ToBinaryFunction(); break;
 
                 // Binary operators
                 case PySpecialNames.Add: type.Slots.Add = value.ToBinaryFunction(); break;

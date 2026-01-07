@@ -342,7 +342,7 @@ public static class PyOperators
 
     public static PyResult In(PyCallContext context, PyObject left, PyObject right)
     {
-        return right.Contains(context, left);
+        return PySpecialMethods.Contains(context, right, left);
     }
     public static PyResult NotIn(PyCallContext context, PyObject left, PyObject right)
     {

@@ -42,6 +42,16 @@ public static class PySpecialMethods
         if (boolFunc is not null)
             return CallUnaryFunction<PyBoolObject>(context, obj, boolFunc, static o => $"{PySpecialNames.Bool} returned non-bool (type {o.PyType.FullName})");
 
+        var lenFunc = obj.PyType.Slots.Len;
+        if (lenFunc is not null)
+        {
+            var result = Len(context, obj);
+            if (result.IsError)
+                return result.Of<PyBoolObject>();
+
+            return PyBoolObject.FromBoolean(result.Value.Value > 0);
+        }
+
         return CallUnaryFunction<PyBoolObject>(context, obj, obj.PyType.DefaultBool, static o => $"{PySpecialNames.Bool} returned non-bool (type {o.PyType.FullName})");
     }
 
@@ -76,7 +86,16 @@ public static class PySpecialMethods
     {
         var func = obj.PyType.Slots.Len;
         if (func is not null)
-            return CallUnaryFunction<PyIntObject>(context, obj, func, static o => $"{PySpecialNames.Len} returned non-int (type {o.PyType.FullName})");
+        {
+            var result = CallUnaryFunction<PyIntObject>(context, obj, func, static o => $"{PySpecialNames.Len} returned non-int (type {o.PyType.FullName})");
+            if (result.IsError)
+                return result;
+
+            if (result.Value.Value >= 0)
+                return result;
+
+            return PyResult.RaiseValueError("__len__() should return >= 0").Of<PyIntObject>();
+        }
 
         return PyResult.RaiseTypeError($"object of type '{obj.PyType.FullName}' has no len()").Of<PyIntObject>();
     }
@@ -128,6 +147,39 @@ public static class PySpecialMethods
             return PyResult.RaiseTypeError($"'{obj.PyType.FullName}' object is not subscriptable");
 
         return func(context, obj, key);
+    }
+
+    public static PyResult Contains(PyCallContext context, PyObject obj, PyObject item)
+    {
+        var func = obj.PyType.Slots.Contains;
+        if (func is not null)
+            return func(context, obj, item);
+
+        var iter = Iter(context, obj);
+        if (iter.IsError)
+            return iter;
+
+        var element = Next(context, iter.Value);
+        while (!element.IsStopIteration)
+        {
+            if (element.IsError)
+                return element;
+
+            var eq = PyOperators.Eq(context, element.Value, item);
+            if (eq.IsError)
+                return eq;
+
+            var b = Bool(context, eq.Value);
+            if (b.IsError)
+                return b;
+
+            if (b.Value.BoolValue)
+                return PyBoolObject.True;
+
+            element = Next(context, iter.Value);
+        }
+
+        return PyBoolObject.False;
     }
 
     public static PyResult DivMod(PyCallContext context, PyObject left, PyObject right)

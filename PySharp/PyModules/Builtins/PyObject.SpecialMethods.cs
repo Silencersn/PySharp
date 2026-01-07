@@ -26,10 +26,6 @@ partial class PyObject
     {
         return PyType.Invert(context, this);
     }
-    public PyResult Contains(PyCallContext context, PyObject item)
-    {
-        return PyType.Contains(context, this, item);
-    }
     public PyResult DivMod(PyCallContext context, PyObject other)
     {
         return PyType.DivMod(context, this, other);
