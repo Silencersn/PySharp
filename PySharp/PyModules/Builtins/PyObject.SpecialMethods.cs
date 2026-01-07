@@ -10,14 +10,6 @@ partial class PyObject
     {
         return PyType.Complex(context, this);
     }
-    public PyResult Iter(PyCallContext context)
-    {
-        return PyType.Iter(context, this);
-    }
-    public PyResult Next(PyCallContext context)
-    {
-        return PyType.Next(context, this);
-    }
     public PyResult Abs(PyCallContext context)
     {
         return PyType.Abs(context, this);
@@ -37,18 +29,6 @@ partial class PyObject
     public PyResult Contains(PyCallContext context, PyObject item)
     {
         return PyType.Contains(context, this, item);
-    }
-    public PyResult GetItem(PyCallContext context, PyObject key)
-    {
-        return PyType.GetItem(context, this, key);
-    }
-    public PyResult SetItem(PyCallContext context, PyObject key, PyObject value)
-    {
-        return PyType.SetItem(context, this, key, value);
-    }
-    public PyResult DelItem(PyCallContext context, PyObject key)
-    {
-        return PyType.DelItem(context, this, key);
     }
     public PyResult DivMod(PyCallContext context, PyObject other)
     {

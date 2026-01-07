@@ -125,54 +125,60 @@ partial class PyTypeObject<TObject>
 
     private void AppendOverridenSpecialMethodDescriptors2()
     {
-        AppendUnaryFunction(ref Slots.Str, Str);
-        AppendUnaryFunction(ref Slots.Repr, Repr);
-        AppendUnaryFunction(ref Slots.Bool, Bool);
-        AppendUnaryFunction(ref Slots.Hash, Hash);
-        AppendUnaryFunction(ref Slots.Len, Len);
-        AppendUnaryFunction(ref Slots.Index, Index);
-        AppendUnaryFunction(ref Slots.Int, Int);
-        AppendUnaryFunction(ref Slots.Float, Float);
+        AppendFunction(ref Slots.Str, Str);
+        AppendFunction(ref Slots.Repr, Repr);
+        AppendFunction(ref Slots.Bool, Bool);
+        AppendFunction(ref Slots.Hash, Hash);
+        AppendFunction(ref Slots.Len, Len);
+        AppendFunction(ref Slots.Index, Index);
+        AppendFunction(ref Slots.Int, Int);
+        AppendFunction(ref Slots.Float, Float);
+
+        AppendFunction(ref Slots.Iter, Iter);
+        AppendFunction(ref Slots.Next, Next);
+        AppendFunction(ref Slots.GetItem, GetItem);
+        AppendFunction(ref Slots.SetItem, SetItem);
+        AppendFunction(ref Slots.DelItem, DelItem);
 
         // Binary operators
-        AppendBinaryFunction(ref Slots.Add, Add);
-        AppendBinaryFunction(ref Slots.Sub, Sub);
-        AppendBinaryFunction(ref Slots.Mul, Mul);
-        AppendBinaryFunction(ref Slots.TrueDiv, TrueDiv);
-        AppendBinaryFunction(ref Slots.FloorDiv, FloorDiv);
-        AppendBinaryFunction(ref Slots.Mod, Mod);
-        AppendBinaryFunction(ref Slots.DivMod, DivMod);
-        AppendBinaryFunction(ref Slots.LShift, LShift);
-        AppendBinaryFunction(ref Slots.RShift, RShift);
-        AppendBinaryFunction(ref Slots.And, And);
-        AppendBinaryFunction(ref Slots.Xor, Xor);
-        AppendBinaryFunction(ref Slots.Or, Or);
+        AppendFunction(ref Slots.Add, Add);
+        AppendFunction(ref Slots.Sub, Sub);
+        AppendFunction(ref Slots.Mul, Mul);
+        AppendFunction(ref Slots.TrueDiv, TrueDiv);
+        AppendFunction(ref Slots.FloorDiv, FloorDiv);
+        AppendFunction(ref Slots.Mod, Mod);
+        AppendFunction(ref Slots.DivMod, DivMod);
+        AppendFunction(ref Slots.LShift, LShift);
+        AppendFunction(ref Slots.RShift, RShift);
+        AppendFunction(ref Slots.And, And);
+        AppendFunction(ref Slots.Xor, Xor);
+        AppendFunction(ref Slots.Or, Or);
 
         // Reverse binary operators
-        AppendBinaryFunction(ref Slots.RAdd, RAdd);
-        AppendBinaryFunction(ref Slots.RSub, RSub);
-        AppendBinaryFunction(ref Slots.RMul, RMul);
-        AppendBinaryFunction(ref Slots.RTrueDiv, RTrueDiv);
-        AppendBinaryFunction(ref Slots.RFloorDiv, RFloorDiv);
-        AppendBinaryFunction(ref Slots.RMod, RMod);
-        AppendBinaryFunction(ref Slots.RDivMod, RDivMod);
-        AppendBinaryFunction(ref Slots.RLShift, RLShift);
-        AppendBinaryFunction(ref Slots.RRShift, RRShift);
-        AppendBinaryFunction(ref Slots.RAnd, RAnd);
-        AppendBinaryFunction(ref Slots.RXor, RXor);
-        AppendBinaryFunction(ref Slots.ROr, ROr);
+        AppendFunction(ref Slots.RAdd, RAdd);
+        AppendFunction(ref Slots.RSub, RSub);
+        AppendFunction(ref Slots.RMul, RMul);
+        AppendFunction(ref Slots.RTrueDiv, RTrueDiv);
+        AppendFunction(ref Slots.RFloorDiv, RFloorDiv);
+        AppendFunction(ref Slots.RMod, RMod);
+        AppendFunction(ref Slots.RDivMod, RDivMod);
+        AppendFunction(ref Slots.RLShift, RLShift);
+        AppendFunction(ref Slots.RRShift, RRShift);
+        AppendFunction(ref Slots.RAnd, RAnd);
+        AppendFunction(ref Slots.RXor, RXor);
+        AppendFunction(ref Slots.ROr, ROr);
 
         // Ternary operators
-        AppendTernaryFunction(ref Slots.Pow, Pow);
-        AppendTernaryFunction(ref Slots.RPow, RPow);
+        AppendFunction(ref Slots.Pow, Pow);
+        AppendFunction(ref Slots.RPow, RPow);
 
         // Rich comparison operators
-        AppendBinaryFunction(ref Slots.Lt, Lt);
-        AppendBinaryFunction(ref Slots.Le, Le);
-        AppendBinaryFunction(ref Slots.Eq, Eq);
-        AppendBinaryFunction(ref Slots.Ne, Ne);
-        AppendBinaryFunction(ref Slots.Gt, Gt);
-        AppendBinaryFunction(ref Slots.Ge, Ge);
+        AppendFunction(ref Slots.Lt, Lt);
+        AppendFunction(ref Slots.Le, Le);
+        AppendFunction(ref Slots.Eq, Eq);
+        AppendFunction(ref Slots.Ne, Ne);
+        AppendFunction(ref Slots.Gt, Gt);
+        AppendFunction(ref Slots.Ge, Ge);
 
         bool IsOverriden(MethodInfo method)
         {
@@ -184,17 +190,7 @@ partial class PyTypeObject<TObject>
             return method.DeclaringType != typeof(PyTypeObject<TObject>);
         }
 
-        void AppendUnaryFunction(ref PyUnaryFunction? field, PyUnaryFunction func)
-        {
-            if (IsOverriden(func.Method))
-                field = func;
-        }
-        void AppendBinaryFunction(ref PyBinaryFunction? field, PyBinaryFunction func)
-        {
-            if (IsOverriden(func.Method))
-                field = func;
-        }
-        void AppendTernaryFunction(ref PyTernaryFunction? field, PyTernaryFunction func)
+        void AppendFunction<TDelegate>(ref TDelegate? field, TDelegate func) where TDelegate : Delegate
         {
             if (IsOverriden(func.Method))
                 field = func;

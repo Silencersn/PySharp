@@ -81,6 +81,55 @@ public static class PySpecialMethods
         return PyResult.RaiseTypeError($"object of type '{obj.PyType.FullName}' has no len()").Of<PyIntObject>();
     }
 
+    public static PyResult Iter(PyCallContext context, PyObject obj)
+    {
+        var iterFunc = obj.PyType.Slots.Iter;
+        if (iterFunc is not null)
+            return iterFunc(context, obj);
+
+        var getItemFunc = obj.PyType.Slots.GetItem;
+        if (getItemFunc is not null)
+            return new PyIteratorObject(obj);
+
+        return PyResult.RaiseTypeError($"'{obj.PyType.FullName}' object is not iterable");
+    }
+
+    public static PyResult Next(PyCallContext context, PyObject obj)
+    {
+        var func = obj.PyType.Slots.Next;
+        if (func is null)
+            return PyResult.RaiseTypeError($"iter() returned non-iterator of type '{obj.PyType.FullName}'");
+
+        return func(context, obj);
+    }
+
+    public static PyResult GetItem(PyCallContext context, PyObject obj, PyObject key)
+    {
+        var func = obj.PyType.Slots.GetItem;
+        if (func is null)
+            return PyResult.RaiseTypeError($"'{obj.PyType.FullName}' object is not subscriptable");
+
+        return func(context, obj, key);
+    }
+
+    public static PyResult SetItem(PyCallContext context, PyObject obj, PyObject key, PyObject value)
+    {
+        var func = obj.PyType.Slots.SetItem;
+        if (func is null)
+            return PyResult.RaiseTypeError($"'{obj.PyType.FullName}' object is not subscriptable");
+
+        return func(context, obj, key, value);
+    }
+
+    public static PyResult DelItem(PyCallContext context, PyObject obj, PyObject key)
+    {
+        var func = obj.PyType.Slots.DelItem;
+        if (func is null)
+            return PyResult.RaiseTypeError($"'{obj.PyType.FullName}' object is not subscriptable");
+
+        return func(context, obj, key);
+    }
+
     public static PyResult DivMod(PyCallContext context, PyObject left, PyObject right)
     {
         var ret = left.DivMod(context, right);
@@ -94,15 +143,5 @@ public static class PySpecialMethods
     public static PyResult Abs(PyCallContext context, PyObject obj)
     {
         return obj.Abs(context);
-    }
-
-    public static PyResult Iter(PyCallContext context, PyObject obj)
-    {
-        return obj.Iter(context);
-    }
-
-    public static PyResult Next(PyCallContext context, PyObject obj)
-    {
-        return obj.Next(context);
     }
 }

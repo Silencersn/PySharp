@@ -220,14 +220,14 @@ public sealed class SubscriptNode : AstExprNode, IExprContextNode, ITargetNode
     {
         var value = Value.GetExprValue(context, frame);
         var slice = Slice.GetExprValue(context, frame);
-        return value.GetItem(context, slice).PyUnwrap(context);
+        return PySpecialMethods.GetItem(context, value, slice).PyUnwrap(context);
     }
 
     public PyObject SetItem(PyCallContext context, PyFrame frame, PyObject obj)
     {
         var value = Value.GetExprValue(context, frame);
         var slice = Slice.GetExprValue(context, frame);
-        return value.SetItem(context, slice, obj).PyUnwrap(context);
+        return PySpecialMethods.SetItem(context, value, slice, obj).PyUnwrap(context);
     }
 
     public PyObject DelItem(PyFrame frame, PyCallContext context)
@@ -1163,8 +1163,8 @@ public sealed class YieldFromNode : AstExprNode
     {
         Debug.Assert(frame.FrameType is FrameType.YieldFunction or FrameType.YieldLambda);
 
-        var iter = Value.GetExprValue(context, frame).Iter(context).PyUnwrap(context);
-        var value = iter.Next(context).PyUnwrap(context);
+        var iter = PySpecialMethods.Iter(context, Value.GetExprValue(context, frame)).PyUnwrap(context);
+        var value = PySpecialMethods.Next(context, iter).PyUnwrap(context);
         while (true)
         {
             frame._tcsWaitAtStartOrYield = new();
@@ -1174,7 +1174,7 @@ public sealed class YieldFromNode : AstExprNode
             switch (callerAction.Type)
             {
                 case YieldCallerAction.ActionType.Next:
-                    var iterNextRet = iter.Next(context);
+                    var iterNextRet = PySpecialMethods.Next(context, iter);
                     if (iterNextRet.IsStopIteration)
                         return iterNextRet.Exception.Args.ElementAtOrDefault(0) ?? PyNoneObject.None;
                     value = iterNextRet.PyUnwrap(context);

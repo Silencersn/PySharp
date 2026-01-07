@@ -1,4 +1,5 @@
-﻿using PySharp.PyRuntime.Calls;
+﻿using PySharp.PyRuntime;
+using PySharp.PyRuntime.Calls;
 
 namespace PySharp.PyModules.Builtins;
 
@@ -33,6 +34,6 @@ public sealed class PyTupleIteratorObjectType : PyTypeObject<PyTupleIteratorObje
             self._index = -2;
             return PyResult.RaiseStopIteration();
         }
-        return self._tuple.GetItem(context, PyIntObject.FromInteger(self._index));
+        return PySpecialMethods.GetItem(context, self._tuple, PyIntObject.FromInteger(self._index));
     }
 }

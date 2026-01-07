@@ -167,4 +167,11 @@ public sealed class TestPyFiles
         var module = PyInterpreter.RunFile(Path.Combine(PyFilesPath, "test_slice.py"));
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestIter()
+    {
+        var module = PyInterpreter.RunFile(Path.Combine(PyFilesPath, "test_iter.py"));
+        Assert.IsNotNull(module);
+    }
 }

@@ -12,6 +12,8 @@ partial class PyTypeObject
 
     internal sealed class PyTypeSlots
     {
+        // TODO: support different protocols
+
         internal PyUnaryFunction? Str;
         internal PyUnaryFunction? Repr;
         internal PyUnaryFunction? Bool;
@@ -20,6 +22,12 @@ partial class PyTypeObject
         internal PyUnaryFunction? Index;
         internal PyUnaryFunction? Int;
         internal PyUnaryFunction? Float;
+
+        internal PyUnaryFunction? Iter;
+        internal PyUnaryFunction? Next;
+        internal PyBinaryFunction? GetItem;
+        internal PyTernaryFunction? SetItem;
+        internal PyBinaryFunction? DelItem;
 
         // Binary operators
         internal PyBinaryFunction? Add;

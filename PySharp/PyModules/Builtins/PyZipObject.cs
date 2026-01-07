@@ -36,7 +36,7 @@ public sealed class PyZipObjectType : PyTypeObject<PyZipObjectType, PyZipObject>
         List<PyObject> iterables = [];
         foreach (var arg in arguments.ExtraArgs)
         {
-            var iter = arg.Iter(context);
+            var iter = PySpecialMethods.Iter(context, arg);
             if (iter.IsError)
                 return iter;
             iterables.Add(iter.Value);
@@ -76,7 +76,7 @@ public sealed class PyZipObjectType : PyTypeObject<PyZipObjectType, PyZipObject>
         for (int i = 0; i < self._iterables.Length; i++)
         {
             var iterable = self._iterables[i];
-            var item = iterable.Next(context);
+            var item = PySpecialMethods.Next(context, iterable);
             if (item.IsError)
             {
                 if (item.IsStopIteration)

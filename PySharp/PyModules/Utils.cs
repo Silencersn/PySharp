@@ -13,7 +13,7 @@ internal static class Utils
     {
         while (true)
         {
-            var item = iterator.Next(context);
+            var item = PySpecialMethods.Next(context, iterator);
             if (item.IsError)
             {
                 if (item.IsStopIteration)
@@ -29,7 +29,7 @@ internal static class Utils
 
     public static bool TryEnumerateIterable(PyCallContext context, PyObject iterable, [NotNullWhen(true)] out IEnumerable<PyResult>? result, [NotNullWhen(false)] out PyResult? err)
     {
-        var iter = iterable.Iter(context);
+        var iter = PySpecialMethods.Iter(context, iterable);
         if (iter.IsError)
         {
             result = null;
@@ -47,7 +47,7 @@ internal static class Utils
         var list = new List<PyObject>();
         while (true)
         {
-            var item = iterator.Next(context);
+            var item = PySpecialMethods.Next(context, iterator);
             if (item.IsError)
             {
                 if (item.IsStopIteration)
@@ -68,7 +68,7 @@ internal static class Utils
 
     public static bool TryEnumeratedIterable(PyCallContext context, PyObject iterable, [NotNullWhen(true)] out IReadOnlyList<PyObject>? result, [NotNullWhen(false)] out PyResult? err)
     {
-        var iter = iterable.Iter(context);
+        var iter = PySpecialMethods.Iter(context, iterable);
         if (iter.IsError)
         {
             result = null;

@@ -27,7 +27,7 @@ internal sealed class PyIterator : IPyEnumerable
     {
         while (true)
         {
-            var item = _iterator.Next(_context);
+            var item = PySpecialMethods.Next(_context, _iterator);
             if (item.IsError)
             {
                 if (item.IsStopIteration)
