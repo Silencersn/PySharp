@@ -178,20 +178,20 @@ public sealed class PyObjectType : PyTypeObject<PyObjectType, PyObject>
 
     public PyObjectType()
     {
-        FillSlot(PySpecialNames.Repr, ref Slots.Repr, Repr);
-        FillSlot(PySpecialNames.Str, ref Slots.Str, Str);
-        FillSlot(PySpecialNames.Bool, ref Slots.Bool, Bool);
-        FillSlot(PySpecialNames.Hash, ref Slots.Hash, Hash);
-        FillSlot(PySpecialNames.Eq, ref Slots.Eq, Eq);
-        FillSlot(PySpecialNames.Ne, ref Slots.Ne, Ne);
-        FillSlot(PySpecialNames.Lt, ref Slots.Lt, Lt);
-        FillSlot(PySpecialNames.Le, ref Slots.Le, Le);
-        FillSlot(PySpecialNames.Gt, ref Slots.Gt, Gt);
-        FillSlot(PySpecialNames.Ge, ref Slots.Ge, Ge);
-        FillSlot(PySpecialNames.GetAttribute, ref Slots.GetAttribute, GetAttribute);
-        FillSlot(PySpecialNames.SetAttr, ref Slots.SetAttr, SetAttr);
-        FillSlot(PySpecialNames.DelAttr, ref Slots.DelAttr, DelAttr);
-        FillSlot(PySpecialNames.Init, ref Slots.Init, Init);
+        FillSlot(PySpecialNames.Repr, ref Slots.Repr, DefaultRepr);
+        FillSlot(PySpecialNames.Str, ref Slots.Str, DefaultStr);
+        FillSlot(PySpecialNames.Bool, ref Slots.Bool, DefaultBool);
+        FillSlot(PySpecialNames.Hash, ref Slots.Hash, DefaultHash);
+        FillSlot(PySpecialNames.Eq, ref Slots.Eq, DefaultEq);
+        FillSlot(PySpecialNames.Ne, ref Slots.Ne, DefaultNe);
+        FillSlot(PySpecialNames.Lt, ref Slots.Lt, DefaultBinaryOperator);
+        FillSlot(PySpecialNames.Le, ref Slots.Le, DefaultBinaryOperator);
+        FillSlot(PySpecialNames.Gt, ref Slots.Gt, DefaultBinaryOperator);
+        FillSlot(PySpecialNames.Ge, ref Slots.Ge, DefaultBinaryOperator);
+        FillSlot(PySpecialNames.GetAttribute, ref Slots.GetAttribute, DefaultGetAttribute);
+        FillSlot(PySpecialNames.SetAttr, ref Slots.SetAttr, DefaultSetAttr);
+        FillSlot(PySpecialNames.DelAttr, ref Slots.DelAttr, DefaultDelAttr);
+        FillSlot(PySpecialNames.Init, ref Slots.Init, DefaultInit);
 
         void FillSlot<TDelegate>(string name, ref TDelegate? field, TDelegate func) where TDelegate : Delegate
         {

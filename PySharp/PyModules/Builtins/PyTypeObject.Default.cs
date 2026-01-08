@@ -1,6 +1,5 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
-using System.Xml.Linq;
 
 namespace PySharp.PyModules.Builtins;
 
@@ -147,5 +146,29 @@ partial class PyTypeObject
 
         return PyResult.RaiseValueError($"unsupported format string passed to {self.PyType.FullName}.__format__");
 
+    }
+
+    internal static PyResult DefaultInit(PyCallContext context, PyObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        return PyNoneObject.None;
+    }
+    internal static PyResult DefaultBinaryOperator(PyCallContext context, PyObject self, PyObject other)
+    {
+        return PyNotImplementedObject.NotImplemented;
+    }
+    internal static PyResult DefaultEq(PyCallContext context, PyObject self, PyObject other)
+    {
+        if (ReferenceEquals(self, other))
+            return PyBoolObject.True;
+
+        return PyNotImplementedObject.NotImplemented;
+    }
+    internal static PyResult DefaultNe(PyCallContext context, PyObject self, PyObject other)
+    {
+        var eq = PyOperators.Eq(context, self, other);
+        if (eq.IsError || eq.IsNotImplemented)
+            return eq;
+
+        return PyOperators.Not(context, eq.Value);
     }
 }
