@@ -68,9 +68,13 @@ public sealed class PyTypeObjectType : PyTypeObject<PyTypeObjectType, PyTypeObje
         var pyObject = result.Value;
         if (self.IsInstance(pyObject))
         {
-            var initResult = self.Init(context, pyObject, args, kwargs);
-            if (initResult.IsError)
-                return initResult;
+            var initFunc = self.Slots.Init;
+            if (initFunc is not null)
+            {
+                var initResult = initFunc(context, pyObject, args, kwargs);
+                if (initResult.IsError)
+                    return initResult;
+            }
         }
 
         return pyObject;

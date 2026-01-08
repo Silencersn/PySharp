@@ -143,7 +143,7 @@ partial class PyTypeObject
             return PyResult.RaiseTypeError($"format() argument 2 must be str, not {formatSpec.PyType.FullName}");
 
         if (str.Value.Length is 0)
-            return self.PyType.Str(context, self);
+            return PySpecialMethods.Str(context, self);
 
         return PyResult.RaiseValueError($"unsupported format string passed to {self.PyType.FullName}.__format__");
 

@@ -65,7 +65,7 @@ partial class PyTypeObject<TObject>
     protected internal virtual PyResult Int(PyCallContext context, TObject self)
     {
         // TOOD: is this implementation correct?
-        var index = self.PyType.Index(context, self);
+        var index = PySpecialMethods.Index(context, self);
         if (index.IsError)
             return index;
 
@@ -74,7 +74,7 @@ partial class PyTypeObject<TObject>
     protected internal virtual PyResult Float(PyCallContext context, TObject self)
     {
         // TOOD: is this implementation correct?
-        var index = self.PyType.Index(context, self);
+        var index = PySpecialMethods.Index(context, self);
         if (index.IsError)
             return index;
 
@@ -87,7 +87,7 @@ partial class PyTypeObject<TObject>
     protected internal virtual PyResult Complex(PyCallContext context, TObject self)
     {
         // TOOD: is this implementation correct?
-        var index = self.PyType.Index(context, self);
+        var index = PySpecialMethods.Index(context, self);
         if (index.IsError)
             return index;
 
