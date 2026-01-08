@@ -1091,7 +1091,7 @@ public sealed class FormattedValueNode : AstExprNode
         {
             var spec = FormatSpec.GetExprValue(context, frame);
             Debug.Assert(spec is PyStrObject);
-            result = result.Format(context, ((PyStrObject)spec).Value).PyUnwrap(context);
+            result = PySpecialMethods.Format(context, result, spec).PyUnwrap(context);
         }
 
         return result;

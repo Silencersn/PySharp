@@ -408,7 +408,7 @@ partial class PyTypeObject<TObject>
         return SetName(context, selfOfT, owner, name);
     }
 
-    protected internal sealed override PyResult Format(PyCallContext context, PyObject self, string formatSpec)
+    protected internal sealed override PyResult Format(PyCallContext context, PyObject self, PyObject formatSpec)
     {
         if (self is not TObject selfOfT)
             return PyResult.RaiseTypeError($"'{PySpecialNames.Format}' requires a '{Name}' object but received a '{self.PyType.Name}'");

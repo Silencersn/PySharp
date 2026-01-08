@@ -397,17 +397,29 @@ public static class PyOperators
         return PyBoolObject.FromBoolean(!result.Value.BoolValue);
     }
 
+    private static PyResult EvalUnaryOperator(PyCallContext context, PyObject value, PyUnaryFunction? func, char op)
+    {
+        if (func is not null)
+        {
+            var result = func(context, value);
+            if (!result.IsNotImplemented)
+                return result;
+        }
+
+        return PyResult.RaiseTypeError($"bad operand type for unary {op}: '{value.PyType.FullName}'");
+    }
+
     public static PyResult Invert(PyCallContext context, PyObject value)
     {
-        return value.Invert(context);
+        return EvalUnaryOperator(context, value, value.PyType.Slots.Invert, '~');
     }
 
     public static PyResult UAdd(PyCallContext context, PyObject value)
     {
-        return value.Pos(context);
+        return EvalUnaryOperator(context, value, value.PyType.Slots.Pos, '+');
     }
     public static PyResult USub(PyCallContext context, PyObject value)
     {
-        return value.Neg(context);
+        return EvalUnaryOperator(context, value, value.PyType.Slots.Neg, '-');
     }
 }

@@ -1,5 +1,6 @@
 ﻿using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime.Calls;
+using System;
 using System.Collections.Frozen;
 using System.Diagnostics.CodeAnalysis;
 
@@ -185,17 +186,32 @@ public static class PySpecialMethods
 
     public static PyResult DivMod(PyCallContext context, PyObject left, PyObject right)
     {
-        var ret = left.DivMod(context, right);
-        if (!ret.IsNotImplemented)
-            return ret;
+        var func = left.PyType.Slots.DivMod;
+        if (func is not null)
+        {
+            var result = func(context, left, right);
+            if (!result.IsNotImplemented)
+                return result;
+        }
 
-        ret = right.RDivMod(context, left);
-        return ret;
+        func = right.PyType.Slots.RDivMod;
+        if (func is not null)
+        {
+            var result = func(context, right, left);
+            if (!result.IsNotImplemented)
+                return result;
+        }
+
+        return PyResult.RaiseTypeError($"unsupported operand type(s) for divmod(): '{left.PyType.FullName}' and '{right.PyType.FullName}'");
     }
 
     public static PyResult Abs(PyCallContext context, PyObject obj)
     {
-        return obj.Abs(context);
+        var func = obj.PyType.Slots.Abs;
+        if (func is not null)
+            return func(context, obj);
+
+        return PyResult.RaiseTypeError($"bad operand type for abs(): '{obj.PyType.FullName}'");
     }
 
     public static PyResult Call(PyCallContext context, PyObject callable, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
@@ -215,5 +231,11 @@ public static class PySpecialMethods
     public static PyResult Call(this PyObject callable, PyCallContext context, IReadOnlyList<PyObject> args)
     {
         return Call(context, callable, args, FrozenDictionary<string, PyObject>.Empty);
+    }
+
+    public static PyResult Format(PyCallContext context, PyObject obj, PyObject formatSpec)
+    {
+        var func = obj.PyType.Slots.Format ?? PyTypeObject.DefaultFormat;
+        return func(context, obj, formatSpec);
     }
 }

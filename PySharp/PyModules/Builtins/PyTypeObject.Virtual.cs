@@ -289,7 +289,7 @@ partial class PyTypeObject
         throw new UnreachableException("Implemented by PyTypeObject<TObject>");
     }
 
-    protected internal virtual PyResult Format(PyCallContext context, PyObject self, string formatSpec)
+    protected internal virtual PyResult Format(PyCallContext context, PyObject self, PyObject formatSpec)
     {
         throw new UnreachableException("Implemented by PyTypeObject<TObject>");
     }

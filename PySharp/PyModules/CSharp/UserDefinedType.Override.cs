@@ -419,10 +419,10 @@ partial class UserDefinedType<TObject> : PyTypeObject<TObject> where TObject : P
         return PyResult.RaiseAttributeError($"'{Name}' object has no attribute '{PySpecialNames.SetName}'.");
     }
 
-    protected internal override PyResult Format(PyCallContext context, TObject self, string formatSpec)
+    protected internal override PyResult Format(PyCallContext context, TObject self, PyObject formatSpec)
     {
         if (TryLookupAttrInMro(this, PySpecialNames.Format, out var method))
-            return method.Call(context, [self, PyStrObject.FromString(formatSpec)], FrozenDictionary<string, PyObject>.Empty);
+            return method.Call(context, [self, formatSpec], FrozenDictionary<string, PyObject>.Empty);
         return PyResult.RaiseAttributeError($"'{Name}' object has no attribute '{PySpecialNames.Format}'.");
     }
 }

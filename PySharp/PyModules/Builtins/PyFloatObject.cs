@@ -255,10 +255,13 @@ public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatO
             _ => base.Eq(context, self, other),
         };
     }
-    protected internal override PyResult Format(PyCallContext context, PyFloatObject self, string formatSpec)
+    protected internal override PyResult Format(PyCallContext context, PyFloatObject self, PyObject formatSpec)
     {
-        if (!PyFormatSpec.TryParse(formatSpec, out var spec))
-            return PyResult.RaiseValueError($"Invalid format specifier '{formatSpec}' for object of type '{Name}'");
+        if (formatSpec is not PyStrObject str)
+            return PyResult.RaiseTypeError($"format() argument 2 must be str, not {formatSpec.PyType.FullName}");
+
+        if (!PyFormatSpec.TryParse(str.Value, out var spec))
+            return PyResult.RaiseValueError($"Invalid format specifier '{str.Value}' for object of type '{Name}'");
         int precision = spec.Precision ?? 6;
         string text;
         if (!double.IsNormal(self.Value))

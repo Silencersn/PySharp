@@ -320,12 +320,9 @@ partial class PyTypeObject<TObject>
         return PyNoneObject.None;
     }
 
-    protected internal virtual PyResult Format(PyCallContext context, TObject self, string formatSpec)
+    protected internal virtual PyResult Format(PyCallContext context, TObject self, PyObject formatSpec)
     {
-        if (formatSpec.Length is 0)
-            return self.PyType.Str(context, self);
-
-        return PyResult.RaiseValueError($"unsupported format string passed to {Name}.__format__");
+        return DefaultFormat(context, self, formatSpec);
     }
 
 }

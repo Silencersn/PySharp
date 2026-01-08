@@ -974,8 +974,9 @@ public sealed class ClassDefNode : AstStmtNode, IScopedSubNodesProvider
 
         foreach (var (name, value) in attrs)
         {
-            if (PyObject.PyObjectHasAttribute(value.PyType, PySpecialNames.SetName))
-                value.SetName(context, type, PyStrObject.FromString(name)).PyUnwrap(context);
+            var setNameFunc = value.PyType.Slots.SetName;
+            if (setNameFunc is not null)
+                setNameFunc(context, value, type, PyStrObject.FromString(name)).PyUnwrap(context);
 
             switch (name)
             {
@@ -1043,6 +1044,16 @@ public sealed class ClassDefNode : AstStmtNode, IScopedSubNodesProvider
                 case PySpecialNames.Ne: type.Slots.Ne = value.ToBinaryFunction(); break;
                 case PySpecialNames.Gt: type.Slots.Gt = value.ToBinaryFunction(); break;
                 case PySpecialNames.Ge: type.Slots.Ge = value.ToBinaryFunction(); break;
+
+                case PySpecialNames.Complex: type.Slots.Complex = value.ToUnaryFunction(); break;
+                case PySpecialNames.Abs: type.Slots.Abs = value.ToUnaryFunction(); break;
+                case PySpecialNames.Neg: type.Slots.Neg = value.ToUnaryFunction(); break;
+                case PySpecialNames.Pos: type.Slots.Pos = value.ToUnaryFunction(); break;
+                case PySpecialNames.Invert: type.Slots.Invert = value.ToUnaryFunction(); break;
+                case PySpecialNames.SetName: type.Slots.SetName = value.ToTernaryFunction(); break;
+                case PySpecialNames.Missing: type.Slots.Missing = value.ToBinaryFunction(); break;
+                case PySpecialNames.Init: type.Slots.Init = value.ToSelfArgsKwargsFunction(); break;
+                case PySpecialNames.Format: type.Slots.Format = value.ToBinaryFunction(); break;
             }
         }
 

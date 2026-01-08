@@ -79,6 +79,16 @@ partial class PyTypeObject
         internal PyTernaryFunction? Pow;
         internal PyTernaryFunction? RPow;
 
+        internal PyUnaryFunction? Complex;
+        internal PyUnaryFunction? Abs;
+        internal PyUnaryFunction? Neg;
+        internal PyUnaryFunction? Pos;
+        internal PyUnaryFunction? Invert;
+        internal PyTernaryFunction? SetName;
+        internal PyBinaryFunction? Missing;
+        internal PySelfArgsKwargsFunction? Init;
+        internal PyBinaryFunction? Format;
+
         internal PyTypeSlots Clone()
         {
             return (PyTypeSlots)MemberwiseClone();

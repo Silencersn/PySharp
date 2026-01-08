@@ -102,7 +102,7 @@ partial class PyTypeObject
     }
 
 
-    public static PyResult DefaultTypeGetAttribute(PyCallContext context, PyTypeObject self, PyObject item)
+    internal static PyResult DefaultTypeGetAttribute(PyCallContext context, PyTypeObject self, PyObject item)
     {
         if (item is not PyStrObject str)
             return PyResult.RaiseTypeError($"attribute name must be string, not '{item.PyType.FullName}'");
@@ -137,4 +137,15 @@ partial class PyTypeObject
         return PyResult.RaiseAttributeError($"'{self.PyType.Name}' object has no attribute '{name}'");
     }
 
+    internal static PyResult DefaultFormat(PyCallContext context, PyObject self, PyObject formatSpec)
+    {
+        if (formatSpec is not PyStrObject str)
+            return PyResult.RaiseTypeError($"format() argument 2 must be str, not {formatSpec.PyType.FullName}");
+
+        if (str.Value.Length is 0)
+            return self.PyType.Str(context, self);
+
+        return PyResult.RaiseValueError($"unsupported format string passed to {self.PyType.FullName}.__format__");
+
+    }
 }
