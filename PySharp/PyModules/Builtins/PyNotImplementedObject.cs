@@ -20,7 +20,7 @@ public sealed class PyNotImplementedObjectType : PyTypeObject<PyNotImplementedOb
         return _repr;
     }
 
-    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (!PyArgsValidator.ValidateEmpty(args, kwargs, out var err))
             return err.Value;

@@ -200,7 +200,7 @@ public sealed class PyObjectType : PyTypeObject<PyObjectType, PyObject>
         }
     }
 
-    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (ReferenceEquals(cls, this) /* Do we need to consider an externally created PyObjectType? */
             && (args.Count is not 0 || kwargs.Count is not 0))

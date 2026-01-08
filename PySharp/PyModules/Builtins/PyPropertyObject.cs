@@ -84,7 +84,7 @@ public sealed class PyPropertyObjectType : PyTypeObject<PyPropertyObjectType, Py
         return self._fdel.Call(context, [instance], FrozenDictionary<string, PyObject>.Empty);
     }
 
-    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return _new.Call(context, args, kwargs);
     }

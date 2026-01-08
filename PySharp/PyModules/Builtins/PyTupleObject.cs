@@ -43,7 +43,7 @@ public sealed class PyTupleObjectType : PyTypeObject<PyTupleObjectType, PyTupleO
 {
     public override string Name => "tuple";
 
-    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (!PyArgsValidator.ValidateSinglePositionalArg(args, kwargs, out var err))
             return err.Value;

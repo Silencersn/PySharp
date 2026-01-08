@@ -117,7 +117,7 @@ public sealed class PyComplexObjectType : PyTypeObject<PyComplexObjectType, PyCo
             return PyBoolObject.FromBoolean(self.Value == new Complex(f.Value, 0));
         return base.Eq(context, self, other);
     }
-    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         double real = 0, imag = 0;
         if (args.Count > 0)

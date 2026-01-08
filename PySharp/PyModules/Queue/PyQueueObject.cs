@@ -56,7 +56,7 @@ public sealed class PyQueueObjectType : PyTypeObject<PyQueueObjectType, PyQueueO
         return new PyQueueObject(result.Value.Int32Value);
     }
 
-    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var obj = _new.Call(context, args, kwargs);
         if (obj.IsError)

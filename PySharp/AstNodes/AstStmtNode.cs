@@ -980,6 +980,8 @@ public sealed class ClassDefNode : AstStmtNode, IScopedSubNodesProvider
 
             switch (name)
             {
+                case PySpecialNames.New: type.Slots.New = value.ToClsArgsKwargsFunction(); break;
+
                 case PySpecialNames.Str: type.Slots.Str = value.ToUnaryFunction(); break;
                 case PySpecialNames.Repr: type.Slots.Repr = value.ToUnaryFunction(); break;
                 case PySpecialNames.Bool: type.Slots.Bool = value.ToUnaryFunction(); break;

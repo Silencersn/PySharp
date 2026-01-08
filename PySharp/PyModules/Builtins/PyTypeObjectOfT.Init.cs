@@ -1,6 +1,7 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.PyAttributes;
+using System;
 using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -23,6 +24,12 @@ partial class PyTypeObject<TObject>
 
     private void FillSlots()
     {
+        var type = GetType();
+        var methods = type.GetMethods(BindingFlags.NonPublic | BindingFlags.Instance);
+        var nameToMethod = methods
+            .Where(static method => method.GetBaseDefinition().DeclaringType == typeof(PyTypeObject<TObject>))
+            .ToDictionary(static method => method.Name);
+
         FillSlot(PySpecialNames.Str, ref Slots.Str, Str);
         FillSlot(PySpecialNames.Repr, ref Slots.Repr, Repr);
         FillSlot(PySpecialNames.Bool, ref Slots.Bool, Bool);
@@ -101,11 +108,7 @@ partial class PyTypeObject<TObject>
         bool IsOverriden(MethodInfo method)
         {
             var name = method.Name;
-            // TODO: cache
-            method = GetType()
-                .GetMethods(BindingFlags.NonPublic | BindingFlags.Instance)
-                .Single(method => method.Name == name && method.GetBaseDefinition().DeclaringType == typeof(PyTypeObject<TObject>));
-            return method.DeclaringType != typeof(PyTypeObject<TObject>);
+            return nameToMethod[name].DeclaringType != typeof(PyTypeObject<TObject>);
         }
 
         void FillSlot<TDelegate>(string name, ref TDelegate? field, TDelegate func) where TDelegate : Delegate
@@ -122,24 +125,27 @@ partial class PyTypeObject<TObject>
     {
         var newMethod = GetType()
             .GetMethods(BindingFlags.NonPublic | BindingFlags.Instance)
-            .Single(method => method.Name == "New" && method.GetBaseDefinition().DeclaringType == typeof(PyTypeObject));
-        if (newMethod.DeclaringType != typeof(PyTypeObject<TObject>))
+            .Single(method => method.Name == nameof(New) && method.GetBaseDefinition().DeclaringType == typeof(PyTypeObject));
+
+        if (newMethod.DeclaringType == typeof(PyTypeObject<TObject>))
+            return;
+
+        Slots.New = New;
+
+        var method = PyBuiltinFunctionOrMethodObject.CreateBoundMethodFromBound(PySpecialNames.New, this, null! /* TODO */, [PyFunctionArgsDef("cls", "*args", "**kwargs")] (context, arguments) =>
         {
-            var method = PyBuiltinFunctionOrMethodObject.CreateBoundMethodFromBound(PySpecialNames.New, this, null! /* TODO */, [PyFunctionArgsDef("cls", "*args", "**kwargs")] (context, arguments) =>
-            {
-                if (arguments[0] is not PyTypeObject cls)
-                    return PyResult.RaiseTypeError(null);
+            if (arguments[0] is not PyTypeObject cls)
+                return PyResult.RaiseTypeError($"{FullName}.__new__(X): X is not a type object ({arguments[0].PyType.FullName})");
 
-                if (!cls.IsSubclassOf(this))
-                    return PyResult.RaiseTypeError($"{Name}.__new__({cls.Name}): {cls.Name} is not a subtype of {Name}");
+            if (!cls.IsSubclassOf(this))
+                return PyResult.RaiseTypeError($"{FullName}.__new__({cls.FullName}): {cls.FullName} is not a subtype of {FullName}");
 
-                if (cls.LayoutType.IsSubclassOf(LayoutType))
-                    return PyResult.RaiseTypeError($"{Name}.__new__({cls.Name}) is not safe, use {cls.Name}.__new__()");
-                Debug.Assert(cls.LayoutType == LayoutType || LayoutType.IsSubclassOf(cls.LayoutType));
+            if (cls.LayoutType.IsSubclassOf(LayoutType))
+                return PyResult.RaiseTypeError($"{FullName}.__new__({cls.FullName}) is not safe, use {cls.FullName}.__new__()");
+            Debug.Assert(cls.LayoutType == LayoutType || LayoutType.IsSubclassOf(cls.LayoutType));
 
-                return New(context, cls, arguments.ExtraArgs, arguments.ExtraKwargs);
-            });
-            PyAttributes.Add(PySpecialNames.New, method);
-        }
+            return New(context, cls, arguments.ExtraArgs, arguments.ExtraKwargs);
+        });
+        PyAttributes.Add(PySpecialNames.New, method);
     }
 }

@@ -110,7 +110,7 @@ public abstract class PyExceptionType : PyTypeObject<PyExceptionObject>
         return new PyExceptionObject(this, [.. pyObjects]);
     }
 
-    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (kwargs.Count is not 0)
             return PyResult.RaiseTypeError(null);

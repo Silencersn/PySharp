@@ -53,7 +53,7 @@ public sealed class PyThreadObjectType : PyTypeObject<PyThreadObjectType, PyThre
         return new PyThreadObject(arguments[1], args._array, dict);
     }
 
-    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var obj = _new.Call(context, args, kwargs);
         if (obj.IsError)

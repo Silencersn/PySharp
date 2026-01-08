@@ -5,7 +5,7 @@ namespace PySharp.PyModules.Builtins;
 
 partial class PyTypeObject
 {
-    protected internal virtual PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected virtual PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         throw new UnreachableException("Implemented by PyTypeObject<TObject>");
     }

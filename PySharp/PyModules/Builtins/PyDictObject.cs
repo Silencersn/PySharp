@@ -84,7 +84,7 @@ public sealed class PyDictObjectType : PyTypeObject<PyDictObjectType, PyDictObje
         return PyDictObject.CreateDict(dict);
     }
 
-    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var obj = _new.Call(context, args, kwargs);
         if (obj.IsError)

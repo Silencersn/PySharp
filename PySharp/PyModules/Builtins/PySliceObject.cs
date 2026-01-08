@@ -48,7 +48,7 @@ public sealed class PySliceObjectType : PyTypeObject<PySliceObjectType, PySliceO
         return new PySliceObject(arguments[0], arguments[1], arguments[2]);
     }
 
-    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var obj = _new.Call(context, args, kwargs);
         if (obj.IsError)

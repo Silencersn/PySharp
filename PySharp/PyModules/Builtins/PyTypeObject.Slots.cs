@@ -14,6 +14,9 @@ partial class PyTypeObject
     {
         // TODO: support different protocols
 
+
+        internal PyClsArgsKwargsFunction? New;
+
         internal PyUnaryFunction? Str;
         internal PyUnaryFunction? Repr;
         internal PyUnaryFunction? Bool;

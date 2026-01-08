@@ -44,7 +44,7 @@ public sealed class PyMapObjectType : PyTypeObject<PyMapObjectType, PyMapObject>
         return new PyMapObject(function, [.. iters], result.Value.BoolValue);
     }
 
-    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var obj = _new.Call(context, args, kwargs);
         if (obj.IsError)

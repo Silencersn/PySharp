@@ -31,7 +31,7 @@ public sealed class PyBoolObjectType : PyTypeObject<PyBoolObjectType, PyBoolObje
     public override bool IsSealed => true;
     public override IReadOnlyList<PyTypeObject> Bases => [PyIntObjectType.Shared];
 
-    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (!PyArgsValidator.ValidateSinglePositionalArg(args, kwargs, out var err))
             return err.Value;

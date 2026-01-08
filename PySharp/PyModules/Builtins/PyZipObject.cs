@@ -45,7 +45,7 @@ public sealed class PyZipObjectType : PyTypeObject<PyZipObjectType, PyZipObject>
         return new PyZipObject(iterables, result.Value.BoolValue);
     }
 
-    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var obj = _new.Call(context, args, kwargs);
         if (obj.IsError)

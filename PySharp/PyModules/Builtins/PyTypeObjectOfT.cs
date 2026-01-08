@@ -34,7 +34,7 @@ public abstract partial class PyTypeObject<TObject> : PyTypeObject where TObject
         }
     }
 
-    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return PyResult.RaiseTypeError($"cannot create '{Name}' instances");
     }
@@ -61,7 +61,11 @@ public sealed class PyTypeObjectType : PyTypeObject<PyTypeObjectType, PyTypeObje
 
     protected override PyResult Call(PyCallContext context, PyTypeObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        var result = self.New(context, self, args, kwargs);
+        var newFunc = self.Slots.New;
+        if (newFunc is null)
+            return PyResult.RaiseTypeError($"cannot create '{self.FullName}' instances");
+
+        var result = newFunc(context, self, args, kwargs);
         if (result.IsError)
             return result;
 
@@ -80,7 +84,7 @@ public sealed class PyTypeObjectType : PyTypeObject<PyTypeObjectType, PyTypeObje
         return pyObject;
     }
 
-    protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (!PyArgsValidator.ValidateSinglePositionalArg(args, kwargs, out var err))
             return err.Value;
