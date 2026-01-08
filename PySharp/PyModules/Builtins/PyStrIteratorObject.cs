@@ -18,12 +18,12 @@ public sealed class PyStrIteratorObjectType : PyTypeObject<PyStrIteratorObjectTy
 {
     public override string Name => "str_iterator";
 
-    protected internal override PyResult Iter(PyCallContext context, PyStrIteratorObject self)
+    protected override PyResult Iter(PyCallContext context, PyStrIteratorObject self)
     {
         return self;
     }
 
-    protected internal override PyResult Next(PyCallContext context, PyStrIteratorObject self)
+    protected override PyResult Next(PyCallContext context, PyStrIteratorObject self)
     {
         if (!self._enumerator.MoveNext())
             return PyResult.RaiseStopIteration();

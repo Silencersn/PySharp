@@ -34,7 +34,7 @@ public sealed class PyMethodDescriptorObjectType : PyTypeObject<PyMethodDescript
 {
     public override string Name => "method_descriptor";
 
-    protected internal override PyResult Get(PyCallContext context, PyMethodDescriptorObject self, PyObject instance, PyObject owner)
+    protected override PyResult Get(PyCallContext context, PyMethodDescriptorObject self, PyObject instance, PyObject owner)
     {
         if (instance is PyNoneObject)
             return self;
@@ -45,7 +45,7 @@ public sealed class PyMethodDescriptorObjectType : PyTypeObject<PyMethodDescript
         return PyBuiltinFunctionOrMethodObject.CreateBoundMethodFromUnbound(self._name, instance, instance.PyType, self._uncompoundedDelegate);
     }
 
-    protected internal override PyResult Call(PyCallContext context, PyMethodDescriptorObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected override PyResult Call(PyCallContext context, PyMethodDescriptorObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (args.Count is 0)
             return PyResult.RaiseTypeError($"descriptor '{self._name}' of '{self._declaringType.Name}' object needs an argument");

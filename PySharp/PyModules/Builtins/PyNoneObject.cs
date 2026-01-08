@@ -15,12 +15,12 @@ public sealed class PyNoneObjectType : PyTypeObject<PyNoneObjectType, PyNoneObje
     public override bool IsSealed => true;
     private static readonly PyStrObject _repr = PyStrObject.FromString("None");
 
-    protected internal override PyResult Repr(PyCallContext context, PyNoneObject self)
+    protected override PyResult Repr(PyCallContext context, PyNoneObject self)
     {
         return _repr;
     }
 
-    protected internal override PyResult Bool(PyCallContext context, PyNoneObject self)
+    protected override PyResult Bool(PyCallContext context, PyNoneObject self)
     {
         return PyBoolObject.False;
     }

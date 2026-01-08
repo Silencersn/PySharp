@@ -24,12 +24,12 @@ public sealed class PyIteratorObjectType : PyTypeObject<PyIteratorObjectType, Py
 {
     public override string Name => "iterator";
 
-    protected internal override PyResult Iter(PyCallContext context, PyIteratorObject self)
+    protected override PyResult Iter(PyCallContext context, PyIteratorObject self)
     {
         return self;
     }
 
-    protected internal override PyResult Next(PyCallContext context, PyIteratorObject self)
+    protected override PyResult Next(PyCallContext context, PyIteratorObject self)
     {
         if (self._index is -1)
             return PyResult.RaiseStopIteration();

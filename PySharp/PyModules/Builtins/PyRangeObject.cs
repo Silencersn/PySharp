@@ -64,14 +64,14 @@ public sealed class PyRangeObjectType : PyTypeObject<PyRangeObjectType, PyRangeO
 {
     public override string Name => "range";
 
-    protected internal override PyResult Repr(PyCallContext context, PyRangeObject self)
+    protected override PyResult Repr(PyCallContext context, PyRangeObject self)
     {
         if (self.Step == 1)
             return PyStrObject.FromString($"range({self.Start}, {self.Stop})");
         return PyStrObject.FromString($"range({self.Start}, {self.Stop}, {self.Step})");
     }
 
-    protected internal override PyResult Iter(PyCallContext context, PyRangeObject self)
+    protected override PyResult Iter(PyCallContext context, PyRangeObject self)
     {
         if (!self._isLong)
             return new PyRangeIteratorObject((long)self.Start, (long)self.Step, (long)self.RangeLen);

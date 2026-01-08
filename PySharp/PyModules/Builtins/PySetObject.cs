@@ -27,17 +27,17 @@ public sealed class PySetObjectType : PyTypeObject<PySetObjectType, PySetObject>
 {
     public override string Name => "set";
 
-    protected internal override PyResult Repr(PyCallContext context, PySetObject self)
+    protected override PyResult Repr(PyCallContext context, PySetObject self)
     {
         return IPyObjectRecursiveRepr.RecursiveRepr(context, self);
     }
 
-    protected internal override PyResult Bool(PyCallContext context, PySetObject self)
+    protected override PyResult Bool(PyCallContext context, PySetObject self)
     {
         return PyBoolObject.FromBoolean(self._set.Count > 0);
     }
 
-    protected internal override PyResult Contains(PyCallContext context, PySetObject self, PyObject item)
+    protected override PyResult Contains(PyCallContext context, PySetObject self, PyObject item)
     {
         return PyBoolObject.FromBoolean(self._set.Contains(item));
     }

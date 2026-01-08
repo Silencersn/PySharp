@@ -27,12 +27,12 @@ public sealed class PyMethodObjectType : PyTypeObject<PyMethodObjectType, PyMeth
         AppendMemberDescriptor("__self__", static (_, method) => method._target);
     }
 
-    protected internal override PyResult Call(PyCallContext context, PyMethodObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected override PyResult Call(PyCallContext context, PyMethodObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return self._functionObj.Call(context, [self._target, .. args], kwargs);
     }
 
-    protected internal override PyResult GetAttr(PyCallContext context, PyMethodObject self, PyObject item)
+    protected override PyResult GetAttr(PyCallContext context, PyMethodObject self, PyObject item)
     {
         return PyOperators.GetAttr(context, self._functionObj, item);
     }

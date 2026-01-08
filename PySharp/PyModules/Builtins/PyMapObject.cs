@@ -53,12 +53,12 @@ public sealed class PyMapObjectType : PyTypeObject<PyMapObjectType, PyMapObject>
         return obj;
     }
 
-    protected internal override PyResult Iter(PyCallContext context, PyMapObject self)
+    protected override PyResult Iter(PyCallContext context, PyMapObject self)
     {
         return self;
     }
 
-    protected internal override PyResult Next(PyCallContext context, PyMapObject self)
+    protected override PyResult Next(PyCallContext context, PyMapObject self)
     {
         List<PyObject> args = [];
         foreach (var iter in self._iters)

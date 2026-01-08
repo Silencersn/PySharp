@@ -59,7 +59,7 @@ public sealed class PyTypeObjectType : PyTypeObject<PyTypeObjectType, PyTypeObje
             static (_, typeObj, value) => throw new NotImplementedException());
     }
 
-    protected internal override PyResult Call(PyCallContext context, PyTypeObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected override PyResult Call(PyCallContext context, PyTypeObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var result = self.New(context, self, args, kwargs);
         if (result.IsError)
@@ -87,12 +87,12 @@ public sealed class PyTypeObjectType : PyTypeObject<PyTypeObjectType, PyTypeObje
         return args[0].PyType;
     }
 
-    protected internal override PyResult Repr(PyCallContext context, PyTypeObject self)
+    protected override PyResult Repr(PyCallContext context, PyTypeObject self)
     {
         return PyStrObject.FromString($"<class '{self.Name}'>");
     }
 
-    protected internal override PyResult GetAttribute(PyCallContext context, PyTypeObject self, PyObject item)
+    protected override PyResult GetAttribute(PyCallContext context, PyTypeObject self, PyObject item)
     {
         return DefaultTypeGetAttribute(context, self, item);
     }

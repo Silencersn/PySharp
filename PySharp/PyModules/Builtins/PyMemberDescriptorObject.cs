@@ -28,7 +28,7 @@ public sealed class PyMemberDescriptorObjectType : PyTypeObject<PyMemberDescript
 {
     public override string Name => "member_descriptor";
 
-    protected internal override PyResult Get(PyCallContext context, PyMemberDescriptorObject self, PyObject instance, PyObject owner)
+    protected override PyResult Get(PyCallContext context, PyMemberDescriptorObject self, PyObject instance, PyObject owner)
     {
         if (instance is PyNoneObject)
             return self;
@@ -39,7 +39,7 @@ public sealed class PyMemberDescriptorObjectType : PyTypeObject<PyMemberDescript
         return self._getter(context, instance);
     }
 
-    protected internal override PyResult Set(PyCallContext context, PyMemberDescriptorObject self, PyObject instance, PyObject value)
+    protected override PyResult Set(PyCallContext context, PyMemberDescriptorObject self, PyObject instance, PyObject value)
     {
         if (self._setter is null)
             return PyResult.RaiseAttributeError("readonly attribute");
@@ -50,7 +50,7 @@ public sealed class PyMemberDescriptorObjectType : PyTypeObject<PyMemberDescript
         return self._setter(context, instance, value);
     }
 
-    protected internal override PyResult Delete(PyCallContext context, PyMemberDescriptorObject self, PyObject instance)
+    protected override PyResult Delete(PyCallContext context, PyMemberDescriptorObject self, PyObject instance)
     {
         if (self._deleter is null)
             return PyResult.RaiseAttributeError("readonly attribute");

@@ -22,12 +22,12 @@ public sealed class PyTupleIteratorObjectType : PyTypeObject<PyTupleIteratorObje
 {
     public override string Name => "tuple_iterator";
 
-    protected internal override PyResult Iter(PyCallContext context, PyTupleIteratorObject self)
+    protected override PyResult Iter(PyCallContext context, PyTupleIteratorObject self)
     {
         return self;
     }
 
-    protected internal override PyResult Next(PyCallContext context, PyTupleIteratorObject self)
+    protected override PyResult Next(PyCallContext context, PyTupleIteratorObject self)
     {
         if (self._index is -2 || ++self._index >= self._tuple._array.Length)
         {

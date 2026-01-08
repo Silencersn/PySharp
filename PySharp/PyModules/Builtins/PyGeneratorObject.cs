@@ -239,17 +239,17 @@ public sealed class PyGeneratorObjectType : PyTypeObject<PyGeneratorObjectType, 
         AppendMethodDescriptor("close", Close);
     }
 
-    protected internal override PyResult Repr(PyCallContext context, PyGeneratorObject self)
+    protected override PyResult Repr(PyCallContext context, PyGeneratorObject self)
     {
         return PyStrObject.FromString($"<generator object {self.Name} at 0x{self.PyId:X16}>");
     }
 
-    protected internal override PyResult Iter(PyCallContext context, PyGeneratorObject self)
+    protected override PyResult Iter(PyCallContext context, PyGeneratorObject self)
     {
         return self;
     }
 
-    protected internal override PyResult Next(PyCallContext context, PyGeneratorObject self)
+    protected override PyResult Next(PyCallContext context, PyGeneratorObject self)
     {
         return self.PyNext(context);
     }

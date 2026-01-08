@@ -67,19 +67,19 @@ public sealed class PyPropertyObjectType : PyTypeObject<PyPropertyObjectType, Py
         return new PyPropertyObject(arguments[0], arguments[1], arguments[2], arguments[3]);
     }
 
-    protected internal override PyResult Get(PyCallContext context, PyPropertyObject self, PyObject instance, PyObject owner)
+    protected override PyResult Get(PyCallContext context, PyPropertyObject self, PyObject instance, PyObject owner)
     {
         if (instance is PyNoneObject)
             return self;
         return self._fget.Call(context, [instance], FrozenDictionary<string, PyObject>.Empty);
     }
 
-    protected internal override PyResult Set(PyCallContext context, PyPropertyObject self, PyObject instance, PyObject value)
+    protected override PyResult Set(PyCallContext context, PyPropertyObject self, PyObject instance, PyObject value)
     {
         return self._fset.Call(context, [instance, value], FrozenDictionary<string, PyObject>.Empty);
     }
 
-    protected internal override PyResult Delete(PyCallContext context, PyPropertyObject self, PyObject instance)
+    protected override PyResult Delete(PyCallContext context, PyPropertyObject self, PyObject instance)
     {
         return self._fdel.Call(context, [instance], FrozenDictionary<string, PyObject>.Empty);
     }

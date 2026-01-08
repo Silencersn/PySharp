@@ -25,7 +25,7 @@ public sealed class PyCellObjectType : PyTypeObject<PyCellObjectType, PyCellObje
 {
     public override string Name => "cell";
 
-    protected internal override PyResult Repr(PyCallContext context, PyCellObject self)
+    protected override PyResult Repr(PyCallContext context, PyCellObject self)
     {
         if (self.Value is null)
             return PyStrObject.FromString($"<cell at 0x{self.PyId:X16}: empty>");

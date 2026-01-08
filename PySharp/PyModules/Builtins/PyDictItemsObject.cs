@@ -17,7 +17,7 @@ public sealed class PyDictItemsObjectType : PyTypeObject<PyDictItemsObjectType, 
 {
     public override string Name => "dict_items";
 
-    protected internal override PyResult Iter(PyCallContext context, PyDictItemsObject self)
+    protected override PyResult Iter(PyCallContext context, PyDictItemsObject self)
     {
         return new PyDictItemIteratorObject(self);
     }
@@ -41,12 +41,12 @@ public sealed class PyDictItemIteratorObjectType : PyTypeObject<PyDictItemIterat
 {
     public override string Name => "dict_itemiterator";
 
-    protected internal override PyResult Iter(PyCallContext context, PyDictItemIteratorObject self)
+    protected override PyResult Iter(PyCallContext context, PyDictItemIteratorObject self)
     {
         return self;
     }
 
-    protected internal override PyResult Next(PyCallContext context, PyDictItemIteratorObject self)
+    protected override PyResult Next(PyCallContext context, PyDictItemIteratorObject self)
     {
         if (self._keyEnumerator.MoveNext())
             return PyTupleObject.CreateTuple(self._keyEnumerator.Current, self._items._dict._dict[self._keyEnumerator.Current]);

@@ -59,7 +59,7 @@ public sealed class PyBuiltinFunctionOrMethodObjectType : PyTypeObject<PyBuiltin
 {
     public override string Name => "builtin_function_or_method";
 
-    protected internal override PyResult Repr(PyCallContext context, PyBuiltinFunctionOrMethodObject self)
+    protected override PyResult Repr(PyCallContext context, PyBuiltinFunctionOrMethodObject self)
     {
         if (self.IsMethod)
         {
@@ -72,7 +72,7 @@ public sealed class PyBuiltinFunctionOrMethodObjectType : PyTypeObject<PyBuiltin
         return PyStrObject.FromString($"<built-in function {self.Name}>");
     }
 
-    protected internal override PyResult Call(PyCallContext context, PyBuiltinFunctionOrMethodObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected override PyResult Call(PyCallContext context, PyBuiltinFunctionOrMethodObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return self.PyDelegate.Invoke(context, args, kwargs);
     }

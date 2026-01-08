@@ -21,12 +21,12 @@ public sealed class PyListIteratorObjectType : PyTypeObject<PyListIteratorObject
 {
     public override string Name => "list_iterator";
 
-    protected internal override PyResult Iter(PyCallContext context, PyListIteratorObject self)
+    protected override PyResult Iter(PyCallContext context, PyListIteratorObject self)
     {
         return self;
     }
 
-    protected internal override PyResult Next(PyCallContext context, PyListIteratorObject self)
+    protected override PyResult Next(PyCallContext context, PyListIteratorObject self)
     {
         if (self._index is -2 || ++self._index >= self._list._list.Count)
         {

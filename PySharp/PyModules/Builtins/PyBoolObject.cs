@@ -38,12 +38,12 @@ public sealed class PyBoolObjectType : PyTypeObject<PyBoolObjectType, PyBoolObje
         return PySpecialMethods.Bool(context, args[0]);
     }
 
-    protected internal override PyResult Repr(PyCallContext context, PyBoolObject self)
+    protected override PyResult Repr(PyCallContext context, PyBoolObject self)
     {
         return self._repr;
     }
 
-    protected internal override PyResult Bool(PyCallContext context, PyBoolObject self)
+    protected override PyResult Bool(PyCallContext context, PyBoolObject self)
     {
         return self;
     }

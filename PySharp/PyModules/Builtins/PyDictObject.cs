@@ -93,35 +93,35 @@ public sealed class PyDictObjectType : PyTypeObject<PyDictObjectType, PyDictObje
         return obj;
     }
 
-    protected internal override PyResult GetItem(PyCallContext context, PyDictObject self, PyObject item)
+    protected override PyResult GetItem(PyCallContext context, PyDictObject self, PyObject item)
     {
         if (self._dict.TryGetValue(item, out PyObject? value))
             return value;
         return Missing(context, self, item);
     }
 
-    protected internal override PyResult SetItem(PyCallContext context, PyDictObject self, PyObject key, PyObject value)
+    protected override PyResult SetItem(PyCallContext context, PyDictObject self, PyObject key, PyObject value)
     {
         self.PySetItem(key, value);
         return PyNoneObject.None;
     }
 
-    protected internal override PyResult Contains(PyCallContext context, PyDictObject self, PyObject item)
+    protected override PyResult Contains(PyCallContext context, PyDictObject self, PyObject item)
     {
         return PyBoolObject.FromBoolean(self._dict.ContainsKey(item));
     }
 
-    protected internal override PyResult Repr(PyCallContext context, PyDictObject self)
+    protected override PyResult Repr(PyCallContext context, PyDictObject self)
     {
         return IPyObjectRecursiveRepr.RecursiveRepr(context, self);
     }
 
-    protected internal override PyResult Bool(PyCallContext context, PyDictObject self)
+    protected override PyResult Bool(PyCallContext context, PyDictObject self)
     {
         return PyBoolObject.FromBoolean(self._dict.Count > 0);
     }
 
-    protected internal override PyResult Len(PyCallContext context, PyDictObject self)
+    protected override PyResult Len(PyCallContext context, PyDictObject self)
     {
         return PyIntObject.FromInteger(self._dict.Count);
     }

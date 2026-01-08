@@ -109,7 +109,7 @@ public sealed class PySuperObjectType : PyTypeObject<PySuperObjectType, PySuperO
         return obj;
     }
 
-    protected internal override PyResult GetAttribute(PyCallContext context, PySuperObject self, PyObject item)
+    protected override PyResult GetAttribute(PyCallContext context, PySuperObject self, PyObject item)
     {
         if (item is not PyStrObject str)
             return PyResult.RaiseTypeError($"attribute name must be string, not '{item.PyType.FullName}'");
@@ -135,19 +135,19 @@ public sealed class PySuperObjectType : PyTypeObject<PySuperObjectType, PySuperO
         return PyResult.RaiseAttributeError(str.Value);
     }
 
-    protected internal override PyResult Get(PyCallContext context, PySuperObject self, PyObject instance, PyObject owner)
+    protected override PyResult Get(PyCallContext context, PySuperObject self, PyObject instance, PyObject owner)
     {
         if (self._object is PyNoneObject && instance is not PyNoneObject)
             return new PySuperObject(self._type, instance);
         return self;
     }
 
-    protected internal override PyResult Repr(PyCallContext context, PySuperObject self)
+    protected override PyResult Repr(PyCallContext context, PySuperObject self)
     {
         return PyStrObject.FromString($"<super: {self._type.Name}, {self._object.PyType.Name}>");
     }
 
-    protected internal override PyResult Bool(PyCallContext context, PySuperObject self)
+    protected override PyResult Bool(PyCallContext context, PySuperObject self)
     {
         return PyBoolObject.True;
     }

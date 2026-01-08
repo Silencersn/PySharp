@@ -23,38 +23,38 @@ public sealed class PyComplexObjectType : PyTypeObject<PyComplexObjectType, PyCo
 {
     public override string Name => "complex";
 
-    protected internal override PyResult Repr(PyCallContext context, PyComplexObject self)
+    protected override PyResult Repr(PyCallContext context, PyComplexObject self)
     {
         string s = $"({self.Value.Real}{(self.Value.Imaginary < 0 ? "-" : "+")}{Math.Abs(self.Value.Imaginary)}j)";
         return PyStrObject.FromString(s);
     }
 
-    protected internal override PyResult Hash(PyCallContext context, PyComplexObject self)
+    protected override PyResult Hash(PyCallContext context, PyComplexObject self)
     {
         int hash = HashCode.Combine(self.Value.Real, self.Value.Imaginary);
         return PyIntObject.FromInteger(hash);
     }
 
-    protected internal override PyResult Bool(PyCallContext context, PyComplexObject self)
+    protected override PyResult Bool(PyCallContext context, PyComplexObject self)
     {
         return PyBoolObject.FromBoolean(self.Value.Real != 0 || self.Value.Imaginary != 0);
     }
 
-    protected internal override PyResult Int(PyCallContext context, PyComplexObject self)
+    protected override PyResult Int(PyCallContext context, PyComplexObject self)
     {
         if (self.Value.Imaginary != 0)
             return PyResult.RaiseTypeError("can't convert complex to int");
         return PyIntObject.FromInteger((BigInteger)self.Value.Real);
     }
 
-    protected internal override PyResult Float(PyCallContext context, PyComplexObject self)
+    protected override PyResult Float(PyCallContext context, PyComplexObject self)
     {
         if (self.Value.Imaginary != 0)
             return PyResult.RaiseTypeError("can't convert complex to float");
         return PyFloatObject.FromDouble(self.Value.Real);
     }
 
-    protected internal override PyResult Add(PyCallContext context, PyComplexObject self, PyObject other)
+    protected override PyResult Add(PyCallContext context, PyComplexObject self, PyObject other)
     {
         if (other is PyComplexObject c)
             return PyComplexObject.FromComplex(self.Value + c.Value);
@@ -64,7 +64,7 @@ public sealed class PyComplexObjectType : PyTypeObject<PyComplexObjectType, PyCo
             return PyComplexObject.FromComplex(self.Value + new Complex(f.Value, 0));
         return base.Add(context, self, other);
     }
-    protected internal override PyResult Sub(PyCallContext context, PyComplexObject self, PyObject other)
+    protected override PyResult Sub(PyCallContext context, PyComplexObject self, PyObject other)
     {
         if (other is PyComplexObject c)
             return PyComplexObject.FromComplex(self.Value - c.Value);
@@ -74,7 +74,7 @@ public sealed class PyComplexObjectType : PyTypeObject<PyComplexObjectType, PyCo
             return PyComplexObject.FromComplex(self.Value - new Complex(f.Value, 0));
         return base.Sub(context, self, other);
     }
-    protected internal override PyResult Mul(PyCallContext context, PyComplexObject self, PyObject other)
+    protected override PyResult Mul(PyCallContext context, PyComplexObject self, PyObject other)
     {
         if (other is PyComplexObject c)
             return PyComplexObject.FromComplex(self.Value * c.Value);
@@ -84,7 +84,7 @@ public sealed class PyComplexObjectType : PyTypeObject<PyComplexObjectType, PyCo
             return PyComplexObject.FromComplex(self.Value * new Complex(f.Value, 0));
         return base.Mul(context, self, other);
     }
-    protected internal override PyResult TrueDiv(PyCallContext context, PyComplexObject self, PyObject other)
+    protected override PyResult TrueDiv(PyCallContext context, PyComplexObject self, PyObject other)
     {
         if (other is PyComplexObject c)
         {
@@ -107,7 +107,7 @@ public sealed class PyComplexObjectType : PyTypeObject<PyComplexObjectType, PyCo
         }
         return base.TrueDiv(context, self, other);
     }
-    protected internal override PyResult Eq(PyCallContext context, PyComplexObject self, PyObject other)
+    protected override PyResult Eq(PyCallContext context, PyComplexObject self, PyObject other)
     {
         if (other is PyComplexObject c)
             return PyBoolObject.FromBoolean(self.Value == c.Value);

@@ -65,32 +65,32 @@ public sealed class PyStrObjectType : PyTypeObject<PyStrObjectType, PyStrObject>
     {
         return self.PyJoin(context, arguments[0]);
     }
-    protected internal override PyResult Repr(PyCallContext context, PyStrObject self)
+    protected override PyResult Repr(PyCallContext context, PyStrObject self)
     {
         return PyStrObject.FromString(PyStrConverter.FromStringToLiteral(self.Value));
     }
-    protected internal override PyResult Str(PyCallContext context, PyStrObject self)
+    protected override PyResult Str(PyCallContext context, PyStrObject self)
     {
         return self;
     }
 
-    protected internal override PyResult Hash(PyCallContext context, PyStrObject self)
+    protected override PyResult Hash(PyCallContext context, PyStrObject self)
     {
         return PyIntObject.FromInteger(self.Value.GetHashCode());
     }
-    protected internal override PyResult Bool(PyCallContext context, PyStrObject self)
+    protected override PyResult Bool(PyCallContext context, PyStrObject self)
     {
         return PyBoolObject.FromBoolean(self.Value.Length > 0);
     }
-    protected internal override PyResult Len(PyCallContext context, PyStrObject self)
+    protected override PyResult Len(PyCallContext context, PyStrObject self)
     {
         return PyIntObject.FromInteger(self.PyLength);
     }
-    protected internal override PyResult Iter(PyCallContext context, PyStrObject self)
+    protected override PyResult Iter(PyCallContext context, PyStrObject self)
     {
         return new PyStrIteratorObject(self.Value);
     }
-    protected internal override PyResult GetItem(PyCallContext context, PyStrObject self, PyObject item)
+    protected override PyResult GetItem(PyCallContext context, PyStrObject self, PyObject item)
     {
         var result = PySpecialMethods.Index(context, item);
         if (result.IsError)
@@ -101,32 +101,32 @@ public sealed class PyStrObjectType : PyTypeObject<PyStrObjectType, PyStrObject>
             return PyResult.RaiseIndexError("string index out of range");
         return PyStrObject.FromRune(self.Value.EnumerateRunes().ElementAt(index));
     }
-    protected internal override PyResult Add(PyCallContext context, PyStrObject self, PyObject other)
+    protected override PyResult Add(PyCallContext context, PyStrObject self, PyObject other)
     {
         if (other is PyStrObject strObj)
             return PyStrObject.FromString(self.Value + strObj.Value);
         return PyResult.RaiseTypeError($"can only concatenate str (not \"{other.PyType.Name}\") to str");
     }
-    protected internal override PyResult Eq(PyCallContext context, PyStrObject self, PyObject other)
+    protected override PyResult Eq(PyCallContext context, PyStrObject self, PyObject other)
     {
         if (other is PyStrObject strObj)
             return PyBoolObject.FromBoolean(self.Value == strObj.Value);
         return PyNotImplementedObject.NotImplemented;
     }
-    protected internal override PyResult Lt(PyCallContext context, PyStrObject self, PyObject other)
+    protected override PyResult Lt(PyCallContext context, PyStrObject self, PyObject other)
     {
         if (other is not PyStrObject strObj)
             return PyNotImplementedObject.NotImplemented;
         return PyBoolObject.FromBoolean(self.Value.CompareTo(strObj.Value) < 0);
     }
-    protected internal override PyResult Mul(PyCallContext context, PyStrObject self, PyObject other)
+    protected override PyResult Mul(PyCallContext context, PyStrObject self, PyObject other)
     {
         var result = PySpecialMethods.Index(context, other);
         if (result.IsError)
             return result;
         return PyStrObject.FromString(string.Concat(Enumerable.Repeat(self.Value, result.Value.Int32Value)));
     }
-    protected internal override PyResult RMul(PyCallContext context, PyStrObject self, PyObject other)
+    protected override PyResult RMul(PyCallContext context, PyStrObject self, PyObject other)
     {
         return Mul(context, self, other);
     }

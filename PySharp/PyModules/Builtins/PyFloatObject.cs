@@ -21,47 +21,47 @@ public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatO
 {
     public override string Name => "float";
 
-    protected internal override PyResult Repr(PyCallContext context, PyFloatObject self)
+    protected override PyResult Repr(PyCallContext context, PyFloatObject self)
     {
         return PyStrObject.FromString(self.Value.ToString());
     }
 
-    protected internal override PyResult Hash(PyCallContext context, PyFloatObject self)
+    protected override PyResult Hash(PyCallContext context, PyFloatObject self)
     {
         return PyIntObject.FromInteger(self.Value.GetHashCode());
     }
 
-    protected internal override PyResult Bool(PyCallContext context, PyFloatObject self)
+    protected override PyResult Bool(PyCallContext context, PyFloatObject self)
     {
         return PyBoolObject.FromBoolean(self.Value is not 0);
     }
 
-    protected internal override PyResult Int(PyCallContext context, PyFloatObject self)
+    protected override PyResult Int(PyCallContext context, PyFloatObject self)
     {
         return new PyIntObject((BigInteger)self.Value);
     }
 
-    protected internal override PyResult Float(PyCallContext context, PyFloatObject self)
+    protected override PyResult Float(PyCallContext context, PyFloatObject self)
     {
         return self;
     }
 
-    protected internal override PyResult Neg(PyCallContext context, PyFloatObject self)
+    protected override PyResult Neg(PyCallContext context, PyFloatObject self)
     {
         return PyFloatObject.FromDouble(-self.Value);
     }
 
-    protected internal override PyResult Pos(PyCallContext context, PyFloatObject self)
+    protected override PyResult Pos(PyCallContext context, PyFloatObject self)
     {
         return self;
     }
 
-    protected internal override PyResult Abs(PyCallContext context, PyFloatObject self)
+    protected override PyResult Abs(PyCallContext context, PyFloatObject self)
     {
         return self.Value >= 0 ? self : Neg(context, self);
     }
 
-    protected internal override PyResult Add(PyCallContext context, PyFloatObject self, PyObject other)
+    protected override PyResult Add(PyCallContext context, PyFloatObject self, PyObject other)
     {
         return other switch
         {
@@ -70,7 +70,7 @@ public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatO
             _ => base.Add(context, self, other),
         };
     }
-    protected internal override PyResult Sub(PyCallContext context, PyFloatObject self, PyObject other)
+    protected override PyResult Sub(PyCallContext context, PyFloatObject self, PyObject other)
     {
         return other switch
         {
@@ -79,7 +79,7 @@ public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatO
             _ => base.Sub(context, self, other),
         };
     }
-    protected internal override PyResult Mul(PyCallContext context, PyFloatObject self, PyObject other)
+    protected override PyResult Mul(PyCallContext context, PyFloatObject self, PyObject other)
     {
         return other switch
         {
@@ -88,7 +88,7 @@ public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatO
             _ => base.Mul(context, self, other),
         };
     }
-    protected internal override PyResult TrueDiv(PyCallContext context, PyFloatObject self, PyObject other)
+    protected override PyResult TrueDiv(PyCallContext context, PyFloatObject self, PyObject other)
     {
         return other switch
         {
@@ -97,7 +97,7 @@ public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatO
             _ => base.TrueDiv(context, self, other),
         };
     }
-    protected internal override PyResult FloorDiv(PyCallContext context, PyFloatObject self, PyObject other)
+    protected override PyResult FloorDiv(PyCallContext context, PyFloatObject self, PyObject other)
     {
         return other switch
         {
@@ -106,7 +106,7 @@ public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatO
             _ => base.FloorDiv(context, self, other),
         };
     }
-    protected internal override PyResult DivMod(PyCallContext context, PyFloatObject self, PyObject other)
+    protected override PyResult DivMod(PyCallContext context, PyFloatObject self, PyObject other)
     {
         var q = FloorDiv(context, self, other);
         if (q.IsError || q.IsNotImplemented)
@@ -116,7 +116,7 @@ public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatO
             return r;
         return PyTupleObject.CreateTuple(q.Value, r.Value);
     }
-    protected internal override PyResult Mod(PyCallContext context, PyFloatObject self, PyObject other)
+    protected override PyResult Mod(PyCallContext context, PyFloatObject self, PyObject other)
     {
         return other switch
         {
@@ -125,7 +125,7 @@ public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatO
             _ => base.Mod(context, self, other),
         };
     }
-    protected internal override PyResult Pow(PyCallContext context, PyFloatObject self, PyObject other, PyObject modulo)
+    protected override PyResult Pow(PyCallContext context, PyFloatObject self, PyObject other, PyObject modulo)
     {
         if (modulo is not PyNoneObject)
             return PyNotImplementedObject.NotImplemented;
@@ -136,11 +136,11 @@ public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatO
             _ => base.Pow(context, self, other, modulo),
         };
     }
-    protected internal override PyResult RAdd(PyCallContext context, PyFloatObject self, PyObject other)
+    protected override PyResult RAdd(PyCallContext context, PyFloatObject self, PyObject other)
     {
         return Add(context, self, other);
     }
-    protected internal override PyResult RSub(PyCallContext context, PyFloatObject self, PyObject other)
+    protected override PyResult RSub(PyCallContext context, PyFloatObject self, PyObject other)
     {
         return other switch
         {
@@ -149,11 +149,11 @@ public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatO
             _ => base.RSub(context, self, other),
         };
     }
-    protected internal override PyResult RMul(PyCallContext context, PyFloatObject self, PyObject other)
+    protected override PyResult RMul(PyCallContext context, PyFloatObject self, PyObject other)
     {
         return Mul(context, self, other);
     }
-    protected internal override PyResult RTrueDiv(PyCallContext context, PyFloatObject self, PyObject other)
+    protected override PyResult RTrueDiv(PyCallContext context, PyFloatObject self, PyObject other)
     {
         if (self.Value is 0)
             return PyResult.RaiseZeroDivisionError("float division by zero");
@@ -165,7 +165,7 @@ public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatO
             _ => base.RTrueDiv(context, self, other),
         };
     }
-    protected internal override PyResult RFloorDiv(PyCallContext context, PyFloatObject self, PyObject other)
+    protected override PyResult RFloorDiv(PyCallContext context, PyFloatObject self, PyObject other)
     {
         if (self.Value is 0)
             return PyResult.RaiseZeroDivisionError("float floor division by zero");
@@ -177,7 +177,7 @@ public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatO
             _ => base.RFloorDiv(context, self, other),
         };
     }
-    protected internal override PyResult RDivMod(PyCallContext context, PyFloatObject self, PyObject other)
+    protected override PyResult RDivMod(PyCallContext context, PyFloatObject self, PyObject other)
     {
         var q = RFloorDiv(context, self, other);
         if (q.IsError || q.IsNotImplemented)
@@ -187,7 +187,7 @@ public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatO
             return r;
         return PyTupleObject.CreateTuple(q.Value, r.Value);
     }
-    protected internal override PyResult RMod(PyCallContext context, PyFloatObject self, PyObject other)
+    protected override PyResult RMod(PyCallContext context, PyFloatObject self, PyObject other)
     {
         if (self.Value is 0)
             return PyResult.RaiseZeroDivisionError("float modulo");
@@ -199,7 +199,7 @@ public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatO
             _ => base.RMod(context, self, other),
         };
     }
-    protected internal override PyResult RPow(PyCallContext context, PyFloatObject self, PyObject other, PyObject modulo)
+    protected override PyResult RPow(PyCallContext context, PyFloatObject self, PyObject other, PyObject modulo)
     {
         if (modulo is not PyNoneObject)
             return PyNotImplementedObject.NotImplemented;
@@ -210,7 +210,7 @@ public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatO
             _ => base.RPow(context, self, other, modulo),
         };
     }
-    protected internal override PyResult Lt(PyCallContext context, PyFloatObject self, PyObject other)
+    protected override PyResult Lt(PyCallContext context, PyFloatObject self, PyObject other)
     {
         return other switch
         {
@@ -219,7 +219,7 @@ public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatO
             _ => base.Lt(context, self, other),
         };
     }
-    protected internal override PyResult Gt(PyCallContext context, PyFloatObject self, PyObject other)
+    protected override PyResult Gt(PyCallContext context, PyFloatObject self, PyObject other)
     {
         return other switch
         {
@@ -228,7 +228,7 @@ public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatO
             _ => base.Gt(context, self, other),
         };
     }
-    protected internal override PyResult Le(PyCallContext context, PyFloatObject self, PyObject other)
+    protected override PyResult Le(PyCallContext context, PyFloatObject self, PyObject other)
     {
         return other switch
         {
@@ -237,7 +237,7 @@ public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatO
             _ => base.Le(context, self, other),
         };
     }
-    protected internal override PyResult Ge(PyCallContext context, PyFloatObject self, PyObject other)
+    protected override PyResult Ge(PyCallContext context, PyFloatObject self, PyObject other)
     {
         return other switch
         {
@@ -246,7 +246,7 @@ public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatO
             _ => base.Ge(context, self, other),
         };
     }
-    protected internal override PyResult Eq(PyCallContext context, PyFloatObject self, PyObject other)
+    protected override PyResult Eq(PyCallContext context, PyFloatObject self, PyObject other)
     {
         return other switch
         {
@@ -255,7 +255,7 @@ public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatO
             _ => base.Eq(context, self, other),
         };
     }
-    protected internal override PyResult Format(PyCallContext context, PyFloatObject self, PyObject formatSpec)
+    protected override PyResult Format(PyCallContext context, PyFloatObject self, PyObject formatSpec)
     {
         if (formatSpec is not PyStrObject str)
             return PyResult.RaiseTypeError($"format() argument 2 must be str, not {formatSpec.PyType.FullName}");

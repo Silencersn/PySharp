@@ -118,7 +118,7 @@ public abstract class PyExceptionType : PyTypeObject<PyExceptionObject>
         return new PyExceptionObject(cls, [.. args]);
     }
 
-    protected internal override PyResult Repr(PyCallContext context, PyExceptionObject self)
+    protected override PyResult Repr(PyCallContext context, PyExceptionObject self)
     {
         var builder = new StringBuilder();
         builder.Append(PyType.Name);
@@ -140,7 +140,7 @@ public abstract class PyExceptionType : PyTypeObject<PyExceptionObject>
         return PyStrObject.FromString(builder.ToString());
     }
 
-    protected internal override PyResult Str(PyCallContext context, PyExceptionObject self)
+    protected override PyResult Str(PyCallContext context, PyExceptionObject self)
     {
         if (self.Args.Count is 0)
             return PyStrObject.Empty;

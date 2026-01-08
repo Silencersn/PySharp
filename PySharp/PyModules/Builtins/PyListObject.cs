@@ -70,7 +70,7 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
         return obj;
     }
 
-    protected internal override PyResult GetItem(PyCallContext context, PyListObject self, PyObject item)
+    protected override PyResult GetItem(PyCallContext context, PyListObject self, PyObject item)
     {
         var result = PySpecialMethods.Index(context, item);
         if (result.IsError)
@@ -78,7 +78,7 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
         return Utils.GetListItem(self._list, result.Value.Int32Value, "list index out of range");
     }
 
-    protected internal override PyResult SetItem(PyCallContext context, PyListObject self, PyObject key, PyObject value)
+    protected override PyResult SetItem(PyCallContext context, PyListObject self, PyObject key, PyObject value)
     {
         var result = PySpecialMethods.Index(context, key);
         if (result.IsError)
@@ -88,32 +88,32 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
         return PyNoneObject.None;
     }
 
-    protected internal override PyResult Contains(PyCallContext context, PyListObject self, PyObject item)
+    protected override PyResult Contains(PyCallContext context, PyListObject self, PyObject item)
     {
         return PyBoolObject.FromBoolean(self._list.Contains(item));
     }
 
-    protected internal override PyResult Repr(PyCallContext context, PyListObject self)
+    protected override PyResult Repr(PyCallContext context, PyListObject self)
     {
         return IPyObjectRecursiveRepr.RecursiveRepr(context, self);
     }
 
-    protected internal override PyResult Bool(PyCallContext context, PyListObject self)
+    protected override PyResult Bool(PyCallContext context, PyListObject self)
     {
         return PyBoolObject.FromBoolean(self._list.Count > 0);
     }
 
-    protected internal override PyResult Iter(PyCallContext context, PyListObject self)
+    protected override PyResult Iter(PyCallContext context, PyListObject self)
     {
         return new PyListIteratorObject(self);
     }
 
-    protected internal override PyResult Len(PyCallContext context, PyListObject self)
+    protected override PyResult Len(PyCallContext context, PyListObject self)
     {
         return PyIntObject.FromInteger(self._list.Count);
     }
 
-    protected internal override PyResult Eq(PyCallContext context, PyListObject self, PyObject other)
+    protected override PyResult Eq(PyCallContext context, PyListObject self, PyObject other)
     {
         if (other is not PyListObject otherList)
             return base.Eq(context, self, other);

@@ -15,7 +15,7 @@ public sealed class PyNotImplementedObjectType : PyTypeObject<PyNotImplementedOb
     public override bool IsSealed => true;
     private static readonly PyStrObject _repr = PyStrObject.FromString("NotImplemented");
 
-    protected internal override PyResult Repr(PyCallContext context, PyNotImplementedObject self)
+    protected override PyResult Repr(PyCallContext context, PyNotImplementedObject self)
     {
         return _repr;
     }
@@ -27,7 +27,7 @@ public sealed class PyNotImplementedObjectType : PyTypeObject<PyNotImplementedOb
         return PyNotImplementedObject.NotImplemented;
     }
 
-    protected internal override PyResult Bool(PyCallContext context, PyNotImplementedObject self)
+    protected override PyResult Bool(PyCallContext context, PyNotImplementedObject self)
     {
         context.TryWarn<PyDeprecationWarningObjectType>("NotImplemented should not be used in a boolean context");
         return base.Bool(context, self);

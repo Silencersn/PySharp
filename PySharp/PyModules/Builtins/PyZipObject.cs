@@ -54,12 +54,12 @@ public sealed class PyZipObjectType : PyTypeObject<PyZipObjectType, PyZipObject>
         return obj;
     }
 
-    protected internal override PyResult Iter(PyCallContext context, PyZipObject self)
+    protected override PyResult Iter(PyCallContext context, PyZipObject self)
     {
         return self;
     }
 
-    protected internal override PyResult Next(PyCallContext context, PyZipObject self)
+    protected override PyResult Next(PyCallContext context, PyZipObject self)
     {
         if (self._end)
             return PyResult.RaiseStopIteration();

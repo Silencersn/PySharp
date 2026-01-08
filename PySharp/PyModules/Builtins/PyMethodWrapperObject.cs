@@ -21,7 +21,7 @@ internal sealed class PyMethodWrapperObjectType : PyTypeObject<PyMethodWrapperOb
 {
     public override string Name => "method_wrapper";
 
-    protected internal override PyResult Call(PyCallContext context, PyMethodWrapperObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected override PyResult Call(PyCallContext context, PyMethodWrapperObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (!PyArgsValidator.ValidateEmptyKwargs(kwargs, out var err))
             return err.Value;

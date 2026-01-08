@@ -37,17 +37,17 @@ public sealed class PyFunctionObjectType : PyTypeObject<PyFunctionObjectType, Py
             static (_, func) => func._globals.PyDict);
     }
 
-    protected internal override PyResult Repr(PyCallContext context, PyFunctionObject self)
+    protected override PyResult Repr(PyCallContext context, PyFunctionObject self)
     {
         return PyStrObject.FromString($"<function {self.Name} at 0x{self.PyId:X16}>");
     }
 
-    protected internal override PyResult Call(PyCallContext context, PyFunctionObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected override PyResult Call(PyCallContext context, PyFunctionObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return self._function.Invoke(context, args, kwargs);
     }
 
-    protected internal override PyResult Get(PyCallContext context, PyFunctionObject self, PyObject instance, PyObject owner)
+    protected override PyResult Get(PyCallContext context, PyFunctionObject self, PyObject instance, PyObject owner)
     {
         if (instance is PyNoneObject)
             return self;

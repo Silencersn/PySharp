@@ -15,7 +15,7 @@ public sealed class PyEllipsisObjectType : PyTypeObject<PyEllipsisObjectType, Py
     public override bool IsSealed => true;
     private static readonly PyStrObject _repr = PyStrObject.FromString("Ellipsis");
 
-    protected internal override PyResult Repr(PyCallContext context, PyEllipsisObject self)
+    protected override PyResult Repr(PyCallContext context, PyEllipsisObject self)
     {
         return _repr;
     }

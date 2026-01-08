@@ -19,12 +19,12 @@ public sealed class PyRangeIteratorObjectType : PyTypeObject<PyRangeIteratorObje
 {
     public override string Name => "range_iterator";
 
-    protected internal override PyResult Iter(PyCallContext context, PyRangeIteratorObject self)
+    protected override PyResult Iter(PyCallContext context, PyRangeIteratorObject self)
     {
         return self;
     }
 
-    protected internal override PyResult Next(PyCallContext context, PyRangeIteratorObject self)
+    protected override PyResult Next(PyCallContext context, PyRangeIteratorObject self)
     {
         if (self._len <= 0)
             return PyResult.RaiseStopIteration();
@@ -57,12 +57,12 @@ public sealed class PyLongRangeIteratorObjectType : PyTypeObject<PyLongRangeIter
 {
     public override string Name => "longrange_iterator";
 
-    protected internal override PyResult Iter(PyCallContext context, PyLongRangeIteratorObject self)
+    protected override PyResult Iter(PyCallContext context, PyLongRangeIteratorObject self)
     {
         return self;
     }
 
-    protected internal override PyResult Next(PyCallContext context, PyLongRangeIteratorObject self)
+    protected override PyResult Next(PyCallContext context, PyLongRangeIteratorObject self)
     {
         if (self._len <= 0)
             return PyResult.RaiseStopIteration();

@@ -19,7 +19,7 @@ internal sealed class PyWrapperDescriptorObjectType : PyTypeObject<PyWrapperDesc
 {
     public override string Name => "wrapper_descriptor";
 
-    protected internal override PyResult Get(PyCallContext context, PyWrapperDescriptorObject self, PyObject instance, PyObject owner)
+    protected override PyResult Get(PyCallContext context, PyWrapperDescriptorObject self, PyObject instance, PyObject owner)
     {
         if (instance is PyNoneObject)
             return self;
@@ -27,7 +27,7 @@ internal sealed class PyWrapperDescriptorObjectType : PyTypeObject<PyWrapperDesc
         return new PyMethodWrapperObject(instance, self._func);
     }
 
-    protected internal override PyResult Call(PyCallContext context, PyWrapperDescriptorObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    protected override PyResult Call(PyCallContext context, PyWrapperDescriptorObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return self._func switch
         {

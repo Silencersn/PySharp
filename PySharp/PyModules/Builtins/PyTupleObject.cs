@@ -56,12 +56,12 @@ public sealed class PyTupleObjectType : PyTypeObject<PyTupleObjectType, PyTupleO
         return obj;
     }
 
-    protected internal override PyResult Iter(PyCallContext context, PyTupleObject self)
+    protected override PyResult Iter(PyCallContext context, PyTupleObject self)
     {
         return new PyTupleIteratorObject(self);
     }
 
-    protected internal override PyResult GetItem(PyCallContext context, PyTupleObject self, PyObject item)
+    protected override PyResult GetItem(PyCallContext context, PyTupleObject self, PyObject item)
     {
         var result = PySpecialMethods.Index(context, item);
         if (result.IsError)
@@ -69,27 +69,27 @@ public sealed class PyTupleObjectType : PyTypeObject<PyTupleObjectType, PyTupleO
         return Utils.GetListItem(self._array, result.Value.Int32Value, "IndexError: tuple index out of range");
     }
 
-    protected internal override PyResult Contains(PyCallContext context, PyTupleObject self, PyObject item)
+    protected override PyResult Contains(PyCallContext context, PyTupleObject self, PyObject item)
     {
         return PyBoolObject.FromBoolean(self._array.Contains(item));
     }
 
-    protected internal override PyResult Bool(PyCallContext context, PyTupleObject self)
+    protected override PyResult Bool(PyCallContext context, PyTupleObject self)
     {
         return PyBoolObject.FromBoolean(self._array.Length > 0);
     }
 
-    protected internal override PyResult Repr(PyCallContext context, PyTupleObject self)
+    protected override PyResult Repr(PyCallContext context, PyTupleObject self)
     {
         return IPyObjectRecursiveRepr.RecursiveRepr(context, self);
     }
 
-    protected internal override PyResult Len(PyCallContext context, PyTupleObject self)
+    protected override PyResult Len(PyCallContext context, PyTupleObject self)
     {
         return PyIntObject.FromInteger(self._array.Length);
     }
 
-    protected internal override PyResult Eq(PyCallContext context, PyTupleObject self, PyObject other)
+    protected override PyResult Eq(PyCallContext context, PyTupleObject self, PyObject other)
     {
         if (other is not PyTupleObject otherTuple)
             return base.Eq(context, self, other);
