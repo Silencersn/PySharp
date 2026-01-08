@@ -234,7 +234,7 @@ public sealed class SubscriptNode : AstExprNode, IExprContextNode, ITargetNode
     {
         var value = Value.GetExprValue(context, frame);
         var slice = Slice.GetExprValue(context, frame);
-        return value.Delete(context, slice).PyUnwrap(context);
+        return PySpecialMethods.DelItem(context, value, slice).PyUnwrap(context);
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()

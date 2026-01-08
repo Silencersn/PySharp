@@ -30,6 +30,14 @@ partial class PyTypeObject
         internal PyBinaryFunction? DelItem;
         internal PyBinaryFunction? Contains;
 
+        internal PyTernaryFunction? Get;
+        internal PyTernaryFunction? Set;
+        internal PyBinaryFunction? Delete;
+        internal PyBinaryFunction? GetAttribute;
+        internal PyBinaryFunction? GetAttr;
+        internal PyTernaryFunction? SetAttr;
+        internal PyBinaryFunction? DelAttr;
+
         // Binary operators
         internal PyBinaryFunction? Add;
         internal PyBinaryFunction? Sub;

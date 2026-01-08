@@ -614,7 +614,7 @@ public sealed class ImportFromNode : AstStmtNode
                         throw context.ThrowableTypeError($"Item in {Module /* TODO: should be module.__name__ */}.__all__ must be str, not {item.PyType.Name}");
                     }
 
-                    var attr = module.GetAttribute(context, strObj.Value).PyUnwrap(context);
+                    var attr = PyOperators.GetAttr(context, module, strObj.Value).PyUnwrap(context);
                     frame.SetVariable(strObj.Value, attr).PyUnwrap(context);
                 }
             }
@@ -994,6 +994,14 @@ public sealed class ClassDefNode : AstStmtNode, IScopedSubNodesProvider
                 case PySpecialNames.SetItem: type.Slots.SetItem = value.ToTernaryFunction(); break;
                 case PySpecialNames.DelItem: type.Slots.DelItem = value.ToBinaryFunction(); break;
                 case PySpecialNames.Contains: type.Slots.Contains = value.ToBinaryFunction(); break;
+
+                case PySpecialNames.Get: type.Slots.Get = value.ToTernaryFunction(); break;
+                case PySpecialNames.Set: type.Slots.Set = value.ToTernaryFunction(); break;
+                case PySpecialNames.Delete: type.Slots.Delete = value.ToBinaryFunction(); break;
+                case PySpecialNames.GetAttribute: type.Slots.GetAttribute = value.ToBinaryFunction(); break;
+                case PySpecialNames.GetAttr: type.Slots.GetAttr = value.ToBinaryFunction(); break;
+                case PySpecialNames.SetAttr: type.Slots.SetAttr = value.ToTernaryFunction(); break;
+                case PySpecialNames.DelAttr: type.Slots.DelAttr = value.ToBinaryFunction(); break;
 
                 // Binary operators
                 case PySpecialNames.Add: type.Slots.Add = value.ToBinaryFunction(); break;

@@ -355,18 +355,38 @@ public static class PyOperators
 
     public static PyResult GetAttr(PyCallContext context, PyObject target, string name)
     {
-        var attr = target.GetAttribute(context, name);
-        if (!attr.IsAttributeError)
-            return attr;
-        return target.GetAttr(context, name);
+        return GetAttr(context, target, PyStrObject.FromString(name));
     }
     public static PyResult SetAttr(PyCallContext context, PyObject target, string name, PyObject value)
     {
-        return target.SetAttr(context, name, value);
+        return SetAttr(context, target, PyStrObject.FromString(name), value);
     }
     public static PyResult DelAttr(PyCallContext context, PyObject target, string name)
     {
-        return target.DelAttr(context, name);
+        return DelAttr(context, target, PyStrObject.FromString(name));
+    }
+    public static PyResult GetAttr(PyCallContext context, PyObject target, PyObject name)
+    {
+        var getAttributeFunc = target.PyType.Slots.GetAttribute ?? PyTypeObject.DefaultGetAttribute;
+        var attr = getAttributeFunc(context, target, name);
+        if (!attr.IsAttributeError)
+            return attr;
+
+        var getAttrFunc = target.PyType.Slots.GetAttr;
+        if (getAttrFunc is not null)
+            return getAttrFunc(context, target, name);
+
+        return attr;
+    }
+    public static PyResult SetAttr(PyCallContext context, PyObject target, PyObject name, PyObject value)
+    {
+        var func = target.PyType.Slots.SetAttr ?? PyTypeObject.DefaultSetAttr;
+        return func(context, target, name, value);
+    }
+    public static PyResult DelAttr(PyCallContext context, PyObject target, PyObject name)
+    {
+        var func = target.PyType.Slots.DelAttr ?? PyTypeObject.DefaultDelAttr;
+        return func(context, target, name);
     }
 
     public static PyResult Not(PyCallContext context, PyObject value)

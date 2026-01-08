@@ -41,28 +41,28 @@ partial class PyTypeObject<TObject>
         return Hash(context, selfOfT);
     }
 
-    protected internal sealed override PyResult GetAttribute(PyCallContext context, PyObject self, string item)
+    protected internal sealed override PyResult GetAttribute(PyCallContext context, PyObject self, PyObject item)
     {
         if (self is not TObject selfOfT)
             return PyResult.RaiseTypeError($"'{PySpecialNames.GetAttribute}' requires a '{Name}' object but received a '{self.PyType.Name}'");
         return GetAttribute(context, selfOfT, item);
     }
 
-    protected internal sealed override PyResult GetAttr(PyCallContext context, PyObject self, string item)
+    protected internal sealed override PyResult GetAttr(PyCallContext context, PyObject self, PyObject item)
     {
         if (self is not TObject selfOfT)
             return PyResult.RaiseTypeError($"'{PySpecialNames.GetAttr}' requires a '{Name}' object but received a '{self.PyType.Name}'");
         return GetAttr(context, selfOfT, item);
     }
 
-    protected internal sealed override PyResult SetAttr(PyCallContext context, PyObject self, string key, PyObject value)
+    protected internal sealed override PyResult SetAttr(PyCallContext context, PyObject self, PyObject key, PyObject value)
     {
         if (self is not TObject selfOfT)
             return PyResult.RaiseTypeError($"'{PySpecialNames.SetAttr}' requires a '{Name}' object but received a '{self.PyType.Name}'");
         return SetAttr(context, selfOfT, key, value);
     }
 
-    protected internal sealed override PyResult DelAttr(PyCallContext context, PyObject self, string item)
+    protected internal sealed override PyResult DelAttr(PyCallContext context, PyObject self, PyObject item)
     {
         if (self is not TObject selfOfT)
             return PyResult.RaiseTypeError($"'{PySpecialNames.DelAttr}' requires a '{Name}' object but received a '{self.PyType.Name}'");

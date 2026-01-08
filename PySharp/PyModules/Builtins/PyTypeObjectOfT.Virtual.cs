@@ -31,30 +31,30 @@ partial class PyTypeObject<TObject>
         return DefaultHash(context, self);
     }
 
-    protected internal virtual PyResult GetAttribute(PyCallContext context, TObject self, string item)
+    protected internal virtual PyResult GetAttribute(PyCallContext context, TObject self, PyObject item)
     {
-        return PyObjectGetAttribute(context, self, item);
+        return DefaultGetAttribute(context, self, item);
     }
 
-    protected internal virtual PyResult GetAttr(PyCallContext context, TObject self, string item)
+    protected internal virtual PyResult GetAttr(PyCallContext context, TObject self, PyObject item)
     {
         return PyResult.RaiseAttributeError($"'{Name}' object has no attribute '{item}'");
     }
 
-    protected internal virtual PyResult SetAttr(PyCallContext context, TObject self, string key, PyObject value)
+    protected internal virtual PyResult SetAttr(PyCallContext context, TObject self, PyObject key, PyObject value)
     {
         if (self.IsImmutable)
             return PyResult.RaiseTypeError($"cannot set '{key}' attribute of immutable type '{Name}'");
 
-        return PyObjectSetAttribute(context, self, key, value);
+        return DefaultSetAttr(context, self, key, value);
     }
 
-    protected internal virtual PyResult DelAttr(PyCallContext context, TObject self, string item)
+    protected internal virtual PyResult DelAttr(PyCallContext context, TObject self, PyObject item)
     {
         if (self.IsImmutable)
             return PyResult.RaiseTypeError($"cannot set '{item}' attribute of immutable type '{Name}'");
 
-        return PyObjectDeleteAttribute(context, self, item);
+        return DefaultDelAttr(context, self, item);
     }
 
     protected internal virtual PyResult Bool(PyCallContext context, TObject self)
@@ -278,6 +278,7 @@ partial class PyTypeObject<TObject>
     }
     protected internal virtual PyResult Ne(PyCallContext context, TObject self, PyObject other)
     {
+        // TODO: call PyOperators.Ne
         var eq = PyOperators.Eq(context, self, other);
         if (eq.IsError || eq.IsNotImplemented)
             return eq;

@@ -24,7 +24,7 @@ public static class PySpecialMethods
         if (func is not null)
             return CallUnaryFunction<PyStrObject>(context, obj, func, static o => $"{PySpecialNames.Str} returned non-string (type {o.PyType.FullName})");
 
-        return CallUnaryFunction<PyStrObject>(context, obj, obj.PyType.DefaultStr, static o => $"{PySpecialNames.Str} returned non-string (type {o.PyType.FullName})");
+        return CallUnaryFunction<PyStrObject>(context, obj, PyTypeObject.DefaultStr, static o => $"{PySpecialNames.Str} returned non-string (type {o.PyType.FullName})");
     }
 
     public static PyResult<PyStrObject> Repr(PyCallContext context, PyObject obj)
@@ -52,7 +52,7 @@ public static class PySpecialMethods
             return PyBoolObject.FromBoolean(result.Value.Value > 0);
         }
 
-        return CallUnaryFunction<PyBoolObject>(context, obj, obj.PyType.DefaultBool, static o => $"{PySpecialNames.Bool} returned non-bool (type {o.PyType.FullName})");
+        return CallUnaryFunction<PyBoolObject>(context, obj, PyTypeObject.DefaultBool, static o => $"{PySpecialNames.Bool} returned non-bool (type {o.PyType.FullName})");
     }
 
     public static PyResult<PyIntObject> Hash(PyCallContext context, PyObject obj)
@@ -61,7 +61,7 @@ public static class PySpecialMethods
         if (func is not null)
             return CallUnaryFunction<PyIntObject>(context, obj, func, static o => $"{PySpecialNames.Hash} returned non-int (type {o.PyType.FullName})");
 
-        return CallUnaryFunction<PyIntObject>(context, obj, obj.PyType.DefaultHash, static o => $"{PySpecialNames.Hash} returned non-int (type {o.PyType.FullName})");
+        return CallUnaryFunction<PyIntObject>(context, obj, PyTypeObject.DefaultHash, static o => $"{PySpecialNames.Hash} returned non-int (type {o.PyType.FullName})");
     }
 
     public static PyResult<PyIntObject> Index(PyCallContext context, PyObject obj)

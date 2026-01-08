@@ -90,9 +90,9 @@ public sealed class PyTypeObjectType : PyTypeObject<PyTypeObjectType, PyTypeObje
         return PyStrObject.FromString($"<class '{self.Name}'>");
     }
 
-    protected internal override PyResult GetAttribute(PyCallContext context, PyTypeObject self, string item)
+    protected internal override PyResult GetAttribute(PyCallContext context, PyTypeObject self, PyObject item)
     {
-        return PyTypeGetAttribute(context, self, item);
+        return DefaultTypeGetAttribute(context, self, item);
     }
 }
 

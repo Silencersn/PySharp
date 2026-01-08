@@ -35,22 +35,22 @@ partial class PyTypeObject
         throw new UnreachableException("Implemented by PyTypeObject<TObject>");
     }
 
-    protected internal virtual PyResult GetAttribute(PyCallContext context, PyObject self, string item)
+    protected internal virtual PyResult GetAttribute(PyCallContext context, PyObject self, PyObject item)
     {
         throw new UnreachableException("Implemented by PyTypeObject<TObject>");
     }
 
-    protected internal virtual PyResult GetAttr(PyCallContext context, PyObject self, string item)
+    protected internal virtual PyResult GetAttr(PyCallContext context, PyObject self, PyObject item)
     {
         throw new UnreachableException("Implemented by PyTypeObject<TObject>");
     }
 
-    protected internal virtual PyResult SetAttr(PyCallContext context, PyObject self, string key, PyObject value)
+    protected internal virtual PyResult SetAttr(PyCallContext context, PyObject self, PyObject key, PyObject value)
     {
         throw new UnreachableException("Implemented by PyTypeObject<TObject>");
     }
 
-    protected internal virtual PyResult DelAttr(PyCallContext context, PyObject self, string item)
+    protected internal virtual PyResult DelAttr(PyCallContext context, PyObject self, PyObject item)
     {
         throw new UnreachableException("Implemented by PyTypeObject<TObject>");
     }

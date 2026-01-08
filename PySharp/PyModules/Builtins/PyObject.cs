@@ -127,67 +127,6 @@ public partial class PyObject : IEquatable<PyObject>
         return false;
     }
 
-    internal static PyResult PyObjectGetAttribute(PyCallContext context, PyObject pyObj, string name)
-    {
-        PyObject? nonDataDescriptor = null;
-        if (TryLookupAttrInMro(pyObj.PyType, name, out var attrFromType) &&
-            Utils.IsDescriptor(attrFromType, out var hasGet, out var hasSet, out var hasDelete))
-        {
-            if (hasGet)
-            {
-                if (hasSet || hasDelete)
-                    return attrFromType.Get(context, pyObj, pyObj.PyType);
-
-                nonDataDescriptor = attrFromType;
-            }
-        }
-
-        if (pyObj._pyAttributes is not null && pyObj._pyAttributes.TryGetValue(name, out var attr))
-            return attr;
-
-        if (nonDataDescriptor is not null)
-            return nonDataDescriptor.Get(context, pyObj, pyObj.PyType);
-
-        if (attrFromType is not null)
-            return attrFromType;
-
-        // special read-only attributes
-        // __class__
-        if (name is PySpecialNames.Class)
-            return pyObj.PyType;
-
-        return PyResult.RaiseAttributeError($"'{pyObj.PyType.Name}' object has no attribute '{name}'");
-    }
-
-    internal static PyResult PyObjectSetAttribute(PyCallContext context, PyObject pyObj, string name, PyObject value)
-    {
-        if (TryLookupAttrInMro(pyObj.PyType, name, out var attrFromType) &&
-            Utils.IsDescriptor(attrFromType, out _, out var hasSet, out _))
-        {
-            if (hasSet)
-                return attrFromType.Set(context, pyObj, value);
-        }
-
-        pyObj.PyAttributes[name] = value;
-        return PyNoneObject.None;
-    }
-
-    internal static PyResult PyObjectDeleteAttribute(PyCallContext context, PyObject pyObj, string name)
-    {
-        if (TryLookupAttrInMro(pyObj.PyType, name, out var attrFromType) &&
-            Utils.IsDescriptor(attrFromType, out _, out _, out var hasDelete))
-        {
-            if (hasDelete)
-                return attrFromType.Delete(context, pyObj);
-        }
-
-        var removed = pyObj.PyAttributes.Remove(name);
-        if (!removed)
-            return PyResult.RaiseAttributeError($"'{pyObj.PyType.Name}' object has no attribute '{name}'");
-
-        return PyNoneObject.None;
-    }
-
     public override string ToString()
     {
         var result = PySpecialMethods.Repr(PyCallContext.CSharpRuntime, this);

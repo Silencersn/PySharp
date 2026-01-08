@@ -65,50 +65,6 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
         return false;
     }
 
-
-    public static PyResult PyTypeGetAttribute(PyCallContext context, PyTypeObject pyTypeObj, string name)
-    {
-        PyObject? attrFromType = null;
-        foreach (var pyType in pyTypeObj.PyType.MRO)
-        {
-            if (pyType.PyAttributes.TryGetValue(name, out attrFromType))
-                break;
-        }
-
-        PyObject? nonDataDescriptor = null;
-        {
-            if (attrFromType is not null && Utils.IsDescriptor(attrFromType, out var hasGet, out var hasSet, out var hasDelete))
-            {
-                if (hasGet)
-                {
-                    if (hasSet || hasDelete)
-                        return attrFromType.Get(context, pyTypeObj, pyTypeObj.PyType);
-
-                    nonDataDescriptor = attrFromType;
-                }
-            }
-        }
-
-        foreach (var pyType in pyTypeObj.MRO)
-        {
-            if (!pyType.PyAttributes.TryGetValue(name, out var attr))
-                continue;
-
-            if (Utils.IsDescriptor(attr, out var hasGet, out _, out _) && hasGet)
-                return attr.Get(context, PyNoneObject.None, pyTypeObj);
-
-            return attr;
-        }
-
-        if (nonDataDescriptor is not null)
-            return nonDataDescriptor.Get(context, pyTypeObj, pyTypeObj.PyType);
-
-        if (attrFromType is not null)
-            return attrFromType;
-
-        return PyResult.RaiseAttributeError($"'{pyTypeObj.Name}' object has no attribute '{name}'");
-    }
-
     internal static void ValidateBases(PyCallContext context, IEnumerable<PyTypeObject> bases, out Type layoutType)
     {
         layoutType = typeof(PyObject);

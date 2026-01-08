@@ -257,6 +257,12 @@ internal static class Utils
         return hasGet || hasSet || hasDelete;
     }
 
+    public static bool IsDataDescriptor(PyObject obj)
+    {
+        var slots = obj.PyType.Slots;
+        return slots.Set is not null || slots.Delete is not null;
+    }
+
     public static bool TryCastStrAsArg(PyObject pyObj, [NotNullWhen(true)] out string? str, [NotNullWhen(false)] out PyResult? err, string? argName = null)
     {
         if (pyObj is not PyStrObject strObj)

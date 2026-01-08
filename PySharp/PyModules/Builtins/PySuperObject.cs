@@ -1,6 +1,7 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.PyAttributes;
+using System.Xml.Linq;
 
 namespace PySharp.PyModules.Builtins;
 
@@ -108,8 +109,11 @@ public sealed class PySuperObjectType : PyTypeObject<PySuperObjectType, PySuperO
         return obj;
     }
 
-    protected internal override PyResult GetAttribute(PyCallContext context, PySuperObject self, string item)
+    protected internal override PyResult GetAttribute(PyCallContext context, PySuperObject self, PyObject item)
     {
+        if (item is not PyStrObject str)
+            return PyResult.RaiseTypeError($"attribute name must be string, not '{item.PyType.FullName}'");
+
         PyTypeObject startType = self._type.IsInstance(self._object) ? self._object.PyType : (PyTypeObject)self._object;
         var iter = startType.MRO.GetEnumerator();
         while (iter.MoveNext())
@@ -120,14 +124,15 @@ public sealed class PySuperObjectType : PyTypeObject<PySuperObjectType, PySuperO
         while (iter.MoveNext())
         {
             var pyType = iter.Current;
-            if (pyType.PyAttributes.TryGetValue(item, out var attr))
+            if (pyType.PyAttributes.TryGetValue(str.Value, out var attr))
             {
-                if (Utils.IsDescriptor(attr, out var hasGet, out _, out _) && hasGet)
-                    return attr.Get(context, self._object, PyNoneObject.None);
+                var getFunc = attr.PyType.Slots.Get;
+                if (getFunc is not null)
+                    return getFunc(context, attr, self._object, PyNoneObject.None);
                 return attr;
             }
         }
-        return PyResult.RaiseAttributeError(item);
+        return PyResult.RaiseAttributeError(str.Value);
     }
 
     protected internal override PyResult Get(PyCallContext context, PySuperObject self, PyObject instance, PyObject owner)

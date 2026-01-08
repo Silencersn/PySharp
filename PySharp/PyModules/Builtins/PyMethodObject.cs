@@ -1,4 +1,5 @@
-﻿using PySharp.PyRuntime.Calls;
+﻿using PySharp.PyRuntime;
+using PySharp.PyRuntime.Calls;
 
 namespace PySharp.PyModules.Builtins;
 
@@ -31,8 +32,8 @@ public sealed class PyMethodObjectType : PyTypeObject<PyMethodObjectType, PyMeth
         return self._functionObj.Call(context, [self._target, .. args], kwargs);
     }
 
-    protected internal override PyResult GetAttr(PyCallContext context, PyMethodObject self, string item)
+    protected internal override PyResult GetAttr(PyCallContext context, PyMethodObject self, PyObject item)
     {
-        return self._functionObj.GetAttribute(context, item);
+        return PyOperators.GetAttr(context, self._functionObj, item);
     }
 }

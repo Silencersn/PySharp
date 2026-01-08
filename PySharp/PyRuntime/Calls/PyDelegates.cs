@@ -20,7 +20,7 @@ public delegate PyResult PyMemberDeleter<TObject>(PyCallContext context, TObject
 
 public delegate PyResult PyUnaryFunction(PyCallContext context, PyObject self);
 public delegate PyResult PyBinaryFunction(PyCallContext context, PyObject self, PyObject other);
-public delegate PyResult PyTernaryFunction(PyCallContext context, PyObject self, PyObject other, PyObject third);
+public delegate PyResult PyTernaryFunction(PyCallContext context, PyObject self, PyObject second, PyObject third);
 
 public static class PyDelegateConverter
 {

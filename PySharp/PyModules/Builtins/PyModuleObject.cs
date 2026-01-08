@@ -46,7 +46,7 @@ public sealed class PyModuleObjectType : PyTypeObject<PyModuleObjectType, PyModu
         return PyStrObject.FromString($"<module '{self.Name}'>");
     }
 
-    protected internal override PyResult GetAttr(PyCallContext context, PyModuleObject self, string item)
+    protected internal override PyResult GetAttr(PyCallContext context, PyModuleObject self, PyObject item)
     {
         return PyResult.RaiseAttributeError($"module '{self.Name}' has no attribute '{item}'");
     }

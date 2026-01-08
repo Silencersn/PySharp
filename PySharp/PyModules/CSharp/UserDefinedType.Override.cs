@@ -49,31 +49,31 @@ partial class UserDefinedType<TObject> : PyTypeObject<TObject> where TObject : P
         return PyResult.RaiseAttributeError($"'{Name}' object has no attribute '{PySpecialNames.Hash}'.");
     }
 
-    protected internal override PyResult GetAttribute(PyCallContext context, TObject self, string item)
+    protected internal override PyResult GetAttribute(PyCallContext context, TObject self, PyObject item)
     {
         if (TryLookupAttrInMro(this, PySpecialNames.GetAttribute, out var method))
-            return method.Call(context, [self, PyStrObject.FromString(item)], FrozenDictionary<string, PyObject>.Empty);
+            return method.Call(context, [self, item], FrozenDictionary<string, PyObject>.Empty);
         return PyResult.RaiseAttributeError($"'{Name}' object has no attribute '{PySpecialNames.GetAttribute}'.");
     }
 
-    protected internal override PyResult GetAttr(PyCallContext context, TObject self, string item)
+    protected internal override PyResult GetAttr(PyCallContext context, TObject self, PyObject item)
     {
         if (TryLookupAttrInMro(this, PySpecialNames.GetAttr, out var method))
-            return method.Call(context, [self, PyStrObject.FromString(item)], FrozenDictionary<string, PyObject>.Empty);
+            return method.Call(context, [self, item], FrozenDictionary<string, PyObject>.Empty);
         return PyResult.RaiseAttributeError($"'{Name}' object has no attribute '{PySpecialNames.GetAttr}'.");
     }
 
-    protected internal override PyResult SetAttr(PyCallContext context, TObject self, string key, PyObject value)
+    protected internal override PyResult SetAttr(PyCallContext context, TObject self, PyObject key, PyObject value)
     {
         if (TryLookupAttrInMro(this, PySpecialNames.SetAttr, out var method))
-            return method.Call(context, [self, PyStrObject.FromString(key), value], FrozenDictionary<string, PyObject>.Empty);
+            return method.Call(context, [self, key, value], FrozenDictionary<string, PyObject>.Empty);
         return PyResult.RaiseAttributeError($"'{Name}' object has no attribute '{PySpecialNames.SetAttr}'.");
     }
 
-    protected internal override PyResult DelAttr(PyCallContext context, TObject self, string item)
+    protected internal override PyResult DelAttr(PyCallContext context, TObject self, PyObject item)
     {
         if (TryLookupAttrInMro(this, PySpecialNames.DelAttr, out var method))
-            return method.Call(context, [self, PyStrObject.FromString(item)], FrozenDictionary<string, PyObject>.Empty);
+            return method.Call(context, [self, item], FrozenDictionary<string, PyObject>.Empty);
         return PyResult.RaiseAttributeError($"'{Name}' object has no attribute '{PySpecialNames.DelAttr}'.");
     }
 

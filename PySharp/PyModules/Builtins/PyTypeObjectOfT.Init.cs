@@ -33,10 +33,10 @@ partial class PyTypeObject<TObject>
             [nameof(Complex)] = (PySpecialNames.Complex, PySpecialMethodParametersType.NoArgs),
             [nameof(Index)] = (PySpecialNames.Index, PySpecialMethodParametersType.NoArgs),
             [nameof(Call)] = (PySpecialNames.Call, PySpecialMethodParametersType.ArgsKwargs),
-            [nameof(GetAttribute)] = (PySpecialNames.GetAttribute, PySpecialMethodParametersType.String),
-            [nameof(GetAttr)] = (PySpecialNames.GetAttr, PySpecialMethodParametersType.String),
-            [nameof(SetAttr)] = (PySpecialNames.SetAttr, PySpecialMethodParametersType.StringObject),
-            [nameof(DelAttr)] = (PySpecialNames.DelAttr, PySpecialMethodParametersType.String),
+            [nameof(GetAttribute)] = (PySpecialNames.GetAttribute, PySpecialMethodParametersType.Object),
+            [nameof(GetAttr)] = (PySpecialNames.GetAttr, PySpecialMethodParametersType.Object),
+            [nameof(SetAttr)] = (PySpecialNames.SetAttr, PySpecialMethodParametersType.ObjectObject),
+            [nameof(DelAttr)] = (PySpecialNames.DelAttr, PySpecialMethodParametersType.Object),
             [nameof(Contains)] = (PySpecialNames.Contains, PySpecialMethodParametersType.Object),
             [nameof(GetItem)] = (PySpecialNames.GetItem, PySpecialMethodParametersType.Object),
             [nameof(SetItem)] = (PySpecialNames.SetItem, PySpecialMethodParametersType.ObjectObject),
@@ -140,6 +140,14 @@ partial class PyTypeObject<TObject>
         AppendFunction(ref Slots.SetItem, SetItem);
         AppendFunction(ref Slots.DelItem, DelItem);
         AppendFunction(ref Slots.Contains, Contains);
+
+        AppendFunction(ref Slots.Get, Get);
+        AppendFunction(ref Slots.Set, Set);
+        AppendFunction(ref Slots.Delete, Delete);
+        AppendFunction(ref Slots.GetAttribute, GetAttribute);
+        AppendFunction(ref Slots.GetAttr, GetAttr);
+        AppendFunction(ref Slots.SetAttr, SetAttr);
+        AppendFunction(ref Slots.DelAttr, DelAttr);
 
         // Binary operators
         AppendFunction(ref Slots.Add, Add);
