@@ -277,4 +277,14 @@ partial class Ast
 
         return new StarredNode(value);
     }
+
+    public static NamedExprNode NamedExpr(NameNode target, AstExprNode value)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        ArgumentNullException.ThrowIfNull(value);
+
+        target.SetContext(ExprContextType.Store);
+
+        return new NamedExprNode(target, value);
+    }
 }

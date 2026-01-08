@@ -946,11 +946,16 @@ partial class Parser
     /// <exception cref="NotImplementedException"></exception>
     private AstExprNode ParseAssignmentExpression()
     {
+        var metaInfo = CreateAstMetaInfo();
+
         var expr = ParseExpression();
-        if (expr is not NameNode || CurrentTokenType is not TokenType.ColonEqual)
+        if (expr is not NameNode nameNode || CurrentTokenType is not TokenType.ColonEqual)
             return expr;
 
-        throw new NotImplementedException();
+        MoveNextToken();
+        var value = ParseExpression();
+
+        return Ast.NamedExpr(nameNode, value).With(metaInfo.WithPreviousEnd());
     }
 
     /// <summary>

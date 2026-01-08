@@ -1255,3 +1255,28 @@ public sealed class StarredNode : AstExprNode, IExprContextNode
         return result;
     }
 }
+
+public sealed class NamedExprNode : AstExprNode
+{
+    internal NamedExprNode(NameNode target, AstExprNode value)
+    {
+        Target = target;
+        Value = value;
+    }
+
+    public NameNode Target { get; }
+    public AstExprNode Value { get; }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Target;
+        yield return Value;
+    }
+
+    public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
+    {
+        var value = Value.GetExprValue(context, frame);
+        Target.SetTargetValue(context, value, frame);
+        return value;
+    }
+}
