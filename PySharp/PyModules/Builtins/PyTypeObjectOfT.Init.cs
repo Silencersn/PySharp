@@ -119,86 +119,86 @@ partial class PyTypeObject<TObject>
             if (method.DeclaringType == typeof(PyTypeObject<TObject>))
                 continue;
 
-            PyAttributes.Add(pyName, new PyMethodDescriptorObject(pyName, this, method, paramType));
+            //PyAttributes.Add(pyName, new PyMethodDescriptorObject(pyName, this, method, paramType));
         }
     }
 
-    private void AppendOverridenSpecialMethodDescriptors2()
+    private void FillSlots()
     {
-        AppendFunction(ref Slots.Str, Str);
-        AppendFunction(ref Slots.Repr, Repr);
-        AppendFunction(ref Slots.Bool, Bool);
-        AppendFunction(ref Slots.Hash, Hash);
-        AppendFunction(ref Slots.Len, Len);
-        AppendFunction(ref Slots.Index, Index);
-        AppendFunction(ref Slots.Int, Int);
-        AppendFunction(ref Slots.Float, Float);
-        AppendFunction(ref Slots.Call, Call);
+        FillSlot(PySpecialNames.Str, ref Slots.Str, Str);
+        FillSlot(PySpecialNames.Repr, ref Slots.Repr, Repr);
+        FillSlot(PySpecialNames.Bool, ref Slots.Bool, Bool);
+        FillSlot(PySpecialNames.Hash, ref Slots.Hash, Hash);
+        FillSlot(PySpecialNames.Len, ref Slots.Len, Len);
+        FillSlot(PySpecialNames.Index, ref Slots.Index, Index);
+        FillSlot(PySpecialNames.Int, ref Slots.Int, Int);
+        FillSlot(PySpecialNames.Float, ref Slots.Float, Float);
+        FillSlot(PySpecialNames.Call, ref Slots.Call, Call);
 
-        AppendFunction(ref Slots.Complex, Complex);
-        AppendFunction(ref Slots.Abs, Abs);
-        AppendFunction(ref Slots.Neg, Neg);
-        AppendFunction(ref Slots.Pos, Pos);
-        AppendFunction(ref Slots.Invert, Invert);
-        AppendFunction(ref Slots.SetName, SetName);
-        AppendFunction(ref Slots.Missing, Missing);
-        AppendFunction(ref Slots.Init, Init);
-        AppendFunction(ref Slots.Format, Format);
+        FillSlot(PySpecialNames.Complex, ref Slots.Complex, Complex);
+        FillSlot(PySpecialNames.Abs, ref Slots.Abs, Abs);
+        FillSlot(PySpecialNames.Neg, ref Slots.Neg, Neg);
+        FillSlot(PySpecialNames.Pos, ref Slots.Pos, Pos);
+        FillSlot(PySpecialNames.Invert, ref Slots.Invert, Invert);
+        FillSlot(PySpecialNames.SetName, ref Slots.SetName, SetName);
+        FillSlot(PySpecialNames.Missing, ref Slots.Missing, Missing);
+        FillSlot(PySpecialNames.Init, ref Slots.Init, Init);
+        FillSlot(PySpecialNames.Format, ref Slots.Format, Format);
 
-        AppendFunction(ref Slots.Iter, Iter);
-        AppendFunction(ref Slots.Next, Next);
-        AppendFunction(ref Slots.GetItem, GetItem);
-        AppendFunction(ref Slots.SetItem, SetItem);
-        AppendFunction(ref Slots.DelItem, DelItem);
-        AppendFunction(ref Slots.Contains, Contains);
+        FillSlot(PySpecialNames.Iter, ref Slots.Iter, Iter);
+        FillSlot(PySpecialNames.Next, ref Slots.Next, Next);
+        FillSlot(PySpecialNames.GetItem, ref Slots.GetItem, GetItem);
+        FillSlot(PySpecialNames.SetItem, ref Slots.SetItem, SetItem);
+        FillSlot(PySpecialNames.DelItem, ref Slots.DelItem, DelItem);
+        FillSlot(PySpecialNames.Contains, ref Slots.Contains, Contains);
 
-        AppendFunction(ref Slots.Get, Get);
-        AppendFunction(ref Slots.Set, Set);
-        AppendFunction(ref Slots.Delete, Delete);
-        AppendFunction(ref Slots.GetAttribute, GetAttribute);
-        AppendFunction(ref Slots.GetAttr, GetAttr);
-        AppendFunction(ref Slots.SetAttr, SetAttr);
-        AppendFunction(ref Slots.DelAttr, DelAttr);
+        FillSlot(PySpecialNames.Get, ref Slots.Get, Get);
+        FillSlot(PySpecialNames.Set, ref Slots.Set, Set);
+        FillSlot(PySpecialNames.Delete, ref Slots.Delete, Delete);
+        FillSlot(PySpecialNames.GetAttribute, ref Slots.GetAttribute, GetAttribute);
+        FillSlot(PySpecialNames.GetAttr, ref Slots.GetAttr, GetAttr);
+        FillSlot(PySpecialNames.SetAttr, ref Slots.SetAttr, SetAttr);
+        FillSlot(PySpecialNames.DelAttr, ref Slots.DelAttr, DelAttr);
 
         // Binary operators
-        AppendFunction(ref Slots.Add, Add);
-        AppendFunction(ref Slots.Sub, Sub);
-        AppendFunction(ref Slots.Mul, Mul);
-        AppendFunction(ref Slots.TrueDiv, TrueDiv);
-        AppendFunction(ref Slots.FloorDiv, FloorDiv);
-        AppendFunction(ref Slots.Mod, Mod);
-        AppendFunction(ref Slots.DivMod, DivMod);
-        AppendFunction(ref Slots.LShift, LShift);
-        AppendFunction(ref Slots.RShift, RShift);
-        AppendFunction(ref Slots.And, And);
-        AppendFunction(ref Slots.Xor, Xor);
-        AppendFunction(ref Slots.Or, Or);
+        FillSlot(PySpecialNames.Add, ref Slots.Add, Add);
+        FillSlot(PySpecialNames.Sub, ref Slots.Sub, Sub);
+        FillSlot(PySpecialNames.Mul, ref Slots.Mul, Mul);
+        FillSlot(PySpecialNames.TrueDiv, ref Slots.TrueDiv, TrueDiv);
+        FillSlot(PySpecialNames.FloorDiv, ref Slots.FloorDiv, FloorDiv);
+        FillSlot(PySpecialNames.Mod, ref Slots.Mod, Mod);
+        FillSlot(PySpecialNames.DivMod, ref Slots.DivMod, DivMod);
+        FillSlot(PySpecialNames.LShift, ref Slots.LShift, LShift);
+        FillSlot(PySpecialNames.RShift, ref Slots.RShift, RShift);
+        FillSlot(PySpecialNames.And, ref Slots.And, And);
+        FillSlot(PySpecialNames.Xor, ref Slots.Xor, Xor);
+        FillSlot(PySpecialNames.Or, ref Slots.Or, Or);
 
         // Reverse binary operators
-        AppendFunction(ref Slots.RAdd, RAdd);
-        AppendFunction(ref Slots.RSub, RSub);
-        AppendFunction(ref Slots.RMul, RMul);
-        AppendFunction(ref Slots.RTrueDiv, RTrueDiv);
-        AppendFunction(ref Slots.RFloorDiv, RFloorDiv);
-        AppendFunction(ref Slots.RMod, RMod);
-        AppendFunction(ref Slots.RDivMod, RDivMod);
-        AppendFunction(ref Slots.RLShift, RLShift);
-        AppendFunction(ref Slots.RRShift, RRShift);
-        AppendFunction(ref Slots.RAnd, RAnd);
-        AppendFunction(ref Slots.RXor, RXor);
-        AppendFunction(ref Slots.ROr, ROr);
+        FillSlot(PySpecialNames.RAdd, ref Slots.RAdd, RAdd);
+        FillSlot(PySpecialNames.RSub, ref Slots.RSub, RSub);
+        FillSlot(PySpecialNames.RMul, ref Slots.RMul, RMul);
+        FillSlot(PySpecialNames.RTrueDiv, ref Slots.RTrueDiv, RTrueDiv);
+        FillSlot(PySpecialNames.RFloorDiv, ref Slots.RFloorDiv, RFloorDiv);
+        FillSlot(PySpecialNames.RMod, ref Slots.RMod, RMod);
+        FillSlot(PySpecialNames.RDivMod, ref Slots.RDivMod, RDivMod);
+        FillSlot(PySpecialNames.RLShift, ref Slots.RLShift, RLShift);
+        FillSlot(PySpecialNames.RRShift, ref Slots.RRShift, RRShift);
+        FillSlot(PySpecialNames.RAnd, ref Slots.RAnd, RAnd);
+        FillSlot(PySpecialNames.RXor, ref Slots.RXor, RXor);
+        FillSlot(PySpecialNames.ROr, ref Slots.ROr, ROr);
 
         // Ternary operators
-        AppendFunction(ref Slots.Pow, Pow);
-        AppendFunction(ref Slots.RPow, RPow);
+        FillSlot(PySpecialNames.Pow, ref Slots.Pow, Pow);
+        FillSlot(PySpecialNames.RPow, ref Slots.RPow, RPow);
 
         // Rich comparison operators
-        AppendFunction(ref Slots.Lt, Lt);
-        AppendFunction(ref Slots.Le, Le);
-        AppendFunction(ref Slots.Eq, Eq);
-        AppendFunction(ref Slots.Ne, Ne);
-        AppendFunction(ref Slots.Gt, Gt);
-        AppendFunction(ref Slots.Ge, Ge);
+        FillSlot(PySpecialNames.Lt, ref Slots.Lt, Lt);
+        FillSlot(PySpecialNames.Le, ref Slots.Le, Le);
+        FillSlot(PySpecialNames.Eq, ref Slots.Eq, Eq);
+        FillSlot(PySpecialNames.Ne, ref Slots.Ne, Ne);
+        FillSlot(PySpecialNames.Gt, ref Slots.Gt, Gt);
+        FillSlot(PySpecialNames.Ge, ref Slots.Ge, Ge);
 
         bool IsOverriden(MethodInfo method)
         {
@@ -210,10 +210,13 @@ partial class PyTypeObject<TObject>
             return method.DeclaringType != typeof(PyTypeObject<TObject>);
         }
 
-        void AppendFunction<TDelegate>(ref TDelegate? field, TDelegate func) where TDelegate : Delegate
+        void FillSlot<TDelegate>(string name, ref TDelegate? field, TDelegate func) where TDelegate : Delegate
         {
             if (IsOverriden(func.Method))
+            {
                 field = func;
+                PyAttributes.Add(name, new PyWrapperDescriptorObject(func));
+            }
         }
     }
 
