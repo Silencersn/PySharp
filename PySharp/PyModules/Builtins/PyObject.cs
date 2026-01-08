@@ -178,10 +178,26 @@ public sealed class PyObjectType : PyTypeObject<PyObjectType, PyObject>
 
     public PyObjectType()
     {
-        AppendSpecialMethodDescriptors(nameof(Repr), nameof(Str), nameof(Bool), nameof(Hash),
-            nameof(Eq), nameof(Ne), nameof(Lt), nameof(Le), nameof(Gt), nameof(Ge),
-            nameof(GetAttribute), nameof(SetAttr), nameof(DelAttr),
-            nameof(Init));
+        FillSlot(PySpecialNames.Repr, ref Slots.Repr, Repr);
+        FillSlot(PySpecialNames.Str, ref Slots.Str, Str);
+        FillSlot(PySpecialNames.Bool, ref Slots.Bool, Bool);
+        FillSlot(PySpecialNames.Hash, ref Slots.Hash, Hash);
+        FillSlot(PySpecialNames.Eq, ref Slots.Eq, Eq);
+        FillSlot(PySpecialNames.Ne, ref Slots.Ne, Ne);
+        FillSlot(PySpecialNames.Lt, ref Slots.Lt, Lt);
+        FillSlot(PySpecialNames.Le, ref Slots.Le, Le);
+        FillSlot(PySpecialNames.Gt, ref Slots.Gt, Gt);
+        FillSlot(PySpecialNames.Ge, ref Slots.Ge, Ge);
+        FillSlot(PySpecialNames.GetAttribute, ref Slots.GetAttribute, GetAttribute);
+        FillSlot(PySpecialNames.SetAttr, ref Slots.SetAttr, SetAttr);
+        FillSlot(PySpecialNames.DelAttr, ref Slots.DelAttr, DelAttr);
+        FillSlot(PySpecialNames.Init, ref Slots.Init, Init);
+
+        void FillSlot<TDelegate>(string name, ref TDelegate? field, TDelegate func) where TDelegate : Delegate
+        {
+            field = func;
+            PyAttributes.Add(name, new PyWrapperDescriptorObject(func));
+        }
     }
 
     protected internal override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
