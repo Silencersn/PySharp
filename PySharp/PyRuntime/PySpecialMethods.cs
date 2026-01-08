@@ -1,8 +1,6 @@
 ﻿using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime.Calls;
-using System;
 using System.Collections.Frozen;
-using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.PyRuntime;
 

@@ -1,6 +1,5 @@
 ﻿using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime.PyAttributes;
-using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Reflection;
 
@@ -154,7 +153,7 @@ public static class PyDelegateConverter
     }
     public static PySelfArgsKwargsFunction ToSelfArgsKwargsFunction(this PyObject obj)
     {
-        return (context, self, args, kwargs) => obj.Call(context, [self, ..args], kwargs);
+        return (context, self, args, kwargs) => obj.Call(context, [self, .. args], kwargs);
     }
 
     public static PyClsArgsKwargsFunction ToClsArgsKwargsFunction(this PyObject obj)

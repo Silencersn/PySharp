@@ -1,7 +1,6 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.PyAttributes;
-using System.Xml.Linq;
 
 namespace PySharp.PyModules.Builtins;
 

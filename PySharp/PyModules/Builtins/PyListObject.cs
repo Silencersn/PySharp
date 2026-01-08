@@ -220,7 +220,7 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
             var reprResult = PySpecialMethods.Repr(context, arguments[0]);
             if (reprResult.IsError)
                 return reprResult;
-            
+
             return PyResult.RaiseValueError($"ValueError: {reprResult.Value.Value} is not in list");
         }
         return PyIntObject.FromInteger(index);
