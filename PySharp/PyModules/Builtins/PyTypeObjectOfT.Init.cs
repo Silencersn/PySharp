@@ -133,6 +133,7 @@ partial class PyTypeObject<TObject>
         AppendFunction(ref Slots.Index, Index);
         AppendFunction(ref Slots.Int, Int);
         AppendFunction(ref Slots.Float, Float);
+        AppendFunction(ref Slots.Call, Call);
 
         AppendFunction(ref Slots.Iter, Iter);
         AppendFunction(ref Slots.Next, Next);

@@ -38,10 +38,6 @@ partial class PyObject
     {
         return PyType.SetName(context, this, owner, name);
     }
-    public PyResult Call(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
-    {
-        return PyType.Call(context, this, args, kwargs);
-    }
     public PyResult Missing(PyCallContext context, PyObject key)
     {
         return PyType.Missing(context, this, key);

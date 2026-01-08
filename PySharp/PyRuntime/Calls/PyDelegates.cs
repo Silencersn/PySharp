@@ -21,6 +21,7 @@ public delegate PyResult PyMemberDeleter<TObject>(PyCallContext context, TObject
 public delegate PyResult PyUnaryFunction(PyCallContext context, PyObject self);
 public delegate PyResult PyBinaryFunction(PyCallContext context, PyObject self, PyObject other);
 public delegate PyResult PyTernaryFunction(PyCallContext context, PyObject self, PyObject second, PyObject third);
+public delegate PyResult PySelfArgsKwargsFunction(PyCallContext context, PyObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs);
 
 public static class PyDelegateConverter
 {
@@ -140,14 +141,18 @@ public static class PyDelegateConverter
 
     public static PyUnaryFunction ToUnaryFunction(this PyObject obj)
     {
-        return (context, self) => obj.Call(context, [self], FrozenDictionary<string, PyObject>.Empty);
+        return (context, self) => obj.Call(context, [self]);
     }
     public static PyBinaryFunction ToBinaryFunction(this PyObject obj)
     {
-        return (context, self, other) => obj.Call(context, [self, other], FrozenDictionary<string, PyObject>.Empty);
+        return (context, self, other) => obj.Call(context, [self, other]);
     }
     public static PyTernaryFunction ToTernaryFunction(this PyObject obj)
     {
-        return (context, self, other, third) => obj.Call(context, [self, other, third], FrozenDictionary<string, PyObject>.Empty);
+        return (context, self, other, third) => obj.Call(context, [self, other, third]);
+    }
+    public static PySelfArgsKwargsFunction ToSelfArgsKwargsFunction(this PyObject obj)
+    {
+        return (context, self, args, kwargs) => obj.Call(context, [self, ..args], kwargs);
     }
 }

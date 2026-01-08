@@ -1,5 +1,6 @@
 ﻿using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime.Calls;
+using System.Collections.Frozen;
 using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.PyRuntime;
@@ -195,5 +196,24 @@ public static class PySpecialMethods
     public static PyResult Abs(PyCallContext context, PyObject obj)
     {
         return obj.Abs(context);
+    }
+
+    public static PyResult Call(PyCallContext context, PyObject callable, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        var func = callable.PyType.Slots.Call;
+        if (func is not null)
+            return func(context, callable, args, kwargs);
+
+        return PyResult.RaiseTypeError($"'{callable.PyType.FullName}' object is not callable");
+    }
+
+    public static PyResult Call(this PyObject callable, PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        return Call(context, callable, args, kwargs);
+    }
+
+    public static PyResult Call(this PyObject callable, PyCallContext context, IReadOnlyList<PyObject> args)
+    {
+        return Call(context, callable, args, FrozenDictionary<string, PyObject>.Empty);
     }
 }

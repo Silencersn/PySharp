@@ -987,6 +987,7 @@ public sealed class ClassDefNode : AstStmtNode, IScopedSubNodesProvider
                 case PySpecialNames.Index: type.Slots.Index = value.ToUnaryFunction(); break;
                 case PySpecialNames.Int: type.Slots.Int = value.ToUnaryFunction(); break;
                 case PySpecialNames.Float: type.Slots.Float = value.ToUnaryFunction(); break;
+                case PySpecialNames.Call: type.Slots.Call = value.ToSelfArgsKwargsFunction(); break;
 
                 case PySpecialNames.Iter: type.Slots.Iter = value.ToUnaryFunction(); break;
                 case PySpecialNames.Next: type.Slots.Next = value.ToUnaryFunction(); break;

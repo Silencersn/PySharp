@@ -22,6 +22,7 @@ partial class PyTypeObject
         internal PyUnaryFunction? Index;
         internal PyUnaryFunction? Int;
         internal PyUnaryFunction? Float;
+        internal PySelfArgsKwargsFunction? Call;
 
         internal PyUnaryFunction? Iter;
         internal PyUnaryFunction? Next;
