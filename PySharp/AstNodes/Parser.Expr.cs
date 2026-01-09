@@ -3,6 +3,7 @@ using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.Tokenization;
+using PySharp.Utility;
 using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Text;
@@ -385,7 +386,7 @@ partial class Parser
             var value = CurrentToken.String;
             MoveNextToken();
 
-            if (PyIntObjectType.TryParse(value, 0, out var integer))
+            if (BigIntegerHelper.TryParse(value, 0, out var integer))
                 return Ast.Constant(integer).With(metaInfo);
 
             value = value.Replace("_", string.Empty);

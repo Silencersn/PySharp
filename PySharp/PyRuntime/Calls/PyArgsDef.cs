@@ -1,5 +1,6 @@
 ﻿using PySharp.AstNodes;
 using PySharp.PyModules.Builtins;
+using PySharp.Utility;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
@@ -60,7 +61,7 @@ public sealed class PyArgsDef
         if (literal is "{}")
             return PyDictObject.CreateDict();
 
-        if (PyIntObjectType.TryParse(literal, 0, out var resultInt))
+        if (BigIntegerHelper.TryParse(literal, 0, out var resultInt))
             return PyIntObject.FromInteger(resultInt);
 
         if (double.TryParse(literal, out var resultDouble))

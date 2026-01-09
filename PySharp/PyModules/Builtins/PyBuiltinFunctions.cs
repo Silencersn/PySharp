@@ -4,6 +4,7 @@ using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.PyAttributes;
 using PySharp.Tokenization;
+using PySharp.Utility;
 using System.Diagnostics;
 using System.Text;
 
@@ -19,7 +20,7 @@ public static partial class PyBuiltinFunctions
     // TODO: ascii()
 
     // B
-    // TODO: bin()
+    public static readonly PyBuiltinFunctionOrMethodObject Bin = PyBuiltinFunctionOrMethodObject.CreateFunction("bin", BinImpl);
     // bool -> PyBoolObject
     // TODO: breakpoint()
     // TODO: bytearray()
@@ -57,7 +58,7 @@ public static partial class PyBuiltinFunctions
     public static readonly PyBuiltinFunctionOrMethodObject HasAttr = PyBuiltinFunctionOrMethodObject.CreateFunction("hasattr", HasAttrImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Hash = PyBuiltinFunctionOrMethodObject.CreateFunction("hash", HashImpl);
     // TODO: help()
-    // TODO: hex()
+    public static readonly PyBuiltinFunctionOrMethodObject Hex = PyBuiltinFunctionOrMethodObject.CreateFunction("hex", HexImpl);
 
     // I
     public static readonly PyBuiltinFunctionOrMethodObject Id = PyBuiltinFunctionOrMethodObject.CreateFunction("id", IdImpl);
@@ -83,7 +84,7 @@ public static partial class PyBuiltinFunctions
 
     // O
     // object -> PyObject
-    // TODO: oct()
+    public static readonly PyBuiltinFunctionOrMethodObject Oct = PyBuiltinFunctionOrMethodObject.CreateFunction("oct", OctImpl);
     // TODO: open()
     public static readonly PyBuiltinFunctionOrMethodObject Ord = PyBuiltinFunctionOrMethodObject.CreateFunction("ord", OrdImpl);
 
@@ -688,5 +689,38 @@ public static partial class PyBuiltinFunctions
     private static PyResult AbsImpl(PyCallContext context, PyArguments arguments)
     {
         return PySpecialMethods.Abs(context, arguments[0]);
+    }
+
+    [PyFunctionArgsDef("integer", "/")]
+    private static PyResult BinImpl(PyCallContext context, PyArguments arguments)
+    {
+        var result = PySpecialMethods.Index(context, arguments[0]);
+        if (result.IsError)
+            return result;
+
+        var value = BigIntegerHelper.ToString(result.Value.Value, 2);
+        return PyStrObject.FromString(value);
+    }
+
+    [PyFunctionArgsDef("integer", "/")]
+    private static PyResult OctImpl(PyCallContext context, PyArguments arguments)
+    {
+        var result = PySpecialMethods.Index(context, arguments[0]);
+        if (result.IsError)
+            return result;
+
+        var value = BigIntegerHelper.ToString(result.Value.Value, 8);
+        return PyStrObject.FromString(value);
+    }
+
+    [PyFunctionArgsDef("integer", "/")]
+    private static PyResult HexImpl(PyCallContext context, PyArguments arguments)
+    {
+        var result = PySpecialMethods.Index(context, arguments[0]);
+        if (result.IsError)
+            return result;
+
+        var value = BigIntegerHelper.ToString(result.Value.Value, 16);
+        return PyStrObject.FromString(value);
     }
 }
