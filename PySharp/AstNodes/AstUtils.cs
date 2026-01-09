@@ -195,7 +195,7 @@ internal static class AstUtils
         return false;
     }
 
-    public static bool IsValidAugtarget(this AstExprNode node)
+    public static bool IsValidAugTarget(this AstExprNode node)
     {
         //return node is NameNode or SubscriptNode or AttributeNode;
         return node is ITargetNode;
@@ -203,7 +203,7 @@ internal static class AstUtils
 
     public static bool IsValidTarget(this AstExprNode node)
     {
-        if (IsValidAugtarget(node))
+        if (IsValidAugTarget(node))
             return true;
 
         if (node is TupleNode tupleNode)
@@ -229,7 +229,7 @@ internal static class AstUtils
 
         if (isAugtarget)
         {
-            if (!IsValidAugtarget(node))
+            if (!IsValidAugTarget(node))
                 throw new InvalidOperationException();
         }
         else

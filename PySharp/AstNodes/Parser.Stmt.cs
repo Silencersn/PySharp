@@ -240,8 +240,10 @@ partial class Parser
         }
 
 
+        var startIndex = TokenStreamPosition;
         var exprList = ParseExpressionList(StopPredicates.UntilNewLineOrSemicolonOrEqual, out var endsWithComma);
 
+        // assignment_stmt
         if (CurrentTokenType is TokenType.Equal)
         {
             var allTargets = exprList.All(AstUtils.IsValidTarget);
@@ -262,13 +264,13 @@ partial class Parser
             return node;
         }
 
+        // augmented_assignment_stmt
         if (IsAugOperator(CurrentTokenType))
         {
             var target = UnwrapOrMakeTuple(exprList, endsWithComma);
 
-            if (!AstUtils.IsValidAugtarget(target))
+            if (!AstUtils.IsValidAugTarget(target))
                 throw _context.ThrowableSyntaxError($"'{AstUtils.GetExprNodeName(target)}' is an illegal expression for augmented assignment");
-            AstUtils.SetContext(target, ExprContextType.Store);
 
             OperatorType op = CurrentTokenType switch
             {
@@ -289,9 +291,53 @@ partial class Parser
                 _ => throw new UnreachableException(),
             };
             MoveNextToken();
-            var list = ParseExpressionList(StopPredicates.UntilNewLineOrSemicolon, out var comma);
-            var value = UnwrapOrMakeTuple(list, comma);
+
+            AstExprNode value;
+            if (IsCurrentKeyword("yield"))
+            {
+                value = ParseYieldExpression();
+            }
+            else
+            {
+                var list = ParseExpressionList(StopPredicates.UntilNewLineOrSemicolon, out var comma);
+                value = UnwrapOrMakeTuple(list, comma);
+            }
             return Ast.AugAssign(target, op, value).With(metaInfo);
+        }
+
+        // annotated_assignment_stmt
+        if (CurrentTokenType is TokenType.Colon)
+        {
+            var target = UnwrapOrMakeTuple(exprList, endsWithComma);
+
+            if (!AstUtils.IsValidAugTarget(target))
+                throw _context.ThrowableSyntaxError(null /* TODO */);
+
+            MoveNextToken();
+            var annotation = ParseExpression();
+            var value = null as AstExprNode;
+
+            // simple:
+            // a: int
+            // non-simple:
+            // (a): int
+            var simple = target is NameNode && _tokenStream.GetTokenAt(startIndex).Type is TokenType.Name;
+
+            if (CurrentTokenType is TokenType.Equal)
+            {
+                MoveNextToken();
+                if (IsCurrentKeyword("yield"))
+                {
+                    value = ParseYieldExpression();
+                }
+                else
+                {
+                    var list = ParseStarredExpressionList(StopPredicates.UntilNewLineOrSemicolon, out var comma);
+                    value = UnwrapOrMakeTuple(list, comma);
+                }
+            }
+
+            return Ast.AnnAssign(target, annotation, value, simple);
         }
 
         return Ast.Expr(UnwrapOrMakeTuple(exprList, endsWithComma)).With(metaInfo);

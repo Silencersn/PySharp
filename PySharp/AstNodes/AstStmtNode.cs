@@ -153,6 +153,44 @@ public sealed class AugAssignNode : AstStmtNode
     }
 }
 
+public sealed class AnnAssignNode : AstStmtNode
+{
+    internal AnnAssignNode(AstExprNode target, AstExprNode annotation, AstExprNode? value, bool simple)
+    {
+        Target = target;
+        Annotation = annotation;
+        Value = value;
+        Simple = simple;
+    }
+
+    public AstExprNode Target { get; }
+    public AstExprNode Annotation { get; }
+    public AstExprNode? Value { get; }
+    public bool Simple { get; }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Target;
+
+        // TODO: if EnumerateSubNodes is called by SemanticAnalyzer, it should not enumerate Annotation
+        //yield return Annotation;
+
+        if (Value is not null)
+            yield return Value;
+    }
+
+    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
+    {
+        // TODO: __annotations__ if simple
+
+        if (Value is null)
+            return;
+
+        var value = Value.GetExprValue(context, frame);
+        Target.SetTargetValue(context, value, frame);
+    }
+}
+
 public sealed class ExprNode : AstStmtNode
 {
     public AstExprNode Value { get; }

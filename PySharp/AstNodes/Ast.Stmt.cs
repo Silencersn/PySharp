@@ -20,6 +20,16 @@ partial class Ast
         return new AssignNode(targetsArray, value);
     }
 
+    public static AnnAssignNode AnnAssign(AstExprNode target, AstExprNode annotation, AstExprNode? value, bool simple)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        ArgumentNullException.ThrowIfNull(annotation);
+
+        target.CheckValidTargetThenSetContext(ExprContextType.Store);
+
+        return new AnnAssignNode(target, annotation, value, simple);
+    }
+
     public static DeleteNode Delete(params IEnumerable<AstExprNode> targets)
     {
         ArgumentNullException.ThrowIfNull(targets);
