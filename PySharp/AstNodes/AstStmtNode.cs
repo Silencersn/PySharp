@@ -119,11 +119,9 @@ public sealed class AugAssignNode : AstStmtNode
 
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
-        // TODO: __iadd__ ...
-
         var left = Target.GetExprValue(context, frame);
         var right = Value.GetExprValue(context, frame);
-        var value = BinOpNode.EvalOperator(context, Op, left, right).PyUnwrap(context);
+        var value = EvalInplaceOperator(context, Op, left, right).PyUnwrap(context);
         Target.SetTargetValue(context, value, frame);
     }
 
@@ -131,6 +129,27 @@ public sealed class AugAssignNode : AstStmtNode
     {
         yield return Target;
         yield return Value;
+    }
+
+    private static PyResult EvalInplaceOperator(PyCallContext context, OperatorType op, PyObject left, PyObject right)
+    {
+        return op switch
+        {
+            OperatorType.Add => PyOperators.InPlaceAdd(context, left, right),
+            OperatorType.Sub => PyOperators.InPlaceSub(context, left, right),
+            OperatorType.Mult => PyOperators.InPlaceMult(context, left, right),
+            OperatorType.MatMult => throw new NotImplementedException(), // PyOperators.InPlaceMatMult(context, left, right),
+            OperatorType.Div => PyOperators.InPlaceTrueDiv(context, left, right),
+            OperatorType.Mod => PyOperators.InPlaceMod(context, left, right),
+            OperatorType.Pow => PyOperators.InPlacePow(context, left, right, PyNoneObject.None),
+            OperatorType.LShift => PyOperators.InPlaceLShift(context, left, right),
+            OperatorType.RShift => PyOperators.InPlaceRShift(context, left, right),
+            OperatorType.BitOr => PyOperators.InPlaceBitOr(context, left, right),
+            OperatorType.BitXor => PyOperators.InPlaceBitXor(context, left, right),
+            OperatorType.BitAnd => PyOperators.InPlaceBitAnd(context, left, right),
+            OperatorType.FloorDiv => PyOperators.InPlaceFloorDiv(context, left, right),
+            _ => throw new UnreachableException(),
+        };
     }
 }
 
@@ -1035,9 +1054,24 @@ public sealed class ClassDefNode : AstStmtNode, IScopedSubNodesProvider
                 case PySpecialNames.RXor: type.Slots.RXor = value.ToBinaryFunction(); break;
                 case PySpecialNames.ROr: type.Slots.ROr = value.ToBinaryFunction(); break;
 
+                // In-place binary operators
+                case PySpecialNames.IAdd: type.Slots.IAdd = value.ToBinaryFunction(); break;
+                case PySpecialNames.ISub: type.Slots.ISub = value.ToBinaryFunction(); break;
+                case PySpecialNames.IMul: type.Slots.IMul = value.ToBinaryFunction(); break;
+                case PySpecialNames.IMatMul: type.Slots.IMatMul = value.ToBinaryFunction(); break;
+                case PySpecialNames.ITrueDiv: type.Slots.ITrueDiv = value.ToBinaryFunction(); break;
+                case PySpecialNames.IFloorDiv: type.Slots.IFloorDiv = value.ToBinaryFunction(); break;
+                case PySpecialNames.IMod: type.Slots.IMod = value.ToBinaryFunction(); break;
+                case PySpecialNames.ILShift: type.Slots.ILShift = value.ToBinaryFunction(); break;
+                case PySpecialNames.IRShift: type.Slots.IRShift = value.ToBinaryFunction(); break;
+                case PySpecialNames.IAnd: type.Slots.IAnd = value.ToBinaryFunction(); break;
+                case PySpecialNames.IXor: type.Slots.IXor = value.ToBinaryFunction(); break;
+                case PySpecialNames.IOr: type.Slots.IOr = value.ToBinaryFunction(); break;
+
                 // Ternary operators
                 case PySpecialNames.Pow: type.Slots.Pow = value.ToTernaryFunction(); break;
                 case PySpecialNames.RPow: type.Slots.RPow = value.ToTernaryFunction(); break;
+                case PySpecialNames.IPow: type.Slots.IPow = value.ToTernaryFunction(); break;
 
                 // Rich comparison operators
                 case PySpecialNames.Lt: type.Slots.Lt = value.ToBinaryFunction(); break;

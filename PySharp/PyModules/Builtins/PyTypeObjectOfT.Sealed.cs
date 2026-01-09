@@ -414,4 +414,83 @@ partial class PyTypeObject<TObject>
             return PyResult.RaiseTypeError($"'{PySpecialNames.Format}' requires a '{Name}' object but received a '{self.PyType.Name}'");
         return Format(context, selfOfT, formatSpec);
     }
+
+    private protected sealed override PyResult IAdd(PyCallContext context, PyObject self, PyObject other)
+    {
+        if (self is not TObject selfOfT)
+            return PyResult.RaiseTypeError($"'{PySpecialNames.IAdd}' requires a '{Name}' object but received a '{self.PyType.Name}'");
+        return IAdd(context, selfOfT, other);
+    }
+    private protected sealed override PyResult ISub(PyCallContext context, PyObject self, PyObject other)
+    {
+        if (self is not TObject selfOfT)
+            return PyResult.RaiseTypeError($"'{PySpecialNames.ISub}' requires a '{Name}' object but received a '{self.PyType.Name}'");
+        return ISub(context, selfOfT, other);
+    }
+    private protected sealed override PyResult IMul(PyCallContext context, PyObject self, PyObject other)
+    {
+        if (self is not TObject selfOfT)
+            return PyResult.RaiseTypeError($"'{PySpecialNames.IMul}' requires a '{Name}' object but received a '{self.PyType.Name}'");
+        return IMul(context, selfOfT, other);
+    }
+    private protected sealed override PyResult IMatMul(PyCallContext context, PyObject self, PyObject other)
+    {
+        if (self is not TObject selfOfT)
+            return PyResult.RaiseTypeError($"'{PySpecialNames.IMatMul}' requires a '{Name}' object but received a '{self.PyType.Name}'");
+        return IMatMul(context, selfOfT, other);
+    }
+    private protected sealed override PyResult ITrueDiv(PyCallContext context, PyObject self, PyObject other)
+    {
+        if (self is not TObject selfOfT)
+            return PyResult.RaiseTypeError($"'{PySpecialNames.ITrueDiv}' requires a '{Name}' object but received a '{self.PyType.Name}'");
+        return ITrueDiv(context, selfOfT, other);
+    }
+    private protected sealed override PyResult IFloorDiv(PyCallContext context, PyObject self, PyObject other)
+    {
+        if (self is not TObject selfOfT)
+            return PyResult.RaiseTypeError($"'{PySpecialNames.IFloorDiv}' requires a '{Name}' object but received a '{self.PyType.Name}'");
+        return IFloorDiv(context, selfOfT, other);
+    }
+    private protected sealed override PyResult IMod(PyCallContext context, PyObject self, PyObject other)
+    {
+        if (self is not TObject selfOfT)
+            return PyResult.RaiseTypeError($"'{PySpecialNames.IMod}' requires a '{Name}' object but received a '{self.PyType.Name}'");
+        return IMod(context, selfOfT, other);
+    }
+    private protected sealed override PyResult IPow(PyCallContext context, PyObject self, PyObject other, PyObject modulo)
+    {
+        if (self is not TObject selfOfT)
+            return PyResult.RaiseTypeError($"'{PySpecialNames.IPow}' requires a '{Name}' object but received a '{self.PyType.Name}'");
+        return IPow(context, selfOfT, other, modulo);
+    }
+    private protected sealed override PyResult ILShift(PyCallContext context, PyObject self, PyObject other)
+    {
+        if (self is not TObject selfOfT)
+            return PyResult.RaiseTypeError($"'{PySpecialNames.ILShift}' requires a '{Name}' object but received a '{self.PyType.Name}'");
+        return ILShift(context, selfOfT, other);
+    }
+    private protected sealed override PyResult IRShift(PyCallContext context, PyObject self, PyObject other)
+    {
+        if (self is not TObject selfOfT)
+            return PyResult.RaiseTypeError($"'{PySpecialNames.IRShift}' requires a '{Name}' object but received a '{self.PyType.Name}'");
+        return IRShift(context, selfOfT, other);
+    }
+    private protected sealed override PyResult IAnd(PyCallContext context, PyObject self, PyObject other)
+    {
+        if (self is not TObject selfOfT)
+            return PyResult.RaiseTypeError($"'{PySpecialNames.IAnd}' requires a '{Name}' object but received a '{self.PyType.Name}'");
+        return IAnd(context, selfOfT, other);
+    }
+    private protected sealed override PyResult IXor(PyCallContext context, PyObject self, PyObject other)
+    {
+        if (self is not TObject selfOfT)
+            return PyResult.RaiseTypeError($"'{PySpecialNames.IXor}' requires a '{Name}' object but received a '{self.PyType.Name}'");
+        return IXor(context, selfOfT, other);
+    }
+    private protected sealed override PyResult IOr(PyCallContext context, PyObject self, PyObject other)
+    {
+        if (self is not TObject selfOfT)
+            return PyResult.RaiseTypeError($"'{PySpecialNames.IOr}' requires a '{Name}' object but received a '{self.PyType.Name}'");
+        return IOr(context, selfOfT, other);
+    }
 }

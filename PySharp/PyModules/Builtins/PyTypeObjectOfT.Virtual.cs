@@ -297,4 +297,56 @@ partial class PyTypeObject<TObject>
         return DefaultFormat(context, self, formatSpec);
     }
 
+    protected virtual PyResult IAdd(PyCallContext context, TObject self, PyObject other)
+    {
+        return DefaultBinaryOperator(context, self, other);
+    }
+    protected virtual PyResult ISub(PyCallContext context, TObject self, PyObject other)
+    {
+        return DefaultBinaryOperator(context, self, other);
+    }
+    protected virtual PyResult IMul(PyCallContext context, TObject self, PyObject other)
+    {
+        return DefaultBinaryOperator(context, self, other);
+    }
+    protected virtual PyResult IMatMul(PyCallContext context, TObject self, PyObject other)
+    {
+        return DefaultBinaryOperator(context, self, other);
+    }
+    protected virtual PyResult ITrueDiv(PyCallContext context, TObject self, PyObject other)
+    {
+        return DefaultBinaryOperator(context, self, other);
+    }
+    protected virtual PyResult IFloorDiv(PyCallContext context, TObject self, PyObject other)
+    {
+        return DefaultBinaryOperator(context, self, other);
+    }
+    protected virtual PyResult IMod(PyCallContext context, TObject self, PyObject other)
+    {
+        return DefaultBinaryOperator(context, self, other);
+    }
+    protected virtual PyResult IPow(PyCallContext context, TObject self, PyObject other, PyObject modulo)
+    {
+        return DefaultBinaryOperator(context, self, other);
+    }
+    protected virtual PyResult ILShift(PyCallContext context, TObject self, PyObject other)
+    {
+        return DefaultBinaryOperator(context, self, other);
+    }
+    protected virtual PyResult IRShift(PyCallContext context, TObject self, PyObject other)
+    {
+        return DefaultBinaryOperator(context, self, other);
+    }
+    protected virtual PyResult IAnd(PyCallContext context, TObject self, PyObject other)
+    {
+        return DefaultBinaryOperator(context, self, other);
+    }
+    protected virtual PyResult IXor(PyCallContext context, TObject self, PyObject other)
+    {
+        return DefaultBinaryOperator(context, self, other);
+    }
+    protected virtual PyResult IOr(PyCallContext context, TObject self, PyObject other)
+    {
+        return DefaultBinaryOperator(context, self, other);
+    }
 }

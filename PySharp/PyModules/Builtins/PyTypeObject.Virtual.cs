@@ -293,4 +293,57 @@ partial class PyTypeObject
     {
         throw new UnreachableException("Implemented by PyTypeObject<TObject>");
     }
+
+    private protected virtual PyResult IAdd(PyCallContext context, PyObject self, PyObject other)
+    {
+        throw new UnreachableException("Implemented by PyTypeObject<TObject>");
+    }
+    private protected virtual PyResult ISub(PyCallContext context, PyObject self, PyObject other)
+    {
+        throw new UnreachableException("Implemented by PyTypeObject<TObject>");
+    }
+    private protected virtual PyResult IMul(PyCallContext context, PyObject self, PyObject other)
+    {
+        throw new UnreachableException("Implemented by PyTypeObject<TObject>");
+    }
+    private protected virtual PyResult IMatMul(PyCallContext context, PyObject self, PyObject other)
+    {
+        throw new UnreachableException("Implemented by PyTypeObject<TObject>");
+    }
+    private protected virtual PyResult ITrueDiv(PyCallContext context, PyObject self, PyObject other)
+    {
+        throw new UnreachableException("Implemented by PyTypeObject<TObject>");
+    }
+    private protected virtual PyResult IFloorDiv(PyCallContext context, PyObject self, PyObject other)
+    {
+        throw new UnreachableException("Implemented by PyTypeObject<TObject>");
+    }
+    private protected virtual PyResult IMod(PyCallContext context, PyObject self, PyObject other)
+    {
+        throw new UnreachableException("Implemented by PyTypeObject<TObject>");
+    }
+    private protected virtual PyResult IPow(PyCallContext context, PyObject self, PyObject other, PyObject modulo)
+    {
+        throw new UnreachableException("Implemented by PyTypeObject<TObject>");
+    }
+    private protected virtual PyResult ILShift(PyCallContext context, PyObject self, PyObject other)
+    {
+        throw new UnreachableException("Implemented by PyTypeObject<TObject>");
+    }
+    private protected virtual PyResult IRShift(PyCallContext context, PyObject self, PyObject other)
+    {
+        throw new UnreachableException("Implemented by PyTypeObject<TObject>");
+    }
+    private protected virtual PyResult IAnd(PyCallContext context, PyObject self, PyObject other)
+    {
+        throw new UnreachableException("Implemented by PyTypeObject<TObject>");
+    }
+    private protected virtual PyResult IXor(PyCallContext context, PyObject self, PyObject other)
+    {
+        throw new UnreachableException("Implemented by PyTypeObject<TObject>");
+    }
+    private protected virtual PyResult IOr(PyCallContext context, PyObject self, PyObject other)
+    {
+        throw new UnreachableException("Implemented by PyTypeObject<TObject>");
+    }
 }

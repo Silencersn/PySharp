@@ -77,6 +77,20 @@ public static class PySpecialNames
     public const string Delete = "__delete__";
     public const string SetName = "__set_name__";
 
+    public const string IAdd = "__iadd__";
+    public const string ISub = "__isub__";
+    public const string IMul = "__imul__";
+    public const string IMatMul = "__imatmul__";
+    public const string ITrueDiv = "__itruediv__";
+    public const string IFloorDiv = "__ifloordiv__";
+    public const string IMod = "__imod__";
+    public const string IPow = "__ipow__";
+    public const string ILShift = "__ilshift__";
+    public const string IRShift = "__irshift__";
+    public const string IAnd = "__iand__";
+    public const string IXor = "__ixor__";
+    public const string IOr = "__ior__";
+
 
     // attributes
     public const string Bases = "__bases__";

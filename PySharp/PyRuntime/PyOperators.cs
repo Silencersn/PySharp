@@ -1,5 +1,6 @@
 ﻿using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime.Calls;
+using System;
 using System.Diagnostics;
 
 namespace PySharp.PyRuntime;
@@ -226,7 +227,51 @@ public static class PyOperators
         return result;
     }
 
+    private static PyResult InPlaceOperator(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo = null)
+    {
+        if (left is PyIntObject leftInt && right is PyIntObject rightInt)
+            return PyMath.CalculatePyIntObject(op, leftInt, rightInt, modulo);
 
+        var slots = left.PyType.Slots;
+        if (op is not PyOperatorTypes.Pow)
+        {
+            var func = op switch
+            {
+                PyOperatorTypes.Add => slots.IAdd,
+                PyOperatorTypes.Sub => slots.ISub,
+                PyOperatorTypes.Mult => slots.IMul,
+                PyOperatorTypes.TrueDiv => slots.ITrueDiv,
+                PyOperatorTypes.FloorDiv => slots.IFloorDiv,
+                PyOperatorTypes.Mod => slots.IMod,
+                PyOperatorTypes.LShift => slots.ILShift,
+                PyOperatorTypes.RShift => slots.IRShift,
+                PyOperatorTypes.BitAnd => slots.IAnd,
+                PyOperatorTypes.BitXor => slots.IXor,
+                PyOperatorTypes.BitOr => slots.IOr,
+                _ => throw new UnreachableException()
+            };
+            if (func is not null)
+            {
+                var result = func(context, left, right);
+                if (!result.IsNotImplemented)
+                    // error or non-NotImplemented value
+                    return result;
+            }
+        }
+        else
+        {
+            var func = slots.IPow;
+            if (func is not null)
+            {
+                Debug.Assert(modulo is not null);
+                var result = func(context, left, right, modulo);
+                if (!result.IsNotImplemented)
+                    // error or non-NotImplemented value
+                    return result;
+            }
+        }
+        return ReflectiveOperator(context, op, left, right, modulo);
+    }
     private static PyResult ReflectiveOperator(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo = null)
     {
         if (left is PyIntObject leftInt && right is PyIntObject rightInt)
@@ -300,6 +345,55 @@ public static class PyOperators
     public static PyResult GtE(PyCallContext context, PyObject left, PyObject right)
     {
         return ReflectiveOperator(context, PyOperatorTypes.GtE, left, right);
+    }
+
+    public static PyResult InPlaceAdd(PyCallContext context, PyObject left, PyObject right)
+    {
+        return InPlaceOperator(context, PyOperatorTypes.Add, left, right);
+    }
+    public static PyResult InPlaceSub(PyCallContext context, PyObject left, PyObject right)
+    {
+        return InPlaceOperator(context, PyOperatorTypes.Sub, left, right);
+    }
+    public static PyResult InPlaceMult(PyCallContext context, PyObject left, PyObject right)
+    {
+        return InPlaceOperator(context, PyOperatorTypes.Mult, left, right);
+    }
+    public static PyResult InPlaceTrueDiv(PyCallContext context, PyObject left, PyObject right)
+    {
+        return InPlaceOperator(context, PyOperatorTypes.TrueDiv, left, right);
+    }
+    public static PyResult InPlaceFloorDiv(PyCallContext context, PyObject left, PyObject right)
+    {
+        return InPlaceOperator(context, PyOperatorTypes.FloorDiv, left, right);
+    }
+    public static PyResult InPlaceMod(PyCallContext context, PyObject left, PyObject right)
+    {
+        return InPlaceOperator(context, PyOperatorTypes.Mod, left, right);
+    }
+    public static PyResult InPlacePow(PyCallContext context, PyObject left, PyObject right, PyObject modulo)
+    {
+        return InPlaceOperator(context, PyOperatorTypes.Pow, left, right, modulo);
+    }
+    public static PyResult InPlaceLShift(PyCallContext context, PyObject left, PyObject right)
+    {
+        return InPlaceOperator(context, PyOperatorTypes.LShift, left, right);
+    }
+    public static PyResult InPlaceRShift(PyCallContext context, PyObject left, PyObject right)
+    {
+        return InPlaceOperator(context, PyOperatorTypes.RShift, left, right);
+    }
+    public static PyResult InPlaceBitAnd(PyCallContext context, PyObject left, PyObject right)
+    {
+        return InPlaceOperator(context, PyOperatorTypes.BitAnd, left, right);
+    }
+    public static PyResult InPlaceBitXor(PyCallContext context, PyObject left, PyObject right)
+    {
+        return InPlaceOperator(context, PyOperatorTypes.BitXor, left, right);
+    }
+    public static PyResult InPlaceBitOr(PyCallContext context, PyObject left, PyObject right)
+    {
+        return InPlaceOperator(context, PyOperatorTypes.BitOr, left, right);
     }
 
     public static PyResult Eq(PyCallContext context, PyObject left, PyObject right)

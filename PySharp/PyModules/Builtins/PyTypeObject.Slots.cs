@@ -74,6 +74,21 @@ partial class PyTypeObject
         internal PyBinaryFunction? RXor;
         internal PyBinaryFunction? ROr;
 
+        // In-place binary operators
+        internal PyBinaryFunction? IAdd;
+        internal PyBinaryFunction? ISub;
+        internal PyBinaryFunction? IMul;
+        internal PyBinaryFunction? IMatMul;
+        internal PyBinaryFunction? ITrueDiv;
+        internal PyBinaryFunction? IFloorDiv;
+        internal PyBinaryFunction? IMod;
+        internal PyTernaryFunction? IPow;
+        internal PyBinaryFunction? ILShift;
+        internal PyBinaryFunction? IRShift;
+        internal PyBinaryFunction? IAnd;
+        internal PyBinaryFunction? IXor;
+        internal PyBinaryFunction? IOr;
+
         // Ternary operators
         internal PyTernaryFunction? Pow;
         internal PyTernaryFunction? RPow;

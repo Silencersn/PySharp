@@ -103,6 +103,21 @@ partial class PyTypeObject<TObject>
         FillSlot(PySpecialNames.Gt, ref Slots.Gt, Gt);
         FillSlot(PySpecialNames.Ge, ref Slots.Ge, Ge);
 
+        // In-place binary operators
+        FillSlot(PySpecialNames.IAdd, ref Slots.IAdd, IAdd);
+        FillSlot(PySpecialNames.ISub, ref Slots.ISub, ISub);
+        FillSlot(PySpecialNames.IMul, ref Slots.IMul, IMul);
+        FillSlot(PySpecialNames.IMatMul, ref Slots.IMatMul, IMatMul);
+        FillSlot(PySpecialNames.ITrueDiv, ref Slots.ITrueDiv, ITrueDiv);
+        FillSlot(PySpecialNames.IFloorDiv, ref Slots.IFloorDiv, IFloorDiv);
+        FillSlot(PySpecialNames.IMod, ref Slots.IMod, IMod);
+        FillSlot(PySpecialNames.IPow, ref Slots.IPow, IPow);
+        FillSlot(PySpecialNames.ILShift, ref Slots.ILShift, ILShift);
+        FillSlot(PySpecialNames.IRShift, ref Slots.IRShift, IRShift);
+        FillSlot(PySpecialNames.IAnd, ref Slots.IAnd, IAnd);
+        FillSlot(PySpecialNames.IXor, ref Slots.IXor, IXor);
+        FillSlot(PySpecialNames.IOr, ref Slots.IOr, IOr);
+
         bool IsOverriden(MethodInfo method)
         {
             var name = method.Name;
