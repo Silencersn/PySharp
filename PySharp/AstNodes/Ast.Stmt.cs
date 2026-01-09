@@ -152,14 +152,14 @@ partial class Ast
         return new ImportFromNode(module, names.ToImmutableArray(true), level);
     }
 
-    public static FunctionDefNode FunctionDef(string name, AstArgumentsNode args, IEnumerable<AstStmtNode> body, IEnumerable<AstExprNode> decoratorList)
+    public static FunctionDefNode FunctionDef(string name, AstArgumentsNode args, IEnumerable<AstStmtNode> body, IEnumerable<AstExprNode> decoratorList, AstExprNode? returns)
     {
         ArgumentNullException.ThrowIfNull(name);
         ArgumentNullException.ThrowIfNull(args);
         ArgumentNullException.ThrowIfNull(body);
         ArgumentNullException.ThrowIfNull(decoratorList);
 
-        return new FunctionDefNode(name, args, body.ToImmutableArray(true), decoratorList.ToImmutableArray(true));
+        return new FunctionDefNode(name, args, body.ToImmutableArray(true), decoratorList.ToImmutableArray(true), returns);
     }
 
     public static ClassDefNode ClassDef(string name, IEnumerable<AstExprNode> bases, IEnumerable<AstKeywordNode> keywords, IEnumerable<AstStmtNode> body, IEnumerable<AstExprNode> decoratorList)

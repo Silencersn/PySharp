@@ -37,10 +37,12 @@ public class AstAliasNode : AstNode
 public class AstArgNode : AstNode
 {
     public string Arg { get; }
+    public AstExprNode? Annotation { get; }
 
-    public AstArgNode(string arg)
+    public AstArgNode(string arg, AstExprNode? annotation = null)
     {
         Arg = arg;
+        Annotation = annotation;
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()

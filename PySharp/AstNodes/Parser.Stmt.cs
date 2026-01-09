@@ -570,11 +570,19 @@ partial class Parser
         EnsureKeywordThenMove("def");
         var name = ParseIdentifier();
         EnsureTokenTypeThenMove(TokenType.LeftParen);
-        var args = CurrentTokenType is TokenType.RightParen ? new() : ParseParameterList(StopPredicates.UntilRightParen);
+        var args = CurrentTokenType is TokenType.RightParen ? new() : ParseParameterList(StopPredicates.UntilRightParen, allowAnnotation: true);
         EnsureTokenTypeThenMove(TokenType.RightParen);
+
+        var returns = null as AstExprNode;
+        if (CurrentTokenType is TokenType.RightArrow)
+        {
+            MoveNextToken();
+            returns = ParseExpression();
+        }
+
         EnsureTokenTypeThenMove(TokenType.Colon);
         var body = ParseSuite("def");
-        return Ast.FunctionDef(name, args, body, decorators).With(metaInfo);
+        return Ast.FunctionDef(name, args, body, decorators, returns).With(metaInfo);
     }
 
     private ClassDefNode ParseClassDef(IEnumerable<AstExprNode> decorators)

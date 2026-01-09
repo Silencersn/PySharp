@@ -919,7 +919,7 @@ partial class Parser
     {
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("lambda");
-        var args = CurrentTokenType is TokenType.Colon ? new() : ParseParameterList(StopPredicates.UntilColon);
+        var args = CurrentTokenType is TokenType.Colon ? new() : ParseParameterList(StopPredicates.UntilColon, allowAnnotation: false);
         EnsureTokenTypeThenMove(TokenType.Colon);
         return Ast.Lambda(args, ParseExpression()).With(metaInfo);
     }
@@ -1306,14 +1306,13 @@ partial class Parser
         return Ast.GeneratorExp(elt, generators).With(metaInfo.WithPreviousEnd());
     }
 
-    private AstArgumentsNode ParseParameterList(StopPredicate predicate)
+    private AstArgumentsNode ParseParameterList(StopPredicate predicate, bool allowAnnotation)
     {
         const int StateArgs = 0, StateAfterPosonly = 1, StateKwonly = 3, StateEnd = 4;
 
         var arguments = new AstArgumentsNode();
         var state = StateArgs;
         var needDefault = false;
-        var names = new HashSet<string>();
 
         ParseParameter();
         while (CurrentTokenType is TokenType.Comma)
@@ -1358,55 +1357,80 @@ partial class Parser
 
                     MoveNextToken();
                     if (CurrentTokenType is TokenType.Name)
-                        arguments.VarArg = new AstArgNode(ParseIdentifier());
+                    {
+                        var starArg = ParseIdentifier();
+                        var starAnnotation = null as AstExprNode;
+
+                        if (allowAnnotation && CurrentTokenType is TokenType.Colon)
+                        {
+                            MoveNextToken();
+                            // here allows starred expr
+                            starAnnotation = ParseStarredExpression();
+                        }
+
+                        arguments.VarArg = new AstArgNode(starArg, starAnnotation);
+                    }
                     state = StateKwonly;
                     needDefault = false;
                     break;
 
                 case TokenType.DoubleStar:
                     MoveNextToken();
-                    if (CurrentTokenType is TokenType.Name)
-                        arguments.KwArg = new AstArgNode(ParseIdentifier());
+                    if (CurrentTokenType is not TokenType.Name)
+                        throw _context.ThrowableSyntaxError("invalid syntax");
+
+                    var doubleStarArg = ParseIdentifier();
+                    var doubleStarAnnotation = null as AstExprNode;
+
+                    if (allowAnnotation && CurrentTokenType is TokenType.Colon)
+                    {
+                        MoveNextToken();
+                        doubleStarAnnotation = ParseExpression();
+                    }
+
+                    arguments.KwArg = new AstArgNode(doubleStarArg, doubleStarAnnotation);
                     state = StateEnd;
                     break;
 
                 case TokenType.Name:
-                    if (CurrentTokenType is TokenType.Name)
+                    var arg = ParseIdentifier();
+                    var annotation = null as AstExprNode;
+                    if (allowAnnotation && CurrentTokenType is TokenType.Colon)
                     {
-                        var arg = new AstArgNode(ParseIdentifier());
-                        if (names.Contains(arg.Arg))
-                            throw _context.ThrowableSyntaxError($"duplicate argument '{arg.Arg}' in function definition");
-                        else
-                            names.Add(arg.Arg);
-                        AstExprNode? defaultValue;
-                        if (CurrentTokenType is TokenType.Equal)
-                        {
-                            MoveNextToken();
-                            defaultValue = ParseExpression();
-                            if (state is StateArgs or StateAfterPosonly)
-                                needDefault = true;
-                        }
-                        else if (needDefault)
-                        {
-                            throw _context.ThrowableSyntaxError("parameter without a default follows parameter with a default");
-                        }
-                        else
-                        {
-                            defaultValue = null;
-                        }
-
-                        if (state is StateArgs or StateAfterPosonly)
-                        {
-                            arguments.Args.Add(arg);
-                            if (defaultValue is not null)
-                                arguments.Defaults.Add(defaultValue);
-                        }
-                        else
-                        {
-                            arguments.KwonlyArgs.Add(arg);
-                            arguments.KwDefaults.Add(defaultValue);
-                        }
+                        MoveNextToken();
+                        annotation = ParseExpression();
                     }
+
+                    var argNode = new AstArgNode(arg, annotation);
+                    AstExprNode? defaultValue;
+                    if (CurrentTokenType is TokenType.Equal)
+                    {
+                        MoveNextToken();
+                        defaultValue = ParseExpression();
+                        if (state is StateArgs or StateAfterPosonly)
+                            needDefault = true;
+                    }
+                    else if (needDefault)
+                    {
+                        throw _context.ThrowableSyntaxError("parameter without a default follows parameter with a default");
+                    }
+                    else
+                    {
+                        defaultValue = null;
+                    }
+
+                    if (state is StateArgs or StateAfterPosonly)
+                    {
+                        arguments.Args.Add(argNode);
+                        if (defaultValue is not null)
+                            arguments.Defaults.Add(defaultValue);
+                    }
+                    else
+                    {
+                        arguments.KwonlyArgs.Add(argNode);
+                        arguments.KwDefaults.Add(defaultValue);
+                    }
+
                     break;
 
                 default:
@@ -1488,7 +1512,6 @@ partial class Parser
     {
         var args = new List<AstExprNode>();
         var kwargs = new List<AstKeywordNode>();
-        var keys = new HashSet<string>();
         bool iskw = false;
 
         while (CurrentTokenType is not TokenType.RightParen)
@@ -1524,8 +1547,6 @@ partial class Parser
 
                 if (arg is not NameNode argName)
                     throw _context.ThrowableSyntaxError("expression cannot contain assignment, perhaps you meant \"==\"?");
-
-                keys.Add(argName.Id);
 
                 MoveNextToken();
                 var value = ParseExpression();

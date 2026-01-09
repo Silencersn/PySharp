@@ -861,18 +861,20 @@ internal interface IScopedSubNodesProvider
 
 public sealed class FunctionDefNode : AstStmtNode, IScopedSubNodesProvider
 {
-    internal FunctionDefNode(string name, AstArgumentsNode args, ImmutableArray<AstStmtNode> body, ImmutableArray<AstExprNode> decoratorList)
+    internal FunctionDefNode(string name, AstArgumentsNode args, ImmutableArray<AstStmtNode> body, ImmutableArray<AstExprNode> decoratorList, AstExprNode? returns)
     {
         Name = name;
         Args = args;
         Body = body;
         DecoratorList = decoratorList;
+        Returns = returns;
     }
 
     public string Name { get; }
     public AstArgumentsNode Args { get; }
     public ImmutableArray<AstStmtNode> Body { get; }
     public ImmutableArray<AstExprNode> DecoratorList { get; }
+    public AstExprNode? Returns { get; }
 
     internal FunctionVariableScope? VariableScope { get; set; }
 
