@@ -106,32 +106,42 @@ partial class PyTypeObject
         if (item is not PyStrObject str)
             return PyResult.RaiseTypeError($"attribute name must be string, not '{item.PyType.FullName}'");
 
-        var type = self.PyType;
+        var metaType = self.PyType;
         var name = str.Value;
 
         if (name is PySpecialNames.Class)
-            return type;
+            return metaType;
 
         // TODO: __dict__ and others
 
-        if (TryLookupAttrInMro(type, name, out var attr))
+        if (TryLookupAttrInMro(metaType, name, out var metaAttr))
         {
-            if (Utils.IsDataDescriptor(attr))
+            if (Utils.IsDataDescriptor(metaAttr))
             {
-                var getFunc = attr.PyType.Slots.Get;
+                var getFunc = metaAttr.PyType.Slots.Get;
                 if (getFunc is not null)
-                    return getFunc(context, attr, PyNoneObject.None, self);
+                    return getFunc(context, metaAttr, self, metaType);
             }
         }
 
-        if (self._pyAttributes?.TryGetValue(name, out var value) is true)
-            return value;
+        if (TryLookupAttrInMro(self, name, out var attr))
+        {
+            var getFunc = attr.PyType.Slots.Get;
+            if (getFunc is not null)
+                return getFunc(context, attr, PyNoneObject.None, self);
 
-        if (attr is not null)
             return attr;
+        }
 
-        if (type is not PyTypeObjectType && type.Slots.GetAttribute is not null)
-            return type.Slots.GetAttribute(context, self, item);
+        if (metaAttr is not null)
+        {
+            var getFunc = metaAttr.PyType.Slots.Get;
+            if (getFunc is not null)
+                return getFunc(context, metaAttr, self, metaType);
+        }
+
+        if (metaType is not PyTypeObjectType && metaType.Slots.GetAttribute is not null)
+            return metaType.Slots.GetAttribute(context, self, item);
 
         return PyResult.RaiseAttributeError($"'{self.PyType.Name}' object has no attribute '{name}'");
     }
