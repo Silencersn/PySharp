@@ -36,6 +36,7 @@ public sealed partial class PyFrame
     private Dictionary<string, PyCellObject>? _closure = null;
     private PyFrameLocals _locals;
     internal PyFrameGlobals _globals;
+    internal PyFrame? _outerNonInlineFrame;
 
     private PyFrame(PyFrame? back)
     {
@@ -117,7 +118,7 @@ public sealed partial class PyFrame
 
     internal PyFrame TempFrame(FrameType frameType)
     {
-        Debug.Assert(frameType is FrameType.Comprehension or FrameType.Exec or FrameType.Eval);
+        Debug.Assert(frameType is FrameType.Exec or FrameType.Eval);
 
         var tempGlobals = _globals.Clone();
         PyFrameLocals tempLocals;
@@ -130,6 +131,32 @@ public sealed partial class PyFrame
             _variables = _variables
         };
         return tempFrame;
+    }
+
+    internal PyFrame CreateInlineFrame(FrameType frameType)
+    {
+        Debug.Assert(frameType is FrameType.Comprehension);
+
+        var (globals, locals) = CloneGlobalsAndLocals(_globals, _locals);
+        var inlineFrame = new PyFrame(this, globals, locals, _closure, CallerName, Caller, frameType)
+        {
+            _variables = _variables,
+            _outerNonInlineFrame = _outerNonInlineFrame ?? this
+        };
+        return inlineFrame;
+
+        static (PyFrameGlobals, PyFrameLocals) CloneGlobalsAndLocals(PyFrameGlobals globals, PyFrameLocals locals)
+        {
+            var cloneGlobals = globals.Clone();
+
+            if (locals._globals is null)
+                return (cloneGlobals, locals.Clone());
+
+            // locals is created from globals in global scope
+            Debug.Assert(ReferenceEquals(locals._globals, globals));
+            var cloneLocals = new PyFrameLocals(cloneGlobals);
+            return (cloneGlobals, cloneLocals);
+        }
     }
 
     internal void InitArgs(PyArgsDef def, PyArguments arguments)

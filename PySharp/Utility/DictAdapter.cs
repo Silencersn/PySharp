@@ -6,13 +6,16 @@ namespace PySharp.Utility;
 
 internal sealed class DictAdapter : IDictionary<PyObject, PyObject>
 {
-    private readonly IDictionary<string, PyObject?> _origDict;
-    private readonly Dictionary<PyObject, PyObject> _extraDict;
+    internal readonly IDictionary<string, PyObject?> _origDict;
+    internal readonly Dictionary<PyObject, PyObject> _extraDict;
 
-    public DictAdapter(IDictionary<string, PyObject?> dict)
+    public DictAdapter(IDictionary<string, PyObject?> dict) : this(dict, [])
+    {
+    }
+    public DictAdapter(IDictionary<string, PyObject?> dict, Dictionary<PyObject, PyObject> extraDict)
     {
         _origDict = dict;
-        _extraDict = [];
+        _extraDict = extraDict;
     }
 
     PyObject IDictionary<PyObject, PyObject>.this[PyObject key]

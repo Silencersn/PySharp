@@ -730,7 +730,7 @@ public sealed class ListCompNode : AstExprNode, IAstExprNodeNoSelfPythonExceptio
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        var tempFrame = frame.TempFrame(FrameType.Comprehension);
+        var inlineFrame = frame.CreateInlineFrame(FrameType.Comprehension);
         var list = new List<PyObject>();
         For(0);
         return new PyListObject(list);
@@ -738,15 +738,15 @@ public sealed class ListCompNode : AstExprNode, IAstExprNodeNoSelfPythonExceptio
         void For(int index)
         {
             var generator = Generators[index];
-            if (!Utils.TryEnumerateIterable(context, generator.Iter.GetExprValue(context, tempFrame), out var iter, out var err))
+            if (!Utils.TryEnumerateIterable(context, generator.Iter.GetExprValue(context, inlineFrame), out var iter, out var err))
                 err.Value.PyThrow(context);
             foreach (var item in iter)
             {
-                generator.Target.SetTargetValue(context, item.PyUnwrap(context), tempFrame);
+                generator.Target.SetTargetValue(context, item.PyUnwrap(context), inlineFrame);
                 var shouldContinue = false;
                 foreach (var test in generator.Ifs)
                 {
-                    if (!test.GetBoolValue(context, tempFrame))
+                    if (!test.GetBoolValue(context, inlineFrame))
                     {
                         shouldContinue = true;
                         break;
@@ -761,7 +761,7 @@ public sealed class ListCompNode : AstExprNode, IAstExprNodeNoSelfPythonExceptio
                 }
                 else if (index == Generators.Length - 1)
                 {
-                    list.Add(Elt.GetExprValue(context, tempFrame));
+                    list.Add(Elt.GetExprValue(context, inlineFrame));
                 }
             }
         }
@@ -787,7 +787,7 @@ public sealed class SetCompNode : AstExprNode, IAstExprNodeNoSelfPythonException
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        var tempFrame = frame.TempFrame(FrameType.Comprehension);
+        var inlineFrame = frame.CreateInlineFrame(FrameType.Comprehension);
         var list = new List<PyObject>();
         For(0);
         return new PySetObject(list);
@@ -795,15 +795,15 @@ public sealed class SetCompNode : AstExprNode, IAstExprNodeNoSelfPythonException
         void For(int index)
         {
             var generator = Generators[index];
-            if (!Utils.TryEnumerateIterable(context, generator.Iter.GetExprValue(context, tempFrame), out var iter, out var err))
+            if (!Utils.TryEnumerateIterable(context, generator.Iter.GetExprValue(context, inlineFrame), out var iter, out var err))
                 err.Value.PyThrow(context);
             foreach (var item in iter)
             {
-                generator.Target.SetTargetValue(context, item.PyUnwrap(context), tempFrame);
+                generator.Target.SetTargetValue(context, item.PyUnwrap(context), inlineFrame);
                 var shouldContinue = false;
                 foreach (var test in generator.Ifs)
                 {
-                    if (!test.GetBoolValue(context, tempFrame))
+                    if (!test.GetBoolValue(context, inlineFrame))
                     {
                         shouldContinue = true;
                         break;
@@ -818,7 +818,7 @@ public sealed class SetCompNode : AstExprNode, IAstExprNodeNoSelfPythonException
                 }
                 else if (index == Generators.Length - 1)
                 {
-                    list.Add(Elt.GetExprValue(context, tempFrame));
+                    list.Add(Elt.GetExprValue(context, inlineFrame));
                 }
             }
         }
@@ -846,7 +846,7 @@ public sealed class DictCompNode : AstExprNode, IAstExprNodeNoSelfPythonExceptio
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        var tempFrame = frame.TempFrame(FrameType.Comprehension);
+        var inlineFrame = frame.CreateInlineFrame(FrameType.Comprehension);
         var list = new List<KeyValuePair<PyObject, PyObject>>();
         For(0);
         return new PyDictObject(list);
@@ -854,15 +854,15 @@ public sealed class DictCompNode : AstExprNode, IAstExprNodeNoSelfPythonExceptio
         void For(int index)
         {
             var generator = Generators[index];
-            if (!Utils.TryEnumerateIterable(context, generator.Iter.GetExprValue(context, tempFrame), out var iter, out var err))
+            if (!Utils.TryEnumerateIterable(context, generator.Iter.GetExprValue(context, inlineFrame), out var iter, out var err))
                 err.Value.PyThrow(context);
             foreach (var item in iter)
             {
-                generator.Target.SetTargetValue(context, item.PyUnwrap(context), tempFrame);
+                generator.Target.SetTargetValue(context, item.PyUnwrap(context), inlineFrame);
                 var shouldContinue = false;
                 foreach (var test in generator.Ifs)
                 {
-                    if (!test.GetBoolValue(context, tempFrame))
+                    if (!test.GetBoolValue(context, inlineFrame))
                     {
                         shouldContinue = true;
                         break;
@@ -877,7 +877,7 @@ public sealed class DictCompNode : AstExprNode, IAstExprNodeNoSelfPythonExceptio
                 }
                 else if (index == Generators.Length - 1)
                 {
-                    list.Add(KeyValuePair.Create(Key.GetExprValue(context, tempFrame), Value.GetExprValue(context, tempFrame)));
+                    list.Add(KeyValuePair.Create(Key.GetExprValue(context, inlineFrame), Value.GetExprValue(context, inlineFrame)));
                 }
             }
         }
@@ -905,21 +905,21 @@ public sealed class GeneratorExpNode : AstExprNode, IAstExprNodeNoSelfPythonExce
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        var tempFrame = frame.TempFrame(FrameType.Comprehension);
-        return new PyGeneratorExpressionObject(tempFrame, For(0).GetEnumerator());
+        var inlineFrame = frame.CreateInlineFrame(FrameType.Comprehension);
+        return new PyGeneratorExpressionObject(inlineFrame, For(0).GetEnumerator());
 
         IEnumerable<PyObject> For(int index)
         {
             var generator = Generators[index];
-            if (!Utils.TryEnumerateIterable(context, generator.Iter.GetExprValue(context, tempFrame), out var iter, out var err))
+            if (!Utils.TryEnumerateIterable(context, generator.Iter.GetExprValue(context, inlineFrame), out var iter, out var err))
                 err.Value.PyThrow(context);
             foreach (var item in iter)
             {
-                generator.Target.SetTargetValue(context, item.PyUnwrap(context), tempFrame);
+                generator.Target.SetTargetValue(context, item.PyUnwrap(context), inlineFrame);
                 var shouldContinue = false;
                 foreach (var test in generator.Ifs)
                 {
-                    if (!test.GetBoolValue(context, tempFrame))
+                    if (!test.GetBoolValue(context, inlineFrame))
                     {
                         shouldContinue = true;
                         break;
@@ -935,7 +935,7 @@ public sealed class GeneratorExpNode : AstExprNode, IAstExprNodeNoSelfPythonExce
                 }
                 else if (index == Generators.Length - 1)
                 {
-                    var elt = Elt.GetExprValue(context, tempFrame);
+                    var elt = Elt.GetExprValue(context, inlineFrame);
                     yield return elt;
                 }
             }
@@ -1277,6 +1277,8 @@ public sealed class NamedExprNode : AstExprNode
     {
         var value = Value.GetExprValue(context, frame);
         Target.SetTargetValue(context, value, frame);
+        if (frame._outerNonInlineFrame is not null)
+            Target.SetTargetValue(context, value, frame._outerNonInlineFrame);
         return value;
     }
 }
