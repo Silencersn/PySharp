@@ -181,4 +181,18 @@ public sealed class TestPyFiles
         var module = PyInterpreter.RunFile(Path.Combine(PyFilesPath, "test_named_expr.py"));
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestStaticMethod()
+    {
+        var module = PyInterpreter.RunFile(Path.Combine(PyFilesPath, "test_staticmethod.py"));
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestClassMethod()
+    {
+        var module = PyInterpreter.RunFile(Path.Combine(PyFilesPath, "test_classmethod.py"));
+        Assert.IsNotNull(module);
+    }
 }

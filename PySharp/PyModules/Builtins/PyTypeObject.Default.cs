@@ -140,10 +140,7 @@ partial class PyTypeObject
                 return getFunc(context, metaAttr, self, metaType);
         }
 
-        if (metaType is not PyTypeObjectType && metaType.Slots.GetAttribute is not null)
-            return metaType.Slots.GetAttribute(context, self, item);
-
-        return PyResult.RaiseAttributeError($"'{self.PyType.Name}' object has no attribute '{name}'");
+        return PyResult.RaiseAttributeError($"type object '{self.PyType.Name}' has no attribute '{name}'");
     }
 
     internal static PyResult DefaultFormat(PyCallContext context, PyObject self, PyObject formatSpec)

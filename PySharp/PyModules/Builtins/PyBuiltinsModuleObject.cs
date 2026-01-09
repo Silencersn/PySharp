@@ -54,6 +54,8 @@ public class PyBuiltinsModuleObject : PyModuleObject
         AddObjToAttrs(PyMapObjectType.Shared); // map
         AddObjToAttrs(PySetObjectType.Shared); // set
         AddObjToAttrs(PyComplexObjectType.Shared); // complex
+        AddObjToAttrs(PyStaticMethodObjectType.Shared); // staticmethod
+        AddObjToAttrs(PyClassMethodObjectType.Shared); // classmethod
 
         AddObjToAttrs("Ellipsis", PyEllipsisObject.Ellipsis); // Ellipsis
 

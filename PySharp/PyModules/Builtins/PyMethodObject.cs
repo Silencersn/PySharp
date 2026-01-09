@@ -5,12 +5,12 @@ namespace PySharp.PyModules.Builtins;
 
 public sealed class PyMethodObject : PyObject
 {
-    internal readonly PyFunctionObject _functionObj;
+    internal readonly PyObject _functionObj;
     internal readonly PyObject _target;
 
     public override PyTypeObject DefaultPyType => PyMethodObjectType.Shared;
 
-    internal PyMethodObject(PyFunctionObject functionObj, PyObject target)
+    internal PyMethodObject(PyObject functionObj, PyObject target)
     {
         _functionObj = functionObj;
         _target = target;

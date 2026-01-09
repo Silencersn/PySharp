@@ -66,7 +66,13 @@ public sealed class PyPropertyObjectType : PyTypeObject<PyPropertyObjectType, Py
     protected override PyResult Get(PyCallContext context, PyPropertyObject self, PyObject instance, PyObject owner)
     {
         if (instance is PyNoneObject)
+        {
+            if (owner is PyNoneObject)
+                return PyResult.RaiseTypeError("__get__(None, None) is invalid");
+
             return self;
+        }
+
         return self._fget.Call(context, [instance], FrozenDictionary<string, PyObject>.Empty);
     }
 
