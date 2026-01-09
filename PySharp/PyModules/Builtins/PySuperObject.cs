@@ -33,7 +33,7 @@ namespace PySharp.PyModules.Builtins;
 //                 return x
 //         raise AttributeError(attr)
 // 
-public class PySuperObject : PyObject, IPyDescriptor
+public class PySuperObject : PyObject
 {
     internal readonly PyTypeObject _type;
     internal readonly PyObject _object;
@@ -43,10 +43,6 @@ public class PySuperObject : PyObject, IPyDescriptor
         _type = type;
         _object = obj;
     }
-
-    bool IPyDescriptor.SupportsGet => true;
-    bool IPyDescriptor.SupportsSet => false;
-    bool IPyDescriptor.SupportsDelete => false;
 
     public static PyResult CreateSuper(PyTypeObject type, PyObject objectOrType)
     {

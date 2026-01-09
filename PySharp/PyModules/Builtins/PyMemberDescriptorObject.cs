@@ -2,7 +2,7 @@
 
 namespace PySharp.PyModules.Builtins;
 
-public sealed class PyMemberDescriptorObject : PyObject, IPyDescriptor
+public sealed class PyMemberDescriptorObject : PyObject
 {
     internal readonly PyTypeObject _declaringType;
     internal readonly PyMemberGetter _getter;
@@ -10,10 +10,6 @@ public sealed class PyMemberDescriptorObject : PyObject, IPyDescriptor
     internal readonly PyMemberDeleter? _deleter;
 
     public override PyTypeObject DefaultPyType => PyMemberDescriptorObjectType.Shared;
-
-    bool IPyDescriptor.SupportsGet => true;
-    bool IPyDescriptor.SupportsSet => true;
-    bool IPyDescriptor.SupportsDelete => true;
 
     internal PyMemberDescriptorObject(PyTypeObject declaringType, PyMemberGetter getter, PyMemberSetter? setter, PyMemberDeleter? deleter)
     {

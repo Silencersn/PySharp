@@ -5,7 +5,7 @@ using System.Collections.Frozen;
 
 namespace PySharp.PyModules.Builtins;
 
-public sealed class PyPropertyObject : PyObject, IPyDescriptor
+public sealed class PyPropertyObject : PyObject
 {
     internal PyObject _fget;
     internal PyObject _fset;
@@ -13,10 +13,6 @@ public sealed class PyPropertyObject : PyObject, IPyDescriptor
     internal PyObject _doc;
 
     public override PyTypeObject DefaultPyType => PyPropertyObjectType.Shared;
-
-    bool IPyDescriptor.SupportsGet => true;
-    bool IPyDescriptor.SupportsSet => true;
-    bool IPyDescriptor.SupportsDelete => true;
 
     public PyPropertyObject(PyObject fget, PyObject fset, PyObject fdel, PyObject doc)
     {

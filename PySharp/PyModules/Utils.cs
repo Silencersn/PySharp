@@ -237,26 +237,6 @@ internal static class Utils
         return (method = type.GetMethod(name, BindingFlags.NonPublic | BindingFlags.Instance, types)!).DeclaringType != typeof(PyObject);
     }
 
-    public static bool IsDescriptor(PyObject pyObj)
-    {
-        return IsDescriptor(pyObj, out _, out _, out _);
-    }
-    public static bool IsDescriptor(PyObject pyObj, out bool hasGet, out bool hasSet, out bool hasDelete)
-    {
-        if (pyObj is IPyDescriptor descriptor)
-        {
-            hasGet = descriptor.SupportsGet;
-            hasSet = descriptor.SupportsSet;
-            hasDelete = descriptor.SupportsDelete;
-            return true;
-        }
-
-        hasGet = PyObject.PyObjectHasAttribute(pyObj, PySpecialNames.Get);
-        hasSet = PyObject.PyObjectHasAttribute(pyObj, PySpecialNames.Set);
-        hasDelete = PyObject.PyObjectHasAttribute(pyObj, PySpecialNames.Delete);
-        return hasGet || hasSet || hasDelete;
-    }
-
     public static bool IsDataDescriptor(PyObject obj)
     {
         var slots = obj.PyType.Slots;

@@ -54,10 +54,3 @@ public interface IPyObjectRecursiveRepr
         return true;
     }
 }
-
-internal interface IPyDescriptor
-{
-    internal bool SupportsGet { get; }
-    internal bool SupportsSet { get; }
-    internal bool SupportsDelete { get; }
-}
