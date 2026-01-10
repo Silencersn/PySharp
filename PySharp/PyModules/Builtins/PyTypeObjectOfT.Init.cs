@@ -55,6 +55,9 @@ partial class PyTypeObject<TObject>
         FillSlot(PySpecialNames.DelItem, ref Slots.DelItem, DelItem);
         FillSlot(PySpecialNames.Contains, ref Slots.Contains, Contains);
 
+        FillSlot(PySpecialNames.Enter, ref Slots.Enter, Enter);
+        FillSlot(PySpecialNames.Exit, ref Slots.Exit, Exit);
+
         FillSlot(PySpecialNames.Get, ref Slots.Get, Get);
         FillSlot(PySpecialNames.Set, ref Slots.Set, Set);
         FillSlot(PySpecialNames.Delete, ref Slots.Delete, Delete);

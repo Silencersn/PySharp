@@ -349,4 +349,12 @@ partial class PyTypeObject<TObject>
     {
         return DefaultBinaryOperator(context, self, other);
     }
+    protected virtual PyResult Enter(PyCallContext context, TObject self)
+    {
+        throw new NotImplementedException($"{PySpecialNames.Enter} does not have default implementation");
+    }
+    protected virtual PyResult Exit(PyCallContext context, TObject self, PyObject excType, PyObject excVal, PyObject excTb)
+    {
+        throw new NotImplementedException($"{PySpecialNames.Exit} does not have default implementation");
+    }
 }

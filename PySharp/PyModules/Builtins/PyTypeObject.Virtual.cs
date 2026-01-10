@@ -1,4 +1,5 @@
-﻿using PySharp.PyRuntime.Calls;
+﻿using PySharp.PyRuntime;
+using PySharp.PyRuntime.Calls;
 using System.Diagnostics;
 
 namespace PySharp.PyModules.Builtins;
@@ -343,6 +344,14 @@ partial class PyTypeObject
         throw new UnreachableException("Implemented by PyTypeObject<TObject>");
     }
     private protected virtual PyResult IOr(PyCallContext context, PyObject self, PyObject other)
+    {
+        throw new UnreachableException("Implemented by PyTypeObject<TObject>");
+    }
+    private protected virtual PyResult Enter(PyCallContext context, PyObject self)
+    {
+        throw new UnreachableException("Implemented by PyTypeObject<TObject>");
+    }
+    private protected virtual PyResult Exit(PyCallContext context, PyObject self, PyObject excType, PyObject excVal, PyObject excTb)
     {
         throw new UnreachableException("Implemented by PyTypeObject<TObject>");
     }

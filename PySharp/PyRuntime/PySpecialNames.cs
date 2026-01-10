@@ -91,6 +91,9 @@ public static class PySpecialNames
     public const string IXor = "__ixor__";
     public const string IOr = "__ior__";
 
+    public const string Enter = "__enter__";
+    public const string Exit = "__exit__";
+
 
     // attributes
     public const string Bases = "__bases__";

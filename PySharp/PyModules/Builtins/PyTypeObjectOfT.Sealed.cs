@@ -493,4 +493,16 @@ partial class PyTypeObject<TObject>
             return PyResult.RaiseTypeError($"'{PySpecialNames.IOr}' requires a '{Name}' object but received a '{self.PyType.Name}'");
         return IOr(context, selfOfT, other);
     }
+    private protected sealed override PyResult Enter(PyCallContext context, PyObject self)
+    {
+        if (self is not TObject selfOfT)
+            return PyResult.RaiseTypeError($"'{PySpecialNames.Enter}' requires a '{Name}' object but received a '{self.PyType.Name}'");
+        return Enter(context, selfOfT);
+    }
+    private protected sealed override PyResult Exit(PyCallContext context, PyObject self, PyObject excType, PyObject excVal, PyObject excTb)
+    {
+        if (self is not TObject selfOfT)
+            return PyResult.RaiseTypeError($"'{PySpecialNames.Exit}' requires a '{Name}' object but received a '{self.PyType.Name}'");
+        return Exit(context, selfOfT, excType, excVal, excTb);
+    }
 }

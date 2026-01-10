@@ -20,6 +20,7 @@ public delegate PyResult PyMemberDeleter<TObject>(PyCallContext context, TObject
 public delegate PyResult PyUnaryFunction(PyCallContext context, PyObject self);
 public delegate PyResult PyBinaryFunction(PyCallContext context, PyObject self, PyObject other);
 public delegate PyResult PyTernaryFunction(PyCallContext context, PyObject self, PyObject second, PyObject third);
+public delegate PyResult PyQuaternaryFunction(PyCallContext context, PyObject self, PyObject second, PyObject third, PyObject fourth);
 public delegate PyResult PySelfArgsKwargsFunction(PyCallContext context, PyObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs);
 public delegate PyResult PyClsArgsKwargsFunction(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs);
 
@@ -151,11 +152,14 @@ public static class PyDelegateConverter
     {
         return (context, self, other, third) => obj.Call(context, [self, other, third]);
     }
+    public static PyQuaternaryFunction ToQuaternaryFunction(this PyObject obj)
+    {
+        return (context, self, other, third, fourth) => obj.Call(context, [self, other, third, fourth]);
+    }
     public static PySelfArgsKwargsFunction ToSelfArgsKwargsFunction(this PyObject obj)
     {
         return (context, self, args, kwargs) => obj.Call(context, [self, .. args], kwargs);
     }
-
     public static PyClsArgsKwargsFunction ToClsArgsKwargsFunction(this PyObject obj)
     {
         return (context, cls, args, kwargs) => obj.Call(context, [cls, .. args], kwargs);
