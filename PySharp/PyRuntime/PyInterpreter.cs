@@ -17,14 +17,15 @@ public static class PyInterpreter
         {
             action();
         }
-        catch (Exception ex)
+        catch (Exception e)
         {
-            var currentException = ex;
+            var currentException = e;
             while (currentException is not null)
             {
                 if (currentException is PyRuntimeException pyRuntimeException)
                 {
-                    var exc = pyRuntimeException.PyException.WithTraceback(context);
+                    var exc = pyRuntimeException.PyException.WithTraceback(context, overwriteExisting: false);
+                    context.EnsureFrameState(frame);
 
                     if (PyStandardExceptionTypes.SystemExit.IsInstance(exc))
                     {

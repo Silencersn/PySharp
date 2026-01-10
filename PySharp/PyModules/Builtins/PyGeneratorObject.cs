@@ -42,20 +42,12 @@ public sealed class PyGeneratorExpressionObject : PyGeneratorObject
         _first = false;
 
         _frame.Back = context.CurrentFrame;
-        context.EnterFrame(_frame);
+        using var withFrame = context.WithFrame(_frame, () => _frame.Back = null);
 
-        try
-        {
-            var result = _enumerator.MoveNext() ? _enumerator.Current : PyResult.RaiseStopIteration();
-            if (result.IsError)
-                _enumerator = null;
-            return result;
-        }
-        finally
-        {
-            context.ExitFrame();
-            _frame.Back = null;
-        }
+        var result = _enumerator.MoveNext() ? _enumerator.Current : PyResult.RaiseStopIteration();
+        if (result.IsError)
+            _enumerator = null;
+        return result;
     }
 
     internal override PyResult PyNext(PyCallContext context)
@@ -107,13 +99,11 @@ public sealed class PyUserDefinedGeneratorObject : PyGeneratorObject
         _frame._tcsWaitAtSend = new();
 
         _frame.Back = context.CurrentFrame;
-        context.EnterFrame(_frame);
+
+        using var withFrame = context.WithFrame(_frame, () => _frame.Back = null);
 
         _task.Start();
         var result = _frame._tcsWaitAtSend.Task.Result;
-
-        context.ExitFrame();
-        _frame.Back = null;
 
         return result;
     }
@@ -124,13 +114,11 @@ public sealed class PyUserDefinedGeneratorObject : PyGeneratorObject
         Debug.Assert(!_frame._generatorCompleted);
 
         _frame.Back = context.CurrentFrame;
-        context.EnterFrame(_frame);
+        using var withFrame = context.WithFrame(_frame, () => _frame.Back = null);
         _frame._tcsWaitAtSend = new();
         Debug.Assert(_frame._tcsWaitAtStartOrYield is not null);
         _frame._tcsWaitAtStartOrYield.SetResult(callerAction);
         var result = _frame._tcsWaitAtSend.Task.Result;
-        context.ExitFrame();
-        _frame.Back = null;
         return result;
     }
 

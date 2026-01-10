@@ -39,6 +39,34 @@ public sealed partial class PyCallContext
         _state = new PyCallContextState(rootFrame);
     }
 
+    public readonly ref struct FrameSetter : IDisposable
+    {
+        private readonly PyCallContext _context;
+        private readonly Action? _onExited;
+
+        public FrameSetter(PyCallContext context, PyFrame frame, Action? onExited)
+        {
+            _context = context;
+            _onExited = onExited;
+            _context.EnterFrame(frame);
+        }
+
+        void IDisposable.Dispose()
+        {
+            if (_context is null)
+                // default(FrameSetter)
+                return;
+
+            _context.ExitFrame();
+            _onExited?.Invoke();
+        }
+    }
+
+    internal FrameSetter WithFrame(PyFrame frame, Action? onExited = null)
+    {
+        return new FrameSetter(this, frame, onExited);
+    }
+
     internal void EnterFrame(PyFrame frame)
     {
         State.CurrentFrame = frame;
@@ -48,6 +76,24 @@ public sealed partial class PyCallContext
     {
         Debug.Assert(State.CurrentFrame.Back is not null);
         State.CurrentFrame = State.CurrentFrame.Back;
+    }
+
+    internal void EnsureFrameState(PyFrame expectedFrame)
+    {
+        if (ReferenceEquals(State.CurrentFrame, expectedFrame))
+            return;
+
+        var currentFrame = State.CurrentFrame;
+        while (currentFrame is not null && !ReferenceEquals(currentFrame, expectedFrame))
+            currentFrame = currentFrame.Back;
+
+        if (currentFrame is not null)
+        {
+            State.CurrentFrame = currentFrame;
+            return;
+        }
+
+        throw new InvalidOperationException("Failed to restore the frame state.");
     }
 
     internal void Exit(int exitCode)

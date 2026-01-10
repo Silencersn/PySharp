@@ -29,8 +29,7 @@ public static partial class PyVirtualMachine
     }
     internal static void ExecuteToObject(PyCallContext context, ModuleNode moduleNode, PyModuleObject module, bool newFrame)
     {
-        if (newFrame)
-            context.EnterFrame(PyFrame.CreateModuleFrame(context, context.CurrentFrame));
+        using var withFrame = newFrame ? context.WithFrame(PyFrame.CreateModuleFrame(context, context.CurrentFrame)) : default;
 
         moduleNode.Execute(context, context.CurrentFrame);
 
@@ -49,8 +48,5 @@ public static partial class PyVirtualMachine
             module.PyAttributes[pair.Key] = pair.Value;
         }
         module.PyAttributes[PySpecialNames.Name] = PyStrObject.FromString(module.Name);
-
-        if (newFrame)
-            context.ExitFrame();
     }
 }

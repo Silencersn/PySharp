@@ -200,17 +200,20 @@ public static partial class PyBuiltinFunctions
             return PyResult.RaiseTypeError(null);
         var codeSource = new CodeSource("<string>", str.Value);
 
+        var frame = context.CurrentFrame;
         try
         {
             var tokens = Lexer.Tokenize(context, codeSource);
             var node = Parser.ParseExpression(context, codeSource, tokens);
             SemanticAnalyzer.Analyze(context, node);
-            var frame = context.CurrentFrame;
             var tempFrame = frame.TempFrame(FrameType.Eval);
             return node.Body.GetExprValue(context, tempFrame);
         }
         catch (PyRuntimeException e)
         {
+            e.PyException.WithTraceback(context, overwriteExisting: false);
+            context.EnsureFrameState(frame);
+
             return PyResult.FromException(e.PyException);
         }
     }
@@ -221,18 +224,21 @@ public static partial class PyBuiltinFunctions
             return PyResult.RaiseTypeError(null);
         var codeSource = new CodeSource("<string>", str.Value);
 
+        var frame = context.CurrentFrame;
         try
         {
             var tokens = Lexer.Tokenize(context, codeSource);
             var node = Parser.ParseModule(context, codeSource, tokens);
             SemanticAnalyzer.Analyze(context, node);
-            var frame = context.CurrentFrame;
             var tempFrame = frame.TempFrame(FrameType.Exec);
             node.Execute(context, tempFrame);
             return PyNoneObject.None;
         }
         catch (PyRuntimeException e)
         {
+            e.PyException.WithTraceback(context, overwriteExisting: false);
+            context.EnsureFrameState(frame);
+
             return PyResult.FromException(e.PyException);
         }
     }

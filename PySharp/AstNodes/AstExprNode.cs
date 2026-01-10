@@ -992,6 +992,9 @@ public sealed class LambdaNode : AstExprNode, IScopedSubNodesProvider
         }
         catch (PyRuntimeException e)
         {
+            e.PyException.WithTraceback(context, overwriteExisting: false);
+            context.EnsureFrameState(frame);
+
             return PyResult.FromException(e.PyException);
         }
     }

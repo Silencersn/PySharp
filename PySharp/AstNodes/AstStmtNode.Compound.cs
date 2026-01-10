@@ -196,9 +196,8 @@ public sealed class TryNode : AstStmtNode
         }
         catch (PyRuntimeException e)
         {
-            e.PyException.WithTraceback(context);
-            while (context.CurrentFrame != frame)
-                context.ExitFrame();
+            e.PyException.WithTraceback(context, overwriteExisting: false);
+            context.EnsureFrameState(frame);
 
             frame.Exceptions.Push(e.PyException);
             catched = true;
@@ -284,10 +283,13 @@ public sealed class WithNode : AstStmtNode
                 Items[i].OptionalVars?.SetTargetValue(context, value, frame);
                 With(i + 1);
             }
-            catch (PyRuntimeException ex)
+            catch (PyRuntimeException e)
             {
+                e.PyException.WithTraceback(context, overwriteExisting: false);
+                context.EnsureFrameState(frame);
+
                 hitExcept = true;
-                var exc = ex.PyException;
+                var exc = e.PyException;
                 var handled = exit(context, manager, exc.PyType, exc, PyTraceback.CaptureCurrentFrame(context)).PyUnwrap(context);
                 if (PyOperators.Not(context, handled).PyUnwrap(context).BoolValue)
                     throw;
@@ -374,11 +376,10 @@ internal sealed class FunctionCaller : Caller
 
         var frame = CreateCallingFrame(context, args, kwargs, arguments);
 
-        context.EnterFrame(frame);
+        using var withFrame = context.WithFrame(frame);
 
         var result = _getResult(context, frame);
 
-        context.ExitFrame();
         return result;
     }
 }
@@ -416,6 +417,9 @@ internal sealed class GeneratorCaller : Caller
             }
             catch (PyRuntimeException e)
             {
+                e.PyException.WithTraceback(context, overwriteExisting: false);
+                context.EnsureFrameState(frame);
+
                 Debug.Assert(frame._tcsWaitAtSend is not null);
                 frame._generatorCompleted = true;
                 frame._tcsWaitAtSend.SetResult(PyResult.FromException(e.PyException));
@@ -493,6 +497,9 @@ public sealed class FunctionDefNode : AstStmtNode, IScopedSubNodesProvider
         }
         catch (PyRuntimeException e)
         {
+            e.PyException.WithTraceback(context, overwriteExisting: false);
+            context.EnsureFrameState(frame);
+
             return PyResult.FromException(e.PyException);
         }
 
@@ -594,13 +601,12 @@ public sealed class ClassDefNode : AstStmtNode, IScopedSubNodesProvider
         {
             newFrame.Closures.Add(name, cell);
         }
-        context.EnterFrame(newFrame);
 
-        foreach (var stmt in Body)
+        using (var withFrame = context.WithFrame(newFrame))
         {
-            stmt.Execute(context, newFrame);
+            foreach (var stmt in Body)
+                stmt.Execute(context, newFrame);
         }
-        context.ExitFrame();
 
         var attrs = VariableScope.Variables.Keys.ToDictionary(static member => member, member => newFrame.GetVariable(member).PyUnwrap(context));
         foreach (var attr in attrs)
