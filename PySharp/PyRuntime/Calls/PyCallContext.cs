@@ -1,5 +1,4 @@
 ﻿using PySharp.PyRuntime.Environments;
-using System.Diagnostics;
 
 namespace PySharp.PyRuntime.Calls;
 

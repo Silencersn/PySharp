@@ -93,7 +93,7 @@ public sealed class PyTypeObjectType : PyTypeObject<PyTypeObjectType, PyTypeObje
 
     protected override PyResult Repr(PyCallContext context, PyTypeObject self)
     {
-        return PyStrObject.FromString($"<class '{self.Name}'>");
+        return PyStrObject.FromString($"<class '{self.FullName}'>");
     }
 
     protected override PyResult GetAttribute(PyCallContext context, PyTypeObject self, PyObject item)

@@ -107,6 +107,10 @@ internal sealed class PyCallContextState
             if (_asyncModeCounter > 0)
                 return;
 
+            Debug.Assert(_currentAsyncFrame is not null);
+            if (!ReferenceEquals(_currentAsyncFrame.Value, _currentSyncFrame))
+                throw new InvalidOperationException("Cannot exit async mode: current async frame does not match the root sync frame.");
+            
             _currentAsyncFrame = null;
         }
     }

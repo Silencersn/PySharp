@@ -33,7 +33,7 @@ public static class PySpecialMethods
         if (func is not null)
             return CallUnaryFunction<PyStrObject>(context, obj, func, static o => $"{PySpecialNames.Repr} returned non-string (type {o.PyType.FullName})");
 
-        return CallUnaryFunction<PyStrObject>(context, obj, obj.PyType.DefaultRepr, static o => $"{PySpecialNames.Repr} returned non-string (type {o.PyType.FullName})");
+        return CallUnaryFunction<PyStrObject>(context, obj, PyTypeObject.DefaultRepr, static o => $"{PySpecialNames.Repr} returned non-string (type {o.PyType.FullName})");
     }
 
     public static PyResult<PyBoolObject> Bool(PyCallContext context, PyObject obj)

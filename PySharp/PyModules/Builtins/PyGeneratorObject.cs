@@ -43,7 +43,7 @@ public sealed class PyGeneratorExpressionObject : PyGeneratorObject
 
         _frame.Back = context.CurrentFrame;
         using var withFrame = context.WithFrame(_frame, () => _frame.Back = null);
-        
+
         var result = _enumerator.MoveNext() ? _enumerator.Current : PyResult.RaiseStopIteration();
         if (result.IsError)
             _enumerator = null;

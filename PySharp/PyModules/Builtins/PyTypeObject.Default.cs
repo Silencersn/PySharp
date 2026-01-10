@@ -5,9 +5,9 @@ namespace PySharp.PyModules.Builtins;
 
 partial class PyTypeObject
 {
-    internal PyResult DefaultRepr(PyCallContext context, PyObject self)
+    internal static PyResult DefaultRepr(PyCallContext context, PyObject self)
     {
-        return PyStrObject.FromString($"<{FullName} object at 0x{self.PyId:X16}>");
+        return PyStrObject.FromString($"<{self.PyType.FullName} object at 0x{self.PyId:X16}>");
     }
     internal static PyResult DefaultStr(PyCallContext context, PyObject self)
     {
