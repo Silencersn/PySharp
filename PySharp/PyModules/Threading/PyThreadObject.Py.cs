@@ -25,8 +25,7 @@ partial class PyThreadObject : PyObject
             }
             catch (ThreadInterruptedException)
             {
-                while (threadContext.CurrentFrame != frame)
-                    threadContext.ExitFrame();
+                threadContext.EnsureFrameState(frame);
             }
             Debug.Assert(threadContext.CurrentFrame.IsRoot);
             // no need to context.ExitFrame()

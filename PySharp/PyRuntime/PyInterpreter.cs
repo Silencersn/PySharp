@@ -40,9 +40,6 @@ public static class PyInterpreter
                         Console.ForegroundColor = color;
                     }
 
-                    while (context.CurrentFrame != frame)
-                        context.ExitFrame();
-
                     break;
                 }
 
