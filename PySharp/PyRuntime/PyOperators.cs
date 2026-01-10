@@ -483,7 +483,7 @@ public static class PyOperators
         return func(context, target, name);
     }
 
-    public static PyResult Not(PyCallContext context, PyObject value)
+    public static PyResult<PyBoolObject> Not(PyCallContext context, PyObject value)
     {
         var result = PySpecialMethods.Bool(context, value);
         if (result.IsError)

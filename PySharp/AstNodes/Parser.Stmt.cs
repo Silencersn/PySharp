@@ -409,6 +409,7 @@ partial class Parser
             "try" => ParseTryStmt(),
             "def" => ParseFuncDef(decorators),
             "class" => ParseClassDef(decorators),
+            "with" => ParseWithStmt(),
 
             _ => throw new NotSupportedException()
         };
@@ -562,6 +563,42 @@ partial class Parser
             orElse = ParseSuite("else");
         }
         return Ast.For(target, iter, body, orElse).With(metaInfo);
+    }
+
+    private WithNode ParseWithStmt()
+    {
+        var metaInfo = CreateAstMetaInfo();
+        EnsureKeywordThenMove("with");
+
+        List<AstWithItemNode> items;
+        if (CurrentTokenType is TokenType.LeftParen)
+        {
+            MoveNextToken();
+            items = ParseSomethingList(ParseWithItem, StopPredicates.UntilRightParen, out _);
+            EnsureTokenTypeThenMove(TokenType.RightParen);
+        }
+        else
+        {
+            items = ParseSomethingList(ParseWithItem, StopPredicates.UntilColon, out _);
+        }
+        EnsureTokenTypeThenMove(TokenType.Colon);
+
+        var body = ParseSuite("with");
+
+        return Ast.With(items, body).With(metaInfo);
+
+        AstWithItemNode ParseWithItem()
+        {
+            var metaInfo = CreateAstMetaInfo();
+            var expr = ParseExpression();
+            var target = null as AstExprNode;
+            if (IsCurrentKeyword("as"))
+            {
+                MoveNextToken();
+                target = ParseTarget();
+            }
+            return new AstWithItemNode(expr, target).With(metaInfo.WithPreviousEnd());
+        }
     }
 
     private FunctionDefNode ParseFuncDef(IEnumerable<AstExprNode> decorators)

@@ -475,7 +475,7 @@ partial class Parser
     /// <returns></returns>
     private List<AstExprNode> ParseSliceList(out TokenInfo? endsWithComma)
     {
-        return ParseSomeExpressionList(ParseSliceItem, StopPredicates.UntilRightSquareBracket, out endsWithComma);
+        return ParseSomethingList(ParseSliceItem, StopPredicates.UntilRightSquareBracket, out endsWithComma);
     }
 
     /// <summary>
@@ -977,7 +977,7 @@ partial class Parser
 
     private List<AstExprNode> ParseStarredExpressionList(StopPredicate predicate, out TokenInfo? endsWithComma)
     {
-        return ParseSomeExpressionList(ParseStarredExpression, predicate, out endsWithComma);
+        return ParseSomethingList(ParseStarredExpression, predicate, out endsWithComma);
     }
 
     /// <summary>
@@ -1000,7 +1000,7 @@ partial class Parser
     /// <param name="endsWithComma"></param>
     private List<AstExprNode> ParseFlexibleExpressionList(StopPredicate predicate, out TokenInfo? endsWithComma)
     {
-        return ParseSomeExpressionList(ParseFlexibleExpression, predicate, out endsWithComma);
+        return ParseSomethingList(ParseFlexibleExpression, predicate, out endsWithComma);
     }
 
     /// <summary>
@@ -1078,7 +1078,7 @@ partial class Parser
     /// <returns></returns>
     private List<AstExprNode> ParseTargetList(StopPredicate predicate, out TokenInfo? endsWithComma)
     {
-        return ParseSomeExpressionList(ParseTarget, predicate, out endsWithComma);
+        return ParseSomethingList(ParseTarget, predicate, out endsWithComma);
     }
 
     //private List<AstExprNode> ParseTargetListUntilTokens(params ReadOnlySpan<TokenType> stopTokens)
@@ -1448,7 +1448,7 @@ partial class Parser
     /// <returns></returns>
     private List<AstExprNode> ParseExpressionList(StopPredicate predicate, out TokenInfo? endsWithComma)
     {
-        return ParseSomeExpressionList(ParseExpression, predicate, out endsWithComma);
+        return ParseSomethingList(ParseExpression, predicate, out endsWithComma);
     }
 
     /// <summary>
@@ -1581,10 +1581,10 @@ partial class Parser
         }
     }
 
-    private List<AstExprNode> ParseSomeExpressionList(Func<AstExprNode> parse, StopPredicate predicate, out TokenInfo? endsWithComma)
+    private List<T> ParseSomethingList<T>(Func<T> parse, StopPredicate predicate, out TokenInfo? endsWithComma)
     {
         endsWithComma = null;
-        List<AstExprNode> list = [parse()];
+        List<T> list = [parse()];
         while (CurrentTokenType is TokenType.Comma)
         {
             MoveNextToken();
@@ -1596,8 +1596,8 @@ partial class Parser
             list.Add(parse());
         }
 
-        if (CurrentTokenType is TokenType.Equal && !predicate(CurrentToken))
-            throw ThrowableSyntaxErrorCausedByInvalidEqualAfterExpr(list[^1]);
+        if (CurrentTokenType is TokenType.Equal && !predicate(CurrentToken) && list[^1] is AstExprNode expr)
+            throw ThrowableSyntaxErrorCausedByInvalidEqualAfterExpr(expr);
 
         return list;
     }

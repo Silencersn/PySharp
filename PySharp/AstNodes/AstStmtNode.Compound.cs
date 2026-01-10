@@ -259,7 +259,45 @@ public sealed class WithNode : AstStmtNode
 
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
-        throw new NotImplementedException();
+        With(0);
+
+        void With(int i)
+        {
+            if (i == Items.Length)
+            {
+                foreach (var stmt in Body)
+                    stmt.Execute(context, frame);
+
+                return;
+            }
+
+            var manager = Items[i].ContextExpr.GetExprValue(context, frame);
+            var enter = manager.PyType.Slots.Enter ??
+                throw context.ThrowableTypeError($"'{manager.PyType.FullName}' object does not support the context manager protocol (missed {PySpecialNames.Enter} method)");
+            var exit = manager.PyType.Slots.Exit ??
+                throw context.ThrowableTypeError($"'{manager.PyType.FullName}' object does not support the context manager protocol (missed {PySpecialNames.Exit} method)");
+            var value = enter(context, manager).PyUnwrap(context);
+            var hitExcept = false;
+
+            try
+            {
+                Items[i].OptionalVars?.SetTargetValue(context, value, frame);
+                With(i + 1);
+            }
+            catch (PyRuntimeException ex)
+            {
+                hitExcept = true;
+                var exc = ex.PyException;
+                var handled = exit(context, manager, exc.PyType, exc, PyTraceback.CaptureCurrentFrame(context)).PyUnwrap(context);
+                if (PyOperators.Not(context, handled).PyUnwrap(context).BoolValue)
+                    throw;
+            }
+            finally
+            {
+                if (!hitExcept)
+                    exit(context, manager, PyNoneObject.None, PyNoneObject.None, PyNoneObject.None).PyUnwrap(context);
+            }
+        }
     }
 }
 
