@@ -1,4 +1,5 @@
 ﻿using PySharp.CodeAnalysis;
+using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime.Calls;
 using System.Diagnostics;
 using System.Text;
@@ -7,6 +8,14 @@ namespace PySharp.PyRuntime;
 
 internal static class PyTraceback
 {
+    public static PyTracebackObject CaptureCurrentFrame(PyCallContext context)
+    {
+        var frame = context.CurrentFrame;
+        var provider = frame.MetaInfoProvider;
+        var info = provider?.MetaInfo;
+        return new PyTracebackObject(frame, info, provider);
+    }
+
     public static string PrintTraceback(PyCallContext context)
     {
         Stack<(ICodeMetaInfoProvider Provider, string CallerName)> stack = [];

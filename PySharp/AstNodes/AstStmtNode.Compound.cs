@@ -238,6 +238,31 @@ public sealed class TryNode : AstStmtNode
     }
 }
 
+public sealed class WithNode : AstStmtNode
+{
+    internal WithNode(ImmutableArray<AstWithItemNode> items, ImmutableArray<AstStmtNode> body)
+    {
+        Items = items;
+        Body = body;
+    }
+
+    public ImmutableArray<AstWithItemNode> Items { get; }
+    public ImmutableArray<AstStmtNode> Body { get; }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        foreach (var item in Items)
+            yield return item;
+        foreach (var stmt in Body)
+            yield return stmt;
+    }
+
+    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
+    {
+        throw new NotImplementedException();
+    }
+}
+
 public enum PyVariableType
 {
     Unknown,

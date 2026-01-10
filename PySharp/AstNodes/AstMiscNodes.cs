@@ -200,3 +200,22 @@ public sealed class ExceptHandlerNode : AstNode
             yield return stmt;
     }
 }
+
+public sealed class AstWithItemNode : AstNode
+{
+    internal AstWithItemNode(AstExprNode contextExpr, AstExprNode? optionalVars)
+    {
+        ContextExpr = contextExpr;
+        OptionalVars = optionalVars;
+    }
+
+    public AstExprNode ContextExpr { get; }
+    public AstExprNode? OptionalVars { get; }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return ContextExpr;
+        if (OptionalVars is not null)
+            yield return OptionalVars;
+    }
+}

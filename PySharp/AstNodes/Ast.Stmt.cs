@@ -172,4 +172,12 @@ partial class Ast
 
         return new ClassDefNode(name, bases.ToImmutableArray(true), keywords.ToImmutableArray(true), body.ToImmutableArray(true), decoratorList.ToImmutableArray(true));
     }
+
+    public static WithNode With(IEnumerable<AstWithItemNode> items, IEnumerable<AstStmtNode> body)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        ArgumentNullException.ThrowIfNull(body);
+
+        return new WithNode(items.ToImmutableArray(true), body.ToImmutableArray(true));
+    }
 }
