@@ -220,19 +220,9 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                         break;
                     }
 
-                    var match = LexerRegexes.PseudoToken.Match(content, _offset);
-                    if (match.Index != _offset)
-                        throw _context.ThrowableSyntaxError("invalid syntax");
-
-                    if (match.Length is 0)
-                    {
-                        match = LexerRegexes.Token.Match(content, _offset);
-                        if (match.Index != _offset || match.Length is 0)
-                            throw _context.ThrowableSyntaxError("invalid syntax");
-                    }
-
-                    TokenizeToken(match);
-                    _offset = match.Index + match.Length;
+                    TokenizeToken(out var group);
+                    Debug.Assert(group.Index == _offset);
+                    _offset += group.Length;
                     if (_needSetNewLine)
                     {
                         SetNewLine();
@@ -444,10 +434,23 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         return false;
     }
 
-    private static bool IsStrictMatch(Regex regex, Group group)
+    private bool IsStrictMatchFromCurrent(Regex regex, out ValueGroup group)
     {
-        var match = regex.Match(group.Value);
-        return match.Success && match.Length == group.Length;
+        Debug.Assert(_currentContent is not null);
+
+        group = default;
+
+        var enumerator = regex.EnumerateMatches(_currentContent.AsSpan()[_offset..]);
+        if (!enumerator.MoveNext())
+            return false;
+
+        var match = enumerator.Current;
+        if (match.Index is not 0)
+            return false;
+
+        group.Index = match.Index + _offset;
+        group.Value = _currentContent.Substring(_offset, match.Length);
+        return true;
     }
 
     private static bool IsIgnored(ReadOnlySpan<char> line)
@@ -614,13 +617,23 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             throw _context.ThrowableIndentationError("unindent does not match any outer indentation level");
     }
 
-    private void TokenizeToken(Match match)
+    private struct ValueGroup
     {
-        var group = match.Groups[1];
+        public int Index;
+        public string Value;
+        public readonly int Length => Value.Length;
+    }
 
-        EnsureIndentation(group.Index - match.Index);
+    private void TokenizeToken(out ValueGroup group)
+    {
+        Debug.Assert(_currentContent is not null);
+        var success = IsStrictMatchFromCurrent(LexerRegexes.Whitespace, out group);
+        Debug.Assert(success);
 
-        if (IsStrictMatch(LexerRegexes.PseudoExtras, group))
+        EnsureIndentation(group.Length);
+        _offset += group.Length;
+
+        if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithPseudoExtras, out group))
         {
             if (group.Length is 0)
             {
@@ -630,7 +643,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                 _explicitLineJoining = true;
                 _needSetNewLine = true;
             }
-            else if (IsStrictMatch(LexerRegexes.Comment, group))
+            else if (IsStrictMatchFromCurrent(LexerRegexes.Comment, out group))
             {
                 _offset = group.Index;
                 AppendToken(TokenType.Comment, group.Value);
@@ -645,12 +658,12 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                 CurrentState = LexerState.TokenizingTripleString;
             }
         }
-        else if (IsStrictMatch(LexerRegexes.Number, group))
+        else if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithNumber, out group))
         {
             _offset = group.Index;
             AppendToken(TokenType.Number, group.Value);
         }
-        else if (IsStrictMatch(LexerRegexes.Funny, group))
+        else if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithFunny, out group))
         {
             if (group.Value is "\r\n" or "\n")
             {
@@ -667,7 +680,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                     _parenLevel--;
             }
         }
-        else if (IsStrictMatch(LexerRegexes.ContStr, group))
+        else if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithContStr, out group))
         {
             var prefix = GetStringPrefix(group.Value, out _wrapper);
 
@@ -684,17 +697,14 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                 AppendToken(TokenType.String, group.Value);
             }
         }
-        else if (IsStrictMatch(LexerRegexes.Name, group))
+        else if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithName, out group))
         {
             _offset = group.Index;
             AppendToken(TokenType.Name, group.Value);
         }
         else
         {
-            Debug.Fail($"unknown: {group.Value}");
+            throw _context.ThrowableSyntaxError("invalid syntax");
         }
     }
-
-    [GeneratedRegex("\r?\n")]
-    private static partial Regex NewLineRegex { get; }
 }
