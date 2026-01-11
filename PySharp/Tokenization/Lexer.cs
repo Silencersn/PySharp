@@ -382,8 +382,9 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         var builder = SharedBuilder.Clear();
         builder.Append(_currentContent.AsSpan()[_offset..untilIndex]);
 
-        // all the \r\n should be \n
-        builder.Replace("\r", string.Empty);
+        // all the \r\n or \r should be \n
+        builder.Replace("\r\n", "\n");
+        builder.Replace('\r', '\n');
 
         if (!info.IsRaw)
             // explicit line joining
@@ -574,8 +575,9 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         var builder = SharedBuilder.Clear();
         builder.Append(_currentContent.AsSpan()[_preStringSpan.Start..(m.Index + m.Length)]);
 
-        // all the \r\n should be \n
-        builder.Replace("\r", string.Empty);
+        // all the \r\n or \r should be \n
+        builder.Replace("\r\n", "\n");
+        builder.Replace('\r', '\n');
 
         if (!_isRawString)
             // explicit line joining
