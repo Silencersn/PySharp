@@ -1,5 +1,6 @@
 ﻿using PySharp.CodeAnalysis;
 using PySharp.PyModules.Builtins;
+using System;
 using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Text;
@@ -60,9 +61,11 @@ public sealed record class TokenInfo
         ["~"] = TokenType.Tilde
     }.ToFrozenDictionary();
 
+    private string? _string;
     private CodeSource Source { get; }
+    private CodeTextSpan StringSpan { get; }
     public TokenType Type { get; }
-    public string String { get; }
+    public string String => _string ??= Source.Code.GetString(StringSpan).ToString();
     public CodeTextPosition Start { get; }
     public CodeTextPosition End { get; }
     public ReadOnlySpan<char> Line
@@ -82,6 +85,20 @@ public sealed record class TokenInfo
         }
     }
 
+    internal TokenInfo(TokenType type, CodeTextSpan span, CodeTextPosition start, CodeTextPosition end, CodeSource source)
+    {
+        Debug.Assert((uint)type < (uint)TokenType.Count);
+        Debug.Assert(source is not null);
+
+        Source = source;
+        StringSpan = span;
+        Start = start;
+        End = end;
+        if (type is TokenType.Operator)
+            type = ExactTokenTypes[String];
+
+        Type = type;
+    }
     internal TokenInfo(TokenType type, string str, CodeTextPosition start, CodeTextPosition end, CodeSource source)
     {
         Debug.Assert((uint)type < (uint)TokenType.Count);
@@ -89,13 +106,13 @@ public sealed record class TokenInfo
         Debug.Assert(source is not null);
 
         Source = source;
-        if (type is TokenType.Operator)
-            type = ExactTokenTypes[str];
-
-        Type = type;
-        String = str;
+        _string = str;
         Start = start;
         End = end;
+        if (type is TokenType.Operator)
+            type = ExactTokenTypes[String];
+
+        Type = type;
     }
 
     public override string ToString()

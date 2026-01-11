@@ -448,8 +448,9 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         if (match.Index is not 0)
             return false;
 
+        group.TotalContent = _currentContent;
         group.Index = match.Index + _offset;
-        group.Value = _currentContent.Substring(_offset, match.Length);
+        group.Length = match.Length;
         return true;
     }
 
@@ -481,6 +482,16 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         return str[..2];
     }
 
+    private void AppendToken(TokenType type, CodeTextSpan span, CodeTextPosition start, CodeTextPosition end)
+    {
+        var token = new TokenInfo(
+            type,
+            span,
+            start,
+            end,
+            _codeSource);
+        _tokens.Add(token);
+    }
     private void AppendToken(TokenType type, string str, CodeTextPosition start, CodeTextPosition end)
     {
         var token = new TokenInfo(
@@ -491,7 +502,12 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             _codeSource);
         _tokens.Add(token);
     }
-
+    private void AppendToken(TokenType type, CodeTextSpan span)
+    {
+        var start = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
+        var end = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine + span.Length);
+        AppendToken(type, span, start, end);
+    }
     private void AppendToken(TokenType type, string str)
     {
         var start = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
@@ -619,9 +635,11 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
 
     private struct ValueGroup
     {
+        public string TotalContent;
         public int Index;
-        public string Value;
-        public readonly int Length => Value.Length;
+        public int Length;
+        public readonly ReadOnlySpan<char> Value => TotalContent.AsSpan(Index, Length);
+        public readonly CodeTextSpan Span => new(Index, Length);
     }
 
     private void TokenizeToken(out ValueGroup group)
@@ -645,35 +663,31 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             }
             else if (IsStrictMatchFromCurrent(LexerRegexes.Comment, out group))
             {
-                _offset = group.Index;
-                AppendToken(TokenType.Comment, group.Value);
+                AppendToken(TokenType.Comment, group.Span);
             }
             else
             {
                 _isRawString = group.Value.ContainsAny('r', 'R');
                 _wrapper = group.Value[^1];
-                _offset = group.Index;
                 _stringStart = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
-                _preString = group.Value;
+                _preString = group.Value.ToString();
                 CurrentState = LexerState.TokenizingTripleString;
             }
         }
         else if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithNumber, out group))
         {
-            _offset = group.Index;
-            AppendToken(TokenType.Number, group.Value);
+            AppendToken(TokenType.Number, group.Span);
         }
         else if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithFunny, out group))
         {
             if (group.Value is "\r\n" or "\n")
             {
-                AppendNewLineToken(group.Value);
+                AppendNewLineToken(group.Value.ToString());
                 _needSetNewLine = true;
             }
             else
             {
-                _offset = group.Index;
-                AppendToken(TokenType.Operator, group.Value);
+                AppendToken(TokenType.Operator, group.Span);
                 if (group.Value is "(" or "[" or "{")
                     _parenLevel++;
                 else if (group.Value is ")" or "]" or "}")
@@ -682,25 +696,23 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         }
         else if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithContStr, out group))
         {
-            var prefix = GetStringPrefix(group.Value, out _wrapper);
+            var prefix = GetStringPrefix(group.Value.ToString(), out _wrapper);
 
             _isRawString = prefix.ContainsAny('r', 'R');
-            _offset = group.Index;
             if (group.Value.EndsWith("\\\r\n") || group.Value.EndsWith("\\\n"))
             {
                 _stringStart = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
-                _preString = group.Value;
+                _preString = group.Value.ToString();
                 CurrentState = LexerState.TokenizingMultiLineSingleOrDoubleString;
             }
             else
             {
-                AppendToken(TokenType.String, group.Value);
+                AppendToken(TokenType.String, group.Span);
             }
         }
         else if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithName, out group))
         {
-            _offset = group.Index;
-            AppendToken(TokenType.Name, group.Value);
+            AppendToken(TokenType.Name, group.Span);
         }
         else
         {

@@ -174,4 +174,13 @@ public sealed class CodeText
         range = InternalGetRange(start, end);
         return true;
     }
+
+    public ReadOnlySpan<char> GetString(CodeTextSpan span)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(span.Start);
+        ArgumentOutOfRangeException.ThrowIfNegative(span.Length);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(span.Start + span.Length, _text.Length);
+
+        return _text.AsSpan(span.Start, span.Length);
+    }
 }
