@@ -4,12 +4,66 @@ using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.Environments;
 using PySharp.Tokenization;
+using System;
 using System.Diagnostics;
 
 namespace PySharp.PyRuntime;
 
-public static class PyInterpreter
+public class PyInterpreter
 {
+    private readonly PyEnvironment _environment;
+    private readonly PyModuleObject _mainModule;
+    private readonly PyCallContext _mainContext;
+
+    internal PyEnvironment PyEnvironment => _environment;
+
+    private PyInterpreter(PyEnvironment environment)
+    {
+        _environment = environment;
+        _mainModule = new PyModuleObject(PySpecialNames.Main);
+        _mainContext = PyCallContext.CreateInterpreterMainContext(this);
+        _mainModule._pyAttributes = _mainContext.CurrentFrame._globals.Globals;
+    }
+
+    public static PyInterpreter Create(PyEnvironment environment)
+    {
+        ArgumentNullException.ThrowIfNull(environment);
+
+        return new PyInterpreter(environment);
+    }
+
+    private void ExecuteNode(AstModNode node)
+    {
+        node.Execute(_mainContext, _mainContext.CurrentFrame);
+    }
+
+    internal static void InternalExecute(PyCallContext context, string code, string sourceName)
+    {
+        var source = new CodeSource(sourceName, code);
+        var tokens = Lexer.Tokenize(context, source);
+        var node = Parser.ParseModule(context, source, tokens);
+        SemanticAnalyzer.Analyze(context, node);
+        node.Execute(context, context.CurrentFrame);
+    }
+
+    public void Execute(string code, string sourceName)
+    {
+        ArgumentNullException.ThrowIfNull(code);
+        ArgumentNullException.ThrowIfNull(sourceName);
+
+        PyTryCatch(_mainContext, () =>
+        {
+            InternalExecute(_mainContext, code, sourceName);
+        });
+    }
+
+    public PyModuleObject GetModule(string moduleName)
+    {
+        ArgumentNullException.ThrowIfNull(moduleName);
+
+        return new PyModuleObject(moduleName) { _pyAttributes = new Dictionary<string, PyObject>(_mainModule.PyAttributes) };
+    }
+
     internal static void PyTryCatch(PyCallContext context, Action action)
     {
         var frame = context.CurrentFrame;
@@ -53,51 +107,46 @@ public static class PyInterpreter
         }
     }
 
-    public static PyModuleObject? RunFile(string filename, PyEnvironment? environment = null)
+    public static PyModuleObject RunFile(string filename)
     {
         ArgumentNullException.ThrowIfNull(filename);
 
         var code = File.ReadAllText(filename);
         var moduleName = Path.GetFileNameWithoutExtension(filename);
-        environment ??= PyEnvironment
+        var environment = PyEnvironment
             .CreateBuilder()
             .StandardIO.WithConsole()
             .FileSystem.WithPhysicalFileSystem()
             .System.AppendSysPath(Path.GetDirectoryName(Path.GetFullPath(filename))).AppendArgument(filename)
             .Build();
 
-        return RunCode(code, moduleName, environment, Path.GetFullPath(filename));
+        var interpreter = Create(environment);
+        interpreter.Execute(code, Path.GetFullPath(filename));
+        return interpreter.GetModule(moduleName);
     }
 
-    public static PyModuleObject? RunCode(string code, string? moduleName = null, PyEnvironment? environment = null, string? sourceName = null)
+    public static PyModuleObject? RunCode(string code, string? moduleName = null, string? sourceName = null)
     {
         ArgumentNullException.ThrowIfNull(code);
 
-        environment ??= PyEnvironment
+        var environment = PyEnvironment
             .CreateBuilder()
             .StandardIO.WithConsole()
             .FileSystem.WithEmptyMemoryFileSystem()
             .Build();
 
-        var context = PyCallContext.FromLoadingModule(environment);
-
-        PyModuleObject? module = null;
-        PyTryCatch(context, () =>
-        {
-            module = RunCodeWithinEnvironment(context, code, moduleName ?? string.Empty, false, sourceName ?? "<string>");
-            Debug.Assert(context.CurrentFrame.IsRoot);
-        });
-        context.PyEnvironment.OnExit();
-        return module;
+        var interpreter = Create(environment);
+        interpreter.Execute(code, sourceName ?? "<string>");
+        return moduleName is not null ? interpreter.GetModule(moduleName) : null;
     }
 
-    public static PyModuleObject RunCodeWithinEnvironment(PyCallContext context, string code, string moduleName, bool newFrame, string sourceName)
+    internal static PyModuleObject RunCodeWithinEnvironment(PyCallContext context, string code, string moduleName, string sourceName)
     {
         var codeSource = new CodeSource(sourceName, code);
         var tokens = Lexer.Tokenize(context, codeSource);
         var node = Parser.ParseModule(context, codeSource, tokens);
         SemanticAnalyzer.Analyze(context, node);
-        return PyVirtualMachine.Execute(context, node, moduleName, newFrame);
+        return PyVirtualMachine.Execute(context, node, moduleName);
     }
 
     public static void RunRepl()
@@ -111,17 +160,16 @@ public static class PyInterpreter
 
         environment.Out.WriteLine($"{nameof(PySharp)} (v{typeof(PyInterpreter).Assembly.GetName().Version}) on {Environment.OSVersion}");
 
-
-        var context = PyCallContext.FromLoadingModule(environment);
+        var interpreter = Create(environment);
 
         while (true)
         {
-            PyTryCatch(context, () =>
+            PyTryCatch(interpreter._mainContext, () =>
             {
                 InteractiveNode node;
 
                 var codeSource = new CodeSource("<stdin>", string.Empty);
-                var lexer = new Lexer(context, codeSource);
+                var lexer = new Lexer(interpreter._mainContext, codeSource);
                 lexer.InternalStart();
                 bool isFirstLine = true;
                 while (true)
@@ -143,10 +191,11 @@ public static class PyInterpreter
                         lexer.Tokens.Add(new TokenInfo(TokenType.EndMarker, string.Empty, default, default, codeSource));
                     }
 
-                    var parser = new Parser(context, codeSource, lexer.Tokens);
+                    var parser = new Parser(interpreter._mainContext, codeSource, lexer.Tokens);
                     try
                     {
                         node = parser.ParseInteractiveNode();
+                        SemanticAnalyzer.Analyze(interpreter._mainContext, node);
                         break;
                     }
                     catch (PyRuntimeException e)
@@ -161,8 +210,8 @@ public static class PyInterpreter
                     }
                 }
 
-                node.Execute(context, context.CurrentFrame);
-                Debug.Assert(context.CurrentFrame.IsRoot);
+                interpreter.ExecuteNode(node);
+                Debug.Assert(interpreter._mainContext.CurrentFrame.IsRoot);
             });
         }
     }

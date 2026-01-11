@@ -21,16 +21,14 @@ public delegate void PyExitEventHandler(PyExitEventArgs args);
 
 public static partial class PyVirtualMachine
 {
-    internal static PyModuleObject Execute(PyCallContext context, ModuleNode moduleNode, string moduleName, bool newFrame)
+    internal static PyModuleObject Execute(PyCallContext context, ModuleNode moduleNode, string moduleName)
     {
         var module = new PyModuleObject(moduleName);
-        ExecuteToObject(context, moduleNode, module, newFrame);
+        ExecuteToObject(context, moduleNode, module);
         return module;
     }
-    internal static void ExecuteToObject(PyCallContext context, ModuleNode moduleNode, PyModuleObject module, bool newFrame)
+    internal static void ExecuteToObject(PyCallContext context, ModuleNode moduleNode, PyModuleObject module)
     {
-        using var withFrame = newFrame ? context.WithFrame(PyFrame.CreateModuleFrame(context, context.CurrentFrame)) : default;
-
         moduleNode.Execute(context, context.CurrentFrame);
 
         // module will be reloaded
@@ -39,14 +37,6 @@ public static partial class PyVirtualMachine
         if (AstUtils.TryGetDoc(moduleNode.Body, out var doc))
             module.PyAttributes[PySpecialNames.Doc] = doc;
 
-        foreach (var pair in context.CurrentFrame.Globals)
-        {
-            // all statements have been executed,
-            // there should be no uninitialized variables.
-            Debug.Assert(pair.Value is not null);
-
-            module.PyAttributes[pair.Key] = pair.Value;
-        }
         module.PyAttributes[PySpecialNames.Name] = PyStrObject.FromString(module.Name);
     }
 }

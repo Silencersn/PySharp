@@ -32,6 +32,6 @@ internal static class PyStandardLibrary
 
     private static PyModuleObject Execute(PyCallContext context, string name, string code)
     {
-        return PyInterpreter.RunCodeWithinEnvironment(context, code, name, true, $"{name}.py");
+        return PyInterpreter.RunCodeWithinEnvironment(context, code, name, $"{name}.py");
     }
 }

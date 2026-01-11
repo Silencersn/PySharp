@@ -34,7 +34,10 @@ partial class PyEnvironment
 
     internal bool TryLoadModuleNoCache(PyCallContext context, string qualifiedName, [NotNullWhen(true)] out PyModuleObject? module)
     {
-        module = PyStandardLibrary.TryCreateModule(PyCallContext.FromLoadingModule(this), qualifiedName);
+        var frame = PyFrame.CreateModuleFrame(context, context.CurrentFrame);
+        using var withFrame = context.WithFrame(frame);
+
+        module = PyStandardLibrary.TryCreateModule(context, qualifiedName);
         if (module is not null)
         {
             module.OnImport(context, this);
@@ -54,7 +57,7 @@ partial class PyEnvironment
 
             var content = FileSystem.ReadAllText(filename);
 
-            module = PyInterpreter.RunCodeWithinEnvironment(context, content, qualifiedName, true, Path.GetFullPath(filename));
+            module = PyInterpreter.RunCodeWithinEnvironment(context, content, qualifiedName, Path.GetFullPath(filename));
             module.OnImport(context, this);
             Modules.Add(qualifiedName, module);
             return true;

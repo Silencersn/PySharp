@@ -9,22 +9,23 @@ public sealed partial class PyCallContext
     internal static PyCallContext CSharpRuntime { get; } = new("[CSharp Runtime]");
 
     private readonly string _prompt;
-    private readonly PyEnvironment _environment;
+    private readonly PyInterpreter _interpreter;
     private PyCallContextFrameState? _state;
 
-    internal PyEnvironment PyEnvironment => _environment;
+    internal PyEnvironment PyEnvironment => _interpreter.PyEnvironment;
+    internal PyInterpreter Interpreter => _interpreter;
     internal PyCallContextFrameState FrameState => _state ?? throw new InvalidOperationException("Context has not been initialized.");
 
     private PyCallContext(string prompt)
     {
         _prompt = prompt;
-        _environment = null!;
+        _interpreter = null!;
         _state = null!;
     }
-    private PyCallContext(string prompt, PyEnvironment environment)
+    private PyCallContext(string prompt, PyInterpreter interpreter)
     {
         _prompt = prompt;
-        _environment = environment;
+        _interpreter = interpreter;
     }
 
     internal TextReader In => PyEnvironment.In;
@@ -115,9 +116,9 @@ public sealed partial class PyCallContext
         throw ThrowableSystemExit();
     }
 
-    public static PyCallContext FromLoadingModule(PyEnvironment environment)
+    internal static PyCallContext CreateInterpreterMainContext(PyInterpreter interpreter)
     {
-        var context = new PyCallContext("[From Loading Module]", environment);
+        var context = new PyCallContext("[Interpreter Main Context]", interpreter);
         var frame = PyFrame.CreateModuleFrame(context, null);
         context.InitState(frame);
         return context;
@@ -126,7 +127,7 @@ public sealed partial class PyCallContext
     internal static PyCallContext FromCreatingThread(PyCallContext context)
     {
         var frame = context.CurrentFrame.CreateThreadRootFrame();
-        var threadContext = new PyCallContext("[From Creating Thread]", context.PyEnvironment);
+        var threadContext = new PyCallContext("[From Creating Thread]", context._interpreter);
         threadContext.InitState(frame);
         return threadContext;
     }
