@@ -579,42 +579,46 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         TokenizeMultiLineString(_wrapper is '"' ? LexerRegexes.Double3 : LexerRegexes.Single3, true);
     }
 
+    private void EnsureIndentation(int indentationLevel)
+    {
+        if (!_needIndentation)
+            return;
+
+        _needIndentation = false;
+
+        if (_explicitLineJoining)
+        {
+            _explicitLineJoining = false;
+            return;
+        }
+
+        if (_parenLevel is not 0 || IsIgnored(CurrentLine))
+            return;
+
+        if (indentationLevel > _indentationLevels.Peek())
+        {
+            _indentationLevels.Push(indentationLevel);
+            Debug.Assert(_currentContent is not null);
+            AppendToken(TokenType.Indent, _currentContent.Substring(_offset, indentationLevel));
+            return;
+        }
+        
+        while (_indentationLevels.Peek() > indentationLevel)
+        {
+            _ = _indentationLevels.Pop();
+            var pos = new CodeTextPosition(_lineno, 0);
+            AppendToken(TokenType.Dedent, string.Empty, pos, pos);
+        }
+
+        if (indentationLevel != _indentationLevels.Peek())
+            throw _context.ThrowableIndentationError("unindent does not match any outer indentation level");
+    }
+
     private void TokenizeToken(Match match)
     {
         var group = match.Groups[1];
 
-        if (_needIndentation)
-        {
-            _needIndentation = false;
-
-            if (_explicitLineJoining)
-            {
-                _explicitLineJoining = false;
-            }
-            else if (_parenLevel is 0 && !IsIgnored(CurrentLine))
-            {
-                var indentationLevel = group.Index - match.Index;
-
-                if (indentationLevel > _indentationLevels.Peek())
-                {
-                    _indentationLevels.Push(indentationLevel);
-                    Debug.Assert(_currentContent is not null);
-                    AppendToken(TokenType.Indent, _currentContent[match.Index..group.Index]);
-                }
-                else
-                {
-                    while (_indentationLevels.Peek() > indentationLevel)
-                    {
-                        _ = _indentationLevels.Pop();
-                        var pos = new CodeTextPosition(_lineno, 0);
-                        AppendToken(TokenType.Dedent, string.Empty, pos, pos);
-                    }
-
-                    if (indentationLevel != _indentationLevels.Peek())
-                        throw _context.ThrowableIndentationError("unindent does not match any outer indentation level");
-                }
-            }
-        }
+        EnsureIndentation(group.Index - match.Index);
 
         if (IsStrictMatch(LexerRegexes.PseudoExtras, group))
         {
