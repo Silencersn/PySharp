@@ -2,6 +2,7 @@
 using PySharp.PyRuntime.Calls;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace PySharp.Tokenization;
@@ -102,6 +103,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
 
     private int _parenLevel;
     private string? _currentContent;
+    private StringBuilder SharedBuilder => field ??= new();
 
     internal IList<TokenInfo> Tokens => _tokens;
     private ReadOnlySpan<char> CurrentLine => _codeSource.Code.GetLineOrDefault(_lineno, false);
@@ -291,14 +293,17 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                     {
                         var start = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
 
-                        ExtractMultiLineTextInFString(indexOfLeftBrace, info, out var value);
 
-                        bool isEscape = false;
-                        if (CurrentFStringInfo.FormatSpec.Count is 0 && _offset + 1 < content.Length && content[_offset + 1] is '{')
+                        bool isEscape = CurrentFStringInfo.FormatSpec.Count is 0 && indexOfLeftBrace + 1 < content.Length && content[indexOfLeftBrace + 1] is '{';
+
+                        ExtractMultiLineTextInFString(indexOfLeftBrace + (isEscape ? 1 : 0), info, out var value);
+
+                        if (isEscape)
                         {
-                            _offset += 2;
-                            value += '{';
-                            isEscape = true;
+                            // escape '{'
+                            // one is consumed by ExtractMultiLineTextInFString
+                            // the other one is here
+                            _offset += 1;
                         }
 
                         var end = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
@@ -339,10 +344,12 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
 
                             var start = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
 
-                            ExtractMultiLineTextInFString(indexOfRightBrace, info, out var value);
+                            ExtractMultiLineTextInFString(indexOfRightBrace + 1 /* included escape '}' */, info, out var value);
 
-                            _offset += 2;
-                            value += '}';
+                            // escape '}'
+                            // one is consumed by ExtractMultiLineTextInFString
+                            // the other one is here
+                            _offset += 1;
                             var end = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
                             AppendToken(TokenType.FStringMiddle, value, start, end);
                         }
@@ -372,15 +379,17 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
     {
         Debug.Assert(_currentContent is not null);
 
-        value = _currentContent[_offset..untilIndex];
-
+        var builder = SharedBuilder.Clear();
+        builder.Append(_currentContent.AsSpan()[_offset..untilIndex]);
 
         // all the \r\n should be \n
-        value = value.Replace("\r", string.Empty);
+        builder.Replace("\r", string.Empty);
 
         if (!info.IsRaw)
             // explicit line joining
-            value = value.Replace("\\\n", string.Empty);
+            builder.Replace("\\\n", string.Empty);
+
+        value = builder.ToString();
 
         var countOfNewLine = value.Count('\n');
         if (countOfNewLine > 0)
@@ -561,14 +570,18 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         Debug.Assert(!_preStringSpan.IsEmpty);
         Debug.Assert(_offset == _preStringSpan.End);
         var pastString = _currentContent.AsSpan()[_offset..(m.Index + m.Length)];
-        var fullString = _currentContent[_preStringSpan.Start..(m.Index + m.Length)];
+
+        var builder = SharedBuilder.Clear();
+        builder.Append(_currentContent.AsSpan()[_preStringSpan.Start..(m.Index + m.Length)]);
 
         // all the \r\n should be \n
-        fullString = fullString.Replace("\r", string.Empty);
+        builder.Replace("\r", string.Empty);
 
         if (!_isRawString)
             // explicit line joining
-            fullString = fullString.Replace("\\\n", string.Empty);
+            builder.Replace("\\\n", string.Empty);
+
+        var fullString = builder.ToString();
 
         _lineno += pastString.Count('\n');
 
@@ -645,7 +658,6 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
 
     private void TokenizeToken(out ValueGroup group)
     {
-        Debug.Assert(_currentContent is not null);
         var success = IsStrictMatchFromCurrent(LexerRegexes.Whitespace, out group);
         Debug.Assert(success);
 
@@ -662,7 +674,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                 _explicitLineJoining = true;
                 _needSetNewLine = true;
             }
-            else if (IsStrictMatchFromCurrent(LexerRegexes.Comment, out _))
+            else if (group.Value[0] is '#')
             {
                 AppendToken(TokenType.Comment, group.Span);
             }

@@ -9,8 +9,8 @@ public static partial class LexerRegexes
     [GeneratedRegex(LexerRegexPatterns.Whitespace)]
     public static partial Regex Whitespace { get; }
 
-    [GeneratedRegex(LexerRegexPatterns.Comment)]
-    public static partial Regex Comment { get; }
+    //[GeneratedRegex(LexerRegexPatterns.Comment)]
+    //public static partial Regex Comment { get; }
 
     //[GeneratedRegex(LexerRegexPatterns.Ignore)]
     //public static partial Regex Ignore { get; }
