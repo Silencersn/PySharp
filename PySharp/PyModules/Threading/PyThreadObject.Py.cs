@@ -17,7 +17,7 @@ partial class PyThreadObject : PyObject
         _thread = new Thread(() =>
         {
             var threadContext = PyCallContext.FromCreatingThread(context);
-            var frame = threadContext.State.CurrentFrame;
+            var frame = threadContext.FrameState.CurrentFrame;
             frame.MetaInfoProvider = metaInfoProvider;
             try
             {

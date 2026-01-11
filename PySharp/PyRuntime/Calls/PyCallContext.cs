@@ -10,10 +10,10 @@ public sealed partial class PyCallContext
 
     private readonly string _prompt;
     private readonly PyEnvironment _environment;
-    private PyCallContextState? _state;
+    private PyCallContextFrameState? _state;
 
     internal PyEnvironment PyEnvironment => _environment;
-    internal PyCallContextState State => _state ?? throw new InvalidOperationException("Context has not been initialized.");
+    internal PyCallContextFrameState FrameState => _state ?? throw new InvalidOperationException("Context has not been initialized.");
 
     private PyCallContext(string prompt)
     {
@@ -30,12 +30,12 @@ public sealed partial class PyCallContext
     internal TextReader In => PyEnvironment.In;
     internal TextWriter Out => PyEnvironment.Out;
     internal TextWriter Error => PyEnvironment.Error;
-    internal PyFrame CurrentFrame => State.CurrentFrame;
+    internal PyFrame CurrentFrame => FrameState.CurrentFrame;
     internal bool IsInteractive => PyEnvironment.IsInteractive;
 
     private void InitState(PyFrame rootFrame)
     {
-        _state = new PyCallContextState(rootFrame);
+        _state = new PyCallContextFrameState(rootFrame);
     }
 
     public readonly ref struct FrameSetter : IDisposable
@@ -47,7 +47,7 @@ public sealed partial class PyCallContext
         {
             _context = context;
             _onExited = onExited;
-            _context.State.EnterFrame(frame);
+            _context.FrameState.EnterFrame(frame);
         }
 
         void IDisposable.Dispose()
@@ -56,7 +56,7 @@ public sealed partial class PyCallContext
                 // default(FrameSetter)
                 return;
 
-            _context.State.ExitFrame();
+            _context.FrameState.ExitFrame();
             _onExited?.Invoke();
         }
     }
@@ -68,30 +68,45 @@ public sealed partial class PyCallContext
 
     internal void EnsureFrameState(PyFrame expectedFrame)
     {
-        if (ReferenceEquals(State.CurrentFrame, expectedFrame))
+        if (ReferenceEquals(FrameState.CurrentFrame, expectedFrame))
             return;
 
-        var currentFrame = State.CurrentFrame;
+        var currentFrame = FrameState.CurrentFrame;
         while (currentFrame is not null && !ReferenceEquals(currentFrame, expectedFrame))
             currentFrame = currentFrame.Back;
 
         if (currentFrame is not null)
         {
-            State.CurrentFrame = currentFrame;
+            FrameState.CurrentFrame = currentFrame;
             return;
         }
 
         throw new InvalidOperationException("Failed to restore the frame state.");
     }
 
-    public void EnterAsyncMode()
+    public readonly ref struct AsyncModeSetter : IDisposable
     {
-        State.EnterAsyncMode();
+        private readonly PyCallContext _context;
+
+        public AsyncModeSetter(PyCallContext context)
+        {
+            _context = context;
+            _context.FrameState.EnterAsyncMode();
+        }
+
+        void IDisposable.Dispose()
+        {
+            if (_context is null)
+                // default(AsyncModeSetter)
+                return;
+
+            _context.FrameState.ExitAsyncMode();
+        }
     }
 
-    public void ExitAsyncMode()
+    public AsyncModeSetter WithAsyncMode()
     {
-        State.ExitAsyncMode();
+        return new AsyncModeSetter(this);
     }
 
     internal void Exit(int exitCode)

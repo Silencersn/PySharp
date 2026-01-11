@@ -2,14 +2,14 @@
 
 namespace PySharp.PyRuntime.Calls;
 
-internal sealed class PyCallContextState
+internal sealed class PyCallContextFrameState
 {
     private readonly Lock _lock;
     private int _asyncModeCounter;
     private PyFrame _currentSyncFrame;
     private AsyncLocal<PyFrame>? _currentAsyncFrame;
 
-    internal PyCallContextState(PyFrame rootFrame)
+    internal PyCallContextFrameState(PyFrame rootFrame)
     {
         _lock = new Lock();
         _asyncModeCounter = 0;
