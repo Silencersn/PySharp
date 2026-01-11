@@ -1,4 +1,5 @@
-﻿using PySharp.PyRuntime.Calls;
+﻿using PySharp.PyModules.Builtins;
+using PySharp.PyRuntime.Calls;
 using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -45,6 +46,11 @@ public sealed class SemanticAnalyzer
         Stack<AstExprNode?> comprehensionStack = [];
         AstExprNode? currentComprehension = null;
 
+        Stack<AstNode> nodesToRoot = [];
+        nodesToRoot.Push(root);
+
+        int finallyCounter = 0;
+
         foreach (var subNode in root.EnumerateSubNodes())
             BuildBasicScopeImpl(subNode);
         Debug.Assert(scopeStack.Count is 0);
@@ -63,6 +69,8 @@ public sealed class SemanticAnalyzer
                 LambdaNode n => new LambdaVariableScope(n, currentScope),
                 _ => null
             };
+
+            nodesToRoot.Push(node);
 
             if (scope is not null)
             {
@@ -91,7 +99,23 @@ public sealed class SemanticAnalyzer
             }
 
             {
-                if (node is IScopedSubNodesProvider provider)
+                if (node is TryNode tryNode)
+                {
+                    foreach (var subNode in tryNode.Body)
+                        BuildBasicScopeImpl(subNode);
+
+                    foreach (var subNode in tryNode.Exceptors)
+                        BuildBasicScopeImpl(subNode);
+
+                    foreach (var subNode in tryNode.OrElse)
+                        BuildBasicScopeImpl(subNode);
+
+                    finallyCounter++;
+                    foreach (var subNode in tryNode.FinalBody)
+                        BuildBasicScopeImpl(subNode);
+                    finallyCounter--;
+                }
+                else if (node is IScopedSubNodesProvider provider)
                 {
                     foreach (var subNode in provider.EnumerateSubNodesInnerScope())
                         BuildBasicScopeImpl(subNode);
@@ -122,6 +146,9 @@ public sealed class SemanticAnalyzer
                 Debug.Assert(currentLoopDepth is 0);
                 currentLoopDepth = loopDepthStack.Pop();
             }
+
+            var poppedNode = nodesToRoot.Pop();
+            Debug.Assert(ReferenceEquals(poppedNode, node));
         }
 
         void CheckValid(AstNode node)
@@ -133,16 +160,22 @@ public sealed class SemanticAnalyzer
                 case BreakNode:
                     if (currentLoopDepth is 0)
                         throw _context.ThrowableSyntaxError("'break' outside loop");
+                    if (finallyCounter > 0)
+                        CheckControlStmtNotInFinallyUntil(nodesToRoot, static n => n is ForNode or WhileNode, "'break' in a 'finally' block");
                     break;
 
                 case ContinueNode:
                     if (currentLoopDepth is 0)
                         throw _context.ThrowableSyntaxError("'continue' outside loop");
+                    if (finallyCounter > 0)
+                        CheckControlStmtNotInFinallyUntil(nodesToRoot, static n => n is ForNode or WhileNode, "'continue' in a 'finally' block");
                     break;
 
                 case ReturnNode:
                     if (currentScope is not FunctionVariableScope)
                         throw _context.ThrowableSyntaxError("'return' outside function");
+                    if (finallyCounter > 0)
+                        CheckControlStmtNotInFinallyUntil(nodesToRoot, static n => n is FunctionDefNode, "'return' in a 'finally' block");
                     break;
 
                 case YieldNode:
@@ -176,6 +209,24 @@ public sealed class SemanticAnalyzer
                         }
                     }
                     break;
+            }
+        }
+    }
+
+    internal void CheckControlStmtNotInFinallyUntil(IEnumerable<AstNode> nodesToRoot, Func<AstNode, bool> stopPredicate, string warningMessage)
+    {
+        foreach (var node in nodesToRoot)
+        {
+            if (node is ModuleNode or ClassDefNode or FunctionDefNode or LambdaNode)
+                return;
+            
+            if (stopPredicate(node))
+                return;
+
+            if (node is TryNode)
+            {
+                _context.TryWarn(PySyntaxWarningObjectType.Shared, warningMessage);
+                return;
             }
         }
     }
