@@ -731,6 +731,18 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         }
         else
         {
+            Debug.Assert(_currentContent is not null);
+
+            if (_currentContent[_offset] is '\r')
+            {
+                AppendNewLineToken("\r");
+                _needSetNewLine = true;
+                group.TotalContent = _currentContent;
+                group.Index = _offset;
+                group.Length = 1;
+                return;
+            }
+
             throw _context.ThrowableSyntaxError("invalid syntax");
         }
     }
