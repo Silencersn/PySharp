@@ -61,11 +61,69 @@ public sealed record class TokenInfo
         ["~"] = TokenType.Tilde
     }.ToFrozenDictionary();
 
+    internal static TokenType GetExactTokenType(ReadOnlySpan<char> str)
+    {
+        return str switch
+        {
+            "!" => TokenType.Exclamation,
+            "!=" => TokenType.NotEqual,
+            "%" => TokenType.Percent,
+            "%=" => TokenType.PercentEqual,
+            "&" => TokenType.Ampersand,
+            "&=" => TokenType.AmpersandEqual,
+            "(" => TokenType.LeftParen,
+            ")" => TokenType.RightParen,
+            "*" => TokenType.Star,
+            "**" => TokenType.DoubleStar,
+            "**=" => TokenType.DoubleStarEqual,
+            "*=" => TokenType.StarEqual,
+            "+" => TokenType.Plus,
+            "+=" => TokenType.PlusEqual,
+            "," => TokenType.Comma,
+            "-" => TokenType.Minus,
+            "-=" => TokenType.MinusEqual,
+            "->" => TokenType.RightArrow,
+            "." => TokenType.Dot,
+            "..." => TokenType.Ellipsis,
+            "/" => TokenType.Slash,
+            "//" => TokenType.DoubleSlash,
+            "//=" => TokenType.DoubleSlashEqual,
+            "/=" => TokenType.SlashEqual,
+            ":" => TokenType.Colon,
+            ":=" => TokenType.ColonEqual,
+            ";" => TokenType.Semicolon,
+            "<" => TokenType.Less,
+            "<<" => TokenType.LeftShift,
+            "<<=" => TokenType.LeftShiftEqual,
+            "<=" => TokenType.LessEqual,
+            "=" => TokenType.Equal,
+            "==" => TokenType.DoubleEqual,
+            ">" => TokenType.Greater,
+            ">=" => TokenType.GreaterEqual,
+            ">>" => TokenType.RightShift,
+            ">>=" => TokenType.RightShiftEqual,
+            "@" => TokenType.At,
+            "@=" => TokenType.AtEqual,
+            "[" => TokenType.LeftSquareBracket,
+            "]" => TokenType.RightSquareBracket,
+            "^" => TokenType.Caret,
+            "^=" => TokenType.CaretEqual,
+            "{" => TokenType.LeftBrace,
+            "|" => TokenType.Pipe,
+            "|=" => TokenType.PipeEqual,
+            "}" => TokenType.RightBrace,
+            "~" => TokenType.Tilde,
+
+            _ => throw new UnreachableException()
+        };
+    }
+
     private string? _string;
     private CodeSource Source { get; }
     private CodeTextSpan StringSpan { get; }
     public TokenType Type { get; }
-    public string String => _string ??= Source.Code.GetString(StringSpan).ToString();
+    public ReadOnlySpan<char> StringAsSpan => _string ?? Source.Code.GetString(StringSpan);
+    public string String => _string ??= StringAsSpan.ToString();
     public CodeTextPosition Start { get; }
     public CodeTextPosition End { get; }
     public ReadOnlySpan<char> Line
@@ -95,7 +153,7 @@ public sealed record class TokenInfo
         Start = start;
         End = end;
         if (type is TokenType.Operator)
-            type = ExactTokenTypes[String];
+            type = GetExactTokenType(StringAsSpan);
 
         Type = type;
     }
@@ -110,7 +168,7 @@ public sealed record class TokenInfo
         Start = start;
         End = end;
         if (type is TokenType.Operator)
-            type = ExactTokenTypes[String];
+            type = GetExactTokenType(str);
 
         Type = type;
     }
@@ -129,7 +187,7 @@ public sealed record class TokenInfo
 
             .Append(nameof(String))
             .Append('=')
-            .Append(PyStrConverter.FromStringToLiteral(String))
+            .Append(PyStrConverter.FromStringToLiteral(StringAsSpan))
 
             .Append(", ")
 

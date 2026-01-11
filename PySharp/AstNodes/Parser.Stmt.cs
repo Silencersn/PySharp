@@ -384,7 +384,7 @@ partial class Parser
             EnsureTokenTypeThenMove(TokenType.NewLine);
         }
 
-        if (decorators.Count > 0 && (CurrentTokenType is not TokenType.Name || CurrentToken.String is not ("def" or "class")))
+        if (decorators.Count > 0 && (CurrentTokenType is not TokenType.Name || CurrentToken.StringAsSpan is not ("def" or "class")))
             throw _context.ThrowableSyntaxError("invalid syntax");
 
         if (CurrentTokenType is TokenType.Name && CompoundStmtStartsWith.Contains(CurrentToken.String))
@@ -401,7 +401,7 @@ partial class Parser
     {
         _tokenStream._parsingCompoundStmt++;
         EnsureTokenType(TokenType.Name);
-        AstStmtNode node = CurrentToken.String switch
+        AstStmtNode node = CurrentToken.StringAsSpan switch
         {
             "if" => ParseIfStmt("if"),
             "while" => ParseWhileStmt(),

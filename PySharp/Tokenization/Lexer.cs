@@ -97,7 +97,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
 
     private char _wrapper;
     private bool _isRawString;
-    private string? _preString;
+    private CodeTextSpan _preStringSpan;
     private CodeTextPosition _stringStart;
 
     private int _parenLevel;
@@ -461,7 +461,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         return line.Length is 0 || line[0] is '#';
     }
 
-    private static string GetStringPrefix(string str, out char firstWrapper)
+    private static string GetStringPrefix(ReadOnlySpan<char> str, out char firstWrapper)
     {
         Debug.Assert(str.Length >= 2);
 
@@ -479,7 +479,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
 
         Debug.Assert(str.Length >= 3);
         firstWrapper = str[2];
-        return str[..2];
+        return str[..2].ToString();
     }
 
     private void AppendToken(TokenType type, CodeTextSpan span, CodeTextPosition start, CodeTextPosition end)
@@ -558,9 +558,10 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             throw _context.ThrowableSyntaxError($"unterminated string literal (detected at line {_lineno})");
         }
 
-        Debug.Assert(_preString is not null);
-        var pastString = _currentContent[_offset..(m.Index + m.Length)];
-        var fullString = _preString + pastString;
+        Debug.Assert(!_preStringSpan.IsEmpty);
+        Debug.Assert(_offset == _preStringSpan.End);
+        var pastString = _currentContent.AsSpan()[_offset..(m.Index + m.Length)];
+        var fullString = _currentContent[_preStringSpan.Start..(m.Index + m.Length)];
 
         // all the \r\n should be \n
         fullString = fullString.Replace("\r", string.Empty);
@@ -569,7 +570,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             // explicit line joining
             fullString = fullString.Replace("\\\n", string.Empty);
 
-        _lineno += pastString.AsSpan().Count('\n');
+        _lineno += pastString.Count('\n');
 
         _offsetOfPreviousLine = _currentContent.LastIndexOf('\n', m.Index + m.Length - 1, m.Index + m.Length - _offset + 1) + 1;
         var end = new CodeTextPosition(_lineno, (m.Index + m.Length) - _offsetOfPreviousLine);
@@ -661,7 +662,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                 _explicitLineJoining = true;
                 _needSetNewLine = true;
             }
-            else if (IsStrictMatchFromCurrent(LexerRegexes.Comment, out group))
+            else if (IsStrictMatchFromCurrent(LexerRegexes.Comment, out _))
             {
                 AppendToken(TokenType.Comment, group.Span);
             }
@@ -670,7 +671,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                 _isRawString = group.Value.ContainsAny('r', 'R');
                 _wrapper = group.Value[^1];
                 _stringStart = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
-                _preString = group.Value.ToString();
+                _preStringSpan = group.Span;
                 CurrentState = LexerState.TokenizingTripleString;
             }
         }
@@ -696,13 +697,13 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         }
         else if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithContStr, out group))
         {
-            var prefix = GetStringPrefix(group.Value.ToString(), out _wrapper);
+            var prefix = GetStringPrefix(group.Value, out _wrapper);
 
             _isRawString = prefix.ContainsAny('r', 'R');
             if (group.Value.EndsWith("\\\r\n") || group.Value.EndsWith("\\\n"))
             {
                 _stringStart = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
-                _preString = group.Value.ToString();
+                _preStringSpan = group.Span;
                 CurrentState = LexerState.TokenizingMultiLineSingleOrDoubleString;
             }
             else

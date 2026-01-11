@@ -119,7 +119,7 @@ partial class Parser
         {
             if (CurrentTokenType is TokenType.FStringMiddle)
             {
-                var str = FromLiteralToString(_context, CurrentToken.String, true);
+                var str = FromLiteralToString(_context, CurrentToken.StringAsSpan, true);
                 var node = Ast.Constant(str).With(CreateAstMetaInfo());
                 nodes.Add(node);
             }
@@ -170,10 +170,10 @@ partial class Parser
             if (CurrentTokenType is not TokenType.Name)
                 throw _context.ThrowableSyntaxError("f-string: missing conversion character");
 
-            if (CurrentToken.String is not ("s" or "r" or "a"))
-                throw _context.ThrowableSyntaxError($"f-string: invalid conversion character '{CurrentToken.String}': expected 's', 'r', or 'a'");
+            if (CurrentToken.StringAsSpan is not ("s" or "r" or "a"))
+                throw _context.ThrowableSyntaxError($"f-string: invalid conversion character '{CurrentToken.StringAsSpan}': expected 's', 'r', or 'a'");
 
-            conversion = CurrentToken.String[0];
+            conversion = CurrentToken.StringAsSpan[0];
             MoveNextToken();
         }
 
@@ -197,7 +197,7 @@ partial class Parser
         {
             if (CurrentTokenType is TokenType.String)
             {
-                var str = FromLiteralToString(_context, CurrentToken.String, false);
+                var str = FromLiteralToString(_context, CurrentToken.StringAsSpan, false);
                 var node = Ast.Constant(str).With(CreateAstMetaInfo());
                 nodes.Add(node);
             }
@@ -210,7 +210,7 @@ partial class Parser
                 {
                     if (CurrentTokenType is TokenType.FStringMiddle)
                     {
-                        var str = FromLiteralToString(_context, CurrentToken.String, true);
+                        var str = FromLiteralToString(_context, CurrentToken.StringAsSpan, true);
                         var node = Ast.Constant(str).With(CreateAstMetaInfo());
                         nodes.Add(node);
                     }
@@ -279,7 +279,7 @@ partial class Parser
 
 
     }
-    static string FromLiteralToString(PyCallContext context, string literal, bool nonWrapper)
+    static string FromLiteralToString(PyCallContext context, ReadOnlySpan<char> literal, bool nonWrapper)
     {
         // TODO: prefix 'b'
 

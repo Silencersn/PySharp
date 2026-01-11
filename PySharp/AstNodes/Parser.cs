@@ -129,12 +129,12 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         if (CurrentTokenType is not TokenType.Name)
             return false;
 
-        return CurrentToken.String == keyword;
+        return CurrentToken.StringAsSpan.Equals(keyword, StringComparison.Ordinal);
     }
     private void EnsureKeywordThenMove(string keyword)
     {
         EnsureTokenType(TokenType.Name);
-        if (CurrentToken.String != keyword)
+        if (!IsCurrentKeyword(keyword))
             throw _context.ThrowableSyntaxError("invalid syntax");
         MoveNextToken();
     }

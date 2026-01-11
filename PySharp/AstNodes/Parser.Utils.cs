@@ -8,7 +8,7 @@ partial class Parser
 
     private static class StopPredicates
     {
-        public static bool UntilKeywordIn(TokenInfo token) => token.Type is TokenType.Name && token.String is "in";
+        public static bool UntilKeywordIn(TokenInfo token) => token.Type is TokenType.Name && token.StringAsSpan is "in";
         public static bool UntilRightSquareBracket(TokenInfo token) => token.Type is TokenType.RightSquareBracket;
         public static bool UntilRightParen(TokenInfo token) => token.Type is TokenType.RightParen;
         public static bool UntilRightParenOrNewLineOrSemicolon(TokenInfo token) => token.Type is TokenType.RightParen or TokenType.NewLine or TokenType.Semicolon;
