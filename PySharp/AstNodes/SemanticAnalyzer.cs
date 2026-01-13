@@ -435,7 +435,7 @@ public sealed class SemanticAnalyzer
                 return;
 
             callableScope.VarNames = [.. callableScope.Variables
-                .Where(pair => pair.Value is PyVariableType.Local or PyVariableType.Parameter)
+                .Where(pair => pair.Value is PyVariableType.Local or PyVariableType.Parameter or PyVariableType.CapturedParameter)
                 .Select(pair => pair.Key)];
 
             callableScope.CellVars = [.. callableScope.TempCells.Distinct()];
@@ -443,7 +443,7 @@ public sealed class SemanticAnalyzer
 
             callableScope.LocalsTable = callableScope.VarNames
                 .Concat(callableScope.CellVars)
-                .Concat(callableScope.FreeVars)
+                .Distinct()
                 .Index()
                 .ToFrozenDictionary(static indexed => indexed.Item, static indexed => indexed.Index);
         }
