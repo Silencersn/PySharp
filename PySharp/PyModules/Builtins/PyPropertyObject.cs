@@ -25,6 +25,7 @@ public sealed class PyPropertyObject : PyObject
 
 public sealed class PyPropertyObjectType : PyTypeObject<PyPropertyObjectType, PyPropertyObject>
 {
+    public override string Module => "builtins";
     public override string Name => "property";
 
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);

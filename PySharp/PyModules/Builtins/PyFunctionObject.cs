@@ -30,6 +30,7 @@ public sealed class PyFunctionObject : PyObject, IPyObjectName
 
 public sealed class PyFunctionObjectType : PyTypeObject<PyFunctionObjectType, PyFunctionObject>
 {
+    public override string Module => "builtins";
     public override string Name => "function";
 
     public PyFunctionObjectType()

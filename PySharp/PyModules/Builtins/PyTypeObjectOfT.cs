@@ -42,6 +42,7 @@ public abstract partial class PyTypeObject<TObject> : PyTypeObject where TObject
 
 public sealed class PyTypeObjectType : PyTypeObject<PyTypeObjectType, PyTypeObject>
 {
+    public override string Module => "builtins";
     public override string Name => "type";
 
     public PyTypeObjectType()

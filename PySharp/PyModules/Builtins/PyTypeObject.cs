@@ -9,12 +9,13 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
 {
     public virtual IReadOnlyList<PyTypeObject> Bases => [PyObjectType.Shared];
     public IReadOnlyList<PyTypeObject> MRO { get; }
+    public abstract string Module { get; }
     public abstract string Name { get; }
     public string FullName
     {
         get
         {
-            var moduleName = (Module as PyStrObject)?.Value ?? "<unknown>";
+            var moduleName = (ModuleAsObject as PyStrObject)?.Value ?? "<unknown>";
             if (moduleName is PySpecialNames.Main or "builtins")
                 return Name;
             return $"{moduleName}.{Name}";
@@ -25,7 +26,11 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
     // by default, it is a string,
     // but CPython allows it to be set to a non-string
     // could not be deleted
-    public virtual PyObject Module { get; internal set; } = PyStrObject.Empty;
+    public virtual PyObject ModuleAsObject
+    {
+        get => field ??= PyStrObject.FromString(Module);
+        internal set => field = value;
+    }
 
     public virtual string Document => string.Empty;
     public virtual bool IsSealed => false;

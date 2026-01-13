@@ -129,6 +129,7 @@ partial struct PyResult
 
     internal sealed class PySharpException : PyExceptionType<PySharpException, PyBaseExceptionObjectType>
     {
+        public override string Module => "pysharp";
         public override string Name => "PySharpException";
     }
 

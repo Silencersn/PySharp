@@ -21,5 +21,6 @@ internal sealed class PyTracebackObject : PyObject
 
 internal sealed class PyTracebackObjectType : PyTypeObject<PyTracebackObjectType, PyTracebackObject>
 {
+    public override string Module => "builtins";
     public override string Name => "traceback";
 }

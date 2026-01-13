@@ -20,6 +20,7 @@ internal sealed class PyWrapperDescriptorObject : PyObject
 
 internal sealed class PyWrapperDescriptorObjectType : PyTypeObject<PyWrapperDescriptorObjectType, PyWrapperDescriptorObject>
 {
+    public override string Module => "builtins";
     public override string Name => "wrapper_descriptor";
 
     protected override PyResult Get(PyCallContext context, PyWrapperDescriptorObject self, PyObject instance, PyObject owner)

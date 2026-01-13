@@ -22,6 +22,7 @@ public sealed class PyMemberDescriptorObject : PyObject
 
 public sealed class PyMemberDescriptorObjectType : PyTypeObject<PyMemberDescriptorObjectType, PyMemberDescriptorObject>
 {
+    public override string Module => "builtins";
     public override string Name => "member_descriptor";
 
     protected override PyResult Get(PyCallContext context, PyMemberDescriptorObject self, PyObject instance, PyObject owner)

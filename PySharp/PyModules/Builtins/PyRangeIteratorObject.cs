@@ -17,6 +17,7 @@ public class PyRangeIteratorObject : PyObject
 
 public sealed class PyRangeIteratorObjectType : PyTypeObject<PyRangeIteratorObjectType, PyRangeIteratorObject>
 {
+    public override string Module => "builtins";
     public override string Name => "range_iterator";
 
     protected override PyResult Iter(PyCallContext context, PyRangeIteratorObject self)
@@ -55,6 +56,7 @@ public class PyLongRangeIteratorObject : PyObject
 
 public sealed class PyLongRangeIteratorObjectType : PyTypeObject<PyLongRangeIteratorObjectType, PyLongRangeIteratorObject>
 {
+    public override string Module => "builtins";
     public override string Name => "longrange_iterator";
 
     protected override PyResult Iter(PyCallContext context, PyLongRangeIteratorObject self)

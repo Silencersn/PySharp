@@ -25,6 +25,7 @@ public class PySliceObject : PyObject
 
 public sealed class PySliceObjectType : PyTypeObject<PySliceObjectType, PySliceObject>
 {
+    public override string Module => "builtins";
     public override string Name => "slice";
 
     public PySliceObjectType()

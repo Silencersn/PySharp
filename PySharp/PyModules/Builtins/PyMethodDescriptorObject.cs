@@ -29,6 +29,7 @@ public sealed class PyMethodDescriptorObject : PyObject
 
 public sealed class PyMethodDescriptorObjectType : PyTypeObject<PyMethodDescriptorObjectType, PyMethodDescriptorObject>
 {
+    public override string Module => "builtins";
     public override string Name => "method_descriptor";
 
     protected override PyResult Get(PyCallContext context, PyMethodDescriptorObject self, PyObject instance, PyObject owner)

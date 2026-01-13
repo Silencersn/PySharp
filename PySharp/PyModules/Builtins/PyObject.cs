@@ -173,6 +173,7 @@ public partial class PyObject : IEquatable<PyObject>
 
 public sealed class PyObjectType : PyTypeObject<PyObjectType, PyObject>
 {
+    public override string Module => "builtins";
     public override string Name => "object";
     public override IReadOnlyList<PyTypeObject> Bases => [];
 

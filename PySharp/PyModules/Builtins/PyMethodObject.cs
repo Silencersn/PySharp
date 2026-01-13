@@ -19,6 +19,7 @@ public sealed class PyMethodObject : PyObject
 
 public sealed class PyMethodObjectType : PyTypeObject<PyMethodObjectType, PyMethodObject>
 {
+    public override string Module => "builtins";
     public override string Name => "method";
 
     public PyMethodObjectType()

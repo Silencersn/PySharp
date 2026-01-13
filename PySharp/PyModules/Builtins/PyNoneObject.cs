@@ -11,6 +11,7 @@ public class PyNoneObject : PyObject
 
 public sealed class PyNoneObjectType : PyTypeObject<PyNoneObjectType, PyNoneObject>
 {
+    public override string Module => "builtins";
     public override string Name => "NoneType";
     public override bool IsSealed => true;
     private static readonly PyStrObject _repr = PyStrObject.FromString("None");

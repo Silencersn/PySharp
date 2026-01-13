@@ -218,6 +218,7 @@ public sealed class PyUserDefinedGeneratorObject : PyGeneratorObject
 
 public sealed class PyGeneratorObjectType : PyTypeObject<PyGeneratorObjectType, PyGeneratorObject>
 {
+    public override string Module => "builtins";
     public override string Name => "generator";
 
     public PyGeneratorObjectType()

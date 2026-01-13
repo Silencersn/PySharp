@@ -18,6 +18,7 @@ public sealed class PyStaticMethodObject : PyObject
 
 public sealed class PyStaticMethodObjectType : PyTypeObject<PyStaticMethodObjectType, PyStaticMethodObject>
 {
+    public override string Module => "builtins";
     public override string Name => "staticmethod";
 
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);

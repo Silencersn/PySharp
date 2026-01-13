@@ -19,6 +19,7 @@ public class PyListIteratorObject : PyObject
 
 public sealed class PyListIteratorObjectType : PyTypeObject<PyListIteratorObjectType, PyListIteratorObject>
 {
+    public override string Module => "builtins";
     public override string Name => "list_iterator";
 
     protected override PyResult Iter(PyCallContext context, PyListIteratorObject self)

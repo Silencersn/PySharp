@@ -21,6 +21,7 @@ public sealed class PyMapObject : PyObject
 
 public sealed class PyMapObjectType : PyTypeObject<PyMapObjectType, PyMapObject>
 {
+    public override string Module => "builtins";
     public override string Name => "map";
 
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
