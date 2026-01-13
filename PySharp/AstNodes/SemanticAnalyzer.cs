@@ -384,9 +384,8 @@ public sealed class SemanticAnalyzer
                 if (type is not PyVariableType.Closure)
                     continue;
 
-                (scope as CallableVariableScope)?.TempFrees.Add(name);
-
                 var parent = scope.Parent;
+                HashSet<CallableVariableScope> scopesRequiringFree = scope is CallableVariableScope c ? [c] : [];
                 while (true)
                 {
                     if (parent is null)
@@ -398,12 +397,15 @@ public sealed class SemanticAnalyzer
                             typeOfParentVariable is not PyVariableType.Closure)
                         {
                             callableVariableScope.CaptureVariable(name);
-                            callableVariableScope.TempCells.Add(name);
+                            if (callableVariableScope.ScopesRequiringFree.TryGetValue(name, out var nodes))
+                                nodes.UnionWith(scopesRequiringFree);
+                            else
+                                callableVariableScope.ScopesRequiringFree[name] = scopesRequiringFree;
                             break;
                         }
                         else
                         {
-                            callableVariableScope.TempFrees.Add(name);
+                            scopesRequiringFree.Add(callableVariableScope);
                         }
                     }
 
@@ -424,7 +426,26 @@ public sealed class SemanticAnalyzer
 
     internal static void FillCallableProperties(RootVariableScope scope)
     {
+        FillTempFrees(scope);
         FillCallablePropertiesImpl(scope);
+
+        static void FillTempFrees(VariableScope scope)
+        {
+            if (scope is CallableVariableScope callableScope)
+            {
+                foreach (var name in callableScope.Variables.Keys)
+                {
+                    if (!callableScope.ScopesRequiringFree.TryGetValue(name, out var scopes))
+                        continue;
+
+                    foreach (var s in scopes)
+                        s.TempFrees.Add(name);
+                }
+            }
+
+            foreach (var child in scope.Children)
+                FillTempFrees(child);
+        }
 
         static void FillCallablePropertiesImpl(VariableScope scope)
         {
@@ -438,11 +459,15 @@ public sealed class SemanticAnalyzer
                 .Where(pair => pair.Value is PyVariableType.Local or PyVariableType.Parameter or PyVariableType.CapturedParameter)
                 .Select(pair => pair.Key)];
 
-            callableScope.CellVars = [.. callableScope.TempCells.Distinct()];
+            callableScope.CellVars = [.. callableScope.Variables
+                .Where(pair => pair.Value is PyVariableType.CapturedLocal or PyVariableType.CapturedParameter)
+                .Select(pair => pair.Key)];
+
             callableScope.FreeVars = [.. callableScope.TempFrees.Distinct()];
 
-            callableScope.LocalsTable = callableScope.VarNames
-                .Concat(callableScope.CellVars)
+            callableScope.LocalsTable = callableScope.Variables
+                .Where(pair => pair.Value is PyVariableType.Local or PyVariableType.Parameter)
+                .Select(pair => pair.Key)
                 .Distinct()
                 .Index()
                 .ToFrozenDictionary(static indexed => indexed.Item, static indexed => indexed.Index);
@@ -495,8 +520,6 @@ internal abstract class VariableScope
             return field;
         }
     }
-
-    internal bool LoadSuper { get; set; }
 
     protected VariableScope(VariableScope? parent)
     {
@@ -605,9 +628,8 @@ internal abstract class CallableVariableScope : VariableScope
     public string[] VarNames { get; internal set; } = [];
     public string[] CellVars { get; internal set; } = [];
     public string[] FreeVars { get; internal set; } = [];
-    public IEnumerable<CallableVariableScope> NestedCallables => Children.OfType<CallableVariableScope>();
-    public List<string> TempCells = [];
     public List<string> TempFrees = [];
+    public Dictionary<string, HashSet<CallableVariableScope>> ScopesRequiringFree = [];
 
     protected CallableVariableScope(VariableScope? parent) : base(parent)
     {

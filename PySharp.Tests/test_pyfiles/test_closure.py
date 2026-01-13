@@ -49,3 +49,56 @@ def gfunc():
     return global_var
 assert gfunc() == 15
 assert global_var == 15
+
+
+
+def test2(a=1, c=2):
+    a = 'a'
+    b = 'b'
+    c = 'c'
+    def inner():
+        print(c)
+        def inner2():
+            return a
+        return inner2
+    def inner3():
+        return b
+    return inner, inner3
+
+inner, inner3 = test2()
+inner2 = inner()
+assert inner2() == 'a'
+assert inner3() == 'b'
+
+def test(value):
+    class InnerA:
+        print('value:', value)
+        def test1(self):
+            __class__ = int
+            return lambda self: (super().__repr__(), value)
+
+        def test2(self):
+            __class__
+            pass
+    return InnerA
+
+
+
+A = test(1234)
+t1 = A().test1
+t2 = A().test2
+assert t1()(123)
+
+
+
+def wrapper():
+    value = 1
+    def inner1():
+        return value + 1
+    def inner2():
+        return value + 2
+    return inner1, inner2
+
+i1, i2 = wrapper()
+assert i1() == 2
+assert i2() == 3
