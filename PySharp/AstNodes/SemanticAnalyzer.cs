@@ -664,6 +664,7 @@ internal sealed class FunctionVariableScope : CallableVariableScope
             throw new InvalidOperationException();
 
         Owner.VariableScope = this;
+        Owner.CodeObject = new PyCodeObject(this);
     }
 }
 
@@ -684,5 +685,6 @@ internal sealed class LambdaVariableScope : CallableVariableScope
             throw new InvalidOperationException();
 
         Owner.VariableScope = this;
+        Owner.CodeObject = new PyCodeObject(this);
     }
 }

@@ -484,11 +484,13 @@ public sealed class FunctionDefNode : AstStmtNode, IScopedSubNodesProvider
     public AstExprNode? Returns { get; }
 
     internal FunctionVariableScope? VariableScope { get; set; }
+    internal PyCodeObject? CodeObject { get; set; }
 
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
         if (VariableScope is null)
             throw new InvalidOperationException();
+        Debug.Assert(CodeObject is not null);
 
         Caller caller = VariableScope.HasYield ?
             new GeneratorCaller(context, VariableScope, frame, GetResult) :
@@ -498,7 +500,8 @@ public sealed class FunctionDefNode : AstStmtNode, IScopedSubNodesProvider
             Name,
             caller.Call,
             caller.GetFreeVars(frame),
-            frame._globals);
+            frame._globals,
+            CodeObject);
 
         Debug.Assert(VariableScope.QualName is not null);
         func.PyAttributes.Add(PySpecialNames.QualName, PyStrObject.FromString(VariableScope.QualName));

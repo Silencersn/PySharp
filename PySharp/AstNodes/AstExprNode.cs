@@ -960,11 +960,13 @@ public sealed class LambdaNode : AstExprNode, IScopedSubNodesProvider
     public AstArgumentsNode Args { get; }
     public AstExprNode Body { get; }
     internal LambdaVariableScope? VariableScope { get; set; }
+    internal PyCodeObject? CodeObject { get; set; }
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
         if (VariableScope is null)
             throw new InvalidOperationException();
+        Debug.Assert(CodeObject is not null);
 
         Caller caller = VariableScope.HasYield ?
             new GeneratorCaller(context, VariableScope, frame, GetResult) :
@@ -974,7 +976,8 @@ public sealed class LambdaNode : AstExprNode, IScopedSubNodesProvider
             "<lambda>",
             caller.Call,
             caller.GetFreeVars(frame),
-            frame._globals);
+            frame._globals,
+            CodeObject);
 
         Debug.Assert(VariableScope.QualName is not null);
         func.PyAttributes.Add(PySpecialNames.QualName, PyStrObject.FromString(VariableScope.QualName));
