@@ -348,13 +348,27 @@ internal abstract class Caller
         var frame = backFrame.CreateFuncCallOrClassBuildFrame(Func.Name, Func, _frameType, (args, kwargs), Func._globals, _variableScope.LocalsTable);
         frame._variables = _variableScope.Variables;
 
-        foreach (var capturedVariable in _variableScope.CapturedVariables)
+        foreach (var capturedVariable in _variableScope.CellVars)
             frame.Closures[capturedVariable] = PyCellObject.CreateCell(capturedVariable, null);
-        foreach (var cell in Func.CapturedVariables)
-            frame.Closures.Add(cell.Name, cell);
+
+        var cells = Func.Closure;
+        for (int i = 0; i < cells.Length; i++)
+            frame.Closures.Add(cells[i].Name, cells[i]);
 
         frame.InitArgs(_def, arguments);
         return frame;
+    }
+
+    public IEnumerable<PyCellObject> GetFreeVars(PyFrame frame)
+    {
+        if (frame.ClassCell is not null && _variableScope.FreeVars.Contains(PySpecialNames.Class))
+            yield return frame.ClassCell;
+
+        if (frame.InternalClosure is not null)
+        {
+            foreach (var cell in frame.InternalClosure.Values)
+                yield return cell;
+        }
     }
 }
 
@@ -466,11 +480,10 @@ public sealed class FunctionDefNode : AstStmtNode, IScopedSubNodesProvider
             new GeneratorCaller(context, VariableScope, frame, GetResult) :
             new FunctionCaller(context, VariableScope, frame, GetResult);
 
-        var func = new PyFunctionObject(Name, caller.Call,
-            VariableScope.HasSuper && frame.FrameType is FrameType.Class
-            ? ((IEnumerable<PyCellObject>?)frame.InternalClosure?.Values ?? [])
-                .Append(PyCellObject.CreateCell(PySpecialNames.Class, frame.Caller))
-            : frame.InternalClosure?.Values,
+        var func = new PyFunctionObject(
+            Name,
+            caller.Call,
+            caller.GetFreeVars(frame),
             frame._globals);
 
         Debug.Assert(VariableScope.QualName is not null);
@@ -597,6 +610,10 @@ public sealed class ClassDefNode : AstStmtNode, IScopedSubNodesProvider
 
         var newFrame = frame.CreateFuncCallOrClassBuildFrame(Name, type, FrameType.Class);
         newFrame._variables = VariableScope.Variables;
+
+        if (VariableScope.ClassCaptured)
+            newFrame.ClassCell = PyCellObject.CreateCell(PySpecialNames.Class, type);
+
         foreach (var (name, cell) in frame.Closures)
         {
             newFrame.Closures.Add(name, cell);

@@ -970,11 +970,10 @@ public sealed class LambdaNode : AstExprNode, IScopedSubNodesProvider
             new GeneratorCaller(context, VariableScope, frame, GetResult) :
             new FunctionCaller(context, VariableScope, frame, GetResult);
 
-        var func = new PyFunctionObject("<lambda>", caller.Call,
-            VariableScope.HasSuper && frame.FrameType is FrameType.Class
-            ? ((IEnumerable<PyCellObject>?)frame.InternalClosure?.Values ?? [])
-                .Append(PyCellObject.CreateCell(PySpecialNames.Class, frame.Caller))
-            : frame.InternalClosure?.Values,
+        var func = new PyFunctionObject(
+            "<lambda>",
+            caller.Call,
+            caller.GetFreeVars(frame),
             frame._globals);
 
         Debug.Assert(VariableScope.QualName is not null);

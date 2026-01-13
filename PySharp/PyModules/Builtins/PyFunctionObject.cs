@@ -11,7 +11,7 @@ public sealed class PyFunctionObject : PyObject, IPyObjectName
     internal PyFrame.PyFrameGlobals _globals;
 
     public string Name { get; }
-    internal ReadOnlySpan<PyCellObject> CapturedVariables => _closure;
+    internal ReadOnlySpan<PyCellObject> Closure => _closure;
 
     public override PyTypeObject DefaultPyType => PyFunctionObjectType.Shared;
 

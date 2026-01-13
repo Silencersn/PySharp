@@ -37,6 +37,8 @@ public sealed partial class PyFrame
     private PyFrameLocals _locals;
     internal PyFrameGlobals _globals;
     internal PyFrame? _outerNonInlineFrame;
+    internal PyCellObject? ClassCell { get; set; }
+    
 
     private PyFrame(PyFrame? back)
     {

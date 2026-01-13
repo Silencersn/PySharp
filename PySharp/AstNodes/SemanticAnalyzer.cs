@@ -1,4 +1,5 @@
 ﻿using PySharp.PyModules.Builtins;
+using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using System.Collections.Frozen;
 using System.Diagnostics;
@@ -357,6 +358,12 @@ public sealed class SemanticAnalyzer
                         break;
                     }
 
+                    if (name is PySpecialNames.Class && parent is ClassVariableScope)
+                    {
+                        scope.Variables[name] = PyVariableType.Closure;
+                        break;
+                    }
+
                     parent = parent.Parent;
                 }
             }
@@ -383,11 +390,17 @@ public sealed class SemanticAnalyzer
                     if (parent is null)
                         throw _context.ThrowableSyntaxError($"no binding for nonlocal '{name}' found");
 
-                    if (parent is CallableVariableScope &&
+                    if (parent is CallableVariableScope callableVariableScope &&
                         parent.Variables.TryGetValue(name, out var typeOfParentVariable) &&
                         typeOfParentVariable is not PyVariableType.Closure)
                     {
-                        parent.AppendCapturedVariable(name);
+                        callableVariableScope.CaptureVariable(name);
+                        break;
+                    }
+
+                    if (name is PySpecialNames.Class && parent is ClassVariableScope classVariableScope)
+                    {
+                        classVariableScope.ClassCaptured = true;
                         break;
                     }
 
@@ -412,22 +425,25 @@ public sealed class SemanticAnalyzer
             if (scope is not CallableVariableScope callableScope)
                 return;
 
-            callableScope.HasSuper = HasSuper(callableScope);
             callableScope.VarNames = [.. callableScope.Variables
                 .Where(pair => pair.Value is PyVariableType.Local or PyVariableType.Parameter)
                 .Select(pair => pair.Key)];
+
+            callableScope.CellVars = [.. callableScope.Variables
+                .Where(pair => pair.Value is PyVariableType.CapturedLocal or PyVariableType.CapturedParameter)
+                .Select(pair => pair.Key)];
+
+            var freeVars = callableScope.Variables
+                .Where(pair => pair.Value is PyVariableType.Closure)
+                .Select(pair => pair.Key);
+
+            callableScope.FreeVars = [.. freeVars];
+
             callableScope.LocalsTable = callableScope.VarNames
+                .Concat(callableScope.CellVars)
+                .Concat(callableScope.FreeVars)
                 .Index()
                 .ToFrozenDictionary(static indexed => indexed.Item, static indexed => indexed.Index);
-        }
-
-        static bool HasSuper(CallableVariableScope callableScope)
-        {
-            if (callableScope.Variables.TryGetValue("super", out var type) &&
-                type is not (PyVariableType.Parameter or PyVariableType.CapturedParameter))
-                return true;
-
-            return callableScope.Children.OfType<CallableVariableScope>().Any(HasSuper);
         }
     }
 }
@@ -436,7 +452,6 @@ internal abstract class VariableScope
 {
     public abstract AstNode Owner { get; }
     public OrderedDictionary<string, PyVariableType> Variables { get; } = [];
-    public HashSet<string> CapturedVariables { get; } = [];
 
     // used for detecting global stmt and nonlocal stmt
     // root scope does not need to maintain this property
@@ -463,7 +478,7 @@ internal abstract class VariableScope
 
                 var currentName = Name;
                 var parent = Parent;
-                while (!parent.IsRoot && parent.Variables[currentName] is not PyVariableType.Global)
+                while (!parent.IsRoot && (currentName is "<lambda>" || parent.Variables[currentName] is not PyVariableType.Global))
                 {
                     if (parent is CallableVariableScope)
                         nameToRoot.Push("<locals>");
@@ -478,6 +493,8 @@ internal abstract class VariableScope
             return field;
         }
     }
+
+    internal bool LoadSuper { get; set; }
 
     protected VariableScope(VariableScope? parent)
     {
@@ -498,6 +515,24 @@ internal abstract class VariableScope
         {
             case ExprContextType.Load:
                 Variables.TryAdd(name, PyVariableType.Unknown);
+                if (name is "super" && this is CallableVariableScope)
+                {
+                    var parent = Parent;
+                    while (true)
+                    {
+                        if (parent is null)
+                            break;
+
+                        if (parent is not CallableVariableScope)
+                        {
+                            if (parent is ClassVariableScope)
+                                AppendVariable(PySpecialNames.Class, ExprContextType.Load);
+                            break;
+                        }
+
+                        parent = parent.Parent;
+                    }
+                }
                 break;
 
             case ExprContextType.Store:
@@ -509,17 +544,6 @@ internal abstract class VariableScope
             default:
                 throw new UnreachableException();
         }
-    }
-
-    public void AppendCapturedVariable(string name)
-    {
-        if (!CapturedVariables.Add(name))
-            return;
-
-        var type = Variables[name];
-        Debug.Assert(type is PyVariableType.Local or PyVariableType.Parameter);
-        Variables[name] = type is PyVariableType.Local
-            ? PyVariableType.CapturedLocal : PyVariableType.CapturedParameter;
     }
 
     public void Bind()
@@ -555,6 +579,7 @@ internal sealed class ClassVariableScope : VariableScope
 {
     public override ClassDefNode Owner { get; }
     public override string? Name => Owner.Name;
+    public bool ClassCaptured { get; set; }
 
     public ClassVariableScope(ClassDefNode owner, VariableScope parent) : base(parent)
     {
@@ -573,13 +598,25 @@ internal sealed class ClassVariableScope : VariableScope
 internal abstract class CallableVariableScope : VariableScope
 {
     internal abstract AstArgumentsNode ArgumentsNode { get; }
-    public bool HasSuper { get; internal set; }
     public bool HasYield { get; internal set; }
     public FrozenDictionary<string, int> LocalsTable { get; internal set; } = FrozenDictionary<string, int>.Empty;
     public string[] VarNames { get; internal set; } = [];
+    public string[] CellVars { get; internal set; } = [];
+    public string[] FreeVars { get; internal set; } = [];
 
     protected CallableVariableScope(VariableScope? parent) : base(parent)
     {
+    }
+
+    internal void CaptureVariable(string name)
+    {
+        var type = Variables[name];
+        if (type is PyVariableType.CapturedLocal or PyVariableType.CapturedParameter)
+            return;
+
+        Debug.Assert(type is PyVariableType.Local or PyVariableType.Parameter);
+        Variables[name] = type is PyVariableType.Local
+            ? PyVariableType.CapturedLocal : PyVariableType.CapturedParameter;
     }
 }
 
