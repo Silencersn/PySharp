@@ -51,6 +51,11 @@ public partial class PyStrObject : PyObject
     {
         return _runeToPyStr.GetOrAdd(value, static rune => FromString(rune.ToString()));
     }
+
+    public Rune PyCharAt(int index)
+    {
+        return Rune.GetRuneAt(Value, index);
+    }
 }
 
 public sealed class PyStrObjectType : PyTypeObject<PyStrObjectType, PyStrObject>
@@ -531,32 +536,150 @@ public static class PyStrConverter
 
     public static string FromStringToLiteral(ReadOnlySpan<char> str)
     {
-        var builder = new StringBuilder();
+        return UnicodeRepr(str);
+    }
 
-        var wrapper = '\'';
-        if (str.Contains('\'') && !str.Contains('"'))
-            wrapper = '"';
+    private static void ScanUnicodeForRepr(ReadOnlySpan<char> str, out int osize, out char quote)
+    {
+        int squote = 0;
+        int dquote = 0;
+        osize = 0;
 
-        builder.Append(wrapper);
-        for (int i = 0; i < str.Length; i++)
+        var unicode = str.EnumerateRunes();
+        foreach (var rune in unicode)
         {
-            var c = str[i];
-            builder.Append(c switch
+            int ch = rune.Value;
+            int incr = 1;
+            switch (ch)
             {
-                '\\' => "\\\\",
-                '\'' => wrapper is '\'' ? "\\'" : "'",
-                '\a' => "\\a",
-                '\b' => "\\b",
-                '\f' => "\\f",
-                '\n' => "\\n",
-                '\r' => "\\r",
-                '\t' => "\\t",
-                '\v' => "\\v",
-                _ => char.IsControl(c) ? $"\\x{(int)c:x2}" : c.ToString()
-            });
+                case '\'':
+                    squote++;
+                    break;
+
+                case '"':
+                    dquote++;
+                    break;
+
+                case '\\' or '\t' or '\r' or '\n':
+                    incr = 2;
+                    break;
+
+                default:
+                    if (ch < ' ' || ch is 0x7F)
+                        incr = 4; // \xHH
+                    else if (ch < 0x7F)
+                        incr = 1;
+                    else if (ch < 0x100)
+                        incr = 4; // \xHH
+                    else if (ch < 0x10000)
+                        incr = 6; // \uHHHH
+                    else
+                        incr = 10; // \uHHHHHHHH
+                    break;
+            }
+
+            osize += incr;
         }
-        builder.Append(wrapper);
+
+        quote = '\'';
+        if (squote > 0)
+        {
+            if (dquote > 0)
+                // both squote and dquote present
+                // use squote, and escape them
+                 osize += squote;
+            else
+                quote = '"';
+        }
+
+        // quotes
+        osize += 2;
+    }
+    private static string UnicodeRepr(ReadOnlySpan<char> str)
+    {
+        ScanUnicodeForRepr(str, out var osize, out var quote);
+
+        var builder = new StringBuilder(osize);
+        builder.Append(quote);
+
+        var unicode = str.EnumerateRunes();
+        foreach (var rune in unicode)
+        {
+            int ch = rune.Value;
+            switch (ch)
+            {
+                case '\'':
+                    if (quote is '\'')
+                        builder.Append("\\'");
+                    else
+                        builder.Append('\'');
+                    break;
+
+                case '"':
+                    // if str contains dquote, quote must be squote
+                    builder.Append('"');
+                    break;
+
+                case '\\':
+                    builder.Append("\\\\");
+                    break;
+
+                case '\t':
+                    builder.Append("\\t");
+                    break;
+
+                case '\r':
+                    builder.Append("\\r");
+                    break;
+
+                case '\n':
+                    builder.Append("\\n");
+                    break;
+
+                default:
+                    if (ch < ' ' || ch is 0x7F)
+                        builder.AppendFormat("\\x{0:x2}", ch);
+                    else if (ch < 0x7F)
+                        builder.Append((char)ch);
+                    else if (IsPrintable(rune))
+                        builder.Append(rune.ToString());
+                    else if (ch < 0x100)
+                        builder.AppendFormat("\\x{0:x2}", ch);
+                    else if (ch < 0x10000)
+                        builder.AppendFormat("\\u{0:x4}", ch);
+                    else
+                        builder.AppendFormat("\\U{0:x8}", ch);
+                    break;
+            }
+        }
+
+        builder.Append(quote);
 
         return builder.ToString();
+    }
+
+    private static bool IsPrintable(Rune rune)
+    {
+        var c = rune.Value;
+
+        if (0x1F < c && c < 0x7F)
+            return true;
+
+        if (c <= 0xA0 || c is 0xAD)
+            return false;
+
+        if (c <= 0xFF)
+            return true;
+
+        return Rune.GetUnicodeCategory(rune) is not
+            (
+                UnicodeCategory.Control or
+                UnicodeCategory.Format or
+                UnicodeCategory.Surrogate or
+                UnicodeCategory.OtherNotAssigned or
+                UnicodeCategory.LineSeparator or
+                UnicodeCategory.ParagraphSeparator or
+                UnicodeCategory.SpaceSeparator
+            );
     }
 }

@@ -527,9 +527,7 @@ public static partial class PyBuiltinFunctions
             return PyResult.RaiseTypeError($"ord() expected string of length 1, but {arguments[0].PyType.Name} found");
         if (strObj.PyLength is not 1)
             return PyResult.RaiseTypeError($"ord() expected a character, but string of length {strObj.PyLength} found");
-        var successful = Rune.TryGetRuneAt(strObj.Value, 0, out var rune);
-        Debug.Assert(successful);
-        return PyIntObject.FromInteger(rune.Value);
+        return PyIntObject.FromInteger(strObj.PyCharAt(0).Value);
     }
 
     [PyFunctionArgsDef()]
