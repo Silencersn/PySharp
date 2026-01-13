@@ -111,7 +111,15 @@ public sealed partial class PyFrame
         FrozenDictionary<string, int>? localVariablesToIndex = null)
     {
         Debug.Assert(frameType is FrameType.Function or FrameType.Lambda or FrameType.Class or FrameType.YieldFunction or FrameType.YieldLambda);
-        return new PyFrame(this, globals ?? _globals, new(localVariablesToIndex ?? FrozenDictionary<string, int>.Empty), null, callerName, caller, frameType) { CallingArguments = callingArguments };
+        return new PyFrame(
+            this,
+            globals ?? _globals,
+            new(localVariablesToIndex ?? FrozenDictionary<string, int>.Empty),
+            frameType is FrameType.Class ? _closure : null,
+            callerName,
+            caller,
+            frameType)
+        { CallingArguments = callingArguments };
     }
     internal PyFrame CreateThreadRootFrame()
     {

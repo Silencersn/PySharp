@@ -384,18 +384,27 @@ public sealed class SemanticAnalyzer
                 if (type is not PyVariableType.Closure)
                     continue;
 
+                (scope as CallableVariableScope)?.TempFrees.Add(name);
+
                 var parent = scope.Parent;
                 while (true)
                 {
                     if (parent is null)
                         throw _context.ThrowableSyntaxError($"no binding for nonlocal '{name}' found");
 
-                    if (parent is CallableVariableScope callableVariableScope &&
-                        parent.Variables.TryGetValue(name, out var typeOfParentVariable) &&
-                        typeOfParentVariable is not PyVariableType.Closure)
+                    if (parent is CallableVariableScope callableVariableScope)
                     {
-                        callableVariableScope.CaptureVariable(name);
-                        break;
+                        if (parent.Variables.TryGetValue(name, out var typeOfParentVariable) &&
+                            typeOfParentVariable is not PyVariableType.Closure)
+                        {
+                            callableVariableScope.CaptureVariable(name);
+                            callableVariableScope.TempCells.Add(name);
+                            break;
+                        }
+                        else
+                        {
+                            callableVariableScope.TempFrees.Add(name);
+                        }
                     }
 
                     if (name is PySpecialNames.Class && parent is ClassVariableScope classVariableScope)
@@ -429,15 +438,8 @@ public sealed class SemanticAnalyzer
                 .Where(pair => pair.Value is PyVariableType.Local or PyVariableType.Parameter)
                 .Select(pair => pair.Key)];
 
-            callableScope.CellVars = [.. callableScope.Variables
-                .Where(pair => pair.Value is PyVariableType.CapturedLocal or PyVariableType.CapturedParameter)
-                .Select(pair => pair.Key)];
-
-            var freeVars = callableScope.Variables
-                .Where(pair => pair.Value is PyVariableType.Closure)
-                .Select(pair => pair.Key);
-
-            callableScope.FreeVars = [.. freeVars];
+            callableScope.CellVars = [.. callableScope.TempCells.Distinct()];
+            callableScope.FreeVars = [.. callableScope.TempFrees.Distinct()];
 
             callableScope.LocalsTable = callableScope.VarNames
                 .Concat(callableScope.CellVars)
@@ -470,7 +472,7 @@ internal abstract class VariableScope
         {
             if (IsRoot)
                 return null;
-
+            
             if (field is null)
             {
                 Stack<string> nameToRoot = [];
@@ -603,6 +605,9 @@ internal abstract class CallableVariableScope : VariableScope
     public string[] VarNames { get; internal set; } = [];
     public string[] CellVars { get; internal set; } = [];
     public string[] FreeVars { get; internal set; } = [];
+    public IEnumerable<CallableVariableScope> NestedCallables => Children.OfType<CallableVariableScope>();
+    public List<string> TempCells = [];
+    public List<string> TempFrees = [];
 
     protected CallableVariableScope(VariableScope? parent) : base(parent)
     {

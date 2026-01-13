@@ -349,11 +349,13 @@ internal abstract class Caller
         frame._variables = _variableScope.Variables;
 
         foreach (var capturedVariable in _variableScope.CellVars)
-            frame.Closures[capturedVariable] = PyCellObject.CreateCell(capturedVariable, null);
+            frame.Closures[capturedVariable] = PyCellObject.CreateCell(null);
 
         var cells = Func.Closure;
+        var names = _variableScope.FreeVars;
+        Debug.Assert(cells.Length == names.Length, "Closure cells count must match free variable names count");
         for (int i = 0; i < cells.Length; i++)
-            frame.Closures.Add(cells[i].Name, cells[i]);
+            frame.Closures.Add(names[i], cells[i]);
 
         frame.InitArgs(_def, arguments);
         return frame;
@@ -361,13 +363,25 @@ internal abstract class Caller
 
     public IEnumerable<PyCellObject> GetFreeVars(PyFrame frame)
     {
+        bool takeClassCell = false;
         if (frame.ClassCell is not null && _variableScope.FreeVars.Contains(PySpecialNames.Class))
-            yield return frame.ClassCell;
-
-        if (frame.InternalClosure is not null)
         {
-            foreach (var cell in frame.InternalClosure.Values)
-                yield return cell;
+            takeClassCell = true;
+            yield return frame.ClassCell;
+        }
+
+        if (_variableScope.FreeVars.Length is 0 ||
+            (takeClassCell && _variableScope.FreeVars is [PySpecialNames.Class]))
+            yield break;
+
+        Debug.Assert(frame.InternalClosure is not null);
+
+        foreach (var name in _variableScope.FreeVars)
+        {
+            if (name is PySpecialNames.Class && takeClassCell)
+                continue;
+
+            yield return frame.InternalClosure[name];
         }
     }
 }
@@ -612,12 +626,7 @@ public sealed class ClassDefNode : AstStmtNode, IScopedSubNodesProvider
         newFrame._variables = VariableScope.Variables;
 
         if (VariableScope.ClassCaptured)
-            newFrame.ClassCell = PyCellObject.CreateCell(PySpecialNames.Class, type);
-
-        foreach (var (name, cell) in frame.Closures)
-        {
-            newFrame.Closures.Add(name, cell);
-        }
+            newFrame.ClassCell = PyCellObject.CreateCell(type);
 
         using (var withFrame = context.WithFrame(newFrame))
         {

@@ -4,20 +4,18 @@ namespace PySharp.PyModules.Builtins;
 
 public class PyCellObject : PyObject
 {
-    internal string Name { get; }
     public PyObject? Value { get; set; }
 
     public override PyTypeObject DefaultPyType => PyCellObjectType.Shared;
 
-    private PyCellObject(string name, PyObject? value)
+    private PyCellObject(PyObject? value)
     {
-        Name = name;
         Value = value;
     }
 
-    public static PyCellObject CreateCell(string name, PyObject? value)
+    public static PyCellObject CreateCell(PyObject? value)
     {
-        return new PyCellObject(name, value);
+        return new PyCellObject(value);
     }
 }
 
