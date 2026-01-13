@@ -35,7 +35,7 @@ public class PyTupleObject : PyObject, IPyObjectRecursiveRepr
 
     PyResult IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<int> ids)
     {
-        return Utils.CollectionRecursiveRepr(context, this, _array, "(", ")", ids);
+        return Utils.CollectionRecursiveRepr(context, this, _array, "(", ")", ids, forceTrailingComma: true);
     }
 }
 

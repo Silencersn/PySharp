@@ -159,9 +159,10 @@ internal static class Utils
         return true;
     }
 
-    public static PyResult CollectionRecursiveRepr(PyCallContext context, PyObject collection, IEnumerable<PyObject> items, string startWrapper, string endWrapper, HashSet<int> ids)
+    public static PyResult CollectionRecursiveRepr(PyCallContext context, PyObject collection, IEnumerable<PyObject> items, string startWrapper, string endWrapper, HashSet<int> ids, bool forceTrailingComma = false)
     {
         var builder = new StringBuilder().Append(startWrapper);
+        var itemsCount = 0;
 
         if (!ids.Contains(collection.PyId))
         {
@@ -178,6 +179,7 @@ internal static class Utils
                     return result;
 
                 builder.Append(str.Value);
+                itemsCount++;
             }
             ids.Remove(collection.PyId);
         }
@@ -186,6 +188,9 @@ internal static class Utils
             builder.Append("...");
         }
 
+        // if it is circular reference, itemsCount must be zero
+        if (itemsCount is 1 && forceTrailingComma)
+            builder.Append(',');
         builder.Append(endWrapper);
         return PyStrObject.FromString(builder.ToString());
     }
