@@ -207,6 +207,7 @@ public sealed class AstWithItemNode : AstNode
     {
         ContextExpr = contextExpr;
         OptionalVars = optionalVars;
+        OptionalVars?.CheckValidTargetThenSetContext(ExprContextType.Store);
     }
 
     public AstExprNode ContextExpr { get; }
