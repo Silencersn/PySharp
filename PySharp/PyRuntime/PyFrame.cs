@@ -105,12 +105,12 @@ public sealed partial class PyFrame
 
         return frame;
     }
-    internal PyFrame CreateFuncCallOrClassBuildFrame(string callerName, PyObject caller, FrameType frameType,
-        (IReadOnlyList<PyObject> Args, IReadOnlyDictionary<string, PyObject> Kwargs)? callingArguments = null,
-        PyFrameGlobals? globals = null,
-        FrozenDictionary<string, int>? localVariablesToIndex = null)
+    internal PyFrame CreateFuncCallFrame(string callerName, PyObject caller, FrameType frameType,
+        (IReadOnlyList<PyObject> Args, IReadOnlyDictionary<string, PyObject> Kwargs) callingArguments,
+        PyFrameGlobals globals,
+        FrozenDictionary<string, int> localVariablesToIndex)
     {
-        Debug.Assert(frameType is FrameType.Function or FrameType.Lambda or FrameType.Class or FrameType.YieldFunction or FrameType.YieldLambda);
+        Debug.Assert(frameType is FrameType.Function or FrameType.Lambda or FrameType.YieldFunction or FrameType.YieldLambda);
         return new PyFrame(
             this,
             globals ?? _globals,
@@ -121,6 +121,19 @@ public sealed partial class PyFrame
             frameType)
         { CallingArguments = callingArguments };
     }
+
+    internal PyFrame CreateClassBuildFrame(PyTypeObject buildingClass)
+    {
+        return new PyFrame(
+            this,
+            _globals,
+            new(FrozenDictionary<string, int>.Empty),
+            _closure,
+            buildingClass.Name,
+            buildingClass,
+            FrameType.Class);
+    }
+
     internal PyFrame CreateThreadRootFrame()
     {
         return new PyFrame(_globals);

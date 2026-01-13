@@ -345,7 +345,7 @@ internal abstract class Caller
     public PyFrame CreateCallingFrame(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, PyArguments arguments)
     {
         var backFrame = context.CurrentFrame;
-        var frame = backFrame.CreateFuncCallOrClassBuildFrame(Func.Name, Func, _frameType, (args, kwargs), Func._globals, _variableScope.LocalsTable);
+        var frame = backFrame.CreateFuncCallFrame(Func.Name, Func, _frameType, (args, kwargs), Func._globals, _variableScope.LocalsTable);
         frame._variables = _variableScope.Variables;
 
         foreach (var capturedVariable in _variableScope.CellVars)
@@ -625,7 +625,7 @@ public sealed class ClassDefNode : AstStmtNode, IScopedSubNodesProvider
         if (AstUtils.TryGetDoc(Body, out var doc))
             type.PyAttributes[PySpecialNames.Doc] = doc;
 
-        var newFrame = frame.CreateFuncCallOrClassBuildFrame(Name, type, FrameType.Class);
+        var newFrame = frame.CreateClassBuildFrame(type);
         newFrame._variables = VariableScope.Variables;
 
         if (VariableScope.ClassCaptured)

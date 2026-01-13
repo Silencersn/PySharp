@@ -48,10 +48,12 @@ internal sealed class PyCallContextFrameState
         {
             if (_currentAsyncFrame is null)
             {
+                Debug.Assert(ReferenceEquals(frame.Back, _currentSyncFrame));
                 _currentSyncFrame = frame;
                 return;
             }
 
+            Debug.Assert(ReferenceEquals(frame.Back, _currentAsyncFrame.Value));
             _currentAsyncFrame.Value = frame;
         }
     }
