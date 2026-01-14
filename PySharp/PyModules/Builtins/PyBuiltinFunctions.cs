@@ -43,11 +43,11 @@ public static partial class PyBuiltinFunctions
     // TODO: enumerate()
     public static readonly PyBuiltinFunctionOrMethodObject Eval = PyBuiltinFunctionOrMethodObject.CreateFunction("eval", EvalImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Exec = PyBuiltinFunctionOrMethodObject.CreateFunction("exec", ExecImpl);
-
+    
     // F
     // TODO: filter
     // float -> PyFloatObject
-    // TODO: format()
+    public static readonly PyBuiltinFunctionOrMethodObject Format = PyBuiltinFunctionOrMethodObject.CreateFunction("format", FormatImpl);
     // TODO: frozenset()
 
     // G
@@ -755,5 +755,11 @@ public static partial class PyBuiltinFunctions
         }
 
         return PyStrObject.FromString(builder.ToString());
+    }
+
+    [PyFunctionArgsDef("value", "format_spec=''", "/")]
+    private static PyResult FormatImpl(PyCallContext context, PyArguments arguments)
+    {
+        return PySpecialMethods.Format(context, arguments[0], arguments[1]);
     }
 }

@@ -6,9 +6,8 @@ namespace PySharp.PyRuntime;
 
 public static class PySpecialMethods
 {
-    private static PyResult<TObject> CallUnaryFunction<TObject>(PyCallContext context, PyObject obj, PyUnaryFunction func, Func<PyObject, string> getErrMsg) where TObject : PyObject
+    private static PyResult<TObject> ValidateResultOf<TObject>(PyResult result, Func<PyObject, string> getErrMsg) where TObject : PyObject
     {
-        var result = func(context, obj);
         if (result.IsError)
             return result.Of<TObject>();
 
@@ -20,27 +19,23 @@ public static class PySpecialMethods
 
     public static PyResult<PyStrObject> Str(PyCallContext context, PyObject obj)
     {
-        var func = obj.PyType.Slots.Str;
-        if (func is not null)
-            return CallUnaryFunction<PyStrObject>(context, obj, func, static o => $"{PySpecialNames.Str} returned non-string (type {o.PyType.FullName})");
-
-        return CallUnaryFunction<PyStrObject>(context, obj, PyTypeObject.DefaultStr, static o => $"{PySpecialNames.Str} returned non-string (type {o.PyType.FullName})");
+        var func = obj.PyType.Slots.Str ?? PyTypeObject.DefaultStr;
+        var result = func(context, obj);
+        return ValidateResultOf<PyStrObject>(result, static o => $"{PySpecialNames.Str} returned non-string (type {o.PyType.FullName})");
     }
 
     public static PyResult<PyStrObject> Repr(PyCallContext context, PyObject obj)
     {
-        var func = obj.PyType.Slots.Repr;
-        if (func is not null)
-            return CallUnaryFunction<PyStrObject>(context, obj, func, static o => $"{PySpecialNames.Repr} returned non-string (type {o.PyType.FullName})");
-
-        return CallUnaryFunction<PyStrObject>(context, obj, PyTypeObject.DefaultRepr, static o => $"{PySpecialNames.Repr} returned non-string (type {o.PyType.FullName})");
+        var func = obj.PyType.Slots.Repr ?? PyTypeObject.DefaultRepr;
+        var result = func(context, obj);
+        return ValidateResultOf<PyStrObject>(result, static o => $"{PySpecialNames.Repr} returned non-string (type {o.PyType.FullName})");
     }
 
     public static PyResult<PyBoolObject> Bool(PyCallContext context, PyObject obj)
     {
         var boolFunc = obj.PyType.Slots.Bool;
         if (boolFunc is not null)
-            return CallUnaryFunction<PyBoolObject>(context, obj, boolFunc, static o => $"{PySpecialNames.Bool} returned non-bool (type {o.PyType.FullName})");
+            return ValidateResultOf<PyBoolObject>(boolFunc(context, obj), static o => $"{PySpecialNames.Bool} returned non-bool (type {o.PyType.FullName})");
 
         var lenFunc = obj.PyType.Slots.Len;
         if (lenFunc is not null)
@@ -52,23 +47,20 @@ public static class PySpecialMethods
             return PyBoolObject.FromBoolean(result.Value.Value > 0);
         }
 
-        return CallUnaryFunction<PyBoolObject>(context, obj, PyTypeObject.DefaultBool, static o => $"{PySpecialNames.Bool} returned non-bool (type {o.PyType.FullName})");
+        return ValidateResultOf<PyBoolObject>(PyTypeObject.DefaultBool(context, obj), static o => $"{PySpecialNames.Bool} returned non-bool (type {o.PyType.FullName})");
     }
 
     public static PyResult<PyIntObject> Hash(PyCallContext context, PyObject obj)
     {
-        var func = obj.PyType.Slots.Hash;
-        if (func is not null)
-            return CallUnaryFunction<PyIntObject>(context, obj, func, static o => $"{PySpecialNames.Hash} returned non-int (type {o.PyType.FullName})");
-
-        return CallUnaryFunction<PyIntObject>(context, obj, PyTypeObject.DefaultHash, static o => $"{PySpecialNames.Hash} returned non-int (type {o.PyType.FullName})");
+        var func = obj.PyType.Slots.Hash ?? PyTypeObject.DefaultHash;
+        return ValidateResultOf<PyIntObject>(func(context, obj), static o => $"{PySpecialNames.Hash} returned non-int (type {o.PyType.FullName})");
     }
 
     public static PyResult<PyIntObject> Index(PyCallContext context, PyObject obj)
     {
         var func = obj.PyType.Slots.Index;
         if (func is not null)
-            return CallUnaryFunction<PyIntObject>(context, obj, func, static o => $"{PySpecialNames.Index} returned non-int (type {o.PyType.FullName})");
+            return ValidateResultOf<PyIntObject>(func(context, obj), static o => $"{PySpecialNames.Index} returned non-int (type {o.PyType.FullName})");
 
         return PyResult.RaiseTypeError($"'{obj.PyType.FullName}' object cannot be interpreted as an integer").Of<PyIntObject>();
     }
@@ -77,7 +69,7 @@ public static class PySpecialMethods
     {
         var func = obj.PyType.Slots.Float;
         if (func is not null)
-            return CallUnaryFunction<PyFloatObject>(context, obj, func, static o => $"{PySpecialNames.Float} returned non-float (type {o.PyType.FullName})");
+            return ValidateResultOf<PyFloatObject>(func(context, obj), static o => $"{PySpecialNames.Float} returned non-float (type {o.PyType.FullName})");
 
         return PyResult.RaiseTypeError($"float() argument must be a string or a real number, not '{obj.PyType.FullName}'").Of<PyFloatObject>();
     }
@@ -87,7 +79,7 @@ public static class PySpecialMethods
         var func = obj.PyType.Slots.Len;
         if (func is not null)
         {
-            var result = CallUnaryFunction<PyIntObject>(context, obj, func, static o => $"{PySpecialNames.Len} returned non-int (type {o.PyType.FullName})");
+            var result = ValidateResultOf<PyIntObject>(func(context, obj), static o => $"{PySpecialNames.Len} returned non-int (type {o.PyType.FullName})");
             if (result.IsError)
                 return result;
 
@@ -231,9 +223,10 @@ public static class PySpecialMethods
         return Call(context, callable, args, FrozenDictionary<string, PyObject>.Empty);
     }
 
-    public static PyResult Format(PyCallContext context, PyObject obj, PyObject formatSpec)
+    public static PyResult<PyStrObject> Format(PyCallContext context, PyObject obj, PyObject formatSpec)
     {
         var func = obj.PyType.Slots.Format ?? PyTypeObject.DefaultFormat;
-        return func(context, obj, formatSpec);
+        var result = func(context, obj, formatSpec);
+        return ValidateResultOf<PyStrObject>(result, static o => $"{PySpecialNames.Format} must return a str, not {o.PyType.FullName}");
     }
 }
