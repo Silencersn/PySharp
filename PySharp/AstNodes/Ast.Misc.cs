@@ -54,4 +54,13 @@ public static partial class Ast
     {
         return Arguments([], [], null, [], null, [], []);
     }
+
+    public static AstWithItemNode WithItem(AstExprNode contextExpr, AstExprNode? optionalVars)
+    {
+        ArgumentNullException.ThrowIfNull(contextExpr);
+
+        optionalVars?.CheckValidTargetThenSetContext(ExprContextType.Store);
+
+        return new AstWithItemNode(contextExpr, optionalVars);
+    }
 }

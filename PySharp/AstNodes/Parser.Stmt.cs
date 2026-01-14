@@ -597,7 +597,7 @@ partial class Parser
                 MoveNextToken();
                 target = ParseTarget();
             }
-            return new AstWithItemNode(expr, target).With(metaInfo.WithPreviousEnd());
+            return Ast.WithItem(expr, target).With(metaInfo.WithPreviousEnd());
         }
     }
 
