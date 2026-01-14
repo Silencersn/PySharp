@@ -34,7 +34,7 @@ public static partial class PyBuiltinFunctions
     // complex -> PyComplexObject
 
     // D
-    // TODO: delattr()
+    public static readonly PyBuiltinFunctionOrMethodObject DelAttr = PyBuiltinFunctionOrMethodObject.CreateFunction("delattr", DelAttrImpl);
     // dict -> PyDictObject
     public static readonly PyBuiltinFunctionOrMethodObject Dir = PyBuiltinFunctionOrMethodObject.CreateFunction("dir", DirImpl_1, DirImpl_2);
     public static readonly PyBuiltinFunctionOrMethodObject DivMod = PyBuiltinFunctionOrMethodObject.CreateFunction("divmod", DivModImpl);
@@ -761,5 +761,14 @@ public static partial class PyBuiltinFunctions
     private static PyResult FormatImpl(PyCallContext context, PyArguments arguments)
     {
         return PySpecialMethods.Format(context, arguments[0], arguments[1]);
+    }
+
+    [PyFunctionArgsDef("object", "name", "/")]
+    private static PyResult DelAttrImpl(PyCallContext context, PyArguments arguments)
+    {
+        var obj = arguments[0];
+        if (!Utils.TryCastStrAsArg(arguments[1], out var name, out var err, "attribute name"))
+            return err.Value;
+        return PyOperators.DelAttr(context, obj, name);
     }
 }
