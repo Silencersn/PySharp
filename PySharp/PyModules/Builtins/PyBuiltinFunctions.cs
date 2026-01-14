@@ -17,7 +17,7 @@ public static partial class PyBuiltinFunctions
     // TODO: aiter()
     public static readonly PyBuiltinFunctionOrMethodObject All = PyBuiltinFunctionOrMethodObject.CreateFunction("all", AllImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Any = PyBuiltinFunctionOrMethodObject.CreateFunction("any", AnyImpl);
-    // TODO: ascii()
+    public static readonly PyBuiltinFunctionOrMethodObject Ascii = PyBuiltinFunctionOrMethodObject.CreateFunction("ascii", AsciiImpl);
 
     // B
     public static readonly PyBuiltinFunctionOrMethodObject Bin = PyBuiltinFunctionOrMethodObject.CreateFunction("bin", BinImpl);
@@ -29,9 +29,9 @@ public static partial class PyBuiltinFunctions
     // C
     public static readonly PyBuiltinFunctionOrMethodObject Callable = PyBuiltinFunctionOrMethodObject.CreateFunction("callable", CallableImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Chr = PyBuiltinFunctionOrMethodObject.CreateFunction("chr", ChrImpl);
-    // TODO: classmethod()
+    // classmethod -> PyClassMethodObject
     // TODO: compile()
-    // TODO: complex()
+    // complex -> PyComplexObject
 
     // D
     // TODO: delattr()
@@ -104,7 +104,7 @@ public static partial class PyBuiltinFunctions
     public static readonly PyBuiltinFunctionOrMethodObject SetAttr = PyBuiltinFunctionOrMethodObject.CreateFunction("setattr", SetAttrImpl);
     // slice -> PySliceObject
     // TODO: sorted()
-    // TODO: staticmethod()
+    // staticmethod -> PyStaticMethodObject
     // str -> PyStrObject
     public static readonly PyBuiltinFunctionOrMethodObject Sum = PyBuiltinFunctionOrMethodObject.CreateFunction("sum", SumImpl);
     // super -> PySuperObject
@@ -726,5 +726,34 @@ public static partial class PyBuiltinFunctions
 
         var value = BigIntegerHelper.ToString(result.Value.Value, 16);
         return PyStrObject.FromString(value);
+    }
+
+    [PyFunctionArgsDef("object", "/")]
+    private static PyResult AsciiImpl(PyCallContext context, PyArguments arguments)
+    {
+        var result = PySpecialMethods.Repr(context, arguments[0]);
+        if (result.IsError)
+            return result;
+
+        var repr = result.Value.Value;
+        if (repr.EnumerateRunes().All(static rune => rune.IsAscii))
+            return result.Value;
+
+        var builder = new StringBuilder();
+
+        foreach (var rune in repr.EnumerateRunes())
+        {
+            var ch = rune.Value;
+            if (rune.IsAscii)
+                builder.Append(rune.ToString());
+            else if (ch < 0x100)
+                builder.AppendFormat("\\x{0:x2}", ch);
+            else if (ch < 0x10000)
+                builder.AppendFormat("\\u{0:x4}", ch);
+            else
+                builder.AppendFormat("\\U{0:x8}", ch);
+        }
+
+        return PyStrObject.FromString(builder.ToString());
     }
 }

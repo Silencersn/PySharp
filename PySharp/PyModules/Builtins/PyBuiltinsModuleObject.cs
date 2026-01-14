@@ -39,6 +39,7 @@ public class PyBuiltinsModuleObject : PyModuleObject
         AddObjToAttrs(PyBuiltinFunctions.Bin); // bin
         AddObjToAttrs(PyBuiltinFunctions.Oct); // oct
         AddObjToAttrs(PyBuiltinFunctions.Hex); // hex
+        AddObjToAttrs(PyBuiltinFunctions.Ascii); // ascii
 
         AddObjToAttrs(PyObjectType.Shared); // object
         AddObjToAttrs(PyStrObjectType.Shared); // str
