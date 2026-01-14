@@ -122,6 +122,26 @@ public abstract class PyExceptionType : PyTypeObject<PyExceptionObject>
     {
         return new PyExceptionObject(this, [.. pyObjects]);
     }
+}
+
+public abstract class PyExceptionType<TSelf> : PyExceptionType, ISharedInstance<TSelf> where TSelf : PyExceptionType<TSelf>, ISharedInstance<TSelf>, new()
+{
+    public static TSelf Shared { get; } = new TSelf();
+}
+
+public abstract class PyExceptionType<TSelf, TBase> : PyExceptionType<TSelf>, ISharedInstance<TSelf>
+    where TSelf : PyExceptionType<TSelf, TBase>, ISharedInstance<TSelf>, new()
+    where TBase : PyExceptionType<TBase>, ISharedInstance<TBase>, new()
+{
+    public sealed override IReadOnlyList<PyTypeObject> Bases => [TBase.Shared];
+}
+
+#region Base Classes
+
+public sealed class PyBaseExceptionObjectType : PyExceptionType<PyBaseExceptionObjectType>
+{
+    public override string Module => "builtins";
+    public override string Name => "BaseException";
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
@@ -163,26 +183,6 @@ public abstract class PyExceptionType : PyTypeObject<PyExceptionObject>
 
         return PySpecialMethods.Str(context, PyTupleObject.CreateTuple(self.Args));
     }
-}
-
-public abstract class PyExceptionType<TSelf> : PyExceptionType, ISharedInstance<TSelf> where TSelf : PyExceptionType<TSelf>, ISharedInstance<TSelf>, new()
-{
-    public static TSelf Shared { get; } = new TSelf();
-}
-
-public abstract class PyExceptionType<TSelf, TBase> : PyExceptionType<TSelf>, ISharedInstance<TSelf>
-    where TSelf : PyExceptionType<TSelf, TBase>, ISharedInstance<TSelf>, new()
-    where TBase : PyExceptionType<TBase>, ISharedInstance<TBase>, new()
-{
-    public sealed override IReadOnlyList<PyTypeObject> Bases => [TBase.Shared];
-}
-
-#region Base Classes
-
-public sealed class PyBaseExceptionObjectType : PyExceptionType<PyBaseExceptionObjectType>
-{
-    public override string Module => "builtins";
-    public override string Name => "BaseException";
 }
 
 public sealed class PyExceptionObjectType : PyExceptionType<PyExceptionObjectType, PyBaseExceptionObjectType>
