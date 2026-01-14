@@ -53,7 +53,7 @@ public class PyInterpreter
         PyTryCatch(_mainContext, () =>
         {
             InternalExecute(_mainContext, code, sourceName);
-        });
+        }, alwaysThrow: true);
     }
 
     public PyModuleObject GetModule(string moduleName)
@@ -63,7 +63,7 @@ public class PyInterpreter
         return new PyModuleObject(moduleName) { _pyAttributes = new Dictionary<string, PyObject>(_mainModule.PyAttributes) };
     }
 
-    internal static void PyTryCatch(PyCallContext context, Action action)
+    internal static void PyTryCatch(PyCallContext context, Action action, bool alwaysThrow = false)
     {
         var frame = context.CurrentFrame;
         try
@@ -93,16 +93,19 @@ public class PyInterpreter
                         Console.ForegroundColor = color;
                     }
 
-                    break;
+                    if (alwaysThrow)
+                        throw;
+
+                    return;
                 }
 
                 currentException = currentException.InnerException;
             }
 
-            if (currentException is null)
-                // If no PyRuntimeException was found in the exception chain,
-                // re-throw the original exception (non-Python errors).
-                throw;
+            Debug.Assert(currentException is null);
+            // If no PyRuntimeException was found in the exception chain,
+            // re-throw the original exception (non-Python errors).
+            throw;
         }
     }
 
