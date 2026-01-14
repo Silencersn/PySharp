@@ -4,6 +4,7 @@ using PySharp.PyRuntime.Calls;
 using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Xml.Linq;
 
 namespace PySharp.AstNodes;
 
@@ -413,8 +414,8 @@ public sealed class SemanticAnalyzer
                             typeOfParentVariable is not PyVariableType.Closure)
                         {
                             callableVariableScope.CaptureVariable(name);
-                            if (callableVariableScope.ScopesRequiringFree.TryGetValue(name, out var nodes))
-                                nodes.UnionWith(scopesRequiringFree);
+                            if (callableVariableScope.ScopesRequiringFree.TryGetValue(name, out var scopes))
+                                scopes.UnionWith(scopesRequiringFree);
                             else
                                 callableVariableScope.ScopesRequiringFree[name] = scopesRequiringFree;
                             break;
@@ -428,6 +429,8 @@ public sealed class SemanticAnalyzer
                     if (name is PySpecialNames.Class && parent is ClassVariableScope classVariableScope)
                     {
                         classVariableScope.ClassCaptured = true;
+                        if (scope is CallableVariableScope cvs)
+                            classVariableScope.ScopesRequiringFree.Add(cvs);
                         break;
                     }
 
@@ -442,8 +445,21 @@ public sealed class SemanticAnalyzer
 
     internal static void FillCallableProperties(RootVariableScope scope)
     {
+        FillTempFreesClass(scope);
         FillTempFrees(scope);
         FillCallablePropertiesImpl(scope);
+
+        static void FillTempFreesClass(VariableScope scope)
+        {
+            if (scope is ClassVariableScope classScope)
+            {
+                foreach (var s in classScope.ScopesRequiringFree)
+                    s.TempFrees.Add(PySpecialNames.Class);
+            }
+
+            foreach (var child in scope.Children)
+                FillTempFreesClass(child);
+        }
 
         static void FillTempFrees(VariableScope scope)
         {
@@ -621,6 +637,7 @@ internal sealed class ClassVariableScope : VariableScope
     public override ClassDefNode Owner { get; }
     public override string? Name => Owner.Name;
     public bool ClassCaptured { get; set; }
+    internal HashSet<CallableVariableScope> ScopesRequiringFree = [];
 
     public ClassVariableScope(ClassDefNode owner, VariableScope parent) : base(parent)
     {
