@@ -110,5 +110,106 @@ partial class PyTypeObject
         {
             return (PyTypeSlots)MemberwiseClone();
         }
+
+        internal void FillNullWith(PyTypeSlots other)
+        {
+            New ??= other.New;
+
+            Str ??= other.Str;
+            Repr ??= other.Repr;
+            Bool ??= other.Bool;
+            Hash ??= other.Hash;
+            Len ??= other.Len;
+            Index ??= other.Index;
+            Int ??= other.Int;
+            Float ??= other.Float;
+            Call ??= other.Call;
+
+            Iter ??= other.Iter;
+            Next ??= other.Next;
+            GetItem ??= other.GetItem;
+            SetItem ??= other.SetItem;
+            DelItem ??= other.DelItem;
+            Contains ??= other.Contains;
+
+            Enter ??= other.Enter;
+            Exit ??= other.Exit;
+
+            Get ??= other.Get;
+            Set ??= other.Set;
+            Delete ??= other.Delete;
+            GetAttribute ??= other.GetAttribute;
+            GetAttr ??= other.GetAttr;
+            SetAttr ??= other.SetAttr;
+            DelAttr ??= other.DelAttr;
+
+            Add ??= other.Add;
+            Sub ??= other.Sub;
+            Mul ??= other.Mul;
+            TrueDiv ??= other.TrueDiv;
+            FloorDiv ??= other.FloorDiv;
+            Mod ??= other.Mod;
+            DivMod ??= other.DivMod;
+            LShift ??= other.LShift;
+            RShift ??= other.RShift;
+            And ??= other.And;
+            Xor ??= other.Xor;
+            Or ??= other.Or;
+
+            Lt ??= other.Lt;
+            Le ??= other.Le;
+            Eq ??= other.Eq;
+            Ne ??= other.Ne;
+            Gt ??= other.Gt;
+            Ge ??= other.Ge;
+
+            RAdd ??= other.RAdd;
+            RSub ??= other.RSub;
+            RMul ??= other.RMul;
+            RTrueDiv ??= other.RTrueDiv;
+            RFloorDiv ??= other.RFloorDiv;
+            RMod ??= other.RMod;
+            RDivMod ??= other.RDivMod;
+            RLShift ??= other.RLShift;
+            RRShift ??= other.RRShift;
+            RAnd ??= other.RAnd;
+            RXor ??= other.RXor;
+            ROr ??= other.ROr;
+
+            IAdd ??= other.IAdd;
+            ISub ??= other.ISub;
+            IMul ??= other.IMul;
+            IMatMul ??= other.IMatMul;
+            ITrueDiv ??= other.ITrueDiv;
+            IFloorDiv ??= other.IFloorDiv;
+            IMod ??= other.IMod;
+            IPow ??= other.IPow;
+            ILShift ??= other.ILShift;
+            IRShift ??= other.IRShift;
+            IAnd ??= other.IAnd;
+            IXor ??= other.IXor;
+            IOr ??= other.IOr;
+
+            Pow ??= other.Pow;
+            RPow ??= other.RPow;
+
+            Complex ??= other.Complex;
+            Abs ??= other.Abs;
+            Neg ??= other.Neg;
+            Pos ??= other.Pos;
+            Invert ??= other.Invert;
+            SetName ??= other.SetName;
+            Missing ??= other.Missing;
+            Init ??= other.Init;
+            Format ??= other.Format;
+        }
+
+        internal static PyTypeSlots Create(IEnumerable<PyTypeObject> types)
+        {
+            var slots = new PyTypeSlots();
+            foreach (var type in types)
+                slots.FillNullWith(type.Slots);
+            return slots;
+        }
     }
 }
