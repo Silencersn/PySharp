@@ -79,7 +79,7 @@ partial class Parser
                     MoveNextToken();
                     id = ParseIdentifier();
                 }
-                return new AstAliasNode(module, id);
+                return Ast.Alias(module, id);
             }
         }
         else
@@ -91,7 +91,7 @@ partial class Parser
             if (CurrentTokenType is TokenType.Star)
             {
                 MoveNextToken();
-                return Ast.ImportFrom(module, [new("*", null)], level).With(metaInfo);
+                return Ast.ImportFrom(module, [Ast.Alias("*", null)], level).With(metaInfo);
             }
             else if (CurrentTokenType is TokenType.LeftParen)
             {
@@ -132,7 +132,7 @@ partial class Parser
                     MoveNextToken();
                     asName = ParseIdentifier();
                 }
-                return new AstAliasNode(name, asName);
+                return Ast.Alias(name, asName);
             }
         }
     }
@@ -607,7 +607,7 @@ partial class Parser
         EnsureKeywordThenMove("def");
         var name = ParseIdentifier();
         EnsureTokenTypeThenMove(TokenType.LeftParen);
-        var args = CurrentTokenType is TokenType.RightParen ? new() : ParseParameterList(StopPredicates.UntilRightParen, allowAnnotation: true);
+        var args = CurrentTokenType is TokenType.RightParen ? Ast.Arguments() : ParseParameterList(StopPredicates.UntilRightParen, allowAnnotation: true);
         EnsureTokenTypeThenMove(TokenType.RightParen);
 
         var returns = null as AstExprNode;

@@ -27,9 +27,9 @@ public sealed class PyCodeObject : PyObject
         Name = scope.Name;
         QualName = scope.QualName;
         var arg = scope.ArgumentsNode;
-        ArgCount = arg.PosonlyArgs.Count + arg.Args.Count;
-        PosOnlyArgCount = arg.PosonlyArgs.Count;
-        KwOnlyArgCount = arg.KwonlyArgs.Count;
+        ArgCount = arg.PosonlyArgs.Length + arg.Args.Length;
+        PosOnlyArgCount = arg.PosonlyArgs.Length;
+        KwOnlyArgCount = arg.KwonlyArgs.Length;
         NLocals = scope.VarNames.Length;
         VarNames = [.. scope.VarNames];
         CellVars = [.. scope.CellVars];

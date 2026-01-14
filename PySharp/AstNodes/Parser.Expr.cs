@@ -4,6 +4,7 @@ using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.Tokenization;
 using PySharp.Utility;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Text;
@@ -920,7 +921,7 @@ partial class Parser
     {
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("lambda");
-        var args = CurrentTokenType is TokenType.Colon ? new() : ParseParameterList(StopPredicates.UntilColon, allowAnnotation: false);
+        var args = CurrentTokenType is TokenType.Colon ? Ast.Arguments() : ParseParameterList(StopPredicates.UntilColon, allowAnnotation: false);
         EnsureTokenTypeThenMove(TokenType.Colon);
         return Ast.Lambda(args, ParseExpression()).With(metaInfo);
     }
@@ -1311,7 +1312,15 @@ partial class Parser
     {
         const int StateArgs = 0, StateAfterPosonly = 1, StateKwonly = 3, StateEnd = 4;
 
-        var arguments = new AstArgumentsNode();
+        List<AstArgNode> posonlyArgs = [];
+        List<AstArgNode> args = [];
+        AstArgNode? varArg = null;
+        List<AstArgNode> kwonlyArgs = [];
+        AstArgNode? kwArg = null;
+        List<AstExprNode?> kwDefaults = [];
+        List<AstExprNode> defaults = [];
+
+        //var arguments = new AstArgumentsNode();
         var state = StateArgs;
         var needDefault = false;
 
@@ -1323,7 +1332,7 @@ partial class Parser
                 break;
             ParseParameter();
         }
-        return arguments;
+        return Ast.Arguments(posonlyArgs, args, varArg, kwonlyArgs, kwArg, kwDefaults, defaults);
 
         void ParseParameter()
         {
@@ -1343,12 +1352,12 @@ partial class Parser
                             throw new UnreachableException();
                     }
 
-                    if (arguments.Args.Count is 0)
+                    if (args.Count is 0)
                         throw _context.ThrowableSyntaxError("at least one argument must precede /");
 
                     MoveNextToken();
-                    arguments.PosonlyArgs.AddRange(arguments.Args);
-                    arguments.Args.Clear();
+                    posonlyArgs.AddRange(args);
+                    args.Clear();
                     state = StateAfterPosonly;
                     break;
 
@@ -1369,7 +1378,7 @@ partial class Parser
                             starAnnotation = ParseStarredExpression();
                         }
 
-                        arguments.VarArg = new AstArgNode(starArg, starAnnotation);
+                        varArg = Ast.Arg(starArg, starAnnotation);
                     }
                     state = StateKwonly;
                     needDefault = false;
@@ -1389,7 +1398,7 @@ partial class Parser
                         doubleStarAnnotation = ParseExpression();
                     }
 
-                    arguments.KwArg = new AstArgNode(doubleStarArg, doubleStarAnnotation);
+                    kwArg = Ast.Arg(doubleStarArg, doubleStarAnnotation);
                     state = StateEnd;
                     break;
 
@@ -1402,7 +1411,7 @@ partial class Parser
                         annotation = ParseExpression();
                     }
 
-                    var argNode = new AstArgNode(arg, annotation);
+                    var argNode = Ast.Arg(arg, annotation);
                     AstExprNode? defaultValue;
                     if (CurrentTokenType is TokenType.Equal)
                     {
@@ -1422,14 +1431,14 @@ partial class Parser
 
                     if (state is StateArgs or StateAfterPosonly)
                     {
-                        arguments.Args.Add(argNode);
+                        args.Add(argNode);
                         if (defaultValue is not null)
-                            arguments.Defaults.Add(defaultValue);
+                            defaults.Add(defaultValue);
                     }
                     else
                     {
-                        arguments.KwonlyArgs.Add(argNode);
-                        arguments.KwDefaults.Add(defaultValue);
+                        kwonlyArgs.Add(argNode);
+                        kwDefaults.Add(defaultValue);
                     }
 
                     break;

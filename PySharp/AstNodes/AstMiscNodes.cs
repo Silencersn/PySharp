@@ -7,7 +7,7 @@ namespace PySharp.AstNodes;
 
 public class AstAliasNode : AstNode
 {
-    public AstAliasNode(string name, string? asName)
+    internal AstAliasNode(string name, string? asName)
     {
         Name = name;
         AsName = asName;
@@ -39,7 +39,7 @@ public class AstArgNode : AstNode
     public string Arg { get; }
     public AstExprNode? Annotation { get; }
 
-    public AstArgNode(string arg, AstExprNode? annotation = null)
+    internal AstArgNode(string arg, AstExprNode? annotation = null)
     {
         Arg = arg;
         Annotation = annotation;
@@ -53,22 +53,24 @@ public class AstArgNode : AstNode
 
 public class AstArgumentsNode : AstNode
 {
-    public AstArgumentsNode()
+    internal AstArgumentsNode(ImmutableArray<AstArgNode> posonlyArgs, ImmutableArray<AstArgNode> args, AstArgNode? varArg, ImmutableArray<AstArgNode> kwonlyArgs, AstArgNode? kwArg, ImmutableArray<AstExprNode?> kwDefaults, ImmutableArray<AstExprNode> defaults)
     {
-        PosonlyArgs = [];
-        Args = [];
-        KwonlyArgs = [];
-        KwDefaults = [];
-        Defaults = [];
+        PosonlyArgs = posonlyArgs;
+        Args = args;
+        VarArg = varArg;
+        KwonlyArgs = kwonlyArgs;
+        KwArg = kwArg;
+        KwDefaults = kwDefaults;
+        Defaults = defaults;
     }
 
-    public List<AstArgNode> PosonlyArgs { get; }
-    public List<AstArgNode> Args { get; }
-    public AstArgNode? VarArg { get; set; }
-    public List<AstArgNode> KwonlyArgs { get; }
-    public AstArgNode? KwArg { get; set; }
-    public List<AstExprNode?> KwDefaults { get; }
-    public List<AstExprNode> Defaults { get; }
+    public ImmutableArray<AstArgNode> PosonlyArgs { get; }
+    public ImmutableArray<AstArgNode> Args { get; }
+    public AstArgNode? VarArg { get; }
+    public ImmutableArray<AstArgNode> KwonlyArgs { get; }
+    public AstArgNode? KwArg { get; }
+    public ImmutableArray<AstExprNode?> KwDefaults { get; }
+    public ImmutableArray<AstExprNode> Defaults { get; }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
