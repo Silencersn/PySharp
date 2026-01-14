@@ -491,7 +491,7 @@ partial class Parser
         return Ast.While(test, body, orElse).With(metaInfo);
     }
 
-    private TryNode ParseTryStmt()
+    private AstStmtNode ParseTryStmt()
     {
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("try");
@@ -502,6 +502,7 @@ partial class Parser
         List<ExceptHandlerNode> exceptors = [];
         IEnumerable<AstStmtNode> orElse = [];
         IEnumerable<AstStmtNode> finalBody = [];
+        bool? isStar = null;
         if (IsCurrentKeyword("except"))
         {
             while (IsCurrentKeyword("except"))
@@ -509,6 +510,20 @@ partial class Parser
                 AstExprNode? expr = null;
                 string? id = null;
                 MoveNextToken();
+
+                isStar ??= CurrentTokenType is TokenType.Star;
+                if (isStar.Value)
+                {
+                    if (CurrentTokenType is not TokenType.Star)
+                        throw _context.ThrowableSyntaxError("cannot have both 'except' and 'except*' on the same 'try'");
+
+                    MoveNextToken();
+                }
+                else
+                {
+                    if (CurrentTokenType is TokenType.Star)
+                        throw _context.ThrowableSyntaxError("cannot have both 'except' and 'except*' on the same 'try'");
+                }
 
                 if (CurrentTokenType is not TokenType.Colon)
                 {
@@ -519,6 +534,10 @@ partial class Parser
                         EnsureKeywordThenMove("as");
                         id = ParseIdentifier();
                     }
+                }
+                else if (isStar.Value)
+                {
+                    throw _context.ThrowableSyntaxError("expected one or more exception types");
                 }
 
                 EnsureTokenTypeThenMove(TokenType.Colon);
@@ -540,7 +559,9 @@ partial class Parser
             EnsureTokenTypeThenMove(TokenType.Colon);
             finalBody = ParseSuite("finally");
         }
-        return Ast.Try(body, exceptors, orElse, finalBody).With(metaInfo);
+        return isStar ?? false
+            ? Ast.TryStar(body, exceptors, orElse, finalBody).With(metaInfo)
+            : Ast.Try(body, exceptors, orElse, finalBody).With(metaInfo);
     }
 
     private ForNode ParseForStmt()

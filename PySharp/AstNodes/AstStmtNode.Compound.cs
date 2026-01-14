@@ -237,6 +237,35 @@ public sealed class TryNode : AstStmtNode
     }
 }
 
+public sealed class TryStarNode : AstStmtNode
+{
+    internal TryStarNode(ImmutableArray<AstStmtNode> body, ImmutableArray<ExceptHandlerNode> exceptors, ImmutableArray<AstStmtNode> orElse, ImmutableArray<AstStmtNode> finalBody)
+    {
+        Body = body;
+        Exceptors = exceptors;
+        OrElse = orElse;
+        FinalBody = finalBody;
+    }
+
+    public ImmutableArray<AstStmtNode> Body { get; }
+    public ImmutableArray<ExceptHandlerNode> Exceptors { get; }
+    public ImmutableArray<AstStmtNode> OrElse { get; }
+    public ImmutableArray<AstStmtNode> FinalBody { get; }
+
+    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
+    {
+        throw new NotImplementedException();
+    }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        foreach (var stmt in Body) yield return stmt;
+        foreach (var ex in Exceptors) yield return ex;
+        foreach (var stmt in OrElse) yield return stmt;
+        foreach (var stmt in FinalBody) yield return stmt;
+    }
+}
+
 public sealed class WithNode : AstStmtNode
 {
     internal WithNode(ImmutableArray<AstWithItemNode> items, ImmutableArray<AstStmtNode> body)

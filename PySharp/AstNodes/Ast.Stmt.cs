@@ -137,6 +137,16 @@ partial class Ast
         return new TryNode(body.ToImmutableArray(true), exceptors.ToImmutableArray(true), orElse.ToImmutableArray(true), finalBody.ToImmutableArray(true));
     }
 
+    public static TryStarNode TryStar(IEnumerable<AstStmtNode> body, IEnumerable<ExceptHandlerNode> exceptors, IEnumerable<AstStmtNode> orElse, IEnumerable<AstStmtNode> finalBody)
+    {
+        ArgumentNullException.ThrowIfNull(body);
+        ArgumentNullException.ThrowIfNull(exceptors);
+        ArgumentNullException.ThrowIfNull(orElse);
+        ArgumentNullException.ThrowIfNull(finalBody);
+
+        return new TryStarNode(body.ToImmutableArray(true), exceptors.ToImmutableArray(true), orElse.ToImmutableArray(true), finalBody.ToImmutableArray(true));
+    }
+
     public static ImportNode Import(IEnumerable<AstAliasNode> names)
     {
         ArgumentNullException.ThrowIfNull(names);
