@@ -1,6 +1,5 @@
 ﻿using PySharp.CodeAnalysis;
 using PySharp.PyModules.Builtins;
-using System;
 using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Text;

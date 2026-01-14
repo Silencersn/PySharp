@@ -587,7 +587,7 @@ public static class PyStrConverter
             if (dquote > 0)
                 // both squote and dquote present
                 // use squote, and escape them
-                 osize += squote;
+                osize += squote;
             else
                 quote = '"';
         }

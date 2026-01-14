@@ -637,7 +637,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             AppendToken(TokenType.Indent, _currentContent.Substring(_offset, indentationLevel));
             return;
         }
-        
+
         while (_indentationLevels.Peek() > indentationLevel)
         {
             _ = _indentationLevels.Pop();

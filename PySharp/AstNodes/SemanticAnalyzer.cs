@@ -220,7 +220,7 @@ public sealed class SemanticAnalyzer
         {
             if (node is ModuleNode or ClassDefNode or FunctionDefNode or LambdaNode)
                 return;
-            
+
             if (stopPredicate(node))
                 return;
 
@@ -497,7 +497,7 @@ internal abstract class VariableScope
         {
             if (IsRoot)
                 return null;
-            
+
             if (field is null)
             {
                 Stack<string> nameToRoot = [];

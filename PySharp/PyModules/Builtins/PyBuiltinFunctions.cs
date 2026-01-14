@@ -5,7 +5,6 @@ using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.PyAttributes;
 using PySharp.Tokenization;
 using PySharp.Utility;
-using System.Diagnostics;
 using System.Text;
 
 namespace PySharp.PyModules.Builtins;
@@ -43,7 +42,7 @@ public static partial class PyBuiltinFunctions
     // TODO: enumerate()
     public static readonly PyBuiltinFunctionOrMethodObject Eval = PyBuiltinFunctionOrMethodObject.CreateFunction("eval", EvalImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Exec = PyBuiltinFunctionOrMethodObject.CreateFunction("exec", ExecImpl);
-    
+
     // F
     // TODO: filter
     // float -> PyFloatObject
