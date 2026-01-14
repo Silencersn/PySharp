@@ -20,10 +20,11 @@ public sealed class PyExceptionObject : PyObject
     public bool SuppressContext { get; internal set; }
     public PyExceptionObject? Cause { get; internal set; }
     public PyExceptionObject? Context { get; internal set; }
-    public string? CauseReason { get; internal set; }
+    internal string? CauseReason { get; set; }
     public IReadOnlyList<PyObject> Args { get; }
     public string? Traceback { get; internal set; }
     internal string? ThreadTracebackInfo { get; set; }
+    internal ExceptionGroupInfo? AsGroup { get; set; }
 
     internal PyExceptionObject WithTraceback(PyCallContext context, bool overwriteExisting = false)
     {
@@ -91,6 +92,18 @@ public sealed class PyExceptionObject : PyObject
 
         return builder.ToString();
     }
+}
+
+internal sealed class ExceptionGroupInfo
+{
+    internal ExceptionGroupInfo(string message, IReadOnlyList<PyExceptionObject> exceptions)
+    {
+        Message = message;
+        Exceptions = exceptions;
+    }
+
+    public string Message { get; }
+    public IReadOnlyList<PyExceptionObject> Exceptions { get; }
 }
 
 public abstract class PyExceptionType : PyTypeObject<PyExceptionObject>
