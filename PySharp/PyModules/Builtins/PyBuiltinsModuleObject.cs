@@ -86,5 +86,8 @@ public class PyBuiltinsModuleObject : PyModuleObject
         AddObjToAttrs(PyStandardExceptionTypes.UnboundLocalError); // UnboundLocalError
         AddObjToAttrs(PyStandardExceptionTypes.RuntimeError); // RuntimeError
         AddObjToAttrs(PyStandardExceptionTypes.GeneratorExit); // GeneratorExit
+
+        AddObjToAttrs(PyBaseExceptionGroupObjectType.Shared); // BaseExceptionGroup
+        AddObjToAttrs(PyExceptionGroupObjectType.Shared); // ExceptionGroup
     }
 }

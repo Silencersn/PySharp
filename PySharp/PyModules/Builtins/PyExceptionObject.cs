@@ -1,19 +1,20 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 namespace PySharp.PyModules.Builtins;
 
 public sealed class PyExceptionObject : PyObject
 {
-    public override PyTypeObject DefaultPyType { get; }
+    public override PyTypeObject DefaultPyType => PyBaseExceptionObjectType.Shared;
 
     internal PyExceptionObject(PyTypeObject exceptionType, params IEnumerable<PyObject> args)
     {
         Debug.Assert(exceptionType.IsSubclassOf(PyBaseExceptionObjectType.Shared));
 
-        DefaultPyType = exceptionType;
+        _pyType = exceptionType;
         Args = [.. args];
     }
 
@@ -24,6 +25,9 @@ public sealed class PyExceptionObject : PyObject
     public IReadOnlyList<PyObject> Args { get; }
     public string? Traceback { get; internal set; }
     internal string? ThreadTracebackInfo { get; set; }
+
+    [MemberNotNullWhen(true, nameof(AsGroup))]
+    internal bool IsGroup => AsGroup is not null;
     internal ExceptionGroupInfo? AsGroup { get; set; }
 
     internal PyExceptionObject WithTraceback(PyCallContext context, bool overwriteExisting = false)
@@ -98,6 +102,8 @@ internal sealed class ExceptionGroupInfo
 {
     internal ExceptionGroupInfo(string message, IReadOnlyList<PyExceptionObject> exceptions)
     {
+        Debug.Assert(exceptions.Count is not 0);
+
         Message = message;
         Exceptions = exceptions;
     }
@@ -154,7 +160,7 @@ public sealed class PyBaseExceptionObjectType : PyExceptionType<PyBaseExceptionO
     protected override PyResult Repr(PyCallContext context, PyExceptionObject self)
     {
         var builder = new StringBuilder();
-        builder.Append(PyType.Name);
+        builder.Append(self.PyType.FullName);
         builder.Append('(');
 
         for (int i = 0; i < self.Args.Count; i++)
