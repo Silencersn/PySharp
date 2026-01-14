@@ -654,6 +654,11 @@ public sealed class ClassDefNode : AstStmtNode, IScopedSubNodesProvider
         if (AstUtils.TryGetDoc(Body, out var doc))
             type.PyAttributes[PySpecialNames.Doc] = doc;
 
+        if (frame.Globals.TryGetValue(PySpecialNames.Name, out var module))
+            type.ModuleAsObject = module;
+        else
+            type.ModuleAsObject = PyStrObject.FromString("builtins");
+
         var newFrame = frame.CreateClassBuildFrame(type);
         newFrame._variables = VariableScope.Variables;
 
