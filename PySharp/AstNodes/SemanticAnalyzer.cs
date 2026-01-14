@@ -116,6 +116,22 @@ public sealed class SemanticAnalyzer
                         BuildBasicScopeImpl(subNode);
                     finallyCounter--;
                 }
+                else if (node is TryStarNode tryStarNode)
+                {
+                    foreach (var subNode in tryStarNode.Body)
+                        BuildBasicScopeImpl(subNode);
+
+                    foreach (var subNode in tryStarNode.Exceptors)
+                        BuildBasicScopeImpl(subNode);
+
+                    foreach (var subNode in tryStarNode.OrElse)
+                        BuildBasicScopeImpl(subNode);
+
+                    finallyCounter++;
+                    foreach (var subNode in tryStarNode.FinalBody)
+                        BuildBasicScopeImpl(subNode);
+                    finallyCounter--;
+                }
                 else if (node is IScopedSubNodesProvider provider)
                 {
                     foreach (var subNode in provider.EnumerateSubNodesInnerScope())
