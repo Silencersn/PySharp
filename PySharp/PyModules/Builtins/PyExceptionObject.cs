@@ -1,6 +1,7 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.Utility;
+using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
@@ -56,7 +57,15 @@ public sealed class PyExceptionObject : PyObject
     internal string ToMessage(PyCallContext context)
     {
         var builder = new IndentedStringBuilder();
-        PrintMessage(builder, context);
+        if (PyBaseExceptionGroupObjectType.Shared.IsInstance(this))
+        {
+            using (builder.Indent())
+                PrintMessage(builder, context);
+        }
+        else
+        {
+            PrintMessage(builder, context);
+        }
         return builder.ToString();
     }
 
@@ -85,12 +94,24 @@ public sealed class PyExceptionObject : PyObject
                 .AppendLine(ThreadTracebackInfo);
         }
 
-        if (Traceback is null)
+        if (PyBaseExceptionGroupObjectType.Shared.IsInstance(this))
+        {
+            PrintExceptionGroupMessage(builder, context);
             return;
+        }
 
-        builder.AppendLine("Traceback (most recent call last):");
-        Traceback.Print(builder);
+        if (Traceback is not null)
+        {
+            builder.AppendLine("Traceback (most recent call last):");
+            Traceback.Print(builder);
+        }
 
+        PrintSimpleMessage(builder, context);
+        builder.AppendLine();
+    }
+
+    private void PrintSimpleMessage(IndentedStringBuilder builder, PyCallContext context)
+    {
         builder.Append(PyType.FullName);
         var result = PySpecialMethods.Str(context, this);
         if (result.IsSuccessful)
@@ -101,6 +122,50 @@ public sealed class PyExceptionObject : PyObject
         else
         {
             builder.Append(": ").Append("<exception str() failed>");
+        }
+    }
+
+    private static IndentedStringBuilder.DuringIndentActionAttacher EachLineStartsWith(IndentedStringBuilder builder, string value)
+    {
+        return builder.AttachDuringIndentAction(builder => builder.Append(value));
+    }
+
+    private void PrintExceptionGroupMessage(IndentedStringBuilder builder, PyCallContext context)
+    {
+        Debug.Assert(AsGroup is not null);
+
+        if (Traceback is not null)
+        {
+            builder.AppendLine("+ Exception Group Traceback (most recent call last):");
+            using (EachLineStartsWith(builder, "| "))
+                Traceback.Print(builder);
+        }
+
+        builder.Append("| ");
+        PrintSimpleMessage(builder, context);
+        builder.AppendLine();
+        builder.Append("+-");
+
+        using (builder.Indent())
+        {
+            int counter = 0;
+            foreach (var subExc in AsGroup.Exceptions)
+            {
+                builder.Append('+');
+                builder.AppendFormat("---------------- {0} ----------------", ++counter);
+                builder.AppendLine();
+
+                if (PyBaseExceptionGroupObjectType.Shared.IsInstance(subExc))
+                {
+                    subExc.PrintMessage(builder, context);
+                }
+                else
+                {
+                    using (EachLineStartsWith(builder, "| "))
+                        subExc.PrintMessage(builder, context);
+                }
+            }
+            builder.AppendLine("+------------------------------------");
         }
 
     }
