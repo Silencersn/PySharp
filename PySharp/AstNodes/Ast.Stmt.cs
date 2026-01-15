@@ -144,7 +144,11 @@ partial class Ast
         ArgumentNullException.ThrowIfNull(orElse);
         ArgumentNullException.ThrowIfNull(finalBody);
 
-        return new TryStarNode(body.ToImmutableArray(true), exceptors.ToImmutableArray(true), orElse.ToImmutableArray(true), finalBody.ToImmutableArray(true));
+        var handlers = exceptors.ToImmutableArray(true);
+        foreach (var handler in handlers)
+            ArgumentNullException.ThrowIfNull(handler.Type);
+
+        return new TryStarNode(body.ToImmutableArray(true), handlers, orElse.ToImmutableArray(true), finalBody.ToImmutableArray(true));
     }
 
     public static ImportNode Import(IEnumerable<AstAliasNode> names)

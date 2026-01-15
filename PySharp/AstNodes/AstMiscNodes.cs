@@ -2,6 +2,8 @@
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using System.Collections.Immutable;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.AstNodes;
 
@@ -162,36 +164,54 @@ public sealed class ExceptHandlerNode : AstNode
     public string? Name { get; }
     public ImmutableArray<AstStmtNode> Body { get; }
 
-    public bool TryHandle(PyCallContext context, PyFrame frame, PyExceptionObject exception)
+    private Func<PyExceptionObject, bool> ValidateHandler(PyCallContext context, PyFrame frame, bool isStar, out PyObject type)
     {
-        if (IsMatch())
+        if (Type is null)
         {
-            if (Name is not null)
-                frame.SetVariable(Name, exception).PyUnwrap(context);
+            Debug.Assert(!isStar);
 
-            foreach (var stmt in Body)
-            {
-                stmt.Execute(context, frame);
-            }
-
-            if (Name is not null)
-                frame.DeleteVariable(Name).PyUnwrap(context);
-
-            return true;
+            type = null!;
+            return static _ => true;
         }
 
-        return false;
-
-        bool IsMatch()
+        type = Type.GetExprValue(context, frame);
+        if (type is PyTypeObject typeObj)
         {
-            if (Type is null)
-                return true;
-
-            if (Type.GetExprValue(context, frame) is not PyTypeObject typeObj || !typeObj.IsSubclassOf(PyBaseExceptionObjectType.Shared))
+            if (!typeObj.IsSubclassOf(PyBaseExceptionObjectType.Shared))
                 throw context.ThrowableTypeError("catching classes that do not inherit from BaseException is not allowed");
 
-            return typeObj.IsInstance(exception);
+            return typeObj.IsInstance;
         }
+        else if (type is PyTupleObject tupleObj)
+        {
+            if (!tupleObj._array.All(obj => obj is PyTypeObject t && t.IsSubclassOf(PyBaseExceptionObjectType.Shared)))
+                throw context.ThrowableTypeError("catching classes that do not inherit from BaseException is not allowed");
+
+            return exc => tupleObj._array.Any(obj => ((PyTypeObject)obj).IsInstance(exc));
+        }
+        else
+        {
+            throw context.ThrowableTypeError("catching classes that do not inherit from BaseException is not allowed");
+        }
+    }
+
+    internal bool TryHandle(PyCallContext context, PyFrame frame, PyExceptionObject exception)
+    {
+        var handler = ValidateHandler(context, frame, isStar: false, out _);
+
+        if (!handler(exception))
+            return false;
+
+        if (Name is not null)
+            frame.SetVariable(Name, exception).PyUnwrap(context);
+
+        foreach (var stmt in Body)
+            stmt.Execute(context, frame);
+
+        if (Name is not null)
+            frame.DeleteVariable(Name).PyUnwrap(context);
+
+        return true;
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
