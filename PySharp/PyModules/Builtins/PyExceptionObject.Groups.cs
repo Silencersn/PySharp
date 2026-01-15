@@ -137,10 +137,6 @@ public sealed class PyBaseExceptionGroupObjectType : PyExceptionType<PyBaseExcep
             if (!exceptionGroup.IsGroup)
                 return ReturnError(PyResult.RaiseTypeError(null));
 
-            var derive = PyOperators.GetAttr(context, exceptionGroup, "derive");
-            if (derive.IsError)
-                return ReturnError(derive);
-
             List<PyExceptionObject> match = [];
             List<PyExceptionObject> rest = [];
 
@@ -199,10 +195,9 @@ public sealed class PyBaseExceptionGroupObjectType : PyExceptionType<PyBaseExcep
             PyResult<PyExceptionObject> Derive(List<PyExceptionObject> excs)
             {
                 Debug.Assert(excs.Count > 0);
-                Debug.Assert(derive.IsSuccessful);
-                var func = derive.Value;
+
                 var list = PyListObject.CreateList(excs);
-                var result = func.Call(context, [list]);
+                var result = exceptionGroup.CallMethod(context, "derive", [list]);
                 if (result.IsError)
                     return result.Of<PyExceptionObject>();
 

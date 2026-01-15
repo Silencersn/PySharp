@@ -213,16 +213,6 @@ public static class PySpecialMethods
         return PyResult.RaiseTypeError($"'{callable.PyType.FullName}' object is not callable");
     }
 
-    public static PyResult Call(this PyObject callable, PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
-    {
-        return Call(context, callable, args, kwargs);
-    }
-
-    public static PyResult Call(this PyObject callable, PyCallContext context, IReadOnlyList<PyObject> args)
-    {
-        return Call(context, callable, args, FrozenDictionary<string, PyObject>.Empty);
-    }
-
     public static PyResult<PyStrObject> Format(PyCallContext context, PyObject obj, PyObject formatSpec)
     {
         var func = obj.PyType.Slots.Format ?? PyTypeObject.DefaultFormat;

@@ -221,8 +221,7 @@ public sealed class ExceptHandlerNode : AstNode
 
         _ = ValidateHandler(context, frame, isStar: true, out var condition);
 
-        var split = PyOperators.GetAttr(context, exception, "split").PyUnwrap(context);
-        var splitResult = split.Call(context, [condition]).PyUnwrap(context);
+        var splitResult = exception.CallMethod(context, "split", [condition]).PyUnwrap(context);
         if (splitResult is not PyTupleObject tuple)
             throw context.ThrowableTypeError($"{exception.PyType.FullName}.split must return a tuple, not {splitResult.PyType.FullName}");
 

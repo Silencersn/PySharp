@@ -1187,8 +1187,7 @@ public sealed class YieldFromNode : AstExprNode
 
                 case YieldCallerAction.ActionType.Send:
                     Debug.Assert(callerAction.Value is not null);
-                    var iterSendRet = PyOperators.GetAttr(context, iter, "send").PyUnwrap(context)
-                        .Call(context, [callerAction.Value], FrozenDictionary<string, PyObject>.Empty);
+                    var iterSendRet = iter.CallMethod(context, "send", [callerAction.Value]);
                     if (iterSendRet.IsStopIteration)
                         return iterSendRet.Exception.Args.ElementAtOrDefault(0) ?? PyNoneObject.None;
                     value = iterSendRet.PyUnwrap(context);
@@ -1196,8 +1195,7 @@ public sealed class YieldFromNode : AstExprNode
 
                 case YieldCallerAction.ActionType.Throw:
                     Debug.Assert(callerAction.Value is not null);
-                    var iterThrowRet = PyOperators.GetAttr(context, iter, "throw").PyUnwrap(context)
-                        .Call(context, [callerAction.Value], FrozenDictionary<string, PyObject>.Empty);
+                    var iterThrowRet = iter.CallMethod(context, "throw", [callerAction.Value]);
                     if (iterThrowRet.IsStopIteration)
                         return iterThrowRet.Exception.Args.ElementAtOrDefault(0) ?? PyNoneObject.None;
                     value = iterThrowRet.PyUnwrap(context);
