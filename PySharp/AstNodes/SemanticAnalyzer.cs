@@ -343,6 +343,21 @@ public sealed class SemanticAnalyzer
             case AstAliasNode n:
                 currentScope.AppendVariable(n.GetLocalName(), ExprContextType.Store);
                 break;
+
+            case MatchStarNode n:
+                if (n.Name is not null)
+                    currentScope.AppendVariable(n.Name, ExprContextType.Store);
+                break;
+
+            case MatchMappingNode n:
+                if (n.Rest is not null)
+                    currentScope.AppendVariable(n.Rest, ExprContextType.Store);
+                break;
+
+            case MatchAsNode n:
+                if (n.Name is not null)
+                    currentScope.AppendVariable(n.Name, ExprContextType.Store);
+                break;
         }
     }
 
