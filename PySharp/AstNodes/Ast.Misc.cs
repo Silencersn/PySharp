@@ -1,4 +1,7 @@
-﻿namespace PySharp.AstNodes;
+﻿using PySharp.PyModules.Builtins;
+using System.Collections.Immutable;
+
+namespace PySharp.AstNodes;
 
 public static partial class Ast
 {
@@ -62,5 +65,69 @@ public static partial class Ast
         optionalVars?.CheckValidTargetThenSetContext(ExprContextType.Store);
 
         return new AstWithItemNode(contextExpr, optionalVars);
+    }
+
+    public static AstMatchCaseNode MatchCase(AstPatternNode pattern, AstExprNode? guard, IEnumerable<AstStmtNode> body)
+    {
+        ArgumentNullException.ThrowIfNull(pattern);
+        ArgumentNullException.ThrowIfNull(body);
+
+        return new AstMatchCaseNode(pattern, guard, body.ToImmutableArray(true));
+    }
+
+    public static MatchValueNode MatchValue(AstExprNode value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+
+        return new MatchValueNode(value);
+    }
+
+    public static MatchSingletonNode MatchSingleton(PyObject value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+
+        return new MatchSingletonNode(value);
+    }
+
+    public static MatchSequenceNode MatchSequence(IEnumerable<AstPatternNode> patterns)
+    {
+        ArgumentNullException.ThrowIfNull(patterns);
+
+        return new MatchSequenceNode(patterns.ToImmutableArray(true));
+    }
+
+    public static MatchMappingNode MatchMapping(IEnumerable<AstExprNode> keys, IEnumerable<AstPatternNode> patterns, string? rest)
+    {
+        ArgumentNullException.ThrowIfNull(keys);
+        ArgumentNullException.ThrowIfNull(patterns);
+
+        return new MatchMappingNode(keys.ToImmutableArray(true), patterns.ToImmutableArray(true), rest);
+    }
+
+    public static MatchClassNode MatchClass(AstExprNode cls, IEnumerable<AstPatternNode> patterns, IEnumerable<string> kwdAttrs, IEnumerable<AstPatternNode> kwdPatterns)
+    {
+        ArgumentNullException.ThrowIfNull(cls);
+        ArgumentNullException.ThrowIfNull(patterns);
+        ArgumentNullException.ThrowIfNull(kwdAttrs);
+        ArgumentNullException.ThrowIfNull(kwdPatterns);
+
+        return new MatchClassNode(cls, patterns.ToImmutableArray(true), kwdAttrs.ToImmutableArray(true), kwdPatterns.ToImmutableArray(true));
+    }
+
+    public static MatchStarNode MatchStar(string? name)
+    {
+        return new MatchStarNode(name);
+    }
+
+    public static MatchAsNode MatchAs(AstPatternNode? pattern, string? name)
+    {
+        return new MatchAsNode(pattern, name);
+    }
+
+    public static MatchOrNode MatchOr(IEnumerable<AstPatternNode> patterns)
+    {
+        ArgumentNullException.ThrowIfNull(patterns);
+
+        return new MatchOrNode(patterns.ToImmutableArray(true));
     }
 }

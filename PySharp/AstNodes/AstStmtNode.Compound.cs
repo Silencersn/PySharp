@@ -357,6 +357,30 @@ public sealed class WithNode : AstStmtNode
     }
 }
 
+public sealed class MatchNode : AstStmtNode
+{
+    internal MatchNode(AstExprNode subject, ImmutableArray<AstMatchCaseNode> cases)
+    {
+        Subject = subject;
+        Cases = cases;
+    }
+
+    public AstExprNode Subject { get; }
+    public ImmutableArray<AstMatchCaseNode> Cases { get; }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Subject;
+        foreach (var c in Cases)
+            yield return c;
+    }
+
+    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
+    {
+        throw new NotImplementedException();
+    }
+}
+
 public enum PyVariableType
 {
     Unknown,

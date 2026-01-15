@@ -280,3 +280,170 @@ public sealed class AstWithItemNode : AstNode
             yield return OptionalVars;
     }
 }
+
+public sealed class AstMatchCaseNode : AstNode
+{
+    internal AstMatchCaseNode(AstPatternNode pattern, AstExprNode? guard, ImmutableArray<AstStmtNode> body)
+    {
+        Pattern = pattern;
+        Guard = guard;
+        Body = body;
+    }
+
+    public AstPatternNode Pattern { get; }
+    public AstExprNode? Guard { get; }
+    public ImmutableArray<AstStmtNode> Body { get; }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Pattern;
+        if (Guard is not null)
+            yield return Guard;
+        foreach (var stmt in Body)
+            yield return stmt;
+    }
+}
+
+public abstract class AstPatternNode : AstNode;
+
+public sealed class MatchValueNode : AstPatternNode
+{
+    internal MatchValueNode(AstExprNode value)
+    {
+        Value = value;
+    }
+
+    public AstExprNode Value { get; }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Value;
+    }
+}
+
+public sealed class MatchSingletonNode : AstPatternNode
+{
+    internal MatchSingletonNode(PyObject value)
+    {
+        Value = value;
+    }
+
+    public PyObject Value { get; }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        return [];
+    }
+}
+
+public sealed class MatchSequenceNode : AstPatternNode
+{
+    internal MatchSequenceNode(ImmutableArray<AstPatternNode> patterns)
+    {
+        Patterns = patterns;
+    }
+
+    public ImmutableArray<AstPatternNode> Patterns { get; }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        foreach (var p in Patterns)
+            yield return p;
+    }
+}
+
+public sealed class MatchMappingNode : AstPatternNode
+{
+    internal MatchMappingNode(ImmutableArray<AstExprNode> keys, ImmutableArray<AstPatternNode> patterns, string? rest)
+    {
+        Keys = keys;
+        Patterns = patterns;
+        Rest = rest;
+    }
+
+    public ImmutableArray<AstExprNode> Keys { get; }
+    public ImmutableArray<AstPatternNode> Patterns { get; }
+    public string? Rest { get; }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        foreach (var k in Keys)
+            yield return k;
+        foreach (var p in Patterns)
+            yield return p;
+    }
+}
+
+public sealed class MatchClassNode : AstPatternNode
+{
+    internal MatchClassNode(AstExprNode cls, ImmutableArray<AstPatternNode> patterns, ImmutableArray<string> kwdAttrs, ImmutableArray<AstPatternNode> kwdPatterns)
+    {
+        Cls = cls;
+        Patterns = patterns;
+        KwdAttrs = kwdAttrs;
+        KwdPatterns = kwdPatterns;
+    }
+
+    public AstExprNode Cls { get; }
+    public ImmutableArray<AstPatternNode> Patterns { get; }
+    public ImmutableArray<string> KwdAttrs { get; }
+    public ImmutableArray<AstPatternNode> KwdPatterns { get; }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Cls;
+        foreach (var p in Patterns)
+            yield return p;
+        foreach (var kp in KwdPatterns)
+            yield return kp;
+    }
+}
+
+public sealed class MatchStarNode : AstPatternNode
+{
+    internal MatchStarNode(string? name)
+    {
+        Name = name;
+    }
+
+    public string? Name { get; }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        return [];
+    }
+}
+
+public sealed class MatchAsNode : AstPatternNode
+{
+    internal MatchAsNode(AstPatternNode? pattern, string? name)
+    {
+        Pattern = pattern;
+        Name = name;
+    }
+
+    public AstPatternNode? Pattern { get; }
+    public string? Name { get; }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        if (Pattern is not null)
+            yield return Pattern;
+    }
+}
+
+public sealed class MatchOrNode : AstPatternNode
+{
+    internal MatchOrNode(ImmutableArray<AstPatternNode> patterns)
+    {
+        Patterns = patterns;
+    }
+
+    public ImmutableArray<AstPatternNode> Patterns { get; }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        foreach (var p in Patterns)
+            yield return p;
+    }
+}

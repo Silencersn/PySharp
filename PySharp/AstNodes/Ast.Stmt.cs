@@ -1,4 +1,6 @@
-﻿namespace PySharp.AstNodes;
+﻿using System.Collections.Immutable;
+
+namespace PySharp.AstNodes;
 
 partial class Ast
 {
@@ -193,5 +195,13 @@ partial class Ast
         ArgumentNullException.ThrowIfNull(body);
 
         return new WithNode(items.ToImmutableArray(true), body.ToImmutableArray(true));
+    }
+
+    public static MatchNode Match(AstExprNode subject, IEnumerable<AstMatchCaseNode> cases)
+    {
+        ArgumentNullException.ThrowIfNull(subject);
+        ArgumentNullException.ThrowIfNull(cases);
+
+        return new MatchNode(subject, cases.ToImmutableArray(true));
     }
 }
