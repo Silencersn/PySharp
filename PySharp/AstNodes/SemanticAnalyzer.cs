@@ -4,7 +4,6 @@ using PySharp.PyRuntime.Calls;
 using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Xml.Linq;
 
 namespace PySharp.AstNodes;
 

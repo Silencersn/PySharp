@@ -56,7 +56,7 @@ public sealed class IndentedStringBuilder
             return;
 
         _isNewLine = false;
-        
+
         Debug.Assert(_duringIndentActionChain.Count == _indentLevel + 1);
         foreach (var action in _duringIndentActionChain[0])
             action(this);

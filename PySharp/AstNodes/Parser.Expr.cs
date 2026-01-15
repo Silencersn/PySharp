@@ -4,7 +4,6 @@ using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.Tokenization;
 using PySharp.Utility;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Text;

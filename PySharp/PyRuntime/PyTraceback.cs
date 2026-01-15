@@ -17,7 +17,7 @@ public sealed class TrackbackInfo
 
     internal void Print(IndentedStringBuilder builder)
     {
-        foreach (var(info, callerName) in Frames)
+        foreach (var (info, callerName) in Frames)
         {
             if (info is null)
                 continue;
