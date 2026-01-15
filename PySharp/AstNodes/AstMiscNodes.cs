@@ -230,14 +230,17 @@ public sealed class ExceptHandlerNode : AstNode
             throw context.ThrowableTypeError($"{exception.PyType.FullName}.split must return a 2-tuple, got tuple of size {tuple._array.Length}");
 
         var match = tuple._array[0];
-        if (Name is not null)
-            frame.SetVariable(Name, match).PyUnwrap(context);
+        if (match is not PyNoneObject)
+        {
+            if (Name is not null)
+                frame.SetVariable(Name, match).PyUnwrap(context);
 
-        foreach (var stmt in Body)
-            stmt.Execute(context, frame);
+            foreach (var stmt in Body)
+                stmt.Execute(context, frame);
 
-        if (Name is not null)
-            frame.DeleteVariable(Name).PyUnwrap(context);
+            if (Name is not null)
+                frame.DeleteVariable(Name).PyUnwrap(context);
+        }
 
         var restObj = tuple._array[1];
         if (restObj is PyNoneObject)
