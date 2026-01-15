@@ -186,46 +186,15 @@ public sealed class TryNode : AstStmtNode
 
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
-        bool catched = false;
-        try
+        ExecuteTry(Body, OrElse, FinalBody, context, frame, exc =>
         {
-            foreach (var stmt in Body)
-            {
-                stmt.Execute(context, frame);
-            }
-        }
-        catch (PyRuntimeException e)
-        {
-            e.PyException.WithTraceback(context, overwriteExisting: false);
-            context.EnsureFrameState(frame);
-
-            frame.Exceptions.Push(e.PyException);
-            catched = true;
-            bool handled = false;
             foreach (var exceptor in Exceptors)
             {
-                if (handled = exceptor.TryHandle(context, frame, e.PyException))
-                    break;
+                if (exceptor.TryHandle(context, frame, exc))
+                    return (true, null);
             }
-            frame.Exceptions.Pop();
-            if (!handled)
-                throw;
-        }
-        finally
-        {
-            if (!catched)
-            {
-                foreach (var stmt in OrElse)
-                {
-                    stmt.Execute(context, frame);
-                }
-            }
-
-            foreach (var stmt in FinalBody)
-            {
-                stmt.Execute(context, frame);
-            }
-        }
+            return (false, exc);
+        });
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
@@ -234,6 +203,44 @@ public sealed class TryNode : AstStmtNode
         foreach (var ex in Exceptors) yield return ex;
         foreach (var stmt in OrElse) yield return stmt;
         foreach (var stmt in FinalBody) yield return stmt;
+    }
+
+    internal static void ExecuteTry(ImmutableArray<AstStmtNode> body, ImmutableArray<AstStmtNode> orElse, ImmutableArray<AstStmtNode> finalBody,
+        PyCallContext context, PyFrame frame, Func<PyExceptionObject, (bool Handled, PyExceptionObject? RestExc)> handler)
+    {
+        bool hitExcept = false;
+        try
+        {
+            foreach (var stmt in body)
+                stmt.Execute(context, frame);
+        }
+        catch (PyRuntimeException e)
+        {
+            hitExcept = true;
+
+            e.PyException.WithTraceback(context, overwriteExisting: false);
+            context.EnsureFrameState(frame);
+
+            frame.Exceptions.Push(e.PyException);
+            var (handled, rest) = handler(e.PyException);
+            frame.Exceptions.Pop();
+            if (!handled)
+            {
+                Debug.Assert(rest is not null);
+                throw new PyRuntimeException(rest);
+            }
+        }
+        finally
+        {
+            if (!hitExcept)
+            {
+                foreach (var stmt in orElse)
+                    stmt.Execute(context, frame);
+            }
+
+            foreach (var stmt in finalBody)
+                stmt.Execute(context, frame);
+        }
     }
 }
 
@@ -254,7 +261,25 @@ public sealed class TryStarNode : AstStmtNode
 
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
-        throw new NotImplementedException();
+        TryNode.ExecuteTry(Body, OrElse, FinalBody, context, frame, exc =>
+        {
+            var rest = exc;
+            foreach (var exceptor in Exceptors)
+            {
+                if (PyBaseExceptionGroupObjectType.Shared.IsInstance(rest))
+                {
+                    Debug.Assert(exc.AsGroup is not null);
+                    if (exceptor.TryHandleStar(context, frame, rest, out rest))
+                        return (true, null);
+                }
+                else
+                {
+                    if (exceptor.TryHandle(context, frame, rest))
+                        return (true, null);
+                }
+            }
+            return (false, rest);
+        });
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()

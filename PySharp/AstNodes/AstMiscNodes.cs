@@ -214,6 +214,43 @@ public sealed class ExceptHandlerNode : AstNode
         return true;
     }
 
+    internal bool TryHandleStar(PyCallContext context, PyFrame frame, PyExceptionObject exception, [NotNullWhen(false)] out PyExceptionObject? rest)
+    {
+        Debug.Assert(PyBaseExceptionGroupObjectType.Shared.IsInstance(exception));
+        Debug.Assert(exception.IsGroup);
+
+        _ = ValidateHandler(context, frame, isStar: true, out var condition);
+
+        var split = PyOperators.GetAttr(context, exception, "split").PyUnwrap(context);
+        var splitResult = split.Call(context, [condition]).PyUnwrap(context);
+        if (splitResult is not PyTupleObject tuple)
+            throw context.ThrowableTypeError($"{exception.PyType.FullName}.split must return a tuple, not {splitResult.PyType.FullName}");
+
+        if (tuple._array.Length is not 2)
+            throw context.ThrowableTypeError($"{exception.PyType.FullName}.split must return a 2-tuple, got tuple of size {tuple._array.Length}");
+
+        var match = tuple._array[0];
+        if (Name is not null)
+            frame.SetVariable(Name, match).PyUnwrap(context);
+
+        foreach (var stmt in Body)
+            stmt.Execute(context, frame);
+
+        if (Name is not null)
+            frame.DeleteVariable(Name).PyUnwrap(context);
+
+        var restObj = tuple._array[1];
+        if (restObj is PyNoneObject)
+        {
+            rest = null;
+            return true;
+        }
+
+        rest = (restObj as PyExceptionObject) ??
+            throw context.ThrowableTypeError($"Exception expected for value, {tuple._array[1].PyType.FullName} found");
+        return false;
+    }
+
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         if (Type is not null)
