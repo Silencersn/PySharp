@@ -1,5 +1,6 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
+using PySharp.Utility;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
@@ -23,7 +24,7 @@ public sealed class PyExceptionObject : PyObject
     public PyExceptionObject? Context { get; internal set; }
     internal string? CauseReason { get; set; }
     public IReadOnlyList<PyObject> Args { get; }
-    public string? Traceback { get; internal set; }
+    public TrackbackInfo? Traceback { get; internal set; }
     internal string? ThreadTracebackInfo { get; set; }
 
     [MemberNotNullWhen(true, nameof(AsGroup))]
@@ -35,7 +36,7 @@ public sealed class PyExceptionObject : PyObject
         if (Traceback is not null && !overwriteExisting)
             return this;
 
-        Traceback = PyTraceback.PrintTraceback(context);
+        Traceback = PyTraceback.GetTracebackInfo(context);
         var frame = context.CurrentFrame;
         while (frame is not null)
         {
@@ -54,20 +55,29 @@ public sealed class PyExceptionObject : PyObject
 
     internal string ToMessage(PyCallContext context)
     {
-        var builder = new StringBuilder();
+        var builder = new IndentedStringBuilder();
+        PrintMessage(builder, context);
+        return builder.ToString();
+    }
 
+    internal void PrintMessage(IndentedStringBuilder builder, PyCallContext context)
+    {
         if (Cause is not null)
+        {
+            Cause.PrintMessage(builder, context);
             builder
-                .AppendLine(Cause.ToMessage(context))
                 .AppendLine()
                 .AppendLine(CauseReason)
                 .AppendLine();
+        }
         else if (!SuppressContext && Context is not null)
+        {
+            Context.PrintMessage(builder, context);
             builder
-                .AppendLine(Context.ToMessage(context))
                 .AppendLine()
                 .AppendLine("During handling of the above exception, another exception occurred:")
                 .AppendLine();
+        }
 
         if (ThreadTracebackInfo is not null)
         {
@@ -75,12 +85,11 @@ public sealed class PyExceptionObject : PyObject
                 .AppendLine(ThreadTracebackInfo);
         }
 
-        if (Traceback is not null)
-        {
-            builder
-                .AppendLine("Traceback (most recent call last):")
-                .Append(Traceback);
-        }
+        if (Traceback is null)
+            return;
+
+        builder.AppendLine("Traceback (most recent call last):");
+        Traceback.Print(builder);
 
         builder.Append(PyType.FullName);
         var result = PySpecialMethods.Str(context, this);
@@ -94,7 +103,6 @@ public sealed class PyExceptionObject : PyObject
             builder.Append(": ").Append("<exception str() failed>");
         }
 
-        return builder.ToString();
     }
 }
 
