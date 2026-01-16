@@ -1,4 +1,5 @@
-﻿using PySharp.Tokenization;
+﻿using PySharp.CodeAnalysis;
+using PySharp.Tokenization;
 using System.Diagnostics;
 
 namespace PySharp.AstNodes;
@@ -43,7 +44,7 @@ partial class Parser
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("case");
         var patterns = ParsePatterns();
-        var guard = CurrentTokenType is not TokenType.Colon ? ParseGuard() : null;
+        var guard = IsCurrentKeyword("if") ? ParseGuard() : null;
         EnsureTokenTypeThenMove(TokenType.Colon);
         var body = ParseBlock("case");
         return Ast.MatchCase(patterns, guard, body).With(metaInfo);
@@ -73,18 +74,103 @@ partial class Parser
     [GrammarSyntaxRule("guard")]
     private AstExprNode ParseGuard()
     {
-        throw new NotImplementedException();
-    }
-
-    [GrammarSyntaxRule("patterns")]
-    private AstPatternNode ParsePatterns()
-    {
-        throw new NotImplementedException();
+        EnsureKeywordThenMove("if");
+        return ParseNamedExpression();
     }
 
     [GrammarSyntaxRule("block")]
     private List<AstStmtNode> ParseBlock(string keyword)
     {
         return ParseSuite(keyword);
+    }
+
+    [GrammarSyntaxRule("patterns")]
+    private AstPatternNode ParsePatterns()
+    {
+        var list = ParseOpenSequencePattern(out var endsWithComma);
+        var pattern = UnwrapOrMakeSomething(list, endsWithComma, Ast.MatchSequence);
+        if (pattern is MatchStarNode)
+            throw _context.ThrowableSyntaxError("invalid syntax");
+        return pattern;
+    }
+
+    [GrammarSyntaxRule("open_sequence_pattern")]
+    private List<AstPatternNode> ParseOpenSequencePattern(out TokenInfo? endsWithComma)
+    {
+        return ParseSomethingList(ParseMaybeStarPattern, StopPredicates.UntilColon, out endsWithComma);
+    }
+
+    [GrammarSyntaxRule("pattern")]
+    private AstPatternNode ParsePattern()
+    {
+        var pos = TokenStreamPosition;
+        _ = ParseOrPattern();
+        var isAsPattern = IsCurrentKeyword("as");
+        TokenStreamPosition = pos;
+
+        if (isAsPattern)
+            return ParseAsPattern();
+
+        return ParseOrPattern();
+    }
+
+    [GrammarSyntaxRule("star_pattern")]
+    private MatchStarNode ParseStarPattern()
+    {
+        EnsureTokenTypeThenMove(TokenType.Star);
+        var name = IsCurrentKeyword("_") ? null : ParsePatternCaptureTarget();
+        return Ast.MatchStar(name);
+    }
+
+    [GrammarSyntaxRule("maybe_star_pattern")]
+    private AstPatternNode ParseMaybeStarPattern()
+    {
+        if (CurrentTokenType is TokenType.Star)
+            return ParseStarPattern();
+
+        return ParsePattern();
+    }
+
+    [GrammarSyntaxRule("closed_pattern")]
+    private AstPatternNode ParseClosedPattern()
+    {
+        throw new NotImplementedException();
+    }
+
+    [GrammarSyntaxRule("or_pattern")]
+    private AstPatternNode ParseOrPattern()
+    {
+        var list = ParseSomethingList(ParseClosedPattern, StopPredicates.UntilColon, out var endsWithComma, TokenType.Pipe);
+        return UnwrapOrMakeSomething(list, endsWithComma, Ast.MatchOr);
+    }
+
+    [GrammarSyntaxRule("as_pattern")]
+    private MatchAsNode ParseAsPattern()
+    {
+        var pattern = ParseOrPattern();
+        EnsureKeywordThenMove("as");
+        var name = ParsePatternCaptureTarget();
+        return Ast.MatchAs(pattern, name);
+    }
+
+    [GrammarSyntaxRule("pattern_capture_target")]
+    private string ParsePatternCaptureTarget()
+    {
+        var target = ParsePrimary();
+        if (target is not NameNode nameNode)
+            throw _context.ThrowableSyntaxError($"cannot use {AstUtils.GetExprNodeName(target)} as pattern target");
+
+        var name = nameNode.Id;
+        if (name is "_")
+            throw _context.ThrowableSyntaxError($"cannot use '_' as a target");
+
+        return name;
+    }
+
+    [GrammarSyntaxRule("wildcard_pattern")]
+    private MatchAsNode ParseWildcardPattern()
+    {
+        EnsureKeywordThenMove("_");
+        return Ast.MatchAs(pattern: null, name: null);
     }
 }

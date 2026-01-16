@@ -1013,6 +1013,11 @@ partial class Parser
     /// <returns></returns>
     private static AstExprNode UnwrapOrMakeTuple(List<AstExprNode> list, TokenInfo? endsWithComma)
     {
+        return UnwrapOrMakeSomething(list, endsWithComma, Ast.Tuple);
+    }
+
+    private static T UnwrapOrMakeSomething<T>(List<T> list, TokenInfo? endsWithComma, Func<List<T>, T> creator) where T : AstNode
+    {
         Debug.Assert(list.Count > 0);
 
         if (list.Count is 1 && endsWithComma is null)
@@ -1042,7 +1047,7 @@ partial class Parser
             }
         }
 
-        return Ast.Tuple(list).With(metaInfo);
+        return creator(list).With(metaInfo);
     }
 
     /// <summary>
@@ -1589,11 +1594,11 @@ partial class Parser
         }
     }
 
-    private List<T> ParseSomethingList<T>(Func<T> parse, StopPredicate predicate, out TokenInfo? endsWithComma)
+    private List<T> ParseSomethingList<T>(Func<T> parse, StopPredicate predicate, out TokenInfo? endsWithComma, TokenType separator = TokenType.Comma)
     {
         endsWithComma = null;
         List<T> list = [parse()];
-        while (CurrentTokenType is TokenType.Comma)
+        while (CurrentTokenType == separator)
         {
             MoveNextToken();
             if (predicate(CurrentToken))
