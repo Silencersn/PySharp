@@ -103,10 +103,10 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         _tokenStream.MoveNextToken();
         SkipUselessToken();
     }
-    private void EnsureTokenType(TokenType type)
+    private void EnsureTokenType(TokenType type, string message = "invalid syntax")
     {
         if (CurrentTokenType != type)
-            throw _context.ThrowableSyntaxError("invalid syntax");
+            throw _context.ThrowableSyntaxError(message);
     }
     private PyRuntimeException ThrowableSyntaxErrorCausedByInvalidEqualAfterExpr(AstExprNode expr)
     {
@@ -138,9 +138,9 @@ public sealed partial class Parser : ICodeMetaInfoProvider
             throw _context.ThrowableSyntaxError("invalid syntax");
         MoveNextToken();
     }
-    private void EnsureTokenTypeThenMove(TokenType type)
+    private void EnsureTokenTypeThenMove(TokenType type, string message = "invalid syntax")
     {
-        EnsureTokenType(type);
+        EnsureTokenType(type, message);
         MoveNextToken();
     }
     private void EnsureTokenTypeThenMoveForTest(TokenType type, AstExprNode? testExpr)
