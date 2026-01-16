@@ -19,4 +19,15 @@ partial class Parser
         public static bool UntilNewLineOrSemicolonOrEqual(TokenInfo token) => token.Type is TokenType.NewLine or TokenType.Semicolon or TokenType.Equal;
         public static bool UntilColon(TokenInfo token) => token.Type is TokenType.Colon;
     }
+
+    [AttributeUsage(AttributeTargets.Method)]
+    internal sealed class GrammarSyntaxRuleAttribute : Attribute
+    {
+        public GrammarSyntaxRuleAttribute(string ruleName)
+        {
+            RuleName = ruleName;
+        }
+
+        public string RuleName { get; }
+    }
 }
