@@ -157,7 +157,13 @@ partial class Parser
             return ParseValuePattern();
         }
 
-        throw new NotImplementedException();
+        if (CurrentTokenType is TokenType.LeftParen)
+            throw new NotImplementedException();
+
+        if (CurrentTokenType is TokenType.LeftBrace)
+            throw new NotImplementedException();
+
+        throw _context.ThrowableSyntaxError("invalid syntax");
     }
 
     [GrammarSyntaxRule("or_pattern")]
@@ -198,9 +204,16 @@ partial class Parser
     }
 
     [GrammarSyntaxRule("literal_pattern")]
-    private MatchValueNode ParseLiteralPattern()
+    private AstPatternNode ParseLiteralPattern()
     {
-        return Ast.MatchValue(ParseLiteralExpr());
+        var expr = ParseLiteralExpr();
+        if (expr is ConstantNode constantNode)
+        {
+            var obj = constantNode.Value;
+            if (obj is PyBoolObject or PyNoneObject)
+                return Ast.MatchSingleton(obj);
+        }
+        return Ast.MatchValue(expr);
     }
 
     [GrammarSyntaxRule("literal_expr")]
