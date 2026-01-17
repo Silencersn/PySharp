@@ -194,7 +194,7 @@ partial class Parser
             return ParseSequencePattern();
 
         if (CurrentTokenType is TokenType.LeftBrace)
-            throw new NotImplementedException();
+            return ParseMappingPattern();
 
         throw _context.ThrowableSyntaxError("invalid syntax");
     }
@@ -458,5 +458,68 @@ partial class Parser
     private MatchClassNode ParseClassPattern()
     {
         throw new NotImplementedException();
+    }
+
+    [GrammarSyntaxRule("mapping_pattern")]
+    private MatchMappingNode ParseMappingPattern()
+    {
+        var metaInfo = CreateAstMetaInfo();
+        EnsureTokenTypeThenMove(TokenType.LeftBrace);
+
+        if (CurrentTokenType is TokenType.RightBrace)
+        {
+            var pattern = Ast.MatchMapping(keys: [], patterns: [], rest: null);
+            MoveNextToken();
+            return pattern.With(metaInfo.WithPreviousEnd());
+        }
+
+        if (CurrentTokenType is TokenType.DoubleStar)
+        {
+            var rest = ParseDoubleStarPattern();
+            var pattern = Ast.MatchMapping(keys: [], patterns: [], rest);
+            EnsureTokenTypeThenMove(TokenType.RightBrace);
+            return pattern.With(metaInfo.WithPreviousEnd());
+        }
+
+        var items = ParseItemsPattern(out var endsWithComma);
+        if (CurrentTokenType is TokenType.DoubleStar)
+        {
+            if (endsWithComma is null)
+                throw _context.ThrowableSyntaxError("invalid syntax");
+
+            var rest = ParseDoubleStarPattern();
+            var pattern = Ast.MatchMapping(items.Select(static item => item.Key), items.Select(static item => item.Value), rest);
+            EnsureTokenTypeThenMove(TokenType.RightBrace);
+            return pattern.With(metaInfo.WithPreviousEnd());
+        }
+        else
+        {
+            var pattern = Ast.MatchMapping(items.Select(static item => item.Key), items.Select(static item => item.Value), rest: null);
+            EnsureTokenTypeThenMove(TokenType.RightBrace);
+            return pattern.With(metaInfo.WithPreviousEnd());
+        }
+    }
+
+    [GrammarSyntaxRule("key_value_pattern")]
+    private KeyValuePair<AstExprNode, AstPatternNode> ParseKeyValuePattern()
+    {
+        var key = (CurrentTokenType is TokenType.Name && !IsKeyword(CurrentToken.String))
+            ? ParseAttr() : ParseLiteralExpr();
+        EnsureTokenTypeThenMove(TokenType.Colon);
+        var value = ParsePattern();
+        return KeyValuePair.Create(key, value);
+    }
+
+    [GrammarSyntaxRule("items_pattern")]
+    private List<KeyValuePair<AstExprNode, AstPatternNode>> ParseItemsPattern(out TokenInfo? endsWithComma)
+    {
+        return ParseSomethingList(ParseKeyValuePattern, StopPredicates.UntilRightBraceOrDoubleStar, out endsWithComma);
+    }
+
+    [GrammarSyntaxRule("double_star_pattern")]
+    private string ParseDoubleStarPattern()
+    {
+        EnsureTokenTypeThenMove(TokenType.DoubleStar);
+        return ParsePatternCaptureTarget();
     }
 }

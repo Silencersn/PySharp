@@ -332,6 +332,20 @@ public sealed class SemanticAnalyzer
                     if (n.Patterns.Count(static pattern => pattern is MatchStarNode) > 1)
                         throw _context.ThrowableSyntaxError("multiple starred names in sequence pattern");
                     break;
+
+                case MatchMappingNode n:
+                    var literalKeys = n.Keys.OfType<ConstantNode>().Select(static node => node.Value).ToArray();
+                    for (int i = 1; i < literalKeys.Length; i++)
+                    {
+                        for (int j = 0; j < i; j++)
+                        {
+                            // builtin types, use == directly
+                            if (literalKeys[i] == literalKeys[j])
+                                throw _context.ThrowableSyntaxError($"mapping pattern checks duplicate key ({
+                                    PySpecialMethods.Str(_context, literalKeys[i]).PyUnwrap(_context).Value})");
+                        }
+                    }
+                    break;
             }
         }
     }
