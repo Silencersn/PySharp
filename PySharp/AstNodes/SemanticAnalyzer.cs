@@ -232,7 +232,7 @@ public sealed class SemanticAnalyzer
                     {
                         var c = n.Cases[i];
 
-                        var enumerator = EnumeratePatterns(c.Pattern).GetEnumerator();
+                        var enumerator = EnumeratePossiblyIrrefutablePatterns(c.Pattern).GetEnumerator();
 
                         MatchAsNode? irrefutablePattern = null;
                         while (enumerator.MoveNext())
@@ -260,7 +260,46 @@ public sealed class SemanticAnalyzer
                             ThrowUnreachable(irrefutablePattern);
                     }
 
-                    IEnumerable<AstPatternNode> EnumeratePatterns(AstPatternNode pattern)
+                    static IEnumerable<AstPatternNode> EnumeratePossiblyIrrefutablePatterns(AstPatternNode pattern)
+                    {
+                        yield return pattern;
+
+                        // After yield return pattern, we stop traversing child patterns except for MatchAsNode and MatchOrNode.
+                        // This is because nodes other than MatchAsNode and MatchOrNode are considered always possibly non-irrefutable.
+                        // Therefore, we only care about the existence of the pattern itself (which affects isLast).
+                        if (pattern is not (MatchAsNode or MatchOrNode))
+                            yield break;
+
+                        foreach (var node in pattern.EnumerateSubNodes())
+                        {
+                            if (node is AstPatternNode subPattern)
+                            {
+                                foreach (var p in EnumeratePossiblyIrrefutablePatterns(subPattern))
+                                    yield return p;
+                            }
+                        }
+                    }
+
+                    void ThrowUnreachable(MatchAsNode irrefutablePattern)
+                    {
+                        if (irrefutablePattern.Name is null)
+                            throw _context.ThrowableSyntaxError("wildcard makes remaining patterns unreachable");
+
+                        throw _context.ThrowableSyntaxError($"name capture '{irrefutablePattern.Name}' makes remaining patterns unreachable");
+                    }
+
+                    break;
+
+                case MatchOrNode n:
+                    var bindNames = GetBindNames(n.Patterns[0]);
+                    foreach (var p in n.Patterns.Skip(1))
+                    {
+                        var otherBindNames = GetBindNames(p);
+                        if (!bindNames.SetEquals(otherBindNames))
+                            throw _context.ThrowableSyntaxError("alternative patterns bind different names");
+                    }
+
+                    static IEnumerable<AstPatternNode> EnumeratePatterns(AstPatternNode pattern)
                     {
                         yield return pattern;
 
@@ -274,12 +313,17 @@ public sealed class SemanticAnalyzer
                         }
                     }
 
-                    void ThrowUnreachable(MatchAsNode irrefutablePattern)
+                    static HashSet<string> GetBindNames(AstPatternNode pattern)
                     {
-                        if (irrefutablePattern.Name is null)
-                            throw _context.ThrowableSyntaxError("wildcard makes remaining patterns unreachable");
-
-                        throw _context.ThrowableSyntaxError($"name capture '{irrefutablePattern.Name}' makes remaining patterns unreachable");
+                        HashSet<string> result = [];
+                        foreach (var p in EnumeratePatterns(pattern))
+                        {
+                            if (p is MatchAsNode { Name: not null } matchAs)
+                                result.Add(matchAs.Name);
+                            else if (p is MatchStarNode { Name: not null } matchStar)
+                                result.Add(matchStar.Name);
+                        }
+                        return result;
                     }
 
                     break;
