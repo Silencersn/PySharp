@@ -379,18 +379,7 @@ partial class Parser
         }
         else if (CurrentTokenType is TokenType.Number)
         {
-            // number literal
-            // supports int (with prefix), float
-            // complex is not supported currently
-
-            var value = CurrentToken.String;
-            MoveNextToken();
-
-            if (BigIntegerHelper.TryParse(value, 0, out var integer))
-                return Ast.Constant(integer).With(metaInfo);
-
-            value = value.Replace("_", string.Empty);
-            return Ast.Constant(double.Parse(value)).With(metaInfo);
+            return ParseNumber();
         }
         else if (CurrentTokenType is TokenType.Ellipsis)
         {

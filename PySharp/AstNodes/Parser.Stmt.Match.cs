@@ -1,6 +1,6 @@
-﻿using PySharp.CodeAnalysis;
+﻿using PySharp.PyModules.Builtins;
 using PySharp.Tokenization;
-using System.Diagnostics;
+using PySharp.Utility;
 
 namespace PySharp.AstNodes;
 
@@ -172,5 +172,128 @@ partial class Parser
     {
         EnsureKeywordThenMove("_");
         return Ast.MatchAs(pattern: null, name: null);
+    }
+
+    [GrammarSyntaxRule("literal_pattern")]
+    private MatchValueNode ParseLiteralPattern()
+    {
+        return Ast.MatchValue(ParseLiteralExpr());
+    }
+
+    [GrammarSyntaxRule("literal_expr")]
+    private AstExprNode ParseLiteralExpr()
+    {
+        if (CurrentTokenType is TokenType.Number)
+        {
+            var pos = TokenStreamPosition;
+
+            var signedNumber = ParseSignedNumber();
+            if (CurrentTokenType is not (TokenType.Plus or TokenType.Minus))
+                return signedNumber;
+
+            TokenStreamPosition = pos;
+            return ParseComplexNumber();
+        }
+        else if (CurrentTokenType is TokenType.String)
+        {
+            return ParseStrings();
+        }
+        else if (CurrentTokenType is TokenType.Name)
+        {
+            var metaInfo = CreateAstMetaInfo();
+            var s = CurrentToken.String;
+            return (s switch
+            {
+                "True" => Ast.Constant(PyBoolObject.True),
+                "False" => Ast.Constant(PyBoolObject.False),
+                "None" => Ast.Constant(PyNoneObject.None),
+                _ => throw _context.ThrowableSyntaxError("invalid syntax")
+            }).With(metaInfo);
+        }
+
+        throw _context.ThrowableSyntaxError("invalid syntax");
+    }
+
+    [GrammarSyntaxRule("complex_number")]
+    private BinOpNode ParseComplexNumber()
+    {
+        var real = ParseSignedRealNumber();
+        if (CurrentTokenType is not (TokenType.Plus or TokenType.Minus))
+            throw _context.ThrowableSyntaxError("invalid syntax");
+        var sign = CurrentTokenType is TokenType.Plus;
+        MoveNextToken();
+        var imag = ParseImaginaryNumber();
+        return sign ? Ast.Add(real, imag) : Ast.Sub(real, imag);
+    }
+
+    [GrammarSyntaxRule("signed_number")]
+    private AstExprNode ParseSignedNumber()
+    {
+        if (CurrentTokenType is not TokenType.Minus)
+            return ParseNumber();
+
+        var metaInfo = CreateAstMetaInfo();
+        MoveNextToken();
+        var number = ParseNumber();
+        return Ast.USub(number).With(metaInfo.WithPreviousEnd());
+    }
+
+    [GrammarSyntaxRule("signed_real_number")]
+    private AstExprNode ParseSignedRealNumber()
+    {
+        if (CurrentTokenType is not TokenType.Minus)
+            return ParseRealNumber();
+
+        var metaInfo = CreateAstMetaInfo();
+        MoveNextToken();
+        var number = ParseRealNumber();
+        return Ast.USub(number).With(metaInfo.WithPreviousEnd());
+    }
+
+    [GrammarSyntaxRule("real_number")]
+    private ConstantNode ParseRealNumber()
+    {
+        var number = ParseNumber();
+        if (number.Value is not (PyIntObject or PyFloatObject))
+            throw _context.ThrowableSyntaxError("real number required in complex literal");
+        return number;
+    }
+
+    [GrammarSyntaxRule("imaginary_number")]
+    private ConstantNode ParseImaginaryNumber()
+    {
+        var number = ParseNumber();
+        if (number.Value is not PyComplexObject)
+            throw _context.ThrowableSyntaxError("imaginary number required in complex literal");
+        return number;
+    }
+
+    [GrammarSyntaxRule("NUMBER")]
+    private ConstantNode ParseNumber()
+    {
+        var metaInfo = CreateAstMetaInfo();
+        EnsureTokenType(TokenType.Number);
+        var value = CurrentToken.String;
+        MoveNextToken();
+
+        if (value.EndsWith('j'))
+        {
+            value = value.Replace("_", string.Empty);
+            var imag = double.Parse(value.AsSpan()[..^1]);
+            var complex = PyComplexObject.FromRealImag(0, imag);
+            return Ast.Constant(complex).With(metaInfo);
+        }
+
+        if (BigIntegerHelper.TryParse(value, 0, out var integer))
+            return Ast.Constant(integer).With(metaInfo);
+
+        value = value.Replace("_", string.Empty);
+        return Ast.Constant(double.Parse(value)).With(metaInfo);
+    }
+
+    [GrammarSyntaxRule("strings")]
+    private AstExprNode ParseStrings()
+    {
+        return ParseString();
     }
 }
