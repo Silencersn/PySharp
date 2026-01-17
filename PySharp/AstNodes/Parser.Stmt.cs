@@ -1,4 +1,5 @@
-﻿using PySharp.Tokenization;
+﻿using PySharp.PyRuntime;
+using PySharp.Tokenization;
 using System.Diagnostics;
 
 namespace PySharp.AstNodes;
@@ -386,6 +387,19 @@ partial class Parser
 
         if (decorators.Count > 0 && (CurrentTokenType is not TokenType.Name || CurrentToken.StringAsSpan is not ("def" or "class")))
             throw _context.ThrowableSyntaxError("invalid syntax");
+
+        if (IsCurrentKeyword("match"))
+        {
+            var pos = TokenStreamPosition;
+            try
+            {
+                return [ParseMatchStmt()];
+            }
+            catch (PyRuntimeException)
+            {
+                TokenStreamPosition = pos;
+            }
+        }
 
         if (CurrentTokenType is TokenType.Name && CompoundStmtStartsWith.Contains(CurrentToken.String))
             return [ParseCompoundStmt(decorators)];

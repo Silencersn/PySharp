@@ -377,7 +377,12 @@ public sealed class MatchNode : AstStmtNode
 
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
-        throw new NotImplementedException();
+        var subject = Subject.GetExprValue(context, frame);
+        foreach (var c in Cases)
+        {
+            if (c.TryExecute(context, frame, subject))
+                break;
+        }
     }
 }
 

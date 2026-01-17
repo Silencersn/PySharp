@@ -302,9 +302,30 @@ public sealed class AstMatchCaseNode : AstNode
         foreach (var stmt in Body)
             yield return stmt;
     }
+
+    internal bool TryExecute(PyCallContext context, PyFrame frame, PyObject subject)
+    {
+        if (!Pattern.IsMatch(context, frame, subject))
+            return false;
+
+        if (Guard is not null)
+        {
+            var guard = Guard.GetExprValue(context, frame);
+            if (!PySpecialMethods.Bool(context, guard).PyUnwrap(context).BoolValue)
+                return false;
+        }
+
+        foreach (var stmt in Body)
+            stmt.Execute(context, frame);
+
+        return true;
+    }
 }
 
-public abstract class AstPatternNode : AstNode;
+public abstract class AstPatternNode : AstNode
+{
+    internal abstract bool IsMatch(PyCallContext context, PyFrame frame, PyObject subject);
+}
 
 public sealed class MatchValueNode : AstPatternNode
 {
@@ -318,6 +339,13 @@ public sealed class MatchValueNode : AstPatternNode
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         yield return Value;
+    }
+
+    internal override bool IsMatch(PyCallContext context, PyFrame frame, PyObject subject)
+    {
+        var value = Value.GetExprValue(context, frame);
+        var eq = PyOperators.Eq(context, subject, value).PyUnwrap(context);
+        return PySpecialMethods.Bool(context, eq).PyUnwrap(context).BoolValue;
     }
 }
 
@@ -334,6 +362,11 @@ public sealed class MatchSingletonNode : AstPatternNode
     {
         return [];
     }
+
+    internal override bool IsMatch(PyCallContext context, PyFrame frame, PyObject subject)
+    {
+        return ReferenceEquals(subject, Value);
+    }
 }
 
 public sealed class MatchSequenceNode : AstPatternNode
@@ -349,6 +382,11 @@ public sealed class MatchSequenceNode : AstPatternNode
     {
         foreach (var p in Patterns)
             yield return p;
+    }
+
+    internal override bool IsMatch(PyCallContext context, PyFrame frame, PyObject subject)
+    {
+        throw new NotImplementedException();
     }
 }
 
@@ -371,6 +409,11 @@ public sealed class MatchMappingNode : AstPatternNode
             yield return k;
         foreach (var p in Patterns)
             yield return p;
+    }
+
+    internal override bool IsMatch(PyCallContext context, PyFrame frame, PyObject subject)
+    {
+        throw new NotImplementedException();
     }
 }
 
@@ -397,6 +440,11 @@ public sealed class MatchClassNode : AstPatternNode
         foreach (var kp in KwdPatterns)
             yield return kp;
     }
+
+    internal override bool IsMatch(PyCallContext context, PyFrame frame, PyObject subject)
+    {
+        throw new NotImplementedException();
+    }
 }
 
 public sealed class MatchStarNode : AstPatternNode
@@ -411,6 +459,11 @@ public sealed class MatchStarNode : AstPatternNode
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         return [];
+    }
+
+    internal override bool IsMatch(PyCallContext context, PyFrame frame, PyObject subject)
+    {
+        throw new NotImplementedException();
     }
 }
 
@@ -430,6 +483,18 @@ public sealed class MatchAsNode : AstPatternNode
         if (Pattern is not null)
             yield return Pattern;
     }
+
+    internal override bool IsMatch(PyCallContext context, PyFrame frame, PyObject subject)
+    {
+        if (Pattern is null || Pattern.IsMatch(context, frame, subject))
+        {
+            if (Name is not null)
+                frame.SetVariable(Name, subject);
+            return true;
+        }
+
+        return false;
+    }
 }
 
 public sealed class MatchOrNode : AstPatternNode
@@ -445,5 +510,15 @@ public sealed class MatchOrNode : AstPatternNode
     {
         foreach (var p in Patterns)
             yield return p;
+    }
+
+    internal override bool IsMatch(PyCallContext context, PyFrame frame, PyObject subject)
+    {
+        foreach (var pattern in Patterns)
+        {
+            if (pattern.IsMatch(context, frame, subject))
+                return true;
+        }
+        return false;
     }
 }
