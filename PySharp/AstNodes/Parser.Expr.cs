@@ -1002,16 +1002,13 @@ partial class Parser
     /// <returns></returns>
     private static AstExprNode UnwrapOrMakeTuple(List<AstExprNode> list, TokenInfo? endsWithComma)
     {
-        return UnwrapOrMakeSomething(list, endsWithComma, Ast.Tuple);
+        return UnwrapOrPackSomething(list, endsWithComma, Ast.Tuple);
     }
 
-    private static T UnwrapOrMakeSomething<T>(List<T> list, TokenInfo? endsWithComma, Func<List<T>, T> creator) where T : AstNode
+    private static TResult PackSomething<TSource, TResult>(List<TSource> list, TokenInfo? endsWithComma, Func<List<TSource>, TResult> packer)
+        where TSource : AstNode
+        where TResult : AstNode
     {
-        Debug.Assert(list.Count > 0);
-
-        if (list.Count is 1 && endsWithComma is null)
-            return list[0];
-
         CodeMetaInfo? metaInfo = null;
 
         var startMetaInfo = list[0].MetaInfo;
@@ -1036,7 +1033,17 @@ partial class Parser
             }
         }
 
-        return creator(list).With(metaInfo);
+        return packer(list).With(metaInfo);
+    }
+
+    private static T UnwrapOrPackSomething<T>(List<T> list, TokenInfo? endsWithComma, Func<List<T>, T> packer) where T : AstNode
+    {
+        Debug.Assert(list.Count > 0);
+
+        if (list.Count is 1 && endsWithComma is null)
+            return list[0];
+
+        return PackSomething(list, endsWithComma, packer);
     }
 
     /// <summary>

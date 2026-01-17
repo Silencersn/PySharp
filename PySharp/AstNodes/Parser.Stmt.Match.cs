@@ -87,17 +87,29 @@ partial class Parser
     [GrammarSyntaxRule("patterns")]
     private AstPatternNode ParsePatterns()
     {
-        var list = ParseOpenSequencePattern(out var endsWithComma);
-        var pattern = UnwrapOrMakeSomething(list, endsWithComma, Ast.MatchSequence);
-        if (pattern is MatchStarNode)
-            throw _context.ThrowableSyntaxError("invalid syntax");
-        return pattern;
+        if (CurrentTokenType is TokenType.Star)
+            return ParseOpenSequencePattern(StopPredicates.UntilColon);
+
+        var pos = TokenStreamPosition;
+        var pattern = ParsePattern();
+        if (CurrentTokenType is not TokenType.Comma)
+            return pattern;
+
+        TokenStreamPosition = pos;
+        return ParseOpenSequencePattern(StopPredicates.UntilColon);
     }
 
     [GrammarSyntaxRule("open_sequence_pattern")]
-    private List<AstPatternNode> ParseOpenSequencePattern(out TokenInfo? endsWithComma)
+    private MatchSequenceNode ParseOpenSequencePattern(StopPredicate predicate)
     {
-        return ParseSomethingList(ParseMaybeStarPattern, StopPredicates.UntilColon, out endsWithComma);
+        var pattern = ParseMaybeStarPattern();
+        var endsWithComma = CurrentToken;
+        EnsureTokenTypeThenMove(TokenType.Comma);
+        if (predicate(CurrentToken))
+            return PackSomething([pattern], endsWithComma, Ast.MatchSequence);
+
+        var list = ParseMaybeSequencePattern(predicate, out endsWithComma);
+        return PackSomething([pattern, ..list], endsWithComma, Ast.MatchSequence);
     }
 
     [GrammarSyntaxRule("pattern")]
@@ -158,7 +170,28 @@ partial class Parser
         }
 
         if (CurrentTokenType is TokenType.LeftParen)
-            throw new NotImplementedException();
+        {
+            MoveNextToken();
+
+            if (CurrentTokenType is TokenType.Star or TokenType.RightParen)
+            {
+                TokenStreamPosition = pos;
+                return ParseSequencePattern();
+            }
+
+            var pattern = ParsePattern();
+            if (CurrentTokenType is TokenType.RightParen)
+            {
+                MoveNextToken();
+                return pattern;
+            }
+
+            TokenStreamPosition = pos;
+            return ParseSequencePattern();
+        }
+
+        if (CurrentTokenType is TokenType.LeftSquareBracket)
+            return ParseSequencePattern();
 
         if (CurrentTokenType is TokenType.LeftBrace)
             throw new NotImplementedException();
@@ -170,7 +203,7 @@ partial class Parser
     private AstPatternNode ParseOrPattern()
     {
         var list = ParseSomethingList(ParseClosedPattern, StopPredicates.UntilColon, out var endsWithComma, TokenType.Pipe);
-        return UnwrapOrMakeSomething(list, endsWithComma, Ast.MatchOr);
+        return UnwrapOrPackSomething(list, endsWithComma, Ast.MatchOr);
     }
 
     [GrammarSyntaxRule("as_pattern")]
@@ -372,6 +405,53 @@ partial class Parser
 
         TokenStreamPosition = pos;
         return ParseAttr();
+    }
+    
+    [GrammarSyntaxRule("maybe_sequence_pattern")]
+    private List<AstPatternNode> ParseMaybeSequencePattern(StopPredicate predicate, out TokenInfo? endsWithComma)
+    {
+        return ParseSomethingList(ParseMaybeStarPattern, predicate, out endsWithComma);
+    }
+
+    [GrammarSyntaxRule("sequence_pattern")]
+    private MatchSequenceNode ParseSequencePattern()
+    {
+        var metaInfo = CreateAstMetaInfo();
+        if (CurrentTokenType is TokenType.LeftSquareBracket)
+        {
+            MoveNextToken();
+            if (CurrentTokenType is TokenType.RightSquareBracket)
+            {
+                var pattern = Ast.MatchSequence([]);
+                MoveNextToken();
+                return pattern.With(metaInfo.WithPreviousEnd());
+            }
+            else
+            {
+                var list = ParseMaybeSequencePattern(StopPredicates.UntilRightSquareBracket, out var endsWithComma);
+                var pattern = PackSomething(list, endsWithComma, Ast.MatchSequence);
+                EnsureTokenTypeThenMove(TokenType.RightSquareBracket);
+                return pattern.With(metaInfo.WithPreviousEnd());
+            }
+        }
+        else if (CurrentTokenType is TokenType.LeftParen)
+        {
+            MoveNextToken();
+            if (CurrentTokenType is TokenType.RightParen)
+            {
+                var pattern = Ast.MatchSequence([]);
+                MoveNextToken();
+                return pattern.With(metaInfo.WithPreviousEnd());
+            }
+            else
+            {
+                var pattern = ParseOpenSequencePattern(StopPredicates.UntilRightParen);
+                EnsureTokenTypeThenMove(TokenType.RightParen);
+                return pattern.With(metaInfo.WithPreviousEnd());
+            }
+        }
+
+        throw _context.ThrowableSyntaxError("invalid syntax");
     }
 
     [GrammarSyntaxRule("class_pattern")]
