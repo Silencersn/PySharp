@@ -226,6 +226,63 @@ public sealed class SemanticAnalyzer
                         }
                     }
                     break;
+
+                case MatchNode n:
+                    for (int i = 0; i < n.Cases.Length; i++)
+                    {
+                        var c = n.Cases[i];
+
+                        var enumerator = EnumeratePatterns(c.Pattern).GetEnumerator();
+
+                        MatchAsNode? irrefutablePattern = null;
+                        while (enumerator.MoveNext())
+                        {
+                            if (enumerator.Current is not MatchAsNode { Pattern: null } matchAs)
+                                continue;
+
+                            // wildcard_pattern or capture_pattern
+                            irrefutablePattern = matchAs;
+                            break;
+                        }
+
+                        if (irrefutablePattern is null)
+                            continue;
+
+                        var isLast = !enumerator.MoveNext();
+
+                        if (!isLast)
+                            ThrowUnreachable(irrefutablePattern);
+
+                        if (c.Guard is not null)
+                            continue;
+
+                        if (i < n.Cases.Length - 1)
+                            ThrowUnreachable(irrefutablePattern);
+                    }
+
+                    IEnumerable<AstPatternNode> EnumeratePatterns(AstPatternNode pattern)
+                    {
+                        yield return pattern;
+
+                        foreach (var node in pattern.EnumerateSubNodes())
+                        {
+                            if (node is AstPatternNode subPattern)
+                            {
+                                foreach (var p in EnumeratePatterns(subPattern))
+                                    yield return p;
+                            }
+                        }
+                    }
+
+                    void ThrowUnreachable(MatchAsNode irrefutablePattern)
+                    {
+                        if (irrefutablePattern.Name is null)
+                            throw _context.ThrowableSyntaxError("wildcard makes remaining patterns unreachable");
+
+                        throw _context.ThrowableSyntaxError($"name capture '{irrefutablePattern.Name}' makes remaining patterns unreachable");
+                    }
+
+                    break;
             }
         }
     }
