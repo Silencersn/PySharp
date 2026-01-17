@@ -35,39 +35,47 @@ public sealed class SemanticAnalyzer
         _context = context;
     }
 
+    private sealed class ScopeStats
+    {
+        public readonly VariableScope Scope;
+        public int LoopDepth;
+        public readonly Stack<AstExprNode> ComprehensionDepth;
+        public int FinallyDepth;
+        public AstExprNode? CurrentComprehension => ComprehensionDepth.TryPeek(out var comp) ? comp : null;
+
+        internal ScopeStats(VariableScope scope)
+        {
+            Scope = scope;
+            LoopDepth = 0;
+            ComprehensionDepth = [];
+        }
+    }
+
     internal RootVariableScope BuildBasicScope(AstModNode root)
     {
-        Stack<VariableScope> scopeStack = [];
+        Stack<ScopeStats> scopeStatsStack = [];
         var rootScope = new RootVariableScope(root);
-        VariableScope currentScope = rootScope;
-
-        Stack<int> loopDepthStack = [];
-        int currentLoopDepth = 0;
-
-        Stack<AstExprNode?> comprehensionStack = [];
-        AstExprNode? currentComprehension = null;
+        var currentScopeStats = new ScopeStats(rootScope);
 
         Stack<AstNode> nodesToRoot = [];
         nodesToRoot.Push(root);
 
-        int finallyCounter = 0;
-
         foreach (var subNode in root.EnumerateSubNodes())
             BuildBasicScopeImpl(subNode);
-        Debug.Assert(scopeStack.Count is 0);
+        Debug.Assert(scopeStatsStack.Count is 0);
         return rootScope;
 
         void BuildBasicScopeImpl(AstNode node)
         {
             CheckValid(node);
-            TryAppendVariableTo(currentScope, node);
+            TryAppendVariableTo(currentScopeStats.Scope, node);
 
             VariableScope? scope = node switch
             {
                 ModuleNode n => throw new UnreachableException(),
-                ClassDefNode n => new ClassVariableScope(n, currentScope),
-                FunctionDefNode n => new FunctionVariableScope(n, currentScope),
-                LambdaNode n => new LambdaVariableScope(n, currentScope),
+                ClassDefNode n => new ClassVariableScope(n, currentScopeStats.Scope),
+                FunctionDefNode n => new FunctionVariableScope(n, currentScopeStats.Scope),
+                LambdaNode n => new LambdaVariableScope(n, currentScopeStats.Scope),
                 _ => null
             };
 
@@ -81,22 +89,18 @@ public sealed class SemanticAnalyzer
                         BuildBasicScopeImpl(subNode);
                 }
 
-                scopeStack.Push(currentScope);
-                currentScope = scope;
-
-                loopDepthStack.Push(currentLoopDepth);
-                currentLoopDepth = 0;
+                scopeStatsStack.Push(currentScopeStats);
+                currentScopeStats = new ScopeStats(scope);
             }
 
             if (node is ForNode or WhileNode)
             {
-                currentLoopDepth++;
+                currentScopeStats.LoopDepth++;
             }
 
-            if (node is ListCompNode or SetCompNode or DictCompNode or GeneratorExpNode)
+            if (node is AstExprNode expr && expr is ListCompNode or SetCompNode or DictCompNode or GeneratorExpNode)
             {
-                comprehensionStack.Push(currentComprehension);
-                currentComprehension = (AstExprNode)node;
+                currentScopeStats.ComprehensionDepth.Push(expr);
             }
 
             {
@@ -111,10 +115,10 @@ public sealed class SemanticAnalyzer
                     foreach (var subNode in tryNode.OrElse)
                         BuildBasicScopeImpl(subNode);
 
-                    finallyCounter++;
+                    currentScopeStats.FinallyDepth++;
                     foreach (var subNode in tryNode.FinalBody)
                         BuildBasicScopeImpl(subNode);
-                    finallyCounter--;
+                    currentScopeStats.FinallyDepth--;
                 }
                 else if (node is TryStarNode tryStarNode)
                 {
@@ -127,10 +131,10 @@ public sealed class SemanticAnalyzer
                     foreach (var subNode in tryStarNode.OrElse)
                         BuildBasicScopeImpl(subNode);
 
-                    finallyCounter++;
+                    currentScopeStats.FinallyDepth++;
                     foreach (var subNode in tryStarNode.FinalBody)
                         BuildBasicScopeImpl(subNode);
-                    finallyCounter--;
+                    currentScopeStats.FinallyDepth--;
                 }
                 else if (node is IScopedSubNodesProvider provider)
                 {
@@ -146,22 +150,20 @@ public sealed class SemanticAnalyzer
 
             if (node is ListCompNode or SetCompNode or DictCompNode or GeneratorExpNode)
             {
-                currentComprehension = comprehensionStack.Pop();
+                currentScopeStats.ComprehensionDepth.Pop();
             }
 
             if (node is ForNode or WhileNode)
             {
-                currentLoopDepth--;
+                currentScopeStats.LoopDepth--;
             }
 
             if (scope is not null)
             {
-                currentScope = scopeStack.Pop();
+                Debug.Assert(currentScopeStats.CurrentComprehension is null);
+                Debug.Assert(currentScopeStats.LoopDepth is 0);
 
-                Debug.Assert(currentComprehension is null);
-
-                Debug.Assert(currentLoopDepth is 0);
-                currentLoopDepth = loopDepthStack.Pop();
+                currentScopeStats = scopeStatsStack.Pop();
             }
 
             var poppedNode = nodesToRoot.Pop();
@@ -170,46 +172,44 @@ public sealed class SemanticAnalyzer
 
         void CheckValid(AstNode node)
         {
-            // TOTO: no return / continue / break in finally
-
             switch (node)
             {
                 case BreakNode:
-                    if (currentLoopDepth is 0)
+                    if (currentScopeStats.LoopDepth is 0)
                         throw _context.ThrowableSyntaxError("'break' outside loop");
-                    if (finallyCounter > 0)
+                    if (currentScopeStats.FinallyDepth > 0)
                         CheckControlStmtNotInFinallyUntil(nodesToRoot, static n => n is ForNode or WhileNode, "'break' in a 'finally' block");
                     break;
 
                 case ContinueNode:
-                    if (currentLoopDepth is 0)
+                    if (currentScopeStats.LoopDepth is 0)
                         throw _context.ThrowableSyntaxError("'continue' outside loop");
-                    if (finallyCounter > 0)
+                    if (currentScopeStats.FinallyDepth > 0)
                         CheckControlStmtNotInFinallyUntil(nodesToRoot, static n => n is ForNode or WhileNode, "'continue' in a 'finally' block");
                     break;
 
                 case ReturnNode:
-                    if (currentScope is not FunctionVariableScope)
+                    if (currentScopeStats.Scope is not FunctionVariableScope)
                         throw _context.ThrowableSyntaxError("'return' outside function");
-                    if (finallyCounter > 0)
+                    if (currentScopeStats.FinallyDepth > 0)
                         CheckControlStmtNotInFinallyUntil(nodesToRoot, static n => n is FunctionDefNode, "'return' in a 'finally' block");
                     break;
 
                 case YieldNode:
-                    if (currentComprehension is not null)
-                        throw _context.ThrowableSyntaxError($"'yield' inside {AstUtils.GetExprNodeName(currentComprehension)}");
+                    if (currentScopeStats.CurrentComprehension is not null)
+                        throw _context.ThrowableSyntaxError($"'yield' inside {AstUtils.GetExprNodeName(currentScopeStats.CurrentComprehension)}");
 
-                    if (currentScope is not CallableVariableScope callableYieldScope)
+                    if (currentScopeStats.Scope is not CallableVariableScope callableYieldScope)
                         throw _context.ThrowableSyntaxError("'yield' outside function");
 
                     callableYieldScope.HasYield = true;
                     break;
 
                 case YieldFromNode:
-                    if (currentComprehension is not null)
-                        throw _context.ThrowableSyntaxError($"'yield from' inside {AstUtils.GetExprNodeName(currentComprehension)}");
+                    if (currentScopeStats.CurrentComprehension is not null)
+                        throw _context.ThrowableSyntaxError($"'yield from' inside {AstUtils.GetExprNodeName(currentScopeStats.CurrentComprehension)}");
 
-                    if (currentScope is not CallableVariableScope callableYieldFromScope)
+                    if (currentScopeStats.Scope is not CallableVariableScope callableYieldFromScope)
                         throw _context.ThrowableSyntaxError("'yield from' outside function");
 
                     callableYieldFromScope.HasYield = true;
