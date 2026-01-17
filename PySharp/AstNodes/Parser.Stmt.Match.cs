@@ -134,6 +134,29 @@ partial class Parser
     [GrammarSyntaxRule("closed_pattern")]
     private AstPatternNode ParseClosedPattern()
     {
+        var pos = TokenStreamPosition;
+
+        if (CurrentTokenType is TokenType.Number or TokenType.String or TokenType.FStringStart ||
+            CurrentTokenType is TokenType.Name && IsKeyword(CurrentToken.String))
+            return ParseLiteralPattern();
+
+        if (CurrentTokenType is TokenType.Name)
+        {
+            if (CurrentToken.String is "_")
+                return ParseWildcardPattern();
+
+            var nameOrAttr = ParseNameOrAttr();
+            TokenStreamPosition = pos;
+
+            if (CurrentTokenType is TokenType.LeftParen)
+                return ParseClassPattern();
+
+            if (nameOrAttr is NameNode)
+                return ParseCapturePattern();
+
+            return ParseValuePattern();
+        }
+
         throw new NotImplementedException();
     }
 
@@ -217,13 +240,14 @@ partial class Parser
     [GrammarSyntaxRule("complex_number")]
     private BinOpNode ParseComplexNumber()
     {
+        var metaInfo = CreateAstMetaInfo();
         var real = ParseSignedRealNumber();
         if (CurrentTokenType is not (TokenType.Plus or TokenType.Minus))
             throw _context.ThrowableSyntaxError("invalid syntax");
         var sign = CurrentTokenType is TokenType.Plus;
         MoveNextToken();
         var imag = ParseImaginaryNumber();
-        return sign ? Ast.Add(real, imag) : Ast.Sub(real, imag);
+        return (sign ? Ast.Add(real, imag) : Ast.Sub(real, imag)).With(metaInfo.WithPreviousEnd());
     }
 
     [GrammarSyntaxRule("signed_number")]
@@ -295,5 +319,51 @@ partial class Parser
     private AstExprNode ParseStrings()
     {
         return ParseString();
+    }
+
+    [GrammarSyntaxRule("capture_pattern")]
+    private MatchAsNode ParseCapturePattern()
+    {
+        var metaInfo = CreateAstMetaInfo();
+        var name = ParsePatternCaptureTarget();
+        return Ast.MatchAs(pattern: null, name).With(metaInfo);
+    }
+
+    [GrammarSyntaxRule("value_pattern")]
+    private MatchValueNode ParseValuePattern()
+    {
+        var attr = ParseAttr();
+        if (CurrentTokenType is TokenType.Dot or TokenType.LeftParen or TokenType.Equal)
+            throw _context.ThrowableSyntaxError("invalid syntax");
+        return Ast.MatchValue(attr);
+    }
+
+    [GrammarSyntaxRule("attr")]
+    private AttributeNode ParseAttr()
+    {
+        var metaInfo = CreateAstMetaInfo();
+        var nameOrAttr = ParseNameOrAttr();
+        EnsureTokenTypeThenMove(TokenType.Dot);
+        var name = ParseIdentifier();
+        return Ast.Attribute(nameOrAttr, name).With(metaInfo);
+    }
+
+    [GrammarSyntaxRule("name_or_attr")]
+    private AstExprNode ParseNameOrAttr()
+    {
+        var pos = TokenStreamPosition;
+        var metaInfo = CreateAstMetaInfo();
+        var name = ParseIdentifier();
+        if (CurrentTokenType is not TokenType.Dot)
+            return Ast.Name(name).With(metaInfo);
+
+        TokenStreamPosition = pos;
+        return ParseAttr();
+    }
+
+    [GrammarSyntaxRule("class_pattern")]
+    private MatchClassNode ParseClassPattern()
+    {
+        throw new NotImplementedException();
     }
 }
