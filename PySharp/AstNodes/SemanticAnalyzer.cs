@@ -327,6 +327,11 @@ public sealed class SemanticAnalyzer
                     }
 
                     break;
+
+                case MatchSequenceNode n:
+                    if (n.Patterns.Count(static pattern => pattern is MatchStarNode) > 1)
+                        throw _context.ThrowableSyntaxError("multiple starred names in sequence pattern");
+                    break;
             }
         }
     }

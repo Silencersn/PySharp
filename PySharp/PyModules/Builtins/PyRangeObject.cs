@@ -8,7 +8,7 @@ public class PyRangeObject : PyObject
 {
     public override PyTypeObject DefaultPyType => PyRangeObjectType.Shared;
 
-    private readonly BigInteger _start, _stop, _step, _len;
+    internal readonly BigInteger _start, _stop, _step, _len;
     internal readonly bool _isLong;
 
     private PyRangeObject(BigInteger start, BigInteger stop, BigInteger step)

@@ -4,6 +4,7 @@ using PySharp.PyRuntime.Calls;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
 
 namespace PySharp.AstNodes;
 
@@ -386,7 +387,74 @@ public sealed class MatchSequenceNode : AstPatternNode
 
     internal override bool IsMatch(PyCallContext context, PyFrame frame, PyObject subject)
     {
-        throw new NotImplementedException();
+        if (!IsSequenceForMatch(subject, out var result))
+            return false;
+
+        var (sequence, length) = result;
+        var (matchStarIndex, matchStar) = Patterns.Index().FirstOrDefault(static item => item.Item is MatchStarNode, (-1, null!));
+
+        if (matchStarIndex is -1)
+        {
+            if (length != Patterns.Length)
+                return false;
+
+            return IsMatchSequence(sequence, Patterns.AsSpan());
+        }
+
+        if (length < Patterns.Length - 1)
+            return false;
+
+        var cache = sequence.ToArray();
+        if (!IsMatchSequence(cache.Take(matchStarIndex), Patterns.AsSpan(..matchStarIndex)))
+            return false;
+
+        var lastCount = Patterns.Length - matchStarIndex - 1;
+        if (!IsMatchSequence(cache.TakeLast(lastCount), Patterns.AsSpan((matchStarIndex + 1)..)))
+            return false;
+
+        var name = ((MatchStarNode)matchStar).Name;
+        if (name is not null)
+        {
+            var list = PyListObject.CreateList(cache.Skip(matchStarIndex).SkipLast(lastCount));
+            frame.SetVariable(name, list);
+        }
+
+        return true;
+
+        bool IsMatchSequence(IEnumerable<PyObject> items, ReadOnlySpan<AstPatternNode> patterns)
+        {
+            var index = 0;
+            foreach (var item in items)
+            {
+                if (!patterns[index++].IsMatch(context, frame, item))
+                    return false;
+            }
+            return true;
+        }
+    }
+
+    private static bool IsSequenceForMatch(PyObject obj, out (IEnumerable<PyObject> Sequence, BigInteger Length) result)
+    {
+        switch (obj)
+        {
+            case PyListObject list:
+                result = (list._list, list._list.Count);
+                return true;
+
+            case PyTupleObject tuple:
+                result = (tuple._array, tuple._array.Length);
+                return true;
+
+            case PyRangeObject range:
+                result = (range.EnumerateRange(), range._len);
+                return true;
+
+            case PyStrObject:
+            default:
+                // TODO: support other valid sequences
+                result = default;
+                return false;
+        }
     }
 }
 
@@ -463,7 +531,7 @@ public sealed class MatchStarNode : AstPatternNode
 
     internal override bool IsMatch(PyCallContext context, PyFrame frame, PyObject subject)
     {
-        throw new NotImplementedException();
+        throw new UnreachableException();
     }
 }
 
