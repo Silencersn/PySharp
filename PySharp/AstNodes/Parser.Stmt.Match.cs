@@ -109,7 +109,7 @@ partial class Parser
             return PackSomething([pattern], endsWithComma, Ast.MatchSequence);
 
         var list = ParseMaybeSequencePattern(predicate, out endsWithComma);
-        return PackSomething([pattern, ..list], endsWithComma, Ast.MatchSequence);
+        return PackSomething([pattern, .. list], endsWithComma, Ast.MatchSequence);
     }
 
     [GrammarSyntaxRule("pattern")]
@@ -407,7 +407,7 @@ partial class Parser
         TokenStreamPosition = pos;
         return ParseAttr();
     }
-    
+
     [GrammarSyntaxRule("maybe_sequence_pattern")]
     private List<AstPatternNode> ParseMaybeSequencePattern(StopPredicate predicate, out TokenInfo? endsWithComma)
     {
@@ -510,7 +510,7 @@ partial class Parser
     {
         return ParseSomethingList(ParseKeyValuePattern, StopPredicates.UntilRightBraceOrDoubleStar, out endsWithComma);
     }
-    
+
     [GrammarSyntaxRule("double_star_pattern")]
     private string ParseDoubleStarPattern()
     {
@@ -585,7 +585,7 @@ partial class Parser
 
         if (IsKeyword(CurrentToken.String))
             return false;
-        
+
         var pos = TokenStreamPosition;
         MoveNextToken();
         var result = CurrentTokenType is TokenType.Equal;

@@ -339,8 +339,7 @@ public sealed class SemanticAnalyzer
                     {
                         // builtin types, use == directly
                         if (key1 == key2)
-                            throw _context.ThrowableSyntaxError($"mapping pattern checks duplicate key ({
-                                PySpecialMethods.Str(_context, key1).PyUnwrap(_context).Value})");
+                            throw _context.ThrowableSyntaxError($"mapping pattern checks duplicate key ({PySpecialMethods.Str(_context, key1).PyUnwrap(_context).Value})");
                     }
                     break;
 

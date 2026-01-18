@@ -511,7 +511,7 @@ public sealed class MatchMappingNode : AstPatternNode
             var restDict = PyDictObject.CreateDict(rest);
             frame.SetVariable(Rest, restDict);
         }
-        
+
         return true;
     }
 
@@ -567,12 +567,12 @@ public sealed class MatchClassNode : AstPatternNode
         if (Patterns.Length is not 0)
         {
             var matchArgs = PyOperators.GetAttr(context, type, PySpecialNames.MatchArgs).PyUnwrap(context);
-            
+
             if (matchArgs is not PyTupleObject tuple)
                 throw context.ThrowableTypeError($"{type.FullName}.{PySpecialNames.MatchArgs} must be a tuple (got {matchArgs.PyType.FullName})");
             if (Patterns.Length > tuple._array.Length)
                 throw context.ThrowableTypeError($"{type.FullName}() accepts {tuple._array.Length} positional sub-patterns ({Patterns.Length} given)");
-            
+
             var attrs = new List<string>(Patterns.Length);
             foreach (var arg in tuple._array.Take(Patterns.Length))
             {
