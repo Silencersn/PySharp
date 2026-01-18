@@ -400,16 +400,12 @@ partial class Parser
 
     }
 
-    /// <summary>
-    /// slice_item: <see cref="ParseExpression">expression</see> | proper_slice
-    /// <br/> proper_slice: [lower_bound] ":" [upper_bound] [ ":" [stride] ]
-    /// <br/> lower_bound: <see cref="ParseExpression">expression</see>
-    /// <br/> upper_bound: <see cref="ParseExpression">expression</see>
-    /// <br/> stride: <see cref="ParseExpression">expression</see>
-    /// </summary>
-    /// <returns></returns>
-    private AstExprNode ParseSliceItem()
+    [GrammarSyntaxRule("slice")]
+    private AstExprNode ParseSlice()
     {
+        if (TestIsAssignmentExpression())
+            return ParseAssignmentExpression();
+
         AstExprNode? lowerBound, upperBound, stride;
         if (CurrentTokenType is TokenType.Colon)
         {
@@ -456,97 +452,92 @@ partial class Parser
         // the slice item has 2 colon, optional lowerBound, optional upperBound, stride
         stride = ParseExpression();
         return Ast.Slice(lowerBound, upperBound, stride);
+
     }
 
-    /// <summary>
-    /// slice_list: <see cref="ParseSliceItem">slice_item</see> ("," <see cref="ParseSliceItem">slice_item</see>)* [","]
-    /// </summary>
-    /// <returns></returns>
-    private List<AstExprNode> ParseSliceList(out TokenInfo? endsWithComma)
+    [GrammarSyntaxRule("slices")]
+    private AstExprNode ParseSlices()
     {
-        return ParseSomethingList(ParseSliceItem, StopPredicates.UntilRightSquareBracket, out endsWithComma);
+        var list = ParseSomethingList(ParseSliceOrStarredExpression, StopPredicates.UntilRightSquareBracket, out var endsWithComma);
+
+        // return directly if it is single slice without comma
+        if (list.Count is 1 && endsWithComma is null && list[0] is not StarredNode)
+            return list[0];
+
+        // single StarredNode is allowed
+        return PackSomething(list, endsWithComma, Ast.Tuple);
+
+        AstExprNode ParseSliceOrStarredExpression()
+        {
+            if (CurrentTokenType is TokenType.Star)
+                return ParseStarredExpression();
+
+            return ParseSlice();
+        }
     }
 
-    /// <summary>
-    /// primary: <see cref="ParseAtom">atom</see> | attributeref | subscription | slicing | call
-    /// <br/> attributeref: primary "." <see cref="ParseIdentifier">identifier</see>
-    /// <br/> subscription: primary "[" <see cref="ParseFlexibleExpressionList(StopPredicate, out bool)">flexible_expression_list</see> "]"
-    /// <br/> slicing: primary "[" <see cref="ParseSliceList(out bool)">slice_list</see> "]"
-    /// <br/> call: primary "(" [<see cref="ParseArgumentList">argument_list</see> | <see cref="ParseComprehension">comprehension</see>] ")"
-    /// </summary>
-    /// <returns></returns>
-    /// <exception cref="PyRuntimeException"></exception>
+    [GrammarSyntaxRule("primary")]
     private AstExprNode ParsePrimary()
     {
         var startMetaInfo = CreateAstMetaInfo();
-        var expr = ParseAtom();
-        while (CurrentTokenType is TokenType.LeftSquareBracket or TokenType.LeftParen or TokenType.Dot)
+        var primary = ParseAtom();
+
+        while (CurrentTokenType is TokenType.Dot or TokenType.LeftParen or TokenType.LeftSquareBracket)
         {
-            if (CurrentTokenType is TokenType.LeftSquareBracket)
+            if (CurrentTokenType is TokenType.Dot)
             {
-                var currentMetaInfo = startMetaInfo.WithCrucial();
                 MoveNextToken();
-
-                var index = TokenStreamPosition;
-                AstExprNode nextExpr;
-                try
-                {
-                    // try parse subscription
-                    // lst[*expr1, expr2 := expr3]
-
-                    var list = ParseFlexibleExpressionList(StopPredicates.UntilRightSquareBracket, out var endsWithComma);
-                    nextExpr = Ast.Subscript(expr, UnwrapOrMakeTuple(list, endsWithComma)).With(currentMetaInfo.WithAllEnd());
-                    EnsureTokenTypeThenMove(TokenType.RightSquareBracket);
-                }
-                catch (PyRuntimeException)
-                {
-                    // parse slicing
-                    // lst[expr:expr, ::, expr]
-
-                    TokenStreamPosition = index;
-                    var sliceList = ParseSliceList(out var endsWithComma);
-                    nextExpr = Ast.Subscript(expr, UnwrapOrMakeTuple(sliceList, endsWithComma)).With(currentMetaInfo.WithAllEnd());
-                    EnsureTokenTypeThenMove(TokenType.RightSquareBracket);
-                }
-                expr = nextExpr;
+                var name = ParseIdentifier();
+                primary = Ast.Attribute(primary, name).With(startMetaInfo.WithPreviousEnd());
             }
             else if (CurrentTokenType is TokenType.LeftParen)
             {
                 MoveNextToken();
 
-                var index = TokenStreamPosition;
-                try
+                var pos = TokenStreamPosition;
+                var isGenExp = CurrentTokenType is not (TokenType.Star or TokenType.DoubleStar or TokenType.RightParen);
+                if (isGenExp)
                 {
-                    // primary "(" argument_list ")"
-
-                    var (args, kwargs) = ParseArgumentList();
-                    expr = Ast.Call(expr, args, kwargs).With(startMetaInfo.WithEnd());
+                    _ = ParseNamedExpression();
+                    isGenExp = IsCurrentKeyword("for");
                 }
-                catch (PyRuntimeException)
-                {
-                    // primary "(" comprehension ")"
+                TokenStreamPosition = pos;
 
-                    TokenStreamPosition = index;
+                if (isGenExp)
+                {
                     var metaInfo = CreateAstMetaInfo();
                     var (elts, generators) = ParseComprehension();
-                    expr = Ast.Call(expr, [Ast.GeneratorExp(elts, generators).With(metaInfo.WithPreviousEnd())], []).With(startMetaInfo.WithEnd());
+                    var genExp = Ast.GeneratorExp(elts, generators).With(metaInfo.WithPreviousEnd());
+                    primary = Ast.Call(primary, [genExp], []).With(startMetaInfo.WithEnd());
                 }
+                else
+                {
+                    var (args, kwargs) = ParseArgumentList();
+                    primary = Ast.Call(primary, args, kwargs).With(startMetaInfo.WithEnd());
+                }
+
                 EnsureTokenTypeThenMove(TokenType.RightParen);
             }
-            else if (CurrentTokenType is TokenType.Dot)
+            else if (CurrentTokenType is TokenType.LeftSquareBracket)
             {
-                // primary.attr
-
+                var currentMetaInfo = startMetaInfo.WithCrucial();
                 MoveNextToken();
-                expr = Ast.Attribute(expr, ParseIdentifier()).With(startMetaInfo.WithPreviousEnd());
+
+                if (CurrentTokenType is TokenType.RightSquareBracket)
+                    throw _context.ThrowableSyntaxError("invalid syntax. Perhaps you forgot a comma?");
+
+                var slices = ParseSlices();
+                EnsureTokenTypeThenMove(TokenType.RightSquareBracket);
+
+                primary = Ast.Subscript(primary, slices).With(currentMetaInfo.WithAllEnd());
             }
             else
             {
-                Debug.Fail("unreachable");
+                throw new UnreachableException();
             }
         }
 
-        return expr;
+        return primary;
     }
 
     [GrammarSyntaxRule("await_primary")]
@@ -837,19 +828,25 @@ partial class Parser
     [GrammarSyntaxRule("named_expression")]
     private AstExprNode ParseNamedExpression()
     {
-        var pos = TokenStreamPosition;
-        var isAssignment = CurrentTokenType is TokenType.Name;
-        MoveNextToken();
-        isAssignment &= CurrentTokenType is TokenType.ColonEqual;
-        TokenStreamPosition = pos;
-
-        if (isAssignment)
+        if (TestIsAssignmentExpression())
             return ParseAssignmentExpression();
 
         var expr = ParseExpression();
         if (CurrentTokenType is TokenType.ColonEqual)
             throw _context.ThrowableSyntaxError($"cannot use assignment expressions with {AstUtils.GetExprNodeName(expr)}");
         return expr;
+    }
+
+    private bool TestIsAssignmentExpression()
+    {
+        if (CurrentTokenType is not TokenType.Name)
+            return false;
+
+        var pos = TokenStreamPosition;
+        MoveNextToken();
+        var isAssignment = CurrentTokenType is TokenType.ColonEqual;
+        TokenStreamPosition = pos;
+        return isAssignment;
     }
 
     [GrammarSyntaxRule("assignment_expression")]
@@ -869,10 +866,7 @@ partial class Parser
         if (CurrentTokenType is not TokenType.Star)
             return ParseExpression();
 
-        var metaInfo = CreateAstMetaInfo();
-        MoveNextToken();
-        var value = ParseBitwiseOr();
-        return Ast.Starred(value).With(metaInfo.WithPreviousEnd());
+        return ParseStarredExpression();
     }
 
     [GrammarSyntaxRule("star_expressions")]
@@ -881,6 +875,14 @@ partial class Parser
         return ParseSomethingList(ParseStarExpression, predicate, out endsWithComma);
     }
 
+    [GrammarSyntaxRule("starred_expression")]
+    private StarredNode ParseStarredExpression()
+    {
+        var metaInfo = CreateAstMetaInfo();
+        EnsureTokenTypeThenMove(TokenType.Star);
+        var value = ParseBitwiseOr();
+        return Ast.Starred(value).With(metaInfo.WithPreviousEnd());
+    }
 
     [GrammarSyntaxRule("star_named_expression")]
     private AstExprNode ParseStarNamedExpression()
