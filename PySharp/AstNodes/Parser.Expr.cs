@@ -50,8 +50,9 @@ partial class Parser
 
             if (IsCurrentKeyword("yield"))
             {
-                TokenStreamPosition = index;
-                return ParseYieldAtom();
+                var expr = ParseYieldExpr();
+                EnsureTokenTypeThenMove(TokenType.RightParen);
+                return expr;
             }
 
             // () is an empty tuple
@@ -104,7 +105,7 @@ partial class Parser
     private AstExprNode ParseFExpression()
     {
         if (IsCurrentKeyword("yield"))
-            return ParseYieldExpression();
+            return ParseYieldExpr();
 
         var list = ParseFlexibleExpressionList(StopPredicates.UntilRightBraceOrEqual, out var endsWithComma);
         return UnwrapOrMakeTuple(list, endsWithComma);
@@ -823,81 +824,53 @@ partial class Parser
         return expr;
     }
 
-    /// <summary>
-    /// not_test: <see cref="ParseComparison">comparison</see> | "not" not_test
-    /// </summary>
-    /// <returns></returns>
-    private AstExprNode ParseNotTest()
+    [GrammarSyntaxRule("inversion")]
+    private AstExprNode ParseInversion()
     {
         if (!IsCurrentKeyword("not"))
             return ParseComparison();
 
         var metaInfo = CreateAstMetaInfo();
         MoveNextToken();
-        return Ast.Not(ParseNotTest()).With(metaInfo.WithPreviousEnd());
+        return Ast.Not(ParseInversion()).With(metaInfo.WithPreviousEnd());
     }
 
-    /// <summary>
-    /// and_test: <see cref="ParseNotTest">not_test</see> | and_test "and" <see cref="ParseNotTest">not_test</see>
-    /// </summary>
-    /// <returns></returns>
-    private AstExprNode ParseAndTest()
+    [GrammarSyntaxRule("conjunction")]
+    private AstExprNode ParseConjunction()
     {
+        var inversion = ParseInversion();
+        if (!IsCurrentKeyword("and"))
+            return inversion;
+
         var metaInfo = CreateAstMetaInfo();
-        var result = ParseNotTest();
 
-        if (IsCurrentKeyword("and"))
-        {
-            List<AstExprNode> values = [result];
-            while (IsCurrentKeyword("and"))
-            {
-                MoveNextToken();
-                values.Add(ParseNotTest());
-            }
-            result = Ast.And(values).With(metaInfo.WithPreviousEnd());
-        }
-        return result;
-    }
-
-    /// <summary>
-    /// or_test: <see cref="ParseAndTest">and_test</see> | or_test "or" <see cref="ParseAndTest">and_test</see>
-    /// </summary>
-    /// <returns></returns>
-    private AstExprNode ParseOrTest()
-    {
-        var metaInfo = CreateAstMetaInfo();
-        var result = ParseAndTest();
-
-        if (IsCurrentKeyword("or"))
-        {
-            List<AstExprNode> values = [result];
-            while (IsCurrentKeyword("or"))
-            {
-                MoveNextToken();
-                values.Add(ParseAndTest());
-            }
-            result = Ast.Or(values).With(metaInfo.WithPreviousEnd());
-        }
-        return result;
-    }
-
-    /// <summary>
-    /// conditional_expression: <see cref="ParseOrTest">or_test</see> ["if" <see cref="ParseOrTest">or_test</see> "else" <see cref="ParseExpression">expression</see>]
-    /// </summary>
-    /// <returns></returns>
-    private AstExprNode ParseConditionalExpression()
-    {
-        var metaInfo = CreateAstMetaInfo();
-        var body = ParseOrTest();
-        if (IsCurrentKeyword("if"))
+        List<AstExprNode> values = [inversion];
+        while (IsCurrentKeyword("and"))
         {
             MoveNextToken();
-            var test = ParseOrTest();
-            EnsureKeywordThenMove("else");
-            var orelse = ParseExpression();
-            return Ast.IfExp(test, body, orelse).With(metaInfo.WithPreviousEnd());
+            values.Add(ParseInversion());
         }
-        return body;
+
+        return Ast.And(values).With(metaInfo.WithPreviousEnd());
+    }
+
+    [GrammarSyntaxRule("disjunction")]
+    private AstExprNode ParseDisjunction()
+    {
+        var conjunction = ParseConjunction();
+        if (!IsCurrentKeyword("or"))
+            return conjunction;
+
+        var metaInfo = CreateAstMetaInfo();
+
+        List<AstExprNode> values = [conjunction];
+        while (IsCurrentKeyword("or"))
+        {
+            MoveNextToken();
+            values.Add(ParseConjunction());
+        }
+
+        return Ast.Or(values).With(metaInfo.WithPreviousEnd());
     }
 
     /// <summary>
@@ -913,46 +886,56 @@ partial class Parser
         return Ast.Lambda(args, ParseExpression()).With(metaInfo);
     }
 
-    /// <summary>
-    /// expression: <see cref="ParseConditionalExpression">conditional_expression</see> | <see cref="ParseLambdaExpr">lambda_expr</see>
-    /// </summary>
-    /// <returns></returns>
+    [GrammarSyntaxRule("expression")]
     private AstExprNode ParseExpression()
     {
-        // lambda_expr
         if (IsCurrentKeyword("lambda"))
             return ParseLambdaExpr();
 
-        // conditional_expression
-        var expr = ParseConditionalExpression();
+        var metaInfo = CreateAstMetaInfo();
+
+        var body = ParseDisjunction();
+        if (!IsCurrentKeyword("if"))
+            return body;
+
+        MoveNextToken();
+        var test = ParseDisjunction();
+        EnsureKeywordThenMove("else");
+        var orElse = ParseExpression();
+        return Ast.IfExp(test, body, orElse).With(metaInfo.WithPreviousEnd());
+    }
+
+    [GrammarSyntaxRule("named_expression")]
+    private AstExprNode ParseNamedExpression()
+    {
+        var pos = TokenStreamPosition;
+        var isAssignment = CurrentTokenType is TokenType.Name;
+        MoveNextToken();
+        isAssignment &= CurrentTokenType is TokenType.ColonEqual;
+        TokenStreamPosition = pos;
+
+        if (isAssignment)
+            return ParseAssignmentExpression();
+
+        var expr = ParseExpression();
+        if (CurrentTokenType is TokenType.ColonEqual)
+            throw _context.ThrowableSyntaxError($"cannot use assignment expressions with {AstUtils.GetExprNodeName(expr)}");
         return expr;
     }
 
-    /// <summary>
-    /// assignment_expression: [<see cref="ParseIdentifier">identifier</see> ":="] <see cref="ParameterExpression">expression</see>
-    /// </summary>
-    /// <returns></returns>
-    /// <exception cref="NotImplementedException"></exception>
-    private AstExprNode ParseAssignmentExpression()
+    [GrammarSyntaxRule("assignment_expression")]
+    private NamedExprNode ParseAssignmentExpression()
     {
         var metaInfo = CreateAstMetaInfo();
-
-        var expr = ParseExpression();
-        if (expr is not NameNode nameNode || CurrentTokenType is not TokenType.ColonEqual)
-            return expr;
-
-        MoveNextToken();
+        var name = ParseIdentifier();
+        var target = Ast.Name(name);
+        EnsureTokenTypeThenMove(TokenType.ColonEqual);
         var value = ParseExpression();
-
-        return Ast.NamedExpr(nameNode, value).With(metaInfo.WithPreviousEnd());
+        return Ast.NamedExpr(target, value).With(metaInfo.WithPreviousEnd());
     }
 
-    /// <summary>
-    /// starred_expression: "*" <see cref="ParseOrTest">or_expr</see> | <see cref="ParseExpression">expression</see>
-    /// </summary>
-    /// <returns></returns>
-    /// <exception cref="NotImplementedException"></exception>
-    private AstExprNode ParseStarredExpression()
+    [GrammarSyntaxRule("star_expression")]
+    private AstExprNode ParseStarExpression()
     {
         if (CurrentTokenType is not TokenType.Star)
             return ParseExpression();
@@ -963,21 +946,38 @@ partial class Parser
         return Ast.Starred(value).With(metaInfo.WithPreviousEnd());
     }
 
-    private List<AstExprNode> ParseStarredExpressionList(StopPredicate predicate, out TokenInfo? endsWithComma)
+    [GrammarSyntaxRule("star_expressions")]
+    private List<AstExprNode> ParseStarExpressions(StopPredicate predicate, out TokenInfo? endsWithComma)
     {
-        return ParseSomethingList(ParseStarredExpression, predicate, out endsWithComma);
+        return ParseSomethingList(ParseStarExpression, predicate, out endsWithComma);
+    }
+
+
+    [GrammarSyntaxRule("star_named_expression")]
+    private AstExprNode ParseStarNamedExpression()
+    {
+        if (CurrentTokenType is TokenType.Star)
+            return ParseStarExpression();
+
+        return ParseNamedExpression();
+    }
+
+    [GrammarSyntaxRule("star_named_expressions")]
+    private List<AstExprNode> ParseStarNamedExpressions(StopPredicate predicate, out TokenInfo? endsWithComma)
+    {
+        return ParseSomethingList(ParseStarNamedExpression, predicate, out endsWithComma);
     }
 
     /// <summary>
-    /// flexible_expression: <see cref="ParseAssignmentExpression">assignment_expression</see> | <see cref="ParseStarredExpression">starred_expression</see>
+    /// flexible_expression: <see cref="ParseNamedExpression">assignment_expression</see> | <see cref="ParseStarExpression">starred_expression</see>
     /// </summary>
     /// <returns></returns>
     private AstExprNode ParseFlexibleExpression()
     {
         if (CurrentTokenType is TokenType.Star)
-            return ParseStarredExpression();
+            return ParseStarExpression();
 
-        return ParseAssignmentExpression();
+        return ParseNamedExpression();
     }
 
     /// <summary>
@@ -1081,23 +1081,10 @@ partial class Parser
         return ParseSomethingList(ParseTarget, predicate, out endsWithComma);
     }
 
-    //private List<AstExprNode> ParseTargetListUntilTokens(params ReadOnlySpan<TokenType> stopTokens)
-    //{
-    //    List<AstExprNode> list = [ParseTarget()];
-    //    while (CurrentTokenType is TokenType.Comma)
-    //    {
-    //        MoveNextToken();
-    //        if (stopTokens.Contains(CurrentTokenType))
-    //            break;
-    //        list.Add(ParseTarget());
-    //    }
-    //    return list;
-    //}
-
     /// <summary>
-    /// comp_for: ["async"] "for" <see cref="ParseTargetList(StopPredicate, out bool)">target_list</see> "in" <see cref="ParseOrTest">or_test</see> [comp_iter]
+    /// comp_for: ["async"] "for" <see cref="ParseTargetList(StopPredicate, out bool)">target_list</see> "in" <see cref="ParseDisjunction">or_test</see> [comp_iter]
     /// <br/> comp_iter: comp_for | comp_if
-    /// <br/> comp_if: "if" <see cref="ParseOrTest">or_test</see> [comp_iter]
+    /// <br/> comp_if: "if" <see cref="ParseDisjunction">or_test</see> [comp_iter]
     /// </summary>
     /// <returns></returns>
     /// <exception cref="NotSupportedException"></exception>
@@ -1119,12 +1106,12 @@ partial class Parser
             var targetList = ParseTargetList(StopPredicates.UntilKeywordIn, out var endsWithComma);
             var target = UnwrapOrMakeTuple(targetList, endsWithComma);
             EnsureKeywordThenMove("in");
-            var iter = ParseOrTest();
+            var iter = ParseDisjunction();
             var ifs = new List<AstExprNode>();
             while (IsCurrentKeyword("if"))
             {
                 MoveNextToken();
-                ifs.Add(ParseOrTest());
+                ifs.Add(ParseDisjunction());
             }
 
             return Ast.Comprehension(target, iter, ifs);
@@ -1132,12 +1119,12 @@ partial class Parser
     }
 
     /// <summary>
-    /// comprehension: <see cref="ParseAssignmentExpression">assignment_expression</see> <see cref="ParseCompFor">comp_for</see>
+    /// comprehension: <see cref="ParseNamedExpression">assignment_expression</see> <see cref="ParseCompFor">comp_for</see>
     /// </summary>
     /// <returns></returns>
     private (AstExprNode Elt, List<AstComprehensionNode> Generators) ParseComprehension()
     {
-        var elt = ParseAssignmentExpression();
+        var elt = ParseNamedExpression();
         var generators = ParseCompFor();
         return (elt, generators);
     }
@@ -1154,7 +1141,7 @@ partial class Parser
         else
         {
             var index = TokenStreamPosition;
-            _ = ParseAssignmentExpression();
+            _ = ParseNamedExpression();
             var isComp = IsCurrentKeyword("for") || IsCurrentKeyword("async");
             TokenStreamPosition = index;
             return isComp;
@@ -1374,7 +1361,7 @@ partial class Parser
                         {
                             MoveNextToken();
                             // here allows starred expr
-                            starAnnotation = ParseStarredExpression();
+                            starAnnotation = ParseStarExpression();
                         }
 
                         varArg = Ast.Arg(starArg, starAnnotation);
@@ -1448,13 +1435,8 @@ partial class Parser
         }
     }
 
-    /// <summary>
-    /// expression_list: <see cref="ParseExpression">expression</see> ("," <see cref="ParseExpression">expression</see>)* [","]
-    /// </summary>
-    /// <param name="endsWithComma"></param>
-    /// <param name="stopTokens"></param>
-    /// <returns></returns>
-    private List<AstExprNode> ParseExpressionList(StopPredicate predicate, out TokenInfo? endsWithComma)
+    [GrammarSyntaxRule("expressions")]
+    private List<AstExprNode> ParseExpressions(StopPredicate predicate, out TokenInfo? endsWithComma)
     {
         return ParseSomethingList(ParseExpression, predicate, out endsWithComma);
     }
@@ -1480,31 +1462,23 @@ partial class Parser
         return UnwrapOrMakeTuple(list, endsWithComma);
     }
 
-    /// <summary>
-    /// yield_atom: "(" yield_expression ")"
-    /// </summary>
-    /// <returns></returns>
-    private AstExprNode ParseYieldAtom()
-    {
-        EnsureTokenTypeThenMove(TokenType.LeftParen);
-        var yieldExpr = ParseYieldExpression();
-        EnsureTokenTypeThenMove(TokenType.RightParen);
-        return yieldExpr;
-    }
-
-    private AstExprNode ParseYieldExpression()
+    [GrammarSyntaxRule("yield_expr")]
+    private AstExprNode ParseYieldExpr()
     {
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("yield");
+
         if (IsCurrentKeyword("from"))
         {
             MoveNextToken();
             var expr = ParseExpression();
             return Ast.YieldFrom(expr).With(metaInfo.WithPreviousEnd());
         }
+
         if (StopPredicates.UntilRightParenOrNewLineOrSemicolon(CurrentToken))
             return Ast.Yield(null).With(metaInfo);
-        var list = ParseStarredExpressionList(StopPredicates.UntilRightParenOrNewLineOrSemicolon, out var endsWithComma);
+
+        var list = ParseStarExpressions(StopPredicates.UntilRightParenOrNewLineOrSemicolon, out var endsWithComma);
         var value = UnwrapOrMakeTuple(list, endsWithComma);
         return Ast.Yield(value).With(metaInfo.WithPreviousEnd());
     }
@@ -1544,7 +1518,7 @@ partial class Parser
             {
                 MoveNextToken();
                 iskw = true;
-                var value = ParseOrTest();
+                var value = ParseDisjunction();
                 kwargs.Add(Ast.Keyword(null, value));
                 return;
             }
@@ -1573,7 +1547,7 @@ partial class Parser
             {
                 MoveNextToken();
                 iskw = true;
-                var value = ParseOrTest();
+                var value = ParseDisjunction();
                 kwargs.Add(Ast.Keyword(null, value));
             }
             else

@@ -167,7 +167,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         EnsureTokenTypeThenMove(TokenType.Encoding);
 
         var metaInfo = CreateAstMetaInfo();
-        var exprList = ParseExpressionList(StopPredicates.UntilNewLine, out var endsWithComma);
+        var exprList = ParseExpressions(StopPredicates.UntilNewLine, out var endsWithComma);
         var body = UnwrapOrMakeTuple(exprList, endsWithComma);
 
         return Ast.Expression(body).With(metaInfo);

@@ -181,7 +181,7 @@ partial class Parser
                 if (CurrentTokenType is TokenType.NewLine or TokenType.Semicolon)
                     return Ast.Return().With(metaInfo);
 
-                var list = ParseExpressionList(StopPredicates.UntilNewLineOrSemicolon, out var comma);
+                var list = ParseExpressions(StopPredicates.UntilNewLineOrSemicolon, out var comma);
                 return Ast.Return(UnwrapOrMakeTuple(list, comma)).With(metaInfo);
             }
             else if (keyword is "pass")
@@ -235,14 +235,14 @@ partial class Parser
             }
             else if (keyword is "yield")
             {
-                var yieldExpr = ParseYieldExpression();
+                var yieldExpr = ParseYieldExpr();
                 return Ast.Expr(yieldExpr).With(metaInfo);
             }
         }
 
 
         var startIndex = TokenStreamPosition;
-        var exprList = ParseExpressionList(StopPredicates.UntilNewLineOrSemicolonOrEqual, out var endsWithComma);
+        var exprList = ParseExpressions(StopPredicates.UntilNewLineOrSemicolonOrEqual, out var endsWithComma);
 
         // assignment_stmt
         if (CurrentTokenType is TokenType.Equal)
@@ -256,7 +256,7 @@ partial class Parser
 
                 targets.Add(UnwrapOrMakeTuple(exprList, endsWithComma));
                 MoveNextToken();
-                exprList = ParseStarredExpressionList(StopPredicates.UntilNewLineOrSemicolonOrEqual, out endsWithComma);
+                exprList = ParseStarExpressions(StopPredicates.UntilNewLineOrSemicolonOrEqual, out endsWithComma);
                 allTargets = exprList.All(AstUtils.IsValidTarget);
             }
 
@@ -296,11 +296,11 @@ partial class Parser
             AstExprNode value;
             if (IsCurrentKeyword("yield"))
             {
-                value = ParseYieldExpression();
+                value = ParseYieldExpr();
             }
             else
             {
-                var list = ParseExpressionList(StopPredicates.UntilNewLineOrSemicolon, out var comma);
+                var list = ParseExpressions(StopPredicates.UntilNewLineOrSemicolon, out var comma);
                 value = UnwrapOrMakeTuple(list, comma);
             }
             return Ast.AugAssign(target, op, value).With(metaInfo);
@@ -329,11 +329,11 @@ partial class Parser
                 MoveNextToken();
                 if (IsCurrentKeyword("yield"))
                 {
-                    value = ParseYieldExpression();
+                    value = ParseYieldExpr();
                 }
                 else
                 {
-                    var list = ParseStarredExpressionList(StopPredicates.UntilNewLineOrSemicolon, out var comma);
+                    var list = ParseStarExpressions(StopPredicates.UntilNewLineOrSemicolon, out var comma);
                     value = UnwrapOrMakeTuple(list, comma);
                 }
             }
@@ -380,7 +380,7 @@ partial class Parser
         while (CurrentTokenType is TokenType.At)
         {
             MoveNextToken();
-            var decorator = ParseAssignmentExpression();
+            var decorator = ParseNamedExpression();
             decorators.Add(decorator);
             EnsureTokenTypeThenMove(TokenType.NewLine);
         }
@@ -472,7 +472,7 @@ partial class Parser
     {
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove(startsWithKeyword);
-        var test = ParseAssignmentExpression();
+        var test = ParseNamedExpression();
         EnsureTokenTypeThenMoveForTest(TokenType.Colon, test);
         var body = ParseSuite(startsWithKeyword);
         IEnumerable<AstStmtNode> orElse = [];
@@ -493,7 +493,7 @@ partial class Parser
     {
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("while");
-        var test = ParseAssignmentExpression();
+        var test = ParseNamedExpression();
         EnsureTokenTypeThenMoveForTest(TokenType.Colon, test);
         var body = ParseSuite("while");
         IEnumerable<AstStmtNode> orElse = [];
@@ -587,7 +587,7 @@ partial class Parser
         var target = UnwrapOrMakeTuple(targetList, endsWithComma);
         AstUtils.SetContext(target, ExprContextType.Store);
         EnsureKeywordThenMove("in");
-        var items = ParseStarredExpressionList(StopPredicates.UntilColon, out endsWithComma);
+        var items = ParseStarExpressions(StopPredicates.UntilColon, out endsWithComma);
         var iter = UnwrapOrMakeTuple(items, endsWithComma);
         EnsureTokenTypeThenMove(TokenType.Colon);
         var body = ParseSuite("for");

@@ -31,7 +31,7 @@ partial class Parser
     [GrammarSyntaxRule("subject_expr")]
     private AstExprNode ParseSubjectExpr()
     {
-        var list = ParseStarNamedExpressions(out var endsWithComma);
+        var list = ParseStarNamedExpressions(StopPredicates.UntilColon, out var endsWithComma);
         var expr = UnwrapOrMakeTuple(list, endsWithComma);
         if (expr is StarredNode)
             throw _context.ThrowableSyntaxError("can't use starred expression here");
@@ -48,27 +48,6 @@ partial class Parser
         EnsureTokenTypeThenMove(TokenType.Colon);
         var body = ParseBlock("case");
         return Ast.MatchCase(patterns, guard, body).With(metaInfo);
-    }
-
-    [GrammarSyntaxRule("named_expression")]
-    private AstExprNode ParseNamedExpression()
-    {
-        return ParseAssignmentExpression();
-    }
-
-    [GrammarSyntaxRule("star_named_expression")]
-    private AstExprNode ParseStarNamedExpression()
-    {
-        if (CurrentTokenType is TokenType.Star)
-            return ParseStarredExpression();
-
-        return ParseNamedExpression();
-    }
-
-    [GrammarSyntaxRule("star_named_expressions")]
-    private List<AstExprNode> ParseStarNamedExpressions(out TokenInfo? endsWithComma)
-    {
-        return ParseSomethingList(ParseStarNamedExpression, StopPredicates.UntilColon, out endsWithComma);
     }
 
     [GrammarSyntaxRule("guard")]
