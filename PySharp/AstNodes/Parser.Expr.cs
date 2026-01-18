@@ -740,88 +740,92 @@ partial class Parser
         return orExpr;
     }
 
-    /// <summary>
-    /// comparison: <see cref="ParseOrExpr">or_expr</see> (comp_operator <see cref="ParseOrExpr">or_expr</see>)*
-    /// <br/> comp_operator: "&lt;" | "&gt;" | "==" | "&gt;=" | "&lt;=" | "!=" | "is" ["not"] | ["not"] "in"
-    /// </summary>
-    /// <returns></returns>
-    private AstExprNode ParseComparison()
+    [GrammarSyntaxRule("compare_op_bitwise_or_pair")]
+    private bool TryParseCompareOpBitwiseOrPair(out (CmpopType Op, AstExprNode Comparator) pair)
     {
-        var metaInfo = CreateAstMetaInfo();
-        var expr = ParseOrExpr();
-        var ops = new List<CmpopType>();
-        var comptors = new List<AstExprNode>();
-
-        while (true)
+        CmpopType op;
+        if (IsCurrentKeyword("is"))
         {
-            if (IsCurrentKeyword("is"))
+            MoveNextToken();
+            if (IsCurrentKeyword("not"))
             {
                 MoveNextToken();
-                if (IsCurrentKeyword("not"))
-                {
-                    MoveNextToken();
-                    ops.Add(CmpopType.IsNot);
-                }
-                else
-                {
-                    ops.Add(CmpopType.Is);
-                }
-            }
-            else if (IsCurrentKeyword("in"))
-            {
-                MoveNextToken();
-                ops.Add(CmpopType.In);
-
-            }
-            else if (IsCurrentKeyword("not"))
-            {
-                MoveNextToken();
-                EnsureKeywordThenMove("in");
-                ops.Add(CmpopType.NotIn);
-            }
-            else if (CurrentTokenType is TokenType.Less)
-            {
-                MoveNextToken();
-                ops.Add(CmpopType.Lt);
-            }
-            else if (CurrentTokenType is TokenType.LessEqual)
-            {
-                MoveNextToken();
-                ops.Add(CmpopType.LtE);
-            }
-            else if (CurrentTokenType is TokenType.Greater)
-            {
-                MoveNextToken();
-                ops.Add(CmpopType.Gt);
-            }
-            else if (CurrentTokenType is TokenType.GreaterEqual)
-            {
-                MoveNextToken();
-                ops.Add(CmpopType.GtE);
-            }
-            else if (CurrentTokenType is TokenType.DoubleEqual)
-            {
-                MoveNextToken();
-                ops.Add(CmpopType.Eq);
-            }
-            else if (CurrentTokenType is TokenType.NotEqual)
-            {
-                MoveNextToken();
-                ops.Add(CmpopType.NotEq);
+                op = CmpopType.IsNot;
             }
             else
             {
-                break;
+                op = CmpopType.Is;
             }
+        }
+        else if (IsCurrentKeyword("in"))
+        {
+            MoveNextToken();
+            op = CmpopType.In;
 
-            var other = ParseOrExpr();
-            comptors.Add(other);
+        }
+        else if (IsCurrentKeyword("not"))
+        {
+            MoveNextToken();
+            EnsureKeywordThenMove("in");
+            op = CmpopType.NotIn;
+        }
+        else if (CurrentTokenType is TokenType.Less)
+        {
+            MoveNextToken();
+            op = CmpopType.Lt;
+        }
+        else if (CurrentTokenType is TokenType.LessEqual)
+        {
+            MoveNextToken();
+            op = CmpopType.LtE;
+        }
+        else if (CurrentTokenType is TokenType.Greater)
+        {
+            MoveNextToken();
+            op = CmpopType.Gt;
+        }
+        else if (CurrentTokenType is TokenType.GreaterEqual)
+        {
+            MoveNextToken();
+            op = CmpopType.GtE;
+        }
+        else if (CurrentTokenType is TokenType.DoubleEqual)
+        {
+            MoveNextToken();
+            op = CmpopType.Eq;
+        }
+        else if (CurrentTokenType is TokenType.NotEqual)
+        {
+            MoveNextToken();
+            op = CmpopType.NotEq;
+        }
+        else
+        {
+            pair = default;
+            return false;
         }
 
-        if (ops.Count > 0)
-            return Ast.Compare(expr, ops.Zip(comptors)).With(metaInfo.WithPreviousEnd());
+        var comparator = ParseOrExpr();
 
-        return expr;
+        pair = (op, comparator);
+        return true;
+    }
+
+    [GrammarSyntaxRule("comparison")]
+    private AstExprNode ParseComparison()
+    {
+        var metaInfo = CreateAstMetaInfo();
+
+        var expr = ParseOrExpr();
+        if (!TryParseCompareOpBitwiseOrPair(out var pair))
+            return expr;
+
+        List<(CmpopType, AstExprNode)> pairs = [pair];
+
+        while (TryParseCompareOpBitwiseOrPair(out pair))
+            pairs.Add(pair);
+
+        return Ast.Compare(expr, pairs).With(metaInfo.WithPreviousEnd());
     }
 
     [GrammarSyntaxRule("inversion")]
