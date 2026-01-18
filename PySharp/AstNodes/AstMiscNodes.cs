@@ -481,7 +481,53 @@ public sealed class MatchMappingNode : AstPatternNode
 
     internal override bool IsMatch(PyCallContext context, PyFrame frame, PyObject subject)
     {
-        throw new NotImplementedException();
+        if (!IsMappingForMatch(subject, out var dict))
+            return false;
+
+        HashSet<PyObject> keys = [];
+        for (int i = 0; i < Keys.Length; i++)
+        {
+            var key = Keys[i].GetExprValue(context, frame);
+            if (!keys.Add(key))
+                return false;
+
+            if (!dict.TryGetValue(key, out var value))
+                return false;
+
+            if (!Patterns[i].IsMatch(context, frame, value))
+                return false;
+        }
+
+        if (Rest is not null)
+        {
+            List<KeyValuePair<PyObject, PyObject>> rest = [];
+            foreach (var pair in dict)
+            {
+                if (keys.Contains(pair.Key))
+                    continue;
+
+                rest.Add(pair);
+            }
+            var restDict = PyDictObject.CreateDict(rest);
+            frame.SetVariable(Rest, restDict);
+        }
+        
+        return true;
+    }
+
+    private static bool IsMappingForMatch(PyObject obj, [NotNullWhen(true)] out IDictionary<PyObject, PyObject>? result)
+    {
+        switch (obj)
+        {
+            case PyDictObject dict:
+                result = dict._dict;
+                return true;
+
+            default:
+                // TODO: support other valid mapping
+                result = default;
+                return false;
+        }
     }
 }
 
@@ -511,7 +557,62 @@ public sealed class MatchClassNode : AstPatternNode
 
     internal override bool IsMatch(PyCallContext context, PyFrame frame, PyObject subject)
     {
-        throw new NotImplementedException();
+        var cls = Cls.GetExprValue(context, frame);
+        if (cls is not PyTypeObject type)
+            throw context.ThrowableTypeError("called match pattern must be a class");
+
+        if (!type.IsInstance(subject))
+            return false;
+
+        if (Patterns.Length is not 0)
+        {
+            var matchArgs = PyOperators.GetAttr(context, type, PySpecialNames.MatchArgs).PyUnwrap(context);
+            
+            if (matchArgs is not PyTupleObject tuple)
+                throw context.ThrowableTypeError($"{type.FullName}.{PySpecialNames.MatchArgs} must be a tuple (got {matchArgs.PyType.FullName})");
+            if (Patterns.Length > tuple._array.Length)
+                throw context.ThrowableTypeError($"{type.FullName}() accepts {tuple._array.Length} positional sub-patterns ({Patterns.Length} given)");
+            
+            var attrs = new List<string>(Patterns.Length);
+            foreach (var arg in tuple._array.Take(Patterns.Length))
+            {
+                if (arg is not PyStrObject str)
+                    throw context.ThrowableTypeError($"{PySpecialNames.MatchArgs} elements must be strings (got {arg.PyType.FullName})");
+                attrs.Add(str.Value);
+            }
+
+            if (!IsMatchKwdPatterns(attrs.Zip(Patterns)))
+                return false;
+        }
+
+        if (KwdPatterns.Length is not 0)
+        {
+            if (!IsMatchKwdPatterns(KwdAttrs.Zip(KwdPatterns)))
+                return false;
+        }
+
+        return true;
+
+        bool IsMatchKwdPatterns(IEnumerable<(string, AstPatternNode)> kwdPatterns)
+        {
+            foreach (var (attr, pattern) in kwdPatterns)
+            {
+                var result = PyOperators.GetAttr(context, subject, attr);
+                if (result.IsError)
+                {
+                    if (!result.IsAttributeError)
+                        // non-AttributeError errors will be thrown
+                        _ = result.PyUnwrap(context);
+
+                    return false;
+                }
+
+                if (!pattern.IsMatch(context, frame, result.Value))
+                    return false;
+            }
+
+            return true;
+        }
     }
 }
 

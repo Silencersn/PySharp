@@ -113,6 +113,8 @@ public static class PySpecialNames
     public const string Module = "__module__";
     public const string QualName = "__qualname__";
 
+    public const string MatchArgs = "__match_args__";
+
 
     // functions
     public const string Import = "__import__";
