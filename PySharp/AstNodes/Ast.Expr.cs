@@ -130,19 +130,19 @@ partial class Ast
     {
         return Constant(PyFloatObject.FromDouble(value));
     }
-    public static DictNode Dict(IEnumerable<KeyValuePair<AstExprNode, AstExprNode>> pairs)
+    public static DictNode Dict(IEnumerable<KeyValuePair<AstExprNode?, AstExprNode>> pairs)
     {
         ArgumentNullException.ThrowIfNull(pairs);
 
-        return new DictNode(pairs.Select(static pair => pair.Key).ToImmutableArray(true), pairs.Select(static pair => pair.Value).ToImmutableArray(true));
+        return new DictNode(pairs.Select(static pair => pair.Key).ToImmutableArray(true)! /* TODO: support null key */, pairs.Select(static pair => pair.Value).ToImmutableArray(true));
     }
-    public static DictCompNode DictComp(AstExprNode key, AstExprNode value, IEnumerable<AstComprehensionNode> generators)
+    public static DictCompNode DictComp(KeyValuePair<AstExprNode, AstExprNode> kvpair, IEnumerable<AstComprehensionNode> generators)
     {
-        ArgumentNullException.ThrowIfNull(key);
-        ArgumentNullException.ThrowIfNull(value);
+        ArgumentNullException.ThrowIfNull(kvpair.Key);
+        ArgumentNullException.ThrowIfNull(kvpair.Value);
         ArgumentNullException.ThrowIfNull(generators);
 
-        return new DictCompNode(key, value, generators.ToImmutableArray(true));
+        return new DictCompNode(kvpair.Key, kvpair.Value, generators.ToImmutableArray(true));
     }
 
     public static FormattedValueNode FormattedValue(AstExprNode value, int conversion, AstExprNode? formatSpec)

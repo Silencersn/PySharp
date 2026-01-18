@@ -4,6 +4,7 @@ using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.Tokenization;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Text;
 
@@ -41,48 +42,53 @@ partial class Parser
     {
         if (CurrentTokenType is TokenType.LeftSquareBracket)
         {
-            return ParseListDisplay();
+            return ParseSequenceOrComprehension(TokenType.LeftSquareBracket, TokenType.RightSquareBracket,
+                ParseNamedExpression, ParseList, ParseListComp);
         }
         else if (CurrentTokenType is TokenType.LeftParen)
         {
-            var index = TokenStreamPosition;
-            MoveNextToken();
+            if (TryParseGroup(out var group))
+                return group;
 
-            if (IsCurrentKeyword("yield"))
-            {
-                var expr = ParseYieldExpr();
-                EnsureTokenTypeThenMove(TokenType.RightParen);
-                return expr;
-            }
-
-            // () is an empty tuple
-            if (CurrentTokenType is TokenType.RightParen)
-            {
-                TokenStreamPosition = index;
-                return ParseParenthForm();
-            }
-
-            // generator_expression
-            if (TestIsComprehension())
-            {
-                TokenStreamPosition = index;
-                return ParseGeneratorExpression();
-            }
-
-            TokenStreamPosition = index;
-            return ParseParenthForm();
+            return ParseSequenceOrComprehension(TokenType.LeftParen, TokenType.RightParen,
+                ParseNamedExpression, ParseTuple, ParseGenExp);
         }
         else if (CurrentTokenType is TokenType.LeftBrace)
         {
-            var index = TokenStreamPosition;
+            if (TestIsDictRatherThanSet())
+                return ParseSequenceOrComprehension(TokenType.LeftBrace, TokenType.RightBrace,
+                    ParseKvpair, ParseDict, ParseDictComp);
 
+            return ParseSequenceOrComprehension(TokenType.LeftBrace, TokenType.RightBrace,
+                ParseNamedExpression, ParseSet, ParseSetComp);
+        }
+
+        throw _context.ThrowableSyntaxError("invalid syntax");
+
+        bool TestIsDictRatherThanSet()
+        {
+            var pos = TokenStreamPosition;
             bool isDict;
+            EnsureTokenTypeThenMove(TokenType.LeftBrace);
 
-            MoveNextToken();
             if (CurrentTokenType is TokenType.RightBrace)
             {
                 // {} is an empty dict instead of an empty set
-
+                isDict = true;
+            }
+            else if (TestIsAssignmentExpression())
+            {
+                // as element, assignment_expression only appears in set or setcomp
+                isDict = false;
+            }
+            else if (CurrentTokenType is TokenType.Star)
+            {
+                // only set or setcomp allow *expr 
+                isDict = false;
+            }
+            else if (CurrentTokenType is TokenType.DoubleStar)
+            {
+                // only dict or dictcomp allow **expr 
                 isDict = true;
             }
             else
@@ -90,16 +96,41 @@ partial class Parser
                 _ = ParseExpression();
                 isDict = CurrentTokenType is TokenType.Colon;
             }
+            TokenStreamPosition = pos;
 
-            TokenStreamPosition = index;
+            return isDict;
+        }
+    }
 
-            if (isDict)
-                return ParseDictDisplay();
+    [GrammarSyntaxRule("group")]
+    private bool TryParseGroup([NotNullWhen(true)] out AstExprNode? group)
+    {
+        var pos = TokenStreamPosition;
+        EnsureTokenTypeThenMove(TokenType.LeftParen);
 
-            return ParseSetDisplay();
+        if (CurrentTokenType is TokenType.RightParen)
+        {
+            TokenStreamPosition = pos;
+            group = null;
+            return false;
         }
 
-        throw _context.ThrowableSyntaxError("invalid syntax");
+        if (IsCurrentKeyword("yield"))
+        {
+            group = ParseYieldExpr();
+            EnsureTokenTypeThenMove(TokenType.RightParen);
+            return true;
+        }
+
+        group = ParseNamedExpression();
+        if (CurrentTokenType is TokenType.RightParen)
+        {
+            MoveNextToken();
+            return true;
+        }
+
+        TokenStreamPosition = pos;
+        return false;
     }
 
     private AstExprNode ParseFExpression()
@@ -492,9 +523,8 @@ partial class Parser
             }
             else if (CurrentTokenType is TokenType.LeftParen)
             {
-                MoveNextToken();
-
                 var pos = TokenStreamPosition;
+                MoveNextToken();
                 var isGenExp = CurrentTokenType is not (TokenType.Star or TokenType.DoubleStar or TokenType.RightParen);
                 if (isGenExp)
                 {
@@ -505,18 +535,17 @@ partial class Parser
 
                 if (isGenExp)
                 {
-                    var metaInfo = CreateAstMetaInfo();
-                    var (elts, generators) = ParseComprehension();
-                    var genExp = Ast.GeneratorExp(elts, generators).With(metaInfo.WithPreviousEnd());
+                    var genExp = ParseGenExp();
                     primary = Ast.Call(primary, [genExp], []).With(startMetaInfo.WithEnd());
                 }
                 else
                 {
+                    MoveNextToken();
                     var (args, kwargs) = ParseArgumentList();
+                    EnsureTokenTypeThenMove(TokenType.RightParen);
                     primary = Ast.Call(primary, args, kwargs).With(startMetaInfo.WithEnd());
                 }
 
-                EnsureTokenTypeThenMove(TokenType.RightParen);
             }
             else if (CurrentTokenType is TokenType.LeftSquareBracket)
             {
@@ -1012,217 +1041,22 @@ partial class Parser
         return ParseSomethingList(ParseTarget, predicate, out endsWithComma);
     }
 
-    /// <summary>
-    /// comp_for: ["async"] "for" <see cref="ParseTargetList(StopPredicate, out bool)">target_list</see> "in" <see cref="ParseDisjunction">or_test</see> [comp_iter]
-    /// <br/> comp_iter: comp_for | comp_if
-    /// <br/> comp_if: "if" <see cref="ParseDisjunction">or_test</see> [comp_iter]
-    /// </summary>
-    /// <returns></returns>
-    /// <exception cref="NotSupportedException"></exception>
-    private List<AstComprehensionNode> ParseCompFor()
+    private bool TestIsComprehension<TItem>(TokenType closeToken, Func<TItem> parseItem)
     {
-        List<AstComprehensionNode> generators = [ParseCompForImpl()];
-        while (IsCurrentKeyword("for"))
-        {
-            generators.Add(ParseCompForImpl());
-        }
-        return generators;
-
-        AstComprehensionNode ParseCompForImpl()
-        {
-            if (IsCurrentKeyword("async"))
-                throw new NotSupportedException();
-            EnsureKeywordThenMove("for");
-
-            var targetList = ParseTargetList(StopPredicates.UntilKeywordIn, out var endsWithComma);
-            var target = UnwrapOrMakeTuple(targetList, endsWithComma);
-            EnsureKeywordThenMove("in");
-            var iter = ParseDisjunction();
-            var ifs = new List<AstExprNode>();
-            while (IsCurrentKeyword("if"))
-            {
-                MoveNextToken();
-                ifs.Add(ParseDisjunction());
-            }
-
-            return Ast.Comprehension(target, iter, ifs);
-        }
-    }
-
-    /// <summary>
-    /// comprehension: <see cref="ParseNamedExpression">assignment_expression</see> <see cref="ParseCompFor">comp_for</see>
-    /// </summary>
-    /// <returns></returns>
-    private (AstExprNode Elt, List<AstComprehensionNode> Generators) ParseComprehension()
-    {
-        var elt = ParseNamedExpression();
-        var generators = ParseCompFor();
-        return (elt, generators);
-    }
-
-    private bool TestIsComprehension()
-    {
-        if (CurrentTokenType is TokenType.Star)
-        {
-            // it must be a starred_expression
-            // comprehension should start with assignment_expression
-
+        if (CurrentTokenType == closeToken)
+            // empty sequence
             return false;
-        }
-        else
-        {
-            var index = TokenStreamPosition;
-            _ = ParseNamedExpression();
-            var isComp = IsCurrentKeyword("for") || IsCurrentKeyword("async");
-            TokenStreamPosition = index;
-            return isComp;
-        }
-    }
 
-    /// <summary>
-    /// list_display: "[" [<see cref="ParseFlexibleExpressionList(StopPredicate, out bool)">flexible_expression_list</see> | <see cref="ParseComprehension">comprehension</see>] "]"
-    /// </summary>
-    /// <returns></returns>
-    private AstExprNode ParseListDisplay()
-    {
-        var metaInfo = CreateAstMetaInfo();
+        if (CurrentTokenType is TokenType.Star or TokenType.DoubleStar)
+            // it must be a starred_expression
+            // comprehension should start with named_expression
+            return false;
 
-        EnsureTokenTypeThenMove(TokenType.LeftSquareBracket);
-
-        if (CurrentTokenType is TokenType.RightSquareBracket)
-        {
-            MoveNextToken();
-            return Ast.List([]).With(metaInfo.WithPreviousEnd());
-        }
-
-        if (TestIsComprehension())
-        {
-            var (elt, generators) = ParseComprehension();
-            EnsureTokenTypeThenMove(TokenType.RightSquareBracket);
-            return Ast.ListComp(elt, generators).With(metaInfo.WithPreviousEnd());
-        }
-
-        var list = ParseFlexibleExpressionList(StopPredicates.UntilRightSquareBracket, out _);
-        EnsureTokenTypeThenMove(TokenType.RightSquareBracket);
-        return Ast.List(list).With(metaInfo.WithPreviousEnd());
-    }
-
-    /// <summary>
-    /// set_display: "{" (<see cref="ParseFlexibleExpressionList(StopPredicate, out bool)">flexible_expression_list</see> | <see cref="ParseComprehension">comprehension</see>) "}"
-    /// </summary>
-    /// <returns></returns>
-    private AstExprNode ParseSetDisplay()
-    {
-        var metaInfo = CreateAstMetaInfo();
-
-        EnsureTokenTypeThenMove(TokenType.LeftBrace);
-
-        if (TestIsComprehension())
-        {
-            var (elt, generators) = ParseComprehension();
-            EnsureTokenTypeThenMove(TokenType.RightBrace);
-            return Ast.SetComp(elt, generators).With(metaInfo.WithPreviousEnd());
-        }
-
-        var set = ParseFlexibleExpressionList(StopPredicates.UntilRightBrace, out _);
-        EnsureTokenTypeThenMove(TokenType.RightBrace);
-        return Ast.Set(set).With(metaInfo.WithPreviousEnd());
-    }
-
-    /// <summary>
-    /// dict_item: <see cref="ParseExpression">expression</see> ":" <see cref="ParseExpression">expression</see> | "**" <see cref="ParseBitwiseOr">or_expr</see>
-    /// </summary>
-    /// <returns></returns>
-    private (AstExprNode Key, AstExprNode Value) ParseDictItem()
-    {
-        if (CurrentTokenType is TokenType.DoubleStar)
-            throw new NotSupportedException();
-
-        var key = ParseExpression();
-        EnsureTokenTypeThenMove(TokenType.Colon);
-        var value = ParseExpression();
-        return (key, value);
-    }
-
-    /// <summary>
-    /// dict_item_list: <see cref="ParseDictItem">dict_item</see> ("," <see cref="ParseDictItem">dict_item</see>)* [","]
-    /// </summary>
-    /// <returns></returns>
-    private List<(AstExprNode Key, AstExprNode Value)> ParseDictItemList()
-    {
-        List<(AstExprNode Key, AstExprNode Value)> list = [ParseDictItem()];
-        while (CurrentTokenType is TokenType.Comma)
-        {
-            MoveNextToken();
-
-            if (CurrentTokenType is TokenType.RightBrace)
-                break;
-
-            list.Add(ParseDictItem());
-        }
-        return list;
-    }
-
-    /// <summary>
-    /// dict_display: "{" [<see cref="ParseDictItemList">dict_item_list</see> | dict_comprehension] "}"
-    /// <br/> dict_comprehension: <see cref="ParseExpression">expression</see> ":" <see cref="ParseExpression">expression</see> <see cref="ParseCompFor">comp_for</see>
-    /// </summary>
-    /// <returns></returns>
-    private AstExprNode ParseDictDisplay()
-    {
-        var metaInfo = CreateAstMetaInfo();
-
-        EnsureTokenTypeThenMove(TokenType.LeftBrace);
-
-        if (CurrentTokenType is TokenType.RightBrace)
-        {
-            MoveNextToken();
-            return Ast.Dict([]).With(metaInfo.WithPreviousEnd());
-        }
-
-        bool isComp;
-
-        if (CurrentTokenType is TokenType.Star)
-        {
-            isComp = false;
-        }
-        else
-        {
-            var index = TokenStreamPosition;
-            _ = ParseDictItem();
-            isComp = IsCurrentKeyword("for") || IsCurrentKeyword("async");
-            TokenStreamPosition = index;
-        }
-
-        if (isComp)
-        {
-            var (key, value) = ParseDictItem();
-            var generators = ParseCompFor();
-            EnsureTokenTypeThenMove(TokenType.RightBrace);
-            return Ast.DictComp(key, value, generators).With(metaInfo.WithPreviousEnd());
-        }
-
-        List<KeyValuePair<AstExprNode, AstExprNode>> pairs = [];
-        var list = ParseDictItemList();
-        foreach (var (key, value) in list)
-        {
-            pairs.Add(KeyValuePair.Create(key, value));
-        }
-        EnsureTokenTypeThenMove(TokenType.RightBrace);
-        return Ast.Dict(pairs).With(metaInfo.WithPreviousEnd());
-    }
-
-    /// <summary>
-    /// generator_expression: "(" <see cref="ParseComprehension">comprehension</see> ")"
-    /// </summary>
-    /// <returns></returns>
-    private GeneratorExpNode ParseGeneratorExpression()
-    {
-        var metaInfo = CreateAstMetaInfo();
-        EnsureTokenTypeThenMove(TokenType.LeftParen);
-        var (elt, generators) = ParseComprehension();
-        EnsureTokenTypeThenMove(TokenType.RightParen);
-        return Ast.GeneratorExp(elt, generators).With(metaInfo.WithPreviousEnd());
+        var index = TokenStreamPosition;
+        _ = parseItem();
+        var isComp = IsCurrentKeyword("for") || IsCurrentKeyword("async");
+        TokenStreamPosition = index;
+        return isComp;
     }
 
     private AstArgumentsNode ParseParameterList(StopPredicate predicate, bool allowAnnotation)
@@ -1372,27 +1206,6 @@ partial class Parser
         return ParseSomethingList(ParseExpression, predicate, out endsWithComma);
     }
 
-    /// <summary>
-    /// parenth_form: "(" [<see cref="ParseFlexibleExpressionList(StopPredicate, out bool)">flexible_expression_list</see>] ")"
-    /// </summary>
-    /// <returns></returns>
-    private AstExprNode ParseParenthForm()
-    {
-        var metaInfo = CreateAstMetaInfo();
-        EnsureTokenTypeThenMove(TokenType.LeftParen);
-
-        // () is an empty tuple
-        if (CurrentTokenType is TokenType.RightParen)
-        {
-            MoveNextToken();
-            return Ast.Tuple([]).With(metaInfo.WithPreviousEnd());
-        }
-
-        var list = ParseFlexibleExpressionList(StopPredicates.UntilRightParen, out var endsWithComma);
-        EnsureTokenTypeThenMove(TokenType.RightParen);
-        return UnwrapOrMakeTuple(list, endsWithComma);
-    }
-
     [GrammarSyntaxRule("yield_expr")]
     private AstExprNode ParseYieldExpr()
     {
@@ -1513,5 +1326,196 @@ partial class Parser
             throw ThrowableSyntaxErrorCausedByInvalidEqualAfterExpr(expr);
 
         return list;
+    }
+
+    [GrammarSyntaxRule("star_target")]
+    private AstExprNode ParseStarTarget()
+    {
+        if (CurrentTokenType is TokenType.Star)
+        {
+            MoveNextToken();
+            var target = ParseStarTarget();
+            if (target is StarredNode)
+                throw _context.ThrowableSyntaxError("Invalid star expression");
+            return Ast.Starred(target);
+        }
+        else
+        {
+            var target = ParsePrimary();
+            if (!target.IsValidTarget())
+                throw _context.ThrowableSyntaxError($"cannot assign to {AstUtils.GetExprNodeName(target)}");
+            return target;
+        }
+    }
+
+    [GrammarSyntaxRule("star_targets")]
+    private AstExprNode ParseStarTargets(StopPredicate predicate)
+    {
+        var targets = ParseSomethingList(ParseStarTarget, predicate, out var endsWithComma);
+        return UnwrapOrMakeTuple(targets, endsWithComma);
+    }
+
+    [GrammarSyntaxRule("for_if_clause")]
+    private AstComprehensionNode ParseForIfClause()
+    {
+        var metaInfo = CreateAstMetaInfo();
+
+        if (IsCurrentKeyword("async"))
+            throw new NotSupportedException();
+
+        EnsureKeywordThenMove("for");
+        var target = ParseStarTargets(StopPredicates.UntilKeywordIn);
+        EnsureKeywordThenMove("in", "'in' expected after for-loop variables");
+
+        var iter = ParseDisjunction();
+        var ifs = new List<AstExprNode>();
+        while (IsCurrentKeyword("if"))
+        {
+            MoveNextToken();
+            ifs.Add(ParseDisjunction());
+        }
+
+        return Ast.Comprehension(target, iter, ifs).With(metaInfo.WithPreviousEnd());
+    }
+
+    [GrammarSyntaxRule("for_if_clauses")]
+    private List<AstComprehensionNode> ParseForIfClauses()
+    {
+        List<AstComprehensionNode> generators = [ParseForIfClause()];
+        while (IsCurrentKeyword("for"))
+            generators.Add(ParseForIfClause());
+        return generators;
+    }
+
+    private TComprehension ParseComp<TComprehension, TItem>(
+        TokenType openToken, TokenType closeToken,
+        Func<TItem> parseItem, Func<TItem, List<AstComprehensionNode>, TComprehension> factory)
+        where TComprehension : AstNode
+    {
+        var metaInfo = CreateAstMetaInfo();
+        EnsureTokenTypeThenMove(openToken);
+
+        var elt = parseItem();
+        var generators = ParseForIfClauses();
+        EnsureTokenTypeThenMove(closeToken);
+
+        return factory(elt, generators).With(metaInfo.WithPreviousEnd());
+    }
+
+    [GrammarSyntaxRule("listcomp")]
+    private ListCompNode ParseListComp()
+    {
+        return ParseComp(TokenType.LeftSquareBracket, TokenType.RightSquareBracket,
+            ParseNamedExpression, Ast.ListComp);
+    }
+
+    [GrammarSyntaxRule("setcomp")]
+    private SetCompNode ParseSetComp()
+    {
+        return ParseComp(TokenType.LeftBrace, TokenType.RightBrace,
+            ParseNamedExpression, Ast.SetComp);
+    }
+
+    [GrammarSyntaxRule("genexp")]
+    private GeneratorExpNode ParseGenExp()
+    {
+        return ParseComp(TokenType.LeftParen, TokenType.RightParen,
+            ParseNamedExpression, Ast.GeneratorExp);
+    }
+
+    [GrammarSyntaxRule("dictcomp")]
+    private DictCompNode ParseDictComp()
+    {
+        return ParseComp(TokenType.LeftBrace, TokenType.RightBrace,
+            ParseKvpair, Ast.DictComp);
+    }
+
+    private TSequence ParseSequence<TSequence, TItem>(
+        TokenType openToken, TokenType closeToken,
+        Func<TItem> parseItem, Func<IEnumerable<TItem>, TSequence> factory,
+        bool allowSingleItemWithoutComma = true, bool allowEmptySequence = true)
+        where TSequence : AstNode
+    {
+        var metaInfo = CreateAstMetaInfo();
+        EnsureTokenTypeThenMove(openToken);
+
+        if (CurrentTokenType == closeToken)
+        {
+            if (!allowEmptySequence)
+                throw _context.ThrowableSyntaxError("invalid syntax");
+
+            MoveNextToken();
+            return factory([]).With(metaInfo.WithPreviousEnd());
+        }
+
+        var list = ParseSomethingList(parseItem, StopPredicates.Until(closeToken), out var endsWithComma);
+        if (!allowSingleItemWithoutComma && list.Count is 1 && endsWithComma is null)
+            throw _context.ThrowableSyntaxError("invalid syntax");
+
+        EnsureTokenTypeThenMove(closeToken);
+        return factory(list).With(metaInfo.WithPreviousEnd());
+    }
+
+    [GrammarSyntaxRule("list")]
+    private ListNode ParseList()
+    {
+        return ParseSequence(TokenType.LeftSquareBracket, TokenType.RightSquareBracket,
+            ParseStarNamedExpression, Ast.List);
+    }
+
+    [GrammarSyntaxRule("tuple")]
+    private TupleNode ParseTuple()
+    {
+        return ParseSequence(TokenType.LeftParen, TokenType.RightParen,
+            ParseStarNamedExpression, Ast.Tuple, allowSingleItemWithoutComma: false);
+    }
+
+    [GrammarSyntaxRule("set")]
+    private SetNode ParseSet()
+    {
+        return ParseSequence(TokenType.LeftBrace, TokenType.RightBrace,
+            ParseStarNamedExpression, Ast.Set, allowEmptySequence: false);
+    }
+
+    [GrammarSyntaxRule("dict")]
+    private DictNode ParseDict()
+    {
+        return ParseSequence(TokenType.LeftBrace, TokenType.RightBrace,
+            ParseDoubleStarredKvpair, Ast.Dict);
+    }
+
+    [GrammarSyntaxRule("double_starred_kvpair")]
+    private KeyValuePair<AstExprNode?, AstExprNode> ParseDoubleStarredKvpair()
+    {
+        if (CurrentTokenType is not TokenType.DoubleStar)
+            return ParseKvpair()!;
+
+        var metaInfo = CreateAstMetaInfo();
+        MoveNextToken();
+        var value = ParseBitwiseOr();
+        value = Ast.Starred(value).With(metaInfo.WithPreviousEnd());
+        return KeyValuePair.Create<AstExprNode?, AstExprNode>(key: null, value);
+    }
+
+    [GrammarSyntaxRule("kvpair")]
+    private KeyValuePair<AstExprNode, AstExprNode> ParseKvpair()
+    {
+        var key = ParseExpression();
+        EnsureTokenTypeThenMove(TokenType.Colon);
+        var value = ParseExpression();
+        return KeyValuePair.Create(key, value);
+    }
+
+    private AstExprNode ParseSequenceOrComprehension<TSequence, TComprehension, TItem>(
+        TokenType openToken, TokenType closeToken,
+        Func<TItem> parseItem, Func<TSequence> parseSequence, Func<TComprehension> parseComprehension)
+        where TSequence : AstExprNode
+        where TComprehension : AstExprNode
+    {
+        var pos = TokenStreamPosition;
+        EnsureTokenTypeThenMove(openToken);
+        var isComp = TestIsComprehension(closeToken, parseItem);
+        TokenStreamPosition = pos;
+        return isComp ? parseComprehension() : parseSequence();
     }
 }

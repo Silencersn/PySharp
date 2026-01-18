@@ -131,11 +131,11 @@ public sealed partial class Parser : ICodeMetaInfoProvider
 
         return CurrentToken.StringAsSpan.Equals(keyword, StringComparison.Ordinal);
     }
-    private void EnsureKeywordThenMove(string keyword)
+    private void EnsureKeywordThenMove(string keyword, string message = "invalid syntax")
     {
         EnsureTokenType(TokenType.Name);
         if (!IsCurrentKeyword(keyword))
-            throw _context.ThrowableSyntaxError("invalid syntax");
+            throw _context.ThrowableSyntaxError(message);
         MoveNextToken();
     }
     private void EnsureTokenTypeThenMove(TokenType type, string message = "invalid syntax")

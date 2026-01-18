@@ -19,6 +19,7 @@ partial class Parser
         public static bool UntilNewLineOrSemicolon(TokenInfo token) => token.Type is TokenType.NewLine or TokenType.Semicolon;
         public static bool UntilNewLineOrSemicolonOrEqual(TokenInfo token) => token.Type is TokenType.NewLine or TokenType.Semicolon or TokenType.Equal;
         public static bool UntilColon(TokenInfo token) => token.Type is TokenType.Colon;
+        public static StopPredicate Until(TokenType tokenType) => tokenInfo => tokenInfo.Type == tokenType;
     }
 
     [AttributeUsage(AttributeTargets.Method)]
