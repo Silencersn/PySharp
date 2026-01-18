@@ -658,86 +658,55 @@ partial class Parser
         return left;
     }
 
-    /// <summary>
-    /// shift_expr: <see cref="ParseAExpr">a_expr</see> | shift_expr ("&lt;&lt;" | "&gt;&gt;") <see cref="ParseAExpr">a_expr</see>
-    /// </summary>
-    /// <returns></returns>
+    [GrammarSyntaxRule("shift_expr")]
     private AstExprNode ParseShiftExpr()
     {
-        var startMetaInfo = CreateAstMetaInfo();
-        var left = ParseAExpr();
-
-        while (CurrentTokenType is TokenType.LeftShift or TokenType.RightShift)
-        {
-            var currentMetaInfo = startMetaInfo.WithCrucial();
-            var lshift = CurrentTokenType is TokenType.LeftShift;
-            MoveNextToken();
-            var right = ParseAExpr();
-            left = lshift ? Ast.LShift(left, right) : Ast.RShift(left, right);
-            left.With(currentMetaInfo.WithPreviousEnd());
-        }
-
-        return left;
+        return ParseBinOp(ParseAExpr, [TokenType.LeftShift, TokenType.RightShift], [Ast.LShift, Ast.RShift]);
     }
 
-    /// <summary>
-    /// and_expr: <see cref="ParseShiftExpr">shift_expr</see> | and_expr "&" <see cref="ParseShiftExpr">shift_expr</see>
-    /// </summary>
-    /// <returns></returns>
-    private AstExprNode ParseAndExpr()
+    [GrammarSyntaxRule("bitwise_and")]
+    private AstExprNode ParseBitwiseAnd()
     {
-        var startMetaInfo = CreateAstMetaInfo();
-        var andExpr = ParseShiftExpr();
-
-        while (CurrentTokenType is TokenType.Ampersand)
-        {
-            var currentMetaInfo = startMetaInfo.WithCrucial();
-            MoveNextToken();
-            var shiftExpr = ParseShiftExpr();
-            andExpr = Ast.BitAnd(andExpr, shiftExpr).With(currentMetaInfo.WithPreviousEnd());
-        }
-
-        return andExpr;
+        return ParseBinOp(ParseShiftExpr, TokenType.Ampersand, Ast.BitAnd);
     }
 
-    /// <summary>
-    /// xor_expr: <see cref="ParseAndExpr">and_expr</see> | xor_expr "^" <see cref="ParseAndExpr">and_expr</see>
-    /// </summary>
-    /// <returns></returns>
-    private AstExprNode ParseXorExpr()
+    [GrammarSyntaxRule("bitwise_xor")]
+    private AstExprNode ParseBitwiseXor()
     {
-        var startMetaInfo = CreateAstMetaInfo();
-        var xorExpr = ParseAndExpr();
-
-        while (CurrentTokenType is TokenType.Caret)
-        {
-            var currentMetaInfo = startMetaInfo.WithCrucial();
-            MoveNextToken();
-            var andExpr = ParseAndExpr();
-            xorExpr = Ast.BitXor(xorExpr, andExpr).With(currentMetaInfo.WithPreviousEnd());
-        }
-
-        return xorExpr;
+        return ParseBinOp(ParseBitwiseAnd, TokenType.Caret, Ast.BitXor);
     }
 
-    /// <summary>
-    /// or_expr: <see cref="ParseXorExpr">xor_expr</see> | or_expr "|" <see cref="ParseXorExpr">xor_expr</see>
-    /// </summary>
-    /// <returns></returns>
-    private AstExprNode ParseOrExpr()
+    [GrammarSyntaxRule("bitwise_or")]
+    private AstExprNode ParseBitwiseOr()
     {
-        var startMetaInfo = CreateAstMetaInfo();
-        var orExpr = ParseXorExpr();
+        return ParseBinOp(ParseBitwiseXor, TokenType.Pipe, Ast.BitOr);
+    }
 
-        while (CurrentTokenType is TokenType.Pipe)
+    private AstExprNode ParseBinOp(Func<AstExprNode> parse, ReadOnlySpan<TokenType> ops, ReadOnlySpan<Func<AstExprNode, AstExprNode, AstExprNode>> combines)
+    {
+        Debug.Assert(ops.Length == combines.Length);
+
+        var startMetaInfo = CreateAstMetaInfo();
+        var leftExpr = parse();
+
+        while (true)
         {
+            var index = ops.IndexOf(CurrentTokenType);
+            if (index is -1)
+                break;
+
             var currentMetaInfo = startMetaInfo.WithCrucial();
             MoveNextToken();
-            var xorExpr = ParseXorExpr();
-            orExpr = Ast.BitOr(orExpr, xorExpr).With(currentMetaInfo.WithPreviousEnd());
+            var rightExpr = parse();
+            leftExpr = combines[index](leftExpr, rightExpr).With(currentMetaInfo.WithPreviousEnd());
         }
 
-        return orExpr;
+        return leftExpr;
+    }
+
+    private AstExprNode ParseBinOp(Func<AstExprNode> parse, TokenType op, Func<AstExprNode, AstExprNode, AstExprNode> combine)
+    {
+        return ParseBinOp(parse, [op], [combine]);
     }
 
     [GrammarSyntaxRule("compare_op_bitwise_or_pair")]
@@ -805,7 +774,7 @@ partial class Parser
             return false;
         }
 
-        var comparator = ParseOrExpr();
+        var comparator = ParseBitwiseOr();
 
         pair = (op, comparator);
         return true;
@@ -816,7 +785,7 @@ partial class Parser
     {
         var metaInfo = CreateAstMetaInfo();
 
-        var expr = ParseOrExpr();
+        var expr = ParseBitwiseOr();
         if (!TryParseCompareOpBitwiseOrPair(out var pair))
             return expr;
 
@@ -946,7 +915,7 @@ partial class Parser
 
         var metaInfo = CreateAstMetaInfo();
         MoveNextToken();
-        var value = ParseOrExpr();
+        var value = ParseBitwiseOr();
         return Ast.Starred(value).With(metaInfo.WithPreviousEnd());
     }
 
@@ -1203,7 +1172,7 @@ partial class Parser
     }
 
     /// <summary>
-    /// dict_item: <see cref="ParseExpression">expression</see> ":" <see cref="ParseExpression">expression</see> | "**" <see cref="ParseOrExpr">or_expr</see>
+    /// dict_item: <see cref="ParseExpression">expression</see> ":" <see cref="ParseExpression">expression</see> | "**" <see cref="ParseBitwiseOr">or_expr</see>
     /// </summary>
     /// <returns></returns>
     private (AstExprNode Key, AstExprNode Value) ParseDictItem()
