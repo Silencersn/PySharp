@@ -407,8 +407,9 @@ partial class Parser
         return ParseStmtList();
     }
 
+    // match is special, do not parse it in ParseCompoundStmt 
     private static readonly string[] CompoundStmtStartsWith = [
-        "if", "while", "for", "try", "with", "match", "def", "class", "async"
+        "if", "while", "for", "try", "with", /* "match", */ "def", "class", "async"
         ];
 
     private AstStmtNode ParseCompoundStmt(List<AstExprNode> decorators)
