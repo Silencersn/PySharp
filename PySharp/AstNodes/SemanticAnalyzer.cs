@@ -335,17 +335,31 @@ public sealed class SemanticAnalyzer
 
                 case MatchMappingNode n:
                     var literalKeys = n.Keys.OfType<ConstantNode>().Select(static node => node.Value).ToArray();
-                    for (int i = 1; i < literalKeys.Length; i++)
+                    foreach (var (key1, key2) in EnumeratePairs(literalKeys))
                     {
-                        for (int j = 0; j < i; j++)
-                        {
-                            // builtin types, use == directly
-                            if (literalKeys[i] == literalKeys[j])
-                                throw _context.ThrowableSyntaxError($"mapping pattern checks duplicate key ({
-                                    PySpecialMethods.Str(_context, literalKeys[i]).PyUnwrap(_context).Value})");
-                        }
+                        // builtin types, use == directly
+                        if (key1 == key2)
+                            throw _context.ThrowableSyntaxError($"mapping pattern checks duplicate key ({
+                                PySpecialMethods.Str(_context, key1).PyUnwrap(_context).Value})");
                     }
                     break;
+
+                case MatchClassNode n:
+                    foreach (var (attr1, attr2) in EnumeratePairs(n.KwdAttrs))
+                    {
+                        if (attr1.Equals(attr2, StringComparison.Ordinal))
+                            throw _context.ThrowableSyntaxError($"attribute name repeated in class pattern: {attr1}");
+                    }
+                    break;
+            }
+
+            static IEnumerable<(T, T)> EnumeratePairs<T>(IReadOnlyList<T> items)
+            {
+                for (int i = 1; i < items.Count; i++)
+                {
+                    for (int j = 0; j < i; j++)
+                        yield return (items[j], items[i]);
+                }
             }
         }
     }

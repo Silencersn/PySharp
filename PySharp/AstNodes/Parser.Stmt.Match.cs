@@ -158,9 +158,10 @@ partial class Parser
                 return ParseWildcardPattern();
 
             var nameOrAttr = ParseNameOrAttr();
+            var isClass = CurrentTokenType is TokenType.LeftParen;
             TokenStreamPosition = pos;
 
-            if (CurrentTokenType is TokenType.LeftParen)
+            if (isClass)
                 return ParseClassPattern();
 
             if (nameOrAttr is NameNode)
@@ -454,12 +455,6 @@ partial class Parser
         throw _context.ThrowableSyntaxError("invalid syntax");
     }
 
-    [GrammarSyntaxRule("class_pattern")]
-    private MatchClassNode ParseClassPattern()
-    {
-        throw new NotImplementedException();
-    }
-
     [GrammarSyntaxRule("mapping_pattern")]
     private MatchMappingNode ParseMappingPattern()
     {
@@ -515,11 +510,101 @@ partial class Parser
     {
         return ParseSomethingList(ParseKeyValuePattern, StopPredicates.UntilRightBraceOrDoubleStar, out endsWithComma);
     }
-
+    
     [GrammarSyntaxRule("double_star_pattern")]
     private string ParseDoubleStarPattern()
     {
         EnsureTokenTypeThenMove(TokenType.DoubleStar);
         return ParsePatternCaptureTarget();
+    }
+
+    [GrammarSyntaxRule("class_pattern")]
+    private MatchClassNode ParseClassPattern()
+    {
+        var metaInfo = CreateAstMetaInfo();
+        var cls = ParseNameOrAttr();
+        EnsureTokenTypeThenMove(TokenType.LeftParen);
+
+        if (CurrentTokenType is TokenType.RightParen)
+        {
+            var pattern = Ast.MatchClass(cls, patterns: [], kwdAttrs: [], kwdPatterns: []);
+            MoveNextToken();
+            return pattern.With(metaInfo.WithPreviousEnd());
+        }
+
+        if (TestIsKeywordPattern())
+        {
+            var kwds = ParseKeywordPatterns();
+            var pattern = Ast.MatchClass(cls, patterns: [], kwds.Select(static kwd => kwd.Key), kwds.Select(static kwd => kwd.Value));
+            EnsureTokenTypeThenMove(TokenType.RightParen);
+            return pattern.With(metaInfo.WithPreviousEnd());
+        }
+
+        var patterns = ParsePositionalPatterns();
+
+        if (CurrentTokenType is TokenType.RightParen)
+        {
+            var pattern = Ast.MatchClass(cls, patterns, kwdAttrs: [], kwdPatterns: []);
+            EnsureTokenTypeThenMove(TokenType.RightParen);
+            return pattern.With(metaInfo.WithPreviousEnd());
+        }
+        else
+        {
+            var kwds = ParseKeywordPatterns();
+            var pattern = Ast.MatchClass(cls, patterns, kwds.Select(static kwd => kwd.Key), kwds.Select(static kwd => kwd.Value));
+            EnsureTokenTypeThenMove(TokenType.RightParen);
+            return pattern.With(metaInfo.WithPreviousEnd());
+        }
+    }
+
+    [GrammarSyntaxRule("positional_patterns")]
+    private List<AstPatternNode> ParsePositionalPatterns()
+    {
+        List<AstPatternNode> patterns = [ParsePattern()];
+
+        while (CurrentTokenType is TokenType.Comma)
+        {
+            MoveNextToken();
+
+            if (CurrentTokenType is TokenType.RightParen)
+                break;
+
+            if (TestIsKeywordPattern())
+                break;
+
+            patterns.Add(ParsePattern());
+        }
+
+        return patterns;
+    }
+
+    private bool TestIsKeywordPattern()
+    {
+        if (CurrentTokenType is not TokenType.Name)
+            return false;
+
+        if (IsKeyword(CurrentToken.String))
+            return false;
+        
+        var pos = TokenStreamPosition;
+        MoveNextToken();
+        var result = CurrentTokenType is TokenType.Equal;
+        TokenStreamPosition = pos;
+        return result;
+    }
+
+    [GrammarSyntaxRule("keyword_pattern")]
+    private KeyValuePair<string, AstPatternNode> ParseKeywordPattern()
+    {
+        var name = ParseIdentifier();
+        EnsureTokenTypeThenMove(TokenType.Equal);
+        var pattern = ParsePattern();
+        return KeyValuePair.Create(name, pattern);
+    }
+
+    [GrammarSyntaxRule("keyword_patterns")]
+    private List<KeyValuePair<string, AstPatternNode>> ParseKeywordPatterns()
+    {
+        return ParseSomethingList(ParseKeywordPattern, StopPredicates.UntilRightParen, out _);
     }
 }
