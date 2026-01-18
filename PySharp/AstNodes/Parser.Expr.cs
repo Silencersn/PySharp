@@ -468,19 +468,6 @@ partial class Parser
     }
 
     /// <summary>
-    /// await_expr: "await" <see cref="ParsePrimary">primary</see>
-    /// </summary>
-    /// <returns></returns>
-    /// <exception cref="NotImplementedException"></exception>
-    private AstExprNode ParseAwaitExpr()
-    {
-        EnsureKeywordThenMove("await");
-        var expr = ParsePrimary();
-        _ = expr;
-        throw new NotImplementedException();
-    }
-
-    /// <summary>
     /// primary: <see cref="ParseAtom">atom</see> | attributeref | subscription | slicing | call
     /// <br/> attributeref: primary "." <see cref="ParseIdentifier">identifier</see>
     /// <br/> subscription: primary "[" <see cref="ParseFlexibleExpressionList(StopPredicate, out bool)">flexible_expression_list</see> "]"
@@ -562,106 +549,59 @@ partial class Parser
         return expr;
     }
 
-    /// <summary>
-    /// power: (<see cref="ParseAwaitExpr">await_expr</see> | <see cref="ParsePrimary">primary</see>) ["**" <see cref="ParseUExpr">u_expr</see>]
-    /// </summary>
-    /// <returns></returns>
+    [GrammarSyntaxRule("await_primary")]
+    private AstExprNode ParseAwaitPrimary()
+    {
+        if (!IsCurrentKeyword("await"))
+            return ParsePrimary();
+
+        //var metaInfo = CreateAstMetaInfo();
+        //MoveNextToken();
+        //var expr = ParsePrimary();
+        throw new NotSupportedException();
+    }
+
+    [GrammarSyntaxRule("power")]
     private AstExprNode ParsePower()
     {
         var metaInfo = CreateAstMetaInfo();
-        var expr = IsCurrentKeyword("await") ? ParseAwaitExpr() : ParsePrimary();
+        var expr = ParseAwaitPrimary();
 
-        if (CurrentTokenType is TokenType.DoubleStar)
-        {
-            metaInfo = metaInfo.WithCrucial();
-            MoveNextToken();
-            var uexpr = ParseUExpr();
-            return Ast.BinOp(OperatorType.Pow, expr, uexpr).With(metaInfo.WithPreviousEnd());
-        }
+        if (CurrentTokenType is not TokenType.DoubleStar)
+            return expr;
 
-        return expr;
+        metaInfo = metaInfo.WithCrucial();
+        MoveNextToken();
+        var factor = ParseFactor();
+        return Ast.Pow(expr, factor).With(metaInfo.WithPreviousEnd());
     }
 
-    /// <summary>
-    /// u_expr: <see cref="ParsePower">power</see> | "-" u_expr | "+" u_expr | "~" u_expr
-    /// </summary>
-    /// <returns></returns>
-    private AstExprNode ParseUExpr()
+    [GrammarSyntaxRule("factor")]
+    private AstExprNode ParseFactor()
     {
-        if (CurrentTokenType is TokenType.Minus or TokenType.Plus or TokenType.Tilde)
-        {
-            var metaInfo = CreateAstMetaInfo();
-            UnaryOpType op = CurrentTokenType switch
-            {
-                TokenType.Minus => UnaryOpType.USub,
-                TokenType.Plus => UnaryOpType.UAdd,
-                TokenType.Tilde => UnaryOpType.Invert,
-                _ => throw new UnreachableException(),
-            };
-            MoveNextToken();
-            var uexpr = ParseUExpr();
-            return Ast.UnaryOp(op, uexpr).With(metaInfo.WithPreviousEnd());
-        }
-
-        return ParsePower();
+        return ParseUnaryOp(ParsePower,
+            [TokenType.Plus, TokenType.Minus, TokenType.Tilde],
+            [Ast.UAdd, Ast.USub, Ast.Invert]);
     }
 
-    /// <summary>
-    /// m_expr: <see cref="ParseUExpr">u_expr</see> | m_expr "*" <see cref="ParseUExpr">u_expr</see> | m_expr "@" m_expr |
-    ///         m_expr "//" <see cref="ParseUExpr">u_expr</see> | m_expr "/" <see cref="ParseUExpr">u_expr</see> |
-    ///         m_expr "%" <see cref="ParseUExpr">u_expr</see>
-    /// </summary>
-    /// <returns></returns>
-    private AstExprNode ParseMExpr()
+    [GrammarSyntaxRule("term")]
+    private AstExprNode ParseTerm()
     {
-        var startMetaInfo = CreateAstMetaInfo();
-        var left = ParseUExpr();
-
-        while (CurrentTokenType is TokenType.Star or TokenType.Slash or TokenType.DoubleSlash or TokenType.Percent)
-        {
-            var currentMetaInfo = startMetaInfo.WithCrucial();
-            OperatorType op = CurrentTokenType switch
-            {
-                TokenType.Star => OperatorType.Mult,
-                TokenType.Slash => OperatorType.Div,
-                TokenType.DoubleSlash => OperatorType.FloorDiv,
-                TokenType.Percent => OperatorType.Mod,
-                _ => throw new UnreachableException(),
-            };
-            MoveNextToken();
-            var right = ParseMExpr();
-            left = Ast.BinOp(op, left, right).With(currentMetaInfo.WithPreviousEnd());
-        }
-
-        return left;
+        return ParseBinOp(ParseFactor,
+            [TokenType.Star, TokenType.Slash, TokenType.DoubleSlash, TokenType.Percent, TokenType.At],
+            [Ast.Mult, Ast.Div, Ast.FloorDiv, Ast.Mod, Ast.MatMult]);
     }
 
-    /// <summary>
-    /// a_expr: <see cref="ParseMExpr">m_expr</see> | a_expr "+" <see cref="ParseMExpr">m_expr</see> | a_expr "-" <see cref="ParseMExpr">m_expr</see>
-    /// </summary>
-    /// <returns></returns>
-    private AstExprNode ParseAExpr()
+    [GrammarSyntaxRule("sum")]
+    private AstExprNode ParseSum()
     {
-        var startMetaInfo = CreateAstMetaInfo();
-        var left = ParseMExpr();
-
-        while (CurrentTokenType is TokenType.Plus or TokenType.Minus)
-        {
-            var currentMetaInfo = startMetaInfo.WithCrucial();
-            var add = CurrentTokenType is TokenType.Plus;
-            MoveNextToken();
-            var right = ParseMExpr();
-            left = add ? Ast.Add(left, right) : Ast.Sub(left, right);
-            left.With(currentMetaInfo.WithPreviousEnd());
-        }
-
-        return left;
+        return ParseBinOp(ParseTerm, [TokenType.Plus, TokenType.Minus], [Ast.Add, Ast.Sub]);
     }
 
     [GrammarSyntaxRule("shift_expr")]
     private AstExprNode ParseShiftExpr()
     {
-        return ParseBinOp(ParseAExpr, [TokenType.LeftShift, TokenType.RightShift], [Ast.LShift, Ast.RShift]);
+        return ParseBinOp(ParseSum, [TokenType.LeftShift, TokenType.RightShift], [Ast.LShift, Ast.RShift]);
     }
 
     [GrammarSyntaxRule("bitwise_and")]
@@ -680,6 +620,22 @@ partial class Parser
     private AstExprNode ParseBitwiseOr()
     {
         return ParseBinOp(ParseBitwiseXor, TokenType.Pipe, Ast.BitOr);
+    }
+
+    private AstExprNode ParseUnaryOp(Func<AstExprNode> parse, ReadOnlySpan<TokenType> ops, ReadOnlySpan<Func<AstExprNode, AstExprNode>> wrappers)
+    {
+        Debug.Assert(ops.Length == wrappers.Length);
+
+        var metaInfo = CreateAstMetaInfo();
+
+        var index = ops.IndexOf(CurrentTokenType);
+        if (index is -1)
+            return parse();
+
+        MoveNextToken();
+        var innerValue = ParseUnaryOp(parse, ops, wrappers);
+        var value = wrappers[index](innerValue).With(metaInfo.WithPreviousEnd());
+        return value;
     }
 
     private AstExprNode ParseBinOp(Func<AstExprNode> parse, ReadOnlySpan<TokenType> ops, ReadOnlySpan<Func<AstExprNode, AstExprNode, AstExprNode>> combines)
