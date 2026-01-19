@@ -341,12 +341,6 @@ partial class Parser
         return Ast.Constant(double.Parse(value)).With(metaInfo);
     }
 
-    [GrammarSyntaxRule("strings")]
-    private AstExprNode ParseStrings()
-    {
-        return ParseString();
-    }
-
     [GrammarSyntaxRule("capture_pattern")]
     private MatchAsNode ParseCapturePattern()
     {

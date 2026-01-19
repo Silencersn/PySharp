@@ -1,11 +1,21 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.Tokenization;
+using System;
 using System.Diagnostics;
 
 namespace PySharp.AstNodes;
 
 partial class Parser
 {
+    [GrammarSyntaxRule("annotated_rhs")]
+    private AstExprNode ParseAnnotatedRhs(StopPredicate predicate)
+    {
+        if (IsCurrentKeyword("yield"))
+            return ParseYieldExpr();
+
+        return ParseStarExpressions(predicate);
+    }
+
     /// <summary>
     /// module: (<see cref="ParseIdentifier">identifier</see> ".")* <see cref="ParseIdentifier">identifier</see>
     /// </summary>
@@ -256,7 +266,7 @@ partial class Parser
 
                 targets.Add(UnwrapOrMakeTuple(exprList, endsWithComma));
                 MoveNextToken();
-                exprList = ParseStarExpressions(StopPredicates.UntilNewLineOrSemicolonOrEqual, out endsWithComma);
+                exprList = ParseSomethingList(ParseStarExpression, StopPredicates.UntilNewLineOrSemicolonOrEqual, out endsWithComma);
                 allTargets = exprList.All(AstUtils.IsValidTarget);
             }
 
@@ -333,8 +343,7 @@ partial class Parser
                 }
                 else
                 {
-                    var list = ParseStarExpressions(StopPredicates.UntilNewLineOrSemicolon, out var comma);
-                    value = UnwrapOrMakeTuple(list, comma);
+                    value = ParseStarExpressions(StopPredicates.UntilNewLineOrSemicolon);
                 }
             }
 
@@ -587,8 +596,7 @@ partial class Parser
         var target = UnwrapOrMakeTuple(targetList, endsWithComma);
         AstUtils.SetContext(target, ExprContextType.Store);
         EnsureKeywordThenMove("in");
-        var items = ParseStarExpressions(StopPredicates.UntilColon, out endsWithComma);
-        var iter = UnwrapOrMakeTuple(items, endsWithComma);
+        var iter = ParseStarExpressions(StopPredicates.UntilColon);
         EnsureTokenTypeThenMove(TokenType.Colon);
         var body = ParseSuite("for");
         IEnumerable<AstStmtNode> orElse = [];

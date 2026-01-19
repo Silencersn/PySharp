@@ -5,7 +5,6 @@ using PySharp.PyRuntime.Calls;
 using PySharp.Tokenization;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq.Expressions;
 using System.Text;
 
 namespace PySharp.AstNodes;
@@ -133,51 +132,30 @@ partial class Parser
         return false;
     }
 
-    private AstExprNode ParseFExpression()
+    [GrammarSyntaxRule("fstring_middle")]
+    private AstExprNode ParseFStringMiddle(bool isRaw)
     {
-        if (IsCurrentKeyword("yield"))
-            return ParseYieldExpr();
+        if (CurrentTokenType is not TokenType.FStringMiddle)
+            return ParseFStringReplacementField(isRaw);
 
-        var list = ParseFlexibleExpressionList(StopPredicates.UntilRightBraceOrEqual, out var endsWithComma);
-        return UnwrapOrMakeTuple(list, endsWithComma);
+        var str = isRaw ? CurrentToken.String : FromLiteralToString(_context, CurrentToken.StringAsSpan, true);
+        var middle = Ast.Constant(str).With(CreateAstMetaInfo());
+        MoveNextToken();
+        return middle;
     }
 
-    private JoinedStrNode ParseFStringFullFormatSpec()
+    [GrammarSyntaxRule("fstring_replacement_field")]
+    private AstExprNode ParseFStringReplacementField(bool isRaw)
     {
-        EnsureTokenTypeThenMove(TokenType.Colon);
-        List<AstExprNode> nodes = [];
-        while (CurrentTokenType is not TokenType.RightBrace)
-        {
-            if (CurrentTokenType is TokenType.FStringMiddle)
-            {
-                var str = FromLiteralToString(_context, CurrentToken.StringAsSpan, true);
-                var node = Ast.Constant(str).With(CreateAstMetaInfo());
-                nodes.Add(node);
-            }
-            else
-            {
-                EnsureTokenTypeThenMove(TokenType.LeftBrace);
-                var node = ParseFStringReplacementFieldWithoutBraces(out var debugSpecifier);
-                if (debugSpecifier is not null)
-                    // TODO: it seems that cpython do not support this here
-                    nodes.Add(debugSpecifier);
-                nodes.Add(node);
-            }
-            Debug.Assert(CurrentTokenType is TokenType.FStringMiddle or TokenType.RightBrace);
-            MoveNextToken();
-        }
-        return Ast.JoinedStr(nodes); // TODO: need MetaInfo?
-    }
-
-    private FormattedValueNode ParseFStringReplacementFieldWithoutBraces(out ConstantNode? debugSpecifier)
-    {
+        EnsureTokenTypeThenMove(TokenType.LeftBrace);
         if (CurrentTokenType is TokenType.RightBrace)
             throw _context.ThrowableSyntaxError("f-string: valid expression required before '}'");
 
         var start = CurrentToken.Start;
         var metaInfo = CreateAstMetaInfo();
-        var fexpr = ParseFExpression();
+        var value = ParseAnnotatedRhs(StopPredicates.UntilRightBraceOrEqual);
 
+        var debugSpec = null as AstExprNode;
         if (CurrentTokenType is TokenType.Equal)
         {
             MoveNextToken();
@@ -186,138 +164,199 @@ partial class Parser
             if (!_codeSource.Code.TryGetRange(start, end, out var range))
                 throw _context.ThrowablePySharpException("incorrect code text position");
 
-            debugSpecifier = Ast.Constant(range.ToString()).With(metaInfo.WithEnd());
-        }
-        else
-        {
-            debugSpecifier = null;
+            debugSpec = Ast.Constant(range.ToString()).With(metaInfo.WithEnd());
         }
 
-        int conversion = -1;
+        var conversion = -1;
         if (CurrentTokenType is TokenType.Exclamation)
-        {
-            MoveNextToken();
+            conversion = ParseFStringConversion();
 
-            if (CurrentTokenType is not TokenType.Name)
-                throw _context.ThrowableSyntaxError("f-string: missing conversion character");
-
-            if (CurrentToken.StringAsSpan is not ("s" or "r" or "a"))
-                throw _context.ThrowableSyntaxError($"f-string: invalid conversion character '{CurrentToken.StringAsSpan}': expected 's', 'r', or 'a'");
-
-            conversion = CurrentToken.StringAsSpan[0];
-            MoveNextToken();
-        }
-
-        JoinedStrNode? format_spec = null;
+        var format_spec = null as JoinedStrNode;
         if (CurrentTokenType is TokenType.Colon)
-            format_spec = ParseFStringFullFormatSpec();
+            format_spec = ParseFStringFullFormatSpec(isRaw);
 
-        return Ast.FormattedValue(fexpr, conversion, format_spec).With(fexpr.MetaInfo); // TODO: MetaInfo
+        EnsureTokenTypeThenMove(TokenType.RightBrace);
+        var formatted = Ast.FormattedValue(value, conversion, format_spec).With(metaInfo.WithPreviousEnd());
+        if (debugSpec is null)
+            return formatted;
+        return Ast.JoinedStr([debugSpec, formatted]).With(metaInfo.WithPreviousEnd());
     }
 
-    private AstExprNode ParseString()
+    [GrammarSyntaxRule("fstring_conversion")]
+    private int ParseFStringConversion()
     {
-        Debug.Assert(CurrentTokenType is TokenType.String or TokenType.FStringStart);
+        EnsureTokenTypeThenMove(TokenType.Exclamation);
+        EnsureTokenType(TokenType.Name, "f-string: invalid conversion character");
+        if (IsKeyword(CurrentToken.String))
+            throw _context.ThrowableSyntaxError("f-string: invalid conversion character");
 
-        // ConstantNode or FormattedValueNode
-        List<AstExprNode> nodes = [];
-        bool hasFString = false;
+        var conversion = CurrentToken.String;
+        if (conversion is not ("s" or "r" or "a"))
+            throw _context.ThrowableSyntaxError($"f-string: invalid conversion character '{conversion}': expected 's', 'r', or 'a'");
+        MoveNextToken();
+
+        return conversion[0];
+    }
+
+    [GrammarSyntaxRule("fstring_full_format_spec")]
+    private JoinedStrNode ParseFStringFullFormatSpec(bool isRaw)
+    {
+        EnsureTokenTypeThenMove(TokenType.Colon);
+
         var metaInfo = CreateAstMetaInfo();
+
+        // ConstantNode(string) or FormattedValueNode or JoinedStrNode
+        List<AstExprNode> formatSpecs = [];
+        while (CurrentTokenType is not TokenType.RightBrace)
+        {
+            var formatSpec = ParseFStringFormatSpec(isRaw);
+            formatSpecs.Add(formatSpec);
+        }
+
+        return ConcatToJoinedStr(formatSpecs).With(metaInfo.WithPreviousEnd());
+    }
+
+    [GrammarSyntaxRule("fstring_format_spec")]
+    private AstExprNode ParseFStringFormatSpec(bool isRaw)
+    {
+        return ParseFStringMiddle(isRaw);
+    }
+
+    [GrammarSyntaxRule("fstring")]
+    private JoinedStrNode ParseFString()
+    {
+        var metaInfo = CreateAstMetaInfo();
+        EnsureTokenType(TokenType.FStringStart);
+        var isRaw = CurrentToken.StringAsSpan.Contains('r');
+        MoveNextToken();
+
+        // ConstantNode(string) or FormattedValueNode or JoinedStrNode
+        List<AstExprNode> values = [];
+        while (CurrentTokenType is not TokenType.FStringEnd)
+            values.Add(ParseFStringMiddle(isRaw));
+        MoveNextToken();
+
+        return ConcatToJoinedStr(values).With(metaInfo.WithPreviousEnd());
+    }
+
+    private static JoinedStrNode ConcatToJoinedStr(List<AstExprNode> nodes)
+    {
+        return Ast.JoinedStr(nodes.SelectMany(FlattenIfJoinedStr).Where(IsNotEmptyConstantString));
+
+        static bool IsNotEmptyConstantString(AstExprNode node)
+        {
+            if (node is not ConstantNode constant)
+                return true;
+
+            return constant.Value is not PyStrObject { Value: "" };
+        }
+
+        static IEnumerable<AstExprNode> FlattenIfJoinedStr(AstExprNode node)
+        {
+            if (node is not JoinedStrNode joinedStrNode)
+                return [node];
+
+            return joinedStrNode.Values;
+        }
+    }
+
+    [GrammarSyntaxRule("string")]
+    private ConstantNode ParseString()
+    {
+        EnsureTokenType(TokenType.String);
+        var str = Ast.Constant(FromLiteralToString(_context, CurrentToken.StringAsSpan, noWrapper: false));
+        MoveNextToken();
+        return str;
+    }
+
+    [GrammarSyntaxRule("strings")]
+    private AstExprNode ParseStrings()
+    {
+        if (CurrentTokenType is not (TokenType.String or TokenType.FStringStart))
+            throw _context.ThrowableSyntaxError("invalid syntax");
+
+        var metaInfo = CreateAstMetaInfo();
+
+        // ConstantNode(string) or JoinedStrNode
+        List<AstExprNode> nodes = [];
 
         while (CurrentTokenType is TokenType.String or TokenType.FStringStart)
         {
             if (CurrentTokenType is TokenType.String)
-            {
-                var str = FromLiteralToString(_context, CurrentToken.StringAsSpan, false);
-                var node = Ast.Constant(str).With(CreateAstMetaInfo());
-                nodes.Add(node);
-            }
+                nodes.Add(ParseString());
             else
-            {
-                EnsureTokenTypeThenMove(TokenType.FStringStart);
-                hasFString = true;
+                nodes.Add(ParseFString());
+        }
 
-                while (CurrentTokenType is not TokenType.FStringEnd)
+        return ConcatStrings(nodes);
+
+        AstExprNode ConcatConstants(List<AstExprNode> nodes, int skipCount = 0)
+        {
+            if (nodes.Count is 1)
+                return nodes[0];
+
+            var builder = _builderForTokenString.Clear();
+            foreach (var node in nodes.Skip(skipCount))
+            {
+                var constant = (ConstantNode)node;
+                var value = (PyStrObject)constant.Value;
+                builder.Append(value.Value);
+            }
+
+            return Ast.Constant(builder.ToString());
+        }
+
+        AstExprNode ConcatStrings(List<AstExprNode> nodes)
+        {
+            if (nodes.All(static node => node is ConstantNode))
+                return ConcatConstants(nodes);
+
+            var flattened = nodes.SelectMany(static node => node switch
+            {
+                ConstantNode n => [n],
+                JoinedStrNode n => n.Values,
+                _ => throw new UnreachableException()
+            });
+
+            var combinedNodes = new List<AstExprNode>();
+
+            foreach (var node in flattened)
+            {
+                if (node is FormattedValueNode)
                 {
-                    if (CurrentTokenType is TokenType.FStringMiddle)
+                    for (int i = combinedNodes.Count - 1; i >= 0; i--)
                     {
-                        var str = FromLiteralToString(_context, CurrentToken.StringAsSpan, true);
-                        var node = Ast.Constant(str).With(CreateAstMetaInfo());
-                        nodes.Add(node);
+                        if (combinedNodes[i] is ConstantNode)
+                            continue;
+
+                        if (i == combinedNodes.Count - 1)
+                            break;
+
+                        var combinedConstant = ConcatConstants(combinedNodes, i + 1);
+                        combinedNodes.RemoveRange(i + 1, combinedNodes.Count - i - 1);
+                        combinedNodes.Add(combinedConstant);
+                        break;
                     }
-                    else
-                    {
-                        EnsureTokenTypeThenMove(TokenType.LeftBrace);
-                        var node = ParseFStringReplacementFieldWithoutBraces(out var debugSpecifier);
-                        if (debugSpecifier is not null)
-                            nodes.Add(debugSpecifier);
-                        nodes.Add(node);
-                    }
-                    MoveNextToken();
+                    combinedNodes.Add(node);
                 }
-
+                else
+                {
+                    Debug.Assert(node is ConstantNode);
+                    combinedNodes.Add(node);
+                }
             }
 
-            metaInfo = metaInfo.WithEnd();
-            Debug.Assert(CurrentTokenType is TokenType.String or TokenType.FStringEnd);
-            MoveNextToken();
+            return ConcatToJoinedStr(combinedNodes);
         }
-
-        List<AstExprNode> combinedNodes = [];
-        _builderForTokenString.Clear();
-        foreach (var node in nodes)
-        {
-            if (node is ConstantNode constantNode)
-            {
-                Debug.Assert(constantNode.Value is PyStrObject);
-                _builderForTokenString.Append(((PyStrObject)constantNode.Value).Value);
-            }
-            else if (node is FormattedValueNode formattedValueNode)
-            {
-                TryAppendCombinedConstantNode();
-                combinedNodes.Add(formattedValueNode);
-            }
-            else
-            {
-                throw new UnreachableException();
-            }
-        }
-        TryAppendCombinedConstantNode();
-
-        if (!hasFString)
-        {
-            Debug.Assert(combinedNodes.Count is 0 or 1);
-
-            if (combinedNodes.Count is 0)
-                return Ast.Constant(string.Empty).With(metaInfo);
-
-            var node = combinedNodes[0];
-            node.MetaInfo = metaInfo;
-            return node;
-        }
-
-        return Ast.JoinedStr(combinedNodes).With(metaInfo);
-
-        void TryAppendCombinedConstantNode()
-        {
-            if (_builderForTokenString.Length is 0)
-                return;
-
-            var combinedNode = Ast.Constant(_builderForTokenString.ToString()); // MetaInfo will be added after the combining is complete
-            combinedNodes.Add(combinedNode);
-            _builderForTokenString.Clear();
-        }
-
-
     }
-    static string FromLiteralToString(PyCallContext context, ReadOnlySpan<char> literal, bool nonWrapper)
+    static string FromLiteralToString(PyCallContext context, ReadOnlySpan<char> literal, bool noWrapper)
     {
         // TODO: prefix 'b'
 
         bool successful;
         string? str;
         PyStrConverter.ConvertErrorInfo info;
-        if (nonWrapper)
+        if (noWrapper)
             successful = PyStrConverter.TryFromTextToString(literal, out str, out info);
         else
             successful = PyStrConverter.TryFromLiteralToString(literal, out str, out info);
@@ -356,16 +395,9 @@ partial class Parser
                 return $"(unicode error) 'unicodeescape' codec can't decode bytes in position {info.Position}-{info.Position + info.Length - 1}: {message}";
             }
         }
-
     }
 
-    /// <summary>
-    /// atom: <see cref="ParseIdentifier">identifier</see> | literal | <see cref="ParseEnclosure">enclosure</see>
-    /// </summary>
-    /// <returns></returns>
-    /// <exception cref="NotImplementedException"></exception>
-    /// <exception cref="PyRuntimeException"></exception>
-    /// <exception cref="NotSupportedException"></exception>
+    [GrammarSyntaxRule("atom")]
     private AstExprNode ParseAtom()
     {
         var metaInfo = CreateAstMetaInfo();
@@ -406,7 +438,7 @@ partial class Parser
         }
         else if (CurrentTokenType is TokenType.String or TokenType.FStringStart)
         {
-            return ParseString();
+            return ParseStrings();
         }
         else if (CurrentTokenType is TokenType.Number)
         {
@@ -899,9 +931,10 @@ partial class Parser
     }
 
     [GrammarSyntaxRule("star_expressions")]
-    private List<AstExprNode> ParseStarExpressions(StopPredicate predicate, out TokenInfo? endsWithComma)
+    private AstExprNode ParseStarExpressions(StopPredicate predicate)
     {
-        return ParseSomethingList(ParseStarExpression, predicate, out endsWithComma);
+        var list = ParseSomethingList(ParseStarExpression, predicate, out var endsWithComma);
+        return UnwrapOrMakeTuple(list, endsWithComma);
     }
 
     [GrammarSyntaxRule("starred_expression")]
@@ -1222,8 +1255,7 @@ partial class Parser
         if (StopPredicates.UntilRightParenOrNewLineOrSemicolon(CurrentToken))
             return Ast.Yield(null).With(metaInfo);
 
-        var list = ParseStarExpressions(StopPredicates.UntilRightParenOrNewLineOrSemicolon, out var endsWithComma);
-        var value = UnwrapOrMakeTuple(list, endsWithComma);
+        var value = ParseStarExpressions(StopPredicates.UntilRightParenOrNewLineOrSemicolon);
         return Ast.Yield(value).With(metaInfo.WithPreviousEnd());
     }
 

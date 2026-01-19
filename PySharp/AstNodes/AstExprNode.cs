@@ -1088,7 +1088,7 @@ public sealed class FormattedValueNode : AstExprNode
         else if (Conversion is 'r')
             result = PySpecialMethods.Repr(context, result).PyUnwrap(context);
         else if (Conversion is 'a')
-            throw new NotImplementedException();
+            result = PyBuiltinFunctions.Ascii.Call(context, [result]).PyUnwrap(context);
         else if (Conversion is not -1)
             throw new UnreachableException();
 
