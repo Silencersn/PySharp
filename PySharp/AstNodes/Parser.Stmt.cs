@@ -2,11 +2,54 @@
 using PySharp.Tokenization;
 using System;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.AstNodes;
 
 partial class Parser
 {
+    public static bool IsSingleTarget(AstExprNode node)
+    {
+        // ITargetNode is NameNode or SubscriptNode or AttributeNode;
+        return node is ITargetNode;
+    }
+
+    public static bool IsStarTarget(AstExprNode node, [NotNullWhen(false)] out AstExprNode? nonStarTargetNode)
+    {
+        nonStarTargetNode = null;
+
+        if (IsSingleTarget(node))
+            return true;
+
+        if (node is StarredNode)
+            return true;
+
+        if (node is TupleNode tupleNode)
+        {
+            foreach (var elt in tupleNode.Elts)
+            {
+                if (!IsStarTarget(elt, out nonStarTargetNode))
+                    return false;
+            }
+
+            return true;
+        }
+
+        if (node is ListNode listNode)
+        {
+            foreach (var elt in listNode.Elts)
+            {
+                if (!IsStarTarget(elt, out nonStarTargetNode))
+                    return false;
+            }
+
+            return true;
+        }
+
+        nonStarTargetNode = node;
+        return false;
+    }
+
     [GrammarSyntaxRule("annotated_rhs")]
     private AstExprNode ParseAnnotatedRhs(StopPredicate predicate)
     {
@@ -16,279 +59,90 @@ partial class Parser
         return ParseStarExpressions(predicate);
     }
 
-    /// <summary>
-    /// module: (<see cref="ParseIdentifier">identifier</see> ".")* <see cref="ParseIdentifier">identifier</see>
-    /// </summary>
-    /// <returns></returns>
-    private string ParseModule()
-    {
-        List<string> modulePaths = [ParseIdentifier()];
-        while (CurrentTokenType is TokenType.Dot)
-        {
-            MoveNextToken();
-            modulePaths.Add(ParseIdentifier());
-        }
-        return string.Join('.', modulePaths);
-    }
-
-    /// <summary>
-    /// relative_module:  "."* <see cref="ParseModule">module</see> | "."+
-    /// </summary>
-    /// <returns></returns>
-    private (string? Module, int Level) ParseRelativeModule()
-    {
-        string? module = null;
-        int level = 0;
-
-        while (CurrentTokenType is TokenType.Dot)
-        {
-            level++;
-            MoveNextToken();
-        }
-
-        if (CurrentTokenType is TokenType.Name && !IsKeyword(CurrentToken.String))
-            module = ParseModule();
-
-        if (module is null && level is 0)
-            throw _context.ThrowableSyntaxError("invalid syntax");
-
-        return (module, level);
-    }
-
-    /// <summary>
-    /// import_stmt: "import" <see cref="ParseModule">module</see> ["as" <see cref="ParseIdentifier">identifier</see>] ("," <see cref="ParseModule">module</see> ["as" <see cref="ParseIdentifier">identifier</see>])*
-    /// <br/>      | "from" <see cref="ParseRelativeModule">relative_module</see> "import" <see cref="ParseIdentifier">identifier</see> ["as" <see cref="ParseIdentifier">identifier</see>] ("," <see cref="ParseIdentifier">identifier</see> ["as" <see cref="ParseIdentifier">identifier</see>])*
-    /// <br/>      | "from" <see cref="ParseRelativeModule">relative_module</see> "import" "(" <see cref="ParseIdentifier">identifier</see> ["as" <see cref="ParseIdentifier">identifier</see>]  ("," <see cref="ParseIdentifier">identifier</see> ["as" <see cref="ParseIdentifier">identifier</see>])* [","] ")"
-    /// <br/>      | "from" <see cref="ParseRelativeModule">relative_module</see> "import" "*"
-    /// </summary>
-    /// <returns></returns>
-    private AstStmtNode ParseImportStmt()
+    [GrammarSyntaxRule("assignment")]
+    private bool TryParseAssignment([NotNullWhen(true)] out AstStmtNode? assignment, out AstExprNode? starExpressions)
     {
         var metaInfo = CreateAstMetaInfo();
-        if (IsCurrentKeyword("import"))
+        var pos = TokenStreamPosition;
+        starExpressions = null;
+
+        if (TryParseSimpleAnnAssign(out assignment))
+            return true;
+
+        TokenStreamPosition = pos;
+        if (TryParseAnnAssignOrAugAssign(out assignment))
+            return true;
+
+        TokenStreamPosition = pos;
+        starExpressions = ParseStarExpressions(StopPredicates.UntilNewLineOrSemicolonOrEqual);
+
+        if (CurrentTokenType is not TokenType.Equal)
+            return false;
+
+        List<AstExprNode> targets = [];
+
+        while (CurrentTokenType is TokenType.Equal)
         {
+            if (!IsStarTarget(starExpressions, out var nonStarTargetNode))
+                throw _context.ThrowableSyntaxError($"cannot assign to {AstUtils.GetExprNodeName(nonStarTargetNode)}");
+
+            targets.Add(starExpressions);
+
             MoveNextToken();
-            List<AstAliasNode> names = [ParseAlias()];
 
-            while (CurrentTokenType is TokenType.Comma)
+            if (IsCurrentKeyword("yield"))
             {
-                MoveNextToken();
-                names.Add(ParseAlias());
+                var value = ParseAnnotatedRhs(StopPredicates.UntilNewLineOrSemicolonOrEqual);
+                assignment = Ast.Assign(targets, value).With(metaInfo);
+                return true;
             }
 
-            if (IsCurrentKeyword("from"))
-                throw _context.ThrowableSyntaxError("Did you mean to use 'from ... import ...' instead?");
-
-            return Ast.Import(names).With(metaInfo);
-
-            AstAliasNode ParseAlias()
-            {
-                var module = ParseModule();
-                var id = null as string;
-                if (IsCurrentKeyword("as"))
-                {
-                    MoveNextToken();
-                    id = ParseIdentifier();
-                }
-                return Ast.Alias(module, id);
-            }
-        }
-        else
-        {
-            EnsureKeywordThenMove("from");
-            var (module, level) = ParseRelativeModule();
-            EnsureKeywordThenMove("import");
-
-            if (CurrentTokenType is TokenType.Star)
-            {
-                MoveNextToken();
-                return Ast.ImportFrom(module, [Ast.Alias("*", null)], level).With(metaInfo);
-            }
-            else if (CurrentTokenType is TokenType.LeftParen)
-            {
-                MoveNextToken();
-
-                List<AstAliasNode> names = [ParseAlias()];
-
-                while (CurrentTokenType is TokenType.Comma)
-                {
-                    MoveNextToken();
-                    if (CurrentTokenType is TokenType.RightParen)
-                        break;
-                    names.Add(ParseAlias());
-                }
-
-                EnsureTokenTypeThenMove(TokenType.RightParen);
-                return Ast.ImportFrom(module, names, level).With(metaInfo);
-            }
-            else
-            {
-                List<AstAliasNode> names = [ParseAlias()];
-
-                while (CurrentTokenType is TokenType.Comma)
-                {
-                    MoveNextToken();
-                    names.Add(ParseAlias());
-                }
-
-                return Ast.ImportFrom(module, names, level).With(metaInfo);
-            }
-
-            AstAliasNode ParseAlias()
-            {
-                var name = ParseIdentifier();
-                var asName = null as string;
-                if (IsCurrentKeyword("as"))
-                {
-                    MoveNextToken();
-                    asName = ParseIdentifier();
-                }
-                return Ast.Alias(name, asName);
-            }
-        }
-    }
-
-    private AstStmtNode ParseSimpleStmt()
-    {
-        var metaInfo = CreateAstMetaInfo();
-        if (CurrentTokenType is TokenType.Name && IsKeyword(CurrentToken.String))
-        {
-            var keyword = CurrentToken.String;
-            if (keyword is "break")
-            {
-                MoveNextToken();
-                return Ast.Break().With(metaInfo);
-            }
-            else if (keyword is "continue")
-            {
-                MoveNextToken();
-                return Ast.Continue().With(metaInfo);
-            }
-            else if (keyword is "raise")
-            {
-                MoveNextToken();
-                if (CurrentTokenType is not (TokenType.NewLine or TokenType.Semicolon))
-                {
-                    var exc = ParseExpression();
-
-                    if (CurrentTokenType is not (TokenType.NewLine or TokenType.Semicolon))
-                    {
-                        EnsureKeywordThenMove("from");
-
-                        var cause = ParseExpression();
-
-                        return Ast.Raise(exc, cause).With(metaInfo);
-                    }
-
-                    return Ast.Raise(exc).With(metaInfo);
-                }
-
-                return Ast.Raise().With(metaInfo);
-            }
-            else if (keyword is "return")
-            {
-                MoveNextToken();
-                if (CurrentTokenType is TokenType.NewLine or TokenType.Semicolon)
-                    return Ast.Return().With(metaInfo);
-
-                var list = ParseExpressions(StopPredicates.UntilNewLineOrSemicolon, out var comma);
-                return Ast.Return(UnwrapOrMakeTuple(list, comma)).With(metaInfo);
-            }
-            else if (keyword is "pass")
-            {
-                MoveNextToken();
-                return Ast.Pass().With(metaInfo);
-            }
-            else if (keyword is "del")
-            {
-                MoveNextToken();
-                var targets = ParseTargetList(StopPredicates.UntilNewLineOrSemicolon, out _);
-                return Ast.Delete(targets).With(metaInfo);
-            }
-            else if (keyword is "import" or "from")
-            {
-                return ParseImportStmt();
-            }
-            else if (keyword is "assert")
-            {
-                MoveNextToken();
-                var test = ParseExpression();
-                AssertNode node;
-                if (CurrentTokenType is TokenType.Comma)
-                {
-                    MoveNextToken();
-                    var msg = ParseExpression();
-                    node = Ast.Assert(test, msg);
-                }
-                else
-                {
-                    node = Ast.Assert(test);
-                }
-                node.MetaInfo = metaInfo;
-                return node;
-            }
-            else if (keyword is "global")
-            {
-                MoveNextToken();
-                var names = ParseIdentifiers();
-                var node = Ast.Global(names);
-                node.MetaInfo = metaInfo;
-                return node;
-            }
-            else if (keyword is "nonlocal")
-            {
-                MoveNextToken();
-                var names = ParseIdentifiers();
-                var node = Ast.Nonlocal(names);
-                node.MetaInfo = metaInfo;
-                return node;
-            }
-            else if (keyword is "yield")
-            {
-                var yieldExpr = ParseYieldExpr();
-                return Ast.Expr(yieldExpr).With(metaInfo);
-            }
+            starExpressions = ParseStarExpressions(StopPredicates.UntilNewLineOrSemicolonOrEqual);
         }
 
+        assignment = Ast.Assign(targets, starExpressions).With(metaInfo);
+        return true;
 
-        var startIndex = TokenStreamPosition;
-        var exprList = ParseExpressions(StopPredicates.UntilNewLineOrSemicolonOrEqual, out var endsWithComma);
-
-        // assignment_stmt
-        if (CurrentTokenType is TokenType.Equal)
+        bool TryParseSimpleAnnAssign([NotNullWhen(true)] out AstStmtNode? annAssign)
         {
-            var allTargets = exprList.All(AstUtils.IsValidTarget);
-            List<AstExprNode> targets = [];
-            while (CurrentTokenType is TokenType.Equal)
-            {
-                if (!allTargets)
-                    throw _context.ThrowableSyntaxError("illegal expression on left side of =");
+            annAssign = null;
+            if (CurrentTokenType is not TokenType.Name)
+                return false;
 
-                targets.Add(UnwrapOrMakeTuple(exprList, endsWithComma));
-                MoveNextToken();
-                exprList = ParseSomethingList(ParseStarExpression, StopPredicates.UntilNewLineOrSemicolonOrEqual, out endsWithComma);
-                allTargets = exprList.All(AstUtils.IsValidTarget);
-            }
+            if (IsKeyword(CurrentToken.String))
+                return false;
 
-            var node = Ast.Assign(targets, UnwrapOrMakeTuple(exprList, endsWithComma));
-            node.MetaInfo = metaInfo;
-            return node;
+            var name = CurrentToken.String;
+            MoveNextToken();
+            if (CurrentTokenType is not TokenType.Colon)
+                return false;
+
+            // if a colon appears here,
+            // the statement should not be an expression.
+            // so, we won't consider any exceptions that might be thrown later.
+
+            var target = Ast.Name(name).With(metaInfo);
+            annAssign = ParseAnnAssign(target, simple: true);
+            return true;
         }
 
-        // augmented_assignment_stmt
-        if (IsAugOperator(CurrentTokenType))
+        bool TryParseAnnAssignOrAugAssign([NotNullWhen(true)] out AstStmtNode? annAssignOrAugAssign)
         {
-            var target = UnwrapOrMakeTuple(exprList, endsWithComma);
+            annAssignOrAugAssign = null;
 
-            if (!AstUtils.IsValidAugTarget(target))
-                throw _context.ThrowableSyntaxError($"'{AstUtils.GetExprNodeName(target)}' is an illegal expression for augmented assignment");
+            // for simple_stmt,
+            // the ambiguity only exists with assignment and star_expressions.
+            // so here, we directly parse star_expression
+            // and then check if it's valid target,
+            // without needing to catch syntax exceptions.
 
-            OperatorType op = CurrentTokenType switch
+            var target = ParseStarExpression();
+            OperatorType? op = CurrentTokenType switch
             {
                 TokenType.PlusEqual => OperatorType.Add,
                 TokenType.MinusEqual => OperatorType.Sub,
                 TokenType.StarEqual => OperatorType.Mult,
-                TokenType.AtEqual => throw new NotImplementedException(),
+                TokenType.AtEqual => OperatorType.MatMult,
                 TokenType.SlashEqual => OperatorType.Div,
                 TokenType.DoubleSlashEqual => OperatorType.FloorDiv,
                 TokenType.PercentEqual => OperatorType.Mod,
@@ -298,91 +152,350 @@ partial class Parser
                 TokenType.AmpersandEqual => OperatorType.BitAnd,
                 TokenType.CaretEqual => OperatorType.BitXor,
                 TokenType.PipeEqual => OperatorType.BitOr,
-
-                _ => throw new UnreachableException(),
+                _ => null,
             };
-            MoveNextToken();
 
-            AstExprNode value;
-            if (IsCurrentKeyword("yield"))
+            if (!IsSingleTarget(target))
             {
-                value = ParseYieldExpr();
+                if (op is not null)
+                    throw _context.ThrowableSyntaxError($"'{AstUtils.GetExprNodeName(target)}' is an illegal expression for augmented assignment");
+
+                return false;
             }
-            else
-            {
-                var list = ParseExpressions(StopPredicates.UntilNewLineOrSemicolon, out var comma);
-                value = UnwrapOrMakeTuple(list, comma);
-            }
-            return Ast.AugAssign(target, op, value).With(metaInfo);
-        }
 
-        // annotated_assignment_stmt
-        if (CurrentTokenType is TokenType.Colon)
-        {
-            var target = UnwrapOrMakeTuple(exprList, endsWithComma);
-
-            if (!AstUtils.IsValidAugTarget(target))
-                throw _context.ThrowableSyntaxError(null /* TODO */);
-
-            MoveNextToken();
-            var annotation = ParseExpression();
-            var value = null as AstExprNode;
-
-            // simple:
-            // a: int
-            // non-simple:
-            // (a): int
-            var simple = target is NameNode && _tokenStream.GetTokenAt(startIndex).Type is TokenType.Name;
-
-            if (CurrentTokenType is TokenType.Equal)
+            if (op is not null)
             {
                 MoveNextToken();
-                if (IsCurrentKeyword("yield"))
-                {
-                    value = ParseYieldExpr();
-                }
-                else
-                {
-                    value = ParseStarExpressions(StopPredicates.UntilNewLineOrSemicolon);
-                }
+                AstExprNode value = ParseAnnotatedRhs(StopPredicates.UntilNewLineOrSemicolon);
+                annAssignOrAugAssign = Ast.AugAssign(target, op.Value, value).With(metaInfo);
+                return true;
             }
 
-            return Ast.AnnAssign(target, annotation, value, simple);
+            if (CurrentTokenType is TokenType.Colon)
+            {
+                annAssignOrAugAssign = ParseAnnAssign(target, simple: false);
+                return true;
+            }
+
+            return false;
         }
 
-        return Ast.Expr(UnwrapOrMakeTuple(exprList, endsWithComma)).With(metaInfo);
+        AnnAssignNode ParseAnnAssign(AstExprNode target, bool simple)
+        {
+            EnsureTokenTypeThenMove(TokenType.Colon);
+            var annotation = ParseExpression();
+            if (CurrentTokenType is not TokenType.Equal)
+                return Ast.AnnAssign(target, annotation, value: null, simple).With(metaInfo);
+
+            MoveNextToken();
+            var value = ParseAnnotatedRhs(StopPredicates.UntilNewLineOrSemicolon);
+            return Ast.AnnAssign(target, annotation, value, simple).With(metaInfo);
+        }
+    }
+
+    [GrammarSyntaxRule("return_stmt")]
+    private ReturnNode ParseReturnStmt()
+    {
+        var metaInfo = CreateAstMetaInfo();
+        EnsureKeywordThenMove("return");
+
+        if (CurrentTokenType is TokenType.NewLine or TokenType.Semicolon)
+            return Ast.Return().With(metaInfo);
+
+        var value = ParseStarExpressions(StopPredicates.UntilNewLineOrSemicolon);
+        return Ast.Return(value).With(metaInfo);
+    }
+
+    [GrammarSyntaxRule("dotted_name")]
+    private string ParseDottedName()
+    {
+        var list = ParseSomethingList(ParseIdentifier, StopPredicates.UntilNonName, out _, separator: TokenType.Dot);
+        return string.Join('.', list);
+    }
+
+    [GrammarSyntaxRule("dotted_as_name")]
+    private AstAliasNode ParseDottedAsName()
+    {
+        var metaInfo = CreateAstMetaInfo();
+        var name = ParseDottedName();
+        if (!IsCurrentKeyword("as"))
+            return Ast.Alias(name, asName: null).With(metaInfo.WithPreviousEnd());
+
+        MoveNextToken();
+        var asName = ParseIdentifier();
+        return Ast.Alias(name, asName).With(metaInfo.WithPreviousEnd());
+    }
+
+    [GrammarSyntaxRule("dotted_as_names")]
+    private List<AstAliasNode> ParseDottedAsNames()
+    {
+        var list = ParseSomethingList(ParseDottedAsName, StopPredicates.UntilNewLineOrSemicolon, out var endsWithComma);
+        if (endsWithComma is not null)
+            throw _context.ThrowableSyntaxError("invalid syntax");
+        return list;
+    }
+
+    [GrammarSyntaxRule("import_name")]
+    private ImportNode ParseImportName()
+    {
+        var metaInfo = CreateAstMetaInfo();
+        EnsureKeywordThenMove("import");
+        var names = ParseDottedAsNames();
+        return Ast.Import(names).With(metaInfo);
+    }
+
+    [GrammarSyntaxRule("import_from_as_name")]
+    private AstAliasNode ParseImportFromAsName()
+    {
+        var metaInfo = CreateAstMetaInfo();
+        var name = ParseIdentifier();
+        if (!IsCurrentKeyword("as"))
+            return Ast.Alias(name, asName: null).With(metaInfo.WithPreviousEnd());
+
+        MoveNextToken();
+        var asName = ParseIdentifier();
+        return Ast.Alias(name, asName).With(metaInfo.WithPreviousEnd());
+    }
+
+    [GrammarSyntaxRule("import_from_as_names")]
+    private List<AstAliasNode> ParseImportFromAsNames(out TokenInfo? endsWithComma)
+    {
+        return ParseSomethingList(ParseImportFromAsName, StopPredicates.UntilNewLineOrSemicolonOrRightParen, out endsWithComma);
+    }
+
+    [GrammarSyntaxRule("import_from_targets")]
+    private List<AstAliasNode> ParseImportFromTargets()
+    {
+        if (CurrentTokenType is TokenType.Star)
+        {
+            var target = Ast.Alias("*", asName: null).With(CreateAstMetaInfo());
+            MoveNextToken();
+            return [target];
+        }
+
+        if (CurrentTokenType is TokenType.LeftParen)
+        {
+            MoveNextToken();
+            var list = ParseImportFromAsNames(out _);
+            EnsureTokenTypeThenMove(TokenType.RightParen);
+            return list;
+        }
+        else
+        {
+            var list = ParseImportFromAsNames(out var endsWithComma);
+            if (endsWithComma is not null)
+                throw _context.ThrowableSyntaxError("invalid syntax");
+            return list;
+        }
+    }
+
+    [GrammarSyntaxRule("import_stmt")]
+    private AstStmtNode ParseImportStmt()
+    {
+        var metaInfo = CreateAstMetaInfo();
+        if (IsCurrentKeyword("import"))
+            return ParseImportName();
+
+        EnsureKeywordThenMove("from");
+
+        var level = ParseLevel();
+        var module = IsCurrentKeyword("import") ? null : ParseDottedName();
+        if (module is null && level is 0)
+            throw _context.ThrowableSyntaxError("invalid syntax");
+
+        EnsureKeywordThenMove("import");
+        var names = ParseImportFromTargets();
+        return Ast.ImportFrom(module, names, level).With(metaInfo);
+
+        int ParseLevel()
+        {
+            var level = 0;
+            while (true)
+            {
+                if (CurrentTokenType is TokenType.Dot)
+                    level++;
+                else if (CurrentTokenType is TokenType.Ellipsis)
+                    // '...' is tokenized as Ellipsis
+                    level += 3;
+                else
+                    break;
+
+                MoveNextToken();
+            }
+            return level;
+        }
+    }
+
+    [GrammarSyntaxRule("raise_stmt")]
+    private RaiseNode ParseRaiseStmt()
+    {
+        var metaInfo = CreateAstMetaInfo();
+        EnsureKeywordThenMove("raise");
+
+        if (CurrentTokenType is TokenType.NewLine or TokenType.Semicolon)
+            return Ast.Raise().With(metaInfo);
+
+        var exc = ParseExpression();
+
+        if (!IsCurrentKeyword("from"))
+            return Ast.Raise(exc).With(metaInfo);
+
+        MoveNextToken();
+        var cause = ParseExpression();
+        return Ast.Raise(exc, cause).With(metaInfo);
+    }
+
+    [GrammarSyntaxRule("pass_stmt")]
+    private PassNode ParsePassStmt()
+    {
+        var metaInfo = CreateAstMetaInfo();
+        EnsureKeywordThenMove("pass");
+        return Ast.Pass().With(metaInfo);
+    }
+
+    [GrammarSyntaxRule("del_target")]
+    private AstExprNode ParseDelTarget()
+    {
+        var target = ParseStarTarget();
+        CheckNoStarred(target);
+        return target;
+
+        void CheckNoStarred(AstExprNode node)
+        {
+            if (node is StarredNode)
+                throw _context.ThrowableSyntaxError("cannot delete starred");
+
+            if (node is TupleNode tupleNode)
+            {
+                foreach (var elt in tupleNode.Elts)
+                    CheckNoStarred(elt);
+            }
+
+            if (node is ListNode listNode)
+            {
+                foreach (var elt in listNode.Elts)
+                    CheckNoStarred(elt);
+            }
+        }
+    }
+
+    [GrammarSyntaxRule("del_targets")]
+    private List<AstExprNode> ParseDelTargets()
+    {
+        return ParseSomethingList(ParseDelTarget, StopPredicates.UntilNewLineOrSemicolon, out _);
+    }
+
+    [GrammarSyntaxRule("del_stmt")]
+    private DeleteNode ParseDelStmt()
+    {
+        var metaInfo = CreateAstMetaInfo();
+        EnsureKeywordThenMove("del");
+        var targets = ParseDelTargets();
+        return Ast.Delete(targets).With(metaInfo);
+    }
+
+    [GrammarSyntaxRule("yield_stmt")]
+    private ExprNode ParseYieldStmt()
+    {
+        var metaInfo = CreateAstMetaInfo();
+        var expr = ParseYieldExpr();
+        return Ast.Expr(expr).With(metaInfo);
+    }
+
+    [GrammarSyntaxRule("assert_stmt")]
+    private AssertNode ParseAssertStmt()
+    {
+        var metaInfo = CreateAstMetaInfo();
+        EnsureKeywordThenMove("assert");
+
+        var test = ParseExpression();
+
+        if (CurrentTokenType is not TokenType.Comma)
+            return Ast.Assert(test).With(metaInfo);
+
+        MoveNextToken();
+        var msg = ParseExpression();
+        return Ast.Assert(test, msg).With(metaInfo);
+    }
+
+    [GrammarSyntaxRule("break_stmt")]
+    private BreakNode ParseBreakStmt()
+    {
+        var metaInfo = CreateAstMetaInfo();
+        EnsureKeywordThenMove("break");
+        return Ast.Break().With(metaInfo);
+    }
+
+    [GrammarSyntaxRule("continue_stmt")]
+    private ContinueNode ParseContinueStmt()
+    {
+        var metaInfo = CreateAstMetaInfo();
+        EnsureKeywordThenMove("continue");
+        return Ast.Continue().With(metaInfo);
+    }
+
+    [GrammarSyntaxRule("global_stmt")]
+    private GlobalNode ParseGlobalStmt()
+    {
+        var metaInfo = CreateAstMetaInfo();
+        EnsureKeywordThenMove("global");
+        var names = ParseIdentifiers();
+        return Ast.Global(names).With(metaInfo);
+    }
+
+    [GrammarSyntaxRule("nonlocal_stmt")]
+    private NonlocalNode ParseNonlocalStmt()
+    {
+        var metaInfo = CreateAstMetaInfo();
+        EnsureKeywordThenMove("nonlocal");
+        var names = ParseIdentifiers();
+        return Ast.Nonlocal(names).With(metaInfo);
+    }
+
+    private AstStmtNode ParseSimpleStmt()
+    {
+        var metaInfo = CreateAstMetaInfo();
+
+        if (CurrentTokenType is TokenType.Name && IsKeyword(CurrentToken.String))
+        {
+            return CurrentToken.String switch
+            {
+                "return" => ParseReturnStmt(),
+                "import" or "from" => ParseImportStmt(),
+                "raise" => ParseRaiseStmt(),
+                "pass" => ParsePassStmt(),
+                "del" => ParseDelStmt(),
+                "yield" => ParseYieldStmt(),
+                "assert" => ParseAssertStmt(),
+                "break" => ParseBreakStmt(),
+                "continue" => ParseContinueStmt(),
+                "global" => ParseGlobalStmt(),
+                "nonlocal" => ParseNonlocalStmt(),
+                _ => throw _context.ThrowableSyntaxError("invalid syntax")
+            };
+        }
+
+        if (TryParseAssignment(out var assignment, out var starExpressions))
+            return assignment;
+
+        starExpressions ??= ParseStarExpressions(StopPredicates.UntilNewLineOrSemicolonOrEqual);
+        return Ast.Expr(starExpressions).With(metaInfo);
     }
 
     private List<string> ParseIdentifiers()
     {
-        List<string> identifiers = [ParseIdentifier()];
-        while (CurrentTokenType is TokenType.Comma)
-        {
-            MoveNextToken();
-            identifiers.Add(ParseIdentifier());
-        }
-        return identifiers;
+        return ParseSomethingList(ParseIdentifier, StopPredicates.UntilNewLineOrSemicolon, out _);
     }
 
-    private List<AstStmtNode> ParseStmtList()
+    [GrammarSyntaxRule("simple_stmts")]
+    private List<AstStmtNode> ParseSimpleStmts()
     {
-        var simpleStmts = new List<AstStmtNode>();
-        var simpleStmt = ParseSimpleStmt();
-        simpleStmts.Add(simpleStmt);
-
-        while (CurrentTokenType is TokenType.Semicolon)
-        {
-            MoveNextToken();
-            if (CurrentTokenType is TokenType.NewLine)
-                break;
-            simpleStmt = ParseSimpleStmt();
-            simpleStmts.Add(simpleStmt);
-        }
-
+        var list = ParseSomethingList(ParseSimpleStmt, StopPredicates.UntilNewLine, out _, separator: TokenType.Semicolon);
         EnsureTokenTypeThenMove(TokenType.NewLine);
-        return simpleStmts;
+        return list;
     }
 
+    [GrammarSyntaxRule("statement")]
     private List<AstStmtNode> ParseStatement()
     {
         List<AstExprNode> decorators = [];
@@ -394,7 +507,7 @@ partial class Parser
             EnsureTokenTypeThenMove(TokenType.NewLine);
         }
 
-        if (decorators.Count > 0 && (CurrentTokenType is not TokenType.Name || CurrentToken.StringAsSpan is not ("def" or "class")))
+        if (decorators.Count > 0 && !(IsCurrentKeyword("def") || IsCurrentKeyword("class")))
             throw _context.ThrowableSyntaxError("invalid syntax");
 
         if (IsCurrentKeyword("match"))
@@ -413,7 +526,7 @@ partial class Parser
         if (CurrentTokenType is TokenType.Name && CompoundStmtStartsWith.Contains(CurrentToken.String))
             return [ParseCompoundStmt(decorators)];
 
-        return ParseStmtList();
+        return ParseSimpleStmts();
     }
 
     // match is special, do not parse it in ParseCompoundStmt 
@@ -474,7 +587,7 @@ partial class Parser
             return stmts;
         }
 
-        return ParseStmtList();
+        return ParseSimpleStmts();
     }
 
     private IfNode ParseIfStmt(string startsWithKeyword)

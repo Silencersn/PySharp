@@ -153,7 +153,7 @@ partial class Parser
 
         var start = CurrentToken.Start;
         var metaInfo = CreateAstMetaInfo();
-        var value = ParseAnnotatedRhs(StopPredicates.UntilRightBraceOrEqual);
+        var value = ParseAnnotatedRhs(StopPredicates.UntilRightBraceOrEqualOrExclamationOrColon);
 
         var debugSpec = null as AstExprNode;
         if (CurrentTokenType is TokenType.Equal)
