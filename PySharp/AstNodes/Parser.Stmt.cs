@@ -651,7 +651,7 @@ partial class Parser
         EnsureKeywordThenMove("def");
         var name = ParseIdentifier();
         EnsureTokenTypeThenMove(TokenType.LeftParen);
-        var args = CurrentTokenType is TokenType.RightParen ? Ast.Arguments() : ParseParameterList(StopPredicates.UntilRightParen, allowAnnotation: true);
+        var args = CurrentTokenType is TokenType.RightParen ? Ast.Arguments() : ParseParams(isLambda: false);
         EnsureTokenTypeThenMove(TokenType.RightParen);
 
         var returns = null as AstExprNode;

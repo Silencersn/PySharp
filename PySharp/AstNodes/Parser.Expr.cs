@@ -862,7 +862,7 @@ partial class Parser
     {
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("lambda");
-        var args = CurrentTokenType is TokenType.Colon ? Ast.Arguments() : ParseParameterList(StopPredicates.UntilColon, allowAnnotation: false);
+        var args = CurrentTokenType is TokenType.Colon ? Ast.Arguments() : ParseParams(isLambda: true);
         EnsureTokenTypeThenMove(TokenType.Colon);
         return Ast.Lambda(args, ParseExpression()).With(metaInfo);
     }
@@ -1092,9 +1092,27 @@ partial class Parser
         return isComp;
     }
 
-    private AstArgumentsNode ParseParameterList(StopPredicate predicate, bool allowAnnotation)
+    [GrammarSyntaxRule("params")]
+    [GrammarSyntaxRule("lambda_params")]
+    private AstArgumentsNode ParseParams(bool isLambda)
     {
-        const int StateArgs = 0, StateAfterPosonly = 1, StateKwonly = 3, StateEnd = 4;
+        if (CurrentTokenType is TokenType.Slash)
+        {
+            MoveNextToken();
+            if (CurrentTokenType is TokenType.Comma)
+                throw _context.ThrowableSyntaxError("at least one argument must precede /");
+
+            throw _context.ThrowableSyntaxError("invalid syntax");
+        }
+
+        return ParseParameters(isLambda);
+    }
+
+    [GrammarSyntaxRule("parameters")]
+    [GrammarSyntaxRule("lambda_parameters")]
+    private AstArgumentsNode ParseParameters(bool isLambda)
+    {
+        const int StateMaybePosonlyArgsOrArgs = 0, StateArgs = 1, StateKwonly = 2, StateEnd = 3;
 
         List<AstArgNode> posonlyArgs = [];
         List<AstArgNode> args = [];
@@ -1104,15 +1122,15 @@ partial class Parser
         List<AstExprNode?> kwDefaults = [];
         List<AstExprNode> defaults = [];
 
-        //var arguments = new AstArgumentsNode();
-        var state = StateArgs;
+        var state = StateMaybePosonlyArgsOrArgs;
         var needDefault = false;
+        var stopToken = isLambda ? TokenType.Colon : TokenType.RightParen;
 
         ParseParameter();
         while (CurrentTokenType is TokenType.Comma)
         {
             MoveNextToken();
-            if (predicate(CurrentToken))
+            if (CurrentTokenType == stopToken)
                 break;
             ParseParameter();
         }
@@ -1126,23 +1144,16 @@ partial class Parser
             switch (CurrentTokenType)
             {
                 case TokenType.Slash:
-                    if (state is not StateArgs)
-                    {
-                        if (state is StateAfterPosonly)
-                            throw _context.ThrowableSyntaxError("/ may appear only once");
-                        else if (state is StateKwonly)
-                            throw _context.ThrowableSyntaxError("/ must be ahead of *");
-                        else
-                            throw new UnreachableException();
-                    }
+                    if (state is StateArgs)
+                        throw _context.ThrowableSyntaxError("/ may appear only once");
 
-                    if (args.Count is 0)
-                        throw _context.ThrowableSyntaxError("at least one argument must precede /");
+                    if (state is StateKwonly)
+                        throw _context.ThrowableSyntaxError("/ must be ahead of *");
 
                     MoveNextToken();
                     posonlyArgs.AddRange(args);
                     args.Clear();
-                    state = StateAfterPosonly;
+                    state = StateArgs;
                     break;
 
                 case TokenType.Star:
@@ -1150,70 +1161,35 @@ partial class Parser
                         throw _context.ThrowableSyntaxError("* may appear only once");
 
                     MoveNextToken();
-                    if (CurrentTokenType is TokenType.Name)
-                    {
-                        var starArg = ParseIdentifier();
-                        var starAnnotation = null as AstExprNode;
+                    if (CurrentTokenType is not TokenType.Comma)
+                        varArg = ParseParamStarAnnotation();
 
-                        if (allowAnnotation && CurrentTokenType is TokenType.Colon)
-                        {
-                            MoveNextToken();
-                            // here allows starred expr
-                            starAnnotation = ParseStarExpression();
-                        }
-
-                        varArg = Ast.Arg(starArg, starAnnotation);
-                    }
                     state = StateKwonly;
                     needDefault = false;
                     break;
 
                 case TokenType.DoubleStar:
                     MoveNextToken();
-                    if (CurrentTokenType is not TokenType.Name)
-                        throw _context.ThrowableSyntaxError("invalid syntax");
+                    kwArg = ParseParam(isLambda);
 
-                    var doubleStarArg = ParseIdentifier();
-                    var doubleStarAnnotation = null as AstExprNode;
+                    if (CurrentTokenType is TokenType.Equal)
+                        throw _context.ThrowableSyntaxError("var-keyword argument cannot have default value");
 
-                    if (allowAnnotation && CurrentTokenType is TokenType.Colon)
-                    {
-                        MoveNextToken();
-                        doubleStarAnnotation = ParseExpression();
-                    }
-
-                    kwArg = Ast.Arg(doubleStarArg, doubleStarAnnotation);
                     state = StateEnd;
                     break;
 
                 case TokenType.Name:
-                    var arg = ParseIdentifier();
-                    var annotation = null as AstExprNode;
-                    if (allowAnnotation && CurrentTokenType is TokenType.Colon)
-                    {
-                        MoveNextToken();
-                        annotation = ParseExpression();
-                    }
+                    var argNode = ParseParam(isLambda);
 
-                    var argNode = Ast.Arg(arg, annotation);
-                    AstExprNode? defaultValue;
-                    if (CurrentTokenType is TokenType.Equal)
+                    AstExprNode? defaultValue = null;
+                    if (needDefault || CurrentTokenType is TokenType.Equal)
                     {
-                        MoveNextToken();
-                        defaultValue = ParseExpression();
-                        if (state is StateArgs or StateAfterPosonly)
+                        defaultValue = ParseDefault();
+                        if (state is StateMaybePosonlyArgsOrArgs or StateArgs)
                             needDefault = true;
                     }
-                    else if (needDefault)
-                    {
-                        throw _context.ThrowableSyntaxError("parameter without a default follows parameter with a default");
-                    }
-                    else
-                    {
-                        defaultValue = null;
-                    }
 
-                    if (state is StateArgs or StateAfterPosonly)
+                    if (state is StateMaybePosonlyArgsOrArgs or StateArgs)
                     {
                         args.Add(argNode);
                         if (defaultValue is not null)
@@ -1589,5 +1565,68 @@ partial class Parser
         MoveNextToken();
         var value = ParseExpression();
         return Ast.Keyword(arg: null, value).With(metaInfo.WithPreviousEnd());
+    }
+
+    [GrammarSyntaxRule("param_star_annotation")]
+    private AstArgNode ParseParamStarAnnotation()
+    {
+        var metaInfo = CreateAstMetaInfo();
+        var arg = ParseIdentifier();
+        var annotation = TryParseStarAnnotation();
+        return Ast.Arg(arg, annotation).With(metaInfo);
+
+        AstExprNode? TryParseStarAnnotation()
+        {
+            if (CurrentTokenType is not TokenType.Colon)
+                return null;
+
+            return ParseStarAnnotation();
+        }
+    }
+
+    [GrammarSyntaxRule("param")]
+    [GrammarSyntaxRule("lambda_param")]
+    private AstArgNode ParseParam(bool isLambda)
+    {
+        var metaInfo = CreateAstMetaInfo();
+        var arg = ParseIdentifier();
+        var annotation = TryParseAnnotation();
+        return Ast.Arg(arg, annotation).With(metaInfo);
+
+        AstExprNode? TryParseAnnotation()
+        {
+            if (isLambda)
+                return null;
+
+            if (CurrentTokenType is not TokenType.Colon)
+                return null;
+
+            return ParseAnnotation();
+        }
+    }
+
+    [GrammarSyntaxRule("annotation")]
+    private AstExprNode ParseAnnotation()
+    {
+        EnsureTokenTypeThenMove(TokenType.Colon);
+        return ParseExpression();
+    }
+
+    [GrammarSyntaxRule("star_annotation")]
+    private AstExprNode ParseStarAnnotation()
+    {
+        EnsureTokenTypeThenMove(TokenType.Colon);
+        return ParseStarExpression();
+    }
+
+    [GrammarSyntaxRule("default")]
+    private AstExprNode ParseDefault()
+    {
+        EnsureTokenTypeThenMove(TokenType.Equal, "parameter without a default follows parameter with a default");
+
+        if (CurrentTokenType is TokenType.RightParen or TokenType.Colon)
+            throw _context.ThrowableSyntaxError("expected default value expression");
+
+        return ParseExpression();
     }
 }

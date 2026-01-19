@@ -23,7 +23,7 @@ partial class Parser
         public static StopPredicate Until(TokenType tokenType) => tokenInfo => tokenInfo.Type == tokenType;
     }
 
-    [AttributeUsage(AttributeTargets.Method)]
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
     internal sealed class GrammarSyntaxRuleAttribute : Attribute
     {
         public GrammarSyntaxRuleAttribute(string ruleName)
