@@ -533,22 +533,7 @@ partial class Parser
     [GrammarSyntaxRule("positional_patterns")]
     private List<AstPatternNode> ParsePositionalPatterns()
     {
-        List<AstPatternNode> patterns = [ParsePattern()];
-
-        while (CurrentTokenType is TokenType.Comma)
-        {
-            MoveNextToken();
-
-            if (CurrentTokenType is TokenType.RightParen)
-                break;
-
-            if (TestIsKeywordPattern())
-                break;
-
-            patterns.Add(ParsePattern());
-        }
-
-        return patterns;
+        return ParseSomethingList(ParsePattern, _ => CurrentTokenType is TokenType.RightParen || TestIsKeywordPattern(), out _);
     }
 
     private bool TestIsKeywordPattern()

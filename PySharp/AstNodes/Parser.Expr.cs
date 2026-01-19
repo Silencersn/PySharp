@@ -573,7 +573,7 @@ partial class Parser
                 else
                 {
                     MoveNextToken();
-                    var (args, kwargs) = ParseArgumentList();
+                    var (args, kwargs) = ParseArguments();
                     EnsureTokenTypeThenMove(TokenType.RightParen);
                     primary = Ast.Call(primary, args, kwargs).With(startMetaInfo.WithEnd());
                 }
@@ -1259,86 +1259,6 @@ partial class Parser
         return Ast.Yield(value).With(metaInfo.WithPreviousEnd());
     }
 
-    /// <summary>
-    /// argument_list: [positional_arguments ["," keywords_arguments] [","] | keywords_arguments [","]]
-    /// <br/> positional_arguments: <see cref="ParseExpression">expression</see> ("," <see cref="ParseExpression">expression</see>)*
-    /// <br/> keywords_arguments: keyword_item ("," keyword_item)*
-    /// <br/> keyword_item: <see cref="ParseIdentifier">identifier</see> "=" <see cref="ParseExpression">expression</see>
-    /// </summary>
-    /// <returns></returns>
-    /// <exception cref="PyRuntimeException"></exception>
-    private (List<AstExprNode> Args, List<AstKeywordNode> Kwargs) ParseArgumentList()
-    {
-        var args = new List<AstExprNode>();
-        var kwargs = new List<AstKeywordNode>();
-        bool iskw = false;
-
-        while (CurrentTokenType is not TokenType.RightParen)
-        {
-            if (!iskw)
-                ParseArgOrKwarg();
-            else
-                ParseKwarg();
-
-            if (CurrentTokenType is TokenType.Comma)
-                MoveNextToken();
-            else if (CurrentTokenType is not TokenType.RightParen)
-                throw _context.ThrowableSyntaxError("'(' was never closed");
-        }
-
-        return (args, kwargs);
-
-        void ParseArgOrKwarg()
-        {
-            if (CurrentTokenType is TokenType.DoubleStar)
-            {
-                MoveNextToken();
-                iskw = true;
-                var value = ParseDisjunction();
-                kwargs.Add(Ast.Keyword(null, value));
-                return;
-            }
-
-            var arg = ParseFlexibleExpression();
-            if (CurrentTokenType is TokenType.Equal)
-            {
-                iskw = true;
-
-                if (arg is not NameNode argName)
-                    throw _context.ThrowableSyntaxError("expression cannot contain assignment, perhaps you meant \"==\"?");
-
-                MoveNextToken();
-                var value = ParseExpression();
-
-                kwargs.Add(Ast.Keyword(argName.Id, value));
-            }
-            else
-            {
-                args.Add(arg);
-            }
-        }
-        void ParseKwarg()
-        {
-            if (CurrentTokenType is TokenType.DoubleStar)
-            {
-                MoveNextToken();
-                iskw = true;
-                var value = ParseDisjunction();
-                kwargs.Add(Ast.Keyword(null, value));
-            }
-            else
-            {
-                var arg = ParseIdentifier();
-                if (CurrentTokenType is not TokenType.Equal)
-                    throw _context.ThrowableSyntaxError("positional argument follows keyword argument");
-
-                MoveNextToken();
-                var value = ParseExpression();
-                kwargs.Add(Ast.Keyword(arg, value));
-            }
-        }
-    }
-
     private List<T> ParseSomethingList<T>(Func<T> parse, StopPredicate predicate, out TokenInfo? endsWithComma, TokenType separator = TokenType.Comma)
     {
         endsWithComma = null;
@@ -1549,5 +1469,125 @@ partial class Parser
         var isComp = TestIsComprehension(closeToken, parseItem);
         TokenStreamPosition = pos;
         return isComp ? parseComprehension() : parseSequence();
+    }
+
+    [GrammarSyntaxRule("arguments")]
+    private (IEnumerable<AstExprNode> Args, IEnumerable<AstKeywordNode> Kwargs) ParseArguments()
+    {
+        var result = ParseArgs(out _);
+        EnsureTokenType(TokenType.RightParen, "'(' was never closed");
+        return result;
+    }
+
+    [GrammarSyntaxRule("args")]
+    private (IEnumerable<AstExprNode> Args, IEnumerable<AstKeywordNode> Kwargs) ParseArgs(out TokenInfo? endsWithComma)
+    {
+        if (CurrentTokenType is TokenType.RightParen)
+        {
+            endsWithComma = null;
+            return ([], []);
+        }
+
+        if (TestIsKwarg())
+            return ParseKwargs(out endsWithComma);
+
+        var args = ParseSomethingList(ParseStarredExpressionOrNamedExpression,
+            _ => CurrentTokenType is TokenType.RightParen or TokenType.Equal || TestIsKwarg(), out endsWithComma);
+
+        if (CurrentTokenType is TokenType.RightParen)
+            return (args, []);
+
+        if (CurrentTokenType is TokenType.Equal)
+            throw _context.ThrowableSyntaxError("expression cannot contain assignment, perhaps you meant \"==\"?");
+
+        var (restArgs, kwargs) = ParseKwargs(out endsWithComma);
+        return (args.Concat(restArgs), kwargs);
+    }
+
+    private AstExprNode ParseStarredExpressionOrNamedExpression()
+    {
+        if (CurrentTokenType is TokenType.Star)
+            return ParseStarredExpression();
+
+        return ParseNamedExpression();
+    }
+
+    private bool TestIsKwarg()
+    {
+        if (CurrentTokenType is TokenType.DoubleStar)
+            return true;
+
+        if (CurrentTokenType is not TokenType.Name)
+            return false;
+
+        if (IsKeyword(CurrentToken.String))
+            return false;
+
+        var pos = TokenStreamPosition;
+        MoveNextToken();
+        var isKwarg = CurrentTokenType is TokenType.Equal;
+        TokenStreamPosition = pos;
+
+        return isKwarg;
+    }
+
+    [GrammarSyntaxRule("kwargs")]
+    private (IEnumerable<StarredNode> Args, IEnumerable<AstKeywordNode> Kwargs) ParseKwargs(out TokenInfo? endsWithComma)
+    {
+        if (CurrentTokenType is TokenType.DoubleStar)
+        {
+            var kwargs = ParseSomethingList(ParseKwargOrDoubleStarred, StopPredicates.UntilRightParen, out endsWithComma);
+            return ([], kwargs);
+        }
+
+        var list = ParseSomethingList(ParseKwargOrStarred, StopPredicates.UntilRightParenOrDoubleStar, out endsWithComma);
+        if (CurrentTokenType is TokenType.RightParen)
+            return (WhereNotNull(list.Select(static pair => pair.Arg)),
+                WhereNotNull(list.Select(static pair => pair.Kwarg)));
+
+        if (endsWithComma is null)
+            throw _context.ThrowableSyntaxError("invalid syntax");
+
+        var kwlist = ParseSomethingList(ParseKwargOrDoubleStarred, StopPredicates.UntilRightParen, out endsWithComma);
+        return (WhereNotNull(list.Select(static pair => pair.Arg)),
+            WhereNotNull(list.Select(static pair => pair.Kwarg)).Concat(kwlist));
+
+        static IEnumerable<T> WhereNotNull<T>(IEnumerable<T?> source)
+        {
+            return source.Where(static item => item is not null)!;
+        }
+    }
+
+    private AstKeywordNode ParseNameKwarg()
+    {
+        if (CurrentTokenType is not TokenType.Name)
+            throw _context.ThrowableSyntaxError("positional argument follows keyword argument");
+
+        var metaInfo = CreateAstMetaInfo();
+        var arg = ParseIdentifier();
+        EnsureTokenTypeThenMove(TokenType.Equal, "positional argument follows keyword argument");
+        var value = ParseExpression();
+        return Ast.Keyword(arg, value).With(metaInfo.WithPreviousEnd());
+    }
+
+    [GrammarSyntaxRule("kwarg_or_starred")]
+    private (StarredNode? Arg, AstKeywordNode? Kwarg) ParseKwargOrStarred()
+    {
+        if (CurrentTokenType is TokenType.Star)
+            return (ParseStarredExpression(), null);
+
+        return (null, ParseNameKwarg());
+    }
+
+    [GrammarSyntaxRule("kwarg_or_double_starred")]
+    private AstKeywordNode ParseKwargOrDoubleStarred()
+    {
+        if (CurrentTokenType is not TokenType.DoubleStar)
+            return ParseNameKwarg();
+
+        var metaInfo = CreateAstMetaInfo();
+        MoveNextToken();
+        var value = ParseExpression();
+        return Ast.Keyword(arg: null, value).With(metaInfo.WithPreviousEnd());
     }
 }

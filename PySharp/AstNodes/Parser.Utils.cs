@@ -12,6 +12,7 @@ partial class Parser
         public static bool UntilRightSquareBracket(TokenInfo token) => token.Type is TokenType.RightSquareBracket;
         public static bool UntilRightParen(TokenInfo token) => token.Type is TokenType.RightParen;
         public static bool UntilRightParenOrNewLineOrSemicolon(TokenInfo token) => token.Type is TokenType.RightParen or TokenType.NewLine or TokenType.Semicolon;
+        public static bool UntilRightParenOrDoubleStar(TokenInfo token) => token.Type is TokenType.RightParen or TokenType.DoubleStar;
         public static bool UntilRightBrace(TokenInfo token) => token.Type is TokenType.RightBrace;
         public static bool UntilRightBraceOrDoubleStar(TokenInfo token) => token.Type is TokenType.RightBrace or TokenType.DoubleStar;
         public static bool UntilRightBraceOrEqual(TokenInfo token) => token.Type is TokenType.RightBrace or TokenType.Equal;

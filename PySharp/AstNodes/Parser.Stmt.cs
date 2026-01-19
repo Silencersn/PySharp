@@ -671,13 +671,13 @@ partial class Parser
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("class");
         var name = ParseIdentifier();
-        var bases = new List<AstExprNode>();
-        var keywords = new List<AstKeywordNode>();
+        IEnumerable<AstExprNode> bases = [];
+        IEnumerable<AstKeywordNode> keywords = [];
 
         if (CurrentTokenType is TokenType.LeftParen)
         {
             MoveNextToken();
-            (bases, keywords) = ParseArgumentList();
+            (bases, keywords) = ParseArguments();
             EnsureTokenTypeThenMove(TokenType.RightParen);
         }
 
