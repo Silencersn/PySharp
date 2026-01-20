@@ -129,4 +129,25 @@ public static partial class Ast
 
         return new MatchOrNode(patterns.ToImmutableArray(true));
     }
+
+    public static TypeVarNode TypeVar(string name, AstExprNode? bound, AstExprNode? defaultValue)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+
+        return new TypeVarNode(name, bound, defaultValue);
+    }
+
+    public static ParamSpecNode ParamSpec(string name, AstExprNode? defaultValue)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+
+        return new ParamSpecNode(name, defaultValue);
+    }
+
+    public static TypeVarTupleNode TypeVarTuple(string name, AstExprNode? defaultValue)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+
+        return new TypeVarTupleNode(name, defaultValue);
+    }
 }

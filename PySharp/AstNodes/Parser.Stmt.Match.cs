@@ -57,12 +57,6 @@ partial class Parser
         return ParseNamedExpression();
     }
 
-    [GrammarSyntaxRule("block")]
-    private List<AstStmtNode> ParseBlock(string keyword)
-    {
-        return ParseSuite(keyword);
-    }
-
     [GrammarSyntaxRule("patterns")]
     private AstPatternNode ParsePatterns()
     {

@@ -505,6 +505,15 @@ partial class Parser
         return ParseSimpleStmts();
     }
 
+    [GrammarSyntaxRule("statements")]
+    private List<AstStmtNode> ParseStatements()
+    {
+        List<AstStmtNode> stmts = [];
+        while (CurrentTokenType is not (TokenType.Dedent or TokenType.EndMarker))
+            stmts.AddRange(ParseStatement());
+        return stmts;
+    }
+
     [GrammarSyntaxRule("statement_newline")]
     private List<AstStmtNode> ParseStatementNewLine()
     {
@@ -568,6 +577,7 @@ partial class Parser
             "try" => ParseTryStmt(),
             "while" => ParseWhileStmt(),
             "match" when TestIsMatchStmt() => ParseMatchStmt(),
+            "async" => throw new NotSupportedException(),
             _ => null,
         };
 
@@ -666,36 +676,29 @@ partial class Parser
         }
     }
 
-    private List<AstStmtNode> ParseSuite(string keyword)
+    [GrammarSyntaxRule("block")]
+    private List<AstStmtNode> ParseBlock(string keyword)
     {
+        if (CurrentTokenType is not TokenType.NewLine)
+            return ParseSimpleStmts();
+
         var lineno = CurrentToken.Start.Line;
-        if (CurrentTokenType is TokenType.NewLine)
+        MoveNextToken();
+        if (CurrentTokenType is not TokenType.Indent)
         {
-            MoveNextToken();
-            if (CurrentTokenType is not TokenType.Indent)
+            var statementName = keyword switch
             {
-                var statementName = keyword switch
-                {
-                    "def" => "function definition",
-                    "class" => "class definition",
-
-                    _ => $"'{keyword}' statement"
-                };
-                throw _context.ThrowableIndentationError($"expected an indented block after {statementName} on line {lineno}");
-            }
-            MoveNextToken();
-
-            List<AstStmtNode> stmts = [];
-            while (CurrentTokenType is not TokenType.Dedent)
-            {
-                stmts.AddRange(ParseStatement());
-            }
-
-            MoveNextToken();
-            return stmts;
+                "def" => "function definition",
+                "class" => "class definition",
+                _ => $"'{keyword}' statement"
+            };
+            throw _context.ThrowableIndentationError($"expected an indented block after {statementName} on line {lineno}");
         }
+        MoveNextToken();
 
-        return ParseSimpleStmts();
+        var stmts = ParseStatements();
+        EnsureTokenTypeThenMove(TokenType.Dedent);
+        return stmts;
     }
 
     [GrammarSyntaxRule("if_stmt")]
@@ -705,7 +708,7 @@ partial class Parser
         EnsureKeywordThenMove(startsWithKeyword);
         var test = ParseNamedExpression();
         EnsureTokenTypeThenMoveForTest(TokenType.Colon, test);
-        var body = ParseSuite(startsWithKeyword);
+        var body = ParseBlock(startsWithKeyword);
         IEnumerable<AstStmtNode> orElse = [];
         if (IsCurrentKeyword("elif"))
         {
@@ -715,7 +718,7 @@ partial class Parser
         {
             MoveNextToken();
             EnsureTokenTypeThenMove(TokenType.Colon);
-            orElse = ParseSuite("else");
+            orElse = ParseBlock("else");
         }
         return Ast.If(test, body, orElse).With(metaInfo);
     }
@@ -727,13 +730,13 @@ partial class Parser
         EnsureKeywordThenMove("while");
         var test = ParseNamedExpression();
         EnsureTokenTypeThenMoveForTest(TokenType.Colon, test);
-        var body = ParseSuite("while");
+        var body = ParseBlock("while");
         IEnumerable<AstStmtNode> orElse = [];
         if (IsCurrentKeyword("else"))
         {
             MoveNextToken();
             EnsureTokenTypeThenMove(TokenType.Colon);
-            orElse = ParseSuite("else");
+            orElse = ParseBlock("else");
         }
         return Ast.While(test, body, orElse).With(metaInfo);
     }
@@ -744,7 +747,7 @@ partial class Parser
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("try");
         EnsureTokenTypeThenMove(TokenType.Colon);
-        var body = ParseSuite("try");
+        var body = ParseBlock("try");
         if (!IsCurrentKeyword("except") && !IsCurrentKeyword("finally"))
             throw _context.ThrowableSyntaxError("expected 'except' or 'finally' block");
         List<ExceptHandlerNode> exceptors = [];
@@ -790,7 +793,7 @@ partial class Parser
 
                 EnsureTokenTypeThenMove(TokenType.Colon);
 
-                var exceptHandlerBody = ParseSuite("except");
+                var exceptHandlerBody = ParseBlock("except");
                 var exceptHandler = Ast.ExceptHandler(expr, id, exceptHandlerBody);
                 exceptors.Add(exceptHandler);
             }
@@ -798,14 +801,14 @@ partial class Parser
             {
                 MoveNextToken();
                 EnsureTokenTypeThenMove(TokenType.Colon);
-                orElse = ParseSuite("else");
+                orElse = ParseBlock("else");
             }
         }
         if (IsCurrentKeyword("finally"))
         {
             MoveNextToken();
             EnsureTokenTypeThenMove(TokenType.Colon);
-            finalBody = ParseSuite("finally");
+            finalBody = ParseBlock("finally");
         }
         return isStar ?? false
             ? Ast.TryStar(body, exceptors, orElse, finalBody).With(metaInfo)
@@ -823,13 +826,13 @@ partial class Parser
         EnsureKeywordThenMove("in");
         var iter = ParseStarExpressions(StopPredicates.UntilColon);
         EnsureTokenTypeThenMove(TokenType.Colon);
-        var body = ParseSuite("for");
+        var body = ParseBlock("for");
         IEnumerable<AstStmtNode> orElse = [];
         if (IsCurrentKeyword("else"))
         {
             MoveNextToken();
             EnsureTokenTypeThenMove(TokenType.Colon);
-            orElse = ParseSuite("else");
+            orElse = ParseBlock("else");
         }
         return Ast.For(target, iter, body, orElse).With(metaInfo);
     }
@@ -853,7 +856,7 @@ partial class Parser
         }
         EnsureTokenTypeThenMove(TokenType.Colon);
 
-        var body = ParseSuite("with");
+        var body = ParseBlock("with");
 
         return Ast.With(items, body).With(metaInfo);
 
@@ -874,9 +877,17 @@ partial class Parser
     [GrammarSyntaxRule("function_def")]
     private FunctionDefNode ParseFunctionDef(IReadOnlyList<AstExprNode> decorators)
     {
+        if (IsCurrentKeyword("async"))
+            throw new NotSupportedException();
+
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("def");
         var name = ParseIdentifier();
+
+        IEnumerable<AstTypeParamNode> typeParams = [];
+        if (CurrentTokenType is TokenType.LeftSquareBracket)
+            typeParams = ParseTypeParams();
+
         EnsureTokenTypeThenMove(TokenType.LeftParen);
         var args = CurrentTokenType is TokenType.RightParen ? Ast.Arguments() : ParseParams(isLambda: false);
         EnsureTokenTypeThenMove(TokenType.RightParen);
@@ -889,8 +900,8 @@ partial class Parser
         }
 
         EnsureTokenTypeThenMove(TokenType.Colon);
-        var body = ParseSuite("def");
-        return Ast.FunctionDef(name, args, body, decorators, returns).With(metaInfo);
+        var body = ParseBlock("def");
+        return Ast.FunctionDef(name, args, body, decorators, returns, typeParams).With(metaInfo);
     }
 
     [GrammarSyntaxRule("class_def")]
@@ -899,9 +910,13 @@ partial class Parser
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("class");
         var name = ParseIdentifier();
+
+        IEnumerable<AstTypeParamNode> typeParams = [];
+        if (CurrentTokenType is TokenType.LeftSquareBracket)
+            typeParams = ParseTypeParams();
+
         IEnumerable<AstExprNode> bases = [];
         IEnumerable<AstKeywordNode> keywords = [];
-
         if (CurrentTokenType is TokenType.LeftParen)
         {
             MoveNextToken();
@@ -911,7 +926,69 @@ partial class Parser
 
         EnsureTokenTypeThenMove(TokenType.Colon);
 
-        var body = ParseSuite("class");
-        return Ast.ClassDef(name, bases, keywords, body, decorators).With(metaInfo);
+        var body = ParseBlock("class");
+        return Ast.ClassDef(name, bases, keywords, body, decorators, typeParams).With(metaInfo);
+    }
+
+    private List<AstTypeParamNode> ParseTypeParams()
+    {
+        EnsureTokenTypeThenMove(TokenType.LeftSquareBracket);
+        var list = ParseTypeParamSeq(StopPredicates.UntilRightSquareBracket);
+        EnsureTokenTypeThenMove(TokenType.RightSquareBracket);
+        return list;
+    }
+
+    private List<AstTypeParamNode> ParseTypeParamSeq(StopPredicate predicate)
+    {
+        return ParseSomethingList(ParseTypeParam, predicate, out _);
+    }
+
+    [GrammarSyntaxRule("type_param")]
+    private AstTypeParamNode ParseTypeParam()
+    {
+        if (CurrentTokenType is TokenType.Name)
+        {
+            var name = ParseIdentifier();
+            var bound = CurrentTokenType is TokenType.Colon ? ParseTypeParamBound() : null;
+            var defaultValue = CurrentTokenType is TokenType.Equal ? ParseTypeParamDefault() : null;
+            return Ast.TypeVar(name, bound, defaultValue);
+        }
+        else if (CurrentTokenType is TokenType.Star)
+        {
+            MoveNextToken();
+            var name = ParseIdentifier();
+            var defaultValue = CurrentTokenType is TokenType.Equal ? ParseTypeParamStarredDefault() : null;
+            return Ast.TypeVarTuple(name, defaultValue);
+        }
+        else if (CurrentTokenType is TokenType.DoubleStar)
+        {
+            MoveNextToken();
+            var name = ParseIdentifier();
+            var defaultValue = CurrentTokenType is TokenType.Equal ? ParseTypeParamDefault() : null;
+            return Ast.ParamSpec(name, defaultValue);
+        }
+
+        throw _context.ThrowableSyntaxError("invalid syntax");
+    }
+
+    [GrammarSyntaxRule("type_param_bound")]
+    private AstExprNode ParseTypeParamBound()
+    {
+        EnsureTokenTypeThenMove(TokenType.Colon);
+        return ParseExpression();
+    }
+
+    [GrammarSyntaxRule("type_param_default")]
+    private AstExprNode ParseTypeParamDefault()
+    {
+        EnsureTokenTypeThenMove(TokenType.Equal);
+        return ParseExpression();
+    }
+
+    [GrammarSyntaxRule("type_param_starred_default")]
+    private AstExprNode ParseTypeParamStarredDefault()
+    {
+        EnsureTokenTypeThenMove(TokenType.Equal);
+        return ParseExpression();
     }
 }

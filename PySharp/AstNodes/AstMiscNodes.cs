@@ -691,3 +691,63 @@ public sealed class MatchOrNode : AstPatternNode
         return false;
     }
 }
+
+public abstract class AstTypeParamNode : AstNode;
+
+public sealed class TypeVarNode : AstTypeParamNode
+{
+    internal TypeVarNode(string name, AstExprNode? bound, AstExprNode? defaultValue)
+    {
+        Name = name;
+        Bound = bound;
+        DefaultValue = defaultValue;
+    }
+
+    public string Name { get; }
+    public AstExprNode? Bound { get; }
+    public AstExprNode? DefaultValue { get; }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        if (Bound is not null)
+            yield return Bound;
+        if (DefaultValue is not null)
+            yield return DefaultValue;
+    }
+}
+
+public sealed class ParamSpecNode : AstTypeParamNode
+{
+    internal ParamSpecNode(string name, AstExprNode? defaultValue)
+    {
+        Name = name;
+        DefaultValue = defaultValue;
+    }
+
+    public string Name { get; }
+    public AstExprNode? DefaultValue { get; }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        if (DefaultValue is not null)
+            yield return DefaultValue;
+    }
+}
+
+public sealed class TypeVarTupleNode : AstTypeParamNode
+{
+    internal TypeVarTupleNode(string name, AstExprNode? defaultValue)
+    {
+        Name = name;
+        DefaultValue = defaultValue;
+    }
+
+    public string Name { get; }
+    public AstExprNode? DefaultValue { get; }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        if (DefaultValue is not null)
+            yield return DefaultValue;
+    }
+}
