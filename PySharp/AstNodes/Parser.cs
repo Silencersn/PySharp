@@ -107,8 +107,10 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         return expectedTypes.Contains(CurrentTokenType);
     }
 
-    public PyRuntimeException SyntaxError(string message = PySR.InvalidSyntax)
+    public PyRuntimeException SyntaxError(string message = PySR.InvalidSyntax, params ReadOnlySpan<object?> args)
     {
+        if (args.Length > 0)
+            message = PySR.Format(message, args);
         return _context.ThrowableSyntaxError(message);
     }
 

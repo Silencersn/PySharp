@@ -205,13 +205,16 @@ partial class Parser
     private int ParseFStringConversion()
     {
         EnsureTokenTypeThenMove(TokenType.Exclamation);
-        EnsureTokenType(TokenType.Name, "f-string: invalid conversion character");
+        if (IsCurrentTypeTokenAnyOf(TokenType.Colon, TokenType.RightBrace))
+            throw SyntaxError(PySR.InvalidSyntax_InvalidFStringConversionCharacter_Missing);
+
+        EnsureTokenType(TokenType.Name, PySR.InvalidSyntax_InvalidFStringConversionCharacter_Invalid);
         if (IsKeyword(CurrentToken.String))
-            throw _context.ThrowableSyntaxError("f-string: invalid conversion character");
+            throw SyntaxError(PySR.InvalidSyntax_InvalidFStringConversionCharacter_Invalid);
 
         var conversion = CurrentToken.String;
         if (conversion is not ("s" or "r" or "a"))
-            throw _context.ThrowableSyntaxError($"f-string: invalid conversion character '{conversion}': expected 's', 'r', or 'a'");
+            throw SyntaxError(PySR.InvalidSyntax_FStringConversion_Invalid, conversion);
         MoveNextToken();
 
         return conversion[0];
