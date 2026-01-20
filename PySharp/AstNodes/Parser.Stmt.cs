@@ -1,7 +1,5 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.Tokenization;
-using System;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.AstNodes;
