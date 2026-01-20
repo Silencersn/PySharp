@@ -962,29 +962,6 @@ partial class Parser
     }
 
     /// <summary>
-    /// flexible_expression: <see cref="ParseNamedExpression">assignment_expression</see> | <see cref="ParseStarExpression">starred_expression</see>
-    /// </summary>
-    /// <returns></returns>
-    private AstExprNode ParseFlexibleExpression()
-    {
-        if (CurrentTokenType is TokenType.Star)
-            return ParseStarExpression();
-
-        return ParseNamedExpression();
-    }
-
-    /// <summary>
-    /// flexible_expression_list: <see cref="ParseFlexibleExpression">flexible_expression</see> ("," <see cref="ParseFlexibleExpression">flexible_expression</see>)* [","]
-    /// </summary>
-    /// <param name="predicate"></param>
-    /// <returns></returns>
-    /// <param name="endsWithComma"></param>
-    private List<AstExprNode> ParseFlexibleExpressionList(StopPredicate predicate, out TokenInfo? endsWithComma)
-    {
-        return ParseSomethingList(ParseFlexibleExpression, predicate, out endsWithComma);
-    }
-
-    /// <summary>
     /// [expr] => Unwrap
     /// <br/> [expr, ] => MakeTuple
     /// <br/> [expr, expr] => MakeTuple
@@ -1036,42 +1013,6 @@ partial class Parser
             return list[0];
 
         return PackSomething(list, endsWithComma, packer);
-    }
-
-    /// <summary>
-    /// target: <see cref="ParseIdentifier">identifier</see>
-    ///         | "(" [<see cref="ParseTargetList">target_list</see>] ")"
-    ///         | "[" [<see cref="ParseTargetList">target_list</see>] "]"
-    ///         | attributeref
-    ///         | subscription
-    ///         | slicing
-    ///         | "*" target
-    /// </summary>
-    /// <returns></returns>
-    /// <exception cref="PyRuntimeException"></exception>
-    private AstExprNode ParseTarget()
-    {
-        if (CurrentTokenType is TokenType.Star)
-        {
-            _ = ParseTarget();
-            throw new NotSupportedException();
-        }
-
-        var target = ParsePrimary();
-        if (!target.IsValidTarget())
-            throw _context.ThrowableSyntaxError($"cannot assign to {AstUtils.GetExprNodeName(target)}");
-        return target;
-    }
-
-    /// <summary>
-    /// target_list: <see cref="ParseTarget">target</see> ("," <see cref="ParseTarget">target</see>)* [","]
-    /// </summary>
-    /// <param name="predicate"></param>
-    /// <param name="endsWithComma"></param>
-    /// <returns></returns>
-    private List<AstExprNode> ParseTargetList(StopPredicate predicate, out TokenInfo? endsWithComma)
-    {
-        return ParseSomethingList(ParseTarget, predicate, out endsWithComma);
     }
 
     private bool TestIsComprehension<TItem>(TokenType closeToken, Func<TItem> parseItem)

@@ -701,14 +701,23 @@ partial class Parser
         return stmts;
     }
 
+    [GrammarSyntaxRule("else_block")]
+    private List<AstStmtNode> ParseElseBlock()
+    {
+        EnsureKeywordThenMove("else");
+        EnsureTokenTypeThenMove(TokenType.Colon);
+        return ParseBlock("else");
+    }
+
     [GrammarSyntaxRule("if_stmt")]
-    private IfNode ParseIfStmt(string startsWithKeyword)
+    [GrammarSyntaxRule("elif_stmt")]
+    private IfNode ParseIfStmt(string ifOrElif)
     {
         var metaInfo = CreateAstMetaInfo();
-        EnsureKeywordThenMove(startsWithKeyword);
+        EnsureKeywordThenMove(ifOrElif);
         var test = ParseNamedExpression();
         EnsureTokenTypeThenMoveForTest(TokenType.Colon, test);
-        var body = ParseBlock(startsWithKeyword);
+        var body = ParseBlock(ifOrElif);
         IEnumerable<AstStmtNode> orElse = [];
         if (IsCurrentKeyword("elif"))
         {
@@ -716,9 +725,7 @@ partial class Parser
         }
         else if (IsCurrentKeyword("else"))
         {
-            MoveNextToken();
-            EnsureTokenTypeThenMove(TokenType.Colon);
-            orElse = ParseBlock("else");
+            orElse = ParseElseBlock();
         }
         return Ast.If(test, body, orElse).With(metaInfo);
     }
@@ -731,13 +738,7 @@ partial class Parser
         var test = ParseNamedExpression();
         EnsureTokenTypeThenMoveForTest(TokenType.Colon, test);
         var body = ParseBlock("while");
-        IEnumerable<AstStmtNode> orElse = [];
-        if (IsCurrentKeyword("else"))
-        {
-            MoveNextToken();
-            EnsureTokenTypeThenMove(TokenType.Colon);
-            orElse = ParseBlock("else");
-        }
+        IEnumerable<AstStmtNode> orElse = IsCurrentKeyword("else") ? ParseElseBlock() : [];
         return Ast.While(test, body, orElse).With(metaInfo);
     }
 
@@ -758,61 +759,79 @@ partial class Parser
         {
             while (IsCurrentKeyword("except"))
             {
-                AstExprNode? expr = null;
-                string? id = null;
-                MoveNextToken();
-
-                isStar ??= CurrentTokenType is TokenType.Star;
-                if (isStar.Value)
+                if (isStar is null)
                 {
-                    if (CurrentTokenType is not TokenType.Star)
-                        throw _context.ThrowableSyntaxError("cannot have both 'except' and 'except*' on the same 'try'");
-
+                    var pos = TokenStreamPosition;
                     MoveNextToken();
+                    isStar = CurrentTokenType is TokenType.Star;
+                    TokenStreamPosition = pos;
                 }
-                else
-                {
-                    if (CurrentTokenType is TokenType.Star)
-                        throw _context.ThrowableSyntaxError("cannot have both 'except' and 'except*' on the same 'try'");
-                }
-
-                if (CurrentTokenType is not TokenType.Colon)
-                {
-                    expr = ParseExpression();
-
-                    if (CurrentTokenType is not TokenType.Colon)
-                    {
-                        EnsureKeywordThenMove("as");
-                        id = ParseIdentifier();
-                    }
-                }
-                else if (isStar.Value)
-                {
-                    throw _context.ThrowableSyntaxError("expected one or more exception types");
-                }
-
-                EnsureTokenTypeThenMove(TokenType.Colon);
-
-                var exceptHandlerBody = ParseBlock("except");
-                var exceptHandler = Ast.ExceptHandler(expr, id, exceptHandlerBody);
-                exceptors.Add(exceptHandler);
+                exceptors.Add(ParseExceptBlock(isStar.Value));
             }
             if (IsCurrentKeyword("else"))
             {
-                MoveNextToken();
-                EnsureTokenTypeThenMove(TokenType.Colon);
-                orElse = ParseBlock("else");
+                orElse = ParseElseBlock();
             }
         }
         if (IsCurrentKeyword("finally"))
         {
-            MoveNextToken();
-            EnsureTokenTypeThenMove(TokenType.Colon);
-            finalBody = ParseBlock("finally");
+            finalBody = ParseFinallyBlock();
         }
         return isStar ?? false
             ? Ast.TryStar(body, exceptors, orElse, finalBody).With(metaInfo)
             : Ast.Try(body, exceptors, orElse, finalBody).With(metaInfo);
+    }
+
+    [GrammarSyntaxRule("except_block")]
+    [GrammarSyntaxRule("except_star_block")]
+    private ExceptHandlerNode ParseExceptBlock(bool isStar)
+    {
+        var metaInfo = CreateAstMetaInfo();
+        EnsureKeywordThenMove("except");
+
+        if (isStar)
+            EnsureTokenTypeThenMove(TokenType.Star, "cannot have both 'except' and 'except*' on the same 'try'");
+        else if (CurrentTokenType is TokenType.Star)
+            throw _context.ThrowableSyntaxError("cannot have both 'except' and 'except*' on the same 'try'");
+
+        AstExprNode? type = null;
+        string? name = null;
+
+        if (CurrentTokenType is not TokenType.Colon)
+        {
+            var exprs = ParseExpressions(StopPredicates.UntilColon, out var endsWithComma);
+
+            if (IsCurrentKeyword("as"))
+            {
+                if (exprs.Count > 1)
+                    throw _context.ThrowableSyntaxError("multiple exception types must be parenthesized when using 'as'");
+
+                if (endsWithComma is not null)
+                    throw _context.ThrowableSyntaxError("invalid syntax");
+
+                MoveNextToken();
+                name = ParseIdentifier();
+            }
+
+            type = UnwrapOrMakeTuple(exprs, endsWithComma);
+        }
+        else if (isStar)
+        {
+            throw _context.ThrowableSyntaxError("expected one or more exception types");
+        }
+
+        EnsureTokenTypeThenMove(TokenType.Colon);
+
+        var body = ParseBlock("except");
+        return Ast.ExceptHandler(type, name, body).With(metaInfo);
+    }
+
+    [GrammarSyntaxRule("finally_block")]
+    private List<AstStmtNode> ParseFinallyBlock()
+    {
+        EnsureKeywordThenMove("finally");
+        EnsureTokenTypeThenMove(TokenType.Colon);
+        return ParseBlock("finally");
     }
 
     [GrammarSyntaxRule("for_stmt")]
@@ -820,20 +839,13 @@ partial class Parser
     {
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("for");
-        var targetList = ParseTargetList(StopPredicates.UntilKeywordIn, out var endsWithComma);
-        var target = UnwrapOrMakeTuple(targetList, endsWithComma);
+        var target = ParseStarTargets(StopPredicates.UntilKeywordIn);
         AstUtils.SetContext(target, ExprContextType.Store);
         EnsureKeywordThenMove("in");
         var iter = ParseStarExpressions(StopPredicates.UntilColon);
         EnsureTokenTypeThenMove(TokenType.Colon);
         var body = ParseBlock("for");
-        IEnumerable<AstStmtNode> orElse = [];
-        if (IsCurrentKeyword("else"))
-        {
-            MoveNextToken();
-            EnsureTokenTypeThenMove(TokenType.Colon);
-            orElse = ParseBlock("else");
-        }
+        IEnumerable<AstStmtNode> orElse = IsCurrentKeyword("else") ? ParseElseBlock() : [];
         return Ast.For(target, iter, body, orElse).With(metaInfo);
     }
 
@@ -859,19 +871,20 @@ partial class Parser
         var body = ParseBlock("with");
 
         return Ast.With(items, body).With(metaInfo);
+    }
 
-        AstWithItemNode ParseWithItem()
+    [GrammarSyntaxRule("with_item")]
+    private AstWithItemNode ParseWithItem()
+    {
+        var metaInfo = CreateAstMetaInfo();
+        var contextExpr = ParseExpression();
+        AstExprNode? optionalVars = null;
+        if (IsCurrentKeyword("as"))
         {
-            var metaInfo = CreateAstMetaInfo();
-            var expr = ParseExpression();
-            var target = null as AstExprNode;
-            if (IsCurrentKeyword("as"))
-            {
-                MoveNextToken();
-                target = ParseTarget();
-            }
-            return Ast.WithItem(expr, target).With(metaInfo.WithPreviousEnd());
+            MoveNextToken();
+            optionalVars = ParseStarTarget();
         }
+        return Ast.WithItem(contextExpr, optionalVars).With(metaInfo.WithPreviousEnd());
     }
 
     [GrammarSyntaxRule("function_def")]
@@ -946,26 +959,31 @@ partial class Parser
     [GrammarSyntaxRule("type_param")]
     private AstTypeParamNode ParseTypeParam()
     {
+        var metaInfo = CreateAstMetaInfo();
         if (CurrentTokenType is TokenType.Name)
         {
             var name = ParseIdentifier();
             var bound = CurrentTokenType is TokenType.Colon ? ParseTypeParamBound() : null;
             var defaultValue = CurrentTokenType is TokenType.Equal ? ParseTypeParamDefault() : null;
-            return Ast.TypeVar(name, bound, defaultValue);
+            return Ast.TypeVar(name, bound, defaultValue).With(metaInfo.WithPreviousEnd());
         }
         else if (CurrentTokenType is TokenType.Star)
         {
             MoveNextToken();
             var name = ParseIdentifier();
+            if (CurrentTokenType is TokenType.Colon)
+                throw _context.ThrowableSyntaxError("cannot use bound with TypeVarTuple");
             var defaultValue = CurrentTokenType is TokenType.Equal ? ParseTypeParamStarredDefault() : null;
-            return Ast.TypeVarTuple(name, defaultValue);
+            return Ast.TypeVarTuple(name, defaultValue).With(metaInfo.WithPreviousEnd());
         }
         else if (CurrentTokenType is TokenType.DoubleStar)
         {
             MoveNextToken();
             var name = ParseIdentifier();
+            if (CurrentTokenType is TokenType.Colon)
+                throw _context.ThrowableSyntaxError("cannot use bound with ParamSpec");
             var defaultValue = CurrentTokenType is TokenType.Equal ? ParseTypeParamDefault() : null;
-            return Ast.ParamSpec(name, defaultValue);
+            return Ast.ParamSpec(name, defaultValue).With(metaInfo.WithPreviousEnd());
         }
 
         throw _context.ThrowableSyntaxError("invalid syntax");
