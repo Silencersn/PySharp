@@ -149,8 +149,14 @@ partial class Parser
     private AstExprNode ParseFStringReplacementField(bool isRaw)
     {
         EnsureTokenTypeThenMove(TokenType.LeftBrace);
+        if (CurrentTokenType is TokenType.Equal)
+            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax_InvalidFStringReplacementField_BeforeEqual);
+        if (CurrentTokenType is TokenType.Exclamation)
+            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax_InvalidFStringReplacementField_BeforeExclamation);
+        if (CurrentTokenType is TokenType.Colon)
+            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax_InvalidFStringReplacementField_BeforeColon);
         if (CurrentTokenType is TokenType.RightBrace)
-            throw _context.ThrowableSyntaxError("f-string: valid expression required before '}'");
+            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax_InvalidFStringReplacementField_BeforeRightBrace);
 
         var start = CurrentToken.Start;
         var metaInfo = CreateAstMetaInfo();
@@ -167,16 +173,28 @@ partial class Parser
 
             debugSpec = Ast.Constant(range.ToString()).With(metaInfo.WithEnd());
         }
+        else
+        {
+            if (!IsCurrentTypeTokenAnyOf(TokenType.Exclamation, TokenType.Colon, TokenType.RightBrace))
+                throw SyntaxError(PySR.InvalidSyntax_InvalidFStringReplacementField_ExpectingEqual);
+        }
 
         var conversion = -1;
         if (CurrentTokenType is TokenType.Exclamation)
             conversion = ParseFStringConversion();
+        else if (!IsCurrentTypeTokenAnyOf(TokenType.Colon, TokenType.RightBrace))
+            throw SyntaxError(PySR.InvalidSyntax_InvalidFStringReplacementField_ExpectingExclamation);
 
         var format_spec = null as JoinedStrNode;
         if (CurrentTokenType is TokenType.Colon)
             format_spec = ParseFStringFullFormatSpec(isRaw);
+        else if (!IsCurrentTypeTokenAnyOf(TokenType.RightBrace))
+            throw SyntaxError(PySR.InvalidSyntax_InvalidFStringReplacementField_ExpectingColon);
 
-        EnsureTokenTypeThenMove(TokenType.RightBrace);
+        EnsureTokenTypeThenMove(TokenType.RightBrace, format_spec is null
+            ? PySR.InvalidSyntax_InvalidFStringReplacementField_ExpectingRightBrace
+            : PySR.InvalidSyntax_InvalidFStringReplacementField_ExpectingRightBraceOrSpecs);
+
         var formatted = Ast.FormattedValue(value, conversion, format_spec).With(metaInfo.WithPreviousEnd());
         if (debugSpec is null)
             return formatted;

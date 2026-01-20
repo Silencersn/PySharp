@@ -102,6 +102,16 @@ public sealed partial class Parser : ICodeMetaInfoProvider
     {
     }
 
+    private bool IsCurrentTypeTokenAnyOf(params ReadOnlySpan<TokenType> expectedTypes)
+    {
+        return expectedTypes.Contains(CurrentTokenType);
+    }
+
+    public PyRuntimeException SyntaxError(string message = PySR.InvalidSyntax)
+    {
+        return _context.ThrowableSyntaxError(message);
+    }
+
     private static bool IsUselessToken(TokenInfo tokenInfo)
     {
         return tokenInfo.Type is TokenType.NL or TokenType.Comment;
