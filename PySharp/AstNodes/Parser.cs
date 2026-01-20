@@ -13,7 +13,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         ArgumentNullException.ThrowIfNull(codeSource);
         ArgumentNullException.ThrowIfNull(tokens);
 
-        return new Parser(context, codeSource, tokens).ParseModuleNode();
+        return new Parser(context, codeSource, tokens).ParseFile();
     }
     public static ExpressionNode ParseExpression(PyCallContext context, CodeSource codeSource, IEnumerable<TokenInfo> tokens)
     {
@@ -21,7 +21,16 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         ArgumentNullException.ThrowIfNull(codeSource);
         ArgumentNullException.ThrowIfNull(tokens);
 
-        return new Parser(context, codeSource, tokens).ParseExpressionNode();
+        return new Parser(context, codeSource, tokens).ParseEval();
+    }
+
+    public static InteractiveNode ParseInteractive(PyCallContext context, CodeSource codeSource, IEnumerable<TokenInfo> tokens)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(codeSource);
+        ArgumentNullException.ThrowIfNull(tokens);
+
+        return new Parser(context, codeSource, tokens).ParseInteractive();
     }
 
     private static readonly FrozenSet<string> Keywords = [
@@ -154,38 +163,5 @@ public sealed partial class Parser : ICodeMetaInfoProvider
     {
         EnsureTokenTypeForTest(type, testExpr);
         MoveNextToken();
-    }
-
-    public ModuleNode ParseModuleNode()
-    {
-        EnsureTokenTypeThenMove(TokenType.Encoding);
-
-        var metaInfo = CreateAstMetaInfo();
-
-        List<AstStmtNode> body = [];
-        while (CurrentTokenType is not TokenType.EndMarker)
-            body.AddRange(ParseStatement());
-
-        return Ast.Module(body).With(metaInfo);
-    }
-
-    public ExpressionNode ParseExpressionNode()
-    {
-        EnsureTokenTypeThenMove(TokenType.Encoding);
-
-        var metaInfo = CreateAstMetaInfo();
-        var exprList = ParseExpressions(StopPredicates.UntilNewLine, out var endsWithComma);
-        var body = UnwrapOrMakeTuple(exprList, endsWithComma);
-
-        return Ast.Expression(body).With(metaInfo);
-    }
-
-    public InteractiveNode ParseInteractiveNode()
-    {
-        EnsureTokenTypeThenMove(TokenType.Encoding);
-
-        var metaInfo = CreateAstMetaInfo();
-        var body = ParseStatementNewLine();
-        return Ast.Interactive(body).With(metaInfo);
     }
 }

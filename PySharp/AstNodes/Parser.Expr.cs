@@ -854,11 +854,8 @@ partial class Parser
         return Ast.Or(values).With(metaInfo.WithPreviousEnd());
     }
 
-    /// <summary>
-    /// lambda_expr: "lambda" [<see cref="ParseParameterList(StopPredicate)">parameter_list</see>] ":" <see cref="ParseExpression">expression</see>
-    /// </summary>
-    /// <returns></returns>
-    private LambdaNode ParseLambdaExpr()
+    [GrammarSyntaxRule("lambdef")]
+    private LambdaNode ParseLambDef()
     {
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("lambda");
@@ -871,7 +868,7 @@ partial class Parser
     private AstExprNode ParseExpression()
     {
         if (IsCurrentKeyword("lambda"))
-            return ParseLambdaExpr();
+            return ParseLambDef();
 
         var metaInfo = CreateAstMetaInfo();
 

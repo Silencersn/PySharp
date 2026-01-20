@@ -190,7 +190,7 @@ public class PyInterpreter
                     var parser = new Parser(interpreter._mainContext, codeSource, tokens);
                     try
                     {
-                        node = parser.ParseInteractiveNode();
+                        node = parser.ParseInteractive();
                         SemanticAnalyzer.Analyze(interpreter._mainContext, node);
                         break;
                     }

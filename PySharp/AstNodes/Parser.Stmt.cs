@@ -943,6 +943,7 @@ partial class Parser
         return Ast.ClassDef(name, bases, keywords, body, decorators, typeParams).With(metaInfo);
     }
 
+    [GrammarSyntaxRule("type_params")]
     private List<AstTypeParamNode> ParseTypeParams()
     {
         EnsureTokenTypeThenMove(TokenType.LeftSquareBracket);
@@ -951,6 +952,7 @@ partial class Parser
         return list;
     }
 
+    [GrammarSyntaxRule("type_param_seq")]
     private List<AstTypeParamNode> ParseTypeParamSeq(StopPredicate predicate)
     {
         return ParseSomethingList(ParseTypeParam, predicate, out _);
