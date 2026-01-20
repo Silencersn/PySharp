@@ -1,4 +1,5 @@
 ﻿using PySharp.PyModules.Builtins;
+using PySharp.Resources;
 using PySharp.Tokenization;
 using PySharp.Utility;
 
@@ -170,7 +171,7 @@ partial class Parser
         if (CurrentTokenType is TokenType.LeftBrace)
             return ParseMappingPattern();
 
-        throw _context.ThrowableSyntaxError("invalid syntax");
+        throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
     }
 
     [GrammarSyntaxRule("or_pattern")]
@@ -250,11 +251,11 @@ partial class Parser
                 "True" => Ast.Constant(PyBoolObject.True),
                 "False" => Ast.Constant(PyBoolObject.False),
                 "None" => Ast.Constant(PyNoneObject.None),
-                _ => throw _context.ThrowableSyntaxError("invalid syntax")
+                _ => throw _context.ThrowableSyntaxError(PySR.InvalidSyntax)
             }).With(metaInfo);
         }
 
-        throw _context.ThrowableSyntaxError("invalid syntax");
+        throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
     }
 
     [GrammarSyntaxRule("complex_number")]
@@ -263,7 +264,7 @@ partial class Parser
         var metaInfo = CreateAstMetaInfo();
         var real = ParseSignedRealNumber();
         if (CurrentTokenType is not (TokenType.Plus or TokenType.Minus))
-            throw _context.ThrowableSyntaxError("invalid syntax");
+            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
         var sign = CurrentTokenType is TokenType.Plus;
         MoveNextToken();
         var imag = ParseImaginaryNumber();
@@ -348,7 +349,7 @@ partial class Parser
     {
         var attr = ParseAttr();
         if (CurrentTokenType is TokenType.Dot or TokenType.LeftParen or TokenType.Equal)
-            throw _context.ThrowableSyntaxError("invalid syntax");
+            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
         return Ast.MatchValue(attr);
     }
 
@@ -419,7 +420,7 @@ partial class Parser
             }
         }
 
-        throw _context.ThrowableSyntaxError("invalid syntax");
+        throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
     }
 
     [GrammarSyntaxRule("mapping_pattern")]
@@ -447,7 +448,7 @@ partial class Parser
         if (CurrentTokenType is TokenType.DoubleStar)
         {
             if (endsWithComma is null)
-                throw _context.ThrowableSyntaxError("invalid syntax");
+                throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
 
             var rest = ParseDoubleStarPattern();
             var pattern = Ast.MatchMapping(items.Select(static item => item.Key), items.Select(static item => item.Value), rest);

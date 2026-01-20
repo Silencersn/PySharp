@@ -2,6 +2,7 @@
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
+using PySharp.Resources;
 using PySharp.Tokenization;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -25,7 +26,7 @@ partial class Parser
     {
         EnsureTokenType(TokenType.Name);
         if (IsKeyword(CurrentToken.String))
-            throw _context.ThrowableSyntaxError("invalid syntax");
+            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
         var ret = CurrentToken.String;
         MoveNextToken();
         return ret;
@@ -62,7 +63,7 @@ partial class Parser
                 ParseNamedExpression, ParseSet, ParseSetComp);
         }
 
-        throw _context.ThrowableSyntaxError("invalid syntax");
+        throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
 
         bool TestIsDictRatherThanSet()
         {
@@ -273,7 +274,7 @@ partial class Parser
     private AstExprNode ParseStrings()
     {
         if (CurrentTokenType is not (TokenType.String or TokenType.FStringStart))
-            throw _context.ThrowableSyntaxError("invalid syntax");
+            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
 
         var metaInfo = CreateAstMetaInfo();
 
@@ -419,7 +420,7 @@ partial class Parser
                     return Ast.Constant(PyNoneObject.None).With(metaInfo);
                 }
 
-                throw _context.ThrowableSyntaxError("invalid syntax");
+                throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
             }
             else if (CurrentToken.String is PySpecialNames.Debug)
             {
@@ -458,7 +459,7 @@ partial class Parser
             if (CurrentTokenType is TokenType.Indent)
                 throw _context.ThrowableIndentationError("unexpected indent");
 
-            throw _context.ThrowableSyntaxError("invalid syntax");
+            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
         }
 
     }
@@ -1040,7 +1041,7 @@ partial class Parser
             if (CurrentTokenType is TokenType.Comma)
                 throw _context.ThrowableSyntaxError("at least one argument must precede /");
 
-            throw _context.ThrowableSyntaxError("invalid syntax");
+            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
         }
 
         return ParseParameters(isLambda);
@@ -1142,7 +1143,7 @@ partial class Parser
                     break;
 
                 default:
-                    throw _context.ThrowableSyntaxError("invalid syntax");
+                    throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
             }
         }
     }
@@ -1308,7 +1309,7 @@ partial class Parser
         if (CurrentTokenType == closeToken)
         {
             if (!allowEmptySequence)
-                throw _context.ThrowableSyntaxError("invalid syntax");
+                throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
 
             MoveNextToken();
             return factory([]).With(metaInfo.WithPreviousEnd());
@@ -1316,7 +1317,7 @@ partial class Parser
 
         var list = ParseSomethingList(parseItem, StopPredicates.Until(closeToken), out var endsWithComma);
         if (!allowSingleItemWithoutComma && list.Count is 1 && endsWithComma is null)
-            throw _context.ThrowableSyntaxError("invalid syntax");
+            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
 
         EnsureTokenTypeThenMove(closeToken);
         return factory(list).With(metaInfo.WithPreviousEnd());
@@ -1460,7 +1461,7 @@ partial class Parser
                 WhereNotNull(list.Select(static pair => pair.Kwarg)));
 
         if (endsWithComma is null)
-            throw _context.ThrowableSyntaxError("invalid syntax");
+            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
 
         var kwlist = ParseSomethingList(ParseKwargOrDoubleStarred, StopPredicates.UntilRightParen, out endsWithComma);
         return (WhereNotNull(list.Select(static pair => pair.Arg)),

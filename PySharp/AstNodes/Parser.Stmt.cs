@@ -1,4 +1,5 @@
 ﻿using PySharp.PyRuntime;
+using PySharp.Resources;
 using PySharp.Tokenization;
 using System.Diagnostics.CodeAnalysis;
 
@@ -229,7 +230,7 @@ partial class Parser
     {
         var list = ParseSomethingList(ParseDottedAsName, StopPredicates.UntilNewLineOrSemicolon, out var endsWithComma);
         if (endsWithComma is not null)
-            throw _context.ThrowableSyntaxError("invalid syntax");
+            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
         return list;
     }
 
@@ -282,7 +283,7 @@ partial class Parser
         {
             var list = ParseImportFromAsNames(out var endsWithComma);
             if (endsWithComma is not null)
-                throw _context.ThrowableSyntaxError("invalid syntax");
+                throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
             return list;
         }
     }
@@ -299,7 +300,7 @@ partial class Parser
         var level = ParseLevel();
         var module = IsCurrentKeyword("import") ? null : ParseDottedName();
         if (module is null && level is 0)
-            throw _context.ThrowableSyntaxError("invalid syntax");
+            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
 
         EnsureKeywordThenMove("import");
         var names = ParseImportFromTargets();
@@ -470,7 +471,7 @@ partial class Parser
                 "continue" => ParseContinueStmt(),
                 "global" => ParseGlobalStmt(),
                 "nonlocal" => ParseNonlocalStmt(),
-                _ => throw _context.ThrowableSyntaxError("invalid syntax")
+                _ => throw _context.ThrowableSyntaxError(PySR.InvalidSyntax)
             };
         }
 
@@ -556,14 +557,14 @@ partial class Parser
         if (CurrentTokenType is not TokenType.Name)
         {
             if (decorators.Count > 0)
-                throw _context.ThrowableSyntaxError("invalid syntax");
+                throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
 
             compoundStmt = null;
             return false;
         }
 
         if (decorators.Count > 0 && !(IsCurrentKeyword("def") || IsCurrentKeyword("class")))
-            throw _context.ThrowableSyntaxError("invalid syntax");
+            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
 
         compoundStmt = CurrentToken.StringAsSpan switch
         {
@@ -805,7 +806,7 @@ partial class Parser
                     throw _context.ThrowableSyntaxError("multiple exception types must be parenthesized when using 'as'");
 
                 if (endsWithComma is not null)
-                    throw _context.ThrowableSyntaxError("invalid syntax");
+                    throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
 
                 MoveNextToken();
                 name = ParseIdentifier();
@@ -986,7 +987,7 @@ partial class Parser
             return Ast.ParamSpec(name, defaultValue).With(metaInfo.WithPreviousEnd());
         }
 
-        throw _context.ThrowableSyntaxError("invalid syntax");
+        throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
     }
 
     [GrammarSyntaxRule("type_param_bound")]

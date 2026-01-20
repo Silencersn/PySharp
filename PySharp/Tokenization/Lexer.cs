@@ -1,5 +1,6 @@
 ﻿using PySharp.CodeAnalysis;
 using PySharp.PyRuntime.Calls;
+using PySharp.Resources;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
@@ -744,7 +745,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                 return;
             }
 
-            throw _context.ThrowableSyntaxError("invalid syntax");
+            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
         }
     }
 }
