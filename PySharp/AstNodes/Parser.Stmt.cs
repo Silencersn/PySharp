@@ -83,7 +83,7 @@ partial class Parser
         while (CurrentTokenType is TokenType.Equal)
         {
             if (!IsStarTarget(starExpressions, out var nonStarTargetNode))
-                throw _context.ThrowableSyntaxError($"cannot assign to {AstUtils.GetExprNodeName(nonStarTargetNode)}");
+                throw SyntaxError(PySR.InvalidSyntax_InvalidTarget, AstUtils.GetExprNodeName(nonStarTargetNode));
 
             targets.Add(starExpressions);
 

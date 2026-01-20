@@ -26,7 +26,7 @@ partial class Parser
     {
         EnsureTokenType(TokenType.Name);
         if (IsKeyword(CurrentToken.String))
-            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
+            throw SyntaxError(PySR.InvalidSyntax);
         var ret = CurrentToken.String;
         MoveNextToken();
         return ret;
@@ -63,7 +63,7 @@ partial class Parser
                 ParseNamedExpression, ParseSet, ParseSetComp);
         }
 
-        throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
+        throw SyntaxError(PySR.InvalidSyntax);
 
         bool TestIsDictRatherThanSet()
         {
@@ -150,13 +150,13 @@ partial class Parser
     {
         EnsureTokenTypeThenMove(TokenType.LeftBrace);
         if (CurrentTokenType is TokenType.Equal)
-            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax_InvalidFStringReplacementField_BeforeEqual);
+            throw SyntaxError(PySR.InvalidSyntax_FString_ReplacementField_BeforeEqual);
         if (CurrentTokenType is TokenType.Exclamation)
-            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax_InvalidFStringReplacementField_BeforeExclamation);
+            throw SyntaxError(PySR.InvalidSyntax_FString_ReplacementField_BeforeExclamation);
         if (CurrentTokenType is TokenType.Colon)
-            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax_InvalidFStringReplacementField_BeforeColon);
+            throw SyntaxError(PySR.InvalidSyntax_FString_ReplacementField_BeforeColon);
         if (CurrentTokenType is TokenType.RightBrace)
-            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax_InvalidFStringReplacementField_BeforeRightBrace);
+            throw SyntaxError(PySR.InvalidSyntax_FString_ReplacementField_BeforeRightBrace);
 
         var start = CurrentToken.Start;
         var metaInfo = CreateAstMetaInfo();
@@ -176,24 +176,24 @@ partial class Parser
         else
         {
             if (!IsCurrentTypeTokenAnyOf(TokenType.Exclamation, TokenType.Colon, TokenType.RightBrace))
-                throw SyntaxError(PySR.InvalidSyntax_InvalidFStringReplacementField_ExpectingEqual);
+                throw SyntaxError(PySR.InvalidSyntax_FString_ReplacementField_ExpectingEqual);
         }
 
         var conversion = -1;
         if (CurrentTokenType is TokenType.Exclamation)
             conversion = ParseFStringConversion();
         else if (!IsCurrentTypeTokenAnyOf(TokenType.Colon, TokenType.RightBrace))
-            throw SyntaxError(PySR.InvalidSyntax_InvalidFStringReplacementField_ExpectingExclamation);
+            throw SyntaxError(PySR.InvalidSyntax_FString_ReplacementField_ExpectingExclamation);
 
         var format_spec = null as JoinedStrNode;
         if (CurrentTokenType is TokenType.Colon)
             format_spec = ParseFStringFullFormatSpec(isRaw);
         else if (!IsCurrentTypeTokenAnyOf(TokenType.RightBrace))
-            throw SyntaxError(PySR.InvalidSyntax_InvalidFStringReplacementField_ExpectingColon);
+            throw SyntaxError(PySR.InvalidSyntax_FString_ReplacementField_ExpectingColon);
 
         EnsureTokenTypeThenMove(TokenType.RightBrace, format_spec is null
-            ? PySR.InvalidSyntax_InvalidFStringReplacementField_ExpectingRightBrace
-            : PySR.InvalidSyntax_InvalidFStringReplacementField_ExpectingRightBraceOrSpecs);
+            ? PySR.InvalidSyntax_FString_ReplacementField_ExpectingRightBrace
+            : PySR.InvalidSyntax_FString_ReplacementField_ExpectingRightBraceOrSpecs);
 
         var formatted = Ast.FormattedValue(value, conversion, format_spec).With(metaInfo.WithPreviousEnd());
         if (debugSpec is null)
@@ -206,15 +206,15 @@ partial class Parser
     {
         EnsureTokenTypeThenMove(TokenType.Exclamation);
         if (IsCurrentTypeTokenAnyOf(TokenType.Colon, TokenType.RightBrace))
-            throw SyntaxError(PySR.InvalidSyntax_InvalidFStringConversionCharacter_Missing);
+            throw SyntaxError(PySR.InvalidSyntax_FString_ConversionCharacter_Missing);
 
-        EnsureTokenType(TokenType.Name, PySR.InvalidSyntax_InvalidFStringConversionCharacter_Invalid);
+        EnsureTokenType(TokenType.Name, PySR.InvalidSyntax_FString_ConversionCharacter_Invalid);
         if (IsKeyword(CurrentToken.String))
-            throw SyntaxError(PySR.InvalidSyntax_InvalidFStringConversionCharacter_Invalid);
+            throw SyntaxError(PySR.InvalidSyntax_FString_ConversionCharacter_Invalid);
 
         var conversion = CurrentToken.String;
         if (conversion is not ("s" or "r" or "a"))
-            throw SyntaxError(PySR.InvalidSyntax_FStringConversion_Invalid, conversion);
+            throw SyntaxError(PySR.InvalidSyntax_FString_ConversionCharacter_InvalidCharacter, conversion);
         MoveNextToken();
 
         return conversion[0];
@@ -295,7 +295,7 @@ partial class Parser
     private AstExprNode ParseStrings()
     {
         if (CurrentTokenType is not (TokenType.String or TokenType.FStringStart))
-            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
+            throw SyntaxError(PySR.InvalidSyntax);
 
         var metaInfo = CreateAstMetaInfo();
 
@@ -440,7 +440,7 @@ partial class Parser
                     return Ast.Constant(PyNoneObject.None).With(metaInfo);
                 }
 
-                throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
+                throw SyntaxError(PySR.InvalidSyntax);
             }
             else if (CurrentToken.String is PySpecialNames.Debug)
             {
@@ -477,9 +477,9 @@ partial class Parser
         else
         {
             if (CurrentTokenType is TokenType.Indent)
-                throw _context.ThrowableIndentationError("unexpected indent");
+                throw _context.ThrowableIndentationError(PySR.InvalidSyntax_UnexpectedIndent);
 
-            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
+            throw SyntaxError(PySR.InvalidSyntax);
         }
 
     }
@@ -604,9 +604,6 @@ partial class Parser
             {
                 var currentMetaInfo = startMetaInfo.WithCrucial();
                 MoveNextToken();
-
-                if (CurrentTokenType is TokenType.RightSquareBracket)
-                    throw _context.ThrowableSyntaxError("invalid syntax. Perhaps you forgot a comma?");
 
                 var slices = ParseSlices();
                 EnsureTokenTypeThenMove(TokenType.RightSquareBracket);
@@ -912,7 +909,7 @@ partial class Parser
 
         var expr = ParseExpression();
         if (CurrentTokenType is TokenType.ColonEqual)
-            throw _context.ThrowableSyntaxError($"cannot use assignment expressions with {AstUtils.GetExprNodeName(expr)}");
+            throw SyntaxError(PySR.InvalidSyntax_AssignmentExpressions, AstUtils.GetExprNodeName(expr));
         return expr;
     }
 
@@ -1059,9 +1056,9 @@ partial class Parser
         {
             MoveNextToken();
             if (CurrentTokenType is TokenType.Comma)
-                throw _context.ThrowableSyntaxError("at least one argument must precede /");
+                throw SyntaxError(PySR.InvalidSyntax_Parameters_NoArgsBeforeSlash);
 
-            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
+            throw SyntaxError(PySR.InvalidSyntax);
         }
 
         return ParseParameters(isLambda);
@@ -1098,16 +1095,16 @@ partial class Parser
         void ParseParameter()
         {
             if (state is StateEnd)
-                throw _context.ThrowableSyntaxError($"arguments cannot follow var-keyword argument");
+                throw SyntaxError(PySR.InvalidSyntax_Parameters_ArgsFollowVarKwArg);
 
             switch (CurrentTokenType)
             {
                 case TokenType.Slash:
                     if (state is StateArgs)
-                        throw _context.ThrowableSyntaxError("/ may appear only once");
+                        throw SyntaxError(PySR.InvalidSyntax_Parameters_MultipleSlashes);
 
                     if (state is StateKwonly)
-                        throw _context.ThrowableSyntaxError("/ must be ahead of *");
+                        throw SyntaxError(PySR.InvalidSyntax_Parameters_SlashAfterStar);
 
                     MoveNextToken();
                     posonlyArgs.AddRange(args);
@@ -1117,7 +1114,7 @@ partial class Parser
 
                 case TokenType.Star:
                     if (state is StateKwonly)
-                        throw _context.ThrowableSyntaxError("* may appear only once");
+                        throw SyntaxError(PySR.InvalidSyntax_Parameters_MultipleStars);
 
                     MoveNextToken();
                     if (CurrentTokenType is not TokenType.Comma)
@@ -1132,7 +1129,7 @@ partial class Parser
                     kwArg = ParseParam(isLambda);
 
                     if (CurrentTokenType is TokenType.Equal)
-                        throw _context.ThrowableSyntaxError("var-keyword argument cannot have default value");
+                        throw SyntaxError(PySR.InvalidSyntax_Parameters_VarKwArgWithDefault);
 
                     state = StateEnd;
                     break;
@@ -1163,7 +1160,7 @@ partial class Parser
                     break;
 
                 default:
-                    throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
+                    throw SyntaxError(PySR.InvalidSyntax);
             }
         }
     }
@@ -1223,14 +1220,14 @@ partial class Parser
             MoveNextToken();
             var target = ParseStarTarget();
             if (target is StarredNode)
-                throw _context.ThrowableSyntaxError("Invalid star expression");
+                throw SyntaxError(PySR.InvalidSyntax_StarredExpression_Invalid);
             return Ast.Starred(target);
         }
         else
         {
             var target = ParsePrimary();
             if (!target.IsValidTarget())
-                throw _context.ThrowableSyntaxError($"cannot assign to {AstUtils.GetExprNodeName(target)}");
+                throw SyntaxError(PySR.InvalidSyntax_InvalidTarget, AstUtils.GetExprNodeName(target));
             return target;
         }
     }
@@ -1252,7 +1249,7 @@ partial class Parser
 
         EnsureKeywordThenMove("for");
         var target = ParseStarTargets(StopPredicates.UntilKeywordIn);
-        EnsureKeywordThenMove("in", "'in' expected after for-loop variables");
+        EnsureKeywordThenMove("in", PySR.InvalidSyntax_ForStmt_ExpectedIn);
 
         var iter = ParseDisjunction();
         var ifs = new List<AstExprNode>();
@@ -1329,7 +1326,7 @@ partial class Parser
         if (CurrentTokenType == closeToken)
         {
             if (!allowEmptySequence)
-                throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
+                throw SyntaxError(PySR.InvalidSyntax);
 
             MoveNextToken();
             return factory([]).With(metaInfo.WithPreviousEnd());
@@ -1337,7 +1334,7 @@ partial class Parser
 
         var list = ParseSomethingList(parseItem, StopPredicates.Until(closeToken), out var endsWithComma);
         if (!allowSingleItemWithoutComma && list.Count is 1 && endsWithComma is null)
-            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
+            throw SyntaxError(PySR.InvalidSyntax);
 
         EnsureTokenTypeThenMove(closeToken);
         return factory(list).With(metaInfo.WithPreviousEnd());
@@ -1410,7 +1407,7 @@ partial class Parser
     private (IEnumerable<AstExprNode> Args, IEnumerable<AstKeywordNode> Kwargs) ParseArguments()
     {
         var result = ParseArgs(out _);
-        EnsureTokenType(TokenType.RightParen, "'(' was never closed");
+        EnsureTokenType(TokenType.RightParen, PySR.InvalidSyntax_RightParenNeverClosed);
         return result;
     }
 
@@ -1433,7 +1430,7 @@ partial class Parser
             return (args, []);
 
         if (CurrentTokenType is TokenType.Equal)
-            throw _context.ThrowableSyntaxError("expression cannot contain assignment, perhaps you meant \"==\"?");
+            throw SyntaxError(PySR.InvalidSyntax_ExpressionContainsAssignment);
 
         var (restArgs, kwargs) = ParseKwargs(out endsWithComma);
         return (args.Concat(restArgs), kwargs);
@@ -1481,7 +1478,7 @@ partial class Parser
                 WhereNotNull(list.Select(static pair => pair.Kwarg)));
 
         if (endsWithComma is null)
-            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
+            throw SyntaxError(PySR.InvalidSyntax);
 
         var kwlist = ParseSomethingList(ParseKwargOrDoubleStarred, StopPredicates.UntilRightParen, out endsWithComma);
         return (WhereNotNull(list.Select(static pair => pair.Arg)),
@@ -1496,11 +1493,11 @@ partial class Parser
     private AstKeywordNode ParseNameKwarg()
     {
         if (CurrentTokenType is not TokenType.Name)
-            throw _context.ThrowableSyntaxError("positional argument follows keyword argument");
+            throw SyntaxError(PySR.InvalidSyntax_Arguments_PosArgFollowsKeyword);
 
         var metaInfo = CreateAstMetaInfo();
         var arg = ParseIdentifier();
-        EnsureTokenTypeThenMove(TokenType.Equal, "positional argument follows keyword argument");
+        EnsureTokenTypeThenMove(TokenType.Equal, PySR.InvalidSyntax_Arguments_PosArgFollowsKeyword);
         var value = ParseExpression();
         return Ast.Keyword(arg, value).With(metaInfo.WithPreviousEnd());
     }
@@ -1581,10 +1578,10 @@ partial class Parser
     [GrammarSyntaxRule("default")]
     private AstExprNode ParseDefault()
     {
-        EnsureTokenTypeThenMove(TokenType.Equal, "parameter without a default follows parameter with a default");
+        EnsureTokenTypeThenMove(TokenType.Equal, PySR.InvalidSyntax_Parameters_ParameterWithoutDefault);
 
         if (CurrentTokenType is TokenType.RightParen or TokenType.Colon)
-            throw _context.ThrowableSyntaxError("expected default value expression");
+            throw SyntaxError(PySR.InvalidSyntax_Parameters_ExpectedDefault);
 
         return ParseExpression();
     }
