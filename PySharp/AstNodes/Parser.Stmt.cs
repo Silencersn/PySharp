@@ -452,6 +452,7 @@ partial class Parser
         return Ast.Nonlocal(names).With(metaInfo);
     }
 
+    [GrammarSyntaxRule("simple_stmt")]
     private AstStmtNode ParseSimpleStmt()
     {
         var metaInfo = CreateAstMetaInfo();
@@ -498,64 +499,153 @@ partial class Parser
     [GrammarSyntaxRule("statement")]
     private List<AstStmtNode> ParseStatement()
     {
+        if (TryParseCompoundStmt(out var compoundStmt))
+            return [compoundStmt];
+
+        return ParseSimpleStmts();
+    }
+
+    [GrammarSyntaxRule("decorators")]
+    private List<AstExprNode> ParseDecorators()
+    {
+        EnsureTokenType(TokenType.At);
         List<AstExprNode> decorators = [];
-        while (CurrentTokenType is TokenType.At)
+        do
         {
             MoveNextToken();
             var decorator = ParseNamedExpression();
             decorators.Add(decorator);
             EnsureTokenTypeThenMove(TokenType.NewLine);
+        } while (CurrentTokenType is TokenType.At);
+        return decorators;
+    }
+
+
+    [GrammarSyntaxRule("compound_stmt")]
+    private bool TryParseCompoundStmt([NotNullWhen(true)] out AstStmtNode? compoundStmt)
+    {
+        List<AstExprNode> decorators = [];
+        if (CurrentTokenType is TokenType.At)
+            decorators = ParseDecorators();
+
+        if (CurrentTokenType is not TokenType.Name)
+        {
+            if (decorators.Count > 0)
+                throw _context.ThrowableSyntaxError("invalid syntax");
+
+            compoundStmt = null;
+            return false;
         }
 
         if (decorators.Count > 0 && !(IsCurrentKeyword("def") || IsCurrentKeyword("class")))
             throw _context.ThrowableSyntaxError("invalid syntax");
 
-        if (IsCurrentKeyword("match"))
+        compoundStmt = CurrentToken.StringAsSpan switch
+        {
+            "def" => ParseFunctionDef(decorators),
+            "if" => ParseIfStmt("if"),
+            "class" => ParseClassDef(decorators),
+            "with" => ParseWithStmt(),
+            "for" => ParseForStmt(),
+            "try" => ParseTryStmt(),
+            "while" => ParseWhileStmt(),
+            "match" when TestIsMatchStmt() => ParseMatchStmt(),
+            _ => null,
+        };
+
+        return compoundStmt is not null;
+
+        bool TestIsMatchStmt()
         {
             var pos = TokenStreamPosition;
+            var isMatchStmt = TestIsMatchStmtFast();
+            TokenStreamPosition = pos;
+            if (isMatchStmt is not null)
+                return isMatchStmt.Value;
+
             try
             {
-                return [ParseMatchStmt()];
+                MoveNextToken();
+                _ = ParseSubjectExpr();
+
+                if (CurrentTokenType is not TokenType.Colon)
+                    return false;
+
+                // only check colon is not enough.
+                // this example stmt is invalid,
+                // but it actually not match_stmt.
+                // it should raise 'illegal target for annotation'.
+                //
+                // match + 1: int
+                //
+                MoveNextToken();
+                return CurrentTokenType is TokenType.NewLine;
             }
             catch (PyRuntimeException)
             {
+                return false;
+            }
+            finally
+            {
                 TokenStreamPosition = pos;
             }
+
+            bool? TestIsMatchStmtFast()
+            {
+                if (!IsCurrentKeyword("match"))
+                    return false;
+
+                MoveNextToken();
+
+                if (CurrentTokenType is TokenType.NewLine or TokenType.Semicolon)
+                    // end of simple_stmt
+                    return false;
+
+                if (CurrentTokenType is TokenType.Equal or TokenType.Colon or TokenType.ColonEqual)
+                    // assignment
+                    return false;
+
+                if (IsAugOperator(CurrentTokenType))
+                    // augassign
+                    return false;
+
+                if (CurrentTokenType is TokenType.Comma)
+                    // a part of tuple
+                    return false;
+
+                if (CurrentTokenType is TokenType.Dot)
+                    // attribute
+                    return false;
+
+                if (CurrentTokenType is TokenType.Tilde)
+                    // unary op
+                    return true;
+
+                if (BinaryOperators.Contains(CurrentTokenType))
+                {
+                    if (CurrentTokenType is TokenType.Plus or TokenType.Minus or TokenType.Star)
+                        // plus and minus may be unary op (match +1: ...)
+                        // star may be unpacking (match *[],: ...)
+                        return null;
+
+                    return false;
+                }
+                else if (IsCurrentKeyword("is") || IsCurrentKeyword("in"))
+                {
+                    return false;
+                }
+                else if (IsCurrentKeyword("not"))
+                {
+                    MoveNextToken();
+
+                    // 'not' is unary op
+                    // 'not in' is binary op
+                    return !IsCurrentKeyword("in");
+                }
+
+                return null;
+            }
         }
-
-        if (CurrentTokenType is TokenType.Name && CompoundStmtStartsWith.Contains(CurrentToken.String))
-            return [ParseCompoundStmt(decorators)];
-
-        return ParseSimpleStmts();
-    }
-
-    // match is special, do not parse it in ParseCompoundStmt 
-    private static readonly string[] CompoundStmtStartsWith = [
-        "if", "while", "for", "try", "with", /* "match", */ "def", "class", "async"
-        ];
-
-    private AstStmtNode ParseCompoundStmt(List<AstExprNode> decorators)
-    {
-        _tokenStream._parsingCompoundStmt++;
-        EnsureTokenType(TokenType.Name);
-        AstStmtNode node = CurrentToken.StringAsSpan switch
-        {
-            "if" => ParseIfStmt("if"),
-            "while" => ParseWhileStmt(),
-            "for" => ParseForStmt(),
-            "try" => ParseTryStmt(),
-            "def" => ParseFuncDef(decorators),
-            "class" => ParseClassDef(decorators),
-            "with" => ParseWithStmt(),
-
-            _ => throw new NotSupportedException()
-        };
-        _tokenStream._parsingCompoundStmt--;
-
-        if (_tokenStream._parsingCompoundStmt is 0 && _isParsingInteractiveNode)
-            EnsureTokenTypeThenMove(TokenType.NewLine);
-
-        return node;
     }
 
     private List<AstStmtNode> ParseSuite(string keyword)
@@ -590,6 +680,7 @@ partial class Parser
         return ParseSimpleStmts();
     }
 
+    [GrammarSyntaxRule("if_stmt")]
     private IfNode ParseIfStmt(string startsWithKeyword)
     {
         var metaInfo = CreateAstMetaInfo();
@@ -611,6 +702,7 @@ partial class Parser
         return Ast.If(test, body, orElse).With(metaInfo);
     }
 
+    [GrammarSyntaxRule("while_stmt")]
     private WhileNode ParseWhileStmt()
     {
         var metaInfo = CreateAstMetaInfo();
@@ -628,6 +720,7 @@ partial class Parser
         return Ast.While(test, body, orElse).With(metaInfo);
     }
 
+    [GrammarSyntaxRule("try_stmt")]
     private AstStmtNode ParseTryStmt()
     {
         var metaInfo = CreateAstMetaInfo();
@@ -701,6 +794,7 @@ partial class Parser
             : Ast.Try(body, exceptors, orElse, finalBody).With(metaInfo);
     }
 
+    [GrammarSyntaxRule("for_stmt")]
     private ForNode ParseForStmt()
     {
         var metaInfo = CreateAstMetaInfo();
@@ -722,6 +816,7 @@ partial class Parser
         return Ast.For(target, iter, body, orElse).With(metaInfo);
     }
 
+    [GrammarSyntaxRule("with_stmt")]
     private WithNode ParseWithStmt()
     {
         var metaInfo = CreateAstMetaInfo();
@@ -758,7 +853,8 @@ partial class Parser
         }
     }
 
-    private FunctionDefNode ParseFuncDef(IEnumerable<AstExprNode> decorators)
+    [GrammarSyntaxRule("function_def")]
+    private FunctionDefNode ParseFunctionDef(IReadOnlyList<AstExprNode> decorators)
     {
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("def");
@@ -779,7 +875,8 @@ partial class Parser
         return Ast.FunctionDef(name, args, body, decorators, returns).With(metaInfo);
     }
 
-    private ClassDefNode ParseClassDef(IEnumerable<AstExprNode> decorators)
+    [GrammarSyntaxRule("class_def")]
+    private ClassDefNode ParseClassDef(IReadOnlyList<AstExprNode> decorators)
     {
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("class");

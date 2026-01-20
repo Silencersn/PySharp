@@ -39,6 +39,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         TokenType.PipeEqual
         ];
 
+    private static readonly FrozenSet<TokenType> BinaryOperators = [
     private static bool IsKeyword(string name)
     {
         return Keywords.Contains(name);
