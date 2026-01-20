@@ -2,9 +2,6 @@
 
 public abstract class TokenStream
 {
-    internal int _parsingCompoundStmt;
-    internal bool IsParsingCompoundStmt => _parsingCompoundStmt > 0;
-
     public abstract int Position { get; set; }
     /// <summary>
     /// CurrentToken should be set after ctor (that means CurrentToken is always available)
