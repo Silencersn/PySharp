@@ -505,6 +505,24 @@ partial class Parser
         return ParseSimpleStmts();
     }
 
+    [GrammarSyntaxRule("statement_newline")]
+    private List<AstStmtNode> ParseStatementNewLine()
+    {
+        if (CurrentTokenType is TokenType.NewLine or TokenType.EndMarker)
+        {
+            MoveNextToken();
+            return [];
+        }
+
+        if (TryParseCompoundStmt(out var compoundStmt))
+        {
+            EnsureTokenTypeThenMove(TokenType.NewLine);
+            return [compoundStmt];
+        }
+
+        return ParseSimpleStmts();
+    }
+
     [GrammarSyntaxRule("decorators")]
     private List<AstExprNode> ParseDecorators()
     {

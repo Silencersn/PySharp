@@ -40,6 +40,13 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         ];
 
     private static readonly FrozenSet<TokenType> BinaryOperators = [
+        TokenType.Plus, TokenType.Minus, TokenType.Star, TokenType.Slash,
+        TokenType.DoubleSlash, TokenType.Percent, TokenType.DoubleStar, TokenType.Pipe,
+        TokenType.Ampersand, TokenType.Caret, TokenType.LeftShift, TokenType.RightShift,
+        TokenType.Less, TokenType.Greater, TokenType.LessEqual, TokenType.GreaterEqual,
+        TokenType.DoubleEqual, TokenType.NotEqual, TokenType.At,
+    ];
+
     private static bool IsKeyword(string name)
     {
         return Keywords.Contains(name);
@@ -53,7 +60,6 @@ public sealed partial class Parser : ICodeMetaInfoProvider
     private readonly CodeSource _codeSource;
     private readonly OptimizationOptions _options;
     private readonly TokenStream _tokenStream;
-    private bool _isParsingInteractiveNode;
 
     private int TokenStreamPosition
     {
@@ -179,10 +185,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         EnsureTokenTypeThenMove(TokenType.Encoding);
 
         var metaInfo = CreateAstMetaInfo();
-        _isParsingInteractiveNode = true;
-        var body = ParseStatement();
-        _isParsingInteractiveNode = false;
-
+        var body = ParseStatementNewLine();
         return Ast.Interactive(body).With(metaInfo);
     }
 }

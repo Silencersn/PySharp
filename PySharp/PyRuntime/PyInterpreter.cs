@@ -5,6 +5,7 @@ using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.Environments;
 using PySharp.Tokenization;
 using System.Diagnostics;
+using System.Text;
 
 namespace PySharp.PyRuntime;
 
@@ -164,36 +165,29 @@ public class PyInterpreter
 
         var interpreter = Create(environment);
 
+        var builder = new StringBuilder();
+
         while (true)
         {
             PyTryCatch(interpreter._mainContext, () =>
             {
                 InteractiveNode node;
 
-                var codeSource = new CodeSource("<stdin>", string.Empty);
-                var lexer = new Lexer(interpreter._mainContext, codeSource);
-                lexer.InternalStart();
                 bool isFirstLine = true;
+                builder.Clear();
+
                 while (true)
                 {
                     environment.Out.Write(isFirstLine ? ">>> " : "... ");
                     var line = environment.In.ReadLine() ?? throw new EndOfStreamException();
-                    isFirstLine = false;
+                    builder.AppendLine(line);
+                    var codeSource = new CodeSource("<stdin>", builder.ToString());
+                    var tokens = Lexer.Tokenize(interpreter._mainContext, codeSource);
                     if (string.IsNullOrWhiteSpace(line))
-                    {
-                        lexer.InternalClearIndentation();
-                        lexer.Tokens.Add(new TokenInfo(TokenType.NewLine, string.Empty, default, default, codeSource));
-                        lexer.Tokens.Add(new TokenInfo(TokenType.EndMarker, string.Empty, default, default, codeSource));
-                    }
-                    else
-                    {
-                        line += Environment.NewLine;
-                        codeSource.Code.AppendText(line);
-                        lexer.InternalTokenize(line);
-                        lexer.Tokens.Add(new TokenInfo(TokenType.EndMarker, string.Empty, default, default, codeSource));
-                    }
+                        tokens.Insert(tokens.Count - 1, new TokenInfo(TokenType.NewLine, string.Empty, default, default, codeSource));
+                    isFirstLine = false;
 
-                    var parser = new Parser(interpreter._mainContext, codeSource, lexer.Tokens);
+                    var parser = new Parser(interpreter._mainContext, codeSource, tokens);
                     try
                     {
                         node = parser.ParseInteractiveNode();
@@ -207,8 +201,6 @@ public class PyInterpreter
 
                         if (parser.CurrentToken.Type is not TokenType.EndMarker)
                             throw;
-
-                        lexer.Tokens.RemoveAt(lexer.Tokens.Count - 1); // remove EndMarker
                     }
                 }
 

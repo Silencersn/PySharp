@@ -21,7 +21,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         FStringDefault,
     }
 
-    public static IReadOnlyList<TokenInfo> Tokenize(PyCallContext context, CodeSource codeSource)
+    public static List<TokenInfo> Tokenize(PyCallContext context, CodeSource codeSource)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(codeSource);
@@ -30,7 +30,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         lexer.InternalStart();
         lexer.InternalTokenize(codeSource.Code.Text);
         lexer.InternalEnd();
-        return lexer._tokens;
+        return [.. lexer._tokens];
     }
 
     private sealed class FStringInfo
@@ -181,6 +181,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         _currentContent = content;
 
         _offset = 0;
+        _offsetOfPreviousLine = 0;
         while (_offset < content.Length)
         {
             switch (CurrentState)
