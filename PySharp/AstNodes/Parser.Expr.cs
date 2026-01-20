@@ -387,7 +387,8 @@ partial class Parser
         {
             if (info.Error is PyStrConverter.ConvertError.InvalidEscapeSequence)
             {
-                if (!context.TryWarn<PySyntaxWarningObjectType>($"invalid escape sequence '\\{info.Char}'"))
+                if (!context.TryWarn<PySyntaxWarningObjectType>(
+                    PySR.Format(PySR.InvalidSyntax_Warning_InvalidEscapeSequence, info.Char)))
                     throw new NotImplementedException();
             }
 

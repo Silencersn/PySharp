@@ -392,7 +392,6 @@ public static class PyStrConverter
             }
         }
 
-        info.Error = ConvertError.None;
         return true;
 
         static bool AllAsciiHexDigit(ReadOnlySpan<char> chars)
