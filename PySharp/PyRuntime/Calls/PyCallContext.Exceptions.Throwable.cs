@@ -40,6 +40,11 @@ partial class PyCallContext
         return ThrowableException(PyStandardExceptionTypes.SyntaxError, arg);
     }
 
+    internal PyRuntimeException ThrowableUnicodeEncodeError(string? arg = null)
+    {
+        return ThrowableException(PyUnicodeEncodeErrorObjectType.Shared, arg);
+    }
+
     internal PyRuntimeException ThrowableIndentationError(string? arg = null)
     {
         return ThrowableException(PyStandardExceptionTypes.IndentationError, arg);

@@ -24,4 +24,10 @@ partial class PySR
     // invalid_fstring_conversion_character
     public const string InvalidSyntax_InvalidFStringConversionCharacter_Missing = "f-string: missing conversion character";
     public const string InvalidSyntax_InvalidFStringConversionCharacter_Invalid = "f-string: invalid conversion character";
+
+    // UnicodeError
+    public const string InvalidSyntax_UnicodeError_TruncatedLowerXSequence = "(unicode error) 'unicodeescape' codec can't decode bytes in position {0}-{1}: truncated \\xXX escape";
+    public const string InvalidSyntax_UnicodeError_TruncatedLowerUSequence = "(unicode error) 'unicodeescape' codec can't decode bytes in position {0}-{1}: truncated \\uXXXX escape";
+    public const string InvalidSyntax_UnicodeError_TruncatedUpperUSequence = "(unicode error) 'unicodeescape' codec can't decode bytes in position {0}-{1}: truncated \\UXXXXXXXX escape";
+    public const string InvalidSyntax_UnicodeError_IllegalCharacter = "(unicode error) 'unicodeescape' codec can't decode bytes in position {0}-{1}: illegal Unicode character";
 }

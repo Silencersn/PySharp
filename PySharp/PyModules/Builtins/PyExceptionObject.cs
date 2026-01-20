@@ -333,6 +333,18 @@ public sealed class PyValueErrorObjectType : PyExceptionType<PyValueErrorObjectT
     public override string Name => "ValueError";
 }
 
+public sealed class PyUnicodeErrorObjectType : PyExceptionType<PyUnicodeErrorObjectType, PyValueErrorObjectType>
+{
+    public override string Module => "builtins";
+    public override string Name => "UnicodeError";
+}
+
+public sealed class PyUnicodeEncodeErrorObjectType : PyExceptionType<PyUnicodeEncodeErrorObjectType, PyUnicodeErrorObjectType>
+{
+    public override string Module => "builtins";
+    public override string Name => "UnicodeEncodeError";
+}
+
 public sealed class PyNameErrorObjectType : PyExceptionType<PyNameErrorObjectType, PyExceptionObjectType>
 {
     public override string Module => "builtins";

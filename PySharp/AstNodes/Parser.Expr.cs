@@ -139,7 +139,7 @@ partial class Parser
         if (CurrentTokenType is not TokenType.FStringMiddle)
             return ParseFStringReplacementField(isRaw);
 
-        var str = isRaw ? CurrentToken.String : FromLiteralToString(_context, CurrentToken.StringAsSpan, true);
+        var str = isRaw ? CurrentToken.String : FromLiteralToString(CurrentToken.StringAsSpan, true);
         var middle = Ast.Constant(str).With(CreateAstMetaInfo());
         MoveNextToken();
         return middle;
@@ -286,7 +286,7 @@ partial class Parser
     private ConstantNode ParseString()
     {
         EnsureTokenType(TokenType.String);
-        var str = Ast.Constant(FromLiteralToString(_context, CurrentToken.StringAsSpan, noWrapper: false));
+        var str = Ast.Constant(FromLiteralToString(CurrentToken.StringAsSpan, noWrapper: false));
         MoveNextToken();
         return str;
     }
@@ -371,7 +371,7 @@ partial class Parser
             return ConcatToJoinedStr(combinedNodes);
         }
     }
-    static string FromLiteralToString(PyCallContext context, ReadOnlySpan<char> literal, bool noWrapper)
+    string FromLiteralToString(ReadOnlySpan<char> literal, bool noWrapper)
     {
         // TODO: prefix 'b'
 
@@ -387,7 +387,7 @@ partial class Parser
         {
             if (info.Error is PyStrConverter.ConvertError.InvalidEscapeSequence)
             {
-                if (!context.TryWarn<PySyntaxWarningObjectType>(
+                if (!_context.TryWarn<PySyntaxWarningObjectType>(
                     PySR.Format(PySR.InvalidSyntax_Warning_InvalidEscapeSequence, info.Char)))
                     throw new NotImplementedException();
             }
@@ -404,19 +404,17 @@ partial class Parser
                 PyStrConverter.ConvertError.WrongFormat or
                 PyStrConverter.ConvertError.InvalidEscapeSequence));
 
+            var start = info.Position;
+            var end = info.Position + info.Length - 1;
             throw info.Error switch
             {
-                PyStrConverter.ConvertError.LowerXSequence => context.ThrowableSyntaxError(MakeUnicodeErrorInfo("truncated \\xXX escape")),
-                PyStrConverter.ConvertError.LowerUSequence => context.ThrowableSyntaxError(MakeUnicodeErrorInfo("truncated \\uXXXX escape")),
-                PyStrConverter.ConvertError.UpperUSequence => context.ThrowableSyntaxError(MakeUnicodeErrorInfo("truncated \\UXXXXXXXX escape")),
-                PyStrConverter.ConvertError.SurrogatesNotAllowed => context.ThrowableSyntaxError($"'utf-8' codec can't encode character '\\u{(uint)info.Char:x4}' in position {info.Position}: surrogates not allowed"),
-                PyStrConverter.ConvertError.IllegalUnicodeCharacter => context.ThrowableSyntaxError(MakeUnicodeErrorInfo("illegal Unicode character")),
+                PyStrConverter.ConvertError.LowerXSequence => SyntaxError(PySR.InvalidSyntax_UnicodeError_TruncatedLowerXSequence, start, end),
+                PyStrConverter.ConvertError.LowerUSequence => SyntaxError(PySR.InvalidSyntax_UnicodeError_TruncatedLowerUSequence, start, end),
+                PyStrConverter.ConvertError.UpperUSequence => SyntaxError(PySR.InvalidSyntax_UnicodeError_TruncatedUpperUSequence, start, end),
+                PyStrConverter.ConvertError.SurrogatesNotAllowed => _context.ThrowableUnicodeEncodeError(PySR.Format(PySR.Unicode_Encode_SurrogatesNotAllowed, $"{(uint)info.Char:x4}", info.Position)),
+                PyStrConverter.ConvertError.IllegalUnicodeCharacter => SyntaxError(PySR.InvalidSyntax_UnicodeError_IllegalCharacter, start, end),
                 _ => new UnreachableException(),
             };
-            string MakeUnicodeErrorInfo(string message)
-            {
-                return $"(unicode error) 'unicodeescape' codec can't decode bytes in position {info.Position}-{info.Position + info.Length - 1}: {message}";
-            }
         }
     }
 
