@@ -578,12 +578,7 @@ partial class Parser
             {
                 var pos = TokenStreamPosition;
                 MoveNextToken();
-                var isGenExp = CurrentTokenType is not (TokenType.Star or TokenType.DoubleStar or TokenType.RightParen);
-                if (isGenExp)
-                {
-                    _ = ParseNamedExpression();
-                    isGenExp = IsCurrentKeyword("for");
-                }
+                var isGenExp = TestIsGenExp();
                 TokenStreamPosition = pos;
 
                 if (isGenExp)
@@ -599,6 +594,25 @@ partial class Parser
                     primary = Ast.Call(primary, args, kwargs).With(startMetaInfo.WithEnd());
                 }
 
+                bool TestIsGenExp()
+                {
+                    if (CurrentTokenType is TokenType.Star or TokenType.DoubleStar or TokenType.RightParen)
+                        // func(*args) or func(**kwargs) or func()
+                        return false;
+
+                    if (CurrentTokenType is TokenType.Name && !IsKeyword(CurrentToken.String))
+                    {
+                        var pos = TokenStreamPosition;
+                        MoveNextToken();
+                        if (CurrentTokenType is TokenType.Equal)
+                            // func(arg=value)
+                            return false;
+                        TokenStreamPosition = pos;
+                    }
+
+                    _ = ParseNamedExpression();
+                    return IsCurrentKeyword("for");
+                }
             }
             else if (CurrentTokenType is TokenType.LeftSquareBracket)
             {
@@ -908,6 +922,8 @@ partial class Parser
             return ParseAssignmentExpression();
 
         var expr = ParseExpression();
+        if (expr is NameNode && CurrentTokenType is TokenType.Equal)
+            throw SyntaxError(PySR.InvalidSyntax_NamedExpression_NameWithEqual);
         if (CurrentTokenType is TokenType.ColonEqual)
             throw SyntaxError(PySR.InvalidSyntax_NamedExpression_InvalidTarget, AstUtils.GetExprNodeName(expr));
         return expr;
@@ -923,8 +939,6 @@ partial class Parser
 
         var pos = TokenStreamPosition;
         MoveNextToken();
-        if (CurrentTokenType is TokenType.Equal)
-            throw SyntaxError(PySR.InvalidSyntax_NamedExpression_NameWithEqual);
         var isAssignment = CurrentTokenType is TokenType.ColonEqual;
         TokenStreamPosition = pos;
         return isAssignment;
