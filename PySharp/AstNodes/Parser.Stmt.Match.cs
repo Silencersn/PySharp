@@ -466,8 +466,7 @@ partial class Parser
     [GrammarSyntaxRule("key_value_pattern")]
     private KeyValuePair<AstExprNode, AstPatternNode> ParseKeyValuePattern()
     {
-        var key = (CurrentTokenType is TokenType.Name && !IsKeyword(CurrentToken.String))
-            ? ParseAttr() : ParseLiteralExpr();
+        var key = IsCurrentIdentifier ? ParseAttr() : ParseLiteralExpr();
         EnsureTokenTypeThenMove(TokenType.Colon);
         var value = ParsePattern();
         return KeyValuePair.Create(key, value);
@@ -533,10 +532,7 @@ partial class Parser
 
     private bool TestIsKeywordPattern()
     {
-        if (CurrentTokenType is not TokenType.Name)
-            return false;
-
-        if (IsKeyword(CurrentToken.String))
+        if (!IsCurrentIdentifier)
             return false;
 
         var pos = TokenStreamPosition;

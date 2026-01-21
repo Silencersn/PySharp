@@ -113,10 +113,7 @@ partial class Parser
         bool TryParseSimpleAnnAssign([NotNullWhen(true)] out AstStmtNode? annAssign)
         {
             annAssign = null;
-            if (CurrentTokenType is not TokenType.Name)
-                return false;
-
-            if (IsKeyword(CurrentToken.String))
+            if (!IsCurrentIdentifier)
                 return false;
 
             var name = CurrentToken.String;

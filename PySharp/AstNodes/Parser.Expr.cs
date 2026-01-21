@@ -24,8 +24,7 @@ partial class Parser
     /// <exception cref="PyRuntimeException"></exception>
     private string ParseIdentifier()
     {
-        EnsureTokenType(TokenType.Name);
-        if (IsKeyword(CurrentToken.String))
+        if (!IsCurrentIdentifier)
             throw SyntaxError();
         var ret = CurrentToken.String;
         MoveNextToken();
@@ -208,8 +207,7 @@ partial class Parser
         if (IsCurrentTypeTokenAnyOf(TokenType.Colon, TokenType.RightBrace))
             throw SyntaxError(PySR.InvalidSyntax_FString_ConversionCharacter_Missing);
 
-        EnsureTokenType(TokenType.Name, PySR.InvalidSyntax_FString_ConversionCharacter_Invalid);
-        if (IsKeyword(CurrentToken.String))
+        if (!IsCurrentIdentifier)
             throw SyntaxError(PySR.InvalidSyntax_FString_ConversionCharacter_Invalid);
 
         var conversion = CurrentToken.String;
@@ -600,7 +598,7 @@ partial class Parser
                         // func(*args) or func(**kwargs) or func()
                         return false;
 
-                    if (CurrentTokenType is TokenType.Name && !IsKeyword(CurrentToken.String))
+                    if (IsCurrentIdentifier)
                     {
                         var pos = TokenStreamPosition;
                         MoveNextToken();
@@ -931,10 +929,7 @@ partial class Parser
 
     private bool TestIsAssignmentExpression()
     {
-        if (CurrentTokenType is not TokenType.Name)
-            return false;
-
-        if (IsKeyword(CurrentToken.String))
+        if (!IsCurrentIdentifier)
             return false;
 
         var pos = TokenStreamPosition;
@@ -1468,10 +1463,7 @@ partial class Parser
         if (CurrentTokenType is TokenType.DoubleStar)
             return true;
 
-        if (CurrentTokenType is not TokenType.Name)
-            return false;
-
-        if (IsKeyword(CurrentToken.String))
+        if (!IsCurrentIdentifier)
             return false;
 
         var pos = TokenStreamPosition;
