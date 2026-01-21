@@ -4,6 +4,18 @@ partial class PySR
 {
     public const string InvalidSyntax = "invalid syntax";
 
+    #region Lexer
+
+    public const string InvalidSyntax_Tokenize_Unterminated_StringLiteral = "unterminated string literal (detected at line {0})";
+    public const string InvalidSyntax_Tokenize_Unterminated_TripleStringLiteral = "unterminated triple-quoted string literal (detected at line {0})";
+    public const string InvalidSyntax_Tokenize_Unterminated_TripleFStringLiteral = "unterminated triple-quoted f-string literal (detected at line {0})";
+    public const string InvalidSyntax_Tokenize_FStringSingleRightBrace = "f-string: single '}' is not allowed";
+
+    public const string InvalidSyntax_Tokenize_UnindentNotMatch = "unindent does not match any outer indentation level";
+
+    #endregion Lexer
+
+
     #region Parser
 
     public const string InvalidSyntax_Warning_InvalidEscapeSequence = @"""\{0}"" is an invalid escape sequence. Such sequences will not work in the future. Did you mean ""\\{0}""? A raw string is also an option.";

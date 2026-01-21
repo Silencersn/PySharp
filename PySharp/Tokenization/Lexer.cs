@@ -1,4 +1,5 @@
 ﻿using PySharp.CodeAnalysis;
+using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.Resources;
 using System.Diagnostics;
@@ -132,6 +133,13 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         CurrentState = LexerState.Default;
     }
 
+    public PyRuntimeException SyntaxError(string message = PySR.InvalidSyntax, params ReadOnlySpan<object?> args)
+    {
+        if (args.Length > 0)
+            message = PySR.Format(message, args);
+        return _context.ThrowableSyntaxError(message);
+    }
+
     internal void InternalStart()
     {
         AppendToken(TokenType.Encoding, "utf-8", default, default);
@@ -157,10 +165,10 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
     internal void InternalEnd()
     {
         if (CurrentState is LexerState.TokenizingMultiLineSingleOrDoubleString)
-            throw _context.ThrowableSyntaxError($"unterminated string literal (detected at line {_lineno})");
+            throw SyntaxError(PySR.InvalidSyntax_Tokenize_Unterminated_StringLiteral, _lineno);
 
         if (CurrentState is LexerState.TokenizingTripleString)
-            throw _context.ThrowableSyntaxError($"unterminated triple-quoted string literal (detected at line {_lineno})");
+            throw SyntaxError(PySR.InvalidSyntax_Tokenize_Unterminated_TripleStringLiteral, _lineno);
 
         Debug.Assert(_tokens.Count > 0);
 
@@ -269,7 +277,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
 
                     var m = info.WrapperRegex.Match(content, _offset);
                     if (!m.Success)
-                        throw _context.ThrowableSyntaxError($"unterminated triple-quoted f-string literal (detected at line {_lineno})");
+                        throw SyntaxError(PySR.InvalidSyntax_Tokenize_Unterminated_TripleFStringLiteral, _lineno);
 
                     int indexOfWrapper = m.Index + m.Length - info.Wrapper.Length;
                     var indexOfLeftBrace = content.IndexOf('{', _offset);
@@ -279,7 +287,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                         IsFirstNotFoundOrBehindSecond(indexOfRightBrace, indexOfWrapper))
                     {
                         if (CurrentFStringInfo.FormatSpec.Count > 0)
-                            throw _context.ThrowableSyntaxError("f-string: expecting '}', or format specs");
+                            throw SyntaxError(PySR.InvalidSyntax_FString_ReplacementField_ExpectingRightBraceOrSpecs);
                         var start = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
 
                         ExtractMultiLineTextInFString(indexOfWrapper, info, out var value);
@@ -342,7 +350,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                         else
                         {
                             if (indexOfRightBrace + 1 < content.Length && content[indexOfRightBrace + 1] is not '}')
-                                throw _context.ThrowableSyntaxError("f-string: single '}' is not allowed");
+                                throw SyntaxError(PySR.InvalidSyntax_Tokenize_FStringSingleRightBrace);
 
                             var start = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
 
@@ -398,7 +406,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         if (countOfNewLine > 0)
         {
             if (!info.IsTriple && !info.IsRaw)
-                throw _context.ThrowableSyntaxError($"unterminated string literal (detected at line {_lineno})");
+                throw SyntaxError(PySR.InvalidSyntax_Tokenize_Unterminated_StringLiteral, _lineno);
 
             _lineno += countOfNewLine;
             _offset = _currentContent.LastIndexOf('\n', untilIndex) + 1;
@@ -565,9 +573,9 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         if (!m.Success)
         {
             if (isTriple)
-                throw _context.ThrowableSyntaxError($"unterminated triple-quoted string literal (detected at line {_lineno})");
+                throw SyntaxError(PySR.InvalidSyntax_Tokenize_Unterminated_TripleStringLiteral, _lineno);
 
-            throw _context.ThrowableSyntaxError($"unterminated string literal (detected at line {_lineno})");
+            throw SyntaxError(PySR.InvalidSyntax_Tokenize_Unterminated_StringLiteral, _lineno);
         }
 
         Debug.Assert(!_preStringSpan.IsEmpty);
@@ -648,7 +656,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         }
 
         if (indentationLevel != _indentationLevels.Peek())
-            throw _context.ThrowableIndentationError("unindent does not match any outer indentation level");
+            throw _context.ThrowableIndentationError(PySR.InvalidSyntax_Tokenize_UnindentNotMatch);
     }
 
     private struct ValueGroup
@@ -745,7 +753,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                 return;
             }
 
-            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
+            throw SyntaxError(PySR.InvalidSyntax);
         }
     }
 }
