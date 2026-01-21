@@ -1,4 +1,5 @@
-﻿using PySharp.PyModules.Builtins;
+﻿using PySharp.CodeAnalysis;
+using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.Resources;
@@ -8,7 +9,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.AstNodes;
 
-public sealed class SemanticAnalyzer
+public sealed class SemanticAnalyzer : ICodeMetaInfoProvider
 {
     public static void Analyze(PyCallContext context, AstModNode root)
     {
@@ -30,10 +31,15 @@ public sealed class SemanticAnalyzer
     }
 
     private readonly PyCallContext _context;
+    private readonly Stack<AstNode> _nodesToRoot;
+
+    CodeMetaInfo? ICodeMetaInfoProvider.MetaInfo => _nodesToRoot.TryPeek(out var node) ? node.MetaInfo : null;
 
     private SemanticAnalyzer(PyCallContext context)
     {
+        _nodesToRoot = [];
         _context = context;
+        _context.CurrentFrame.MetaInfoProvider = this;
     }
 
     public PyRuntimeException SyntaxError(string message = PySR.InvalidSyntax, params ReadOnlySpan<object?> args)
@@ -65,8 +71,7 @@ public sealed class SemanticAnalyzer
         var rootScope = new RootVariableScope(root);
         var currentScopeStats = new ScopeStats(rootScope);
 
-        Stack<AstNode> nodesToRoot = [];
-        nodesToRoot.Push(root);
+        _nodesToRoot.Push(root);
 
         foreach (var subNode in root.EnumerateSubNodes())
             BuildBasicScopeImpl(subNode);
@@ -87,7 +92,7 @@ public sealed class SemanticAnalyzer
                 _ => null
             };
 
-            nodesToRoot.Push(node);
+            _nodesToRoot.Push(node);
 
             if (scope is not null)
             {
@@ -174,7 +179,7 @@ public sealed class SemanticAnalyzer
                 currentScopeStats = scopeStatsStack.Pop();
             }
 
-            var poppedNode = nodesToRoot.Pop();
+            var poppedNode = _nodesToRoot.Pop();
             Debug.Assert(ReferenceEquals(poppedNode, node));
         }
 
@@ -186,21 +191,21 @@ public sealed class SemanticAnalyzer
                     if (currentScopeStats.LoopDepth is 0)
                         throw SyntaxError(PySR.InvalidSyntax_Semantic_BreakOutsideLoop);
                     if (currentScopeStats.FinallyDepth > 0)
-                        CheckControlStmtNotInFinallyUntil(nodesToRoot, static n => n is ForNode or WhileNode, PySR.InvalidSyntax_Semantic_BreakInFinally);
+                        CheckControlStmtNotInFinallyUntil(_nodesToRoot, static n => n is ForNode or WhileNode, PySR.InvalidSyntax_Semantic_BreakInFinally);
                     break;
 
                 case ContinueNode:
                     if (currentScopeStats.LoopDepth is 0)
                         throw SyntaxError(PySR.InvalidSyntax_Semantic_ContinueOutsideLoop);
                     if (currentScopeStats.FinallyDepth > 0)
-                        CheckControlStmtNotInFinallyUntil(nodesToRoot, static n => n is ForNode or WhileNode, PySR.InvalidSyntax_Semantic_ContinueInFinally);
+                        CheckControlStmtNotInFinallyUntil(_nodesToRoot, static n => n is ForNode or WhileNode, PySR.InvalidSyntax_Semantic_ContinueInFinally);
                     break;
 
                 case ReturnNode:
                     if (currentScopeStats.Scope is not FunctionVariableScope)
                         throw SyntaxError(PySR.InvalidSyntax_Semantic_ReturnOutsideFunction);
                     if (currentScopeStats.FinallyDepth > 0)
-                        CheckControlStmtNotInFinallyUntil(nodesToRoot, static n => n is FunctionDefNode, PySR.InvalidSyntax_Semantic_ReturnInFinally);
+                        CheckControlStmtNotInFinallyUntil(_nodesToRoot, static n => n is FunctionDefNode, PySR.InvalidSyntax_Semantic_ReturnInFinally);
                     break;
 
                 case YieldNode:
