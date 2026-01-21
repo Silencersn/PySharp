@@ -171,7 +171,7 @@ partial class Parser
         if (CurrentTokenType is TokenType.LeftBrace)
             return ParseMappingPattern();
 
-        throw SyntaxError(PySR.InvalidSyntax);
+        throw SyntaxError();
     }
 
     [GrammarSyntaxRule("or_pattern")]
@@ -251,11 +251,11 @@ partial class Parser
                 "True" => Ast.Constant(PyBoolObject.True),
                 "False" => Ast.Constant(PyBoolObject.False),
                 "None" => Ast.Constant(PyNoneObject.None),
-                _ => throw SyntaxError(PySR.InvalidSyntax)
+                _ => throw SyntaxError()
             }).With(metaInfo);
         }
 
-        throw SyntaxError(PySR.InvalidSyntax);
+        throw SyntaxError();
     }
 
     [GrammarSyntaxRule("complex_number")]
@@ -264,7 +264,7 @@ partial class Parser
         var metaInfo = CreateAstMetaInfo();
         var real = ParseSignedRealNumber();
         if (CurrentTokenType is not (TokenType.Plus or TokenType.Minus))
-            throw SyntaxError(PySR.InvalidSyntax);
+            throw SyntaxError();
         var sign = CurrentTokenType is TokenType.Plus;
         MoveNextToken();
         var imag = ParseImaginaryNumber();
@@ -349,7 +349,7 @@ partial class Parser
     {
         var attr = ParseAttr();
         if (CurrentTokenType is TokenType.Dot or TokenType.LeftParen or TokenType.Equal)
-            throw SyntaxError(PySR.InvalidSyntax);
+            throw SyntaxError();
         return Ast.MatchValue(attr);
     }
 
@@ -420,7 +420,7 @@ partial class Parser
             }
         }
 
-        throw SyntaxError(PySR.InvalidSyntax);
+        throw SyntaxError();
     }
 
     [GrammarSyntaxRule("mapping_pattern")]
@@ -448,7 +448,7 @@ partial class Parser
         if (CurrentTokenType is TokenType.DoubleStar)
         {
             if (endsWithComma is null)
-                throw SyntaxError(PySR.InvalidSyntax);
+                throw SyntaxError();
 
             var rest = ParseDoubleStarPattern();
             var pattern = Ast.MatchMapping(items.Select(static item => item.Key), items.Select(static item => item.Value), rest);

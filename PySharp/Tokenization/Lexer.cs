@@ -753,7 +753,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                 return;
             }
 
-            throw SyntaxError(PySR.InvalidSyntax);
+            throw SyntaxError();
         }
     }
 }

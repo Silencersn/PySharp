@@ -241,7 +241,7 @@ partial class Parser
     {
         var list = ParseSomethingList(ParseDottedAsName, StopPredicates.UntilNewLineOrSemicolon, out var endsWithComma);
         if (endsWithComma is not null)
-            throw SyntaxError(PySR.InvalidSyntax);
+            throw SyntaxError();
         return list;
     }
 
@@ -294,7 +294,7 @@ partial class Parser
         {
             var list = ParseImportFromAsNames(out var endsWithComma);
             if (endsWithComma is not null)
-                throw SyntaxError(PySR.InvalidSyntax);
+                throw SyntaxError();
             return list;
         }
     }
@@ -311,7 +311,7 @@ partial class Parser
         var level = ParseLevel();
         var module = IsCurrentKeyword("import") ? null : ParseDottedName();
         if (module is null && level is 0)
-            throw SyntaxError(PySR.InvalidSyntax);
+            throw SyntaxError();
 
         EnsureKeywordThenMove("import");
         var names = ParseImportFromTargets();
@@ -570,14 +570,14 @@ partial class Parser
         if (CurrentTokenType is not TokenType.Name)
         {
             if (decorators.Count > 0)
-                throw SyntaxError(PySR.InvalidSyntax);
+                throw SyntaxError();
 
             compoundStmt = null;
             return false;
         }
 
         if (decorators.Count > 0 && !(IsCurrentKeyword("def") || IsCurrentKeyword("class")))
-            throw SyntaxError(PySR.InvalidSyntax);
+            throw SyntaxError();
 
         compoundStmt = CurrentToken.StringAsSpan switch
         {
@@ -820,7 +820,7 @@ partial class Parser
                     throw SyntaxError(PySR.InvalidSyntax_TryStmt_MultipleExceptionTypesUsingAs);
 
                 if (endsWithComma is not null)
-                    throw SyntaxError(PySR.InvalidSyntax);
+                    throw SyntaxError();
 
                 MoveNextToken();
                 name = ParseIdentifier();
@@ -1001,7 +1001,7 @@ partial class Parser
             return Ast.ParamSpec(name, defaultValue).With(metaInfo.WithPreviousEnd());
         }
 
-        throw SyntaxError(PySR.InvalidSyntax);
+        throw SyntaxError();
     }
 
     [GrammarSyntaxRule("type_param_bound")]
