@@ -40,6 +40,7 @@ partial class PySR
     public const string InvalidSyntax_Parameters_ExpectedDefault = "expected default value expression";
 
     public const string InvalidSyntax_StarredExpression_Invalid = "Invalid star expression";
+    public const string InvalidSyntax_StarredExpression_CannotUseHere = "can't use starred expression here";
 
     public const string InvalidSyntax_InvalidTarget = "cannot assign to {0}";
 
@@ -62,4 +63,9 @@ partial class PySR
 
     public const string InvalidSyntax_TypeParam_BoundForTypeVarTuple = "cannot use bound with TypeVarTuple";
     public const string InvalidSyntax_TypeParam_BoundForParamSpec = "cannot use bound with ParamSpec";
+    
+    public const string InvalidSyntax_Pattern_InvalidPatternTarget = "cannot use {0} as pattern target";
+    public const string InvalidSyntax_Pattern_UnderscoreAsTarget = "cannot use '_' as a target";
+    public const string InvalidSyntax_Pattern_RealNumberRequired = "real number required in complex literal";
+    public const string InvalidSyntax_Pattern_ImaginaryNumberRequired = "imaginary number required in complex literal";
 }
