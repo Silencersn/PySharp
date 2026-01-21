@@ -4,6 +4,8 @@ partial class PySR
 {
     public const string InvalidSyntax = "invalid syntax";
 
+    #region Parser
+
     public const string InvalidSyntax_Warning_InvalidEscapeSequence = @"""\{0}"" is an invalid escape sequence. Such sequences will not work in the future. Did you mean ""\\{0}""? A raw string is also an option.";
 
     public const string InvalidSyntax_FString_ReplacementField_BeforeEqual = "f-string: valid expression required before '='";
@@ -72,4 +74,48 @@ partial class PySR
     public const string InvalidSyntax_Pattern_UnderscoreAsTarget = "cannot use '_' as a target";
     public const string InvalidSyntax_Pattern_RealNumberRequired = "real number required in complex literal";
     public const string InvalidSyntax_Pattern_ImaginaryNumberRequired = "imaginary number required in complex literal";
+
+    #endregion Parser
+
+
+    #region SemanticAnalyzer
+
+    public const string InvalidSyntax_Semantic_BreakOutsideLoop = "'break' outside loop";
+    public const string InvalidSyntax_Semantic_ContinueOutsideLoop = "'continue' outside loop";
+    public const string InvalidSyntax_Semantic_ReturnOutsideFunction = "'return' outside function";
+    public const string InvalidSyntax_Semantic_BreakInFinally = "'break' in a 'finally' block";
+    public const string InvalidSyntax_Semantic_ContinueInFinally = "'continue' in a 'finally' block";
+    public const string InvalidSyntax_Semantic_ReturnInFinally = "'return' in a 'finally' block";
+    public const string InvalidSyntax_Semantic_YieldOutsideFunction = "'yield' outside function";
+    public const string InvalidSyntax_Semantic_YieldInsideComprehension = "'yield' inside {0}";
+    public const string InvalidSyntax_Semantic_YieldFromOutsideFunction = "'yield from' outside function";
+    public const string InvalidSyntax_Semantic_YieldFromInsideComprehension = "'yield from' inside {0}";
+
+    public const string InvalidSyntax_Semantic_KeywordArgumentRepeated = "keyword argument repeated: {0}";
+
+    public const string InvalidSyntax_Semantic_UnreachablePatterns_Wildcard = "wildcard makes remaining patterns unreachable";
+    public const string InvalidSyntax_Semantic_UnreachablePatterns_Capture = "name capture '{0}' makes remaining patterns unreachable";
+
+    public const string InvalidSyntax_Semantic_BindDifferentNames = "alternative patterns bind different names";
+
+    public const string InvalidSyntax_Semantic_MultipleStarredNames = "multiple starred names in sequence pattern";
+
+    public const string InvalidSyntax_Semantic_MappingDuplicateKey = "mapping pattern checks duplicate key ({0})";
+
+    public const string InvalidSyntax_Semantic_AttributeRepeated = "attribute name repeated in class pattern: {0}";
+
+    public const string InvalidSyntax_Semantic_BothParameterAndGlobal = "name '{0}' is parameter and global";
+    public const string InvalidSyntax_Semantic_BothParameterAndNonlocal = "name '{0}' is parameter and nonlocal";
+    public const string InvalidSyntax_Semantic_BothNonlocalAndGlobal = "name '{0}' is nonlocal and global";
+
+    public const string InvalidSyntax_Semantic_UsedPriorToGlobal = "name '{0}' is used prior to global declaration";
+    public const string InvalidSyntax_Semantic_AssignToBeforeGlobal = "name '{0}' is assigned to before global declaration";
+    public const string InvalidSyntax_Semantic_UsedPriorToNonlocal = "name '{0}' is used prior to nonlocal declaration";
+    public const string InvalidSyntax_Semantic_AssignToBeforeNonlocal = "name '{0}' is assigned to before nonlocal declaration";
+    public const string InvalidSyntax_Semantic_NonlocalAtModule = "nonlocal declaration not allowed at module level";
+    public const string InvalidSyntax_Semantic_NonlocalNoBinding = "no binding for nonlocal '{0}' found";
+
+    public const string InvalidSyntax_Semantic_DuplicateArgument = "duplicate argument '{0}' in function definition";
+
+    #endregion SemanticAnalyzer
 }

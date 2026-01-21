@@ -1,6 +1,7 @@
 ﻿using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
+using PySharp.Resources;
 using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -33,6 +34,13 @@ public sealed class SemanticAnalyzer
     private SemanticAnalyzer(PyCallContext context)
     {
         _context = context;
+    }
+
+    public PyRuntimeException SyntaxError(string message = PySR.InvalidSyntax, params ReadOnlySpan<object?> args)
+    {
+        if (args.Length > 0)
+            message = PySR.Format(message, args);
+        return _context.ThrowableSyntaxError(message);
     }
 
     private sealed class ScopeStats
@@ -176,41 +184,41 @@ public sealed class SemanticAnalyzer
             {
                 case BreakNode:
                     if (currentScopeStats.LoopDepth is 0)
-                        throw _context.ThrowableSyntaxError("'break' outside loop");
+                        throw SyntaxError(PySR.InvalidSyntax_Semantic_BreakOutsideLoop);
                     if (currentScopeStats.FinallyDepth > 0)
-                        CheckControlStmtNotInFinallyUntil(nodesToRoot, static n => n is ForNode or WhileNode, "'break' in a 'finally' block");
+                        CheckControlStmtNotInFinallyUntil(nodesToRoot, static n => n is ForNode or WhileNode, PySR.InvalidSyntax_Semantic_BreakInFinally);
                     break;
 
                 case ContinueNode:
                     if (currentScopeStats.LoopDepth is 0)
-                        throw _context.ThrowableSyntaxError("'continue' outside loop");
+                        throw SyntaxError(PySR.InvalidSyntax_Semantic_ContinueOutsideLoop);
                     if (currentScopeStats.FinallyDepth > 0)
-                        CheckControlStmtNotInFinallyUntil(nodesToRoot, static n => n is ForNode or WhileNode, "'continue' in a 'finally' block");
+                        CheckControlStmtNotInFinallyUntil(nodesToRoot, static n => n is ForNode or WhileNode, PySR.InvalidSyntax_Semantic_ContinueInFinally);
                     break;
 
                 case ReturnNode:
                     if (currentScopeStats.Scope is not FunctionVariableScope)
-                        throw _context.ThrowableSyntaxError("'return' outside function");
+                        throw SyntaxError(PySR.InvalidSyntax_Semantic_ReturnOutsideFunction);
                     if (currentScopeStats.FinallyDepth > 0)
-                        CheckControlStmtNotInFinallyUntil(nodesToRoot, static n => n is FunctionDefNode, "'return' in a 'finally' block");
+                        CheckControlStmtNotInFinallyUntil(nodesToRoot, static n => n is FunctionDefNode, PySR.InvalidSyntax_Semantic_ReturnInFinally);
                     break;
 
                 case YieldNode:
                     if (currentScopeStats.CurrentComprehension is not null)
-                        throw _context.ThrowableSyntaxError($"'yield' inside {AstUtils.GetExprNodeName(currentScopeStats.CurrentComprehension)}");
+                        throw SyntaxError(PySR.InvalidSyntax_Semantic_YieldInsideComprehension, AstUtils.GetExprNodeName(currentScopeStats.CurrentComprehension));
 
                     if (currentScopeStats.Scope is not CallableVariableScope callableYieldScope)
-                        throw _context.ThrowableSyntaxError("'yield' outside function");
+                        throw SyntaxError(PySR.InvalidSyntax_Semantic_YieldOutsideFunction);
 
                     callableYieldScope.HasYield = true;
                     break;
 
                 case YieldFromNode:
                     if (currentScopeStats.CurrentComprehension is not null)
-                        throw _context.ThrowableSyntaxError($"'yield from' inside {AstUtils.GetExprNodeName(currentScopeStats.CurrentComprehension)}");
+                        throw SyntaxError(PySR.InvalidSyntax_Semantic_YieldFromInsideComprehension, AstUtils.GetExprNodeName(currentScopeStats.CurrentComprehension));
 
                     if (currentScopeStats.Scope is not CallableVariableScope callableYieldFromScope)
-                        throw _context.ThrowableSyntaxError("'yield from' outside function");
+                        throw SyntaxError(PySR.InvalidSyntax_Semantic_YieldFromOutsideFunction);
 
                     callableYieldFromScope.HasYield = true;
                     break;
@@ -222,7 +230,7 @@ public sealed class SemanticAnalyzer
                         foreach (var previousKeyword in n.Keywords.Take(i))
                         {
                             if (previousKeyword.Arg == currentKeyword.Arg)
-                                throw _context.ThrowableSyntaxError($"keyword argument repeated: {currentKeyword.Arg}");
+                                throw SyntaxError(PySR.InvalidSyntax_Semantic_KeywordArgumentRepeated, currentKeyword.Arg);
                         }
                     }
                     break;
@@ -283,9 +291,9 @@ public sealed class SemanticAnalyzer
                     void ThrowUnreachable(MatchAsNode irrefutablePattern)
                     {
                         if (irrefutablePattern.Name is null)
-                            throw _context.ThrowableSyntaxError("wildcard makes remaining patterns unreachable");
+                            throw SyntaxError(PySR.InvalidSyntax_Semantic_UnreachablePatterns_Wildcard);
 
-                        throw _context.ThrowableSyntaxError($"name capture '{irrefutablePattern.Name}' makes remaining patterns unreachable");
+                        throw SyntaxError(PySR.InvalidSyntax_Semantic_UnreachablePatterns_Capture, irrefutablePattern.Name);
                     }
 
                     break;
@@ -296,7 +304,7 @@ public sealed class SemanticAnalyzer
                     {
                         var otherBindNames = GetBindNames(p);
                         if (!bindNames.SetEquals(otherBindNames))
-                            throw _context.ThrowableSyntaxError("alternative patterns bind different names");
+                            throw SyntaxError(PySR.InvalidSyntax_Semantic_BindDifferentNames);
                     }
 
                     static IEnumerable<AstPatternNode> EnumeratePatterns(AstPatternNode pattern)
@@ -330,7 +338,7 @@ public sealed class SemanticAnalyzer
 
                 case MatchSequenceNode n:
                     if (n.Patterns.Count(static pattern => pattern is MatchStarNode) > 1)
-                        throw _context.ThrowableSyntaxError("multiple starred names in sequence pattern");
+                        throw SyntaxError(PySR.InvalidSyntax_Semantic_MultipleStarredNames);
                     break;
 
                 case MatchMappingNode n:
@@ -339,7 +347,7 @@ public sealed class SemanticAnalyzer
                     {
                         // builtin types, use == directly
                         if (key1 == key2)
-                            throw _context.ThrowableSyntaxError($"mapping pattern checks duplicate key ({PySpecialMethods.Str(_context, key1).PyUnwrap(_context).Value})");
+                            throw SyntaxError(PySR.InvalidSyntax_Semantic_MappingDuplicateKey, PySpecialMethods.Str(_context, key1).PyUnwrap(_context).Value);
                     }
                     break;
 
@@ -347,7 +355,7 @@ public sealed class SemanticAnalyzer
                     foreach (var (attr1, attr2) in EnumeratePairs(n.KwdAttrs))
                     {
                         if (attr1.Equals(attr2, StringComparison.Ordinal))
-                            throw _context.ThrowableSyntaxError($"attribute name repeated in class pattern: {attr1}");
+                            throw SyntaxError(PySR.InvalidSyntax_Semantic_AttributeRepeated, attr1);
                     }
                     break;
             }
@@ -415,16 +423,16 @@ public sealed class SemanticAnalyzer
                             break;
 
                         case PyVariableType.Parameter:
-                            throw _context.ThrowableSyntaxError($"name '{name}' is parameter and global");
+                            throw SyntaxError(PySR.InvalidSyntax_Semantic_BothParameterAndGlobal, name);
 
                         case PyVariableType.Nonlocal:
-                            throw _context.ThrowableSyntaxError($"name '{name}' is nonlocal and global");
+                            throw SyntaxError(PySR.InvalidSyntax_Semantic_BothNonlocalAndGlobal, name);
 
                         default:
                             if (currentScope.FirstContext[name] is ExprContextType.Load)
-                                throw _context.ThrowableSyntaxError($"name '{name}' is used prior to global declaration");
+                                throw SyntaxError(PySR.InvalidSyntax_Semantic_UsedPriorToGlobal, name);
                             else
-                                throw _context.ThrowableSyntaxError($"name '{name}' is assigned to before global declaration");
+                                throw SyntaxError(PySR.InvalidSyntax_Semantic_AssignToBeforeGlobal, name);
                     }
                 }
 
@@ -432,7 +440,7 @@ public sealed class SemanticAnalyzer
 
             case NonlocalNode n:
                 if (currentScope.IsRoot)
-                    throw _context.ThrowableSyntaxError("nonlocal declaration not allowed at module level");
+                    throw SyntaxError(PySR.InvalidSyntax_Semantic_NonlocalAtModule);
 
                 foreach (var name in n.Names)
                 {
@@ -448,16 +456,16 @@ public sealed class SemanticAnalyzer
                             break;
 
                         case PyVariableType.Parameter:
-                            throw _context.ThrowableSyntaxError($"name '{name}' is parameter and nonlocal");
+                            throw SyntaxError(PySR.InvalidSyntax_Semantic_BothParameterAndNonlocal, name);
 
                         case PyVariableType.Global:
-                            throw _context.ThrowableSyntaxError($"name '{name}' is nonlocal and global");
+                            throw SyntaxError(PySR.InvalidSyntax_Semantic_BothNonlocalAndGlobal, name);
 
                         default:
                             if (currentScope.FirstContext[name] is ExprContextType.Load)
-                                throw _context.ThrowableSyntaxError($"name '{name}' is used prior to nonlocal declaration");
+                                throw SyntaxError(PySR.InvalidSyntax_Semantic_UsedPriorToNonlocal, name);
                             else
-                                throw _context.ThrowableSyntaxError($"name '{name}' is assigned to before nonlocal declaration");
+                                throw SyntaxError(PySR.InvalidSyntax_Semantic_AssignToBeforeNonlocal, name);
                     }
                 }
 
@@ -469,7 +477,7 @@ public sealed class SemanticAnalyzer
 
             case AstArgNode n:
                 if (currentScope.Variables.ContainsKey(n.Arg))
-                    throw _context.ThrowableSyntaxError($"duplicate argument '{n.Arg}' in function definition");
+                    throw SyntaxError(PySR.InvalidSyntax_Semantic_DuplicateArgument, n.Arg);
                 currentScope.Variables[n.Arg] = PyVariableType.Parameter;
                 break;
 
@@ -553,7 +561,7 @@ public sealed class SemanticAnalyzer
                 while (true)
                 {
                     if (parent is null)
-                        throw _context.ThrowableSyntaxError($"no binding for nonlocal '{name}' found");
+                        throw SyntaxError(PySR.InvalidSyntax_Semantic_NonlocalNoBinding, name);
 
                     if (parent is CallableVariableScope callableVariableScope)
                     {
