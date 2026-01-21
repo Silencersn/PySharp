@@ -51,8 +51,13 @@ public static class PySpecialMethods
 
     public static PyResult<PyIntObject> Hash(PyCallContext context, PyObject obj)
     {
-        var func = obj.PyType.Slots.Hash ?? PyTypeObject.DefaultHash;
-        return ValidateResultOf<PyIntObject>(func(context, obj), static o => $"{PySpecialNames.Hash} returned non-int (type {o.PyType.FullName})");
+        var func = obj.PyType.Slots.Hash;
+        if (func is null)
+            return PyResult.RaiseTypeError($"unhashable type: '{obj.PyType.FullName}'").Of<PyIntObject>();
+        var hash = ValidateResultOf<PyIntObject>(func(context, obj), static o => $"{PySpecialNames.Hash} returned non-int (type {o.PyType.FullName})");
+        if (hash.IsError || hash.Value.Value != -1)
+            return hash;
+        return PyIntObject.FromInteger(-2);
     }
 
     public static PyResult<PyIntObject> Index(PyCallContext context, PyObject obj)

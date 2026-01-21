@@ -1,5 +1,6 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
+using PySharp.PyRuntime.Comparison;
 using PySharp.PyRuntime.PyAttributes;
 using System.Collections.Frozen;
 
@@ -118,7 +119,7 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
     {
         if (other is not PyListObject otherList)
             return base.Eq(context, self, other);
-        return PyBoolObject.FromBoolean(self._list.SequenceEqual(otherList._list, PyObjectRuntimeEqualityComparer.Shared));
+        return PyBoolObject.FromBoolean(self._list.SequenceEqual(otherList._list, PyObjectComparer.Default));
     }
 
     [PyFunctionArgsDef("x", "/")]

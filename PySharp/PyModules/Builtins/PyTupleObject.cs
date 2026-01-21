@@ -1,5 +1,6 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
+using PySharp.PyRuntime.Comparison;
 
 namespace PySharp.PyModules.Builtins;
 
@@ -94,6 +95,6 @@ public sealed class PyTupleObjectType : PyTypeObject<PyTupleObjectType, PyTupleO
     {
         if (other is not PyTupleObject otherTuple)
             return base.Eq(context, self, other);
-        return PyBoolObject.FromBoolean(self._array.SequenceEqual(otherTuple._array, PyObjectRuntimeEqualityComparer.Shared));
+        return PyBoolObject.FromBoolean(self._array.SequenceEqual(otherTuple._array, PyObjectComparer.Default));
     }
 }

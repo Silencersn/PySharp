@@ -1,5 +1,6 @@
 ﻿using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime.Calls;
+using PySharp.PyRuntime.Comparison;
 using System.Diagnostics;
 
 namespace PySharp.PyRuntime;
@@ -276,7 +277,7 @@ public static class PyOperators
         if (left is PyIntObject leftInt && right is PyIntObject rightInt)
             return PyMath.CalculatePyIntObject(op, leftInt, rightInt, modulo);
 
-        if (left.PyType != right.PyType && right.PyType.IsSubclassOf(left.PyType))
+        if (!PyObjectComparer.Default.Equals(left.PyType, right.PyType) && right.PyType.IsSubclassOf(left.PyType))
             return EvalRightFirstReflectiveOperator(context, op, left, right, modulo);
         return EvalLeftFirstReflectiveOperator(context, op, left, right, modulo);
     }

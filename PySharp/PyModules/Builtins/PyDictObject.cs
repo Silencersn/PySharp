@@ -1,5 +1,6 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
+using PySharp.PyRuntime.Comparison;
 using PySharp.PyRuntime.PyAttributes;
 
 namespace PySharp.PyModules.Builtins;
@@ -12,7 +13,7 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
 
     public PyDictObject()
     {
-        _dict = new OrderedDictionary<PyObject, PyObject>();
+        _dict = new OrderedDictionary<PyObject, PyObject>(PyObjectComparer.Default);
     }
     public PyDictObject(IEnumerable<KeyValuePair<PyObject, PyObject>> dict) : this()
     {
@@ -23,7 +24,7 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
         if (isProxy)
             _dict = dict;
         else
-            _dict = new OrderedDictionary<PyObject, PyObject>(dict);
+            _dict = new OrderedDictionary<PyObject, PyObject>(dict, PyObjectComparer.Default);
     }
 
     public static PyDictObject CreateDict(params IEnumerable<KeyValuePair<PyObject, PyObject>> dict)

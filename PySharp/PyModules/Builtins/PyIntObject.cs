@@ -1,5 +1,6 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
+using PySharp.PyRuntime.Comparison;
 using PySharp.PyRuntime.PyAttributes;
 using PySharp.Utility;
 using System.Diagnostics;
@@ -148,7 +149,7 @@ public class PyIntObjectType : PyTypeObject<PyIntObjectType, PyIntObject>
         var obj = result.Value;
         Debug.Assert(obj is PyIntObject);
         var value = ((PyIntObject)obj).Value;
-        if (cls != this && value > -PyIntObject.NegativePoolSize && value < PyIntObject.PositivesPoolSize)
+        if (!PyObjectComparer.Default.Equals(cls, this) && value > -PyIntObject.NegativePoolSize && value < PyIntObject.PositivesPoolSize)
             return PyIntObject.FromIntegerNoCache(value);
 
         obj._pyType = cls;

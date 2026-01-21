@@ -107,7 +107,7 @@ partial class PyFrame
             {
                 if (LocalsTable.TryGetValue(key, out var idx))
                 {
-                    if (LocalPlus[idx] != null)
+                    if (LocalPlus[idx] is not null)
                         throw new ArgumentException($"Key '{key}' already exists.");
                     LocalPlus[idx] = value;
                 }
@@ -162,7 +162,7 @@ partial class PyFrame
             {
                 if (LocalsTable.TryGetValue(key, out var idx))
                 {
-                    if (LocalPlus[idx] != null)
+                    if (LocalPlus[idx] is not null)
                     {
                         LocalPlus[idx] = null;
                         return true;

@@ -1,5 +1,6 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
+using PySharp.PyRuntime.Comparison;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
@@ -63,7 +64,7 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
     {
         foreach (var baseType in MRO)
         {
-            if (baseType == pyType)
+            if (PyObjectComparer.Default.Equals(baseType, pyType))
                 return true;
         }
 

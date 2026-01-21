@@ -2,6 +2,7 @@
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
+using PySharp.PyRuntime.Comparison;
 using PySharp.Resources;
 using System.Collections.Frozen;
 using System.Diagnostics;
@@ -350,8 +351,7 @@ public sealed class SemanticAnalyzer : ICodeMetaInfoProvider
                     var literalKeys = n.Keys.OfType<ConstantNode>().Select(static node => node.Value).ToArray();
                     foreach (var (key1, key2) in EnumeratePairs(literalKeys))
                     {
-                        // builtin types, use == directly
-                        if (key1 == key2)
+                        if (PyObjectComparer.Default.Equals(key1, key2))
                             throw SyntaxError(PySR.InvalidSyntax_Semantic_MappingDuplicateKey, PySpecialMethods.Str(_context, key1).PyUnwrap(_context).Value);
                     }
                     break;

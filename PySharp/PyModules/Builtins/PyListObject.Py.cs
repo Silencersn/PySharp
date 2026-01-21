@@ -1,4 +1,6 @@
-﻿namespace PySharp.PyModules.Builtins;
+﻿using PySharp.PyRuntime.Comparison;
+
+namespace PySharp.PyModules.Builtins;
 
 partial class PyListObject
 {
@@ -69,14 +71,14 @@ partial class PyListObject
         if (key is null)
         {
             _sortedItems = reverse
-                ? _list.OrderDescending(PyObjectRuntimeComparer.Shared)
-                : _list.Order(PyObjectRuntimeComparer.Shared);
+                ? _list.OrderDescending(PyObjectComparer.Default)
+                : _list.Order(PyObjectComparer.Default);
         }
         else
         {
             _sortedItems = reverse
-                ? _list.OrderByDescending(key, PyObjectRuntimeComparer.Shared)
-                : _list.OrderBy(key, PyObjectRuntimeComparer.Shared);
+                ? _list.OrderByDescending(key, PyObjectComparer.Default)
+                : _list.OrderBy(key, PyObjectComparer.Default);
         }
 
         List<PyObject> newList = [.. _sortedItems];

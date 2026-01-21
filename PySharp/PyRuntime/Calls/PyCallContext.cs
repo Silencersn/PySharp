@@ -7,6 +7,7 @@ public sealed partial class PyCallContext
     internal static PyCallContext NotImplemented { get; } = new("[Not Implemented]");
     internal static PyCallContext NonContextDependency { get; } = new("[Non Context Dependency]");
     internal static PyCallContext CSharpRuntime { get; } = new("[CSharp Runtime]");
+    internal static PyCallContext PyObjectComparison { get; } = new("[PyObject Comparison]");
 
     private readonly string _prompt;
     private readonly PyInterpreter _interpreter;

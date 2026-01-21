@@ -1,5 +1,6 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
+using PySharp.PyRuntime.Comparison;
 using PySharp.PyRuntime.PyAttributes;
 
 namespace PySharp.PyModules.Builtins;
@@ -114,7 +115,7 @@ public sealed class PySuperObjectType : PyTypeObject<PySuperObjectType, PySuperO
         var iter = startType.MRO.GetEnumerator();
         while (iter.MoveNext())
         {
-            if (iter.Current == self._type)
+            if (PyObjectComparer.Default.Equals(iter.Current, self._type))
                 break;
         }
         while (iter.MoveNext())

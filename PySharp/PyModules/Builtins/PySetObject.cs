@@ -1,4 +1,5 @@
 ﻿using PySharp.PyRuntime.Calls;
+using PySharp.PyRuntime.Comparison;
 
 namespace PySharp.PyModules.Builtins;
 
@@ -10,11 +11,11 @@ public class PySetObject : PyObject, IPyObjectRecursiveRepr
 
     public PySetObject()
     {
-        _set = new HashSet<PyObject>(PyObjectRuntimeEqualityComparer.Shared);
+        _set = new HashSet<PyObject>(PyObjectComparer.Default);
     }
     public PySetObject(IEnumerable<PyObject> set)
     {
-        _set = new HashSet<PyObject>(set, PyObjectRuntimeEqualityComparer.Shared);
+        _set = new HashSet<PyObject>(set, PyObjectComparer.Default);
     }
 
     PyResult IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<int> ids)
