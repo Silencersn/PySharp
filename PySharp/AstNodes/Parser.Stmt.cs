@@ -76,7 +76,15 @@ partial class Parser
         starExpressions = ParseStarExpressions(StopPredicates.UntilNewLineOrSemicolonOrEqual);
 
         if (CurrentTokenType is not TokenType.Equal)
+        {
+            if (CurrentTokenType is TokenType.Colon)
+                throw SyntaxError(PySR.InvalidSyntax_Assignment_MultipleTargetsForAnnotation);
+
+            if (IsAugOperator(CurrentTokenType))
+                throw SyntaxError(PySR.InvalidSyntax_Assignment_InvalidAugAssignTarget, AstUtils.GetExprNodeName(starExpressions));
+
             return false;
+        }
 
         List<AstExprNode> targets = [];
 
@@ -157,7 +165,10 @@ partial class Parser
             if (!IsSingleTarget(target))
             {
                 if (op is not null)
-                    throw SyntaxError(PySR.InvalidSyntax_InvalidAugAssignTarget, AstUtils.GetExprNodeName(target));
+                    throw SyntaxError(PySR.InvalidSyntax_Assignment_InvalidAugAssignTarget, AstUtils.GetExprNodeName(target));
+
+                if (CurrentTokenType is TokenType.Colon)
+                    throw SyntaxError(PySR.InvalidSyntax_Assignment_IllegalTargetForAnnotation);
 
                 return false;
             }
@@ -362,7 +373,7 @@ partial class Parser
         void CheckNoStarred(AstExprNode node)
         {
             if (node is StarredNode)
-                throw SyntaxError(PySR.InvalidSyntax_CannotDeleteStarred);
+                throw SyntaxError(PySR.InvalidSyntax_DelStmt_CannotDeleteStarred);
 
             if (node is TupleNode tupleNode)
             {
@@ -458,7 +469,7 @@ partial class Parser
 
         if (CurrentTokenType is TokenType.Name && IsKeyword(CurrentToken.String))
         {
-            return CurrentToken.String switch
+            AstStmtNode? stmt = CurrentToken.String switch
             {
                 "return" => ParseReturnStmt(),
                 "import" or "from" => ParseImportStmt(),
@@ -471,8 +482,10 @@ partial class Parser
                 "continue" => ParseContinueStmt(),
                 "global" => ParseGlobalStmt(),
                 "nonlocal" => ParseNonlocalStmt(),
-                _ => throw SyntaxError(PySR.InvalidSyntax)
+                _ => null,
             };
+            if (stmt is not null)
+                return stmt;
         }
 
         if (TryParseAssignment(out var assignment, out var starExpressions))

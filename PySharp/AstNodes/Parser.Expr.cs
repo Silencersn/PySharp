@@ -909,7 +909,7 @@ partial class Parser
 
         var expr = ParseExpression();
         if (CurrentTokenType is TokenType.ColonEqual)
-            throw SyntaxError(PySR.InvalidSyntax_AssignmentExpressions, AstUtils.GetExprNodeName(expr));
+            throw SyntaxError(PySR.InvalidSyntax_NamedExpression_InvalidTarget, AstUtils.GetExprNodeName(expr));
         return expr;
     }
 
@@ -918,8 +918,13 @@ partial class Parser
         if (CurrentTokenType is not TokenType.Name)
             return false;
 
+        if (IsKeyword(CurrentToken.String))
+            return false;
+
         var pos = TokenStreamPosition;
         MoveNextToken();
+        if (CurrentTokenType is TokenType.Equal)
+            throw SyntaxError(PySR.InvalidSyntax_NamedExpression_NameWithEqual);
         var isAssignment = CurrentTokenType is TokenType.ColonEqual;
         TokenStreamPosition = pos;
         return isAssignment;
@@ -1187,6 +1192,9 @@ partial class Parser
         if (StopPredicates.UntilRightParenOrNewLineOrSemicolon(CurrentToken))
             return Ast.Yield(null).With(metaInfo);
 
+        if (CurrentTokenType is TokenType.Equal)
+            throw SyntaxError(PySR.InvalidSyntax_Assignment_AssignToYield);
+
         var value = ParseStarExpressions(StopPredicates.UntilRightParenOrNewLineOrSemicolon);
         return Ast.Yield(value).With(metaInfo.WithPreviousEnd());
     }
@@ -1430,7 +1438,7 @@ partial class Parser
             return (args, []);
 
         if (CurrentTokenType is TokenType.Equal)
-            throw SyntaxError(PySR.InvalidSyntax_ExpressionContainsAssignment);
+            throw SyntaxError(PySR.InvalidSyntax_Arguments_ExpressionContainsAssignment);
 
         var (restArgs, kwargs) = ParseKwargs(out endsWithComma);
         return (args.Concat(restArgs), kwargs);
@@ -1520,6 +1528,8 @@ partial class Parser
         var metaInfo = CreateAstMetaInfo();
         MoveNextToken();
         var value = ParseExpression();
+        if (CurrentTokenType is TokenType.Equal)
+            throw SyntaxError(PySR.InvalidSyntax_Arguments_AssignToKeywordArgumentUnpacking);
         return Ast.Keyword(arg: null, value).With(metaInfo.WithPreviousEnd());
     }
 

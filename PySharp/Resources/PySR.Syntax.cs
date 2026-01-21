@@ -20,8 +20,9 @@ partial class PySR
     public const string InvalidSyntax_FString_ConversionCharacter_Invalid = "f-string: invalid conversion character";
     public const string InvalidSyntax_FString_ConversionCharacter_InvalidCharacter = "f-string: invalid conversion character '{0}': expected 's', 'r', or 'a'";
 
-    public const string InvalidSyntax_AssignmentExpressions = "cannot use assignment expressions with {0}";
-    
+    public const string InvalidSyntax_NamedExpression_InvalidTarget = "cannot use assignment expressions with {0}";
+    public const string InvalidSyntax_NamedExpression_NameWithEqual = "invalid syntax. Maybe you meant '==' or ':=' instead of '='?";
+
     public const string InvalidSyntax_UnicodeError_TruncatedLowerXSequence = "(unicode error) 'unicodeescape' codec can't decode bytes in position {0}-{1}: truncated \\xXX escape";
     public const string InvalidSyntax_UnicodeError_TruncatedLowerUSequence = "(unicode error) 'unicodeescape' codec can't decode bytes in position {0}-{1}: truncated \\uXXXX escape";
     public const string InvalidSyntax_UnicodeError_TruncatedUpperUSequence = "(unicode error) 'unicodeescape' codec can't decode bytes in position {0}-{1}: truncated \\UXXXXXXXX escape";
@@ -48,13 +49,16 @@ partial class PySR
 
     public const string InvalidSyntax_RightParenNeverClosed = "'(' was never closed";
 
-    public const string InvalidSyntax_ExpressionContainsAssignment = "expression cannot contain assignment, perhaps you meant \"==\"?";
-
+    public const string InvalidSyntax_Arguments_ExpressionContainsAssignment = "expression cannot contain assignment, perhaps you meant \"==\"?";
     public const string InvalidSyntax_Arguments_PosArgFollowsKeyword = "positional argument follows keyword argument";
+    public const string InvalidSyntax_Arguments_AssignToKeywordArgumentUnpacking = "cannot assign to keyword argument unpacking";
 
-    public const string InvalidSyntax_InvalidAugAssignTarget = "'{0}' is an illegal expression for augmented assignment";
+    public const string InvalidSyntax_Assignment_IllegalTargetForAnnotation = "illegal target for annotation";
+    public const string InvalidSyntax_Assignment_MultipleTargetsForAnnotation = "only single target (not tuple) can be annotated";
+    public const string InvalidSyntax_Assignment_InvalidAugAssignTarget = "'{0}' is an illegal expression for augmented assignment";
+    public const string InvalidSyntax_Assignment_AssignToYield = "assignment to yield expression not possible";
 
-    public const string InvalidSyntax_CannotDeleteStarred = "cannot delete starred";
+    public const string InvalidSyntax_DelStmt_CannotDeleteStarred = "cannot delete starred";
 
     public const string InvalidSyntax_TryStmt_ExpectedExceptOrFinally = "expected 'except' or 'finally' block";
     public const string InvalidSyntax_TryStmt_BothExceptAndExceptStar = "cannot have both 'except' and 'except*' on the same 'try'";
