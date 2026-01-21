@@ -135,23 +135,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
     private void EnsureTokenType(TokenType type, string message = PySR.InvalidSyntax)
     {
         if (CurrentTokenType != type)
-            throw _context.ThrowableSyntaxError(message);
-    }
-    private PyRuntimeException ThrowableSyntaxErrorCausedByInvalidEqualAfterExpr(AstExprNode expr)
-    {
-        if (expr is NameNode)
-            return _context.ThrowableSyntaxError("invalid syntax. Maybe you meant '==' or ':=' instead of '='?");
-
-        return _context.ThrowableSyntaxError($"cannot assign to {AstUtils.GetExprNodeName(expr)} here. Maybe you meant '==' instead of '='?");
-    }
-    private void EnsureTokenTypeForTest(TokenType type, AstExprNode? testExpr)
-    {
-        if (CurrentTokenType != type)
-        {
-            if (testExpr is not null && CurrentTokenType is TokenType.Equal)
-                throw ThrowableSyntaxErrorCausedByInvalidEqualAfterExpr(testExpr);
-            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
-        }
+            throw SyntaxError(message);
     }
     private bool IsCurrentKeyword(string keyword)
     {
@@ -164,17 +148,12 @@ public sealed partial class Parser : ICodeMetaInfoProvider
     {
         EnsureTokenType(TokenType.Name);
         if (!IsCurrentKeyword(keyword))
-            throw _context.ThrowableSyntaxError(message);
+            throw SyntaxError(message);
         MoveNextToken();
     }
     private void EnsureTokenTypeThenMove(TokenType type, string message = PySR.InvalidSyntax)
     {
         EnsureTokenType(type, message);
-        MoveNextToken();
-    }
-    private void EnsureTokenTypeThenMoveForTest(TokenType type, AstExprNode? testExpr)
-    {
-        EnsureTokenTypeForTest(type, testExpr);
         MoveNextToken();
     }
 }

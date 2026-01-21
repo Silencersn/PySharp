@@ -1214,9 +1214,6 @@ partial class Parser
             list.Add(parse());
         }
 
-        if (CurrentTokenType is TokenType.Equal && !predicate(CurrentToken) && list[^1] is AstExprNode expr)
-            throw ThrowableSyntaxErrorCausedByInvalidEqualAfterExpr(expr);
-
         return list;
     }
 

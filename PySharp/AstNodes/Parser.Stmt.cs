@@ -729,7 +729,7 @@ partial class Parser
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove(ifOrElif);
         var test = ParseNamedExpression();
-        EnsureTokenTypeThenMoveForTest(TokenType.Colon, test);
+        EnsureTokenTypeThenMove(TokenType.Colon);
         var body = ParseBlock(ifOrElif);
         IEnumerable<AstStmtNode> orElse = [];
         if (IsCurrentKeyword("elif"))
@@ -749,7 +749,7 @@ partial class Parser
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("while");
         var test = ParseNamedExpression();
-        EnsureTokenTypeThenMoveForTest(TokenType.Colon, test);
+        EnsureTokenTypeThenMove(TokenType.Colon);
         var body = ParseBlock("while");
         IEnumerable<AstStmtNode> orElse = IsCurrentKeyword("else") ? ParseElseBlock() : [];
         return Ast.While(test, body, orElse).With(metaInfo);
