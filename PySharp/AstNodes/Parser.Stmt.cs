@@ -157,7 +157,7 @@ partial class Parser
             if (!IsSingleTarget(target))
             {
                 if (op is not null)
-                    throw _context.ThrowableSyntaxError($"'{AstUtils.GetExprNodeName(target)}' is an illegal expression for augmented assignment");
+                    throw SyntaxError(PySR.InvalidSyntax_InvalidAugAssignTarget, AstUtils.GetExprNodeName(target));
 
                 return false;
             }
@@ -230,7 +230,7 @@ partial class Parser
     {
         var list = ParseSomethingList(ParseDottedAsName, StopPredicates.UntilNewLineOrSemicolon, out var endsWithComma);
         if (endsWithComma is not null)
-            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
+            throw SyntaxError(PySR.InvalidSyntax);
         return list;
     }
 
@@ -283,7 +283,7 @@ partial class Parser
         {
             var list = ParseImportFromAsNames(out var endsWithComma);
             if (endsWithComma is not null)
-                throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
+                throw SyntaxError(PySR.InvalidSyntax);
             return list;
         }
     }
@@ -300,7 +300,7 @@ partial class Parser
         var level = ParseLevel();
         var module = IsCurrentKeyword("import") ? null : ParseDottedName();
         if (module is null && level is 0)
-            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
+            throw SyntaxError(PySR.InvalidSyntax);
 
         EnsureKeywordThenMove("import");
         var names = ParseImportFromTargets();
@@ -362,7 +362,7 @@ partial class Parser
         void CheckNoStarred(AstExprNode node)
         {
             if (node is StarredNode)
-                throw _context.ThrowableSyntaxError("cannot delete starred");
+                throw SyntaxError(PySR.InvalidSyntax_CannotDeleteStarred);
 
             if (node is TupleNode tupleNode)
             {
@@ -471,7 +471,7 @@ partial class Parser
                 "continue" => ParseContinueStmt(),
                 "global" => ParseGlobalStmt(),
                 "nonlocal" => ParseNonlocalStmt(),
-                _ => throw _context.ThrowableSyntaxError(PySR.InvalidSyntax)
+                _ => throw SyntaxError(PySR.InvalidSyntax)
             };
         }
 
@@ -557,14 +557,14 @@ partial class Parser
         if (CurrentTokenType is not TokenType.Name)
         {
             if (decorators.Count > 0)
-                throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
+                throw SyntaxError(PySR.InvalidSyntax);
 
             compoundStmt = null;
             return false;
         }
 
         if (decorators.Count > 0 && !(IsCurrentKeyword("def") || IsCurrentKeyword("class")))
-            throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
+            throw SyntaxError(PySR.InvalidSyntax);
 
         compoundStmt = CurrentToken.StringAsSpan switch
         {
@@ -691,7 +691,8 @@ partial class Parser
                 "class" => "class definition",
                 _ => $"'{keyword}' statement"
             };
-            throw _context.ThrowableIndentationError($"expected an indented block after {statementName} on line {lineno}");
+            throw _context.ThrowableIndentationError(
+                PySR.Format(PySR.InvalidSyntax_Indentation_ExpectedForBlock, statementName, lineno));
         }
         MoveNextToken();
 
@@ -749,7 +750,7 @@ partial class Parser
         EnsureTokenTypeThenMove(TokenType.Colon);
         var body = ParseBlock("try");
         if (!IsCurrentKeyword("except") && !IsCurrentKeyword("finally"))
-            throw _context.ThrowableSyntaxError("expected 'except' or 'finally' block");
+            throw SyntaxError(PySR.InvalidSyntax_TryStmt_ExpectedExceptOrFinally);
         List<ExceptHandlerNode> exceptors = [];
         IEnumerable<AstStmtNode> orElse = [];
         IEnumerable<AstStmtNode> finalBody = [];
@@ -789,9 +790,9 @@ partial class Parser
         EnsureKeywordThenMove("except");
 
         if (isStar)
-            EnsureTokenTypeThenMove(TokenType.Star, "cannot have both 'except' and 'except*' on the same 'try'");
+            EnsureTokenTypeThenMove(TokenType.Star, PySR.InvalidSyntax_TryStmt_BothExceptAndExceptStar);
         else if (CurrentTokenType is TokenType.Star)
-            throw _context.ThrowableSyntaxError("cannot have both 'except' and 'except*' on the same 'try'");
+            throw SyntaxError(PySR.InvalidSyntax_TryStmt_BothExceptAndExceptStar);
 
         AstExprNode? type = null;
         string? name = null;
@@ -803,10 +804,10 @@ partial class Parser
             if (IsCurrentKeyword("as"))
             {
                 if (exprs.Count > 1)
-                    throw _context.ThrowableSyntaxError("multiple exception types must be parenthesized when using 'as'");
+                    throw SyntaxError(PySR.InvalidSyntax_TryStmt_MultipleExceptionTypesUsingAs);
 
                 if (endsWithComma is not null)
-                    throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
+                    throw SyntaxError(PySR.InvalidSyntax);
 
                 MoveNextToken();
                 name = ParseIdentifier();
@@ -816,7 +817,7 @@ partial class Parser
         }
         else if (isStar)
         {
-            throw _context.ThrowableSyntaxError("expected one or more exception types");
+            throw SyntaxError(PySR.InvalidSyntax_TryStmt_ExpectedExceptionTypes);
         }
 
         EnsureTokenTypeThenMove(TokenType.Colon);
@@ -973,7 +974,7 @@ partial class Parser
             MoveNextToken();
             var name = ParseIdentifier();
             if (CurrentTokenType is TokenType.Colon)
-                throw _context.ThrowableSyntaxError("cannot use bound with TypeVarTuple");
+                throw SyntaxError(PySR.InvalidSyntax_TypeParam_BoundForTypeVarTuple);
             var defaultValue = CurrentTokenType is TokenType.Equal ? ParseTypeParamStarredDefault() : null;
             return Ast.TypeVarTuple(name, defaultValue).With(metaInfo.WithPreviousEnd());
         }
@@ -982,12 +983,12 @@ partial class Parser
             MoveNextToken();
             var name = ParseIdentifier();
             if (CurrentTokenType is TokenType.Colon)
-                throw _context.ThrowableSyntaxError("cannot use bound with ParamSpec");
+                throw SyntaxError(PySR.InvalidSyntax_TypeParam_BoundForParamSpec);
             var defaultValue = CurrentTokenType is TokenType.Equal ? ParseTypeParamDefault() : null;
             return Ast.ParamSpec(name, defaultValue).With(metaInfo.WithPreviousEnd());
         }
 
-        throw _context.ThrowableSyntaxError(PySR.InvalidSyntax);
+        throw SyntaxError(PySR.InvalidSyntax);
     }
 
     [GrammarSyntaxRule("type_param_bound")]

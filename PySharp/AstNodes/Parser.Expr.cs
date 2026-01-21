@@ -477,7 +477,7 @@ partial class Parser
         else
         {
             if (CurrentTokenType is TokenType.Indent)
-                throw _context.ThrowableIndentationError(PySR.InvalidSyntax_UnexpectedIndent);
+                throw _context.ThrowableIndentationError(PySR.InvalidSyntax_Indentation_Unexpected);
 
             throw SyntaxError(PySR.InvalidSyntax);
         }

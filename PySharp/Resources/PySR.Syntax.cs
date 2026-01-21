@@ -27,7 +27,8 @@ partial class PySR
     public const string InvalidSyntax_UnicodeError_TruncatedUpperUSequence = "(unicode error) 'unicodeescape' codec can't decode bytes in position {0}-{1}: truncated \\UXXXXXXXX escape";
     public const string InvalidSyntax_UnicodeError_IllegalCharacter = "(unicode error) 'unicodeescape' codec can't decode bytes in position {0}-{1}: illegal Unicode character";
     
-    public const string InvalidSyntax_UnexpectedIndent = "unexpected indent";
+    public const string InvalidSyntax_Indentation_Unexpected = "unexpected indent";
+    public const string InvalidSyntax_Indentation_ExpectedForBlock = "expected an indented block after {0} on line {1}";
     
     public const string InvalidSyntax_Parameters_NoArgsBeforeSlash = "at least one argument must precede /";
     public const string InvalidSyntax_Parameters_ArgsFollowVarKwArg = "arguments cannot follow var-keyword argument";
@@ -50,4 +51,15 @@ partial class PySR
 
     public const string InvalidSyntax_Arguments_PosArgFollowsKeyword = "positional argument follows keyword argument";
 
+    public const string InvalidSyntax_InvalidAugAssignTarget = "'{0}' is an illegal expression for augmented assignment";
+
+    public const string InvalidSyntax_CannotDeleteStarred = "cannot delete starred";
+
+    public const string InvalidSyntax_TryStmt_ExpectedExceptOrFinally = "expected 'except' or 'finally' block";
+    public const string InvalidSyntax_TryStmt_BothExceptAndExceptStar = "cannot have both 'except' and 'except*' on the same 'try'";
+    public const string InvalidSyntax_TryStmt_MultipleExceptionTypesUsingAs = "multiple exception types must be parenthesized when using 'as'";
+    public const string InvalidSyntax_TryStmt_ExpectedExceptionTypes = "expected one or more exception types";
+
+    public const string InvalidSyntax_TypeParam_BoundForTypeVarTuple = "cannot use bound with TypeVarTuple";
+    public const string InvalidSyntax_TypeParam_BoundForParamSpec = "cannot use bound with ParamSpec";
 }
