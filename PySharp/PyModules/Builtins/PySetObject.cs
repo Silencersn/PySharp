@@ -18,7 +18,7 @@ public class PySetObject : PyObject, IPyObjectRecursiveRepr
         _set = new HashSet<PyObject>(set, PyObjectComparer.Default);
     }
 
-    PyResult IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<int> ids)
+    PyResult<PyStrObject> IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<int> ids)
     {
         return Utils.CollectionRecursiveRepr(context, this, _set, "{", "}", ids);
     }

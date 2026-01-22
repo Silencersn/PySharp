@@ -83,33 +83,33 @@ public sealed class PyRangeObjectType : PyTypeObject<PyRangeObjectType, PyRangeO
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (kwargs.Count is not 0)
-            return PyResult.RaiseTypeError(null);
+            return PyResult.TypeError(null);
         if (args.Count is 1)
         {
             if (args[0] is not PyIntObject stopObj)
-                return PyResult.RaiseTypeError(null);
+                return PyResult.TypeError(null);
             return PyRangeObject.CreateRange(stopObj.Value);
         }
         else if (args.Count is 2)
         {
             if (args[0] is not PyIntObject startObj)
-                return PyResult.RaiseTypeError(null);
+                return PyResult.TypeError(null);
             if (args[1] is not PyIntObject stopObj)
-                return PyResult.RaiseTypeError(null);
+                return PyResult.TypeError(null);
             return PyRangeObject.CreateRange(startObj.Value, stopObj.Value, BigInteger.One);
         }
         else if (args.Count is 3)
         {
             if (args[0] is not PyIntObject startObj)
-                return PyResult.RaiseTypeError(null);
+                return PyResult.TypeError(null);
             if (args[1] is not PyIntObject stopObj)
-                return PyResult.RaiseTypeError(null);
+                return PyResult.TypeError(null);
             if (args[2] is not PyIntObject stepObj)
-                return PyResult.RaiseTypeError(null);
+                return PyResult.TypeError(null);
             if (stepObj.Value.IsZero)
                 return PyResult.RaiseValueError("range() arg 3 must not be zero");
             return PyRangeObject.CreateRange(startObj.Value, stopObj.Value, stepObj.Value);
         }
-        return PyResult.RaiseTypeError(null);
+        return PyResult.TypeError(null);
     }
 }

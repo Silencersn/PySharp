@@ -41,14 +41,14 @@ public sealed class PyThreadObjectType : PyTypeObject<PyThreadObjectType, PyThre
     private static PyResult NewImpl(PyCallContext context, PyArguments arguments)
     {
         if (arguments[3] is not PyTupleObject args)
-            return PyResult.RaiseTypeError(null);
+            return PyResult.TypeError(null);
         if (arguments[4] is not PyDictObject kwargs)
-            return PyResult.RaiseTypeError(null);
+            return PyResult.TypeError(null);
         Dictionary<string, PyObject> dict = [];
         foreach (var pair in kwargs._dict)
         {
             if (pair.Key is not PyStrObject str)
-                return PyResult.RaiseTypeError(null);
+                return PyResult.TypeError(null);
             dict[str.Value] = pair.Value;
         }
         return new PyThreadObject(arguments[1], args._array, dict);

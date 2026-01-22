@@ -31,7 +31,7 @@ public sealed class PyMemberDescriptorObjectType : PyTypeObject<PyMemberDescript
             return self;
 
         if (!instance.PyType.IsSubclassOf(self._declaringType))
-            return PyResult.RaiseTypeError(null);
+            return PyResult.TypeError(null);
 
         return self._getter(context, instance);
     }
@@ -42,7 +42,7 @@ public sealed class PyMemberDescriptorObjectType : PyTypeObject<PyMemberDescript
             return PyResult.RaiseAttributeError("readonly attribute");
 
         if (!instance.PyType.IsSubclassOf(self._declaringType))
-            return PyResult.RaiseTypeError(null);
+            return PyResult.TypeError(null);
 
         return self._setter(context, instance, value);
     }
@@ -53,7 +53,7 @@ public sealed class PyMemberDescriptorObjectType : PyTypeObject<PyMemberDescript
             return PyResult.RaiseAttributeError("readonly attribute");
 
         if (!instance.PyType.IsSubclassOf(self._declaringType))
-            return PyResult.RaiseTypeError(null);
+            return PyResult.TypeError(null);
 
         return self._deleter(context, instance);
     }

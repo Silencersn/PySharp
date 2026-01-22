@@ -42,7 +42,7 @@ internal sealed class PyWrapperDescriptorObjectType : PyTypeObject<PyWrapperDesc
             PyBinaryFunction f => PyArgsValidator.ValidateArgs(args, 2, out err) ? f(context, args[0], args[1]) : err.Value,
             PyTernaryFunction f => PyArgsValidator.ValidateArgs(args, 3, out err) ? f(context, args[0], args[1], args[2]) : err.Value,
             PyQuaternaryFunction f => PyArgsValidator.ValidateArgs(args, 4, out err) ? f(context, args[0], args[1], args[2], args[3]) : err.Value,
-            PySelfArgsKwargsFunction f => args.Count > 0 ? f(context, args[0], [.. args.Skip(1)], kwargs) : PyResult.RaiseTypeError("needs an argument"),
+            PySelfArgsKwargsFunction f => args.Count > 0 ? f(context, args[0], [.. args.Skip(1)], kwargs) : PyResult.TypeError(null /* TODO */),
             _ => throw new UnreachableException()
         };
     }

@@ -224,7 +224,7 @@ public sealed class PyBaseExceptionObjectType : PyExceptionType<PyBaseExceptionO
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (kwargs.Count is not 0)
-            return PyResult.RaiseTypeError(null);
+            return PyResult.TypeError(null);
 
         return new PyExceptionObject(cls, [.. args]);
     }

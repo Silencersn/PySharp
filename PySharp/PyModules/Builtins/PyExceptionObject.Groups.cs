@@ -29,9 +29,9 @@ public sealed class PyBaseExceptionGroupObjectType : PyExceptionType<PyBaseExcep
             if (!info.Exceptions.All(PyExceptionObjectType.Shared.IsInstance))
             {
                 if (type is PyExceptionGroupObjectType)
-                    return PyResult.RaiseTypeError($"Cannot nest BaseExceptions in an ExceptionGroup");
+                    return PyResult.TypeError(PySR.Runtime_ExceptionGroup_NestBaseExceptionsForExceptionGroup);
 
-                return PyResult.RaiseTypeError($"Cannot nest BaseExceptions in '{type.FullName}'");
+                return PyResult.TypeError(PySR.Runtime_ExceptionGroup_NestBaseExceptions, type.FullName);
             }
         }
 
@@ -47,7 +47,7 @@ public sealed class PyBaseExceptionGroupObjectType : PyExceptionType<PyBaseExcep
     protected override PyResult Str(PyCallContext context, PyExceptionObject self)
     {
         if (self.AsGroup is null)
-            return PyResult.RaiseTypeError(null);
+            return PyResult.TypeError(null);
 
         var count = self.AsGroup.Exceptions.Count;
         Debug.Assert(count > 0);
@@ -60,7 +60,7 @@ public sealed class PyBaseExceptionGroupObjectType : PyExceptionType<PyBaseExcep
     internal PyResult Derive(PyCallContext context, PyExceptionObject self, PyArguments arguments)
     {
         if (!self.IsGroup)
-            return PyResult.RaiseTypeError(null);
+            return PyResult.TypeError(null);
 
         if (!TryParseExceptions(arguments[0], out var excs, out var err))
             return err.Value;
@@ -86,14 +86,14 @@ public sealed class PyBaseExceptionGroupObjectType : PyExceptionType<PyBaseExcep
     internal PyResult Split(PyCallContext context, PyExceptionObject self, PyArguments arguments)
     {
         if (!self.IsGroup)
-            return PyResult.RaiseTypeError(null);
+            return PyResult.TypeError(null);
 
         var conditionObj = arguments[0];
         Func<PyExceptionObject, PyResult<PyBoolObject>> predicate;
         if (conditionObj is PyTypeObject type)
         {
             if (!type.IsSubclassOf(PyBaseExceptionObjectType.Shared))
-                return PyResult.RaiseTypeError("expected an exception type, a tuple of exception types, or a callable (other than a class)");
+                return PyResult.TypeError(PySR.Runtime_ExceptionGroup_SplitExpectedCondition);
 
             predicate = exc => PyBoolObject.FromBoolean(type.IsInstance(exc));
         }
@@ -103,7 +103,7 @@ public sealed class PyBaseExceptionGroupObjectType : PyExceptionType<PyBaseExcep
             foreach (var o in tuple._array)
             {
                 if (o is not PyTypeObject t || !t.IsSubclassOf(PyBaseExceptionObjectType.Shared))
-                    return PyResult.RaiseTypeError("expected an exception type, a tuple of exception types, or a callable (other than a class)");
+                    return PyResult.TypeError(PySR.Runtime_ExceptionGroup_SplitExpectedCondition);
 
                 types.Add(t);
             }
@@ -135,7 +135,7 @@ public sealed class PyBaseExceptionGroupObjectType : PyExceptionType<PyBaseExcep
         (PyResult? Error, PyExceptionObject? MatchGroup, PyExceptionObject? RestGroup) SplitImpl(PyExceptionObject exceptionGroup)
         {
             if (!exceptionGroup.IsGroup)
-                return ReturnError(PyResult.RaiseTypeError(null));
+                return ReturnError(PyResult.TypeError(null));
 
             List<PyExceptionObject> match = [];
             List<PyExceptionObject> rest = [];
@@ -202,7 +202,7 @@ public sealed class PyBaseExceptionGroupObjectType : PyExceptionType<PyBaseExcep
                     return result.Of<PyExceptionObject>();
 
                 if (result.Value is not PyExceptionObject exc || !exc.IsGroup || !Shared.IsInstance(result.Value))
-                    return PyResult.RaiseTypeError("derive must return an instance of BaseExceptionGroup").Of<PyExceptionObject>();
+                    return PyResult.TypeError(PySR.Runtime_ExceptionGroup_DeriveReturnNonGroup).Of<PyExceptionObject>();
 
                 return exc;
             }
@@ -223,13 +223,13 @@ public sealed class PyBaseExceptionGroupObjectType : PyExceptionType<PyBaseExcep
 
         if (excs is null)
         {
-            err = PyResult.RaiseTypeError("second argument (exceptions) must be a sequence");
+            err = PyResult.TypeError(PySR.Runtime_ExceptionGroup_NewGroup_ExcsNonSeq);
             return false;
         }
 
         if (excs.Count is 0)
         {
-            err = PyResult.RaiseTypeError("second argument (exceptions) must be a non-empty sequence");
+            err = PyResult.TypeError(PySR.Runtime_ExceptionGroup_NewGroup_ExcsEmpty);
             return false;
         }
 
@@ -237,7 +237,7 @@ public sealed class PyBaseExceptionGroupObjectType : PyExceptionType<PyBaseExcep
         {
             if (excs[i] is not PyExceptionObject)
             {
-                err = PyResult.RaiseValueError($"Item {i + 1} of second argument (exceptions) is not an exception");
+                err = PyResult.ValueError(PySR.Runtime_ExceptionGroup_NewGroup_ExcsItemNonExc, i + 1);
                 return false;
             }
         }
@@ -260,7 +260,7 @@ public sealed class PyBaseExceptionGroupObjectType : PyExceptionType<PyBaseExcep
 
         if (args[0] is not PyStrObject msg)
         {
-            err = PyResult.RaiseTypeError($"{exceptionGroupType.Name}.{PySpecialNames.New}() argument 1 must be str, not {args[0].PyType.FullName}");
+            err = PyResult.TypeError(PySR.Runtime_ExceptionGroup_NewGroup_MsgNonStr, exceptionGroupType.FullName, args[0].PyType.FullName);
             return false;
         }
 

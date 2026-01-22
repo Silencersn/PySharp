@@ -39,7 +39,7 @@ public sealed class PyClassMethodObjectType : PyTypeObject<PyClassMethodObjectTy
         if (type is PyNoneObject)
         {
             if (instance is PyNoneObject)
-                return PyResult.RaiseTypeError("__get__(None, None) is invalid");
+                return PyResult.TypeError(PySR.Runtime_Descriptor_GetNoneNoneInvalid);
 
             type = instance.PyType;
         }

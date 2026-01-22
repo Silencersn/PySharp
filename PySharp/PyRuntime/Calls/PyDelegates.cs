@@ -31,7 +31,7 @@ public static class PyDelegateConverter
         return (context, self) =>
         {
             if (self is not TObject selfOfT)
-                return PyResult.RaiseTypeError(null);
+                return PyResult.TypeError(null);
 
             return getter(context, selfOfT);
         };
@@ -41,7 +41,7 @@ public static class PyDelegateConverter
         return (context, self, value) =>
         {
             if (self is not TObject selfOfT)
-                return PyResult.RaiseTypeError(null);
+                return PyResult.TypeError(null);
 
             return setter(context, selfOfT, value);
         };
@@ -51,7 +51,7 @@ public static class PyDelegateConverter
         return (context, self) =>
         {
             if (self is not TObject selfOfT)
-                return PyResult.RaiseTypeError(null);
+                return PyResult.TypeError(null);
 
             return deleter(context, selfOfT);
         };
@@ -64,7 +64,7 @@ public static class PyDelegateConverter
         return (context, args, kwargs) =>
         {
             if (args.Count is 0 || args[0] is not TObject selfOfT)
-                return PyResult.RaiseTypeError(null);
+                return PyResult.TypeError(null);
 
             EnsureDefCache();
             Debug.Assert(defs is not null);
@@ -76,7 +76,7 @@ public static class PyDelegateConverter
                     return methods[i].Invoke(context, selfOfT, result);
             }
 
-            return PyResult.RaiseTypeError(null);
+            return PyResult.TypeError(null);
         };
 
         void EnsureDefCache()
@@ -115,7 +115,7 @@ public static class PyDelegateConverter
                     return functions[i].Invoke(context, result);
             }
 
-            return PyResult.RaiseTypeError(null);
+            return PyResult.TypeError(null);
         };
 
         void EnsureDefCache()

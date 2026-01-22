@@ -39,7 +39,7 @@ public sealed class PyRandomObjectType : PyTypeObject<PyRandomObjectType, PyRand
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (kwargs.Count is not 0)
-            return PyResult.RaiseTypeError(null);
+            return PyResult.TypeError(null);
         if (args.Count is 0)
             return new PyRandomObject(new System.Random()) { _pyType = cls };
         if (args.Count is 1)
@@ -49,7 +49,7 @@ public sealed class PyRandomObjectType : PyTypeObject<PyRandomObjectType, PyRand
                 return result;
             return new PyRandomObject(new System.Random(result.Value.Int32Value)) { _pyType = cls };
         }
-        return PyResult.RaiseTypeError(null);
+        return PyResult.TypeError(null);
     }
 
     [PyFunctionArgsDef()]

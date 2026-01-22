@@ -13,16 +13,16 @@ public interface IPyObjectName
 
 public interface IPyObjectRecursiveRepr
 {
-    PyResult RecursiveRepr(PyCallContext context, HashSet<int> ids);
+    PyResult<PyStrObject> RecursiveRepr(PyCallContext context, HashSet<int> ids);
 
-    public static PyResult RecursiveRepr(PyCallContext context, PyObject pyObj)
+    public static PyResult<PyStrObject> RecursiveRepr(PyCallContext context, PyObject pyObj)
     {
         ArgumentNullException.ThrowIfNull(pyObj);
 
         return RecursiveRepr(context, pyObj, []);
     }
 
-    public static PyResult RecursiveRepr(PyCallContext context, PyObject pyObj, HashSet<int> ids)
+    public static PyResult<PyStrObject> RecursiveRepr(PyCallContext context, PyObject pyObj, HashSet<int> ids)
     {
         ArgumentNullException.ThrowIfNull(pyObj);
 
@@ -32,7 +32,7 @@ public interface IPyObjectRecursiveRepr
         return PySpecialMethods.Repr(context, pyObj);
     }
 
-    public static bool TryGetRecursiveRepr(PyCallContext context, PyObject pyObj, HashSet<int> ids, [NotNullWhen(true)] out PyStrObject? s, out PyResult result)
+    public static bool TryGetRecursiveRepr(PyCallContext context, PyObject pyObj, HashSet<int> ids, [NotNullWhen(true)] out PyStrObject? s, out PyResult<PyStrObject> result)
     {
         ArgumentNullException.ThrowIfNull(pyObj);
 
@@ -43,14 +43,7 @@ public interface IPyObjectRecursiveRepr
             return false;
         }
 
-        if (result.Value is not PyStrObject strObj)
-        {
-            s = null;
-            result = PyResult.RaiseTypeError($"{PySpecialNames.Repr} returned non-string (type {result.Value.PyType.Name})");
-            return false;
-        }
-
-        s = strObj;
+        s = result.Value;
         return true;
     }
 }

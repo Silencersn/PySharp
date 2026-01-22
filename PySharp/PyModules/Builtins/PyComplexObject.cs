@@ -44,14 +44,14 @@ public sealed class PyComplexObjectType : PyTypeObject<PyComplexObjectType, PyCo
     protected override PyResult Int(PyCallContext context, PyComplexObject self)
     {
         if (self.Value.Imaginary != 0)
-            return PyResult.RaiseTypeError("can't convert complex to int");
+            return PyResult.TypeError(null);
         return PyIntObject.FromInteger((BigInteger)self.Value.Real);
     }
 
     protected override PyResult Float(PyCallContext context, PyComplexObject self)
     {
         if (self.Value.Imaginary != 0)
-            return PyResult.RaiseTypeError("can't convert complex to float");
+            return PyResult.TypeError(null);
         return PyFloatObject.FromDouble(self.Value.Real);
     }
 
@@ -90,20 +90,20 @@ public sealed class PyComplexObjectType : PyTypeObject<PyComplexObjectType, PyCo
         if (other is PyComplexObject c)
         {
             if (c.Value == System.Numerics.Complex.Zero)
-                return PyResult.RaiseZeroDivisionError("complex division by zero");
+                return PyResult.RaiseZeroDivisionError(null);
             return PyComplexObject.FromComplex(self.Value / c.Value);
         }
         if (other is PyIntObject i)
         {
             double v = (double)i.Value;
             if (v == 0)
-                return PyResult.RaiseZeroDivisionError("complex division by zero");
+                return PyResult.RaiseZeroDivisionError(null);
             return PyComplexObject.FromComplex(self.Value / new Complex(v, 0));
         }
         if (other is PyFloatObject f)
         {
             if (f.Value == 0)
-                return PyResult.RaiseZeroDivisionError("complex division by zero");
+                return PyResult.RaiseZeroDivisionError(null);
             return PyComplexObject.FromComplex(self.Value / new Complex(f.Value, 0));
         }
         return base.TrueDiv(context, self, other);
@@ -148,7 +148,7 @@ public sealed class PyComplexObjectType : PyTypeObject<PyComplexObjectType, PyCo
             else if (args[1] is PyFloatObject f)
                 imag = f.Value;
             else
-                return PyResult.RaiseTypeError($"complex() second arg must be a number, not {args[1].PyType.Name}");
+                return PyResult.TypeError(null);
         }
         var obj = PyComplexObject.FromRealImag(real, imag);
         obj._pyType = cls;

@@ -11,7 +11,7 @@ public static class PySpecialMethods
             return result.Of<TObject>();
 
         if (result.Value is not TObject objOfT)
-            return PyResult.RaiseTypeError(getErrMsg(result.Value)).Of<TObject>();
+            return PyResult.TypeError(getErrMsg(result.Value)).Of<TObject>();
 
         return objOfT;
     }

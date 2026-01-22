@@ -38,7 +38,7 @@ public sealed class PyRangeIteratorObjectType : PyTypeObject<PyRangeIteratorObje
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        return PyResult.RaiseTypeError(null);
+        return PyResult.TypeError(null);
     }
 }
 
@@ -77,6 +77,6 @@ public sealed class PyLongRangeIteratorObjectType : PyTypeObject<PyLongRangeIter
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        return PyResult.RaiseTypeError(null);
+        return PyResult.TypeError(null);
     }
 }

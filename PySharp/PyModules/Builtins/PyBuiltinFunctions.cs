@@ -5,6 +5,7 @@ using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.PyAttributes;
 using PySharp.Tokenization;
 using PySharp.Utility;
+using System.Diagnostics;
 using System.Text;
 
 namespace PySharp.PyModules.Builtins;
@@ -127,11 +128,11 @@ public static partial class PyBuiltinFunctions
     {
         var sepObj = arguments.Kwargs["sep"];
         if (!Utils.TryGetValue(sepObj, (PyStrObject str) => str.Value, " ", out var sep))
-            return PyResult.RaiseTypeError($"end must be None or a string, not {sepObj.PyType.Name}");
+            return PyResult.TypeError(PySR.Runtime_Builtin_Print_WrongArgType, "sep", sepObj.PyType.FullName);
 
         var endObj = arguments.Kwargs["end"];
         if (!Utils.TryGetValue(endObj, (PyStrObject str) => str.Value, "\n", out var end))
-            return PyResult.RaiseTypeError($"end must be None or a string, not {endObj.PyType.Name}");
+            return PyResult.TypeError(PySR.Runtime_Builtin_Print_WrongArgType, "end", endObj.PyType.FullName);
 
         var result = PySpecialMethods.Bool(context, arguments.Kwargs["flush"]);
         if (result.IsError)
@@ -165,9 +166,7 @@ public static partial class PyBuiltinFunctions
         if (result.IsError)
             return result;
 
-        if (result.IsNotImplemented)
-            return PyResult.RaiseTypeError($"unsupported operand type(s) for ** or pow(): '{baseObj.PyType.Name}', '{expObj.PyType.Name}', 'int'");
-
+        Debug.Assert(!result.IsNotImplemented);
         return result;
     }
     [PyFunctionArgsDef("a", "b", "/")]
@@ -196,7 +195,7 @@ public static partial class PyBuiltinFunctions
     private static PyResult EvalImpl(PyCallContext context, PyArguments arguments)
     {
         if (arguments.Args[0] is not PyStrObject str)
-            return PyResult.RaiseTypeError(null);
+            return PyResult.TypeError(null);
         var codeSource = new CodeSource("<string>", str.Value);
 
         var frame = context.CurrentFrame;
@@ -220,7 +219,7 @@ public static partial class PyBuiltinFunctions
     private static PyResult ExecImpl(PyCallContext context, PyArguments arguments)
     {
         if (arguments.Args[0] is not PyStrObject str)
-            return PyResult.RaiseTypeError(null);
+            return PyResult.TypeError(null);
         var codeSource = new CodeSource("<string>", str.Value);
 
         var frame = context.CurrentFrame;
@@ -285,7 +284,7 @@ public static partial class PyBuiltinFunctions
     {
         var iterable = arguments[0];
         if (arguments["key"] is not PyNoneObject)
-            return PyResult.RaiseTypeError("max() with key not implemented");
+            return PyResult.RaisePySharpException("max() with key not implemented");
         if (!Utils.TryEnumeratedIterable(context, iterable, out var elements, out var err))
             return err.Value;
         PyObject? result = null;
@@ -306,7 +305,7 @@ public static partial class PyBuiltinFunctions
                 result = element;
         }
         if (result is null)
-            return PyResult.RaiseValueError("max() iterable argument is empty");
+            return PyResult.ValueError(PySR.Runtime_Builtin_Max_EmptyIterable);
         return result;
     }
 
@@ -379,7 +378,7 @@ public static partial class PyBuiltinFunctions
                 result = element;
         }
         if (result is null)
-            return PyResult.RaiseValueError("min() iterable argument is empty");
+            return PyResult.ValueError(PySR.Runtime_Builtin_Min_EmptyIterable);
         return result;
     }
 
@@ -431,7 +430,7 @@ public static partial class PyBuiltinFunctions
     {
         var start = arguments[1];
         if (start is PyStrObject)
-            return PyResult.RaiseTypeError("sum() can't sum strings [use ''.join(seq) instead]");
+            return PyResult.TypeError(PySR.Runtime_Builtin_Sum_Strings);
         if (!Utils.TryEnumeratedIterable(context, arguments[0], out var iterable, out var err))
             return err.Value;
         var result = start;
@@ -448,19 +447,13 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef("object", "name", "/")]
     private static PyResult GetAttrImpl_1(PyCallContext context, PyArguments arguments)
     {
-        var obj = arguments[0];
-        if (!Utils.TryCastStrAsArg(arguments[1], out var name, out var err, "attribute name"))
-            return err.Value;
-        return PyOperators.GetAttr(context, obj, name);
+        return PyOperators.GetAttr(context, arguments[0], arguments[1]);
     }
 
     [PyFunctionArgsDef("object", "name", "default", "/")]
     private static PyResult GetAttrImpl_2(PyCallContext context, PyArguments arguments)
     {
-        var obj = arguments[0];
-        if (!Utils.TryCastStrAsArg(arguments[1], out var name, out var err, "attribute name"))
-            return err.Value;
-        var attr = PyOperators.GetAttr(context, obj, name);
+        var attr = PyOperators.GetAttr(context, arguments[0], arguments[1]);
         if (!attr.IsAttributeError)
             return attr;
         return arguments[2];
@@ -469,17 +462,13 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef("object", "name", "value", "/")]
     private static PyResult SetAttrImpl(PyCallContext context, PyArguments arguments)
     {
-        if (!Utils.TryCastStrAsArg(arguments[1], out var name, out var err, "attribute name"))
-            return err.Value;
-        return PyOperators.SetAttr(context, arguments[0], name, arguments[2]);
+        return PyOperators.SetAttr(context, arguments[0], arguments[1], arguments[2]);
     }
 
     [PyFunctionArgsDef("object", "name", "/")]
     private static PyResult HasAttrImpl(PyCallContext context, PyArguments arguments)
     {
-        if (!Utils.TryCastStrAsArg(arguments[1], out var name, out var err, "attribute name"))
-            return err.Value;
-        var attr = PyOperators.GetAttr(context, arguments[0], name);
+        var attr = PyOperators.GetAttr(context, arguments[0], arguments[1]);
         if (attr.IsSuccessful)
             return PyBoolObject.True;
         if (attr.IsAttributeError)
@@ -515,7 +504,7 @@ public static partial class PyBuiltinFunctions
         if (result.IsError)
             return result;
         if (!Rune.TryCreate(result.Value.Int32Value, out var rune))
-            return PyResult.RaiseValueError("chr() arg not in range(0x110000)");
+            return PyResult.ValueError(PySR.Runtime_Builtin_Chr_OutOfRange);
         return PyStrObject.FromRune(rune);
     }
 
@@ -523,9 +512,9 @@ public static partial class PyBuiltinFunctions
     private static PyResult OrdImpl(PyCallContext context, PyArguments arguments)
     {
         if (arguments[0] is not PyStrObject strObj)
-            return PyResult.RaiseTypeError($"ord() expected string of length 1, but {arguments[0].PyType.Name} found");
+            return PyResult.TypeError(PySR.Runtime_Builtin_Ord_ExpectedString, arguments[0].PyType.Name);
         if (strObj.PyLength is not 1)
-            return PyResult.RaiseTypeError($"ord() expected a character, but string of length {strObj.PyLength} found");
+            return PyResult.TypeError(PySR.Runtime_Builtin_Ord_ExpectedACharacter, strObj.PyLength);
         return PyIntObject.FromInteger(strObj.PyCharAt(0).Value);
     }
 
@@ -550,10 +539,10 @@ public static partial class PyBuiltinFunctions
     private static PyResult ImportImpl(PyCallContext context, PyArguments arguments)
     {
         if (arguments[0] is not PyStrObject strObj)
-            return PyResult.RaiseTypeError("module name must be a string");
+            return PyResult.TypeError(PySR.Runtime_Builtin_Import_NameMustBeString);
         var name = strObj.Value;
         if (!context.PyEnvironment.TryLoadModule(context, name, out var module))
-            return PyResult.RaiseModuleNotFoundError($"No module named '{name}'");
+            return PyResult.ModuleNotFoundError(PySR.Runtime_Import_ModuleNotFound, name);
         return module;
     }
 
@@ -562,7 +551,7 @@ public static partial class PyBuiltinFunctions
     {
         var ret = IsInstanceForUnknown(arguments[0], arguments[1]);
         if (ret is null)
-            return PyResult.RaiseTypeError("isinstance() arg 2 must be a type or a tuple of types");
+            return PyResult.TypeError(PySR.Runtime_Builtin_IsInstance_MustBeTypeOrTupleOfTypes);
         return PyBoolObject.FromBoolean(ret.Value);
 
         static bool? IsInstanceForUnknown(PyObject obj, PyObject classInfo)
@@ -596,10 +585,10 @@ public static partial class PyBuiltinFunctions
     private static PyResult IsSubclassImpl(PyCallContext context, PyArguments arguments)
     {
         if (arguments[0] is not PyTypeObject typeObj)
-            return PyResult.RaiseTypeError("issubclass() arg 1 must be a class");
+            return PyResult.TypeError(PySR.Runtime_Builtin_IsSubclass_Arg1MustBeClass);
         var ret = IsSubclassForUnknown(typeObj, arguments[1]);
         if (ret is null)
-            return PyResult.RaiseTypeError("issubclass() arg 2 must be a type or a tuple of types");
+            return PyResult.TypeError(PySR.Runtime_Builtin_IsSubclass_Arg2MustBeTypeOrTupleOfTypes);
         return PyBoolObject.FromBoolean(ret.Value);
 
         static bool? IsSubclassForUnknown(PyTypeObject obj, PyObject classInfo)
@@ -765,9 +754,6 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef("object", "name", "/")]
     private static PyResult DelAttrImpl(PyCallContext context, PyArguments arguments)
     {
-        var obj = arguments[0];
-        if (!Utils.TryCastStrAsArg(arguments[1], out var name, out var err, "attribute name"))
-            return err.Value;
-        return PyOperators.DelAttr(context, obj, name);
+        return PyOperators.DelAttr(context, arguments[0], arguments[1]);
     }
 }

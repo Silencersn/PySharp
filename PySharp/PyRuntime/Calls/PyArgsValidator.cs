@@ -9,14 +9,17 @@ public static class PyArgsValidator
     {
         if (args.Count > expectedCount)
         {
-            err = PyResult.RaiseTypeError($"takes {expectedCount} positional arguments but {args.Count} was given");
+            err = PyResult.TypeError(PySR.Runtime_Arguments_OverflowArgs, expectedCount, args.Count);
             return false;
         }
 
         if (args.Count < expectedCount)
         {
             var missingCount = expectedCount - args.Count;
-            err = PyResult.RaiseTypeError($"missing {missingCount} required positional {(missingCount is 1 ? "argument" : "arguments")}");
+            if (missingCount is 1)
+                err = PyResult.TypeError(PySR.Runtime_Arguments_MissingArg);
+            else
+                err = PyResult.TypeError(PySR.Runtime_Arguments_MissingArgs, missingCount);
             return false;
         }
 
@@ -28,7 +31,7 @@ public static class PyArgsValidator
     {
         if (kwargs.Count > 0)
         {
-            err = PyResult.RaiseTypeError($"got an unexpected keyword argument '{kwargs.First().Key}'");
+            err = PyResult.TypeError(PySR.Runtime_Arguments_UnexpectedKey, kwargs.First().Key);
             return false;
         }
 

@@ -159,7 +159,7 @@ internal static class Utils
         return true;
     }
 
-    public static PyResult CollectionRecursiveRepr(PyCallContext context, PyObject collection, IEnumerable<PyObject> items, string startWrapper, string endWrapper, HashSet<int> ids, bool forceTrailingComma = false)
+    public static PyResult<PyStrObject> CollectionRecursiveRepr(PyCallContext context, PyObject collection, IEnumerable<PyObject> items, string startWrapper, string endWrapper, HashSet<int> ids, bool forceTrailingComma = false)
     {
         var builder = new StringBuilder().Append(startWrapper);
         var itemsCount = 0;
@@ -176,7 +176,7 @@ internal static class Utils
                     first = false;
 
                 if (!IPyObjectRecursiveRepr.TryGetRecursiveRepr(context, item, ids, out var str, out var result))
-                    return result;
+                    return result.Of<PyStrObject>();
 
                 builder.Append(str.Value);
                 itemsCount++;
@@ -195,7 +195,7 @@ internal static class Utils
         return PyStrObject.FromString(builder.ToString());
     }
 
-    public static PyResult DictionaryRecursiveRepr(PyCallContext context, PyObject collection, IEnumerable<KeyValuePair<PyObject, PyObject>> pairs, string startWrapper, string endWrapper, HashSet<int> ids)
+    public static PyResult<PyStrObject> DictionaryRecursiveRepr(PyCallContext context, PyObject collection, IEnumerable<KeyValuePair<PyObject, PyObject>> pairs, string startWrapper, string endWrapper, HashSet<int> ids)
     {
         var builder = new StringBuilder().Append(startWrapper);
 
@@ -211,10 +211,10 @@ internal static class Utils
                     first = false;
 
                 if (!IPyObjectRecursiveRepr.TryGetRecursiveRepr(context, pair.Key, ids, out var keyStr, out var keyResult))
-                    return keyResult;
+                    return keyResult.Of<PyStrObject>();
 
                 if (!IPyObjectRecursiveRepr.TryGetRecursiveRepr(context, pair.Value, ids, out var valueStr, out var valueResult))
-                    return valueResult;
+                    return valueResult.Of<PyStrObject>();
 
                 builder
                     .Append(keyStr.Value)
@@ -246,19 +246,5 @@ internal static class Utils
     {
         var slots = obj.PyType.Slots;
         return slots.Set is not null || slots.Delete is not null;
-    }
-
-    public static bool TryCastStrAsArg(PyObject pyObj, [NotNullWhen(true)] out string? str, [NotNullWhen(false)] out PyResult? err, string? argName = null)
-    {
-        if (pyObj is not PyStrObject strObj)
-        {
-            str = null;
-            err = PyResult.RaiseTypeError($"{argName ?? "arg"} must be string, not {pyObj.PyType.Name}");
-            return false;
-        }
-
-        str = strObj.Value;
-        err = null;
-        return true;
     }
 }

@@ -45,6 +45,7 @@ partial class PySR
 
     public const string Runtime_Number_CannotInterpretedAsInteger = "'{0}' object cannot be interpreted as an integer";
     public const string Runtime_Number_WrongFloatArg = "float() argument must be a string or a real number, not '{0}'";
+    public const string Runtime_Number_WrongIntArg = "int() argument must be a string, a bytes-like object or a real number, not '{0}'";
 
     public const string Runtime_Sequence_NegativeLen = "__len__() should return >= 0";
     public const string Runtime_Sequence_NoLen = "object of type '{0}' has no len()";
@@ -54,5 +55,37 @@ partial class PySR
 
     public const string Runtime_Operator_UnsupportedForDivmod = "unsupported operand type(s) for divmod(): '{0}' and '{1}'";
     public const string Runtime_Operator_UnsupportedForAbs = "bad operand type for abs(): '{0}'";
+    public const string Runtime_Operator_UnsupportedForUnary = "bad operand type for unary {0}: '{1}'";
+    public const string Runtime_Operator_UnsupportedBetween = "'{0}' not supported between instances of '{1}' and '{2}'";
+
+    public const string Runtime_Builtin_Print_WrongArgType = "{0} must be None or a string, not {1}";
+    public const string Runtime_Builtin_Max_EmptyIterable = "max() iterable argument is empty";
+    public const string Runtime_Builtin_Min_EmptyIterable = "min() iterable argument is empty";
+    public const string Runtime_Builtin_Sum_Strings = "sum() can't sum strings [use ''.join(seq) instead]";
+    public const string Runtime_Builtin_Chr_OutOfRange = "chr() arg not in range(0x110000)";
+    public const string Runtime_Builtin_Ord_ExpectedString = "ord() expected string of length 1, but {0} found";
+    public const string Runtime_Builtin_Ord_ExpectedACharacter = "ord() expected a character, but string of length {0} found";
+    public const string Runtime_Builtin_Import_NameMustBeString = "module name must be a string";
+    public const string Runtime_Builtin_IsInstance_MustBeTypeOrTupleOfTypes = "isinstance() arg 2 must be a type or a tuple of types";
+    public const string Runtime_Builtin_IsSubclass_Arg1MustBeClass = "issubclass() arg 1 must be a class";
+    public const string Runtime_Builtin_IsSubclass_Arg2MustBeTypeOrTupleOfTypes = "issubclass() arg 2 must be a type or a tuple of types";
+
+    public const string Runtime_Descriptor_GetNoneNoneInvalid = "__get__(None, None) is invalid";
+
+    public const string Runtime_ExceptionGroup_NestBaseExceptionsForExceptionGroup = "Cannot nest BaseExceptions in an ExceptionGroup";
+    public const string Runtime_ExceptionGroup_NestBaseExceptions = "Cannot nest BaseExceptions in '{0}'";
+    public const string Runtime_ExceptionGroup_SplitExpectedCondition = "expected an exception type, a tuple of exception types, or a callable (other than a class)";
+    public const string Runtime_ExceptionGroup_DeriveReturnNonGroup = "derive must return an instance of BaseExceptionGroup";
+    public const string Runtime_ExceptionGroup_NewGroup_ExcsNonSeq = "second argument (exceptions) must be a sequence";
+    public const string Runtime_ExceptionGroup_NewGroup_ExcsEmpty = "second argument (exceptions) must be a non-empty sequence";
+    public const string Runtime_ExceptionGroup_NewGroup_ExcsItemNonExc = "Item {0} of second argument (exceptions) is not an exception";
+    public const string Runtime_ExceptionGroup_NewGroup_MsgNonStr = "{0}.__new__() argument 1 must be str, not {1}";
+
+    public const string Runtime_Generator_SendNonNoneAtFirst = "can't send non-None value to a just-started generator";
+
+    public const string Runtime_Arguments_OverflowArgs = "takes {0} positional arguments but {1} was given";
+    public const string Runtime_Arguments_MissingArg = "missing 1 required positional argument";
+    public const string Runtime_Arguments_MissingArgs = "missing {0} required positional arguments";
+    public const string Runtime_Arguments_UnexpectedKey = "got an unexpected keyword argument '{0}'";
 
 }

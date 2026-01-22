@@ -123,9 +123,9 @@ partial struct PyResult
         return RaiseException(PyStandardExceptionTypes.GeneratorExit, arg);
     }
 
-    internal static PyResult RaiseModuleNotFoundError(string? arg = null)
+    internal static PyResult ModuleNotFoundError(string? format, params ReadOnlySpan<object?> args)
     {
-        return RaiseException(PyStandardExceptionTypes.ModuleNotFoundError, arg);
+        return RaiseException(PyModuleNotFoundErrorObjectType.Shared, format, args);
     }
 
     internal static PyResult RaiseImportError(string? arg = null)

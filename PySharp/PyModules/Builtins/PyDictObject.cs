@@ -36,7 +36,7 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
         return new PyDictObject(dict, true);
     }
 
-    PyResult IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<int> ids)
+    PyResult<PyStrObject> IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<int> ids)
     {
         return Utils.DictionaryRecursiveRepr(context, this, _dict, "{", "}", ids);
     }

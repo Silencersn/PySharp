@@ -41,7 +41,7 @@ public sealed class PyStaticMethodObjectType : PyTypeObject<PyStaticMethodObject
     protected override PyResult Get(PyCallContext context, PyStaticMethodObject self, PyObject instance, PyObject owner)
     {
         if (instance is PyNoneObject && owner is PyNoneObject)
-            return PyResult.RaiseTypeError("__get__(None, None) is invalid");
+            return PyResult.TypeError(PySR.Runtime_Descriptor_GetNoneNoneInvalid);
 
         return self._wrapped;
     }

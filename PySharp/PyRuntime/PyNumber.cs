@@ -9,14 +9,15 @@ internal static class PyNumber
     {
         var toInt = obj.PyType.Slots.Int;
         if (toInt is null)
-            return PyResult.RaiseTypeError($"int() argument must be a string, a bytes-like object or a real number, not '{obj.PyType.FullName}'").Of<PyIntObject>();
+            return PyResult.TypeError(PySR.Runtime_Number_WrongIntArg, obj.PyType.FullName).Of<PyIntObject>();
 
         var result = toInt(context, obj);
         if (result.IsError)
             return result.Of<PyIntObject>();
 
         if (result.Value is not PyIntObject intObj)
-            return PyResult.RaiseTypeError($"{PySpecialNames.Int} returned non-int (type {result.Value.PyType.FullName})").Of<PyIntObject>();
+            return PyResult.TypeError(PySR.Runtime_Object_SpecialMethodReturnsWrongType,
+                PySpecialNames.Int, "int", result.Value.PyType.FullName).Of<PyIntObject>();
 
         return intObj;
     }

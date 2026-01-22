@@ -58,7 +58,7 @@ public sealed class PyGeneratorExpressionObject : PyGeneratorObject
     internal override PyResult PySend(PyCallContext context, PyObject pyObject)
     {
         if (_first && pyObject is not PyNoneObject)
-            return PyResult.RaiseTypeError("can't send non-None value to a just-started generator");
+            return PyResult.TypeError(PySR.Runtime_Generator_SendNonNoneAtFirst);
 
         return GetNext(context);
     }
@@ -164,7 +164,7 @@ public sealed class PyUserDefinedGeneratorObject : PyGeneratorObject
         if (_task.Status is TaskStatus.Created)
         {
             if (pyObject is not PyNoneObject)
-                return PyResult.RaiseTypeError("can't send non-None value to a just-started generator");
+                return PyResult.TypeError(PySR.Runtime_Generator_SendNonNoneAtFirst);
 
             return StartTask(context);
         }

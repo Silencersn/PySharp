@@ -20,7 +20,7 @@ public static class PySiteFunctions
         };
 
         if (!exitCode.HasValue)
-            return PyResult.RaiseTypeError(null);
+            return PyResult.TypeError(null);
 
         context.Exit(exitCode.Value);
         return PyNoneObject.None;

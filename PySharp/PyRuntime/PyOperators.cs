@@ -152,11 +152,11 @@ public static class PyOperators
                 result = EvalReflectiveOperator(context, left, right, leftType.Slots.Ge, rightType.Slots.Le);
                 break;
             default:
-                return PyResult.RaiseTypeError($"Operator '{OperatorToString(op)}' is not supported.");
+                return PyResult.RaisePySharpException($"Operator '{OperatorToString(op)}' is not supported.");
         }
 
         if (result.IsNotImplemented)
-            return PyResult.RaiseTypeError($"'{OperatorToString(op)}' not supported between instances of '{left.PyType.Name}' and '{right.PyType.Name}'");
+            return PyResult.TypeError(PySR.Runtime_Operator_UnsupportedBetween, OperatorToString(op), left.PyType.FullName, right.PyType.FullName);
 
         return result;
     }
@@ -222,7 +222,7 @@ public static class PyOperators
         }
 
         if (result.IsNotImplemented)
-            return PyResult.RaiseTypeError($"'{OperatorToString(op)}' not supported between instances of '{left.PyType.Name}' and '{right.PyType.Name}'");
+            return PyResult.TypeError(PySR.Runtime_Operator_UnsupportedBetween, OperatorToString(op), left.PyType.FullName, right.PyType.FullName);
 
         return result;
     }
@@ -500,7 +500,7 @@ public static class PyOperators
                 return result;
         }
 
-        return PyResult.RaiseTypeError($"bad operand type for unary {op}: '{value.PyType.FullName}'");
+        return PyResult.TypeError(PySR.Runtime_Operator_UnsupportedForUnary, op, value.PyType.FullName);
     }
 
     public static PyResult Invert(PyCallContext context, PyObject value)

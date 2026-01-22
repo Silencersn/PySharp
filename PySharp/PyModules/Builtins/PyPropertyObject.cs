@@ -69,7 +69,7 @@ public sealed class PyPropertyObjectType : PyTypeObject<PyPropertyObjectType, Py
         if (instance is PyNoneObject)
         {
             if (owner is PyNoneObject)
-                return PyResult.RaiseTypeError("__get__(None, None) is invalid");
+                return PyResult.TypeError(PySR.Runtime_Descriptor_GetNoneNoneInvalid);
 
             return self;
         }
