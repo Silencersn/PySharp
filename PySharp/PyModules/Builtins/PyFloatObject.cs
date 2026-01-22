@@ -93,8 +93,8 @@ public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatO
     {
         return other switch
         {
-            PyIntObject intObj => intObj.Value.IsZero ? PyResult.RaiseZeroDivisionError("float division by zero") : PyFloatObject.FromDouble(self.Value / (double)intObj.Value),
-            PyFloatObject floatObj => floatObj.Value is 0 ? PyResult.RaiseZeroDivisionError("float division by zero") : PyFloatObject.FromDouble(self.Value / floatObj.Value),
+            PyIntObject intObj => intObj.Value.IsZero ? PyResult.ZeroDivisionError() : PyFloatObject.FromDouble(self.Value / (double)intObj.Value),
+            PyFloatObject floatObj => floatObj.Value is 0 ? PyResult.ZeroDivisionError() : PyFloatObject.FromDouble(self.Value / floatObj.Value),
             _ => base.TrueDiv(context, self, other),
         };
     }
@@ -102,8 +102,8 @@ public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatO
     {
         return other switch
         {
-            PyIntObject intObj => intObj.Value.IsZero ? PyResult.RaiseZeroDivisionError("float floor division by zero") : PyFloatObject.FromDouble(double.Floor(self.Value / (double)intObj.Value)),
-            PyFloatObject floatObj => floatObj.Value is 0 ? PyResult.RaiseZeroDivisionError("float floor division by zero") : PyFloatObject.FromDouble(double.Floor(self.Value / floatObj.Value)),
+            PyIntObject intObj => intObj.Value.IsZero ? PyResult.ZeroDivisionError() : PyFloatObject.FromDouble(double.Floor(self.Value / (double)intObj.Value)),
+            PyFloatObject floatObj => floatObj.Value is 0 ? PyResult.ZeroDivisionError() : PyFloatObject.FromDouble(double.Floor(self.Value / floatObj.Value)),
             _ => base.FloorDiv(context, self, other),
         };
     }
@@ -121,8 +121,8 @@ public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatO
     {
         return other switch
         {
-            PyIntObject intObj => intObj.Value.IsZero ? PyResult.RaiseZeroDivisionError("float modulo") : PyFloatObject.FromDouble(self.Value % (double)intObj.Value),
-            PyFloatObject floatObj => floatObj.Value is 0 ? PyResult.RaiseZeroDivisionError("float modulo") : PyFloatObject.FromDouble(self.Value % floatObj.Value),
+            PyIntObject intObj => intObj.Value.IsZero ? PyResult.ZeroDivisionError() : PyFloatObject.FromDouble(self.Value % (double)intObj.Value),
+            PyFloatObject floatObj => floatObj.Value is 0 ? PyResult.ZeroDivisionError() : PyFloatObject.FromDouble(self.Value % floatObj.Value),
             _ => base.Mod(context, self, other),
         };
     }
@@ -157,7 +157,7 @@ public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatO
     protected override PyResult RTrueDiv(PyCallContext context, PyFloatObject self, PyObject other)
     {
         if (self.Value is 0)
-            return PyResult.RaiseZeroDivisionError("float division by zero");
+            return PyResult.ZeroDivisionError();
 
         return other switch
         {
@@ -169,7 +169,7 @@ public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatO
     protected override PyResult RFloorDiv(PyCallContext context, PyFloatObject self, PyObject other)
     {
         if (self.Value is 0)
-            return PyResult.RaiseZeroDivisionError("float floor division by zero");
+            return PyResult.ZeroDivisionError();
 
         return other switch
         {
@@ -191,7 +191,7 @@ public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatO
     protected override PyResult RMod(PyCallContext context, PyFloatObject self, PyObject other)
     {
         if (self.Value is 0)
-            return PyResult.RaiseZeroDivisionError("float modulo");
+            return PyResult.ZeroDivisionError();
 
         return other switch
         {

@@ -67,12 +67,28 @@ partial class PySR
     public const string Runtime_Number_Int_ConvertNonStr = "int() can't convert non-string with explicit base";
     public const string Runtime_Number_Int_InvalidLiteral = "invalid literal for int() with base {0}: '{1}'";
     public const string Runtime_Number_Float_WrongArg = "float() argument must be a string or a real number, not '{0}'";
+    public const string Runtime_Number_PowWithZeroModulo = "pow() 3rd argument cannot be 0";
+    public const string Runtime_Number_DivisionByZero = "division by zero";
 
     public const string Runtime_Sequence_NegativeLen = "__len__() should return >= 0";
     public const string Runtime_Sequence_NoLen = "object of type '{0}' has no len()";
     public const string Runtime_Sequence_NonIterable = "'{0}' object is not iterable";
     public const string Runtime_Sequence_IterReturnsNonIterator = "iter() returned non-iterator of type '{0}'";
     public const string Runtime_Sequence_NonSubscriptable = "'{0}' object is not subscriptable";
+
+    public const string Runtime_List_ItemNotFound = "list.{0}(x): x not in list";
+    public const string Runtime_List_PopIndexOutOfRange = "pop index out of range";
+    public const string Runtime_List_IndexOutOfRange = "list index out of range";
+
+    public const string Runtime_Dictionary_UpdateEltLengthNotMatch = "dictionary update sequence element #{0} has length {1}; 2 is required";
+    public const string Runtime_Dictionary_PopEmptyDict = "popitem(): dictionary is empty";
+
+    public const string Runtime_Range_Arg3Zero = "range() arg 3 must not be zero";
+
+    public const string Runtime_Zip_SecondShorterThanFirst = "zip() argument 2 is shorter than argument 1";
+    public const string Runtime_Zip_NthShorterThanPrevious = "zip() argument {0} is shorter than arguments 1-{1}";
+    public const string Runtime_Zip_SecondLongerThanFirst = "zip() argument 2 is longer than argument 1";
+    public const string Runtime_Zip_NthLongerThanPrevious = "zip() argument {0} is longer than arguments 1-{1}";
 
     public const string Runtime_Operator_UnsupportedForDivmod = "unsupported operand type(s) for divmod(): '{0}' and '{1}'";
     public const string Runtime_Operator_UnsupportedForAbs = "bad operand type for abs(): '{0}'";

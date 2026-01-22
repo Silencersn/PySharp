@@ -95,7 +95,7 @@ internal static class Utils
             if (pair.Count is not 2)
             {
                 result = null;
-                err = PyResult.RaiseValueError($"dictionary update sequence element #{i} has length {pair.Count}; 2 is required");
+                err = PyResult.ValueError(PySR.Runtime_Dictionary_UpdateEltLengthNotMatch, i, pair.Count);
                 return false;
             }
 

@@ -90,20 +90,20 @@ public sealed class PyComplexObjectType : PyTypeObject<PyComplexObjectType, PyCo
         if (other is PyComplexObject c)
         {
             if (c.Value == System.Numerics.Complex.Zero)
-                return PyResult.RaiseZeroDivisionError(null);
+                return PyResult.ZeroDivisionError();
             return PyComplexObject.FromComplex(self.Value / c.Value);
         }
         if (other is PyIntObject i)
         {
             double v = (double)i.Value;
             if (v == 0)
-                return PyResult.RaiseZeroDivisionError(null);
+                return PyResult.ZeroDivisionError();
             return PyComplexObject.FromComplex(self.Value / new Complex(v, 0));
         }
         if (other is PyFloatObject f)
         {
             if (f.Value == 0)
-                return PyResult.RaiseZeroDivisionError(null);
+                return PyResult.ZeroDivisionError();
             return PyComplexObject.FromComplex(self.Value / new Complex(f.Value, 0));
         }
         return base.TrueDiv(context, self, other);

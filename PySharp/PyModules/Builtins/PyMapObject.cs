@@ -74,7 +74,7 @@ public sealed class PyMapObjectType : PyTypeObject<PyMapObjectType, PyMapObject>
         if (args.Count != self._iters.Length)
         {
             if (self._strict)
-                return PyResult.RaiseValueError(null);
+                return PyResult.ValueError(null);
             return PyResult.RaiseStopIteration();
         }
         return self._function.Call(context, args, FrozenDictionary<string, PyObject>.Empty);

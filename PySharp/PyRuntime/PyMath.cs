@@ -22,12 +22,12 @@ internal static class PyMath
 
             case PyOperatorTypes.TrueDiv:
                 if (right.Value.IsZero)
-                    return PyResult.RaiseZeroDivisionError("division by zero");
+                    return PyResult.ZeroDivisionError();
                 return PyFloatObject.FromDouble((double)left.Value / (double)right.Value);
 
             case PyOperatorTypes.FloorDiv:
                 if (right.Value.IsZero)
-                    return PyResult.RaiseZeroDivisionError("integer division or modulo by zero");
+                    return PyResult.ZeroDivisionError();
                 var (q, r) = BigInteger.DivRem(left.Value, right.Value);
                 if (r.IsZero || BigInteger.IsPositive(q))
                     return PyIntObject.FromInteger(q);
@@ -35,7 +35,7 @@ internal static class PyMath
 
             case PyOperatorTypes.Mod:
                 if (right.Value.IsZero)
-                    return PyResult.RaiseZeroDivisionError("integer modulo by zero");
+                    return PyResult.ZeroDivisionError();
 
                 if (left.Value.IsZero)
                     return PyIntObject.Zero;
@@ -59,7 +59,7 @@ internal static class PyMath
                         return PyNotImplementedObject.NotImplemented;
 
                     if (moduloObj.Value.IsZero)
-                        return PyResult.RaiseValueError("pow() 3rd argument cannot be 0");
+                        return PyResult.ValueError(PySR.Runtime_Number_PowWithZeroModulo);
 
                     if (right.Value >= 0)
                         return PyIntObject.FromInteger(BigInteger.ModPow(left.Value, right.Value, moduloObj.Value));

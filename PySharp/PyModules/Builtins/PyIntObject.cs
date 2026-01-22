@@ -126,7 +126,7 @@ public class PyIntObjectType : PyTypeObject<PyIntObjectType, PyIntObject>
             return PyResult.TypeError(PySR.Runtime_Number_Int_CannotInterpretedAsInt, arguments.Args[1].PyType.FullName);
 
         if (!((numBase.Value >= 2 && numBase.Value <= 36) || numBase.Value.IsZero))
-            return PyResult.RaiseValueError(PySR.Runtime_Number_Int_BaseOutOfRange);
+            return PyResult.ValueError(PySR.Runtime_Number_Int_BaseOutOfRange);
 
         if (arguments.Args[0] is PyStrObject str)
         {

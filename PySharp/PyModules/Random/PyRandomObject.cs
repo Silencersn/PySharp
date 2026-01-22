@@ -77,7 +77,7 @@ public sealed class PyRandomObjectType : PyTypeObject<PyRandomObjectType, PyRand
         if (result.IsError)
             return result;
         if (result.Value.Value <= 0)
-            return PyResult.RaiseValueError("empty range for randrange()");
+            return PyResult.ValueError(PySR.Runtime_Random_EmptyRangeForRandRange);
         var randResult = self.PyRandRange(BigInteger.Zero, result.Value.Value, BigInteger.One);
         Debug.Assert(randResult is not null);
         return PyIntObject.FromInteger(randResult.Value);
@@ -98,12 +98,12 @@ public sealed class PyRandomObjectType : PyTypeObject<PyRandomObjectType, PyRand
 
         var (start, stop, step) = (startResult.Value.Value, stopResult.Value.Value, stepResult.Value.Value);
         if (step == 0)
-            return PyResult.RaiseValueError("zero step for randrange()");
+            return PyResult.ValueError(PySR.Runtime_Random_ZeroStepForRandRange);
         if (step > 0 && start >= stop || step < 0 && stop >= start)
         {
             if (step == 1)
-                return PyResult.RaiseValueError($"empty range in randrange({start}, {stop})");
-            return PyResult.RaiseValueError($"empty range in randrange({start}, {stop}, {step})");
+                return PyResult.ValueError(PySR.Runtime_Random_EmptyRangeInRandRange2Args, start, stop);
+            return PyResult.ValueError(PySR.Runtime_Random_EmptyRangeInRandRange3Args, start, stop, step);
         }
         var randResult = self.PyRandRange(start, stop, step);
         Debug.Assert(randResult is not null);
@@ -121,7 +121,7 @@ public sealed class PyRandomObjectType : PyTypeObject<PyRandomObjectType, PyRand
             return bResult;
         var (a, b) = (aResult.Value, bResult.Value);
         if (a.Value > b.Value)
-            return PyResult.RaiseValueError($"empty range in randrange({a.Value}, {b.Value + 1})");
+            return PyResult.ValueError(PySR.Runtime_Random_EmptyRangeInRandRange2Args, a.Value, b.Value + 1);
         var randResult = self.PyRandInt(a.Value, b.Value);
         Debug.Assert(randResult is not null);
         return PyIntObject.FromInteger(randResult.Value);

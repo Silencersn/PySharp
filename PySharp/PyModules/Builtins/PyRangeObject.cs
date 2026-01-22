@@ -107,7 +107,7 @@ public sealed class PyRangeObjectType : PyTypeObject<PyRangeObjectType, PyRangeO
             if (args[2] is not PyIntObject stepObj)
                 return PyResult.TypeError(null);
             if (stepObj.Value.IsZero)
-                return PyResult.RaiseValueError("range() arg 3 must not be zero");
+                return PyResult.ValueError(PySR.Runtime_Range_Arg3Zero);
             return PyRangeObject.CreateRange(startObj.Value, stopObj.Value, stepObj.Value);
         }
         return PyResult.TypeError(null);

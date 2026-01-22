@@ -120,7 +120,7 @@ public static class PySpecialMethods
             if (result.Value.Value >= 0)
                 return result;
 
-            return PyResult.RaiseValueError(PySR.Runtime_Sequence_NegativeLen).Of<PyIntObject>();
+            return PyResult.ValueError(PySR.Runtime_Sequence_NegativeLen).Of<PyIntObject>();
         }
 
         return PyResult.TypeError(PySR.Runtime_Sequence_NoLen, obj.PyType.FullName).Of<PyIntObject>();

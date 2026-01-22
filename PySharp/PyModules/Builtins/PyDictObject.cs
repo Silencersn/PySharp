@@ -177,7 +177,7 @@ public sealed class PyDictObjectType : PyTypeObject<PyDictObjectType, PyDictObje
     {
         if (self.PyTryPopItem(out var key, out var value))
             return PyTupleObject.CreateTuple(key, value);
-        return PyResult.RaiseKeyError("popitem(): dictionary is empty");
+        return PyResult.RaiseKeyError(PySR.Runtime_Dictionary_PopEmptyDict);
     }
 
     [PyFunctionArgsDef()]

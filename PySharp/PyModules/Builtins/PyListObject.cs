@@ -77,7 +77,7 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
         var result = PySpecialMethods.Index(context, item);
         if (result.IsError)
             return result;
-        return Utils.GetListItem(self._list, result.Value.Int32Value, "list index out of range");
+        return Utils.GetListItem(self._list, result.Value.Int32Value, PySR.Runtime_List_IndexOutOfRange);
     }
 
     protected override PyResult SetItem(PyCallContext context, PyListObject self, PyObject key, PyObject value)
@@ -86,7 +86,7 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
         if (result.IsError)
             return result;
         if (!Utils.TrySetListItem(self._list, result.Value.Int32Value, value))
-            return PyResult.RaiseIndexError("list index out of range");
+            return PyResult.RaiseIndexError(PySR.Runtime_List_IndexOutOfRange);
         return PyNoneObject.None;
     }
 
@@ -153,7 +153,7 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
     {
         if (self.PyRemove(arguments[0]))
             return PyNoneObject.None;
-        return PyResult.RaiseValueError("list.remove(x): x not in list");
+        return PyResult.ValueError(PySR.Runtime_List_ItemNotFound, "remove");
     }
 
     [PyFunctionArgsDef("i=-1", "/")]
@@ -163,7 +163,7 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
         if (result.IsError)
             return result;
         if (Utils.IsIndexOutOfRange(result.Value.Int32Value, self._list.Count))
-            return PyResult.RaiseIndexError("IndexError: pop index out of range");
+            return PyResult.RaiseIndexError(PySR.Runtime_List_PopIndexOutOfRange);
         return self.PyPop(result.Value.Int32Value);
     }
 
@@ -184,7 +184,7 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
             if (result.IsError)
                 return result;
 
-            return PyResult.RaiseValueError($"ValueError: {result.Value.Value} is not in list");
+            return PyResult.ValueError(PySR.Runtime_List_ItemNotFound, "index");
         }
         return PyIntObject.FromInteger(index);
     }
@@ -202,7 +202,7 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
             if (reprResult.IsError)
                 return reprResult;
 
-            return PyResult.RaiseValueError($"ValueError: {reprResult.Value.Value} is not in list");
+            return PyResult.ValueError(PySR.Runtime_List_ItemNotFound, "index");
         }
         return PyIntObject.FromInteger(index);
     }
@@ -223,7 +223,7 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
             if (reprResult.IsError)
                 return reprResult;
 
-            return PyResult.RaiseValueError($"ValueError: {reprResult.Value.Value} is not in list");
+            return PyResult.ValueError(PySR.Runtime_List_ItemNotFound, "index");
         }
         return PyIntObject.FromInteger(index);
     }

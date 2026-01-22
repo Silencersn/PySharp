@@ -92,7 +92,9 @@ public sealed class PyZipObjectType : PyTypeObject<PyZipObjectType, PyZipObject>
                         }
                         else if (self._strict)
                         {
-                            return PyResult.RaiseValueError($"zip() argument {i + 1} is shorter than {(i > 1 ? $"arguments 1-{i}" : "argument 1")}");
+                            if (i is 1)
+                                return PyResult.ValueError(PySR.Runtime_Zip_SecondShorterThanFirst);
+                            return PyResult.ValueError(PySR.Runtime_Zip_NthShorterThanPrevious, i + 1, i);
                         }
                     }
                 }
@@ -104,8 +106,11 @@ public sealed class PyZipObjectType : PyTypeObject<PyZipObjectType, PyZipObject>
             else
             {
                 if (allNoItem && self._strict)
-                    return PyResult.RaiseValueError($"zip() argument {i + 1} is longer than {(i > 1 ? $"arguments 1-{i}" : "argument 1")}");
-
+                {
+                    if (i is 1)
+                        return PyResult.ValueError(PySR.Runtime_Zip_SecondLongerThanFirst);
+                    return PyResult.ValueError(PySR.Runtime_Zip_NthLongerThanPrevious, i + 1, i);
+                }
                 list.Add(item.Value);
             }
         }

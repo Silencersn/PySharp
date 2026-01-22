@@ -159,7 +159,7 @@ public sealed class PyQueueObjectType : PyTypeObject<PyQueueObjectType, PyQueueO
     {
         if (self.PyTryTaskDone())
             return PyNoneObject.None;
-        return PyResult.RaiseValueError("task_done() called too many times");
+        return PyResult.ValueError(PySR.Runtime_Queue_TaskDoneCalledTooMany);
     }
 
     [PyFunctionArgsDef()]

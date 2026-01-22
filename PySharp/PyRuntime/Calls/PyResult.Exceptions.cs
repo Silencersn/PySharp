@@ -35,10 +35,6 @@ partial struct PyResult
         return RaiseException(PyTypeErrorObjectType.Shared, format, args);
     }
 
-    internal static PyResult RaiseValueError(string? arg = null)
-    {
-        return RaiseException(PyStandardExceptionTypes.ValueError, arg);
-    }
     internal static PyResult ValueError(string? format, params ReadOnlySpan<object?> args)
     {
         return RaiseException(PyValueErrorObjectType.Shared, format, args);
@@ -78,10 +74,10 @@ partial struct PyResult
     {
         return RaiseException(PyStandardExceptionTypes.AssertionError, arg);
     }
-
-    internal static PyResult RaiseZeroDivisionError(string? arg = null)
+    
+    internal static PyResult ZeroDivisionError(string? format = PySR.Runtime_Number_DivisionByZero, params ReadOnlySpan<object?> args)
     {
-        return RaiseException(PyStandardExceptionTypes.ZeroDivisionError, arg);
+        return RaiseException(PyZeroDivisionErrorObjectType.Shared, format, args);
     }
 
     internal static PyResult RaiseAttributeError(string? arg = null)
