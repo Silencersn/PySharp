@@ -146,7 +146,7 @@ partial class PyTypeObject
     internal static PyResult DefaultFormat(PyCallContext context, PyObject self, PyObject formatSpec)
     {
         if (formatSpec is not PyStrObject str)
-            return PyResult.TypeError(PySR.Runtime_Object_FormatArgumentNonString, formatSpec.PyType.FullName);
+            return PyResult.TypeError(PySR.Runtime_Object_FormatArg2NonString, formatSpec.PyType.FullName);
 
         if (str.Value.Length is 0)
             return PySpecialMethods.Str(context, self);

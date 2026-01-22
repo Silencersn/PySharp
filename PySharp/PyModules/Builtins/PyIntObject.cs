@@ -108,7 +108,7 @@ public class PyIntObjectType : PyTypeObject<PyIntObjectType, PyIntObject>
         if (arguments.Args[0] is PyStrObject str)
         {
             if (!BigIntegerHelper.TryParse(str.Value, 10, out var integer))
-                return PyResult.RaiseValueError($"invalid literal for int() with base 10: '{str.Value}'");
+                return PyResult.ValueError(PySR.Runtime_Number_Int_InvalidLiteral, 10, str.Value);
 
             return PyIntObject.FromInteger(integer);
         }
@@ -123,20 +123,20 @@ public class PyIntObjectType : PyTypeObject<PyIntObjectType, PyIntObject>
     private static PyResult NewImpl_2(PyCallContext context, PyArguments arguments)
     {
         if (arguments.Args[1] is not PyIntObject numBase)
-            return PyResult.RaiseTypeError($"'{arguments.Args[1].PyType.Name}' object cannot be interpreted as an integer");
+            return PyResult.TypeError(PySR.Runtime_Number_Int_CannotInterpretedAsInt, arguments.Args[1].PyType.FullName);
 
         if (!((numBase.Value >= 2 && numBase.Value <= 36) || numBase.Value.IsZero))
-            return PyResult.RaiseValueError("int() base must be >= 2 and <= 36, or 0");
+            return PyResult.RaiseValueError(PySR.Runtime_Number_Int_BaseOutOfRange);
 
         if (arguments.Args[0] is PyStrObject str)
         {
             if (!BigIntegerHelper.TryParse(str.Value, numBase.Int32Value, out var result))
-                return PyResult.RaiseValueError($"invalid literal for int() with base {numBase.Value}: '{str.Value}'");
+                return PyResult.ValueError(PySR.Runtime_Number_Int_InvalidLiteral, numBase.Value, str.Value);
 
             return PyIntObject.FromInteger(result);
         }
 
-        return PyResult.RaiseTypeError("int() can't convert non-string with explicit base");
+        return PyResult.TypeError(PySR.Runtime_Number_Int_ConvertNonStr);
 
     }
 

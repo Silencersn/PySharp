@@ -101,7 +101,7 @@ public sealed class PyObjectType : PyTypeObject<PyObjectType, PyObject>
     {
         if (ReferenceEquals(cls, this) /* Do we need to consider an externally created PyObjectType? */
             && (args.Count is not 0 || kwargs.Count is not 0))
-            return PyResult.RaiseTypeError("object.__new__() takes exactly one argument (the type to instantiate)");
+            return PyResult.TypeError(PySR.Runtime_Object_NewTakesExactlyOneArg);
 
         return new PyObject { _pyType = cls };
     }

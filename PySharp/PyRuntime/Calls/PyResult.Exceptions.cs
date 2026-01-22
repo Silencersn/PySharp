@@ -14,7 +14,7 @@ partial struct PyResult
         else if (pyObject is PyExceptionObject exceptionObject)
             return FromException(exceptionObject);
 
-        return RaiseTypeError($"exceptions must be classes or instances deriving from BaseException, not {pyObject.PyType.Name}");
+        return TypeError($"exceptions must be classes or instances deriving from BaseException, not {pyObject.PyType.Name}");
     }
 
     internal static PyResult RaiseException(PyExceptionType exceptionType)
@@ -28,11 +28,6 @@ partial struct PyResult
     internal static PyResult RaiseException(PyExceptionType exceptionType, PyObject? arg)
     {
         return FromException(exceptionType.Create(arg));
-    }
-
-    internal static PyResult RaiseTypeError(string? arg)
-    {
-        return RaiseException(PyStandardExceptionTypes.TypeError, arg);
     }
 
     internal static PyResult TypeError(string? format, params ReadOnlySpan<object?> args)

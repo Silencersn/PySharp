@@ -37,7 +37,7 @@ public sealed class PyMethodDescriptorObjectType : PyTypeObject<PyMethodDescript
             return self;
 
         if (!self._declaringType.IsInstance(instance))
-            return PyResult.RaiseTypeError($"descriptor '{self._name}' requires a '{self._declaringType.Name}' object but received a '{instance.PyType.Name}'");
+            return PyResult.TypeError(PySR.Runtime_Descriptor_ReceiveObjectOfWrongType, self._name, self._declaringType.FullName, instance.PyType.FullName);
 
         return PyBuiltinFunctionOrMethodObject.CreateBoundMethodFromUnbound(self._name, instance, instance.PyType, self._uncompoundedDelegate);
     }
@@ -45,10 +45,10 @@ public sealed class PyMethodDescriptorObjectType : PyTypeObject<PyMethodDescript
     protected override PyResult Call(PyCallContext context, PyMethodDescriptorObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (args.Count is 0)
-            return PyResult.RaiseTypeError($"descriptor '{self._name}' of '{self._declaringType.Name}' object needs an argument");
+            return PyResult.TypeError(PySR.Runtime_Descriptor_NeedsArg, self._name, self._declaringType.FullName);
 
         if (!self._declaringType.IsInstance(args[0]))
-            return PyResult.RaiseTypeError($"descriptor '{self._name}' requires a '{self._declaringType.Name}' object but received a '{args[0].PyType.Name}'");
+            return PyResult.TypeError(PySR.Runtime_Descriptor_ReceiveObjectOfWrongType, self._name, self._declaringType.FullName, args[0].PyType.FullName);
 
         return self.UnboundMethod.Call(context, args, kwargs);
     }

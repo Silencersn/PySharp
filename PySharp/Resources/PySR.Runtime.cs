@@ -33,19 +33,40 @@ partial class PySR
 
     public const string Runtime_Type_MethodReceiveSelfWithWrongType = "'{0}' requires a '{1}' object but received a '{2}'";
     public const string Runtime_Type_AttributeNotFound = "type object '{0}' has no attribute '{1}'";
+    public const string Runtime_Type_CannotCreateInstance = "cannot create '{0}' instances";
+    public const string Runtime_Type_NewClsNonType = "{0}.__new__(X): X is not a type object ({1})";
+    public const string Runtime_Type_NewClsNotSubtype = "{0}.__new__({1}): {1} is not a subtype of {0}";
+    public const string Runtime_Type_NewClsNotSafe = "{0}.__new__({1}) is not safe, use {1}.__new__()";
+    public const string Runtime_Type_SetImmutable = "cannot set '{0}' attribute of immutable type '{1}'";
 
     public const string Runtime_Object_SpecialMethodReturnsWrongType = "{0} returned non-{1} (type {2})";
     public const string Runtime_Object_Unhashable = "unhashable type: '{0}'";
     public const string Runtime_Object_NonCallable = "'{0}' object is not callable";
     public const string Runtime_Object_FormatReturnsNonString = "__format__ must return a str, not {0}";
-    public const string Runtime_Object_FormatArgumentNonString = "format() argument 2 must be str, not {0}";
+    public const string Runtime_Object_FormatArg2NonString = "format() argument 2 must be str, not {0}";
     public const string Runtime_Object_FormatUnsupported = "unsupported format string passed to {0}.__format__";
+    public const string Runtime_Object_FormatSpecInvalid = "Invalid format specifier '{0}' for object of type '{1}'";
     public const string Runtime_Object_AttributeMustBeString = "attribute name must be string, not '{0}'";
     public const string Runtime_Object_AttributeNotFound = "'{0}' object has no attribute '{1}'";
+    public const string Runtime_Object_NewTakesExactlyOneArg = "object.__new__() takes exactly one argument (the type to instantiate)";
 
-    public const string Runtime_Number_CannotInterpretedAsInteger = "'{0}' object cannot be interpreted as an integer";
-    public const string Runtime_Number_WrongFloatArg = "float() argument must be a string or a real number, not '{0}'";
-    public const string Runtime_Number_WrongIntArg = "int() argument must be a string, a bytes-like object or a real number, not '{0}'";
+    public const string Runtime_String_IndexOutOfRange = "string index out of range";
+    public const string Runtime_String_AddNonStr = "can only concatenate str (not \"{0}\") to str";
+    public const string Runtime_String_JoinNonStrAt = "sequence item {0}: expected str instance, {1} found";
+
+    public const string Runtime_Super_ObjNotMatchType = "super(type, obj): obj must be an instance or subtype of type";
+    public const string Runtime_Super_NoArgs = "super(): no arguments";
+    public const string Runtime_Super_ClassCellNotFound = "super(): __class__ cell not found";
+    public const string Runtime_Super_ClassCellEmpty = "super(): empty __class__ cell";
+    public const string Runtime_Super_ClassNonType = "super(): __class__ is not a type ({0})";
+    public const string Runtime_Super_Arg1MustBeType = "super() argument 1 must be a type, not {0}";
+
+    public const string Runtime_Number_Int_CannotInterpretedAsInt = "'{0}' object cannot be interpreted as an integer";
+    public const string Runtime_Number_Int_WrongArg = "int() argument must be a string, a bytes-like object or a real number, not '{0}'";
+    public const string Runtime_Number_Int_BaseOutOfRange = "int() base must be >= 2 and <= 36, or 0";
+    public const string Runtime_Number_Int_ConvertNonStr = "int() can't convert non-string with explicit base";
+    public const string Runtime_Number_Int_InvalidLiteral = "invalid literal for int() with base {0}: '{1}'";
+    public const string Runtime_Number_Float_WrongArg = "float() argument must be a string or a real number, not '{0}'";
 
     public const string Runtime_Sequence_NegativeLen = "__len__() should return >= 0";
     public const string Runtime_Sequence_NoLen = "object of type '{0}' has no len()";
@@ -71,6 +92,8 @@ partial class PySR
     public const string Runtime_Builtin_IsSubclass_Arg2MustBeTypeOrTupleOfTypes = "issubclass() arg 2 must be a type or a tuple of types";
 
     public const string Runtime_Descriptor_GetNoneNoneInvalid = "__get__(None, None) is invalid";
+    public const string Runtime_Descriptor_ReceiveObjectOfWrongType = "descriptor '{0}' requires a '{1}' object but received a '{2}'";
+    public const string Runtime_Descriptor_NeedsArg = "descriptor '{0}' of '{1}' object needs an argument";
 
     public const string Runtime_ExceptionGroup_NestBaseExceptionsForExceptionGroup = "Cannot nest BaseExceptions in an ExceptionGroup";
     public const string Runtime_ExceptionGroup_NestBaseExceptions = "Cannot nest BaseExceptions in '{0}'";

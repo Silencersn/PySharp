@@ -259,10 +259,11 @@ public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatO
     protected override PyResult Format(PyCallContext context, PyFloatObject self, PyObject formatSpec)
     {
         if (formatSpec is not PyStrObject str)
-            return PyResult.RaiseTypeError($"format() argument 2 must be str, not {formatSpec.PyType.FullName}");
+            return PyResult.TypeError(PySR.Runtime_Object_FormatArg2NonString, formatSpec.PyType.FullName);
 
         if (!PyFormatSpec.TryParse(str.Value, out var spec))
-            return PyResult.RaiseValueError($"Invalid format specifier '{str.Value}' for object of type '{Name}'");
+            return PyResult.ValueError(PySR.Runtime_Object_FormatSpecInvalid, str.Value, self.PyType.FullName);
+
         int precision = spec.Precision ?? 6;
         string text;
         if (!double.IsNormal(self.Value))

@@ -44,7 +44,12 @@ partial class PyTypeObject<TObject>
     {
         // TODO: how to define immutable type
         if (self.IsImmutable)
-            return PyResult.RaiseTypeError($"cannot set '{key}' attribute of immutable type '{Name}'");
+        {
+            if (key is not PyStrObject str)
+                return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, key.PyType.FullName);
+
+            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, str.Value, self.PyType.FullName);
+        }
 
         return DefaultSetAttr(context, self, key, value);
     }
@@ -53,8 +58,12 @@ partial class PyTypeObject<TObject>
     {
         // TODO: how to define immutable type
         if (self.IsImmutable)
-            return PyResult.RaiseTypeError($"cannot set '{item}' attribute of immutable type '{Name}'");
+        {
+            if (item is not PyStrObject str)
+                return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, item.PyType.FullName);
 
+            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, str.Value, self.PyType.FullName);
+        }
         return DefaultDelAttr(context, self, item);
     }
 

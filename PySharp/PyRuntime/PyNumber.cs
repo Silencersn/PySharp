@@ -9,7 +9,7 @@ internal static class PyNumber
     {
         var toInt = obj.PyType.Slots.Int;
         if (toInt is null)
-            return PyResult.TypeError(PySR.Runtime_Number_WrongIntArg, obj.PyType.FullName).Of<PyIntObject>();
+            return PyResult.TypeError(PySR.Runtime_Number_Int_WrongArg, obj.PyType.FullName).Of<PyIntObject>();
 
         var result = toInt(context, obj);
         if (result.IsError)

@@ -151,13 +151,13 @@ partial class PyTypeObject<TObject>
         var method = PyBuiltinFunctionOrMethodObject.CreateBoundMethodFromBound(PySpecialNames.New, this, null! /* TODO */, [PyFunctionArgsDef("cls", "*args", "**kwargs")] (context, arguments) =>
         {
             if (arguments[0] is not PyTypeObject cls)
-                return PyResult.RaiseTypeError($"{FullName}.__new__(X): X is not a type object ({arguments[0].PyType.FullName})");
+                return PyResult.TypeError(PySR.Runtime_Type_NewClsNonType, FullName, arguments[0].PyType.FullName);
 
             if (!cls.IsSubclassOf(this))
-                return PyResult.RaiseTypeError($"{FullName}.__new__({cls.FullName}): {cls.FullName} is not a subtype of {FullName}");
+                return PyResult.TypeError(PySR.Runtime_Type_NewClsNotSubtype, FullName, cls.FullName);
 
             if (cls.LayoutType.IsSubclassOf(LayoutType))
-                return PyResult.RaiseTypeError($"{FullName}.__new__({cls.FullName}) is not safe, use {cls.FullName}.__new__()");
+                return PyResult.TypeError(PySR.Runtime_Type_NewClsNotSafe, FullName, cls.FullName);
             Debug.Assert(cls.LayoutType == LayoutType || LayoutType.IsSubclassOf(cls.LayoutType));
 
             return New(context, cls, arguments.ExtraArgs, arguments.ExtraKwargs);

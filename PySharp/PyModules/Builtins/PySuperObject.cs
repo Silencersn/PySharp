@@ -53,7 +53,7 @@ public class PySuperObject : PyObject
         if (type.IsInstance(objectOrType))
             return new PySuperObject(type, objectOrType);
 
-        return PyResult.RaiseTypeError("super(type, obj): obj must be an instance or subtype of type");
+        return PyResult.TypeError(PySR.Runtime_Super_ObjNotMatchType);
     }
 }
 
@@ -70,20 +70,20 @@ public sealed class PySuperObjectType : PyTypeObject<PySuperObjectType, PySuperO
         var frame = context.CurrentFrame;
         if (frame.CallingArguments is null)
             // TODO: in what situations would this happen?
-            return PyResult.RaiseRuntimeError("super(): no arguments");
+            return PyResult.RaiseRuntimeError(PySR.Runtime_Super_NoArgs);
 
         var (args, _) = frame.CallingArguments.Value;
         if (args.Count is 0)
-            return PyResult.RaiseRuntimeError("super(): no arguments");
+            return PyResult.RaiseRuntimeError(PySR.Runtime_Super_NoArgs);
 
         if (frame.InternalClosure is null || !frame.InternalClosure.TryGetValue(PySpecialNames.Class, out var cell))
-            return PyResult.RaiseRuntimeError("super(): __class__ cell not found");
+            return PyResult.RaiseRuntimeError(PySR.Runtime_Super_ClassCellNotFound);
 
         if (cell.Value is null)
-            return PyResult.RaiseRuntimeError("super(): empty __class__ cell");
+            return PyResult.RaiseRuntimeError(PySR.Runtime_Super_ClassCellEmpty);
 
         if (cell.Value is not PyTypeObject type)
-            return PyResult.RaiseRuntimeError($"super(): __class__ is not a type ({cell.Value.PyType.Name})");
+            return PyResult.RaiseRuntimeError(PySR.Format(PySR.Runtime_Super_ClassNonType, cell.Value.PyType.FullName));
 
         return PySuperObject.CreateSuper(type, args[0]);
     }
@@ -92,7 +92,7 @@ public sealed class PySuperObjectType : PyTypeObject<PySuperObjectType, PySuperO
     private static PyResult NewImpl_2(PyCallContext context, PyArguments arguments)
     {
         if (arguments[0] is not PyTypeObject type)
-            return PyResult.RaiseTypeError($"super() argument 1 must be a type, not {arguments[0].PyType.Name}");
+            return PyResult.TypeError(PySR.Runtime_Super_Arg1MustBeType, arguments[0].PyType.Name);
 
         return PySuperObject.CreateSuper(type, arguments[1]);
     }
@@ -109,7 +109,7 @@ public sealed class PySuperObjectType : PyTypeObject<PySuperObjectType, PySuperO
     protected override PyResult GetAttribute(PyCallContext context, PySuperObject self, PyObject item)
     {
         if (item is not PyStrObject str)
-            return PyResult.RaiseTypeError($"attribute name must be string, not '{item.PyType.FullName}'");
+            return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, item.PyType.FullName);
 
         PyTypeObject startType = self._type.IsInstance(self._object) ? self._object.PyType : (PyTypeObject)self._object;
         var iter = startType.MRO.GetEnumerator();

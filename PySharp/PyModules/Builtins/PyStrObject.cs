@@ -104,14 +104,14 @@ public sealed class PyStrObjectType : PyTypeObject<PyStrObjectType, PyStrObject>
         var index = result.Value.Int32Value;
         index = Utils.MapIndex(index, self.PyLength);
         if (index < 0 || index >= self.PyLength)
-            return PyResult.RaiseIndexError("string index out of range");
+            return PyResult.RaiseIndexError(PySR.Runtime_String_IndexOutOfRange);
         return PyStrObject.FromRune(self.Value.EnumerateRunes().ElementAt(index));
     }
     protected override PyResult Add(PyCallContext context, PyStrObject self, PyObject other)
     {
         if (other is PyStrObject strObj)
             return PyStrObject.FromString(self.Value + strObj.Value);
-        return PyResult.RaiseTypeError($"can only concatenate str (not \"{other.PyType.Name}\") to str");
+        return PyResult.TypeError(PySR.Runtime_String_AddNonStr, other.PyType.FullName);
     }
     protected override PyResult Eq(PyCallContext context, PyStrObject self, PyObject other)
     {

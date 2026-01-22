@@ -86,7 +86,7 @@ public static class PySpecialMethods
         if (func is not null)
             return ValidateResultOf<PyIntObject>(func(context, obj), MessageCreator);
 
-        return PyResult.TypeError(PySR.Runtime_Number_CannotInterpretedAsInteger, obj.PyType.FullName).Of<PyIntObject>();
+        return PyResult.TypeError(PySR.Runtime_Number_Int_CannotInterpretedAsInt, obj.PyType.FullName).Of<PyIntObject>();
 
         static string MessageCreator(PyObject o)
         {
@@ -100,7 +100,7 @@ public static class PySpecialMethods
         if (func is not null)
             return ValidateResultOf<PyFloatObject>(func(context, obj), MessageCreator);
 
-        return PyResult.TypeError(PySR.Runtime_Number_WrongFloatArg, obj.PyType.FullName).Of<PyFloatObject>();
+        return PyResult.TypeError(PySR.Runtime_Number_Float_WrongArg, obj.PyType.FullName).Of<PyFloatObject>();
 
         static string MessageCreator(PyObject o)
         {

@@ -15,7 +15,7 @@ partial class PyStrObject
         foreach (var item in items)
         {
             if (item is not PyStrObject strObj)
-                return PyResult.RaiseTypeError($"sequence item {index}: expected str instance, {item.PyType.Name} found");
+                return PyResult.TypeError(PySR.Runtime_String_JoinNonStrAt, index, item.PyType.FullName);
 
             if (index > 0)
                 builder.Append(Value);

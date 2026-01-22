@@ -36,7 +36,7 @@ public abstract partial class PyTypeObject<TObject> : PyTypeObject where TObject
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        return PyResult.RaiseTypeError($"cannot create '{Name}' instances");
+        return PyResult.TypeError(PySR.Runtime_Type_CannotCreateInstance, cls.FullName);
     }
 }
 
@@ -64,7 +64,7 @@ public sealed class PyTypeObjectType : PyTypeObject<PyTypeObjectType, PyTypeObje
     {
         var newFunc = self.Slots.New;
         if (newFunc is null)
-            return PyResult.RaiseTypeError($"cannot create '{self.FullName}' instances");
+            return PyResult.TypeError(PySR.Runtime_Type_CannotCreateInstance, self.FullName);
 
         var result = newFunc(context, self, args, kwargs);
         if (result.IsError)
