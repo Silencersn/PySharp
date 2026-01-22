@@ -15,9 +15,9 @@ partial class PyCallContext
         return ThrowableException(exceptionType, arg is not null ? PyStrObject.FromString(arg) : null);
     }
 
-    internal PyRuntimeException CreateException(PyExceptionType exceptionType, string format, ReadOnlySpan<object?> args)
+    internal PyRuntimeException CreateException(PyExceptionType exceptionType, string? format, ReadOnlySpan<object?> args)
     {
-        return ThrowableException(exceptionType, PySR.Format(format, args));
+        return ThrowableException(exceptionType, PySR.Format(format ?? string.Empty, args));
     }
 
     internal PyRuntimeException ThrowableException(PyExceptionType exceptionType, PyObject? arg)
@@ -26,19 +26,15 @@ partial class PyCallContext
     }
 
 
-    internal PyRuntimeException ThrowableTypeError(string? arg = null)
-    {
-        return ThrowableException(PyStandardExceptionTypes.TypeError, arg);
-    }
 
     internal PyRuntimeException TypeError(string? format, params ReadOnlySpan<object?> args)
     {
-        return CreateException(PyStandardExceptionTypes.TypeError, format ?? string.Empty, args);
+        return CreateException(PyTypeErrorObjectType.Shared, format, args);
     }
 
-    internal PyRuntimeException ThrowableValueError(string? arg = null)
+    internal PyRuntimeException ValueError(string? format, params ReadOnlySpan<object?> args)
     {
-        return ThrowableException(PyStandardExceptionTypes.ValueError, arg);
+        return CreateException(PyValueErrorObjectType.Shared, format, args);
     }
 
     internal PyRuntimeException ThrowableIndexError(string? arg = null)
@@ -46,19 +42,19 @@ partial class PyCallContext
         return ThrowableException(PyStandardExceptionTypes.IndexError, arg);
     }
 
-    internal PyRuntimeException ThrowableSyntaxError(string? arg = null)
+    internal PyRuntimeException SyntaxError(string? format, params ReadOnlySpan<object?> args)
     {
-        return ThrowableException(PyStandardExceptionTypes.SyntaxError, arg);
+        return CreateException(PySyntaxErrorObjectType.Shared, format, args);
     }
 
-    internal PyRuntimeException ThrowableUnicodeEncodeError(string? arg = null)
+    internal PyRuntimeException UnicodeEncodeError(string? format, params ReadOnlySpan<object?> args)
     {
-        return ThrowableException(PyUnicodeEncodeErrorObjectType.Shared, arg);
+        return CreateException(PyUnicodeEncodeErrorObjectType.Shared, format, args);
     }
 
-    internal PyRuntimeException ThrowableIndentationError(string? arg = null)
+    internal PyRuntimeException IndentationError(string? format, params ReadOnlySpan<object?> args)
     {
-        return ThrowableException(PyStandardExceptionTypes.IndentationError, arg);
+        return CreateException(PyIndentationErrorObjectType.Shared, format, args);
     }
 
     internal PyRuntimeException ThrowableKeyError(string? arg = null)
@@ -71,9 +67,9 @@ partial class PyCallContext
         return ThrowableException(PyStandardExceptionTypes.KeyError, arg);
     }
 
-    internal PyRuntimeException ThrowableAssertionError(string? arg = null)
+    internal PyRuntimeException AssertionError(string? format, params ReadOnlySpan<object?> args)
     {
-        return ThrowableException(PyStandardExceptionTypes.AssertionError, arg);
+        return CreateException(PyAssertionErrorObjectType.Shared, format, args);
     }
 
     internal PyRuntimeException ThrowableAssertionError(PyObject? arg)
@@ -91,9 +87,9 @@ partial class PyCallContext
         return ThrowableException(PyStandardExceptionTypes.AttributeError, arg);
     }
 
-    internal PyRuntimeException ThrowableSystemExit(string? arg = null)
+    internal PyRuntimeException SystemExit(string? format, params ReadOnlySpan<object?> args)
     {
-        return ThrowableException(PyStandardExceptionTypes.SystemExit, arg);
+        return CreateException(PySystemExitObjectType.Shared, format, args);
     }
 
     internal PyRuntimeException ThrowableStopIteration(string? arg = null)
@@ -106,20 +102,21 @@ partial class PyCallContext
         return ThrowableException(PyStandardExceptionTypes.RuntimeError, arg);
     }
 
-    internal PyRuntimeException ThrowableGeneratorExit(string? arg = null)
+    internal PyRuntimeException GeneratorExit(string? format, params ReadOnlySpan<object?> args)
     {
-        return ThrowableException(PyStandardExceptionTypes.GeneratorExit, arg);
+        return CreateException(PyGeneratorExitObjectType.Shared, format, args);
     }
 
-    internal PyRuntimeException ThrowableModuleNotFoundError(string? arg = null)
+    internal PyRuntimeException ModuleNotFoundError(string? format, params ReadOnlySpan<object?> args)
     {
-        return ThrowableException(PyStandardExceptionTypes.ModuleNotFoundError, arg);
+        return CreateException(PyModuleNotFoundErrorObjectType.Shared, format, args);
     }
 
-    internal PyRuntimeException ThrowableImportError(string? arg = null)
+    internal PyRuntimeException ImportError(string? format, params ReadOnlySpan<object?> args)
     {
-        return ThrowableException(PyStandardExceptionTypes.ImportError, arg);
+        return CreateException(PyImportErrorObjectType.Shared, format, args);
     }
+
     internal PyRuntimeException ThrowableUnboundLocalError(string? arg = null)
     {
         return ThrowableException(PyStandardExceptionTypes.UnboundLocalError, arg);

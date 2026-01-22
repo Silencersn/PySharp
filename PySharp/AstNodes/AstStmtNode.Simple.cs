@@ -194,7 +194,7 @@ public sealed class AssertNode : AstStmtNode
         using var withMetaInfo = new MetaInfoProviderSetter(frame, Test);
 
         if (Msg is null)
-            throw context.ThrowableAssertionError(null as string);
+            throw context.AssertionError(string.Empty);
 
         var msg = Msg.GetExprValue(context, frame);
         throw context.ThrowableAssertionError(msg);
@@ -406,7 +406,7 @@ public sealed class ImportFromNode : AstStmtNode
         Debug.Assert(Module is not null);
 
         if (!context.PyEnvironment.TryLoadModule(context, Module, out var module))
-            throw context.ThrowableModuleNotFoundError(PySR.Format(PySR.Runtime_Import_ModuleNotFound, Module));
+            throw context.ModuleNotFoundError(PySR.Runtime_Import_ModuleNotFound, Module);
 
         if (Names.Length is 1 && Names[0].Name is "*")
         {
@@ -448,8 +448,7 @@ public sealed class ImportFromNode : AstStmtNode
             Debug.Assert(name.Name is not "*");
 
             if (!module.PyAttributes.TryGetValue(name.Name, out var value))
-                throw context.ThrowableImportError(
-                    PySR.Format(PySR.Runtime_Import_CannotImportName, name.Name, Module /* TODO: should be module.__name__ */));
+                throw context.ImportError(PySR.Runtime_Import_CannotImportName, name.Name, Module /* TODO: should be module.__name__ */ /* TODO: do you mean [possibleName] */);
 
             frame.SetVariable(name.AsName ?? name.Name, value).PyUnwrap(context);
         }

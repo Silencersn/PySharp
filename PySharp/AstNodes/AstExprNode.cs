@@ -1141,7 +1141,7 @@ public sealed class YieldNode : AstExprNode
                 throw new UnreachableException();
 
             case YieldCallerAction.ActionType.Close:
-                throw context.ThrowableGeneratorExit();
+                throw context.GeneratorExit(string.Empty);
 
             default:
                 throw new UnreachableException();
@@ -1205,7 +1205,7 @@ public sealed class YieldFromNode : AstExprNode
                     var close = PyOperators.GetAttr(context, iter, "close");
                     if (!close.IsAttributeError)
                         _ = close.PyUnwrap(context).Call(context, [], FrozenDictionary<string, PyObject>.Empty).PyUnwrap(context);
-                    throw context.ThrowableGeneratorExit();
+                    throw context.GeneratorExit(string.Empty);
 
                 default:
                     throw new UnreachableException();

@@ -409,7 +409,7 @@ partial class Parser
                 PyStrConverter.ConvertError.LowerXSequence => SyntaxError(PySR.InvalidSyntax_UnicodeError_TruncatedLowerXSequence, start, end),
                 PyStrConverter.ConvertError.LowerUSequence => SyntaxError(PySR.InvalidSyntax_UnicodeError_TruncatedLowerUSequence, start, end),
                 PyStrConverter.ConvertError.UpperUSequence => SyntaxError(PySR.InvalidSyntax_UnicodeError_TruncatedUpperUSequence, start, end),
-                PyStrConverter.ConvertError.SurrogatesNotAllowed => _context.ThrowableUnicodeEncodeError(PySR.Format(PySR.Unicode_Encode_SurrogatesNotAllowed, $"{(uint)info.Char:x4}", info.Position)),
+                PyStrConverter.ConvertError.SurrogatesNotAllowed => _context.UnicodeEncodeError(PySR.Unicode_Encode_SurrogatesNotAllowed, $"{(uint)info.Char:x4}", info.Position),
                 PyStrConverter.ConvertError.IllegalUnicodeCharacter => SyntaxError(PySR.InvalidSyntax_UnicodeError_IllegalCharacter, start, end),
                 _ => new UnreachableException(),
             };
@@ -475,7 +475,7 @@ partial class Parser
         else
         {
             if (CurrentTokenType is TokenType.Indent)
-                throw _context.ThrowableIndentationError(PySR.InvalidSyntax_Indentation_Unexpected);
+                throw _context.IndentationError(PySR.InvalidSyntax_Indentation_Unexpected);
 
             throw SyntaxError();
         }

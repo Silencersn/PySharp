@@ -135,9 +135,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
 
     public PyRuntimeException SyntaxError(string message = PySR.InvalidSyntax, params ReadOnlySpan<object?> args)
     {
-        if (args.Length > 0)
-            message = PySR.Format(message, args);
-        return _context.ThrowableSyntaxError(message);
+        return _context.SyntaxError(message, args);
     }
 
     internal void InternalStart()
@@ -656,7 +654,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         }
 
         if (indentationLevel != _indentationLevels.Peek())
-            throw _context.ThrowableIndentationError(PySR.InvalidSyntax_Tokenize_UnindentNotMatch);
+            throw _context.IndentationError(PySR.InvalidSyntax_Tokenize_UnindentNotMatch);
     }
 
     private struct ValueGroup

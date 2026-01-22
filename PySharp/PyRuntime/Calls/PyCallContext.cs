@@ -114,7 +114,7 @@ public sealed partial class PyCallContext
     internal void Exit(int exitCode)
     {
         PyEnvironment.ExitCode = exitCode;
-        throw ThrowableSystemExit();
+        throw SystemExit(string.Empty);
     }
 
     internal static PyCallContext CreateInterpreterMainContext(PyInterpreter interpreter)

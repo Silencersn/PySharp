@@ -251,7 +251,7 @@ public sealed partial class PyFrame
     public void Import(PyCallContext context, string name, string? alias = null)
     {
         if (!context.PyEnvironment.TryLoadModule(context, name, out var module))
-            throw context.ThrowableModuleNotFoundError($"No module named '{name}'");
+            throw context.ModuleNotFoundError(PySR.Runtime_Import_ModuleNotFound, name);
 
         SetVariable(alias ?? name, module);
     }

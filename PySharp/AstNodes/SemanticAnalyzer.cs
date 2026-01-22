@@ -45,9 +45,7 @@ public sealed class SemanticAnalyzer : ICodeMetaInfoProvider
 
     public PyRuntimeException SyntaxError(string message = PySR.InvalidSyntax, params ReadOnlySpan<object?> args)
     {
-        if (args.Length > 0)
-            message = PySR.Format(message, args);
-        return _context.ThrowableSyntaxError(message);
+        return _context.SyntaxError(message, args);
     }
 
     private sealed class ScopeStats

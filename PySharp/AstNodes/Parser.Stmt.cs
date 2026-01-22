@@ -701,8 +701,7 @@ partial class Parser
                 "class" => "class definition",
                 _ => $"'{keyword}' statement"
             };
-            throw _context.ThrowableIndentationError(
-                PySR.Format(PySR.InvalidSyntax_Indentation_ExpectedForBlock, statementName, lineno));
+            throw _context.IndentationError(PySR.InvalidSyntax_Indentation_ExpectedForBlock, statementName, lineno);
         }
         MoveNextToken();
 

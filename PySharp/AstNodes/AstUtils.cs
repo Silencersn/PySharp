@@ -97,7 +97,7 @@ internal static class AstUtils
 
             if (tupleNode.Elts.Length != iter.Count)
             {
-                throw context.ThrowableValueError("too many or too few values to unpack");
+                throw context.ValueError(PySR.Runtime_Assignment_UnpackCountNotMatch);
             }
             for (int i = 0; i < tupleNode.Elts.Length; i++)
             {
@@ -111,7 +111,7 @@ internal static class AstUtils
 
             if (listNode.Elts.Length != iter.Count)
             {
-                throw context.ThrowableValueError("too many or too few values to unpack");
+                throw context.ValueError(PySR.Runtime_Assignment_UnpackCountNotMatch);
             }
             for (int i = 0; i < listNode.Elts.Length; i++)
             {
