@@ -2,6 +2,7 @@
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
+using PySharp.Resources;
 using System.Collections.Immutable;
 using System.Diagnostics;
 
@@ -294,7 +295,7 @@ public sealed class RaiseNode : AstStmtNode
             else
             {
                 exc.Cause = ToException(context, cause);
-                exc.CauseReason = "The above exception was the direct cause of the following exception:";
+                exc.CauseReason = PySR.Runtime_RaiseStmt_Cause;
             }
         }
 
@@ -314,7 +315,7 @@ public sealed class RaiseNode : AstStmtNode
                 return new PyExceptionObject(typeObj);
 
             else
-                throw context.ThrowableTypeError($"exceptions must derive from BaseException");
+                throw context.TypeError(PySR.Runtime_RaiseStmt_RaiseNonException);
         }
     }
 
@@ -405,7 +406,7 @@ public sealed class ImportFromNode : AstStmtNode
         Debug.Assert(Module is not null);
 
         if (!context.PyEnvironment.TryLoadModule(context, Module, out var module))
-            throw context.ThrowableModuleNotFoundError($"No module named '{Module}'");
+            throw context.ThrowableModuleNotFoundError(PySR.Format(PySR.Runtime_Import_ModuleNotFound, Module));
 
         if (Names.Length is 1 && Names[0].Name is "*")
         {
@@ -416,14 +417,14 @@ public sealed class ImportFromNode : AstStmtNode
                 // unlike cpython, allows iterable
                 if (!Utils.TryEnumeratedIterable(context, all, out var list, out _))
                 {
-                    throw context.ThrowableTypeError($"{Module /* TODO: should be module.__name__ */}.__all__ must be iterable");
+                    throw context.TypeError(PySR.Runtime_Import_NonIterableAll, Module /* TODO: should be module.__name__ */);
                 }
 
                 foreach (var item in list)
                 {
                     if (item is not PyStrObject strObj)
                     {
-                        throw context.ThrowableTypeError($"Item in {Module /* TODO: should be module.__name__ */}.__all__ must be str, not {item.PyType.Name}");
+                        throw context.TypeError(PySR.Runtime_Import_NonStringAllElt, Module /* TODO: should be module.__name__ */, item.PyType.Name);
                     }
 
                     var attr = PyOperators.GetAttr(context, module, strObj.Value).PyUnwrap(context);
@@ -447,7 +448,8 @@ public sealed class ImportFromNode : AstStmtNode
             Debug.Assert(name.Name is not "*");
 
             if (!module.PyAttributes.TryGetValue(name.Name, out var value))
-                throw context.ThrowableImportError($"cannot import name '{name.Name}' from '{Module /* TODO: should be module.__name__ */}'");
+                throw context.ThrowableImportError(
+                    PySR.Format(PySR.Runtime_Import_CannotImportName, name.Name, Module /* TODO: should be module.__name__ */));
 
             frame.SetVariable(name.AsName ?? name.Name, value).PyUnwrap(context);
         }

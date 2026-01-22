@@ -1,6 +1,7 @@
 ﻿using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
+using PySharp.Resources;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -145,7 +146,7 @@ public class AstKeywordNode : AstNode
         foreach (var (key, value) in dict._dict)
         {
             if (key is not PyStrObject str)
-                throw context.ThrowableTypeError("keywords must be strings");
+                throw context.TypeError(PySR.Runtime_Keyword_KeywordsMustBeStrings);
 
             targetDict[str.Value] = value; // TODO: raise Error ?
         }
@@ -179,20 +180,20 @@ public sealed class ExceptHandlerNode : AstNode
         if (type is PyTypeObject typeObj)
         {
             if (!typeObj.IsSubclassOf(PyBaseExceptionObjectType.Shared))
-                throw context.ThrowableTypeError("catching classes that do not inherit from BaseException is not allowed");
+                throw context.TypeError(PySR.Runtime_TryStmt_CatchNonException);
 
             return typeObj.IsInstance;
         }
         else if (type is PyTupleObject tupleObj)
         {
             if (!tupleObj._array.All(obj => obj is PyTypeObject t && t.IsSubclassOf(PyBaseExceptionObjectType.Shared)))
-                throw context.ThrowableTypeError("catching classes that do not inherit from BaseException is not allowed");
+                throw context.TypeError(PySR.Runtime_TryStmt_CatchNonException);
 
             return exc => tupleObj._array.Any(obj => ((PyTypeObject)obj).IsInstance(exc));
         }
         else
         {
-            throw context.ThrowableTypeError("catching classes that do not inherit from BaseException is not allowed");
+            throw context.TypeError(PySR.Runtime_TryStmt_CatchNonException);
         }
     }
 
@@ -224,10 +225,10 @@ public sealed class ExceptHandlerNode : AstNode
 
         var splitResult = exception.CallMethod(context, "split", [condition]).PyUnwrap(context);
         if (splitResult is not PyTupleObject tuple)
-            throw context.ThrowableTypeError($"{exception.PyType.FullName}.split must return a tuple, not {splitResult.PyType.FullName}");
+            throw context.TypeError(PySR.Runtime_TryStmt_SplitReturnsNonTuple, exception.PyType.FullName, splitResult.PyType.FullName);
 
         if (tuple._array.Length is not 2)
-            throw context.ThrowableTypeError($"{exception.PyType.FullName}.split must return a 2-tuple, got tuple of size {tuple._array.Length}");
+            throw context.TypeError(PySR.Runtime_TryStmt_SplitReturnsTupleWithWrongSize, exception.PyType.FullName, tuple._array.Length);
 
         var match = tuple._array[0];
         if (match is not PyNoneObject)
@@ -250,7 +251,7 @@ public sealed class ExceptHandlerNode : AstNode
         }
 
         rest = (restObj as PyExceptionObject) ??
-            throw context.ThrowableTypeError($"Exception expected for value, {tuple._array[1].PyType.FullName} found");
+            throw context.TypeError(PySR.Runtime_TryStmt_ExpectedExceptionOrNone, tuple._array[1].PyType.FullName);
         return false;
     }
 
@@ -559,7 +560,7 @@ public sealed class MatchClassNode : AstPatternNode
     {
         var cls = Cls.GetExprValue(context, frame);
         if (cls is not PyTypeObject type)
-            throw context.ThrowableTypeError("called match pattern must be a class");
+            throw context.TypeError(PySR.Runtime_MatchStmt_CallNonClass);
 
         if (!type.IsInstance(subject))
             return false;
@@ -569,15 +570,15 @@ public sealed class MatchClassNode : AstPatternNode
             var matchArgs = PyOperators.GetAttr(context, type, PySpecialNames.MatchArgs).PyUnwrap(context);
 
             if (matchArgs is not PyTupleObject tuple)
-                throw context.ThrowableTypeError($"{type.FullName}.{PySpecialNames.MatchArgs} must be a tuple (got {matchArgs.PyType.FullName})");
+                throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsIsNonTuple, type.FullName, matchArgs.PyType.FullName);
             if (Patterns.Length > tuple._array.Length)
-                throw context.ThrowableTypeError($"{type.FullName}() accepts {tuple._array.Length} positional sub-patterns ({Patterns.Length} given)");
+                throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsLengthNotEnough, type.FullName, tuple._array.Length, Patterns.Length);
 
             var attrs = new List<string>(Patterns.Length);
             foreach (var arg in tuple._array.Take(Patterns.Length))
             {
                 if (arg is not PyStrObject str)
-                    throw context.ThrowableTypeError($"{PySpecialNames.MatchArgs} elements must be strings (got {arg.PyType.FullName})");
+                    throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsEltMustBeString, arg.PyType.FullName);
                 attrs.Add(str.Value);
             }
 

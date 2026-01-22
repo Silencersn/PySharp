@@ -1,6 +1,7 @@
 ﻿using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.Comparison;
+using PySharp.Resources;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
@@ -77,9 +78,7 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
         foreach (var baseType in bases)
         {
             if (baseType.IsSealed)
-            {
-                throw context.ThrowableTypeError($"type '{baseType.Name}' is not an acceptable base type");
-            }
+                throw context.TypeError(PySR.Runtime_Inheritance_UnacceptableBaseType, baseType.Name);
 
             if (baseType.LayoutType != layoutType)
             {
@@ -89,13 +88,13 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
                 }
                 else if (!layoutType.IsAssignableFrom(baseType.LayoutType))
                 {
-                    throw context.ThrowableTypeError("multiple bases have instance lay-out conflict");
+                    throw context.TypeError(PySR.Runtime_Inheritance_LayoutConflict);
                 }
             }
         }
 
         if (!TryCreateMROWithoutSelf(bases, out _))
-            throw context.ThrowableTypeError("Cannot create a consistent method resolution order (MRO)");
+            throw context.TypeError(PySR.Runtime_Inheritance_CannotCreateMRO);
     }
 
     private static bool TryCreateMROWithoutSelf(IEnumerable<PyTypeObject> bases, [NotNullWhen(true)] out List<PyTypeObject>? mro)

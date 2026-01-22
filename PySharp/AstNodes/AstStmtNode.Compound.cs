@@ -3,6 +3,7 @@ using PySharp.PyModules.Builtins;
 using PySharp.PyModules.CSharp;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
+using PySharp.Resources;
 using System.Collections.Immutable;
 using System.Diagnostics;
 
@@ -326,9 +327,9 @@ public sealed class WithNode : AstStmtNode
 
             var manager = Items[i].ContextExpr.GetExprValue(context, frame);
             var enter = manager.PyType.Slots.Enter ??
-                throw context.ThrowableTypeError($"'{manager.PyType.FullName}' object does not support the context manager protocol (missed {PySpecialNames.Enter} method)");
+                throw context.TypeError(PySR.Runtime_WithStmt_MissingEnter, manager.PyType.FullName);
             var exit = manager.PyType.Slots.Exit ??
-                throw context.ThrowableTypeError($"'{manager.PyType.FullName}' object does not support the context manager protocol (missed {PySpecialNames.Exit} method)");
+                throw context.TypeError(PySR.Runtime_WithStmt_MissingExit, manager.PyType.FullName);
             var value = enter(context, manager).PyUnwrap(context);
             var hitExcept = false;
 

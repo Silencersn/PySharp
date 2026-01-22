@@ -47,7 +47,7 @@ internal static class AstUtils
     public static TPyObject PyCast<TPyObject>(this PyObject obj, PyCallContext context)
     {
         if (obj is not TPyObject objOfT)
-            throw context.ThrowableTypeError(null);
+            throw context.TypeError(null);
 
         return objOfT;
     }
@@ -72,7 +72,7 @@ internal static class AstUtils
             throw new PyRuntimeException(context, result.Exception);
 
         if (result.IsNotImplemented)
-            throw context.ThrowableTypeError(null);
+            throw context.TypeError(null);
 
         return result.Value;
     }

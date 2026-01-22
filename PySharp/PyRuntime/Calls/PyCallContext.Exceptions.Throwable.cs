@@ -1,4 +1,5 @@
 ﻿using PySharp.PyModules.Builtins;
+using PySharp.Resources;
 
 namespace PySharp.PyRuntime.Calls;
 
@@ -14,6 +15,11 @@ partial class PyCallContext
         return ThrowableException(exceptionType, arg is not null ? PyStrObject.FromString(arg) : null);
     }
 
+    internal PyRuntimeException CreateException(PyExceptionType exceptionType, string format, ReadOnlySpan<object?> args)
+    {
+        return ThrowableException(exceptionType, PySR.Format(format, args));
+    }
+
     internal PyRuntimeException ThrowableException(PyExceptionType exceptionType, PyObject? arg)
     {
         return new PyRuntimeException(this, exceptionType.Create(arg));
@@ -23,6 +29,11 @@ partial class PyCallContext
     internal PyRuntimeException ThrowableTypeError(string? arg = null)
     {
         return ThrowableException(PyStandardExceptionTypes.TypeError, arg);
+    }
+
+    internal PyRuntimeException TypeError(string? format, params ReadOnlySpan<object?> args)
+    {
+        return CreateException(PyStandardExceptionTypes.TypeError, format ?? string.Empty, args);
     }
 
     internal PyRuntimeException ThrowableValueError(string? arg = null)
