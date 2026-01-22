@@ -484,7 +484,7 @@ internal sealed class FunctionCaller : Caller
     private PyResult CallGeneral(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (!_def.TryParse(args, kwargs, out var arguments))
-            return PyResult.RaiseTypeError("wrong arguments");
+            return PyResult.TypeError(null /* TODO */);
 
         var frame = CreateCallingFrame(context, args, kwargs, arguments);
 
@@ -511,7 +511,7 @@ internal sealed class GeneratorCaller : Caller
     private PyResult CallGeneral(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (!_def.TryParse(args, kwargs, out var arguments))
-            return PyResult.RaiseTypeError("wrong arguments");
+            return PyResult.TypeError(null /* TODO */);
 
         var frame = CreateCallingFrame(context, args, kwargs, arguments);
 

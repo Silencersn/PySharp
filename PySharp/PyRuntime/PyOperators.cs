@@ -218,7 +218,7 @@ public static class PyOperators
                 result = EvalReflectiveOperator(context, right, left, rightType.Slots.Le, leftType.Slots.Ge);
                 break;
             default:
-                return PyResult.RaiseTypeError($"Operator '{OperatorToString(op)}' is not supported.");
+                return PyResult.RaisePySharpException($"Operator '{OperatorToString(op)}' is not supported.");
         }
 
         if (result.IsNotImplemented)

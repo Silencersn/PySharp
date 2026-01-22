@@ -20,21 +20,31 @@ public static class PySpecialMethods
     {
         var func = obj.PyType.Slots.Str ?? PyTypeObject.DefaultStr;
         var result = func(context, obj);
-        return ValidateResultOf<PyStrObject>(result, static o => $"{PySpecialNames.Str} returned non-string (type {o.PyType.FullName})");
+        return ValidateResultOf<PyStrObject>(result, MessageCreator);
+
+        static string MessageCreator(PyObject o)
+        {
+            return PySR.Format(PySR.Runtime_Object_SpecialMethodReturnsWrongType, PySpecialNames.Str, "string", o.PyType.FullName);
+        }
     }
 
     public static PyResult<PyStrObject> Repr(PyCallContext context, PyObject obj)
     {
         var func = obj.PyType.Slots.Repr ?? PyTypeObject.DefaultRepr;
         var result = func(context, obj);
-        return ValidateResultOf<PyStrObject>(result, static o => $"{PySpecialNames.Repr} returned non-string (type {o.PyType.FullName})");
+        return ValidateResultOf<PyStrObject>(result, MessageCreator);
+
+        static string MessageCreator(PyObject o)
+        {
+            return PySR.Format(PySR.Runtime_Object_SpecialMethodReturnsWrongType, PySpecialNames.Repr, "string", o.PyType.FullName);
+        }
     }
 
     public static PyResult<PyBoolObject> Bool(PyCallContext context, PyObject obj)
     {
         var boolFunc = obj.PyType.Slots.Bool;
         if (boolFunc is not null)
-            return ValidateResultOf<PyBoolObject>(boolFunc(context, obj), static o => $"{PySpecialNames.Bool} returned non-bool (type {o.PyType.FullName})");
+            return ValidateResultOf<PyBoolObject>(boolFunc(context, obj), MessageCreator);
 
         var lenFunc = obj.PyType.Slots.Len;
         if (lenFunc is not null)
@@ -46,36 +56,56 @@ public static class PySpecialMethods
             return PyBoolObject.FromBoolean(result.Value.Value > 0);
         }
 
-        return ValidateResultOf<PyBoolObject>(PyTypeObject.DefaultBool(context, obj), static o => $"{PySpecialNames.Bool} returned non-bool (type {o.PyType.FullName})");
+        return ValidateResultOf<PyBoolObject>(PyTypeObject.DefaultBool(context, obj), MessageCreator);
+    
+        static string MessageCreator(PyObject o)
+        {
+            return PySR.Format(PySR.Runtime_Object_SpecialMethodReturnsWrongType, PySpecialNames.Bool, "bool", o.PyType.FullName);
+        }
     }
 
     public static PyResult<PyIntObject> Hash(PyCallContext context, PyObject obj)
     {
         var func = obj.PyType.Slots.Hash;
         if (func is null)
-            return PyResult.RaiseTypeError($"unhashable type: '{obj.PyType.FullName}'").Of<PyIntObject>();
-        var hash = ValidateResultOf<PyIntObject>(func(context, obj), static o => $"{PySpecialNames.Hash} returned non-int (type {o.PyType.FullName})");
+            return PyResult.TypeError(PySR.Runtime_Object_Unhashable, obj.PyType.FullName).Of<PyIntObject>();
+        var hash = ValidateResultOf<PyIntObject>(func(context, obj), MessageCreator);
         if (hash.IsError || hash.Value.Value != -1)
             return hash;
         return PyIntObject.FromInteger(-2);
+
+        static string MessageCreator(PyObject o)
+        {
+            return PySR.Format(PySR.Runtime_Object_SpecialMethodReturnsWrongType, PySpecialNames.Hash, "int", o.PyType.FullName);
+        }
     }
 
     public static PyResult<PyIntObject> Index(PyCallContext context, PyObject obj)
     {
         var func = obj.PyType.Slots.Index;
         if (func is not null)
-            return ValidateResultOf<PyIntObject>(func(context, obj), static o => $"{PySpecialNames.Index} returned non-int (type {o.PyType.FullName})");
+            return ValidateResultOf<PyIntObject>(func(context, obj), MessageCreator);
 
-        return PyResult.RaiseTypeError($"'{obj.PyType.FullName}' object cannot be interpreted as an integer").Of<PyIntObject>();
+        return PyResult.TypeError(PySR.Runtime_Number_CannotInterpretedAsInteger, obj.PyType.FullName).Of<PyIntObject>();
+
+        static string MessageCreator(PyObject o)
+        {
+            return PySR.Format(PySR.Runtime_Object_SpecialMethodReturnsWrongType, PySpecialNames.Index, "int", o.PyType.FullName);
+        }
     }
 
     public static PyResult<PyFloatObject> Float(PyCallContext context, PyObject obj)
     {
         var func = obj.PyType.Slots.Float;
         if (func is not null)
-            return ValidateResultOf<PyFloatObject>(func(context, obj), static o => $"{PySpecialNames.Float} returned non-float (type {o.PyType.FullName})");
+            return ValidateResultOf<PyFloatObject>(func(context, obj), MessageCreator);
 
-        return PyResult.RaiseTypeError($"float() argument must be a string or a real number, not '{obj.PyType.FullName}'").Of<PyFloatObject>();
+        return PyResult.TypeError(PySR.Runtime_Number_WrongFloatArg, obj.PyType.FullName).Of<PyFloatObject>();
+
+        static string MessageCreator(PyObject o)
+        {
+            return PySR.Format(PySR.Runtime_Object_SpecialMethodReturnsWrongType, PySpecialNames.Float, "float", o.PyType.FullName);
+        }
     }
 
     public static PyResult<PyIntObject> Len(PyCallContext context, PyObject obj)
@@ -83,17 +113,22 @@ public static class PySpecialMethods
         var func = obj.PyType.Slots.Len;
         if (func is not null)
         {
-            var result = ValidateResultOf<PyIntObject>(func(context, obj), static o => $"{PySpecialNames.Len} returned non-int (type {o.PyType.FullName})");
+            var result = ValidateResultOf<PyIntObject>(func(context, obj), MessageCreator);
             if (result.IsError)
                 return result;
 
             if (result.Value.Value >= 0)
                 return result;
 
-            return PyResult.RaiseValueError("__len__() should return >= 0").Of<PyIntObject>();
+            return PyResult.RaiseValueError(PySR.Runtime_Sequence_NegativeLen).Of<PyIntObject>();
         }
 
-        return PyResult.RaiseTypeError($"object of type '{obj.PyType.FullName}' has no len()").Of<PyIntObject>();
+        return PyResult.TypeError(PySR.Runtime_Sequence_NoLen, obj.PyType.FullName).Of<PyIntObject>();
+
+        static string MessageCreator(PyObject o)
+        {
+            return PySR.Format(PySR.Runtime_Object_SpecialMethodReturnsWrongType, PySpecialNames.Len, "int", o.PyType.FullName);
+        }
     }
 
     public static PyResult Iter(PyCallContext context, PyObject obj)
@@ -106,14 +141,14 @@ public static class PySpecialMethods
         if (getItemFunc is not null)
             return new PyIteratorObject(obj);
 
-        return PyResult.RaiseTypeError($"'{obj.PyType.FullName}' object is not iterable");
+        return PyResult.TypeError(PySR.Runtime_Sequence_NonIterable, obj.PyType.FullName);
     }
 
     public static PyResult Next(PyCallContext context, PyObject obj)
     {
         var func = obj.PyType.Slots.Next;
         if (func is null)
-            return PyResult.RaiseTypeError($"iter() returned non-iterator of type '{obj.PyType.FullName}'");
+            return PyResult.TypeError(PySR.Runtime_Sequence_IterReturnsNonIterator, obj.PyType.FullName);
 
         return func(context, obj);
     }
@@ -122,7 +157,7 @@ public static class PySpecialMethods
     {
         var func = obj.PyType.Slots.GetItem;
         if (func is null)
-            return PyResult.RaiseTypeError($"'{obj.PyType.FullName}' object is not subscriptable");
+            return PyResult.TypeError(PySR.Runtime_Sequence_NonSubscriptable, obj.PyType.FullName);
 
         return func(context, obj, key);
     }
@@ -131,7 +166,7 @@ public static class PySpecialMethods
     {
         var func = obj.PyType.Slots.SetItem;
         if (func is null)
-            return PyResult.RaiseTypeError($"'{obj.PyType.FullName}' object is not subscriptable");
+            return PyResult.TypeError(PySR.Runtime_Sequence_NonSubscriptable, obj.PyType.FullName);
 
         return func(context, obj, key, value);
     }
@@ -140,7 +175,7 @@ public static class PySpecialMethods
     {
         var func = obj.PyType.Slots.DelItem;
         if (func is null)
-            return PyResult.RaiseTypeError($"'{obj.PyType.FullName}' object is not subscriptable");
+            return PyResult.TypeError(PySR.Runtime_Sequence_NonSubscriptable, obj.PyType.FullName);
 
         return func(context, obj, key);
     }
@@ -196,7 +231,7 @@ public static class PySpecialMethods
                 return result;
         }
 
-        return PyResult.RaiseTypeError($"unsupported operand type(s) for divmod(): '{left.PyType.FullName}' and '{right.PyType.FullName}'");
+        return PyResult.TypeError(PySR.Runtime_Operator_UnsupportedForDivmod, left.PyType.FullName, right.PyType.FullName);
     }
 
     public static PyResult Abs(PyCallContext context, PyObject obj)
@@ -205,7 +240,7 @@ public static class PySpecialMethods
         if (func is not null)
             return func(context, obj);
 
-        return PyResult.RaiseTypeError($"bad operand type for abs(): '{obj.PyType.FullName}'");
+        return PyResult.TypeError(PySR.Runtime_Operator_UnsupportedForAbs, obj.PyType.FullName);
     }
 
     public static PyResult Call(PyCallContext context, PyObject callable, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
@@ -214,13 +249,18 @@ public static class PySpecialMethods
         if (func is not null)
             return func(context, callable, args, kwargs);
 
-        return PyResult.RaiseTypeError($"'{callable.PyType.FullName}' object is not callable");
+        return PyResult.TypeError(PySR.Runtime_Object_NonCallable, callable.PyType.FullName);
     }
 
     public static PyResult<PyStrObject> Format(PyCallContext context, PyObject obj, PyObject formatSpec)
     {
         var func = obj.PyType.Slots.Format ?? PyTypeObject.DefaultFormat;
         var result = func(context, obj, formatSpec);
-        return ValidateResultOf<PyStrObject>(result, static o => $"{PySpecialNames.Format} must return a str, not {o.PyType.FullName}");
+        return ValidateResultOf<PyStrObject>(result, MessageCreator);
+
+        static string MessageCreator(PyObject o)
+        {
+            return PySR.Format(PySR.Runtime_Object_FormatReturnsNonString, o.PyType.FullName);
+        }
     }
 }

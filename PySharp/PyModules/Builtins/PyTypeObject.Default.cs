@@ -24,7 +24,7 @@ partial class PyTypeObject
     internal static PyResult DefaultGetAttribute(PyCallContext context, PyObject self, PyObject item)
     {
         if (item is not PyStrObject str)
-            return PyResult.RaiseTypeError($"attribute name must be string, not '{item.PyType.FullName}'");
+            return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, item.PyType.FullName);
 
         var type = self.PyType;
         var name = str.Value;
@@ -56,13 +56,13 @@ partial class PyTypeObject
             return attr;
         }
 
-        return PyResult.RaiseAttributeError($"'{self.PyType.Name}' object has no attribute '{name}'");
+        return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.FullName, name);
     }
 
     internal static PyResult DefaultSetAttr(PyCallContext context, PyObject self, PyObject key, PyObject value)
     {
         if (key is not PyStrObject str)
-            return PyResult.RaiseTypeError($"attribute name must be string, not '{key.PyType.FullName}'");
+            return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, key.PyType.FullName);
 
         var type = self.PyType;
         var name = str.Value;
@@ -81,7 +81,7 @@ partial class PyTypeObject
     internal static PyResult DefaultDelAttr(PyCallContext context, PyObject self, PyObject item)
     {
         if (item is not PyStrObject str)
-            return PyResult.RaiseTypeError($"attribute name must be string, not '{item.PyType.FullName}'");
+            return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, item.PyType.FullName);
 
         var type = self.PyType;
         var name = str.Value;
@@ -95,7 +95,7 @@ partial class PyTypeObject
 
         var removed = self.PyAttributes.Remove(name);
         if (!removed)
-            return PyResult.RaiseAttributeError($"'{type.Name}' object has no attribute '{name}'");
+            return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, type.FullName, name);
 
         return PyNoneObject.None;
     }
@@ -104,7 +104,7 @@ partial class PyTypeObject
     internal static PyResult DefaultTypeGetAttribute(PyCallContext context, PyTypeObject self, PyObject item)
     {
         if (item is not PyStrObject str)
-            return PyResult.RaiseTypeError($"attribute name must be string, not '{item.PyType.FullName}'");
+            return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, item.PyType.FullName);
 
         var metaType = self.PyType;
         var name = str.Value;
@@ -140,18 +140,18 @@ partial class PyTypeObject
                 return getFunc(context, metaAttr, self, metaType);
         }
 
-        return PyResult.RaiseAttributeError($"type object '{self.PyType.Name}' has no attribute '{name}'");
+        return PyResult.AttributeError(PySR.Runtime_Type_AttributeNotFound, self.FullName, name);
     }
 
     internal static PyResult DefaultFormat(PyCallContext context, PyObject self, PyObject formatSpec)
     {
         if (formatSpec is not PyStrObject str)
-            return PyResult.RaiseTypeError($"format() argument 2 must be str, not {formatSpec.PyType.FullName}");
+            return PyResult.TypeError(PySR.Runtime_Object_FormatArgumentNonString, formatSpec.PyType.FullName);
 
         if (str.Value.Length is 0)
             return PySpecialMethods.Str(context, self);
 
-        return PyResult.RaiseValueError($"unsupported format string passed to {self.PyType.FullName}.__format__");
+        return PyResult.ValueError(PySR.Runtime_Object_FormatUnsupported, self.PyType.FullName);
 
     }
 

@@ -1,10 +1,4 @@
-﻿
-
-using System.Reflection;
-using System.Security.AccessControl;
-using System.Xml.Linq;
-
-namespace PySharp.Resources;
+﻿namespace PySharp.Resources;
 
 partial class PySR
 {
@@ -36,4 +30,29 @@ partial class PySR
     public const string Runtime_Inheritance_CannotCreateMRO = "Cannot create a consistent method resolution order (MRO)";
 
     public const string Runtime_Assignment_UnpackCountNotMatch = "too many or too few values to unpack";
+
+    public const string Runtime_Type_MethodReceiveSelfWithWrongType = "'{0}' requires a '{1}' object but received a '{2}'";
+    public const string Runtime_Type_AttributeNotFound = "type object '{0}' has no attribute '{1}'";
+
+    public const string Runtime_Object_SpecialMethodReturnsWrongType = "{0} returned non-{1} (type {2})";
+    public const string Runtime_Object_Unhashable = "unhashable type: '{0}'";
+    public const string Runtime_Object_NonCallable = "'{0}' object is not callable";
+    public const string Runtime_Object_FormatReturnsNonString = "__format__ must return a str, not {0}";
+    public const string Runtime_Object_FormatArgumentNonString = "format() argument 2 must be str, not {0}";
+    public const string Runtime_Object_FormatUnsupported = "unsupported format string passed to {0}.__format__";
+    public const string Runtime_Object_AttributeMustBeString = "attribute name must be string, not '{0}'";
+    public const string Runtime_Object_AttributeNotFound = "'{0}' object has no attribute '{1}'";
+
+    public const string Runtime_Number_CannotInterpretedAsInteger = "'{0}' object cannot be interpreted as an integer";
+    public const string Runtime_Number_WrongFloatArg = "float() argument must be a string or a real number, not '{0}'";
+
+    public const string Runtime_Sequence_NegativeLen = "__len__() should return >= 0";
+    public const string Runtime_Sequence_NoLen = "object of type '{0}' has no len()";
+    public const string Runtime_Sequence_NonIterable = "'{0}' object is not iterable";
+    public const string Runtime_Sequence_IterReturnsNonIterator = "iter() returned non-iterator of type '{0}'";
+    public const string Runtime_Sequence_NonSubscriptable = "'{0}' object is not subscriptable";
+
+    public const string Runtime_Operator_UnsupportedForDivmod = "unsupported operand type(s) for divmod(): '{0}' and '{1}'";
+    public const string Runtime_Operator_UnsupportedForAbs = "bad operand type for abs(): '{0}'";
+
 }
