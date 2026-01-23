@@ -86,7 +86,7 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
         if (result.IsError)
             return result;
         if (!Utils.TrySetListItem(self._list, result.Value.Int32Value, value))
-            return PyResult.RaiseIndexError(PySR.Runtime_List_IndexOutOfRange);
+            return PyResult.IndexError(PySR.Runtime_List_IndexOutOfRange);
         return PyNoneObject.None;
     }
 
@@ -163,7 +163,7 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
         if (result.IsError)
             return result;
         if (Utils.IsIndexOutOfRange(result.Value.Int32Value, self._list.Count))
-            return PyResult.RaiseIndexError(PySR.Runtime_List_PopIndexOutOfRange);
+            return PyResult.IndexError(PySR.Runtime_List_PopIndexOutOfRange);
         return self.PyPop(result.Value.Int32Value);
     }
 

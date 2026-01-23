@@ -37,14 +37,14 @@ public sealed class PyGeneratorExpressionObject : PyGeneratorObject
     internal PyResult GetNext(PyCallContext context)
     {
         if (_enumerator is null)
-            return PyResult.RaiseStopIteration();
+            return PyResult.StopIteration();
 
         _first = false;
 
         _frame.Back = context.CurrentFrame;
         using var withFrame = context.WithFrame(_frame, () => _frame.Back = null);
 
-        var result = _enumerator.MoveNext() ? _enumerator.Current : PyResult.RaiseStopIteration();
+        var result = _enumerator.MoveNext() ? _enumerator.Current : PyResult.StopIteration();
         if (result.IsError)
             _enumerator = null;
         return result;
@@ -135,7 +135,7 @@ public sealed class PyUserDefinedGeneratorObject : PyGeneratorObject
         if (_frame._generatorCompleted)
         {
             _task = null;
-            return PyResult.RaiseStopIteration(result.Value);
+            return PyResult.StopIteration(result.Value);
         }
 
         // yield
@@ -145,7 +145,7 @@ public sealed class PyUserDefinedGeneratorObject : PyGeneratorObject
     internal override PyResult PyNext(PyCallContext context)
     {
         if (_task is null)
-            return PyResult.RaiseStopIteration();
+            return PyResult.StopIteration();
 
         if (_task.Status is TaskStatus.Created)
         {
@@ -159,7 +159,7 @@ public sealed class PyUserDefinedGeneratorObject : PyGeneratorObject
     internal override PyResult PySend(PyCallContext context, PyObject pyObject)
     {
         if (_task is null)
-            return PyResult.RaiseStopIteration();
+            return PyResult.StopIteration();
 
         if (_task.Status is TaskStatus.Created)
         {
@@ -176,7 +176,7 @@ public sealed class PyUserDefinedGeneratorObject : PyGeneratorObject
     internal override PyResult PyThrow(PyCallContext context, PyObject pyObject)
     {
         if (_task is null)
-            return PyResult.RaiseStopIteration();
+            return PyResult.StopIteration();
 
         if (_task.Status is TaskStatus.Created)
         {
@@ -210,7 +210,7 @@ public sealed class PyUserDefinedGeneratorObject : PyGeneratorObject
         }
 
         if (!_frame._generatorCompleted)
-            return PyResult.RaiseRuntimeError("generator ignored GeneratorExit");
+            return PyResult.RuntimeError("generator ignored GeneratorExit");
 
         return result;
     }

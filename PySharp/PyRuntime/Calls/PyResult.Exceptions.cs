@@ -40,31 +40,36 @@ partial struct PyResult
         return RaiseException(PyValueErrorObjectType.Shared, format, args);
     }
 
-    internal static PyResult RaiseIndexError(string? arg = null)
+    internal static PyResult IndexError(string? format, params ReadOnlySpan<object?> args)
     {
-        return RaiseException(PyStandardExceptionTypes.IndexError, arg);
+        return RaiseException(PyIndexErrorObjectType.Shared, format, args);
     }
 
-    internal static PyResult RaiseSyntaxError(string? arg = null)
+    internal static PyResult SyntaxError(string? format, params ReadOnlySpan<object?> args)
     {
-        return RaiseException(PyStandardExceptionTypes.SyntaxError, arg);
+        return RaiseException(PySyntaxErrorObjectType.Shared, format, args);
     }
 
-    internal static PyResult RaiseIndentationError(string? arg = null)
+    internal static PyResult IndentationError(string? format, params ReadOnlySpan<object?> args)
     {
-        return RaiseException(PyStandardExceptionTypes.IndentationError, arg);
+        return RaiseException(PyIndentationErrorObjectType.Shared, format, args);
     }
 
-    internal static PyResult RaiseKeyError(string? arg = null)
+    internal static PyResult KeyError(string? format, params ReadOnlySpan<object?> args)
     {
-        return RaiseException(PyStandardExceptionTypes.KeyError, arg);
+        return RaiseException(PyKeyErrorObjectType.Shared, format, args);
     }
 
-    internal static PyResult RaiseKeyError(PyObject? arg)
+    internal static PyResult KeyError(PyObject? arg)
     {
-        return RaiseException(PyStandardExceptionTypes.KeyError, arg);
+        return RaiseException(PyKeyErrorObjectType.Shared, arg);
     }
 
+    internal static PyResult AssertionError(string? format, params ReadOnlySpan<object?> args)
+    {
+        return RaiseException(PyAssertionErrorObjectType.Shared, format, args);
+    }
+    
     internal static PyResult RaiseAssertionError(string? arg = null)
     {
         return RaiseException(PyStandardExceptionTypes.AssertionError, arg);
@@ -80,38 +85,33 @@ partial struct PyResult
         return RaiseException(PyZeroDivisionErrorObjectType.Shared, format, args);
     }
 
-    internal static PyResult RaiseAttributeError(string? arg = null)
-    {
-        return RaiseException(PyStandardExceptionTypes.AttributeError, arg);
-    }
-
     internal static PyResult AttributeError(string? format, params ReadOnlySpan<object?> args)
     {
         return RaiseException(PyAttributeErrorObjectType.Shared, format, args);
     }
 
-    internal static PyResult RaiseSystemExit(string? arg = null)
+    internal static PyResult SystemExit(string? format, params ReadOnlySpan<object?> args)
     {
-        return RaiseException(PyStandardExceptionTypes.SystemExit, arg);
+        return RaiseException(PySystemExitObjectType.Shared, format, args);
     }
 
-    internal static PyResult RaiseStopIteration(string? arg = null)
+    internal static PyResult StopIteration(string? format, params ReadOnlySpan<object?> args)
+    {
+        return RaiseException(PyStopIterationObjectType.Shared, format, args);
+    }
+    internal static PyResult StopIteration(PyObject? arg = null)
     {
         return RaiseException(PyStandardExceptionTypes.StopIteration, arg);
     }
-    internal static PyResult RaiseStopIteration(PyObject? arg)
+
+    internal static PyResult RuntimeError(string? format, params ReadOnlySpan<object?> args)
     {
-        return RaiseException(PyStandardExceptionTypes.StopIteration, arg);
+        return RaiseException(PyRuntimeErrorObjectType.Shared, format, args);
     }
 
-    internal static PyResult RaiseRuntimeError(string? arg = null)
+    internal static PyResult GeneratorExit(string? format, params ReadOnlySpan<object?> args)
     {
-        return RaiseException(PyStandardExceptionTypes.RuntimeError, arg);
-    }
-
-    internal static PyResult RaiseGeneratorExit(string? arg = null)
-    {
-        return RaiseException(PyStandardExceptionTypes.GeneratorExit, arg);
+        return RaiseException(PyGeneratorExitObjectType.Shared, format, args);
     }
 
     internal static PyResult ModuleNotFoundError(string? format, params ReadOnlySpan<object?> args)
@@ -119,17 +119,17 @@ partial struct PyResult
         return RaiseException(PyModuleNotFoundErrorObjectType.Shared, format, args);
     }
 
-    internal static PyResult RaiseImportError(string? arg = null)
+    internal static PyResult ImportError(string? format, params ReadOnlySpan<object?> args)
     {
-        return RaiseException(PyStandardExceptionTypes.ImportError, arg);
+        return RaiseException(PyImportErrorObjectType.Shared, format, args);
     }
-    internal static PyResult RaiseUnboundLocalError(string? arg = null)
+    internal static PyResult UnboundLocalError(string? format, params ReadOnlySpan<object?> args)
     {
-        return RaiseException(PyStandardExceptionTypes.UnboundLocalError, arg);
+        return RaiseException(PyUnboundLocalErrorObjectType.Shared, format, args);
     }
-    internal static PyResult RaiseNameError(string? arg = null)
+    internal static PyResult NameError(string? format, params ReadOnlySpan<object?> args)
     {
-        return RaiseException(PyStandardExceptionTypes.NameError, arg);
+        return RaiseException(PyNameErrorObjectType.Shared, format, args);
     }
 
     internal sealed class PySharpException : PyExceptionType<PySharpException, PyBaseExceptionObjectType>
@@ -139,9 +139,8 @@ partial struct PyResult
     }
 
 
-    internal static PyResult RaisePySharpException(string arg)
+    internal static PyResult RaisePySharpException(string? format, params ReadOnlySpan<object?> args)
     {
-        return RaiseException(PySharpException.Shared, arg);
+        return RaiseException(PySharpException.Shared, format, args);
     }
-
 }

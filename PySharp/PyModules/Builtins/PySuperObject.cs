@@ -70,20 +70,20 @@ public sealed class PySuperObjectType : PyTypeObject<PySuperObjectType, PySuperO
         var frame = context.CurrentFrame;
         if (frame.CallingArguments is null)
             // TODO: in what situations would this happen?
-            return PyResult.RaiseRuntimeError(PySR.Runtime_Super_NoArgs);
+            return PyResult.RuntimeError(PySR.Runtime_Super_NoArgs);
 
         var (args, _) = frame.CallingArguments.Value;
         if (args.Count is 0)
-            return PyResult.RaiseRuntimeError(PySR.Runtime_Super_NoArgs);
+            return PyResult.RuntimeError(PySR.Runtime_Super_NoArgs);
 
         if (frame.InternalClosure is null || !frame.InternalClosure.TryGetValue(PySpecialNames.Class, out var cell))
-            return PyResult.RaiseRuntimeError(PySR.Runtime_Super_ClassCellNotFound);
+            return PyResult.RuntimeError(PySR.Runtime_Super_ClassCellNotFound);
 
         if (cell.Value is null)
-            return PyResult.RaiseRuntimeError(PySR.Runtime_Super_ClassCellEmpty);
+            return PyResult.RuntimeError(PySR.Runtime_Super_ClassCellEmpty);
 
         if (cell.Value is not PyTypeObject type)
-            return PyResult.RaiseRuntimeError(PySR.Format(PySR.Runtime_Super_ClassNonType, cell.Value.PyType.FullName));
+            return PyResult.RuntimeError(PySR.Format(PySR.Runtime_Super_ClassNonType, cell.Value.PyType.FullName));
 
         return PySuperObject.CreateSuper(type, args[0]);
     }
@@ -129,7 +129,7 @@ public sealed class PySuperObjectType : PyTypeObject<PySuperObjectType, PySuperO
                 return attr;
             }
         }
-        return PyResult.RaiseAttributeError(str.Value);
+        return PyResult.AttributeError(str.Value);
     }
 
     protected override PyResult Get(PyCallContext context, PySuperObject self, PyObject instance, PyObject owner)

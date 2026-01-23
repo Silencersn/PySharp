@@ -30,7 +30,7 @@ public sealed class PyIteratorObjectType : PyTypeObject<PyIteratorObjectType, Py
     protected override PyResult Next(PyCallContext context, PyIteratorObject self)
     {
         if (self._index is -1)
-            return PyResult.RaiseStopIteration();
+            return PyResult.StopIteration();
 
         var result = PySpecialMethods.GetItem(context, self._iter, PyIntObject.FromInteger(self._index));
         if (result.IsError)
@@ -39,7 +39,7 @@ public sealed class PyIteratorObjectType : PyTypeObject<PyIteratorObjectType, Py
                 return result;
 
             self._index = -1;
-            return PyResult.RaiseStopIteration();
+            return PyResult.StopIteration();
         }
 
         self._index++;

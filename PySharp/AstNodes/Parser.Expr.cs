@@ -168,7 +168,7 @@ partial class Parser
             var end = CurrentToken.Start;
 
             if (!_codeSource.Code.TryGetRange(start, end, out var range))
-                throw _context.ThrowablePySharpException("incorrect code text position");
+                throw _context.PySharpException("incorrect code text position");
 
             debugSpec = Ast.Constant(range.ToString()).With(metaInfo.WithEnd());
         }

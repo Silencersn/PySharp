@@ -53,6 +53,6 @@ public sealed class PyDictItemIteratorObjectType : PyTypeObject<PyDictItemIterat
         if (self._keyEnumerator.MoveNext())
             return PyTupleObject.CreateTuple(self._keyEnumerator.Current, self._items._dict._dict[self._keyEnumerator.Current]);
 
-        return PyResult.RaiseStopIteration();
+        return PyResult.StopIteration();
     }
 }

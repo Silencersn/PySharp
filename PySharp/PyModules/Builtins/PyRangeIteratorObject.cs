@@ -28,7 +28,7 @@ public sealed class PyRangeIteratorObjectType : PyTypeObject<PyRangeIteratorObje
     protected override PyResult Next(PyCallContext context, PyRangeIteratorObject self)
     {
         if (self._len <= 0)
-            return PyResult.RaiseStopIteration();
+            return PyResult.StopIteration();
 
         var result = self._start;
         self._start += self._step;
@@ -67,7 +67,7 @@ public sealed class PyLongRangeIteratorObjectType : PyTypeObject<PyLongRangeIter
     protected override PyResult Next(PyCallContext context, PyLongRangeIteratorObject self)
     {
         if (self._len <= 0)
-            return PyResult.RaiseStopIteration();
+            return PyResult.StopIteration();
 
         var result = self._start;
         self._start += self._step;

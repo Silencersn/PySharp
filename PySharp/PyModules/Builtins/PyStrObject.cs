@@ -104,7 +104,7 @@ public sealed class PyStrObjectType : PyTypeObject<PyStrObjectType, PyStrObject>
         var index = result.Value.Int32Value;
         index = Utils.MapIndex(index, self.PyLength);
         if (index < 0 || index >= self.PyLength)
-            return PyResult.RaiseIndexError(PySR.Runtime_String_IndexOutOfRange);
+            return PyResult.IndexError(PySR.Runtime_String_IndexOutOfRange);
         return PyStrObject.FromRune(self.Value.EnumerateRunes().ElementAt(index));
     }
     protected override PyResult Add(PyCallContext context, PyStrObject self, PyObject other)

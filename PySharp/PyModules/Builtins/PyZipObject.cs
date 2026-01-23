@@ -63,7 +63,7 @@ public sealed class PyZipObjectType : PyTypeObject<PyZipObjectType, PyZipObject>
     protected override PyResult Next(PyCallContext context, PyZipObject self)
     {
         if (self._end)
-            return PyResult.RaiseStopIteration();
+            return PyResult.StopIteration();
 
         if (self._iterables.Length is 0)
         {
@@ -116,7 +116,7 @@ public sealed class PyZipObjectType : PyTypeObject<PyZipObjectType, PyZipObject>
         }
 
         if (!allHaveItem)
-            return PyResult.RaiseStopIteration();
+            return PyResult.StopIteration();
 
         return PyTupleObject.CreateTuple(list);
     }

@@ -39,7 +39,7 @@ public sealed class PyMemberDescriptorObjectType : PyTypeObject<PyMemberDescript
     protected override PyResult Set(PyCallContext context, PyMemberDescriptorObject self, PyObject instance, PyObject value)
     {
         if (self._setter is null)
-            return PyResult.RaiseAttributeError("readonly attribute");
+            return PyResult.AttributeError("readonly attribute");
 
         if (!instance.PyType.IsSubclassOf(self._declaringType))
             return PyResult.TypeError(null);
@@ -50,7 +50,7 @@ public sealed class PyMemberDescriptorObjectType : PyTypeObject<PyMemberDescript
     protected override PyResult Delete(PyCallContext context, PyMemberDescriptorObject self, PyObject instance)
     {
         if (self._deleter is null)
-            return PyResult.RaiseAttributeError("readonly attribute");
+            return PyResult.AttributeError("readonly attribute");
 
         if (!instance.PyType.IsSubclassOf(self._declaringType))
             return PyResult.TypeError(null);

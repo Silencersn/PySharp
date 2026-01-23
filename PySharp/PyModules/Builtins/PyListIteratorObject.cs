@@ -32,7 +32,7 @@ public sealed class PyListIteratorObjectType : PyTypeObject<PyListIteratorObject
         if (self._index is -2 || ++self._index >= self._list._list.Count)
         {
             self._index = -2;
-            return PyResult.RaiseStopIteration();
+            return PyResult.StopIteration();
         }
         return self._list._list[self._index];
     }

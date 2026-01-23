@@ -27,7 +27,7 @@ public sealed class PyStrIteratorObjectType : PyTypeObject<PyStrIteratorObjectTy
     protected override PyResult Next(PyCallContext context, PyStrIteratorObject self)
     {
         if (!self._enumerator.MoveNext())
-            return PyResult.RaiseStopIteration();
+            return PyResult.StopIteration();
         return PyStrObject.FromRune(self._enumerator.Current);
     }
 }

@@ -197,7 +197,7 @@ public sealed class AssertNode : AstStmtNode
             throw context.AssertionError(string.Empty);
 
         var msg = Msg.GetExprValue(context, frame);
-        throw context.ThrowableAssertionError(msg);
+        throw context.AssertionError(msg);
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()

@@ -161,7 +161,7 @@ public sealed class PyDictObjectType : PyTypeObject<PyDictObjectType, PyDictObje
         var key = arguments[0];
         if (self.PyTryPop(key, out var value))
             return value;
-        return PyResult.RaiseKeyError(key);
+        return PyResult.KeyError(key);
     }
 
     [PyFunctionArgsDef("key", "default", "/")]
@@ -177,7 +177,7 @@ public sealed class PyDictObjectType : PyTypeObject<PyDictObjectType, PyDictObje
     {
         if (self.PyTryPopItem(out var key, out var value))
             return PyTupleObject.CreateTuple(key, value);
-        return PyResult.RaiseKeyError(PySR.Runtime_Dictionary_PopEmptyDict);
+        return PyResult.KeyError(PySR.Runtime_Dictionary_PopEmptyDict);
     }
 
     [PyFunctionArgsDef()]

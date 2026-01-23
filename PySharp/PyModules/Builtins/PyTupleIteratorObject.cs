@@ -33,7 +33,7 @@ public sealed class PyTupleIteratorObjectType : PyTypeObject<PyTupleIteratorObje
         if (self._index is -2 || ++self._index >= self._tuple._array.Length)
         {
             self._index = -2;
-            return PyResult.RaiseStopIteration();
+            return PyResult.StopIteration();
         }
         return PySpecialMethods.GetItem(context, self._tuple, PyIntObject.FromInteger(self._index));
     }

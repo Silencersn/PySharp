@@ -145,7 +145,7 @@ internal static class Utils
     public static PyResult GetListItem(IList<PyObject> items, int index, string? msgIfOutOfRange)
     {
         if (IsIndexOutOfRange(index, items.Count))
-            return PyResult.RaiseIndexError(msgIfOutOfRange);
+            return PyResult.IndexError(msgIfOutOfRange);
 
         return items[MapIndex(index, items.Count)];
     }
