@@ -57,7 +57,7 @@ public static class PySpecialMethods
         }
 
         return ValidateResultOf<PyBoolObject>(PyTypeObject.DefaultBool(context, obj), MessageCreator);
-    
+
         static string MessageCreator(PyObject o)
         {
             return PySR.Format(PySR.Runtime_Object_SpecialMethodReturnsWrongType, PySpecialNames.Bool, "bool", o.PyType.FullName);

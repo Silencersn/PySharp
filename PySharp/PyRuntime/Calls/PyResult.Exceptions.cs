@@ -69,7 +69,7 @@ partial struct PyResult
     {
         return RaiseException(PyAssertionErrorObjectType.Shared, format, args);
     }
-    
+
     internal static PyResult RaiseAssertionError(string? arg = null)
     {
         return RaiseException(PyStandardExceptionTypes.AssertionError, arg);
@@ -79,7 +79,7 @@ partial struct PyResult
     {
         return RaiseException(PyStandardExceptionTypes.AssertionError, arg);
     }
-    
+
     internal static PyResult ZeroDivisionError(string? format = PySR.Runtime_Number_DivisionByZero, params ReadOnlySpan<object?> args)
     {
         return RaiseException(PyZeroDivisionErrorObjectType.Shared, format, args);

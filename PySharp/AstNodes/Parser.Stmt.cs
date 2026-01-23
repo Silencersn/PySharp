@@ -1,5 +1,4 @@
 ﻿using PySharp.PyRuntime;
-using PySharp.Resources;
 using PySharp.Tokenization;
 using System.Diagnostics.CodeAnalysis;
 

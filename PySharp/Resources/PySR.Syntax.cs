@@ -41,10 +41,10 @@ partial class PySR
     public const string InvalidSyntax_UnicodeError_TruncatedLowerUSequence = "(unicode error) 'unicodeescape' codec can't decode bytes in position {0}-{1}: truncated \\uXXXX escape";
     public const string InvalidSyntax_UnicodeError_TruncatedUpperUSequence = "(unicode error) 'unicodeescape' codec can't decode bytes in position {0}-{1}: truncated \\UXXXXXXXX escape";
     public const string InvalidSyntax_UnicodeError_IllegalCharacter = "(unicode error) 'unicodeescape' codec can't decode bytes in position {0}-{1}: illegal Unicode character";
-    
+
     public const string InvalidSyntax_Indentation_Unexpected = "unexpected indent";
     public const string InvalidSyntax_Indentation_ExpectedForBlock = "expected an indented block after {0} on line {1}";
-    
+
     public const string InvalidSyntax_Parameters_NoArgsBeforeSlash = "at least one argument must precede /";
     public const string InvalidSyntax_Parameters_ArgsFollowVarKwArg = "arguments cannot follow var-keyword argument";
     public const string InvalidSyntax_Parameters_MultipleSlashes = "/ may appear only once";
@@ -81,7 +81,7 @@ partial class PySR
 
     public const string InvalidSyntax_TypeParam_BoundForTypeVarTuple = "cannot use bound with TypeVarTuple";
     public const string InvalidSyntax_TypeParam_BoundForParamSpec = "cannot use bound with ParamSpec";
-    
+
     public const string InvalidSyntax_Pattern_InvalidPatternTarget = "cannot use {0} as pattern target";
     public const string InvalidSyntax_Pattern_UnderscoreAsTarget = "cannot use '_' as a target";
     public const string InvalidSyntax_Pattern_RealNumberRequired = "real number required in complex literal";

@@ -3,7 +3,6 @@ using PySharp.PyModules.Builtins;
 using PySharp.PyModules.CSharp;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
-using PySharp.Resources;
 using System.Collections.Immutable;
 using System.Diagnostics;
 

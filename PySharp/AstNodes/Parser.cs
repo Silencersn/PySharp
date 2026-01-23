@@ -1,7 +1,6 @@
 ﻿using PySharp.CodeAnalysis;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
-using PySharp.Resources;
 using PySharp.Tokenization;
 using System.Collections.Frozen;
 namespace PySharp.AstNodes;

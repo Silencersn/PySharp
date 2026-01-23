@@ -1,5 +1,4 @@
 ﻿using PySharp.PyModules.Builtins;
-using PySharp.Resources;
 using PySharp.Tokenization;
 using PySharp.Utility;
 

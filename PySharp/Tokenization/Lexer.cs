@@ -1,7 +1,6 @@
 ﻿using PySharp.CodeAnalysis;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
-using PySharp.Resources;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
