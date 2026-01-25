@@ -143,13 +143,22 @@ public class PyInterpreter
         return moduleName is not null ? interpreter.GetModule(moduleName) : null;
     }
 
-    internal static PyModuleObject RunCodeWithinEnvironment(PyCallContext context, string code, string moduleName, string sourceName)
+    internal static PyModuleObject RunCodeWithContext(PyCallContext context, string code, string moduleName, string sourceName)
     {
         var codeSource = new CodeSource(sourceName, code);
         var tokens = Lexer.Tokenize(context, codeSource);
         var node = Parser.ParseModule(context, codeSource, tokens);
         SemanticAnalyzer.Analyze(context, node);
         return PyVirtualMachine.Execute(context, node, moduleName);
+    }
+
+    internal static void RunCodeWithContext(PyCallContext context, string code, PyModuleObject module, string sourceName)
+    {
+        var codeSource = new CodeSource(sourceName, code);
+        var tokens = Lexer.Tokenize(context, codeSource);
+        var node = Parser.ParseModule(context, codeSource, tokens);
+        SemanticAnalyzer.Analyze(context, node);
+        PyVirtualMachine.ExecuteToObject(context, node, module);
     }
 
     public static void RunRepl()

@@ -22,16 +22,11 @@ internal static class PyStandardLibrary
             "operator" => new PyOperatorModuleObject(),
             "time" => new PyTimeModuleObject(),
             "random" => new PyRandomModuleObject(),
-            "this" => Execute(context, "this", PyThisModuleObject.Code),
+            "this" => new PyThisModuleObject(),
             "threading" => new PyThreadingModuleObject(),
             "queue" => new PyQueueModuleObject(),
 
             _ => null
         };
-    }
-
-    private static PyModuleObject Execute(PyCallContext context, string name, string code)
-    {
-        return PyInterpreter.RunCodeWithinEnvironment(context, code, name, $"{name}.py");
     }
 }

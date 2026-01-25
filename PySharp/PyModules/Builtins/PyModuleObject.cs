@@ -50,3 +50,17 @@ public sealed class PyModuleObjectType : PyTypeObject<PyModuleObjectType, PyModu
         return PyResult.AttributeError($"module '{self.Name}' has no attribute '{item}'");
     }
 }
+
+public abstract class PyCodeBasedModuleObject : PyModuleObject
+{
+    protected PyCodeBasedModuleObject(string name) : base(name)
+    {
+    }
+
+    public abstract string Code { get; }
+
+    public override void OnImport(PyCallContext context, PyEnvironment environment)
+    {
+        PyInterpreter.RunCodeWithContext(context, Code, this, $"{Name}.py");
+    }
+}

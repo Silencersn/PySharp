@@ -1,8 +1,14 @@
-﻿namespace PySharp.PyModules.This;
+﻿using PySharp.PyModules.Builtins;
 
-public class PyThisModuleObject
+namespace PySharp.PyModules.This;
+
+public class PyThisModuleObject : PyCodeBasedModuleObject
 {
-    public static string Code =>
+    public PyThisModuleObject() : base("this")
+    {
+    }
+
+    public override string Code =>
         """"
         s = """Gur Mra bs Clguba, ol Gvz Crgref
 
