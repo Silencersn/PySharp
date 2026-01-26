@@ -1,4 +1,5 @@
 ﻿using PySharp.AstNodes;
+using PySharp.Bytecodes;
 using PySharp.CodeAnalysis;
 using PySharp.PyRuntime.Calls;
 using PySharp.Tokenization;
@@ -35,5 +36,10 @@ internal class Compiler
     public static PyCompilation CompileSingle(PyCallContext context, string code, string sourceName, bool appendNewLine)
     {
         return InternalCompile(context, code, sourceName, Parser.ParseInteractive, appendNewLine);
+    }
+
+    public static PyBytecodeCompilation CompileBytecode(SemanticModel model)
+    {
+        return BytecodeCompiler.Compile(model);
     }
 }

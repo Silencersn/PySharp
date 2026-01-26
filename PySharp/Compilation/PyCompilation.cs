@@ -1,4 +1,5 @@
 ﻿using PySharp.AstNodes;
+using PySharp.Bytecodes;
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime.Calls;
 using System;
@@ -16,6 +17,7 @@ internal abstract class PyCompilation
 internal sealed class PyAstCompilation : PyCompilation
 {
     private readonly SemanticModel _model;
+    internal SemanticModel Model => _model;
 
     public PyAstCompilation(SemanticModel model)
     {
@@ -35,5 +37,31 @@ internal sealed class PyAstCompilation : PyCompilation
 
         context.CurrentFrame.SemanticModel = _model;
         return expr.GetExprValue(context, context.CurrentFrame);
+    }
+}
+
+internal sealed class PyBytecodeCompilation : PyCompilation
+{
+    private readonly SemanticModel _model;
+    private readonly List<Instruction> _instructions;
+
+    internal SemanticModel Model => _model;
+    internal List<Instruction> Instructions => _instructions;
+
+    public PyBytecodeCompilation(SemanticModel model, List<Instruction> instructions)
+    {
+        _model = model;
+        _instructions = instructions;
+    }
+
+    public override void Execute(PyCallContext context)
+    {
+        BytecodeVirtualMachine vm = new(context, this);
+        vm.Eval();
+    }
+
+    public override PyObject Evaluate(PyCallContext context)
+    {
+        throw new NotImplementedException();
     }
 }

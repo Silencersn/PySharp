@@ -108,31 +108,19 @@ public sealed class NameNode : AstExprNode, IExprContextNode, ITargetNode
     public string Id { get; }
     public ExprContextType Ctx { get; set; } = ExprContextType.Load;
 
-    // TODO: FastIndex can be DANGEROUS if this node is used in different ast tree!!!
-    internal int FastIndex { get; set; } = -1;
-
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        if (FastIndex is not -1)
-            return frame.LoadFast(FastIndex).PyUnwrap(context);
-
         return frame.GetVariable(Id).PyUnwrap(context);
     }
 
     void ITargetNode.DeleteValue(PyCallContext context, PyFrame frame)
     {
-        if (FastIndex is not -1)
-            frame.DeleteFast(FastIndex).PyUnwrap(context);
-        else
-            frame.DeleteVariable(Id).PyUnwrap(context);
+        frame.DeleteVariable(Id).PyUnwrap(context);
     }
 
     void ITargetNode.SetValue(PyCallContext context, PyObject value, PyFrame frame)
     {
-        if (FastIndex is not -1)
-            frame.StoreFast(FastIndex, value).PyUnwrap(context);
-        else
-            frame.SetVariable(Id, value).PyUnwrap(context);
+        frame.SetVariable(Id, value).PyUnwrap(context);
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
@@ -443,7 +431,7 @@ public sealed class DictNode : AstExprNode, IAstExprNodeNoSelfPythonException
 
     public ImmutableArray<AstExprNode?> Keys { get; }
     public ImmutableArray<AstExprNode> Values { get; }
-
+    
     public override PyDictObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
         List<KeyValuePair<PyObject, PyObject>> pairs = new(Keys.Length);
