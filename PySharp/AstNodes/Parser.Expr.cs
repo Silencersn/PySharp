@@ -1386,10 +1386,8 @@ partial class Parser
         if (CurrentTokenType is not TokenType.DoubleStar)
             return ParseKvpair()!;
 
-        var metaInfo = CreateAstMetaInfo();
         MoveNextToken();
         var value = ParseBitwiseOr();
-        value = Ast.Starred(value).With(metaInfo.WithPreviousEnd());
         return KeyValuePair.Create<AstExprNode?, AstExprNode>(key: null, value);
     }
 

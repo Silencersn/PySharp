@@ -433,7 +433,7 @@ public sealed class TupleNode : AstExprNode, IExprContextNode, IAstExprNodeNoSel
 
 public sealed class DictNode : AstExprNode, IAstExprNodeNoSelfPythonException
 {
-    internal DictNode(ImmutableArray<AstExprNode> keys, ImmutableArray<AstExprNode> values)
+    internal DictNode(ImmutableArray<AstExprNode?> keys, ImmutableArray<AstExprNode> values)
     {
         Debug.Assert(keys.Length == values.Length);
 
@@ -441,24 +441,35 @@ public sealed class DictNode : AstExprNode, IAstExprNodeNoSelfPythonException
         Values = values;
     }
 
-    public ImmutableArray<AstExprNode> Keys { get; }
+    public ImmutableArray<AstExprNode?> Keys { get; }
     public ImmutableArray<AstExprNode> Values { get; }
 
     public override PyDictObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        return new PyDictObject(
-            Keys
-            .Zip(Values)
-            .Select(item => KeyValuePair.Create(
-                item.First.GetExprValue(context, frame),
-                item.Second.GetExprValue(context, frame)))
-            );
+        List<KeyValuePair<PyObject, PyObject>> pairs = new(Keys.Length);
+        for (int i = 0; i < Keys.Length; i++)
+        {
+            var key = Keys[i]?.GetExprValue(context, frame);
+            var value = Values[i].GetExprValue(context, frame);
+            if (key is null)
+                pairs.AddRange(AstUtils.ExtractMapping(context, value));
+            else
+                pairs.Add(KeyValuePair.Create(key, value));
+        }
+
+        return PyDictObject.CreateDict(pairs);
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
-        foreach (var k in Keys) yield return k;
-        foreach (var v in Values) yield return v;
+        foreach (var k in Keys)
+        {
+            if (k is not null)
+                yield return k;
+        }
+
+        foreach (var v in Values)
+            yield return v;
     }
 }
 

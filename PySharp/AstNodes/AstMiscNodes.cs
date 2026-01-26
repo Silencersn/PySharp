@@ -139,10 +139,7 @@ public class AstKeywordNode : AstNode
         }
 
         var mapping = Value.GetExprValue(context, frame);
-        if (mapping is not PyDictObject dict)
-            throw new NotImplementedException(); // TODO: support other mappings
-
-        foreach (var (key, value) in dict._dict)
+        foreach (var (key, value) in AstUtils.ExtractMapping(context, mapping))
         {
             if (key is not PyStrObject str)
                 throw context.TypeError(PySR.Runtime_Keyword_KeywordsMustBeStrings);

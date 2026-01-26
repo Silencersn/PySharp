@@ -3,6 +3,7 @@ using PySharp.PyModules;
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
+using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -288,5 +289,14 @@ internal static class AstUtils
         foreach (var keyword in keywords)
             keyword.AddOrUnpackValueTo(result, context, frame);
         return result;
+    }
+
+    public static IDictionary<PyObject, PyObject> ExtractMapping(PyCallContext context, PyObject mapping)
+    {
+        if (mapping is not PyDictObject dict)
+            // TODO: support other mapping
+            throw context.TypeError(PySR.Runtime_Dictionary_NotAMapping, mapping.PyType.FullName);
+
+        return dict._dict;
     }
 }

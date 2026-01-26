@@ -82,6 +82,7 @@ partial class PySR
 
     public const string Runtime_Dictionary_UpdateEltLengthNotMatch = "dictionary update sequence element #{0} has length {1}; 2 is required";
     public const string Runtime_Dictionary_PopEmptyDict = "popitem(): dictionary is empty";
+    public const string Runtime_Dictionary_NotAMapping = "'{0}' object is not a mapping";
 
     public const string Runtime_Range_Arg3Zero = "range() arg 3 must not be zero";
 

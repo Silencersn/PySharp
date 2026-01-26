@@ -134,7 +134,7 @@ partial class Ast
     {
         ArgumentNullException.ThrowIfNull(pairs);
 
-        return new DictNode(pairs.Select(static pair => pair.Key).ToImmutableArray(true)! /* TODO: support null key */, pairs.Select(static pair => pair.Value).ToImmutableArray(true));
+        return new DictNode([.. pairs.Select(static pair => pair.Key)], pairs.Select(static pair => pair.Value).ToImmutableArray(true));
     }
     public static DictCompNode DictComp(KeyValuePair<AstExprNode, AstExprNode> kvpair, IEnumerable<AstComprehensionNode> generators)
     {
