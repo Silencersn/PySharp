@@ -107,6 +107,8 @@ public sealed class NameNode : AstExprNode, IExprContextNode, ITargetNode
 
     public string Id { get; }
     public ExprContextType Ctx { get; set; } = ExprContextType.Load;
+
+    // TODO: FastIndex can be DANGEROUS if this node is used in different ast tree!!!
     internal int FastIndex { get; set; } = -1;
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
@@ -959,28 +961,26 @@ public sealed class LambdaNode : AstExprNode, IScopedSubNodesProvider
 
     public AstArgumentsNode Args { get; }
     public AstExprNode Body { get; }
-    internal LambdaVariableScope? VariableScope { get; set; }
-    internal PyCodeObject? CodeObject { get; set; }
 
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        if (VariableScope is null)
-            throw new InvalidOperationException();
-        Debug.Assert(CodeObject is not null);
+        var variableScope = frame.SemanticModel?.GetVariableScope<LambdaVariableScope>(this)
+            ?? throw new InvalidOperationException();
+        Debug.Assert(variableScope.CodeObject is not null);
 
-        Caller caller = VariableScope.HasYield ?
-            new GeneratorCaller(context, VariableScope, frame, GetResult) :
-            new FunctionCaller(context, VariableScope, frame, GetResult);
+        Caller caller = variableScope.HasYield ?
+            new GeneratorCaller(context, variableScope, frame, GetResult) :
+            new FunctionCaller(context, variableScope, frame, GetResult);
 
         var func = new PyFunctionObject(
             "<lambda>",
             caller.Call,
             caller.GetFreeVars(frame),
             frame._globals,
-            CodeObject);
+            variableScope.CodeObject);
 
-        Debug.Assert(VariableScope.QualName is not null);
-        func.PyAttributes.Add(PySpecialNames.QualName, PyStrObject.FromString(VariableScope.QualName));
+        Debug.Assert(variableScope.QualName is not null);
+        func.PyAttributes.Add(PySpecialNames.QualName, PyStrObject.FromString(variableScope.QualName));
 
         caller.Func = func;
         return func;

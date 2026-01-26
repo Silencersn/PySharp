@@ -9,15 +9,40 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.AstNodes;
 
+public sealed class SemanticModel
+{
+    private readonly Dictionary<AstNode, VariableScope> _nodeToScope = [];
+    private readonly AstModNode _root;
+
+    internal AstModNode Root => _root;
+
+    internal SemanticModel(AstModNode root)
+    {
+        _root = root;
+    }
+
+    internal void AppendScope(AstNode node, VariableScope scope)
+    {
+        _nodeToScope.Add(node, scope);
+    }
+
+    internal T? GetVariableScope<T>(AstNode node) where T : VariableScope
+    {
+        if (!_nodeToScope.TryGetValue(node, out var scope))
+            return null;
+
+        return scope as T;
+    }
+}
+
 public sealed class SemanticAnalyzer : ICodeMetaInfoProvider
 {
-    public static void Analyze(PyCallContext context, AstModNode root)
+    public static SemanticModel Analyze(PyCallContext context, AstModNode root)
     {
-        if (root.VariableScope is not null)
-            return;
-
         var scope = InternalAnalyze(context, root);
-        scope.Bind();
+        var model = new SemanticModel(root);
+        scope.Bind(model);
+        return model;
     }
 
     internal static RootVariableScope InternalAnalyze(PyCallContext context, AstModNode root)
@@ -760,14 +785,15 @@ internal abstract class VariableScope
         }
     }
 
-    public void Bind()
+    public void Bind(SemanticModel model)
     {
-        BindToOwner();
-        foreach (var childScope in Children)
-            childScope.Bind();
-    }
+        model.AppendScope(Owner, this);
+        if (this is CallableVariableScope callable)
+            callable.CodeObject = new PyCodeObject(callable);
 
-    public abstract void BindToOwner();
+        foreach (var childScope in Children)
+            childScope.Bind(model);
+    }
 }
 
 internal sealed class RootVariableScope : VariableScope
@@ -778,14 +804,6 @@ internal sealed class RootVariableScope : VariableScope
     public RootVariableScope(AstModNode owner) : base(null)
     {
         Owner = owner;
-    }
-
-    public override void BindToOwner()
-    {
-        if (Owner.VariableScope is not null && !ReferenceEquals(Owner.VariableScope, this))
-            throw new InvalidOperationException();
-
-        Owner.VariableScope = this;
     }
 }
 
@@ -800,14 +818,6 @@ internal sealed class ClassVariableScope : VariableScope
     {
         Owner = owner;
     }
-
-    public override void BindToOwner()
-    {
-        if (Owner.VariableScope is not null && !ReferenceEquals(Owner.VariableScope, this))
-            throw new InvalidOperationException();
-
-        Owner.VariableScope = this;
-    }
 }
 
 internal abstract class CallableVariableScope : VariableScope
@@ -820,6 +830,7 @@ internal abstract class CallableVariableScope : VariableScope
     public string[] FreeVars { get; internal set; } = [];
     public List<string> TempFrees = [];
     public Dictionary<string, HashSet<CallableVariableScope>> ScopesRequiringFree = [];
+    public PyCodeObject? CodeObject { get; set; }
 
     protected CallableVariableScope(VariableScope? parent) : base(parent)
     {
@@ -847,15 +858,6 @@ internal sealed class FunctionVariableScope : CallableVariableScope
     {
         Owner = owner;
     }
-
-    public override void BindToOwner()
-    {
-        if (Owner.VariableScope is not null && !ReferenceEquals(Owner.VariableScope, this))
-            throw new InvalidOperationException();
-
-        Owner.VariableScope = this;
-        Owner.CodeObject = new PyCodeObject(this);
-    }
 }
 
 internal sealed class LambdaVariableScope : CallableVariableScope
@@ -867,14 +869,5 @@ internal sealed class LambdaVariableScope : CallableVariableScope
     public LambdaVariableScope(LambdaNode owner, VariableScope parent) : base(parent)
     {
         Owner = owner;
-    }
-
-    public override void BindToOwner()
-    {
-        if (Owner.VariableScope is not null && !ReferenceEquals(Owner.VariableScope, this))
-            throw new InvalidOperationException();
-
-        Owner.VariableScope = this;
-        Owner.CodeObject = new PyCodeObject(this);
     }
 }

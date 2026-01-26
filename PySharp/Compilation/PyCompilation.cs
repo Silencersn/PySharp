@@ -1,4 +1,5 @@
 ﻿using PySharp.AstNodes;
+using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime.Calls;
 using System;
 using System.Collections.Generic;
@@ -9,19 +10,30 @@ namespace PySharp.Compilation;
 internal abstract class PyCompilation
 {
     public abstract void Execute(PyCallContext context);
+    public abstract PyObject Evaluate(PyCallContext context);
 }
 
 internal sealed class PyAstCompilation : PyCompilation
 {
-    private readonly AstModNode _astMod;
+    private readonly SemanticModel _model;
 
-    public PyAstCompilation(AstModNode astMod)
+    public PyAstCompilation(SemanticModel model)
     {
-        _astMod = astMod;
+        _model = model;
     }
 
     public override void Execute(PyCallContext context)
     {
-        _astMod.Execute(context, context.CurrentFrame);
+        context.CurrentFrame.SemanticModel = _model;
+        _model.Root.Execute(context, context.CurrentFrame);
+    }
+
+    public override PyObject Evaluate(PyCallContext context)
+    {
+        if (_model.Root is not ExpressionNode expr)
+            throw new InvalidOperationException();
+
+        context.CurrentFrame.SemanticModel = _model;
+        return expr.GetExprValue(context, context.CurrentFrame);
     }
 }

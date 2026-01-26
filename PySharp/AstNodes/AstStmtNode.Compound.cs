@@ -568,28 +568,25 @@ public sealed class FunctionDefNode : AstStmtNode, IScopedSubNodesProvider
     public AstExprNode? Returns { get; }
     public ImmutableArray<AstTypeParamNode> TypeParams { get; }
 
-    internal FunctionVariableScope? VariableScope { get; set; }
-    internal PyCodeObject? CodeObject { get; set; }
-
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
-        if (VariableScope is null)
-            throw new InvalidOperationException();
-        Debug.Assert(CodeObject is not null);
+        var variableScope = frame.SemanticModel?.GetVariableScope<FunctionVariableScope>(this)
+            ?? throw new InvalidOperationException();
+        Debug.Assert(variableScope.CodeObject is not null);
 
-        Caller caller = VariableScope.HasYield ?
-            new GeneratorCaller(context, VariableScope, frame, GetResult) :
-            new FunctionCaller(context, VariableScope, frame, GetResult);
+        Caller caller = variableScope.HasYield ?
+            new GeneratorCaller(context, variableScope, frame, GetResult) :
+            new FunctionCaller(context, variableScope, frame, GetResult);
 
         var func = new PyFunctionObject(
             Name,
             caller.Call,
             caller.GetFreeVars(frame),
             frame._globals,
-            CodeObject);
+            variableScope.CodeObject);
 
-        Debug.Assert(VariableScope.QualName is not null);
-        func.PyAttributes.Add(PySpecialNames.QualName, PyStrObject.FromString(VariableScope.QualName));
+        Debug.Assert(variableScope.QualName is not null);
+        func.PyAttributes.Add(PySpecialNames.QualName, PyStrObject.FromString(variableScope.QualName));
         if (AstUtils.TryGetDoc(Body, out var doc))
             func.PyAttributes[PySpecialNames.Doc] = doc;
         caller.Func = func;
@@ -686,12 +683,10 @@ public sealed class ClassDefNode : AstStmtNode, IScopedSubNodesProvider
     public ImmutableArray<AstExprNode> DecoratorList { get; }
     public ImmutableArray<AstTypeParamNode> TypeParams { get; }
 
-    internal ClassVariableScope? VariableScope { get; set; }
-
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
-        if (VariableScope is null)
-            throw new InvalidOperationException();
+        var variableScope = frame.SemanticModel?.GetVariableScope<ClassVariableScope>(this)
+            ?? throw new InvalidOperationException();
 
         var bases = Bases.Select(baseExpr =>
         {
@@ -706,8 +701,8 @@ public sealed class ClassDefNode : AstStmtNode, IScopedSubNodesProvider
             bases.Add(PyObjectType.Shared);
 
         PyTypeObject.ValidateBases(context, bases, out var layoutType);
-        Debug.Assert(VariableScope.QualName is not null);
-        var type = UserDefinedType.Create(layoutType, Name, VariableScope.QualName, bases);
+        Debug.Assert(variableScope.QualName is not null);
+        var type = UserDefinedType.Create(layoutType, Name, variableScope.QualName, bases);
 
         if (AstUtils.TryGetDoc(Body, out var doc))
             type.PyAttributes[PySpecialNames.Doc] = doc;
@@ -718,9 +713,9 @@ public sealed class ClassDefNode : AstStmtNode, IScopedSubNodesProvider
             type.ModuleAsObject = PyStrObject.FromString("builtins");
 
         var newFrame = frame.CreateClassBuildFrame(type);
-        newFrame._variables = VariableScope.Variables;
+        newFrame._variables = variableScope.Variables;
 
-        if (VariableScope.ClassCaptured)
+        if (variableScope.ClassCaptured)
             newFrame.ClassCell = PyCellObject.CreateCell(type);
 
         using (var withFrame = context.WithFrame(newFrame))
@@ -729,7 +724,7 @@ public sealed class ClassDefNode : AstStmtNode, IScopedSubNodesProvider
                 stmt.Execute(context, newFrame);
         }
 
-        var attrs = VariableScope.Variables.Keys.ToDictionary(static member => member, member => newFrame.GetVariable(member).PyUnwrap(context));
+        var attrs = variableScope.Variables.Keys.ToDictionary(static member => member, member => newFrame.GetVariable(member).PyUnwrap(context));
         foreach (var attr in attrs)
             type.PyAttributes[attr.Key] = attr.Value;
 

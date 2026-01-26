@@ -1,5 +1,6 @@
 ﻿using PySharp.AstNodes;
 using PySharp.CodeAnalysis;
+using PySharp.Compilation;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.PyAttributes;
@@ -196,16 +197,14 @@ public static partial class PyBuiltinFunctions
     {
         if (arguments.Args[0] is not PyStrObject str)
             return PyResult.TypeError(null);
-        var codeSource = new CodeSource("<string>", str.Value);
 
         var frame = context.CurrentFrame;
         try
         {
-            var tokens = Lexer.Tokenize(context, codeSource);
-            var node = Parser.ParseExpression(context, codeSource, tokens);
-            SemanticAnalyzer.Analyze(context, node);
+            var compilation = Compiler.CompileEval(context, str.Value, "<string>");
             var tempFrame = frame.TempFrame(FrameType.Eval);
-            return node.Body.GetExprValue(context, tempFrame);
+            using var withFrame = context.WithFrame(tempFrame);
+            return compilation.Evaluate(context);
         }
         catch (PyRuntimeException e)
         {
@@ -220,16 +219,14 @@ public static partial class PyBuiltinFunctions
     {
         if (arguments.Args[0] is not PyStrObject str)
             return PyResult.TypeError(null);
-        var codeSource = new CodeSource("<string>", str.Value);
 
         var frame = context.CurrentFrame;
         try
         {
-            var tokens = Lexer.Tokenize(context, codeSource);
-            var node = Parser.ParseModule(context, codeSource, tokens);
-            SemanticAnalyzer.Analyze(context, node);
+            var compilation = Compiler.CompileExec(context, str.Value, "<string>");
             var tempFrame = frame.TempFrame(FrameType.Exec);
-            node.Execute(context, tempFrame);
+            using var withFrame = context.WithFrame(tempFrame);
+            compilation.Execute(context);
             return PyNoneObject.None;
         }
         catch (PyRuntimeException e)

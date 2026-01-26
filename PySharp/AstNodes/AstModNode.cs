@@ -1,4 +1,5 @@
-﻿using PySharp.PyRuntime;
+﻿using PySharp.PyModules.Builtins;
+using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using System.Collections.Immutable;
 
@@ -6,7 +7,6 @@ namespace PySharp.AstNodes;
 
 public abstract class AstModNode : AstNode
 {
-    internal RootVariableScope? VariableScope { get; set; }
 }
 
 public class ModuleNode : AstModNode
@@ -20,7 +20,7 @@ public class ModuleNode : AstModNode
 
     public override void Execute(PyCallContext context, PyFrame frame)
     {
-        if (VariableScope is null)
+        if (frame.SemanticModel?.GetVariableScope<RootVariableScope>(this) is null)
             throw new InvalidOperationException();
 
         using var withMetaInfo = new MetaInfoProviderSetter(frame, this);
@@ -47,11 +47,16 @@ public class ExpressionNode : AstModNode
 
     public override void Execute(PyCallContext context, PyFrame frame)
     {
-        if (VariableScope is null)
+        _ = GetExprValue(context, frame);
+    }
+
+    public PyObject GetExprValue(PyCallContext context, PyFrame frame)
+    {
+        if (frame.SemanticModel?.GetVariableScope<RootVariableScope>(this) is null)
             throw new InvalidOperationException();
 
         using var withMetaInfo = new MetaInfoProviderSetter(frame, this);
-        _ = Body.GetExprValue(context, frame);
+        return Body.GetExprValue(context, frame);
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
@@ -71,7 +76,7 @@ public class InteractiveNode : AstModNode
 
     public override void Execute(PyCallContext context, PyFrame frame)
     {
-        if (VariableScope is null)
+        if (frame.SemanticModel?.GetVariableScope<RootVariableScope>(this) is null)
             throw new InvalidOperationException();
 
         using var withMetaInfo = new MetaInfoProviderSetter(frame, this);

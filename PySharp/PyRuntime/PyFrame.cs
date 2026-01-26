@@ -38,7 +38,7 @@ public sealed partial class PyFrame
     internal PyFrameGlobals _globals;
     internal PyFrame? _outerNonInlineFrame;
     internal PyCellObject? ClassCell { get; set; }
-
+    internal SemanticModel? SemanticModel { get; set; }
 
     private PyFrame(PyFrame? back)
     {
@@ -119,7 +119,7 @@ public sealed partial class PyFrame
             callerName,
             caller,
             frameType)
-        { CallingArguments = callingArguments };
+        { CallingArguments = callingArguments, SemanticModel = SemanticModel };
     }
 
     internal PyFrame CreateClassBuildFrame(PyTypeObject buildingClass)
@@ -131,12 +131,13 @@ public sealed partial class PyFrame
             _closure,
             buildingClass.Name,
             buildingClass,
-            FrameType.Class);
+            FrameType.Class)
+        { SemanticModel = SemanticModel };
     }
 
     internal PyFrame CreateThreadRootFrame()
     {
-        return new PyFrame(_globals);
+        return new PyFrame(_globals) { SemanticModel = SemanticModel };
     }
 
     internal PyFrame TempFrame(FrameType frameType)
@@ -151,7 +152,8 @@ public sealed partial class PyFrame
             tempLocals = _locals.Clone();
         var tempFrame = new PyFrame(this, tempGlobals, tempLocals, _closure, CallerName, Caller, frameType)
         {
-            _variables = _variables
+            _variables = _variables,
+            SemanticModel = SemanticModel
         };
         return tempFrame;
     }
@@ -164,7 +166,8 @@ public sealed partial class PyFrame
         var inlineFrame = new PyFrame(this, globals, locals, _closure, CallerName, Caller, frameType)
         {
             _variables = _variables,
-            _outerNonInlineFrame = _outerNonInlineFrame ?? this
+            _outerNonInlineFrame = _outerNonInlineFrame ?? this,
+            SemanticModel = SemanticModel
         };
         return inlineFrame;
 

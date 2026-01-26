@@ -18,8 +18,8 @@ internal class Compiler
         if (appendNewLine)
             tokens.Insert(tokens.Count - 1, new TokenInfo(TokenType.NewLine, string.Empty, default, default, source));
         var node = parse(context, source, tokens);
-        SemanticAnalyzer.Analyze(context, node);
-        return new PyAstCompilation(node);
+        var model = SemanticAnalyzer.Analyze(context, node);
+        return new PyAstCompilation(model);
     }
 
     public static PyCompilation CompileExec(PyCallContext context, string code, string sourceName)
