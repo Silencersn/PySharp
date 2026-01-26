@@ -24,10 +24,10 @@ public class ModuleNode : AstModNode
             throw new InvalidOperationException();
 
         using var withMetaInfo = new MetaInfoProviderSetter(frame, this);
+        if (AstUtils.TryGetDoc(Body, out var doc))
+            frame.SetVariable(PySpecialNames.Doc, doc);
         foreach (var stmt in Body)
-        {
             stmt.Execute(context, frame);
-        }
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()

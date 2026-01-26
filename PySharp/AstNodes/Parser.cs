@@ -85,7 +85,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         }
     }
 
-    private TokenType CurrentTokenType => CurrentToken.Type;
+    internal TokenType CurrentTokenType => CurrentToken.Type;
 
     private bool IsCurrentIdentifier => CurrentTokenType is TokenType.Name && !IsKeyword(CurrentToken.String);
 
@@ -123,7 +123,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
             _tokenStream.MoveNextToken();
     }
 
-    private void MoveNextToken()
+    internal void MoveNextToken()
     {
         if (_tokenStream.CurrentToken.Type is TokenType.EndMarker)
             return;

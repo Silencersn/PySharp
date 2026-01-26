@@ -119,7 +119,7 @@ public sealed record class TokenInfo
 
     private string? _string;
     private CodeSource Source { get; }
-    private CodeTextSpan StringSpan { get; }
+    internal CodeTextSpan StringSpan { get; }
     public TokenType Type { get; }
     public ReadOnlySpan<char> StringAsSpan => _string ?? Source.Code.GetString(StringSpan);
     public string String => _string ??= StringAsSpan.ToString();

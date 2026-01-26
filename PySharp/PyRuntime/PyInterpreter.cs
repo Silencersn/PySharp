@@ -1,5 +1,6 @@
 ﻿using PySharp.AstNodes;
 using PySharp.CodeAnalysis;
+using PySharp.Compilation;
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.Environments;
@@ -32,18 +33,10 @@ public class PyInterpreter
         return new PyInterpreter(environment);
     }
 
-    private void ExecuteNode(AstModNode node)
-    {
-        node.Execute(_mainContext, _mainContext.CurrentFrame);
-    }
-
     internal static void InternalExecute(PyCallContext context, string code, string sourceName)
     {
-        var source = new CodeSource(sourceName, code);
-        var tokens = Lexer.Tokenize(context, source);
-        var node = Parser.ParseModule(context, source, tokens);
-        SemanticAnalyzer.Analyze(context, node);
-        node.Execute(context, context.CurrentFrame);
+        var compilation = Compiler.CompileExec(context, code, sourceName);
+        compilation.Execute(context);
     }
 
     public void Execute(string code, string sourceName)
@@ -145,20 +138,14 @@ public class PyInterpreter
 
     internal static PyModuleObject RunCodeWithContext(PyCallContext context, string code, string moduleName, string sourceName)
     {
-        var codeSource = new CodeSource(sourceName, code);
-        var tokens = Lexer.Tokenize(context, codeSource);
-        var node = Parser.ParseModule(context, codeSource, tokens);
-        SemanticAnalyzer.Analyze(context, node);
-        return PyVirtualMachine.Execute(context, node, moduleName);
+        var compilation = Compiler.CompileExec(context, code, sourceName);
+        return PyVirtualMachine.Execute(context, compilation, moduleName);
     }
 
     internal static void RunCodeWithContext(PyCallContext context, string code, PyModuleObject module, string sourceName)
     {
-        var codeSource = new CodeSource(sourceName, code);
-        var tokens = Lexer.Tokenize(context, codeSource);
-        var node = Parser.ParseModule(context, codeSource, tokens);
-        SemanticAnalyzer.Analyze(context, node);
-        PyVirtualMachine.ExecuteToObject(context, node, module);
+        var compilation = Compiler.CompileExec(context, code, sourceName);
+        PyVirtualMachine.ExecuteToObject(context, compilation, module);
     }
 
     public static void RunRepl()
@@ -173,14 +160,14 @@ public class PyInterpreter
         environment.Out.WriteLine($"{nameof(PySharp)} (v{typeof(PyInterpreter).Assembly.GetName().Version}) on {Environment.OSVersion}");
 
         var interpreter = Create(environment);
-
+        var context = interpreter._mainContext;
         var builder = new StringBuilder();
 
         while (true)
         {
-            PyTryCatch(interpreter._mainContext, () =>
+            PyTryCatch(context, () =>
             {
-                InteractiveNode node;
+                PyCompilation compilation;
 
                 bool isFirstLine = true;
                 builder.Clear();
@@ -190,31 +177,35 @@ public class PyInterpreter
                     environment.Out.Write(isFirstLine ? ">>> " : "... ");
                     var line = environment.In.ReadLine() ?? throw new EndOfStreamException();
                     builder.AppendLine(line);
-                    var codeSource = new CodeSource("<stdin>", builder.ToString());
-                    var tokens = Lexer.Tokenize(interpreter._mainContext, codeSource);
-                    if (string.IsNullOrWhiteSpace(line))
-                        tokens.Insert(tokens.Count - 1, new TokenInfo(TokenType.NewLine, string.Empty, default, default, codeSource));
                     isFirstLine = false;
 
-                    var parser = new Parser(interpreter._mainContext, codeSource, tokens);
                     try
                     {
-                        node = parser.ParseInteractive();
-                        SemanticAnalyzer.Analyze(interpreter._mainContext, node);
+                        compilation = Compiler.CompileSingle(context, builder.ToString(), "<stdin>", string.IsNullOrWhiteSpace(line));
                         break;
                     }
                     catch (PyRuntimeException e)
                     {
-                        if (!PyStandardExceptionTypes.SyntaxError.IsInstance(e.PyException))
+                        if (!PySyntaxErrorObjectType.Shared.IsInstance(e.PyException))
                             throw;
 
-                        if (parser.CurrentToken.Type is not TokenType.EndMarker)
+                        // TODO: currently, depend on implementation details
+                        if (context.CurrentFrame.MetaInfoProvider is not Parser parser)
+                            throw;
+
+                        if (PyIndentationErrorObjectType.Shared.IsInstance(e.PyException))
+                        {
+                            while (parser.CurrentTokenType is TokenType.Dedent)
+                                parser.MoveNextToken();
+                        }
+
+                        if (parser.CurrentTokenType is not TokenType.EndMarker)
                             throw;
                     }
                 }
 
-                interpreter.ExecuteNode(node);
-                Debug.Assert(interpreter._mainContext.CurrentFrame.IsRoot);
+                compilation.Execute(context);
+                Debug.Assert(context.CurrentFrame.IsRoot);
             });
         }
     }
