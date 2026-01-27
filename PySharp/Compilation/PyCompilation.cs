@@ -42,16 +42,12 @@ internal sealed class PyAstCompilation : PyCompilation
 
 internal sealed class PyBytecodeCompilation : PyCompilation
 {
-    private readonly SemanticModel _model;
-    private readonly List<Instruction> _instructions;
+    private readonly Bytecode _bytecode;
+    internal Bytecode Bytecode => _bytecode;
 
-    internal SemanticModel Model => _model;
-    internal List<Instruction> Instructions => _instructions;
-
-    public PyBytecodeCompilation(SemanticModel model, List<Instruction> instructions)
+    public PyBytecodeCompilation(Bytecode bytecode)
     {
-        _model = model;
-        _instructions = instructions;
+        _bytecode = bytecode;
     }
 
     public override void Execute(PyCallContext context)

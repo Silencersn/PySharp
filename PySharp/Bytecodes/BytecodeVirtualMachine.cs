@@ -1,6 +1,7 @@
 ﻿using PySharp.AstNodes;
 using PySharp.Compilation;
 using PySharp.PyModules.Builtins;
+using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using System;
 using System.Collections.Generic;
@@ -12,7 +13,6 @@ namespace PySharp.Bytecodes;
 internal sealed class BytecodeVirtualMachine
 {
     private Stack<PyObject> Stack { get; } = [];
-    private List<Instruction> Instructions => Compilation.Instructions;
     private PyCallContext Context { get; }
     private PyBytecodeCompilation Compilation { get; }
 
@@ -24,17 +24,23 @@ internal sealed class BytecodeVirtualMachine
 
     internal void Eval()
     {
-        var context = Context;
         var frame = Context.CurrentFrame;
-        frame.SemanticModel = Compilation.Model;
+        frame.SemanticModel = Compilation.Bytecode.Model;
+        Eval(Context, frame, Compilation.Bytecode.Instructions);
+    }
+
+    internal void Eval(PyCallContext context, PyFrame frame, List<Instruction> instructions)
+    {
         int currentIndex = 0;
 
+        // cache, clear before using
         PyObject value;
+        bool boolValue;
         List<PyObject> args = [];
 
-        while (currentIndex < Instructions.Count)
+        while (currentIndex < instructions.Count)
         {
-            var instruction = Instructions[currentIndex];
+            var instruction = instructions[currentIndex];
             var nextIndex = currentIndex + 1;
 
             switch (instruction.OpCode)
@@ -47,12 +53,12 @@ internal sealed class BytecodeVirtualMachine
                     break;
 
                 case OpCode.LoadName:
-                    value = frame.LoadName(instruction.GetOperand<string>()).PyUnwrap(context);
+                    value = frame.LoadName(instruction.StringOperand).PyUnwrap(context);
                     Stack.Push(value);
                     break;
 
                 case OpCode.LoadGlobal:
-                    value = frame.LoadGlobal(instruction.GetOperand<string>()).PyUnwrap(context);
+                    value = frame.LoadGlobal(instruction.StringOperand).PyUnwrap(context);
                     Stack.Push(value);
                     break;
 
@@ -63,7 +69,7 @@ internal sealed class BytecodeVirtualMachine
 
                 case OpCode.StoreName:
                     value = Stack.Pop();
-                    frame.StoreName(instruction.GetOperand<string>(), value);
+                    frame.StoreName(instruction.StringOperand, value);
                     break;
 
                 case OpCode.StoreGlobal:
@@ -105,6 +111,24 @@ internal sealed class BytecodeVirtualMachine
                 case OpCode.Copy:
                     Stack.Push(Stack.Peek());
                     break;
+
+                case OpCode.ToBool:
+                    value = Stack.Pop();
+                    value = PySpecialMethods.Bool(context, value).PyUnwrap(context);
+                    Stack.Push(value);
+                    break;
+
+                case OpCode.Jump:
+                    nextIndex = instruction.LabelOperand.Offset;
+                    break;
+
+                case OpCode.PopJumpIfFalse:
+                    value = Stack.Pop();
+                    boolValue = ((PyBoolObject)value).BoolValue;
+                    if (!boolValue)
+                        nextIndex = instruction.LabelOperand.Offset;
+                    break;
+
 
                 default:
                     break;

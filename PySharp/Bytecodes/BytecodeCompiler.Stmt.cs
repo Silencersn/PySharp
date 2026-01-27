@@ -13,6 +13,7 @@ partial class BytecodeCompiler
         {
             case ExprNode n: CompileExpr(n); break;
             case AssignNode n: CompileAssign(n); break;
+            case IfNode n: CompileIf(n); break;
             default: throw new NotImplementedException();
         }
     }
@@ -32,5 +33,25 @@ partial class BytecodeCompiler
                 Generator.Emit(OpCode.Copy);
             StoreExpr(node.Targets[i]);
         }
+    }
+
+    private void CompileIf(IfNode node)
+    {
+        var elseBlockLabel = Generator.DefineLabel();
+        var ifStmtEndLabel = Generator.DefineLabel();
+
+        LoadExpr(node.Test);
+        Generator.Emit(OpCode.ToBool);
+        Generator.Emit(OpCode.PopJumpIfFalse, elseBlockLabel);
+
+        foreach (var stmt in node.Body)
+            CompileStmt(stmt);
+        Generator.Emit(OpCode.Jump, ifStmtEndLabel);
+
+        Generator.MarkLabel(elseBlockLabel);
+        foreach (var stmt in node.OrElse)
+            CompileStmt(stmt);
+
+        Generator.MarkLabel(ifStmtEndLabel);
     }
 }

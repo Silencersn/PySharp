@@ -26,4 +26,9 @@ internal enum OpCode
     PopTop,
 
     Copy,
+
+    ToBool,
+
+    Jump,
+    PopJumpIfFalse,
 }

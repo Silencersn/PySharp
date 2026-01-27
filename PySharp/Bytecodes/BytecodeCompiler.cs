@@ -10,7 +10,7 @@ internal sealed partial class BytecodeCompiler
     {
         var compiler = new BytecodeCompiler(model);
         compiler.Compile();
-        return new PyBytecodeCompilation(model, compiler.Generator.Instructions);
+        return new PyBytecodeCompilation(new Bytecode(model, compiler.Generator));
     }
 
     private readonly BytecodeGenerator _generator;
