@@ -263,6 +263,17 @@ public sealed class SemanticAnalyzer : ICodeMetaInfoProvider
                     }
                     break;
 
+                case TryNode n:
+                    for (int i = 0; i < n.Exceptors.Length; i++)
+                    {
+                        if (n.Exceptors[i].Type is not null)
+                            continue;
+
+                        if (i < n.Exceptors.Length - 1)
+                            throw SyntaxError(PySR.InvalidSyntax_Semantic_NonLastDefaultExcept);
+                    }
+                    break;
+
                 case MatchNode n:
                     for (int i = 0; i < n.Cases.Length; i++)
                     {
