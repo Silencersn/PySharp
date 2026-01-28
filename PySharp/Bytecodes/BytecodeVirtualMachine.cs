@@ -56,6 +56,7 @@ internal sealed class BytecodeVirtualMachine
         PyObject value;
         bool boolValue;
         List<PyObject> args = [];
+        PyResult result;
 
         while (currentIndex < instructions.Count)
         {
@@ -207,6 +208,24 @@ internal sealed class BytecodeVirtualMachine
                         boolValue = ((PyBoolObject)value).BoolValue;
                         if (!boolValue)
                             nextIndex = instruction.LabelOperand.Offset;
+                        break;
+
+                    case OpCode.GetIter:
+                        value = Stack.Pop();
+                        value = PySpecialMethods.Iter(context, value).PyUnwrap(context);
+                        Stack.Push(value);
+                        break;
+
+                    case OpCode.ForIter:
+                        result = PySpecialMethods.Next(context, Stack.Peek());
+                        if (result.IsStopIteration)
+                            nextIndex = instruction.LabelOperand.Offset;
+                        else
+                            Stack.Push(result.PyUnwrap(context));
+                        break;
+
+                    case OpCode.PopIter:
+                        Stack.Pop();
                         break;
 
                     case OpCode.RaiseVarArgs:

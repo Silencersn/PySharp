@@ -21,6 +21,10 @@ internal enum OpCode
     DeleteGlobal,
     DeleteFast,
 
+    GetIter,
+    ForIter,
+    PopIter,
+
     Call,
 
     PopTop,

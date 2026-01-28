@@ -15,8 +15,11 @@ partial class BytecodeCompiler
             case ExprNode n: CompileExpr(n); break;
             case AssignNode n: CompileAssign(n); break;
             case RaiseNode n: CompileRaise(n); break;
+            case BreakNode n: CompileBreak(n); break;
+            case ContinueNode n: CompileContinue(n); break;
             case IfNode n: CompileIf(n); break;
             case TryNode n: CompileTry(n); break;
+            case ForNode n: CompileFor(n); break;
             default: throw new NotImplementedException();
         }
     }
@@ -138,5 +141,43 @@ partial class BytecodeCompiler
         }
 
         Generator.MarkLabel(tryStmtEndLabel);
+    }
+
+    private void CompileFor(ForNode node)
+    {
+        var forIterLabel = Generator.DefineLabel();
+        var forElseLabel = Generator.DefineLabel();
+        var endForLabel = Generator.DefineLabel();
+        Loops.Push((forIterLabel, endForLabel));
+
+        LoadExpr(node.Iter);
+        Generator.Emit(OpCode.GetIter);
+
+        Generator.MarkLabel(forIterLabel);
+        Generator.Emit(OpCode.ForIter, forElseLabel);
+        StoreExpr(node.Target);
+
+        foreach (var stmt in node.Body)
+            CompileStmt(stmt);
+        Generator.Emit(OpCode.Jump, forIterLabel);
+
+        Generator.MarkLabel(forElseLabel);
+        foreach (var stmt in node.OrElse)
+            CompileStmt(stmt);
+
+        Generator.MarkLabel(endForLabel);
+        Generator.Emit(OpCode.PopIter);
+
+        Loops.Pop();
+    }
+
+    private void CompileBreak(BreakNode node)
+    {
+        Generator.Emit(OpCode.Jump, Loops.Peek().LoopEnd);
+    }
+
+    private void CompileContinue(ContinueNode node)
+    {
+        Generator.Emit(OpCode.Jump, Loops.Peek().LoopBegin);
     }
 }

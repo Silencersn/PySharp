@@ -28,6 +28,7 @@ internal sealed partial class BytecodeCompiler
     private BytecodeGenerator Generator => _generator;
     private SemanticModel Model => _model;
     private VariableScope CurrentScope { get; set; }
+    private Stack<(Label LoopBegin, Label LoopEnd)> Loops { get; } = [];
 
     public void Compile()
     {
