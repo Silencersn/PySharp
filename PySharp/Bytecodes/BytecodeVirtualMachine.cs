@@ -35,6 +35,7 @@ internal sealed class BytecodeVirtualMachine
         public Label FinallyLabel;
         public int State;
         public PyExceptionObject? PyException;
+        public int StackDepth;
 
         public ExceptionHandler(Label? exceptionHandlerLabel, Label finallyLabel)
         {
@@ -60,7 +61,6 @@ internal sealed class BytecodeVirtualMachine
         {
             var instruction = instructions[currentIndex];
             var nextIndex = currentIndex + 1;
-            var stackDepthRollback = Stack.Count;
 
             try
             {
@@ -70,7 +70,10 @@ internal sealed class BytecodeVirtualMachine
             {
                 handle:
                 if (!exceptionHandlers.TryPeek(out var currentHandler))
+                {
+                    Stack.Clear();
                     throw;
+                }
 
                 if (currentHandler.State is ExceptionHandler.State_Except)
                 {
@@ -104,14 +107,9 @@ internal sealed class BytecodeVirtualMachine
                     }
                 }
 
-                if (instruction.OpCode is not OpCode.RaiseVarArgs)
-                {
-                    // eval cases need to ensure positions where exceptions may be thrown
-                    // throwing after pop is not allowed
-                    Debug.Assert(stackDepthRollback <= Stack.Count);
-                    while (stackDepthRollback != Stack.Count)
-                        Stack.Pop();
-                }
+                Debug.Assert(currentHandler.StackDepth <= Stack.Count);
+                while (currentHandler.StackDepth < Stack.Count)
+                    Stack.Pop();
 
                 e.PyException.WithTraceback(context, overwriteExisting: false);
                 context.EnsureFrameState(frame);
@@ -212,7 +210,6 @@ internal sealed class BytecodeVirtualMachine
                         break;
 
                     case OpCode.RaiseVarArgs:
-                        stackDepthRollback -= instruction.Arg;
                         if (instruction.Arg is 0)
                         {
                             RaiseNode.Raise(context, frame, excObj: null, causeObj: null);
@@ -244,7 +241,8 @@ internal sealed class BytecodeVirtualMachine
                     case OpCode._SetupExceptionHandler:
                         Debug.Assert(instruction.Operand is not null);
                         var labelPair = ((Label?, Label))instruction.Operand;
-                        exceptionHandlers.Push(new ExceptionHandler(labelPair.Item1, labelPair.Item2));
+                        var handler = new ExceptionHandler(labelPair.Item1, labelPair.Item2) { StackDepth = Stack.Count };
+                        exceptionHandlers.Push(handler);
                         break;
 
                     case OpCode._EnterFinally:
