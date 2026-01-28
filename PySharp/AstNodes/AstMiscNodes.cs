@@ -162,17 +162,8 @@ public sealed class ExceptHandlerNode : AstNode
     public string? Name { get; }
     public ImmutableArray<AstStmtNode> Body { get; }
 
-    private Func<PyExceptionObject, bool> ValidateHandler(PyCallContext context, PyFrame frame, bool isStar, out PyObject type)
+    internal static Func<PyExceptionObject, bool> MakeCondition(PyCallContext context, PyObject type)
     {
-        if (Type is null)
-        {
-            Debug.Assert(!isStar);
-
-            type = null!;
-            return static _ => true;
-        }
-
-        type = Type.GetExprValue(context, frame);
         if (type is PyTypeObject typeObj)
         {
             if (!typeObj.IsSubclassOf(PyBaseExceptionObjectType.Shared))
@@ -191,6 +182,20 @@ public sealed class ExceptHandlerNode : AstNode
         {
             throw context.TypeError(PySR.Runtime_TryStmt_CatchNonException);
         }
+    }
+
+    private Func<PyExceptionObject, bool> ValidateHandler(PyCallContext context, PyFrame frame, bool isStar, out PyObject type)
+    {
+        if (Type is null)
+        {
+            Debug.Assert(!isStar);
+
+            type = null!;
+            return static _ => true;
+        }
+
+        type = Type.GetExprValue(context, frame);
+        return MakeCondition(context, type);
     }
 
     internal bool TryHandle(PyCallContext context, PyFrame frame, PyExceptionObject exception)

@@ -31,4 +31,13 @@ internal enum OpCode
 
     Jump,
     PopJumpIfFalse,
+
+    RaiseVarArgs,
+    CheckExcMatch,
+
+    // PySharp only
+    _SetupExceptionHandler,
+    _EnterFinally,
+    _ExitFinally,
+    _PopException,
 }

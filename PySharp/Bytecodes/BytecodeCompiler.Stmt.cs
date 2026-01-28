@@ -1,6 +1,7 @@
 ﻿using PySharp.AstNodes;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 
 namespace PySharp.Bytecodes;
@@ -13,7 +14,9 @@ partial class BytecodeCompiler
         {
             case ExprNode n: CompileExpr(n); break;
             case AssignNode n: CompileAssign(n); break;
+            case RaiseNode n: CompileRaise(n); break;
             case IfNode n: CompileIf(n); break;
+            case TryNode n: CompileTry(n); break;
             default: throw new NotImplementedException();
         }
     }
@@ -30,7 +33,7 @@ partial class BytecodeCompiler
         for (int i = 0; i < node.Targets.Length; i++)
         {
             if (i < node.Targets.Length - 1)
-                Generator.Emit(OpCode.Copy);
+                Generator.Emit(OpCode.Copy, 1);
             StoreExpr(node.Targets[i]);
         }
     }
@@ -53,5 +56,87 @@ partial class BytecodeCompiler
             CompileStmt(stmt);
 
         Generator.MarkLabel(ifStmtEndLabel);
+    }
+
+    private void CompileRaise(RaiseNode node)
+    {
+        if (node.Exc is null)
+        {
+            Generator.Emit(OpCode.RaiseVarArgs, 0);
+            return;
+        }
+
+        LoadExpr(node.Exc);
+        if (node.Cause is null)
+        {
+            Generator.Emit(OpCode.RaiseVarArgs, 1);
+            return;
+        }
+
+        LoadExpr(node.Cause);
+        Generator.Emit(OpCode.RaiseVarArgs, 2);
+    }
+
+    private void CompileTry(TryNode node)
+    {
+        var finallyBlockLabel = Generator.DefineLabel();
+        var exceptorLabels = new Label[node.Exceptors.Length];
+        for (int i = 0; i <  node.Exceptors.Length; i++)
+            exceptorLabels[i] = Generator.DefineLabel();
+        var tryStmtEndLabel = Generator.DefineLabel();
+
+        if (exceptorLabels.Length > 0)
+            Generator.Emit(OpCode._SetupExceptionHandler, (exceptorLabels[0], finallyBlockLabel));
+        else
+            Generator.Emit(OpCode._SetupExceptionHandler, (default(Label), finallyBlockLabel));
+
+        foreach (var stmt in node.Body)
+                CompileStmt(stmt);
+        foreach (var stmt in node.OrElse)
+            CompileStmt(stmt);
+        Generator.MarkLabel(finallyBlockLabel);
+        Generator.Emit(OpCode._EnterFinally);
+        foreach (var stmt in node.FinalBody)
+            CompileStmt(stmt);
+        Generator.Emit(OpCode._ExitFinally);
+        Generator.Emit(OpCode.Jump, tryStmtEndLabel);
+
+        for (int i = 0; i < node.Exceptors.Length; i++)
+        {
+            Generator.MarkLabel(exceptorLabels[i]);
+
+            var exceptor = node.Exceptors[i];
+            if (i < node.Exceptors.Length - 1)
+            {
+                Debug.Assert(exceptor.Type is not null);
+                LoadExpr(exceptor.Type);
+                Generator.Emit(OpCode.CheckExcMatch);
+                Generator.Emit(OpCode.PopJumpIfFalse, exceptorLabels[i + 1]); // jump to next except
+
+            }
+            else
+            {
+                if (exceptor.Type is not null)
+                {
+                    LoadExpr(exceptor.Type);
+                    Generator.Emit(OpCode.CheckExcMatch);
+                    Generator.Emit(OpCode.PopJumpIfFalse, finallyBlockLabel); // last exceptor, jump to finally
+                }
+            }
+
+            if (exceptor.Name is not null)
+                StoreExpr(Ast.Name(exceptor.Name) /* TODO: store string directly */);
+
+            foreach (var stmt in exceptor.Body)
+                CompileStmt(stmt);
+
+            if (exceptor.Name is not null)
+                DeleteExpr(Ast.Name(exceptor.Name) /* TODO: del string directly */);
+
+            Generator.Emit(OpCode._PopException);
+            Generator.Emit(OpCode.Jump, finallyBlockLabel); // jump to finally
+        }
+
+        Generator.MarkLabel(tryStmtEndLabel);
     }
 }

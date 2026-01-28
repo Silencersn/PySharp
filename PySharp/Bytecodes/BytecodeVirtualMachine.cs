@@ -3,10 +3,8 @@ using PySharp.Compilation;
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
-using System;
-using System.Collections.Generic;
+using System.Collections;
 using System.Diagnostics;
-using System.Text;
 
 namespace PySharp.Bytecodes;
 
@@ -29,9 +27,29 @@ internal sealed class BytecodeVirtualMachine
         Eval(Context, frame, Compilation.Bytecode.Instructions);
     }
 
+    private class ExceptionHandler
+    {
+        public const int State_Init = 0, State_Except = 1, State_Finally = 2, State_End = 3;
+
+        public Label? ExceptLabel;
+        public Label FinallyLabel;
+        public int State;
+        public PyExceptionObject? PyException;
+
+        public ExceptionHandler(Label? exceptionHandlerLabel, Label finallyLabel)
+        {
+            ExceptLabel = exceptionHandlerLabel;
+            FinallyLabel = finallyLabel;
+            State = State_Init;
+            PyException = null;
+        }
+    }
+
     internal void Eval(PyCallContext context, PyFrame frame, List<Instruction> instructions)
     {
         int currentIndex = 0;
+        
+        Stack<ExceptionHandler> exceptionHandlers = [];
 
         // cache, clear before using
         PyObject value;
@@ -42,99 +60,219 @@ internal sealed class BytecodeVirtualMachine
         {
             var instruction = instructions[currentIndex];
             var nextIndex = currentIndex + 1;
+            var stackDepthRollback = Stack.Count;
 
-            switch (instruction.OpCode)
+            try
             {
-                case OpCode.NoOperation:
-                    break;
+                EvalOpCode(instruction.OpCode);
+            }
+            catch (PyRuntimeException e)
+            {
+                handle:
+                if (!exceptionHandlers.TryPeek(out var currentHandler))
+                    throw;
 
-                case OpCode.LoadConst:
-                    Stack.Push(instruction.GetOperand<PyObject>());
-                    break;
+                if (currentHandler.State is ExceptionHandler.State_Except)
+                {
+                    // raise exception during except body
 
-                case OpCode.LoadName:
-                    value = frame.LoadName(instruction.StringOperand).PyUnwrap(context);
-                    Stack.Push(value);
-                    break;
+                    currentHandler.PyException = e.PyException;
+                    nextIndex = currentHandler.FinallyLabel.Offset;
+                }
+                else if (currentHandler.State is ExceptionHandler.State_Finally)
+                {
+                    // raise exception during finally body
 
-                case OpCode.LoadGlobal:
-                    value = frame.LoadGlobal(instruction.StringOperand).PyUnwrap(context);
-                    Stack.Push(value);
-                    break;
+                    frame.Exceptions.Clear();
+                    exceptionHandlers.Pop();
 
-                case OpCode.LoadFast:
-                    value = frame.LoadFast(instruction.Arg).PyUnwrap(context);
-                    Stack.Push(value);
-                    break;
+                    goto handle;
+                }
+                else
+                {
+                    Debug.Assert(currentHandler.State is ExceptionHandler.State_Init);
+                    currentHandler.PyException = e.PyException;
 
-                case OpCode.StoreName:
-                    value = Stack.Pop();
-                    frame.StoreName(instruction.StringOperand, value);
-                    break;
+                    if (currentHandler.ExceptLabel is not null)
+                    {
+                        currentHandler.State = ExceptionHandler.State_Except;
+                        nextIndex = currentHandler.ExceptLabel.Offset;
+                    }
+                    else
+                    {
+                        nextIndex = currentHandler.FinallyLabel.Offset;
+                    }
+                }
 
-                case OpCode.StoreGlobal:
-                    value = Stack.Pop();
-                    frame.StoreGlobal(instruction.GetOperand<string>(), value);
-                    break;
+                if (instruction.OpCode is not OpCode.RaiseVarArgs)
+                {
+                    // eval cases need to ensure positions where exceptions may be thrown
+                    // throwing after pop is not allowed
+                    Debug.Assert(stackDepthRollback <= Stack.Count);
+                    while (stackDepthRollback != Stack.Count)
+                        Stack.Pop();
+                }
 
-                case OpCode.StoreFast:
-                    value = Stack.Pop();
-                    frame.StoreFast(instruction.Arg, value);
-                    break;
+                e.PyException.WithTraceback(context, overwriteExisting: false);
+                context.EnsureFrameState(frame);
 
-                case OpCode.DeleteName:
-                    frame.DeleteName(instruction.GetOperand<string>()).PyUnwrap(context);
-                    break;
-
-                case OpCode.DeleteGlobal:
-                    frame.DeleteGlobal(instruction.GetOperand<string>()).PyUnwrap(context);
-                    break;
-
-                case OpCode.DeleteFast:
-                    frame.DeleteFast(instruction.Arg).PyUnwrap(context);
-                    break;
-
-                case OpCode.Call:
-                    args.Clear();
-                    for (int i = 0; i < instruction.Arg; i++)
-                        args.Add(Stack.Pop());
-                    args.Reverse();
-                    var callable = Stack.Pop();
-                    value = callable.Call(context, args).PyUnwrap(context);
-                    Stack.Push(value);
-                    break;
-
-                case OpCode.PopTop:
-                    Stack.Pop();
-                    break;
-
-                case OpCode.Copy:
-                    Stack.Push(Stack.Peek());
-                    break;
-
-                case OpCode.ToBool:
-                    value = Stack.Pop();
-                    value = PySpecialMethods.Bool(context, value).PyUnwrap(context);
-                    Stack.Push(value);
-                    break;
-
-                case OpCode.Jump:
-                    nextIndex = instruction.LabelOperand.Offset;
-                    break;
-
-                case OpCode.PopJumpIfFalse:
-                    value = Stack.Pop();
-                    boolValue = ((PyBoolObject)value).BoolValue;
-                    if (!boolValue)
-                        nextIndex = instruction.LabelOperand.Offset;
-                    break;
-
-
-                default:
-                    break;
+                frame.Exceptions.Push(e.PyException);
             }
 
             currentIndex = nextIndex;
+
+            void EvalOpCode(OpCode opCode)
+            {
+                switch (opCode)
+                {
+                    case OpCode.NoOperation:
+                        break;
+
+                    case OpCode.LoadConst:
+                        Stack.Push(instruction.PyObjectOperand);
+                        break;
+
+                    case OpCode.LoadName:
+                        value = frame.LoadName(instruction.StringOperand).PyUnwrap(context);
+                        Stack.Push(value);
+                        break;
+
+                    case OpCode.LoadGlobal:
+                        value = frame.LoadGlobal(instruction.StringOperand).PyUnwrap(context);
+                        Stack.Push(value);
+                        break;
+
+                    case OpCode.LoadFast:
+                        value = frame.LoadFast(instruction.Arg).PyUnwrap(context);
+                        Stack.Push(value);
+                        break;
+
+                    case OpCode.StoreName:
+                        value = Stack.Pop();
+                        frame.StoreName(instruction.StringOperand, value);
+                        break;
+
+                    case OpCode.StoreGlobal:
+                        value = Stack.Pop();
+                        frame.StoreGlobal(instruction.StringOperand, value);
+                        break;
+
+                    case OpCode.StoreFast:
+                        value = Stack.Pop();
+                        frame.StoreFast(instruction.Arg, value);
+                        break;
+
+                    case OpCode.DeleteName:
+                        frame.DeleteName(instruction.StringOperand).PyUnwrap(context);
+                        break;
+
+                    case OpCode.DeleteGlobal:
+                        frame.DeleteGlobal(instruction.StringOperand).PyUnwrap(context);
+                        break;
+
+                    case OpCode.DeleteFast:
+                        frame.DeleteFast(instruction.Arg).PyUnwrap(context);
+                        break;
+
+                    case OpCode.Call:
+                        args.Clear();
+                        for (int i = 0; i < instruction.Arg; i++)
+                            args.Add(Stack.Pop());
+                        args.Reverse();
+                        var callable = Stack.Pop();
+                        value = callable.Call(context, args).PyUnwrap(context);
+                        Stack.Push(value);
+                        break;
+
+                    case OpCode.PopTop:
+                        Stack.Pop();
+                        break;
+
+                    case OpCode.Copy:
+                        value = Stack.ElementAt(instruction.Arg - 1);
+                        Stack.Push(value);
+                        break;
+
+                    case OpCode.ToBool:
+                        value = Stack.Peek(); // PyUnwrap may throw exc, prevent poping before that
+                        value = PySpecialMethods.Bool(context, value).PyUnwrap(context);
+                        Stack.Pop();
+                        Stack.Push(value);
+                        break;
+
+                    case OpCode.Jump:
+                        nextIndex = instruction.LabelOperand.Offset;
+                        break;
+
+                    case OpCode.PopJumpIfFalse:
+                        value = Stack.Pop();
+                        boolValue = ((PyBoolObject)value).BoolValue;
+                        if (!boolValue)
+                            nextIndex = instruction.LabelOperand.Offset;
+                        break;
+
+                    case OpCode.RaiseVarArgs:
+                        stackDepthRollback -= instruction.Arg;
+                        if (instruction.Arg is 0)
+                        {
+                            RaiseNode.Raise(context, frame, excObj: null, causeObj: null);
+                        }
+                        else if (instruction.Arg is 1)
+                        {
+                            var excObj = Stack.Pop();
+                            RaiseNode.Raise(context, frame, excObj, causeObj: null);
+                        }
+                        else if (instruction.Arg is 2)
+                        {
+                            var causeObj = Stack.Pop();
+                            var excObj = Stack.Pop();
+                            RaiseNode.Raise(context, frame, excObj, causeObj);
+                        }
+                        else
+                        {
+                            throw new UnreachableException();
+                        }
+                        break;
+
+                    case OpCode.CheckExcMatch:
+                        value = Stack.Peek(); // MakeCondition may throw exc, prevent poping before that
+                        var condition = ExceptHandlerNode.MakeCondition(context, value);
+                        Stack.Pop();
+                        Stack.Push(PyBoolObject.FromBoolean(condition(frame.CurrentException)));
+                        break;
+
+                    case OpCode._SetupExceptionHandler:
+                        Debug.Assert(instruction.Operand is not null);
+                        var labelPair = ((Label?, Label))instruction.Operand;
+                        exceptionHandlers.Push(new ExceptionHandler(labelPair.Item1, labelPair.Item2));
+                        break;
+
+                    case OpCode._EnterFinally:
+                        exceptionHandlers.Peek().State = ExceptionHandler.State_Finally;
+                        break;
+
+                    case OpCode._ExitFinally:
+                        var currentHandler = exceptionHandlers.Peek();
+                        currentHandler.State = ExceptionHandler.State_End;
+                        if (currentHandler.PyException is not null)
+                        {
+                            var exc = currentHandler.PyException;
+                            exceptionHandlers.Pop();
+                            throw new PyRuntimeException(exc);
+                        }
+                        exceptionHandlers.Pop();
+                        frame.Exceptions.Clear();
+                        break;
+
+                    case OpCode._PopException:
+                        frame.Exceptions.Pop();
+                        exceptionHandlers.Peek().PyException = null;
+                        break;
+
+                    default:
+                        throw new NotImplementedException($"OpCode {opCode} is not implemented");
+                }
+            }
         }
     }
 }

@@ -278,35 +278,39 @@ public sealed class RaiseNode : AstStmtNode
 
     public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
-        if (Exc is null)
-            throw new PyRuntimeException(context, frame.CurrentException);
+        var excObj = Exc?.GetExprValue(context, frame);
+        var causeObj = Cause?.GetExprValue(context, frame);
+        Raise(context, frame, excObj, causeObj);
+    }
 
-        var obj = Exc.GetExprValue(context, frame);
-        var exc = ToException(context, obj);
+    internal static void Raise(PyCallContext context, PyFrame frame, PyObject? excObj, PyObject? causeObj)
+    {
+        var exc = ToException(context, excObj)
+            ?? throw new PyRuntimeException(context, frame.CurrentException);
 
-        if (Cause is not null)
+        if (causeObj is not null)
         {
-            var cause = Cause.GetExprValue(context, frame);
-            if (cause is PyNoneObject)
+            if (causeObj is PyNoneObject)
             {
                 exc.SuppressContext = true;
             }
             else
             {
-                exc.Cause = ToException(context, cause);
+                exc.Cause = ToException(context, causeObj);
                 exc.CauseReason = PySR.Runtime_RaiseStmt_Cause;
             }
         }
 
         if (frame.Exceptions.TryPeek(out var pre))
-        {
             exc.Context = pre;
-        }
 
         throw new PyRuntimeException(context, exc);
 
-        static PyExceptionObject ToException(PyCallContext context, PyObject pyObj)
+        static PyExceptionObject? ToException(PyCallContext context, PyObject? pyObj)
         {
+            if (pyObj is null)
+                return null;
+
             if (pyObj is PyExceptionObject excObj)
                 return excObj;
 

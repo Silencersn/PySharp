@@ -41,6 +41,11 @@ internal readonly record struct Instruction
 
         return objOfT;
     }
+
+    public override string ToString()
+    {
+        return $"{{opcode={OpCode},argval={Operand ?? Arg}}}";
+    }
 }
 
 internal record class Label
