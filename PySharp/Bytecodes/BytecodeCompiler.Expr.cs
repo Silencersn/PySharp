@@ -20,6 +20,7 @@ partial class BytecodeCompiler
             case NameNode n: CompileName(n, ctx); break;
             case CallNode n: CompileCall(n); break;
             case BinOpNode n: CompileBinOp(n); break;
+            case UnaryOpNode n: CompileUnaryOp(n); break;
             default: throw new NotImplementedException();
         }
     }
@@ -94,5 +95,11 @@ partial class BytecodeCompiler
         LoadExpr(node.Left);
         LoadExpr(node.Right);
         Generator.Emit(OpCode.BinaryOp, (int)node.Operator);
+    }
+
+    private void CompileUnaryOp(UnaryOpNode node)
+    {
+        LoadExpr(node.Operand);
+        Generator.Emit(OpCode._UnaryOp, (int)node.Op);
     }
 }

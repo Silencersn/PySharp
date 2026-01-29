@@ -614,14 +614,19 @@ public sealed class UnaryOpNode : AstExprNode
     public override PyObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
         var value = Operand.GetExprValue(context, frame);
-        return (Op switch
+        return EvalOperator(context, Op, value).PyUnwrap(context);
+    }
+
+    internal static PyResult EvalOperator(PyCallContext context, UnaryOpType op, PyObject value)
+    {
+        return op switch
         {
             UnaryOpType.Invert => PyOperators.Invert(context, value),
             UnaryOpType.Not => PyOperators.Not(context, value),
             UnaryOpType.UAdd => PyOperators.UAdd(context, value),
             UnaryOpType.USub => PyOperators.USub(context, value),
             _ => throw new UnreachableException(),
-        }).PyUnwrap(context);
+        };
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()

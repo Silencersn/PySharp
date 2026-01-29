@@ -45,4 +45,6 @@ internal enum OpCode
     _EnterFinally,
     _ExitFinally,
     _PopException,
+
+    _UnaryOp,
 }

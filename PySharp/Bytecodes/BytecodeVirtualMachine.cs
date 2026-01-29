@@ -235,6 +235,12 @@ internal sealed class BytecodeVirtualMachine
                         Stack.Push(value);
                         break;
 
+                    case OpCode._UnaryOp:
+                        value = Stack.Pop();
+                        value = UnaryOpNode.EvalOperator(context, (UnaryOpType)instruction.Arg, value).PyUnwrap(context);
+                        Stack.Push(value);
+                        break;
+
                     case OpCode.RaiseVarArgs:
                         if (instruction.Arg is 0)
                         {
