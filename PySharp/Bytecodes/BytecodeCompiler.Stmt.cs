@@ -13,6 +13,7 @@ partial class BytecodeCompiler
         switch (node)
         {
             case ExprNode n: CompileExpr(n); break;
+            case PassNode n: CompilePass(n); break;
             case AssignNode n: CompileAssign(n); break;
             case RaiseNode n: CompileRaise(n); break;
             case BreakNode n: CompileBreak(n); break;
@@ -20,6 +21,7 @@ partial class BytecodeCompiler
             case IfNode n: CompileIf(n); break;
             case TryNode n: CompileTry(n); break;
             case ForNode n: CompileFor(n); break;
+            case WhileNode n: CompileWhile(n); break;
             default: throw new NotImplementedException();
         }
     }
@@ -179,5 +181,35 @@ partial class BytecodeCompiler
     private void CompileContinue(ContinueNode node)
     {
         Generator.Emit(OpCode.Jump, Loops.Peek().LoopBegin);
+    }
+
+    private void CompileWhile(WhileNode node)
+    {
+        var whileBeginLabel = Generator.DefineLabel();
+        var whileElseLabel = Generator.DefineLabel();
+        var whileEndLabel = Generator.DefineLabel();
+        Loops.Push((whileBeginLabel, whileEndLabel));
+
+        Generator.MarkLabel(whileBeginLabel);
+        LoadExpr(node.Test);
+        Generator.Emit(OpCode.ToBool);
+        Generator.Emit(OpCode.PopJumpIfFalse, whileElseLabel);
+
+        foreach (var stmt in node.Body)
+            CompileStmt(stmt);
+        Generator.Emit(OpCode.Jump, whileBeginLabel);
+
+        Generator.MarkLabel(whileElseLabel);
+        foreach (var stmt in node.OrElse)
+            CompileStmt(stmt);
+
+        Generator.MarkLabel(whileEndLabel);
+
+        Loops.Pop();
+    }
+
+    private void CompilePass(PassNode node)
+    {
+        Generator.Emit(OpCode.NoOperation);
     }
 }
