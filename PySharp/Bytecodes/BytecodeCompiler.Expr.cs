@@ -1,6 +1,7 @@
 ﻿using PySharp.AstNodes;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Reflection.Emit;
 using System.Text;
 
@@ -21,6 +22,7 @@ partial class BytecodeCompiler
             case CallNode n: CompileCall(n); break;
             case BinOpNode n: CompileBinOp(n); break;
             case UnaryOpNode n: CompileUnaryOp(n); break;
+            case CompareNode n: CompileCompare(n); break;
             default: throw new NotImplementedException();
         }
     }
@@ -101,5 +103,62 @@ partial class BytecodeCompiler
     {
         LoadExpr(node.Operand);
         Generator.Emit(OpCode._UnaryOp, (int)node.Op);
+    }
+
+    private void CompileCompare(CompareNode node)
+    {
+        if (node.Comparators.Length is 1)
+            CompileCompareFor2(node);
+        else
+            CompileCompareForN(node);
+
+        void CompileCompareFor2(CompareNode node)
+        {
+            LoadExpr(node.Left);
+            LoadExpr(node.Comparators[0]);
+            EmitOp(node.Ops[0]);
+        }
+
+        void CompileCompareForN(CompareNode node)
+        {
+            var fastEndLabel = Generator.DefineLabel();
+            var endLabel = Generator.DefineLabel();
+
+            LoadExpr(node.Left);
+
+            for (int i = 0; i < node.Comparators.Length - 1; i++)
+            {
+                // [a]
+                LoadExpr(node.Comparators[i]); // -> [a, b]
+                Generator.Emit(OpCode.Swap, 2); // -> [b, a]
+                Generator.Emit(OpCode.Copy, 2); // -> [b, a, b]
+                EmitOp(node.Ops[i]); // -> [b, a op b]
+                Generator.Emit(OpCode.Copy, 1); // -> [b, a op b, a op b]
+                Generator.Emit(OpCode.ToBool); // -> [b, a op b, bool(a op b)]
+                Generator.Emit(OpCode.PopJumpIfFalse, fastEndLabel); // -> [b, a op b]
+                Generator.Emit(OpCode.PopTop); // -> [b]
+            }
+
+            // [a]
+            LoadExpr(node.Comparators[^1]); // -> [a, b]
+            EmitOp(node.Ops[^1]); // -> [a op b]
+            Generator.Emit(OpCode.Jump, endLabel);
+
+            Generator.MarkLabel(fastEndLabel); // [b, a op b]
+            Generator.Emit(OpCode.Swap, 2); // -> [a op b, b]
+            Generator.Emit(OpCode.PopTop); // -> [a op b]
+
+            Generator.MarkLabel(endLabel);
+        }
+
+        void EmitOp(CmpopType op)
+        {
+            if (op is CmpopType.Is or CmpopType.IsNot)
+                Generator.Emit(OpCode.IsOp, op is CmpopType.Is ? 0 : 1);
+            else if (op is CmpopType.In or CmpopType.NotIn)
+                Generator.Emit(OpCode.ContainsOp, op is CmpopType.In ? 0 : 1);
+            else
+                Generator.Emit(OpCode.CompareOp, (int)op);
+        }
     }
 }

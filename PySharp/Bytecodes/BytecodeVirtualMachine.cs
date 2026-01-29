@@ -85,7 +85,7 @@ internal sealed class BytecodeVirtualMachine
         Stack<ExceptionHandler> exceptionHandlers = [];
 
         // cache, clear before using
-        PyObject value;
+        PyObject value, left, right;
         bool boolValue;
         List<PyObject> args = [];
         PyResult result;
@@ -229,9 +229,7 @@ internal sealed class BytecodeVirtualMachine
                         break;
 
                     case OpCode.ToBool:
-                        value = Stack.Pop();
-                        value = PySpecialMethods.Bool(context, value).PyUnwrap(context);
-                        Stack.Push(value);
+                        Stack[-1] = PySpecialMethods.Bool(context, Stack[-1]).PyUnwrap(context);
                         break;
 
                     case OpCode.Jump:
@@ -246,9 +244,7 @@ internal sealed class BytecodeVirtualMachine
                         break;
 
                     case OpCode.GetIter:
-                        value = Stack.Pop();
-                        value = PySpecialMethods.Iter(context, value).PyUnwrap(context);
-                        Stack.Push(value);
+                        Stack[-1] = PySpecialMethods.Iter(context, Stack[-1]).PyUnwrap(context);
                         break;
 
                     case OpCode.ForIter:
@@ -264,8 +260,8 @@ internal sealed class BytecodeVirtualMachine
                         break;
 
                     case OpCode.BinaryOp:
-                        var right = Stack.Pop();
-                        var left = Stack.Pop();
+                        right = Stack.Pop();
+                        left = Stack.Pop();
                         value = BinOpNode.EvalOperator(context, (OperatorType)instruction.Arg, left, right).PyUnwrap(context);
                         Stack.Push(value);
                         break;
@@ -273,6 +269,33 @@ internal sealed class BytecodeVirtualMachine
                     case OpCode._UnaryOp:
                         value = Stack.Pop();
                         value = UnaryOpNode.EvalOperator(context, (UnaryOpType)instruction.Arg, value).PyUnwrap(context);
+                        Stack.Push(value);
+                        break;
+
+                    case OpCode.CompareOp:
+                        right = Stack.Pop();
+                        left = Stack.Pop();
+                        value = CompareNode.EvalOperator(context, (CmpopType)instruction.Arg, left, right).PyUnwrap(context);
+                        Stack.Push(value);
+                        break;
+
+                    case OpCode.IsOp:
+                        right = Stack.Pop();
+                        left = Stack.Pop();
+                        if (instruction.Arg is 0)
+                            value = PyOperators.Is(left, right);
+                        else
+                            value = PyOperators.IsNot(left, right);
+                        Stack.Push(value);
+                        break;
+
+                    case OpCode.ContainsOp:
+                        right = Stack.Pop();
+                        left = Stack.Pop();
+                        if (instruction.Arg is 0)
+                            value = PyOperators.In(context, left, right).PyUnwrap(context);
+                        else
+                            value = PyOperators.NotIn(context, left, right).PyUnwrap(context);
                         Stack.Push(value);
                         break;
 
@@ -299,9 +322,8 @@ internal sealed class BytecodeVirtualMachine
                         break;
 
                     case OpCode.CheckExcMatch:
-                        value = Stack.Pop();
-                        var condition = ExceptHandlerNode.MakeCondition(context, value);
-                        Stack.Push(PyBoolObject.FromBoolean(condition(frame.CurrentException)));
+                        var condition = ExceptHandlerNode.MakeCondition(context, Stack[-1]);
+                        Stack[-1] = PyBoolObject.FromBoolean(condition(frame.CurrentException));
                         break;
 
                     case OpCode._SetupExceptionHandler:

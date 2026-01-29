@@ -27,6 +27,9 @@ internal enum OpCode
 
     Call,
     BinaryOp,
+    CompareOp,
+    ContainsOp,
+    IsOp,
 
     PopTop,
 

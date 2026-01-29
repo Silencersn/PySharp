@@ -662,20 +662,7 @@ public sealed class CompareNode : AstExprNode, IAstExprNodeBool
         {
             var op = Ops[i];
             var right = Comparators[i].GetExprValue(context, frame);
-            var value = (op switch
-            {
-                CmpopType.Eq => PyOperators.Eq(context, left, right),
-                CmpopType.NotEq => PyOperators.NotEq(context, left, right),
-                CmpopType.Lt => PyOperators.Lt(context, left, right),
-                CmpopType.LtE => PyOperators.LtE(context, left, right),
-                CmpopType.Gt => PyOperators.Gt(context, left, right),
-                CmpopType.GtE => PyOperators.GtE(context, left, right),
-                CmpopType.Is => PyOperators.Is(left, right),
-                CmpopType.IsNot => PyOperators.IsNot(left, right),
-                CmpopType.In => PyOperators.In(context, left, right),
-                CmpopType.NotIn => PyOperators.NotIn(context, left, right),
-                _ => throw new UnreachableException(),
-            }).PyUnwrap(context);
+            var value = EvalOperator(context, op, left, right).PyUnwrap(context);
 
             var boolValue = PySpecialMethods.Bool(context, value).PyUnwrap(context);
 
@@ -692,6 +679,24 @@ public sealed class CompareNode : AstExprNode, IAstExprNodeBool
     {
         yield return Left;
         foreach (var cmp in Comparators) yield return cmp;
+    }
+
+    internal static PyResult EvalOperator(PyCallContext context, CmpopType op, PyObject left, PyObject right)
+    {
+        return op switch
+        {
+            CmpopType.Eq => PyOperators.Eq(context, left, right),
+            CmpopType.NotEq => PyOperators.NotEq(context, left, right),
+            CmpopType.Lt => PyOperators.Lt(context, left, right),
+            CmpopType.LtE => PyOperators.LtE(context, left, right),
+            CmpopType.Gt => PyOperators.Gt(context, left, right),
+            CmpopType.GtE => PyOperators.GtE(context, left, right),
+            CmpopType.Is => PyOperators.Is(left, right),
+            CmpopType.IsNot => PyOperators.IsNot(left, right),
+            CmpopType.In => PyOperators.In(context, left, right),
+            CmpopType.NotIn => PyOperators.NotIn(context, left, right),
+            _ => throw new UnreachableException(),
+        };
     }
 }
 
