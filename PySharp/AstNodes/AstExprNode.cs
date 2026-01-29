@@ -572,7 +572,7 @@ public sealed class BinOpNode : AstExprNode
         return EvalOperator(context, Operator, left, right).PyUnwrap(context);
     }
 
-    private static PyResult EvalOperator(PyCallContext context, OperatorType op, PyObject left, PyObject right)
+    internal static PyResult EvalOperator(PyCallContext context, OperatorType op, PyObject left, PyObject right)
     {
         return op switch
         {

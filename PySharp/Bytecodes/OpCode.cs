@@ -26,6 +26,7 @@ internal enum OpCode
     PopIter,
 
     Call,
+    BinaryOp,
 
     PopTop,
 

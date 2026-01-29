@@ -228,6 +228,13 @@ internal sealed class BytecodeVirtualMachine
                         Stack.Pop();
                         break;
 
+                    case OpCode.BinaryOp:
+                        var right = Stack.Pop();
+                        var left = Stack.Pop();
+                        value = BinOpNode.EvalOperator(context, (OperatorType)instruction.Arg, left, right).PyUnwrap(context);
+                        Stack.Push(value);
+                        break;
+
                     case OpCode.RaiseVarArgs:
                         if (instruction.Arg is 0)
                         {

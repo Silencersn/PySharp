@@ -19,6 +19,7 @@ partial class BytecodeCompiler
             case ConstantNode n: CompileConstant(n); break;
             case NameNode n: CompileName(n, ctx); break;
             case CallNode n: CompileCall(n); break;
+            case BinOpNode n: CompileBinOp(n); break;
             default: throw new NotImplementedException();
         }
     }
@@ -86,5 +87,12 @@ partial class BytecodeCompiler
             LoadExpr(arg);
 
         Generator.Emit(OpCode.Call, node.Args.Length);
+    }
+
+    private void CompileBinOp(BinOpNode node)
+    {
+        LoadExpr(node.Left);
+        LoadExpr(node.Right);
+        Generator.Emit(OpCode.BinaryOp, (int)node.Operator);
     }
 }
