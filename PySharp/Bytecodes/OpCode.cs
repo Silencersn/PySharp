@@ -31,6 +31,7 @@ internal enum OpCode
     PopTop,
 
     Copy,
+    Swap,
 
     ToBool,
 

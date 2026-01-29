@@ -52,7 +52,11 @@ internal sealed class BytecodeVirtualMachine
 
         public int Count => _stack.Count;
 
-        public PyObject this[int index] => _stack[_stack.Count + index];
+        public PyObject this[int index]
+        {
+            get => _stack[_stack.Count + index];
+            set => _stack[_stack.Count + index] = value;
+        }
 
         public void Push(PyObject value)
         {
@@ -220,10 +224,13 @@ internal sealed class BytecodeVirtualMachine
                         Stack.Push(value);
                         break;
 
+                    case OpCode.Swap:
+                        (Stack[-1], Stack[-instruction.Arg]) = (Stack[-instruction.Arg], Stack[-1]);
+                        break;
+
                     case OpCode.ToBool:
-                        value = Stack.Peek(); // PyUnwrap may throw exc, prevent poping before that
+                        value = Stack.Pop();
                         value = PySpecialMethods.Bool(context, value).PyUnwrap(context);
-                        Stack.Pop();
                         Stack.Push(value);
                         break;
 
@@ -292,9 +299,8 @@ internal sealed class BytecodeVirtualMachine
                         break;
 
                     case OpCode.CheckExcMatch:
-                        value = Stack.Peek(); // MakeCondition may throw exc, prevent poping before that
+                        value = Stack.Pop();
                         var condition = ExceptHandlerNode.MakeCondition(context, value);
-                        Stack.Pop();
                         Stack.Push(PyBoolObject.FromBoolean(condition(frame.CurrentException)));
                         break;
 
