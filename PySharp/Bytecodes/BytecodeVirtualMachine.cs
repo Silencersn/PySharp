@@ -10,7 +10,7 @@ namespace PySharp.Bytecodes;
 
 internal sealed class BytecodeVirtualMachine
 {
-    private Stack<PyObject> Stack { get; } = [];
+    private OperandStack Stack { get; } = new();
     private PyCallContext Context { get; }
     private PyBytecodeCompilation Compilation { get; }
 
@@ -43,6 +43,34 @@ internal sealed class BytecodeVirtualMachine
             FinallyLabel = finallyLabel;
             State = State_Init;
             PyException = null;
+        }
+    }
+
+    private sealed class OperandStack
+    {
+        private readonly List<PyObject> _stack = [];
+
+        public int Count => _stack.Count;
+
+        public PyObject this[int index] => _stack[_stack.Count + index];
+
+        public void Push(PyObject value)
+        {
+            _stack.Add(value);
+        }
+        public PyObject Peek()
+        {
+            return _stack[^1];
+        }
+        public PyObject Pop()
+        {
+            var result = Peek();
+            _stack.RemoveAt(_stack.Count - 1);
+            return result;
+        }
+        public void Clear()
+        {
+            _stack.Clear();
         }
     }
 
@@ -188,7 +216,7 @@ internal sealed class BytecodeVirtualMachine
                         break;
 
                     case OpCode.Copy:
-                        value = Stack.ElementAt(instruction.Arg - 1);
+                        value = Stack[-instruction.Arg];
                         Stack.Push(value);
                         break;
 

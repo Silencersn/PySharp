@@ -434,11 +434,14 @@ public static class PyOperators
         return PyBoolObject.FromBoolean(!ReferenceEquals(left, right));
     }
 
-    public static PyResult In(PyCallContext context, PyObject left, PyObject right)
+    public static PyResult<PyBoolObject> In(PyCallContext context, PyObject left, PyObject right)
     {
-        return PySpecialMethods.Contains(context, right, left);
+        var contains = PySpecialMethods.Contains(context, right, left);
+        if (contains.IsError)
+            return contains.Of<PyBoolObject>();
+        return PySpecialMethods.Bool(context, contains.Value);
     }
-    public static PyResult NotIn(PyCallContext context, PyObject left, PyObject right)
+    public static PyResult<PyBoolObject> NotIn(PyCallContext context, PyObject left, PyObject right)
     {
         var result = In(context, left, right);
         if (result.IsError)
