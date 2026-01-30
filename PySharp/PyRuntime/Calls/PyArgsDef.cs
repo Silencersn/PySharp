@@ -209,12 +209,18 @@ public sealed class PyArgsDef
 
     internal static PyArgsDef FromAst(AstArgumentsNode node, PyCallContext context, PyFrame frame)
     {
+        return FromAstAndObjs(node,
+            [.. node.KwDefaults.Select(d => d?.GetExprValue(context, frame))],
+            [.. node.Defaults.Select(d => d.GetExprValue(context, frame))]);
+    }
+    internal static PyArgsDef FromAstAndObjs(AstArgumentsNode node, PyObject?[] kwDefaults, PyObject[] defaults)
+    {
         return new PyArgsDef(
             [.. node.PosonlyArgs.Select(arg => arg.Arg)],
             [.. node.Args.Select(arg => arg.Arg)],
             [.. node.KwonlyArgs.Select(arg => arg.Arg)],
-            [.. node.KwDefaults.Select(d => d?.GetExprValue(context, frame))],
-            [.. node.Defaults.Select(d => d.GetExprValue(context, frame))],
+            kwDefaults,
+            defaults,
             node.VarArg?.Arg,
             node.KwArg?.Arg
             );

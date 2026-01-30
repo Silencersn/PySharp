@@ -1,22 +1,25 @@
-﻿using PySharp.PyRuntime;
+﻿using PySharp.AstNodes;
+using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 
 namespace PySharp.PyModules.Builtins;
 
 public sealed class PyFunctionObject : PyObject, IPyObjectName
 {
+    internal readonly PyArgsDef _def;
     internal readonly PyUncompoundedDelegate _function;
     internal readonly PyCellObject[]? _closure;
     internal PyObject? _pyClosure;
     internal PyFrame.PyFrameGlobals _globals;
-    internal readonly PyCodeObject _code;
+    private readonly PyCodeObject _code;
 
     public string Name { get; }
     internal ReadOnlySpan<PyCellObject> Closure => _closure;
+    internal PyCodeObject Code => _code;
 
     public override PyTypeObject DefaultPyType => PyFunctionObjectType.Shared;
 
-    internal PyFunctionObject(string name, PyUncompoundedDelegate function, IEnumerable<PyCellObject>? closure, PyFrame.PyFrameGlobals globals, PyCodeObject code)
+    internal PyFunctionObject(string name, PyUncompoundedDelegate function, IEnumerable<PyCellObject>? closure, PyFrame.PyFrameGlobals globals, PyCodeObject code, PyArgsDef def)
     {
         Name = name;
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
@@ -24,6 +27,7 @@ public sealed class PyFunctionObject : PyObject, IPyObjectName
         _closure = closure?.ToArray();
         _globals = globals;
         _code = code;
+        _def = def;
     }
 }
 
@@ -39,7 +43,7 @@ public sealed class PyFunctionObjectType : PyTypeObject<PyFunctionObjectType, Py
         AppendMemberDescriptor(PySpecialNames.Globals,
             static (_, func) => func._globals.PyDict);
         AppendMemberDescriptor(PySpecialNames.Code,
-            static (_, func) => func._code);
+            static (_, func) => func.Code);
     }
 
     protected override PyResult Repr(PyCallContext context, PyFunctionObject self)

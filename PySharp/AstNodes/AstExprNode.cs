@@ -977,16 +977,19 @@ public sealed class LambdaNode : AstExprNode, IScopedSubNodesProvider
             ?? throw new InvalidOperationException();
         Debug.Assert(variableScope.CodeObject is not null);
 
-        Caller caller = variableScope.HasYield ?
-            new GeneratorCaller(context, variableScope, frame, GetResult) :
-            new FunctionCaller(context, variableScope, frame, GetResult);
+        Caller caller = variableScope.HasYield
+            ? new GeneratorCaller(isFuncDef: false, GetResult)
+            : new FunctionCaller(isFuncDef: false, GetResult);
+
+        var def = PyArgsDef.FromAst(Args, context, frame);
 
         var func = new PyFunctionObject(
             "<lambda>",
             caller.Call,
-            caller.GetFreeVars(frame),
+            Caller.GetFreeVars(frame, variableScope.CodeObject),
             frame._globals,
-            variableScope.CodeObject);
+            variableScope.CodeObject,
+            def);
 
         Debug.Assert(variableScope.QualName is not null);
         func.PyAttributes.Add(PySpecialNames.QualName, PyStrObject.FromString(variableScope.QualName));

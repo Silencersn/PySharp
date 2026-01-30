@@ -403,21 +403,17 @@ public enum PyVariableType
 
 internal abstract class Caller
 {
-    protected readonly PyArgsDef _def;
     protected readonly Func<PyCallContext, PyFrame, PyResult> _getResult;
     protected readonly FrameType _frameType;
-    protected readonly CallableVariableScope _variableScope;
     public PyFunctionObject Func { get; set; }
 
-    internal Caller(PyCallContext context, CallableVariableScope variableScope, PyFrame frame, Func<PyCallContext, PyFrame, PyResult> getResult)
+    internal Caller(bool isFuncDef, Func<PyCallContext, PyFrame, PyResult> getResult)
     {
-        _def = PyArgsDef.FromAst(variableScope.ArgumentsNode, context, frame);
         _getResult = getResult;
-        _variableScope = variableScope;
         if (this is FunctionCaller)
-            _frameType = _variableScope.Owner is FunctionDefNode ? FrameType.Function : FrameType.Lambda;
+            _frameType = isFuncDef ? FrameType.Function : FrameType.Lambda;
         else
-            _frameType = _variableScope.Owner is FunctionDefNode ? FrameType.YieldFunction : FrameType.YieldLambda;
+            _frameType = isFuncDef ? FrameType.YieldFunction : FrameType.YieldLambda;
 
         // deferred init
         Func = null!;
@@ -428,38 +424,38 @@ internal abstract class Caller
     public PyFrame CreateCallingFrame(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, PyArguments arguments)
     {
         var backFrame = context.CurrentFrame;
-        var frame = backFrame.CreateFuncCallFrame(Func.Name, Func, _frameType, (args, kwargs), Func._globals, _variableScope.LocalsTable);
-        frame._variables = _variableScope.Variables;
+        var frame = backFrame.CreateFuncCallFrame(Func.Name, Func, _frameType, (args, kwargs), Func._globals, Func.Code.LocalsTable);
+        frame._variables = Func.Code.Variables;
 
-        foreach (var capturedVariable in _variableScope.CellVars)
+        foreach (var capturedVariable in Func.Code.CellVars)
             frame.Closures[capturedVariable] = PyCellObject.CreateCell(null);
 
         var cells = Func.Closure;
-        var names = _variableScope.FreeVars;
+        var names = Func.Code.FreeVars;
         Debug.Assert(cells.Length == names.Length, "Closure cells count must match free variable names count");
         for (int i = 0; i < cells.Length; i++)
             frame.Closures.Add(names[i], cells[i]);
 
-        frame.InitArgs(_def, arguments);
+        frame.InitArgs(Func._def, arguments);
         return frame;
     }
 
-    public IEnumerable<PyCellObject> GetFreeVars(PyFrame frame)
+    public static IEnumerable<PyCellObject> GetFreeVars(PyFrame frame, PyCodeObject code)
     {
         bool takeClassCell = false;
-        if (frame.ClassCell is not null && _variableScope.FreeVars.Contains(PySpecialNames.Class))
+        if (frame.ClassCell is not null && code.FreeVars.Contains(PySpecialNames.Class))
         {
             takeClassCell = true;
             yield return frame.ClassCell;
         }
 
-        if (_variableScope.FreeVars.Length is 0 ||
-            (takeClassCell && _variableScope.FreeVars is [PySpecialNames.Class]))
+        if (code.FreeVars.Length is 0 ||
+            (takeClassCell && code.FreeVars is [PySpecialNames.Class]))
             yield break;
 
         Debug.Assert(frame.InternalClosure is not null);
 
-        foreach (var name in _variableScope.FreeVars)
+        foreach (var name in code.FreeVars)
         {
             if (name is PySpecialNames.Class && takeClassCell)
                 continue;
@@ -471,7 +467,7 @@ internal abstract class Caller
 
 internal sealed class FunctionCaller : Caller
 {
-    public FunctionCaller(PyCallContext context, CallableVariableScope variableScope, PyFrame frame, Func<PyCallContext, PyFrame, PyResult> getResult) : base(context, variableScope, frame, getResult)
+    public FunctionCaller(bool isFuncDef, Func<PyCallContext, PyFrame, PyResult> getResult) : base(isFuncDef, getResult)
     {
     }
 
@@ -482,7 +478,7 @@ internal sealed class FunctionCaller : Caller
 
     private PyResult CallGeneral(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        if (!_def.TryParse(args, kwargs, out var arguments))
+        if (!Func._def.TryParse(args, kwargs, out var arguments))
             return PyResult.TypeError(null /* TODO */);
 
         var frame = CreateCallingFrame(context, args, kwargs, arguments);
@@ -498,7 +494,7 @@ internal sealed class FunctionCaller : Caller
 
 internal sealed class GeneratorCaller : Caller
 {
-    public GeneratorCaller(PyCallContext context, CallableVariableScope variableScope, PyFrame frame, Func<PyCallContext, PyFrame, PyResult> getResult) : base(context, variableScope, frame, getResult)
+    public GeneratorCaller(bool isFuncDef, Func<PyCallContext, PyFrame, PyResult> getResult) : base(isFuncDef, getResult)
     {
     }
 
@@ -509,7 +505,7 @@ internal sealed class GeneratorCaller : Caller
 
     private PyResult CallGeneral(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        if (!_def.TryParse(args, kwargs, out var arguments))
+        if (!Func._def.TryParse(args, kwargs, out var arguments))
             return PyResult.TypeError(null /* TODO */);
 
         var frame = CreateCallingFrame(context, args, kwargs, arguments);
@@ -537,8 +533,7 @@ internal sealed class GeneratorCaller : Caller
             }
         });
 
-        Debug.Assert(_variableScope.Name is not null);
-        return new PyUserDefinedGeneratorObject(_variableScope.Name, frame, task);
+        return new PyUserDefinedGeneratorObject(Func.Name, frame, task);
     }
 }
 
@@ -574,16 +569,19 @@ public sealed class FunctionDefNode : AstStmtNode, IScopedSubNodesProvider
             ?? throw new InvalidOperationException();
         Debug.Assert(variableScope.CodeObject is not null);
 
-        Caller caller = variableScope.HasYield ?
-            new GeneratorCaller(context, variableScope, frame, GetResult) :
-            new FunctionCaller(context, variableScope, frame, GetResult);
+        Caller caller = variableScope.HasYield
+            ? new GeneratorCaller(isFuncDef: true, GetResult)
+            : new FunctionCaller(isFuncDef: true, GetResult);
+
+        var def = PyArgsDef.FromAst(Args, context, frame);
 
         var func = new PyFunctionObject(
             Name,
             caller.Call,
-            caller.GetFreeVars(frame),
+            Caller.GetFreeVars(frame, variableScope.CodeObject),
             frame._globals,
-            variableScope.CodeObject);
+            variableScope.CodeObject,
+            def);
 
         Debug.Assert(variableScope.QualName is not null);
         func.PyAttributes.Add(PySpecialNames.QualName, PyStrObject.FromString(variableScope.QualName));
