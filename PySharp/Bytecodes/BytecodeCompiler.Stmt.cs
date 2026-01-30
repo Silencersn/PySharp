@@ -1,8 +1,6 @@
 ﻿using PySharp.AstNodes;
-using System;
-using System.Collections.Generic;
+using PySharp.PyModules.Builtins;
 using System.Diagnostics;
-using System.Text;
 
 namespace PySharp.Bytecodes;
 
@@ -18,10 +16,12 @@ partial class BytecodeCompiler
             case RaiseNode n: CompileRaise(n); break;
             case BreakNode n: CompileBreak(n); break;
             case ContinueNode n: CompileContinue(n); break;
+            case ReturnNode n: CompileReturn(n); break;
             case IfNode n: CompileIf(n); break;
             case TryNode n: CompileTry(n); break;
             case ForNode n: CompileFor(n); break;
             case WhileNode n: CompileWhile(n); break;
+            case FunctionDefNode n: CompileFunctionDef(n); break;
             default: throw new NotImplementedException();
         }
     }
@@ -211,5 +211,57 @@ partial class BytecodeCompiler
     private void CompilePass(PassNode node)
     {
         Generator.Emit(OpCode.NoOperation);
+    }
+
+    private void CompileFunctionDef(FunctionDefNode node)
+    {
+        var currentGenerator = Generator;
+        Generator = new BytecodeGenerator();
+        var currentScope = VariableScope;
+        var scope = Model.GetVariableScope<CallableVariableScope>(node);
+        Debug.Assert(scope is not null);
+        VariableScope = scope;
+
+        foreach (var stmt in node.Body)
+            CompileStmt(stmt);
+        Generator.Emit(OpCode.LoadConst, PyNoneObject.None);
+        Generator.Emit(OpCode.ReturnValue);
+        var bytecode = new Bytecode(Generator);
+
+        Generator = currentGenerator;
+        VariableScope = currentScope;
+
+        var codeObj = new PyCodeObject(scope, bytecode);
+
+        foreach (var decorator in node.DecoratorList)
+            LoadExpr(decorator);
+
+        foreach (var argDefault in node.Args.Defaults)
+            LoadExpr(argDefault);
+
+        foreach (var kwargDefault in node.Args.KwDefaults)
+        {
+            if (kwargDefault is not null)
+                LoadExpr(kwargDefault);
+            else
+                Generator.Emit(OpCode.PushNull);
+        }
+
+        Generator.Emit(OpCode.LoadConst, codeObj);
+        Generator.Emit(OpCode._MakeFunctionWithPyArgsDef, node.Args);
+
+        for (int i = 0; i < node.DecoratorList.Length; i++)
+            Generator.Emit(OpCode.Call, 1);
+
+        StoreExpr(Ast.Name(node.Name) /* TODO: no creating ast node */);
+    }
+
+    private void CompileReturn(ReturnNode node)
+    {
+        if (node.Value is not null)
+            LoadExpr(node.Value);
+        else
+            Generator.Emit(OpCode.LoadConst, PyNoneObject.None);
+        Generator.Emit(OpCode.ReturnValue);
     }
 }

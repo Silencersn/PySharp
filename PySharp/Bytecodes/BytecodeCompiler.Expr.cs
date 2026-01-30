@@ -36,6 +36,25 @@ partial class BytecodeCompiler
     {
         if (VariableScope is RootVariableScope)
         {
+            AsGlobal();
+        }
+        else if (VariableScope is ClassVariableScope)
+        {
+            AsName();
+        }
+
+        else if (VariableScope is CallableVariableScope callableVariableScope)
+        {
+            if (callableVariableScope.LocalsTable.TryGetValue(node.Id, out var nameIndex))
+                AsFast(nameIndex);
+            else
+                AsGlobal();
+
+            // TODO: DEREF
+        }
+
+        void AsGlobal()
+        {
             var opCode = ctx switch
             {
                 ExprContextType.Load => OpCode.LoadGlobal,
@@ -47,7 +66,8 @@ partial class BytecodeCompiler
 
             Generator.Emit(opCode, node.Id);
         }
-        else if (VariableScope is ClassVariableScope)
+
+        void AsName()
         {
             var opCode = ctx switch
             {
@@ -61,7 +81,7 @@ partial class BytecodeCompiler
             Generator.Emit(opCode, node.Id);
         }
 
-        else if (VariableScope is CallableVariableScope callableVariableScope)
+        void AsFast(int nameIndex)
         {
             var opCode = ctx switch
             {
@@ -72,9 +92,6 @@ partial class BytecodeCompiler
                 _ => throw new InvalidOperationException()
             };
 
-            // TODO: DEREF
-
-            var nameIndex = callableVariableScope.LocalsTable[node.Id];
             Generator.Emit(opCode, nameIndex);
         }
     }

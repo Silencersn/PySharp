@@ -11,6 +11,9 @@ public sealed class PyCodeObject : PyObject
     internal FrozenDictionary<string, int> LocalsTable { get; }
     internal Bytecode? Bytecode { get; }
 
+    // TODO: temp property, will be removed in future versions
+    internal OrderedDictionary<string, PyVariableType> Variables { get; }
+
     public string Name { get; }
     public string QualName { get; }
     public int ArgCount { get; }
@@ -31,6 +34,7 @@ public sealed class PyCodeObject : PyObject
 
         LocalsTable = scope.LocalsTable;
         Bytecode = bytecode;
+        Variables = scope.Variables;
 
         Name = scope.Name;
         QualName = scope.QualName;

@@ -23,7 +23,7 @@ internal sealed class BytecodeVirtualMachine
     internal PyResult Eval()
     {
         var frame = Context.CurrentFrame;
-        return Eval(Context, frame, Bytecode.Instructions);
+        return Eval(Context, frame);
     }
 
     private class ExceptionHandler
@@ -77,10 +77,10 @@ internal sealed class BytecodeVirtualMachine
         }
     }
 
-    internal PyResult Eval(PyCallContext context, PyFrame frame, List<Instruction> instructions)
+    internal PyResult Eval(PyCallContext context, PyFrame frame)
     {
         int currentIndex = 0;
-        
+        var instructions = Bytecode.Instructions;
         Stack<ExceptionHandler> exceptionHandlers = [];
 
         // cache, clear before using
@@ -312,6 +312,31 @@ internal sealed class BytecodeVirtualMachine
                         returnValue = Stack.Pop();
                         break;
 
+                    case OpCode._MakeFunctionWithPyArgsDef:
+                        var codeObj = (PyCodeObject)Stack.Pop();
+
+                        var argsNode = instruction.GetOperand<AstArgumentsNode>();
+                        PyObject?[] kwDefaults = new PyObject?[argsNode.KwDefaults.Length];
+                        for (int i = kwDefaults.Length - 1; i >= 0; i--)
+                            kwDefaults[i] = Stack.Pop();
+                        PyObject[] defaults = new PyObject[argsNode.Defaults.Length];
+                        for (int i = defaults.Length - 1; i >= 0; i--)
+                            defaults[i] = Stack.Pop();
+                        var def = PyArgsDef.FromAstAndObjs(argsNode, kwDefaults, defaults);
+
+                        var caller = GetCaller(codeObj);
+                        var func = new PyFunctionObject(
+                            codeObj.Name,
+                            caller.Call,
+                            Caller.GetFreeVars(frame, codeObj),
+                            frame._globals,
+                            codeObj,
+                            def);
+                        caller.Func = func;
+
+                        Stack.Push(func);
+                        break;
+
                     case OpCode.RaiseVarArgs:
                         if (instruction.Arg is 0)
                         {
@@ -375,5 +400,15 @@ internal sealed class BytecodeVirtualMachine
         }
 
         return PyNoneObject.None;
+    }
+
+    private static FunctionCaller GetCaller(PyCodeObject codeObj)
+    {
+        Debug.Assert(codeObj.Bytecode is not null);
+        return new FunctionCaller(FrameType.Function, (context, frame) =>
+        {
+            var vm = new BytecodeVirtualMachine(context, codeObj.Bytecode);
+            return vm.Eval();
+        });
     }
 }
