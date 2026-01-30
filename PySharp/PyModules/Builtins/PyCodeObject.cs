@@ -57,6 +57,33 @@ public sealed class PyCodeObject : PyObject
         PyAttributes.Add("co_cellvars", PyTupleObject.CreateTuple(CellVars.Select(PyStrObject.FromString)));
         PyAttributes.Add("co_freevars", PyTupleObject.CreateTuple(FreeVars.Select(PyStrObject.FromString)));
     }
+
+    internal PyCodeObject(ClassVariableScope scope, Bytecode? bytecode = null)
+    {
+        Debug.Assert(scope.Name is not null);
+        Debug.Assert(scope.QualName is not null);
+
+        LocalsTable = FrozenDictionary<string, int>.Empty;
+        Bytecode = bytecode;
+        Variables = scope.Variables;
+
+        Name = scope.Name;
+        QualName = scope.QualName;
+        NLocals = 0;
+        VarNames = [];
+        CellVars = [];
+        FreeVars = [];
+
+        PyAttributes.Add("co_name", PyStrObject.FromString(Name));
+        PyAttributes.Add("co_qualname", PyStrObject.FromString(QualName));
+        PyAttributes.Add("co_argcount", PyIntObject.Zero);
+        PyAttributes.Add("co_posonlyargcount", PyIntObject.Zero);
+        PyAttributes.Add("co_kwonlyargcount", PyIntObject.Zero);
+        PyAttributes.Add("co_nlocals", PyIntObject.Zero);
+        PyAttributes.Add("co_varnames", PyTupleObject.Empty);
+        PyAttributes.Add("co_cellvars", PyTupleObject.Empty);
+        PyAttributes.Add("co_freevars", PyTupleObject.Empty);
+    }
 }
 
 public sealed class PyCodeObjectType : PyTypeObject<PyCodeObjectType, PyCodeObject>

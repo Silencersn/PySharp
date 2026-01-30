@@ -801,6 +801,8 @@ internal abstract class VariableScope
         model.AppendScope(Owner, this);
         if (this is CallableVariableScope callable)
             callable.CodeObject = new PyCodeObject(callable);
+        else if (this is ClassVariableScope classVariableScope)
+            classVariableScope.CodeObject = new PyCodeObject(classVariableScope);
 
         foreach (var childScope in Children)
             childScope.Bind(model);
@@ -824,6 +826,7 @@ internal sealed class ClassVariableScope : VariableScope
     public override string? Name => Owner.Name;
     public bool ClassCaptured { get; set; }
     internal HashSet<CallableVariableScope> ScopesRequiringFree = [];
+    public PyCodeObject? CodeObject { get; set; }
 
     public ClassVariableScope(ClassDefNode owner, VariableScope parent) : base(parent)
     {

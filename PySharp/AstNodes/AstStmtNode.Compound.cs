@@ -5,6 +5,7 @@ using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Xml.Linq;
 
 namespace PySharp.AstNodes;
 
@@ -659,67 +660,34 @@ public sealed class FunctionDefNode : AstStmtNode, IScopedSubNodesProvider
     }
 }
 
-public sealed class ClassDefNode : AstStmtNode, IScopedSubNodesProvider
+internal static class ClassBuilder
 {
-    internal ClassDefNode(string name, ImmutableArray<AstExprNode> bases, ImmutableArray<AstKeywordNode> keywords, ImmutableArray<AstStmtNode> body, ImmutableArray<AstExprNode> decoratorList, ImmutableArray<AstTypeParamNode> typeParams)
+    public static PyTypeObject Build(PyCallContext context, PyCodeObject codeObject, List<PyTypeObject> bases,
+        Action<PyCallContext, PyFrame> execBody)
     {
-        Name = name;
-        Bases = bases;
-        Keywords = keywords;
-        Body = body;
-        DecoratorList = decoratorList;
-        TypeParams = typeParams;
-    }
-
-    public string Name { get; }
-    public ImmutableArray<AstExprNode> Bases { get; }
-    public ImmutableArray<AstKeywordNode> Keywords { get; }
-    public ImmutableArray<AstStmtNode> Body { get; }
-    public ImmutableArray<AstExprNode> DecoratorList { get; }
-    public ImmutableArray<AstTypeParamNode> TypeParams { get; }
-
-    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
-    {
-        var variableScope = frame.SemanticModel?.GetVariableScope<ClassVariableScope>(this)
-            ?? throw new InvalidOperationException();
-
-        var bases = Bases.Select(baseExpr =>
-        {
-            var baseType = baseExpr.GetExprValue(context, frame);
-
-            if (baseType is not PyTypeObject typeObj)
-                throw new NotSupportedException();
-
-            return typeObj;
-        }).ToList();
         if (bases.Count is 0)
             bases.Add(PyObjectType.Shared);
 
         PyTypeObject.ValidateBases(context, bases, out var layoutType);
-        Debug.Assert(variableScope.QualName is not null);
-        var type = UserDefinedType.Create(layoutType, Name, variableScope.QualName, bases);
+        var type = UserDefinedType.Create(layoutType, codeObject.Name, codeObject.QualName, bases);
 
-        if (AstUtils.TryGetDoc(Body, out var doc))
-            type.PyAttributes[PySpecialNames.Doc] = doc;
-
-        if (frame.Globals.TryGetValue(PySpecialNames.Name, out var module))
+        if (context.CurrentFrame.Globals.TryGetValue(PySpecialNames.Name, out var module))
             type.ModuleAsObject = module;
         else
             type.ModuleAsObject = PyStrObject.FromString("builtins");
 
-        var newFrame = frame.CreateClassBuildFrame(type);
-        newFrame._variables = variableScope.Variables;
+        // TODO: __doc__
 
-        if (variableScope.ClassCaptured)
-            newFrame.ClassCell = PyCellObject.CreateCell(type);
+        var newFrame = context.CurrentFrame.CreateClassBuildFrame(type);
+        newFrame._variables = codeObject.Variables;
+
+        // TODO: if (variableScope.ClassCaptured)
+        newFrame.ClassCell = PyCellObject.CreateCell(type);
 
         using (var withFrame = context.WithFrame(newFrame))
-        {
-            foreach (var stmt in Body)
-                stmt.Execute(context, newFrame);
-        }
+            execBody(context, newFrame);
 
-        var attrs = variableScope.Variables.Keys.ToDictionary(static member => member, member => newFrame.GetVariable(member).PyUnwrap(context));
+        var attrs = codeObject.Variables.Keys.ToDictionary(static member => member, member => newFrame.GetVariable(member).PyUnwrap(context));
         foreach (var attr in attrs)
             type.PyAttributes[attr.Key] = attr.Value;
 
@@ -827,6 +795,53 @@ public sealed class ClassDefNode : AstStmtNode, IScopedSubNodesProvider
                 case PySpecialNames.Format: type.Slots.Format = value.ToBinaryFunction(); break;
             }
         }
+        return type;
+    }
+}
+
+public sealed class ClassDefNode : AstStmtNode, IScopedSubNodesProvider
+{
+    internal ClassDefNode(string name, ImmutableArray<AstExprNode> bases, ImmutableArray<AstKeywordNode> keywords, ImmutableArray<AstStmtNode> body, ImmutableArray<AstExprNode> decoratorList, ImmutableArray<AstTypeParamNode> typeParams)
+    {
+        Name = name;
+        Bases = bases;
+        Keywords = keywords;
+        Body = body;
+        DecoratorList = decoratorList;
+        TypeParams = typeParams;
+    }
+
+    public string Name { get; }
+    public ImmutableArray<AstExprNode> Bases { get; }
+    public ImmutableArray<AstKeywordNode> Keywords { get; }
+    public ImmutableArray<AstStmtNode> Body { get; }
+    public ImmutableArray<AstExprNode> DecoratorList { get; }
+    public ImmutableArray<AstTypeParamNode> TypeParams { get; }
+
+    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
+    {
+        var variableScope = frame.SemanticModel?.GetVariableScope<ClassVariableScope>(this)
+            ?? throw new InvalidOperationException();
+
+        var bases = Bases.Select(baseExpr =>
+        {
+            var baseType = baseExpr.GetExprValue(context, frame);
+
+            if (baseType is not PyTypeObject typeObj)
+                throw new NotSupportedException();
+
+            return typeObj;
+        }).ToList();
+
+        Debug.Assert(variableScope.CodeObject is not null);
+        var type = ClassBuilder.Build(context, variableScope.CodeObject, bases, (context, frame) =>
+        {
+            foreach (var stmt in Body)
+                stmt.Execute(context, frame);
+        });
+
+        if (AstUtils.TryGetDoc(Body, out var doc))
+            type.PyAttributes[PySpecialNames.Doc] = doc;
 
         frame.SetVariable(Name, AstUtils.ApplyDecorators(type, DecoratorList, context, frame)).PyUnwrap(context);
     }
