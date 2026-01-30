@@ -5,6 +5,7 @@ using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using System.Collections;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace PySharp.Bytecodes;
 
@@ -50,6 +51,8 @@ internal sealed class BytecodeVirtualMachine
         private readonly List<PyObject> _stack = [];
 
         public int Count => _stack.Count;
+
+        internal List<PyObject> InternalList => _stack;
 
         public PyObject this[int index]
         {
@@ -155,6 +158,21 @@ internal sealed class BytecodeVirtualMachine
 
             currentIndex = nextIndex;
 
+            void LoadArgs(List<PyObject> args, int count)
+            {
+                // equals to:
+                // args.Clear();
+                // for (int i = 0; i < count; i++)
+                //     args.Add(Stack.Pop());
+                // args.Reverse();
+
+                CollectionsMarshal.SetCount(args, count);
+                var argsSpan = CollectionsMarshal.AsSpan(args);
+                var stackSpan = CollectionsMarshal.AsSpan(Stack.InternalList);
+                stackSpan[^count..].CopyTo(argsSpan);
+                CollectionsMarshal.SetCount(Stack.InternalList, Stack.Count - count);
+            }
+
             void EvalOpCode(OpCode opCode)
             {
                 switch (opCode)
@@ -224,10 +242,7 @@ internal sealed class BytecodeVirtualMachine
 
                     case OpCode.Call:
                         {
-                            args.Clear();
-                            for (int i = 0; i < instruction.Arg; i++)
-                                args.Add(Stack.Pop());
-                            args.Reverse();
+                            LoadArgs(args, instruction.Arg);
                             var callable = Stack.Pop();
                             value = callable.Call(context, args).PyUnwrap(context);
                             Stack.Push(value);
@@ -239,10 +254,7 @@ internal sealed class BytecodeVirtualMachine
                             var tuple = (PyTupleObject)Stack.Pop();
                             kwargs.Clear();
 
-                            args.Clear();
-                            for (int i = 0; i < tuple._array.Length; i++)
-                                args.Add(Stack.Pop());
-                            args.Reverse();
+                            LoadArgs(args, tuple._array.Length);
 
                             for(int i = 0; i < tuple._array.Length; i++)
                             {
@@ -250,10 +262,7 @@ internal sealed class BytecodeVirtualMachine
                                 kwargs.Add(str.Value, args[i]);
                             }
 
-                            args.Clear();
-                            for (int i = 0; i < instruction.Arg - kwargs.Count; i++)
-                                args.Add(Stack.Pop());
-                            args.Reverse();
+                            LoadArgs(args, instruction.Arg - kwargs.Count);
 
                             var callable = Stack.Pop();
                             value = callable.Call(context, args, kwargs).PyUnwrap(context);
@@ -357,30 +366,57 @@ internal sealed class BytecodeVirtualMachine
                         break;
 
                     case OpCode._MakeFunctionWithPyArgsDef:
-                        var codeObj = (PyCodeObject)Stack.Pop();
+                        {
+                            var codeObj = (PyCodeObject)Stack.Pop();
 
-                        var argsNode = instruction.GetOperand<AstArgumentsNode>();
-                        PyObject?[] kwDefaults = new PyObject?[argsNode.KwDefaults.Length];
-                        for (int i = kwDefaults.Length - 1; i >= 0; i--)
-                            kwDefaults[i] = Stack.Pop();
-                        PyObject[] defaults = new PyObject[argsNode.Defaults.Length];
-                        for (int i = defaults.Length - 1; i >= 0; i--)
-                            defaults[i] = Stack.Pop();
-                        var def = PyArgsDef.FromAstAndObjs(argsNode, kwDefaults, defaults);
+                            var argsNode = instruction.GetOperand<AstArgumentsNode>();
+                            PyObject?[] kwDefaults = new PyObject?[argsNode.KwDefaults.Length];
+                            for (int i = kwDefaults.Length - 1; i >= 0; i--)
+                                kwDefaults[i] = Stack.Pop();
+                            PyObject[] defaults = new PyObject[argsNode.Defaults.Length];
+                            for (int i = defaults.Length - 1; i >= 0; i--)
+                                defaults[i] = Stack.Pop();
+                            var def = PyArgsDef.FromAstAndObjs(argsNode, kwDefaults, defaults);
 
-                        var caller = GetCaller(codeObj);
-                        var func = new PyFunctionObject(
-                            codeObj.Name,
-                            caller.Call,
-                            Caller.GetFreeVars(frame, codeObj),
-                            frame._globals,
-                            codeObj,
-                            def);
-                        caller.Func = func;
+                            var caller = GetCaller(codeObj);
+                            var func = new PyFunctionObject(
+                                codeObj.Name,
+                                caller.Call,
+                                Caller.GetFreeVars(frame, codeObj),
+                                frame._globals,
+                                codeObj,
+                                def);
+                            caller.Func = func;
 
-                        // TODO: __doc__
+                            // TODO: __doc__
 
-                        Stack.Push(func);
+                            Stack.Push(func);
+                        }
+                        break;
+
+                    case OpCode._BuildClass:
+                        {
+                            var codeObj = (PyCodeObject)Stack.Pop();
+
+                            List<PyTypeObject> bases = [];
+                            LoadArgs(args, instruction.Arg);
+                            foreach (var arg in args)
+                            {
+                                if (arg is not PyTypeObject baseType)
+                                    throw new NotSupportedException();
+
+                                bases.Add(baseType);
+                            }
+
+                            var type = ClassBuilder.Build(context, codeObj, bases, (context, _) =>
+                            {
+                                Debug.Assert(codeObj.Bytecode is not null);
+                                var vm = new BytecodeVirtualMachine(context, codeObj.Bytecode);
+                                vm.Eval().PyUnwrap(context);
+                            });
+
+                            Stack.Push(type);
+                        }
                         break;
 
                     case OpCode.RaiseVarArgs:

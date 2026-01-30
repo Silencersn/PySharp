@@ -24,6 +24,7 @@ partial class BytecodeCompiler
             case ForNode n: CompileFor(n); break;
             case WhileNode n: CompileWhile(n); break;
             case FunctionDefNode n: CompileFunctionDef(n); break;
+            case ClassDefNode n: CompileClassDef(n); break;
             default: throw new NotImplementedException();
         }
     }
@@ -275,5 +276,41 @@ partial class BytecodeCompiler
     private void CompileNonlocal(NonlocalNode node)
     {
         // do nothing
+    }
+
+    private void CompileClassDef(ClassDefNode node)
+    {
+        var currentGenerator = Generator;
+        Generator = new BytecodeGenerator();
+        var currentScope = VariableScope;
+        var scope = Model.GetVariableScope<ClassVariableScope>(node);
+        Debug.Assert(scope is not null);
+        VariableScope = scope;
+
+        foreach (var stmt in node.Body)
+            CompileStmt(stmt);
+
+        var bytecode = new Bytecode(Generator);
+
+        Generator = currentGenerator;
+        VariableScope = currentScope;
+
+        var codeObj = new PyCodeObject(scope, bytecode);
+
+        foreach (var decorator in node.DecoratorList)
+            LoadExpr(decorator);
+
+        foreach (var baseType in node.Bases)
+            LoadExpr(baseType);
+
+        // TODO: Keywords
+
+        Generator.Emit(OpCode.LoadConst, codeObj);
+        Generator.Emit(OpCode._BuildClass, node.Bases.Length);
+
+        for (int i = 0; i < node.DecoratorList.Length; i++)
+            Generator.Emit(OpCode.Call, 1);
+
+        StoreExpr(Ast.Name(node.Name) /* TODO: no creating ast node */);
     }
 }

@@ -51,6 +51,8 @@ internal enum OpCode
     _MakeFunctionWithPyArgsDef,
     ReturnValue,
 
+    _BuildClass,
+
     PushNull,
 
     // PySharp only
