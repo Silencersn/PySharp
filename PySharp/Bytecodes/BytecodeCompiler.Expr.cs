@@ -47,10 +47,10 @@ partial class BytecodeCompiler
         {
             if (callableVariableScope.LocalsTable.TryGetValue(node.Id, out var nameIndex))
                 AsFast(nameIndex);
+            else if (callableVariableScope.CellVars.Contains(node.Id) || callableVariableScope.FreeVars.Contains(node.Id))
+                AsDeref();
             else
                 AsGlobal();
-
-            // TODO: DEREF
         }
 
         void AsGlobal()
@@ -93,6 +93,20 @@ partial class BytecodeCompiler
             };
 
             Generator.Emit(opCode, nameIndex);
+        }
+
+        void AsDeref()
+        {
+            var opCode = ctx switch
+            {
+                ExprContextType.Load => OpCode.LoadDeref,
+                ExprContextType.Store => OpCode.StoreDeref,
+                ExprContextType.Del => OpCode.DeleteDeref,
+
+                _ => throw new InvalidOperationException()
+            };
+
+            Generator.Emit(opCode, node.Id);
         }
     }
 

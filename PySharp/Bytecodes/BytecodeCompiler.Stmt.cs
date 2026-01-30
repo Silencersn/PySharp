@@ -17,6 +17,8 @@ partial class BytecodeCompiler
             case BreakNode n: CompileBreak(n); break;
             case ContinueNode n: CompileContinue(n); break;
             case ReturnNode n: CompileReturn(n); break;
+            case GlobalNode n: CompileGlobal(n); break;
+            case NonlocalNode n: CompileNonlocal(n); break;
             case IfNode n: CompileIf(n); break;
             case TryNode n: CompileTry(n); break;
             case ForNode n: CompileFor(n); break;
@@ -263,5 +265,15 @@ partial class BytecodeCompiler
         else
             Generator.Emit(OpCode.LoadConst, PyNoneObject.None);
         Generator.Emit(OpCode.ReturnValue);
+    }
+
+    private void CompileGlobal(GlobalNode node)
+    {
+        // do nothing
+    }
+
+    private void CompileNonlocal(NonlocalNode node)
+    {
+        // do nothing
     }
 }

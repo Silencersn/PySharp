@@ -12,14 +12,17 @@ internal enum OpCode
     LoadName,
     LoadGlobal,
     LoadFast,
+    LoadDeref,
 
     StoreName,
     StoreGlobal,
     StoreFast,
+    StoreDeref,
 
     DeleteName,
     DeleteGlobal,
     DeleteFast,
+    DeleteDeref,
 
     GetIter,
     ForIter,

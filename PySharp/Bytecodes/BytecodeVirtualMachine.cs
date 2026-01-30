@@ -180,6 +180,11 @@ internal sealed class BytecodeVirtualMachine
                         Stack.Push(value);
                         break;
 
+                    case OpCode.LoadDeref:
+                        value = frame.LoadClosure(instruction.StringOperand, isLocal: default /* TODO: allow unknown isLocal */).PyUnwrap(context);
+                        Stack.Push(value);
+                        break;
+
                     case OpCode.StoreName:
                         value = Stack.Pop();
                         frame.StoreName(instruction.StringOperand, value);
@@ -195,6 +200,11 @@ internal sealed class BytecodeVirtualMachine
                         frame.StoreFast(instruction.Arg, value);
                         break;
 
+                    case OpCode.StoreDeref:
+                        value = Stack.Pop();
+                        frame.StoreClosure(instruction.StringOperand, value);
+                        break;
+
                     case OpCode.DeleteName:
                         frame.DeleteName(instruction.StringOperand).PyUnwrap(context);
                         break;
@@ -205,6 +215,10 @@ internal sealed class BytecodeVirtualMachine
 
                     case OpCode.DeleteFast:
                         frame.DeleteFast(instruction.Arg).PyUnwrap(context);
+                        break;
+
+                    case OpCode.DeleteDeref:
+                        frame.DeleteClosure(instruction.StringOperand, isLocal: default /* TODO: allow unknown isLocal */);
                         break;
 
                     case OpCode.Call:
