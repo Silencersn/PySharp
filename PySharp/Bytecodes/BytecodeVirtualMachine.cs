@@ -12,19 +12,18 @@ internal sealed class BytecodeVirtualMachine
 {
     private OperandStack Stack { get; } = new();
     private PyCallContext Context { get; }
-    private PyBytecodeCompilation Compilation { get; }
+    private Bytecode Bytecode { get; }
 
-    internal BytecodeVirtualMachine(PyCallContext context, PyBytecodeCompilation compilation)
+    internal BytecodeVirtualMachine(PyCallContext context, Bytecode bytecode)
     {
         Context = context;
-        Compilation = compilation;
+        Bytecode = bytecode;
     }
 
     internal void Eval()
     {
         var frame = Context.CurrentFrame;
-        frame.SemanticModel = Compilation.Bytecode.Model;
-        Eval(Context, frame, Compilation.Bytecode.Instructions);
+        Eval(Context, frame, Bytecode.Instructions);
     }
 
     private class ExceptionHandler

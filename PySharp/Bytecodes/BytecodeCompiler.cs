@@ -10,24 +10,23 @@ internal sealed partial class BytecodeCompiler
     {
         var compiler = new BytecodeCompiler(model);
         compiler.Compile();
-        return new PyBytecodeCompilation(new Bytecode(model, compiler.Generator));
+        return new PyBytecodeCompilation(new Bytecode(compiler.Generator));
     }
 
-    private readonly BytecodeGenerator _generator;
     private readonly SemanticModel _model;
 
     internal BytecodeCompiler(SemanticModel model)
     {
-        _generator = new();
+        Generator = new();
         _model = model;
         var scope = _model.GetVariableScope<RootVariableScope>(_model.Root);
         Debug.Assert(scope is not null);
-        CurrentScope = scope;
+        VariableScope = scope;
     }
 
-    private BytecodeGenerator Generator => _generator;
+    private BytecodeGenerator Generator { get; set; }
     private SemanticModel Model => _model;
-    private VariableScope CurrentScope { get; set; }
+    private VariableScope VariableScope { get; set; }
     private Stack<(Label LoopBegin, Label LoopEnd)> Loops { get; } = [];
 
     public void Compile()
@@ -37,7 +36,7 @@ internal sealed partial class BytecodeCompiler
 
     private void CompileMod(AstModNode node)
     {
-        Debug.Assert(CurrentScope is RootVariableScope);
+        Debug.Assert(VariableScope is RootVariableScope);
         switch (node)
         {
             case ModuleNode n:

@@ -1,4 +1,6 @@
 ﻿using PySharp.AstNodes;
+using PySharp.Bytecodes;
+using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Diagnostics;
 
@@ -6,6 +8,9 @@ namespace PySharp.PyModules.Builtins;
 
 public sealed class PyCodeObject : PyObject
 {
+    internal FrozenDictionary<string, int> LocalsTable { get; }
+    internal Bytecode? Bytecode { get; }
+
     public string Name { get; }
     public string QualName { get; }
     public int ArgCount { get; }
@@ -19,10 +24,13 @@ public sealed class PyCodeObject : PyObject
 
     public override PyTypeObject DefaultPyType => PyCodeObjectType.Shared;
 
-    internal PyCodeObject(CallableVariableScope scope)
+    internal PyCodeObject(CallableVariableScope scope, Bytecode? bytecode = null)
     {
         Debug.Assert(scope.Name is not null);
         Debug.Assert(scope.QualName is not null);
+
+        LocalsTable = scope.LocalsTable;
+        Bytecode = bytecode;
 
         Name = scope.Name;
         QualName = scope.QualName;

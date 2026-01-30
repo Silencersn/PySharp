@@ -34,7 +34,7 @@ partial class BytecodeCompiler
 
     private void CompileName(NameNode node, ExprContextType ctx)
     {
-        if (CurrentScope is RootVariableScope)
+        if (VariableScope is RootVariableScope)
         {
             var opCode = ctx switch
             {
@@ -47,7 +47,7 @@ partial class BytecodeCompiler
 
             Generator.Emit(opCode, node.Id);
         }
-        else if (CurrentScope is ClassVariableScope)
+        else if (VariableScope is ClassVariableScope)
         {
             var opCode = ctx switch
             {
@@ -61,7 +61,7 @@ partial class BytecodeCompiler
             Generator.Emit(opCode, node.Id);
         }
 
-        else if (CurrentScope is CallableVariableScope callableVariableScope)
+        else if (VariableScope is CallableVariableScope callableVariableScope)
         {
             var opCode = ctx switch
             {
