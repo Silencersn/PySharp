@@ -44,6 +44,10 @@ internal enum OpCode
     RaiseVarArgs,
     CheckExcMatch,
 
+    ReturnValue,
+
+    PushNull,
+
     // PySharp only
     _SetupExceptionHandler,
     _EnterFinally,

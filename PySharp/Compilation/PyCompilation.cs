@@ -53,7 +53,7 @@ internal sealed class PyBytecodeCompilation : PyCompilation
     public override void Execute(PyCallContext context)
     {
         BytecodeVirtualMachine vm = new(context, Bytecode);
-        vm.Eval();
+        vm.Eval().PyUnwrap(context);
     }
 
     public override PyObject Evaluate(PyCallContext context)

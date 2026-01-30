@@ -978,8 +978,8 @@ public sealed class LambdaNode : AstExprNode, IScopedSubNodesProvider
         Debug.Assert(variableScope.CodeObject is not null);
 
         Caller caller = variableScope.HasYield
-            ? new GeneratorCaller(isFuncDef: false, GetResult)
-            : new FunctionCaller(isFuncDef: false, GetResult);
+            ? new GeneratorCaller(FrameType.YieldLambda, GetResult)
+            : new FunctionCaller(FrameType.Lambda, GetResult);
 
         var def = PyArgsDef.FromAst(Args, context, frame);
 

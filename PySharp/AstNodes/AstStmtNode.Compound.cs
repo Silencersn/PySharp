@@ -407,13 +407,10 @@ internal abstract class Caller
     protected readonly FrameType _frameType;
     public PyFunctionObject Func { get; set; }
 
-    internal Caller(bool isFuncDef, Func<PyCallContext, PyFrame, PyResult> getResult)
+    internal Caller(FrameType frameType, Func<PyCallContext, PyFrame, PyResult> getResult)
     {
         _getResult = getResult;
-        if (this is FunctionCaller)
-            _frameType = isFuncDef ? FrameType.Function : FrameType.Lambda;
-        else
-            _frameType = isFuncDef ? FrameType.YieldFunction : FrameType.YieldLambda;
+        _frameType = frameType;
 
         // deferred init
         Func = null!;
@@ -467,7 +464,7 @@ internal abstract class Caller
 
 internal sealed class FunctionCaller : Caller
 {
-    public FunctionCaller(bool isFuncDef, Func<PyCallContext, PyFrame, PyResult> getResult) : base(isFuncDef, getResult)
+    public FunctionCaller(FrameType frameType, Func<PyCallContext, PyFrame, PyResult> getResult) : base(frameType, getResult)
     {
     }
 
@@ -494,7 +491,7 @@ internal sealed class FunctionCaller : Caller
 
 internal sealed class GeneratorCaller : Caller
 {
-    public GeneratorCaller(bool isFuncDef, Func<PyCallContext, PyFrame, PyResult> getResult) : base(isFuncDef, getResult)
+    public GeneratorCaller(FrameType frameType, Func<PyCallContext, PyFrame, PyResult> getResult) : base(frameType, getResult)
     {
     }
 
@@ -570,8 +567,8 @@ public sealed class FunctionDefNode : AstStmtNode, IScopedSubNodesProvider
         Debug.Assert(variableScope.CodeObject is not null);
 
         Caller caller = variableScope.HasYield
-            ? new GeneratorCaller(isFuncDef: true, GetResult)
-            : new FunctionCaller(isFuncDef: true, GetResult);
+            ? new GeneratorCaller(FrameType.YieldFunction, GetResult)
+            : new FunctionCaller(FrameType.Function, GetResult);
 
         var def = PyArgsDef.FromAst(Args, context, frame);
 

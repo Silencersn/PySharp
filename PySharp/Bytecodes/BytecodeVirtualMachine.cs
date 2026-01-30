@@ -20,10 +20,10 @@ internal sealed class BytecodeVirtualMachine
         Bytecode = bytecode;
     }
 
-    internal void Eval()
+    internal PyResult Eval()
     {
         var frame = Context.CurrentFrame;
-        Eval(Context, frame, Bytecode.Instructions);
+        return Eval(Context, frame, Bytecode.Instructions);
     }
 
     private class ExceptionHandler
@@ -77,7 +77,7 @@ internal sealed class BytecodeVirtualMachine
         }
     }
 
-    internal void Eval(PyCallContext context, PyFrame frame, List<Instruction> instructions)
+    internal PyResult Eval(PyCallContext context, PyFrame frame, List<Instruction> instructions)
     {
         int currentIndex = 0;
         
@@ -88,6 +88,7 @@ internal sealed class BytecodeVirtualMachine
         bool boolValue;
         List<PyObject> args = [];
         PyResult result;
+        PyObject? returnValue = null;
 
         while (currentIndex < instructions.Count)
         {
@@ -97,6 +98,8 @@ internal sealed class BytecodeVirtualMachine
             try
             {
                 EvalOpCode(instruction.OpCode);
+                if (returnValue is not null)
+                    return returnValue;
             }
             catch (PyRuntimeException e)
             {
@@ -104,7 +107,7 @@ internal sealed class BytecodeVirtualMachine
                 if (!exceptionHandlers.TryPeek(out var currentHandler))
                 {
                     Stack.Clear();
-                    throw;
+                    return PyResult.FromException(e.PyException);
                 }
 
                 if (currentHandler.State is ExceptionHandler.State_Except)
@@ -298,6 +301,17 @@ internal sealed class BytecodeVirtualMachine
                         Stack.Push(value);
                         break;
 
+                    case OpCode.PushNull:
+                        // suppressed null warnings
+                        // because null is rarely used and
+                        // we assume that all nulls can be handled correctly.
+                        Stack.Push(null!);
+                        break;
+
+                    case OpCode.ReturnValue:
+                        returnValue = Stack.Pop();
+                        break;
+
                     case OpCode.RaiseVarArgs:
                         if (instruction.Arg is 0)
                         {
@@ -359,5 +373,7 @@ internal sealed class BytecodeVirtualMachine
                 }
             }
         }
+
+        return PyNoneObject.None;
     }
 }
