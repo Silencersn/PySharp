@@ -29,6 +29,7 @@ internal enum OpCode
     PopIter,
 
     Call,
+    CallKw,
     BinaryOp,
     CompareOp,
     ContainsOp,

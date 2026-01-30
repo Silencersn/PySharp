@@ -87,6 +87,7 @@ internal sealed class BytecodeVirtualMachine
         PyObject value, left, right;
         bool boolValue;
         List<PyObject> args = [];
+        OrderedDictionary<string, PyObject> kwargs = [];
         PyResult result;
         PyObject? returnValue = null;
 
@@ -222,13 +223,42 @@ internal sealed class BytecodeVirtualMachine
                         break;
 
                     case OpCode.Call:
-                        args.Clear();
-                        for (int i = 0; i < instruction.Arg; i++)
-                            args.Add(Stack.Pop());
-                        args.Reverse();
-                        var callable = Stack.Pop();
-                        value = callable.Call(context, args).PyUnwrap(context);
-                        Stack.Push(value);
+                        {
+                            args.Clear();
+                            for (int i = 0; i < instruction.Arg; i++)
+                                args.Add(Stack.Pop());
+                            args.Reverse();
+                            var callable = Stack.Pop();
+                            value = callable.Call(context, args).PyUnwrap(context);
+                            Stack.Push(value);
+                        }
+                        break;
+
+                    case OpCode.CallKw:
+                        {
+                            var tuple = (PyTupleObject)Stack.Pop();
+                            kwargs.Clear();
+
+                            args.Clear();
+                            for (int i = 0; i < tuple._array.Length; i++)
+                                args.Add(Stack.Pop());
+                            args.Reverse();
+
+                            for(int i = 0; i < tuple._array.Length; i++)
+                            {
+                                var str = (PyStrObject)tuple._array[i];
+                                kwargs.Add(str.Value, args[i]);
+                            }
+
+                            args.Clear();
+                            for (int i = 0; i < instruction.Arg - kwargs.Count; i++)
+                                args.Add(Stack.Pop());
+                            args.Reverse();
+
+                            var callable = Stack.Pop();
+                            value = callable.Call(context, args, kwargs).PyUnwrap(context);
+                            Stack.Push(value);
+                        }
                         break;
 
                     case OpCode.PopTop:

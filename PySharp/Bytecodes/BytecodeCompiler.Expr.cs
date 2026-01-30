@@ -1,4 +1,5 @@
 ﻿using PySharp.AstNodes;
+using PySharp.PyModules.Builtins;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -112,15 +113,24 @@ partial class BytecodeCompiler
 
     private void CompileCall(CallNode node)
     {
-        if (node.Keywords.Length > 0)
-            throw new NotImplementedException();
-
         LoadExpr(node.Func);
 
         foreach (var arg in node.Args)
             LoadExpr(arg);
 
-        Generator.Emit(OpCode.Call, node.Args.Length);
+        if (node.Keywords.Length is 0)
+        {
+            Generator.Emit(OpCode.Call, node.Args.Length);
+            return;
+        }
+
+        foreach (var kwarg in node.Keywords)
+            LoadExpr(kwarg.Value);
+
+        var tuple = PyTupleObject.CreateTuple(node.Keywords.Select(k => PyStrObject.FromString(k.Arg ?? throw new NotImplementedException("unpack"))));
+        Generator.Emit(OpCode.LoadConst, tuple);
+
+        Generator.Emit(OpCode.CallKw, node.Args.Length + node.Keywords.Length);
     }
 
     private void CompileBinOp(BinOpNode node)
