@@ -24,6 +24,10 @@ internal enum OpCode
     DeleteFast,
     DeleteDeref,
 
+    LoadAttr,
+    StoreAttr,
+    DeleteAttr,
+
     GetIter,
     ForIter,
     PopIter,

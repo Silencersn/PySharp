@@ -240,6 +240,27 @@ internal sealed class BytecodeVirtualMachine
                         frame.DeleteClosure(instruction.StringOperand, isLocal: default /* TODO: allow unknown isLocal */);
                         break;
 
+                    case OpCode.LoadAttr:
+                        {
+                            Stack[-1] = PyOperators.GetAttr(context, Stack[-1], instruction.StringOperand).PyUnwrap(context);
+                        }
+                        break;
+
+                    case OpCode.StoreAttr:
+                        {
+                            var obj = Stack.Pop();
+                            value = Stack.Pop();
+                            PyOperators.SetAttr(context, obj, instruction.StringOperand, value).PyUnwrap(context);
+                        }
+                        break;
+
+                    case OpCode.DeleteAttr:
+                        {
+                            var obj = Stack.Pop();
+                            PyOperators.DelAttr(context, obj, instruction.StringOperand).PyUnwrap(context);
+                        }
+                        break;
+
                     case OpCode.Call:
                         {
                             LoadArgs(args, instruction.Arg);

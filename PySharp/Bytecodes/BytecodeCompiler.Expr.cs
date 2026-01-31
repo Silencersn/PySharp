@@ -24,6 +24,7 @@ partial class BytecodeCompiler
             case BinOpNode n: CompileBinOp(n); break;
             case UnaryOpNode n: CompileUnaryOp(n); break;
             case CompareNode n: CompileCompare(n); break;
+            case AttributeNode n: CompileAttribute(n, ctx); break;
             default: throw new NotImplementedException();
         }
     }
@@ -201,5 +202,19 @@ partial class BytecodeCompiler
             else
                 Generator.Emit(OpCode.CompareOp, (int)op);
         }
+    }
+
+    private void CompileAttribute(AttributeNode node, ExprContextType ctx)
+    {
+        LoadExpr(node.Value);
+
+        if (ctx is ExprContextType.Load)
+            Generator.Emit(OpCode.LoadAttr, node.Identifier);
+        else if (ctx is ExprContextType.Store)
+            Generator.Emit(OpCode.StoreAttr, node.Identifier);
+        else if (ctx is ExprContextType.Del)
+            Generator.Emit(OpCode.DeleteAttr, node.Identifier);
+        else
+            throw new UnreachableException();
     }
 }
