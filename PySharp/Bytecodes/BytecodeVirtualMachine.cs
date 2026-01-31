@@ -313,10 +313,21 @@ internal sealed class BytecodeVirtualMachine
                         break;
 
                     case OpCode.PopJumpIfFalse:
-                        value = Stack.Pop();
-                        boolValue = ((PyBoolObject)value).BoolValue;
-                        if (!boolValue)
-                            nextIndex = instruction.LabelOperand.Offset;
+                        {
+                            value = Stack.Pop();
+                            boolValue = ((PyBoolObject)value).BoolValue;
+                            if (!boolValue)
+                                nextIndex = instruction.LabelOperand.Offset;
+                        }
+                        break;
+
+                    case OpCode.PopJumpIfTrue:
+                        {
+                            value = Stack.Pop();
+                            boolValue = ((PyBoolObject)value).BoolValue;
+                            if (boolValue)
+                                nextIndex = instruction.LabelOperand.Offset;
+                        }
                         break;
 
                     case OpCode.GetIter:

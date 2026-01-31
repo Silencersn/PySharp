@@ -17,8 +17,9 @@ partial class BytecodeCompiler
             case BreakNode n: CompileBreak(n); break;
             case ContinueNode n: CompileContinue(n); break;
             case ReturnNode n: CompileReturn(n); break;
-            case GlobalNode n: CompileGlobal(n); break;
+            case GlobalNode n: CompileGlobal(n); break; 
             case NonlocalNode n: CompileNonlocal(n); break;
+            case AssertNode n: CompileAssert(n); break;
             case IfNode n: CompileIf(n); break;
             case TryNode n: CompileTry(n); break;
             case ForNode n: CompileFor(n); break;
@@ -312,5 +313,25 @@ partial class BytecodeCompiler
             Generator.Emit(OpCode.Call, 1);
 
         StoreExpr(Ast.Name(node.Name) /* TODO: no creating ast node */);
+    }
+
+    private void CompileAssert(AssertNode node)
+    {
+        var noRaisingLabel = Generator.DefineLabel();
+
+        LoadExpr(node.Test);
+        Generator.Emit(OpCode.ToBool);
+        Generator.Emit(OpCode.PopJumpIfTrue, noRaisingLabel);
+
+        Generator.Emit(OpCode.LoadConst, PyAssertionErrorObjectType.Shared);
+        
+        if (node.Msg is not null)
+        {
+            LoadExpr(node.Msg);
+            Generator.Emit(OpCode.Call, 1); // AssertionError(msg)
+        }
+
+        Generator.Emit(OpCode.RaiseVarArgs, 1);
+        Generator.MarkLabel(noRaisingLabel);
     }
 }
