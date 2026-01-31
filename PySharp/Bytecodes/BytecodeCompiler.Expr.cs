@@ -25,6 +25,10 @@ partial class BytecodeCompiler
             case UnaryOpNode n: CompileUnaryOp(n); break;
             case CompareNode n: CompileCompare(n); break;
             case AttributeNode n: CompileAttribute(n, ctx); break;
+            case ListNode n: CompileList(n); break;
+            case TupleNode n: CompileTuple(n); break;
+            case SetNode n: CompileSet(n); break;
+            case DictNode n: CompileDict(n); break;
             default: throw new NotImplementedException();
         }
     }
@@ -216,5 +220,39 @@ partial class BytecodeCompiler
             Generator.Emit(OpCode.DeleteAttr, node.Identifier);
         else
             throw new UnreachableException();
+    }
+
+    private void CompileList(ListNode node)
+    {
+        // TODO: star expr
+        foreach (var elt in node.Elts)
+            LoadExpr(elt);
+        Generator.Emit(OpCode.BuildList, node.Elts.Length);
+    }
+
+    private void CompileTuple(TupleNode node)
+    {
+        // TODO: star expr
+        foreach (var elt in node.Elts)
+            LoadExpr(elt);
+        Generator.Emit(OpCode.BuildTuple, node.Elts.Length);
+    }
+
+    private void CompileSet(SetNode node)
+    {
+        // TODO: star expr
+        foreach (var elt in node.Elts)
+            LoadExpr(elt);
+        Generator.Emit(OpCode.BuildSet, node.Elts.Length);
+    }
+
+    private void CompileDict(DictNode node)
+    {
+        for (int i = 0; i < node.Keys.Length; i++)
+        {
+            LoadExpr(node.Keys[i] ?? throw new NotSupportedException("unpack"));
+            LoadExpr(node.Values[i]);
+        }
+        Generator.Emit(OpCode.BuildMap, node.Keys.Length);
     }
 }

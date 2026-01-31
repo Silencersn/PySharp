@@ -22,6 +22,11 @@ public class PySetObject : PyObject, IPyObjectRecursiveRepr
     {
         return Utils.CollectionRecursiveRepr(context, this, _set, "{", "}", ids);
     }
+
+    public static PySetObject CreateSet(params IEnumerable<PyObject> items)
+    {
+        return new PySetObject(items);
+    }
 }
 
 public sealed class PySetObjectType : PyTypeObject<PySetObjectType, PySetObject>

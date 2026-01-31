@@ -93,6 +93,7 @@ internal sealed class BytecodeVirtualMachine
         OrderedDictionary<string, PyObject> kwargs = [];
         PyResult result;
         PyObject? returnValue = null;
+        List<KeyValuePair<PyObject, PyObject>> pairs = [];
 
         while (currentIndex < instructions.Count)
         {
@@ -391,6 +392,31 @@ internal sealed class BytecodeVirtualMachine
                         // because null is rarely used and
                         // we assume that all nulls can be handled correctly.
                         Stack.Push(null!);
+                        break;
+
+                    case OpCode.BuildList:
+                        LoadArgs(args, instruction.Arg);
+                        Stack.Push(PyListObject.CreateList(args));
+                        break;
+
+                    case OpCode.BuildTuple:
+                        LoadArgs(args, instruction.Arg);
+                        Stack.Push(PyTupleObject.CreateTuple(args));
+                        break;
+
+                    case OpCode.BuildSet:
+                        LoadArgs(args, instruction.Arg);
+                        Stack.Push(PySetObject.CreateSet(args));
+                        break;
+
+                    case OpCode.BuildMap:
+                        LoadArgs(args, instruction.Arg * 2);
+                        pairs.Clear();
+                        for (int i = 0; i < instruction.Arg; i++)
+                        {
+                            pairs.Add(KeyValuePair.Create(args[i * 2], args[i * 2 + 1]));
+                        }
+                        Stack.Push(PyDictObject.CreateDict(pairs));
                         break;
 
                     case OpCode.ReturnValue:

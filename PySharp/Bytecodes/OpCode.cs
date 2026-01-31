@@ -60,6 +60,11 @@ internal enum OpCode
 
     PushNull,
 
+    BuildList,
+    BuildTuple,
+    BuildSet,
+    BuildMap,
+
     // PySharp only
     _SetupExceptionHandler,
     _EnterFinally,
