@@ -236,7 +236,14 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
         _frame.Back = context.CurrentFrame;
         using var withFrame = context.WithFrame(_frame);
         _vm.SetYieldReceivedValue(value);
-        return _vm.Eval();
+        var result = _vm.Eval();
+        if (result.IsError)
+            return result;
+
+        if (_vm.RunToEnd)
+            return PyResult.StopIteration(result.Value);
+
+        return result;
     }
 
     internal override PyResult PyClose(PyCallContext context)
