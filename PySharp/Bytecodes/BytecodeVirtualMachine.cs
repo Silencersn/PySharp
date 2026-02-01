@@ -114,15 +114,6 @@ internal sealed class BytecodeVirtualMachine
 
             try
             {
-                if (ExceptionToRaise is not null)
-                {
-                    // TODO: do not check every opcode
-                    // TODO: do not throw
-                    var exc = ExceptionToRaise;
-                    ExceptionToRaise = null;
-                    throw new PyRuntimeException(exc);
-                }
-
                 EvalOpCode(instruction.OpCode);
                 if (returnValue is not null)
                     return returnValue;
@@ -133,6 +124,7 @@ internal sealed class BytecodeVirtualMachine
                 if (!ExceptionHandlers.TryPeek(out var currentHandler))
                 {
                     Stack.Clear();
+                    RunToEnd = true;
                     return PyResult.FromException(e.PyException);
                 }
 
@@ -488,10 +480,19 @@ internal sealed class BytecodeVirtualMachine
                         }
                         break;
 
-                    case OpCode.YieldReturn:
+                    case OpCode.YieldValue:
                         {
                             returnValue = Stack.Pop();
                             InstructionIndex = currentIndex + 1;
+                        }
+                        break;
+
+                    case OpCode._CheckExcToRaise:
+                        if (ExceptionToRaise is not null)
+                        {
+                            var exc = ExceptionToRaise;
+                            ExceptionToRaise = null;
+                            throw new PyRuntimeException(exc);
                         }
                         break;
 

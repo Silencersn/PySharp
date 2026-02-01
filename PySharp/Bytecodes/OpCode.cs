@@ -56,7 +56,8 @@ internal enum OpCode
     _MakeFunctionWithPyArgsDef,
     ReturnValue,
     ReturnGenerator,
-    YieldReturn,
+    YieldValue,
+    _CheckExcToRaise,
 
     _BuildClass,
 

@@ -350,6 +350,7 @@ partial class BytecodeCompiler
             LoadExpr(node.Value);
         else
             Generator.Emit(OpCode.LoadConst, PyNoneObject.None);
-        Generator.Emit(OpCode.YieldReturn);
+        Generator.Emit(OpCode.YieldValue);
+        Generator.Emit(OpCode._CheckExcToRaise);
     }
 }
