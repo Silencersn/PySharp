@@ -32,8 +32,9 @@ partial class BytecodeCompiler
             case SetNode n: CompileSet(n); break;
             case DictNode n: CompileDict(n); break; 
             case ListCompNode n: CompileListComp(n); break;
-            case SetCompNode n: CompileSetComp(n); break;
+            case SetCompNode n: CompileSetComp(n); break; 
             case DictCompNode n: CompileDictComp(n); break;
+            case YieldNode n: CompileYield(n); break;
             default: throw new NotImplementedException();
         }
     }
@@ -341,5 +342,14 @@ partial class BytecodeCompiler
         });
 
         Generator.Emit(OpCode._ExitInlineFrame);
+    }
+
+    private void CompileYield(YieldNode node)
+    {
+        if (node.Value is not null)
+            LoadExpr(node.Value);
+        else
+            Generator.Emit(OpCode.LoadConst, PyNoneObject.None);
+        Generator.Emit(OpCode.YieldReturn);
     }
 }

@@ -112,6 +112,8 @@ partial class PySR
     public const string Runtime_Descriptor_ReceiveObjectOfWrongType = "descriptor '{0}' requires a '{1}' object but received a '{2}'";
     public const string Runtime_Descriptor_NeedsArg = "descriptor '{0}' of '{1}' object needs an argument";
 
+    public const string Runtime_Exception_NonException = "exceptions must be classes or instances deriving from BaseException, not {0}";
+
     public const string Runtime_ExceptionGroup_NestBaseExceptionsForExceptionGroup = "Cannot nest BaseExceptions in an ExceptionGroup";
     public const string Runtime_ExceptionGroup_NestBaseExceptions = "Cannot nest BaseExceptions in '{0}'";
     public const string Runtime_ExceptionGroup_SplitExpectedCondition = "expected an exception type, a tuple of exception types, or a callable (other than a class)";
@@ -122,6 +124,7 @@ partial class PySR
     public const string Runtime_ExceptionGroup_NewGroup_MsgNonStr = "{0}.__new__() argument 1 must be str, not {1}";
 
     public const string Runtime_Generator_SendNonNoneAtFirst = "can't send non-None value to a just-started generator";
+    public const string Runtime_Generator_IgnoredGeneratorExit = "generator ignored GeneratorExit";
 
     public const string Runtime_Arguments_OverflowArgs = "takes {0} positional arguments but {1} was given";
     public const string Runtime_Arguments_MissingArg = "missing 1 required positional argument";

@@ -1,4 +1,5 @@
-﻿using PySharp.PyRuntime;
+﻿using PySharp.Bytecodes;
+using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.PyAttributes;
 using System.Diagnostics;
@@ -210,8 +211,104 @@ public sealed class PyUserDefinedGeneratorObject : PyGeneratorObject
         }
 
         if (!_frame._generatorCompleted)
-            return PyResult.RuntimeError("generator ignored GeneratorExit");
+            return PyResult.RuntimeError(PySR.Runtime_Generator_IgnoredGeneratorExit);
 
+        return result;
+    }
+}
+
+public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
+{
+    private readonly PyFrame _frame;
+    private readonly BytecodeVirtualMachine _vm;
+
+    internal PyBytecodeGeneratorObject(string name, PyFrame frame, BytecodeVirtualMachine vm) : base(name)
+    {
+        _frame = frame;
+        _vm = vm;
+    }
+
+    private PyResult Send(PyCallContext context, PyObject value)
+    {
+        if (_vm.RunToEnd)
+            return PyResult.StopIteration();
+
+        _frame.Back = context.CurrentFrame;
+        using var withFrame = context.WithFrame(_frame);
+        _vm.SetYieldReceivedValue(value);
+        return _vm.Eval();
+    }
+
+    internal override PyResult PyClose(PyCallContext context)
+    {
+        if (_vm.RunToEnd)
+            return PyNoneObject.None;
+
+        _vm.ExceptionToRaise = PyGeneratorExitObjectType.Shared.Create();
+        _frame.Back = context.CurrentFrame;
+        using var withFrame = context.WithFrame(_frame);
+        var result = _vm.Eval();
+
+        if (result.IsError)
+        {
+            if (PyGeneratorExitObjectType.Shared.IsInstance(result.Exception))
+                return PyNoneObject.None;
+
+            return result;
+        }
+
+        if (!_vm.RunToEnd)
+            // still yield value
+            return PyResult.RuntimeError(PySR.Runtime_Generator_IgnoredGeneratorExit);
+
+        return result;
+    }
+
+    internal override PyResult PyNext(PyCallContext context)
+    {
+        return Send(context, PyNoneObject.None);
+    }
+
+    internal override PyResult PySend(PyCallContext context, PyObject pyObject)
+    {
+        if (_vm.InstructionIndex is 1 /* first send */ && pyObject is not PyNoneObject)
+            return PyResult.TypeError(PySR.Runtime_Generator_SendNonNoneAtFirst);
+
+        return Send(context, pyObject);
+    }
+
+    internal override PyResult PyThrow(PyCallContext context, PyObject pyObject)
+    {
+        if (pyObject is PyTypeObject type)
+        {
+            if (!type.IsSubclassOf(PyBaseExceptionObjectType.Shared))
+                return PyResult.TypeError(PySR.Runtime_Exception_NonException, pyObject.PyType.FullName);
+
+            var excResult = type.Call(context);
+            if (excResult.IsError)
+                return excResult;
+
+            pyObject = excResult.Value;
+        }
+
+        if (pyObject is not PyExceptionObject exc)
+            return PyResult.TypeError(PySR.Runtime_Exception_NonException, pyObject.PyType.FullName);
+
+        if (_vm.RunToEnd)
+            return PyResult.FromException(exc);
+
+        _vm.ExceptionToRaise = exc;
+        _frame.Back = context.CurrentFrame;
+        using var withFrame = context.WithFrame(_frame);
+        var result = _vm.Eval();
+        if (result.IsError)
+            return result;
+
+        if (_vm.RunToEnd)
+            // return value
+            return PyResult.StopIteration(result.Value);
+
+        // yield value
         return result;
     }
 }

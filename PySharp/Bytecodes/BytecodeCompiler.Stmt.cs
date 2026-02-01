@@ -226,8 +226,14 @@ partial class BytecodeCompiler
         Debug.Assert(scope is not null);
         VariableScope = scope;
 
+        if (scope.HasYield)
+        {
+            Generator.Emit(OpCode.ReturnGenerator);
+            Generator.Emit(OpCode.PopTop); // pop the first sent to activate the generator
+        }
         foreach (var stmt in node.Body)
             CompileStmt(stmt);
+
         Generator.Emit(OpCode.LoadConst, PyNoneObject.None);
         Generator.Emit(OpCode.ReturnValue);
         var bytecode = new Bytecode(Generator);

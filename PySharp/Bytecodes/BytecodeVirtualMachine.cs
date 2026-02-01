@@ -5,15 +5,23 @@ using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using System.Collections;
 using System.Diagnostics;
+using System.Reflection.Emit;
 using System.Runtime.InteropServices;
 
 namespace PySharp.Bytecodes;
 
 internal sealed class BytecodeVirtualMachine
 {
+    // States
+    internal int InstructionIndex;
+    internal PyExceptionObject? ExceptionToRaise;
+    internal bool RunToEnd { get; private set; }
+    private Stack<ExceptionHandler> ExceptionHandlers => field ??= [];
     private OperandStack Stack { get; } = new();
+
     private PyCallContext Context { get; }
     private Bytecode Bytecode { get; }
+
 
     internal BytecodeVirtualMachine(PyCallContext context, Bytecode bytecode)
     {
@@ -80,11 +88,15 @@ internal sealed class BytecodeVirtualMachine
         }
     }
 
+    internal void SetYieldReceivedValue(PyObject value)
+    {
+        Stack.Push(value);
+    }
+
     internal PyResult Eval(PyCallContext context, PyFrame frame)
     {
-        int currentIndex = 0;
+        int currentIndex = InstructionIndex;
         var instructions = Bytecode.Instructions;
-        Stack<ExceptionHandler> exceptionHandlers = [];
 
         // cache, clear before using
         PyObject value, left, right;
@@ -102,6 +114,15 @@ internal sealed class BytecodeVirtualMachine
 
             try
             {
+                if (ExceptionToRaise is not null)
+                {
+                    // TODO: do not check every opcode
+                    // TODO: do not throw
+                    var exc = ExceptionToRaise;
+                    ExceptionToRaise = null;
+                    throw new PyRuntimeException(exc);
+                }
+
                 EvalOpCode(instruction.OpCode);
                 if (returnValue is not null)
                     return returnValue;
@@ -109,7 +130,7 @@ internal sealed class BytecodeVirtualMachine
             catch (PyRuntimeException e)
             {
                 handle:
-                if (!exceptionHandlers.TryPeek(out var currentHandler))
+                if (!ExceptionHandlers.TryPeek(out var currentHandler))
                 {
                     Stack.Clear();
                     return PyResult.FromException(e.PyException);
@@ -127,7 +148,7 @@ internal sealed class BytecodeVirtualMachine
                     // raise exception during finally body
 
                     frame.Exceptions.Clear();
-                    exceptionHandlers.Pop();
+                    ExceptionHandlers.Pop();
 
                     goto handle;
                 }
@@ -456,6 +477,22 @@ internal sealed class BytecodeVirtualMachine
 
                     case OpCode.ReturnValue:
                         returnValue = Stack.Pop();
+                        RunToEnd = true;
+                        break;
+
+                    case OpCode.ReturnGenerator:
+                        {
+                            var generator = new PyBytecodeGeneratorObject(frame.CallerName, frame, this);
+                            returnValue = generator;
+                            InstructionIndex = currentIndex + 1;
+                        }
+                        break;
+
+                    case OpCode.YieldReturn:
+                        {
+                            returnValue = Stack.Pop();
+                            InstructionIndex = currentIndex + 1;
+                        }
                         break;
 
                     case OpCode._MakeFunctionWithPyArgsDef:
@@ -543,29 +580,29 @@ internal sealed class BytecodeVirtualMachine
                         Debug.Assert(instruction.Operand is not null);
                         var labelPair = ((Label?, Label))instruction.Operand;
                         var handler = new ExceptionHandler(labelPair.Item1, labelPair.Item2) { StackDepth = Stack.Count };
-                        exceptionHandlers.Push(handler);
+                        ExceptionHandlers.Push(handler);
                         break;
 
                     case OpCode._EnterFinally:
-                        exceptionHandlers.Peek().State = ExceptionHandler.State_Finally;
+                        ExceptionHandlers.Peek().State = ExceptionHandler.State_Finally;
                         break;
 
                     case OpCode._ExitFinally:
-                        var currentHandler = exceptionHandlers.Peek();
+                        var currentHandler = ExceptionHandlers.Peek();
                         currentHandler.State = ExceptionHandler.State_End;
                         if (currentHandler.PyException is not null)
                         {
                             var exc = currentHandler.PyException;
-                            exceptionHandlers.Pop();
+                            ExceptionHandlers.Pop();
                             throw new PyRuntimeException(exc);
                         }
-                        exceptionHandlers.Pop();
+                        ExceptionHandlers.Pop();
                         frame.Exceptions.Clear();
                         break;
 
                     case OpCode._PopException:
                         frame.Exceptions.Pop();
-                        exceptionHandlers.Peek().PyException = null;
+                        ExceptionHandlers.Peek().PyException = null;
                         break;
 
                     default:
@@ -574,6 +611,7 @@ internal sealed class BytecodeVirtualMachine
             }
         }
 
+        RunToEnd = true;
         return PyNoneObject.None;
     }
 
