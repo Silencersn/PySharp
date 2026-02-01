@@ -65,6 +65,12 @@ internal enum OpCode
     BuildSet,
     BuildMap,
 
+    _EnterInlineFrame,
+    _ExitInlineFrame,
+    ListAppend,
+    SetAdd,
+    MapAdd,
+
     // PySharp only
     _SetupExceptionHandler,
     _EnterFinally,

@@ -419,6 +419,41 @@ internal sealed class BytecodeVirtualMachine
                         Stack.Push(PyDictObject.CreateDict(pairs));
                         break;
 
+                    case OpCode._EnterInlineFrame:
+                        frame = frame.CreateInlineFrame(FrameType.Comprehension);
+                        context.FrameState.EnterFrame(frame);
+                        break;
+
+                    case OpCode._ExitInlineFrame:
+                        context.FrameState.ExitFrame();
+                        frame = context.CurrentFrame;
+                        break;
+
+                    case OpCode.ListAppend:
+                        {
+                            value = Stack.Pop();
+                            var list = (PyListObject)Stack[-instruction.Arg];
+                            list._list.Add(value);
+                        }
+                        break;
+
+                    case OpCode.SetAdd:
+                        {
+                            value = Stack.Pop();
+                            var set = (PySetObject)Stack[-instruction.Arg];
+                            set._set.Add(value);
+                        }
+                        break;
+
+                    case OpCode.MapAdd:
+                        {
+                            value = Stack.Pop();
+                            var key = Stack.Pop();
+                            var dict = (PyDictObject)Stack[-instruction.Arg];
+                            dict._dict[key] = value;
+                        }
+                        break;
+
                     case OpCode.ReturnValue:
                         returnValue = Stack.Pop();
                         break;

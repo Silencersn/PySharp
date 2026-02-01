@@ -2,9 +2,11 @@
 using PySharp.PyModules.Builtins;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Reflection.Emit;
 using System.Text;
+using System.Xml.Linq;
 
 namespace PySharp.Bytecodes;
 
@@ -28,7 +30,10 @@ partial class BytecodeCompiler
             case ListNode n: CompileList(n); break;
             case TupleNode n: CompileTuple(n); break;
             case SetNode n: CompileSet(n); break;
-            case DictNode n: CompileDict(n); break;
+            case DictNode n: CompileDict(n); break; 
+            case ListCompNode n: CompileListComp(n); break;
+            case SetCompNode n: CompileSetComp(n); break;
+            case DictCompNode n: CompileDictComp(n); break;
             default: throw new NotImplementedException();
         }
     }
@@ -254,5 +259,87 @@ partial class BytecodeCompiler
             LoadExpr(node.Values[i]);
         }
         Generator.Emit(OpCode.BuildMap, node.Keys.Length);
+    }
+
+    private void InternalCompileGenerators(ImmutableArray<AstComprehensionNode> generators, Action compileElt)
+    {
+        CompileGenerator(0);
+
+        void CompileGenerator(int i)
+        {
+            if (i == generators.Length)
+            {
+                compileElt();
+                return;
+            }
+
+            var forIterLabel = Generator.DefineLabel();
+            var endForLabel = Generator.DefineLabel();
+
+            var generator = generators[i];
+
+            LoadExpr(generator.Iter);
+            Generator.Emit(OpCode.GetIter);
+            Generator.MarkLabel(forIterLabel);
+            Generator.Emit(OpCode.ForIter, endForLabel);
+            StoreExpr(generator.Target);
+
+            foreach (var test in generator.Ifs)
+            {
+                LoadExpr(test);
+                Generator.Emit(OpCode.ToBool);
+                Generator.Emit(OpCode.PopJumpIfFalse, forIterLabel);
+            }
+
+            CompileGenerator(i + 1);
+
+            Generator.Emit(OpCode.Jump, forIterLabel);
+
+            Generator.MarkLabel(endForLabel);
+            Generator.Emit(OpCode.PopIter);
+        }
+    }
+
+    private void CompileListComp(ListCompNode node)
+    {
+        Generator.Emit(OpCode.BuildList, 0);
+        Generator.Emit(OpCode._EnterInlineFrame);
+
+        InternalCompileGenerators(node.Generators, () =>
+        {
+            LoadExpr(node.Elt);
+            Generator.Emit(OpCode.ListAppend, node.Generators.Length + 1);
+        });
+
+        Generator.Emit(OpCode._ExitInlineFrame);
+    }
+
+    private void CompileSetComp(SetCompNode node)
+    {
+        Generator.Emit(OpCode.BuildSet, 0);
+        Generator.Emit(OpCode._EnterInlineFrame);
+
+        InternalCompileGenerators(node.Generators, () =>
+        {
+            LoadExpr(node.Elt);
+            Generator.Emit(OpCode.SetAdd, node.Generators.Length + 1);
+        });
+
+        Generator.Emit(OpCode._ExitInlineFrame);
+    }
+
+    private void CompileDictComp(DictCompNode node)
+    {
+        Generator.Emit(OpCode.BuildMap, 0);
+        Generator.Emit(OpCode._EnterInlineFrame);
+
+        InternalCompileGenerators(node.Generators, () =>
+        {
+            LoadExpr(node.Key);
+            LoadExpr(node.Value);
+            Generator.Emit(OpCode.MapAdd, node.Generators.Length + 1);
+        });
+
+        Generator.Emit(OpCode._ExitInlineFrame);
     }
 }
