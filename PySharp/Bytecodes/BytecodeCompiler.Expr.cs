@@ -35,6 +35,7 @@ partial class BytecodeCompiler
             case SetCompNode n: CompileSetComp(n); break; 
             case DictCompNode n: CompileDictComp(n); break;
             case YieldNode n: CompileYield(n); break;
+            case YieldFromNode n: CompileYieldFrom(n); break;
             default: throw new NotImplementedException();
         }
     }
@@ -352,5 +353,23 @@ partial class BytecodeCompiler
             Generator.Emit(OpCode.LoadConst, PyNoneObject.None);
         Generator.Emit(OpCode.YieldValue);
         Generator.Emit(OpCode._CheckExcToRaise);
+    }
+
+    private void CompileYieldFrom(YieldFromNode node)
+    {
+        var sendLabel = Generator.DefineLabel();
+        var endSendLabel = Generator.DefineLabel();
+        
+        LoadExpr(node.Value);
+        Generator.Emit(OpCode.GetYieldFromIter);
+        Generator.Emit(OpCode.LoadConst, PyNoneObject.None); // activate the iter
+        Generator.MarkLabel(sendLabel);
+        Generator.Emit(OpCode.Send, endSendLabel);
+        Generator.Emit(OpCode.YieldValue);
+        Generator.Emit(OpCode.Jump, sendLabel);
+
+        Generator.MarkLabel(endSendLabel);
+        Generator.Emit(OpCode.Swap, 2); // swap iter and StopIteration.value
+        Generator.Emit(OpCode.PopTop); // pop iter
     }
 }

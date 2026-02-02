@@ -487,6 +487,69 @@ internal sealed class BytecodeVirtualMachine
                         }
                         break;
 
+                    case OpCode.GetYieldFromIter:
+                        if (!PyGeneratorObjectType.Shared.IsInstance(Stack[-1]))
+                            goto case OpCode.GetIter;
+                        break;
+
+                    case OpCode.Send:
+                        {
+                            PyObject iter;
+                            if (ExceptionToRaise is not null)
+                            {
+                                // throw or close
+
+                                iter = Stack[-1];
+
+                                if (PyGeneratorExitObjectType.Shared.IsInstance(ExceptionToRaise))
+                                {
+                                    // close sub generator
+                                    var close = PyOperators.GetAttr(context, iter, "close");
+                                    if (!close.IsAttributeError)
+                                        _ = close.PyUnwrap(context).Call(context).PyUnwrap(context);
+
+                                    // close self
+                                    goto case OpCode._CheckExcToRaise;
+                                }
+                                else
+                                {
+                                    var throwMethod = PyOperators.GetAttr(context, iter, "throw");
+                                    if (!throwMethod.IsAttributeError)
+                                    {
+                                        var exc = ExceptionToRaise;
+                                        ExceptionToRaise = null;
+                                        value = throwMethod.PyUnwrap(context).Call(context, [exc]).PyUnwrap(context);
+                                        Stack.Push(value);
+                                    }
+                                    else
+                                    {
+                                        // throw at self
+                                        goto case OpCode._CheckExcToRaise;
+                                    }
+                                    break;
+                                }
+                            }
+
+                            iter = Stack[-2];
+                            value = Stack[-1];
+                            if (value is PyNoneObject)
+                                result = PySpecialMethods.Next(context, iter);
+                            else
+                                result = iter.CallMethod(context, "send", [value]);
+
+                            if (result.IsStopIteration)
+                            {
+                                // replace sent value with received value by 'yield from'
+                                Stack[-1] = result.Exception.Args.FirstOrDefault(PyNoneObject.None);
+                                nextIndex = instruction.LabelOperand.Offset;
+                            }
+                            else
+                            {
+                                Stack[-1] = result.PyUnwrap(context);
+                            }
+                        }
+                        break;
+
                     case OpCode._CheckExcToRaise:
                         if (ExceptionToRaise is not null)
                         {

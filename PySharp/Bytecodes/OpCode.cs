@@ -57,7 +57,9 @@ internal enum OpCode
     ReturnValue,
     ReturnGenerator,
     YieldValue,
+    GetYieldFromIter,
     _CheckExcToRaise,
+    Send,
 
     _BuildClass,
 
