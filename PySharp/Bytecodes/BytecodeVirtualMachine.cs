@@ -5,6 +5,7 @@ using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using System.Collections;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection.Emit;
 using System.Runtime.InteropServices;
 
@@ -44,6 +45,7 @@ internal sealed class BytecodeVirtualMachine
         public int State;
         public PyExceptionObject? PyException;
         public int StackDepth;
+        public PyObject? ReturnValue;
 
         public ExceptionHandler(Label? exceptionHandlerLabel, Label finallyLabel)
         {
@@ -104,7 +106,7 @@ internal sealed class BytecodeVirtualMachine
         List<PyObject> args = [];
         OrderedDictionary<string, PyObject> kwargs = [];
         PyResult result;
-        PyObject? returnValue = null;
+        PyObject? returnValue = null, intermediateValue = null;
         List<KeyValuePair<PyObject, PyObject>> pairs = [];
 
         while (currentIndex < instructions.Count)
@@ -115,8 +117,28 @@ internal sealed class BytecodeVirtualMachine
             try
             {
                 EvalOpCode(instruction.OpCode);
+                if (intermediateValue is not null)
+                    return intermediateValue;
+
                 if (returnValue is not null)
-                    return returnValue;
+                {
+                    find_next_finally:
+                    if (!ExceptionHandlers.TryPeek(out var handler))
+                    {
+                        RunToEnd = true;
+                        return returnValue;
+                    }
+
+                    if (handler.State is ExceptionHandler.State_Finally)
+                    {
+                        ExceptionHandlers.Pop();
+                        goto find_next_finally;
+                    }
+
+                    handler.ReturnValue = returnValue;
+                    returnValue = null;
+                    nextIndex = handler.FinallyLabel.Offset;
+                }
             }
             catch (PyRuntimeException e)
             {
@@ -469,20 +491,19 @@ internal sealed class BytecodeVirtualMachine
 
                     case OpCode.ReturnValue:
                         returnValue = Stack.Pop();
-                        RunToEnd = true;
                         break;
 
                     case OpCode.ReturnGenerator:
                         {
                             var generator = new PyBytecodeGeneratorObject(frame.CallerName, frame, this);
-                            returnValue = generator;
+                            intermediateValue = generator;
                             InstructionIndex = currentIndex + 1;
                         }
                         break;
 
                     case OpCode.YieldValue:
                         {
-                            returnValue = Stack.Pop();
+                            intermediateValue = Stack.Pop();
                             InstructionIndex = currentIndex + 1;
                         }
                         break;
@@ -516,8 +537,7 @@ internal sealed class BytecodeVirtualMachine
                                     var throwMethod = PyOperators.GetAttr(context, iter, "throw");
                                     if (!throwMethod.IsAttributeError)
                                     {
-                                        var exc = ExceptionToRaise;
-                                        ExceptionToRaise = null;
+                                        var exc = Move(ref ExceptionToRaise);
                                         value = throwMethod.PyUnwrap(context).Call(context, [exc]).PyUnwrap(context);
                                         Stack.Push(value);
                                     }
@@ -553,8 +573,7 @@ internal sealed class BytecodeVirtualMachine
                     case OpCode._CheckExcToRaise:
                         if (ExceptionToRaise is not null)
                         {
-                            var exc = ExceptionToRaise;
-                            ExceptionToRaise = null;
+                            var exc = Move(ref ExceptionToRaise);
                             throw new PyRuntimeException(exc);
                         }
                         break;
@@ -662,6 +681,8 @@ internal sealed class BytecodeVirtualMachine
                         }
                         ExceptionHandlers.Pop();
                         frame.Exceptions.Clear();
+                        if (currentHandler.ReturnValue is not null)
+                            returnValue = Move(ref currentHandler.ReturnValue);
                         break;
 
                     case OpCode._PopException:
@@ -677,6 +698,12 @@ internal sealed class BytecodeVirtualMachine
 
         RunToEnd = true;
         return PyNoneObject.None;
+    }
+    private static T Move<T>([DisallowNull] ref T? value)
+    {
+        var result = value;
+        value = default;
+        return result;
     }
 
     private static FunctionCaller GetCaller(PyCodeObject codeObj)
