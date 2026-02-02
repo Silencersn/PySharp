@@ -219,6 +219,7 @@ public sealed class PyUserDefinedGeneratorObject : PyGeneratorObject
 
 public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
 {
+    private bool IsGeneratorRunning;
     private readonly PyFrame _frame;
     private readonly BytecodeVirtualMachine _vm;
 
@@ -233,6 +234,7 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
         if (_vm.RunToEnd)
             return PyResult.StopIteration();
 
+        IsGeneratorRunning = true;
         _frame.Back = context.CurrentFrame;
         using var withFrame = context.WithFrame(_frame);
         _vm.SetYieldReceivedValue(value);
@@ -278,7 +280,7 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
 
     internal override PyResult PySend(PyCallContext context, PyObject pyObject)
     {
-        if (_vm.InstructionIndex is 1 /* first send */ && pyObject is not PyNoneObject)
+        if (!IsGeneratorRunning && pyObject is not PyNoneObject)
             return PyResult.TypeError(PySR.Runtime_Generator_SendNonNoneAtFirst);
 
         return Send(context, pyObject);
