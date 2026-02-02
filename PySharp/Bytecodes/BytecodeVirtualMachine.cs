@@ -607,6 +607,16 @@ internal sealed class BytecodeVirtualMachine
                         }
                         break;
 
+                    case OpCode._MakeGeneratorExp:
+                        {
+                            var inlineFrame = frame.CreateInlineFrame(FrameType.Comprehension);
+                            var vm = new BytecodeVirtualMachine(context, instruction.GetOperand<Bytecode>());
+                            var generator = new PyBytecodeGeneratorObject("<genexpr>", inlineFrame, vm);
+
+                            Stack.Push(generator);
+                        }
+                        break;
+
                     case OpCode._BuildClass:
                         {
                             var codeObj = (PyCodeObject)Stack.Pop();

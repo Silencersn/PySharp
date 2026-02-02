@@ -32,8 +32,9 @@ partial class BytecodeCompiler
             case SetNode n: CompileSet(n); break;
             case DictNode n: CompileDict(n); break; 
             case ListCompNode n: CompileListComp(n); break;
-            case SetCompNode n: CompileSetComp(n); break; 
+            case SetCompNode n: CompileSetComp(n); break;
             case DictCompNode n: CompileDictComp(n); break;
+            case GeneratorExpNode n: CompileGeneratorExp(n); break;
             case YieldNode n: CompileYield(n); break;
             case YieldFromNode n: CompileYieldFrom(n); break;
             default: throw new NotImplementedException();
@@ -371,5 +372,26 @@ partial class BytecodeCompiler
         Generator.MarkLabel(endSendLabel);
         Generator.Emit(OpCode.Swap, 2); // swap iter and StopIteration.value
         Generator.Emit(OpCode.PopTop); // pop iter
+    }
+
+    private void CompileGeneratorExp(GeneratorExpNode node)
+    {
+        var currentGenerator = Generator;
+        Generator = new BytecodeGenerator();
+
+        Generator.Emit(OpCode.PopTop); // pop the first sent to activate the generator
+
+        InternalCompileGenerators(node.Generators, () =>
+        {
+            LoadExpr(node.Elt);
+            Generator.Emit(OpCode.YieldValue);
+            Generator.Emit(OpCode._CheckExcToRaise);
+            Generator.Emit(OpCode.PopTop); // no raising, pop received value
+        });
+        var bytecode = new Bytecode(Generator);
+
+        Generator = currentGenerator;
+
+        Generator.Emit(OpCode._MakeGeneratorExp, bytecode);
     }
 }

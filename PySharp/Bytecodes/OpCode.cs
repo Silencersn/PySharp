@@ -75,6 +75,7 @@ internal enum OpCode
     ListAppend,
     SetAdd,
     MapAdd,
+    _MakeGeneratorExp,
 
     // PySharp only
     _SetupExceptionHandler,
