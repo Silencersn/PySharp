@@ -39,6 +39,7 @@ partial class BytecodeCompiler
             case YieldFromNode n: CompileYieldFrom(n); break;
             case NamedExprNode n: CompileNamedExpr(n); break;
             case SubscriptNode n: CompileSubscript(n, ctx); break;
+            case IfExpNode n: CompileIfExp(n); break;
             default: throw new NotImplementedException();
         }
     }
@@ -422,5 +423,23 @@ partial class BytecodeCompiler
             Generator.Emit(OpCode.DeleteSubscr);
         else
             throw new UnreachableException();
+    }
+
+    private void CompileIfExp(IfExpNode node)
+    {
+        var endLabel = Generator.DefineLabel();
+        var elseLabel = Generator.DefineLabel();
+
+        LoadExpr(node.Test);
+        Generator.Emit(OpCode.ToBool);
+        Generator.Emit(OpCode.PopJumpIfFalse, elseLabel);
+        
+        LoadExpr(node.Body);
+        Generator.Emit(OpCode.Jump, endLabel);
+
+        Generator.MarkLabel(elseLabel);
+        LoadExpr(node.OrElse);
+
+        Generator.MarkLabel(endLabel);
     }
 }
