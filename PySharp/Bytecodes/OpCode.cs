@@ -18,6 +18,8 @@ internal enum OpCode
     StoreGlobal,
     StoreFast,
     StoreDeref,
+    _StoreNameIncludedNonInlineFrame,
+    _StoreDerefIncludedNonInlineFrame,
 
     DeleteName,
     DeleteGlobal,

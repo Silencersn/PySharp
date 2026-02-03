@@ -37,6 +37,7 @@ partial class BytecodeCompiler
             case GeneratorExpNode n: CompileGeneratorExp(n); break;
             case YieldNode n: CompileYield(n); break;
             case YieldFromNode n: CompileYieldFrom(n); break;
+            case NamedExprNode n: CompileNamedExpr(n); break;
             default: throw new NotImplementedException();
         }
     }
@@ -393,5 +394,17 @@ partial class BytecodeCompiler
         Generator = currentGenerator;
 
         Generator.Emit(OpCode._MakeGeneratorExp, bytecode);
+    }
+
+    private void CompileNamedExpr(NamedExprNode node)
+    {
+        LoadExpr(node.Value);
+        Generator.Emit(OpCode.Copy, 1);
+
+        var name = node.Target.Id;
+        if (VariableScope is CallableVariableScope scope && (scope.CellVars.Contains(name) || scope.FreeVars.Contains(name)))
+            Generator.Emit(OpCode._StoreDerefIncludedNonInlineFrame, name);
+        else
+            Generator.Emit(OpCode._StoreNameIncludedNonInlineFrame, name);
     }
 }

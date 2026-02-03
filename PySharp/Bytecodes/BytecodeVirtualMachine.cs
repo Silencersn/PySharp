@@ -260,6 +260,18 @@ internal sealed class BytecodeVirtualMachine
                         frame.StoreClosure(instruction.StringOperand, value);
                         break;
 
+                    case OpCode._StoreNameIncludedNonInlineFrame:
+                        value = Stack.Pop();
+                        frame.StoreName(instruction.StringOperand, value);
+                        frame._outerNonInlineFrame?.StoreName(instruction.StringOperand, value);
+                        break;
+
+                    case OpCode._StoreDerefIncludedNonInlineFrame:
+                        value = Stack.Pop();
+                        frame.StoreClosure(instruction.StringOperand, value);
+                        frame._outerNonInlineFrame?.StoreClosure(instruction.StringOperand, value);
+                        break;
+
                     case OpCode.DeleteName:
                         frame.DeleteName(instruction.StringOperand).PyUnwrap(context);
                         break;
