@@ -54,6 +54,7 @@ internal enum OpCode
 
     RaiseVarArgs,
     CheckExcMatch,
+    _LoadExc,
 
     _MakeFunctionWithPyArgsDef,
     ReturnValue,

@@ -134,7 +134,10 @@ partial class BytecodeCompiler
             }
 
             if (exceptor.Name is not null)
+            {
+                Generator.Emit(OpCode._LoadExc);
                 StoreExpr(Ast.Name(exceptor.Name) /* TODO: store string directly */);
+            }
 
             foreach (var stmt in exceptor.Body)
                 CompileStmt(stmt);

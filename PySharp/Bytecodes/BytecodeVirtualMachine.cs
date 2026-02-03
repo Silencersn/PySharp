@@ -755,6 +755,10 @@ internal sealed class BytecodeVirtualMachine
                         Stack[-1] = PyBoolObject.FromBoolean(condition(frame.CurrentException));
                         break;
 
+                    case OpCode._LoadExc:
+                        Stack.Push(frame.CurrentException);
+                        break;
+
                     case OpCode._SetupExceptionHandler:
                         Debug.Assert(instruction.Operand is not null);
                         var labelPair = ((Label?, Label))instruction.Operand;
