@@ -38,6 +38,7 @@ partial class BytecodeCompiler
             case YieldNode n: CompileYield(n); break;
             case YieldFromNode n: CompileYieldFrom(n); break;
             case NamedExprNode n: CompileNamedExpr(n); break;
+            case SubscriptNode n: CompileSubscript(n, ctx); break;
             default: throw new NotImplementedException();
         }
     }
@@ -406,5 +407,20 @@ partial class BytecodeCompiler
             Generator.Emit(OpCode._StoreDerefIncludedNonInlineFrame, name);
         else
             Generator.Emit(OpCode._StoreNameIncludedNonInlineFrame, name);
+    }
+
+    private void CompileSubscript(SubscriptNode node, ExprContextType ctx)
+    {
+        LoadExpr(node.Value);
+        LoadExpr(node.Slice);
+
+        if (ctx is ExprContextType.Load)
+            Generator.Emit(OpCode.BinarySubscr);
+        else if (ctx is ExprContextType.Store)
+            Generator.Emit(OpCode.StoreSubscr);
+        else if (ctx is ExprContextType.Del)
+            Generator.Emit(OpCode.DeleteSubscr);
+        else
+            throw new UnreachableException();
     }
 }

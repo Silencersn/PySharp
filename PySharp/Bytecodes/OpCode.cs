@@ -79,6 +79,10 @@ internal enum OpCode
     MapAdd,
     _MakeGeneratorExp,
 
+    BinarySubscr,
+    StoreSubscr,
+    DeleteSubscr,
+
     // PySharp only
     _SetupExceptionHandler,
     _EnterFinally,

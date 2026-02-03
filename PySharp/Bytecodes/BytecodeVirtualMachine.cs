@@ -309,6 +309,32 @@ internal sealed class BytecodeVirtualMachine
                         }
                         break;
 
+                    case OpCode.BinarySubscr:
+                        {
+                            var key = Stack.Pop();
+                            var container = Stack.Pop();
+                            value = PySpecialMethods.GetItem(context, container, key).PyUnwrap(context);
+                            Stack.Push(value);
+                        }
+                        break;
+
+                    case OpCode.StoreSubscr:
+                        {
+                            var key = Stack.Pop();
+                            var container = Stack.Pop();
+                            value = Stack.Pop();
+                            _ = PySpecialMethods.SetItem(context, container, key, value).PyUnwrap(context);
+                        }
+                        break;
+
+                    case OpCode.DeleteSubscr:
+                        {
+                            var key = Stack.Pop();
+                            var container = Stack.Pop();
+                            _ = PySpecialMethods.DelItem(context, container, key).PyUnwrap(context);
+                        }
+                        break;
+
                     case OpCode.Call:
                         {
                             LoadArgs(args, instruction.Arg);
