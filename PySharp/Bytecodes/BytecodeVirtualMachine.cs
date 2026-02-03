@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection.Emit;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace PySharp.Bytecodes;
 
@@ -108,6 +109,7 @@ internal sealed class BytecodeVirtualMachine
         PyResult result;
         PyObject? returnValue = null, intermediateValue = null;
         List<KeyValuePair<PyObject, PyObject>> pairs = [];
+        StringBuilder builder = new();
 
         while (currentIndex < instructions.Count)
         {
@@ -613,6 +615,52 @@ internal sealed class BytecodeVirtualMachine
                         {
                             var exc = Move(ref ExceptionToRaise);
                             throw new PyRuntimeException(exc);
+                        }
+                        break;
+
+                    case OpCode.ConvertValue:
+                        value = Stack.Pop();
+                        if (instruction.Arg is 1)
+                            value = PySpecialMethods.Str(context, value).PyUnwrap(context);
+                        else if (instruction.Arg is 2)
+                            value = PySpecialMethods.Repr(context, value).PyUnwrap(context);
+                        else if (instruction.Arg is 3)
+                            value = PyBuiltinFunctions.Ascii.Call(context, [value]).PyUnwrap(context);
+                        else
+                            throw new UnreachableException();
+                        Stack.Push(value);
+                        break;
+
+                    case OpCode.FormatSimple:
+                        Stack[-1] = PySpecialMethods.Format(context, Stack[-1], PyStrObject.Empty).PyUnwrap(context);
+                        break;
+
+                    case OpCode.FormatWithSpec:
+                        {
+                            var spec = Stack.Pop();
+                            Stack[-1] = PySpecialMethods.Format(context, Stack[-1], spec).PyUnwrap(context);
+                        }
+                        break;
+
+                    case OpCode.BuildString:
+                        if (instruction.Arg is 0)
+                        {
+                            Stack.Push(PyStrObject.Empty);
+                        }
+                        else if (instruction.Arg is 1)
+                        {
+                            Debug.Assert(Stack.Peek() is PyStrObject);
+                        }
+                        else
+                        {
+                            builder.Clear();
+                            LoadArgs(args, instruction.Arg);
+                            foreach (var value in args)
+                            {
+                                Debug.Assert(value is PyStrObject);
+                                builder.Append(((PyStrObject)value).Value);
+                            }
+                            Stack.Push(PyStrObject.FromString(builder.ToString()));
                         }
                         break;
 

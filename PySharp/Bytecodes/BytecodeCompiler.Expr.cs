@@ -1,5 +1,8 @@
 ﻿using PySharp.AstNodes;
+using PySharp.CodeAnalysis;
 using PySharp.PyModules.Builtins;
+using PySharp.PyRuntime;
+using PySharp.PyRuntime.Calls;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -41,6 +44,8 @@ partial class BytecodeCompiler
             case SubscriptNode n: CompileSubscript(n, ctx); break;
             case IfExpNode n: CompileIfExp(n); break;
             case LambdaNode n: CompileLambda(n); break;
+            case FormattedValueNode n: CompileFormattedValue(n); break;
+            case JoinedStrNode n: CompileJoinedStr(n); break;
             default: throw new NotImplementedException();
         }
     }
@@ -481,5 +486,39 @@ partial class BytecodeCompiler
 
         Generator.Emit(OpCode.LoadConst, codeObj);
         Generator.Emit(OpCode._MakeFunctionWithPyArgsDef, node.Args);
+    }
+
+    private void CompileJoinedStr(JoinedStrNode node)
+    {
+        foreach (var value in node.Values)
+            LoadExpr(value);
+        Generator.Emit(OpCode.BuildString, node.Values.Length);
+    }
+
+    private void CompileFormattedValue(FormattedValueNode node)
+    {
+        LoadExpr(node.Value);
+
+        if (node.Conversion is not -1)
+        {
+            var arg = node.Conversion switch
+            {
+                's' => 1,
+                'r' => 2,
+                'a' => 3,
+                _ => throw new UnreachableException()
+            };
+            Generator.Emit(OpCode.ConvertValue, arg);
+        }
+
+        if (node.FormatSpec is not null)
+        {
+            LoadExpr(node.FormatSpec);
+            Generator.Emit(OpCode.FormatWithSpec);
+        }
+        else
+        {
+            Generator.Emit(OpCode.FormatSimple);
+        }
     }
 }

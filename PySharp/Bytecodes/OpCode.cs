@@ -83,6 +83,11 @@ internal enum OpCode
     StoreSubscr,
     DeleteSubscr,
 
+    ConvertValue,
+    FormatSimple,
+    FormatWithSpec,
+    BuildString,
+
     // PySharp only
     _SetupExceptionHandler,
     _EnterFinally,
