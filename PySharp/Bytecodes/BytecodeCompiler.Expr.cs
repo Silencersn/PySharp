@@ -40,6 +40,7 @@ partial class BytecodeCompiler
             case NamedExprNode n: CompileNamedExpr(n); break;
             case SubscriptNode n: CompileSubscript(n, ctx); break;
             case IfExpNode n: CompileIfExp(n); break;
+            case LambdaNode n: CompileLambda(n); break;
             default: throw new NotImplementedException();
         }
     }
@@ -441,5 +442,44 @@ partial class BytecodeCompiler
         LoadExpr(node.OrElse);
 
         Generator.MarkLabel(endLabel);
+    }
+
+    private void CompileLambda(LambdaNode node)
+    {
+        var currentGenerator = Generator;
+        Generator = new BytecodeGenerator();
+        var currentScope = VariableScope;
+        var scope = Model.GetVariableScope<CallableVariableScope>(node);
+        Debug.Assert(scope is not null);
+        VariableScope = scope;
+
+        if (scope.HasYield)
+        {
+            Generator.Emit(OpCode.ReturnGenerator);
+            Generator.Emit(OpCode.PopTop); // pop the first sent to activate the generator
+        }
+        LoadExpr(node.Body);
+        Generator.Emit(OpCode.ReturnValue);
+
+        var bytecode = new Bytecode(Generator);
+
+        Generator = currentGenerator;
+        VariableScope = currentScope;
+
+        var codeObj = new PyCodeObject(scope, bytecode);
+
+        foreach (var argDefault in node.Args.Defaults)
+            LoadExpr(argDefault);
+
+        foreach (var kwargDefault in node.Args.KwDefaults)
+        {
+            if (kwargDefault is not null)
+                LoadExpr(kwargDefault);
+            else
+                Generator.Emit(OpCode.PushNull);
+        }
+
+        Generator.Emit(OpCode.LoadConst, codeObj);
+        Generator.Emit(OpCode._MakeFunctionWithPyArgsDef, node.Args);
     }
 }
