@@ -46,6 +46,7 @@ partial class BytecodeCompiler
             case LambdaNode n: CompileLambda(n); break;
             case FormattedValueNode n: CompileFormattedValue(n); break;
             case JoinedStrNode n: CompileJoinedStr(n); break;
+            case BoolOpNode n: CompileBoolOp(n); break;
             default: throw new NotImplementedException();
         }
     }
@@ -520,5 +521,23 @@ partial class BytecodeCompiler
         {
             Generator.Emit(OpCode.FormatSimple);
         }
+    }
+
+    private void CompileBoolOp(BoolOpNode node)
+    {
+        var endLabel = Generator.DefineLabel();
+
+        var isAnd = node.Op is BoolOpType.And;
+        for (int i = 0; i < node.Values.Length - 1; i++)
+        {
+            LoadExpr(node.Values[i]);
+            Generator.Emit(OpCode.Copy, 1);
+            Generator.Emit(OpCode.ToBool);
+            Generator.Emit(isAnd ? OpCode.PopJumpIfFalse : OpCode.PopJumpIfTrue, endLabel);
+            Generator.Emit(OpCode.PopTop);
+        }
+        LoadExpr(node.Values[^1]);
+
+        Generator.MarkLabel(endLabel);
     }
 }
