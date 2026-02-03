@@ -13,6 +13,7 @@ partial class BytecodeCompiler
             case ExprNode n: CompileExpr(n); break;
             case PassNode n: CompilePass(n); break;
             case AssignNode n: CompileAssign(n); break;
+            case AugAssignNode n: CompileAugAssign(n); break;
             case RaiseNode n: CompileRaise(n); break;
             case BreakNode n: CompileBreak(n); break;
             case ContinueNode n: CompileContinue(n); break;
@@ -342,5 +343,13 @@ partial class BytecodeCompiler
 
         Generator.Emit(OpCode.RaiseVarArgs, 1);
         Generator.MarkLabel(noRaisingLabel);
+    }
+
+    private void CompileAugAssign(AugAssignNode node)
+    {
+        LoadExpr(node.Target);
+        LoadExpr(node.Value);
+        Generator.Emit(OpCode._AugAssignOp, (int)node.Op);
+        StoreExpr(node.Target);
     }
 }

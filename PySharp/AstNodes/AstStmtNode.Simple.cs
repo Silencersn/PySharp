@@ -111,7 +111,7 @@ public sealed class AugAssignNode : AstStmtNode
         yield return Value;
     }
 
-    private static PyResult EvalInplaceOperator(PyCallContext context, OperatorType op, PyObject left, PyObject right)
+    internal static PyResult EvalInplaceOperator(PyCallContext context, OperatorType op, PyObject left, PyObject right)
     {
         return op switch
         {

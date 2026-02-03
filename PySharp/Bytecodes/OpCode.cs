@@ -41,6 +41,8 @@ internal enum OpCode
     ContainsOp,
     IsOp,
 
+    _AugAssignOp,
+
     PopTop,
 
     Copy,

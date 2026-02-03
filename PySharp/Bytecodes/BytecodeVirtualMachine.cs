@@ -462,6 +462,13 @@ internal sealed class BytecodeVirtualMachine
                         Stack.Push(value);
                         break;
 
+                    case OpCode._AugAssignOp:
+                        right = Stack.Pop();
+                        left = Stack.Pop();
+                        value = AugAssignNode.EvalInplaceOperator(context, (OperatorType)instruction.Arg, left, right).PyUnwrap(context);
+                        Stack.Push(value);
+                        break;
+
                     case OpCode.PushNull:
                         // suppressed null warnings
                         // because null is rarely used and
