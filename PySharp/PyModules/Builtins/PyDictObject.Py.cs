@@ -1,4 +1,6 @@
-﻿using System.Diagnostics;
+﻿using PySharp.PyRuntime;
+using PySharp.PyRuntime.Calls;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.PyModules.Builtins;
@@ -53,9 +55,17 @@ partial class PyDictObject
     public void PyUpdate(IEnumerable<KeyValuePair<PyObject, PyObject>> pairs)
     {
         foreach (var pair in pairs)
-        {
             PySetItem(pair.Key, pair.Value);
-        }
+    }
+
+    public PyResult PyUpdate(PyCallContext context, PyObject iterableOrMapping)
+    {
+        var dict = PyUtils.ToDict(context, iterableOrMapping);
+        if (dict.IsError)
+            return dict;
+
+        PyUpdate(dict.Value._dict);
+        return PyNoneObject.None;
     }
 
     public PyObject PySetDefault(PyObject key, PyObject defaultValue)

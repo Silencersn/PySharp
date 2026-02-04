@@ -56,6 +56,7 @@ public sealed class PyDictObjectType : PyTypeObject<PyDictObjectType, PyDictObje
         AppendMethodDescriptor("pop", Pop_1, Pop_2);
         AppendMethodDescriptor("popitem", PopItem);
         AppendMethodDescriptor("copy", Copy);
+        AppendMethodDescriptor("update", Update);
     }
 
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl_1, NewImpl_2);
@@ -67,23 +68,17 @@ public sealed class PyDictObjectType : PyTypeObject<PyDictObjectType, PyDictObje
             .Select(pair => KeyValuePair.Create<PyObject, PyObject>(PyStrObject.FromString(pair.Key), pair.Value)));
     }
 
-    [PyFunctionArgsDef("iterable", "/", "**kwargs")]
+    [PyFunctionArgsDef("iterable_or_mapping", "/", "**kwargs")]
     private static PyResult NewImpl_2(PyCallContext context, PyArguments arguments)
     {
-        if (!Utils.TryEnumeratedIterable(context, arguments[0], out var kvpiteratables, out var err))
-            return err.Value;
-
-        if (!Utils.TryEnumeratedPairs(context, kvpiteratables, out var pairs, out err))
-            return err.Value;
-
-        List<KeyValuePair<PyObject, PyObject>> dict = [.. pairs];
+        var dict = PyUtils.ToDict(context, arguments[0]);
+        if (dict.IsError)
+            return dict;
 
         foreach (var kwarg in arguments.ExtraKwargs)
-        {
-            dict.Add(KeyValuePair.Create<PyObject, PyObject>(PyStrObject.FromString(kwarg.Key), kwarg.Value));
-        }
+            dict.Value.PySetItem(PyStrObject.FromString(kwarg.Key), kwarg.Value);
 
-        return PyDictObject.CreateDict(dict);
+        return dict;
     }
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
@@ -184,5 +179,12 @@ public sealed class PyDictObjectType : PyTypeObject<PyDictObjectType, PyDictObje
     internal PyResult Copy(PyCallContext context, PyDictObject self, PyArguments arguments)
     {
         return self.PyCopy();
+    }
+
+    [PyFunctionArgsDef("iterable_or_mapping")]
+    internal PyResult Update(PyCallContext context, PyDictObject self, PyArguments arguments)
+    {
+        // TODO: **kwargs
+        return self.PyUpdate(context, arguments[0]);
     }
 }
