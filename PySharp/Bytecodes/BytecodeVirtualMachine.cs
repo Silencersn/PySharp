@@ -1,5 +1,6 @@
 ﻿using PySharp.AstNodes;
 using PySharp.Compilation;
+using PySharp.PyModules;
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
@@ -75,6 +76,15 @@ internal sealed class BytecodeVirtualMachine
         {
             _stack.Add(value);
         }
+        public void PushRange(params ReadOnlySpan<PyObject> values)
+        {
+            _stack.AddRange(values);
+        }
+        public void PushReversedRange(params ReadOnlySpan<PyObject> values)
+        {
+            _stack.AddRange(values);
+            CollectionsMarshal.AsSpan(_stack)[^values.Length..].Reverse();
+        }
         public PyObject Peek()
         {
             return _stack[^1];
@@ -84,6 +94,12 @@ internal sealed class BytecodeVirtualMachine
             var result = Peek();
             _stack.RemoveAt(_stack.Count - 1);
             return result;
+        }
+        public void PopReversedRange(Span<PyObject> values)
+        {
+            var span = CollectionsMarshal.AsSpan(_stack);
+            span[^values.Length..].CopyTo(values);
+            CollectionsMarshal.SetCount(_stack, _stack.Count - values.Length);
         }
         public void Clear()
         {
@@ -206,9 +222,7 @@ internal sealed class BytecodeVirtualMachine
 
                 CollectionsMarshal.SetCount(args, count);
                 var argsSpan = CollectionsMarshal.AsSpan(args);
-                var stackSpan = CollectionsMarshal.AsSpan(Stack.InternalList);
-                stackSpan[^count..].CopyTo(argsSpan);
-                CollectionsMarshal.SetCount(Stack.InternalList, Stack.Count - count);
+                Stack.PopReversedRange(argsSpan);
             }
 
             void EvalOpCode(OpCode opCode)
@@ -533,6 +547,31 @@ internal sealed class BytecodeVirtualMachine
                             var key = Stack.Pop();
                             var dict = (PyDictObject)Stack[-instruction.Arg];
                             dict._dict[key] = value;
+                        }
+                        break;
+
+                    case OpCode.UnpackSequence:
+                        {
+                            var list = PyUtils.IterableToList(context, Stack.Pop()).PyUnwrap(context);
+                            var span = CollectionsMarshal.AsSpan(list._list);
+                            if (span.Length > instruction.Arg)
+                                throw context.ValueError(PySR.Runtime_Assignment_TooManyToUnpack, instruction.Arg, span.Length);
+                            else if (span.Length < instruction.Arg)
+                                throw context.ValueError(PySR.Runtime_Assignment_NotEnoughToUnpack, instruction.Arg, span.Length);
+                            Stack.PushReversedRange(span);
+                        }
+                        break;
+
+                    case OpCode.UnpackEx:
+                        {
+                            var (preCount, postCount) = instruction.GetOperand<(int, int)>();
+                            var list = PyUtils.IterableToList(context, Stack.Pop()).PyUnwrap(context);
+                            var span = CollectionsMarshal.AsSpan(list._list);
+                            if (span.Length < preCount + postCount)
+                                throw context.ValueError(PySR.Runtime_Assignment_NotEnoughToUnpackStarred, preCount + postCount, span.Length);
+                            Stack.PushReversedRange(span[^postCount..]);
+                            Stack.Push(PyListObject.CreateList(span[preCount..^postCount]));
+                            Stack.PushReversedRange(span[..preCount]);
                         }
                         break;
 

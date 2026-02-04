@@ -82,6 +82,9 @@ internal enum OpCode
     MapAdd,
     _MakeGeneratorExp,
 
+    UnpackSequence,
+    UnpackEx,
+
     BinarySubscr,
     StoreSubscr,
     DeleteSubscr,

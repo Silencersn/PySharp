@@ -377,7 +377,7 @@ public sealed class ListNode : AstExprNode, IExprContextNode, IAstExprNodeNoSelf
 
     public override PyListObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
-        return new PyListObject(AstUtils.EvalPyObjects(context, frame, Elts));
+        return PyListObject.CreateProxy(AstUtils.EvalPyObjects(context, frame, Elts));
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
@@ -744,7 +744,7 @@ public sealed class ListCompNode : AstExprNode, IAstExprNodeNoSelfPythonExceptio
         var inlineFrame = frame.CreateInlineFrame(FrameType.Comprehension);
         var list = new List<PyObject>();
         For(0);
-        return new PyListObject(list);
+        return PyListObject.CreateProxy(list);
 
         void For(int index)
         {

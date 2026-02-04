@@ -12,18 +12,28 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr
 
     public override PyTypeObject DefaultPyType => PyListObjectType.Shared;
 
-    public PyListObject()
+    private PyListObject()
     {
         _list = [];
     }
-    public PyListObject(IEnumerable<PyObject> list)
+    private PyListObject(List<PyObject> list)
     {
-        _list = [.. list];
+        _list = list;
     }
 
     public static PyListObject CreateList(params IEnumerable<PyObject> objects)
     {
-        return new PyListObject(objects);
+        return new PyListObject([.. objects]);
+    }
+
+    public static PyListObject CreateList(params ReadOnlySpan<PyObject> objects)
+    {
+        return new PyListObject([.. objects]);
+    }
+
+    public static PyListObject CreateProxy(List<PyObject> list)
+    {
+        return new PyListObject(list);
     }
 
     PyResult<PyStrObject> IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<int> ids)
@@ -57,10 +67,7 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
     [PyFunctionArgsDef("iterable=()", "/")]
     private static PyResult NewImpl(PyCallContext context, PyArguments arguments)
     {
-        if (!Utils.TryEnumeratedIterable(context, arguments[0], out var list, out var err))
-            return err.Value;
-
-        return new PyListObject(list);
+        return PyUtils.IterableToList(context, arguments[0]);
     }
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)

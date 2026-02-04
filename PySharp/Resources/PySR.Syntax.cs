@@ -110,6 +110,8 @@ partial class PySR
 
     public const string InvalidSyntax_Semantic_BindDifferentNames = "alternative patterns bind different names";
 
+    public const string InvalidSyntax_Semantic_MultipleStarredInAssignment = "multiple starred expressions in assignment";
+
     public const string InvalidSyntax_Semantic_MultipleStarredNames = "multiple starred names in sequence pattern";
 
     public const string InvalidSyntax_Semantic_MappingDuplicateKey = "mapping pattern checks duplicate key ({0})";

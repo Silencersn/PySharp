@@ -30,6 +30,9 @@ partial class PySR
     public const string Runtime_Inheritance_CannotCreateMRO = "Cannot create a consistent method resolution order (MRO)";
 
     public const string Runtime_Assignment_UnpackCountNotMatch = "too many or too few values to unpack";
+    public const string Runtime_Assignment_NotEnoughToUnpack = "not enough values to unpack (expected {0}, got {1})";
+    public const string Runtime_Assignment_NotEnoughToUnpackStarred = "not enough values to unpack (expected at least {0}, got {1})";
+    public const string Runtime_Assignment_TooManyToUnpack = "too many values to unpack (expected {0}, got {1})";
 
     public const string Runtime_Type_MethodReceiveSelfWithWrongType = "'{0}' requires a '{1}' object but received a '{2}'";
     public const string Runtime_Type_AttributeNotFound = "type object '{0}' has no attribute '{1}'";

@@ -207,6 +207,9 @@ internal static class AstUtils
         if (IsValidAugTarget(node))
             return true;
 
+        if (node is StarredNode)
+            return true;
+
         if (node is TupleNode tupleNode)
             return tupleNode.Elts.All(IsValidTarget);
 

@@ -4,6 +4,7 @@ using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.Comparison;
 using System.Collections.Frozen;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
@@ -396,6 +397,14 @@ public sealed class SemanticAnalyzer : ICodeMetaInfoProvider
                             throw SyntaxError(PySR.InvalidSyntax_Semantic_AttributeRepeated, attr1);
                     }
                     break;
+
+                case ListNode n when n.Ctx is ExprContextType.Store:
+                    ValidateNonMultipleStarred(n.Elts);
+                    break;
+
+                case TupleNode n when n.Ctx is ExprContextType.Store:
+                    ValidateNonMultipleStarred(n.Elts);
+                    break;
             }
 
             static IEnumerable<(T, T)> EnumeratePairs<T>(IReadOnlyList<T> items)
@@ -405,6 +414,12 @@ public sealed class SemanticAnalyzer : ICodeMetaInfoProvider
                     for (int j = 0; j < i; j++)
                         yield return (items[j], items[i]);
                 }
+            }
+
+            void ValidateNonMultipleStarred(ImmutableArray<AstExprNode> targets)
+            {
+                if (targets.Count(static node => node is StarredNode) > 1)
+                    throw SyntaxError(PySR.InvalidSyntax_Semantic_MultipleStarredInAssignment);
             }
         }
     }
