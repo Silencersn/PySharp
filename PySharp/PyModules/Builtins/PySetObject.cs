@@ -20,6 +20,9 @@ public class PySetObject : PyObject, IPyObjectRecursiveRepr
 
     PyResult<PyStrObject> IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<int> ids)
     {
+        if (_set.Count is 0)
+            return PyStrObject.FromString("set()");
+
         return Utils.CollectionRecursiveRepr(context, this, _set, "{", "}", ids);
     }
 

@@ -139,10 +139,7 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
     [PyFunctionArgsDef("iterable", "/")]
     internal PyResult Extend(PyCallContext context, PyListObject self, PyArguments arguments)
     {
-        if (!Utils.TryEnumeratedIterable(context, arguments[0], out var items, out var err))
-            return err.Value;
-        self.PyExtend(items);
-        return PyNoneObject.None;
+        return self.PyExtend(context, arguments[0]);
     }
 
     [PyFunctionArgsDef("i", "x", "/")]

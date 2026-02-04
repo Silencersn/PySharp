@@ -75,9 +75,13 @@ internal enum OpCode
     BuildSet,
     BuildMap,
 
+    _ListToTuple,
+    _ListToSet,
+
     _EnterInlineFrame,
     _ExitInlineFrame,
     ListAppend,
+    ListExtend,
     SetAdd,
     MapAdd,
     _MakeGeneratorExp,

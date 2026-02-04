@@ -533,6 +533,28 @@ internal sealed class BytecodeVirtualMachine
                         }
                         break;
 
+                    case OpCode.ListExtend:
+                        {
+                            value = Stack.Pop();
+                            var list = (PyListObject)Stack[-instruction.Arg];
+                            _ = list.PyExtend(context, value).PyUnwrap(context);
+                        }
+                        break;
+
+                    case OpCode._ListToTuple:
+                        {
+                            var list = (PyListObject)Stack[-1];
+                            Stack[-1] = PyTupleObject.CreateTuple(list._list);
+                        }
+                        break;
+
+                    case OpCode._ListToSet:
+                        {
+                            var list = (PyListObject)Stack[-1];
+                            Stack[-1] = PySetObject.CreateSet(list._list);
+                        }
+                        break;
+
                     case OpCode.SetAdd:
                         {
                             value = Stack.Pop();

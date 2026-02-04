@@ -30,8 +30,8 @@ partial class BytecodeCompiler
             case UnaryOpNode n: CompileUnaryOp(n); break;
             case CompareNode n: CompileCompare(n); break;
             case AttributeNode n: CompileAttribute(n, ctx); break;
-            case ListNode n: CompileList(n); break;
-            case TupleNode n: CompileTuple(n); break;
+            case ListNode n: CompileList(n, ctx); break;
+            case TupleNode n: CompileTuple(n, ctx); break;
             case SetNode n: CompileSet(n); break;
             case DictNode n: CompileDict(n); break; 
             case ListCompNode n: CompileListComp(n); break;
@@ -47,6 +47,7 @@ partial class BytecodeCompiler
             case FormattedValueNode n: CompileFormattedValue(n); break;
             case JoinedStrNode n: CompileJoinedStr(n); break;
             case BoolOpNode n: CompileBoolOp(n); break;
+            case StarredNode n: CompileStarred(n, ctx); break;
             default: throw new NotImplementedException();
         }
     }
@@ -240,28 +241,80 @@ partial class BytecodeCompiler
             throw new UnreachableException();
     }
 
-    private void CompileList(ListNode node)
+    private void InternalCompileElts(ImmutableArray<AstExprNode> elts, ExprContextType ctx, out bool unpackWhenLoad)
     {
-        // TODO: star expr
-        foreach (var elt in node.Elts)
-            LoadExpr(elt);
-        Generator.Emit(OpCode.BuildList, node.Elts.Length);
+        unpackWhenLoad = false;
+
+        if (ctx is ExprContextType.Load)
+        {
+            unpackWhenLoad = elts.Any(static item => item is StarredNode);
+
+            if (!unpackWhenLoad)
+            {
+                foreach (var elt in elts)
+                    LoadExpr(elt);
+            }
+            else
+            {
+                Generator.Emit(OpCode.BuildList, 0);
+                foreach (var elt in elts)
+                {
+                    LoadExpr(elt);
+                    Generator.Emit(elt is StarredNode ? OpCode.ListExtend : OpCode.ListAppend, 1);
+                }
+            }
+        }
+        else if (ctx is ExprContextType.Store)
+        {
+            var (index, starred) = elts.Index().FirstOrDefault(static item => item.Item is StarredNode);
+            if (starred is null)
+                Generator.Emit(OpCode.UnpackSequence, elts.Length);
+            else
+                Generator.Emit(OpCode.UnpackEx, (index, elts.Length - index - 1));
+            foreach (var elt in elts)
+                StoreExpr(elt);
+        }
+        else if (ctx is ExprContextType.Del)
+        {
+            foreach (var elt in elts)
+                DeleteExpr(elt);
+        }
+        else
+        {
+            throw new UnreachableException();
+        }
     }
 
-    private void CompileTuple(TupleNode node)
+    private void CompileList(ListNode node, ExprContextType ctx)
     {
-        // TODO: star expr
-        foreach (var elt in node.Elts)
-            LoadExpr(elt);
-        Generator.Emit(OpCode.BuildTuple, node.Elts.Length);
+        InternalCompileElts(node.Elts, ctx, out var unpackWhenLoad);
+
+        // if unpackWhenLoad, Stack[-1] is already a list
+        if (ctx is ExprContextType.Load && !unpackWhenLoad)
+            Generator.Emit(OpCode.BuildList, node.Elts.Length);
+    }
+
+    private void CompileTuple(TupleNode node, ExprContextType ctx)
+    {
+        InternalCompileElts(node.Elts, ctx, out var unpackWhenLoad);
+
+        if (ctx is ExprContextType.Load)
+        {
+            if (unpackWhenLoad)
+                Generator.Emit(OpCode._ListToTuple);
+            else
+                Generator.Emit(OpCode.BuildTuple, node.Elts.Length);
+        }
     }
 
     private void CompileSet(SetNode node)
     {
-        // TODO: star expr
-        foreach (var elt in node.Elts)
-            LoadExpr(elt);
-        Generator.Emit(OpCode.BuildSet, node.Elts.Length);
+        InternalCompileElts(node.Elts, ExprContextType.Load, out var unpackWhenLoad);
+
+        if (unpackWhenLoad)
+            Generator.Emit(OpCode._ListToSet);
+        else
+            Generator.Emit(OpCode.BuildSet, node.Elts.Length);
     }
 
     private void CompileDict(DictNode node)
@@ -539,5 +592,15 @@ partial class BytecodeCompiler
         LoadExpr(node.Values[^1]);
 
         Generator.MarkLabel(endLabel);
+    }
+
+    private void CompileStarred(StarredNode node, ExprContextType ctx)
+    {
+        if (ctx is ExprContextType.Load)
+            LoadExpr(node.Value);
+        else if (ctx is ExprContextType.Store)
+            StoreExpr(node.Value);
+        else
+            throw new UnreachableException();
     }
 }

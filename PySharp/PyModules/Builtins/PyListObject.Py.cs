@@ -1,4 +1,6 @@
-﻿using PySharp.PyRuntime.Comparison;
+﻿using PySharp.PyRuntime;
+using PySharp.PyRuntime.Calls;
+using PySharp.PyRuntime.Comparison;
 
 namespace PySharp.PyModules.Builtins;
 
@@ -12,6 +14,16 @@ partial class PyListObject
     public void PyExtend(IEnumerable<PyObject> items)
     {
         _list.AddRange(items);
+    }
+
+    public PyResult PyExtend(PyCallContext context, PyObject iterable)
+    {
+        var list = PyUtils.IterableToList(context, iterable);
+        if (list.IsError)
+            return list;
+
+        _list.AddRange(list.Value._list);
+        return PyNoneObject.None;
     }
 
     public void PyInsert(int index, PyObject item)
