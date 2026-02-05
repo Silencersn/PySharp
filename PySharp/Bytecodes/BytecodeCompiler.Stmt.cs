@@ -14,6 +14,7 @@ partial class BytecodeCompiler
             case PassNode n: CompilePass(n); break;
             case AssignNode n: CompileAssign(n); break;
             case AugAssignNode n: CompileAugAssign(n); break;
+            case DeleteNode n: CompileDelete(n); break;
             case RaiseNode n: CompileRaise(n); break;
             case BreakNode n: CompileBreak(n); break;
             case ContinueNode n: CompileContinue(n); break;
@@ -351,5 +352,11 @@ partial class BytecodeCompiler
         LoadExpr(node.Value);
         Generator.Emit(OpCode._AugAssignOp, (int)node.Op);
         StoreExpr(node.Target);
+    }
+
+    private void CompileDelete(DeleteNode node)
+    {
+        foreach (var target in node.Targets)
+            DeleteExpr(target);
     }
 }
