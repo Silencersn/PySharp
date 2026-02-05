@@ -9,6 +9,10 @@ internal enum OpCode
     NoOperation = 0,
 
     LoadConst,
+    LoadSpecial,
+    _LoadExcInfo,
+    _LoadHitExcept,
+
     LoadName,
     LoadGlobal,
     LoadFast,
@@ -111,6 +115,7 @@ internal enum OpCode
     _EnterFinally,
     _ExitFinally,
     _PopException,
+    _PopExceptionIfTrue,
 
     _UnaryOp,
 }

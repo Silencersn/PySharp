@@ -1,5 +1,6 @@
 ﻿using PySharp.AstNodes;
 using PySharp.PyModules.Builtins;
+using PySharp.PyRuntime;
 using System.Diagnostics;
 
 namespace PySharp.Bytecodes;
@@ -28,6 +29,7 @@ partial class BytecodeCompiler
             case TryNode n: CompileTry(n); break;
             case ForNode n: CompileFor(n); break;
             case WhileNode n: CompileWhile(n); break;
+            case WithNode n: CompileWith(n); break;
             case FunctionDefNode n: CompileFunctionDef(n); break;
             case ClassDefNode n: CompileClassDef(n); break;
             default: throw new NotImplementedException();
@@ -412,5 +414,69 @@ partial class BytecodeCompiler
         }
 
         Generator.Emit(OpCode.PopTop);
+    }
+
+    private void CompileWith(WithNode node)
+    {
+        CompileWithItem(0);
+
+        void CompileWithItem(int i)
+        {
+            if (i == node.Items.Length)
+            {
+                foreach (var stmt in node.Body)
+                    CompileStmt(stmt);
+                return;
+            }
+
+            var finallyLabel = Generator.DefineLabel();
+            var exitFinallyLabel = Generator.DefineLabel();
+            var exceptLabel = Generator.DefineLabel();
+
+            var item = node.Items[i];
+
+            // []
+            LoadExpr(item.ContextExpr); // -> [manager]
+            Generator.Emit(OpCode.LoadSpecial, PySpecialNames.Enter); // -> [manager, enter]
+            Generator.Emit(OpCode.Swap, 2); // [enter, manager]
+            Generator.Emit(OpCode.LoadSpecial, PySpecialNames.Exit); // -> [enter, manager, exit]
+            Generator.Emit(OpCode.Swap, 3); // -> [exit, manager, enter]
+            Generator.Emit(OpCode.Copy, 2); // -> [exit, manager, enter, manager]
+            Generator.Emit(OpCode.Call, 1); // -> [exit, manager, value]
+
+            Generator.Emit(OpCode._SetupExceptionHandler, (exceptLabel, finallyLabel));
+
+            if (item.OptionalVars is not null)
+                StoreExpr(item.OptionalVars);
+            else
+                Generator.Emit(OpCode.PopTop);
+            // -> [exit, manager]
+
+            CompileWithItem(i + 1);
+            Generator.Emit(OpCode.Jump, finallyLabel);
+
+            Generator.MarkLabel(exceptLabel);
+            Generator.Emit(OpCode._LoadExcInfo); // -> [exit, manager, exc_type, exc, traceback]
+            Generator.Emit(OpCode.Call, 4); // -> [handled]
+            Generator.Emit(OpCode.ToBool); // -> [handled_bool]
+            Generator.Emit(OpCode._PopExceptionIfTrue);
+            Generator.Emit(OpCode.PopJumpIfTrue, finallyLabel); // -> []
+            Generator.Emit(OpCode.RaiseVarArgs, 0);
+
+            Generator.MarkLabel(finallyLabel);
+            Generator.Emit(OpCode._EnterFinally);
+
+            Generator.Emit(OpCode._LoadHitExcept);
+            Generator.Emit(OpCode.PopJumpIfTrue, exitFinallyLabel);
+
+            Generator.Emit(OpCode.LoadConst, PyNoneObject.None);
+            Generator.Emit(OpCode.LoadConst, PyNoneObject.None);
+            Generator.Emit(OpCode.LoadConst, PyNoneObject.None);
+            Generator.Emit(OpCode.Call, 4);
+            Generator.Emit(OpCode.PopTop);
+
+            Generator.MarkLabel(exitFinallyLabel);
+            Generator.Emit(OpCode._ExitFinally);
+        }
     }
 }

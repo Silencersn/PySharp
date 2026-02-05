@@ -50,6 +50,7 @@ internal sealed class BytecodeVirtualMachine
         public PyExceptionObject? PyException;
         public int StackDepth;
         public PyObject? ReturnValue;
+        public bool HitExcept;
 
         public ExceptionHandler(Label? exceptionHandlerLabel, Label finallyLabel)
         {
@@ -191,6 +192,7 @@ internal sealed class BytecodeVirtualMachine
                     Debug.Assert(currentHandler.State is ExceptionHandler.State_Init);
                     currentHandler.PyException = e.PyException;
 
+                    currentHandler.HitExcept = true;
                     if (currentHandler.ExceptLabel is not null)
                     {
                         currentHandler.State = ExceptionHandler.State_Except;
@@ -202,7 +204,7 @@ internal sealed class BytecodeVirtualMachine
                     }
                 }
 
-                Debug.Assert(currentHandler.StackDepth <= Stack.Count);
+                // TODO: rollback until what?
                 while (currentHandler.StackDepth < Stack.Count)
                     Stack.Pop();
 
@@ -236,6 +238,32 @@ internal sealed class BytecodeVirtualMachine
 
                     case OpCode.LoadConst:
                         Stack.Push(instruction.PyObjectOperand);
+                        break;
+
+                    case OpCode.LoadSpecial:
+                        value = instruction.StringOperand switch
+                        {
+                            PySpecialNames.Enter => new PyWrapperDescriptorObject(
+                                Stack[-1].PyType.Slots.Enter ??
+                                throw context.TypeError(PySR.Runtime_WithStmt_MissingEnter, Stack[-1].PyType.FullName)),
+                            PySpecialNames.Exit => new PyWrapperDescriptorObject(
+                                Stack[-1].PyType.Slots.Exit ??
+                                throw context.TypeError(PySR.Runtime_WithStmt_MissingExit, Stack[-1].PyType.FullName)),
+
+                            _ => throw new UnreachableException()
+                        };
+                        Stack.Push(value);
+                        break;
+
+                    case OpCode._LoadExcInfo:
+                        {
+                            var exc = frame.CurrentException;
+                            Stack.PushRange(exc.PyType, exc, PyTraceback.CaptureCurrentFrame(context));
+                        }
+                        break;
+
+                    case OpCode._LoadHitExcept:
+                        Stack.Push(PyBoolObject.FromBoolean(ExceptionHandlers.Peek().HitExcept));
                         break;
 
                     case OpCode.LoadName:
@@ -944,6 +972,13 @@ internal sealed class BytecodeVirtualMachine
                     case OpCode._PopException:
                         frame.Exceptions.Pop();
                         ExceptionHandlers.Peek().PyException = null;
+                        break;
+
+                    case OpCode._PopExceptionIfTrue:
+                        value = Stack.Peek();
+                        boolValue = ((PyBoolObject)value).BoolValue;
+                        if (boolValue)
+                            goto case OpCode._PopException;
                         break;
 
                     default:
