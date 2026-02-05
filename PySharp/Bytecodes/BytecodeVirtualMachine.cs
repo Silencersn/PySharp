@@ -8,6 +8,7 @@ using System;
 using System.Collections;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -769,6 +770,33 @@ internal sealed class BytecodeVirtualMachine
                             }
                             Stack.Push(PyStrObject.FromString(builder.ToString()));
                         }
+                        break;
+
+                    case OpCode.ImportName:
+                        {
+                            var fromList = Stack.Pop();
+                            var level = (PyIntObject)Stack.Pop();
+
+                            if (level.Value > 0)
+                                throw new NotSupportedException();
+
+                            if (instruction.StringOperand.Contains('.'))
+                                throw new NotSupportedException();
+
+                            if (!context.PyEnvironment.TryLoadModule(context, instruction.StringOperand, out var module))
+                                throw context.ModuleNotFoundError(PySR.Runtime_Import_ModuleNotFound, instruction.StringOperand);
+
+                            Stack.Push(module);
+                        }
+                        break;
+
+                    case OpCode.ImportFrom:
+                        value = PyOperators.GetAttr(context, Stack[-1], instruction.StringOperand).PyUnwrap(context);
+                        Stack.Push(value);
+                        break;
+
+                    case OpCode._ImportAllFrom:
+                        ImportFromNode.ImportAllFrom(context, frame, (PyModuleObject)Stack.Pop());
                         break;
 
                     case OpCode._MakeFunctionWithPyArgsDef:

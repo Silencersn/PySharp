@@ -137,6 +137,30 @@ public class PyInterpreter
     }
 
     // TODO: temp API, do not use it in production environment
+    public static PyModuleObject RunFileAsBytecode(string filename)
+    {
+        ArgumentNullException.ThrowIfNull(filename);
+
+        var code = File.ReadAllText(filename);
+        var moduleName = Path.GetFileNameWithoutExtension(filename);
+        var environment = PyEnvironment
+            .CreateBuilder()
+            .StandardIO.WithConsole()
+            .FileSystem.WithPhysicalFileSystem()
+            .System.AppendSysPath(Path.GetDirectoryName(Path.GetFullPath(filename))).AppendArgument(filename)
+            .Build();
+
+        var interpreter = Create(environment);
+        var astCompilation = (PyAstCompilation)Compiler.CompileExec(interpreter._mainContext, code, Path.GetFullPath(filename));
+        var bytecode = Compiler.CompileBytecode(astCompilation.Model);
+        PyTryCatch(interpreter._mainContext, () =>
+        {
+            bytecode.Execute(interpreter._mainContext);
+        }, alwaysThrow: true);
+        return interpreter.GetModule(moduleName);
+    }
+
+    // TODO: temp API, do not use it in production environment
     public static PyModuleObject? RunCodeAsBytecode(string code, string? moduleName = null, string? sourceName = null)
     {
         ArgumentNullException.ThrowIfNull(code);

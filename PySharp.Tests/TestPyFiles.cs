@@ -11,7 +11,7 @@ public sealed class TestPyFiles
     private static PyModuleObject RunModule(string filename)
     {
         filename = Path.Combine(PyFilesPath, filename);
-        return PyInterpreter.RunCodeAsBytecode(File.ReadAllText(filename), "test");
+        return PyInterpreter.RunFileAsBytecode(filename);
     }
 
     [TestMethod]

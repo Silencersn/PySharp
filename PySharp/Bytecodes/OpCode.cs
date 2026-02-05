@@ -101,6 +101,10 @@ internal enum OpCode
     FormatWithSpec,
     BuildString,
 
+    ImportName,
+    ImportFrom,
+    _ImportAllFrom,
+
     // PySharp only
     _SetupExceptionHandler,
     _EnterFinally,

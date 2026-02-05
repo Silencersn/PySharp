@@ -19,6 +19,8 @@ partial class BytecodeCompiler
             case BreakNode n: CompileBreak(n); break;
             case ContinueNode n: CompileContinue(n); break;
             case ReturnNode n: CompileReturn(n); break;
+            case ImportNode n: CompileImport(n); break;
+            case ImportFromNode n: CompileImportFrom(n); break;
             case GlobalNode n: CompileGlobal(n); break; 
             case NonlocalNode n: CompileNonlocal(n); break;
             case AssertNode n: CompileAssert(n); break;
@@ -358,5 +360,57 @@ partial class BytecodeCompiler
     {
         foreach (var target in node.Targets)
             DeleteExpr(target);
+    }
+
+    private void CompileImport(ImportNode node)
+    {
+        foreach (var name in node.Names)
+        {
+            Generator.Emit(OpCode.LoadConst, PyIntObject.Zero);
+            Generator.Emit(OpCode.LoadConst, PyNoneObject.None);
+            Generator.Emit(OpCode.ImportName, name.Name);
+
+            if (name.AsName is null)
+            {
+                StoreExpr(Ast.Name(name.Name) /* TODO: do not create node */);
+            }
+            else
+            {
+                var parts = name.Name.Split('.');
+                for (int i = 1; i < parts.Length - 1; i++)
+                {
+                    // [mod]
+                    Generator.Emit(OpCode.ImportFrom, parts[i]); // -> [mod, mod.submod]
+                    Generator.Emit(OpCode.Swap, 2); // -> [mod.submod, mod]
+                    Generator.Emit(OpCode.PopTop); // -> [mod.submod]
+                }
+                Generator.Emit(OpCode.ImportFrom, parts[^1]);
+                StoreExpr(Ast.Name(name.AsName) /* TODO: do not create node */);
+
+                Generator.Emit(OpCode.PopTop);
+            }
+        }
+    }
+
+    private void CompileImportFrom(ImportFromNode node)
+    {
+        Generator.Emit(OpCode.LoadConst, PyIntObject.FromInteger(node.Level));
+        Generator.Emit(OpCode.LoadConst, PyTupleObject.CreateTuple(node.Names.Select(static alias => PyStrObject.FromString(alias.Name))));
+        Generator.Emit(OpCode.ImportName, node.Module);
+
+        if (node.Names.Length is 1 && node.Names[0].Name is "*")
+        {
+            Generator.Emit(OpCode._ImportAllFrom);
+            return;
+        }
+
+        foreach (var name in node.Names)
+        {
+            Debug.Assert(name.Name is not "*");
+            Generator.Emit(OpCode.ImportFrom, name.Name);
+            StoreExpr(Ast.Name(name.GetLocalName()) /* TODO: do not create node */);
+        }
+
+        Generator.Emit(OpCode.PopTop);
     }
 }
