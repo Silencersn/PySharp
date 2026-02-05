@@ -42,6 +42,7 @@ partial class BytecodeCompiler
             case YieldFromNode n: CompileYieldFrom(n); break;
             case NamedExprNode n: CompileNamedExpr(n); break;
             case SubscriptNode n: CompileSubscript(n, ctx); break;
+            case SliceNode n: CompileSlice(n); break;
             case IfExpNode n: CompileIfExp(n); break;
             case LambdaNode n: CompileLambda(n); break;
             case FormattedValueNode n: CompileFormattedValue(n); break;
@@ -673,5 +674,23 @@ partial class BytecodeCompiler
             StoreExpr(node.Value);
         else
             throw new UnreachableException();
+    }
+
+    private void CompileSlice(SliceNode node)
+    {
+        if (node.Lower is null)
+            Generator.Emit(OpCode.LoadConst, PyNoneObject.None);
+        else
+            LoadExpr(node.Lower);
+
+        if (node.Upper is null)
+            Generator.Emit(OpCode.LoadConst, PyNoneObject.None);
+        else
+            LoadExpr(node.Upper);
+
+        if (node.Step is not null)
+            LoadExpr(node.Step);
+
+        Generator.Emit(OpCode.BuildSlice, node.Step is not null ? 3 : 2);
     }
 }

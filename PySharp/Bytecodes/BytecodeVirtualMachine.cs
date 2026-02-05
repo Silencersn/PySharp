@@ -799,6 +799,27 @@ internal sealed class BytecodeVirtualMachine
                         ImportFromNode.ImportAllFrom(context, frame, (PyModuleObject)Stack.Pop());
                         break;
 
+                    case OpCode.BuildSlice:
+                        {
+                            if (instruction.Arg is 2)
+                            {
+                                var end = Stack.Pop();
+                                var start = Stack.Pop();
+                                var slice = new PySliceObject(start, end, PyNoneObject.None);
+                                Stack.Push(slice);
+                            }
+                            else
+                            {
+                                Debug.Assert(instruction.Arg is 3);
+                                var step = Stack.Pop();
+                                var end = Stack.Pop();
+                                var start = Stack.Pop();
+                                var slice = new PySliceObject(start, end, step);
+                                Stack.Push(slice);
+                            }
+                        }
+                        break;
+
                     case OpCode._MakeFunctionWithPyArgsDef:
                         {
                             var codeObj = (PyCodeObject)Stack.Pop();

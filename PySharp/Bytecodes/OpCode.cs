@@ -75,6 +75,7 @@ internal enum OpCode
     BuildTuple,
     BuildSet,
     BuildMap,
+    BuildSlice,
 
     _ListToTuple,
     _ListToSet,
