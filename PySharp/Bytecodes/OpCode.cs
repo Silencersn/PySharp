@@ -36,6 +36,7 @@ internal enum OpCode
 
     Call,
     CallKw,
+    CallFunctionEx,
     BinaryOp,
     CompareOp,
     ContainsOp,
@@ -84,6 +85,8 @@ internal enum OpCode
     ListExtend,
     SetAdd,
     MapAdd,
+    DictUpdate,
+    DictMerge,
     _MakeGeneratorExp,
 
     UnpackSequence,

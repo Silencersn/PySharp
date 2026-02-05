@@ -4,6 +4,7 @@ using PySharp.PyModules;
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
+using System;
 using System.Collections;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -381,6 +382,23 @@ internal sealed class BytecodeVirtualMachine
                         }
                         break;
 
+                    case OpCode.CallFunctionEx:
+                        {
+                            var dict = (PyDictObject)Stack.Pop();
+                            var args = (PyListObject)Stack.Pop();
+                            kwargs.Clear();
+
+                            foreach (var pair in dict._dict)
+                            {
+                                if (pair.Key is not PyStrObject str)
+                                    throw context.TypeError(PySR.Runtime_Keyword_KeywordsMustBeStrings);
+                                kwargs.Add(str.Value, pair.Value);
+                            }
+
+                            Stack[-1] = Stack[-1].Call(context, args._list, kwargs).PyUnwrap(context);
+                        }
+                        break;
+
                     case OpCode.PopTop:
                         Stack.Pop();
                         break;
@@ -569,6 +587,27 @@ internal sealed class BytecodeVirtualMachine
                             var key = Stack.Pop();
                             var dict = (PyDictObject)Stack[-instruction.Arg];
                             dict._dict[key] = value;
+                        }
+                        break;
+
+                    case OpCode.DictUpdate:
+                        {
+                            var map = Stack.Pop();
+                            var dict = (PyDictObject)Stack[-instruction.Arg];
+                            _ = dict.PyUpdate(context, map).PyUnwrap(context);
+                        }
+                        break;
+
+                    case OpCode.DictMerge:
+                        {
+                            var map = Stack.Pop();
+                            var dictToMerge = PyUtils.ToDict(context, map).PyUnwrap(context);
+                            var dict = (PyDictObject)Stack[-instruction.Arg];
+                            foreach (var pair in dictToMerge._dict)
+                            {
+                                if (!dict._dict.TryAdd(pair.Key, pair.Value))
+                                    throw context.TypeError(PySR.Runtime_Arguments_MultipleKeywords, pair.Key);
+                            }
                         }
                         break;
 

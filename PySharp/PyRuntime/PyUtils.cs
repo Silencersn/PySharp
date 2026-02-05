@@ -91,6 +91,9 @@ internal static class PyUtils
 
     public static PyResult<PyDictObject> ToDict(PyCallContext context, PyObject iterableOrMapping)
     {
+        if (iterableOrMapping is PyDictObject dict)
+            return PyDictObject.CreateDict(dict._dict);
+
         var keysMethod = PyOperators.GetAttr(context, iterableOrMapping, "keys");
         if (keysMethod.IsSuccessful)
             return MappingToDict(context, iterableOrMapping, keysMethod.Value);

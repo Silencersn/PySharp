@@ -139,22 +139,67 @@ partial class BytecodeCompiler
     {
         LoadExpr(node.Func);
 
-        foreach (var arg in node.Args)
-            LoadExpr(arg);
+        var hasStarred = node.Args.Any(static arg => arg is StarredNode)
+            || node.Keywords.Any(static kwarg => kwarg.Arg is null);
 
-        if (node.Keywords.Length is 0)
+        if (!hasStarred)
+            CompileCallOrCallKw();
+        else
+            CompileCallFunctionEx();
+
+        void CompileCallOrCallKw()
         {
-            Generator.Emit(OpCode.Call, node.Args.Length);
-            return;
+            foreach (var arg in node.Args)
+                LoadExpr(arg);
+
+            if (node.Keywords.Length is 0)
+            {
+                Generator.Emit(OpCode.Call, node.Args.Length);
+                return;
+            }
+
+            foreach (var kwarg in node.Keywords)
+                LoadExpr(kwarg.Value);
+
+            var tuple = PyTupleObject.CreateTuple(node.Keywords.Select(k => PyStrObject.FromString(k.Arg ?? throw new UnreachableException())));
+            Generator.Emit(OpCode.LoadConst, tuple);
+
+            Generator.Emit(OpCode.CallKw, node.Args.Length + node.Keywords.Length);
         }
 
-        foreach (var kwarg in node.Keywords)
-            LoadExpr(kwarg.Value);
+        void CompileCallFunctionEx()
+        {
+            Generator.Emit(OpCode.BuildList, 0);
+            foreach (var arg in node.Args)
+            {
+                LoadExpr(arg);
+                Generator.Emit(arg is StarredNode ? OpCode.ListExtend : OpCode.ListAppend, 1);
+            }
 
-        var tuple = PyTupleObject.CreateTuple(node.Keywords.Select(k => PyStrObject.FromString(k.Arg ?? throw new NotImplementedException("unpack"))));
-        Generator.Emit(OpCode.LoadConst, tuple);
+            var nonStarredCount = 0;
 
-        Generator.Emit(OpCode.CallKw, node.Args.Length + node.Keywords.Length);
+            foreach (var kwarg in node.Keywords)
+            {
+                if (kwarg.Arg is null)
+                    continue;
+
+                nonStarredCount++;
+                Generator.Emit(OpCode.LoadConst, PyStrObject.FromString(kwarg.Arg));
+                LoadExpr(kwarg.Value);
+            }
+            Generator.Emit(OpCode.BuildMap, nonStarredCount);
+
+            foreach (var kwarg in node.Keywords)
+            {
+                if (kwarg.Arg is not null)
+                    continue;
+
+                LoadExpr(kwarg.Value);
+                Generator.Emit(OpCode.DictMerge, 1);
+            }
+
+            Generator.Emit(OpCode.CallFunctionEx);
+        }
     }
 
     private void CompileBinOp(BinOpNode node)
@@ -319,12 +364,35 @@ partial class BytecodeCompiler
 
     private void CompileDict(DictNode node)
     {
+        if (node.Keys.All(static key => key is not null))
+        {
+            for (int i = 0; i < node.Keys.Length; i++)
+            {
+                LoadExpr(node.Keys[i]!);
+                LoadExpr(node.Values[i]);
+            }
+            Generator.Emit(OpCode.BuildMap, node.Keys.Length);
+            return;
+        }
+
+        Generator.Emit(OpCode.BuildMap, 0);
         for (int i = 0; i < node.Keys.Length; i++)
         {
-            LoadExpr(node.Keys[i] ?? throw new NotSupportedException("unpack"));
-            LoadExpr(node.Values[i]);
+            var key = node.Keys[i];
+            var value = node.Values[i];
+
+            if (key is not null)
+            {
+                LoadExpr(key);
+                LoadExpr(value);
+                Generator.Emit(OpCode.MapAdd, 1);
+            }
+            else
+            {
+                LoadExpr(value);
+                Generator.Emit(OpCode.DictUpdate, 1);
+            }
         }
-        Generator.Emit(OpCode.BuildMap, node.Keys.Length);
     }
 
     private void InternalCompileGenerators(ImmutableArray<AstComprehensionNode> generators, Action compileElt)

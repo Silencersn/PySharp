@@ -133,5 +133,5 @@ partial class PySR
     public const string Runtime_Arguments_MissingArg = "missing 1 required positional argument";
     public const string Runtime_Arguments_MissingArgs = "missing {0} required positional arguments";
     public const string Runtime_Arguments_UnexpectedKey = "got an unexpected keyword argument '{0}'";
-
+    public const string Runtime_Arguments_MultipleKeywords = "got multiple values for keyword argument '{0}'";
 }
