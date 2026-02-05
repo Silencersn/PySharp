@@ -105,6 +105,6 @@ partial class PyListObject
 
     public PyListObject PyCopy()
     {
-        return new PyListObject(_list);
+        return CreateList(_list);
     }
 }

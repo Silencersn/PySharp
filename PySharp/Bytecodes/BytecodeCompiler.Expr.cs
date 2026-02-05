@@ -63,11 +63,14 @@ partial class BytecodeCompiler
         {
             AsGlobal();
         }
-        else if (VariableScope is ClassVariableScope)
+        else if (VariableScope is ClassVariableScope classVariableScope)
         {
-            AsName();
+            var variableType = classVariableScope.Variables[node.Id];
+            if (variableType is PyVariableType.Closure)
+                AsDeref();
+            else
+                AsName();
         }
-
         else if (VariableScope is CallableVariableScope callableVariableScope)
         {
             if (callableVariableScope.LocalsTable.TryGetValue(node.Id, out var nameIndex))
