@@ -12,6 +12,8 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.RegularExpressions;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace PySharp.Bytecodes;
 
@@ -463,6 +465,14 @@ internal sealed class BytecodeVirtualMachine
                             value = Stack.Pop();
                             boolValue = ((PyBoolObject)value).BoolValue;
                             if (boolValue)
+                                nextIndex = instruction.LabelOperand.Offset;
+                        }
+                        break;
+
+                    case OpCode.PopJumpIfNone:
+                        {
+                            value = Stack.Pop();
+                            if (value is PyNoneObject)
                                 nextIndex = instruction.LabelOperand.Offset;
                         }
                         break;
@@ -979,6 +989,124 @@ internal sealed class BytecodeVirtualMachine
                         boolValue = ((PyBoolObject)value).BoolValue;
                         if (boolValue)
                             goto case OpCode._PopException;
+                        break;
+
+                    case OpCode.MatchSequence:
+                        boolValue = MatchSequenceNode.IsSequenceForMatch(Stack[-1], out _);
+                        Stack.Push(PyBoolObject.FromBoolean(boolValue));
+                        break;
+
+                    case OpCode.MatchMapping:
+                        boolValue = MatchMappingNode.IsMappingForMatch(Stack[-1], out _);
+                        Stack.Push(PyBoolObject.FromBoolean(boolValue));
+                        break;
+
+                    case OpCode.GetLen:
+                        value = PySpecialMethods.Len(context, Stack.Peek()).PyUnwrap(context);
+                        Stack.Push(value);
+                        break;
+
+                    case OpCode.MatchKeys:
+                        {
+                            var keys = (PyTupleObject)Stack.Peek();
+                            var subject = Stack[-2];
+                            var array = new PyObject[keys._array.Length];
+                            var matched = true;
+                            for (int i = 0; matched && i < array.Length; i++)
+                            {
+                                var key = keys._array[i];
+                                result = PySpecialMethods.GetItem(context, subject, key);
+                                if (result.IsError && PyKeyErrorObjectType.Shared.IsInstance(result.Exception))
+                                {
+                                    matched = false;
+                                    break;
+                                }
+                                array[i] = result.PyUnwrap(context);
+                            }
+                            Stack.Push(matched ? PyTupleObject.CreateProxy(array) : PyNoneObject.None);
+                        }
+                        break;
+
+                    case OpCode.MatchClass:
+                        {
+                            var keys = (PyTupleObject)Stack.Pop();
+                            value = Stack.Pop();
+                            if (value is not PyTypeObject cls)
+                                throw context.TypeError(PySR.Runtime_MatchStmt_CallNonClass);
+                            var subject = Stack.Pop();
+
+                            if (!cls.IsInstance(subject))
+                            {
+                                Stack.Push(PyNoneObject.None);
+                                break;
+                            }
+
+                            var values = new PyObject[instruction.Arg + keys._array.Length];
+
+                            if (IsSpecialType(cls))
+                            {
+                                if (instruction.Arg > 1)
+                                    throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsLengthNotEnough, cls.FullName, 1, instruction.Arg);
+                                else if (instruction.Arg is 1)
+                                    values[0] = subject;
+                            }
+                            else if (instruction.Arg > 0)
+                            {
+                                var matchArgs = PyOperators.GetAttr(context, cls, PySpecialNames.MatchArgs).PyUnwrap(context);
+
+                                if (matchArgs is not PyTupleObject tuple)
+                                    throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsIsNonTuple, cls.FullName, matchArgs.PyType.FullName);
+                                if (instruction.Arg > tuple._array.Length)
+                                    throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsLengthNotEnough, cls.FullName, tuple._array.Length, instruction.Arg);
+
+                                for (int i = 0; i < instruction.Arg; i++)
+                                {
+                                    if (tuple._array[i] is not PyStrObject attrName)
+                                        throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsEltMustBeString, tuple._array[i].PyType.FullName);
+
+                                    var attr = PyOperators.GetAttr(context, subject, attrName);
+                                    if (attr.IsAttributeError)
+                                    {
+                                        Stack.Push(PyNoneObject.None);
+                                        goto match_class_break;
+                                    }
+
+                                    values[i] = attr.PyUnwrap(context);
+                                }
+                            }
+
+                            for (int i = 0; i < keys._array.Length; i++)
+                            {
+                                var attrName = keys._array[i];
+                                Debug.Assert(attrName is PyStrObject);
+
+                                var attr = PyOperators.GetAttr(context, subject, attrName);
+                                if (attr.IsAttributeError)
+                                {
+                                    Stack.Push(PyNoneObject.None);
+                                    goto match_class_break;
+                                }
+
+                                values[instruction.Arg + i] = attr.PyUnwrap(context);
+                            }
+
+                            Stack.Push(PyTupleObject.CreateProxy(values));
+
+                            static bool IsSpecialType(PyTypeObject type)
+                            {
+                                // TODO: not implemented: bytearray bytes frozenset
+                                return type is
+                                    PyBoolObjectType or
+                                    PyDictObjectType or
+                                    PyFloatObjectType or
+                                    PyIntObjectType or
+                                    PyListObjectType or
+                                    PySetObjectType or
+                                    PyStrObjectType or
+                                    PyTupleObjectType;
+                            }
+                        }
+                    match_class_break:
                         break;
 
                     default:

@@ -58,6 +58,7 @@ internal enum OpCode
     Jump,
     PopJumpIfFalse,
     PopJumpIfTrue,
+    PopJumpIfNone,
 
     RaiseVarArgs,
     CheckExcMatch,
@@ -105,6 +106,12 @@ internal enum OpCode
     FormatSimple,
     FormatWithSpec,
     BuildString,
+
+    MatchSequence,
+    MatchMapping,
+    GetLen,
+    MatchKeys,
+    MatchClass,
 
     ImportName,
     ImportFrom,

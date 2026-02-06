@@ -149,8 +149,9 @@ public class PyIntObjectType : PyTypeObject<PyIntObjectType, PyIntObject>
         var obj = result.Value;
         Debug.Assert(obj is PyIntObject);
         var value = ((PyIntObject)obj).Value;
+
         if (!PyObjectComparer.Default.Equals(cls, this) && value > -PyIntObject.NegativePoolSize && value < PyIntObject.PositivesPoolSize)
-            return PyIntObject.FromIntegerNoCache(value);
+            obj = PyIntObject.FromIntegerNoCache(value);
 
         obj._pyType = cls;
         return obj;

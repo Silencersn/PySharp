@@ -94,13 +94,25 @@ public sealed class PyDictObjectType : PyTypeObject<PyDictObjectType, PyDictObje
     {
         if (self._dict.TryGetValue(item, out PyObject? value))
             return value;
-        return Missing(context, self, item);
+
+        var missing = self.PyType.Slots.Missing;
+        if (missing is null)
+            return PyResult.KeyError(item);
+
+        return missing(context, self, item);
     }
 
     protected override PyResult SetItem(PyCallContext context, PyDictObject self, PyObject key, PyObject value)
     {
         self.PySetItem(key, value);
         return PyNoneObject.None;
+    }
+
+    protected override PyResult DelItem(PyCallContext context, PyDictObject self, PyObject key)
+    {
+        if (self._dict.Remove(key))
+            return PyNoneObject.None;
+        return PyResult.KeyError(key);
     }
 
     protected override PyResult Contains(PyCallContext context, PyDictObject self, PyObject item)

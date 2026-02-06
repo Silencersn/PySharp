@@ -1,7 +1,10 @@
 ﻿using PySharp.AstNodes;
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
+using System;
+using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Reflection.Emit;
 
 namespace PySharp.Bytecodes;
 
@@ -30,6 +33,7 @@ partial class BytecodeCompiler
             case ForNode n: CompileFor(n); break;
             case WhileNode n: CompileWhile(n); break;
             case WithNode n: CompileWith(n); break;
+            case MatchNode n: CompileMatch(n); break;
             case FunctionDefNode n: CompileFunctionDef(n); break;
             case ClassDefNode n: CompileClassDef(n); break;
             default: throw new NotImplementedException();
@@ -477,6 +481,227 @@ partial class BytecodeCompiler
 
             Generator.MarkLabel(exitFinallyLabel);
             Generator.Emit(OpCode._ExitFinally);
+        }
+    }
+
+    private void CompileMatch(MatchNode node)
+    {
+        var nextCaseLabels = new Label[node.Cases.Length];
+        for (int i = 0; i < node.Cases.Length; i++)
+            nextCaseLabels[i] = Generator.DefineLabel();
+        var matchEndLabel = nextCaseLabels[^1];
+
+        LoadExpr(node.Subject);
+        for (int i = 0; i < node.Cases.Length; i++)
+        {
+            CompileMatchCase(i);
+            Generator.MarkLabel(nextCaseLabels[i]);
+        }
+        Generator.Emit(OpCode.PopTop);
+
+        void CompileMatchCase(int i)
+        {
+             var caseNode = node.Cases[i];
+
+            CompilePattern(caseNode.Pattern, nextCaseLabels[i]);
+
+            if (caseNode.Guard is not null)
+            {
+                LoadExpr(caseNode.Guard);
+                Generator.Emit(OpCode.ToBool);
+                Generator.Emit(OpCode.PopJumpIfFalse, nextCaseLabels[i]);
+            }
+
+            foreach (var stmt in caseNode.Body)
+                CompileStmt(stmt);
+
+            Generator.Emit(OpCode.Jump, matchEndLabel);
+        }
+
+        // in the current design,
+        // the state of the operand stack before and after CompilePattern
+        // should remain unchanged.
+        void CompilePattern(AstPatternNode pattern, Label matchFailLabel)
+        {
+            switch (pattern)
+            {
+                case MatchValueNode node:
+                    Generator.Emit(OpCode.Copy, 1);
+                    LoadExpr(node.Value);
+                    Generator.Emit(OpCode.CompareOp, (int)CmpopType.Eq);
+                    Generator.Emit(OpCode.ToBool);
+                    Generator.Emit(OpCode.PopJumpIfFalse, matchFailLabel);
+                    break;
+
+                case MatchSingletonNode node:
+                    Generator.Emit(OpCode.Copy, 1);
+                    Generator.Emit(OpCode.LoadConst, node.Value);
+                    Generator.Emit(OpCode.IsOp, 0);
+                    Generator.Emit(OpCode.PopJumpIfFalse, matchFailLabel);
+                    break;
+
+                case MatchStarNode node:
+                    if (node.Name is null)
+                        break;
+
+                    Generator.Emit(OpCode.Copy, 1);
+                    StoreExpr(Ast.Name(node.Name) /* TODO: no creating ast */);
+                    break;
+
+                case MatchAsNode node:
+                    if (node.Pattern is not null)
+                        CompilePattern(node.Pattern, matchFailLabel);
+
+                    if (node.Name is not null)
+                    {
+                        Generator.Emit(OpCode.Copy, 1);
+                        StoreExpr(Ast.Name(node.Name) /* TODO: no creating ast */);
+                    }
+                    break;
+
+                case MatchOrNode node:
+                    {
+                        var nextPatternLabels = new Label[node.Patterns.Length];
+                        for (int i = 0; i < node.Patterns.Length - 1; i++)
+                            nextPatternLabels[i] = Generator.DefineLabel();
+                        nextPatternLabels[^1] = matchFailLabel;
+                        var orEndLabel = Generator.DefineLabel();
+
+                        for (int i = 0; i < node.Patterns.Length; i++)
+                        {
+                            CompilePattern(node.Patterns[i], nextPatternLabels[i]);
+                            Generator.Emit(OpCode.Jump, orEndLabel);
+                            if (i < node.Patterns.Length - 1)
+                                Generator.MarkLabel(nextPatternLabels[i]);
+                        }
+
+                        Generator.MarkLabel(orEndLabel);
+                    }
+                    break;
+
+                case MatchSequenceNode node:
+                    {
+                        // ensure subject is sequence
+                        Generator.Emit(OpCode.MatchSequence);
+                        Generator.Emit(OpCode.PopJumpIfFalse, matchFailLabel);
+
+                        // ensure length of subject is enough
+                        Generator.Emit(OpCode.GetLen);
+                        var (index, starred) = node.Patterns.Index().FirstOrDefault(static item => item.Item is MatchStarNode);
+                        var hasStar = starred is not null;
+                        Generator.Emit(OpCode.LoadConst, PyIntObject.FromInteger(node.Patterns.Length + (hasStar ? -1 : 0)));
+                        Generator.Emit(OpCode.CompareOp, (int)(hasStar ? CmpopType.GtE : CmpopType.Eq));
+                        Generator.Emit(OpCode.PopJumpIfFalse, matchFailLabel);
+
+                        // unpack subject
+                        Generator.Emit(OpCode.Copy, 1);
+                        if (hasStar)
+                            Generator.Emit(OpCode.UnpackEx, (index, node.Patterns.Length - index - 1));
+                        else
+                            Generator.Emit(OpCode.UnpackSequence, node.Patterns.Length);
+
+                        // match each subpattern
+                        CompilePatterns(node.Patterns, matchFailLabel);
+                    }
+                    break;
+
+                case MatchMappingNode node:
+                    {
+                        // ensure subject is mapping
+                        Generator.Emit(OpCode.MatchMapping);
+                        Generator.Emit(OpCode.PopJumpIfFalse, matchFailLabel);
+
+                        // ensure keys then get value
+                        foreach (var key in node.Keys)
+                            LoadExpr(key);
+                        Generator.Emit(OpCode.BuildTuple, node.Keys.Length);
+
+                        // [subject, keys]
+                        Generator.Emit(OpCode.MatchKeys); // -> [subject, keys, values]
+
+                        var popKeysAndValuesLabel = Generator.DefineLabel();
+                        Generator.Emit(OpCode.Copy, 1); // -> [subject, keys, values, values]
+                        Generator.Emit(OpCode.PopJumpIfNone, popKeysAndValuesLabel); // -> [subject, keys, values]
+
+                        // match each subpattern
+                        var popKeysThenFailLabel = Generator.DefineLabel();
+                        Generator.Emit(OpCode.UnpackSequence, node.Keys.Length);
+                        CompilePatterns(node.Patterns, popKeysThenFailLabel);
+
+                        if (node.Rest is not null)
+                        {
+                            // [subject, keys]
+                            Generator.Emit(OpCode.Copy, 2); // -> [subject, keys, subject]
+                            Generator.Emit(OpCode.BuildMap, 0); // -> [subject, keys, subject, {}]
+                            Generator.Emit(OpCode.Swap, 2); // -> [subject, keys, {}, subject]
+                            Generator.Emit(OpCode.DictUpdate, 1); // [subject, keys, {**subject}]
+                            Generator.Emit(OpCode.Swap, 2); // -> [subject, {**subject}, keys]
+
+                            Generator.Emit(OpCode.UnpackSequence, node.Keys.Length); // -> [subject, {**subject}, *keys]
+                            for (int i = node.Keys.Length - 1; i >= 0; i--)
+                            {
+                                // [subject, {**subject}, key_0 ... key_i]
+                                Generator.Emit(OpCode.Copy, i + 2); // -> [subject, {**subject}, key_0 ... key_i, {**subject}]
+                                Generator.Emit(OpCode.Swap, 2); // -> [subject, {**subject}, key_0 ... key_i-1, {**subject}, key_i]
+                                Generator.Emit(OpCode.DeleteSubscr); // -> [subject, {**subject_removed_key_i}, key_0 ... key_i-1]
+                            }
+                            // -> [subject, {**subject_removed_keys}]
+
+                            StoreExpr(Ast.Name(node.Rest) /* TODO: no creating ast */);
+                        }
+
+                        var matchedLabel = Generator.DefineLabel();
+                        Generator.Emit(OpCode.Jump, matchedLabel);
+
+                        Generator.MarkLabel(popKeysAndValuesLabel);
+                        Generator.Emit(OpCode.PopTop);
+
+                        Generator.MarkLabel(popKeysThenFailLabel);
+                        Generator.Emit(OpCode.PopTop);
+                        Generator.Emit(OpCode.Jump, matchFailLabel);
+
+                        Generator.MarkLabel(matchedLabel);
+                    }
+                    break;
+
+                case MatchClassNode node:
+                    {
+                        Generator.Emit(OpCode.Copy, 1);
+                        LoadExpr(node.Cls);
+                        Generator.Emit(OpCode.LoadConst, PyTupleObject.CreateTuple(node.KwdAttrs.Select(PyStrObject.FromString)));
+                        Generator.Emit(OpCode.MatchClass, node.Patterns.Length);
+
+                        Generator.Emit(OpCode.Copy, 1);
+                        Generator.Emit(OpCode.PopJumpIfNone, matchFailLabel);
+
+                        Generator.Emit(OpCode.UnpackSequence, node.Patterns.Length + node.KwdPatterns.Length);
+                        CompilePatterns([..node.Patterns.Concat(node.KwdPatterns)], matchFailLabel);
+                    }
+                    break;
+            }
+
+            void CompilePatterns(IReadOnlyList<AstPatternNode> patterns, Label matchFailLabel)
+            {
+                var patternsEndLabel = Generator.DefineLabel();
+                var popTopLabels = new Label[patterns.Count];
+
+                for (int i = 0; i < patterns.Count; i++)
+                {
+                    popTopLabels[i] = Generator.DefineLabel();
+                    CompilePattern(patterns[i], popTopLabels[i]);
+                    Generator.Emit(OpCode.PopTop);
+                }
+                Generator.Emit(OpCode.Jump, patternsEndLabel);
+
+                for (int i = 0; i < patterns.Count; i++)
+                {
+                    Generator.MarkLabel(popTopLabels[i]);
+                    Generator.Emit(OpCode.PopTop);
+                }
+                Generator.Emit(OpCode.Jump, matchFailLabel);
+
+                Generator.MarkLabel(patternsEndLabel);
+            }
         }
     }
 }

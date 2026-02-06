@@ -435,7 +435,7 @@ public sealed class MatchSequenceNode : AstPatternNode
         }
     }
 
-    private static bool IsSequenceForMatch(PyObject obj, out (IEnumerable<PyObject> Sequence, BigInteger Length) result)
+    internal static bool IsSequenceForMatch(PyObject obj, out (IEnumerable<PyObject> Sequence, BigInteger Length) result)
     {
         switch (obj)
         {
@@ -517,7 +517,7 @@ public sealed class MatchMappingNode : AstPatternNode
         return true;
     }
 
-    private static bool IsMappingForMatch(PyObject obj, [NotNullWhen(true)] out IDictionary<PyObject, PyObject>? result)
+    internal static bool IsMappingForMatch(PyObject obj, [NotNullWhen(true)] out IDictionary<PyObject, PyObject>? result)
     {
         switch (obj)
         {
