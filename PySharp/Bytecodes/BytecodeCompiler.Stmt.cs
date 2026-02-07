@@ -18,6 +18,7 @@ partial class BytecodeCompiler
             case PassNode n: CompilePass(n); break;
             case AssignNode n: CompileAssign(n); break;
             case AugAssignNode n: CompileAugAssign(n); break;
+            case AnnAssignNode n: CompileAnnAssign(n); break;
             case DeleteNode n: CompileDelete(n); break;
             case RaiseNode n: CompileRaise(n); break;
             case BreakNode n: CompileBreak(n); break;
@@ -55,6 +56,17 @@ partial class BytecodeCompiler
                 Generator.Emit(OpCode.Copy, 1);
             StoreExpr(node.Targets[i]);
         }
+    }
+
+    private void CompileAnnAssign(AnnAssignNode node)
+    {        
+        // TODO: __annotations__
+
+        if (node.Value is null)
+            return;
+
+        LoadExpr(node.Value);
+        StoreExpr(node.Target);
     }
 
     private void CompileIf(IfNode node)
