@@ -55,55 +55,6 @@ internal sealed class BytecodeVirtualMachine
         }
     }
 
-    private sealed class OperandStack
-    {
-        private readonly List<PyObject> _stack = [];
-
-        public int Count => _stack.Count;
-
-        internal List<PyObject> InternalList => _stack;
-
-        public PyObject this[int index]
-        {
-            get => _stack[_stack.Count + index];
-            set => _stack[_stack.Count + index] = value;
-        }
-
-        public void Push(PyObject value)
-        {
-            _stack.Add(value);
-        }
-        public void PushRange(params ReadOnlySpan<PyObject> values)
-        {
-            _stack.AddRange(values);
-        }
-        public void PushReversedRange(params ReadOnlySpan<PyObject> values)
-        {
-            _stack.AddRange(values);
-            CollectionsMarshal.AsSpan(_stack)[^values.Length..].Reverse();
-        }
-        public PyObject Peek()
-        {
-            return _stack[^1];
-        }
-        public PyObject Pop()
-        {
-            var result = Peek();
-            _stack.RemoveAt(_stack.Count - 1);
-            return result;
-        }
-        public void PopReversedRange(Span<PyObject> values)
-        {
-            var span = CollectionsMarshal.AsSpan(_stack);
-            span[^values.Length..].CopyTo(values);
-            CollectionsMarshal.SetCount(_stack, _stack.Count - values.Length);
-        }
-        public void Clear()
-        {
-            _stack.Clear();
-        }
-    }
-
     internal void SetYieldReceivedValue(PyObject value)
     {
         Stack.Push(value);
@@ -112,7 +63,8 @@ internal sealed class BytecodeVirtualMachine
     internal PyResult Eval(PyCallContext context, PyFrame frame)
     {
         int currentIndex = InstructionIndex;
-        var instructions = Bytecode.Instructions;
+        var instructions = Bytecode.Instructions.AsSpan();
+        var length = instructions.Length;
 
         // cache, clear before using
         PyObject value, left, right;
@@ -124,108 +76,16 @@ internal sealed class BytecodeVirtualMachine
         List<KeyValuePair<PyObject, PyObject>> pairs = [];
         StringBuilder builder = new();
 
-        while (currentIndex < instructions.Count)
+        while (currentIndex < length)
         {
             var instruction = instructions[currentIndex];
             var nextIndex = currentIndex + 1;
 
             try
             {
-                EvalOpCode(instruction.OpCode);
-                if (intermediateValue is not null)
-                    return intermediateValue;
+                #region Eval OpCode
 
-                if (returnValue is not null)
-                {
-                find_next_finally:
-                    if (!ExceptionHandlers.TryPeek(out var handler))
-                    {
-                        RunToEnd = true;
-                        return returnValue;
-                    }
-
-                    if (handler.State is ExceptionHandler.State_Finally)
-                    {
-                        ExceptionHandlers.Pop();
-                        goto find_next_finally;
-                    }
-
-                    handler.ReturnValue = returnValue;
-                    returnValue = null;
-                    nextIndex = handler.FinallyLabel.Offset;
-                }
-            }
-            catch (PyRuntimeException e)
-            {
-            handle:
-                if (!ExceptionHandlers.TryPeek(out var currentHandler))
-                {
-                    Stack.Clear();
-                    RunToEnd = true;
-                    return PyResult.FromException(e.PyException);
-                }
-
-                if (currentHandler.State is ExceptionHandler.State_Except)
-                {
-                    // raise exception during except body
-
-                    currentHandler.PyException = e.PyException;
-                    nextIndex = currentHandler.FinallyLabel.Offset;
-                }
-                else if (currentHandler.State is ExceptionHandler.State_Finally)
-                {
-                    // raise exception during finally body
-
-                    frame.Exceptions.Clear();
-                    ExceptionHandlers.Pop();
-
-                    goto handle;
-                }
-                else
-                {
-                    Debug.Assert(currentHandler.State is ExceptionHandler.State_Init);
-                    currentHandler.PyException = e.PyException;
-
-                    currentHandler.HitExcept = true;
-                    if (currentHandler.ExceptLabel is not null)
-                    {
-                        currentHandler.State = ExceptionHandler.State_Except;
-                        nextIndex = currentHandler.ExceptLabel.Offset;
-                    }
-                    else
-                    {
-                        nextIndex = currentHandler.FinallyLabel.Offset;
-                    }
-                }
-
-                // TODO: rollback until what?
-                while (currentHandler.StackDepth < Stack.Count)
-                    Stack.Pop();
-
-                e.PyException.WithTraceback(context, overwriteExisting: false);
-                context.EnsureFrameState(frame);
-
-                frame.Exceptions.Push(e.PyException);
-            }
-
-            currentIndex = nextIndex;
-
-            void LoadArgs(List<PyObject> args, int count)
-            {
-                // equals to:
-                // args.Clear();
-                // for (int i = 0; i < count; i++)
-                //     args.Add(Stack.Pop());
-                // args.Reverse();
-
-                CollectionsMarshal.SetCount(args, count);
-                var argsSpan = CollectionsMarshal.AsSpan(args);
-                Stack.PopReversedRange(argsSpan);
-            }
-
-            void EvalOpCode(OpCode opCode)
-            {
-                switch (opCode)
+                switch (instruction.OpCode)
                 {
                     case OpCode.NoOperation:
                         break;
@@ -408,7 +268,7 @@ internal sealed class BytecodeVirtualMachine
                     case OpCode.CallFunctionEx:
                         {
                             var dict = (PyDictObject)Stack.Pop();
-                            var args = (PyListObject)Stack.Pop();
+                            var pyargs = (PyListObject)Stack.Pop();
                             kwargs.Clear();
 
                             foreach (var pair in dict._dict)
@@ -418,7 +278,7 @@ internal sealed class BytecodeVirtualMachine
                                 kwargs.Add(str.Value, pair.Value);
                             }
 
-                            Stack[-1] = Stack[-1].Call(context, args._list, kwargs).PyUnwrap(context);
+                            Stack[-1] = Stack[-1].Call(context, pyargs._list, kwargs).PyUnwrap(context);
                         }
                         break;
 
@@ -793,10 +653,10 @@ internal sealed class BytecodeVirtualMachine
                         {
                             builder.Clear();
                             LoadArgs(args, instruction.Arg);
-                            foreach (var value in args)
+                            foreach (var arg in args)
                             {
                                 Debug.Assert(value is PyStrObject);
-                                builder.Append(((PyStrObject)value).Value);
+                                builder.Append(((PyStrObject)arg).Value);
                             }
                             Stack.Push(PyStrObject.FromString(builder.ToString()));
                         }
@@ -1133,8 +993,100 @@ internal sealed class BytecodeVirtualMachine
                         break;
 
                     default:
-                        throw new NotImplementedException($"OpCode {opCode} is not implemented");
+                        throw new NotImplementedException($"OpCode {instruction.OpCode} is not implemented");
                 }
+
+                #endregion Eval OpCode
+
+                if (intermediateValue is not null)
+                    return intermediateValue;
+
+                if (returnValue is not null)
+                {
+                find_next_finally:
+                    if (!ExceptionHandlers.TryPeek(out var handler))
+                    {
+                        RunToEnd = true;
+                        return returnValue;
+                    }
+
+                    if (handler.State is ExceptionHandler.State_Finally)
+                    {
+                        ExceptionHandlers.Pop();
+                        goto find_next_finally;
+                    }
+
+                    handler.ReturnValue = returnValue;
+                    returnValue = null;
+                    nextIndex = handler.FinallyLabel.Offset;
+                }
+            }
+            catch (PyRuntimeException e)
+            {
+            handle:
+                if (!ExceptionHandlers.TryPeek(out var currentHandler))
+                {
+                    Stack.Clear();
+                    RunToEnd = true;
+                    return PyResult.FromException(e.PyException);
+                }
+
+                if (currentHandler.State is ExceptionHandler.State_Except)
+                {
+                    // raise exception during except body
+
+                    currentHandler.PyException = e.PyException;
+                    nextIndex = currentHandler.FinallyLabel.Offset;
+                }
+                else if (currentHandler.State is ExceptionHandler.State_Finally)
+                {
+                    // raise exception during finally body
+
+                    frame.Exceptions.Clear();
+                    ExceptionHandlers.Pop();
+
+                    goto handle;
+                }
+                else
+                {
+                    Debug.Assert(currentHandler.State is ExceptionHandler.State_Init);
+                    currentHandler.PyException = e.PyException;
+
+                    currentHandler.HitExcept = true;
+                    if (currentHandler.ExceptLabel is not null)
+                    {
+                        currentHandler.State = ExceptionHandler.State_Except;
+                        nextIndex = currentHandler.ExceptLabel.Offset;
+                    }
+                    else
+                    {
+                        nextIndex = currentHandler.FinallyLabel.Offset;
+                    }
+                }
+
+                // TODO: rollback until what?
+                while (currentHandler.StackDepth < Stack.Count)
+                    Stack.Pop();
+
+                e.PyException.WithTraceback(context, overwriteExisting: false);
+                context.EnsureFrameState(frame);
+
+                frame.Exceptions.Push(e.PyException);
+            }
+
+            currentIndex = nextIndex;
+
+            void LoadArgs(List<PyObject> args, int count)
+            {
+                // equals to:
+                // args.Clear();
+                // for (int i = 0; i < count; i++)
+                //     args.Add(Stack.Pop());
+                // args.Reverse();
+
+                CollectionsMarshal.SetCount(args, count);
+                var argsSpan = CollectionsMarshal.AsSpan(args);
+                Stack.PopReversedRange(argsSpan);
             }
         }
 

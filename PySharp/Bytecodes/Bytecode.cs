@@ -1,9 +1,11 @@
-﻿namespace PySharp.Bytecodes;
+﻿using System.Collections.Immutable;
+
+namespace PySharp.Bytecodes;
 
 internal sealed class Bytecode
 {
-    private readonly List<Instruction> _instructions;
-    private readonly List<Label> _labels;
+    private readonly ImmutableArray<Instruction> _instructions;
+    private readonly ImmutableArray<Label> _labels;
 
     public Bytecode(BytecodeGenerator generator)
     {
@@ -11,6 +13,6 @@ internal sealed class Bytecode
         _labels = [.. generator.Labels];
     }
 
-    internal List<Instruction> Instructions => _instructions;
-    internal List<Label> Labels => _labels;
+    internal ImmutableArray<Instruction> Instructions => _instructions;
+    internal ImmutableArray<Label> Labels => _labels;
 }

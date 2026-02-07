@@ -16,6 +16,7 @@ public class PyInterpreter
     private readonly PyCallContext _mainContext;
 
     internal PyEnvironment PyEnvironment => _environment;
+    internal PyCallContext MainContext => _mainContext;
 
     private PyInterpreter(PyEnvironment environment)
     {
