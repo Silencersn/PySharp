@@ -1,10 +1,12 @@
 ﻿using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
+using System;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
+using System.Xml.Linq;
 
 namespace PySharp.AstNodes;
 
@@ -215,6 +217,23 @@ public sealed class ExceptHandlerNode : AstNode
             frame.DeleteVariable(Name).PyUnwrap(context);
 
         return true;
+    }
+
+    internal static (PyExceptionObject? RestExc, PyObject MatchedExc) Split(PyCallContext context, PyExceptionObject exception, PyObject type)
+    {
+        var splitResult = exception.CallMethod(context, "split", [type]).PyUnwrap(context);
+        if (splitResult is not PyTupleObject tuple)
+            throw context.TypeError(PySR.Runtime_TryStmt_SplitReturnsNonTuple, exception.PyType.FullName, splitResult.PyType.FullName);
+
+        if (tuple._array.Length is not 2)
+            throw context.TypeError(PySR.Runtime_TryStmt_SplitReturnsTupleWithWrongSize, exception.PyType.FullName, tuple._array.Length);
+
+        var match = tuple._array[0];
+        var restObj = tuple._array[1];
+        var rest = restObj is PyNoneObject ? null : (restObj as PyExceptionObject) ??
+            throw context.TypeError(PySR.Runtime_TryStmt_ExpectedExceptionOrNone, tuple._array[1].PyType.FullName);
+
+        return (rest, match);
     }
 
     internal bool TryHandleStar(PyCallContext context, PyFrame frame, PyExceptionObject exception, [NotNullWhen(false)] out PyExceptionObject? rest)

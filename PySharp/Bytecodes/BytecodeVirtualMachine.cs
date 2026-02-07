@@ -949,6 +949,29 @@ internal sealed class BytecodeVirtualMachine
                         Stack[-1] = PyBoolObject.FromBoolean(condition(frame.CurrentException));
                         break;
 
+                    case OpCode.CheckEgMatch:
+                        {
+                            var exc = frame.CurrentException;
+                            if (!PyBaseExceptionGroupObjectType.Shared.IsInstance(exc))
+                                exc = PyBaseExceptionGroupObjectType.CreateExceptionGroup(string.Empty, [exc]);
+
+                            var type = Stack.Pop();
+                            var (rest, match) = ExceptHandlerNode.Split(context, exc, type);
+                            frame.Exceptions.Pop();
+                            ExceptionHandlers.Peek().PyException = rest;
+                            frame.Exceptions.Push(rest! /* null if rest is None, OpCode._PopExceptionAndJumpIfNull should handle that */);
+                            Stack.Push(match);
+                        }
+                        break;
+
+                    case OpCode._CheckMatch:
+                        if (Stack.Peek() is PyNoneObject)
+                        {
+                            Stack.Pop();
+                            nextIndex = instruction.LabelOperand.Offset;
+                        }
+                        break;
+
                     case OpCode._LoadExc:
                         Stack.Push(frame.CurrentException);
                         break;
@@ -989,6 +1012,14 @@ internal sealed class BytecodeVirtualMachine
                         boolValue = ((PyBoolObject)value).BoolValue;
                         if (boolValue)
                             goto case OpCode._PopException;
+                        break;
+
+                    case OpCode._PopExceptionAndJumpIfNull:
+                        if (frame.Exceptions.Peek() is null)
+                        {
+                            nextIndex = instruction.LabelOperand.Offset;
+                            goto case OpCode._PopException;
+                        }
                         break;
 
                     case OpCode.MatchSequence:

@@ -62,6 +62,8 @@ internal enum OpCode
 
     RaiseVarArgs,
     CheckExcMatch,
+    CheckEgMatch,
+    _CheckMatch,
     _LoadExc,
 
     _MakeFunctionWithPyArgsDef,
@@ -123,6 +125,7 @@ internal enum OpCode
     _ExitFinally,
     _PopException,
     _PopExceptionIfTrue,
+    _PopExceptionAndJumpIfNull,
 
     _UnaryOp,
 }

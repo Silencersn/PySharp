@@ -31,6 +31,7 @@ partial class BytecodeCompiler
             case AssertNode n: CompileAssert(n); break;
             case IfNode n: CompileIf(n); break;
             case TryNode n: CompileTry(n); break;
+            case TryStarNode n: CompileTryStar(n); break;
             case ForNode n: CompileFor(n); break;
             case WhileNode n: CompileWhile(n); break;
             case WithNode n: CompileWith(n); break;
@@ -169,6 +170,57 @@ partial class BytecodeCompiler
 
             Generator.Emit(OpCode._PopException);
             Generator.Emit(OpCode.Jump, finallyBlockLabel); // jump to finally
+        }
+
+        Generator.MarkLabel(tryStmtEndLabel);
+    }
+
+    private void CompileTryStar(TryStarNode node)
+    {
+        var finallyBlockLabel = Generator.DefineLabel();
+        var exceptorLabels = new Label[node.Exceptors.Length];
+        for (int i = 0; i < node.Exceptors.Length; i++)
+            exceptorLabels[i] = Generator.DefineLabel();
+        var tryStmtEndLabel = Generator.DefineLabel();
+
+        Debug.Assert(exceptorLabels.Length > 0);
+        Generator.Emit(OpCode._SetupExceptionHandler, (exceptorLabels[0], finallyBlockLabel));
+
+        foreach (var stmt in node.Body)
+            CompileStmt(stmt);
+        foreach (var stmt in node.OrElse)
+            CompileStmt(stmt);
+        Generator.MarkLabel(finallyBlockLabel);
+        Generator.Emit(OpCode._EnterFinally);
+        foreach (var stmt in node.FinalBody)
+            CompileStmt(stmt);
+        Generator.Emit(OpCode._ExitFinally);
+        Generator.Emit(OpCode.Jump, tryStmtEndLabel);
+
+        for (int i = 0; i < node.Exceptors.Length; i++)
+        {
+            Generator.MarkLabel(exceptorLabels[i]);
+
+            var exceptor = node.Exceptors[i];
+            Debug.Assert(exceptor.Type is not null);
+            LoadExpr(exceptor.Type);
+            Generator.Emit(OpCode.CheckEgMatch);
+            var nextLabel = i < node.Exceptors.Length - 1 ? exceptorLabels[i + 1] : finallyBlockLabel;
+            Generator.Emit(OpCode._CheckMatch, nextLabel); // if match None, jump to next except or finally
+
+            if (exceptor.Name is not null)
+                StoreExpr(Ast.Name(exceptor.Name) /* TODO: store string directly */);
+            else
+                Generator.Emit(OpCode.PopTop);
+
+            foreach (var stmt in exceptor.Body)
+                CompileStmt(stmt);
+
+            if (exceptor.Name is not null)
+                DeleteExpr(Ast.Name(exceptor.Name) /* TODO: del string directly */);
+
+            Generator.Emit(OpCode._PopExceptionAndJumpIfNull, finallyBlockLabel); // pop exc and jump to finally if rest is None
+            Generator.Emit(OpCode.Jump, nextLabel); // jump to next except or finally
         }
 
         Generator.MarkLabel(tryStmtEndLabel);

@@ -17,6 +17,15 @@ public sealed class PyBaseExceptionGroupObjectType : PyExceptionType<PyBaseExcep
         AppendMethodDescriptor("split", Split);
     }
 
+    internal static PyExceptionObject CreateExceptionGroup(string message, IEnumerable<PyExceptionObject> excs)
+    {
+        var info = new ExceptionGroupInfo(message, [.. excs]);
+        PyTypeObject type = Shared;
+        if (info.Exceptions.All(static exc => PyExceptionObjectType.Shared.IsInstance(exc)))
+            type = PyExceptionGroupObjectType.Shared;
+        return new PyExceptionObject(type, [PyStrObject.FromString(message), ..excs]) { AsGroup = info };
+    }
+
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (!TryParseExceptionGroupInfo(this, args, kwargs, out var info, out var err))
