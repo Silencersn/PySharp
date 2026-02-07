@@ -44,6 +44,16 @@ internal sealed partial class BytecodeCompiler
                     CompileStmt(stmt);
                 break;
 
+            case ExpressionNode n:
+                LoadExpr(n.Body);
+                Generator.Emit(OpCode.PopTop);
+                break;
+
+            case InteractiveNode n:
+                foreach (var stmt in n.Body)
+                    CompileStmt(stmt);
+                break;
+
             default:
                 throw new NotImplementedException();
         }
