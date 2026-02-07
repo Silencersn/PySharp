@@ -1,10 +1,7 @@
 ﻿using PySharp.AstNodes;
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
-using System;
-using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Reflection.Emit;
 
 namespace PySharp.Bytecodes;
 
@@ -26,7 +23,7 @@ partial class BytecodeCompiler
             case ReturnNode n: CompileReturn(n); break;
             case ImportNode n: CompileImport(n); break;
             case ImportFromNode n: CompileImportFrom(n); break;
-            case GlobalNode n: CompileGlobal(n); break; 
+            case GlobalNode n: CompileGlobal(n); break;
             case NonlocalNode n: CompileNonlocal(n); break;
             case AssertNode n: CompileAssert(n); break;
             case IfNode n: CompileIf(n); break;
@@ -60,7 +57,7 @@ partial class BytecodeCompiler
     }
 
     private void CompileAnnAssign(AnnAssignNode node)
-    {        
+    {
         // TODO: __annotations__
 
         if (node.Value is null)
@@ -113,7 +110,7 @@ partial class BytecodeCompiler
     {
         var finallyBlockLabel = Generator.DefineLabel();
         var exceptorLabels = new Label[node.Exceptors.Length];
-        for (int i = 0; i <  node.Exceptors.Length; i++)
+        for (int i = 0; i < node.Exceptors.Length; i++)
             exceptorLabels[i] = Generator.DefineLabel();
         var tryStmtEndLabel = Generator.DefineLabel();
 
@@ -123,7 +120,7 @@ partial class BytecodeCompiler
             Generator.Emit(OpCode._SetupExceptionHandler, (default(Label), finallyBlockLabel));
 
         foreach (var stmt in node.Body)
-                CompileStmt(stmt);
+            CompileStmt(stmt);
         foreach (var stmt in node.OrElse)
             CompileStmt(stmt);
         Generator.MarkLabel(finallyBlockLabel);
@@ -407,7 +404,7 @@ partial class BytecodeCompiler
         Generator.Emit(OpCode.PopJumpIfTrue, noRaisingLabel);
 
         Generator.Emit(OpCode.LoadConst, PyAssertionErrorObjectType.Shared);
-        
+
         if (node.Msg is not null)
         {
             LoadExpr(node.Msg);
@@ -565,7 +562,7 @@ partial class BytecodeCompiler
 
         void CompileMatchCase(int i)
         {
-             var caseNode = node.Cases[i];
+            var caseNode = node.Cases[i];
 
             CompilePattern(caseNode.Pattern, nextCaseLabels[i]);
 
@@ -739,7 +736,7 @@ partial class BytecodeCompiler
                         Generator.Emit(OpCode.PopJumpIfNone, matchFailLabel);
 
                         Generator.Emit(OpCode.UnpackSequence, node.Patterns.Length + node.KwdPatterns.Length);
-                        CompilePatterns([..node.Patterns.Concat(node.KwdPatterns)], matchFailLabel);
+                        CompilePatterns([.. node.Patterns.Concat(node.KwdPatterns)], matchFailLabel);
                     }
                     break;
             }

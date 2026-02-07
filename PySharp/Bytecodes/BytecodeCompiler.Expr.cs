@@ -1,15 +1,7 @@
 ﻿using PySharp.AstNodes;
-using PySharp.CodeAnalysis;
 using PySharp.PyModules.Builtins;
-using PySharp.PyRuntime;
-using PySharp.PyRuntime.Calls;
-using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Reflection.Emit;
-using System.Text;
-using System.Xml.Linq;
 
 namespace PySharp.Bytecodes;
 
@@ -33,7 +25,7 @@ partial class BytecodeCompiler
             case ListNode n: CompileList(n, ctx); break;
             case TupleNode n: CompileTuple(n, ctx); break;
             case SetNode n: CompileSet(n); break;
-            case DictNode n: CompileDict(n); break; 
+            case DictNode n: CompileDict(n); break;
             case ListCompNode n: CompileListComp(n); break;
             case SetCompNode n: CompileSetComp(n); break;
             case DictCompNode n: CompileDictComp(n); break;
@@ -495,7 +487,7 @@ partial class BytecodeCompiler
     {
         var sendLabel = Generator.DefineLabel();
         var endSendLabel = Generator.DefineLabel();
-        
+
         LoadExpr(node.Value);
         Generator.Emit(OpCode.GetYieldFromIter);
         Generator.Emit(OpCode.LoadConst, PyNoneObject.None); // activate the iter
@@ -565,7 +557,7 @@ partial class BytecodeCompiler
         LoadExpr(node.Test);
         Generator.Emit(OpCode.ToBool);
         Generator.Emit(OpCode.PopJumpIfFalse, elseLabel);
-        
+
         LoadExpr(node.Body);
         Generator.Emit(OpCode.Jump, endLabel);
 

@@ -1,9 +1,4 @@
-﻿using PySharp.AstNodes;
-using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace PySharp.Bytecodes;
+﻿namespace PySharp.Bytecodes;
 
 internal sealed class Bytecode
 {

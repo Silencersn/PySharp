@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace PySharp.Bytecodes;
+﻿namespace PySharp.Bytecodes;
 
 internal enum OpCode
 {

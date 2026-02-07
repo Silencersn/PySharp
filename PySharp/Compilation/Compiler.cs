@@ -3,9 +3,6 @@ using PySharp.Bytecodes;
 using PySharp.CodeAnalysis;
 using PySharp.PyRuntime.Calls;
 using PySharp.Tokenization;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace PySharp.Compilation;
 

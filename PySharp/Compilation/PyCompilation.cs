@@ -2,9 +2,6 @@
 using PySharp.Bytecodes;
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime.Calls;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace PySharp.Compilation;
 

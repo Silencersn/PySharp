@@ -431,7 +431,7 @@ public sealed class DictNode : AstExprNode, IAstExprNodeNoSelfPythonException
 
     public ImmutableArray<AstExprNode?> Keys { get; }
     public ImmutableArray<AstExprNode> Values { get; }
-    
+
     public override PyDictObject ExecuteExpr(PyCallContext context, PyFrame frame)
     {
         List<KeyValuePair<PyObject, PyObject>> pairs = new(Keys.Length);

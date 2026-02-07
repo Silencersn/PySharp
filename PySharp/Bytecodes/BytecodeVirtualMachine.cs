@@ -1,19 +1,11 @@
 ﻿using PySharp.AstNodes;
-using PySharp.Compilation;
-using PySharp.PyModules;
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
-using System;
-using System.Collections;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Reflection;
-using System.Reflection.Emit;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Text.RegularExpressions;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace PySharp.Bytecodes;
 
@@ -145,7 +137,7 @@ internal sealed class BytecodeVirtualMachine
 
                 if (returnValue is not null)
                 {
-                    find_next_finally:
+                find_next_finally:
                     if (!ExceptionHandlers.TryPeek(out var handler))
                     {
                         RunToEnd = true;
@@ -165,7 +157,7 @@ internal sealed class BytecodeVirtualMachine
             }
             catch (PyRuntimeException e)
             {
-                handle:
+            handle:
                 if (!ExceptionHandlers.TryPeek(out var currentHandler))
                 {
                     Stack.Clear();
@@ -399,7 +391,7 @@ internal sealed class BytecodeVirtualMachine
 
                             LoadArgs(args, tuple._array.Length);
 
-                            for(int i = 0; i < tuple._array.Length; i++)
+                            for (int i = 0; i < tuple._array.Length; i++)
                             {
                                 var str = (PyStrObject)tuple._array[i];
                                 kwargs.Add(str.Value, args[i]);
