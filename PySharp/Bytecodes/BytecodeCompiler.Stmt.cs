@@ -116,10 +116,9 @@ partial class BytecodeCompiler
             exceptorLabels[i] = Generator.DefineLabel();
         var tryStmtEndLabel = Generator.DefineLabel();
 
+        Generator.Emit(OpCode._SetupFinally, finallyBlockLabel);
         if (exceptorLabels.Length > 0)
-            Generator.Emit(OpCode._SetupExceptionHandler, (exceptorLabels[0], finallyBlockLabel));
-        else
-            Generator.Emit(OpCode._SetupExceptionHandler, (default(Label), finallyBlockLabel));
+            Generator.Emit(OpCode._SetupExcept, exceptorLabels[0]);
 
         foreach (var stmt in node.Body)
             CompileStmt(stmt);
@@ -182,8 +181,9 @@ partial class BytecodeCompiler
             exceptorLabels[i] = Generator.DefineLabel();
         var tryStmtEndLabel = Generator.DefineLabel();
 
+        Generator.Emit(OpCode._SetupFinally, finallyBlockLabel);
         Debug.Assert(exceptorLabels.Length > 0);
-        Generator.Emit(OpCode._SetupExceptionHandler, (exceptorLabels[0], finallyBlockLabel));
+        Generator.Emit(OpCode._SetupExcept, exceptorLabels[0]);
 
         foreach (var stmt in node.Body)
             CompileStmt(stmt);
@@ -511,7 +511,8 @@ partial class BytecodeCompiler
             Generator.Emit(OpCode.Copy, 2); // -> [exit, manager, enter, manager]
             Generator.Emit(OpCode.Call, 1); // -> [exit, manager, value]
 
-            Generator.Emit(OpCode._SetupExceptionHandler, (exceptLabel, finallyLabel));
+            Generator.Emit(OpCode._SetupFinally, finallyLabel);
+            Generator.Emit(OpCode._SetupExcept, exceptLabel);
 
             if (item.OptionalVars is not null)
                 StoreExpr(item.OptionalVars);
@@ -659,7 +660,7 @@ partial class BytecodeCompiler
                         // unpack subject
                         Generator.Emit(OpCode.Copy, 1);
                         if (hasStar)
-                            Generator.Emit(OpCode.UnpackEx, (index, node.Patterns.Length - index - 1));
+                            Generator.Emit(OpCode.UnpackEx, (index << 16) | (node.Patterns.Length - index - 1));
                         else
                             Generator.Emit(OpCode.UnpackSequence, node.Patterns.Length);
 

@@ -44,13 +44,6 @@ internal sealed class BytecodeGenerator
             {
                 instruction = new Instruction(instruction.OpCode, LabelToOffset(label));
             }
-            else if (instruction.Operand is ValueTuple<Label, Label> tuple)
-            {
-                var item1 = tuple.Item1.Id > 0 ? LabelToOffset(tuple.Item1) : -1;
-                var item2 = LabelToOffset(tuple.Item2);
-
-                instruction = new Instruction(instruction.OpCode, (item1, item2));
-            }
             else if (instruction.Operand is PyObject constObj)
             {
                 if (!consts.TryGetValue(constObj, out var index))

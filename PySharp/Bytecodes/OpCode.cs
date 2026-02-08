@@ -116,7 +116,8 @@ internal enum OpCode
     _ImportAllFrom,
 
     // PySharp only
-    _SetupExceptionHandler,
+    _SetupFinally,
+    _SetupExcept,
     _EnterFinally,
     _ExitFinally,
     _PopException,

@@ -537,7 +537,8 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
 
                     case OpCode.UnpackEx:
                         {
-                            var (preCount, postCount) = instruction.GetOperand<(int, int)>();
+                            var postCount = instruction.Arg & ushort.MaxValue;
+                            var preCount = (instruction.Arg >> 16) & ushort.MaxValue;
                             var list = PyUtils.IterableToList(context, Stack.Pop()).PyUnwrap(context);
                             var span = CollectionsMarshal.AsSpan(list._list);
                             if (span.Length < preCount + postCount)
@@ -849,11 +850,13 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                         Stack.Push(frame.CurrentException);
                         break;
 
-                    case OpCode._SetupExceptionHandler:
-                        Debug.Assert(instruction.Operand is not null);
-                        var labelPair = ((int, int))instruction.Operand;
-                        var handler = new ExceptionHandler(labelPair.Item1, labelPair.Item2) { StackDepth = Stack.Count };
+                    case OpCode._SetupFinally:
+                        var handler = new ExceptionHandler(-1, instruction.Arg) { StackDepth = Stack.Count };
                         ExceptionHandlers.Push(handler);
+                        break;
+
+                    case OpCode._SetupExcept:
+                        ExceptionHandlers.Peek().ExceptOffset = instruction.Arg;
                         break;
 
                     case OpCode._EnterFinally:

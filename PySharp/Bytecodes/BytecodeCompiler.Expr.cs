@@ -313,7 +313,7 @@ partial class BytecodeCompiler
             if (starred is null)
                 Generator.Emit(OpCode.UnpackSequence, elts.Length);
             else
-                Generator.Emit(OpCode.UnpackEx, (index, elts.Length - index - 1));
+                Generator.Emit(OpCode.UnpackEx, (index << 16) | (elts.Length - index - 1));
             foreach (var elt in elts)
                 StoreExpr(elt);
         }
