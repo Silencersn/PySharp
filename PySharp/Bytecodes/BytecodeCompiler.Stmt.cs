@@ -111,7 +111,7 @@ partial class BytecodeCompiler
     private void CompileTry(TryNode node)
     {
         var finallyBlockLabel = Generator.DefineLabel();
-        var exceptorLabels = new Label[node.Exceptors.Length];
+        Span<Label> exceptorLabels = stackalloc Label[node.Exceptors.Length];
         for (int i = 0; i < node.Exceptors.Length; i++)
             exceptorLabels[i] = Generator.DefineLabel();
         var tryStmtEndLabel = Generator.DefineLabel();
@@ -177,7 +177,7 @@ partial class BytecodeCompiler
     private void CompileTryStar(TryStarNode node)
     {
         var finallyBlockLabel = Generator.DefineLabel();
-        var exceptorLabels = new Label[node.Exceptors.Length];
+        Span<Label> exceptorLabels = stackalloc Label[node.Exceptors.Length];
         for (int i = 0; i < node.Exceptors.Length; i++)
             exceptorLabels[i] = Generator.DefineLabel();
         var tryStmtEndLabel = Generator.DefineLabel();
@@ -549,7 +549,7 @@ partial class BytecodeCompiler
 
     private void CompileMatch(MatchNode node)
     {
-        var nextCaseLabels = new Label[node.Cases.Length];
+        Span<Label> nextCaseLabels = stackalloc Label[node.Cases.Length];
         for (int i = 0; i < node.Cases.Length; i++)
             nextCaseLabels[i] = Generator.DefineLabel();
         var matchEndLabel = nextCaseLabels[^1];
@@ -557,12 +557,12 @@ partial class BytecodeCompiler
         LoadExpr(node.Subject);
         for (int i = 0; i < node.Cases.Length; i++)
         {
-            CompileMatchCase(i);
+            CompileMatchCase(i, nextCaseLabels);
             Generator.MarkLabel(nextCaseLabels[i]);
         }
         Generator.Emit(OpCode.PopTop);
 
-        void CompileMatchCase(int i)
+        void CompileMatchCase(int i, Span<Label> nextCaseLabels)
         {
             var caseNode = node.Cases[i];
 
@@ -624,7 +624,7 @@ partial class BytecodeCompiler
 
                 case MatchOrNode node:
                     {
-                        var nextPatternLabels = new Label[node.Patterns.Length];
+                        Span<Label> nextPatternLabels = stackalloc Label[node.Patterns.Length];
                         for (int i = 0; i < node.Patterns.Length - 1; i++)
                             nextPatternLabels[i] = Generator.DefineLabel();
                         nextPatternLabels[^1] = matchFailLabel;
@@ -746,7 +746,7 @@ partial class BytecodeCompiler
             void CompilePatterns(IReadOnlyList<AstPatternNode> patterns, Label matchFailLabel)
             {
                 var patternsEndLabel = Generator.DefineLabel();
-                var popTopLabels = new Label[patterns.Count];
+                Span<Label> popTopLabels = stackalloc Label[patterns.Count];
 
                 for (int i = 0; i < patterns.Count; i++)
                 {

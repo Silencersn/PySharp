@@ -10,7 +10,6 @@ internal readonly record struct Instruction
 
     public string StringOperand => GetOperand<string>();
     public PyObject PyObjectOperand => GetOperand<PyObject>();
-    public Label LabelOperand => GetOperand<Label>();
 
     public Instruction(OpCode opCode)
     {
@@ -42,17 +41,5 @@ internal readonly record struct Instruction
     public override string ToString()
     {
         return $"{{opcode={OpCode},argval={Operand ?? Arg}}}";
-    }
-}
-
-internal record class Label
-{
-    public readonly int Id;
-    public int Offset;
-
-    public Label(int id, int offset)
-    {
-        Id = id;
-        Offset = offset;
     }
 }

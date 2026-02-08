@@ -57,18 +57,18 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
     {
         public const int State_Init = 0, State_Except = 1, State_Finally = 2, State_End = 3;
 
-        public Label? ExceptLabel;
-        public Label FinallyLabel;
+        public int ExceptOffset;
+        public int FinallyOffset;
         public int State;
         public PyExceptionObject? PyException;
         public int StackDepth;
         public PyObject? ReturnValue;
         public bool HitExcept;
 
-        public ExceptionHandler(Label? exceptionHandlerLabel, Label finallyLabel)
+        public ExceptionHandler(int exceptOffset, int finallyOffset)
         {
-            ExceptLabel = exceptionHandlerLabel;
-            FinallyLabel = finallyLabel;
+            ExceptOffset = exceptOffset;
+            FinallyOffset = finallyOffset;
             State = State_Init;
             PyException = null;
         }
@@ -319,7 +319,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                         break;
 
                     case OpCode.Jump:
-                        nextIndex = instruction.LabelOperand.Offset;
+                        nextIndex = instruction.Arg;
                         break;
 
                     case OpCode.PopJumpIfFalse:
@@ -327,7 +327,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                             value = Stack.Pop();
                             boolValue = ((PyBoolObject)value).BoolValue;
                             if (!boolValue)
-                                nextIndex = instruction.LabelOperand.Offset;
+                                nextIndex = instruction.Arg;
                         }
                         break;
 
@@ -336,7 +336,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                             value = Stack.Pop();
                             boolValue = ((PyBoolObject)value).BoolValue;
                             if (boolValue)
-                                nextIndex = instruction.LabelOperand.Offset;
+                                nextIndex = instruction.Arg;
                         }
                         break;
 
@@ -344,7 +344,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                         {
                             value = Stack.Pop();
                             if (value is PyNoneObject)
-                                nextIndex = instruction.LabelOperand.Offset;
+                                nextIndex = instruction.Arg;
                         }
                         break;
 
@@ -355,7 +355,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                     case OpCode.ForIter:
                         result = PySpecialMethods.Next(context, Stack.Peek());
                         if (result.IsStopIteration)
-                            nextIndex = instruction.LabelOperand.Offset;
+                            nextIndex = instruction.Arg;
                         else
                             Stack.Push(result.PyUnwrap(context));
                         break;
@@ -618,7 +618,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                             {
                                 // replace sent value with received value by 'yield from'
                                 Stack[-1] = result.Exception.Args.FirstOrDefault(PyNoneObject.None);
-                                nextIndex = instruction.LabelOperand.Offset;
+                                nextIndex = instruction.Arg;
                             }
                             else
                             {
@@ -839,7 +839,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                         if (Stack.Peek() is PyNoneObject)
                         {
                             Stack.Pop();
-                            nextIndex = instruction.LabelOperand.Offset;
+                            nextIndex = instruction.Arg;
                         }
                         break;
 
@@ -849,7 +849,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
 
                     case OpCode._SetupExceptionHandler:
                         Debug.Assert(instruction.Operand is not null);
-                        var labelPair = ((Label?, Label))instruction.Operand;
+                        var labelPair = ((int, int))instruction.Operand;
                         var handler = new ExceptionHandler(labelPair.Item1, labelPair.Item2) { StackDepth = Stack.Count };
                         ExceptionHandlers.Push(handler);
                         break;
@@ -888,7 +888,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                     case OpCode._PopExceptionAndJumpIfNull:
                         if (frame.Exceptions.Peek() is null)
                         {
-                            nextIndex = instruction.LabelOperand.Offset;
+                            nextIndex = instruction.Arg;
                             goto case OpCode._PopException;
                         }
                         break;
@@ -1037,7 +1037,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
 
                     handler.ReturnValue = returnValue;
                     returnValue = null;
-                    nextIndex = handler.FinallyLabel.Offset;
+                    nextIndex = handler.FinallyOffset;
                 }
             }
             catch (PyRuntimeException e)
@@ -1055,7 +1055,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                     // raise exception during except body
 
                     currentHandler.PyException = e.PyException;
-                    nextIndex = currentHandler.FinallyLabel.Offset;
+                    nextIndex = currentHandler.FinallyOffset;
                 }
                 else if (currentHandler.State is ExceptionHandler.State_Finally)
                 {
@@ -1072,14 +1072,14 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                     currentHandler.PyException = e.PyException;
 
                     currentHandler.HitExcept = true;
-                    if (currentHandler.ExceptLabel is not null)
+                    if (currentHandler.ExceptOffset is not -1)
                     {
                         currentHandler.State = ExceptionHandler.State_Except;
-                        nextIndex = currentHandler.ExceptLabel.Offset;
+                        nextIndex = currentHandler.ExceptOffset;
                     }
                     else
                     {
-                        nextIndex = currentHandler.FinallyLabel.Offset;
+                        nextIndex = currentHandler.FinallyOffset;
                     }
                 }
 
