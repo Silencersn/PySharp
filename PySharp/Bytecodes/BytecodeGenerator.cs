@@ -40,9 +40,9 @@ internal sealed class BytecodeGenerator
 
         foreach (ref Instruction instruction in instructions)
         {
-            if (instruction.Operand is Label label)
+            if (instruction.Arg < 0)
             {
-                instruction = new Instruction(instruction.OpCode, LabelToOffset(label));
+                instruction = new Instruction(instruction.OpCode, LabelToOffset(-instruction.Arg));
             }
             else if (instruction.Operand is PyObject constObj)
             {
@@ -56,17 +56,21 @@ internal sealed class BytecodeGenerator
                     names[name] = index = names.Count;
                 instruction = new Instruction(instruction.OpCode, index);
             }
+            else
+            {
+                Debug.Assert(instruction.Operand is null);
+            }
         }
 
         Consts = [.. consts.Keys];
         Names = [.. names.Keys];
 
-        int LabelToOffset(Label label)
+        int LabelToOffset(int labelId)
         {
-            Debug.Assert(label.Id is not 0);
-            Debug.Assert(_labelOffsets[label.Id - 1] >= 0);
+            Debug.Assert(labelId > 0);
+            Debug.Assert(_labelOffsets[labelId - 1] >= 0);
 
-            return _labelOffsets[label.Id - 1];
+            return _labelOffsets[labelId - 1];
         }
     }
 
@@ -77,12 +81,26 @@ internal sealed class BytecodeGenerator
 
     public void Emit(OpCode opCode, int arg)
     {
+        Debug.Assert(arg >= 0, "Negative arg is used for label.");
+
         _instructions.Add(new Instruction(opCode, arg));
     }
 
-    public void Emit(OpCode opCode, object? operand)
+    public void Emit(OpCode opCode, Label label)
     {
-        _instructions.Add(new Instruction(opCode, operand));
+        Debug.Assert(label.Id > 0);
+
+        _instructions.Add(new Instruction(opCode, -label.Id));
+    }
+
+    public void Emit(OpCode opCode, PyObject pyObject)
+    {
+        _instructions.Add(new Instruction(opCode, pyObject));
+    }
+
+    public void Emit(OpCode opCode, string name)
+    {
+        _instructions.Add(new Instruction(opCode, name));
     }
 
     public Label DefineLabel()
@@ -94,7 +112,7 @@ internal sealed class BytecodeGenerator
 
     public void MarkLabel(Label label)
     {
-        Debug.Assert(label.Id is not 0);
+        Debug.Assert(label.Id > 0);
         Debug.Assert(_labelOffsets[label.Id - 1] < 0);
 
         _labelOffsets[label.Id - 1] = Instructions.Count;

@@ -607,7 +607,7 @@ partial class BytecodeCompiler
         }
 
         Generator.Emit(OpCode.LoadConst, codeObj);
-        Generator.Emit(OpCode._MakeFunctionWithPyArgsDef, node.Args);
+        Generator.Emit(OpCode._MakeFunctionWithPyArgsDef);
     }
 
     private void CompileJoinedStr(JoinedStrNode node)

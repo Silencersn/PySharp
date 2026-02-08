@@ -465,7 +465,7 @@ partial class BytecodeCompiler
     {
         Generator.Emit(OpCode.LoadConst, PyIntObject.FromInteger(node.Level));
         Generator.Emit(OpCode.LoadConst, PyTupleObject.CreateTuple(node.Names.Select(static alias => PyStrObject.FromString(alias.Name))));
-        Generator.Emit(OpCode.ImportName, node.Module);
+        Generator.Emit(OpCode.ImportName, node.Module ?? string.Empty);
 
         if (node.Names.Length is 1 && node.Names[0].Name is "*")
         {
