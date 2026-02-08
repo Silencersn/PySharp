@@ -13,36 +13,36 @@ public class PyIntObject : PyObject
     internal const int NegativePoolSize = 6;
     internal const int PositivesPoolSize = 257;
 
-    private static readonly PyIntObject[] _negatives;
-    private static readonly PyIntObject[] _positives;
+    internal static readonly PyIntObject[] NegativeInts;
+    internal static readonly PyIntObject[] PositiveInts;
+
     public static PyIntObject Zero { get; }
     public static PyIntObject One { get; }
     public static PyIntObject MinusOne { get; }
 
     static PyIntObject()
     {
-        _negatives = new PyIntObject[NegativePoolSize];
-        _positives = new PyIntObject[PositivesPoolSize];
+        NegativeInts = new PyIntObject[NegativePoolSize];
+        PositiveInts = new PyIntObject[PositivesPoolSize];
 
-        for (int i = 0; i < _negatives.Length; i++)
+        for (int i = 0; i < NegativeInts.Length; i++)
         {
-            _negatives[i] = new PyIntObject(-i);
+            NegativeInts[i] = new PyIntObject(-i);
         }
-        for (int i = 0; i < _positives.Length; i++)
+        for (int i = 0; i < PositiveInts.Length; i++)
         {
-            _positives[i] = new PyIntObject(i);
+            PositiveInts[i] = new PyIntObject(i);
         }
 
-        Zero = _positives[0];
-        One = _positives[1];
-        MinusOne = _negatives[1];
+        Zero = PositiveInts[0];
+        One = PositiveInts[1];
+        MinusOne = NegativeInts[1];
     }
 
     public override PyTypeObject DefaultPyType => PyIntObjectType.Shared;
 
     public BigInteger Value { get; internal set; }
     public int Int32Value => (int)Value;
-    public int UncheckedInt32Value => unchecked((int)Value);
 
     internal PyIntObject(BigInteger value)
     {
@@ -55,10 +55,10 @@ public class PyIntObject : PyObject
         if (value < PositivesPoolSize)
         {
             if (value >= 0)
-                return _positives[value];
+                return PositiveInts[value];
 
             if (value > -NegativePoolSize)
-                return _negatives[-value];
+                return NegativeInts[-value];
         }
 
         return new PyIntObject(value);
@@ -68,10 +68,10 @@ public class PyIntObject : PyObject
         if (value < PositivesPoolSize)
         {
             if (value >= 0)
-                return _positives[value];
+                return PositiveInts[value];
 
             if (value > -NegativePoolSize)
-                return _negatives[-value];
+                return NegativeInts[-value];
         }
 
         return new PyIntObject(value);
@@ -81,10 +81,10 @@ public class PyIntObject : PyObject
         if (value < PositivesPoolSize)
         {
             if (value >= 0)
-                return _positives[(int)value];
+                return PositiveInts[(int)value];
 
             if (value > -NegativePoolSize)
-                return _negatives[-(int)value];
+                return NegativeInts[-(int)value];
         }
 
         return new PyIntObject(value);

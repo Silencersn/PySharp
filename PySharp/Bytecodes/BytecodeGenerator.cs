@@ -1,4 +1,7 @@
 ﻿using PySharp.CodeAnalysis;
+using PySharp.PyModules.Builtins;
+using PySharp.PyRuntime.Comparison;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
@@ -9,6 +12,7 @@ internal sealed class BytecodeGenerator
     private readonly List<Instruction> _instructions = [];
     private readonly List<int> _labelOffsets = [];
     internal readonly OrderedDictionary<int, CodeMetaInfo?> _infos = [];
+    internal ImmutableArray<PyObject> Consts = [];
 
     private Stack<CodeMetaInfo?> MetaInfoStack { get; } = [];
     internal List<Instruction> Instructions => _instructions;
@@ -26,9 +30,12 @@ internal sealed class BytecodeGenerator
         _infos[_instructions.Count] = MetaInfoStack.TryPeek(out var info) ? info : null;
     }
 
-    internal void FillWithLabelOffsets()
+    internal void Complete()
     {
         var instructions = CollectionsMarshal.AsSpan(_instructions);
+
+        OrderedDictionary<PyObject, int> consts = new(PyObjectConstEqualityComparer.Shared);
+
         foreach (ref Instruction instruction in instructions)
         {
             if (instruction.Operand is Label label)
@@ -42,7 +49,15 @@ internal sealed class BytecodeGenerator
 
                 instruction = new Instruction(instruction.OpCode, (item1, item2));
             }
+            else if (instruction.Operand is PyObject constObj)
+            {
+                if (!consts.TryGetValue(constObj, out var index))
+                    consts[constObj] = index = consts.Count;
+                instruction = new Instruction(instruction.OpCode, index);
+            }
         }
+
+        Consts = [.. consts.Keys];
 
         int LabelToOffset(Label label)
         {

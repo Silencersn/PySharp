@@ -59,6 +59,6 @@ public sealed class PyObjectComparer : IEqualityComparer<PyObject>, IComparer<Py
         if (hash.IsError)
             throw new PyRuntimeException(Context, hash.Exception);
 
-        return hash.Value.UncheckedInt32Value;
+        return hash.Value.Value.GetHashCode();
     }
 }

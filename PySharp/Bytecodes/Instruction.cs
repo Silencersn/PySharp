@@ -9,7 +9,6 @@ internal readonly record struct Instruction
     public readonly object? Operand;
 
     public string StringOperand => GetOperand<string>();
-    public PyObject PyObjectOperand => GetOperand<PyObject>();
 
     public Instruction(OpCode opCode)
     {

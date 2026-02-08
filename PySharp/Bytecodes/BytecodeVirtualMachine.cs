@@ -83,6 +83,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
     {
         ref int currentIndex = ref InstructionIndex;
         var instructions = Bytecode.Instructions.AsSpan();
+        var consts = Bytecode.Consts.AsSpan();
         var length = instructions.Length;
 
         // cache, clear before using
@@ -110,7 +111,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                         break;
 
                     case OpCode.LoadConst:
-                        Stack.Push(instruction.PyObjectOperand);
+                        Stack.Push(consts[instruction.Arg]);
                         break;
 
                     case OpCode.LoadSpecial:

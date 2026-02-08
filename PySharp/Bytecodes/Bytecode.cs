@@ -1,4 +1,5 @@
 ﻿using PySharp.CodeAnalysis;
+using PySharp.PyModules.Builtins;
 using System.Collections.Immutable;
 
 namespace PySharp.Bytecodes;
@@ -7,14 +8,17 @@ internal sealed class Bytecode
 {
     private readonly ImmutableArray<Instruction> _instructions;
     private readonly ImmutableArray<KeyValuePair<int, CodeMetaInfo?>> _infos = [];
+    private readonly ImmutableArray<PyObject> _consts;
 
     public Bytecode(BytecodeGenerator generator)
     {
-        generator.FillWithLabelOffsets();
+        generator.Complete();
         _instructions = [.. generator.Instructions];
         _infos = [.. generator._infos.Reverse()];
+        _consts = generator.Consts;
     }
 
     internal ImmutableArray<Instruction> Instructions => _instructions;
     internal ImmutableArray<KeyValuePair<int, CodeMetaInfo?>> MetaInfos => _infos;
+    internal ImmutableArray<PyObject> Consts => _consts;
 }
