@@ -736,14 +736,11 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                         {
                             var codeObj = (PyCodeObject)Stack.Pop();
 
-                            var argsNode = instruction.GetOperand<AstArgumentsNode>();
-                            PyObject?[] kwDefaults = new PyObject?[argsNode.KwDefaults.Length];
-                            for (int i = kwDefaults.Length - 1; i >= 0; i--)
-                                kwDefaults[i] = Stack.Pop();
-                            PyObject[] defaults = new PyObject[argsNode.Defaults.Length];
-                            for (int i = defaults.Length - 1; i >= 0; i--)
-                                defaults[i] = Stack.Pop();
-                            var def = PyArgsDef.FromAstAndObjs(argsNode, kwDefaults, defaults);
+                            PyObject?[] kwDefaults = new PyObject?[codeObj.KwDefaultsCount];
+                            Stack.PopReversedRange(kwDefaults!);
+                            PyObject[] defaults = new PyObject[codeObj.DefaultsCount];
+                            Stack.PopReversedRange(defaults);
+                            var def = PyArgsDef.FromCodeObjectAndDefaults(codeObj, kwDefaults, defaults);
 
                             var caller = GetCaller(codeObj);
                             var func = new PyFunctionObject(

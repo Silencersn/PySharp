@@ -225,6 +225,19 @@ public sealed class PyArgsDef
             node.KwArg?.Arg
             );
     }
+    internal static PyArgsDef FromCodeObjectAndDefaults(PyCodeObject code, PyObject?[] kwDefaults, PyObject[] defaults)
+    {
+        var args = code.VarNames.AsSpan()[..(code.ArgCount + code.KwOnlyArgCount)];
+        return new PyArgsDef(
+            [.. args[..code.PosOnlyArgCount]],
+            [.. args[code.PosOnlyArgCount..code.ArgCount]],
+            [.. args[code.ArgCount..]],
+            kwDefaults,
+            defaults,
+            code.VarArg,
+            code.KwArg
+            );
+    }
 
     public bool TryParse(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, [NotNullWhen(true)] out PyArguments? result)
     {

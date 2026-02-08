@@ -334,7 +334,7 @@ partial class BytecodeCompiler
         }
 
         Generator.Emit(OpCode.LoadConst, codeObj);
-        Generator.Emit(OpCode._MakeFunctionWithPyArgsDef, node.Args);
+        Generator.Emit(OpCode._MakeFunctionWithPyArgsDef);
 
         for (int i = 0; i < node.DecoratorList.Length; i++)
             Generator.Emit(OpCode.Call, 1);

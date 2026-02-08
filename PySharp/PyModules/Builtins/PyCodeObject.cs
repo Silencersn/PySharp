@@ -13,6 +13,11 @@ public sealed class PyCodeObject : PyObject
 
     // TODO: temp property, will be removed in future versions
     internal OrderedDictionary<string, PyVariableType> Variables { get; }
+    internal string? VarArg { get; }
+    internal string? KwArg { get; }
+    internal int DefaultsCount { get; }
+    internal int KwDefaultsCount { get; }
+
 
     public string Name { get; }
     public string QualName { get; }
@@ -38,7 +43,13 @@ public sealed class PyCodeObject : PyObject
 
         Name = scope.Name;
         QualName = scope.QualName;
+
         var arg = scope.ArgumentsNode;
+        VarArg = arg.VarArg?.Arg;
+        KwArg = arg.KwArg?.Arg;
+        DefaultsCount = arg.Defaults.Length;
+        KwDefaultsCount = arg.KwDefaults.Length;
+
         ArgCount = arg.PosonlyArgs.Length + arg.Args.Length;
         PosOnlyArgCount = arg.PosonlyArgs.Length;
         KwOnlyArgCount = arg.KwonlyArgs.Length;
