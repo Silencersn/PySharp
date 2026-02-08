@@ -27,14 +27,6 @@ internal readonly record struct Instruction
         Operand = operand;
     }
 
-    internal T GetOperand<T>()
-    {
-        if (Operand is not T objOfT)
-            throw new InvalidOperationException();
-
-        return objOfT;
-    }
-
     public override string ToString()
     {
         return $"{{opcode={OpCode},argval={Operand ?? Arg}}}";

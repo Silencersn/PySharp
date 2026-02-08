@@ -760,9 +760,12 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
 
                     case OpCode._MakeGeneratorExp:
                         {
+                            var codeObj = (PyCodeObject)Stack.Pop();
+                            Debug.Assert(codeObj.Bytecode is not null);
+
                             var inlineFrame = frame.CreateInlineFrame(FrameType.Comprehension);
-                            var vm = new BytecodeVirtualMachine(context, instruction.GetOperand<Bytecode>());
-                            var generator = new PyBytecodeGeneratorObject("<genexpr>", inlineFrame, vm);
+                            var vm = new BytecodeVirtualMachine(context, codeObj.Bytecode);
+                            var generator = new PyBytecodeGeneratorObject(codeObj.Name, inlineFrame, vm);
 
                             Stack.Push(generator);
                         }

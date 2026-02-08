@@ -521,7 +521,9 @@ partial class BytecodeCompiler
 
         Generator = currentGenerator;
 
-        Generator.Emit(OpCode._MakeGeneratorExp, bytecode);
+        var codeObj = new PyCodeObject("<genexpr>", bytecode);
+        Generator.Emit(OpCode.LoadConst, codeObj);
+        Generator.Emit(OpCode._MakeGeneratorExp);
     }
 
     private void CompileNamedExpr(NamedExprNode node)

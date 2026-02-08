@@ -95,6 +95,32 @@ public sealed class PyCodeObject : PyObject
         PyAttributes.Add("co_cellvars", PyTupleObject.Empty);
         PyAttributes.Add("co_freevars", PyTupleObject.Empty);
     }
+
+    internal PyCodeObject(string name, Bytecode bytecode)
+    {
+        // used by generator expression
+
+        LocalsTable = FrozenDictionary<string, int>.Empty;
+        Bytecode = bytecode;
+        Variables = null!; // Variables is never used
+
+        Name = name;
+        QualName = name;
+        NLocals = 0;
+        VarNames = [];
+        CellVars = [];
+        FreeVars = [];
+
+        PyAttributes.Add("co_name", PyStrObject.FromString(Name));
+        PyAttributes.Add("co_qualname", PyStrObject.FromString(QualName));
+        PyAttributes.Add("co_argcount", PyIntObject.Zero);
+        PyAttributes.Add("co_posonlyargcount", PyIntObject.Zero);
+        PyAttributes.Add("co_kwonlyargcount", PyIntObject.Zero);
+        PyAttributes.Add("co_nlocals", PyIntObject.Zero);
+        PyAttributes.Add("co_varnames", PyTupleObject.Empty);
+        PyAttributes.Add("co_cellvars", PyTupleObject.Empty);
+        PyAttributes.Add("co_freevars", PyTupleObject.Empty);
+    }
 }
 
 public sealed class PyCodeObjectType : PyTypeObject<PyCodeObjectType, PyCodeObject>
