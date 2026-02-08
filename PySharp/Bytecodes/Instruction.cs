@@ -8,8 +8,6 @@ internal readonly record struct Instruction
     public readonly int Arg;
     public readonly object? Operand;
 
-    public string StringOperand => GetOperand<string>();
-
     public Instruction(OpCode opCode)
     {
         OpCode = opCode;

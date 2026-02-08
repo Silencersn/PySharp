@@ -13,6 +13,7 @@ internal sealed class BytecodeGenerator
     private readonly List<int> _labelOffsets = [];
     internal readonly OrderedDictionary<int, CodeMetaInfo?> _infos = [];
     internal ImmutableArray<PyObject> Consts = [];
+    internal ImmutableArray<string> Names = [];
 
     private Stack<CodeMetaInfo?> MetaInfoStack { get; } = [];
     internal List<Instruction> Instructions => _instructions;
@@ -35,6 +36,7 @@ internal sealed class BytecodeGenerator
         var instructions = CollectionsMarshal.AsSpan(_instructions);
 
         OrderedDictionary<PyObject, int> consts = new(PyObjectConstEqualityComparer.Shared);
+        OrderedDictionary<string, int> names = new(StringComparer.Ordinal);
 
         foreach (ref Instruction instruction in instructions)
         {
@@ -55,9 +57,16 @@ internal sealed class BytecodeGenerator
                     consts[constObj] = index = consts.Count;
                 instruction = new Instruction(instruction.OpCode, index);
             }
+            else if (instruction.Operand is string name)
+            {
+                if (!names.TryGetValue(name, out var index))
+                    names[name] = index = names.Count;
+                instruction = new Instruction(instruction.OpCode, index);
+            }
         }
 
         Consts = [.. consts.Keys];
+        Names = [.. names.Keys];
 
         int LabelToOffset(Label label)
         {
