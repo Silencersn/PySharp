@@ -167,7 +167,8 @@ public sealed partial class PyFrame
         {
             _variables = _variables,
             _outerNonInlineFrame = _outerNonInlineFrame ?? this,
-            SemanticModel = SemanticModel
+            SemanticModel = SemanticModel,
+            MetaInfoProvider = MetaInfoProvider
         };
         return inlineFrame;
 

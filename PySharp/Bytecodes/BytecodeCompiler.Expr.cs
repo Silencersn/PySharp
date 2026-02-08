@@ -13,6 +13,7 @@ partial class BytecodeCompiler
 
     private void CompileExpr(AstExprNode node, ExprContextType ctx)
     {
+        Generator.PushMetaInfo(node.MetaInfo);
         switch (node)
         {
             case ConstantNode n: CompileConstant(n); break;
@@ -43,6 +44,7 @@ partial class BytecodeCompiler
             case StarredNode n: CompileStarred(n, ctx); break;
             default: throw new NotImplementedException();
         }
+        Generator.PopMetaInfo();
     }
 
     private void CompileConstant(ConstantNode node)

@@ -1,4 +1,5 @@
 ﻿using PySharp.AstNodes;
+using PySharp.CodeAnalysis;
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
@@ -9,7 +10,7 @@ using System.Text;
 
 namespace PySharp.Bytecodes;
 
-internal sealed class BytecodeVirtualMachine
+internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
 {
     // States
     internal int InstructionIndex;
@@ -21,6 +22,23 @@ internal sealed class BytecodeVirtualMachine
     private PyCallContext Context { get; }
     private Bytecode Bytecode { get; }
 
+    CodeMetaInfo? ICodeMetaInfoProvider.MetaInfo
+    {
+        get
+        {
+            var infos = Bytecode.MetaInfos;
+            var index = InstructionIndex;
+
+            // TODO: do not O(n)
+            foreach (var pair in infos)
+            {
+                if (pair.Key <= index)
+                    return pair.Value;
+            }
+
+            return null;
+        }
+    }
 
     internal BytecodeVirtualMachine(PyCallContext context, Bytecode bytecode)
     {
@@ -31,6 +49,7 @@ internal sealed class BytecodeVirtualMachine
     internal PyResult Eval()
     {
         var frame = Context.CurrentFrame;
+        using var withMetaInfo = new MetaInfoProviderSetter(frame, this);
         return Eval(Context, frame);
     }
 
@@ -62,7 +81,7 @@ internal sealed class BytecodeVirtualMachine
 
     internal PyResult Eval(PyCallContext context, PyFrame frame)
     {
-        int currentIndex = InstructionIndex;
+        ref int currentIndex = ref InstructionIndex;
         var instructions = Bytecode.Instructions.AsSpan();
         var length = instructions.Length;
 
@@ -655,7 +674,7 @@ internal sealed class BytecodeVirtualMachine
                             LoadArgs(args, instruction.Arg);
                             foreach (var arg in args)
                             {
-                                Debug.Assert(value is PyStrObject);
+                                Debug.Assert(arg is PyStrObject);
                                 builder.Append(((PyStrObject)arg).Value);
                             }
                             Stack.Push(PyStrObject.FromString(builder.ToString()));

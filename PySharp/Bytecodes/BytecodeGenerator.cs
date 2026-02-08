@@ -1,12 +1,28 @@
-﻿namespace PySharp.Bytecodes;
+﻿using PySharp.CodeAnalysis;
+
+namespace PySharp.Bytecodes;
 
 internal sealed class BytecodeGenerator
 {
     private readonly List<Instruction> _instructions = [];
     private readonly List<Label> _labels = [];
+    internal readonly OrderedDictionary<int, CodeMetaInfo?> _infos = [];
 
+    private Stack<CodeMetaInfo?> MetaInfoStack { get; } = [];
     internal List<Instruction> Instructions => _instructions;
     internal List<Label> Labels => _labels;
+
+    internal void PushMetaInfo(CodeMetaInfo? info)
+    {
+        MetaInfoStack.Push(info);
+        _infos[_instructions.Count] = info;
+    }
+
+    internal void PopMetaInfo()
+    {
+        MetaInfoStack.Pop();
+        _infos[_instructions.Count] = MetaInfoStack.TryPeek(out var info) ? info : null;
+    }
 
     public void Emit(OpCode opCode)
     {

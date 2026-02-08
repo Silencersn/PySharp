@@ -9,6 +9,7 @@ partial class BytecodeCompiler
 {
     private void CompileStmt(AstStmtNode node)
     {
+        Generator.PushMetaInfo(node.MetaInfo);
         switch (node)
         {
             case ExprNode n: CompileExpr(n); break;
@@ -37,6 +38,7 @@ partial class BytecodeCompiler
             case ClassDefNode n: CompileClassDef(n); break;
             default: throw new NotImplementedException();
         }
+        Generator.PopMetaInfo();
     }
 
     private void CompileExpr(ExprNode node)

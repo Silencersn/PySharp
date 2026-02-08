@@ -37,6 +37,7 @@ internal sealed partial class BytecodeCompiler
     private void CompileMod(AstModNode node)
     {
         Debug.Assert(VariableScope is RootVariableScope);
+        Generator.PushMetaInfo(node.MetaInfo);
         switch (node)
         {
             case ModuleNode n:
@@ -57,5 +58,6 @@ internal sealed partial class BytecodeCompiler
             default:
                 throw new NotImplementedException();
         }
+        Generator.PopMetaInfo();
     }
 }
