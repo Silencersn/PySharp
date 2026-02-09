@@ -336,6 +336,14 @@ partial class BytecodeCompiler
         Generator.Emit(OpCode.LoadConst, codeObj);
         Generator.Emit(OpCode._MakeFunctionWithPyArgsDef);
 
+        if (AstUtils.TryGetDoc(node.Body, out var doc))
+        {
+            Generator.Emit(OpCode.Copy, 1);
+            Generator.Emit(OpCode.LoadConst, doc);
+            Generator.Emit(OpCode.Swap, 2);
+            Generator.Emit(OpCode.StoreAttr, PySpecialNames.Doc);
+        }
+
         for (int i = 0; i < node.DecoratorList.Length; i++)
             Generator.Emit(OpCode.Call, 1);
 
@@ -375,6 +383,12 @@ partial class BytecodeCompiler
             Generator.Emit(OpCode.MakeCell, PySpecialNames.Class);
             Generator.Emit(OpCode._LoadClass);
             Generator.Emit(OpCode.StoreDeref, PySpecialNames.Class);
+        }
+
+        if (AstUtils.TryGetDoc(node.Body, out var doc))
+        {
+            Generator.Emit(OpCode.LoadConst, doc);
+            StoreName(PySpecialNames.Doc);
         }
 
         foreach (var stmt in node.Body)

@@ -68,8 +68,7 @@ partial class BytecodeCompiler
         }
         else if (VariableScope is ClassVariableScope classVariableScope)
         {
-            var variableType = classVariableScope.Variables[name];
-            if (variableType is PyVariableType.Closure)
+            if (classVariableScope.Variables.TryGetValue(name, out var type) && type is PyVariableType.Closure)
                 AsDeref();
             else
                 AsName();

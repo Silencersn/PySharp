@@ -1,6 +1,7 @@
 ﻿using PySharp.AstNodes;
 using PySharp.Compilation;
 using PySharp.PyModules.Builtins;
+using PySharp.PyRuntime;
 using System.Diagnostics;
 
 namespace PySharp.Bytecodes;
@@ -43,6 +44,11 @@ internal sealed partial class BytecodeCompiler
         switch (node)
         {
             case ModuleNode n:
+                if (AstUtils.TryGetDoc(n.Body, out var doc))
+                {
+                    Generator.Emit(OpCode.LoadConst, doc);
+                    StoreName(PySpecialNames.Doc);
+                }
                 foreach (var stmt in n.Body)
                     CompileStmt(stmt);
                 break;

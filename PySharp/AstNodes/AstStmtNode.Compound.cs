@@ -662,19 +662,20 @@ internal static class ClassBuilder
         else
             type.ModuleAsObject = PyStrObject.FromString("builtins");
 
-        // TODO: __doc__
-
         var newFrame = context.CurrentFrame.CreateClassBuildFrame(type);
-        newFrame._variables = codeObject.Variables;
 
         using (var withFrame = context.WithFrame(newFrame))
             execBody(context, newFrame, type);
 
-        var attrs = codeObject.Variables.Keys.ToDictionary(static member => member, member => newFrame.GetVariable(member).PyUnwrap(context));
-        foreach (var attr in attrs)
-            type.PyAttributes[attr.Key] = attr.Value;
+        foreach (var pair in newFrame.Locals)
+        {
+            if (pair.Value is null)
+                continue;
 
-        foreach (var (name, value) in attrs)
+            type.PyAttributes[pair.Key] = pair.Value;
+        }
+
+        foreach (var (name, value) in type.PyAttributes)
         {
             var setNameFunc = value.PyType.Slots.SetName;
             if (setNameFunc is not null)

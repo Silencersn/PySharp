@@ -752,8 +752,6 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                                 def);
                             caller.Func = func;
 
-                            // TODO: __doc__
-
                             Stack.Push(func);
                         }
                         break;
