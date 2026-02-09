@@ -37,7 +37,6 @@ public sealed partial class PyFrame
     private PyFrameLocals _locals;
     internal PyFrameGlobals _globals;
     internal PyFrame? _outerNonInlineFrame;
-    internal PyCellObject? ClassCell { get; set; }
     internal SemanticModel? SemanticModel { get; set; } // for AST interpreter
 
     private PyFrame(PyFrame? back)

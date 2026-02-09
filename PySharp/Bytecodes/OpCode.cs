@@ -71,6 +71,9 @@ internal enum OpCode
     Send,
 
     _BuildClass,
+    _LoadClass,
+
+    MakeCell,
 
     PushNull,
 

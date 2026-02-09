@@ -370,6 +370,13 @@ partial class BytecodeCompiler
         Debug.Assert(scope is not null);
         VariableScope = scope;
 
+        if (scope.ClassCaptured)
+        {
+            Generator.Emit(OpCode.MakeCell, PySpecialNames.Class);
+            Generator.Emit(OpCode._LoadClass);
+            Generator.Emit(OpCode.StoreDeref, PySpecialNames.Class);
+        }
+
         foreach (var stmt in node.Body)
             CompileStmt(stmt);
 

@@ -439,26 +439,13 @@ internal abstract class Caller
 
     public static IEnumerable<PyCellObject> GetFreeVars(PyFrame frame, PyCodeObject code)
     {
-        bool takeClassCell = false;
-        if (frame.ClassCell is not null && code.FreeVars.Contains(PySpecialNames.Class))
-        {
-            takeClassCell = true;
-            yield return frame.ClassCell;
-        }
-
-        if (code.FreeVars.Length is 0 ||
-            (takeClassCell && code.FreeVars is [PySpecialNames.Class]))
+        if (code.FreeVars.Length is 0)
             yield break;
 
         Debug.Assert(frame.InternalClosure is not null);
 
         foreach (var name in code.FreeVars)
-        {
-            if (name is PySpecialNames.Class && takeClassCell)
-                continue;
-
             yield return frame.InternalClosure[name];
-        }
     }
 }
 
@@ -662,7 +649,7 @@ public sealed class FunctionDefNode : AstStmtNode, IScopedSubNodesProvider
 internal static class ClassBuilder
 {
     public static PyTypeObject Build(PyCallContext context, PyCodeObject codeObject, List<PyTypeObject> bases,
-        Action<PyCallContext, PyFrame> execBody)
+        Action<PyCallContext, PyFrame, PyTypeObject> execBody)
     {
         if (bases.Count is 0)
             bases.Add(PyObjectType.Shared);
@@ -680,11 +667,8 @@ internal static class ClassBuilder
         var newFrame = context.CurrentFrame.CreateClassBuildFrame(type);
         newFrame._variables = codeObject.Variables;
 
-        // TODO: if (variableScope.ClassCaptured)
-        newFrame.ClassCell = PyCellObject.CreateCell(type);
-
         using (var withFrame = context.WithFrame(newFrame))
-            execBody(context, newFrame);
+            execBody(context, newFrame, type);
 
         var attrs = codeObject.Variables.Keys.ToDictionary(static member => member, member => newFrame.GetVariable(member).PyUnwrap(context));
         foreach (var attr in attrs)
@@ -833,8 +817,11 @@ public sealed class ClassDefNode : AstStmtNode, IScopedSubNodesProvider
         }).ToList();
 
         Debug.Assert(variableScope.CodeObject is not null);
-        var type = ClassBuilder.Build(context, variableScope.CodeObject, bases, (context, frame) =>
+        var type = ClassBuilder.Build(context, variableScope.CodeObject, bases, (context, frame, type) =>
         {
+            if (variableScope.ClassCaptured)
+                frame.Closures[PySpecialNames.Class] = PyCellObject.CreateCell(type);
+
             foreach (var stmt in Body)
                 stmt.Execute(context, frame);
         });

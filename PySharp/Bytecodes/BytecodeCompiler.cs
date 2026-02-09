@@ -56,8 +56,6 @@ internal sealed partial class BytecodeCompiler
                 IsInteractive = true;
                 foreach (var stmt in n.Body)
                     CompileStmt(stmt);
-                Generator.Emit(OpCode.LoadConst, PyNoneObject.None);
-                Generator.Emit(OpCode.ReturnValue);
                 break;
 
             default:

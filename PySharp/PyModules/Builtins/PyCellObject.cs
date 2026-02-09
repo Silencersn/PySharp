@@ -13,6 +13,11 @@ public class PyCellObject : PyObject
         Value = value;
     }
 
+    public static PyCellObject CreateEmpty()
+    {
+        return new PyCellObject(value: null);
+    }
+
     public static PyCellObject CreateCell(PyObject? value)
     {
         return new PyCellObject(value);

@@ -785,7 +785,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                                 bases.Add(baseType);
                             }
 
-                            var type = ClassBuilder.Build(context, codeObj, bases, (context, _) =>
+                            var type = ClassBuilder.Build(context, codeObj, bases, (context, _, _) =>
                             {
                                 Debug.Assert(codeObj.Bytecode is not null);
                                 var vm = new BytecodeVirtualMachine(context, codeObj.Bytecode);
@@ -794,6 +794,16 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
 
                             Stack.Push(type);
                         }
+                        break;
+
+                    case OpCode._LoadClass:
+                        Debug.Assert(frame.Caller is not null);
+                        value = frame.Caller;
+                        Stack.Push(value);
+                        break;
+
+                    case OpCode.MakeCell:
+                        frame.Closures[names[instruction.Arg]] = PyCellObject.CreateEmpty();
                         break;
 
                     case OpCode.RaiseVarArgs:
