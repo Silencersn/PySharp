@@ -44,7 +44,7 @@ partial class BytecodeCompiler
     private void CompileExpr(ExprNode node)
     {
         LoadExpr(node.Value);
-        Generator.Emit(OpCode.PopTop);
+        Generator.Emit(IsInteractive && VariableScope is RootVariableScope ? OpCode._CallPrintIfNotNone : OpCode.PopTop);
     }
 
     private void CompileAssign(AssignNode node)

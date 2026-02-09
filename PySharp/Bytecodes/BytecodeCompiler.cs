@@ -1,5 +1,6 @@
 ﻿using PySharp.AstNodes;
 using PySharp.Compilation;
+using PySharp.PyModules.Builtins;
 using System.Diagnostics;
 
 namespace PySharp.Bytecodes;
@@ -28,6 +29,7 @@ internal sealed partial class BytecodeCompiler
     private SemanticModel Model => _model;
     private VariableScope VariableScope { get; set; }
     private Stack<(Label LoopBegin, Label LoopEnd)> Loops { get; } = [];
+    private bool IsInteractive { get; set; }
 
     public void Compile()
     {
@@ -47,12 +49,15 @@ internal sealed partial class BytecodeCompiler
 
             case ExpressionNode n:
                 LoadExpr(n.Body);
-                Generator.Emit(OpCode.PopTop);
+                Generator.Emit(OpCode.ReturnValue);
                 break;
 
             case InteractiveNode n:
+                IsInteractive = true;
                 foreach (var stmt in n.Body)
                     CompileStmt(stmt);
+                Generator.Emit(OpCode.LoadConst, PyNoneObject.None);
+                Generator.Emit(OpCode.ReturnValue);
                 break;
 
             default:

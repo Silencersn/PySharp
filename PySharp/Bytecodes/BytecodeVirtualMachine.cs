@@ -898,6 +898,12 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                         }
                         break;
 
+                    case OpCode._CallPrintIfNotNone:
+                        value = Stack.Pop();
+                        if (value is not PyNoneObject)
+                            _ = PyBuiltinFunctions.Print.Call(context, [value]).PyUnwrap(context);
+                        break;
+
                     case OpCode.MatchSequence:
                         boolValue = MatchSequenceNode.IsSequenceForMatch(Stack[-1], out _);
                         Stack.Push(PyBoolObject.FromBoolean(boolValue));

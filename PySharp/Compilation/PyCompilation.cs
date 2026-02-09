@@ -49,12 +49,12 @@ internal sealed class PyBytecodeCompilation : PyCompilation
 
     public override void Execute(PyCallContext context)
     {
-        BytecodeVirtualMachine vm = new(context, Bytecode);
-        vm.Eval().PyUnwrap(context);
+        _ = Evaluate(context);
     }
 
     public override PyObject Evaluate(PyCallContext context)
     {
-        throw new NotImplementedException();
+        var vm = new BytecodeVirtualMachine(context, Bytecode);
+        return vm.Eval().PyUnwrap(context);
     }
 }

@@ -8,7 +8,7 @@ namespace PySharp.Compilation;
 
 internal class Compiler
 {
-    private static PyAstCompilation InternalCompile(PyCallContext context, string code, string sourceName,
+    private static PyAstCompilation InternalCompileAst(PyCallContext context, string code, string sourceName,
         Func<PyCallContext, CodeSource, IEnumerable<TokenInfo>, AstModNode> parse, bool appendNewLine = false)
     {
         var source = new CodeSource(sourceName, code);
@@ -20,19 +20,26 @@ internal class Compiler
         return new PyAstCompilation(model);
     }
 
+    private static PyBytecodeCompilation InternalCompileBytecode(PyCallContext context, string code, string sourceName,
+        Func<PyCallContext, CodeSource, IEnumerable<TokenInfo>, AstModNode> parse, bool appendNewLine = false)
+    {
+        var ast = InternalCompileAst(context, code, sourceName, parse, appendNewLine);
+        return BytecodeCompiler.Compile(ast.Model);
+    }
+
     public static PyCompilation CompileExec(PyCallContext context, string code, string sourceName)
     {
-        return InternalCompile(context, code, sourceName, Parser.ParseModule);
+        return InternalCompileBytecode(context, code, sourceName, Parser.ParseModule);
     }
 
     public static PyCompilation CompileEval(PyCallContext context, string code, string sourceName)
     {
-        return InternalCompile(context, code, sourceName, Parser.ParseExpression);
+        return InternalCompileBytecode(context, code, sourceName, Parser.ParseExpression);
     }
 
     public static PyCompilation CompileSingle(PyCallContext context, string code, string sourceName, bool appendNewLine)
     {
-        return InternalCompile(context, code, sourceName, Parser.ParseInteractive, appendNewLine);
+        return InternalCompileBytecode(context, code, sourceName, Parser.ParseInteractive, appendNewLine);
     }
 
     public static PyBytecodeCompilation CompileBytecode(SemanticModel model)

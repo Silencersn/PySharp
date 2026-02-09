@@ -125,4 +125,6 @@ internal enum OpCode
     _PopExceptionAndJumpIfNull,
 
     _UnaryOp,
+
+    _CallPrintIfNotNone,
 }
