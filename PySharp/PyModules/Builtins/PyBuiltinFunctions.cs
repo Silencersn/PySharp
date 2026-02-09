@@ -198,9 +198,9 @@ public static partial class PyBuiltinFunctions
         var frame = context.CurrentFrame;
         try
         {
-            var compilation = Compiler.CompileEval(context, str.Value, "<string>");
             var tempFrame = frame.TempFrame(FrameType.Eval);
             using var withFrame = context.WithFrame(tempFrame);
+            var compilation = Compiler.CompileEval(context, str.Value, "<string>");
             return compilation.Evaluate(context);
         }
         catch (PyRuntimeException e)
@@ -220,9 +220,9 @@ public static partial class PyBuiltinFunctions
         var frame = context.CurrentFrame;
         try
         {
-            var compilation = Compiler.CompileExec(context, str.Value, "<string>");
             var tempFrame = frame.TempFrame(FrameType.Exec);
             using var withFrame = context.WithFrame(tempFrame);
+            var compilation = Compiler.CompileExec(context, str.Value, "<string>");
             compilation.Execute(context);
             return PyNoneObject.None;
         }

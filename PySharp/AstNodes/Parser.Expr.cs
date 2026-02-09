@@ -580,14 +580,14 @@ partial class Parser
                 if (isGenExp)
                 {
                     var genExp = ParseGenExp();
-                    primary = Ast.Call(primary, [genExp], []).With(startMetaInfo.WithEnd());
+                    primary = Ast.Call(primary, [genExp], []).With(startMetaInfo.WithPreviousEnd());
                 }
                 else
                 {
                     MoveNextToken();
                     var (args, kwargs) = ParseArguments();
                     EnsureTokenTypeThenMove(TokenType.RightParen);
-                    primary = Ast.Call(primary, args, kwargs).With(startMetaInfo.WithEnd());
+                    primary = Ast.Call(primary, args, kwargs).With(startMetaInfo.WithPreviousEnd());
                 }
 
                 bool TestIsGenExp()
