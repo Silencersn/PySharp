@@ -11,13 +11,16 @@ internal sealed class BytecodeGenerator
 {
     private readonly List<Instruction> _instructions = [];
     private readonly List<int> _labelOffsets = [];
-    internal readonly OrderedDictionary<int, CodeMetaInfo?> _infos = [];
-    internal ImmutableArray<PyObject> Consts = [];
-    internal ImmutableArray<string> Names = [];
+    private readonly OrderedDictionary<int, CodeMetaInfo?> _infos = [];
+    private readonly OrderedDictionary<PyObject, int> _consts = new(PyObjectConstEqualityComparer.Shared);
+    private readonly OrderedDictionary<string, int> _names = new(StringComparer.Ordinal);
 
     private Stack<CodeMetaInfo?> MetaInfoStack { get; } = [];
     internal List<Instruction> Instructions => _instructions;
     internal List<int> LabelOffsets => _labelOffsets;
+    internal OrderedDictionary<int, CodeMetaInfo?> Infos => _infos;
+    internal OrderedDictionary<PyObject, int> Consts => _consts;
+    internal OrderedDictionary<string, int> Names => _names;
 
     internal void PushMetaInfo(CodeMetaInfo? info)
     {
@@ -35,35 +38,13 @@ internal sealed class BytecodeGenerator
     {
         var instructions = CollectionsMarshal.AsSpan(_instructions);
 
-        OrderedDictionary<PyObject, int> consts = new(PyObjectConstEqualityComparer.Shared);
-        OrderedDictionary<string, int> names = new(StringComparer.Ordinal);
-
         foreach (ref Instruction instruction in instructions)
         {
-            if (instruction.Arg < 0)
-            {
-                instruction = new Instruction(instruction.OpCode, LabelToOffset(-instruction.Arg));
-            }
-            else if (instruction.Operand is PyObject constObj)
-            {
-                if (!consts.TryGetValue(constObj, out var index))
-                    consts[constObj] = index = consts.Count;
-                instruction = new Instruction(instruction.OpCode, index);
-            }
-            else if (instruction.Operand is string name)
-            {
-                if (!names.TryGetValue(name, out var index))
-                    names[name] = index = names.Count;
-                instruction = new Instruction(instruction.OpCode, index);
-            }
-            else
-            {
-                Debug.Assert(instruction.Operand is null);
-            }
-        }
+            if (instruction.Arg >= 0)
+                continue;
 
-        Consts = [.. consts.Keys];
-        Names = [.. names.Keys];
+            instruction = new Instruction(instruction.OpCode, LabelToOffset(-instruction.Arg));
+        }
 
         int LabelToOffset(int labelId)
         {
@@ -95,12 +76,16 @@ internal sealed class BytecodeGenerator
 
     public void Emit(OpCode opCode, PyObject pyObject)
     {
-        _instructions.Add(new Instruction(opCode, pyObject));
+        if (!_consts.TryGetValue(pyObject, out var index))
+            _consts[pyObject] = index = _consts.Count;
+        _instructions.Add(new Instruction(opCode, index));
     }
 
     public void Emit(OpCode opCode, string name)
     {
-        _instructions.Add(new Instruction(opCode, name));
+        if (!_names.TryGetValue(name, out var index))
+            _names[name] = index = _names.Count;
+        _instructions.Add(new Instruction(opCode, index));
     }
 
     public Label DefineLabel()

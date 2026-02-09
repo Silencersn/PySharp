@@ -1,34 +1,22 @@
 ﻿using PySharp.PyModules.Builtins;
+using System.Diagnostics;
 
 namespace PySharp.Bytecodes;
 
-internal readonly record struct Instruction
+[DebuggerDisplay("opcode={OpCode}, arg={Arg}")]
+internal readonly struct Instruction
 {
     public readonly OpCode OpCode;
     public readonly int Arg;
-    public readonly object? Operand;
 
     public Instruction(OpCode opCode)
     {
         OpCode = opCode;
         Arg = 0;
-        Operand = null;
     }
     public Instruction(OpCode opCode, int arg)
     {
         OpCode = opCode;
         Arg = arg;
-        Operand = null;
-    }
-    public Instruction(OpCode opCode, object? operand)
-    {
-        OpCode = opCode;
-        Arg = 0;
-        Operand = operand;
-    }
-
-    public override string ToString()
-    {
-        return $"{{opcode={OpCode},argval={Operand ?? Arg}}}";
     }
 }

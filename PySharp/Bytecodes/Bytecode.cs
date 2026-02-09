@@ -15,9 +15,9 @@ internal sealed class Bytecode
     {
         generator.Complete();
         _instructions = [.. generator.Instructions];
-        _infos = [.. generator._infos.Reverse()];
-        _consts = generator.Consts;
-        _names = generator.Names;
+        _infos = [.. generator.Infos.Reverse()];
+        _consts = [.. generator.Consts.Keys];
+        _names = [..generator.Names.Keys];
     }
 
     internal ImmutableArray<Instruction> Instructions => _instructions;
