@@ -157,14 +157,14 @@ partial class BytecodeCompiler
             if (exceptor.Name is not null)
             {
                 Generator.Emit(OpCode._LoadExc);
-                StoreExpr(Ast.Name(exceptor.Name) /* TODO: store string directly */);
+                StoreName(exceptor.Name);
             }
 
             foreach (var stmt in exceptor.Body)
                 CompileStmt(stmt);
 
             if (exceptor.Name is not null)
-                DeleteExpr(Ast.Name(exceptor.Name) /* TODO: del string directly */);
+                DeleteName(exceptor.Name);
 
             Generator.Emit(OpCode._PopException);
             Generator.Emit(OpCode.Jump, finallyBlockLabel); // jump to finally
@@ -208,7 +208,7 @@ partial class BytecodeCompiler
             Generator.Emit(OpCode._CheckMatch, nextLabel); // if match None, jump to next except or finally
 
             if (exceptor.Name is not null)
-                StoreExpr(Ast.Name(exceptor.Name) /* TODO: store string directly */);
+                StoreName(exceptor.Name);
             else
                 Generator.Emit(OpCode.PopTop);
 
@@ -216,7 +216,7 @@ partial class BytecodeCompiler
                 CompileStmt(stmt);
 
             if (exceptor.Name is not null)
-                DeleteExpr(Ast.Name(exceptor.Name) /* TODO: del string directly */);
+                DeleteName(exceptor.Name);
 
             Generator.Emit(OpCode._PopExceptionAndJumpIfNull, finallyBlockLabel); // pop exc and jump to finally if rest is None
             Generator.Emit(OpCode.Jump, nextLabel); // jump to next except or finally
@@ -339,7 +339,7 @@ partial class BytecodeCompiler
         for (int i = 0; i < node.DecoratorList.Length; i++)
             Generator.Emit(OpCode.Call, 1);
 
-        StoreExpr(Ast.Name(node.Name) /* TODO: no creating ast node */);
+        StoreName(node.Name);
     }
 
     private void CompileReturn(ReturnNode node)
@@ -394,7 +394,7 @@ partial class BytecodeCompiler
         for (int i = 0; i < node.DecoratorList.Length; i++)
             Generator.Emit(OpCode.Call, 1);
 
-        StoreExpr(Ast.Name(node.Name) /* TODO: no creating ast node */);
+        StoreName(node.Name);
     }
 
     private void CompileAssert(AssertNode node)
@@ -441,7 +441,7 @@ partial class BytecodeCompiler
 
             if (name.AsName is null)
             {
-                StoreExpr(Ast.Name(name.Name) /* TODO: do not create node */);
+                StoreName(name.Name);
             }
             else
             {
@@ -454,7 +454,7 @@ partial class BytecodeCompiler
                     Generator.Emit(OpCode.PopTop); // -> [mod.submod]
                 }
                 Generator.Emit(OpCode.ImportFrom, parts[^1]);
-                StoreExpr(Ast.Name(name.AsName) /* TODO: do not create node */);
+                StoreName(name.AsName);
 
                 Generator.Emit(OpCode.PopTop);
             }
@@ -477,7 +477,7 @@ partial class BytecodeCompiler
         {
             Debug.Assert(name.Name is not "*");
             Generator.Emit(OpCode.ImportFrom, name.Name);
-            StoreExpr(Ast.Name(name.GetLocalName()) /* TODO: do not create node */);
+            StoreName(name.GetLocalName());
         }
 
         Generator.Emit(OpCode.PopTop);
@@ -609,7 +609,7 @@ partial class BytecodeCompiler
                         break;
 
                     Generator.Emit(OpCode.Copy, 1);
-                    StoreExpr(Ast.Name(node.Name) /* TODO: no creating ast */);
+                    StoreName(node.Name);
                     break;
 
                 case MatchAsNode node:
@@ -619,7 +619,7 @@ partial class BytecodeCompiler
                     if (node.Name is not null)
                     {
                         Generator.Emit(OpCode.Copy, 1);
-                        StoreExpr(Ast.Name(node.Name) /* TODO: no creating ast */);
+                        StoreName(node.Name);
                     }
                     break;
 
@@ -711,7 +711,7 @@ partial class BytecodeCompiler
                             }
                             // -> [subject, {**subject_removed_keys}]
 
-                            StoreExpr(Ast.Name(node.Rest) /* TODO: no creating ast */);
+                            StoreName(node.Rest);
                         }
 
                         var matchedLabel = Generator.DefineLabel();

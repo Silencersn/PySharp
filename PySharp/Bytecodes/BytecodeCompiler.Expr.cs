@@ -7,6 +7,9 @@ namespace PySharp.Bytecodes;
 
 partial class BytecodeCompiler
 {
+    private void LoadName(string name) => CompileName(name, ExprContextType.Load);
+    private void StoreName(string name) => CompileName(name, ExprContextType.Store);
+    private void DeleteName(string name) => CompileName(name, ExprContextType.Del);
     private void LoadExpr(AstExprNode node) => CompileExpr(node, ExprContextType.Load);
     private void StoreExpr(AstExprNode node) => CompileExpr(node, ExprContextType.Store);
     private void DeleteExpr(AstExprNode node) => CompileExpr(node, ExprContextType.Del);
@@ -54,13 +57,18 @@ partial class BytecodeCompiler
 
     private void CompileName(NameNode node, ExprContextType ctx)
     {
+        CompileName(node.Id, ctx);
+    }
+
+    private void CompileName(string name, ExprContextType ctx)
+    {
         if (VariableScope is RootVariableScope)
         {
             AsGlobal();
         }
         else if (VariableScope is ClassVariableScope classVariableScope)
         {
-            var variableType = classVariableScope.Variables[node.Id];
+            var variableType = classVariableScope.Variables[name];
             if (variableType is PyVariableType.Closure)
                 AsDeref();
             else
@@ -68,9 +76,9 @@ partial class BytecodeCompiler
         }
         else if (VariableScope is CallableVariableScope callableVariableScope)
         {
-            if (callableVariableScope.LocalsTable.TryGetValue(node.Id, out var nameIndex))
+            if (callableVariableScope.LocalsTable.TryGetValue(name, out var nameIndex))
                 AsFast(nameIndex);
-            else if (callableVariableScope.CellVars.Contains(node.Id) || callableVariableScope.FreeVars.Contains(node.Id))
+            else if (callableVariableScope.CellVars.Contains(name) || callableVariableScope.FreeVars.Contains(name))
                 AsDeref();
             else
                 AsGlobal();
@@ -87,7 +95,7 @@ partial class BytecodeCompiler
                 _ => throw new InvalidOperationException()
             };
 
-            Generator.Emit(opCode, node.Id);
+            Generator.Emit(opCode, name);
         }
 
         void AsName()
@@ -101,7 +109,7 @@ partial class BytecodeCompiler
                 _ => throw new InvalidOperationException()
             };
 
-            Generator.Emit(opCode, node.Id);
+            Generator.Emit(opCode, name);
         }
 
         void AsFast(int nameIndex)
@@ -129,9 +137,10 @@ partial class BytecodeCompiler
                 _ => throw new InvalidOperationException()
             };
 
-            Generator.Emit(opCode, node.Id);
+            Generator.Emit(opCode, name);
         }
     }
+
 
     private void CompileCall(CallNode node)
     {
