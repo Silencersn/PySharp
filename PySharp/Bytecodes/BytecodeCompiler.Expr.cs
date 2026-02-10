@@ -523,7 +523,7 @@ partial class BytecodeCompiler
     private void CompileGeneratorExp(GeneratorExpNode node)
     {
         var currentGenerator = Generator;
-        Generator = new BytecodeGenerator();
+        Generator = BytecodeGenerator.Create();
 
         Generator.Emit(OpCode.PopTop); // pop the first sent to activate the generator
 
@@ -591,7 +591,7 @@ partial class BytecodeCompiler
     private void CompileLambda(LambdaNode node)
     {
         var currentGenerator = Generator;
-        Generator = new BytecodeGenerator();
+        Generator = BytecodeGenerator.Create();
         var currentScope = VariableScope;
         var scope = Model.GetVariableScope<CallableVariableScope>(node);
         Debug.Assert(scope is not null);

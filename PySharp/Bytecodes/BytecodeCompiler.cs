@@ -19,7 +19,7 @@ internal sealed partial class BytecodeCompiler
 
     internal BytecodeCompiler(SemanticModel model)
     {
-        Generator = new();
+        Generator = BytecodeGenerator.Create();
         _model = model;
         var scope = _model.GetVariableScope<RootVariableScope>(_model.Root);
         Debug.Assert(scope is not null);
