@@ -313,7 +313,7 @@ partial class BytecodeCompiler
 
         Generator.Emit(OpCode.LoadConst, PyNoneObject.None);
         Generator.Emit(OpCode.ReturnValue);
-        var bytecode = new Bytecode(Generator);
+        var bytecode = Generator.ToBytecode();
 
         Generator = currentGenerator;
         VariableScope = currentScope;
@@ -395,7 +395,7 @@ partial class BytecodeCompiler
         foreach (var stmt in node.Body)
             CompileStmt(stmt);
 
-        var bytecode = new Bytecode(Generator);
+        var bytecode = Generator.ToBytecode();
 
         Generator = currentGenerator;
         VariableScope = currentScope;

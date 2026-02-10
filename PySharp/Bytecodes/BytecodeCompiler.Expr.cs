@@ -534,7 +534,7 @@ partial class BytecodeCompiler
             Generator.Emit(OpCode._CheckExcToRaise);
             Generator.Emit(OpCode.PopTop); // no raising, pop received value
         });
-        var bytecode = new Bytecode(Generator);
+        var bytecode = Generator.ToBytecode();
 
         Generator = currentGenerator;
 
@@ -605,7 +605,7 @@ partial class BytecodeCompiler
         LoadExpr(node.Body);
         Generator.Emit(OpCode.ReturnValue);
 
-        var bytecode = new Bytecode(Generator);
+        var bytecode = Generator.ToBytecode();
 
         Generator = currentGenerator;
         VariableScope = currentScope;

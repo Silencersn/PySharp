@@ -8,15 +8,9 @@ namespace PySharp.Bytecodes;
 
 internal abstract class BytecodeGenerator
 {
-    internal abstract OrderedDictionary<PyObject, int> Consts { get; }
-    internal abstract OrderedDictionary<int, CodeMetaInfo?> Infos { get; }
-    internal abstract List<Instruction> Instructions { get; }
-    internal abstract List<int> LabelOffsets { get; }
-    internal abstract OrderedDictionary<string, int> Names { get; }
-
+    internal abstract Bytecode ToBytecode();
     internal abstract void PushMetaInfo(CodeMetaInfo? info);
     internal abstract void PopMetaInfo();
-    internal abstract void Complete();
     public abstract void Emit(OpCode opCode);
     public abstract void Emit(OpCode opCode, int arg);
     public abstract void Emit(OpCode opCode, Label label);
@@ -38,27 +32,26 @@ internal sealed class DefaultBytecodeGenerator : BytecodeGenerator
     private readonly OrderedDictionary<int, CodeMetaInfo?> _infos = [];
     private readonly OrderedDictionary<PyObject, int> _consts = new(PyObjectConstEqualityComparer.Shared);
     private readonly OrderedDictionary<string, int> _names = new(StringComparer.Ordinal);
+    private readonly Stack<CodeMetaInfo?> _metaInfoStack = [];
 
-    private Stack<CodeMetaInfo?> MetaInfoStack { get; } = [];
-    internal override List<Instruction> Instructions => _instructions;
-    internal override List<int> LabelOffsets => _labelOffsets;
-    internal override OrderedDictionary<int, CodeMetaInfo?> Infos => _infos;
-    internal override OrderedDictionary<PyObject, int> Consts => _consts;
-    internal override OrderedDictionary<string, int> Names => _names;
-
+    internal override Bytecode ToBytecode()
+    {
+        Complete();
+        return new Bytecode([.. _instructions], [.. _infos.Reverse()], [.. _consts.Keys], [.. _names.Keys]);
+    }
     internal override void PushMetaInfo(CodeMetaInfo? info)
     {
-        MetaInfoStack.Push(info);
+        _metaInfoStack.Push(info);
         _infos[_instructions.Count] = info;
     }
 
     internal override void PopMetaInfo()
     {
-        MetaInfoStack.Pop();
-        _infos[_instructions.Count] = MetaInfoStack.TryPeek(out var info) ? info : null;
+        _metaInfoStack.Pop();
+        _infos[_instructions.Count] = _metaInfoStack.TryPeek(out var info) ? info : null;
     }
 
-    internal override void Complete()
+    private void Complete()
     {
         var instructions = CollectionsMarshal.AsSpan(_instructions);
 
@@ -124,6 +117,6 @@ internal sealed class DefaultBytecodeGenerator : BytecodeGenerator
         Debug.Assert(label.Id > 0);
         Debug.Assert(_labelOffsets[label.Id - 1] < 0);
 
-        _labelOffsets[label.Id - 1] = Instructions.Count;
+        _labelOffsets[label.Id - 1] = _instructions.Count;
     }
 }

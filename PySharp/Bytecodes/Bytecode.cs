@@ -11,13 +11,12 @@ internal sealed class Bytecode
     private readonly ImmutableArray<PyObject> _consts;
     private readonly ImmutableArray<string> _names;
 
-    public Bytecode(BytecodeGenerator generator)
+    public Bytecode(ImmutableArray<Instruction> instructions, ImmutableArray<KeyValuePair<int, CodeMetaInfo?>> infos, ImmutableArray<PyObject> consts, ImmutableArray<string> names)
     {
-        generator.Complete();
-        _instructions = [.. generator.Instructions];
-        _infos = [.. generator.Infos.Reverse()];
-        _consts = [.. generator.Consts.Keys];
-        _names = [..generator.Names.Keys];
+        _instructions = instructions;
+        _infos = infos;
+        _consts = consts;
+        _names = names;
     }
 
     internal ImmutableArray<Instruction> Instructions => _instructions;

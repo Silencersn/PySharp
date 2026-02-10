@@ -12,7 +12,7 @@ internal sealed partial class BytecodeCompiler
     {
         var compiler = new BytecodeCompiler(model);
         compiler.Compile();
-        return new PyBytecodeCompilation(new Bytecode(compiler.Generator));
+        return new PyBytecodeCompilation(compiler.Generator.ToBytecode());
     }
 
     private readonly SemanticModel _model;
