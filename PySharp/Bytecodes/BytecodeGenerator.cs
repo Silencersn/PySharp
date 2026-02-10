@@ -19,8 +19,11 @@ internal abstract class BytecodeGenerator
     public abstract Label DefineLabel();
     public abstract void MarkLabel(Label label);
 
-    public static BytecodeGenerator Create()
+    public static BytecodeGenerator Create(bool optimized = true)
     {
+        if (optimized)
+            return new OptimizedBytecodeGenerator();
+
         return new DefaultBytecodeGenerator();
     }
 }
