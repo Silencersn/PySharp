@@ -219,7 +219,15 @@ partial class BytecodeCompiler
     private void CompileUnaryOp(UnaryOpNode node)
     {
         LoadExpr(node.Operand);
-        Generator.Emit(OpCode._UnaryOp, (int)node.Op);
+        if (node.Op is UnaryOpType.Not)
+        {
+            Generator.Emit(OpCode.ToBool);
+            Generator.Emit(OpCode.UnaryNot);
+        }
+        else
+        {
+            Generator.Emit(OpCode._UnaryOp, (int)node.Op);
+        }
     }
 
     private void CompileCompare(CompareNode node)

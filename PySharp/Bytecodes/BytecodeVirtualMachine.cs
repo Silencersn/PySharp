@@ -379,6 +379,11 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                         Stack.Push(value);
                         break;
 
+                    case OpCode.UnaryNot:
+                        boolValue = ((PyBoolObject)Stack.Peek()).BoolValue;
+                        Stack[-1] = PyBoolObject.FromBoolean(!boolValue);
+                        break;
+
                     case OpCode.CompareOp:
                         right = Stack.Pop();
                         left = Stack.Pop();
