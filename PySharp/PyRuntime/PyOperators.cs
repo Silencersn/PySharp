@@ -274,8 +274,8 @@ public static class PyOperators
     }
     private static PyResult ReflectiveOperator(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo = null)
     {
-        if (left is PyIntObject leftInt && right is PyIntObject rightInt)
-            return PyMath.CalculatePyIntObject(op, leftInt, rightInt, modulo);
+        if (left.PyType is PyIntObjectType && right.PyType is PyIntObjectType)
+            return PyMath.CalculatePyIntObject(op, (PyIntObject)left, (PyIntObject)right, modulo);
 
         if (!PyObjectComparer.Default.Equals(left.PyType, right.PyType) && right.PyType.IsSubclassOf(left.PyType))
             return EvalRightFirstReflectiveOperator(context, op, left, right, modulo);
