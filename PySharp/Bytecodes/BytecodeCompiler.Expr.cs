@@ -1,4 +1,5 @@
 ﻿using PySharp.AstNodes;
+using PySharp.Bytecodes.Extensions;
 using PySharp.PyModules.Builtins;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -251,14 +252,14 @@ partial class BytecodeCompiler
                 EmitOp(node.Ops[i]); // -> [b, a op b]
                 Generator.Emit(OpCode.Copy, 1); // -> [b, a op b, a op b]
                 Generator.Emit(OpCode.ToBool); // -> [b, a op b, bool(a op b)]
-                Generator.Emit(OpCode.PopJumpIfFalse, fastEndLabel); // -> [b, a op b]
+                Generator.PopJumpIfFalse(fastEndLabel); // -> [b, a op b]
                 Generator.Emit(OpCode.PopTop); // -> [b]
             }
 
             // [a]
             LoadExpr(node.Comparators[^1]); // -> [a, b]
             EmitOp(node.Ops[^1]); // -> [a op b]
-            Generator.Emit(OpCode.Jump, endLabel);
+            Generator.Jump(endLabel);
 
             Generator.MarkLabel(fastEndLabel); // [b, a op b]
             Generator.Emit(OpCode.Swap, 2); // -> [a op b, b]
@@ -428,12 +429,12 @@ partial class BytecodeCompiler
             {
                 LoadExpr(test);
                 Generator.Emit(OpCode.ToBool);
-                Generator.Emit(OpCode.PopJumpIfFalse, forIterLabel);
+                Generator.PopJumpIfFalse(forIterLabel);
             }
 
             CompileGenerator(i + 1);
 
-            Generator.Emit(OpCode.Jump, forIterLabel);
+            Generator.Jump(forIterLabel);
 
             Generator.MarkLabel(endForLabel);
             Generator.Emit(OpCode.PopIter);
@@ -504,7 +505,7 @@ partial class BytecodeCompiler
         Generator.MarkLabel(sendLabel);
         Generator.Emit(OpCode.Send, endSendLabel);
         Generator.Emit(OpCode.YieldValue);
-        Generator.Emit(OpCode.Jump, sendLabel);
+        Generator.Jump(sendLabel);
 
         Generator.MarkLabel(endSendLabel);
         Generator.Emit(OpCode.Swap, 2); // swap iter and StopIteration.value
@@ -568,10 +569,10 @@ partial class BytecodeCompiler
 
         LoadExpr(node.Test);
         Generator.Emit(OpCode.ToBool);
-        Generator.Emit(OpCode.PopJumpIfFalse, elseLabel);
+        Generator.PopJumpIfFalse(elseLabel);
 
         LoadExpr(node.Body);
-        Generator.Emit(OpCode.Jump, endLabel);
+        Generator.Jump(endLabel);
 
         Generator.MarkLabel(elseLabel);
         LoadExpr(node.OrElse);

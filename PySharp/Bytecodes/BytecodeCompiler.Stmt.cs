@@ -1,4 +1,5 @@
 ﻿using PySharp.AstNodes;
+using PySharp.Bytecodes.Extensions;
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime;
 using System.Diagnostics;
@@ -76,11 +77,11 @@ partial class BytecodeCompiler
 
         LoadExpr(node.Test);
         Generator.Emit(OpCode.ToBool);
-        Generator.Emit(OpCode.PopJumpIfFalse, elseBlockLabel);
+        Generator.PopJumpIfFalse(elseBlockLabel);
 
         foreach (var stmt in node.Body)
             CompileStmt(stmt);
-        Generator.Emit(OpCode.Jump, ifStmtEndLabel);
+        Generator.Jump(ifStmtEndLabel);
 
         Generator.MarkLabel(elseBlockLabel);
         foreach (var stmt in node.OrElse)
@@ -129,7 +130,7 @@ partial class BytecodeCompiler
         foreach (var stmt in node.FinalBody)
             CompileStmt(stmt);
         Generator.Emit(OpCode._ExitFinally);
-        Generator.Emit(OpCode.Jump, tryStmtEndLabel);
+        Generator.Jump(tryStmtEndLabel);
 
         for (int i = 0; i < node.Exceptors.Length; i++)
         {
@@ -141,7 +142,7 @@ partial class BytecodeCompiler
                 Debug.Assert(exceptor.Type is not null);
                 LoadExpr(exceptor.Type);
                 Generator.Emit(OpCode.CheckExcMatch);
-                Generator.Emit(OpCode.PopJumpIfFalse, exceptorLabels[i + 1]); // jump to next except
+                Generator.PopJumpIfFalse(exceptorLabels[i + 1]); // jump to next except
 
             }
             else
@@ -150,7 +151,7 @@ partial class BytecodeCompiler
                 {
                     LoadExpr(exceptor.Type);
                     Generator.Emit(OpCode.CheckExcMatch);
-                    Generator.Emit(OpCode.PopJumpIfFalse, finallyBlockLabel); // last exceptor, jump to finally
+                    Generator.PopJumpIfFalse(finallyBlockLabel); // last exceptor, jump to finally
                 }
             }
 
@@ -167,7 +168,7 @@ partial class BytecodeCompiler
                 DeleteName(exceptor.Name);
 
             Generator.Emit(OpCode._PopException);
-            Generator.Emit(OpCode.Jump, finallyBlockLabel); // jump to finally
+            Generator.Jump(finallyBlockLabel); // jump to finally
         }
 
         Generator.MarkLabel(tryStmtEndLabel);
@@ -194,7 +195,7 @@ partial class BytecodeCompiler
         foreach (var stmt in node.FinalBody)
             CompileStmt(stmt);
         Generator.Emit(OpCode._ExitFinally);
-        Generator.Emit(OpCode.Jump, tryStmtEndLabel);
+        Generator.Jump(tryStmtEndLabel);
 
         for (int i = 0; i < node.Exceptors.Length; i++)
         {
@@ -219,7 +220,7 @@ partial class BytecodeCompiler
                 DeleteName(exceptor.Name);
 
             Generator.Emit(OpCode._PopExceptionAndJumpIfNull, finallyBlockLabel); // pop exc and jump to finally if rest is None
-            Generator.Emit(OpCode.Jump, nextLabel); // jump to next except or finally
+            Generator.Jump(nextLabel); // jump to next except or finally
         }
 
         Generator.MarkLabel(tryStmtEndLabel);
@@ -241,7 +242,7 @@ partial class BytecodeCompiler
 
         foreach (var stmt in node.Body)
             CompileStmt(stmt);
-        Generator.Emit(OpCode.Jump, forIterLabel);
+        Generator.Jump(forIterLabel);
 
         Generator.MarkLabel(forElseLabel);
         foreach (var stmt in node.OrElse)
@@ -255,12 +256,12 @@ partial class BytecodeCompiler
 
     private void CompileBreak(BreakNode node)
     {
-        Generator.Emit(OpCode.Jump, Loops.Peek().LoopEnd);
+        Generator.Jump(Loops.Peek().LoopEnd);
     }
 
     private void CompileContinue(ContinueNode node)
     {
-        Generator.Emit(OpCode.Jump, Loops.Peek().LoopBegin);
+        Generator.Jump(Loops.Peek().LoopBegin);
     }
 
     private void CompileWhile(WhileNode node)
@@ -273,11 +274,11 @@ partial class BytecodeCompiler
         Generator.MarkLabel(whileBeginLabel);
         LoadExpr(node.Test);
         Generator.Emit(OpCode.ToBool);
-        Generator.Emit(OpCode.PopJumpIfFalse, whileElseLabel);
+        Generator.PopJumpIfFalse(whileElseLabel);
 
         foreach (var stmt in node.Body)
             CompileStmt(stmt);
-        Generator.Emit(OpCode.Jump, whileBeginLabel);
+        Generator.Jump(whileBeginLabel);
 
         Generator.MarkLabel(whileElseLabel);
         foreach (var stmt in node.OrElse)
@@ -424,7 +425,7 @@ partial class BytecodeCompiler
 
         LoadExpr(node.Test);
         Generator.Emit(OpCode.ToBool);
-        Generator.Emit(OpCode.PopJumpIfTrue, noRaisingLabel);
+        Generator.PopJumpIfTrue(noRaisingLabel);
 
         Generator.Emit(OpCode.LoadConst, PyAssertionErrorObjectType.Shared);
 
@@ -542,21 +543,21 @@ partial class BytecodeCompiler
             // -> [exit, manager]
 
             CompileWithItem(i + 1);
-            Generator.Emit(OpCode.Jump, finallyLabel);
+            Generator.Jump(finallyLabel);
 
             Generator.MarkLabel(exceptLabel);
             Generator.Emit(OpCode._LoadExcInfo); // -> [exit, manager, exc_type, exc, traceback]
             Generator.Emit(OpCode.Call, 4); // -> [handled]
             Generator.Emit(OpCode.ToBool); // -> [handled_bool]
             Generator.Emit(OpCode._PopExceptionIfTrue);
-            Generator.Emit(OpCode.PopJumpIfTrue, finallyLabel); // -> []
+            Generator.PopJumpIfTrue(finallyLabel); // -> []
             Generator.Emit(OpCode.RaiseVarArgs, 0);
 
             Generator.MarkLabel(finallyLabel);
             Generator.Emit(OpCode._EnterFinally);
 
             Generator.Emit(OpCode._LoadHitExcept);
-            Generator.Emit(OpCode.PopJumpIfTrue, exitFinallyLabel);
+            Generator.PopJumpIfTrue(exitFinallyLabel);
 
             Generator.Emit(OpCode.LoadConst, PyNoneObject.None);
             Generator.Emit(OpCode.LoadConst, PyNoneObject.None);
@@ -594,13 +595,13 @@ partial class BytecodeCompiler
             {
                 LoadExpr(caseNode.Guard);
                 Generator.Emit(OpCode.ToBool);
-                Generator.Emit(OpCode.PopJumpIfFalse, nextCaseLabels[i]);
+                Generator.PopJumpIfFalse(nextCaseLabels[i]);
             }
 
             foreach (var stmt in caseNode.Body)
                 CompileStmt(stmt);
 
-            Generator.Emit(OpCode.Jump, matchEndLabel);
+            Generator.Jump(matchEndLabel);
         }
 
         // in the current design,
@@ -615,14 +616,14 @@ partial class BytecodeCompiler
                     LoadExpr(node.Value);
                     Generator.Emit(OpCode.CompareOp, (int)CmpopType.Eq);
                     Generator.Emit(OpCode.ToBool);
-                    Generator.Emit(OpCode.PopJumpIfFalse, matchFailLabel);
+                    Generator.PopJumpIfFalse(matchFailLabel);
                     break;
 
                 case MatchSingletonNode node:
                     Generator.Emit(OpCode.Copy, 1);
                     Generator.Emit(OpCode.LoadConst, node.Value);
                     Generator.Emit(OpCode.IsOp, 0);
-                    Generator.Emit(OpCode.PopJumpIfFalse, matchFailLabel);
+                    Generator.PopJumpIfFalse(matchFailLabel);
                     break;
 
                 case MatchStarNode node:
@@ -655,7 +656,7 @@ partial class BytecodeCompiler
                         for (int i = 0; i < node.Patterns.Length; i++)
                         {
                             CompilePattern(node.Patterns[i], nextPatternLabels[i]);
-                            Generator.Emit(OpCode.Jump, orEndLabel);
+                            Generator.Jump(orEndLabel);
                             if (i < node.Patterns.Length - 1)
                                 Generator.MarkLabel(nextPatternLabels[i]);
                         }
@@ -668,7 +669,7 @@ partial class BytecodeCompiler
                     {
                         // ensure subject is sequence
                         Generator.Emit(OpCode.MatchSequence);
-                        Generator.Emit(OpCode.PopJumpIfFalse, matchFailLabel);
+                        Generator.PopJumpIfFalse(matchFailLabel);
 
                         // ensure length of subject is enough
                         Generator.Emit(OpCode.GetLen);
@@ -676,7 +677,7 @@ partial class BytecodeCompiler
                         var hasStar = starred is not null;
                         Generator.Emit(OpCode.LoadConst, PyIntObject.FromInteger(node.Patterns.Length + (hasStar ? -1 : 0)));
                         Generator.Emit(OpCode.CompareOp, (int)(hasStar ? CmpopType.GtE : CmpopType.Eq));
-                        Generator.Emit(OpCode.PopJumpIfFalse, matchFailLabel);
+                        Generator.PopJumpIfFalse(matchFailLabel);
 
                         // unpack subject
                         Generator.Emit(OpCode.Copy, 1);
@@ -694,7 +695,7 @@ partial class BytecodeCompiler
                     {
                         // ensure subject is mapping
                         Generator.Emit(OpCode.MatchMapping);
-                        Generator.Emit(OpCode.PopJumpIfFalse, matchFailLabel);
+                        Generator.PopJumpIfFalse(matchFailLabel);
 
                         // ensure keys then get value
                         foreach (var key in node.Keys)
@@ -706,7 +707,7 @@ partial class BytecodeCompiler
 
                         var popKeysAndValuesLabel = Generator.DefineLabel();
                         Generator.Emit(OpCode.Copy, 1); // -> [subject, keys, values, values]
-                        Generator.Emit(OpCode.PopJumpIfNone, popKeysAndValuesLabel); // -> [subject, keys, values]
+                        Generator.PopJumpIfNone(popKeysAndValuesLabel); // -> [subject, keys, values]
 
                         // match each subpattern
                         var popKeysThenFailLabel = Generator.DefineLabel();
@@ -736,14 +737,14 @@ partial class BytecodeCompiler
                         }
 
                         var matchedLabel = Generator.DefineLabel();
-                        Generator.Emit(OpCode.Jump, matchedLabel);
+                        Generator.Jump(matchedLabel);
 
                         Generator.MarkLabel(popKeysAndValuesLabel);
                         Generator.Emit(OpCode.PopTop);
 
                         Generator.MarkLabel(popKeysThenFailLabel);
                         Generator.Emit(OpCode.PopTop);
-                        Generator.Emit(OpCode.Jump, matchFailLabel);
+                        Generator.Jump(matchFailLabel);
 
                         Generator.MarkLabel(matchedLabel);
                     }
@@ -757,7 +758,7 @@ partial class BytecodeCompiler
                         Generator.Emit(OpCode.MatchClass, node.Patterns.Length);
 
                         Generator.Emit(OpCode.Copy, 1);
-                        Generator.Emit(OpCode.PopJumpIfNone, matchFailLabel);
+                        Generator.PopJumpIfNone(matchFailLabel);
 
                         Generator.Emit(OpCode.UnpackSequence, node.Patterns.Length + node.KwdPatterns.Length);
                         CompilePatterns([.. node.Patterns.Concat(node.KwdPatterns)], matchFailLabel);
@@ -776,14 +777,14 @@ partial class BytecodeCompiler
                     CompilePattern(patterns[i], popTopLabels[i]);
                     Generator.Emit(OpCode.PopTop);
                 }
-                Generator.Emit(OpCode.Jump, patternsEndLabel);
+                Generator.Jump(patternsEndLabel);
 
                 for (int i = 0; i < patterns.Count; i++)
                 {
                     Generator.MarkLabel(popTopLabels[i]);
                     Generator.Emit(OpCode.PopTop);
                 }
-                Generator.Emit(OpCode.Jump, matchFailLabel);
+                Generator.Jump(matchFailLabel);
 
                 Generator.MarkLabel(patternsEndLabel);
             }
