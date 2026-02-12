@@ -14,11 +14,10 @@ partial class PyFrame
     {
         private readonly PyObject?[] _localsPlus;
         private readonly FrozenDictionary<string, int> _localsTable;
-        private LocalDictionary? _locals;
-        private DictAdapter? _localsAdapter;
+        private IDictionary<string, PyObject?>? _locals;
         private PyDictObject? _pyDict;
 
-        public PyFrameLocals(FrozenDictionary<string, int> localsTable)
+        internal PyFrameLocals(FrozenDictionary<string, int> localsTable)
         {
             _localsTable = localsTable;
             _localsPlus = new PyObject[_localsTable.Count];
@@ -28,6 +27,13 @@ partial class PyFrame
             _localsTable = localsTable;
             _localsPlus = localPlus;
         }
+        internal PyFrameLocals(PyDictObject dict)
+        {
+            _localsTable = FrozenDictionary<string, int>.Empty;
+            _localsPlus = [];
+            _pyDict = dict;
+            _locals = new StringKeyDict(_pyDict._dict)!;
+        }
 
         internal PyObject?[] LocalsPlus => _localsPlus;
         public IDictionary<string, PyObject?> Locals => _locals ??= new LocalDictionary(_localsTable, _localsPlus);
@@ -35,14 +41,14 @@ partial class PyFrame
 
         public PyFrameLocals Clone()
         {
-            var clone = new PyFrameLocals(_localsTable, [.. _localsPlus]);
+            // only clone string keys, PyObject keys will be ignored
 
+            var clone = new PyFrameLocals(_localsTable, [.. _localsPlus]);
             if (_locals is null)
                 return clone;
 
-            clone._locals = new LocalDictionary(_localsTable, clone._localsPlus, _locals.ExtraLocals?.ToDictionary());
-            if (_localsAdapter is not null)
-                clone._localsAdapter = new DictAdapter(clone._locals, _localsAdapter._extraDict.ToDictionary());
+            var extraDict = _locals is LocalDictionary localDict ? localDict.ExtraLocals : _locals;
+            clone._locals = new LocalDictionary(_localsTable, clone._localsPlus, extraDict is null ? null : new(extraDict));
             return clone;
         }
 

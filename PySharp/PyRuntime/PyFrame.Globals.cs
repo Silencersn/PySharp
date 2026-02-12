@@ -15,9 +15,15 @@ partial class PyFrame
         {
             _globals = new ConcurrentDictionary<string, PyObject>();
         }
-        public PyFrameGlobals(ConcurrentDictionary<string, PyObject> globals)
+        public PyFrameGlobals(ConcurrentDictionary<string, PyObject> globals, PyDictObject? dict = null)
         {
             _globals = globals;
+            _pyDict = dict;
+        }
+        public PyFrameGlobals(PyDictObject dict)
+        {
+            _pyDict = dict;
+            _globals = new StringKeyDict(_pyDict._dict);
         }
 
         public IDictionary<string, PyObject> Globals => _globals;
@@ -25,7 +31,11 @@ partial class PyFrame
 
         public PyFrameGlobals Clone()
         {
-            return new PyFrameGlobals(new(_globals));
+            if (_pyDict is null)
+                return new PyFrameGlobals(new ConcurrentDictionary<string, PyObject>(_globals));
+
+            var dict = PyDictObject.CreateDict(_pyDict._dict);
+            return new PyFrameGlobals(dict);
         }
     }
 }
