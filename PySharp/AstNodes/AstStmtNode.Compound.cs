@@ -425,13 +425,13 @@ internal abstract class Caller
         frame._variables = Func.Code.Variables;
 
         foreach (var capturedVariable in Func.Code.CellVars)
-            frame.Closures[capturedVariable] = PyCellObject.CreateCell(null);
+            frame.Variables.Closures[capturedVariable] = PyCellObject.CreateCell(null);
 
         var cells = Func.Closure;
         var names = Func.Code.FreeVars;
         Debug.Assert(cells.Length == names.Length, "Closure cells count must match free variable names count");
         for (int i = 0; i < cells.Length; i++)
-            frame.Closures.Add(names[i], cells[i]);
+            frame.Variables.Closures.Add(names[i], cells[i]);
 
         frame.InitArgs(Func._def, arguments);
         return frame;
@@ -442,10 +442,10 @@ internal abstract class Caller
         if (code.FreeVars.Length is 0)
             yield break;
 
-        Debug.Assert(frame.InternalClosure is not null);
+        Debug.Assert(frame.Variables._closure is not null);
 
         foreach (var name in code.FreeVars)
-            yield return frame.InternalClosure[name];
+            yield return frame.Variables._closure[name];
     }
 }
 
@@ -563,7 +563,7 @@ public sealed class FunctionDefNode : AstStmtNode, IScopedSubNodesProvider
             Name,
             caller.Call,
             Caller.GetFreeVars(frame, variableScope.CodeObject),
-            frame._globals,
+            frame.Variables._globals,
             variableScope.CodeObject,
             def);
 
@@ -657,7 +657,7 @@ internal static class ClassBuilder
         PyTypeObject.ValidateBases(context, bases, out var layoutType);
         var type = UserDefinedType.Create(layoutType, codeObject.Name, codeObject.QualName, bases);
 
-        if (context.CurrentFrame.Globals.TryGetValue(PySpecialNames.Name, out var module))
+        if (context.CurrentFrame.Variables.Globals.TryGetValue(PySpecialNames.Name, out var module))
             type.ModuleAsObject = module;
         else
             type.ModuleAsObject = PyStrObject.FromString("builtins");
@@ -667,7 +667,7 @@ internal static class ClassBuilder
         using (var withFrame = context.WithFrame(newFrame))
             execBody(context, newFrame, type);
 
-        foreach (var pair in newFrame.Locals)
+        foreach (var pair in newFrame.Variables.Locals)
         {
             if (pair.Value is null)
                 continue;
@@ -821,7 +821,7 @@ public sealed class ClassDefNode : AstStmtNode, IScopedSubNodesProvider
         var type = ClassBuilder.Build(context, variableScope.CodeObject, bases, (context, frame, type) =>
         {
             if (variableScope.ClassCaptured)
-                frame.Closures[PySpecialNames.Class] = PyCellObject.CreateCell(type);
+                frame.Variables.Closures[PySpecialNames.Class] = PyCellObject.CreateCell(type);
 
             foreach (var stmt in Body)
                 stmt.Execute(context, frame);

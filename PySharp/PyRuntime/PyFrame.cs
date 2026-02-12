@@ -7,6 +7,7 @@ using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using static PySharp.PyRuntime.PyFrame;
 
 namespace PySharp.PyRuntime;
 
@@ -33,43 +34,36 @@ public sealed partial class PyFrame
     internal PyObject? Caller { get; }
 
     internal ICodeMetaInfoProvider? MetaInfoProvider { get; set; }
-    private Dictionary<string, PyCellObject>? _closure = null;
-    private PyFrameLocals _locals;
-    internal PyFrameGlobals _globals;
+    private readonly PyFrameVariables _frameVariables;
     internal PyFrame? _outerNonInlineFrame;
     internal SemanticModel? SemanticModel { get; set; } // for AST interpreter
+    internal PyFrameVariables Variables => _frameVariables;
 
     private PyFrame(PyFrame? back)
     {
         Back = back;
-        _globals = new PyFrameGlobals();
-        _locals = new PyFrameLocals(_globals);
+        _frameVariables = PyFrameVariables.CreateModule();
         CallerName = "<module>";
         Caller = null;
         FrameType = back is null ? FrameType.MainRoot : FrameType.Module;
     }
-    private PyFrame(PyFrameGlobals globals)
+    private PyFrame(PyFrameVariables variables)
     {
         Back = null;
-        _globals = globals;
-        _locals = new PyFrameLocals(FrozenDictionary<string, int>.Empty);
+        _frameVariables = variables.CreateWithNewLocals();
         CallerName = $"<thread-{Environment.CurrentManagedThreadId}>";
         Caller = null;
         FrameType = FrameType.ThreadRoot;
     }
     private PyFrame(
         PyFrame back,
-        PyFrameGlobals globals,
-        PyFrameLocals locals,
-        Dictionary<string, PyCellObject>? closure,
+        PyFrameVariables variables,
         string callerName,
         PyObject? caller,
         FrameType frameType)
     {
         Back = back;
-        _globals = globals;
-        _locals = locals;
-        _closure = closure;
+        _frameVariables = variables;
         CallerName = callerName;
         Caller = caller;
         FrameType = frameType;
@@ -78,16 +72,10 @@ public sealed partial class PyFrame
     public PyFrame? Back { get; internal set; }
     [MemberNotNullWhen(false, nameof(Back))]
     public bool IsRoot => Back is null;
-    public ConcurrentDictionary<string, PyObject> Globals => _globals.Globals;
-    public IDictionary<string, PyObject?> Locals => _locals.Locals;
-    public Dictionary<string, PyCellObject> Closures => _closure ??= [];
-    internal Dictionary<string, PyCellObject>? InternalClosure => _closure;
     public Stack<PyExceptionObject> Exceptions => field ??= [];
     public PyExceptionObject CurrentException => Exceptions.Peek();
 
     internal IReadOnlyDictionary<string, PyVariableType>? _variables = null;
-    internal DictAdapter GlobalsAdapter => _globals.GlobalsAdapter;
-    internal DictAdapter LocalsAdapter => field ??= new DictAdapter(Locals);
     internal FrameType FrameType { get; }
     internal (IReadOnlyList<PyObject> Args, IReadOnlyDictionary<string, PyObject> Kwargs)? CallingArguments { get; init; }
 
@@ -107,14 +95,15 @@ public sealed partial class PyFrame
     internal PyFrame CreateFuncCallFrame(string callerName, PyObject caller, FrameType frameType,
         (IReadOnlyList<PyObject> Args, IReadOnlyDictionary<string, PyObject> Kwargs) callingArguments,
         PyFrameGlobals globals,
-        FrozenDictionary<string, int> localVariablesToIndex)
+        FrozenDictionary<string, int> localsTable)
     {
         Debug.Assert(frameType is FrameType.Function or FrameType.Lambda or FrameType.YieldFunction or FrameType.YieldLambda);
+
+        var variables = PyFrameVariables.Create(globals, localsTable);
+        
         return new PyFrame(
             this,
-            globals ?? _globals,
-            new(localVariablesToIndex ?? FrozenDictionary<string, int>.Empty),
-            frameType is FrameType.Class ? _closure : null,
+            variables,
             callerName,
             caller,
             frameType)
@@ -123,11 +112,11 @@ public sealed partial class PyFrame
 
     internal PyFrame CreateClassBuildFrame(PyTypeObject buildingClass)
     {
+        var variables = PyFrameVariables.Create(_frameVariables._globals, FrozenDictionary<string, int>.Empty, _frameVariables._closure);
+
         return new PyFrame(
             this,
-            _globals,
-            new(FrozenDictionary<string, int>.Empty),
-            _closure,
+            variables,
             buildingClass.Name,
             buildingClass,
             FrameType.Class)
@@ -136,20 +125,15 @@ public sealed partial class PyFrame
 
     internal PyFrame CreateThreadRootFrame()
     {
-        return new PyFrame(_globals) { SemanticModel = SemanticModel };
+        return new PyFrame(_frameVariables) { SemanticModel = SemanticModel };
     }
 
     internal PyFrame TempFrame(FrameType frameType)
     {
         Debug.Assert(frameType is FrameType.Exec or FrameType.Eval);
 
-        var tempGlobals = _globals.Clone();
-        PyFrameLocals tempLocals;
-        if (ReferenceEquals(_locals._globals, _globals))
-            tempLocals = new(tempGlobals);
-        else
-            tempLocals = _locals.Clone();
-        var tempFrame = new PyFrame(this, tempGlobals, tempLocals, _closure, CallerName, Caller, frameType)
+        var variables = _frameVariables.Clone();
+        var tempFrame = new PyFrame(this, variables, CallerName, Caller, frameType)
         {
             _variables = _variables,
             SemanticModel = SemanticModel
@@ -161,8 +145,8 @@ public sealed partial class PyFrame
     {
         Debug.Assert(frameType is FrameType.Comprehension);
 
-        var (globals, locals) = CloneGlobalsAndLocals(_globals, _locals);
-        var inlineFrame = new PyFrame(this, globals, locals, _closure, CallerName, Caller, frameType)
+        var variables = _frameVariables.Clone();
+        var inlineFrame = new PyFrame(this, variables, CallerName, Caller, frameType)
         {
             _variables = _variables,
             _outerNonInlineFrame = _outerNonInlineFrame ?? this,
@@ -170,19 +154,6 @@ public sealed partial class PyFrame
             MetaInfoProvider = MetaInfoProvider
         };
         return inlineFrame;
-
-        static (PyFrameGlobals, PyFrameLocals) CloneGlobalsAndLocals(PyFrameGlobals globals, PyFrameLocals locals)
-        {
-            var cloneGlobals = globals.Clone();
-
-            if (locals._globals is null)
-                return (cloneGlobals, locals.Clone());
-
-            // locals is created from globals in global scope
-            Debug.Assert(ReferenceEquals(locals._globals, globals));
-            var cloneLocals = new PyFrameLocals(cloneGlobals);
-            return (cloneGlobals, cloneLocals);
-        }
     }
 
     internal void InitArgs(PyArgsDef def, PyArguments arguments)
@@ -210,14 +181,14 @@ public sealed partial class PyFrame
     public PyResult GetVariable(string name)
     {
         if (_variables is null)
-            return LoadName(name);
+            return _frameVariables.LoadName(name);
 
         return _variables[name] switch
         {
-            PyVariableType.Local or PyVariableType.Parameter => LoadLocal(name),
-            PyVariableType.Global => LoadGlobal(name),
-            PyVariableType.CapturedLocal or PyVariableType.CapturedParameter => LoadClosure(name, true),
-            PyVariableType.Closure => LoadClosure(name, false),
+            PyVariableType.Local or PyVariableType.Parameter => _frameVariables.LoadLocal(name),
+            PyVariableType.Global => _frameVariables.LoadGlobal(name),
+            PyVariableType.CapturedLocal or PyVariableType.CapturedParameter => _frameVariables.LoadClosure(name, true),
+            PyVariableType.Closure => _frameVariables.LoadClosure(name, false),
             _ => throw new UnreachableException()
         };
     }
@@ -225,13 +196,13 @@ public sealed partial class PyFrame
     public PyResult SetVariable(string name, PyObject value)
     {
         if (_variables is null)
-            return StoreName(name, value);
+            return _frameVariables.StoreName(name, value);
 
         return _variables[name] switch
         {
-            PyVariableType.Local or PyVariableType.Parameter => StoreLocal(name, value),
-            PyVariableType.Global => StoreGlobal(name, value),
-            PyVariableType.CapturedLocal or PyVariableType.CapturedParameter or PyVariableType.Closure => StoreClosure(name, value),
+            PyVariableType.Local or PyVariableType.Parameter => _frameVariables.StoreLocal(name, value),
+            PyVariableType.Global => _frameVariables.StoreGlobal(name, value),
+            PyVariableType.CapturedLocal or PyVariableType.CapturedParameter or PyVariableType.Closure => _frameVariables.StoreClosure(name, value),
             _ => throw new UnreachableException()
         };
     }
@@ -239,14 +210,14 @@ public sealed partial class PyFrame
     public PyResult DeleteVariable(string name)
     {
         if (_variables is null)
-            return DeleteName(name);
+            return _frameVariables.DeleteName(name);
 
         return _variables[name] switch
         {
-            PyVariableType.Local or PyVariableType.Parameter => DeleteLocal(name),
-            PyVariableType.Global => DeleteGlobal(name),
-            PyVariableType.CapturedLocal or PyVariableType.CapturedParameter => DeleteClosure(name, true),
-            PyVariableType.Closure => DeleteClosure(name, false),
+            PyVariableType.Local or PyVariableType.Parameter => _frameVariables.DeleteLocal(name),
+            PyVariableType.Global => _frameVariables.DeleteGlobal(name),
+            PyVariableType.CapturedLocal or PyVariableType.CapturedParameter => _frameVariables.DeleteClosure(name, true),
+            PyVariableType.Closure => _frameVariables.DeleteClosure(name, false),
             _ => throw new UnreachableException()
         };
     }

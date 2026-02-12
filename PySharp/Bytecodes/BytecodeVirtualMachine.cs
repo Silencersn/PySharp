@@ -142,71 +142,71 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                         break;
 
                     case OpCode.LoadName:
-                        value = frame.LoadName(names[instruction.Arg]).PyUnwrap(context);
+                        value = frame.Variables.LoadName(names[instruction.Arg]).PyUnwrap(context);
                         Stack.Push(value);
                         break;
 
                     case OpCode.LoadGlobal:
-                        value = frame.LoadGlobal(names[instruction.Arg]).PyUnwrap(context);
+                        value = frame.Variables.LoadGlobal(names[instruction.Arg]).PyUnwrap(context);
                         Stack.Push(value);
                         break;
 
                     case OpCode.LoadFast:
-                        value = frame.LoadFast(instruction.Arg).PyUnwrap(context);
+                        value = frame.Variables.LoadFast(instruction.Arg).PyUnwrap(context);
                         Stack.Push(value);
                         break;
 
                     case OpCode.LoadDeref:
-                        value = frame.LoadClosure(names[instruction.Arg], isLocal: default /* TODO: allow unknown isLocal */).PyUnwrap(context);
+                        value = frame.Variables.LoadClosure(names[instruction.Arg], isLocal: default /* TODO: allow unknown isLocal */).PyUnwrap(context);
                         Stack.Push(value);
                         break;
 
                     case OpCode.StoreName:
                         value = Stack.Pop();
-                        frame.StoreName(names[instruction.Arg], value);
+                        frame.Variables.StoreName(names[instruction.Arg], value);
                         break;
 
                     case OpCode.StoreGlobal:
                         value = Stack.Pop();
-                        frame.StoreGlobal(names[instruction.Arg], value);
+                        frame.Variables.StoreGlobal(names[instruction.Arg], value);
                         break;
 
                     case OpCode.StoreFast:
                         value = Stack.Pop();
-                        frame.StoreFast(instruction.Arg, value);
+                        frame.Variables.StoreFast(instruction.Arg, value);
                         break;
 
                     case OpCode.StoreDeref:
                         value = Stack.Pop();
-                        frame.StoreClosure(names[instruction.Arg], value);
+                        frame.Variables.StoreClosure(names[instruction.Arg], value);
                         break;
 
                     case OpCode._StoreNameIncludedNonInlineFrame:
                         value = Stack.Pop();
-                        frame.StoreName(names[instruction.Arg], value);
-                        frame._outerNonInlineFrame?.StoreName(names[instruction.Arg], value);
+                        frame.Variables.StoreName(names[instruction.Arg], value);
+                        frame._outerNonInlineFrame?.Variables.StoreName(names[instruction.Arg], value);
                         break;
 
                     case OpCode._StoreDerefIncludedNonInlineFrame:
                         value = Stack.Pop();
-                        frame.StoreClosure(names[instruction.Arg], value);
-                        frame._outerNonInlineFrame?.StoreClosure(names[instruction.Arg], value);
+                        frame.Variables.StoreClosure(names[instruction.Arg], value);
+                        frame._outerNonInlineFrame?.Variables.StoreClosure(names[instruction.Arg], value);
                         break;
 
                     case OpCode.DeleteName:
-                        frame.DeleteName(names[instruction.Arg]).PyUnwrap(context);
+                        frame.Variables.DeleteName(names[instruction.Arg]).PyUnwrap(context);
                         break;
 
                     case OpCode.DeleteGlobal:
-                        frame.DeleteGlobal(names[instruction.Arg]).PyUnwrap(context);
+                        frame.Variables.DeleteGlobal(names[instruction.Arg]).PyUnwrap(context);
                         break;
 
                     case OpCode.DeleteFast:
-                        frame.DeleteFast(instruction.Arg).PyUnwrap(context);
+                        frame.Variables.DeleteFast(instruction.Arg).PyUnwrap(context);
                         break;
 
                     case OpCode.DeleteDeref:
-                        frame.DeleteClosure(names[instruction.Arg], isLocal: default /* TODO: allow unknown isLocal */);
+                        frame.Variables.DeleteClosure(names[instruction.Arg], isLocal: default /* TODO: allow unknown isLocal */);
                         break;
 
                     case OpCode.LoadAttr:
@@ -752,7 +752,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                                 codeObj.Name,
                                 caller.Call,
                                 Caller.GetFreeVars(frame, codeObj),
-                                frame._globals,
+                                frame.Variables._globals,
                                 codeObj,
                                 def);
                             caller.Func = func;
@@ -806,7 +806,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                         break;
 
                     case OpCode.MakeCell:
-                        frame.Closures[names[instruction.Arg]] = PyCellObject.CreateEmpty();
+                        frame.Variables.Closures[names[instruction.Arg]] = PyCellObject.CreateEmpty();
                         break;
 
                     case OpCode.RaiseVarArgs:

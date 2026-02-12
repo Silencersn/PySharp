@@ -23,7 +23,7 @@ public class PyInterpreter
         _environment = environment;
         _mainModule = new PyModuleObject(PySpecialNames.Main);
         _mainContext = PyCallContext.CreateInterpreterMainContext(this);
-        _mainModule._pyAttributes = _mainContext.CurrentFrame._globals.Globals;
+        _mainModule._pyAttributes = _mainContext.CurrentFrame.Variables._globals.Globals;
     }
 
     public static PyInterpreter Create(PyEnvironment environment)

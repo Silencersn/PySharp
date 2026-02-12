@@ -473,8 +473,8 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef()]
     private static PyResult DirImpl_1(PyCallContext context, PyArguments arguments)
     {
-        var result = PyListObject.CreateList(context.CurrentFrame.Locals
-            .Concat(context.CurrentFrame.Closures.Select(static pair => KeyValuePair.Create(pair.Key, pair.Value.Value)))
+        var result = PyListObject.CreateList(context.CurrentFrame.Variables.Locals
+            .Concat(context.CurrentFrame.Variables.Closures.Select(static pair => KeyValuePair.Create(pair.Key, pair.Value.Value)))
             .Where(static pair => pair.Value is not null)
             .Select(static pair => PyStrObject.FromString(pair.Key)));
         return result;
@@ -515,8 +515,8 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef()]
     private static PyResult LocalsImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = PyDictObject.CreateDict(context.CurrentFrame.Locals
-            .Concat(context.CurrentFrame.Closures.Select(static pair => KeyValuePair.Create(pair.Key, pair.Value.Value)))
+        var result = PyDictObject.CreateDict(context.CurrentFrame.Variables.Locals
+            .Concat(context.CurrentFrame.Variables.Closures.Select(static pair => KeyValuePair.Create(pair.Key, pair.Value.Value)))
             .Where(static pair => pair.Value is not null)
             .Select(static pair => KeyValuePair.Create((PyObject)PyStrObject.FromString(pair.Key), pair.Value!)));
         return result;
@@ -525,7 +525,7 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef()]
     private static PyResult GlobalsImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = PyDictObject.CreateProxy(context.CurrentFrame.GlobalsAdapter);
+        var result = PyDictObject.CreateProxy(context.CurrentFrame.Variables.GlobalsAdapter);
         return result;
     }
 

@@ -987,7 +987,7 @@ public sealed class LambdaNode : AstExprNode, IScopedSubNodesProvider
             "<lambda>",
             caller.Call,
             Caller.GetFreeVars(frame, variableScope.CodeObject),
-            frame._globals,
+            frame.Variables._globals,
             variableScope.CodeObject,
             def);
 
