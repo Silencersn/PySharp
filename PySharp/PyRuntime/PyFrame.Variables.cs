@@ -15,7 +15,7 @@ partial class PyFrame
         internal readonly PyFrameLocals? _locals;
         internal Dictionary<string, PyCellObject>? _closure;
 
-        public IDictionary<string, PyObject?> Locals => _locals?.Locals ?? _globals.Globals!;
+        public IDictionary<string, PyObject?> Locals => (IDictionary<string, PyObject?>?)_locals?.Locals ?? _globals.Globals!;
         public IDictionary<string, PyObject> Globals => _globals.Globals;
         public IDictionary<string, PyCellObject> Closures => _closure ??= [];
 

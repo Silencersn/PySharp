@@ -14,8 +14,7 @@ partial class PyFrame
     {
         private readonly PyObject?[] _localsPlus;
         private readonly FrozenDictionary<string, int> _localsTable;
-        internal readonly PyFrameGlobals? _globals;
-        private IDictionary<string, PyObject?>? _locals;
+        private LocalDictionary? _locals;
         private DictAdapter? _localsAdapter;
         private PyDictObject? _pyDict;
 
@@ -24,15 +23,6 @@ partial class PyFrame
             _localsTable = localsTable;
             _localsPlus = new PyObject[_localsTable.Count];
         }
-        public PyFrameLocals(PyFrameGlobals globals)
-        {
-            _globals = globals;
-            _localsPlus = [];
-            _localsTable = FrozenDictionary<string, int>.Empty;
-            _locals = globals.Globals!;
-            _localsAdapter = globals.GlobalsAdapter;
-            _pyDict = globals.PyDict;
-        }
         private PyFrameLocals(FrozenDictionary<string, int> localsTable, PyObject?[] localPlus)
         {
             _localsTable = localsTable;
@@ -40,7 +30,7 @@ partial class PyFrame
         }
 
         internal PyObject?[] LocalsPlus => _localsPlus;
-        public IDictionary<string, PyObject?> Locals => _locals ??= new LocalDictionary(_localsTable, _localsPlus);
+        public LocalDictionary Locals => _locals ??= new LocalDictionary(_localsTable, _localsPlus);
         public DictAdapter LocalsAdapter => _localsAdapter ??= new DictAdapter(Locals);
         public PyDictObject PyDict => _pyDict ??= PyDictObject.CreateProxy(LocalsAdapter);
 
@@ -48,20 +38,16 @@ partial class PyFrame
         {
             var clone = new PyFrameLocals(_localsTable, [.. _localsPlus]);
 
-            if (_locals is LocalDictionary localDict)
-            {
-                clone._locals = new LocalDictionary(_localsTable, clone._localsPlus, localDict.ExtraLocals?.ToDictionary());
-                if (_localsAdapter is not null)
-                    clone._localsAdapter = new DictAdapter(clone._locals, _localsAdapter._extraDict.ToDictionary());
-            }
-            else if (_locals is not null)
-            {
-                throw new UnreachableException("Do not call Clone if it is created by globals");
-            }
+            if (_locals is null)
+                return clone;
+
+            clone._locals = new LocalDictionary(_localsTable, clone._localsPlus, _locals.ExtraLocals?.ToDictionary());
+            if (_localsAdapter is not null)
+                clone._localsAdapter = new DictAdapter(clone._locals, _localsAdapter._extraDict.ToDictionary());
             return clone;
         }
 
-        private sealed class LocalDictionary : IDictionary<string, PyObject?>
+        internal sealed class LocalDictionary : IDictionary<string, PyObject?>
         {
             private readonly FrozenDictionary<string, int> _localsTable;
             private readonly PyObject?[] _localsPlus;
