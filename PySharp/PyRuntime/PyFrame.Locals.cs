@@ -30,9 +30,8 @@ partial class PyFrame
         }
 
         internal PyObject?[] LocalsPlus => _localsPlus;
-        public LocalDictionary Locals => _locals ??= new LocalDictionary(_localsTable, _localsPlus);
-        public DictAdapter LocalsAdapter => _localsAdapter ??= new DictAdapter(Locals);
-        public PyDictObject PyDict => _pyDict ??= PyDictObject.CreateProxy(LocalsAdapter);
+        public IDictionary<string, PyObject?> Locals => _locals ??= new LocalDictionary(_localsTable, _localsPlus);
+        public PyDictObject PyDict => _pyDict ??= PyDictObject.CreateProxy(new DictAdapter(Locals));
 
         public PyFrameLocals Clone()
         {

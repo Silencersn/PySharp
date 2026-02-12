@@ -525,7 +525,7 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef()]
     private static PyResult GlobalsImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = PyDictObject.CreateProxy(context.CurrentFrame.Variables.GlobalsAdapter);
+        var result = context.CurrentFrame.Variables._globals.PyDict;
         return result;
     }
 
