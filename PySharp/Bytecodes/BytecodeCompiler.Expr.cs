@@ -76,12 +76,17 @@ partial class BytecodeCompiler
         }
         else if (VariableScope is CallableVariableScope callableVariableScope)
         {
-            if (callableVariableScope.LocalsTable.TryGetValue(name, out var nameIndex))
-                AsFast(nameIndex);
-            else if (callableVariableScope.CellVars.Contains(name) || callableVariableScope.FreeVars.Contains(name))
-                AsDeref();
-            else
+            if (!callableVariableScope.LocalsTable.TryGetValue(name, out var nameIndex))
+            {
                 AsGlobal();
+            }
+            else
+            {
+                if (callableVariableScope.Variables[name] is PyVariableType.Closure or PyVariableType.CapturedLocal or PyVariableType.CapturedParameter)
+                    AsDerefFast(nameIndex);
+                else
+                    AsFast(nameIndex);
+            }
         }
 
         void AsGlobal()
@@ -138,6 +143,20 @@ partial class BytecodeCompiler
             };
 
             Generator.Emit(opCode, name);
+        }
+
+        void AsDerefFast(int nameIndex)
+        {
+            var opCode = ctx switch
+            {
+                ExprContextType.Load => OpCode._LoadDerefFast,
+                ExprContextType.Store => OpCode._StoreDerefFast,
+                ExprContextType.Del => OpCode._DeleteDerefFast,
+
+                _ => throw new InvalidOperationException()
+            };
+
+            Generator.Emit(opCode, nameIndex);
         }
     }
 

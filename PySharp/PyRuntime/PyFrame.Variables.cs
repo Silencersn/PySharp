@@ -13,52 +13,36 @@ partial class PyFrame
     {
         internal readonly PyFrameGlobals _globals;
         internal readonly PyFrameLocals? _locals;
-        internal Dictionary<string, PyCellObject>? _closure;
 
         public IDictionary<string, PyObject?> Locals => _locals?.Locals ?? _globals.Globals!;
         public IDictionary<string, PyObject> Globals => _globals.Globals;
-        public IDictionary<string, PyCellObject> Closures => _closure ??= [];
 
-        private PyFrameVariables(PyFrameGlobals globals, PyFrameLocals? locals, Dictionary<string, PyCellObject>? closure = null)
+        private PyFrameVariables(PyFrameGlobals globals, PyFrameLocals? locals)
         {
             _globals = globals;
             _locals = locals;
-            _closure = closure;
         }
 
         public static PyFrameVariables CreateModule()
         {
             return new PyFrameVariables(new PyFrameGlobals(), null);
         }
-        public PyFrameVariables CreateWithNewLocals(FrozenDictionary<string, int>? localsTable = null, bool newClosure = true)
+        public static PyFrameVariables Create(PyFrameGlobals globals, FrozenDictionary<string, int>? localsTable, int cellCount)
         {
-            return new PyFrameVariables(_globals, new PyFrameLocals(localsTable ?? FrozenDictionary<string, int>.Empty), newClosure ? null : _closure);
+            return new PyFrameVariables(globals, new PyFrameLocals(localsTable ?? FrozenDictionary<string, int>.Empty, cellCount));
         }
-        public static PyFrameVariables Create(PyFrameGlobals globals, FrozenDictionary<string, int>? localsTable, Dictionary<string, PyCellObject>? closure = null)
+        public static PyFrameVariables Create(PyFrameGlobals globals, PyFrameLocals? locals)
         {
-            return new PyFrameVariables(globals, new PyFrameLocals(localsTable ?? FrozenDictionary<string, int>.Empty), closure);
+            return new PyFrameVariables(globals, locals);
         }
         public PyFrameVariables Clone()
         {
-            return new PyFrameVariables(_globals.Clone(), _locals?.Clone(), _closure?.ToDictionary());
+            return new PyFrameVariables(_globals.Clone(), _locals?.Clone());
         }
 
         private bool TryLoadFromLocal(string name, [MaybeNullWhen(true)] out PyObject? value)
         {
             return Locals.TryGetValue(name, out value);
-        }
-
-        private bool TryLoadFromClosure(string name, [MaybeNullWhen(true)] out PyObject? value)
-        {
-            value = null;
-            if (_closure is null)
-                return false;
-
-            if (!_closure.TryGetValue(name, out var cell))
-                return false;
-
-            value = cell.Value;
-            return true;
         }
 
         private bool TryLoadFromBuiltins(string name, [NotNullWhen(true)] out PyObject? value)
@@ -68,6 +52,30 @@ partial class PyFrame
                 return false;
 
             return builtins.PyAttributes.TryGetValue(name, out value);
+        }
+
+        internal IEnumerable<KeyValuePair<string, PyObject>> EnumerateLocals()
+        {
+            if (_locals is null)
+                return Globals;
+
+            var skipCount = _locals.LocalsPlus.Length - _locals._cellCount;
+
+            return _locals._localsTable
+                .Where(pair =>
+                {
+                    var value = _locals.LocalsPlus[pair.Value];
+                    if (pair.Value >= skipCount)
+                        value = ((PyCellObject)value!).Value;
+                    return value is not null;
+                })
+                .Select(pair =>
+                {
+                    var value = _locals.LocalsPlus[pair.Value];
+                    if (pair.Value >= skipCount)
+                        value = ((PyCellObject)value!).Value;
+                    return KeyValuePair.Create(pair.Key, value!);
+                });
         }
 
         internal PyResult LoadFast(int index)
@@ -85,6 +93,21 @@ partial class PyFrame
             return value;
         }
 
+        internal PyResult LoadDerefFast(int index)
+        {
+            var result = LoadFast(index);
+            if (result.IsError)
+                return result;
+
+            if (result.Value is not PyCellObject cell)
+                return PyResult.RaisePySharpException($"variable [{index}] is not cell");
+
+            if (cell.Value is null)
+                return PyResult.UnboundLocalError($"cannot access local or free variable '[{index /* TODO: name */}]' where it is not associated with a value");
+
+            return cell.Value;
+        }
+
         public PyResult LoadLocal(string name)
         {
             if (!TryLoadFromLocal(name, out var value))
@@ -96,20 +119,19 @@ partial class PyFrame
             return value;
         }
 
-        public PyResult LoadClosure(string name, bool isLocal)
+        public PyResult LoadDeref(string name)
         {
-            if (!TryLoadFromClosure(name, out var value))
-                return PyResult.NameError($"name '{name}' is not defined");
+            var result = LoadLocal(name);
+            if (result.IsError)
+                return result;
 
-            if (value is null)
-            {
-                if (isLocal)
-                    return PyResult.UnboundLocalError($"cannot access local variable '{name}' where it is not associated with a value");
+            if (result.Value is not PyCellObject cell)
+                return PyResult.RaisePySharpException($"variable '{name}' is not cell");
 
-                return PyResult.UnboundLocalError($"cannot access free variable '{name}' where it is not associated with a value in enclosing scope");
-            }
+            if (cell.Value is null)
+                return PyResult.UnboundLocalError($"cannot access local or free variable '{name}' where it is not associated with a value");
 
-            return value;
+            return cell.Value;
         }
 
         public PyResult LoadGlobal(string name)
@@ -147,16 +169,33 @@ partial class PyFrame
             return PyNoneObject.None;
         }
 
+        internal PyResult StoreDerefFast(int index, PyObject? value)
+        {
+            var result = LoadFast(index);
+            if (result.IsError)
+                return result;
+
+            if (result.Value is not PyCellObject cell)
+                return PyResult.RaisePySharpException($"variable [{index}] is not cell");
+
+            cell.Value = value;
+            return PyNoneObject.None;
+        }
+
         public PyResult StoreLocal(string name, PyObject value)
         {
             Locals[name] = value;
             return PyNoneObject.None;
         }
 
-        public PyResult StoreClosure(string name, PyObject value)
+        public PyResult StoreDeref(string name, PyObject? value)
         {
-            if (_closure is null || !Closures.TryGetValue(name, out var cell))
-                return PyResult.RaisePySharpException("closure not found");
+            var result = LoadLocal(name);
+            if (result.IsError)
+                return result;
+
+            if (result.Value is not PyCellObject cell)
+                return PyResult.RaisePySharpException($"variable '{name}' is not cell");
 
             cell.Value = value;
             return PyNoneObject.None;
@@ -189,6 +228,11 @@ partial class PyFrame
             return PyNoneObject.None;
         }
 
+        internal PyResult DeleteDerefFast(int index)
+        {
+            return StoreDerefFast(index, value: null);
+        }
+
         public PyResult DeleteLocal(string name)
         {
             if (Locals.Remove(name))
@@ -197,15 +241,9 @@ partial class PyFrame
             return PyResult.UnboundLocalError($"cannot access local variable '{name}' where it is not associated with a value");
         }
 
-        public PyResult DeleteClosure(string name, bool isLocal)
+        public PyResult DeleteDeref(string name)
         {
-            if (_closure is not null && _closure.Remove(name))
-                return PyNoneObject.None;
-
-            if (isLocal)
-                return PyResult.UnboundLocalError($"cannot access local variable '{name}' where it is not associated with a value");
-
-            return PyResult.UnboundLocalError($"cannot access free variable '{name}' where it is not associated with a value in enclosing scope");
+            return StoreDeref(name, value: null);    
         }
 
         public PyResult DeleteGlobal(string name)

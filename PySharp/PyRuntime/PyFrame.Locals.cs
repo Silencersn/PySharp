@@ -5,6 +5,8 @@ using System.Collections;
 using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace PySharp.PyRuntime;
 
@@ -13,19 +15,28 @@ partial class PyFrame
     internal sealed class PyFrameLocals
     {
         private readonly PyObject?[] _localsPlus;
-        private readonly FrozenDictionary<string, int> _localsTable;
+        internal readonly FrozenDictionary<string, int> _localsTable;
+        internal readonly int _cellCount;
         private IDictionary<string, PyObject?>? _locals;
         private PyDictObject? _pyDict;
 
-        internal PyFrameLocals(FrozenDictionary<string, int> localsTable)
+        internal PyFrameLocals(FrozenDictionary<string, int> localsTable, int cellCount)
         {
             _localsTable = localsTable;
+            _cellCount = cellCount;
             _localsPlus = new PyObject[_localsTable.Count];
         }
-        private PyFrameLocals(FrozenDictionary<string, int> localsTable, PyObject?[] localPlus)
+        private PyFrameLocals(FrozenDictionary<string, int> localsTable, int cellCount, PyObject?[] localPlus)
         {
             _localsTable = localsTable;
+            _cellCount = cellCount;
             _localsPlus = localPlus;
+        }
+        private PyFrameLocals(IDictionary<string, PyObject?> locals)
+        {
+            _localsTable = FrozenDictionary<string, int>.Empty;
+            _localsPlus = [];
+            _locals = locals;
         }
         internal PyFrameLocals(PyDictObject dict)
         {
@@ -43,13 +54,35 @@ partial class PyFrame
         {
             // only clone string keys, PyObject keys will be ignored
 
-            var clone = new PyFrameLocals(_localsTable, [.. _localsPlus]);
+            var clone = new PyFrameLocals(_localsTable, _cellCount, [.. _localsPlus]);
             if (_locals is null)
                 return clone;
 
             var extraDict = _locals is LocalDictionary localDict ? localDict.ExtraLocals : _locals;
             clone._locals = new LocalDictionary(_localsTable, clone._localsPlus, extraDict is null ? null : new(extraDict));
             return clone;
+        }
+
+        public PyFrameLocals ToClassClosure()
+        {
+            var skipCount = _localsPlus.Length - _cellCount;
+
+            return new PyFrameLocals(_localsTable
+                .Where(pair => pair.Value >= skipCount)
+                .ToDictionary(static pair => pair.Key, pair => _localsPlus[pair.Value]));
+        }
+
+        internal void InitCells(ReadOnlySpan<PyCellObject> closure)
+        {
+            foreach (ref var cell in _localsPlus.AsSpan()[^_cellCount..^closure.Length])
+                cell = PyCellObject.CreateEmpty();
+
+            if (closure.Length is 0)
+                return;
+
+            ref PyCellObject ptr = ref Unsafe.As<PyObject?, PyCellObject>(ref _localsPlus[^closure.Length]);
+            var span = MemoryMarshal.CreateSpan(ref ptr, closure.Length);
+            closure.CopyTo(span);
         }
 
         internal sealed class LocalDictionary : IDictionary<string, PyObject?>

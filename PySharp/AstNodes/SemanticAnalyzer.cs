@@ -708,6 +708,8 @@ public sealed class SemanticAnalyzer : ICodeMetaInfoProvider
             callableScope.LocalsTable = callableScope.Variables
                 .Where(pair => pair.Value is PyVariableType.Local or PyVariableType.Parameter)
                 .Select(pair => pair.Key)
+                .Concat(callableScope.CellVars)
+                .Concat(callableScope.FreeVars)
                 .Distinct()
                 .Index()
                 .ToFrozenDictionary(static indexed => indexed.Item, static indexed => indexed.Index);

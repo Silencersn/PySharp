@@ -50,7 +50,7 @@ public sealed partial class PyFrame
     private PyFrame(PyFrameVariables variables)
     {
         Back = null;
-        _frameVariables = variables.CreateWithNewLocals();
+        _frameVariables = PyFrameVariables.Create(variables._globals, null, 0);
         CallerName = $"<thread-{Environment.CurrentManagedThreadId}>";
         Caller = null;
         FrameType = FrameType.ThreadRoot;
@@ -95,11 +95,11 @@ public sealed partial class PyFrame
     internal PyFrame CreateFuncCallFrame(string callerName, PyObject caller, FrameType frameType,
         (IReadOnlyList<PyObject> Args, IReadOnlyDictionary<string, PyObject> Kwargs) callingArguments,
         PyFrameGlobals globals,
-        FrozenDictionary<string, int> localsTable)
+        PyCodeObject code)
     {
         Debug.Assert(frameType is FrameType.Function or FrameType.Lambda or FrameType.YieldFunction or FrameType.YieldLambda);
 
-        var variables = PyFrameVariables.Create(globals, localsTable);
+        var variables = PyFrameVariables.Create(globals, code.LocalsTable, code.CellVars.Length + code.FreeVars.Length);
         
         return new PyFrame(
             this,
@@ -112,7 +112,8 @@ public sealed partial class PyFrame
 
     internal PyFrame CreateClassBuildFrame(PyTypeObject buildingClass)
     {
-        var variables = PyFrameVariables.Create(_frameVariables._globals, FrozenDictionary<string, int>.Empty, _frameVariables._closure);
+        var variables = PyFrameVariables.Create(_frameVariables._globals,
+            _frameVariables._locals?.ToClassClosure() ?? new PyFrameLocals(FrozenDictionary<string, int>.Empty, 0));
 
         return new PyFrame(
             this,
@@ -187,8 +188,8 @@ public sealed partial class PyFrame
         {
             PyVariableType.Local or PyVariableType.Parameter => _frameVariables.LoadLocal(name),
             PyVariableType.Global => _frameVariables.LoadGlobal(name),
-            PyVariableType.CapturedLocal or PyVariableType.CapturedParameter => _frameVariables.LoadClosure(name, true),
-            PyVariableType.Closure => _frameVariables.LoadClosure(name, false),
+            PyVariableType.CapturedLocal or PyVariableType.CapturedParameter => _frameVariables.LoadDeref(name),
+            PyVariableType.Closure => _frameVariables.LoadDeref(name),
             _ => throw new UnreachableException()
         };
     }
@@ -202,7 +203,7 @@ public sealed partial class PyFrame
         {
             PyVariableType.Local or PyVariableType.Parameter => _frameVariables.StoreLocal(name, value),
             PyVariableType.Global => _frameVariables.StoreGlobal(name, value),
-            PyVariableType.CapturedLocal or PyVariableType.CapturedParameter or PyVariableType.Closure => _frameVariables.StoreClosure(name, value),
+            PyVariableType.CapturedLocal or PyVariableType.CapturedParameter or PyVariableType.Closure => _frameVariables.StoreDeref(name, value),
             _ => throw new UnreachableException()
         };
     }
@@ -216,8 +217,8 @@ public sealed partial class PyFrame
         {
             PyVariableType.Local or PyVariableType.Parameter => _frameVariables.DeleteLocal(name),
             PyVariableType.Global => _frameVariables.DeleteGlobal(name),
-            PyVariableType.CapturedLocal or PyVariableType.CapturedParameter => _frameVariables.DeleteClosure(name, true),
-            PyVariableType.Closure => _frameVariables.DeleteClosure(name, false),
+            PyVariableType.CapturedLocal or PyVariableType.CapturedParameter => _frameVariables.DeleteDeref(name),
+            PyVariableType.Closure => _frameVariables.DeleteDeref(name),
             _ => throw new UnreachableException()
         };
     }

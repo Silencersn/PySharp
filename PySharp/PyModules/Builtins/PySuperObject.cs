@@ -76,7 +76,8 @@ public sealed class PySuperObjectType : PyTypeObject<PySuperObjectType, PySuperO
         if (args.Count is 0)
             return PyResult.RuntimeError(PySR.Runtime_Super_NoArgs);
 
-        if (frame.Variables._closure is null || !frame.Variables._closure.TryGetValue(PySpecialNames.Class, out var cell))
+        var cellResult = frame.Variables.LoadLocal(PySpecialNames.Class);
+        if (cellResult.IsError || cellResult.Value is not PyCellObject cell)
             return PyResult.RuntimeError(PySR.Runtime_Super_ClassCellNotFound);
 
         if (cell.Value is null)

@@ -59,3 +59,20 @@ assert oct(-999999999999999999999999999) == '-0o635456171177204003634777777777'
 
 assert hex(100) == '0x64'
 assert hex(-0b_00001111_11110000_10101010) == '-0xff0aa'
+
+def assert_test(lo):
+	assert 'value' in lo
+	assert 'value2' in lo
+	assert 'value3' not in lo
+	assert 'value4' not in lo
+
+def test():
+	value = 1
+	value2 = 2
+	assert_test(locals())
+	value3 = 3
+	value4 = 4
+
+	lambda: value2, value4
+
+test()

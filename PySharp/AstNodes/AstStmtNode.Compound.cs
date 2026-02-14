@@ -421,17 +421,11 @@ internal abstract class Caller
     public PyFrame CreateCallingFrame(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, PyArguments arguments)
     {
         var backFrame = context.CurrentFrame;
-        var frame = backFrame.CreateFuncCallFrame(Func.Name, Func, _frameType, (args, kwargs), Func._globals, Func.Code.LocalsTable);
+        var frame = backFrame.CreateFuncCallFrame(Func.Name, Func, _frameType, (args, kwargs), Func._globals, Func.Code);
         frame._variables = Func.Code.Variables;
 
-        foreach (var capturedVariable in Func.Code.CellVars)
-            frame.Variables.Closures[capturedVariable] = PyCellObject.CreateCell(null);
-
-        var cells = Func.Closure;
-        var names = Func.Code.FreeVars;
-        Debug.Assert(cells.Length == names.Length, "Closure cells count must match free variable names count");
-        for (int i = 0; i < cells.Length; i++)
-            frame.Variables.Closures.Add(names[i], cells[i]);
+        Debug.Assert(frame.Variables._locals is not null);
+        frame.Variables._locals.InitCells(Func.Closure);
 
         frame.InitArgs(Func._def, arguments);
         return frame;
@@ -442,10 +436,12 @@ internal abstract class Caller
         if (code.FreeVars.Length is 0)
             yield break;
 
-        Debug.Assert(frame.Variables._closure is not null);
-
         foreach (var name in code.FreeVars)
-            yield return frame.Variables._closure[name];
+        {
+            var obj = frame.Variables.Locals[name];
+            Debug.Assert(obj is PyCellObject);
+            yield return (PyCellObject)obj;
+        }
     }
 }
 
@@ -821,7 +817,7 @@ public sealed class ClassDefNode : AstStmtNode, IScopedSubNodesProvider
         var type = ClassBuilder.Build(context, variableScope.CodeObject, bases, (context, frame, type) =>
         {
             if (variableScope.ClassCaptured)
-                frame.Variables.Closures[PySpecialNames.Class] = PyCellObject.CreateCell(type);
+                frame.Variables.StoreLocal(PySpecialNames.Class, PyCellObject.CreateCell(type));
 
             foreach (var stmt in Body)
                 stmt.Execute(context, frame);

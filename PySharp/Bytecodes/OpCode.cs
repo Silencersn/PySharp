@@ -13,11 +13,13 @@ internal enum OpCode
     LoadGlobal,
     LoadFast,
     LoadDeref,
+    _LoadDerefFast,
 
     StoreName,
     StoreGlobal,
     StoreFast,
     StoreDeref,
+    _StoreDerefFast,
     _StoreNameIncludedNonInlineFrame,
     _StoreDerefIncludedNonInlineFrame,
 
@@ -25,6 +27,7 @@ internal enum OpCode
     DeleteGlobal,
     DeleteFast,
     DeleteDeref,
+    _DeleteDerefFast,
 
     LoadAttr,
     StoreAttr,
