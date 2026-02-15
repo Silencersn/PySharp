@@ -1,0 +1,40 @@
+﻿using PySharp.Runtime;
+using PySharp.Runtime.Calls;
+
+namespace PySharp.Modules.Builtins;
+
+public class PyTupleIteratorObject : PyObject
+{
+    internal readonly PyTupleObject _tuple;
+    internal int _index;
+
+    public override PyTypeObject DefaultPyType => PyTupleIteratorObjectType.Shared;
+
+    public PyTupleIteratorObject(PyTupleObject pyTupleObject)
+    {
+        ArgumentNullException.ThrowIfNull(pyTupleObject);
+        _tuple = pyTupleObject;
+        _index = -1;
+    }
+}
+
+public sealed class PyTupleIteratorObjectType : PyTypeObject<PyTupleIteratorObjectType, PyTupleIteratorObject>
+{
+    public override string Module => "builtins";
+    public override string Name => "tuple_iterator";
+
+    protected override PyResult Iter(PyCallContext context, PyTupleIteratorObject self)
+    {
+        return self;
+    }
+
+    protected override PyResult Next(PyCallContext context, PyTupleIteratorObject self)
+    {
+        if (self._index is -2 || ++self._index >= self._tuple._array.Length)
+        {
+            self._index = -2;
+            return PyResult.StopIteration();
+        }
+        return PySpecialMethods.GetItem(context, self._tuple, PyIntObject.FromInteger(self._index));
+    }
+}

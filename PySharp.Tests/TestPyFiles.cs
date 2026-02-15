@@ -1,5 +1,5 @@
-﻿using PySharp.PyModules.Builtins;
-using PySharp.PyRuntime;
+﻿using PySharp.Modules.Builtins;
+using PySharp.Runtime;
 
 namespace PySharp.Tests;
 

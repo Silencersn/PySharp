@@ -1,5 +1,5 @@
-﻿using PySharp.PyModules.Builtins;
-using PySharp.PyRuntime.Comparison;
+﻿using PySharp.Modules.Builtins;
+using PySharp.Runtime.Comparison;
 using System.Collections;
 using System.Diagnostics.CodeAnalysis;
 

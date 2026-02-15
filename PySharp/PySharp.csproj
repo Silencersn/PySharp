@@ -10,7 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="PyModules\Warnings\" />
+    <Folder Include="Modules\Warnings\" />
   </ItemGroup>
 
 </Project>
