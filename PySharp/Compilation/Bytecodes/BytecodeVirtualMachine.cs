@@ -3,6 +3,7 @@ using PySharp.Compilation.CodeAnalysis;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.Calls.Extensions;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;

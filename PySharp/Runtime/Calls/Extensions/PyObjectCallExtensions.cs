@@ -1,7 +1,7 @@
 ﻿using PySharp.Modules.Builtins;
 using System.Collections.Frozen;
 
-namespace PySharp.Runtime.Calls;
+namespace PySharp.Runtime.Calls.Extensions;
 
 public static class PyObjectCallExtensions
 {

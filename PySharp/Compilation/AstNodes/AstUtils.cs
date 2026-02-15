@@ -43,36 +43,6 @@ internal static class AstUtils
         };
     }
 
-    public static PyObject PyUnwrap(this PyResult result, PyCallContext context)
-    {
-        if (result.IsError)
-            throw new PyRuntimeException(context, result.Exception);
-
-        return result.Value;
-    }
-    public static TObject PyUnwrap<TObject>(this PyResult<TObject> result, PyCallContext context) where TObject : PyObject
-    {
-        if (result.IsError)
-            throw new PyRuntimeException(context, result.Exception);
-
-        return result.Value;
-    }
-
-    public static bool TryGetDoc(IReadOnlyList<AstStmtNode> stmtNodes, [NotNullWhen(true)] out PyStrObject? doc)
-    {
-        if (stmtNodes.Count > 0 &&
-            stmtNodes[0] is ExprNode exprNode &&
-            exprNode.Value is ConstantNode constantNode &&
-            constantNode.Value is PyStrObject strObj)
-        {
-            doc = strObj;
-            return true;
-        }
-
-        doc = null;
-        return false;
-    }
-
     public static bool IsValidAugTarget(this AstExprNode node)
     {
         return node is NameNode or SubscriptNode or AttributeNode;

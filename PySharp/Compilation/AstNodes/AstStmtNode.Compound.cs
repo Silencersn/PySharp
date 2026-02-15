@@ -2,6 +2,7 @@
 using PySharp.Modules.CSharp;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.Calls.Extensions;
 using System.Collections.Immutable;
 using System.Diagnostics;
 

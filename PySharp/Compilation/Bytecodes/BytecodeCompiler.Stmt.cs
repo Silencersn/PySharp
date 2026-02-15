@@ -338,7 +338,7 @@ partial class BytecodeCompiler
         Generator.Emit(OpCode.LoadConst, codeObj);
         Generator.Emit(OpCode._MakeFunctionWithPyArgsDef);
 
-        if (AstUtils.TryGetDoc(node.Body, out var doc))
+        if (TryGetDoc(node.Body, out var doc))
         {
             Generator.Emit(OpCode.Copy, 1);
             Generator.Emit(OpCode.LoadConst, doc);
@@ -387,7 +387,7 @@ partial class BytecodeCompiler
             Generator.Emit(OpCode.StoreDeref, PySpecialNames.Class);
         }
 
-        if (AstUtils.TryGetDoc(node.Body, out var doc))
+        if (TryGetDoc(node.Body, out var doc))
         {
             Generator.Emit(OpCode.LoadConst, doc);
             StoreName(PySpecialNames.Doc);

@@ -1,7 +1,9 @@
 ﻿using PySharp.Compilation.AstNodes;
 using PySharp.Compilation.Bytecodes;
+using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Compilation;
 
@@ -44,7 +46,7 @@ internal sealed partial class BytecodeCompiler
         switch (node)
         {
             case ModuleNode n:
-                if (AstUtils.TryGetDoc(n.Body, out var doc))
+                if (TryGetDoc(n.Body, out var doc))
                 {
                     Generator.Emit(OpCode.LoadConst, doc);
                     StoreName(PySpecialNames.Doc);
@@ -68,5 +70,20 @@ internal sealed partial class BytecodeCompiler
                 throw new NotImplementedException();
         }
         Generator.PopMetaInfo();
+    }
+
+    private static bool TryGetDoc(IReadOnlyList<AstStmtNode> stmtNodes, [NotNullWhen(true)] out PyStrObject? doc)
+    {
+        if (stmtNodes.Count > 0 &&
+            stmtNodes[0] is ExprNode exprNode &&
+            exprNode.Value is ConstantNode constantNode &&
+            constantNode.Value is PyStrObject strObj)
+        {
+            doc = strObj;
+            return true;
+        }
+
+        doc = null;
+        return false;
     }
 }
