@@ -129,17 +129,21 @@ public sealed partial class PyFrame
         return new PyFrame(_frameVariables) { SemanticModel = SemanticModel };
     }
 
-    internal PyFrame TempFrame(FrameType frameType)
+    internal PyFrame CreateExecEvalFrame(FrameType frameType, PyDictObject? globals, PyDictObject? locals, PyTupleObject? closure = null, PyCodeObject? code = null)
     {
         Debug.Assert(frameType is FrameType.Exec or FrameType.Eval);
 
-        var variables = _frameVariables.Clone();
-        var tempFrame = new PyFrame(this, variables, CallerName, Caller, frameType)
+        var globalVariables = globals is null ? _frameVariables._globals : new PyFrameGlobals(globals);
+        var localVariables = locals is null ? null : new PyFrameLocals(locals);
+        if (closure is not null)
         {
-            _variables = _variables,
-            SemanticModel = SemanticModel
-        };
-        return tempFrame;
+            Debug.Assert(code is not null);
+            localVariables ??= new PyFrameLocals(code.FreeVars.Index().ToFrozenDictionary(static tuple => tuple.Item, static tuple => tuple.Index), code.FreeVars.Length);
+            localVariables.InitCells(UnsafeUtils.CastReadOnlySpan<PyObject, PyCellObject>(closure._array));
+        }
+
+        var variables = PyFrameVariables.Create(globalVariables, localVariables);
+        return new PyFrame(this, variables, CallerName, Caller, frameType);
     }
 
     internal PyFrame CreateInlineFrame(FrameType frameType)

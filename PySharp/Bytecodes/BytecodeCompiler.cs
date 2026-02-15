@@ -8,9 +8,9 @@ namespace PySharp.Bytecodes;
 
 internal sealed partial class BytecodeCompiler
 {
-    public static PyBytecodeCompilation Compile(SemanticModel model)
+    public static PyBytecodeCompilation Compile(SemanticModel model, bool onlyAsName = false)
     {
-        var compiler = new BytecodeCompiler(model);
+        var compiler = new BytecodeCompiler(model) { OnlyAsName = onlyAsName };
         compiler.Compile();
         return new PyBytecodeCompilation(compiler.Generator.ToBytecode());
     }
@@ -31,6 +31,7 @@ internal sealed partial class BytecodeCompiler
     private VariableScope VariableScope { get; set; }
     private Stack<(Label LoopBegin, Label LoopEnd)> Loops { get; } = [];
     private bool IsInteractive { get; set; }
+    private bool OnlyAsName { get; set; }
 
     public void Compile()
     {

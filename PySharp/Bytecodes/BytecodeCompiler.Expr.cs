@@ -65,7 +65,10 @@ partial class BytecodeCompiler
     {
         if (VariableScope is RootVariableScope)
         {
-            AsGlobal();
+            if (OnlyAsName)
+                AsName();
+            else
+                AsGlobal();
         }
         else if (VariableScope is ClassVariableScope classVariableScope)
         {

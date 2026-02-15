@@ -80,9 +80,7 @@ partial class PyFrame
             if (closure.Length is 0)
                 return;
 
-            ref PyCellObject ptr = ref Unsafe.As<PyObject?, PyCellObject>(ref _localsPlus[^closure.Length]);
-            var span = MemoryMarshal.CreateSpan(ref ptr, closure.Length);
-            closure.CopyTo(span);
+            closure.CopyTo(UnsafeUtils.CastSpan<PyObject?, PyCellObject>(_localsPlus.AsSpan()[^closure.Length..]));
         }
 
         internal sealed class LocalDictionary : IDictionary<string, PyObject?>

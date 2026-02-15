@@ -1,4 +1,5 @@
-﻿using PySharp.Compilation;
+﻿using PySharp.Bytecodes;
+using PySharp.Compilation;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.PyAttributes;
@@ -192,15 +193,41 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef("source", "/", "globals=None", "locals=None")]
     private static PyResult EvalImpl(PyCallContext context, PyArguments arguments)
     {
-        if (arguments.Args[0] is not PyStrObject str)
-            return PyResult.TypeError(null);
+        var source = arguments[0];
+        if (source is not PyStrObject && source is not PyCodeObject)
+            return PyResult.TypeError(PySR.Runtime_Builtin_ExecEval_Arg1WrongType, "eval");
+
+        if (source is PyCodeObject { FreeVars.Length: > 0 })
+            return PyResult.TypeError(PySR.Runtime_Builtin_Eval_PassCodeObjWithFreeVars);
+
+        var globals = arguments[1];
+        var globalsDict = globals as PyDictObject;
+        if (globalsDict is null && globals is not PyNoneObject)
+            return PyResult.TypeError(PySR.Runtime_Builtin_ExecEval_Globals);
+
+        var locals = arguments[2];
+        var localsDict = locals as PyDictObject;
+        if (localsDict is null && locals is not PyNoneObject)
+            return PyResult.TypeError(PySR.Runtime_Builtin_ExecEval_Locals);
 
         var frame = context.CurrentFrame;
+
+        if (source is PyCodeObject code)
+        {
+            var newFrame = frame.CreateExecEvalFrame(FrameType.Eval, globalsDict, localsDict);
+            using var withFrame = context.WithFrame(newFrame);
+            Debug.Assert(code.Bytecode is not null);
+            var vm = new BytecodeVirtualMachine(context, code.Bytecode);
+            return vm.Eval();
+        }
+
+        Debug.Assert(source is PyStrObject);
+
         try
         {
-            var tempFrame = frame.TempFrame(FrameType.Eval);
-            using var withFrame = context.WithFrame(tempFrame);
-            var compilation = Compiler.CompileEval(context, str.Value, "<string>");
+            var newFrame = frame.CreateExecEvalFrame(FrameType.Eval, globalsDict, localsDict);
+            using var withFrame = context.WithFrame(newFrame);
+            var compilation = Compiler.CompileEval(context, ((PyStrObject)source).Value, "<string>", onlyAsName: true);
             return compilation.Evaluate(context);
         }
         catch (PyRuntimeException e)
@@ -214,15 +241,55 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef("source", "/", "globals=None", "locals=None", "*", "closure=None")]
     private static PyResult ExecImpl(PyCallContext context, PyArguments arguments)
     {
-        if (arguments.Args[0] is not PyStrObject str)
-            return PyResult.TypeError(null);
+        var source = arguments[0];
+        if (source is not PyStrObject && source is not PyCodeObject)
+            return PyResult.TypeError(PySR.Runtime_Builtin_ExecEval_Arg1WrongType, "exec");
+
+        var globals = arguments[1];
+        var globalsDict = globals as PyDictObject;
+        if (globalsDict is null && globals is not PyNoneObject)
+            return PyResult.TypeError(PySR.Runtime_Builtin_ExecEval_Globals);
+
+        var locals = arguments[2];
+        var localsDict = locals as PyDictObject;
+        if (localsDict is null && locals is not PyNoneObject)
+            return PyResult.TypeError(PySR.Runtime_Builtin_ExecEval_Locals);
+
+        var closure = arguments["closure"];
+        if (closure is not PyNoneObject && source is not PyCodeObject)
+            return PyResult.TypeError(PySR.Runtime_Builtin_Exec_ClosureForNonCodeObj);
 
         var frame = context.CurrentFrame;
+
+        if (source is PyCodeObject code)
+        {
+            if (closure is not PyNoneObject && code.FreeVars.Length is 0)
+                return PyResult.TypeError(PySR.Runtime_Builtin_Exec_CannotUseClosure);
+
+            var closureTuple = closure as PyTupleObject;
+            if (!(closure is PyNoneObject ||
+                closureTuple is not null &&
+                closureTuple._array.Length == code.FreeVars.Length &&
+                closureTuple._array.All(static obj => obj is PyCellObject)))
+            {
+                return PyResult.TypeError(PySR.Runtime_Builtin_Exec_WrongClosure, code.FreeVars.Length);
+            }
+
+            Debug.Assert(code.Bytecode is not null);
+            var newFrame = frame.CreateExecEvalFrame(FrameType.Exec, globalsDict, localsDict, closureTuple, code);
+            using var withFrame = context.WithFrame(newFrame);
+            var vm = new BytecodeVirtualMachine(context, code.Bytecode);
+            return vm.Eval();
+        }
+
+        Debug.Assert(closure is PyNoneObject);
+        Debug.Assert(source is PyStrObject);
+
         try
         {
-            var tempFrame = frame.TempFrame(FrameType.Exec);
-            using var withFrame = context.WithFrame(tempFrame);
-            var compilation = Compiler.CompileExec(context, str.Value, "<string>");
+            var newFrame = frame.CreateExecEvalFrame(FrameType.Exec, globalsDict, localsDict);
+            using var withFrame = context.WithFrame(newFrame);
+            var compilation = Compiler.CompileExec(context, ((PyStrObject)source).Value, "<string>", onlyAsName: true);
             compilation.Execute(context);
             return PyNoneObject.None;
         }

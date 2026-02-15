@@ -21,25 +21,25 @@ internal class Compiler
     }
 
     private static PyBytecodeCompilation InternalCompileBytecode(PyCallContext context, string code, string sourceName,
-        Func<PyCallContext, CodeSource, IEnumerable<TokenInfo>, AstModNode> parse, bool appendNewLine = false)
+        Func<PyCallContext, CodeSource, IEnumerable<TokenInfo>, AstModNode> parse, bool appendNewLine = false, bool onlyAsName = false)
     {
         var ast = InternalCompileAst(context, code, sourceName, parse, appendNewLine);
-        return BytecodeCompiler.Compile(ast.Model);
+        return BytecodeCompiler.Compile(ast.Model, onlyAsName);
     }
 
-    public static PyCompilation CompileExec(PyCallContext context, string code, string sourceName)
+    public static PyCompilation CompileExec(PyCallContext context, string code, string sourceName, bool onlyAsName = false)
     {
-        return InternalCompileBytecode(context, code, sourceName, Parser.ParseModule);
+        return InternalCompileBytecode(context, code, sourceName, Parser.ParseModule, onlyAsName: onlyAsName);
     }
 
-    public static PyCompilation CompileEval(PyCallContext context, string code, string sourceName)
+    public static PyCompilation CompileEval(PyCallContext context, string code, string sourceName, bool onlyAsName = false)
     {
-        return InternalCompileBytecode(context, code, sourceName, Parser.ParseExpression);
+        return InternalCompileBytecode(context, code, sourceName, Parser.ParseExpression, onlyAsName: onlyAsName);
     }
 
-    public static PyCompilation CompileSingle(PyCallContext context, string code, string sourceName, bool appendNewLine)
+    public static PyCompilation CompileSingle(PyCallContext context, string code, string sourceName, bool appendNewLine, bool onlyAsName = false)
     {
-        return InternalCompileBytecode(context, code, sourceName, Parser.ParseInteractive, appendNewLine);
+        return InternalCompileBytecode(context, code, sourceName, Parser.ParseInteractive, appendNewLine, onlyAsName);
     }
 
     public static PyBytecodeCompilation CompileBytecode(SemanticModel model)

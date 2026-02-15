@@ -110,6 +110,13 @@ partial class PySR
     public const string Runtime_Builtin_IsInstance_MustBeTypeOrTupleOfTypes = "isinstance() arg 2 must be a type or a tuple of types";
     public const string Runtime_Builtin_IsSubclass_Arg1MustBeClass = "issubclass() arg 1 must be a class";
     public const string Runtime_Builtin_IsSubclass_Arg2MustBeTypeOrTupleOfTypes = "issubclass() arg 2 must be a type or a tuple of types";
+    public const string Runtime_Builtin_ExecEval_Globals = "globals must be a dict";
+    public const string Runtime_Builtin_ExecEval_Locals = "locals must be a dict";
+    public const string Runtime_Builtin_Exec_ClosureForNonCodeObj = "closure can only be used when source is a code object";
+    public const string Runtime_Builtin_Exec_WrongClosure = "code object requires a closure of exactly length {0}";
+    public const string Runtime_Builtin_ExecEval_Arg1WrongType = "{0}() arg 1 must be a string, bytes or code object";
+    public const string Runtime_Builtin_Exec_CannotUseClosure = "cannot use a closure with this code object";
+    public const string Runtime_Builtin_Eval_PassCodeObjWithFreeVars = "code object passed to eval() may not contain free variables";
 
     public const string Runtime_Descriptor_GetNoneNoneInvalid = "__get__(None, None) is invalid";
     public const string Runtime_Descriptor_ReceiveObjectOfWrongType = "descriptor '{0}' requires a '{1}' object but received a '{2}'";
