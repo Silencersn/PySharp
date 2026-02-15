@@ -76,3 +76,12 @@ def test():
 	lambda: value2, value4
 
 test()
+
+
+code_txt = '''a = 1
+b = 2
+assert a + b == 3'''
+
+code = compile(code_txt, "<test>", "exec")
+
+exec(code)

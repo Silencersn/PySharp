@@ -27,17 +27,17 @@ internal class Compiler
         return BytecodeCompiler.Compile(ast.Model, onlyAsName);
     }
 
-    public static PyCompilation CompileExec(PyCallContext context, string code, string sourceName, bool onlyAsName = false)
+    public static PyBytecodeCompilation CompileExec(PyCallContext context, string code, string sourceName, bool onlyAsName = false)
     {
         return InternalCompileBytecode(context, code, sourceName, Parser.ParseModule, onlyAsName: onlyAsName);
     }
 
-    public static PyCompilation CompileEval(PyCallContext context, string code, string sourceName, bool onlyAsName = false)
+    public static PyBytecodeCompilation CompileEval(PyCallContext context, string code, string sourceName, bool onlyAsName = false)
     {
         return InternalCompileBytecode(context, code, sourceName, Parser.ParseExpression, onlyAsName: onlyAsName);
     }
 
-    public static PyCompilation CompileSingle(PyCallContext context, string code, string sourceName, bool appendNewLine, bool onlyAsName = false)
+    public static PyBytecodeCompilation CompileSingle(PyCallContext context, string code, string sourceName, bool appendNewLine, bool onlyAsName = false)
     {
         return InternalCompileBytecode(context, code, sourceName, Parser.ParseInteractive, appendNewLine, onlyAsName);
     }

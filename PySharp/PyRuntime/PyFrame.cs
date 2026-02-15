@@ -134,6 +134,9 @@ public sealed partial class PyFrame
         Debug.Assert(frameType is FrameType.Exec or FrameType.Eval);
 
         var globalVariables = globals is null ? _frameVariables._globals : new PyFrameGlobals(globals);
+        if (!globalVariables.Globals.ContainsKey(PySpecialNames.Builtins))
+            globalVariables.Globals[PySpecialNames.Builtins] = new PyBuiltinsModuleObject();
+
         var localVariables = locals is null ? null : new PyFrameLocals(locals);
         if (closure is not null)
         {

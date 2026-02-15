@@ -24,12 +24,12 @@ public static partial class PyBuiltinFunctions
     // TODO: breakpoint()
     // TODO: bytearray()
     // TODO: bytes()
-
+    
     // C
     public static readonly PyBuiltinFunctionOrMethodObject Callable = PyBuiltinFunctionOrMethodObject.CreateFunction("callable", CallableImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Chr = PyBuiltinFunctionOrMethodObject.CreateFunction("chr", ChrImpl);
     // classmethod -> PyClassMethodObject
-    // TODO: compile()
+    public static readonly PyBuiltinFunctionOrMethodObject Compile = PyBuiltinFunctionOrMethodObject.CreateFunction("compile", CompileImpl);
     // complex -> PyComplexObject
 
     // D
@@ -814,5 +814,32 @@ public static partial class PyBuiltinFunctions
     private static PyResult DelAttrImpl(PyCallContext context, PyArguments arguments)
     {
         return PyOperators.DelAttr(context, arguments[0], arguments[1]);
+    }
+
+    [PyFunctionArgsDef("source", "filename", "mode" /* flags=0, dont_inherit=False, optimize=-1 */)]
+    private static PyResult CompileImpl(PyCallContext context, PyArguments arguments)
+    {
+        if (arguments[0] is not PyStrObject source)
+            // TODO: bytes, ast
+            return PyResult.TypeError(PySR.Runtime_Builtin_Compile_Arg1WrongType);
+
+        if (arguments[1] is not PyStrObject filename)
+            return PyResult.TypeError(PySR.Runtime_Builtin_Compile_FilenameWrongType, arguments[1].PyType.FullName);
+
+        if (arguments[2] is not PyStrObject mode)
+            return PyResult.TypeError(PySR.Runtime_Builtin_Compile_ModeWrongType, arguments[2].PyType.FullName);
+
+        var bytecode = mode.Value switch
+        {
+            "exec" => Compiler.CompileExec(context, source.Value, filename.Value, onlyAsName: true).Bytecode,
+            "eval" => Compiler.CompileEval(context, source.Value, filename.Value, onlyAsName: true).Bytecode,
+            "single" => Compiler.CompileSingle(context, source.Value, filename.Value, appendNewLine: false, onlyAsName: true).Bytecode,
+            _ => null
+        };
+
+        if (bytecode is null)
+            return PyResult.TypeError(PySR.Runtime_Builtin_Compile_WrongMode);
+
+        return new PyCodeObject(filename.Value, bytecode);
     }
 }
