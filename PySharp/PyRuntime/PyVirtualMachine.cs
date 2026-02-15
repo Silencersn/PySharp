@@ -1,4 +1,5 @@
-﻿using PySharp.Compilation;
+﻿using PySharp.AstNodes;
+using PySharp.Bytecodes;
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime.Calls;
 using System.Diagnostics;
@@ -21,18 +22,18 @@ public delegate void PyExitEventHandler(PyExitEventArgs args);
 
 public static partial class PyVirtualMachine
 {
-    internal static PyModuleObject Execute(PyCallContext context, PyCompilation compilation, string moduleName)
+    internal static PyModuleObject Execute(PyCallContext context, PyCodeObject code)
     {
-        var module = new PyModuleObject(moduleName);
-        ExecuteToObject(context, compilation, module);
+        var module = new PyModuleObject(code.Name);
+        ExecuteToObject(context, code.Bytecode, module);
         return module;
     }
-    internal static void ExecuteToObject(PyCallContext context, PyCompilation compilation, PyModuleObject module)
+    internal static void ExecuteToObject(PyCallContext context, Bytecode bytecode, PyModuleObject module)
     {
         // module will be reloaded
         module._pyAttributes = context.CurrentFrame.Variables._globals.Globals;
 
-        compilation.Execute(context);
+        _ = new BytecodeVirtualMachine(context, bytecode).Eval().PyUnwrap(context);
 
         Debug.Assert(ReferenceEquals(module.PyAttributes, context.CurrentFrame.Variables._globals.Globals));
         module.PyAttributes[PySpecialNames.Name] = PyStrObject.FromString(module.Name);

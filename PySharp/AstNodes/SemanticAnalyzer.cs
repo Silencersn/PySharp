@@ -816,10 +816,6 @@ internal abstract class VariableScope
     public void Bind(SemanticModel model)
     {
         model.AppendScope(Owner, this);
-        if (this is CallableVariableScope callable)
-            callable.CodeObject = new PyCodeObject(callable);
-        else if (this is ClassVariableScope classVariableScope)
-            classVariableScope.CodeObject = new PyCodeObject(classVariableScope);
 
         foreach (var childScope in Children)
             childScope.Bind(model);

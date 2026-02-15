@@ -9,7 +9,7 @@ namespace PySharp.PyModules.Builtins;
 public sealed class PyCodeObject : PyObject
 {
     internal FrozenDictionary<string, int> LocalsTable { get; }
-    internal Bytecode? Bytecode { get; }
+    internal Bytecode Bytecode { get; }
 
     // TODO: temp property, will be removed in future versions
     internal OrderedDictionary<string, PyVariableType> Variables { get; }
@@ -32,7 +32,7 @@ public sealed class PyCodeObject : PyObject
 
     public override PyTypeObject DefaultPyType => PyCodeObjectType.Shared;
 
-    internal PyCodeObject(CallableVariableScope scope, Bytecode? bytecode = null)
+    internal PyCodeObject(CallableVariableScope scope, Bytecode bytecode)
     {
         Debug.Assert(scope.Name is not null);
         Debug.Assert(scope.QualName is not null);
@@ -69,7 +69,7 @@ public sealed class PyCodeObject : PyObject
         PyAttributes.Add("co_freevars", PyTupleObject.CreateTuple(FreeVars.Select(PyStrObject.FromString)));
     }
 
-    internal PyCodeObject(ClassVariableScope scope, Bytecode? bytecode = null)
+    internal PyCodeObject(ClassVariableScope scope, Bytecode bytecode)
     {
         Debug.Assert(scope.Name is not null);
         Debug.Assert(scope.QualName is not null);

@@ -1,5 +1,4 @@
 ﻿using PySharp.Bytecodes;
-using PySharp.Compilation;
 using PySharp.PyRuntime;
 using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.PyAttributes;
@@ -227,8 +226,8 @@ public static partial class PyBuiltinFunctions
         {
             var newFrame = frame.CreateExecEvalFrame(FrameType.Eval, globalsDict, localsDict);
             using var withFrame = context.WithFrame(newFrame);
-            var compilation = Compiler.CompileEval(context, ((PyStrObject)source).Value, "<string>", onlyAsName: true);
-            return compilation.Evaluate(context);
+            var codeObj = Compiler.CompileEval(context, ((PyStrObject)source).Value, "<string>", onlyAsName: true);
+            return new BytecodeVirtualMachine(context, codeObj.Bytecode).Eval();
         }
         catch (PyRuntimeException e)
         {
@@ -289,9 +288,8 @@ public static partial class PyBuiltinFunctions
         {
             var newFrame = frame.CreateExecEvalFrame(FrameType.Exec, globalsDict, localsDict);
             using var withFrame = context.WithFrame(newFrame);
-            var compilation = Compiler.CompileExec(context, ((PyStrObject)source).Value, "<string>", onlyAsName: true);
-            compilation.Execute(context);
-            return PyNoneObject.None;
+            var codeObj = Compiler.CompileExec(context, ((PyStrObject)source).Value, "<string>", onlyAsName: true);
+            return new BytecodeVirtualMachine(context, codeObj.Bytecode).Eval();
         }
         catch (PyRuntimeException e)
         {

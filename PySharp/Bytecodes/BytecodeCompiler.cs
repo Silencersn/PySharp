@@ -1,5 +1,4 @@
 ﻿using PySharp.AstNodes;
-using PySharp.Compilation;
 using PySharp.PyRuntime;
 using System.Diagnostics;
 
@@ -7,11 +6,11 @@ namespace PySharp.Bytecodes;
 
 internal sealed partial class BytecodeCompiler
 {
-    public static PyBytecodeCompilation Compile(SemanticModel model, bool onlyAsName = false)
+    public static Bytecode Compile(SemanticModel model, bool onlyAsName = false)
     {
         var compiler = new BytecodeCompiler(model) { OnlyAsName = onlyAsName };
         compiler.Compile();
-        return new PyBytecodeCompilation(compiler.Generator.ToBytecode());
+        return compiler.Generator.ToBytecode();
     }
 
     private readonly SemanticModel _model;

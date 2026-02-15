@@ -1,5 +1,5 @@
 ﻿using PySharp.AstNodes;
-using PySharp.Compilation;
+using PySharp.Bytecodes;
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime.Calls;
 using PySharp.PyRuntime.Environments;
@@ -35,8 +35,8 @@ public class PyInterpreter
 
     internal static void InternalExecute(PyCallContext context, string code, string sourceName)
     {
-        var compilation = Compiler.CompileExec(context, code, sourceName);
-        compilation.Execute(context);
+        var codeObj = Compiler.CompileExec(context, code, sourceName);
+        _ = new BytecodeVirtualMachine(context, codeObj.Bytecode).Eval().PyUnwrap(context);
     }
 
     public void Execute(string code, string sourceName)
@@ -138,14 +138,14 @@ public class PyInterpreter
 
     internal static PyModuleObject RunCodeWithContext(PyCallContext context, string code, string moduleName, string sourceName)
     {
-        var compilation = Compiler.CompileExec(context, code, sourceName);
-        return PyVirtualMachine.Execute(context, compilation, moduleName);
+        var codeObj = Compiler.CompileExec(context, code, sourceName);
+        return PyVirtualMachine.Execute(context, codeObj);
     }
 
     internal static void RunCodeWithContext(PyCallContext context, string code, PyModuleObject module, string sourceName)
     {
-        var compilation = Compiler.CompileExec(context, code, sourceName);
-        PyVirtualMachine.ExecuteToObject(context, compilation, module);
+        var codeObj = Compiler.CompileExec(context, code, sourceName);
+        PyVirtualMachine.ExecuteToObject(context, codeObj.Bytecode, module);
     }
 
     public static void RunRepl()
@@ -167,7 +167,7 @@ public class PyInterpreter
         {
             PyTryCatch(context, () =>
             {
-                PyCompilation compilation;
+                PyCodeObject codeObj;
 
                 bool isFirstLine = true;
                 builder.Clear();
@@ -181,7 +181,7 @@ public class PyInterpreter
 
                     try
                     {
-                        compilation = Compiler.CompileSingle(context, builder.ToString(), "<stdin>", string.IsNullOrWhiteSpace(line));
+                        codeObj = Compiler.CompileSingle(context, builder.ToString(), "<stdin>", string.IsNullOrWhiteSpace(line));
                         break;
                     }
                     catch (PyRuntimeException e)
@@ -204,7 +204,7 @@ public class PyInterpreter
                     }
                 }
 
-                compilation.Execute(context);
+                _ = new BytecodeVirtualMachine(context, codeObj.Bytecode).Eval().PyUnwrap(context);
                 Debug.Assert(context.CurrentFrame.IsRoot);
             });
         }

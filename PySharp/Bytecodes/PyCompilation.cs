@@ -1,9 +1,8 @@
 ﻿using PySharp.AstNodes;
-using PySharp.Bytecodes;
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime.Calls;
 
-namespace PySharp.Compilation;
+namespace PySharp.Bytecodes;
 
 internal abstract class PyCompilation
 {
