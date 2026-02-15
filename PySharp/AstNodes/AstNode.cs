@@ -8,11 +8,6 @@ public abstract partial class AstNode : ICodeMetaInfoProvider
 {
     public CodeMetaInfo? MetaInfo { get; internal set; }
 
-    public virtual void Execute(PyCallContext context, PyFrame frame)
-    {
-        throw new NotSupportedException();
-    }
-
     public abstract IEnumerable<AstNode> EnumerateSubNodes();
 }
 

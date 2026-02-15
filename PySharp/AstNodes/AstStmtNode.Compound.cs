@@ -21,24 +21,6 @@ public sealed class IfNode : AstStmtNode
         OrElse = orElse;
     }
 
-    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
-    {
-        if (Test.GetBoolValue(context, frame))
-        {
-            foreach (var stmt in Body)
-            {
-                stmt.Execute(context, frame);
-            }
-        }
-        else
-        {
-            foreach (var stmt in OrElse)
-            {
-                stmt.Execute(context, frame);
-            }
-        }
-    }
-
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         yield return Test;
@@ -58,41 +40,6 @@ public sealed class WhileNode : AstStmtNode
         Test = test;
         Body = body;
         OrElse = orElse;
-    }
-
-    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
-    {
-        bool isBreak = false;
-
-        try
-        {
-            while (Test.GetBoolValue(context, frame))
-            {
-                try
-                {
-                    foreach (var stmt in Body)
-                    {
-                        stmt.Execute(context, frame);
-                    }
-                }
-                catch (AstContinueException)
-                {
-
-                }
-            }
-        }
-        catch (AstBreakException)
-        {
-            isBreak = true;
-        }
-
-        if (!isBreak)
-        {
-            foreach (var stmt in OrElse)
-            {
-                stmt.Execute(context, frame);
-            }
-        }
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
@@ -117,49 +64,6 @@ public sealed class ForNode : AstStmtNode
     public AstExprNode Iter { get; }
     public ImmutableArray<AstStmtNode> Body { get; }
     public ImmutableArray<AstStmtNode> OrElse { get; }
-
-    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
-    {
-        bool isBreak = false;
-
-        var iter = Iter.GetExprValue(context, frame);
-        if (!Utils.TryEnumerateIterable(context, iter, out var list, out var err))
-        {
-            err.Value.PyThrow(context);
-        }
-
-        try
-        {
-            foreach (var item in list)
-            {
-                Target.SetTargetValue(context, item.PyUnwrap(context), frame);
-                try
-                {
-                    foreach (var stmt in Body)
-                    {
-                        stmt.Execute(context, frame);
-                    }
-                }
-                catch (AstContinueException)
-                {
-
-                }
-            }
-        }
-        catch (AstBreakException)
-        {
-            isBreak = true;
-        }
-
-        if (!isBreak)
-        {
-            foreach (var stmt in OrElse)
-            {
-                stmt.Execute(context, frame);
-            }
-        }
-    }
-
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         yield return Target;
@@ -183,64 +87,12 @@ public sealed class TryNode : AstStmtNode
     public ImmutableArray<ExceptHandlerNode> Exceptors { get; }
     public ImmutableArray<AstStmtNode> OrElse { get; }
     public ImmutableArray<AstStmtNode> FinalBody { get; }
-
-    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
-    {
-        ExecuteTry(Body, OrElse, FinalBody, context, frame, exc =>
-        {
-            foreach (var exceptor in Exceptors)
-            {
-                if (exceptor.TryHandle(context, frame, exc))
-                    return (true, null);
-            }
-            return (false, exc);
-        });
-    }
-
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         foreach (var stmt in Body) yield return stmt;
         foreach (var ex in Exceptors) yield return ex;
         foreach (var stmt in OrElse) yield return stmt;
         foreach (var stmt in FinalBody) yield return stmt;
-    }
-
-    internal static void ExecuteTry(ImmutableArray<AstStmtNode> body, ImmutableArray<AstStmtNode> orElse, ImmutableArray<AstStmtNode> finalBody,
-        PyCallContext context, PyFrame frame, Func<PyExceptionObject, (bool Handled, PyExceptionObject? RestExc)> handler)
-    {
-        bool hitExcept = false;
-        try
-        {
-            foreach (var stmt in body)
-                stmt.Execute(context, frame);
-        }
-        catch (PyRuntimeException e)
-        {
-            hitExcept = true;
-
-            e.PyException.WithTraceback(context, overwriteExisting: false);
-            context.EnsureFrameState(frame);
-
-            frame.Exceptions.Push(e.PyException);
-            var (handled, rest) = handler(e.PyException);
-            frame.Exceptions.Pop();
-            if (!handled)
-            {
-                Debug.Assert(rest is not null);
-                throw new PyRuntimeException(rest);
-            }
-        }
-        finally
-        {
-            if (!hitExcept)
-            {
-                foreach (var stmt in orElse)
-                    stmt.Execute(context, frame);
-            }
-
-            foreach (var stmt in finalBody)
-                stmt.Execute(context, frame);
-        }
     }
 }
 
@@ -258,29 +110,6 @@ public sealed class TryStarNode : AstStmtNode
     public ImmutableArray<ExceptHandlerNode> Exceptors { get; }
     public ImmutableArray<AstStmtNode> OrElse { get; }
     public ImmutableArray<AstStmtNode> FinalBody { get; }
-
-    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
-    {
-        TryNode.ExecuteTry(Body, OrElse, FinalBody, context, frame, exc =>
-        {
-            var rest = exc;
-            foreach (var exceptor in Exceptors)
-            {
-                if (PyBaseExceptionGroupObjectType.Shared.IsInstance(rest))
-                {
-                    Debug.Assert(exc.AsGroup is not null);
-                    if (exceptor.TryHandleStar(context, frame, rest, out rest))
-                        return (true, null);
-                }
-                else
-                {
-                    if (exceptor.TryHandle(context, frame, rest))
-                        return (true, null);
-                }
-            }
-            return (false, rest);
-        });
-    }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
@@ -309,52 +138,6 @@ public sealed class WithNode : AstStmtNode
         foreach (var stmt in Body)
             yield return stmt;
     }
-
-    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
-    {
-        With(0);
-
-        void With(int i)
-        {
-            if (i == Items.Length)
-            {
-                foreach (var stmt in Body)
-                    stmt.Execute(context, frame);
-
-                return;
-            }
-
-            var manager = Items[i].ContextExpr.GetExprValue(context, frame);
-            var enter = manager.PyType.Slots.Enter ??
-                throw context.TypeError(PySR.Runtime_WithStmt_MissingEnter, manager.PyType.FullName);
-            var exit = manager.PyType.Slots.Exit ??
-                throw context.TypeError(PySR.Runtime_WithStmt_MissingExit, manager.PyType.FullName);
-            var value = enter(context, manager).PyUnwrap(context);
-            var hitExcept = false;
-
-            try
-            {
-                Items[i].OptionalVars?.SetTargetValue(context, value, frame);
-                With(i + 1);
-            }
-            catch (PyRuntimeException e)
-            {
-                e.PyException.WithTraceback(context, overwriteExisting: false);
-                context.EnsureFrameState(frame);
-
-                hitExcept = true;
-                var exc = e.PyException;
-                var handled = exit(context, manager, exc.PyType, exc, PyTraceback.CaptureCurrentFrame(context)).PyUnwrap(context);
-                if (PyOperators.Not(context, handled).PyUnwrap(context).BoolValue)
-                    throw;
-            }
-            finally
-            {
-                if (!hitExcept)
-                    exit(context, manager, PyNoneObject.None, PyNoneObject.None, PyNoneObject.None).PyUnwrap(context);
-            }
-        }
-    }
 }
 
 public sealed class MatchNode : AstStmtNode
@@ -373,16 +156,6 @@ public sealed class MatchNode : AstStmtNode
         yield return Subject;
         foreach (var c in Cases)
             yield return c;
-    }
-
-    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
-    {
-        var subject = Subject.GetExprValue(context, frame);
-        foreach (var c in Cases)
-        {
-            if (c.TryExecute(context, frame, subject))
-                break;
-        }
     }
 }
 
@@ -542,59 +315,6 @@ public sealed class FunctionDefNode : AstStmtNode, IScopedSubNodesProvider
     public ImmutableArray<AstExprNode> DecoratorList { get; }
     public AstExprNode? Returns { get; }
     public ImmutableArray<AstTypeParamNode> TypeParams { get; }
-
-    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
-    {
-        var variableScope = frame.SemanticModel?.GetVariableScope<FunctionVariableScope>(this)
-            ?? throw new InvalidOperationException();
-        Debug.Assert(variableScope.CodeObject is not null);
-
-        Caller caller = variableScope.HasYield
-            ? new GeneratorCaller(FrameType.YieldFunction, GetResult)
-            : new FunctionCaller(FrameType.Function, GetResult);
-
-        var def = PyArgsDef.FromAst(Args, context, frame);
-
-        var func = new PyFunctionObject(
-            Name,
-            caller.Call,
-            Caller.GetFreeVars(frame, variableScope.CodeObject),
-            frame.Variables._globals,
-            variableScope.CodeObject,
-            def);
-
-        Debug.Assert(variableScope.QualName is not null);
-        func.PyAttributes.Add(PySpecialNames.QualName, PyStrObject.FromString(variableScope.QualName));
-        if (AstUtils.TryGetDoc(Body, out var doc))
-            func.PyAttributes[PySpecialNames.Doc] = doc;
-        caller.Func = func;
-
-        frame.SetVariable(Name, AstUtils.ApplyDecorators(func, DecoratorList, context, frame)).PyUnwrap(context);
-    }
-
-    private PyResult GetResult(PyCallContext context, PyFrame frame)
-    {
-        try
-        {
-            foreach (var stmt in Body)
-            {
-                stmt.Execute(context, frame);
-            }
-        }
-        catch (AstReturnException e)
-        {
-            return e.Value;
-        }
-        catch (PyRuntimeException e)
-        {
-            e.PyException.WithTraceback(context, overwriteExisting: false);
-            context.EnsureFrameState(frame);
-
-            return PyResult.FromException(e.PyException);
-        }
-
-        return PyNoneObject.None;
-    }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
@@ -798,36 +518,6 @@ public sealed class ClassDefNode : AstStmtNode, IScopedSubNodesProvider
     public ImmutableArray<AstExprNode> DecoratorList { get; }
     public ImmutableArray<AstTypeParamNode> TypeParams { get; }
 
-    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
-    {
-        var variableScope = frame.SemanticModel?.GetVariableScope<ClassVariableScope>(this)
-            ?? throw new InvalidOperationException();
-
-        var bases = Bases.Select(baseExpr =>
-        {
-            var baseType = baseExpr.GetExprValue(context, frame);
-
-            if (baseType is not PyTypeObject typeObj)
-                throw new NotSupportedException();
-
-            return typeObj;
-        }).ToList();
-
-        Debug.Assert(variableScope.CodeObject is not null);
-        var type = ClassBuilder.Build(context, variableScope.CodeObject, bases, (context, frame, type) =>
-        {
-            if (variableScope.ClassCaptured)
-                frame.Variables.StoreLocal(PySpecialNames.Class, PyCellObject.CreateCell(type));
-
-            foreach (var stmt in Body)
-                stmt.Execute(context, frame);
-        });
-
-        if (AstUtils.TryGetDoc(Body, out var doc))
-            type.PyAttributes[PySpecialNames.Doc] = doc;
-
-        frame.SetVariable(Name, AstUtils.ApplyDecorators(type, DecoratorList, context, frame)).PyUnwrap(context);
-    }
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         foreach (var d in DecoratorList)

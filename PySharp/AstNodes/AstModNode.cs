@@ -18,18 +18,6 @@ public class ModuleNode : AstModNode
 
     public ImmutableArray<AstStmtNode> Body { get; }
 
-    public override void Execute(PyCallContext context, PyFrame frame)
-    {
-        if (frame.SemanticModel?.GetVariableScope<RootVariableScope>(this) is null)
-            throw new InvalidOperationException();
-
-        using var withMetaInfo = new MetaInfoProviderSetter(frame, this);
-        if (AstUtils.TryGetDoc(Body, out var doc))
-            frame.SetVariable(PySpecialNames.Doc, doc);
-        foreach (var stmt in Body)
-            stmt.Execute(context, frame);
-    }
-
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         return Body;
@@ -43,20 +31,6 @@ public class ExpressionNode : AstModNode
     internal ExpressionNode(AstExprNode body)
     {
         Body = body;
-    }
-
-    public override void Execute(PyCallContext context, PyFrame frame)
-    {
-        _ = GetExprValue(context, frame);
-    }
-
-    public PyObject GetExprValue(PyCallContext context, PyFrame frame)
-    {
-        if (frame.SemanticModel?.GetVariableScope<RootVariableScope>(this) is null)
-            throw new InvalidOperationException();
-
-        using var withMetaInfo = new MetaInfoProviderSetter(frame, this);
-        return Body.GetExprValue(context, frame);
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
@@ -73,19 +47,6 @@ public class InteractiveNode : AstModNode
     {
         Body = body;
     }
-
-    public override void Execute(PyCallContext context, PyFrame frame)
-    {
-        if (frame.SemanticModel?.GetVariableScope<RootVariableScope>(this) is null)
-            throw new InvalidOperationException();
-
-        using var withMetaInfo = new MetaInfoProviderSetter(frame, this);
-        foreach (var stmt in Body)
-        {
-            stmt.Execute(context, frame);
-        }
-    }
-
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         return Body;

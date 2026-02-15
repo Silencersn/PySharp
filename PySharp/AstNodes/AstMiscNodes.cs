@@ -131,21 +131,6 @@ public class AstKeywordNode : AstNode
 
     internal void AddOrUnpackValueTo(IDictionary<string, PyObject> targetDict, PyCallContext context, PyFrame frame)
     {
-        if (Arg is not null)
-        {
-            var value = Value.GetExprValue(context, frame);
-            targetDict[Arg] = value;
-            return;
-        }
-
-        var mapping = Value.GetExprValue(context, frame);
-        foreach (var (key, value) in AstUtils.ExtractMapping(context, mapping))
-        {
-            if (key is not PyStrObject str)
-                throw context.TypeError(PySR.Runtime_Keyword_KeywordsMustBeStrings);
-
-            targetDict[str.Value] = value; // TODO: raise Error ?
-        }
     }
 }
 
@@ -184,39 +169,6 @@ public sealed class ExceptHandlerNode : AstNode
         }
     }
 
-    private Func<PyExceptionObject, bool> ValidateHandler(PyCallContext context, PyFrame frame, bool isStar, out PyObject type)
-    {
-        if (Type is null)
-        {
-            Debug.Assert(!isStar);
-
-            type = null!;
-            return static _ => true;
-        }
-
-        type = Type.GetExprValue(context, frame);
-        return MakeCondition(context, type);
-    }
-
-    internal bool TryHandle(PyCallContext context, PyFrame frame, PyExceptionObject exception)
-    {
-        var handler = ValidateHandler(context, frame, isStar: false, out _);
-
-        if (!handler(exception))
-            return false;
-
-        if (Name is not null)
-            frame.SetVariable(Name, exception).PyUnwrap(context);
-
-        foreach (var stmt in Body)
-            stmt.Execute(context, frame);
-
-        if (Name is not null)
-            frame.DeleteVariable(Name).PyUnwrap(context);
-
-        return true;
-    }
-
     internal static (PyExceptionObject? RestExc, PyObject MatchedExc) Split(PyCallContext context, PyExceptionObject exception, PyObject type)
     {
         var splitResult = exception.CallMethod(context, "split", [type]).PyUnwrap(context);
@@ -233,46 +185,6 @@ public sealed class ExceptHandlerNode : AstNode
 
         return (rest, match);
     }
-
-    internal bool TryHandleStar(PyCallContext context, PyFrame frame, PyExceptionObject exception, [NotNullWhen(false)] out PyExceptionObject? rest)
-    {
-        Debug.Assert(PyBaseExceptionGroupObjectType.Shared.IsInstance(exception));
-        Debug.Assert(exception.IsGroup);
-
-        _ = ValidateHandler(context, frame, isStar: true, out var condition);
-
-        var splitResult = exception.CallMethod(context, "split", [condition]).PyUnwrap(context);
-        if (splitResult is not PyTupleObject tuple)
-            throw context.TypeError(PySR.Runtime_TryStmt_SplitReturnsNonTuple, exception.PyType.FullName, splitResult.PyType.FullName);
-
-        if (tuple._array.Length is not 2)
-            throw context.TypeError(PySR.Runtime_TryStmt_SplitReturnsTupleWithWrongSize, exception.PyType.FullName, tuple._array.Length);
-
-        var match = tuple._array[0];
-        if (match is not PyNoneObject)
-        {
-            if (Name is not null)
-                frame.SetVariable(Name, match).PyUnwrap(context);
-
-            foreach (var stmt in Body)
-                stmt.Execute(context, frame);
-
-            if (Name is not null)
-                frame.DeleteVariable(Name).PyUnwrap(context);
-        }
-
-        var restObj = tuple._array[1];
-        if (restObj is PyNoneObject)
-        {
-            rest = null;
-            return true;
-        }
-
-        rest = (restObj as PyExceptionObject) ??
-            throw context.TypeError(PySR.Runtime_TryStmt_ExpectedExceptionOrNone, tuple._array[1].PyType.FullName);
-        return false;
-    }
-
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         if (Type is not null)
@@ -322,29 +234,10 @@ public sealed class AstMatchCaseNode : AstNode
         foreach (var stmt in Body)
             yield return stmt;
     }
-
-    internal bool TryExecute(PyCallContext context, PyFrame frame, PyObject subject)
-    {
-        if (!Pattern.IsMatch(context, frame, subject))
-            return false;
-
-        if (Guard is not null)
-        {
-            var guard = Guard.GetExprValue(context, frame);
-            if (!PySpecialMethods.Bool(context, guard).PyUnwrap(context).BoolValue)
-                return false;
-        }
-
-        foreach (var stmt in Body)
-            stmt.Execute(context, frame);
-
-        return true;
-    }
 }
 
 public abstract class AstPatternNode : AstNode
 {
-    internal abstract bool IsMatch(PyCallContext context, PyFrame frame, PyObject subject);
 }
 
 public sealed class MatchValueNode : AstPatternNode
@@ -360,13 +253,6 @@ public sealed class MatchValueNode : AstPatternNode
     {
         yield return Value;
     }
-
-    internal override bool IsMatch(PyCallContext context, PyFrame frame, PyObject subject)
-    {
-        var value = Value.GetExprValue(context, frame);
-        var eq = PyOperators.Eq(context, subject, value).PyUnwrap(context);
-        return PySpecialMethods.Bool(context, eq).PyUnwrap(context).BoolValue;
-    }
 }
 
 public sealed class MatchSingletonNode : AstPatternNode
@@ -381,11 +267,6 @@ public sealed class MatchSingletonNode : AstPatternNode
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         return [];
-    }
-
-    internal override bool IsMatch(PyCallContext context, PyFrame frame, PyObject subject)
-    {
-        return ReferenceEquals(subject, Value);
     }
 }
 
@@ -403,55 +284,6 @@ public sealed class MatchSequenceNode : AstPatternNode
         foreach (var p in Patterns)
             yield return p;
     }
-
-    internal override bool IsMatch(PyCallContext context, PyFrame frame, PyObject subject)
-    {
-        if (!IsSequenceForMatch(subject, out var result))
-            return false;
-
-        var (sequence, length) = result;
-        var (matchStarIndex, matchStar) = Patterns.Index().FirstOrDefault(static item => item.Item is MatchStarNode, (-1, null!));
-
-        if (matchStarIndex is -1)
-        {
-            if (length != Patterns.Length)
-                return false;
-
-            return IsMatchSequence(sequence, Patterns.AsSpan());
-        }
-
-        if (length < Patterns.Length - 1)
-            return false;
-
-        var cache = sequence.ToArray();
-        if (!IsMatchSequence(cache.Take(matchStarIndex), Patterns.AsSpan(..matchStarIndex)))
-            return false;
-
-        var lastCount = Patterns.Length - matchStarIndex - 1;
-        if (!IsMatchSequence(cache.TakeLast(lastCount), Patterns.AsSpan((matchStarIndex + 1)..)))
-            return false;
-
-        var name = ((MatchStarNode)matchStar).Name;
-        if (name is not null)
-        {
-            var list = PyListObject.CreateList(cache.Skip(matchStarIndex).SkipLast(lastCount));
-            frame.SetVariable(name, list);
-        }
-
-        return true;
-
-        bool IsMatchSequence(IEnumerable<PyObject> items, ReadOnlySpan<AstPatternNode> patterns)
-        {
-            var index = 0;
-            foreach (var item in items)
-            {
-                if (!patterns[index++].IsMatch(context, frame, item))
-                    return false;
-            }
-            return true;
-        }
-    }
-
     internal static bool IsSequenceForMatch(PyObject obj, out (IEnumerable<PyObject> Sequence, BigInteger Length) result)
     {
         switch (obj)
@@ -497,43 +329,6 @@ public sealed class MatchMappingNode : AstPatternNode
         foreach (var p in Patterns)
             yield return p;
     }
-
-    internal override bool IsMatch(PyCallContext context, PyFrame frame, PyObject subject)
-    {
-        if (!IsMappingForMatch(subject, out var dict))
-            return false;
-
-        HashSet<PyObject> keys = [];
-        for (int i = 0; i < Keys.Length; i++)
-        {
-            var key = Keys[i].GetExprValue(context, frame);
-            if (!keys.Add(key))
-                return false;
-
-            if (!dict.TryGetValue(key, out var value))
-                return false;
-
-            if (!Patterns[i].IsMatch(context, frame, value))
-                return false;
-        }
-
-        if (Rest is not null)
-        {
-            List<KeyValuePair<PyObject, PyObject>> rest = [];
-            foreach (var pair in dict)
-            {
-                if (keys.Contains(pair.Key))
-                    continue;
-
-                rest.Add(pair);
-            }
-            var restDict = PyDictObject.CreateDict(rest);
-            frame.SetVariable(Rest, restDict);
-        }
-
-        return true;
-    }
-
     internal static bool IsMappingForMatch(PyObject obj, [NotNullWhen(true)] out IDictionary<PyObject, PyObject>? result)
     {
         switch (obj)
@@ -573,66 +368,6 @@ public sealed class MatchClassNode : AstPatternNode
         foreach (var kp in KwdPatterns)
             yield return kp;
     }
-
-    internal override bool IsMatch(PyCallContext context, PyFrame frame, PyObject subject)
-    {
-        var cls = Cls.GetExprValue(context, frame);
-        if (cls is not PyTypeObject type)
-            throw context.TypeError(PySR.Runtime_MatchStmt_CallNonClass);
-
-        if (!type.IsInstance(subject))
-            return false;
-
-        if (Patterns.Length is not 0)
-        {
-            var matchArgs = PyOperators.GetAttr(context, type, PySpecialNames.MatchArgs).PyUnwrap(context);
-
-            if (matchArgs is not PyTupleObject tuple)
-                throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsIsNonTuple, type.FullName, matchArgs.PyType.FullName);
-            if (Patterns.Length > tuple._array.Length)
-                throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsLengthNotEnough, type.FullName, tuple._array.Length, Patterns.Length);
-
-            var attrs = new List<string>(Patterns.Length);
-            foreach (var arg in tuple._array.Take(Patterns.Length))
-            {
-                if (arg is not PyStrObject str)
-                    throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsEltMustBeString, arg.PyType.FullName);
-                attrs.Add(str.Value);
-            }
-
-            if (!IsMatchKwdPatterns(attrs.Zip(Patterns)))
-                return false;
-        }
-
-        if (KwdPatterns.Length is not 0)
-        {
-            if (!IsMatchKwdPatterns(KwdAttrs.Zip(KwdPatterns)))
-                return false;
-        }
-
-        return true;
-
-        bool IsMatchKwdPatterns(IEnumerable<(string, AstPatternNode)> kwdPatterns)
-        {
-            foreach (var (attr, pattern) in kwdPatterns)
-            {
-                var result = PyOperators.GetAttr(context, subject, attr);
-                if (result.IsError)
-                {
-                    if (!result.IsAttributeError)
-                        // non-AttributeError errors will be thrown
-                        _ = result.PyUnwrap(context);
-
-                    return false;
-                }
-
-                if (!pattern.IsMatch(context, frame, result.Value))
-                    return false;
-            }
-
-            return true;
-        }
-    }
 }
 
 public sealed class MatchStarNode : AstPatternNode
@@ -647,11 +382,6 @@ public sealed class MatchStarNode : AstPatternNode
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         return [];
-    }
-
-    internal override bool IsMatch(PyCallContext context, PyFrame frame, PyObject subject)
-    {
-        throw new UnreachableException();
     }
 }
 
@@ -671,18 +401,6 @@ public sealed class MatchAsNode : AstPatternNode
         if (Pattern is not null)
             yield return Pattern;
     }
-
-    internal override bool IsMatch(PyCallContext context, PyFrame frame, PyObject subject)
-    {
-        if (Pattern is null || Pattern.IsMatch(context, frame, subject))
-        {
-            if (Name is not null)
-                frame.SetVariable(Name, subject);
-            return true;
-        }
-
-        return false;
-    }
 }
 
 public sealed class MatchOrNode : AstPatternNode
@@ -698,16 +416,6 @@ public sealed class MatchOrNode : AstPatternNode
     {
         foreach (var p in Patterns)
             yield return p;
-    }
-
-    internal override bool IsMatch(PyCallContext context, PyFrame frame, PyObject subject)
-    {
-        foreach (var pattern in Patterns)
-        {
-            if (pattern.IsMatch(context, frame, subject))
-                return true;
-        }
-        return false;
     }
 }
 

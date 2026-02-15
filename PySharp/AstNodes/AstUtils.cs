@@ -88,7 +88,6 @@ internal static class AstUtils
     {
         if (target is ITargetNode targetNode)
         {
-            targetNode.SetValue(context, value, frame);
         }
         else if (target is TupleNode tupleNode)
         {
@@ -130,55 +129,9 @@ internal static class AstUtils
 
     public static void DeleteTargetValue(this AstExprNode target, PyCallContext context, PyFrame frame)
     {
-        if (target is ITargetNode targetNode)
-        {
-            targetNode.DeleteValue(context, frame);
-        }
-        else if (target is TupleNode tupleNode)
-        {
-            foreach (var elt in tupleNode.Elts)
-            {
-                elt.DeleteTargetValue(context, frame);
-            }
-        }
-        else if (target is ListNode listNode)
-        {
-            foreach (var elt in listNode.Elts)
-            {
-                elt.DeleteTargetValue(context, frame);
-            }
-        }
-        else
-        {
-            throw new UnreachableException();
-        }
     }
 
 
-    public static bool GetBoolValue(this AstExprNode testNode, PyCallContext context, PyFrame frame)
-    {
-        if (testNode is IAstExprNodeBool node)
-            return node.GetExprValueWithResult(context, frame).Result;
-        else
-            return PySpecialMethods.Bool(context, testNode.GetExprValue(context, frame)).PyUnwrap(context).PyCast<PyBoolObject>(context).BoolValue;
-    }
-
-    public static PyObject ApplyDecorators(PyObject target, ImmutableArray<AstExprNode> decoratorList, PyCallContext context, PyFrame frame)
-    {
-        if (decoratorList.Length > 0)
-        {
-            Stack<PyObject> decorators = [];
-            foreach (var decorator in decoratorList)
-            {
-                decorators.Push(decorator.GetExprValue(context, frame));
-            }
-            foreach (var decorator in decorators)
-            {
-                target = decorator.Call(context, [target], new Dictionary<string, PyObject>()).PyUnwrap(context);
-            }
-        }
-        return target;
-    }
 
     public static bool TryGetDoc(IReadOnlyList<AstStmtNode> stmtNodes, [NotNullWhen(true)] out PyStrObject? doc)
     {
@@ -270,18 +223,6 @@ internal static class AstUtils
     public static List<PyObject> EvalPyObjects(PyCallContext context, PyFrame frame, IEnumerable<AstExprNode> exprs)
     {
         List<PyObject> result = [];
-        foreach (var expr in exprs)
-        {
-            if (expr is StarredNode starredNode)
-            {
-                result.AddRange(starredNode.Unpack(context, frame));
-            }
-            else
-            {
-                var value = expr.GetExprValue(context, frame);
-                result.Add(value);
-            }
-        }
         return result;
     }
 

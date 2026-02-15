@@ -8,8 +8,8 @@ namespace PySharp.Compilation;
 
 internal class Compiler
 {
-    private static PyAstCompilation InternalCompileAst(PyCallContext context, string code, string sourceName,
-        Func<PyCallContext, CodeSource, IEnumerable<TokenInfo>, AstModNode> parse, bool appendNewLine = false)
+    private static PyBytecodeCompilation InternalCompileBytecode(PyCallContext context, string code, string sourceName,
+        Func<PyCallContext, CodeSource, IEnumerable<TokenInfo>, AstModNode> parse, bool appendNewLine = false, bool onlyAsName = false)
     {
         var source = new CodeSource(sourceName, code);
         var tokens = Lexer.Tokenize(context, source);
@@ -17,14 +17,7 @@ internal class Compiler
             tokens.Insert(tokens.Count - 1, new TokenInfo(TokenType.NewLine, string.Empty, default, default, source));
         var node = parse(context, source, tokens);
         var model = SemanticAnalyzer.Analyze(context, node);
-        return new PyAstCompilation(model);
-    }
-
-    private static PyBytecodeCompilation InternalCompileBytecode(PyCallContext context, string code, string sourceName,
-        Func<PyCallContext, CodeSource, IEnumerable<TokenInfo>, AstModNode> parse, bool appendNewLine = false, bool onlyAsName = false)
-    {
-        var ast = InternalCompileAst(context, code, sourceName, parse, appendNewLine);
-        return BytecodeCompiler.Compile(ast.Model, onlyAsName);
+        return BytecodeCompiler.Compile(model, onlyAsName);
     }
 
     public static PyBytecodeCompilation CompileExec(PyCallContext context, string code, string sourceName, bool onlyAsName = false)

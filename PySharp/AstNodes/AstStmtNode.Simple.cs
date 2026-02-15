@@ -7,21 +7,7 @@ using System.Diagnostics;
 
 namespace PySharp.AstNodes;
 
-public abstract class AstStmtNode : AstNode
-{
-    public sealed override void Execute(PyCallContext context, PyFrame frame)
-    {
-        using var withMetaInfo = new MetaInfoProviderSetter(frame, this);
-        ExecuteStmt(context, frame);
-    }
-
-    public abstract void ExecuteStmt(PyCallContext context, PyFrame frame);
-}
-
-public abstract class AstControlException : Exception;
-public sealed class AstBreakException : AstControlException;
-public sealed class AstContinueException : AstControlException;
-public sealed class AstReturnException(PyObject value) : AstControlException { public PyObject Value { get; } = value ?? throw new ArgumentNullException(nameof(value)); }
+public abstract class AstStmtNode : AstNode;
 
 public sealed class ExprNode : AstStmtNode
 {
@@ -30,25 +16,6 @@ public sealed class ExprNode : AstStmtNode
     internal ExprNode(AstExprNode value)
     {
         Value = value;
-    }
-
-    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
-    {
-        _ = ExecuteExprStmt(context, frame);
-    }
-
-    internal PyObject ExecuteExprStmt(PyCallContext context, PyFrame frame)
-    {
-        var value = Value.GetExprValue(context, frame);
-        if (context.IsInteractive && frame.IsRoot)
-        {
-            if (value is not PyNoneObject)
-            {
-                var repr = PySpecialMethods.Repr(context, value).PyUnwrap(context);
-                context.Out.WriteLine(repr.Value);
-            }
-        }
-        return value;
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
@@ -68,15 +35,6 @@ public sealed class AssignNode : AstStmtNode
     public ImmutableArray<AstExprNode> Targets { get; }
     public AstExprNode Value { get; }
 
-    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
-    {
-        var value = Value.GetExprValue(context, frame);
-
-        foreach (var target in Targets)
-        {
-            target.SetTargetValue(context, value, frame);
-        }
-    }
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         foreach (var t in Targets) yield return t;
@@ -96,14 +54,6 @@ public sealed class AugAssignNode : AstStmtNode
     public AstExprNode Target { get; }
     public OperatorType Op { get; }
     public AstExprNode Value { get; }
-
-    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
-    {
-        var left = Target.GetExprValue(context, frame);
-        var right = Value.GetExprValue(context, frame);
-        var value = EvalInplaceOperator(context, Op, left, right).PyUnwrap(context);
-        Target.SetTargetValue(context, value, frame);
-    }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
@@ -158,17 +108,6 @@ public sealed class AnnAssignNode : AstStmtNode
         if (Value is not null)
             yield return Value;
     }
-
-    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
-    {
-        // TODO: __annotations__ if simple
-
-        if (Value is null)
-            return;
-
-        var value = Value.GetExprValue(context, frame);
-        Target.SetTargetValue(context, value, frame);
-    }
 }
 
 public sealed class AssertNode : AstStmtNode
@@ -182,23 +121,6 @@ public sealed class AssertNode : AstStmtNode
     public AstExprNode Test { get; }
     public AstExprNode? Msg { get; }
 
-    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
-    {
-        var test = Test.GetExprValue(context, frame);
-        var result = PySpecialMethods.Bool(context, test).PyUnwrap(context);
-
-        if (result.BoolValue)
-            return;
-
-        using var withMetaInfo = new MetaInfoProviderSetter(frame, Test);
-
-        if (Msg is null)
-            throw context.AssertionError(string.Empty);
-
-        var msg = Msg.GetExprValue(context, frame);
-        throw context.AssertionError(msg);
-    }
-
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         yield return Test;
@@ -210,10 +132,6 @@ public sealed class AssertNode : AstStmtNode
 public sealed class PassNode : AstStmtNode
 {
     internal PassNode()
-    {
-    }
-
-    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
     {
     }
     public override IEnumerable<AstNode> EnumerateSubNodes()
@@ -230,14 +148,6 @@ public sealed class DeleteNode : AstStmtNode
     {
         Targets = targets;
     }
-
-    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
-    {
-        foreach (var target in Targets)
-        {
-            target.DeleteTargetValue(context, frame);
-        }
-    }
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         foreach (var t in Targets) yield return t;
@@ -251,11 +161,6 @@ public sealed class ReturnNode : AstStmtNode
     internal ReturnNode(AstExprNode? value)
     {
         Value = value;
-    }
-
-    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
-    {
-        throw new AstReturnException(Value?.GetExprValue(context, frame) ?? PyNoneObject.None);
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
@@ -275,13 +180,6 @@ public sealed class RaiseNode : AstStmtNode
 
     public AstExprNode? Exc { get; }
     public AstExprNode? Cause { get; }
-
-    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
-    {
-        var excObj = Exc?.GetExprValue(context, frame);
-        var causeObj = Cause?.GetExprValue(context, frame);
-        Raise(context, frame, excObj, causeObj);
-    }
 
     internal static void Raise(PyCallContext context, PyFrame frame, PyObject? excObj, PyObject? causeObj)
     {
@@ -336,11 +234,6 @@ public sealed class BreakNode : AstStmtNode
     internal BreakNode()
     {
     }
-
-    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
-    {
-        throw new AstBreakException();
-    }
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         return [];
@@ -351,11 +244,6 @@ public sealed class ContinueNode : AstStmtNode
 {
     internal ContinueNode()
     {
-    }
-
-    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
-    {
-        throw new AstContinueException();
     }
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
@@ -370,14 +258,6 @@ public sealed class ImportNode : AstStmtNode
     internal ImportNode(ImmutableArray<AstAliasNode> names)
     {
         Names = names;
-    }
-
-    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
-    {
-        foreach (var name in Names)
-        {
-            frame.Import(context, name.Name, name.GetLocalName());
-        }
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
@@ -398,35 +278,6 @@ public sealed class ImportFromNode : AstStmtNode
     public string? Module { get; }
     public ImmutableArray<AstAliasNode> Names { get; }
     public int Level { get; }
-
-    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
-    {
-        if (Level > 0)
-            // TODO: relative import
-            throw new NotSupportedException($"Relative imports (level={Level}) are not supported");
-
-        // Module must be not null when Level is 0
-        Debug.Assert(Module is not null);
-
-        if (!context.PyEnvironment.TryLoadModule(context, Module, out var module))
-            throw context.ModuleNotFoundError(PySR.Runtime_Import_ModuleNotFound, Module);
-
-        if (Names.Length is 1 && Names[0].Name is "*")
-        {
-            ImportAllFrom(context, frame, module);
-            return;
-        }
-
-        foreach (var name in Names)
-        {
-            Debug.Assert(name.Name is not "*");
-
-            if (!module.PyAttributes.TryGetValue(name.Name, out var value))
-                throw context.ImportError(PySR.Runtime_Import_CannotImportName, name.Name, Module /* TODO: should be module.__name__ */ /* TODO: do you mean [possibleName] */);
-
-            frame.SetVariable(name.AsName ?? name.Name, value).PyUnwrap(context);
-        }
-    }
 
     internal static void ImportAllFrom(PyCallContext context, PyFrame frame, PyModuleObject module)
     {
@@ -473,10 +324,6 @@ public sealed class GlobalNode : AstStmtNode
 
     public ImmutableArray<string> Names { get; }
 
-    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
-    {
-    }
-
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         return [];
@@ -492,9 +339,6 @@ public sealed class NonlocalNode : AstStmtNode
 
     public ImmutableArray<string> Names { get; }
 
-    public override void ExecuteStmt(PyCallContext context, PyFrame frame)
-    {
-    }
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         return [];
