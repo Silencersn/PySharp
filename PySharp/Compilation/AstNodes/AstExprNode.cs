@@ -163,27 +163,7 @@ public sealed class CallNode : AstExprNode
         Func = func;
         Args = args;
         Keywords = keywords;
-
-        if (args.Length > 0 && keywords.Length > 0)
-            _argsType = CallArgumentsType.ArgsKwargs;
-        else if (args.Length > 0)
-            _argsType = CallArgumentsType.ArgsOnly;
-        else if (keywords.Length > 0)
-            _argsType = CallArgumentsType.KwargsOnly;
-        else
-            _argsType = CallArgumentsType.NoArgsOrKwargs;
     }
-
-    private enum CallArgumentsType
-    {
-        Unknown = 0,
-
-        NoArgsOrKwargs,
-        ArgsOnly,
-        KwargsOnly,
-        ArgsKwargs
-    }
-    private readonly CallArgumentsType _argsType;
 
     public AstExprNode Func { get; }
     public ImmutableArray<AstExprNode> Args { get; }
