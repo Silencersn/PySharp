@@ -3,11 +3,9 @@ using PySharp.CodeAnalysis;
 using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime.Calls;
 using PySharp.Utility;
-using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using static PySharp.PyRuntime.PyFrame;
 
 namespace PySharp.PyRuntime;
 
@@ -100,7 +98,7 @@ public sealed partial class PyFrame
         Debug.Assert(frameType is FrameType.Function or FrameType.Lambda or FrameType.YieldFunction or FrameType.YieldLambda);
 
         var variables = PyFrameVariables.Create(globals, code.LocalsTable, code.CellVars.Length + code.FreeVars.Length);
-        
+
         return new PyFrame(
             this,
             variables,

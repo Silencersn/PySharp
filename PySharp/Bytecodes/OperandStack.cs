@@ -45,7 +45,7 @@ internal sealed class OperandStack
         return _array[--_size];
     }
     public void PopReversedRange(Span<PyObject> values)
-    {        
+    {
         // TODO: clear reference?
         _array.AsSpan().Slice(_size - values.Length, values.Length).CopyTo(values);
         _size -= values.Length;

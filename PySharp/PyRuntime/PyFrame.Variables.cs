@@ -1,7 +1,5 @@
 ﻿using PySharp.PyModules.Builtins;
 using PySharp.PyRuntime.Calls;
-using PySharp.Utility;
-using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.Diagnostics.CodeAnalysis;
 
@@ -243,7 +241,7 @@ partial class PyFrame
 
         public PyResult DeleteDeref(string name)
         {
-            return StoreDeref(name, value: null);    
+            return StoreDeref(name, value: null);
         }
 
         public PyResult DeleteGlobal(string name)

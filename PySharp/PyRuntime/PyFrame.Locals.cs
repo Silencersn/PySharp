@@ -3,10 +3,7 @@ using PySharp.PyRuntime.Comparison;
 using PySharp.Utility;
 using System.Collections;
 using System.Collections.Frozen;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 namespace PySharp.PyRuntime;
 
@@ -124,7 +121,7 @@ partial class PyFrame
 
             public ICollection<string> Keys => _extraLocals is null ? _localsTable.Keys : [.. _localsTable.Keys, .. _extraLocals.Keys];
 
-            public ICollection<PyObject?> Values => _extraLocals is null ? [.._localsPlus] : [.. _localsPlus, .. _extraLocals.Values];
+            public ICollection<PyObject?> Values => _extraLocals is null ? [.. _localsPlus] : [.. _localsPlus, .. _extraLocals.Values];
 
             public int Count => _localsTable.Count + _extraLocals?.Count ?? 0;
 

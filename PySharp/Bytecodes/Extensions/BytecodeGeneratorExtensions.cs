@@ -11,7 +11,7 @@ internal static class BytecodeGeneratorExtensions
     {
         generator.Emit(OpCode.PopJumpIfFalse, label);
     }
-    
+
     public static void PopJumpIfTrue(this BytecodeGenerator generator, Label label)
     {
         generator.Emit(OpCode.PopJumpIfTrue, label);
