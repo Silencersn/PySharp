@@ -44,14 +44,6 @@ internal static class AstUtils
         };
     }
 
-    public static TPyObject PyCast<TPyObject>(this PyObject obj, PyCallContext context)
-    {
-        if (obj is not TPyObject objOfT)
-            throw context.TypeError(null);
-
-        return objOfT;
-    }
-
     public static PyObject PyUnwrap(this PyResult result, PyCallContext context)
     {
         if (result.IsError)
@@ -66,72 +58,6 @@ internal static class AstUtils
 
         return result.Value;
     }
-    public static PyObject PyUnwrapIncludedNotImplemented(this PyResult result, PyCallContext context)
-    {
-        if (result.IsError)
-            throw new PyRuntimeException(context, result.Exception);
-
-        if (result.IsNotImplemented)
-            throw context.TypeError(null);
-
-        return result.Value;
-    }
-
-    [DoesNotReturn]
-    public static void PyThrow(this PyResult result, PyCallContext context)
-    {
-        Debug.Assert(result.IsError);
-        throw new PyRuntimeException(context, result.Exception);
-    }
-
-    public static void SetTargetValue(this AstExprNode target, PyCallContext context, PyObject value, PyFrame frame)
-    {
-        if (target is ITargetNode targetNode)
-        {
-        }
-        else if (target is TupleNode tupleNode)
-        {
-            if (!Utils.TryEnumeratedIterable(context, value, out var iter, out var err))
-                err.Value.PyThrow(context);
-
-            if (tupleNode.Elts.Length != iter.Count)
-            {
-                throw context.ValueError(PySR.Runtime_Assignment_UnpackCountNotMatch);
-            }
-            for (int i = 0; i < tupleNode.Elts.Length; i++)
-            {
-                tupleNode.Elts[i].SetTargetValue(context, iter[i], frame);
-            }
-        }
-        else if (target is ListNode listNode)
-        {
-            if (!Utils.TryEnumeratedIterable(context, value, out var iter, out var err))
-                err.Value.PyThrow(context);
-
-            if (listNode.Elts.Length != iter.Count)
-            {
-                throw context.ValueError(PySR.Runtime_Assignment_UnpackCountNotMatch);
-            }
-            for (int i = 0; i < listNode.Elts.Length; i++)
-            {
-                listNode.Elts[i].SetTargetValue(context, iter[i], frame);
-            }
-        }
-        else if (target is StarredNode starredNode)
-        {
-            throw new NotImplementedException();
-        }
-        else
-        {
-            throw new UnreachableException();
-        }
-    }
-
-    public static void DeleteTargetValue(this AstExprNode target, PyCallContext context, PyFrame frame)
-    {
-    }
-
-
 
     public static bool TryGetDoc(IReadOnlyList<AstStmtNode> stmtNodes, [NotNullWhen(true)] out PyStrObject? doc)
     {
@@ -150,8 +76,7 @@ internal static class AstUtils
 
     public static bool IsValidAugTarget(this AstExprNode node)
     {
-        //return node is NameNode or SubscriptNode or AttributeNode;
-        return node is ITargetNode;
+        return node is NameNode or SubscriptNode or AttributeNode;
     }
 
     public static bool IsValidTarget(this AstExprNode node)
@@ -218,28 +143,5 @@ internal static class AstUtils
     {
         node.MetaInfo = metaInfo;
         return node;
-    }
-
-    public static List<PyObject> EvalPyObjects(PyCallContext context, PyFrame frame, IEnumerable<AstExprNode> exprs)
-    {
-        List<PyObject> result = [];
-        return result;
-    }
-
-    public static Dictionary<string, PyObject> EvalKeywords(PyCallContext context, PyFrame frame, IEnumerable<AstKeywordNode> keywords)
-    {
-        Dictionary<string, PyObject> result = [];
-        foreach (var keyword in keywords)
-            keyword.AddOrUnpackValueTo(result, context, frame);
-        return result;
-    }
-
-    public static IDictionary<PyObject, PyObject> ExtractMapping(PyCallContext context, PyObject mapping)
-    {
-        if (mapping is not PyDictObject dict)
-            // TODO: support other mapping
-            throw context.TypeError(PySR.Runtime_Dictionary_NotAMapping, mapping.PyType.FullName);
-
-        return dict._dict;
     }
 }

@@ -128,10 +128,6 @@ public class AstKeywordNode : AstNode
     {
         yield return Value;
     }
-
-    internal void AddOrUnpackValueTo(IDictionary<string, PyObject> targetDict, PyCallContext context, PyFrame frame)
-    {
-    }
 }
 
 public sealed class ExceptHandlerNode : AstNode
@@ -236,9 +232,7 @@ public sealed class AstMatchCaseNode : AstNode
     }
 }
 
-public abstract class AstPatternNode : AstNode
-{
-}
+public abstract class AstPatternNode : AstNode;
 
 public sealed class MatchValueNode : AstPatternNode
 {

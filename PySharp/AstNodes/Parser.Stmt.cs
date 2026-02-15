@@ -8,8 +8,7 @@ partial class Parser
 {
     public static bool IsSingleTarget(AstExprNode node)
     {
-        // ITargetNode is NameNode or SubscriptNode or AttributeNode;
-        return node is ITargetNode;
+        return node is NameNode or SubscriptNode or AttributeNode;
     }
 
     public static bool IsStarTarget(AstExprNode node, [NotNullWhen(false)] out AstExprNode? nonStarTargetNode)
