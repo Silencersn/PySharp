@@ -102,6 +102,7 @@ partial class PySR
     public const string InvalidSyntax_Semantic_YieldInsideComprehension = "'yield' inside {0}";
     public const string InvalidSyntax_Semantic_YieldFromOutsideFunction = "'yield from' outside function";
     public const string InvalidSyntax_Semantic_YieldFromInsideComprehension = "'yield from' inside {0}";
+    public const string InvalidSyntax_Semantic_ImportStarNotAtModuleLevel = "import * only allowed at module level";
 
     public const string InvalidSyntax_Semantic_KeywordArgumentRepeated = "keyword argument repeated: {0}";
 

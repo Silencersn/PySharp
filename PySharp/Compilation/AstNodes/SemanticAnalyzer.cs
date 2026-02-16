@@ -406,6 +406,11 @@ public sealed class SemanticAnalyzer : ICodeMetaInfoProvider
                 case TupleNode n when n.Ctx is ExprContextType.Store:
                     ValidateNonMultipleStarred(n.Elts);
                     break;
+
+                case ImportFromNode n when currentScopeStats.Scope is not RootVariableScope:
+                    if (n.IsImportStar())
+                        throw SyntaxError(PySR.InvalidSyntax_Semantic_ImportStarNotAtModuleLevel);
+                    break;
             }
 
             static IEnumerable<(T, T)> EnumeratePairs<T>(IReadOnlyList<T> items)

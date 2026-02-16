@@ -728,7 +728,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                         break;
 
                     case OpCode._ImportAllFrom:
-                        ImportFromNode.ImportAllFrom(context, frame, (PyModuleObject)Stack.Pop());
+                        PyCore.ImportAllFrom(context, frame, (PyModuleObject)Stack.Pop());
                         break;
 
                     case OpCode.BuildSlice:

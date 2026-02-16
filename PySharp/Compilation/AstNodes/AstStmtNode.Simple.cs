@@ -280,34 +280,9 @@ public sealed class ImportFromNode : AstStmtNode
     public ImmutableArray<AstAliasNode> Names { get; }
     public int Level { get; }
 
-    internal static void ImportAllFrom(PyCallContext context, PyFrame frame, PyModuleObject module)
+    internal bool IsImportStar()
     {
-        // if module has __all__, import only those names
-        // item in __all__ must be str
-        if (module.PyAttributes.TryGetValue(PySpecialNames.All, out var all))
-        {
-            // unlike cpython, allows iterable
-            if (!Utils.TryEnumeratedIterable(context, all, out var list, out _))
-                throw context.TypeError(PySR.Runtime_Import_NonIterableAll, module.Name);
-
-            foreach (var item in list)
-            {
-                if (item is not PyStrObject strObj)
-                    throw context.TypeError(PySR.Runtime_Import_NonStringAllElt, module.Name, item.PyType.Name);
-
-                var attr = PyOperators.GetAttr(context, module, strObj.Value).PyUnwrap(context);
-                frame.SetVariable(strObj.Value, attr).PyUnwrap(context);
-            }
-        }
-        else
-        {
-            foreach (var kvp in module.PyAttributes)
-            {
-                // only import names that do not start with '_'
-                if (!kvp.Key.StartsWith('_'))
-                    frame.SetVariable(kvp.Key, kvp.Value).PyUnwrap(context);
-            }
-        }
+        return Names.Length is 1 && Names[0].Name is "*"; 
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
