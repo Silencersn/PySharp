@@ -814,18 +814,18 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                     case OpCode.RaiseVarArgs:
                         if (instruction.Arg is 0)
                         {
-                            RaiseNode.Raise(context, frame, excObj: null, causeObj: null);
+                            PyCore.Raise(context, frame, excObj: null, causeObj: null);
                         }
                         else if (instruction.Arg is 1)
                         {
                             var excObj = Stack.Pop();
-                            RaiseNode.Raise(context, frame, excObj, causeObj: null);
+                            PyCore.Raise(context, frame, excObj, causeObj: null);
                         }
                         else if (instruction.Arg is 2)
                         {
                             var causeObj = Stack.Pop();
                             var excObj = Stack.Pop();
-                            RaiseNode.Raise(context, frame, excObj, causeObj);
+                            PyCore.Raise(context, frame, excObj, causeObj);
                         }
                         else
                         {
@@ -834,7 +834,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                         break;
 
                     case OpCode.CheckExcMatch:
-                        var condition = ExceptHandlerNode.MakeCondition(context, Stack[-1]);
+                        var condition = PyCore.MakeExceptCondition(context, Stack[-1]);
                         Stack[-1] = PyBoolObject.FromBoolean(condition(frame.CurrentException));
                         break;
 
@@ -845,7 +845,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                                 exc = PyBaseExceptionGroupObjectType.CreateExceptionGroup(string.Empty, [exc]);
 
                             var type = Stack.Pop();
-                            var (rest, match) = ExceptHandlerNode.Split(context, exc, type);
+                            var (rest, match) = PyCore.SplitExceptionGroup(context, exc, type);
                             frame.Exceptions.Pop();
                             ExceptionHandlers.Peek().PyException = rest;
                             frame.Exceptions.Push(rest! /* null if rest is None, OpCode._PopExceptionAndJumpIfNull should handle that */);

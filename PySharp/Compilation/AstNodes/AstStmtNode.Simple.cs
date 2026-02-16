@@ -182,45 +182,6 @@ public sealed class RaiseNode : AstStmtNode
     public AstExprNode? Exc { get; }
     public AstExprNode? Cause { get; }
 
-    internal static void Raise(PyCallContext context, PyFrame frame, PyObject? excObj, PyObject? causeObj)
-    {
-        var exc = ToException(context, excObj)
-            ?? throw new PyRuntimeException(context, frame.CurrentException);
-
-        if (causeObj is not null)
-        {
-            if (causeObj is PyNoneObject)
-            {
-                exc.SuppressContext = true;
-            }
-            else
-            {
-                exc.Cause = ToException(context, causeObj);
-                exc.CauseReason = PySR.Runtime_RaiseStmt_Cause;
-            }
-        }
-
-        if (frame.Exceptions.TryPeek(out var pre))
-            exc.Context = pre;
-
-        throw new PyRuntimeException(context, exc);
-
-        static PyExceptionObject? ToException(PyCallContext context, PyObject? pyObj)
-        {
-            if (pyObj is null)
-                return null;
-
-            if (pyObj is PyExceptionObject excObj)
-                return excObj;
-
-            else if (pyObj is PyTypeObject typeObj && typeObj.IsSubclassOf(PyBaseExceptionObjectType.Shared))
-                return new PyExceptionObject(typeObj);
-
-            else
-                throw context.TypeError(PySR.Runtime_RaiseStmt_RaiseNonException);
-        }
-    }
-
     public override IEnumerable<AstNode> EnumerateSubNodes()
     {
         if (Exc is not null)

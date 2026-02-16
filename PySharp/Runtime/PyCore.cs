@@ -214,4 +214,82 @@ internal static class PyCore
             }
         }
     }
+
+    public static void Raise(PyCallContext context, PyFrame frame, PyObject? excObj, PyObject? causeObj)
+    {
+        var exc = ToException(context, excObj)
+            ?? throw new PyRuntimeException(context, frame.CurrentException);
+
+        if (causeObj is not null)
+        {
+            if (causeObj is PyNoneObject)
+            {
+                exc.SuppressContext = true;
+            }
+            else
+            {
+                exc.Cause = ToException(context, causeObj);
+                exc.CauseReason = PySR.Runtime_RaiseStmt_Cause;
+            }
+        }
+
+        if (frame.Exceptions.TryPeek(out var pre))
+            exc.Context = pre;
+
+        throw new PyRuntimeException(context, exc);
+
+        static PyExceptionObject? ToException(PyCallContext context, PyObject? pyObj)
+        {
+            if (pyObj is null)
+                return null;
+
+            if (pyObj is PyExceptionObject excObj)
+                return excObj;
+
+            else if (pyObj is PyTypeObject typeObj && typeObj.IsSubclassOf(PyBaseExceptionObjectType.Shared))
+                return new PyExceptionObject(typeObj);
+
+            else
+                throw context.TypeError(PySR.Runtime_RaiseStmt_RaiseNonException);
+        }
+    }
+
+    public static Func<PyExceptionObject, bool> MakeExceptCondition(PyCallContext context, PyObject type)
+    {
+        if (type is PyTypeObject typeObj)
+        {
+            if (!typeObj.IsSubclassOf(PyBaseExceptionObjectType.Shared))
+                throw context.TypeError(PySR.Runtime_TryStmt_CatchNonException);
+
+            return typeObj.IsInstance;
+        }
+        else if (type is PyTupleObject tupleObj)
+        {
+            if (!tupleObj._array.All(obj => obj is PyTypeObject t && t.IsSubclassOf(PyBaseExceptionObjectType.Shared)))
+                throw context.TypeError(PySR.Runtime_TryStmt_CatchNonException);
+
+            return exc => tupleObj._array.Any(obj => ((PyTypeObject)obj).IsInstance(exc));
+        }
+        else
+        {
+            throw context.TypeError(PySR.Runtime_TryStmt_CatchNonException);
+        }
+    }
+
+    public static (PyExceptionObject? RestExc, PyObject MatchedExc) SplitExceptionGroup(PyCallContext context, PyExceptionObject exception, PyObject type)
+    {
+        var splitResult = exception.CallMethod(context, "split", [type]).PyUnwrap(context);
+        if (splitResult is not PyTupleObject tuple)
+            throw context.TypeError(PySR.Runtime_TryStmt_SplitReturnsNonTuple, exception.PyType.FullName, splitResult.PyType.FullName);
+
+        if (tuple._array.Length is not 2)
+            throw context.TypeError(PySR.Runtime_TryStmt_SplitReturnsTupleWithWrongSize, exception.PyType.FullName, tuple._array.Length);
+
+        var match = tuple._array[0];
+        var restObj = tuple._array[1];
+        var rest = restObj is PyNoneObject ? null : (restObj as PyExceptionObject) ??
+            throw context.TypeError(PySR.Runtime_TryStmt_ExpectedExceptionOrNone, tuple._array[1].PyType.FullName);
+
+        return (rest, match);
+    }
 }
