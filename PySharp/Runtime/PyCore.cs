@@ -1,4 +1,5 @@
 ﻿using PySharp.Compilation.Bytecodes;
+using PySharp.Compilation.Primitives;
 using PySharp.Modules;
 using PySharp.Modules.Builtins;
 using PySharp.Modules.CSharp;
@@ -292,4 +293,77 @@ internal static class PyCore
 
         return (rest, match);
     }
+
+    public static PyResult EvalOperator(PyCallContext context, OperatorType op, PyObject left, PyObject right)
+    {
+        return op switch
+        {
+            OperatorType.Add => PyOperators.Add(context, left, right),
+            OperatorType.Sub => PyOperators.Sub(context, left, right),
+            OperatorType.Mult => PyOperators.Mult(context, left, right),
+            OperatorType.MatMult => throw new NotImplementedException(), // PyOperators.MatMult(context, left, right),
+            OperatorType.Div => PyOperators.TrueDiv(context, left, right),
+            OperatorType.Mod => PyOperators.Mod(context, left, right),
+            OperatorType.Pow => PyOperators.Pow(context, left, right, PyNoneObject.None),
+            OperatorType.LShift => PyOperators.LShift(context, left, right),
+            OperatorType.RShift => PyOperators.RShift(context, left, right),
+            OperatorType.BitOr => PyOperators.BitOr(context, left, right),
+            OperatorType.BitXor => PyOperators.BitXor(context, left, right),
+            OperatorType.BitAnd => PyOperators.BitAnd(context, left, right),
+            OperatorType.FloorDiv => PyOperators.FloorDiv(context, left, right),
+            _ => throw new UnreachableException(),
+        };
+    }
+
+    public static PyResult EvalOperator(PyCallContext context, UnaryOpType op, PyObject value)
+    {
+        return op switch
+        {
+            UnaryOpType.Invert => PyOperators.Invert(context, value),
+            UnaryOpType.Not => PyOperators.Not(context, value),
+            UnaryOpType.UAdd => PyOperators.UAdd(context, value),
+            UnaryOpType.USub => PyOperators.USub(context, value),
+            _ => throw new UnreachableException(),
+        };
+    }
+
+    public static PyResult EvalOperator(PyCallContext context, CmpopType op, PyObject left, PyObject right)
+    {
+        return op switch
+        {
+            CmpopType.Eq => PyOperators.Eq(context, left, right),
+            CmpopType.NotEq => PyOperators.NotEq(context, left, right),
+            CmpopType.Lt => PyOperators.Lt(context, left, right),
+            CmpopType.LtE => PyOperators.LtE(context, left, right),
+            CmpopType.Gt => PyOperators.Gt(context, left, right),
+            CmpopType.GtE => PyOperators.GtE(context, left, right),
+            CmpopType.Is => PyOperators.Is(left, right),
+            CmpopType.IsNot => PyOperators.IsNot(left, right),
+            CmpopType.In => PyOperators.In(context, left, right),
+            CmpopType.NotIn => PyOperators.NotIn(context, left, right),
+            _ => throw new UnreachableException(),
+        };
+    }
+
+    public static PyResult EvalInplaceOperator(PyCallContext context, OperatorType op, PyObject left, PyObject right)
+    {
+        return op switch
+        {
+            OperatorType.Add => PyOperators.InPlaceAdd(context, left, right),
+            OperatorType.Sub => PyOperators.InPlaceSub(context, left, right),
+            OperatorType.Mult => PyOperators.InPlaceMult(context, left, right),
+            OperatorType.MatMult => throw new NotImplementedException(), // PyOperators.InPlaceMatMult(context, left, right),
+            OperatorType.Div => PyOperators.InPlaceTrueDiv(context, left, right),
+            OperatorType.Mod => PyOperators.InPlaceMod(context, left, right),
+            OperatorType.Pow => PyOperators.InPlacePow(context, left, right, PyNoneObject.None),
+            OperatorType.LShift => PyOperators.InPlaceLShift(context, left, right),
+            OperatorType.RShift => PyOperators.InPlaceRShift(context, left, right),
+            OperatorType.BitOr => PyOperators.InPlaceBitOr(context, left, right),
+            OperatorType.BitXor => PyOperators.InPlaceBitXor(context, left, right),
+            OperatorType.BitAnd => PyOperators.InPlaceBitAnd(context, left, right),
+            OperatorType.FloorDiv => PyOperators.InPlaceFloorDiv(context, left, right),
+            _ => throw new UnreachableException(),
+        };
+    }
+
 }

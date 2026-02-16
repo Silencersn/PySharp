@@ -385,13 +385,13 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                     case OpCode.BinaryOp:
                         right = Stack.Pop();
                         left = Stack.Pop();
-                        value = BinOpNode.EvalOperator(context, (OperatorType)instruction.Arg, left, right).PyUnwrap(context);
+                        value = PyCore.EvalOperator(context, (OperatorType)instruction.Arg, left, right).PyUnwrap(context);
                         Stack.Push(value);
                         break;
 
                     case OpCode._UnaryOp:
                         value = Stack.Pop();
-                        value = UnaryOpNode.EvalOperator(context, (UnaryOpType)instruction.Arg, value).PyUnwrap(context);
+                        value = PyCore.EvalOperator(context, (UnaryOpType)instruction.Arg, value).PyUnwrap(context);
                         Stack.Push(value);
                         break;
 
@@ -403,7 +403,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                     case OpCode.CompareOp:
                         right = Stack.Pop();
                         left = Stack.Pop();
-                        value = CompareNode.EvalOperator(context, (CmpopType)instruction.Arg, left, right).PyUnwrap(context);
+                        value = PyCore.EvalOperator(context, (CmpopType)instruction.Arg, left, right).PyUnwrap(context);
                         Stack.Push(value);
                         break;
 
@@ -430,7 +430,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                     case OpCode._AugAssignOp:
                         right = Stack.Pop();
                         left = Stack.Pop();
-                        value = AugAssignNode.EvalInplaceOperator(context, (OperatorType)instruction.Arg, left, right).PyUnwrap(context);
+                        value = PyCore.EvalInplaceOperator(context, (OperatorType)instruction.Arg, left, right).PyUnwrap(context);
                         Stack.Push(value);
                         break;
 
