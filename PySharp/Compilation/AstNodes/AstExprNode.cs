@@ -1,4 +1,5 @@
-﻿using PySharp.Modules.Builtins;
+﻿using PySharp.Compilation.Primitives;
+using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using System.Collections.Immutable;
@@ -7,60 +8,6 @@ using System.Diagnostics;
 namespace PySharp.Compilation.AstNodes;
 
 public abstract class AstExprNode : AstNode;
-
-public enum ExprContextType
-{
-    Unknown = 0,
-
-    Load,
-    Store,
-    Del
-}
-
-public enum BoolOpType
-{
-    And,
-    Or
-}
-
-public enum OperatorType
-{
-    Add,
-    Sub,
-    Mult,
-    MatMult,
-    Div,
-    Mod,
-    Pow,
-    LShift,
-    RShift,
-    BitOr,
-    BitXor,
-    BitAnd,
-    FloorDiv
-}
-
-public enum UnaryOpType
-{
-    Invert,
-    Not,
-    UAdd,
-    USub
-}
-
-public enum CmpopType
-{
-    Eq,
-    NotEq,
-    Lt,
-    LtE,
-    Gt,
-    GtE,
-    Is,
-    IsNot,
-    In,
-    NotIn
-}
 
 internal interface IExprContextNode
 {
