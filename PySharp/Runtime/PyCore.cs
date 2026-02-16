@@ -366,4 +366,26 @@ internal static class PyCore
         };
     }
 
+    internal static bool IsSequenceForMatch(PyObject obj)
+    {
+        return obj switch
+        {
+            PyListObject or
+            PyTupleObject or
+            PyRangeObject => true,
+
+            PyStrObject => false, // str is not regarded as sequence
+
+            _ => false,// TODO: support other valid sequences
+        };
+    }
+
+    internal static bool IsMappingForMatch(PyObject obj)
+    {
+        return obj switch
+        {
+            PyDictObject => true,
+            _ => false,// TODO: support other valid mapping
+        };
+    }
 }

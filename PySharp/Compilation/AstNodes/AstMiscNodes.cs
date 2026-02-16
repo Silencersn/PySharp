@@ -239,29 +239,6 @@ public sealed class MatchSequenceNode : AstPatternNode
         foreach (var p in Patterns)
             yield return p;
     }
-    internal static bool IsSequenceForMatch(PyObject obj, out (IEnumerable<PyObject> Sequence, BigInteger Length) result)
-    {
-        switch (obj)
-        {
-            case PyListObject list:
-                result = (list._list, list._list.Count);
-                return true;
-
-            case PyTupleObject tuple:
-                result = (tuple._array, tuple._array.Length);
-                return true;
-
-            case PyRangeObject range:
-                result = (range.EnumerateRange(), range._len);
-                return true;
-
-            case PyStrObject:
-            default:
-                // TODO: support other valid sequences
-                result = default;
-                return false;
-        }
-    }
 }
 
 public sealed class MatchMappingNode : AstPatternNode
@@ -283,20 +260,6 @@ public sealed class MatchMappingNode : AstPatternNode
             yield return k;
         foreach (var p in Patterns)
             yield return p;
-    }
-    internal static bool IsMappingForMatch(PyObject obj, [NotNullWhen(true)] out IDictionary<PyObject, PyObject>? result)
-    {
-        switch (obj)
-        {
-            case PyDictObject dict:
-                result = dict._dict;
-                return true;
-
-            default:
-                // TODO: support other valid mapping
-                result = default;
-                return false;
-        }
     }
 }
 

@@ -1,5 +1,4 @@
-﻿using PySharp.Compilation.AstNodes;
-using PySharp.Compilation.CodeAnalysis;
+﻿using PySharp.Compilation.CodeAnalysis;
 using PySharp.Compilation.Primitives;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime;
@@ -921,12 +920,12 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                         break;
 
                     case OpCode.MatchSequence:
-                        boolValue = MatchSequenceNode.IsSequenceForMatch(Stack[-1], out _);
+                        boolValue = PyCore.IsSequenceForMatch(Stack[-1]);
                         Stack.Push(PyBoolObject.FromBoolean(boolValue));
                         break;
 
                     case OpCode.MatchMapping:
-                        boolValue = MatchMappingNode.IsMappingForMatch(Stack[-1], out _);
+                        boolValue = PyCore.IsMappingForMatch(Stack[-1]);
                         Stack.Push(PyBoolObject.FromBoolean(boolValue));
                         break;
 
