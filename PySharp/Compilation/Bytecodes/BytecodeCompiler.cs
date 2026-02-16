@@ -1,11 +1,10 @@
 ﻿using PySharp.Compilation.AstNodes;
-using PySharp.Compilation.Bytecodes;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
-namespace PySharp.Compilation;
+namespace PySharp.Compilation.Bytecodes;
 
 internal sealed partial class BytecodeCompiler
 {

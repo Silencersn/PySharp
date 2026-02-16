@@ -1,11 +1,10 @@
 ﻿using PySharp.Compilation.AstNodes;
-using PySharp.Compilation.Bytecodes;
 using PySharp.Compilation.Bytecodes.Extensions;
 using PySharp.Modules.Builtins;
 using System.Collections.Immutable;
 using System.Diagnostics;
 
-namespace PySharp.Compilation;
+namespace PySharp.Compilation.Bytecodes;
 
 partial class BytecodeCompiler
 {
