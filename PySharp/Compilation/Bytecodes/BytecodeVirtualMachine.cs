@@ -803,12 +803,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                                 bases.Add(baseType);
                             }
 
-                            var type = ClassBuilder.Build(context, codeObj, bases, (context, _, _) =>
-                            {
-                                Debug.Assert(codeObj.Bytecode is not null);
-                                var vm = new BytecodeVirtualMachine(context, codeObj.Bytecode);
-                                vm.Eval().PyUnwrap(context);
-                            });
+                            var type = PyCore.BuildClass(context, codeObj, bases);
 
                             Stack.Push(type);
                         }

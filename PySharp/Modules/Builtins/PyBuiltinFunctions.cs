@@ -215,9 +215,7 @@ public static partial class PyBuiltinFunctions
         {
             var newFrame = frame.CreateExecEvalFrame(FrameType.Eval, globalsDict, localsDict);
             using var withFrame = context.WithFrame(newFrame);
-            Debug.Assert(code.Bytecode is not null);
-            var vm = new BytecodeVirtualMachine(context, code.Bytecode);
-            return vm.Eval();
+            return PyCore.Eval(context, code.Bytecode);
         }
 
         Debug.Assert(source is PyStrObject);
@@ -227,7 +225,7 @@ public static partial class PyBuiltinFunctions
             var newFrame = frame.CreateExecEvalFrame(FrameType.Eval, globalsDict, localsDict);
             using var withFrame = context.WithFrame(newFrame);
             var codeObj = Compiler.CompileEval(context, ((PyStrObject)source).Value, "<string>", onlyAsName: true);
-            return new BytecodeVirtualMachine(context, codeObj.Bytecode).Eval();
+            return PyCore.Eval(context, codeObj.Bytecode);
         }
         catch (PyRuntimeException e)
         {
@@ -277,8 +275,7 @@ public static partial class PyBuiltinFunctions
             Debug.Assert(code.Bytecode is not null);
             var newFrame = frame.CreateExecEvalFrame(FrameType.Exec, globalsDict, localsDict, closureTuple, code);
             using var withFrame = context.WithFrame(newFrame);
-            var vm = new BytecodeVirtualMachine(context, code.Bytecode);
-            return vm.Eval();
+            return PyCore.Eval(context, code.Bytecode);
         }
 
         Debug.Assert(closure is PyNoneObject);
@@ -289,7 +286,7 @@ public static partial class PyBuiltinFunctions
             var newFrame = frame.CreateExecEvalFrame(FrameType.Exec, globalsDict, localsDict);
             using var withFrame = context.WithFrame(newFrame);
             var codeObj = Compiler.CompileExec(context, ((PyStrObject)source).Value, "<string>", onlyAsName: true);
-            return new BytecodeVirtualMachine(context, codeObj.Bytecode).Eval();
+            return PyCore.Eval(context, codeObj.Bytecode);
         }
         catch (PyRuntimeException e)
         {

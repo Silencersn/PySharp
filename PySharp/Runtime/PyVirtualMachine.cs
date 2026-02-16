@@ -34,7 +34,7 @@ public static partial class PyVirtualMachine
         // module will be reloaded
         module._pyAttributes = context.CurrentFrame.Variables._globals.Globals;
 
-        _ = new BytecodeVirtualMachine(context, bytecode).Eval().PyUnwrap(context);
+        _ = PyCore.Eval(context, bytecode).PyUnwrap(context);
 
         Debug.Assert(ReferenceEquals(module.PyAttributes, context.CurrentFrame.Variables._globals.Globals));
         module.PyAttributes[PySpecialNames.Name] = PyStrObject.FromString(module.Name);

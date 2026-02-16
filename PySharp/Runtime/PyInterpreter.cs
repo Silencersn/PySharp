@@ -37,7 +37,7 @@ public class PyInterpreter
     internal static void InternalExecute(PyCallContext context, string code, string sourceName)
     {
         var codeObj = Compiler.CompileExec(context, code, sourceName);
-        _ = new BytecodeVirtualMachine(context, codeObj.Bytecode).Eval().PyUnwrap(context);
+        _ = PyCore.Eval(context, codeObj.Bytecode).PyUnwrap(context);
     }
 
     public void Execute(string code, string sourceName)
@@ -205,7 +205,7 @@ public class PyInterpreter
                     }
                 }
 
-                _ = new BytecodeVirtualMachine(context, codeObj.Bytecode).Eval().PyUnwrap(context);
+                _ = PyCore.Eval(context, codeObj.Bytecode).PyUnwrap(context);
                 Debug.Assert(context.CurrentFrame.IsRoot);
             });
         }
