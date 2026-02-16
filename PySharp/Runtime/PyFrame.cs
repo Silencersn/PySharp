@@ -27,6 +27,7 @@ public sealed partial class PyFrame
 {
     internal string CallerName { get; }
     internal PyObject? Caller { get; }
+    internal PyCodeObject? CodeObject { get; set; }
 
     internal ICodeMetaInfoProvider? MetaInfoProvider { get; set; }
     private readonly PyFrameVariables _frameVariables;
@@ -69,8 +70,6 @@ public sealed partial class PyFrame
     public bool IsRoot => Back is null;
     public Stack<PyExceptionObject> Exceptions => field ??= [];
     public PyExceptionObject CurrentException => Exceptions.Peek();
-
-    internal IReadOnlyDictionary<string, PyVariableType>? _variables = null;
     internal FrameType FrameType { get; }
     internal (IReadOnlyList<PyObject> Args, IReadOnlyDictionary<string, PyObject> Kwargs)? CallingArguments { get; init; }
 
@@ -102,7 +101,7 @@ public sealed partial class PyFrame
             callerName,
             caller,
             frameType)
-        { CallingArguments = callingArguments, SemanticModel = SemanticModel };
+        { CallingArguments = callingArguments, SemanticModel = SemanticModel, CodeObject = code };
     }
 
     internal PyFrame CreateClassBuildFrame(PyTypeObject buildingClass)
@@ -151,7 +150,6 @@ public sealed partial class PyFrame
         var variables = _frameVariables.Clone();
         var inlineFrame = new PyFrame(this, variables, CallerName, Caller, frameType)
         {
-            _variables = _variables,
             _outerNonInlineFrame = _outerNonInlineFrame ?? this,
             SemanticModel = SemanticModel,
             MetaInfoProvider = MetaInfoProvider
@@ -181,55 +179,11 @@ public sealed partial class PyFrame
             SetVariable(def.KwArg, PyDictObject.CreateDict(arguments.ExtraKwargs.Select(static kvp => KeyValuePair.Create((PyObject)PyStrObject.FromString(kvp.Key), kvp.Value))));
     }
 
-    public PyResult GetVariable(string name)
-    {
-        if (_variables is null)
-            return _frameVariables.LoadName(name);
-
-        return _variables[name] switch
-        {
-            PyVariableType.Local or PyVariableType.Parameter => _frameVariables.LoadLocal(name),
-            PyVariableType.Global => _frameVariables.LoadGlobal(name),
-            PyVariableType.CapturedLocal or PyVariableType.CapturedParameter => _frameVariables.LoadDeref(name),
-            PyVariableType.Closure => _frameVariables.LoadDeref(name),
-            _ => throw new UnreachableException()
-        };
-    }
-
     public PyResult SetVariable(string name, PyObject value)
     {
-        if (_variables is null)
-            return _frameVariables.StoreName(name, value);
-
-        return _variables[name] switch
-        {
-            PyVariableType.Local or PyVariableType.Parameter => _frameVariables.StoreLocal(name, value),
-            PyVariableType.Global => _frameVariables.StoreGlobal(name, value),
-            PyVariableType.CapturedLocal or PyVariableType.CapturedParameter or PyVariableType.Closure => _frameVariables.StoreDeref(name, value),
-            _ => throw new UnreachableException()
-        };
-    }
-
-    public PyResult DeleteVariable(string name)
-    {
-        if (_variables is null)
-            return _frameVariables.DeleteName(name);
-
-        return _variables[name] switch
-        {
-            PyVariableType.Local or PyVariableType.Parameter => _frameVariables.DeleteLocal(name),
-            PyVariableType.Global => _frameVariables.DeleteGlobal(name),
-            PyVariableType.CapturedLocal or PyVariableType.CapturedParameter => _frameVariables.DeleteDeref(name),
-            PyVariableType.Closure => _frameVariables.DeleteDeref(name),
-            _ => throw new UnreachableException()
-        };
-    }
-
-    public void Import(PyCallContext context, string name, string? alias = null)
-    {
-        if (!context.PyEnvironment.TryLoadModule(context, name, out var module))
-            throw context.ModuleNotFoundError(PySR.Runtime_Import_ModuleNotFound, name);
-
-        SetVariable(alias ?? name, module);
+        if (CodeObject is not null && (CodeObject.CellVars.Contains(name) || CodeObject.FreeVars.Contains(name)))
+            return Variables.StoreDeref(name, value);
+        else
+            return Variables.StoreLocal(name, value);
     }
 }

@@ -41,7 +41,6 @@ internal static class PyCore
 
             var backFrame = context.CurrentFrame;
             var frame = backFrame.CreateFuncCallFrame(func.Name, func, FrameType.Function, (args, kwargs), func._globals, func.Code);
-            frame._variables = func.Code.Variables;
 
             Debug.Assert(frame.Variables._locals is not null);
             frame.Variables._locals.InitCells(func.Closure);
