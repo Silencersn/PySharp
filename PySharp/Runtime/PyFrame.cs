@@ -17,13 +17,10 @@ internal enum FrameType
     ThreadRoot,
     Module,
     Function,
-    Lambda,
     Class,
     Comprehension,
     Eval,
     Exec,
-    YieldFunction,
-    YieldLambda
 }
 
 public sealed partial class PyFrame
@@ -95,7 +92,7 @@ public sealed partial class PyFrame
         PyFrameGlobals globals,
         PyCodeObject code)
     {
-        Debug.Assert(frameType is FrameType.Function or FrameType.Lambda or FrameType.YieldFunction or FrameType.YieldLambda);
+        Debug.Assert(frameType is FrameType.Function);
 
         var variables = PyFrameVariables.Create(globals, code.LocalsTable, code.CellVars.Length + code.FreeVars.Length);
 

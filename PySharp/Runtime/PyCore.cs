@@ -3,6 +3,7 @@ using PySharp.Modules.Builtins;
 using PySharp.Modules.CSharp;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
+using System.Diagnostics;
 
 namespace PySharp.Runtime;
 
@@ -12,6 +13,43 @@ internal static class PyCore
     {
         var vm = new BytecodeVirtualMachine(context, bytecode);
         return vm.Eval();
+    }
+
+    public static IEnumerable<PyCellObject> GetFreeVars(PyFrame frame, PyCodeObject code)
+    {
+        if (code.FreeVars.Length is 0)
+            yield break;
+
+        foreach (var name in code.FreeVars)
+        {
+            var obj = frame.Variables.Locals[name];
+            Debug.Assert(obj is PyCellObject);
+            yield return (PyCellObject)obj;
+        }
+    }
+
+    public static PyFunctionObject MakeFunction(PyFrame frame, PyCodeObject codeObject, PyArgsDef def)
+    {
+        PyFunctionObject func = null!;
+        func = new PyFunctionObject(codeObject.Name, Call, GetFreeVars(frame, codeObject), frame.Variables._globals, codeObject, def);
+        return func;
+
+        PyResult Call(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+        {
+            if (!def.TryParse(args, kwargs, out var arguments))
+                return PyResult.TypeError(null /* TODO */);
+
+            var backFrame = context.CurrentFrame;
+            var frame = backFrame.CreateFuncCallFrame(func.Name, func, FrameType.Function, (args, kwargs), func._globals, func.Code);
+            frame._variables = func.Code.Variables;
+
+            Debug.Assert(frame.Variables._locals is not null);
+            frame.Variables._locals.InitCells(func.Closure);
+            frame.InitArgs(func._def, arguments);
+
+            using var withFrame = context.WithFrame(frame);
+            return Eval(context, codeObject.Bytecode);
+        }
     }
 
     public static PyTypeObject BuildClass(PyCallContext context, PyCodeObject codeObject, List<PyTypeObject> bases)

@@ -86,7 +86,6 @@ public sealed class PyUserDefinedGeneratorObject : PyGeneratorObject
     internal PyUserDefinedGeneratorObject(string name, PyFrame frame, Task task) : base(name)
     {
         Debug.Assert(frame.Back is null);
-        Debug.Assert(frame.FrameType is FrameType.YieldFunction or FrameType.YieldLambda);
         Debug.Assert(task.Status is TaskStatus.Created);
 
         _frame = frame;

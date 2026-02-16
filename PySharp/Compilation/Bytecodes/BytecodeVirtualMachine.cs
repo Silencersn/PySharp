@@ -762,15 +762,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                             Stack.PopReversedRange(defaults);
                             var def = PyArgsDef.FromCodeObjectAndDefaults(codeObj, kwDefaults, defaults);
 
-                            var caller = GetCaller(codeObj);
-                            var func = new PyFunctionObject(
-                                codeObj.Name,
-                                caller.Call,
-                                Caller.GetFreeVars(frame, codeObj),
-                                frame.Variables._globals,
-                                codeObj,
-                                def);
-                            caller.Func = func;
+                            var func = PyCore.MakeFunction(frame, codeObj, def);
 
                             Stack.Push(func);
                         }
@@ -1151,15 +1143,5 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
         var result = value;
         value = default;
         return result;
-    }
-
-    private static FunctionCaller GetCaller(PyCodeObject codeObj)
-    {
-        Debug.Assert(codeObj.Bytecode is not null);
-        return new FunctionCaller(FrameType.Function, (context, frame) =>
-        {
-            var vm = new BytecodeVirtualMachine(context, codeObj.Bytecode);
-            return vm.Eval();
-        });
     }
 }
