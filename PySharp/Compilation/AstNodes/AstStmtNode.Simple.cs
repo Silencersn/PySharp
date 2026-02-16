@@ -62,27 +62,6 @@ public sealed class AugAssignNode : AstStmtNode
         yield return Target;
         yield return Value;
     }
-
-    internal static PyResult EvalInplaceOperator(PyCallContext context, OperatorType op, PyObject left, PyObject right)
-    {
-        return op switch
-        {
-            OperatorType.Add => PyOperators.InPlaceAdd(context, left, right),
-            OperatorType.Sub => PyOperators.InPlaceSub(context, left, right),
-            OperatorType.Mult => PyOperators.InPlaceMult(context, left, right),
-            OperatorType.MatMult => throw new NotImplementedException(), // PyOperators.InPlaceMatMult(context, left, right),
-            OperatorType.Div => PyOperators.InPlaceTrueDiv(context, left, right),
-            OperatorType.Mod => PyOperators.InPlaceMod(context, left, right),
-            OperatorType.Pow => PyOperators.InPlacePow(context, left, right, PyNoneObject.None),
-            OperatorType.LShift => PyOperators.InPlaceLShift(context, left, right),
-            OperatorType.RShift => PyOperators.InPlaceRShift(context, left, right),
-            OperatorType.BitOr => PyOperators.InPlaceBitOr(context, left, right),
-            OperatorType.BitXor => PyOperators.InPlaceBitXor(context, left, right),
-            OperatorType.BitAnd => PyOperators.InPlaceBitAnd(context, left, right),
-            OperatorType.FloorDiv => PyOperators.InPlaceFloorDiv(context, left, right),
-            _ => throw new UnreachableException(),
-        };
-    }
 }
 
 public sealed class AnnAssignNode : AstStmtNode

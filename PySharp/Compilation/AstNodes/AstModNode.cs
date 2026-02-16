@@ -2,9 +2,7 @@
 
 namespace PySharp.Compilation.AstNodes;
 
-public abstract class AstModNode : AstNode
-{
-}
+public abstract class AstModNode : AstNode;
 
 public class ModuleNode : AstModNode
 {
