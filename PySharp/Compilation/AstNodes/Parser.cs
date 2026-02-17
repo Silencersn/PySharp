@@ -7,7 +7,7 @@ namespace PySharp.Compilation.AstNodes;
 
 public sealed partial class Parser : ICodeMetaInfoProvider
 {
-    public static ModuleNode ParseModule(PyCallContext context, CodeSource codeSource, IEnumerable<TokenInfo> tokens)
+    public static ModuleNode ParseModule(PyCallContext context, CodeSource codeSource, TokenStream tokens)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(codeSource);
@@ -15,7 +15,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
 
         return new Parser(context, codeSource, tokens).ParseFile();
     }
-    public static ExpressionNode ParseExpression(PyCallContext context, CodeSource codeSource, IEnumerable<TokenInfo> tokens)
+    public static ExpressionNode ParseExpression(PyCallContext context, CodeSource codeSource, TokenStream tokens)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(codeSource);
@@ -24,7 +24,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         return new Parser(context, codeSource, tokens).ParseEval();
     }
 
-    public static InteractiveNode ParseInteractive(PyCallContext context, CodeSource codeSource, IEnumerable<TokenInfo> tokens)
+    public static InteractiveNode ParseInteractive(PyCallContext context, CodeSource codeSource, TokenStream tokens)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(codeSource);
@@ -98,9 +98,6 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         _tokenStream = tokenStream;
         _codeSource = codeSource;
         _context.CurrentFrame.MetaInfoProvider = this;
-    }
-    internal Parser(PyCallContext context, CodeSource codeSource, IEnumerable<TokenInfo> tokens) : this(context, codeSource, new TokenArrayStream(tokens))
-    {
     }
 
     private bool IsCurrentTypeTokenAnyOf(params ReadOnlySpan<TokenType> expectedTypes)

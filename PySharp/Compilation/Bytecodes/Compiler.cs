@@ -9,7 +9,7 @@ namespace PySharp.Compilation.Bytecodes;
 internal static class Compiler
 {
     private static PyCodeObject InternalCompileBytecode(PyCallContext context, string code, string sourceName,
-        Func<PyCallContext, CodeSource, IEnumerable<TokenInfo>, AstModNode> parse, bool appendNewLine = false, bool onlyAsName = false)
+        Func<PyCallContext, CodeSource, TokenStream, AstModNode> parse, bool appendNewLine = false, bool onlyAsName = false)
     {
         var source = new CodeSource(sourceName, code);
         var tokens = Lexer.Tokenize(context, source);

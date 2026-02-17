@@ -13,13 +13,11 @@ public abstract class TokenStream
 
 public sealed class TokenArrayStream : TokenStream
 {
-    private readonly TokenInfo[] _tokens;
+    private readonly List<TokenInfo> _tokens;
 
-    public TokenArrayStream(IEnumerable<TokenInfo> tokens)
+    internal TokenArrayStream(List<TokenInfo> tokens)
     {
-        ArgumentNullException.ThrowIfNull(tokens);
-
-        _tokens = [.. tokens];
+        _tokens = tokens;
         _position = 0;
     }
 
@@ -31,16 +29,17 @@ public sealed class TokenArrayStream : TokenStream
         set
         {
             ArgumentOutOfRangeException.ThrowIfNegative(value);
-            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(value, _tokens.Length);
+            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(value, _tokens.Count);
 
             _position = value;
         }
     }
     public override TokenInfo CurrentToken => _tokens[_position];
+    internal int Count => _tokens.Count;
 
     public override void MoveNextToken()
     {
-        if (_position >= _tokens.Length)
+        if (_position >= _tokens.Count)
             throw new EndOfStreamException();
 
         _position++;
@@ -49,5 +48,10 @@ public sealed class TokenArrayStream : TokenStream
     public override TokenInfo GetTokenAt(int index)
     {
         return _tokens[index];
+    }
+
+    internal void Insert(int value, TokenInfo tokenInfo)
+    {
+        _tokens.Insert(value, tokenInfo);
     }
 }

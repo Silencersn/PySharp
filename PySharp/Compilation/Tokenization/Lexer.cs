@@ -22,7 +22,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         FStringDefault,
     }
 
-    public static List<TokenInfo> Tokenize(PyCallContext context, CodeSource codeSource)
+    public static TokenArrayStream Tokenize(PyCallContext context, CodeSource codeSource)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(codeSource);
@@ -31,7 +31,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         lexer.InternalStart();
         lexer.InternalTokenize(codeSource.Code.Text);
         lexer.InternalEnd();
-        return [.. lexer._tokens];
+        return new TokenArrayStream(lexer._tokens);
     }
 
     private sealed class FStringInfo
@@ -106,7 +106,6 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
     private string? _currentContent;
     private StringBuilder SharedBuilder => field ??= new();
 
-    internal IList<TokenInfo> Tokens => _tokens;
     private ReadOnlySpan<char> CurrentLine => _codeSource.Code.GetLineOrDefault(_lineno, false);
     CodeMetaInfo? ICodeMetaInfoProvider.MetaInfo => CodeMetaInfo.FromPosition(_codeSource, new(_lineno, 0));
 
