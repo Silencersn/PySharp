@@ -1,11 +1,5 @@
 ﻿using PySharp.Compilation.Primitives;
-using PySharp.Modules;
-using PySharp.Modules.Builtins;
-using PySharp.Runtime;
-using PySharp.Runtime.Calls;
-using PySharp.Runtime.Calls.Extensions;
 using System.Collections.Immutable;
-using System.Diagnostics;
 
 namespace PySharp.Compilation.AstNodes;
 
@@ -223,7 +217,7 @@ public sealed class ImportFromNode : AstStmtNode
 
     internal bool IsImportStar()
     {
-        return Names.Length is 1 && Names[0].Name is "*"; 
+        return Names.Length is 1 && Names[0].Name is "*";
     }
 
     public override IEnumerable<AstNode> EnumerateSubNodes()
