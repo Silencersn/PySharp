@@ -32,7 +32,6 @@ public sealed partial class PyFrame
     internal ICodeMetaInfoProvider? MetaInfoProvider { get; set; }
     private readonly PyFrameVariables _frameVariables;
     internal PyFrame? _outerNonInlineFrame;
-    internal SemanticModel? SemanticModel { get; set; } // for AST interpreter
     internal PyFrameVariables Variables => _frameVariables;
 
     private PyFrame(PyFrame? back)
@@ -101,7 +100,7 @@ public sealed partial class PyFrame
             callerName,
             caller,
             frameType)
-        { CallingArguments = callingArguments, SemanticModel = SemanticModel, CodeObject = code };
+        { CallingArguments = callingArguments, CodeObject = code };
     }
 
     internal PyFrame CreateClassBuildFrame(PyTypeObject buildingClass)
@@ -114,13 +113,12 @@ public sealed partial class PyFrame
             variables,
             buildingClass.Name,
             buildingClass,
-            FrameType.Class)
-        { SemanticModel = SemanticModel };
+            FrameType.Class);
     }
 
     internal PyFrame CreateThreadRootFrame()
     {
-        return new PyFrame(_frameVariables) { SemanticModel = SemanticModel };
+        return new PyFrame(_frameVariables);
     }
 
     internal PyFrame CreateExecEvalFrame(FrameType frameType, PyDictObject? globals, PyDictObject? locals, PyTupleObject? closure = null, PyCodeObject? code = null)
@@ -151,7 +149,6 @@ public sealed partial class PyFrame
         var inlineFrame = new PyFrame(this, variables, CallerName, Caller, frameType)
         {
             _outerNonInlineFrame = _outerNonInlineFrame ?? this,
-            SemanticModel = SemanticModel,
             MetaInfoProvider = MetaInfoProvider
         };
         return inlineFrame;
