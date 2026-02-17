@@ -108,11 +108,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
 
     internal IList<TokenInfo> Tokens => _tokens;
     private ReadOnlySpan<char> CurrentLine => _codeSource.Code.GetLineOrDefault(_lineno, false);
-    CodeMetaInfo? ICodeMetaInfoProvider.MetaInfo => new()
-    {
-        Source = _codeSource,
-        Start = new(_lineno, 0)
-    };
+    CodeMetaInfo? ICodeMetaInfoProvider.MetaInfo => CodeMetaInfo.FromPosition(_codeSource, new(_lineno, 0));
 
     internal Lexer(PyCallContext context, CodeSource codeSource)
     {

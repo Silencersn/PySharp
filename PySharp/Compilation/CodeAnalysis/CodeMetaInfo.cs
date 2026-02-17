@@ -2,19 +2,37 @@
 
 public sealed record class CodeMetaInfo
 {
-    public required CodeSource Source { get; init; }
-    public ReadOnlySpan<char> FirstLine => Source.Code.GetLineOrDefault(Start.Line, false);
-    public CodeTextPosition Start;
-    public CodeTextPosition End;
-    public CodeTextPosition CrucialStart;
-    public CodeTextPosition CrucialEnd;
+    private CodeMetaInfo(CodeSource source, CodeTextSpan range, CodeTextSpan crucialRange)
+    {
+        Source = source;
+        Range = range;
+        CrucialRange = crucialRange;
+    }
 
-    public bool HasStart => !Start.IsEmpty;
-    public bool HasEnd => !End.IsEmpty;
-    public bool HasCrucialStart => !CrucialStart.IsEmpty;
-    public bool HasCrucialEnd => !CrucialEnd.IsEmpty;
-    public bool HasRange => HasStart && HasEnd;
-    public bool HasCrucialRange => HasCrucialStart && HasCrucialEnd;
+    public readonly CodeSource Source;
+    public readonly CodeTextSpan Range;
+    public readonly CodeTextSpan CrucialRange;
+
+    public ReadOnlySpan<char> FirstLine => Source.Code.GetLineOrDefault(Source.Code.OffsetToPosition(Range.Start).Line, false);
+    public CodeTextPosition Start => Source.Code.OffsetToPosition(Range.Start);
+    public CodeTextPosition End => Source.Code.OffsetToPosition(Range.End);
+    public CodeTextPosition CrucialStart => Source.Code.OffsetToPosition(CrucialRange.Start);
+    public CodeTextPosition CrucialEnd => Source.Code.OffsetToPosition(CrucialRange.End);
+    public bool HasRange => !Range.IsEmpty;
+    public bool HasCrucialRange => !CrucialRange.IsEmpty;
+
+    internal static CodeMetaInfo FromPosition(CodeSource source, CodeTextPosition start, CodeTextPosition end, CodeTextPosition crucialStart, CodeTextPosition crucialEnd)
+    {
+        return new CodeMetaInfo(source, source.Code.PositionToSpan(start, end), source.Code.PositionToSpan(crucialStart, crucialEnd));
+    }
+    internal static CodeMetaInfo FromPosition(CodeSource source, CodeTextPosition start, CodeTextPosition end)
+    {
+        return new CodeMetaInfo(source, source.Code.PositionToSpan(start, end), CodeTextSpan.Empty);
+    }
+    internal static CodeMetaInfo FromPosition(CodeSource source, CodeTextPosition start)
+    {
+        return FromPosition(source, start, CodeTextPosition.Empty);
+    }
 }
 
 

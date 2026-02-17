@@ -56,14 +56,8 @@ partial class Parser
             var crucialStartToken = _parser._tokenStream.GetTokenAt(CrucialStartTokenPosition);
             var crucialEndToken = _parser._tokenStream.GetTokenAt(CrucialEndTokenPosition);
 
-            return new CodeMetaInfo
-            {
-                Source = _parser._codeSource,
-                Start = startToken.Start,
-                End = endToken.End,
-                CrucialStart = crucialStartToken.Start,
-                CrucialEnd = crucialEndToken.End
-            };
+            return CodeMetaInfo.FromPosition(_parser._codeSource,
+                startToken.Start, endToken.End, crucialStartToken.Start, crucialEndToken.End);
         }
     }
 

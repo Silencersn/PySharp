@@ -183,4 +183,30 @@ public sealed class CodeText
 
         return _text.AsSpan(span.Start, span.Length);
     }
+
+    internal int PositionToOffset(CodeTextPosition position)
+    {
+        return _lineSpans[position.Line].Start + position.Offset;
+    }
+
+    internal CodeTextPosition OffsetToPosition(int offset)
+    {
+        // TODO: optimize
+
+        for (int i = _lineSpans.Length - 1; i >= 0; i--)
+        {
+            var lineSpan = _lineSpans[i];
+            if (offset >= lineSpan.Start)
+                return new CodeTextPosition(i, offset - lineSpan.Start);
+        }
+
+        return CodeTextPosition.Empty;
+    }
+
+    internal CodeTextSpan PositionToSpan(CodeTextPosition start, CodeTextPosition end)
+    {
+        var startOffset = PositionToOffset(start);
+        var endOffset = PositionToOffset(end);
+        return new CodeTextSpan(startOffset, Math.Max(0, endOffset - startOffset));
+    }
 }
