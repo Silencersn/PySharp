@@ -148,13 +148,14 @@ public sealed class PyExceptionObject : PyObject
         using (builder.Indent())
         {
             int counter = 0;
+            bool isLastGroup = false;
             foreach (var subExc in AsGroup.Exceptions)
             {
                 builder.Append('+');
                 builder.AppendFormat("---------------- {0} ----------------", ++counter);
                 builder.AppendLine();
 
-                if (PyBaseExceptionGroupObjectType.Shared.IsInstance(subExc))
+                if (isLastGroup = PyBaseExceptionGroupObjectType.Shared.IsInstance(subExc))
                 {
                     subExc.PrintMessage(builder, context);
                 }
@@ -164,7 +165,8 @@ public sealed class PyExceptionObject : PyObject
                         subExc.PrintMessage(builder, context);
                 }
             }
-            builder.AppendLine("+------------------------------------");
+            if (!isLastGroup)
+                builder.AppendLine("+------------------------------------");
         }
 
     }
