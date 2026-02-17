@@ -134,4 +134,6 @@ internal enum OpCode
     UnaryNot,
 
     _CallPrintIfNotNone,
+
+    __BytecodeEnd,
 }

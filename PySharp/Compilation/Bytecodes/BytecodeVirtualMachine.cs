@@ -31,10 +31,10 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
             var index = InstructionIndex;
 
             // TODO: do not O(n)
-            foreach (var pair in infos)
+            foreach (var tuple in infos)
             {
-                if (pair.Key <= index)
-                    return pair.Value;
+                if (tuple.Index <= index)
+                    return tuple.Info;
             }
 
             return null;
@@ -1035,6 +1035,10 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                             }
                         }
                     match_class_break:
+                        break;
+
+                    case OpCode.__BytecodeEnd:
+                        nextIndex = instructions.Length;
                         break;
 
                     default:

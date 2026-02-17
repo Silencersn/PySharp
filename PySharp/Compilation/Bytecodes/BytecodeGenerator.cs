@@ -28,9 +28,9 @@ internal abstract class BytecodeGenerator
 
 internal sealed class DefaultBytecodeGenerator : BytecodeGenerator
 {
-    private readonly List<Instruction> _instructions = [];
+    private readonly ImmutableArray<Instruction>.Builder _instructions = ImmutableArray.CreateBuilder<Instruction>();
     private readonly List<int> _labelOffsets = [];
-    private readonly OrderedDictionary<int, CodeMetaInfo?> _infos = [];
+    private readonly ImmutableArray<(int Index, CodeMetaInfo? Info)>.Builder _infos = ImmutableArray.CreateBuilder<(int, CodeMetaInfo?)>();
     private readonly OrderedDictionary<PyObject, int> _consts = new(PyObjectConstEqualityComparer.Shared);
     private readonly OrderedDictionary<string, int> _names = new(StringComparer.Ordinal);
     private readonly Stack<CodeMetaInfo?> _metaInfoStack = [];
@@ -39,18 +39,37 @@ internal sealed class DefaultBytecodeGenerator : BytecodeGenerator
     internal override Bytecode ToBytecode()
     {
         Complete();
-        return new Bytecode(_instructions.ToImmutableArray(), [.. _infos.Reverse()], [.. _consts.Keys], [.. _names.Keys]);
+
+        // set Capacity to Count
+        // to ensure MoveToImmutable do not throw the exception
+
+        if (_instructions.Count != _instructions.Capacity)
+        {
+            // uninitialized items are regarded as NOP
+            // OpCode.__BytecodeEnd just skip them to prevent evaling lots of NOP
+
+            _instructions.Add(new Instruction(OpCode.__BytecodeEnd));
+            _instructions.Count = _instructions.Capacity;
+        }
+
+        _infos.Reverse();
+        if (_infos.Count != _infos.Capacity)
+            // uninitialized infos will provide null
+            // just like there is no meta infos
+            _infos.Count = _infos.Capacity;
+
+        return new Bytecode(_instructions.MoveToImmutable(), _infos.MoveToImmutable(), [.. _consts.Keys], [.. _names.Keys]);
     }
     internal override void PushMetaInfo(CodeMetaInfo? info)
     {
         _metaInfoStack.Push(info);
-        _infos[_instructions.Count] = info;
+        _infos.Add((_instructions.Count, info));
     }
 
     internal override void PopMetaInfo()
     {
         _metaInfoStack.Pop();
-        _infos[_instructions.Count] = _metaInfoStack.TryPeek(out var info) ? info : null;
+        _infos.Add((_instructions.Count, _metaInfoStack.TryPeek(out var info) ? info : null));
     }
 
     private void Complete()
