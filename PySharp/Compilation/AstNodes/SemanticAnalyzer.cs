@@ -617,37 +617,35 @@ public sealed class SemanticAnalyzer : ICodeMetaInfoProvider
                     continue;
 
                 var parent = scope.Parent;
-                HashSet<CallableVariableScope> scopesRequiringFree = scope is CallableVariableScope c ? [c] : [];
+                HashSet<IScopeWithFreeVars> scopesRequiringFree = scope is IScopeWithFreeVars c ? [c] : [];
                 while (true)
                 {
                     if (parent is null)
                         throw SyntaxError(PySR.InvalidSyntax_Semantic_NonlocalNoBinding, name);
 
-                    if (parent is CallableVariableScope callableVariableScope)
-                    {
-                        if (parent.Variables.TryGetValue(name, out var typeOfParentVariable) &&
+                    if (parent is CallableVariableScope callableVariableScope &&
+                            parent.Variables.TryGetValue(name, out var typeOfParentVariable) &&
                             typeOfParentVariable is not PyVariableType.Closure)
-                        {
-                            callableVariableScope.CaptureVariable(name);
-                            if (callableVariableScope.ScopesRequiringFree.TryGetValue(name, out var scopes))
-                                scopes.UnionWith(scopesRequiringFree);
-                            else
-                                callableVariableScope.ScopesRequiringFree[name] = scopesRequiringFree;
-                            break;
-                        }
+                    {
+                        callableVariableScope.CaptureVariable(name);
+                        if (callableVariableScope.ScopesRequiringFree.TryGetValue(name, out var scopes))
+                            scopes.UnionWith(scopesRequiringFree);
                         else
-                        {
-                            scopesRequiringFree.Add(callableVariableScope);
-                        }
+                            callableVariableScope.ScopesRequiringFree[name] = scopesRequiringFree;
+                        break;
                     }
 
-                    if (name is PySpecialNames.Class && parent is ClassVariableScope classVariableScope)
+                    if (name is PySpecialNames.Class &&
+                        parent is ClassVariableScope classVariableScope)
                     {
                         classVariableScope.ClassCaptured = true;
                         if (scope is CallableVariableScope cvs)
                             classVariableScope.ScopesRequiringFree.Add(cvs);
                         break;
                     }
+
+                    if (parent is IScopeWithFreeVars scopeWithFreeVars)
+                        scopesRequiringFree.Add(scopeWithFreeVars);
 
                     parent = parent.Parent;
                 }
@@ -662,7 +660,7 @@ public sealed class SemanticAnalyzer : ICodeMetaInfoProvider
     {
         FillTempFreesClass(scope);
         FillTempFrees(scope);
-        FillCallablePropertiesImpl(scope);
+        FillPropertiesImpl(scope);
 
         static void FillTempFreesClass(VariableScope scope)
         {
@@ -694,10 +692,16 @@ public sealed class SemanticAnalyzer : ICodeMetaInfoProvider
                 FillTempFrees(child);
         }
 
-        static void FillCallablePropertiesImpl(VariableScope scope)
+        static void FillPropertiesImpl(VariableScope scope)
         {
             foreach (var child in scope.Children)
-                FillCallablePropertiesImpl(child);
+                FillPropertiesImpl(child);
+
+            if (scope is ClassVariableScope classScope)
+            {
+                classScope.FreeVars = [.. classScope.TempFrees.Distinct()];
+                return;
+            }
 
             if (scope is not CallableVariableScope callableScope)
                 return;
@@ -840,13 +844,20 @@ internal sealed class RootVariableScope : VariableScope
     }
 }
 
-internal sealed class ClassVariableScope : VariableScope
+internal interface IScopeWithFreeVars
+{
+    public List<string> TempFrees { get; }
+}
+
+internal sealed class ClassVariableScope : VariableScope, IScopeWithFreeVars
 {
     public override ClassDefNode Owner { get; }
     public override string? Name => Owner.Name;
     public bool ClassCaptured { get; set; }
-    internal HashSet<CallableVariableScope> ScopesRequiringFree = [];
+    internal HashSet<IScopeWithFreeVars> ScopesRequiringFree = [];
     public PyCodeObject? CodeObject { get; set; }
+    public List<string> TempFrees { get; } = [];
+    public ImmutableArray<string> FreeVars { get; internal set; } = [];
 
     public ClassVariableScope(ClassDefNode owner, VariableScope parent) : base(parent)
     {
@@ -854,16 +865,16 @@ internal sealed class ClassVariableScope : VariableScope
     }
 }
 
-internal abstract class CallableVariableScope : VariableScope
+internal abstract class CallableVariableScope : VariableScope, IScopeWithFreeVars
 {
     internal abstract AstArgumentsNode ArgumentsNode { get; }
     public bool HasYield { get; internal set; }
     public FrozenDictionary<string, int> LocalsTable { get; internal set; } = FrozenDictionary<string, int>.Empty;
-    public string[] VarNames { get; internal set; } = [];
-    public string[] CellVars { get; internal set; } = [];
-    public string[] FreeVars { get; internal set; } = [];
-    public List<string> TempFrees = [];
-    public Dictionary<string, HashSet<CallableVariableScope>> ScopesRequiringFree = [];
+    public ImmutableArray<string> VarNames { get; internal set; } = [];
+    public ImmutableArray<string> CellVars { get; internal set; } = [];
+    public ImmutableArray<string> FreeVars { get; internal set; } = [];
+    public List<string> TempFrees { get; } = [];
+    public Dictionary<string, HashSet<IScopeWithFreeVars>> ScopesRequiringFree = [];
     public PyCodeObject? CodeObject { get; set; }
 
     protected CallableVariableScope(VariableScope? parent) : base(parent)

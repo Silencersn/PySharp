@@ -51,9 +51,9 @@ public sealed class PyCodeObject : PyObject
         PosOnlyArgCount = arg.PosonlyArgs.Length;
         KwOnlyArgCount = arg.KwonlyArgs.Length;
         NLocals = scope.VarNames.Length;
-        VarNames = [.. scope.VarNames];
-        CellVars = [.. scope.CellVars];
-        FreeVars = [.. scope.FreeVars];
+        VarNames = scope.VarNames;
+        CellVars = scope.CellVars;
+        FreeVars = scope.FreeVars;
 
         PyAttributes.Add("co_name", PyStrObject.FromString(Name));
         PyAttributes.Add("co_qualname", PyStrObject.FromString(QualName));
@@ -79,7 +79,7 @@ public sealed class PyCodeObject : PyObject
         NLocals = 0;
         VarNames = [];
         CellVars = [];
-        FreeVars = [];
+        FreeVars = scope.FreeVars;
 
         PyAttributes.Add("co_name", PyStrObject.FromString(Name));
         PyAttributes.Add("co_qualname", PyStrObject.FromString(QualName));
@@ -89,7 +89,7 @@ public sealed class PyCodeObject : PyObject
         PyAttributes.Add("co_nlocals", PyIntObject.Zero);
         PyAttributes.Add("co_varnames", PyTupleObject.Empty);
         PyAttributes.Add("co_cellvars", PyTupleObject.Empty);
-        PyAttributes.Add("co_freevars", PyTupleObject.Empty);
+        PyAttributes.Add("co_freevars", PyTupleObject.CreateTuple(FreeVars.Select(PyStrObject.FromString)));
     }
 
     internal PyCodeObject(string name, Bytecode bytecode)
