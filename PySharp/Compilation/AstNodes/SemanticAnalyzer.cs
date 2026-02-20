@@ -412,6 +412,9 @@ public sealed class SemanticAnalyzer : ICodeMetaInfoProvider
                     if (n.IsImportStar())
                         throw SyntaxError(PySR.InvalidSyntax_Semantic_ImportStarNotAtModuleLevel);
                     break;
+
+                case NamedExprNode n when currentScopeStats is { Scope: ClassVariableScope, ComprehensionDepth.Count: > 0 }:
+                    throw SyntaxError(PySR.InvalidSyntax_Semantic_NamedExprInComprehensionInClass);
             }
 
             static IEnumerable<(T, T)> EnumeratePairs<T>(IReadOnlyList<T> items)
