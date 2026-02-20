@@ -120,7 +120,7 @@ public sealed partial class PyCallContext
     internal static PyCallContext CreateInterpreterMainContext(PyInterpreter interpreter)
     {
         var context = new PyCallContext("[Interpreter Main Context]", interpreter);
-        var frame = PyFrame.CreateModuleFrame(context, null);
+        var frame = PyFrame.CreateModuleFrame(context, null, PySpecialNames.Main);
         context.InitState(frame);
         return context;
     }

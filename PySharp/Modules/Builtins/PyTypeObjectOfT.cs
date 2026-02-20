@@ -58,6 +58,14 @@ public sealed class PyTypeObjectType : PyTypeObject<PyTypeObjectType, PyTypeObje
         AppendMemberDescriptor(PySpecialNames.MRO,
             static (_, typeObj) => PyTupleObject.CreateTuple(typeObj.MRO),
             static (_, typeObj, value) => throw new NotImplementedException());
+
+        AppendMemberDescriptor(PySpecialNames.QualName,
+            static (_, typeObj) => PyStrObject.FromString(typeObj.QualName),
+            static (_, typeObj, value) => throw new NotImplementedException());
+
+        AppendMemberDescriptor(PySpecialNames.Module,
+            static (_, typeObj) => typeObj.ModuleAsObject,
+            static (_, typeObj, value) => typeObj.ModuleAsObject = value);
     }
 
     protected override PyResult Call(PyCallContext context, PyTypeObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)

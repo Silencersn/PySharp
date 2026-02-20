@@ -72,13 +72,12 @@ public sealed partial class PyFrame
     internal FrameType FrameType { get; }
     internal (IReadOnlyList<PyObject> Args, IReadOnlyDictionary<string, PyObject> Kwargs)? CallingArguments { get; init; }
 
-    internal static PyFrame CreateModuleFrame(PyCallContext context, PyFrame? back)
+    internal static PyFrame CreateModuleFrame(PyCallContext context, PyFrame? back, string moduleQualifiedName)
     {
         var frame = new PyFrame(back);
         var builtins = context.PyEnvironment.LoadBuiltinModule(context, "builtins");
         frame.SetVariable(PySpecialNames.Builtins, builtins);
-        if (back is null)
-            frame.SetVariable(PySpecialNames.Name, PyStrObject.FromString(PySpecialNames.Main));
+        frame.SetVariable(PySpecialNames.Name, PyStrObject.FromString(moduleQualifiedName));
 
         // TODO: add flag to control whether adding site
         _ = context.PyEnvironment.LoadBuiltinModule(context, "site");

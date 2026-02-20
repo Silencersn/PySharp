@@ -34,7 +34,7 @@ partial class PyEnvironment
 
     internal bool TryLoadModuleNoCache(PyCallContext context, string qualifiedName, [NotNullWhen(true)] out PyModuleObject? module)
     {
-        var frame = PyFrame.CreateModuleFrame(context, context.CurrentFrame);
+        var frame = PyFrame.CreateModuleFrame(context, context.CurrentFrame, qualifiedName);
         using var withFrame = context.WithFrame(frame);
 
         module = PyStandardLibrary.TryCreateModule(context, qualifiedName);
