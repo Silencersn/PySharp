@@ -110,7 +110,7 @@ public sealed class PyBaseExceptionGroupObjectType : PyExceptionType<PyBaseExcep
         else if (conditionObj is PyTupleObject tuple)
         {
             List<PyTypeObject> types = [];
-            foreach (var o in tuple._array)
+            foreach (var o in tuple)
             {
                 if (o is not PyTypeObject t || !t.IsSubclassOf(PyBaseExceptionObjectType.Shared))
                     return PyResult.TypeError(PySR.Runtime_ExceptionGroup_SplitExpectedCondition);
@@ -226,8 +226,8 @@ public sealed class PyBaseExceptionGroupObjectType : PyExceptionType<PyBaseExcep
 
         IReadOnlyList<PyObject>? excs = excsObj switch
         {
-            PyListObject list => list._list,
-            PyTupleObject tuple => tuple._array,
+            PyListObject list => list,
+            PyTupleObject tuple => tuple,
             _ => null
         };
 

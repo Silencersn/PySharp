@@ -30,7 +30,7 @@ public sealed class PyTupleIteratorObjectType : PyTypeObject<PyTupleIteratorObje
 
     protected override PyResult Next(PyCallContext context, PyTupleIteratorObject self)
     {
-        if (self._index is -2 || ++self._index >= self._tuple._array.Length)
+        if (self._index is -2 || ++self._index >= self._tuple.Count)
         {
             self._index = -2;
             return PyResult.StopIteration();

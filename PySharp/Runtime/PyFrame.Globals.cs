@@ -23,7 +23,7 @@ partial class PyFrame
         public PyFrameGlobals(PyDictObject dict)
         {
             _pyDict = dict;
-            _globals = new StringKeyDict(_pyDict._dict);
+            _globals = new StringKeyDict(_pyDict);
         }
 
         public IDictionary<string, PyObject> Globals => _globals;
@@ -34,7 +34,7 @@ partial class PyFrame
             if (_pyDict is null)
                 return new PyFrameGlobals(new ConcurrentDictionary<string, PyObject>(_globals));
 
-            var dict = PyDictObject.CreateDict(_pyDict._dict);
+            var dict = PyDictObject.CreateDict(_pyDict);
             return new PyFrameGlobals(dict);
         }
     }

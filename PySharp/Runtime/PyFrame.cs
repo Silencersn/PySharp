@@ -133,7 +133,7 @@ public sealed partial class PyFrame
         {
             Debug.Assert(code is not null);
             localVariables ??= new PyFrameLocals(code.FreeVars.Index().ToFrozenDictionary(static tuple => tuple.Item, static tuple => tuple.Index), code.FreeVars.Length);
-            localVariables.InitCells(UnsafeUtils.CastReadOnlySpan<PyObject, PyCellObject>(closure._array));
+            localVariables.InitCells(UnsafeUtils.CastReadOnlySpan<PyObject, PyCellObject>(closure.AsSpan()));
         }
 
         var variables = PyFrameVariables.Create(globalVariables, localVariables);

@@ -14,7 +14,7 @@ partial class PyStrObject
 
         var builder = new StringBuilder();
         int index = 0;
-        foreach (var item in list.Value._list)
+        foreach (var item in list.Value)
         {
             if (item is not PyStrObject strObj)
                 return PyResult.TypeError(PySR.Runtime_String_JoinNonStrAt, index, item.PyType.FullName);

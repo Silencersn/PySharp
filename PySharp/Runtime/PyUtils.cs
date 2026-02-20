@@ -69,7 +69,7 @@ internal static class PyUtils
 
         PyDictObject dict = PyDictObject.CreateDict();
 
-        foreach (var key in keysList.Value._list)
+        foreach (var key in keysList.Value)
         {
             var value = PySpecialMethods.GetItem(context, mapping, key);
             if (value.IsError)
@@ -89,18 +89,18 @@ internal static class PyUtils
 
         var dict = PyDictObject.CreateDict();
 
-        for (int i = 0; i < pairs.Value._list.Count; i++)
+        for (int i = 0; i < pairs.Value.Count; i++)
         {
-            var pairList = IterableToList(context, pairs.Value._list[i]);
+            var pairList = IterableToList(context, pairs.Value[i]);
             if (pairList.IsError)
                 return pairList.Of<PyDictObject>();
 
-            var count = pairList.Value._list.Count;
+            var count = pairList.Value.Count;
             if (count is not 2)
                 return PyResult.ValueError(PySR.Runtime_Dictionary_UpdateEltLengthNotMatch, i, count).Of<PyDictObject>();
 
-            var key = pairList.Value._list[0];
-            var value = pairList.Value._list[1];
+            var key = pairList.Value[0];
+            var value = pairList.Value[1];
             dict.PySetItem(key, value);
         }
 
@@ -110,7 +110,7 @@ internal static class PyUtils
     public static PyResult<PyDictObject> ToDict(PyCallContext context, PyObject iterableOrMapping)
     {
         if (iterableOrMapping is PyDictObject dict)
-            return PyDictObject.CreateDict(dict._dict);
+            return PyDictObject.CreateDict(dict);
 
         var keysMethod = PyOperators.GetAttr(context, iterableOrMapping, "keys");
         if (keysMethod.IsSuccessful)

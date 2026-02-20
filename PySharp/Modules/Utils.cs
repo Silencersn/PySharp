@@ -77,7 +77,7 @@ internal static class Utils
         return index >= count || index < -count;
     }
 
-    public static PyResult GetListItem(IList<PyObject> items, int index, string? msgIfOutOfRange)
+    public static PyResult GetListItem(IReadOnlyList<PyObject> items, int index, string? msgIfOutOfRange)
     {
         if (IsIndexOutOfRange(index, items.Count))
             return PyResult.IndexError(msgIfOutOfRange);

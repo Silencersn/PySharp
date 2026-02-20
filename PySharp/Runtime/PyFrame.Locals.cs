@@ -40,7 +40,7 @@ partial class PyFrame
             _localsTable = FrozenDictionary<string, int>.Empty;
             _localsPlus = [];
             _pyDict = dict;
-            _locals = new StringKeyDict(_pyDict._dict)!;
+            _locals = new StringKeyDict(_pyDict)!;
         }
 
         internal PyObject?[] LocalsPlus => _localsPlus;

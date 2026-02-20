@@ -266,8 +266,8 @@ public static partial class PyBuiltinFunctions
             var closureTuple = closure as PyTupleObject;
             if (!(closure is PyNoneObject ||
                 closureTuple is not null &&
-                closureTuple._array.Length == code.FreeVars.Length &&
-                closureTuple._array.All(static obj => obj is PyCellObject)))
+                closureTuple.Count == code.FreeVars.Length &&
+                closureTuple.All(static obj => obj is PyCellObject)))
             {
                 return PyResult.TypeError(PySR.Runtime_Builtin_Exec_WrongClosure, code.FreeVars.Length);
             }
@@ -347,7 +347,7 @@ public static partial class PyBuiltinFunctions
             return elements;
 
         PyObject? result = null;
-        foreach (var element in elements.Value._list)
+        foreach (var element in elements.Value)
         {
             if (result is null)
             {
@@ -380,7 +380,7 @@ public static partial class PyBuiltinFunctions
             return elements;
 
         PyObject result = arguments["default"];
-        foreach (var element in elements.Value._list)
+        foreach (var element in elements.Value)
         {
             var gt = PyOperators.Gt(context, element, result);
             if (gt.IsError)
@@ -426,7 +426,7 @@ public static partial class PyBuiltinFunctions
             return elements;
 
         PyObject? result = null;
-        foreach (var element in elements.Value._list)
+        foreach (var element in elements.Value)
         {
             if (result is null)
             {
@@ -459,7 +459,7 @@ public static partial class PyBuiltinFunctions
             return elements;
 
         PyObject result = arguments["default"];
-        foreach (var element in elements.Value._list)
+        foreach (var element in elements.Value)
         {
             var lt = PyOperators.Lt(context, element, result);
             if (lt.IsError)
@@ -505,7 +505,7 @@ public static partial class PyBuiltinFunctions
             return list;
 
         var result = start;
-        foreach (var item in list.Value._list)
+        foreach (var item in list.Value)
         {
             var ret = PyOperators.Add(context, result, item);
             if (ret.IsError)
@@ -640,7 +640,7 @@ public static partial class PyBuiltinFunctions
 
         static bool? IsInstanceForTuple(PyObject obj, PyTupleObject types)
         {
-            foreach (var type in types._array)
+            foreach (var type in types)
             {
                 var ret = IsInstanceForUnknown(obj, type);
                 if (ret is null or true)
@@ -677,7 +677,7 @@ public static partial class PyBuiltinFunctions
 
         static bool? IsSubclassForTuple(PyTypeObject obj, PyTupleObject types)
         {
-            foreach (var type in types._array)
+            foreach (var type in types)
             {
                 var ret = IsSubclassForUnknown(obj, type);
                 if (ret is null or true)

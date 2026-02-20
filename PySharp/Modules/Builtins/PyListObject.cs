@@ -3,15 +3,27 @@ using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
 using PySharp.Runtime.Comparison;
 using PySharp.Runtime.PyAttributes;
+using System.Collections;
 using System.Collections.Frozen;
 
 namespace PySharp.Modules.Builtins;
 
-public partial class PyListObject : PyObject, IPyObjectRecursiveRepr
+public partial class PyListObject : PyObject, IPyObjectRecursiveRepr, IList<PyObject>, IReadOnlyList<PyObject>
 {
-    internal readonly List<PyObject> _list;
+    private readonly List<PyObject> _list;
 
     public override PyTypeObject DefaultPyType => PyListObjectType.Shared;
+
+    internal List<PyObject> InternalList => _list;
+    public int Count => _list.Count;
+
+    bool ICollection<PyObject>.IsReadOnly => false;
+
+    public PyObject this[int index]
+    {
+        get => _list[index];
+        set => _list[index] = value;
+    }
 
     private PyListObject()
     {
@@ -40,6 +52,61 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr
     PyResult<PyStrObject> IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<int> ids)
     {
         return Utils.CollectionRecursiveRepr(context, this, _list, "[", "]", ids);
+    }
+
+    public List<PyObject>.Enumerator GetEnumerator()
+    {
+        return _list.GetEnumerator();
+    }
+
+    IEnumerator<PyObject> IEnumerable<PyObject>.GetEnumerator()
+    {
+        return GetEnumerator();
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return ((IEnumerable)_list).GetEnumerator();
+    }
+
+    public void Add(PyObject item)
+    {
+        _list.Add(item);
+    }
+
+    public void Clear()
+    {
+        _list.Clear();
+    }
+
+    public bool Contains(PyObject item)
+    {
+        return _list.Contains(item);
+    }
+
+    public void CopyTo(PyObject[] array, int arrayIndex)
+    {
+        _list.CopyTo(array, arrayIndex);
+    }
+
+    public bool Remove(PyObject item)
+    {
+        return _list.Remove(item);
+    }
+
+    public int IndexOf(PyObject item)
+    {
+        return _list.IndexOf(item);
+    }
+
+    public void Insert(int index, PyObject item)
+    {
+        _list.Insert(index, item);
+    }
+
+    public void RemoveAt(int index)
+    {
+        _list.RemoveAt(index);
     }
 }
 
@@ -85,7 +152,7 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
         var result = PySpecialMethods.Index(context, item);
         if (result.IsError)
             return result;
-        return Utils.GetListItem(self._list, result.Value.Int32Value, PySR.Runtime_List_IndexOutOfRange);
+        return Utils.GetListItem(self, result.Value.Int32Value, PySR.Runtime_List_IndexOutOfRange);
     }
 
     protected override PyResult SetItem(PyCallContext context, PyListObject self, PyObject key, PyObject value)
@@ -93,14 +160,14 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
         var result = PySpecialMethods.Index(context, key);
         if (result.IsError)
             return result;
-        if (!Utils.TrySetListItem(self._list, result.Value.Int32Value, value))
+        if (!Utils.TrySetListItem(self, result.Value.Int32Value, value))
             return PyResult.IndexError(PySR.Runtime_List_IndexOutOfRange);
         return PyNoneObject.None;
     }
 
     protected override PyResult Contains(PyCallContext context, PyListObject self, PyObject item)
     {
-        return PyBoolObject.FromBoolean(self._list.Contains(item));
+        return PyBoolObject.FromBoolean(self.Contains(item));
     }
 
     protected override PyResult Repr(PyCallContext context, PyListObject self)
@@ -110,7 +177,7 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
 
     protected override PyResult Bool(PyCallContext context, PyListObject self)
     {
-        return PyBoolObject.FromBoolean(self._list.Count > 0);
+        return PyBoolObject.FromBoolean(self.Count > 0);
     }
 
     protected override PyResult Iter(PyCallContext context, PyListObject self)
@@ -120,14 +187,14 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
 
     protected override PyResult Len(PyCallContext context, PyListObject self)
     {
-        return PyIntObject.FromInteger(self._list.Count);
+        return PyIntObject.FromInteger(self.Count);
     }
 
     protected override PyResult Eq(PyCallContext context, PyListObject self, PyObject other)
     {
         if (other is not PyListObject otherList)
             return base.Eq(context, self, other);
-        return PyBoolObject.FromBoolean(self._list.SequenceEqual(otherList._list, PyObjectComparer.Default));
+        return PyBoolObject.FromBoolean(self.SequenceEqual(otherList, PyObjectComparer.Default));
     }
 
     [PyFunctionArgsDef("x", "/")]
@@ -167,7 +234,7 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
         var result = PySpecialMethods.Index(context, arguments[0]);
         if (result.IsError)
             return result;
-        if (Utils.IsIndexOutOfRange(result.Value.Int32Value, self._list.Count))
+        if (Utils.IsIndexOutOfRange(result.Value.Int32Value, self.Count))
             return PyResult.IndexError(PySR.Runtime_List_PopIndexOutOfRange);
         return self.PyPop(result.Value.Int32Value);
     }
@@ -253,7 +320,7 @@ public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObje
         else
         {
             Dictionary<PyObject, PyObject> itemToKey = [];
-            foreach (var item in self._list)
+            foreach (var item in self)
             {
                 var key = keySelector.Call(context, [item], FrozenDictionary<string, PyObject>.Empty);
                 if (key.IsError)

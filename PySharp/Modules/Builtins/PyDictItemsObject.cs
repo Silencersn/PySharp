@@ -34,7 +34,7 @@ public class PyDictItemIteratorObject : PyObject
     internal PyDictItemIteratorObject(PyDictItemsObject items)
     {
         _items = items;
-        _keyEnumerator = items._dict._dict.Keys.GetEnumerator();
+        _keyEnumerator = items._dict.Keys.GetEnumerator();
     }
 }
 
@@ -51,7 +51,7 @@ public sealed class PyDictItemIteratorObjectType : PyTypeObject<PyDictItemIterat
     protected override PyResult Next(PyCallContext context, PyDictItemIteratorObject self)
     {
         if (self._keyEnumerator.MoveNext())
-            return PyTupleObject.CreateTuple(self._keyEnumerator.Current, self._items._dict._dict[self._keyEnumerator.Current]);
+            return PyTupleObject.CreateTuple(self._keyEnumerator.Current, self._items._dict[self._keyEnumerator.Current]);
 
         return PyResult.StopIteration();
     }

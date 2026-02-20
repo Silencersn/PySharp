@@ -1,15 +1,20 @@
 ﻿using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Comparison;
+using System.Collections;
 
 namespace PySharp.Modules.Builtins;
 
-public class PyTupleObject : PyObject, IPyObjectRecursiveRepr
+public class PyTupleObject : PyObject, IPyObjectRecursiveRepr, IReadOnlyList<PyObject>
 {
-    internal readonly PyObject[] _array;
+    private readonly PyObject[] _array;
 
     public override PyTypeObject DefaultPyType => PyTupleObjectType.Shared;
     public static PyTupleObject Empty { get; } = new([]);
+
+    public int Count => _array.Length;
+
+    public PyObject this[int index] => _array[index];
 
     private PyTupleObject(PyObject[] array)
     {
@@ -37,6 +42,21 @@ public class PyTupleObject : PyObject, IPyObjectRecursiveRepr
     PyResult<PyStrObject> IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<int> ids)
     {
         return Utils.CollectionRecursiveRepr(context, this, _array, "(", ")", ids, forceTrailingComma: true);
+    }
+
+    public IEnumerator<PyObject> GetEnumerator()
+    {
+        return ((IEnumerable<PyObject>)_array).GetEnumerator();
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return _array.GetEnumerator();
+    }
+
+    public ReadOnlySpan<PyObject> AsSpan()
+    {
+        return _array.AsSpan();
     }
 }
 
@@ -69,17 +89,17 @@ public sealed class PyTupleObjectType : PyTypeObject<PyTupleObjectType, PyTupleO
         var result = PySpecialMethods.Index(context, item);
         if (result.IsError)
             return result;
-        return Utils.GetListItem(self._array, result.Value.Int32Value, "IndexError: tuple index out of range");
+        return Utils.GetListItem(self, result.Value.Int32Value, "IndexError: tuple index out of range");
     }
 
     protected override PyResult Contains(PyCallContext context, PyTupleObject self, PyObject item)
     {
-        return PyBoolObject.FromBoolean(self._array.Contains(item));
+        return PyBoolObject.FromBoolean(self.Contains(item));
     }
 
     protected override PyResult Bool(PyCallContext context, PyTupleObject self)
     {
-        return PyBoolObject.FromBoolean(self._array.Length > 0);
+        return PyBoolObject.FromBoolean(self.Count > 0);
     }
 
     protected override PyResult Repr(PyCallContext context, PyTupleObject self)
@@ -89,13 +109,13 @@ public sealed class PyTupleObjectType : PyTypeObject<PyTupleObjectType, PyTupleO
 
     protected override PyResult Len(PyCallContext context, PyTupleObject self)
     {
-        return PyIntObject.FromInteger(self._array.Length);
+        return PyIntObject.FromInteger(self.Count);
     }
 
     protected override PyResult Eq(PyCallContext context, PyTupleObject self, PyObject other)
     {
         if (other is not PyTupleObject otherTuple)
             return base.Eq(context, self, other);
-        return PyBoolObject.FromBoolean(self._array.SequenceEqual(otherTuple._array, PyObjectComparer.Default));
+        return PyBoolObject.FromBoolean(self.SequenceEqual(otherTuple, PyObjectComparer.Default));
     }
 }

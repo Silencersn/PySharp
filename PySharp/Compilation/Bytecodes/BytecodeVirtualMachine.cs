@@ -285,11 +285,11 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                             var tuple = (PyTupleObject)Stack.Pop();
                             kwargs.Clear();
 
-                            LoadArgs(args, tuple._array.Length);
+                            LoadArgs(args, tuple.Count);
 
-                            for (int i = 0; i < tuple._array.Length; i++)
+                            for (int i = 0; i < tuple.Count; i++)
                             {
-                                var str = (PyStrObject)tuple._array[i];
+                                var str = (PyStrObject)tuple[i];
                                 kwargs.Add(str.Value, args[i]);
                             }
 
@@ -307,14 +307,14 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                             var pyargs = (PyListObject)Stack.Pop();
                             kwargs.Clear();
 
-                            foreach (var pair in dict._dict)
+                            foreach (var pair in dict)
                             {
                                 if (pair.Key is not PyStrObject str)
                                     throw context.TypeError(PySR.Runtime_Keyword_KeywordsMustBeStrings);
                                 kwargs.Add(str.Value, pair.Value);
                             }
 
-                            Stack[-1] = Stack[-1].Call(context, pyargs._list, kwargs).PyUnwrap(context);
+                            Stack[-1] = Stack[-1].Call(context, pyargs, kwargs).PyUnwrap(context);
                         }
                         break;
 
@@ -479,7 +479,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                         {
                             value = Stack.Pop();
                             var list = (PyListObject)Stack[-instruction.Arg];
-                            list._list.Add(value);
+                            list.Add(value);
                         }
                         break;
 
@@ -494,14 +494,14 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                     case OpCode._ListToTuple:
                         {
                             var list = (PyListObject)Stack[-1];
-                            Stack[-1] = PyTupleObject.CreateTuple(list._list);
+                            Stack[-1] = PyTupleObject.CreateTuple(list);
                         }
                         break;
 
                     case OpCode._ListToSet:
                         {
                             var list = (PyListObject)Stack[-1];
-                            Stack[-1] = PySetObject.CreateSet(list._list);
+                            Stack[-1] = PySetObject.CreateSet(list);
                         }
                         break;
 
@@ -509,7 +509,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                         {
                             value = Stack.Pop();
                             var set = (PySetObject)Stack[-instruction.Arg];
-                            set._set.Add(value);
+                            set.Add(value);
                         }
                         break;
 
@@ -518,7 +518,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                             value = Stack.Pop();
                             var key = Stack.Pop();
                             var dict = (PyDictObject)Stack[-instruction.Arg];
-                            dict._dict[key] = value;
+                            dict[key] = value;
                         }
                         break;
 
@@ -535,9 +535,9 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                             var map = Stack.Pop();
                             var dictToMerge = PyUtils.ToDict(context, map).PyUnwrap(context);
                             var dict = (PyDictObject)Stack[-instruction.Arg];
-                            foreach (var pair in dictToMerge._dict)
+                            foreach (var pair in dictToMerge)
                             {
-                                if (!dict._dict.TryAdd(pair.Key, pair.Value))
+                                if (!dict.TryAdd(pair.Key, pair.Value))
                                     throw context.TypeError(PySR.Runtime_Arguments_MultipleKeywords, pair.Key);
                             }
                         }
@@ -546,7 +546,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                     case OpCode.UnpackSequence:
                         {
                             var list = PyUtils.IterableToList(context, Stack.Pop()).PyUnwrap(context);
-                            var span = CollectionsMarshal.AsSpan(list._list);
+                            var span = CollectionsMarshal.AsSpan(list.InternalList);
                             if (span.Length > instruction.Arg)
                                 throw context.ValueError(PySR.Runtime_Assignment_TooManyToUnpack, instruction.Arg, span.Length);
                             else if (span.Length < instruction.Arg)
@@ -560,7 +560,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                             var postCount = instruction.Arg & ushort.MaxValue;
                             var preCount = (instruction.Arg >> 16) & ushort.MaxValue;
                             var list = PyUtils.IterableToList(context, Stack.Pop()).PyUnwrap(context);
-                            var span = CollectionsMarshal.AsSpan(list._list);
+                            var span = CollectionsMarshal.AsSpan(list.InternalList);
                             if (span.Length < preCount + postCount)
                                 throw context.ValueError(PySR.Runtime_Assignment_NotEnoughToUnpackStarred, preCount + postCount, span.Length);
                             Stack.PushReversedRange(span[^postCount..]);
@@ -938,11 +938,11 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                         {
                             var keys = (PyTupleObject)Stack.Peek();
                             var subject = Stack[-2];
-                            var array = new PyObject[keys._array.Length];
+                            var array = new PyObject[keys.Count];
                             var matched = true;
                             for (int i = 0; matched && i < array.Length; i++)
                             {
-                                var key = keys._array[i];
+                                var key = keys[i];
                                 result = PySpecialMethods.GetItem(context, subject, key);
                                 if (result.IsError && PyKeyErrorObjectType.Shared.IsInstance(result.Exception))
                                 {
@@ -969,7 +969,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                                 break;
                             }
 
-                            var values = new PyObject[instruction.Arg + keys._array.Length];
+                            var values = new PyObject[instruction.Arg + keys.Count];
 
                             if (IsSpecialType(cls))
                             {
@@ -984,13 +984,13 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
 
                                 if (matchArgs is not PyTupleObject tuple)
                                     throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsIsNonTuple, cls.FullName, matchArgs.PyType.FullName);
-                                if (instruction.Arg > tuple._array.Length)
-                                    throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsLengthNotEnough, cls.FullName, tuple._array.Length, instruction.Arg);
+                                if (instruction.Arg > tuple.Count)
+                                    throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsLengthNotEnough, cls.FullName, tuple.Count, instruction.Arg);
 
                                 for (int i = 0; i < instruction.Arg; i++)
                                 {
-                                    if (tuple._array[i] is not PyStrObject attrName)
-                                        throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsEltMustBeString, tuple._array[i].PyType.FullName);
+                                    if (tuple[i] is not PyStrObject attrName)
+                                        throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsEltMustBeString, tuple[i].PyType.FullName);
 
                                     var attr = PyOperators.GetAttr(context, subject, attrName);
                                     if (attr.IsAttributeError)
@@ -1003,9 +1003,9 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                                 }
                             }
 
-                            for (int i = 0; i < keys._array.Length; i++)
+                            for (int i = 0; i < keys.Count; i++)
                             {
-                                var attrName = keys._array[i];
+                                var attrName = keys[i];
                                 Debug.Assert(attrName is PyStrObject);
 
                                 var attr = PyOperators.GetAttr(context, subject, attrName);

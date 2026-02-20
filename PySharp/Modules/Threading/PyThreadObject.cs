@@ -46,13 +46,13 @@ public sealed class PyThreadObjectType : PyTypeObject<PyThreadObjectType, PyThre
         if (arguments[4] is not PyDictObject kwargs)
             return PyResult.TypeError(null);
         Dictionary<string, PyObject> dict = [];
-        foreach (var pair in kwargs._dict)
+        foreach (var pair in kwargs)
         {
             if (pair.Key is not PyStrObject str)
                 return PyResult.TypeError(null);
             dict[str.Value] = pair.Value;
         }
-        return new PyThreadObject(arguments[1], args._array, dict);
+        return new PyThreadObject(arguments[1], args, dict);
     }
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)

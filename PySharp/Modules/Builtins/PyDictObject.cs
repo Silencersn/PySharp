@@ -3,14 +3,30 @@ using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
 using PySharp.Runtime.Comparison;
 using PySharp.Runtime.PyAttributes;
+using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Modules.Builtins;
 
-public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
+public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr, IDictionary<PyObject, PyObject>
 {
-    internal readonly IDictionary<PyObject, PyObject> _dict;
+    private readonly IDictionary<PyObject, PyObject> _dict;
 
     public override PyTypeObject DefaultPyType => PyDictObjectType.Shared;
+
+    public ICollection<PyObject> Keys => _dict.Keys;
+
+    public ICollection<PyObject> Values => _dict.Values;
+
+    public int Count => _dict.Count;
+
+    public bool IsReadOnly => _dict.IsReadOnly;
+
+    public PyObject this[PyObject key]
+    {
+        get => _dict[key];
+        set => _dict[key] = value;
+    }
 
     public PyDictObject()
     {
@@ -40,6 +56,61 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
     PyResult<PyStrObject> IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<int> ids)
     {
         return Utils.DictionaryRecursiveRepr(context, this, _dict, "{", "}", ids);
+    }
+
+    public IEnumerator<KeyValuePair<PyObject, PyObject>> GetEnumerator()
+    {
+        return _dict.GetEnumerator();
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return GetEnumerator();
+    }
+
+    public void Add(PyObject key, PyObject value)
+    {
+        _dict.Add(key, value);
+    }
+
+    public bool ContainsKey(PyObject key)
+    {
+        return _dict.ContainsKey(key);
+    }
+
+    public bool Remove(PyObject key)
+    {
+        return _dict.Remove(key);
+    }
+
+    public bool TryGetValue(PyObject key, [NotNullWhen(true)] out PyObject? value)
+    {
+        return _dict.TryGetValue(key, out value);
+    }
+
+    public void Add(KeyValuePair<PyObject, PyObject> item)
+    {
+        _dict.Add(item);
+    }
+
+    public void Clear()
+    {
+        _dict.Clear();
+    }
+
+    public bool Contains(KeyValuePair<PyObject, PyObject> item)
+    {
+        return _dict.Contains(item);
+    }
+
+    public void CopyTo(KeyValuePair<PyObject, PyObject>[] array, int arrayIndex)
+    {
+        _dict.CopyTo(array, arrayIndex);
+    }
+
+    public bool Remove(KeyValuePair<PyObject, PyObject> item)
+    {
+        return _dict.Remove(item);
     }
 }
 
@@ -93,7 +164,7 @@ public sealed class PyDictObjectType : PyTypeObject<PyDictObjectType, PyDictObje
 
     protected override PyResult GetItem(PyCallContext context, PyDictObject self, PyObject item)
     {
-        if (self._dict.TryGetValue(item, out PyObject? value))
+        if (self.TryGetValue(item, out PyObject? value))
             return value;
 
         var missing = self.PyType.Slots.Missing;
@@ -111,14 +182,14 @@ public sealed class PyDictObjectType : PyTypeObject<PyDictObjectType, PyDictObje
 
     protected override PyResult DelItem(PyCallContext context, PyDictObject self, PyObject key)
     {
-        if (self._dict.Remove(key))
+        if (self.Remove(key))
             return PyNoneObject.None;
         return PyResult.KeyError(key);
     }
 
     protected override PyResult Contains(PyCallContext context, PyDictObject self, PyObject item)
     {
-        return PyBoolObject.FromBoolean(self._dict.ContainsKey(item));
+        return PyBoolObject.FromBoolean(self.ContainsKey(item));
     }
 
     protected override PyResult Repr(PyCallContext context, PyDictObject self)
@@ -128,12 +199,12 @@ public sealed class PyDictObjectType : PyTypeObject<PyDictObjectType, PyDictObje
 
     protected override PyResult Bool(PyCallContext context, PyDictObject self)
     {
-        return PyBoolObject.FromBoolean(self._dict.Count > 0);
+        return PyBoolObject.FromBoolean(self.Count > 0);
     }
 
     protected override PyResult Len(PyCallContext context, PyDictObject self)
     {
-        return PyIntObject.FromInteger(self._dict.Count);
+        return PyIntObject.FromInteger(self.Count);
     }
 
     [PyFunctionArgsDef()]

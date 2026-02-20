@@ -195,7 +195,7 @@ internal static class PyCore
             // unlike cpython, allows iterable
             var list = PyUtils.IterableToList(context, all).PyUnwrap(context);
 
-            foreach (var item in list._list)
+            foreach (var item in list)
             {
                 if (item is not PyStrObject strObj)
                     throw context.TypeError(PySR.Runtime_Import_NonStringAllElt, module.Name, item.PyType.Name);
@@ -265,10 +265,10 @@ internal static class PyCore
         }
         else if (type is PyTupleObject tupleObj)
         {
-            if (!tupleObj._array.All(obj => obj is PyTypeObject t && t.IsSubclassOf(PyBaseExceptionObjectType.Shared)))
+            if (!tupleObj.All(obj => obj is PyTypeObject t && t.IsSubclassOf(PyBaseExceptionObjectType.Shared)))
                 throw context.TypeError(PySR.Runtime_TryStmt_CatchNonException);
 
-            return exc => tupleObj._array.Any(obj => ((PyTypeObject)obj).IsInstance(exc));
+            return exc => tupleObj.Any(obj => ((PyTypeObject)obj).IsInstance(exc));
         }
         else
         {
@@ -282,13 +282,13 @@ internal static class PyCore
         if (splitResult is not PyTupleObject tuple)
             throw context.TypeError(PySR.Runtime_TryStmt_SplitReturnsNonTuple, exception.PyType.FullName, splitResult.PyType.FullName);
 
-        if (tuple._array.Length is not 2)
-            throw context.TypeError(PySR.Runtime_TryStmt_SplitReturnsTupleWithWrongSize, exception.PyType.FullName, tuple._array.Length);
+        if (tuple.Count is not 2)
+            throw context.TypeError(PySR.Runtime_TryStmt_SplitReturnsTupleWithWrongSize, exception.PyType.FullName, tuple.Count);
 
-        var match = tuple._array[0];
-        var restObj = tuple._array[1];
+        var match = tuple[0];
+        var restObj = tuple[1];
         var rest = restObj is PyNoneObject ? null : (restObj as PyExceptionObject) ??
-            throw context.TypeError(PySR.Runtime_TryStmt_ExpectedExceptionOrNone, tuple._array[1].PyType.FullName);
+            throw context.TypeError(PySR.Runtime_TryStmt_ExpectedExceptionOrNone, tuple[1].PyType.FullName);
 
         return (rest, match);
     }
