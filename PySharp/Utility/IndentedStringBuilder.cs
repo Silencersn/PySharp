@@ -6,48 +6,34 @@ namespace PySharp.Utility;
 public sealed class IndentedStringBuilder
 {
     private readonly StringBuilder _builder;
-    private readonly char _indentChar;
-    private readonly int _indentSize;
-    private readonly List<List<Action<IndentedStringBuilder>>> _duringIndentActionChain;
+    private readonly List<string> _indents = [];
     private bool _isNewLine;
-    private int _indentLevel;
 
-    public IndentedStringBuilder(char indentChar = ' ', int indentSize = 2)
+    public IndentedStringBuilder()
     {
         _builder = new StringBuilder();
         _isNewLine = true;
-        _indentLevel = 0;
-        _indentChar = indentChar;
-        _indentSize = Math.Max(0, indentSize);
-        _duringIndentActionChain = [];
-        _duringIndentActionChain.Add([]);
+        _indents = [];
     }
 
-    public IndentedStringBuilder IncrementIndent()
+    public IndentedStringBuilder IncrementIndent(string indent)
     {
-        _indentLevel++;
-        _duringIndentActionChain.Add([]);
+        _indents.Add(indent);
         return this;
     }
 
     public IndentedStringBuilder DecrementIndent()
     {
-        if (_indentLevel is 0)
-            return this;
+        if (_indents.Count is 0)
+            throw new InvalidOperationException();
 
-        _indentLevel--;
-        _duringIndentActionChain.RemoveAt(_duringIndentActionChain.Count - 1);
+        _indents.RemoveAt(_indents.Count - 1);
         return this;
     }
 
-    public Indenter Indent()
+    public Indenter Indent(string indent = "  ")
     {
-        return new Indenter(this);
-    }
-
-    public DuringIndentActionAttacher AttachDuringIndentAction(Action<IndentedStringBuilder> action)
-    {
-        return new DuringIndentActionAttacher(this, action);
+        return new Indenter(this, indent);
     }
 
     private void EnsureIndent()
@@ -56,16 +42,7 @@ public sealed class IndentedStringBuilder
             return;
 
         _isNewLine = false;
-
-        Debug.Assert(_duringIndentActionChain.Count == _indentLevel + 1);
-        foreach (var action in _duringIndentActionChain[0])
-            action(this);
-        for (int i = 0; i < _indentLevel; i++)
-        {
-            _builder.Append(_indentChar, _indentSize);
-            foreach (var action in _duringIndentActionChain[i + 1])
-                action(this);
-        }
+        _builder.AppendJoin(string.Empty, _indents);
     }
 
     public IndentedStringBuilder Append(ReadOnlySpan<char> value)
@@ -119,35 +96,15 @@ public sealed class IndentedStringBuilder
     {
         private readonly IndentedStringBuilder _builder;
 
-        internal Indenter(IndentedStringBuilder builder)
+        internal Indenter(IndentedStringBuilder builder, string indent)
         {
             _builder = builder;
-            _builder.IncrementIndent();
+            _builder.IncrementIndent(indent);
         }
 
         void IDisposable.Dispose()
         {
             _builder?.DecrementIndent();
-        }
-    }
-
-    public readonly ref struct DuringIndentActionAttacher : IDisposable
-    {
-        private readonly IndentedStringBuilder _builder;
-
-        internal DuringIndentActionAttacher(IndentedStringBuilder builder, Action<IndentedStringBuilder> action)
-        {
-            _builder = builder;
-            _builder._duringIndentActionChain.Last().Add(action);
-        }
-
-        void IDisposable.Dispose()
-        {
-            if (_builder is null)
-                return;
-
-            var last = _builder._duringIndentActionChain.Last();
-            last.RemoveAt(last.Count - 1);
         }
     }
 }

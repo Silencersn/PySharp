@@ -124,11 +124,6 @@ public sealed class PyExceptionObject : PyObject
         }
     }
 
-    private static IndentedStringBuilder.DuringIndentActionAttacher EachLineStartsWith(IndentedStringBuilder builder, string value)
-    {
-        return builder.AttachDuringIndentAction(builder => builder.Append(value));
-    }
-
     private void PrintExceptionGroupMessage(IndentedStringBuilder builder, PyCallContext context)
     {
         Debug.Assert(AsGroup is not null);
@@ -136,7 +131,7 @@ public sealed class PyExceptionObject : PyObject
         if (Traceback is not null)
         {
             builder.AppendLine("+ Exception Group Traceback (most recent call last):");
-            using (EachLineStartsWith(builder, "| "))
+            using (builder.Indent("| "))
                 Traceback.Print(builder);
         }
 
@@ -161,7 +156,7 @@ public sealed class PyExceptionObject : PyObject
                 }
                 else
                 {
-                    using (EachLineStartsWith(builder, "| "))
+                    using (builder.Indent("| "))
                         subExc.PrintMessage(builder, context);
                 }
             }
