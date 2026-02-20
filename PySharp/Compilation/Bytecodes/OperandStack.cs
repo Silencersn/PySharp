@@ -41,22 +41,25 @@ internal sealed class OperandStack
     }
     public PyObject Pop()
     {
-        // TODO: clear reference?
-        return _array[--_size];
+        var value = _array[--_size];
+        _array[_size] = null!;
+        return value;
     }
     public void PopReversedRange(Span<PyObject> values)
     {
-        // TODO: clear reference?
-        _array.AsSpan().Slice(_size - values.Length, values.Length).CopyTo(values);
+        var span = _array.AsSpan().Slice(_size - values.Length, values.Length);
+        span.CopyTo(values);
+        span.Clear();
         _size -= values.Length;
     }
     public void Clear()
     {
+        _array.AsSpan()[.._size].Clear();
         _size = 0;
     }
     private void Grow(int capacity)
     {
-        const int DefaultCapacity = 4;
+        const int DefaultCapacity = 8;
         int newCapacity = _array.Length == 0 ? DefaultCapacity : 2 * _array.Length;
         if (newCapacity < capacity)
             newCapacity = capacity;
