@@ -341,10 +341,13 @@ public static partial class PyBuiltinFunctions
         var iterable = arguments[0];
         if (arguments["key"] is not PyNoneObject)
             return PyResult.RaisePySharpException("max() with key not implemented");
-        if (!Utils.TryEnumeratedIterable(context, iterable, out var elements, out var err))
-            return err.Value;
+
+        var elements = PyUtils.IterableToList(context, iterable);
+        if (elements.IsError)
+            return elements;
+
         PyObject? result = null;
-        foreach (var element in elements)
+        foreach (var element in elements.Value._list)
         {
             if (result is null)
             {
@@ -371,10 +374,13 @@ public static partial class PyBuiltinFunctions
         var iterable = arguments[0];
         if (arguments["key"] is not PyNoneObject)
             throw new NotImplementedException();
-        if (!Utils.TryEnumeratedIterable(context, iterable, out var elements, out var err))
-            return err.Value;
+
+        var elements = PyUtils.IterableToList(context, iterable);
+        if (elements.IsError)
+            return elements;
+
         PyObject result = arguments["default"];
-        foreach (var element in elements)
+        foreach (var element in elements.Value._list)
         {
             var gt = PyOperators.Gt(context, element, result);
             if (gt.IsError)
@@ -414,10 +420,13 @@ public static partial class PyBuiltinFunctions
         var iterable = arguments[0];
         if (arguments["key"] is not PyNoneObject)
             throw new NotImplementedException();
-        if (!Utils.TryEnumeratedIterable(context, iterable, out var elements, out var err))
-            return err.Value;
+
+        var elements = PyUtils.IterableToList(context, iterable);
+        if (elements.IsError)
+            return elements;
+
         PyObject? result = null;
-        foreach (var element in elements)
+        foreach (var element in elements.Value._list)
         {
             if (result is null)
             {
@@ -444,10 +453,13 @@ public static partial class PyBuiltinFunctions
         var iterable = arguments[0];
         if (arguments["key"] is not PyNoneObject)
             throw new NotImplementedException();
-        if (!Utils.TryEnumeratedIterable(context, iterable, out var elements, out var err))
-            return err.Value;
+
+        var elements = PyUtils.IterableToList(context, iterable);
+        if (elements.IsError)
+            return elements;
+
         PyObject result = arguments["default"];
-        foreach (var element in elements)
+        foreach (var element in elements.Value._list)
         {
             var lt = PyOperators.Lt(context, element, result);
             if (lt.IsError)
@@ -487,10 +499,13 @@ public static partial class PyBuiltinFunctions
         var start = arguments[1];
         if (start is PyStrObject)
             return PyResult.TypeError(PySR.Runtime_Builtin_Sum_Strings);
-        if (!Utils.TryEnumeratedIterable(context, arguments[0], out var iterable, out var err))
-            return err.Value;
+
+        var list = PyUtils.IterableToList(context, arguments[0]);
+        if (list.IsError)
+            return list;
+
         var result = start;
-        foreach (var item in iterable)
+        foreach (var item in list.Value._list)
         {
             var ret = PyOperators.Add(context, result, item);
             if (ret.IsError)

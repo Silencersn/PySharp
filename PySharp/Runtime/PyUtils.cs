@@ -1,4 +1,5 @@
-﻿using PySharp.Modules.Builtins;
+﻿using PySharp.Compilation.CodeAnalysis;
+using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
 
@@ -6,16 +7,16 @@ namespace PySharp.Runtime;
 
 internal static class PyUtils
 {
-    public static PyResult<PyListObject> IterableToList(PyCallContext context, PyObject iterable)
+    private static PyResult<T> IterableToContainer<T>(PyCallContext context, PyObject iterable, Func<List<PyObject>, T> createContainer) where T : PyObject
     {
         var iterator = PySpecialMethods.Iter(context, iterable);
         if (iterator.IsError)
-            return iterator.Of<PyListObject>();
+            return iterator.Of<T>();
 
-        return IteratorToList(context, iterator.Value);
+        return IteratorToContainer(context, iterator.Value, createContainer);
     }
 
-    public static PyResult<PyListObject> IteratorToList(PyCallContext context, PyObject iterator)
+    private static PyResult<T> IteratorToContainer<T>(PyCallContext context, PyObject iterator, Func<List<PyObject>, T> createContainer) where T : PyObject
     {
         List<PyObject> list = [];
 
@@ -27,13 +28,33 @@ internal static class PyUtils
                 if (item.IsStopIteration)
                     break;
 
-                return item.Of<PyListObject>();
+                return item.Of<T>();
             }
 
             list.Add(item.Value);
         }
 
-        return PyListObject.CreateProxy(list);
+        return createContainer(list);
+    }
+
+    public static PyResult<PyListObject> IterableToList(PyCallContext context, PyObject iterable)
+    {
+        return IterableToContainer(context, iterable, PyListObject.CreateProxy);
+    }
+
+    public static PyResult<PyTupleObject> IterableToTuple(PyCallContext context, PyObject iterable)
+    {
+        return IterableToContainer(context, iterable, PyTupleObject.CreateTuple);
+    }
+
+    public static PyResult<PyListObject> IteratorToList(PyCallContext context, PyObject iterator)
+    {
+        return IteratorToContainer(context, iterator, PyListObject.CreateProxy);
+    }
+
+    public static PyResult<PyTupleObject> IteratorToTuple(PyCallContext context, PyObject iterator)
+    {
+        return IteratorToContainer(context, iterator, PyTupleObject.CreateTuple);
     }
 
     public static PyResult<PyDictObject> MappingToDict(PyCallContext context, PyObject mapping, PyObject keysMethod)

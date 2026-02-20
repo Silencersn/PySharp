@@ -50,10 +50,11 @@ public sealed class PyTupleObjectType : PyTypeObject<PyTupleObjectType, PyTupleO
         if (!PyArgsValidator.ValidateSinglePositionalArg(args, kwargs, out var err))
             return err.Value;
 
-        if (!Utils.TryEnumeratedIterable(context, args[0], out var tuple, out err))
-            return err.Value;
+        var tuple = PyUtils.IterableToTuple(context, args[0]);
+        if (tuple.IsError)
+            return tuple;
 
-        var obj = PyTupleObject.CreateTuple(tuple);
+        var obj = tuple.Value;
         obj._pyType = cls;
         return obj;
     }

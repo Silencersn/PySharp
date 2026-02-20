@@ -193,10 +193,9 @@ internal static class PyCore
         if (module.PyAttributes.TryGetValue(PySpecialNames.All, out var all))
         {
             // unlike cpython, allows iterable
-            if (!Utils.TryEnumeratedIterable(context, all, out var list, out _))
-                throw context.TypeError(PySR.Runtime_Import_NonIterableAll, module.Name);
+            var list = PyUtils.IterableToList(context, all).PyUnwrap(context);
 
-            foreach (var item in list)
+            foreach (var item in list._list)
             {
                 if (item is not PyStrObject strObj)
                     throw context.TypeError(PySR.Runtime_Import_NonStringAllElt, module.Name, item.PyType.Name);
