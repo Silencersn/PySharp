@@ -6,17 +6,6 @@ using System.Reflection;
 
 namespace PySharp.Modules.CSharp;
 
-public static class UserDefinedType
-{
-    public static PyTypeObject Create(Type layout, string name, string qualName, IReadOnlyList<PyTypeObject> bases)
-    {
-        var type = typeof(UserDefinedType<>).MakeGenericType(layout);
-        var result = Activator.CreateInstance(type, BindingFlags.Instance | BindingFlags.NonPublic, null, [name, qualName, bases], CultureInfo.InvariantCulture);
-        Debug.Assert(result is PyTypeObject);
-        return (PyTypeObject)result;
-    }
-}
-
 internal sealed partial class UserDefinedType<TObject> : PyTypeObject<TObject> where TObject : PyObject
 {
     public override string Module => string.Empty; // TODO

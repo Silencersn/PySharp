@@ -167,16 +167,6 @@ internal static class Utils
         return PyStrObject.FromString(builder.ToString());
     }
 
-    public static bool IsPyObjectMethodOverridden(Type type, string name)
-    {
-        return IsPyObjectMethodOverride(type, name, out _);
-    }
-    public static bool IsPyObjectMethodOverride(Type type, string name, out MethodInfo method)
-    {
-        var types = typeof(PyObject).GetMethod(name, BindingFlags.NonPublic | BindingFlags.Instance)!.GetParameters().Select(parameter => parameter.ParameterType).ToArray();
-        return (method = type.GetMethod(name, BindingFlags.NonPublic | BindingFlags.Instance, types)!).DeclaringType != typeof(PyObject);
-    }
-
     public static bool IsDataDescriptor(PyObject obj)
     {
         var slots = obj.PyType.Slots;

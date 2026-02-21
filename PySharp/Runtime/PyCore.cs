@@ -58,8 +58,8 @@ internal static class PyCore
         if (bases.Count is 0)
             bases.Add(PyObjectType.Shared);
 
-        PyTypeObject.ValidateBases(context, bases, out var layoutType);
-        var type = UserDefinedType.Create(layoutType, codeObject.Name, codeObject.QualName, bases);
+        PyTypeObject.ValidateBases(context, bases, out var layoutTypeOwner);
+        var type = layoutTypeOwner.CreateUserDefinedTypeWithSameLayout(codeObject.Name, codeObject.QualName, bases);
 
         if (context.CurrentFrame.Variables.Globals.TryGetValue(PySpecialNames.Name, out var module))
             type.ModuleAsObject = module;

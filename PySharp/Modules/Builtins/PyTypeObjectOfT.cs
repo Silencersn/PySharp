@@ -1,4 +1,5 @@
-﻿using PySharp.Runtime;
+﻿using PySharp.Modules.CSharp;
+using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 
 namespace PySharp.Modules.Builtins;
@@ -37,6 +38,11 @@ public abstract partial class PyTypeObject<TObject> : PyTypeObject where TObject
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return PyResult.TypeError(PySR.Runtime_Type_CannotCreateInstance, cls.FullName);
+    }
+
+    internal sealed override PyTypeObject CreateUserDefinedTypeWithSameLayout(string name, string qualName, IReadOnlyList<PyTypeObject> bases)
+    {
+        return new UserDefinedType<TObject>(name, qualName, bases);
     }
 }
 
