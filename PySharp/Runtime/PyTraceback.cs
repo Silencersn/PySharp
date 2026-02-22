@@ -9,10 +9,12 @@ namespace PySharp.Runtime;
 public sealed class TrackbackInfo
 {
     public IReadOnlyList<(CodeMetaInfo? Info, string CallerName)> Frames { get; }
+    public string? ThreadInfo { get; }
 
-    public TrackbackInfo(IReadOnlyList<(CodeMetaInfo? Info, string CallerName)> frames)
+    public TrackbackInfo(IReadOnlyList<(CodeMetaInfo? Info, string CallerName)> frames, string? threadInfo = null)
     {
         Frames = frames;
+        ThreadInfo = threadInfo;
     }
 
     internal void Print(IndentedStringBuilder builder)
@@ -97,9 +99,13 @@ internal static class PyTraceback
     public static TrackbackInfo GetTracebackInfo(PyCallContext context)
     {
         Stack<(CodeMetaInfo? Info, string CallerName)> stack = [];
+        string? threadInfo = null;
         var frame = context.CurrentFrame;
         while (frame is not null)
         {
+            if (frame.FrameType is FrameType.ThreadRoot)
+                threadInfo = $"Exception in thread Thread-{Environment.CurrentManagedThreadId} ({frame.CallerName}):";
+
             var provider = frame.MetaInfoProvider;
 
             if (provider is not null)
@@ -107,6 +113,6 @@ internal static class PyTraceback
 
             frame = frame.Back;
         }
-        return new TrackbackInfo([.. stack]);
+        return new TrackbackInfo([.. stack], threadInfo);
     }
 }

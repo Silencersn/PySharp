@@ -27,7 +27,6 @@ public sealed class PyExceptionObject : PyObject
     internal string? CauseReason { get; set; }
     public IReadOnlyList<PyObject> Args { get; }
     public TrackbackInfo? Traceback { get; internal set; }
-    internal string? ThreadTracebackInfo { get; set; }
 
     [MemberNotNullWhen(true, nameof(AsGroup))]
     internal bool IsGroup => AsGroup is not null;
@@ -35,22 +34,8 @@ public sealed class PyExceptionObject : PyObject
 
     internal PyExceptionObject WithTraceback(PyCallContext context, bool overwriteExisting = false)
     {
-        if (Traceback is not null && !overwriteExisting)
-            return this;
-
-        Traceback = PyTraceback.GetTracebackInfo(context);
-        var frame = context.CurrentFrame;
-        while (frame is not null)
-        {
-            var back = frame.Back;
-            if (back is not null && back.FrameType is FrameType.ThreadRoot)
-            {
-                Debug.Assert(back.IsRoot);
-                ThreadTracebackInfo = $"Exception in thread Thread-{Environment.CurrentManagedThreadId} ({frame.CallerName}):";
-                break;
-            }
-            frame = back;
-        }
+        if (Traceback is null || overwriteExisting)
+            Traceback = PyTraceback.GetTracebackInfo(context);
 
         return this;
     }
@@ -89,10 +74,10 @@ public sealed class PyExceptionObject : PyObject
                 .AppendLine();
         }
 
-        if (ThreadTracebackInfo is not null)
+        if (Traceback?.ThreadInfo is not null)
         {
             builder
-                .AppendLine(ThreadTracebackInfo);
+                .AppendLine(Traceback.ThreadInfo);
         }
 
         if (IsGroup)
