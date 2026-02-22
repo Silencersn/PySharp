@@ -3,7 +3,6 @@ using PySharp.Runtime.Calls;
 using PySharp.Utility;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Text;
 
 namespace PySharp.Modules.Builtins;
 
@@ -15,7 +14,7 @@ public sealed class PyExceptionObject : PyObject
     {
         Debug.Assert(exceptionType.IsSubclassOf(PyBaseExceptionObjectType.Shared));
         Debug.Assert(asGroup is null || exceptionType.IsSubclassOf(PyBaseExceptionGroupObjectType.Shared));
-        
+
         _pyType = exceptionType;
         Args = [.. args];
         AsGroup = asGroup;

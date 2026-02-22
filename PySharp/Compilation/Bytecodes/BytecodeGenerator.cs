@@ -3,7 +3,6 @@ using PySharp.Modules.Builtins;
 using PySharp.Runtime.Comparison;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 
 namespace PySharp.Compilation.Bytecodes;
 

@@ -11,7 +11,7 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
     public virtual IReadOnlyList<PyTypeObject> Bases => [PyObjectType.Shared];
     public IReadOnlyList<PyTypeObject> MRO { get; }
     public virtual string? DefaultModule => "builtins";
-    public string? Module => 
+    public string? Module =>
         ModuleAsObject is PyStrObject str ? str.Value :
         ModuleAsObject is not null ? "<unknown>" : null;
     public PyObject? ModuleAsObject { get; internal set; }

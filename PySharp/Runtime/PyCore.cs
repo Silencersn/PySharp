@@ -1,8 +1,6 @@
 ﻿using PySharp.Compilation.Bytecodes;
 using PySharp.Compilation.Primitives;
-using PySharp.Modules;
 using PySharp.Modules.Builtins;
-using PySharp.Modules.CSharp;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
 using System.Diagnostics;

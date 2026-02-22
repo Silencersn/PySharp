@@ -1007,7 +1007,7 @@ partial class Parser
         where TResult : AstNode
     {
         CodeMetaInfo? metaInfo = null;
-        
+
         var startMetaInfo = list[0].MetaInfo;
         if (startMetaInfo is not null)
         {
@@ -1017,17 +1017,17 @@ partial class Parser
 
             if (endsWithComma is not null)
             {
-				end = endsWithComma.End;
+                end = endsWithComma.End;
             }
             else
             {
                 var endMetaInfo = list[^1].MetaInfo;
                 if (endMetaInfo is not null)
-					end = endMetaInfo.End;
+                    end = endMetaInfo.End;
             }
 
             metaInfo = CodeMetaInfo.FromPosition(source, start, end);
-		}
+        }
 
         return packer(list).With(metaInfo);
     }
