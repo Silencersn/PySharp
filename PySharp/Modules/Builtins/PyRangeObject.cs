@@ -62,7 +62,6 @@ public class PyRangeObject : PyObject
 
 public sealed class PyRangeObjectType : PyTypeObject<PyRangeObjectType, PyRangeObject>
 {
-    public override string Module => "builtins";
     public override string Name => "range";
 
     protected override PyResult Repr(PyCallContext context, PyRangeObject self)

@@ -9,7 +9,6 @@ namespace PySharp.Modules.Builtins;
 
 public sealed class PyBaseExceptionGroupObjectType : PyExceptionType<PyBaseExceptionGroupObjectType, PyBaseExceptionObjectType>
 {
-    public override string Module => "builtins";
     public override string Name => "BaseExceptionGroup";
 
     public PyBaseExceptionGroupObjectType()
@@ -285,6 +284,5 @@ public sealed class PyBaseExceptionGroupObjectType : PyExceptionType<PyBaseExcep
 public sealed class PyExceptionGroupObjectType : PyExceptionType<PyExceptionGroupObjectType>
 {
     public override IReadOnlyList<PyTypeObject> Bases => [PyBaseExceptionGroupObjectType.Shared, PyExceptionObjectType.Shared];
-    public override string Module => "builtins";
     public override string Name => "ExceptionGroup";
 }

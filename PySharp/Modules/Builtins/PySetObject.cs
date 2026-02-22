@@ -134,7 +134,6 @@ public class PySetObject : PyObject, IPyObjectRecursiveRepr, ISet<PyObject>
 
 public sealed class PySetObjectType : PyTypeObject<PySetObjectType, PySetObject>
 {
-    public override string Module => "builtins";
     public override string Name => "set";
 
     protected override PyResult Repr(PyCallContext context, PySetObject self)

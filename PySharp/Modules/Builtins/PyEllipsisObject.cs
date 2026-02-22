@@ -11,7 +11,6 @@ public sealed class PyEllipsisObject : PyObject
 
 public sealed class PyEllipsisObjectType : PyTypeObject<PyEllipsisObjectType, PyEllipsisObject>
 {
-    public override string Module => "builtins";
     public override string Name => "ellipsis";
     public override bool IsSealed => true;
     private static readonly PyStrObject _repr = PyStrObject.FromString("Ellipsis");

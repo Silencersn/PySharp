@@ -60,7 +60,6 @@ public partial class PyStrObject : PyObject
 
 public sealed class PyStrObjectType : PyTypeObject<PyStrObjectType, PyStrObject>
 {
-    public override string Module => "builtins";
     public override string Name => "str";
     public PyStrObjectType()
     {

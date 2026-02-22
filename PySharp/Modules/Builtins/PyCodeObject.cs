@@ -120,6 +120,5 @@ public sealed class PyCodeObject : PyObject
 
 public sealed class PyCodeObjectType : PyTypeObject<PyCodeObjectType, PyCodeObject>
 {
-    public override string Module => "builtins";
     public override string Name => "code";
 }

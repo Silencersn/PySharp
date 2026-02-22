@@ -20,7 +20,6 @@ public class PyTupleIteratorObject : PyObject
 
 public sealed class PyTupleIteratorObjectType : PyTypeObject<PyTupleIteratorObjectType, PyTupleIteratorObject>
 {
-    public override string Module => "builtins";
     public override string Name => "tuple_iterator";
 
     protected override PyResult Iter(PyCallContext context, PyTupleIteratorObject self)

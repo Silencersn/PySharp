@@ -35,7 +35,6 @@ public class PyModuleObject : PyObject, IPyObjectName
 
 public sealed class PyModuleObjectType : PyTypeObject<PyModuleObjectType, PyModuleObject>
 {
-    public override string Module => "builtins";
     public override string Name => "module";
 
     protected override PyResult Repr(PyCallContext context, PyModuleObject self)

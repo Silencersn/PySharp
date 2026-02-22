@@ -116,7 +116,6 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr, IDictionar
 
 public sealed class PyDictObjectType : PyTypeObject<PyDictObjectType, PyDictObject>
 {
-    public override string Module => "builtins";
     public override string Name => "dict";
 
     public PyDictObjectType()

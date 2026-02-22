@@ -10,28 +10,24 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
 {
     public virtual IReadOnlyList<PyTypeObject> Bases => [PyObjectType.Shared];
     public IReadOnlyList<PyTypeObject> MRO { get; }
-    public abstract string Module { get; }
+    public virtual string? DefaultModule => "builtins";
+    public string? Module => 
+        ModuleAsObject is PyStrObject str ? str.Value :
+        ModuleAsObject is not null ? "<unknown>" : null;
+    public PyObject? ModuleAsObject { get; internal set; }
+
     public abstract string Name { get; }
     public string FullName
     {
         get
         {
-            var moduleName = (ModuleAsObject as PyStrObject)?.Value ?? "<unknown>";
-            if (moduleName is PySpecialNames.Main or "builtins")
-                return Name;
-            return $"{moduleName}.{Name}";
+            var moduleName = Module;
+            if (moduleName is null or PySpecialNames.Main or "builtins")
+                return QualName;
+            return $"{moduleName}.{QualName}";
         }
     }
     public virtual string QualName => Name;
-
-    // by default, it is a string,
-    // but CPython allows it to be set to a non-string
-    // could not be deleted
-    public virtual PyObject ModuleAsObject
-    {
-        get => field ??= PyStrObject.FromString(Module);
-        internal set => field = value;
-    }
 
     public virtual string Document => string.Empty;
     public virtual bool IsSealed => false;
@@ -41,6 +37,8 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
 
     internal PyTypeObject()
     {
+        if (DefaultModule is not null)
+            ModuleAsObject = PyStrObject.FromString(DefaultModule);
         MRO = [this, .. CreateMROWithoutSelf(Bases)];
         Slots = PyTypeSlots.Create(MRO.Skip(1));
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
@@ -49,6 +47,8 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
 
     internal PyTypeObject(string name, IReadOnlyList<PyTypeObject> bases)
     {
+        if (DefaultModule is not null)
+            ModuleAsObject = PyStrObject.FromString(DefaultModule);
         MRO = [this, .. CreateMROWithoutSelf(bases)];
         Slots = PyTypeSlots.Create(MRO.Skip(1));
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(name));

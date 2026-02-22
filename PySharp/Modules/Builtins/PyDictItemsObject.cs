@@ -15,7 +15,6 @@ public class PyDictItemsObject : PyObject
 
 public sealed class PyDictItemsObjectType : PyTypeObject<PyDictItemsObjectType, PyDictItemsObject>
 {
-    public override string Module => "builtins";
     public override string Name => "dict_items";
 
     protected override PyResult Iter(PyCallContext context, PyDictItemsObject self)
@@ -40,7 +39,6 @@ public class PyDictItemIteratorObject : PyObject
 
 public sealed class PyDictItemIteratorObjectType : PyTypeObject<PyDictItemIteratorObjectType, PyDictItemIteratorObject>
 {
-    public override string Module => "builtins";
     public override string Name => "dict_itemiterator";
 
     protected override PyResult Iter(PyCallContext context, PyDictItemIteratorObject self)

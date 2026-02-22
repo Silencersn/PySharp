@@ -112,7 +112,6 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr, IList<PyOb
 
 public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObject>
 {
-    public override string Module => "builtins";
     public override string Name => "list";
 
     public PyListObjectType()

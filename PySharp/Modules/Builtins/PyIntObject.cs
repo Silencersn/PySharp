@@ -98,7 +98,6 @@ public class PyIntObject : PyObject
 
 public class PyIntObjectType : PyTypeObject<PyIntObjectType, PyIntObject>
 {
-    public override string Module => "builtins";
     public override string Name => "int";
 
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl_1, NewImpl_2);

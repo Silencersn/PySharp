@@ -21,7 +21,6 @@ public class PyComplexObject : PyObject
 
 public sealed class PyComplexObjectType : PyTypeObject<PyComplexObjectType, PyComplexObject>
 {
-    public override string Module => "builtins";
     public override string Name => "complex";
 
     protected override PyResult Repr(PyCallContext context, PyComplexObject self)

@@ -19,7 +19,6 @@ public class PyFloatObject : PyObject
 
 public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatObject>
 {
-    public override string Module => "builtins";
     public override string Name => "float";
 
     protected override PyResult Repr(PyCallContext context, PyFloatObject self)

@@ -26,7 +26,6 @@ public class PyCellObject : PyObject
 
 public sealed class PyCellObjectType : PyTypeObject<PyCellObjectType, PyCellObject>
 {
-    public override string Module => "builtins";
     public override string Name => "cell";
 
     protected override PyResult Repr(PyCallContext context, PyCellObject self)

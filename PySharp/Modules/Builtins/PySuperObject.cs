@@ -60,7 +60,6 @@ public class PySuperObject : PyObject
 
 public sealed class PySuperObjectType : PyTypeObject<PySuperObjectType, PySuperObject>
 {
-    public override string Module => "builtins";
     public override string Name => "super";
 
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl_1, NewImpl_2);

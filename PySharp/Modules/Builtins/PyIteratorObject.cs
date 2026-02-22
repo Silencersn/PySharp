@@ -19,7 +19,6 @@ public class PyIteratorObject : PyObject
 
 public sealed class PyIteratorObjectType : PyTypeObject<PyIteratorObjectType, PyIteratorObject>
 {
-    public override string Module => "builtins";
     public override string Name => "iterator";
 
     protected override PyResult Iter(PyCallContext context, PyIteratorObject self)

@@ -8,7 +8,7 @@ namespace PySharp.Modules.CSharp;
 
 internal sealed partial class UserDefinedType<TObject> : PyTypeObject<TObject> where TObject : PyObject
 {
-    public override string Module => string.Empty; // TODO
+    public override string? DefaultModule => null;
     public override string Name { get; }
     public override IReadOnlyList<PyTypeObject> Bases { get; }
     internal override bool IsTypeImmutable => false;

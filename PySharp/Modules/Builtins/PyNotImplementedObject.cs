@@ -11,7 +11,6 @@ public class PyNotImplementedObject : PyObject
 
 public sealed class PyNotImplementedObjectType : PyTypeObject<PyNotImplementedObjectType, PyNotImplementedObject>
 {
-    public override string Module => "builtins";
     public override string Name => "NotImplementedType";
     public override bool IsSealed => true;
     private static readonly PyStrObject _repr = PyStrObject.FromString("NotImplemented");

@@ -62,7 +62,6 @@ public class PyTupleObject : PyObject, IPyObjectRecursiveRepr, IReadOnlyList<PyO
 
 public sealed class PyTupleObjectType : PyTypeObject<PyTupleObjectType, PyTupleObject>
 {
-    public override string Module => "builtins";
     public override string Name => "tuple";
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)

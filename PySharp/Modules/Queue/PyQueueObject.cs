@@ -31,7 +31,7 @@ public sealed partial class PyQueueObject : PyObject
 
 public sealed class PyQueueObjectType : PyTypeObject<PyQueueObjectType, PyQueueObject>
 {
-    public override string Module => "queue";
+    public override string DefaultModule => "queue";
     public override string Name => "Queue";
 
     public PyQueueObjectType()
@@ -173,18 +173,18 @@ public sealed class PyQueueObjectType : PyTypeObject<PyQueueObjectType, PyQueueO
 
 public sealed class PyFullObjectType : PyExceptionType<PyFullObjectType, PyExceptionObjectType>
 {
-    public override string Module => "queue";
+    public override string DefaultModule => "queue";
     public override string Name => "Full";
 }
 
 public sealed class PyEmptyObjectType : PyExceptionType<PyEmptyObjectType, PyExceptionObjectType>
 {
-    public override string Module => "queue";
+    public override string DefaultModule => "queue";
     public override string Name => "Empty";
 }
 
 public sealed class PyShutDownObjectType : PyExceptionType<PyShutDownObjectType, PyExceptionObjectType>
 {
-    public override string Module => "queue";
+    public override string DefaultModule => "queue";
     public override string Name => "ShutDown";
 }
