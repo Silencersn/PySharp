@@ -11,12 +11,14 @@ public sealed class PyExceptionObject : PyObject
 {
     public override PyTypeObject DefaultPyType => PyBaseExceptionObjectType.Shared;
 
-    internal PyExceptionObject(PyTypeObject exceptionType, params IEnumerable<PyObject> args)
+    internal PyExceptionObject(PyTypeObject exceptionType, IEnumerable<PyObject> args, ExceptionGroupInfo? asGroup = null)
     {
         Debug.Assert(exceptionType.IsSubclassOf(PyBaseExceptionObjectType.Shared));
-
+        Debug.Assert(asGroup is null || exceptionType.IsSubclassOf(PyBaseExceptionGroupObjectType.Shared));
+        
         _pyType = exceptionType;
         Args = [.. args];
+        AsGroup = asGroup;
     }
 
     public bool SuppressContext { get; internal set; }
@@ -29,7 +31,7 @@ public sealed class PyExceptionObject : PyObject
 
     [MemberNotNullWhen(true, nameof(AsGroup))]
     internal bool IsGroup => AsGroup is not null;
-    internal ExceptionGroupInfo? AsGroup { get; set; }
+    internal ExceptionGroupInfo? AsGroup { get; }
 
     internal PyExceptionObject WithTraceback(PyCallContext context, bool overwriteExisting = false)
     {
@@ -56,7 +58,7 @@ public sealed class PyExceptionObject : PyObject
     internal string ToMessage(PyCallContext context)
     {
         var builder = new IndentedStringBuilder();
-        if (PyBaseExceptionGroupObjectType.Shared.IsInstance(this))
+        if (IsGroup)
         {
             using (builder.Indent())
                 PrintMessage(builder, context);
@@ -93,7 +95,7 @@ public sealed class PyExceptionObject : PyObject
                 .AppendLine(ThreadTracebackInfo);
         }
 
-        if (PyBaseExceptionGroupObjectType.Shared.IsInstance(this))
+        if (IsGroup)
         {
             PrintExceptionGroupMessage(builder, context);
             return;
@@ -150,7 +152,7 @@ public sealed class PyExceptionObject : PyObject
                 builder.AppendFormat("---------------- {0} ----------------", ++counter);
                 builder.AppendLine();
 
-                if (isLastGroup = PyBaseExceptionGroupObjectType.Shared.IsInstance(subExc))
+                if (isLastGroup = subExc.IsGroup)
                 {
                     subExc.PrintMessage(builder, context);
                 }

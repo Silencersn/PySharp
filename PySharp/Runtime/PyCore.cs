@@ -247,7 +247,7 @@ internal static class PyCore
                 return excObj;
 
             else if (pyObj is PyTypeObject typeObj && typeObj.IsSubclassOf(PyBaseExceptionObjectType.Shared))
-                return new PyExceptionObject(typeObj);
+                return new PyExceptionObject(typeObj, []);
 
             else
                 throw context.TypeError(PySR.Runtime_RaiseStmt_RaiseNonException);

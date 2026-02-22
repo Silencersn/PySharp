@@ -8,7 +8,7 @@ public abstract class PyExceptionType : PyTypeObject<PyExceptionObject>
 {
     public PyExceptionObject Create()
     {
-        return new PyExceptionObject(this);
+        return new PyExceptionObject(this, []);
     }
 
     public PyExceptionObject Create(PyObject? pyObject)

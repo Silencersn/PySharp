@@ -841,7 +841,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                     case OpCode.CheckEgMatch:
                         {
                             var exc = frame.CurrentException;
-                            if (!PyBaseExceptionGroupObjectType.Shared.IsInstance(exc))
+                            if (!exc.IsGroup)
                                 exc = PyBaseExceptionGroupObjectType.CreateExceptionGroup(string.Empty, [exc]);
 
                             var type = Stack.Pop();
