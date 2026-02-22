@@ -75,7 +75,7 @@ public class PyInterpreter
                     var exc = pyRuntimeException.PyException.WithTraceback(context, overwriteExisting: false);
                     context.EnsureFrameState(frame);
 
-                    if (PyStandardExceptionTypes.SystemExit.IsInstance(exc))
+                    if (PySystemExitObjectType.Shared.IsInstance(exc))
                     {
                     }
                     else

@@ -72,12 +72,12 @@ partial struct PyResult
 
     internal static PyResult RaiseAssertionError(string? arg = null)
     {
-        return RaiseException(PyStandardExceptionTypes.AssertionError, arg);
+        return RaiseException(PyAssertionErrorObjectType.Shared, arg);
     }
 
     internal static PyResult RaiseAssertionError(PyObject? arg)
     {
-        return RaiseException(PyStandardExceptionTypes.AssertionError, arg);
+        return RaiseException(PyAssertionErrorObjectType.Shared, arg);
     }
 
     internal static PyResult ZeroDivisionError(string? format = PySR.Runtime_Number_DivisionByZero, params ReadOnlySpan<object?> args)
@@ -101,7 +101,7 @@ partial struct PyResult
     }
     internal static PyResult StopIteration(PyObject? arg = null)
     {
-        return RaiseException(PyStandardExceptionTypes.StopIteration, arg);
+        return RaiseException(PyStopIterationObjectType.Shared, arg);
     }
 
     internal static PyResult RuntimeError(string? format, params ReadOnlySpan<object?> args)

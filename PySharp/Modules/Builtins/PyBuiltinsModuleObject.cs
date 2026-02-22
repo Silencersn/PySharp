@@ -66,27 +66,27 @@ public class PyBuiltinsModuleObject : PyModuleObject
 
         AddObjToAttrs("Ellipsis", PyEllipsisObject.Ellipsis); // Ellipsis
 
-        AddObjToAttrs(PyStandardExceptionTypes.BaseException); // BaseException
-        AddObjToAttrs(PyStandardExceptionTypes.SystemExit); // SystemExit
-        AddObjToAttrs(PyStandardExceptionTypes.Exception); // Exception
-        AddObjToAttrs(PyStandardExceptionTypes.TypeError); // TypeError
-        AddObjToAttrs(PyStandardExceptionTypes.StopIteration); // StopIteration
-        AddObjToAttrs(PyStandardExceptionTypes.AttributeError); // AttributeError
-        AddObjToAttrs(PyStandardExceptionTypes.LookupError); // LookupError
-        AddObjToAttrs(PyStandardExceptionTypes.KeyError); // KeyError
-        AddObjToAttrs(PyStandardExceptionTypes.IndexError); // IndexError
-        AddObjToAttrs(PyStandardExceptionTypes.ValueError); // ValueError
-        AddObjToAttrs(PyStandardExceptionTypes.NameError); // NameError
-        AddObjToAttrs(PyStandardExceptionTypes.ImportError); // ImportError
-        AddObjToAttrs(PyStandardExceptionTypes.ModuleNotFoundError); // ModuleNotFoundError
-        AddObjToAttrs(PyStandardExceptionTypes.SyntaxError); // SyntaxError
-        AddObjToAttrs(PyStandardExceptionTypes.IndentationError); // IndentationError
-        AddObjToAttrs(PyStandardExceptionTypes.ArithmeticError); // ArithmeticError
-        AddObjToAttrs(PyStandardExceptionTypes.ZeroDivisionError); // ZeroDivisionError
-        AddObjToAttrs(PyStandardExceptionTypes.AssertionError); // AssertionError
-        AddObjToAttrs(PyStandardExceptionTypes.UnboundLocalError); // UnboundLocalError
-        AddObjToAttrs(PyStandardExceptionTypes.RuntimeError); // RuntimeError
-        AddObjToAttrs(PyStandardExceptionTypes.GeneratorExit); // GeneratorExit
+        AddObjToAttrs(PyBaseExceptionObjectType.Shared); // BaseException
+        AddObjToAttrs(PySystemExitObjectType.Shared); // SystemExit
+        AddObjToAttrs(PyExceptionObjectType.Shared); // Exception
+        AddObjToAttrs(PyTypeErrorObjectType.Shared); // TypeError
+        AddObjToAttrs(PyStopIterationObjectType.Shared); // StopIteration
+        AddObjToAttrs(PyAttributeErrorObjectType.Shared); // AttributeError
+        AddObjToAttrs(PyLookupErrorObjectType.Shared); // LookupError
+        AddObjToAttrs(PyKeyErrorObjectType.Shared); // KeyError
+        AddObjToAttrs(PyIndexErrorObjectType.Shared); // IndexError
+        AddObjToAttrs(PyValueErrorObjectType.Shared); // ValueError
+        AddObjToAttrs(PyNameErrorObjectType.Shared); // NameError
+        AddObjToAttrs(PyImportErrorObjectType.Shared); // ImportError
+        AddObjToAttrs(PyModuleNotFoundErrorObjectType.Shared); // ModuleNotFoundError
+        AddObjToAttrs(PySyntaxErrorObjectType.Shared); // SyntaxError
+        AddObjToAttrs(PyIndentationErrorObjectType.Shared); // IndentationError
+        AddObjToAttrs(PyArithmeticErrorObjectType.Shared); // ArithmeticError
+        AddObjToAttrs(PyZeroDivisionErrorObjectType.Shared); // ZeroDivisionError
+        AddObjToAttrs(PyAssertionErrorObjectType.Shared); // AssertionError
+        AddObjToAttrs(PyUnboundLocalErrorObjectType.Shared); // UnboundLocalError
+        AddObjToAttrs(PyRuntimeErrorObjectType.Shared); // RuntimeError
+        AddObjToAttrs(PyGeneratorExitObjectType.Shared); // GeneratorExit
 
         AddObjToAttrs(PyBaseExceptionGroupObjectType.Shared); // BaseExceptionGroup
         AddObjToAttrs(PyExceptionGroupObjectType.Shared); // ExceptionGroup
