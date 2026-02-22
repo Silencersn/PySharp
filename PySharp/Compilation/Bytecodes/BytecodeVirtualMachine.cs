@@ -51,7 +51,9 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
     {
         var frame = Context.CurrentFrame;
         using var withMetaInfo = new MetaInfoProviderSetter(frame, this);
-        return Eval(Context, frame);
+        var result = Eval(Context, frame);
+        Debug.Assert(!RunToEnd || Stack.Count is 0);
+        return result;
     }
 
     private class ExceptionHandler
