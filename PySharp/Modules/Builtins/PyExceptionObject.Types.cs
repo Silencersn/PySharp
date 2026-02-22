@@ -22,14 +22,19 @@ public abstract class PyExceptionType : PyTypeObject<PyExceptionObject>
     }
 }
 
-public abstract class PyExceptionType<TSelf> : PyExceptionType, ISharedInstance<TSelf> where TSelf : PyExceptionType<TSelf>, ISharedInstance<TSelf>, new()
+public interface IPyException<TSelf> where TSelf : PyExceptionType, IPyException<TSelf>
+{
+    static abstract TSelf Shared { get; }
+}
+
+public abstract class PyExceptionType<TSelf> : PyExceptionType, IPyException<TSelf> where TSelf : PyExceptionType<TSelf>, new()
 {
     public static TSelf Shared { get; } = new TSelf();
 }
 
-public abstract class PyExceptionType<TSelf, TBase> : PyExceptionType<TSelf>, ISharedInstance<TSelf>
-    where TSelf : PyExceptionType<TSelf, TBase>, ISharedInstance<TSelf>, new()
-    where TBase : PyExceptionType<TBase>, ISharedInstance<TBase>, new()
+public abstract class PyExceptionType<TSelf, TBase> : PyExceptionType<TSelf>
+    where TSelf : PyExceptionType<TSelf, TBase>, new()
+    where TBase : PyExceptionType<TBase>, IPyException<TBase>, new()
 {
     public sealed override IReadOnlyList<PyTypeObject> Bases => [TBase.Shared];
 }

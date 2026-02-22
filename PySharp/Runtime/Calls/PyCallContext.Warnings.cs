@@ -13,7 +13,7 @@ partial class PyCallContext
         return true;
     }
 
-    public bool TryWarn<TWarning>(string message) where TWarning : PyExceptionType<TWarning>, ISharedInstance<TWarning>, new()
+    public bool TryWarn<TWarning>(string message) where TWarning : PyExceptionType<TWarning>, IPyException<TWarning>, new()
     {
         return TryWarn(TWarning.Shared, message);
     }

@@ -180,8 +180,3 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
         throw new UnreachableException();
     }
 }
-
-public interface ISharedInstance<TSelf> where TSelf : ISharedInstance<TSelf>
-{
-    static abstract TSelf Shared { get; }
-}
