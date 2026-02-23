@@ -32,6 +32,10 @@ partial class PyTypeObject<TObject>
     {
     }
 
+    protected virtual void RegisterMethods()
+    {
+    }
+
     private void AppendNew()
     {
         var newMethod = GetType()
