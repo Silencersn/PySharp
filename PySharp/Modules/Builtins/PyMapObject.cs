@@ -1,4 +1,4 @@
-﻿using PySharp.Runtime;
+using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
 using PySharp.Runtime.PyAttributes;
@@ -20,7 +20,8 @@ public sealed class PyMapObject : PyObject
     }
 }
 
-public sealed class PyMapObjectType : PyTypeObject<PyMapObjectType, PyMapObject>
+[PyType("map")]
+public sealed partial class PyMapObjectType : PyTypeObject<PyMapObjectType, PyMapObject>
 {
     public override string Name => "map";
 

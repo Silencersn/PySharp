@@ -1,4 +1,5 @@
-﻿using PySharp.Runtime.Calls;
+using PySharp.Runtime.Calls;
+using PySharp.Runtime.PyAttributes;
 using System.Diagnostics;
 
 namespace PySharp.Modules.Builtins;
@@ -20,7 +21,8 @@ internal sealed class PyMethodWrapperObject : PyObject
     }
 }
 
-internal sealed class PyMethodWrapperObjectType : PyTypeObject<PyMethodWrapperObjectType, PyMethodWrapperObject>
+[PyType("method_wrapper")]
+internal sealed partial class PyMethodWrapperObjectType : PyTypeObject<PyMethodWrapperObjectType, PyMethodWrapperObject>
 {
     public override string Name => "method_wrapper";
 

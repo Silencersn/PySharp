@@ -1,4 +1,5 @@
-﻿using PySharp.Runtime.Calls;
+using PySharp.Runtime.Calls;
+using PySharp.Runtime.PyAttributes;
 
 namespace PySharp.Modules.Builtins;
 
@@ -13,7 +14,8 @@ public class PyDictItemsObject : PyObject
     }
 }
 
-public sealed class PyDictItemsObjectType : PyTypeObject<PyDictItemsObjectType, PyDictItemsObject>
+[PyType("dict_items")]
+public sealed partial class PyDictItemsObjectType : PyTypeObject<PyDictItemsObjectType, PyDictItemsObject>
 {
     public override string Name => "dict_items";
 
@@ -37,7 +39,8 @@ public class PyDictItemIteratorObject : PyObject
     }
 }
 
-public sealed class PyDictItemIteratorObjectType : PyTypeObject<PyDictItemIteratorObjectType, PyDictItemIteratorObject>
+[PyType("dict_itemiterator")]
+public sealed partial class PyDictItemIteratorObjectType : PyTypeObject<PyDictItemIteratorObjectType, PyDictItemIteratorObject>
 {
     public override string Name => "dict_itemiterator";
 

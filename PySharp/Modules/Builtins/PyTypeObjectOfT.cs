@@ -1,6 +1,7 @@
-﻿using PySharp.Modules.CSharp;
+using PySharp.Modules.CSharp;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.PyAttributes;
 
 namespace PySharp.Modules.Builtins;
 
@@ -46,7 +47,8 @@ public abstract partial class PyTypeObject<TObject> : PyTypeObject where TObject
     }
 }
 
-public sealed class PyTypeObjectType : PyTypeObject<PyTypeObjectType, PyTypeObject>
+[PyType("type")]
+public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObjectType, PyTypeObject>
 {
     public override string Name => "type";
 

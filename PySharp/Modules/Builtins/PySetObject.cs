@@ -1,5 +1,6 @@
-﻿using PySharp.Runtime.Calls;
+using PySharp.Runtime.Calls;
 using PySharp.Runtime.Comparison;
+using PySharp.Runtime.PyAttributes;
 using System.Collections;
 
 namespace PySharp.Modules.Builtins;
@@ -132,7 +133,8 @@ public class PySetObject : PyObject, IPyObjectRecursiveRepr, ISet<PyObject>
     }
 }
 
-public sealed class PySetObjectType : PyTypeObject<PySetObjectType, PySetObject>
+[PyType("set")]
+public sealed partial class PySetObjectType : PyTypeObject<PySetObjectType, PySetObject>
 {
     public override string Name => "set";
 

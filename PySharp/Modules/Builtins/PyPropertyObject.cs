@@ -1,4 +1,4 @@
-﻿using PySharp.Runtime;
+using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
 using PySharp.Runtime.PyAttributes;
@@ -24,7 +24,8 @@ public sealed class PyPropertyObject : PyObject
     }
 }
 
-public sealed class PyPropertyObjectType : PyTypeObject<PyPropertyObjectType, PyPropertyObject>
+[PyType("property")]
+public sealed partial class PyPropertyObjectType : PyTypeObject<PyPropertyObjectType, PyPropertyObject>
 {
     public override string Name => "property";
 

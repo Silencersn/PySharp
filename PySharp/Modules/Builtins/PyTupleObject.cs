@@ -1,6 +1,7 @@
-﻿using PySharp.Runtime;
+using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Comparison;
+using PySharp.Runtime.PyAttributes;
 using System.Collections;
 
 namespace PySharp.Modules.Builtins;
@@ -60,7 +61,8 @@ public class PyTupleObject : PyObject, IPyObjectRecursiveRepr, IReadOnlyList<PyO
     }
 }
 
-public sealed class PyTupleObjectType : PyTypeObject<PyTupleObjectType, PyTupleObject>
+[PyType("tuple")]
+public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObjectType, PyTupleObject>
 {
     public override string Name => "tuple";
 

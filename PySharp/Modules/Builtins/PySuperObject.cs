@@ -1,4 +1,4 @@
-﻿using PySharp.Runtime;
+using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
 using PySharp.Runtime.Comparison;
@@ -58,7 +58,8 @@ public class PySuperObject : PyObject
     }
 }
 
-public sealed class PySuperObjectType : PyTypeObject<PySuperObjectType, PySuperObject>
+[PyType("super")]
+public sealed partial class PySuperObjectType : PyTypeObject<PySuperObjectType, PySuperObject>
 {
     public override string Name => "super";
 

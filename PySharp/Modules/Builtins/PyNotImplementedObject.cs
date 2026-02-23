@@ -1,4 +1,5 @@
-﻿using PySharp.Runtime.Calls;
+using PySharp.Runtime.Calls;
+using PySharp.Runtime.PyAttributes;
 
 namespace PySharp.Modules.Builtins;
 
@@ -9,7 +10,8 @@ public class PyNotImplementedObject : PyObject
     private PyNotImplementedObject() { }
 }
 
-public sealed class PyNotImplementedObjectType : PyTypeObject<PyNotImplementedObjectType, PyNotImplementedObject>
+[PyType("NotImplementedType")]
+public sealed partial class PyNotImplementedObjectType : PyTypeObject<PyNotImplementedObjectType, PyNotImplementedObject>
 {
     public override string Name => "NotImplementedType";
     public override bool IsSealed => true;

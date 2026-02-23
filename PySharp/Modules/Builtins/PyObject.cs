@@ -1,5 +1,6 @@
-﻿using PySharp.Runtime;
+using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.PyAttributes;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -67,7 +68,8 @@ public partial class PyObject
     }
 }
 
-public sealed class PyObjectType : PyTypeObject<PyObjectType, PyObject>
+[PyType("object")]
+public sealed partial class PyObjectType : PyTypeObject<PyObjectType, PyObject>
 {
     public override string Name => "object";
     public override IReadOnlyList<PyTypeObject> Bases => [];

@@ -1,4 +1,5 @@
-﻿using PySharp.Runtime.Calls;
+using PySharp.Runtime.Calls;
+using PySharp.Runtime.PyAttributes;
 
 namespace PySharp.Modules.Builtins;
 
@@ -17,7 +18,8 @@ public class PyListIteratorObject : PyObject
     }
 }
 
-public sealed class PyListIteratorObjectType : PyTypeObject<PyListIteratorObjectType, PyListIteratorObject>
+[PyType("list_iterator")]
+public sealed partial class PyListIteratorObjectType : PyTypeObject<PyListIteratorObjectType, PyListIteratorObject>
 {
     public override string Name => "list_iterator";
 

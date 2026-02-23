@@ -1,6 +1,7 @@
-﻿using PySharp.Runtime;
+using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
+using PySharp.Runtime.PyAttributes;
 
 namespace PySharp.Modules.Builtins;
 
@@ -18,7 +19,8 @@ public sealed class PyMethodObject : PyObject
     }
 }
 
-public sealed class PyMethodObjectType : PyTypeObject<PyMethodObjectType, PyMethodObject>
+[PyType("method")]
+public sealed partial class PyMethodObjectType : PyTypeObject<PyMethodObjectType, PyMethodObject>
 {
     public override string Name => "method";
 

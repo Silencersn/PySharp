@@ -1,5 +1,6 @@
-﻿using PySharp.Runtime;
+using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.PyAttributes;
 using System.Numerics;
 
 namespace PySharp.Modules.Builtins;
@@ -19,7 +20,8 @@ public class PyComplexObject : PyObject
     public static PyComplexObject FromRealImag(double real, double imag = 0) => new(new Complex(real, imag));
 }
 
-public sealed class PyComplexObjectType : PyTypeObject<PyComplexObjectType, PyComplexObject>
+[PyType("complex")]
+public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObjectType, PyComplexObject>
 {
     public override string Name => "complex";
 

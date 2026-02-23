@@ -1,5 +1,6 @@
 ﻿using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.PyAttributes;
 using System.Text;
 
 namespace PySharp.Modules.Builtins;
@@ -41,7 +42,8 @@ public abstract class PyExceptionType<TSelf, TBase> : PyExceptionType<TSelf>
 
 #region Base Classes
 
-public sealed class PyBaseExceptionObjectType : PyExceptionType<PyBaseExceptionObjectType>
+[PyType("BaseException")]
+public sealed partial class PyBaseExceptionObjectType : PyExceptionType<PyBaseExceptionObjectType>
 {
     public override string Name => "BaseException";
 
@@ -87,17 +89,20 @@ public sealed class PyBaseExceptionObjectType : PyExceptionType<PyBaseExceptionO
     }
 }
 
-public sealed class PyExceptionObjectType : PyExceptionType<PyExceptionObjectType, PyBaseExceptionObjectType>
+[PyType("Exception")]
+public sealed partial class PyExceptionObjectType : PyExceptionType<PyExceptionObjectType, PyBaseExceptionObjectType>
 {
     public override string Name => "Exception";
 }
 
-public sealed class PyLookupErrorObjectType : PyExceptionType<PyLookupErrorObjectType, PyExceptionObjectType>
+[PyType("LookupError")]
+public sealed partial class PyLookupErrorObjectType : PyExceptionType<PyLookupErrorObjectType, PyExceptionObjectType>
 {
     public override string Name => "LookupError";
 }
 
-public sealed class PyArithmeticErrorObjectType : PyExceptionType<PyArithmeticErrorObjectType, PyExceptionObjectType>
+[PyType("ArithmeticError")]
+public sealed partial class PyArithmeticErrorObjectType : PyExceptionType<PyArithmeticErrorObjectType, PyExceptionObjectType>
 {
     public override string Name => "ArithmeticError";
 }
@@ -106,97 +111,116 @@ public sealed class PyArithmeticErrorObjectType : PyExceptionType<PyArithmeticEr
 
 #region Concrete Exceptions
 
-public sealed class PySystemExitObjectType : PyExceptionType<PySystemExitObjectType, PyBaseExceptionObjectType>
+[PyType("SystemExit")]
+public sealed partial class PySystemExitObjectType : PyExceptionType<PySystemExitObjectType, PyBaseExceptionObjectType>
 {
     public override string Name => "SystemExit";
 }
 
-public sealed class PyGeneratorExitObjectType : PyExceptionType<PyGeneratorExitObjectType, PyBaseExceptionObjectType>
+[PyType("GeneratorExit")]
+public sealed partial class PyGeneratorExitObjectType : PyExceptionType<PyGeneratorExitObjectType, PyBaseExceptionObjectType>
 {
     public override string Name => "GeneratorExit";
 }
 
-public sealed class PyTypeErrorObjectType : PyExceptionType<PyTypeErrorObjectType, PyExceptionObjectType>
+[PyType("TypeError")]
+public sealed partial class PyTypeErrorObjectType : PyExceptionType<PyTypeErrorObjectType, PyExceptionObjectType>
 {
     public override string Name => "TypeError";
 }
 
-public sealed class PyStopIterationObjectType : PyExceptionType<PyStopIterationObjectType, PyExceptionObjectType>
+[PyType("StopIteration")]
+public sealed partial class PyStopIterationObjectType : PyExceptionType<PyStopIterationObjectType, PyExceptionObjectType>
 {
     public override string Name => "StopIteration";
 }
 
-public sealed class PyAttributeErrorObjectType : PyExceptionType<PyAttributeErrorObjectType, PyExceptionObjectType>
+[PyType("AttributeError")]
+public sealed partial class PyAttributeErrorObjectType : PyExceptionType<PyAttributeErrorObjectType, PyExceptionObjectType>
 {
     public override string Name => "AttributeError";
 }
 
-public sealed class PyKeyErrorObjectType : PyExceptionType<PyKeyErrorObjectType, PyLookupErrorObjectType>
+[PyType("KeyError")]
+public sealed partial class PyKeyErrorObjectType : PyExceptionType<PyKeyErrorObjectType, PyLookupErrorObjectType>
 {
     public override string Name => "KeyError";
 }
 
-public sealed class PyIndexErrorObjectType : PyExceptionType<PyIndexErrorObjectType, PyLookupErrorObjectType>
+[PyType("IndexError")]
+public sealed partial class PyIndexErrorObjectType : PyExceptionType<PyIndexErrorObjectType, PyLookupErrorObjectType>
 {
     public override string Name => "IndexError";
 }
 
-public sealed class PyValueErrorObjectType : PyExceptionType<PyValueErrorObjectType, PyExceptionObjectType>
+[PyType("ValueError")]
+public sealed partial class PyValueErrorObjectType : PyExceptionType<PyValueErrorObjectType, PyExceptionObjectType>
 {
     public override string Name => "ValueError";
 }
 
-public sealed class PyUnicodeErrorObjectType : PyExceptionType<PyUnicodeErrorObjectType, PyValueErrorObjectType>
+[PyType("UnicodeError")]
+public sealed partial class PyUnicodeErrorObjectType : PyExceptionType<PyUnicodeErrorObjectType, PyValueErrorObjectType>
 {
     public override string Name => "UnicodeError";
 }
 
-public sealed class PyUnicodeEncodeErrorObjectType : PyExceptionType<PyUnicodeEncodeErrorObjectType, PyUnicodeErrorObjectType>
+[PyType("UnicodeEncodeError")]
+public sealed partial class PyUnicodeEncodeErrorObjectType : PyExceptionType<PyUnicodeEncodeErrorObjectType, PyUnicodeErrorObjectType>
 {
     public override string Name => "UnicodeEncodeError";
 }
 
-public sealed class PyNameErrorObjectType : PyExceptionType<PyNameErrorObjectType, PyExceptionObjectType>
+[PyType("NameError")]
+public sealed partial class PyNameErrorObjectType : PyExceptionType<PyNameErrorObjectType, PyExceptionObjectType>
 {
     public override string Name => "NameError";
 }
 
-public sealed class PyUnboundLocalErrorObjectType : PyExceptionType<PyUnboundLocalErrorObjectType, PyNameErrorObjectType>
+[PyType("UnboundLocalError")]
+public sealed partial class PyUnboundLocalErrorObjectType : PyExceptionType<PyUnboundLocalErrorObjectType, PyNameErrorObjectType>
 {
     public override string Name => "UnboundLocalError";
 }
 
-public sealed class PyImportErrorObjectType : PyExceptionType<PyImportErrorObjectType, PyExceptionObjectType>
+[PyType("ImportError")]
+public sealed partial class PyImportErrorObjectType : PyExceptionType<PyImportErrorObjectType, PyExceptionObjectType>
 {
     public override string Name => "ImportError";
 }
 
-public sealed class PyModuleNotFoundErrorObjectType : PyExceptionType<PyModuleNotFoundErrorObjectType, PyImportErrorObjectType>
+[PyType("ModuleNotFoundError")]
+public sealed partial class PyModuleNotFoundErrorObjectType : PyExceptionType<PyModuleNotFoundErrorObjectType, PyImportErrorObjectType>
 {
     public override string Name => "ModuleNotFoundError";
 }
 
-public sealed class PySyntaxErrorObjectType : PyExceptionType<PySyntaxErrorObjectType, PyExceptionObjectType>
+[PyType("SyntaxError")]
+public sealed partial class PySyntaxErrorObjectType : PyExceptionType<PySyntaxErrorObjectType, PyExceptionObjectType>
 {
     public override string Name => "SyntaxError";
 }
 
-public sealed class PyIndentationErrorObjectType : PyExceptionType<PyIndentationErrorObjectType, PySyntaxErrorObjectType>
+[PyType("IndentationError")]
+public sealed partial class PyIndentationErrorObjectType : PyExceptionType<PyIndentationErrorObjectType, PySyntaxErrorObjectType>
 {
     public override string Name => "IndentationError";
 }
 
-public sealed class PyZeroDivisionErrorObjectType : PyExceptionType<PyZeroDivisionErrorObjectType, PyArithmeticErrorObjectType>
+[PyType("ZeroDivisionError")]
+public sealed partial class PyZeroDivisionErrorObjectType : PyExceptionType<PyZeroDivisionErrorObjectType, PyArithmeticErrorObjectType>
 {
     public override string Name => "ZeroDivisionError";
 }
 
-public sealed class PyAssertionErrorObjectType : PyExceptionType<PyAssertionErrorObjectType, PyExceptionObjectType>
+[PyType("AssertionError")]
+public sealed partial class PyAssertionErrorObjectType : PyExceptionType<PyAssertionErrorObjectType, PyExceptionObjectType>
 {
     public override string Name => "AssertionError";
 }
 
-public sealed class PyRuntimeErrorObjectType : PyExceptionType<PyRuntimeErrorObjectType, PyExceptionObjectType>
+[PyType("RuntimeError")]
+public sealed partial class PyRuntimeErrorObjectType : PyExceptionType<PyRuntimeErrorObjectType, PyExceptionObjectType>
 {
     public override string Name => "RuntimeError";
 }
@@ -205,22 +229,26 @@ public sealed class PyRuntimeErrorObjectType : PyExceptionType<PyRuntimeErrorObj
 
 #region Warnings
 
-public sealed class PyWarningObjectType : PyExceptionType<PyWarningObjectType, PyExceptionObjectType>
+[PyType("Warning")]
+public sealed partial class PyWarningObjectType : PyExceptionType<PyWarningObjectType, PyExceptionObjectType>
 {
     public override string Name => "Warning";
 }
 
-public sealed class PyUserWarningObjectType : PyExceptionType<PyUserWarningObjectType, PyWarningObjectType>
+[PyType("UserWarning")]
+public sealed partial class PyUserWarningObjectType : PyExceptionType<PyUserWarningObjectType, PyWarningObjectType>
 {
     public override string Name => "UserWarning";
 }
 
-public sealed class PySyntaxWarningObjectType : PyExceptionType<PySyntaxWarningObjectType, PyWarningObjectType>
+[PyType("SyntaxWarning")]
+public sealed partial class PySyntaxWarningObjectType : PyExceptionType<PySyntaxWarningObjectType, PyWarningObjectType>
 {
     public override string Name => "SyntaxWarning";
 }
 
-public sealed class PyDeprecationWarningObjectType : PyExceptionType<PyDeprecationWarningObjectType, PyWarningObjectType>
+[PyType("DeprecationWarning")]
+public sealed partial class PyDeprecationWarningObjectType : PyExceptionType<PyDeprecationWarningObjectType, PyWarningObjectType>
 {
     public override string Name => "DeprecationWarning";
 }

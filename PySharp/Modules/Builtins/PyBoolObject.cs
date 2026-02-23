@@ -1,5 +1,6 @@
-﻿using PySharp.Runtime;
+using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.PyAttributes;
 
 namespace PySharp.Modules.Builtins;
 
@@ -25,7 +26,8 @@ public sealed class PyBoolObject : PyIntObject
     }
 }
 
-public sealed class PyBoolObjectType : PyTypeObject<PyBoolObjectType, PyBoolObject>
+[PyType("bool")]
+public sealed partial class PyBoolObjectType : PyTypeObject<PyBoolObjectType, PyBoolObject>
 {
     public override string Name => "bool";
     public override bool IsSealed => true;

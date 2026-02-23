@@ -1,4 +1,4 @@
-﻿using PySharp.Runtime;
+using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
 using System.Buffers;
@@ -58,7 +58,8 @@ public partial class PyStrObject : PyObject
     }
 }
 
-public sealed class PyStrObjectType : PyTypeObject<PyStrObjectType, PyStrObject>
+[PyType("str")]
+public sealed partial class PyStrObjectType : PyTypeObject<PyStrObjectType, PyStrObject>
 {
     public override string Name => "str";
     public PyStrObjectType()

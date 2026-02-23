@@ -1,4 +1,5 @@
-﻿using PySharp.Runtime.Calls;
+using PySharp.Runtime.Calls;
+using PySharp.Runtime.PyAttributes;
 using System.Diagnostics;
 using System.Numerics;
 
@@ -60,7 +61,8 @@ public class PyRangeObject : PyObject
     }
 }
 
-public sealed class PyRangeObjectType : PyTypeObject<PyRangeObjectType, PyRangeObject>
+[PyType("range")]
+public sealed partial class PyRangeObjectType : PyTypeObject<PyRangeObjectType, PyRangeObject>
 {
     public override string Name => "range";
 

@@ -1,4 +1,5 @@
-﻿using PySharp.Runtime.Calls;
+using PySharp.Runtime.Calls;
+using PySharp.Runtime.PyAttributes;
 
 namespace PySharp.Modules.Builtins;
 
@@ -20,7 +21,8 @@ public sealed class PyMemberDescriptorObject : PyObject
     }
 }
 
-public sealed class PyMemberDescriptorObjectType : PyTypeObject<PyMemberDescriptorObjectType, PyMemberDescriptorObject>
+[PyType("member_descriptor")]
+public sealed partial class PyMemberDescriptorObjectType : PyTypeObject<PyMemberDescriptorObjectType, PyMemberDescriptorObject>
 {
     public override string Name => "member_descriptor";
 

@@ -1,5 +1,6 @@
-﻿using PySharp.Runtime;
+using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.PyAttributes;
 using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Modules.Builtins;
@@ -55,7 +56,8 @@ public class PyBuiltinFunctionOrMethodObject : PyObject, IPyObjectName
     }
 }
 
-public sealed class PyBuiltinFunctionOrMethodObjectType : PyTypeObject<PyBuiltinFunctionOrMethodObjectType, PyBuiltinFunctionOrMethodObject>
+[PyType("builtin_function_or_method")]
+public sealed partial class PyBuiltinFunctionOrMethodObjectType : PyTypeObject<PyBuiltinFunctionOrMethodObjectType, PyBuiltinFunctionOrMethodObject>
 {
     public override string Name => "builtin_function_or_method";
 

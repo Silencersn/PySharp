@@ -1,4 +1,4 @@
-﻿using PySharp.Runtime;
+using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
 using PySharp.Runtime.PyAttributes;
@@ -17,7 +17,8 @@ public sealed class PyClassMethodObject : PyObject
     }
 }
 
-public sealed class PyClassMethodObjectType : PyTypeObject<PyClassMethodObjectType, PyClassMethodObject>
+[PyType("classmethod")]
+public sealed partial class PyClassMethodObjectType : PyTypeObject<PyClassMethodObjectType, PyClassMethodObject>
 {
     public override string Name => "classmethod";
 

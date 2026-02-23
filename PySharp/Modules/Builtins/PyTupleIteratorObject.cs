@@ -1,5 +1,6 @@
-﻿using PySharp.Runtime;
+using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.PyAttributes;
 
 namespace PySharp.Modules.Builtins;
 
@@ -18,7 +19,8 @@ public class PyTupleIteratorObject : PyObject
     }
 }
 
-public sealed class PyTupleIteratorObjectType : PyTypeObject<PyTupleIteratorObjectType, PyTupleIteratorObject>
+[PyType("tuple_iterator")]
+public sealed partial class PyTupleIteratorObjectType : PyTypeObject<PyTupleIteratorObjectType, PyTupleIteratorObject>
 {
     public override string Name => "tuple_iterator";
 

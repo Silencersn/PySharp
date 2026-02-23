@@ -1,5 +1,6 @@
-﻿using PySharp.Runtime;
+using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.PyAttributes;
 
 namespace PySharp.Modules.Builtins;
 
@@ -30,7 +31,8 @@ public sealed class PyFunctionObject : PyObject, IPyObjectName
     }
 }
 
-public sealed class PyFunctionObjectType : PyTypeObject<PyFunctionObjectType, PyFunctionObject>
+[PyType("function")]
+public sealed partial class PyFunctionObjectType : PyTypeObject<PyFunctionObjectType, PyFunctionObject>
 {
     public override string Name => "function";
 

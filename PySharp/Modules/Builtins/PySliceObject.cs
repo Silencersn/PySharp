@@ -1,4 +1,4 @@
-﻿using PySharp.Runtime;
+using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
 using PySharp.Runtime.PyAttributes;
@@ -24,7 +24,8 @@ public class PySliceObject : PyObject
     }
 }
 
-public sealed class PySliceObjectType : PyTypeObject<PySliceObjectType, PySliceObject>
+[PyType("slice")]
+public sealed partial class PySliceObjectType : PyTypeObject<PySliceObjectType, PySliceObject>
 {
     public override string Name => "slice";
 

@@ -1,5 +1,6 @@
-﻿using PySharp.Compilation.AstNodes;
+using PySharp.Compilation.AstNodes;
 using PySharp.Compilation.Bytecodes;
+using PySharp.Runtime.PyAttributes;
 using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -118,7 +119,8 @@ public sealed class PyCodeObject : PyObject
     }
 }
 
-public sealed class PyCodeObjectType : PyTypeObject<PyCodeObjectType, PyCodeObject>
+[PyType("code")]
+public sealed partial class PyCodeObjectType : PyTypeObject<PyCodeObjectType, PyCodeObject>
 {
     public override string Name => "code";
 }

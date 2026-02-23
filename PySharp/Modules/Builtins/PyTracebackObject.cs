@@ -1,5 +1,6 @@
-﻿using PySharp.Compilation.CodeAnalysis;
+using PySharp.Compilation.CodeAnalysis;
 using PySharp.Runtime;
+using PySharp.Runtime.PyAttributes;
 
 namespace PySharp.Modules.Builtins;
 
@@ -19,7 +20,8 @@ internal sealed class PyTracebackObject : PyObject
     }
 }
 
-internal sealed class PyTracebackObjectType : PyTypeObject<PyTracebackObjectType, PyTracebackObject>
+[PyType("traceback")]
+internal sealed partial class PyTracebackObjectType : PyTypeObject<PyTracebackObjectType, PyTracebackObject>
 {
     public override string Name => "traceback";
 }

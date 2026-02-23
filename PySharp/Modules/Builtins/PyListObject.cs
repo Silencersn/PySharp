@@ -1,4 +1,4 @@
-﻿using PySharp.Runtime;
+using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
 using PySharp.Runtime.Comparison;
@@ -110,7 +110,8 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr, IList<PyOb
     }
 }
 
-public sealed class PyListObjectType : PyTypeObject<PyListObjectType, PyListObject>
+[PyType("list")]
+public sealed partial class PyListObjectType : PyTypeObject<PyListObjectType, PyListObject>
 {
     public override string Name => "list";
 

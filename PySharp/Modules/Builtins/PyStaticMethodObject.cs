@@ -1,4 +1,4 @@
-﻿using PySharp.Runtime;
+using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
 using PySharp.Runtime.PyAttributes;
@@ -17,7 +17,8 @@ public sealed class PyStaticMethodObject : PyObject
     }
 }
 
-public sealed class PyStaticMethodObjectType : PyTypeObject<PyStaticMethodObjectType, PyStaticMethodObject>
+[PyType("staticmethod")]
+public sealed partial class PyStaticMethodObjectType : PyTypeObject<PyStaticMethodObjectType, PyStaticMethodObject>
 {
     public override string Name => "staticmethod";
 

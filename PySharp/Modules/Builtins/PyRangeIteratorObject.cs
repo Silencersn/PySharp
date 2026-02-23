@@ -1,4 +1,5 @@
-﻿using PySharp.Runtime.Calls;
+using PySharp.Runtime.Calls;
+using PySharp.Runtime.PyAttributes;
 using System.Numerics;
 
 namespace PySharp.Modules.Builtins;
@@ -15,7 +16,8 @@ public class PyRangeIteratorObject : PyObject
     }
 }
 
-public sealed class PyRangeIteratorObjectType : PyTypeObject<PyRangeIteratorObjectType, PyRangeIteratorObject>
+[PyType("range_iterator")]
+public sealed partial class PyRangeIteratorObjectType : PyTypeObject<PyRangeIteratorObjectType, PyRangeIteratorObject>
 {
     public override string Name => "range_iterator";
 
@@ -53,7 +55,8 @@ public class PyLongRangeIteratorObject : PyObject
     }
 }
 
-public sealed class PyLongRangeIteratorObjectType : PyTypeObject<PyLongRangeIteratorObjectType, PyLongRangeIteratorObject>
+[PyType("longrange_iterator")]
+public sealed partial class PyLongRangeIteratorObjectType : PyTypeObject<PyLongRangeIteratorObjectType, PyLongRangeIteratorObject>
 {
     public override string Name => "longrange_iterator";
 

@@ -1,5 +1,6 @@
-﻿using PySharp.Runtime;
+using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.PyAttributes;
 using System.Numerics;
 
 namespace PySharp.Modules.Builtins;
@@ -17,7 +18,8 @@ public class PyFloatObject : PyObject
     }
 }
 
-public sealed class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatObject>
+[PyType("float")]
+public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatObject>
 {
     public override string Name => "float";
 

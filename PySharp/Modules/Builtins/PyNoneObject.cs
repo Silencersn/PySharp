@@ -1,4 +1,5 @@
-﻿using PySharp.Runtime.Calls;
+using PySharp.Runtime.Calls;
+using PySharp.Runtime.PyAttributes;
 
 namespace PySharp.Modules.Builtins;
 
@@ -9,7 +10,8 @@ public class PyNoneObject : PyObject
     private PyNoneObject() { }
 }
 
-public sealed class PyNoneObjectType : PyTypeObject<PyNoneObjectType, PyNoneObject>
+[PyType("NoneType")]
+public sealed partial class PyNoneObjectType : PyTypeObject<PyNoneObjectType, PyNoneObject>
 {
     public override string Name => "NoneType";
     public override bool IsSealed => true;

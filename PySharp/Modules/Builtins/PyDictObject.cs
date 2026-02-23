@@ -1,4 +1,4 @@
-﻿using PySharp.Runtime;
+using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
 using PySharp.Runtime.Comparison;
@@ -114,7 +114,8 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr, IDictionar
     }
 }
 
-public sealed class PyDictObjectType : PyTypeObject<PyDictObjectType, PyDictObject>
+[PyType("dict")]
+public sealed partial class PyDictObjectType : PyTypeObject<PyDictObjectType, PyDictObject>
 {
     public override string Name => "dict";
 

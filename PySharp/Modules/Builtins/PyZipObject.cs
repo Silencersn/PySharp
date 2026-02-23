@@ -1,4 +1,4 @@
-﻿using PySharp.Runtime;
+using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
 using PySharp.Runtime.PyAttributes;
@@ -21,7 +21,8 @@ public class PyZipObject : PyObject
     }
 }
 
-public sealed class PyZipObjectType : PyTypeObject<PyZipObjectType, PyZipObject>
+[PyType("zip")]
+public sealed partial class PyZipObjectType : PyTypeObject<PyZipObjectType, PyZipObject>
 {
     public override string Name => "zip";
 

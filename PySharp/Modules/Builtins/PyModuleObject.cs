@@ -1,6 +1,7 @@
-﻿using PySharp.Runtime;
+using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Environments;
+using PySharp.Runtime.PyAttributes;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
@@ -33,7 +34,8 @@ public class PyModuleObject : PyObject, IPyObjectName
     public virtual void OnImport(PyCallContext context, PyEnvironment environment) { }
 }
 
-public sealed class PyModuleObjectType : PyTypeObject<PyModuleObjectType, PyModuleObject>
+[PyType("module")]
+public sealed partial class PyModuleObjectType : PyTypeObject<PyModuleObjectType, PyModuleObject>
 {
     public override string Name => "module";
 

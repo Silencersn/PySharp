@@ -1,4 +1,5 @@
-﻿using PySharp.Runtime.Calls;
+using PySharp.Runtime.Calls;
+using PySharp.Runtime.PyAttributes;
 using System.Diagnostics;
 
 namespace PySharp.Modules.Builtins;
@@ -18,7 +19,8 @@ internal sealed class PyWrapperDescriptorObject : PyObject
     }
 }
 
-internal sealed class PyWrapperDescriptorObjectType : PyTypeObject<PyWrapperDescriptorObjectType, PyWrapperDescriptorObject>
+[PyType("wrapper_descriptor")]
+internal sealed partial class PyWrapperDescriptorObjectType : PyTypeObject<PyWrapperDescriptorObjectType, PyWrapperDescriptorObject>
 {
     public override string Name => "wrapper_descriptor";
 

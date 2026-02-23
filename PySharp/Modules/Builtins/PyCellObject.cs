@@ -1,4 +1,5 @@
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.PyAttributes;
 
 namespace PySharp.Modules.Builtins;
 
@@ -24,7 +25,8 @@ public class PyCellObject : PyObject
     }
 }
 
-public sealed class PyCellObjectType : PyTypeObject<PyCellObjectType, PyCellObject>
+[PyType("cell")]
+public sealed partial class PyCellObjectType : PyTypeObject<PyCellObjectType, PyCellObject>
 {
     public override string Name => "cell";
 

@@ -24,7 +24,8 @@ public partial class PyThreadObject : PyObject
     }
 }
 
-public sealed class PyThreadObjectType : PyTypeObject<PyThreadObjectType, PyThreadObject>
+[PyType("Thread", Module = "threading")]
+public sealed partial class PyThreadObjectType : PyTypeObject<PyThreadObjectType, PyThreadObject>
 {
     public override string DefaultModule => "threading";
     public override string Name => "Thread";

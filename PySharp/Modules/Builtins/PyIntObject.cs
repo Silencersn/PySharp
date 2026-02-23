@@ -1,4 +1,4 @@
-﻿using PySharp.Runtime;
+using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
 using PySharp.Runtime.Comparison;
@@ -97,7 +97,7 @@ public class PyIntObject : PyObject
 }
 
 [PyType("int")]
-public partial class PyIntObjectType : PyTypeObject<PyIntObjectType, PyIntObject>
+public sealed partial class PyIntObjectType : PyTypeObject<PyIntObjectType, PyIntObject>
 {
     public override string Name => "int";
 

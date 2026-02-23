@@ -23,7 +23,8 @@ public partial class PyRandomObject : PyObject
     }
 }
 
-public sealed class PyRandomObjectType : PyTypeObject<PyRandomObjectType, PyRandomObject>
+[PyType("Random", Module = "random")]
+public sealed partial class PyRandomObjectType : PyTypeObject<PyRandomObjectType, PyRandomObject>
 {
     public override string DefaultModule => "random";
     public override string Name => "Random";

@@ -1,4 +1,4 @@
-﻿namespace PySharp.Modules.Builtins;
+namespace PySharp.Modules.Builtins;
 
 public class PyBuiltinsModuleObject : PyModuleObject
 {

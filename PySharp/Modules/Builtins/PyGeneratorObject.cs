@@ -1,4 +1,4 @@
-﻿using PySharp.Compilation.Bytecodes;
+using PySharp.Compilation.Bytecodes;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
@@ -127,7 +127,8 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
     }
 }
 
-public sealed class PyGeneratorObjectType : PyTypeObject<PyGeneratorObjectType, PyGeneratorObject>
+[PyType("generator")]
+public sealed partial class PyGeneratorObjectType : PyTypeObject<PyGeneratorObjectType, PyGeneratorObject>
 {
     public override string Name => "generator";
 

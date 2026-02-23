@@ -1,4 +1,5 @@
-﻿using PySharp.Runtime.Calls;
+using PySharp.Runtime.Calls;
+using PySharp.Runtime.PyAttributes;
 
 namespace PySharp.Modules.Builtins;
 
@@ -9,7 +10,8 @@ public sealed class PyEllipsisObject : PyObject
     private PyEllipsisObject() { }
 }
 
-public sealed class PyEllipsisObjectType : PyTypeObject<PyEllipsisObjectType, PyEllipsisObject>
+[PyType("ellipsis")]
+public sealed partial class PyEllipsisObjectType : PyTypeObject<PyEllipsisObjectType, PyEllipsisObject>
 {
     public override string Name => "ellipsis";
     public override bool IsSealed => true;
