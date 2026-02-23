@@ -51,8 +51,7 @@ public class SlotsGenerator : IIncrementalGenerator
                 .EnterBlock()
                     .AppendLine($"partial class {pyType.Name}")
                     .EnterBlock()
-                        .AppendLine("internal override bool UsingSourceGeneratedFillSlots => true;")
-                        .AppendLine("internal override void SourceGeneratedFillSlots()")
+                        .AppendLine("protected override void FillSlots()")
                         .EnterBlock()
                             .ForEach(pyType.Slots, (builder, slot) =>
                             {

@@ -4,9 +4,9 @@ namespace PySharp.Modules.Builtins;
 
 partial class PyTypeObject
 {
-    internal PyTypeSlots Slots { get; }
+    protected internal PyTypeSlots Slots { get; }
 
-    internal sealed class PyTypeSlots
+    protected internal sealed class PyTypeSlots
     {
         // TODO: support different protocols
 
