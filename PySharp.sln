@@ -14,6 +14,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PySharp.Tests", "PySharp.Tests\PySharp.Tests.csproj", "{8BB36BE5-0B80-4E2D-9D4E-AFFD1780A61A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PySharp.SourceGeneration", "PySharp.SourceGeneration\PySharp.SourceGeneration.csproj", "{652F30FC-EDCC-4228-9D8B-FD300F0F6836}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -32,6 +34,10 @@ Global
 		{8BB36BE5-0B80-4E2D-9D4E-AFFD1780A61A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8BB36BE5-0B80-4E2D-9D4E-AFFD1780A61A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8BB36BE5-0B80-4E2D-9D4E-AFFD1780A61A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{652F30FC-EDCC-4228-9D8B-FD300F0F6836}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{652F30FC-EDCC-4228-9D8B-FD300F0F6836}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{652F30FC-EDCC-4228-9D8B-FD300F0F6836}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{652F30FC-EDCC-4228-9D8B-FD300F0F6836}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
