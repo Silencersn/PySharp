@@ -20,106 +20,125 @@ partial class PyTypeObject<TObject>
         PyAttributes.Add(name, new PyMethodDescriptorObject(name, this, PyDelegateConverter.CreateOverloadDispatcher(methods)));
     }
 
+    // TODO: temp properties and methods, for testing source gen
+    internal virtual bool UsingSourceGeneratedFillSlots => false;
+    internal virtual void SourceGeneratedFillSlots()
+    {
+
+    }
+
+    internal void FillSlot<TDelegate>(string name, ref TDelegate? field, TDelegate func) where TDelegate : Delegate
+    {
+        field = func;
+        PyAttributes.Add(name, new PyWrapperDescriptorObject(func));
+    }
+
     private void FillSlots()
     {
+        if (UsingSourceGeneratedFillSlots)
+        {
+            SourceGeneratedFillSlots();
+            return;
+        }
+
         var type = GetType();
         var methods = type.GetMethods(BindingFlags.NonPublic | BindingFlags.Instance);
         var nameToMethod = methods
             .Where(static method => method.GetBaseDefinition().DeclaringType == typeof(PyTypeObject<TObject>))
             .ToDictionary(static method => method.Name);
 
-        FillSlot(PySpecialNames.Str, ref Slots.Str, Str);
-        FillSlot(PySpecialNames.Repr, ref Slots.Repr, Repr);
-        FillSlot(PySpecialNames.Bool, ref Slots.Bool, Bool);
-        FillSlot(PySpecialNames.Hash, ref Slots.Hash, Hash);
-        FillSlot(PySpecialNames.Len, ref Slots.Len, Len);
-        FillSlot(PySpecialNames.Index, ref Slots.Index, Index);
-        FillSlot(PySpecialNames.Int, ref Slots.Int, Int);
-        FillSlot(PySpecialNames.Float, ref Slots.Float, Float);
-        FillSlot(PySpecialNames.Call, ref Slots.Call, Call);
+        FillSlotIsOverriden(PySpecialNames.Str, ref Slots.Str, Str);
+        FillSlotIsOverriden(PySpecialNames.Repr, ref Slots.Repr, Repr);
+        FillSlotIsOverriden(PySpecialNames.Bool, ref Slots.Bool, Bool);
+        FillSlotIsOverriden(PySpecialNames.Hash, ref Slots.Hash, Hash);
+        FillSlotIsOverriden(PySpecialNames.Len, ref Slots.Len, Len);
+        FillSlotIsOverriden(PySpecialNames.Index, ref Slots.Index, Index);
+        FillSlotIsOverriden(PySpecialNames.Int, ref Slots.Int, Int);
+        FillSlotIsOverriden(PySpecialNames.Float, ref Slots.Float, Float);
+        FillSlotIsOverriden(PySpecialNames.Call, ref Slots.Call, Call);
 
-        FillSlot(PySpecialNames.Complex, ref Slots.Complex, Complex);
-        FillSlot(PySpecialNames.Abs, ref Slots.Abs, Abs);
-        FillSlot(PySpecialNames.Neg, ref Slots.Neg, Neg);
-        FillSlot(PySpecialNames.Pos, ref Slots.Pos, Pos);
-        FillSlot(PySpecialNames.Invert, ref Slots.Invert, Invert);
-        FillSlot(PySpecialNames.SetName, ref Slots.SetName, SetName);
-        FillSlot(PySpecialNames.Missing, ref Slots.Missing, Missing);
-        FillSlot(PySpecialNames.Init, ref Slots.Init, Init);
-        FillSlot(PySpecialNames.Format, ref Slots.Format, Format);
+        FillSlotIsOverriden(PySpecialNames.Complex, ref Slots.Complex, Complex);
+        FillSlotIsOverriden(PySpecialNames.Abs, ref Slots.Abs, Abs);
+        FillSlotIsOverriden(PySpecialNames.Neg, ref Slots.Neg, Neg);
+        FillSlotIsOverriden(PySpecialNames.Pos, ref Slots.Pos, Pos);
+        FillSlotIsOverriden(PySpecialNames.Invert, ref Slots.Invert, Invert);
+        FillSlotIsOverriden(PySpecialNames.SetName, ref Slots.SetName, SetName);
+        FillSlotIsOverriden(PySpecialNames.Missing, ref Slots.Missing, Missing);
+        FillSlotIsOverriden(PySpecialNames.Init, ref Slots.Init, Init);
+        FillSlotIsOverriden(PySpecialNames.Format, ref Slots.Format, Format);
 
-        FillSlot(PySpecialNames.Iter, ref Slots.Iter, Iter);
-        FillSlot(PySpecialNames.Next, ref Slots.Next, Next);
-        FillSlot(PySpecialNames.GetItem, ref Slots.GetItem, GetItem);
-        FillSlot(PySpecialNames.SetItem, ref Slots.SetItem, SetItem);
-        FillSlot(PySpecialNames.DelItem, ref Slots.DelItem, DelItem);
-        FillSlot(PySpecialNames.Contains, ref Slots.Contains, Contains);
+        FillSlotIsOverriden(PySpecialNames.Iter, ref Slots.Iter, Iter);
+        FillSlotIsOverriden(PySpecialNames.Next, ref Slots.Next, Next);
+        FillSlotIsOverriden(PySpecialNames.GetItem, ref Slots.GetItem, GetItem);
+        FillSlotIsOverriden(PySpecialNames.SetItem, ref Slots.SetItem, SetItem);
+        FillSlotIsOverriden(PySpecialNames.DelItem, ref Slots.DelItem, DelItem);
+        FillSlotIsOverriden(PySpecialNames.Contains, ref Slots.Contains, Contains);
 
-        FillSlot(PySpecialNames.Enter, ref Slots.Enter, Enter);
-        FillSlot(PySpecialNames.Exit, ref Slots.Exit, Exit);
+        FillSlotIsOverriden(PySpecialNames.Enter, ref Slots.Enter, Enter);
+        FillSlotIsOverriden(PySpecialNames.Exit, ref Slots.Exit, Exit);
 
-        FillSlot(PySpecialNames.Get, ref Slots.Get, Get);
-        FillSlot(PySpecialNames.Set, ref Slots.Set, Set);
-        FillSlot(PySpecialNames.Delete, ref Slots.Delete, Delete);
-        FillSlot(PySpecialNames.GetAttribute, ref Slots.GetAttribute, GetAttribute);
-        FillSlot(PySpecialNames.GetAttr, ref Slots.GetAttr, GetAttr);
-        FillSlot(PySpecialNames.SetAttr, ref Slots.SetAttr, SetAttr);
-        FillSlot(PySpecialNames.DelAttr, ref Slots.DelAttr, DelAttr);
+        FillSlotIsOverriden(PySpecialNames.Get, ref Slots.Get, Get);
+        FillSlotIsOverriden(PySpecialNames.Set, ref Slots.Set, Set);
+        FillSlotIsOverriden(PySpecialNames.Delete, ref Slots.Delete, Delete);
+        FillSlotIsOverriden(PySpecialNames.GetAttribute, ref Slots.GetAttribute, GetAttribute);
+        FillSlotIsOverriden(PySpecialNames.GetAttr, ref Slots.GetAttr, GetAttr);
+        FillSlotIsOverriden(PySpecialNames.SetAttr, ref Slots.SetAttr, SetAttr);
+        FillSlotIsOverriden(PySpecialNames.DelAttr, ref Slots.DelAttr, DelAttr);
 
         // Binary operators
-        FillSlot(PySpecialNames.Add, ref Slots.Add, Add);
-        FillSlot(PySpecialNames.Sub, ref Slots.Sub, Sub);
-        FillSlot(PySpecialNames.Mul, ref Slots.Mul, Mul);
-        FillSlot(PySpecialNames.TrueDiv, ref Slots.TrueDiv, TrueDiv);
-        FillSlot(PySpecialNames.FloorDiv, ref Slots.FloorDiv, FloorDiv);
-        FillSlot(PySpecialNames.Mod, ref Slots.Mod, Mod);
-        FillSlot(PySpecialNames.DivMod, ref Slots.DivMod, DivMod);
-        FillSlot(PySpecialNames.LShift, ref Slots.LShift, LShift);
-        FillSlot(PySpecialNames.RShift, ref Slots.RShift, RShift);
-        FillSlot(PySpecialNames.And, ref Slots.And, And);
-        FillSlot(PySpecialNames.Xor, ref Slots.Xor, Xor);
-        FillSlot(PySpecialNames.Or, ref Slots.Or, Or);
+        FillSlotIsOverriden(PySpecialNames.Add, ref Slots.Add, Add);
+        FillSlotIsOverriden(PySpecialNames.Sub, ref Slots.Sub, Sub);
+        FillSlotIsOverriden(PySpecialNames.Mul, ref Slots.Mul, Mul);
+        FillSlotIsOverriden(PySpecialNames.TrueDiv, ref Slots.TrueDiv, TrueDiv);
+        FillSlotIsOverriden(PySpecialNames.FloorDiv, ref Slots.FloorDiv, FloorDiv);
+        FillSlotIsOverriden(PySpecialNames.Mod, ref Slots.Mod, Mod);
+        FillSlotIsOverriden(PySpecialNames.DivMod, ref Slots.DivMod, DivMod);
+        FillSlotIsOverriden(PySpecialNames.LShift, ref Slots.LShift, LShift);
+        FillSlotIsOverriden(PySpecialNames.RShift, ref Slots.RShift, RShift);
+        FillSlotIsOverriden(PySpecialNames.And, ref Slots.And, And);
+        FillSlotIsOverriden(PySpecialNames.Xor, ref Slots.Xor, Xor);
+        FillSlotIsOverriden(PySpecialNames.Or, ref Slots.Or, Or);
 
         // Reverse binary operators
-        FillSlot(PySpecialNames.RAdd, ref Slots.RAdd, RAdd);
-        FillSlot(PySpecialNames.RSub, ref Slots.RSub, RSub);
-        FillSlot(PySpecialNames.RMul, ref Slots.RMul, RMul);
-        FillSlot(PySpecialNames.RTrueDiv, ref Slots.RTrueDiv, RTrueDiv);
-        FillSlot(PySpecialNames.RFloorDiv, ref Slots.RFloorDiv, RFloorDiv);
-        FillSlot(PySpecialNames.RMod, ref Slots.RMod, RMod);
-        FillSlot(PySpecialNames.RDivMod, ref Slots.RDivMod, RDivMod);
-        FillSlot(PySpecialNames.RLShift, ref Slots.RLShift, RLShift);
-        FillSlot(PySpecialNames.RRShift, ref Slots.RRShift, RRShift);
-        FillSlot(PySpecialNames.RAnd, ref Slots.RAnd, RAnd);
-        FillSlot(PySpecialNames.RXor, ref Slots.RXor, RXor);
-        FillSlot(PySpecialNames.ROr, ref Slots.ROr, ROr);
+        FillSlotIsOverriden(PySpecialNames.RAdd, ref Slots.RAdd, RAdd);
+        FillSlotIsOverriden(PySpecialNames.RSub, ref Slots.RSub, RSub);
+        FillSlotIsOverriden(PySpecialNames.RMul, ref Slots.RMul, RMul);
+        FillSlotIsOverriden(PySpecialNames.RTrueDiv, ref Slots.RTrueDiv, RTrueDiv);
+        FillSlotIsOverriden(PySpecialNames.RFloorDiv, ref Slots.RFloorDiv, RFloorDiv);
+        FillSlotIsOverriden(PySpecialNames.RMod, ref Slots.RMod, RMod);
+        FillSlotIsOverriden(PySpecialNames.RDivMod, ref Slots.RDivMod, RDivMod);
+        FillSlotIsOverriden(PySpecialNames.RLShift, ref Slots.RLShift, RLShift);
+        FillSlotIsOverriden(PySpecialNames.RRShift, ref Slots.RRShift, RRShift);
+        FillSlotIsOverriden(PySpecialNames.RAnd, ref Slots.RAnd, RAnd);
+        FillSlotIsOverriden(PySpecialNames.RXor, ref Slots.RXor, RXor);
+        FillSlotIsOverriden(PySpecialNames.ROr, ref Slots.ROr, ROr);
 
         // Ternary operators
-        FillSlot(PySpecialNames.Pow, ref Slots.Pow, Pow);
-        FillSlot(PySpecialNames.RPow, ref Slots.RPow, RPow);
+        FillSlotIsOverriden(PySpecialNames.Pow, ref Slots.Pow, Pow);
+        FillSlotIsOverriden(PySpecialNames.RPow, ref Slots.RPow, RPow);
 
         // Rich comparison operators
-        FillSlot(PySpecialNames.Lt, ref Slots.Lt, Lt);
-        FillSlot(PySpecialNames.Le, ref Slots.Le, Le);
-        FillSlot(PySpecialNames.Eq, ref Slots.Eq, Eq);
-        FillSlot(PySpecialNames.Ne, ref Slots.Ne, Ne);
-        FillSlot(PySpecialNames.Gt, ref Slots.Gt, Gt);
-        FillSlot(PySpecialNames.Ge, ref Slots.Ge, Ge);
+        FillSlotIsOverriden(PySpecialNames.Lt, ref Slots.Lt, Lt);
+        FillSlotIsOverriden(PySpecialNames.Le, ref Slots.Le, Le);
+        FillSlotIsOverriden(PySpecialNames.Eq, ref Slots.Eq, Eq);
+        FillSlotIsOverriden(PySpecialNames.Ne, ref Slots.Ne, Ne);
+        FillSlotIsOverriden(PySpecialNames.Gt, ref Slots.Gt, Gt);
+        FillSlotIsOverriden(PySpecialNames.Ge, ref Slots.Ge, Ge);
 
         // In-place binary operators
-        FillSlot(PySpecialNames.IAdd, ref Slots.IAdd, IAdd);
-        FillSlot(PySpecialNames.ISub, ref Slots.ISub, ISub);
-        FillSlot(PySpecialNames.IMul, ref Slots.IMul, IMul);
-        FillSlot(PySpecialNames.IMatMul, ref Slots.IMatMul, IMatMul);
-        FillSlot(PySpecialNames.ITrueDiv, ref Slots.ITrueDiv, ITrueDiv);
-        FillSlot(PySpecialNames.IFloorDiv, ref Slots.IFloorDiv, IFloorDiv);
-        FillSlot(PySpecialNames.IMod, ref Slots.IMod, IMod);
-        FillSlot(PySpecialNames.IPow, ref Slots.IPow, IPow);
-        FillSlot(PySpecialNames.ILShift, ref Slots.ILShift, ILShift);
-        FillSlot(PySpecialNames.IRShift, ref Slots.IRShift, IRShift);
-        FillSlot(PySpecialNames.IAnd, ref Slots.IAnd, IAnd);
-        FillSlot(PySpecialNames.IXor, ref Slots.IXor, IXor);
-        FillSlot(PySpecialNames.IOr, ref Slots.IOr, IOr);
+        FillSlotIsOverriden(PySpecialNames.IAdd, ref Slots.IAdd, IAdd);
+        FillSlotIsOverriden(PySpecialNames.ISub, ref Slots.ISub, ISub);
+        FillSlotIsOverriden(PySpecialNames.IMul, ref Slots.IMul, IMul);
+        FillSlotIsOverriden(PySpecialNames.IMatMul, ref Slots.IMatMul, IMatMul);
+        FillSlotIsOverriden(PySpecialNames.ITrueDiv, ref Slots.ITrueDiv, ITrueDiv);
+        FillSlotIsOverriden(PySpecialNames.IFloorDiv, ref Slots.IFloorDiv, IFloorDiv);
+        FillSlotIsOverriden(PySpecialNames.IMod, ref Slots.IMod, IMod);
+        FillSlotIsOverriden(PySpecialNames.IPow, ref Slots.IPow, IPow);
+        FillSlotIsOverriden(PySpecialNames.ILShift, ref Slots.ILShift, ILShift);
+        FillSlotIsOverriden(PySpecialNames.IRShift, ref Slots.IRShift, IRShift);
+        FillSlotIsOverriden(PySpecialNames.IAnd, ref Slots.IAnd, IAnd);
+        FillSlotIsOverriden(PySpecialNames.IXor, ref Slots.IXor, IXor);
+        FillSlotIsOverriden(PySpecialNames.IOr, ref Slots.IOr, IOr);
 
         bool IsOverriden(MethodInfo method)
         {
@@ -127,13 +146,10 @@ partial class PyTypeObject<TObject>
             return nameToMethod[name].DeclaringType != typeof(PyTypeObject<TObject>);
         }
 
-        void FillSlot<TDelegate>(string name, ref TDelegate? field, TDelegate func) where TDelegate : Delegate
+        void FillSlotIsOverriden<TDelegate>(string name, ref TDelegate? field, TDelegate func) where TDelegate : Delegate
         {
             if (IsOverriden(func.Method))
-            {
-                field = func;
-                PyAttributes.Add(name, new PyWrapperDescriptorObject(func));
-            }
+                FillSlot(name, ref field, func);
         }
     }
 
