@@ -96,7 +96,8 @@ public class PyIntObject : PyObject
     }
 }
 
-public class PyIntObjectType : PyTypeObject<PyIntObjectType, PyIntObject>
+[PyType("int")]
+public partial class PyIntObjectType : PyTypeObject<PyIntObjectType, PyIntObject>
 {
     public override string Name => "int";
 
