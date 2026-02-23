@@ -21,7 +21,6 @@ public class PyFloatObject : PyObject
 [PyType("float")]
 public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatObject>
 {
-    public override string Name => "float";
 
     protected override PyResult Repr(PyCallContext context, PyFloatObject self)
     {

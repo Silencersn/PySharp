@@ -24,7 +24,6 @@ internal sealed class PyMethodWrapperObject : PyObject
 [PyType("method_wrapper")]
 internal sealed partial class PyMethodWrapperObjectType : PyTypeObject<PyMethodWrapperObjectType, PyMethodWrapperObject>
 {
-    public override string Name => "method_wrapper";
 
     protected override PyResult Call(PyCallContext context, PyMethodWrapperObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {

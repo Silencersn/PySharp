@@ -113,7 +113,6 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr, IList<PyOb
 [PyType("list")]
 public sealed partial class PyListObjectType : PyTypeObject<PyListObjectType, PyListObject>
 {
-    public override string Name => "list";
 
     public PyListObjectType()
     {

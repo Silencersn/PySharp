@@ -27,7 +27,6 @@ public class PySliceObject : PyObject
 [PyType("slice")]
 public sealed partial class PySliceObjectType : PyTypeObject<PySliceObjectType, PySliceObject>
 {
-    public override string Name => "slice";
 
     public PySliceObjectType()
     {

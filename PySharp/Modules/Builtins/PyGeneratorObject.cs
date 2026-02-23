@@ -130,7 +130,6 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
 [PyType("generator")]
 public sealed partial class PyGeneratorObjectType : PyTypeObject<PyGeneratorObjectType, PyGeneratorObject>
 {
-    public override string Name => "generator";
 
     public PyGeneratorObjectType()
     {

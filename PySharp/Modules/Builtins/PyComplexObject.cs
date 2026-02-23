@@ -23,7 +23,6 @@ public class PyComplexObject : PyObject
 [PyType("complex")]
 public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObjectType, PyComplexObject>
 {
-    public override string Name => "complex";
 
     protected override PyResult Repr(PyCallContext context, PyComplexObject self)
     {

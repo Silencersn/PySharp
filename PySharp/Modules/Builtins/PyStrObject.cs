@@ -61,7 +61,6 @@ public partial class PyStrObject : PyObject
 [PyType("str")]
 public sealed partial class PyStrObjectType : PyTypeObject<PyStrObjectType, PyStrObject>
 {
-    public override string Name => "str";
     public PyStrObjectType()
     {
         AppendMethodDescriptor("join", Join);

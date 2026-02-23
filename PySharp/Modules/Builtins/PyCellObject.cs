@@ -28,7 +28,6 @@ public class PyCellObject : PyObject
 [PyType("cell")]
 public sealed partial class PyCellObjectType : PyTypeObject<PyCellObjectType, PyCellObject>
 {
-    public override string Name => "cell";
 
     protected override PyResult Repr(PyCallContext context, PyCellObject self)
     {

@@ -13,7 +13,6 @@ public class PyNoneObject : PyObject
 [PyType("NoneType")]
 public sealed partial class PyNoneObjectType : PyTypeObject<PyNoneObjectType, PyNoneObject>
 {
-    public override string Name => "NoneType";
     public override bool IsSealed => true;
     private static readonly PyStrObject _repr = PyStrObject.FromString("None");
 

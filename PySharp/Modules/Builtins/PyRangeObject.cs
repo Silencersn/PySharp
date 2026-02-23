@@ -64,7 +64,6 @@ public class PyRangeObject : PyObject
 [PyType("range")]
 public sealed partial class PyRangeObjectType : PyTypeObject<PyRangeObjectType, PyRangeObject>
 {
-    public override string Name => "range";
 
     protected override PyResult Repr(PyCallContext context, PyRangeObject self)
     {

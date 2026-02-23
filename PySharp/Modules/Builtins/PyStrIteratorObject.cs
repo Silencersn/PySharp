@@ -18,7 +18,6 @@ public class PyStrIteratorObject : PyObject
 [PyType("str_iterator")]
 public sealed partial class PyStrIteratorObjectType : PyTypeObject<PyStrIteratorObjectType, PyStrIteratorObject>
 {
-    public override string Name => "str_iterator";
 
     protected override PyResult Iter(PyCallContext context, PyStrIteratorObject self)
     {

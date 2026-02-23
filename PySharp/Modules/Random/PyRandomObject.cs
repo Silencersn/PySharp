@@ -26,9 +26,6 @@ public partial class PyRandomObject : PyObject
 [PyType("Random", Module = "random")]
 public sealed partial class PyRandomObjectType : PyTypeObject<PyRandomObjectType, PyRandomObject>
 {
-    public override string DefaultModule => "random";
-    public override string Name => "Random";
-
     public PyRandomObjectType()
     {
         AppendMethodDescriptor("random", Random);

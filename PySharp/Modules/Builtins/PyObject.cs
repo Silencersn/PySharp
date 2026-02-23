@@ -71,7 +71,6 @@ public partial class PyObject
 [PyType("object")]
 public sealed partial class PyObjectType : PyTypeObject<PyObjectType, PyObject>
 {
-    public override string Name => "object";
     public override IReadOnlyList<PyTypeObject> Bases => [];
 
     public PyObjectType()

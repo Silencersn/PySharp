@@ -13,7 +13,6 @@ public class PyNotImplementedObject : PyObject
 [PyType("NotImplementedType")]
 public sealed partial class PyNotImplementedObjectType : PyTypeObject<PyNotImplementedObjectType, PyNotImplementedObject>
 {
-    public override string Name => "NotImplementedType";
     public override bool IsSealed => true;
     private static readonly PyStrObject _repr = PyStrObject.FromString("NotImplemented");
 

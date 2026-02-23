@@ -22,7 +22,6 @@ public class PyTupleIteratorObject : PyObject
 [PyType("tuple_iterator")]
 public sealed partial class PyTupleIteratorObjectType : PyTypeObject<PyTupleIteratorObjectType, PyTupleIteratorObject>
 {
-    public override string Name => "tuple_iterator";
 
     protected override PyResult Iter(PyCallContext context, PyTupleIteratorObject self)
     {

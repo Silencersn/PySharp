@@ -24,7 +24,6 @@ public sealed class PyMemberDescriptorObject : PyObject
 [PyType("member_descriptor")]
 public sealed partial class PyMemberDescriptorObjectType : PyTypeObject<PyMemberDescriptorObjectType, PyMemberDescriptorObject>
 {
-    public override string Name => "member_descriptor";
 
     protected override PyResult Get(PyCallContext context, PyMemberDescriptorObject self, PyObject instance, PyObject owner)
     {

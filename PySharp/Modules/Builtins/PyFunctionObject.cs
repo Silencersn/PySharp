@@ -34,7 +34,6 @@ public sealed class PyFunctionObject : PyObject, IPyObjectName
 [PyType("function")]
 public sealed partial class PyFunctionObjectType : PyTypeObject<PyFunctionObjectType, PyFunctionObject>
 {
-    public override string Name => "function";
 
     public PyFunctionObjectType()
     {

@@ -13,7 +13,6 @@ public sealed class PyEllipsisObject : PyObject
 [PyType("ellipsis")]
 public sealed partial class PyEllipsisObjectType : PyTypeObject<PyEllipsisObjectType, PyEllipsisObject>
 {
-    public override string Name => "ellipsis";
     public override bool IsSealed => true;
     private static readonly PyStrObject _repr = PyStrObject.FromString("Ellipsis");
 

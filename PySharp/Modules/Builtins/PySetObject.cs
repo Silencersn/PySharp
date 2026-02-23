@@ -136,7 +136,6 @@ public class PySetObject : PyObject, IPyObjectRecursiveRepr, ISet<PyObject>
 [PyType("set")]
 public sealed partial class PySetObjectType : PyTypeObject<PySetObjectType, PySetObject>
 {
-    public override string Name => "set";
 
     protected override PyResult Repr(PyCallContext context, PySetObject self)
     {

@@ -22,7 +22,6 @@ public sealed class PyMethodObject : PyObject
 [PyType("method")]
 public sealed partial class PyMethodObjectType : PyTypeObject<PyMethodObjectType, PyMethodObject>
 {
-    public override string Name => "method";
 
     public PyMethodObjectType()
     {

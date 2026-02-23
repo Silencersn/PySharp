@@ -32,9 +32,6 @@ public sealed partial class PyQueueObject : PyObject
 [PyType("Queue", Module = "queue")]
 public sealed partial class PyQueueObjectType : PyTypeObject<PyQueueObjectType, PyQueueObject>
 {
-    public override string DefaultModule => "queue";
-    public override string Name => "Queue";
-
     public PyQueueObjectType()
     {
         AppendMethodDescriptor("qsize", QSize);
@@ -173,22 +170,10 @@ public sealed partial class PyQueueObjectType : PyTypeObject<PyQueueObjectType, 
 }
 
 [PyType("Full", Module = "queue")]
-public sealed partial class PyFullObjectType : PyExceptionType<PyFullObjectType, PyExceptionObjectType>
-{
-    public override string DefaultModule => "queue";
-    public override string Name => "Full";
-}
+public sealed partial class PyFullObjectType : PyExceptionType<PyFullObjectType, PyExceptionObjectType>;
 
 [PyType("Empty", Module = "queue")]
-public sealed partial class PyEmptyObjectType : PyExceptionType<PyEmptyObjectType, PyExceptionObjectType>
-{
-    public override string DefaultModule => "queue";
-    public override string Name => "Empty";
-}
+public sealed partial class PyEmptyObjectType : PyExceptionType<PyEmptyObjectType, PyExceptionObjectType>;
 
 [PyType("ShutDown", Module = "queue")]
-public sealed partial class PyShutDownObjectType : PyExceptionType<PyShutDownObjectType, PyExceptionObjectType>
-{
-    public override string DefaultModule => "queue";
-    public override string Name => "ShutDown";
-}
+public sealed partial class PyShutDownObjectType : PyExceptionType<PyShutDownObjectType, PyExceptionObjectType>;

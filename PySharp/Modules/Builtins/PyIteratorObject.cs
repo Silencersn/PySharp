@@ -21,7 +21,6 @@ public class PyIteratorObject : PyObject
 [PyType("iterator")]
 public sealed partial class PyIteratorObjectType : PyTypeObject<PyIteratorObjectType, PyIteratorObject>
 {
-    public override string Name => "iterator";
 
     protected override PyResult Iter(PyCallContext context, PyIteratorObject self)
     {

@@ -50,7 +50,6 @@ public abstract partial class PyTypeObject<TObject> : PyTypeObject where TObject
 [PyType("type")]
 public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObjectType, PyTypeObject>
 {
-    public override string Name => "type";
 
     public PyTypeObjectType()
     {

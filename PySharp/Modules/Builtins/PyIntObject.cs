@@ -99,7 +99,6 @@ public class PyIntObject : PyObject
 [PyType("int")]
 public sealed partial class PyIntObjectType : PyTypeObject<PyIntObjectType, PyIntObject>
 {
-    public override string Name => "int";
 
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl_1, NewImpl_2);
 

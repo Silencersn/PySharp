@@ -31,7 +31,6 @@ public sealed class PyMethodDescriptorObject : PyObject
 [PyType("method_descriptor")]
 public sealed partial class PyMethodDescriptorObjectType : PyTypeObject<PyMethodDescriptorObjectType, PyMethodDescriptorObject>
 {
-    public override string Name => "method_descriptor";
 
     protected override PyResult Get(PyCallContext context, PyMethodDescriptorObject self, PyObject instance, PyObject owner)
     {

@@ -21,7 +21,6 @@ public class PyListIteratorObject : PyObject
 [PyType("list_iterator")]
 public sealed partial class PyListIteratorObjectType : PyTypeObject<PyListIteratorObjectType, PyListIteratorObject>
 {
-    public override string Name => "list_iterator";
 
     protected override PyResult Iter(PyCallContext context, PyListIteratorObject self)
     {

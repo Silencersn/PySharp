@@ -27,7 +27,6 @@ public sealed class PyPropertyObject : PyObject
 [PyType("property")]
 public sealed partial class PyPropertyObjectType : PyTypeObject<PyPropertyObjectType, PyPropertyObject>
 {
-    public override string Name => "property";
 
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
 

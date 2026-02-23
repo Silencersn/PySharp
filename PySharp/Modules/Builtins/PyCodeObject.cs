@@ -122,5 +122,4 @@ public sealed class PyCodeObject : PyObject
 [PyType("code")]
 public sealed partial class PyCodeObjectType : PyTypeObject<PyCodeObjectType, PyCodeObject>
 {
-    public override string Name => "code";
 }

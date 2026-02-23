@@ -24,7 +24,6 @@ public class PyZipObject : PyObject
 [PyType("zip")]
 public sealed partial class PyZipObjectType : PyTypeObject<PyZipObjectType, PyZipObject>
 {
-    public override string Name => "zip";
 
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
 

@@ -59,7 +59,6 @@ public class PyBuiltinFunctionOrMethodObject : PyObject, IPyObjectName
 [PyType("builtin_function_or_method")]
 public sealed partial class PyBuiltinFunctionOrMethodObjectType : PyTypeObject<PyBuiltinFunctionOrMethodObjectType, PyBuiltinFunctionOrMethodObject>
 {
-    public override string Name => "builtin_function_or_method";
 
     protected override PyResult Repr(PyCallContext context, PyBuiltinFunctionOrMethodObject self)
     {

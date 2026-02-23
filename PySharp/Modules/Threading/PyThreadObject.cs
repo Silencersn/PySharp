@@ -27,9 +27,6 @@ public partial class PyThreadObject : PyObject
 [PyType("Thread", Module = "threading")]
 public sealed partial class PyThreadObjectType : PyTypeObject<PyThreadObjectType, PyThreadObject>
 {
-    public override string DefaultModule => "threading";
-    public override string Name => "Thread";
-
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
 
     public PyThreadObjectType()

@@ -23,5 +23,4 @@ internal sealed class PyTracebackObject : PyObject
 [PyType("traceback")]
 internal sealed partial class PyTracebackObjectType : PyTypeObject<PyTracebackObjectType, PyTracebackObject>
 {
-    public override string Name => "traceback";
 }

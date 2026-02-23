@@ -37,7 +37,6 @@ public class PyModuleObject : PyObject, IPyObjectName
 [PyType("module")]
 public sealed partial class PyModuleObjectType : PyTypeObject<PyModuleObjectType, PyModuleObject>
 {
-    public override string Name => "module";
 
     protected override PyResult Repr(PyCallContext context, PyModuleObject self)
     {
