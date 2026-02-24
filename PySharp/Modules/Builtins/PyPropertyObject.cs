@@ -30,29 +30,25 @@ public sealed partial class PyPropertyObjectType : PyTypeObject<PyPropertyObject
 
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
 
-    public PyPropertyObjectType()
-    {
-        AppendMethodDescriptor("getter", Getter);
-        AppendMethodDescriptor("setter", Setter);
-        AppendMethodDescriptor("deleter", Deleter);
-    }
-
+    [PyMethod("getter")]
     [PyFunctionArgsDef("fget")]
-    internal PyResult Getter(PyCallContext context, PyPropertyObject self, PyArguments arguments)
+    private static PyResult Getter(PyCallContext context, PyPropertyObject self, PyArguments arguments)
     {
         self._fget = arguments[0];
         return self;
     }
 
+    [PyMethod("setter")]
     [PyFunctionArgsDef("fset")]
-    internal PyResult Setter(PyCallContext context, PyPropertyObject self, PyArguments arguments)
+    private static PyResult Setter(PyCallContext context, PyPropertyObject self, PyArguments arguments)
     {
         self._fset = arguments[0];
         return self;
     }
 
+    [PyMethod("deleter")]
     [PyFunctionArgsDef("deleter")]
-    internal PyResult Deleter(PyCallContext context, PyPropertyObject self, PyArguments arguments)
+    private static PyResult Deleter(PyCallContext context, PyPropertyObject self, PyArguments arguments)
     {
         self._fdel = arguments[0];
         return self;

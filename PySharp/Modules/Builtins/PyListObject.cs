@@ -113,22 +113,6 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr, IList<PyOb
 [PyType("list")]
 public sealed partial class PyListObjectType : PyTypeObject<PyListObjectType, PyListObject>
 {
-
-    public PyListObjectType()
-    {
-        AppendMethodDescriptor("append", Append);
-        AppendMethodDescriptor("extend", Extend);
-        AppendMethodDescriptor("insert", Insert);
-        AppendMethodDescriptor("remove", Remove);
-        AppendMethodDescriptor("pop", Pop);
-        AppendMethodDescriptor("clear", Clear);
-        AppendMethodDescriptor("index", Index_1, Index_2, Index_3);
-        AppendMethodDescriptor("count", Count);
-        AppendMethodDescriptor("sort", Sort);
-        AppendMethodDescriptor("reverse", Reverse);
-        AppendMethodDescriptor("copy", Copy);
-    }
-
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
 
     [PyFunctionArgsDef("iterable=()", "/")]
@@ -196,21 +180,24 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObjectType, Py
         return PyBoolObject.FromBoolean(self.SequenceEqual(otherList, PyObjectComparer.Default));
     }
 
+    [PyMethod("append")]
     [PyFunctionArgsDef("x", "/")]
-    internal PyResult Append(PyCallContext context, PyListObject self, PyArguments arguments)
+    private static PyResult Append(PyCallContext context, PyListObject self, PyArguments arguments)
     {
         self.PyAppend(arguments[0]);
         return PyNoneObject.None;
     }
 
+    [PyMethod("extend")]
     [PyFunctionArgsDef("iterable", "/")]
-    internal PyResult Extend(PyCallContext context, PyListObject self, PyArguments arguments)
+    private static PyResult Extend(PyCallContext context, PyListObject self, PyArguments arguments)
     {
         return self.PyExtend(context, arguments[0]);
     }
 
+    [PyMethod("insert")]
     [PyFunctionArgsDef("i", "x", "/")]
-    internal PyResult Insert(PyCallContext context, PyListObject self, PyArguments arguments)
+    private static PyResult Insert(PyCallContext context, PyListObject self, PyArguments arguments)
     {
         var result = PySpecialMethods.Index(context, arguments[0]);
         if (result.IsError)
@@ -219,16 +206,18 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObjectType, Py
         return PyNoneObject.None;
     }
 
+    [PyMethod("remove")]
     [PyFunctionArgsDef("x", "/")]
-    internal PyResult Remove(PyCallContext context, PyListObject self, PyArguments arguments)
+    private static PyResult Remove(PyCallContext context, PyListObject self, PyArguments arguments)
     {
         if (self.PyRemove(arguments[0]))
             return PyNoneObject.None;
         return PyResult.ValueError(PySR.Runtime_List_ItemNotFound, "remove");
     }
 
+    [PyMethod("pop")]
     [PyFunctionArgsDef("i=-1", "/")]
-    internal PyResult Pop(PyCallContext context, PyListObject self, PyArguments arguments)
+    private static PyResult Pop(PyCallContext context, PyListObject self, PyArguments arguments)
     {
         var result = PySpecialMethods.Index(context, arguments[0]);
         if (result.IsError)
@@ -238,15 +227,17 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObjectType, Py
         return self.PyPop(result.Value.Int32Value);
     }
 
+    [PyMethod("clear")]
     [PyFunctionArgsDef()]
-    internal PyResult Clear(PyCallContext context, PyListObject self, PyArguments arguments)
+    private static PyResult Clear(PyCallContext context, PyListObject self, PyArguments arguments)
     {
         self.PyClear();
         return PyNoneObject.None;
     }
 
+    [PyMethod("index", Order = 1)]
     [PyFunctionArgsDef("x", "/")]
-    internal PyResult Index_1(PyCallContext context, PyListObject self, PyArguments arguments)
+    private static PyResult Index_1(PyCallContext context, PyListObject self, PyArguments arguments)
     {
         var index = self.PyIndex(arguments[0]);
         if (index is -1)
@@ -260,8 +251,9 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObjectType, Py
         return PyIntObject.FromInteger(index);
     }
 
+    [PyMethod("index", Order = 2)]
     [PyFunctionArgsDef("x", "start", "/")]
-    internal PyResult Index_2(PyCallContext context, PyListObject self, PyArguments arguments)
+    private static PyResult Index_2(PyCallContext context, PyListObject self, PyArguments arguments)
     {
         var result = PySpecialMethods.Index(context, arguments[1]);
         if (result.IsError)
@@ -278,8 +270,9 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObjectType, Py
         return PyIntObject.FromInteger(index);
     }
 
+    [PyMethod("index", Order = 3)]
     [PyFunctionArgsDef("x", "start", "end", "/")]
-    internal PyResult Index_3(PyCallContext context, PyListObject self, PyArguments arguments)
+    private static PyResult Index_3(PyCallContext context, PyListObject self, PyArguments arguments)
     {
         var startResult = PySpecialMethods.Index(context, arguments[1]);
         if (startResult.IsError)
@@ -299,14 +292,16 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObjectType, Py
         return PyIntObject.FromInteger(index);
     }
 
+    [PyMethod("count")]
     [PyFunctionArgsDef("x", "/")]
-    internal PyResult Count(PyCallContext context, PyListObject self, PyArguments arguments)
+    private static PyResult Count(PyCallContext context, PyListObject self, PyArguments arguments)
     {
         return PyIntObject.FromInteger(self.PyCount(arguments[0]));
     }
 
+    [PyMethod("sort")]
     [PyFunctionArgsDef("*", "key=None", "reverse=False")]
-    internal PyResult Sort(PyCallContext context, PyListObject self, PyArguments arguments)
+    private static PyResult Sort(PyCallContext context, PyListObject self, PyArguments arguments)
     {
         var keySelector = arguments["key"];
         var result = PySpecialMethods.Bool(context, arguments["reverse"]);
@@ -331,15 +326,17 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObjectType, Py
         return PyNoneObject.None;
     }
 
+    [PyMethod("reverse")]
     [PyFunctionArgsDef()]
-    internal PyResult Reverse(PyCallContext context, PyListObject self, PyArguments arguments)
+    private static PyResult Reverse(PyCallContext context, PyListObject self, PyArguments arguments)
     {
         self.PyReverse();
         return PyNoneObject.None;
     }
 
+    [PyMethod("copy")]
     [PyFunctionArgsDef()]
-    internal PyResult Copy(PyCallContext context, PyListObject self, PyArguments arguments)
+    private static PyResult Copy(PyCallContext context, PyListObject self, PyArguments arguments)
     {
         return self.PyCopy();
     }

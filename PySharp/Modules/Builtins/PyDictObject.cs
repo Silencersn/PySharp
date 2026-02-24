@@ -117,19 +117,6 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr, IDictionar
 [PyType("dict")]
 public sealed partial class PyDictObjectType : PyTypeObject<PyDictObjectType, PyDictObject>
 {
-
-    public PyDictObjectType()
-    {
-        AppendMethodDescriptor("items", Items);
-        AppendMethodDescriptor("clear", Clear);
-        AppendMethodDescriptor("get", Get);
-        AppendMethodDescriptor("setdefault", SetDefault);
-        AppendMethodDescriptor("pop", Pop_1, Pop_2);
-        AppendMethodDescriptor("popitem", PopItem);
-        AppendMethodDescriptor("copy", Copy);
-        AppendMethodDescriptor("update", Update);
-    }
-
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl_1, NewImpl_2);
 
     [PyFunctionArgsDef("**kwargs")]
@@ -206,35 +193,40 @@ public sealed partial class PyDictObjectType : PyTypeObject<PyDictObjectType, Py
         return PyIntObject.FromInteger(self.Count);
     }
 
+    [PyMethod("items")]
     [PyFunctionArgsDef()]
-    internal PyResult Items(PyCallContext context, PyDictObject self, PyArguments arguments)
+    private static PyResult Items(PyCallContext context, PyDictObject self, PyArguments arguments)
     {
         return self.PyItems();
     }
 
+    [PyMethod("clear")]
     [PyFunctionArgsDef()]
-    internal PyResult Clear(PyCallContext context, PyDictObject self, PyArguments arguments)
+    private static PyResult Clear(PyCallContext context, PyDictObject self, PyArguments arguments)
     {
         self.PyClear();
         return PyNoneObject.None;
     }
 
+    [PyMethod("get")]
     [PyFunctionArgsDef("key", "default=None", "/")]
-    internal PyResult Get(PyCallContext context, PyDictObject self, PyArguments arguments)
+    private static PyResult Get(PyCallContext context, PyDictObject self, PyArguments arguments)
     {
         if (self.PyTryGet(arguments[0], out var value))
             return value;
         return arguments[1];
     }
 
+    [PyMethod("setdefault")]
     [PyFunctionArgsDef("key", "default=None", "/")]
-    internal PyResult SetDefault(PyCallContext context, PyDictObject self, PyArguments arguments)
+    private static PyResult SetDefault(PyCallContext context, PyDictObject self, PyArguments arguments)
     {
         return self.PySetDefault(arguments[0], arguments[1]);
     }
 
+    [PyMethod("pop", Order = 1)]
     [PyFunctionArgsDef("key", "/")]
-    internal PyResult Pop_1(PyCallContext context, PyDictObject self, PyArguments arguments)
+    private static PyResult Pop_1(PyCallContext context, PyDictObject self, PyArguments arguments)
     {
         var key = arguments[0];
         if (self.PyTryPop(key, out var value))
@@ -242,30 +234,34 @@ public sealed partial class PyDictObjectType : PyTypeObject<PyDictObjectType, Py
         return PyResult.KeyError(key);
     }
 
+    [PyMethod("pop", Order = 2)]
     [PyFunctionArgsDef("key", "default", "/")]
-    internal PyResult Pop_2(PyCallContext context, PyDictObject self, PyArguments arguments)
+    private static PyResult Pop_2(PyCallContext context, PyDictObject self, PyArguments arguments)
     {
         if (self.PyTryPop(arguments[0], out var value))
             return value;
         return arguments[1];
     }
 
+    [PyMethod("popitem")]
     [PyFunctionArgsDef()]
-    internal PyResult PopItem(PyCallContext context, PyDictObject self, PyArguments arguments)
+    private static PyResult PopItem(PyCallContext context, PyDictObject self, PyArguments arguments)
     {
         if (self.PyTryPopItem(out var key, out var value))
             return PyTupleObject.CreateTuple(key, value);
         return PyResult.KeyError(PySR.Runtime_Dictionary_PopEmptyDict);
     }
 
+    [PyMethod("copy")]
     [PyFunctionArgsDef()]
-    internal PyResult Copy(PyCallContext context, PyDictObject self, PyArguments arguments)
+    private static PyResult Copy(PyCallContext context, PyDictObject self, PyArguments arguments)
     {
         return self.PyCopy();
     }
 
+    [PyMethod("update")]
     [PyFunctionArgsDef("iterable_or_mapping")]
-    internal PyResult Update(PyCallContext context, PyDictObject self, PyArguments arguments)
+    private static PyResult Update(PyCallContext context, PyDictObject self, PyArguments arguments)
     {
         // TODO: **kwargs
         return self.PyUpdate(context, arguments[0]);

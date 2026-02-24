@@ -130,14 +130,6 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
 [PyType("generator")]
 public sealed partial class PyGeneratorObjectType : PyTypeObject<PyGeneratorObjectType, PyGeneratorObject>
 {
-
-    public PyGeneratorObjectType()
-    {
-        AppendMethodDescriptor("send", Send);
-        AppendMethodDescriptor("throw", Throw);
-        AppendMethodDescriptor("close", Close);
-    }
-
     protected override PyResult Repr(PyCallContext context, PyGeneratorObject self)
     {
         return PyStrObject.FromString($"<generator object {self.Name} at 0x{self.PyId:X16}>");
@@ -153,8 +145,9 @@ public sealed partial class PyGeneratorObjectType : PyTypeObject<PyGeneratorObje
         return self.PyNext(context);
     }
 
+    [PyMethod("send")]
     [PyFunctionArgsDef("value")]
-    internal PyResult Send(PyCallContext context, PyGeneratorObject self, PyArguments arguments)
+    private static PyResult Send(PyCallContext context, PyGeneratorObject self, PyArguments arguments)
     {
         if (arguments[0] is PyNoneObject)
             return self.PyNext(context);
@@ -162,14 +155,16 @@ public sealed partial class PyGeneratorObjectType : PyTypeObject<PyGeneratorObje
         return self.PySend(context, arguments[0]);
     }
 
+    [PyMethod("throw")]
     [PyFunctionArgsDef("value")]
-    internal PyResult Throw(PyCallContext context, PyGeneratorObject self, PyArguments arguments)
+    private static PyResult Throw(PyCallContext context, PyGeneratorObject self, PyArguments arguments)
     {
         return self.PyThrow(context, arguments[0]);
     }
 
+    [PyMethod("close")]
     [PyFunctionArgsDef()]
-    internal PyResult Close(PyCallContext context, PyGeneratorObject self, PyArguments arguments)
+    private static PyResult Close(PyCallContext context, PyGeneratorObject self, PyArguments arguments)
     {
         return self.PyClose(context);
     }

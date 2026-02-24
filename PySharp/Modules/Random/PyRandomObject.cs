@@ -26,14 +26,6 @@ public partial class PyRandomObject : PyObject
 [PyType("Random", Module = "random")]
 public sealed partial class PyRandomObjectType : PyTypeObject<PyRandomObjectType, PyRandomObject>
 {
-    public PyRandomObjectType()
-    {
-        AppendMethodDescriptor("random", Random);
-        AppendMethodDescriptor("uniform", Uniform);
-        AppendMethodDescriptor("randrange", RandRange_1, RandRange_2);
-        AppendMethodDescriptor("randint", RandInt);
-    }
-
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (kwargs.Count is not 0)
@@ -50,14 +42,16 @@ public sealed partial class PyRandomObjectType : PyTypeObject<PyRandomObjectType
         return PyResult.TypeError(null);
     }
 
+    [PyMethod("random")]
     [PyFunctionArgsDef()]
-    internal PyResult Random(PyCallContext context, PyRandomObject self, PyArguments arguments)
+    private static PyResult Random(PyCallContext context, PyRandomObject self, PyArguments arguments)
     {
         return PyFloatObject.FromDouble(self.PyRandom());
     }
 
+    [PyMethod("uniform")]
     [PyFunctionArgsDef("a", "b")]
-    internal PyResult Uniform(PyCallContext context, PyRandomObject self, PyArguments arguments)
+    private static PyResult Uniform(PyCallContext context, PyRandomObject self, PyArguments arguments)
     {
         var aResult = PySpecialMethods.Float(context, arguments[0]);
         if (aResult.IsError)
@@ -68,8 +62,9 @@ public sealed partial class PyRandomObjectType : PyTypeObject<PyRandomObjectType
         return PyFloatObject.FromDouble(self.PyUniform(aResult.Value.Value, bResult.Value.Value));
     }
 
+    [PyMethod("randrange", Order = 1)]
     [PyFunctionArgsDef("stop", "/")]
-    internal PyResult RandRange_1(PyCallContext context, PyRandomObject self, PyArguments arguments)
+    private static PyResult RandRange_1(PyCallContext context, PyRandomObject self, PyArguments arguments)
     {
         var result = PySpecialMethods.Index(context, arguments[0]);
         if (result.IsError)
@@ -81,8 +76,9 @@ public sealed partial class PyRandomObjectType : PyTypeObject<PyRandomObjectType
         return PyIntObject.FromInteger(randResult.Value);
     }
 
+    [PyMethod("randrange", Order = 2)]
     [PyFunctionArgsDef("start", "stop", "step=1", "/")]
-    internal PyResult RandRange_2(PyCallContext context, PyRandomObject self, PyArguments arguments)
+    private static PyResult RandRange_2(PyCallContext context, PyRandomObject self, PyArguments arguments)
     {
         var startResult = PySpecialMethods.Index(context, arguments[0]);
         if (startResult.IsError)
@@ -108,8 +104,9 @@ public sealed partial class PyRandomObjectType : PyTypeObject<PyRandomObjectType
         return PyIntObject.FromInteger(randResult.Value);
     }
 
+    [PyMethod("randint")]
     [PyFunctionArgsDef("a", "b")]
-    internal PyResult RandInt(PyCallContext context, PyRandomObject self, PyArguments arguments)
+    private static PyResult RandInt(PyCallContext context, PyRandomObject self, PyArguments arguments)
     {
         var aResult = PySpecialMethods.Index(context, arguments[0]);
         if (aResult.IsError)

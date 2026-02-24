@@ -61,12 +61,9 @@ public partial class PyStrObject : PyObject
 [PyType("str")]
 public sealed partial class PyStrObjectType : PyTypeObject<PyStrObjectType, PyStrObject>
 {
-    public PyStrObjectType()
-    {
-        AppendMethodDescriptor("join", Join);
-    }
+    [PyMethod("join")]
     [PyFunctionArgsDef("iterable", "/")]
-    internal PyResult Join(PyCallContext context, PyStrObject self, PyArguments arguments)
+    private static PyResult Join(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
         return self.PyJoin(context, arguments[0]);
     }

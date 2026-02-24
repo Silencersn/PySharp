@@ -29,13 +29,6 @@ public sealed partial class PyThreadObjectType : PyTypeObject<PyThreadObjectType
 {
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
 
-    public PyThreadObjectType()
-    {
-        AppendMethodDescriptor("start", Start);
-        AppendMethodDescriptor("join", Join);
-        AppendMethodDescriptor("is_alive", IsAlive);
-    }
-
     [PyFunctionArgsDef("group=None", "target=None", "name=None", "args=()", "kwargs={}", "*", "daemon=None", "context=None")]
     private static PyResult NewImpl(PyCallContext context, PyArguments arguments)
     {
@@ -62,15 +55,17 @@ public sealed partial class PyThreadObjectType : PyTypeObject<PyThreadObjectType
         return obj;
     }
 
+    [PyMethod("start")]
     [PyFunctionArgsDef()]
-    internal PyResult Start(PyCallContext context, PyThreadObject self, PyArguments arguments)
+    private static PyResult Start(PyCallContext context, PyThreadObject self, PyArguments arguments)
     {
         self.PyStart(context);
         return PyNoneObject.None;
     }
 
+    [PyMethod("join")]
     [PyFunctionArgsDef("timeout=None")]
-    internal PyResult Join(PyCallContext context, PyThreadObject self, PyArguments arguments)
+    private static PyResult Join(PyCallContext context, PyThreadObject self, PyArguments arguments)
     {
         if (arguments[0] is PyNoneObject)
         {
@@ -86,8 +81,9 @@ public sealed partial class PyThreadObjectType : PyTypeObject<PyThreadObjectType
         return PyNoneObject.None;
     }
 
+    [PyMethod("is_alive")]
     [PyFunctionArgsDef()]
-    internal PyResult IsAlive(PyCallContext context, PyThreadObject self, PyArguments arguments)
+    private static PyResult IsAlive(PyCallContext context, PyThreadObject self, PyArguments arguments)
     {
         return PyBoolObject.FromBoolean(self.PyIsAlive());
     }

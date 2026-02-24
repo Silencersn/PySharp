@@ -10,13 +10,6 @@ namespace PySharp.Modules.Builtins;
 [PyType("BaseExceptionGroup")]
 public sealed partial class PyBaseExceptionGroupObjectType : PyExceptionType<PyBaseExceptionGroupObjectType, PyBaseExceptionObjectType>
 {
-
-    public PyBaseExceptionGroupObjectType()
-    {
-        AppendMethodDescriptor("derive", Derive);
-        AppendMethodDescriptor("split", Split);
-    }
-
     internal static PyExceptionObject CreateExceptionGroup(string message, IEnumerable<PyExceptionObject> excs)
     {
         var info = new ExceptionGroupInfo(message, [.. excs]);
@@ -65,8 +58,9 @@ public sealed partial class PyBaseExceptionGroupObjectType : PyExceptionType<PyB
         return PyStrObject.FromString($"{self.AsGroup.Message} ({count} sub-exceptions)");
     }
 
+    [PyMethod("derive")]
     [PyFunctionArgsDef("excs", "/")]
-    internal PyResult Derive(PyCallContext context, PyExceptionObject self, PyArguments arguments)
+    private static PyResult Derive(PyCallContext context, PyExceptionObject self, PyArguments arguments)
     {
         if (!self.IsGroup)
             return PyResult.TypeError(null);
@@ -91,8 +85,9 @@ public sealed partial class PyBaseExceptionGroupObjectType : PyExceptionType<PyB
         return result;
     }
 
+    [PyMethod("split")]
     [PyFunctionArgsDef("condition", "/")]
-    internal PyResult Split(PyCallContext context, PyExceptionObject self, PyArguments arguments)
+    private static PyResult Split(PyCallContext context, PyExceptionObject self, PyArguments arguments)
     {
         if (!self.IsGroup)
             return PyResult.TypeError(null);
