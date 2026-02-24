@@ -21,7 +21,7 @@ internal static class AttributeDataExtensions
         }
     }
 
-    public static AttributeData GetAttribute(this ISymbol symbol, string fullyQualifiedAttributeName)
+    public static AttributeData? GetAttribute(this ISymbol symbol, string fullyQualifiedAttributeName)
     {
         foreach (var attributeData in symbol.GetAttributes())
         {
@@ -32,7 +32,7 @@ internal static class AttributeDataExtensions
                 return attributeData;
         }
 
-        throw new InvalidOperationException();
+        return null;
     }
 
     public static IEnumerable<AttributeData> GetAttributes(this IMethodSymbol symbol, string fullyQualifiedAttributeName, bool inherit)
@@ -50,6 +50,19 @@ internal static class AttributeDataExtensions
     public static bool IsDefined(this IMethodSymbol symbol, string fullyQualifiedAttributeName, bool inherit)
     {
         return GetAttributes(symbol, fullyQualifiedAttributeName, inherit).Any();
+    }
+
+    public static T? GetNamedArgumentOrDefault<T>(this AttributeData attributeData, string key, T? defaultValue)
+    {
+        foreach (var pair in attributeData.NamedArguments)
+        {
+            if (pair.Key != key)
+                continue;
+
+            return (T?)pair.Value.Value;
+        }
+
+        return defaultValue;
     }
 
     public static string GetNamedArgumentLiteralOrDefault(this AttributeData attributeData, string key, string defaultValue)

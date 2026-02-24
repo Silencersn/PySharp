@@ -5,6 +5,7 @@ using Microsoft.CodeAnalysis.Text;
 using PySharp.SourceGeneration.Utility;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
@@ -22,8 +23,9 @@ public class PyTypeGenerator : IIncrementalGenerator
                 transform: static (generatorContext, _) =>
                 {
                     var typeSymbol = (INamedTypeSymbol)generatorContext.TargetSymbol;
-                    var pyTypeAttribute = typeSymbol.GetAttribute(PySharpTypes.PyTypeAttribute);
+                    var pyTypeAttribute = typeSymbol.GetAttribute(PySharpTypes.PyTypeAttribute)!;
                     var overridenSlots = new List<string>();
+                    var methods = new List<PyMethodInfo>();
 
                     foreach (var member in typeSymbol.GetMembers())
                     {
@@ -32,10 +34,14 @@ public class PyTypeGenerator : IIncrementalGenerator
 
                         if (methodSymbol.IsDefined(PySharpTypes.PySlotAttribute, inherit: true))
                             overridenSlots.Add(methodSymbol.Name);
+
+                        var methodAttribute = methodSymbol.GetAttribute(PySharpTypes.PyMethodAttribute);
+                        if (methodAttribute is not null)
+                            methods.Add(new(methodSymbol.Name, methodAttribute.ConstructorArguments[0].ToCSharpString(), methodAttribute.GetNamedArgumentOrDefault("Order", 1)));
                     }
 
                     return new PyTypeInfo(typeSymbol.ContainingNamespace.IsGlobalNamespace ? string.Empty : typeSymbol.ContainingNamespace.ToDisplayString(),
-                        typeSymbol.Name, overridenSlots, pyTypeAttribute);
+                        typeSymbol.Name, overridenSlots, pyTypeAttribute, methods);
                 });
 
         context.RegisterSourceOutput(provider, (spc, pyType) =>
@@ -55,11 +61,20 @@ public class PyTypeGenerator : IIncrementalGenerator
 
                         .AppendLine("protected override void FillSlots()")
                         .EnterBlock()
-                            .ForEach(pyType.Slots, (builder, slot) =>
+                            .ForEach(pyType.Slots, static (builder, slot) =>
                             {
                                 builder.AppendLine($"FillSlot(PySpecialNames.{slot}, ref Slots.{slot}, {slot});");
                             })
                         .ExitBlock()
+
+                        .AppendLine("protected override void RegisterMethods()")
+                        .EnterBlock()
+                            .ForEach(pyType.Methods.GroupBy(static info => info.PyNameLiteral), static (builder, overlaps) =>
+                            {
+                                builder.AppendLine($"AppendMethodDescriptor({overlaps.Key}, {string.Join(", ", overlaps.OrderBy(static info => info.Order).Select(static info => info.Name))});");
+                            })
+                        .ExitBlock()
+
                     .ExitBlock()
                 .ExitBlock();
 
@@ -69,18 +84,34 @@ public class PyTypeGenerator : IIncrementalGenerator
 
     public class PyTypeInfo
     {
-        public PyTypeInfo(string @namespace, string name, List<string> slots, AttributeData attributeData)
+        public PyTypeInfo(string @namespace, string name, List<string> slots, AttributeData attributeData, List<PyMethodInfo> methods)
         {
             Namespace = @namespace;
             Name = name;
             Slots = slots;
             AttributeData = attributeData;
+            Methods = methods;
         }
 
         public string Namespace { get;}
         public string Name { get; }
         public List<string> Slots { get; }
+        public List<PyMethodInfo> Methods { get; }
         public AttributeData AttributeData { get; }
+    }
+
+    public record class PyMethodInfo
+    {
+        public PyMethodInfo(string name, string pyNameLiteral, int order)
+        {
+            Name = name;
+            PyNameLiteral = pyNameLiteral;
+            Order = order;
+        }
+
+        public string Name { get; }
+        public string PyNameLiteral { get; }
+        public int Order { get; }
     }
 }
 
