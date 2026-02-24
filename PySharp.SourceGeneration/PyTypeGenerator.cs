@@ -69,9 +69,9 @@ public class PyTypeGenerator : IIncrementalGenerator
 
                         .AppendLine("protected override void RegisterMethods()")
                         .EnterBlock()
-                            .ForEach(pyType.Methods.GroupBy(static info => info.PyNameLiteral), static (builder, overlaps) =>
+                            .ForEach(pyType.Methods.GroupBy(static info => info.PyNameLiteral), static (builder, impls) =>
                             {
-                                builder.AppendLine($"AppendMethodDescriptor({overlaps.Key}, {string.Join(", ", overlaps.OrderBy(static info => info.Order).Select(static info => info.Name))});");
+                                builder.AppendLine($"AppendMethodDescriptor({impls.Key}, {string.Join(", ", impls.OrderBy(static info => info.Order).Select(static info => info.Name))});");
                             })
                         .ExitBlock()
 

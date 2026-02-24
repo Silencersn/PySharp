@@ -58,6 +58,25 @@ public static class PyDelegateConverter
         };
     }
 
+    public static PyUncompoundedDelegate ToUncompounded<TObject>(this PyMethod<TObject> method) where TObject : PyObject
+    {
+        PyArgsDef? def = null;
+
+        return (context, args, kwargs) =>
+        {
+            if (args.Count is 0 || args[0] is not TObject selfOfT)
+                return PyResult.TypeError(null);
+
+            def ??= PyArgsDef.FromDef(method.Method.GetCustomAttribute<PyFunctionArgsDefAttribute>()!.Parameters);
+
+            args = [.. args.Skip(1)];
+            if (def.TryParse(args, kwargs, out var result))
+                return method.Invoke(context, selfOfT, result);
+
+            return PyResult.TypeError(null);
+        };
+    }
+
     public static PyUncompoundedDelegate CreateOverloadDispatcher<TObject>(params PyMethod<TObject>[] methods) where TObject : PyObject
     {
         PyArgsDef[]? defs = null;

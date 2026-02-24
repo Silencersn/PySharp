@@ -18,7 +18,8 @@ partial class PyTypeObject<TObject>
 
     internal void AppendMethodDescriptor(string name, params PyMethod<TObject>[] methods)
     {
-        PyAttributes.Add(name, new PyMethodDescriptorObject(name, this, PyDelegateConverter.CreateOverloadDispatcher(methods)));
+        var uncompoundedDelegate = methods.Length is 1 ? methods[0].ToUncompounded() : PyDelegateConverter.CreateOverloadDispatcher(methods);
+        PyAttributes.Add(name, new PyMethodDescriptorObject(name, this, uncompoundedDelegate));
     }
 
     [EditorBrowsable(EditorBrowsableState.Never)]
