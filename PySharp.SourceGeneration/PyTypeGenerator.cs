@@ -63,7 +63,10 @@ public class PyTypeGenerator : IIncrementalGenerator
                         .EnterBlock()
                             .ForEach(pyType.Slots, static (builder, slot) =>
                             {
-                                builder.AppendLine($"FillSlot(PySpecialNames.{slot}, ref Slots.{slot}, {slot});");
+                                if (slot is "New")
+                                    builder.AppendLine("FillNewSlot();");
+                                else
+                                    builder.AppendLine($"FillSlot(PySpecialNames.{slot}, ref Slots.{slot}, {slot});");
                             })
                         .ExitBlock()
 

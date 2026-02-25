@@ -1,4 +1,5 @@
 ﻿using PySharp.Modules.Builtins;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Runtime.Calls;
@@ -59,5 +60,20 @@ public static class PyArgsValidator
             return false;
 
         return true;
+    }
+
+    public static PyResult ValidateNewCls(PyTypeObject self, PyTypeObject cls)
+    {
+        if (!cls.IsSubclassOf(self))
+            return PyResult.TypeError(PySR.Runtime_Type_NewClsNotSubtype, self.FullName, cls.FullName);
+
+        // int -> PyIntObject: PyObject
+        // bool -> PyBoolObject: PyIntObject
+        // int.__new__(bool, 0) is error
+        if (cls.LayoutType.IsSubclassOf(self.LayoutType))
+            return PyResult.TypeError(PySR.Runtime_Type_NewClsNotSafe, self.FullName, cls.FullName);
+        Debug.Assert(cls.LayoutType == self.LayoutType || self.LayoutType.IsSubclassOf(cls.LayoutType));
+
+        return PyNoneObject.None;
     }
 }

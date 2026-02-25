@@ -37,30 +37,31 @@ partial class PyTypeObject<TObject>
     {
     }
 
-    private void AppendNew()
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    protected void FillNewSlot()
     {
-        var newMethod = GetType()
-            .GetMethods(BindingFlags.NonPublic | BindingFlags.Instance)
-            .Single(method => method.Name == nameof(New) && method.GetBaseDefinition().DeclaringType == typeof(PyTypeObject));
-
-        if (newMethod.DeclaringType == typeof(PyTypeObject<TObject>))
-            return;
-
-        Slots.New = New;
-
-        var method = PyBuiltinFunctionOrMethodObject.CreateBoundMethodFromBound(PySpecialNames.New, this, null! /* TODO */, [PyFunctionArgsDef("cls", "*args", "**kwargs")] (context, arguments) =>
+        Slots.New = (context, cls, args, kwargs) =>
         {
-            if (arguments[0] is not PyTypeObject cls)
-                return PyResult.TypeError(PySR.Runtime_Type_NewClsNonType, FullName, arguments[0].PyType.FullName);
+            var validateResult = PyArgsValidator.ValidateNewCls(this, cls);
+            if (validateResult.IsError)
+                return validateResult;
 
-            if (!cls.IsSubclassOf(this))
-                return PyResult.TypeError(PySR.Runtime_Type_NewClsNotSubtype, FullName, cls.FullName);
+            return New(context, cls, args, kwargs);
+        };
 
-            if (cls.LayoutType.IsSubclassOf(LayoutType))
-                return PyResult.TypeError(PySR.Runtime_Type_NewClsNotSafe, FullName, cls.FullName);
-            Debug.Assert(cls.LayoutType == LayoutType || LayoutType.IsSubclassOf(cls.LayoutType));
+        var method = PyBuiltinFunctionOrMethodObject.CreateBoundMethodFromBound(PySpecialNames.New, this, null! /* TODO */, (context, args, kwargs) =>
+        {
+            if (args.Count is 0)
+                return PyResult.TypeError(null /* TODO */);
 
-            return New(context, cls, arguments.ExtraArgs, arguments.ExtraKwargs);
+            if (args[0] is not PyTypeObject cls)
+                return PyResult.TypeError(PySR.Runtime_Type_NewClsNonType, FullName, args[0].PyType.FullName);
+
+            var validateResult = PyArgsValidator.ValidateNewCls(this, cls);
+            if (validateResult.IsError)
+                return validateResult;
+
+            return New(context, cls, [.. args.Skip(1)], kwargs);
         });
         PyAttributes.Add(PySpecialNames.New, method);
     }

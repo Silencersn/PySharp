@@ -25,7 +25,6 @@ public abstract partial class PyTypeObject<TObject> : PyTypeObject where TObject
     {
         FillSlots();
         RegisterMethods();
-        AppendNew();
     }
 
     public PyTypeObject(string name, IReadOnlyList<PyTypeObject> bases, bool appendOverridenMethods) : base(name, bases)
@@ -34,13 +33,7 @@ public abstract partial class PyTypeObject<TObject> : PyTypeObject where TObject
         {
             FillSlots();
             RegisterMethods();
-            AppendNew();
         }
-    }
-
-    protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
-    {
-        return PyResult.TypeError(PySR.Runtime_Type_CannotCreateInstance, cls.FullName);
     }
 
     internal sealed override PyTypeObject CreateUserDefinedTypeWithSameLayout(string name, string qualName, IReadOnlyList<PyTypeObject> bases)
