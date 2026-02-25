@@ -15,6 +15,5 @@ internal sealed partial class UserDefinedType<TObject> : PyTypeObject<TObject> w
     {
         DefaultName = name;
         Bases = bases;
-        PyAttributes.Add(PySpecialNames.QualName, PyStrObject.FromString(qualName));
     }
 }
