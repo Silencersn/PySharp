@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection.Metadata;
 using System.Text;
 
 namespace PySharp.SourceGeneration;
@@ -67,12 +68,16 @@ public class PyTypeGenerator : IIncrementalGenerator
             builder.AppendLine("using System;");
             builder.AppendLine("using PySharp.Runtime;");
 
+            var qualName = pyType.AttributeData.ConstructorArguments[0].ToCSharpString();
+            var name = SymbolDisplay.FormatPrimitive(((string)pyType.AttributeData.ConstructorArguments[0].Value!).Split('.').Last(), quoteStrings: true, useHexadecimalNumbers: false);
+
             builder
                 .AppendLine($"namespace {pyType.Namespace}")
                 .EnterBlock()
                     .AppendLine($"partial class {pyType.Name}")
                     .EnterBlock()
-                        .AppendLine($"public override string Name => {pyType.AttributeData.ConstructorArguments[0].ToCSharpString()};")
+                        .AppendLine($"public override string DefaultName => {name};")
+                        .AppendLine($"public override string DefaultQualName => {qualName};")
                         .AppendLine($"public override string DefaultModule => {pyType.AttributeData.GetNamedArgumentLiteralOrDefault("Module", "\"builtins\"")};")
 
                         .AppendLine("protected override void FillSlots()")
@@ -100,7 +105,7 @@ public class PyTypeGenerator : IIncrementalGenerator
                             {
                                 builder.AppendLine($"AppendMemberDescriptor({pair.Key}, {pair.Value.Getter ?? "null"}, {pair.Value.Setter ?? "null"}, {pair.Value.Deleter ?? "null"});");
                             })
-                    .ExitBlock()
+                        .ExitBlock()
 
                     .ExitBlock()
                 .ExitBlock();

@@ -22,13 +22,6 @@ public sealed class PyMethodObject : PyObject
 [PyType("method")]
 public sealed partial class PyMethodObjectType : PyTypeObject<PyMethodObjectType, PyMethodObject>
 {
-
-    public PyMethodObjectType()
-    {
-        AppendMemberDescriptor("__func__", static (_, method) => method._functionObj);
-        AppendMemberDescriptor("__self__", static (_, method) => method._target);
-    }
-
     protected override PyResult Call(PyCallContext context, PyMethodObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         return self._functionObj.Call(context, [self._target, .. args], kwargs);
@@ -37,5 +30,17 @@ public sealed partial class PyMethodObjectType : PyTypeObject<PyMethodObjectType
     protected override PyResult GetAttr(PyCallContext context, PyMethodObject self, PyObject item)
     {
         return PyOperators.GetAttr(context, self._functionObj, item);
+    }
+
+    [PyProperty(PySpecialNames.Func)]
+    private static PyResult Get_Func(PyCallContext context, PyMethodObject self)
+    {
+        return self._functionObj;
+    }
+
+    [PyProperty(PySpecialNames.Self)]
+    private static PyResult Get_Self(PyCallContext context, PyMethodObject self)
+    {
+        return self._target;
     }
 }

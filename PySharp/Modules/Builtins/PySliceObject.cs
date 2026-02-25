@@ -27,14 +27,6 @@ public class PySliceObject : PyObject
 [PyType("slice")]
 public sealed partial class PySliceObjectType : PyTypeObject<PySliceObjectType, PySliceObject>
 {
-
-    public PySliceObjectType()
-    {
-        AppendMemberDescriptor("start", static (_, slice) => slice.Start);
-        AppendMemberDescriptor("stop", static (_, slice) => slice.Stop);
-        AppendMemberDescriptor("step", static (_, slice) => slice.Step);
-    }
-
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl_1, NewImpl_2);
 
     [PyFunctionArgsDef("stop", "/")]
@@ -56,5 +48,21 @@ public sealed partial class PySliceObjectType : PyTypeObject<PySliceObjectType, 
             return obj;
         obj.Value._pyType = cls;
         return obj;
+    }
+
+    [PyProperty("start")]
+    private static PyResult Get_Start(PyCallContext context, PySliceObject self)
+    {
+        return self.Start;
+    }
+    [PyProperty("stop")]
+    private static PyResult Get_Stop(PyCallContext context, PySliceObject self)
+    {
+        return self.Stop;
+    }
+    [PyProperty("step")]
+    private static PyResult Get_Step(PyCallContext context, PySliceObject self)
+    {
+        return self.Step;
     }
 }

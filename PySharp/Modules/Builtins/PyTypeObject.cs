@@ -16,7 +16,8 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
         ModuleAsObject is not null ? "<unknown>" : null;
     public PyObject? ModuleAsObject { get; internal set; }
 
-    public abstract string Name { get; }
+    public abstract string DefaultName { get; }
+    public string Name { get; internal set; }
     public string FullName
     {
         get
@@ -27,7 +28,8 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
             return $"{moduleName}.{QualName}";
         }
     }
-    public virtual string QualName => Name;
+    public virtual string DefaultQualName => Name;
+    public string QualName { get; internal set; }
 
     public virtual string Document => string.Empty;
     public virtual bool IsSealed => false;
@@ -39,19 +41,21 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
     {
         if (DefaultModule is not null)
             ModuleAsObject = PyStrObject.FromString(DefaultModule);
+        Name = DefaultName;
+        QualName = DefaultQualName;
         MRO = [this, .. CreateMROWithoutSelf(Bases)];
         Slots = PyTypeSlots.Create(MRO.Skip(1));
-        PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
         PyAttributes.Add(PySpecialNames.Doc, PyNoneObject.None);
     }
 
-    internal PyTypeObject(string name, IReadOnlyList<PyTypeObject> bases)
+    internal PyTypeObject(string qualName, IReadOnlyList<PyTypeObject> bases)
     {
         if (DefaultModule is not null)
             ModuleAsObject = PyStrObject.FromString(DefaultModule);
+        Name = qualName.Split('.').Last();
+        QualName = qualName;
         MRO = [this, .. CreateMROWithoutSelf(bases)];
         Slots = PyTypeSlots.Create(MRO.Skip(1));
-        PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(name));
         PyAttributes.Add(PySpecialNames.Doc, PyNoneObject.None);
     }
 

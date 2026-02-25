@@ -28,7 +28,7 @@ public abstract partial class PyTypeObject<TObject> : PyTypeObject where TObject
         RegisterProperties();
     }
 
-    public PyTypeObject(string name, IReadOnlyList<PyTypeObject> bases, bool appendOverridenMethods) : base(name, bases)
+    public PyTypeObject(string qualName, IReadOnlyList<PyTypeObject> bases, bool appendOverridenMethods) : base(qualName, bases)
     {
         if (appendOverridenMethods)
         {
@@ -47,30 +47,6 @@ public abstract partial class PyTypeObject<TObject> : PyTypeObject where TObject
 [PyType("type")]
 public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObjectType, PyTypeObject>
 {
-
-    public PyTypeObjectType()
-    {
-        AppendMemberDescriptor(PySpecialNames.Bases,
-            static (_, typeObj) => PyTupleObject.CreateTuple(typeObj.Bases),
-            static (_, typeObj, value) => throw new NotImplementedException());
-
-        AppendMemberDescriptor(PySpecialNames.Name,
-            static (_, typeObj) => PyStrObject.FromString(typeObj.Name),
-            static (_, typeObj, value) => throw new NotImplementedException());
-
-        AppendMemberDescriptor(PySpecialNames.MRO,
-            static (_, typeObj) => PyTupleObject.CreateTuple(typeObj.MRO),
-            static (_, typeObj, value) => throw new NotImplementedException());
-
-        AppendMemberDescriptor(PySpecialNames.QualName,
-            static (_, typeObj) => PyStrObject.FromString(typeObj.QualName),
-            static (_, typeObj, value) => throw new NotImplementedException());
-
-        AppendMemberDescriptor(PySpecialNames.Module,
-            static (_, typeObj) => typeObj.ModuleAsObject,
-            static (_, typeObj, value) => typeObj.ModuleAsObject = value);
-    }
-
     protected override PyResult Call(PyCallContext context, PyTypeObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var newFunc = self.Slots.New;
@@ -111,6 +87,75 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObjectType, Py
     protected override PyResult GetAttribute(PyCallContext context, PyTypeObject self, PyObject item)
     {
         return DefaultTypeGetAttribute(context, self, item);
+    }
+
+    [PyProperty(PySpecialNames.Bases)]
+    private static PyResult Get_Bases(PyCallContext context, PyTypeObject self)
+    {
+        return PyTupleObject.CreateTuple(self.Bases);
+    }
+
+    [PyProperty(PySpecialNames.Name)]
+    private static PyResult Get_Name(PyCallContext context, PyTypeObject self)
+    {
+        return PyStrObject.FromString(self.Name);
+    }
+
+    [PyProperty(PySpecialNames.Name, Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_Name(PyCallContext context, PyTypeObject self, PyObject value)
+    {
+        if (self.IsTypeImmutable)
+            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Name, self.FullName);
+
+        if (value is not PyStrObject str)
+            return PyResult.TypeError(null);
+
+        self.Name = str.Value;
+        return PyNoneObject.None;
+    }
+
+    [PyProperty(PySpecialNames.QualName)]
+    private static PyResult Get_QualName(PyCallContext context, PyTypeObject self)
+    {
+        return PyStrObject.FromString(self.QualName);
+    }
+
+    [PyProperty(PySpecialNames.QualName, Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_QualName(PyCallContext context, PyTypeObject self, PyObject value)
+    {
+        if (self.IsTypeImmutable)
+            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.QualName, self.FullName);
+
+        if (value is not PyStrObject str)
+            return PyResult.TypeError(null);
+
+        self.QualName = str.Value;
+        return PyNoneObject.None;
+    }
+
+    [PyProperty(PySpecialNames.MRO)]
+    private static PyResult Get_MRO(PyCallContext context, PyTypeObject self)
+    {
+        return PyTupleObject.CreateTuple(self.MRO);
+    }
+
+    [PyProperty(PySpecialNames.Module)]
+    private static PyResult Get_Module(PyCallContext context, PyTypeObject self)
+    {
+        var module = self.ModuleAsObject;
+        if (module is null)
+            return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.FullName, PySpecialNames.Module);
+        return module;
+    }
+
+    [PyProperty(PySpecialNames.Module, Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_Module(PyCallContext context, PyTypeObject self, PyObject value)
+    {
+        if (self.IsTypeImmutable)
+            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Module, self.FullName);
+
+        self.ModuleAsObject = value;
+        return PyNoneObject.None;
     }
 }
 

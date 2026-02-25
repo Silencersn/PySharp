@@ -99,6 +99,7 @@ public static class PySpecialNames
     public const string Bases = "__bases__";
     public const string Name = "__name__";
     public const string Self = "__self__";
+    public const string Func = "__func__";
     public const string Doc = "__doc__";
     public const string Code = "__code__";
 
