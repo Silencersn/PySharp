@@ -539,7 +539,7 @@ public static class PyStrConverter
         int squote = 0;
         int dquote = 0;
         osize = 0;
-        
+
         var unicode = str.EnumerateRunes();
         foreach (var rune in unicode)
         {

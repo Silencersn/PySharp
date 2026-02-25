@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace PySharp.SourceGeneration;
+﻿namespace PySharp.SourceGeneration;
 
 internal static class PySharpTypes
 {

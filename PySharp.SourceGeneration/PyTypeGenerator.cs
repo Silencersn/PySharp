@@ -5,9 +5,7 @@ using Microsoft.CodeAnalysis.Text;
 using PySharp.SourceGeneration.Utility;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Reflection.Metadata;
 using System.Text;
 
 namespace PySharp.SourceGeneration;
@@ -76,9 +74,9 @@ public class PyTypeGenerator : IIncrementalGenerator
                 .EnterBlock()
                     .AppendLine($"partial class {pyType.Name}")
                     .EnterBlock()
-                        .AppendLine($"public override string DefaultName => {name};")
-                        .AppendLine($"public override string DefaultQualName => {qualName};")
-                        .AppendLine($"public override string DefaultModule => {pyType.AttributeData.GetNamedArgumentLiteralOrDefault("Module", "\"builtins\"")};")
+                        .AppendLine($"protected override string DefaultName => {name};")
+                        .AppendLine($"protected override string DefaultQualName => {qualName};")
+                        .AppendLine($"protected override string DefaultModule => {pyType.AttributeData.GetNamedArgumentLiteralOrDefault("Module", "\"builtins\"")};")
 
                         .AppendLine("protected override void FillSlots()")
                         .EnterBlock()
@@ -126,7 +124,7 @@ public class PyTypeGenerator : IIncrementalGenerator
             Properties = [];
         }
 
-        public string Namespace { get;}
+        public string Namespace { get; }
         public string Name { get; }
         public List<string> Slots { get; }
         public List<PyMethodInfo> Methods { get; }
