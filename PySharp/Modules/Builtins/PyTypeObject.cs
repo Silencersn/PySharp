@@ -10,13 +10,13 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
 {
     public virtual IReadOnlyList<PyTypeObject> Bases => [PyObjectType.Shared];
     public IReadOnlyList<PyTypeObject> MRO { get; }
-    public virtual string? DefaultModule => "builtins";
+    protected virtual string? DefaultModule => "builtins";
     public string? Module =>
         ModuleAsObject is PyStrObject str ? str.Value :
         ModuleAsObject is not null ? "<unknown>" : null;
     public PyObject? ModuleAsObject { get; internal set; }
 
-    public abstract string DefaultName { get; }
+    protected abstract string DefaultName { get; }
     public string Name { get; internal set; }
     public string FullName
     {
@@ -28,7 +28,7 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
             return $"{moduleName}.{QualName}";
         }
     }
-    public virtual string DefaultQualName => Name;
+    protected virtual string DefaultQualName => DefaultName;
     public string QualName { get; internal set; }
 
     public virtual string Document => string.Empty;

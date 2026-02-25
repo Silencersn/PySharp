@@ -11,12 +11,14 @@ namespace PySharp.Modules.Builtins;
 [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.NonPublicMethods)]
 partial class PyTypeObject<TObject>
 {
-    internal void AppendMemberDescriptor(string name, PyMemberGetter<TObject> getter, PyMemberSetter<TObject>? setter = null, PyMemberDeleter<TObject>? deleter = null)
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    protected void AppendMemberDescriptor(string name, PyMemberGetter<TObject> getter, PyMemberSetter<TObject>? setter = null, PyMemberDeleter<TObject>? deleter = null)
     {
         PyAttributes[name] = new PyMemberDescriptorObject(this, getter.ToNonGeneric(), setter?.ToNonGeneric(), deleter?.ToNonGeneric());
     }
 
-    internal void AppendMethodDescriptor(string name, params PyMethod<TObject>[] methods)
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    protected void AppendMethodDescriptor(string name, params PyMethod<TObject>[] methods)
     {
         var uncompoundedDelegate = methods.Length is 1 ? methods[0].ToUncompounded() : PyDelegateConverter.CreateOverloadDispatcher(methods);
         PyAttributes.Add(name, new PyMethodDescriptorObject(name, this, uncompoundedDelegate));
