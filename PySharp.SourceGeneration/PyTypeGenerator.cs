@@ -24,8 +24,8 @@ public class PyTypeGenerator : IIncrementalGenerator
                 {
                     var typeSymbol = (INamedTypeSymbol)generatorContext.TargetSymbol;
                     var pyTypeAttribute = typeSymbol.GetAttribute(PySharpTypes.PyTypeAttribute)!;
-                    var overridenSlots = new List<string>();
-                    var methods = new List<PyMethodInfo>();
+                    var @namespace = typeSymbol.ContainingNamespace.IsGlobalNamespace ? string.Empty : typeSymbol.ContainingNamespace.ToDisplayString();
+                    var pyTypeInfo = new PyTypeInfo(@namespace, typeSymbol.Name, pyTypeAttribute);
 
                     foreach (var member in typeSymbol.GetMembers())
                     {
@@ -33,15 +33,31 @@ public class PyTypeGenerator : IIncrementalGenerator
                             continue;
 
                         if (methodSymbol.IsDefined(PySharpTypes.PySlotAttribute, inherit: true))
-                            overridenSlots.Add(methodSymbol.Name);
+                            pyTypeInfo.Slots.Add(methodSymbol.Name);
 
                         var methodAttribute = methodSymbol.GetAttribute(PySharpTypes.PyMethodAttribute);
                         if (methodAttribute is not null)
-                            methods.Add(new(methodSymbol.Name, methodAttribute.ConstructorArguments[0].ToCSharpString(), methodAttribute.GetNamedArgumentOrDefault("Order", 1)));
+                            pyTypeInfo.Methods.Add(new(methodSymbol.Name, methodAttribute.ConstructorArguments[0].ToCSharpString(), methodAttribute.GetNamedArgumentOrDefault("Order", 1)));
+
+                        var propertyAttribute = methodSymbol.GetAttribute(PySharpTypes.PyPropertyAttribute);
+                        if (propertyAttribute is not null)
+                        {
+                            var nameLiteral = propertyAttribute.ConstructorArguments[0].ToCSharpString();
+                            if (!pyTypeInfo.Properties.TryGetValue(nameLiteral, out var propertyInfo))
+                                propertyInfo = pyTypeInfo.Properties[nameLiteral] = new PyPropertyInfo();
+                            var type = propertyAttribute.GetNamedArgumentOrDefault("Type", 0);
+                            if (type is 0)
+                                propertyInfo.Getter = methodSymbol.Name;
+                            else if (type is 1)
+                                propertyInfo.Setter = methodSymbol.Name;
+                            else if (type is 2)
+                                propertyInfo.Deleter = methodSymbol.Name;
+                            else
+                                throw new InvalidOperationException();
+                        }
                     }
 
-                    return new PyTypeInfo(typeSymbol.ContainingNamespace.IsGlobalNamespace ? string.Empty : typeSymbol.ContainingNamespace.ToDisplayString(),
-                        typeSymbol.Name, overridenSlots, pyTypeAttribute, methods);
+                    return pyTypeInfo;
                 });
 
         context.RegisterSourceOutput(provider, (spc, pyType) =>
@@ -78,6 +94,14 @@ public class PyTypeGenerator : IIncrementalGenerator
                             })
                         .ExitBlock()
 
+                        .AppendLine("protected override void RegisterProperties()")
+                        .EnterBlock()
+                            .ForEach(pyType.Properties, static (builder, pair) =>
+                            {
+                                builder.AppendLine($"AppendMemberDescriptor({pair.Key}, {pair.Value.Getter ?? "null"}, {pair.Value.Setter ?? "null"}, {pair.Value.Deleter ?? "null"});");
+                            })
+                    .ExitBlock()
+
                     .ExitBlock()
                 .ExitBlock();
 
@@ -87,19 +111,21 @@ public class PyTypeGenerator : IIncrementalGenerator
 
     public class PyTypeInfo
     {
-        public PyTypeInfo(string @namespace, string name, List<string> slots, AttributeData attributeData, List<PyMethodInfo> methods)
+        public PyTypeInfo(string @namespace, string name, AttributeData attributeData)
         {
             Namespace = @namespace;
             Name = name;
-            Slots = slots;
+            Slots = [];
             AttributeData = attributeData;
-            Methods = methods;
+            Methods = [];
+            Properties = [];
         }
 
         public string Namespace { get;}
         public string Name { get; }
         public List<string> Slots { get; }
         public List<PyMethodInfo> Methods { get; }
+        public Dictionary<string, PyPropertyInfo> Properties { get; }
         public AttributeData AttributeData { get; }
     }
 
@@ -115,6 +141,13 @@ public class PyTypeGenerator : IIncrementalGenerator
         public string Name { get; }
         public string PyNameLiteral { get; }
         public int Order { get; }
+    }
+
+    public record class PyPropertyInfo
+    {
+        public string? Getter { get; set; }
+        public string? Setter { get; set; }
+        public string? Deleter { get; set; }
     }
 }
 

@@ -34,17 +34,6 @@ public sealed class PyFunctionObject : PyObject, IPyObjectName
 [PyType("function")]
 public sealed partial class PyFunctionObjectType : PyTypeObject<PyFunctionObjectType, PyFunctionObject>
 {
-
-    public PyFunctionObjectType()
-    {
-        AppendMemberDescriptor(PySpecialNames.Closure,
-            static (_, func) => func._pyClosure ??= func._closure is not null ? PyTupleObject.CreateProxy(func._closure) : PyNoneObject.None);
-        AppendMemberDescriptor(PySpecialNames.Globals,
-            static (_, func) => func._globals.PyDict);
-        AppendMemberDescriptor(PySpecialNames.Code,
-            static (_, func) => func.Code);
-    }
-
     protected override PyResult Repr(PyCallContext context, PyFunctionObject self)
     {
         return PyStrObject.FromString($"<function {self.Name} at 0x{self.PyId:X16}>");
@@ -60,5 +49,26 @@ public sealed partial class PyFunctionObjectType : PyTypeObject<PyFunctionObject
         if (instance is PyNoneObject)
             return self;
         return new PyMethodObject(self, instance);
+    }
+
+    [PyProperty(PySpecialNames.Closure)]
+    private static PyResult Get_Closure(PyCallContext context, PyFunctionObject self)
+    {
+        if (self._closure is null)
+            return PyNoneObject.None;
+
+        return self._pyClosure ??= PyTupleObject.CreateProxy(self._closure);
+    }
+
+    [PyProperty(PySpecialNames.Globals)]
+    private static PyResult Get_Globals(PyCallContext context, PyFunctionObject self)
+    {
+        return self._globals.PyDict;
+    }
+
+    [PyProperty(PySpecialNames.Code)]
+    private static PyResult Get_Code(PyCallContext context, PyFunctionObject self)
+    {
+        return self.Code;
     }
 }

@@ -25,6 +25,7 @@ public abstract partial class PyTypeObject<TObject> : PyTypeObject where TObject
     {
         FillSlots();
         RegisterMethods();
+        RegisterProperties();
     }
 
     public PyTypeObject(string name, IReadOnlyList<PyTypeObject> bases, bool appendOverridenMethods) : base(name, bases)
@@ -33,6 +34,7 @@ public abstract partial class PyTypeObject<TObject> : PyTypeObject where TObject
         {
             FillSlots();
             RegisterMethods();
+            RegisterProperties();
         }
     }
 

@@ -37,6 +37,11 @@ partial class PyTypeObject<TObject>
     {
     }
 
+    protected virtual void RegisterProperties()
+    {
+
+    }
+
     [EditorBrowsable(EditorBrowsableState.Never)]
     protected void FillNewSlot()
     {
