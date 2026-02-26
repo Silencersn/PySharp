@@ -1,4 +1,6 @@
-﻿using System.Diagnostics;
+﻿using PySharp.Runtime;
+using System.Diagnostics;
+using System.Reflection.Emit;
 
 namespace PySharp.Compilation.AstNodes;
 
@@ -11,13 +13,28 @@ internal sealed partial class Reducer
 
     private static AstModNode ReduceMod(AstModNode node)
     {
-        AstModNode reduced = node switch
+        switch (node)
         {
-            ModuleNode n => Ast.Module(ReduceStmts(n.Body)),
-            ExpressionNode n => Ast.Expression(ReduceExpr(n.Body)),
-            InteractiveNode n => Ast.Interactive(ReduceStmts(n.Body)),
-            _ => throw new UnreachableException()
-        };
-        return reduced.With(node.MetaInfo);
+            case ModuleNode n:
+                {
+                    var body = ReduceStmts(n.Body, out var changed);
+                    return changed ? Ast.Module(body).With(node.MetaInfo) : node;
+                }
+
+            case ExpressionNode n:
+                {
+                    var body = ReduceExpr(n.Body, out var changed);
+                    return changed ? Ast.Expression(body).With(node.MetaInfo) : node;
+                }
+
+            case InteractiveNode n:
+                {
+                    var body = ReduceStmts(n.Body, out var changed);
+                    return changed ? Ast.Interactive(body).With(node.MetaInfo) : node;
+                }
+
+            default:
+                throw new NotImplementedException();
+        }
     }
 }

@@ -8,153 +8,164 @@ namespace PySharp.Compilation.AstNodes;
 
 partial class Reducer
 {
-    private static ImmutableArray<AstStmtNode> ReduceStmts(IEnumerable<AstStmtNode> stmts)
+    private static ImmutableArray<AstStmtNode> ReduceStmts(ImmutableArray<AstStmtNode> stmts, out bool changed)
     {
-        var builder = ImmutableArray.CreateBuilder<AstStmtNode>();
-        foreach (var stmt in stmts)
-            ReduceStmt(stmt, builder);
-        return builder.DrainToImmutable();
-    }
+        ImmutableArray<AstStmtNode>.Builder? builder = null;
 
-    private static void ReduceStmt(AstStmtNode stmt, ImmutableArray<AstStmtNode>.Builder builder)
-    {
-        switch (stmt)
+        for (int i = 0; i < stmts.Length; i++)
         {
-            case AssertNode n: ReduceAssert(n, builder); break;
-            case AssignNode n: ReduceAssign(n, builder); break;
-            case AnnAssignNode n: ReduceAnnAssign(n, builder); break;
-            case DeleteNode n: ReduceDelete(n, builder); break;
-            case AugAssignNode n: ReduceAugAssign(n, builder); break;
-            case ExprNode n: ReduceExpr(n, builder); break;
-            case BreakNode n: ReduceBreak(n, builder); break;
-            case ContinueNode n: ReduceContinue(n, builder); break;
-            case ReturnNode n: ReduceReturn(n, builder); break;
-            case PassNode n: ReducePass(n, builder); break;
-            case RaiseNode n: ReduceRaise(n, builder); break;
-            case GlobalNode n: ReduceGlobal(n, builder); break;
-            case NonlocalNode n: ReduceNonlocal(n, builder); break;
-            case IfNode n: ReduceIf(n, builder); break;
-            case ForNode n: ReduceFor(n, builder); break;
-            case WhileNode n: ReduceWhile(n, builder); break;
-            case TryNode n: ReduceTry(n, builder); break;
-            case TryStarNode n: ReduceTryStar(n, builder); break;
-            case ImportNode n: ReduceImport(n, builder); break;
-            case ImportFromNode n: ReduceImportFrom(n, builder); break;
-            case FunctionDefNode n: ReduceFunctionDef(n, builder); break;
-            case ClassDefNode n: ReduceClassDef(n, builder); break;
-            case WithNode n: ReduceWith(n, builder); break;
-            case MatchNode n: ReduceMatch(n, builder); break;
-            default: throw new UnreachableException();
-        }
-    }
+            var stmt = stmts[i];
+            var reduced = ReduceStmt(stmt);
 
-    private static void ReduceAssert(AssertNode node, ImmutableArray<AstStmtNode>.Builder builder)
-    {
-        builder.Add(node);
-    }
-    private static void ReduceAssign(AssignNode node, ImmutableArray<AstStmtNode>.Builder builder)
-    {
-        builder.Add(node);
-    }
-    private static void ReduceAnnAssign(AnnAssignNode node, ImmutableArray<AstStmtNode>.Builder builder)
-    {
-        builder.Add(node);
-    }
-    private static void ReduceDelete(DeleteNode node, ImmutableArray<AstStmtNode>.Builder builder)
-    {
-        builder.Add(node);
-    }
-    private static void ReduceAugAssign(AugAssignNode node, ImmutableArray<AstStmtNode>.Builder builder)
-    {
-        builder.Add(node);
-    }
-    private static void ReduceExpr(ExprNode node, ImmutableArray<AstStmtNode>.Builder builder)
-    {
-        builder.Add(node);
-    }
-    private static void ReduceBreak(BreakNode node, ImmutableArray<AstStmtNode>.Builder builder)
-    {
-        builder.Add(node);
-    }
-    private static void ReduceContinue(ContinueNode node, ImmutableArray<AstStmtNode>.Builder builder)
-    {
-        builder.Add(node);
-    }
-    private static void ReduceReturn(ReturnNode node, ImmutableArray<AstStmtNode>.Builder builder)
-    {
-        builder.Add(node);
-    }
-    private static void ReducePass(PassNode node, ImmutableArray<AstStmtNode>.Builder builder)
-    {
-        // do nothing
-    }
-    private static void ReduceRaise(RaiseNode node, ImmutableArray<AstStmtNode>.Builder builder)
-    {
-        builder.Add(node);
-    }
-    private static void ReduceGlobal(GlobalNode node, ImmutableArray<AstStmtNode>.Builder builder)
-    {
-        // do nothing
-    }
-    private static void ReduceNonlocal(NonlocalNode node, ImmutableArray<AstStmtNode>.Builder builder)
-    {
-        // do nothing
-    }
-    private static void ReduceIf(IfNode node, ImmutableArray<AstStmtNode>.Builder builder)
-    {
-        var test = ReduceExpr(node.Test);
-
-        if (test is ConstantNode constantNode)
-        {
-            var boolValue = PySpecialMethods.Bool(PyCallContext.NonContextDependency, constantNode.Value)
-                .PyUnwrap(PyCallContext.NonContextDependency).BoolValue;
-            builder.AddRange(ReduceStmts(boolValue ? node.Body : node.OrElse));
-            return;
+            if (!ReferenceEquals(reduced, stmt) && builder is null)
+            {
+                builder = ImmutableArray.CreateBuilder<AstStmtNode>(stmts.Length);
+                builder.AddRange(stmts.AsSpan()[..i]);
+            }
+            builder?.Add(reduced);
         }
 
-        var body = ReduceStmts(node.Body);
-        var orElse = ReduceStmts(node.OrElse);
-        var newNode = Ast.If(test, body, orElse).With(node.MetaInfo);
-        builder.Add(newNode);
+        changed = builder is not null;
+
+        if (builder is null)
+            return stmts;
+
+        Debug.Assert(builder.Count == builder.Capacity);
+        return builder.MoveToImmutable();
     }
-    private static void ReduceFor(ForNode node, ImmutableArray<AstStmtNode>.Builder builder)
+
+    private static AstStmtNode ReduceStmt(AstStmtNode node)
     {
-        builder.Add(node);
+        AstStmtNode reduced = (node switch
+        {
+            AssertNode n => ReduceAssert(n),
+            AssignNode n => ReduceAssign(n),
+            AnnAssignNode n => ReduceAnnAssign(n),
+            DeleteNode n => ReduceDelete(n),
+            AugAssignNode n => ReduceAugAssign(n),
+            ExprNode n => ReduceExpr(n),
+            BreakNode n => ReduceBreak(n),
+            ContinueNode n => ReduceContinue(n),
+            ReturnNode n => ReduceReturn(n),
+            PassNode n => ReducePass(n),
+            RaiseNode n => ReduceRaise(n),
+            GlobalNode n => ReduceGlobal(n),
+            NonlocalNode n => ReduceNonlocal(n),
+            IfNode n => ReduceIf(n),
+            ForNode n => ReduceFor(n),
+            WhileNode n => ReduceWhile(n),
+            TryNode n => ReduceTry(n),
+            TryStarNode n => ReduceTryStar(n),
+            ImportNode n => ReduceImport(n),
+            ImportFromNode n => ReduceImportFrom(n),
+            FunctionDefNode n => ReduceFunctionDef(n),
+            ClassDefNode n => ReduceClassDef(n),
+            WithNode n => ReduceWith(n),
+            MatchNode n => ReduceMatch(n),
+            _ => throw new UnreachableException()
+        });
+        return reduced.With(node.MetaInfo);
     }
-    private static void ReduceWhile(WhileNode node, ImmutableArray<AstStmtNode>.Builder builder)
+
+    private static AssertNode ReduceAssert(AssertNode node)
     {
-        builder.Add(node);
+        return node;
     }
-    private static void ReduceTry(TryNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static AssignNode ReduceAssign(AssignNode node)
     {
-        builder.Add(node);
+        return node;
     }
-    private static void ReduceTryStar(TryStarNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static AnnAssignNode ReduceAnnAssign(AnnAssignNode node)
     {
-        builder.Add(node);
+        return node;
     }
-    private static void ReduceImport(ImportNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static DeleteNode ReduceDelete(DeleteNode node)
     {
-        builder.Add(node);
+        return node;
     }
-    private static void ReduceImportFrom(ImportFromNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static AugAssignNode ReduceAugAssign(AugAssignNode node)
     {
-        builder.Add(node);
+        return node;
     }
-    private static void ReduceFunctionDef(FunctionDefNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static ExprNode ReduceExpr(ExprNode node)
     {
-        builder.Add(node);
+        return node;
     }
-    private static void ReduceClassDef(ClassDefNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static BreakNode ReduceBreak(BreakNode node)
     {
-        builder.Add(node);
+        return node;
     }
-    private static void ReduceWith(WithNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static ContinueNode ReduceContinue(ContinueNode node)
     {
-        builder.Add(node);
+        return node;
     }
-    private static void ReduceMatch(MatchNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static ReturnNode ReduceReturn(ReturnNode node)
     {
-        builder.Add(node);
+        return node;
+    }
+    private static PassNode ReducePass(PassNode node)
+    {
+        return node;
+    }
+    private static RaiseNode ReduceRaise(RaiseNode node)
+    {
+        return node;
+    }
+    private static GlobalNode ReduceGlobal(GlobalNode node)
+    {
+        return node;
+    }
+    private static NonlocalNode ReduceNonlocal(NonlocalNode node)
+    {
+        return node;
+    }
+    private static IfNode ReduceIf(IfNode node)
+    {
+        var test = ReduceExpr(node.Test, out var testChanged);
+        var body = ReduceStmts(node.Body, out var bodyChanged);
+        var orElse = ReduceStmts(node.OrElse, out var orElseChanged);
+        if (testChanged || bodyChanged || orElseChanged)
+            return Ast.If(test, body, orElse);
+        return node;
+    }
+    private static ForNode ReduceFor(ForNode node)
+    {
+        return node;
+    }
+    private static WhileNode ReduceWhile(WhileNode node)
+    {
+        return node;
+    }
+    private static TryNode ReduceTry(TryNode node)
+    {
+        return node;
+    }
+    private static TryStarNode ReduceTryStar(TryStarNode node)
+    {
+        return node;
+    }
+    private static ImportNode ReduceImport(ImportNode node)
+    {
+        return node;
+    }
+    private static ImportFromNode ReduceImportFrom(ImportFromNode node)
+    {
+        return node;
+    }
+    private static FunctionDefNode ReduceFunctionDef(FunctionDefNode node)
+    {
+        return node;
+    }
+    private static ClassDefNode ReduceClassDef(ClassDefNode node)
+    {
+        return node;
+    }
+    private static WithNode ReduceWith(WithNode node)
+    {
+        return node;
+    }
+    private static MatchNode ReduceMatch(MatchNode node)
+    {
+        return node;
     }
 }

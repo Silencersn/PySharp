@@ -4,11 +4,11 @@ using System.Diagnostics;
 
 namespace PySharp.Compilation.AstNodes;
 
-internal sealed partial class Reducer
+partial class Reducer
 {
-    private static AstExprNode ReduceExpr(AstExprNode node)
+    private static AstExprNode ReduceExpr(AstExprNode node, out bool changed)
     {
-        return (node switch
+        var reduced = (node switch
         {
             NameNode n => ReduceName(n),
             ConstantNode n => ReduceConstant(n),
@@ -38,6 +38,8 @@ internal sealed partial class Reducer
             NamedExprNode n => ReduceNamedExpr(n),
             _ => throw new UnreachableException(),
         }).With(node.MetaInfo);
+        changed = !ReferenceEquals(reduced, node);
+        return reduced;
     }
 
 
@@ -87,18 +89,17 @@ internal sealed partial class Reducer
     }
     private static AstExprNode ReduceBinOp(BinOpNode node)
     {
-        var left = ReduceExpr(node.Left);
-        var right = ReduceExpr(node.Right);
+        var left = ReduceExpr(node.Left, out var leftChanged);
+        var right = ReduceExpr(node.Right, out var rightChanged);
         if (left is ConstantNode constntLeft && right is ConstantNode constantRight)
         {
             var result = PyCore.EvalOperator(PyCallContext.NonContextDependency, node.Operator, constntLeft.Value, constantRight.Value);
             if (result.IsSuccessful)
                 return Ast.Constant(result.Value);
         }
-        if (ReferenceEquals(left, node.Left) && ReferenceEquals(right, node.Right))
-            return node;
-
-        return Ast.BinOp(node.Operator, left, right);
+        if (leftChanged || rightChanged)
+            return Ast.BinOp(node.Operator, left, right);
+        return node;
     }
     private static AstExprNode ReduceUnaryOp(UnaryOpNode node)
     {
