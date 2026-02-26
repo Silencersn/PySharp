@@ -7,7 +7,11 @@ using System.Diagnostics;
 
 namespace PySharp.Compilation.AstNodes;
 
-public abstract class AstExprNode : AstNode;
+public abstract class AstExprNode : AstNode
+{
+    internal AstExprNode? _reduced;
+    public AstExprNode Reduced => _reduced ??= Reducer.Reduce(this);
+}
 
 internal interface IExprContextNode
 {

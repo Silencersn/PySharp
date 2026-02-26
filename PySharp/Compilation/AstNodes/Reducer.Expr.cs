@@ -1,13 +1,27 @@
 ﻿using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Compilation.AstNodes;
 
 partial class Reducer
 {
-    private static AstExprNode ReduceExpr(AstExprNode node, out bool changed)
+    [return: NotNullIfNotNull(nameof(node))]
+    private static AstExprNode? ReduceExpr(AstExprNode? node, out bool changed)
     {
+        if (node is null)
+        {
+            changed = false;
+            return null; 
+        }
+
+        if (node._reduced is not null)
+        {
+            changed = !ReferenceEquals(node._reduced, node);
+            return node._reduced;
+        }
+
         var reduced = (node switch
         {
             NameNode n => ReduceName(n),
@@ -39,6 +53,7 @@ partial class Reducer
             _ => throw new UnreachableException(),
         }).With(node.MetaInfo);
         changed = !ReferenceEquals(reduced, node);
+        reduced._reduced = reduced;
         return reduced;
     }
 
