@@ -18,7 +18,7 @@ partial class BytecodeCompiler
 
     private void CompileExpr(AstExprNode node, ExprContextType ctx)
     {
-        node = node.Reduced;
+        node = Reducer.Fold(node);
 
         Generator.PushMetaInfo(node.MetaInfo);
         switch (node)

@@ -107,6 +107,19 @@ partial class Ast
         return new CompareNode(left, opsAndComparators.Select(t => t.Op).ToImmutableArray(true), opsAndComparators.Select(t => t.Comparator).ToImmutableArray(true));
     }
 
+    public static CompareNode Compare(AstExprNode left, IEnumerable<CmpopType> ops, IEnumerable<AstExprNode> comparators)
+    {
+        ArgumentNullException.ThrowIfNull(left);
+        ArgumentNullException.ThrowIfNull(ops);
+        ArgumentNullException.ThrowIfNull(comparators);
+
+        var immutableOps = ops.ToImmutableArray(true);
+        var immutableComparators = comparators.ToImmutableArray(true);
+        ArgumentOutOfRangeException.ThrowIfNotEqual(immutableOps.Length, immutableComparators.Length);
+
+        return new CompareNode(left, immutableOps, immutableComparators);
+    }
+
     public static ConstantNode Constant(PyObject value)
     {
         ArgumentNullException.ThrowIfNull(value);

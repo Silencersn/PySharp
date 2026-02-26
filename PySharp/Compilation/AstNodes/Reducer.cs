@@ -6,8 +6,8 @@ namespace PySharp.Compilation.AstNodes;
 
 internal sealed partial class Reducer
 {
-    public static AstExprNode Reduce(AstExprNode node)
+    public static AstExprNode Fold(AstExprNode node)
     {
-        return ReduceExpr(node, out _);
+        return FoldExpr(node, out _);
     }
 }
