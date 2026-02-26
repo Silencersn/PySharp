@@ -6,7 +6,7 @@ namespace PySharp.Compilation.AstNodes;
 
 internal sealed partial class Reducer
 {
-    public static AstExprNode ReduceExpr(AstExprNode node)
+    private static AstExprNode ReduceExpr(AstExprNode node)
     {
         return (node switch
         {
@@ -41,51 +41,51 @@ internal sealed partial class Reducer
     }
 
 
-    public static AstExprNode ReduceName(NameNode node)
+    private static AstExprNode ReduceName(NameNode node)
     {
         return node;
     }
-    public static AstExprNode ReduceConstant(ConstantNode node)
+    private static AstExprNode ReduceConstant(ConstantNode node)
     {
         return node;
     }
-    public static AstExprNode ReduceAttribute(AttributeNode node)
+    private static AstExprNode ReduceAttribute(AttributeNode node)
     {
         return node;
     }
-    public static AstExprNode ReduceSubscript(SubscriptNode node)
+    private static AstExprNode ReduceSubscript(SubscriptNode node)
     {
         return node;
     }
-    public static AstExprNode ReduceSlice(SliceNode node)
+    private static AstExprNode ReduceSlice(SliceNode node)
     {
         return node;
     }
-    public static AstExprNode ReduceCall(CallNode node)
+    private static AstExprNode ReduceCall(CallNode node)
     {
         return node;
     }
-    public static AstExprNode ReduceList(ListNode node)
+    private static AstExprNode ReduceList(ListNode node)
     {
         return node;
     }
-    public static AstExprNode ReduceTuple(TupleNode node)
+    private static AstExprNode ReduceTuple(TupleNode node)
     {
         return node;
     }
-    public static AstExprNode ReduceDict(DictNode node)
+    private static AstExprNode ReduceDict(DictNode node)
     {
         return node;
     }
-    public static AstExprNode ReduceSet(SetNode node)
+    private static AstExprNode ReduceSet(SetNode node)
     {
         return node;
     }
-    public static AstExprNode ReduceBoolOp(BoolOpNode node)
+    private static AstExprNode ReduceBoolOp(BoolOpNode node)
     {
         return node;
     }
-    public static AstExprNode ReduceBinOp(BinOpNode node)
+    private static AstExprNode ReduceBinOp(BinOpNode node)
     {
         var left = ReduceExpr(node.Left);
         var right = ReduceExpr(node.Right);
@@ -100,59 +100,59 @@ internal sealed partial class Reducer
 
         return Ast.BinOp(node.Operator, left, right);
     }
-    public static AstExprNode ReduceUnaryOp(UnaryOpNode node)
+    private static AstExprNode ReduceUnaryOp(UnaryOpNode node)
     {
         return node;
     }
-    public static AstExprNode ReduceCompare(CompareNode node)
+    private static AstExprNode ReduceCompare(CompareNode node)
     {
         return node;
     }
-    public static AstExprNode ReduceIfExp(IfExpNode node)
+    private static AstExprNode ReduceIfExp(IfExpNode node)
     {
         return node;
     }
-    public static AstExprNode ReduceListComp(ListCompNode node)
+    private static AstExprNode ReduceListComp(ListCompNode node)
     {
         return node;
     }
-    public static AstExprNode ReduceSetComp(SetCompNode node)
+    private static AstExprNode ReduceSetComp(SetCompNode node)
     {
         return node;
     }
-    public static AstExprNode ReduceDictComp(DictCompNode node)
+    private static AstExprNode ReduceDictComp(DictCompNode node)
     {
         return node;
     }
-    public static AstExprNode ReduceGeneratorExp(GeneratorExpNode node)
+    private static AstExprNode ReduceGeneratorExp(GeneratorExpNode node)
     {
         return node;
     }
-    public static AstExprNode ReduceLambda(LambdaNode node)
+    private static AstExprNode ReduceLambda(LambdaNode node)
     {
         return node;
     }
-    public static AstExprNode ReduceJoinedStr(JoinedStrNode node)
+    private static AstExprNode ReduceJoinedStr(JoinedStrNode node)
     {
         return node;
     }
-    public static AstExprNode ReduceFormattedValue(FormattedValueNode node)
+    private static AstExprNode ReduceFormattedValue(FormattedValueNode node)
     {
         return node;
     }
-    public static AstExprNode ReduceYield(YieldNode node)
+    private static AstExprNode ReduceYield(YieldNode node)
     {
         return node;
     }
-    public static AstExprNode ReduceYieldFrom(YieldFromNode node)
+    private static AstExprNode ReduceYieldFrom(YieldFromNode node)
     {
         return node;
     }
-    public static AstExprNode ReduceStarred(StarredNode node)
+    private static AstExprNode ReduceStarred(StarredNode node)
     {
         return node;
     }
-    public static AstExprNode ReduceNamedExpr(NamedExprNode node)
+    private static AstExprNode ReduceNamedExpr(NamedExprNode node)
     {
         return node;
     }

@@ -8,7 +8,7 @@ namespace PySharp.Compilation.AstNodes;
 
 partial class Reducer
 {
-    public static ImmutableArray<AstStmtNode> ReduceStmts(IEnumerable<AstStmtNode> stmts)
+    private static ImmutableArray<AstStmtNode> ReduceStmts(IEnumerable<AstStmtNode> stmts)
     {
         var builder = ImmutableArray.CreateBuilder<AstStmtNode>();
         foreach (var stmt in stmts)
@@ -16,7 +16,7 @@ partial class Reducer
         return builder.DrainToImmutable();
     }
 
-    public static void ReduceStmt(AstStmtNode stmt, ImmutableArray<AstStmtNode>.Builder builder)
+    private static void ReduceStmt(AstStmtNode stmt, ImmutableArray<AstStmtNode>.Builder builder)
     {
         switch (stmt)
         {
@@ -48,59 +48,59 @@ partial class Reducer
         }
     }
 
-    public static void ReduceAssert(AssertNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static void ReduceAssert(AssertNode node, ImmutableArray<AstStmtNode>.Builder builder)
     {
         builder.Add(node);
     }
-    public static void ReduceAssign(AssignNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static void ReduceAssign(AssignNode node, ImmutableArray<AstStmtNode>.Builder builder)
     {
         builder.Add(node);
     }
-    public static void ReduceAnnAssign(AnnAssignNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static void ReduceAnnAssign(AnnAssignNode node, ImmutableArray<AstStmtNode>.Builder builder)
     {
         builder.Add(node);
     }
-    public static void ReduceDelete(DeleteNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static void ReduceDelete(DeleteNode node, ImmutableArray<AstStmtNode>.Builder builder)
     {
         builder.Add(node);
     }
-    public static void ReduceAugAssign(AugAssignNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static void ReduceAugAssign(AugAssignNode node, ImmutableArray<AstStmtNode>.Builder builder)
     {
         builder.Add(node);
     }
-    public static void ReduceExpr(ExprNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static void ReduceExpr(ExprNode node, ImmutableArray<AstStmtNode>.Builder builder)
     {
         builder.Add(node);
     }
-    public static void ReduceBreak(BreakNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static void ReduceBreak(BreakNode node, ImmutableArray<AstStmtNode>.Builder builder)
     {
         builder.Add(node);
     }
-    public static void ReduceContinue(ContinueNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static void ReduceContinue(ContinueNode node, ImmutableArray<AstStmtNode>.Builder builder)
     {
         builder.Add(node);
     }
-    public static void ReduceReturn(ReturnNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static void ReduceReturn(ReturnNode node, ImmutableArray<AstStmtNode>.Builder builder)
     {
         builder.Add(node);
     }
-    public static void ReducePass(PassNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static void ReducePass(PassNode node, ImmutableArray<AstStmtNode>.Builder builder)
     {
         // do nothing
     }
-    public static void ReduceRaise(RaiseNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static void ReduceRaise(RaiseNode node, ImmutableArray<AstStmtNode>.Builder builder)
     {
         builder.Add(node);
     }
-    public static void ReduceGlobal(GlobalNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static void ReduceGlobal(GlobalNode node, ImmutableArray<AstStmtNode>.Builder builder)
     {
         // do nothing
     }
-    public static void ReduceNonlocal(NonlocalNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static void ReduceNonlocal(NonlocalNode node, ImmutableArray<AstStmtNode>.Builder builder)
     {
         // do nothing
     }
-    public static void ReduceIf(IfNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static void ReduceIf(IfNode node, ImmutableArray<AstStmtNode>.Builder builder)
     {
         var test = ReduceExpr(node.Test);
 
@@ -117,43 +117,43 @@ partial class Reducer
         var newNode = Ast.If(test, body, orElse).With(node.MetaInfo);
         builder.Add(newNode);
     }
-    public static void ReduceFor(ForNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static void ReduceFor(ForNode node, ImmutableArray<AstStmtNode>.Builder builder)
     {
         builder.Add(node);
     }
-    public static void ReduceWhile(WhileNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static void ReduceWhile(WhileNode node, ImmutableArray<AstStmtNode>.Builder builder)
     {
         builder.Add(node);
     }
-    public static void ReduceTry(TryNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static void ReduceTry(TryNode node, ImmutableArray<AstStmtNode>.Builder builder)
     {
         builder.Add(node);
     }
-    public static void ReduceTryStar(TryStarNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static void ReduceTryStar(TryStarNode node, ImmutableArray<AstStmtNode>.Builder builder)
     {
         builder.Add(node);
     }
-    public static void ReduceImport(ImportNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static void ReduceImport(ImportNode node, ImmutableArray<AstStmtNode>.Builder builder)
     {
         builder.Add(node);
     }
-    public static void ReduceImportFrom(ImportFromNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static void ReduceImportFrom(ImportFromNode node, ImmutableArray<AstStmtNode>.Builder builder)
     {
         builder.Add(node);
     }
-    public static void ReduceFunctionDef(FunctionDefNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static void ReduceFunctionDef(FunctionDefNode node, ImmutableArray<AstStmtNode>.Builder builder)
     {
         builder.Add(node);
     }
-    public static void ReduceClassDef(ClassDefNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static void ReduceClassDef(ClassDefNode node, ImmutableArray<AstStmtNode>.Builder builder)
     {
         builder.Add(node);
     }
-    public static void ReduceWith(WithNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static void ReduceWith(WithNode node, ImmutableArray<AstStmtNode>.Builder builder)
     {
         builder.Add(node);
     }
-    public static void ReduceMatch(MatchNode node, ImmutableArray<AstStmtNode>.Builder builder)
+    private static void ReduceMatch(MatchNode node, ImmutableArray<AstStmtNode>.Builder builder)
     {
         builder.Add(node);
     }

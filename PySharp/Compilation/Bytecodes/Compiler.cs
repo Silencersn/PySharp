@@ -16,6 +16,7 @@ internal static class Compiler
         if (appendNewLine)
             tokens.Insert(tokens.Count - 1, new TokenInfo(TokenType.NewLine, string.Empty, default, default, source));
         var node = parse(context, source, tokens);
+        node = Reducer.Reduce(node);
         var model = SemanticAnalyzer.Analyze(context, node);
         var bytecode = BytecodeCompiler.Compile(model, onlyAsName);
         return new PyCodeObject(sourceName, bytecode);
