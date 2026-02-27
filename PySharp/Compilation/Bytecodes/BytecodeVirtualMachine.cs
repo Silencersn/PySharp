@@ -18,7 +18,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
     internal PyExceptionObject? ExceptionToRaise;
     internal bool RunToEnd { get; private set; }
     private Stack<ExceptionHandler> ExceptionHandlers => field ??= [];
-    private OperandStack Stack { get; } = new();
+    private readonly OperandStack Stack;
 
     private PyCallContext Context { get; }
     private Bytecode Bytecode { get; }
@@ -45,6 +45,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
     {
         Context = context;
         Bytecode = bytecode;
+        Stack = new(bytecode.StackSize);
     }
 
     internal PyResult Eval()
@@ -53,6 +54,8 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
         using var withMetaInfo = new MetaInfoProviderSetter(frame, this);
         var result = Eval(Context, frame);
         Debug.Assert(!RunToEnd || Stack.Count is 0);
+        if (RunToEnd)
+            Stack.Dispose();
         return result;
     }
 

@@ -16,4 +16,26 @@ internal static class PoolHelper
 
         ArrayPool<T>.Shared.Return(arrayToReturn);
     }
+
+    public static RentedArray<T> Rent<T>(int length)
+    {
+        return new RentedArray<T>(length);
+    }
+
+    internal readonly ref struct RentedArray<T> : IDisposable
+    {
+        private readonly T[] _array;
+        internal Span<T> Span { get; }
+
+        public RentedArray(int length)
+        {
+            Rent(length, out _array);
+            Span = _array.AsSpan()[..length];
+        }
+
+        void IDisposable.Dispose()
+        {
+            ArrayPool<T>.Shared.Return(_array);
+        }
+    }
 }

@@ -65,6 +65,7 @@ public sealed class PyCodeObject : PyObject
         PyAttributes.Add("co_varnames", PyTupleObject.CreateTuple(VarNames.Select(PyStrObject.FromString)));
         PyAttributes.Add("co_cellvars", PyTupleObject.CreateTuple(CellVars.Select(PyStrObject.FromString)));
         PyAttributes.Add("co_freevars", PyTupleObject.CreateTuple(FreeVars.Select(PyStrObject.FromString)));
+        PyAttributes.Add("co_stacksize", PyIntObject.FromInteger(bytecode.StackSize));
     }
 
     internal PyCodeObject(ClassVariableScope scope, Bytecode bytecode)
@@ -91,6 +92,7 @@ public sealed class PyCodeObject : PyObject
         PyAttributes.Add("co_varnames", PyTupleObject.Empty);
         PyAttributes.Add("co_cellvars", PyTupleObject.Empty);
         PyAttributes.Add("co_freevars", PyTupleObject.CreateTuple(FreeVars.Select(PyStrObject.FromString)));
+        PyAttributes.Add("co_stacksize", PyIntObject.FromInteger(bytecode.StackSize));
     }
 
     internal PyCodeObject(string name, Bytecode bytecode)
@@ -116,6 +118,7 @@ public sealed class PyCodeObject : PyObject
         PyAttributes.Add("co_varnames", PyTupleObject.Empty);
         PyAttributes.Add("co_cellvars", PyTupleObject.Empty);
         PyAttributes.Add("co_freevars", PyTupleObject.Empty);
+        PyAttributes.Add("co_stacksize", PyIntObject.FromInteger(bytecode.StackSize));
     }
 }
 
