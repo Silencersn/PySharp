@@ -776,8 +776,7 @@ partial class BytecodeCompiler
                         Generator.Emit(OpCode.LoadConst, PyTupleObject.CreateTuple(node.KwdAttrs.Select(PyStrObject.FromString)));
                         Generator.Emit(OpCode.MatchClass, node.Patterns.Length);
 
-                        Generator.Emit(OpCode.Copy, 1);
-                        Generator.PopJumpIfNone(matchFailLabel);
+                        Generator.Emit(OpCode._CheckMatch, matchFailLabel);
 
                         Generator.Emit(OpCode.UnpackSequence, node.Patterns.Length + node.KwdPatterns.Length);
                         CompilePatterns([.. node.Patterns.Concat(node.KwdPatterns)], matchFailLabel);
