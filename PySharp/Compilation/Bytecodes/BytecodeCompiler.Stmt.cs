@@ -595,7 +595,7 @@ partial class BytecodeCompiler
         Span<Label> nextCaseLabels = stackalloc Label[node.Cases.Length];
         for (int i = 0; i < node.Cases.Length; i++)
             nextCaseLabels[i] = Generator.DefineLabel();
-        var matchEndLabel = nextCaseLabels[^1];
+        var matchEndLabel = Generator.DefineLabel();
 
         LoadExpr(node.Subject);
         for (int i = 0; i < node.Cases.Length; i++)
@@ -604,6 +604,7 @@ partial class BytecodeCompiler
             Generator.MarkLabel(nextCaseLabels[i]);
         }
         Generator.Emit(OpCode.PopTop);
+        Generator.MarkLabel(matchEndLabel);
 
         void CompileMatchCase(int i, Span<Label> nextCaseLabels)
         {
@@ -618,6 +619,7 @@ partial class BytecodeCompiler
                 Generator.PopJumpIfFalse(nextCaseLabels[i]);
             }
 
+            Generator.Emit(OpCode.PopTop);
             CompileStmts(caseNode.Body);
 
             Generator.Jump(matchEndLabel);
