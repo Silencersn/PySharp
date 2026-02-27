@@ -50,8 +50,7 @@ internal sealed partial class BytecodeCompiler
                     Generator.Emit(OpCode.LoadConst, doc);
                     StoreName(PySpecialNames.Doc);
                 }
-                foreach (var stmt in n.Body)
-                    CompileStmt(stmt);
+                CompileStmts(n.Body);
                 break;
 
             case ExpressionNode n:
@@ -61,8 +60,7 @@ internal sealed partial class BytecodeCompiler
 
             case InteractiveNode n:
                 IsInteractive = true;
-                foreach (var stmt in n.Body)
-                    CompileStmt(stmt);
+                CompileStmts(n.Body);
                 break;
 
             default:

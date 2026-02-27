@@ -3,12 +3,46 @@ using PySharp.Compilation.Bytecodes.Extensions;
 using PySharp.Compilation.Primitives;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime;
+using System.Collections.Immutable;
 using System.Diagnostics;
 
 namespace PySharp.Compilation.Bytecodes;
 
 partial class BytecodeCompiler
 {
+    private void CompileStmts(ImmutableArray<AstStmtNode> stmts)
+    {
+        foreach (var stmt in stmts)
+        {
+            CompileStmt(stmt);
+            if (IsPostUnreachable(stmt))
+                break;
+        }
+    }
+
+    private static bool IsPostUnreachable(AstStmtNode stmt)
+    {
+        switch (stmt)
+        {
+            case ReturnNode:
+            case RaiseNode:
+            case BreakNode:
+            case ContinueNode:
+                return true;
+
+            case IfNode n:
+                return AnyPostUnreachable(n.Body) && AnyPostUnreachable(n.OrElse);
+
+            default:
+                return false;
+        }
+
+        static bool AnyPostUnreachable(ImmutableArray<AstStmtNode> stmts)
+        {
+            return stmts.Any(IsPostUnreachable);
+        }
+    }
+
     private void CompileStmt(AstStmtNode node)
     {
         Generator.PushMetaInfo(node.MetaInfo);
@@ -80,13 +114,11 @@ partial class BytecodeCompiler
         Generator.Emit(OpCode.ToBool);
         Generator.PopJumpIfFalse(elseBlockLabel);
 
-        foreach (var stmt in node.Body)
-            CompileStmt(stmt);
+        CompileStmts(node.Body);
         Generator.Jump(ifStmtEndLabel);
 
         Generator.MarkLabel(elseBlockLabel);
-        foreach (var stmt in node.OrElse)
-            CompileStmt(stmt);
+        CompileStmts(node.OrElse);
 
         Generator.MarkLabel(ifStmtEndLabel);
     }
@@ -122,14 +154,11 @@ partial class BytecodeCompiler
         if (exceptorLabels.Length > 0)
             Generator.Emit(OpCode._SetupExcept, exceptorLabels[0]);
 
-        foreach (var stmt in node.Body)
-            CompileStmt(stmt);
-        foreach (var stmt in node.OrElse)
-            CompileStmt(stmt);
+        CompileStmts(node.Body);
+        CompileStmts(node.OrElse);
         Generator.MarkLabel(finallyBlockLabel);
         Generator.Emit(OpCode._EnterFinally);
-        foreach (var stmt in node.FinalBody)
-            CompileStmt(stmt);
+        CompileStmts(node.FinalBody);
         Generator.Emit(OpCode._ExitFinally);
         Generator.Jump(tryStmtEndLabel);
 
@@ -162,8 +191,7 @@ partial class BytecodeCompiler
                 StoreName(exceptor.Name);
             }
 
-            foreach (var stmt in exceptor.Body)
-                CompileStmt(stmt);
+            CompileStmts(exceptor.Body);
 
             if (exceptor.Name is not null)
                 DeleteName(exceptor.Name);
@@ -187,14 +215,11 @@ partial class BytecodeCompiler
         Debug.Assert(exceptorLabels.Length > 0);
         Generator.Emit(OpCode._SetupExcept, exceptorLabels[0]);
 
-        foreach (var stmt in node.Body)
-            CompileStmt(stmt);
-        foreach (var stmt in node.OrElse)
-            CompileStmt(stmt);
+        CompileStmts(node.Body);
+        CompileStmts(node.OrElse);
         Generator.MarkLabel(finallyBlockLabel);
         Generator.Emit(OpCode._EnterFinally);
-        foreach (var stmt in node.FinalBody)
-            CompileStmt(stmt);
+        CompileStmts(node.FinalBody);
         Generator.Emit(OpCode._ExitFinally);
         Generator.Jump(tryStmtEndLabel);
 
@@ -214,8 +239,7 @@ partial class BytecodeCompiler
             else
                 Generator.Emit(OpCode.PopTop);
 
-            foreach (var stmt in exceptor.Body)
-                CompileStmt(stmt);
+            CompileStmts(exceptor.Body);
 
             if (exceptor.Name is not null)
                 DeleteName(exceptor.Name);
@@ -241,13 +265,11 @@ partial class BytecodeCompiler
         Generator.Emit(OpCode.ForIter, forElseLabel);
         StoreExpr(node.Target);
 
-        foreach (var stmt in node.Body)
-            CompileStmt(stmt);
+        CompileStmts(node.Body);
         Generator.Jump(forIterLabel);
 
         Generator.MarkLabel(forElseLabel);
-        foreach (var stmt in node.OrElse)
-            CompileStmt(stmt);
+        CompileStmts(node.OrElse);
 
         Generator.MarkLabel(endForLabel);
         Generator.Emit(OpCode.PopIter);
@@ -277,13 +299,11 @@ partial class BytecodeCompiler
         Generator.Emit(OpCode.ToBool);
         Generator.PopJumpIfFalse(whileElseLabel);
 
-        foreach (var stmt in node.Body)
-            CompileStmt(stmt);
+        CompileStmts(node.Body);
         Generator.Jump(whileBeginLabel);
 
         Generator.MarkLabel(whileElseLabel);
-        foreach (var stmt in node.OrElse)
-            CompileStmt(stmt);
+        CompileStmts(node.OrElse);
 
         Generator.MarkLabel(whileEndLabel);
 
@@ -309,8 +329,7 @@ partial class BytecodeCompiler
             Generator.Emit(OpCode.ReturnGenerator);
             Generator.Emit(OpCode.PopTop); // pop the first sent to activate the generator
         }
-        foreach (var stmt in node.Body)
-            CompileStmt(stmt);
+        CompileStmts(node.Body);
 
         Generator.Emit(OpCode.LoadConst, PyNoneObject.None);
         Generator.Emit(OpCode.ReturnValue);
@@ -393,8 +412,7 @@ partial class BytecodeCompiler
             StoreName(PySpecialNames.Doc);
         }
 
-        foreach (var stmt in node.Body)
-            CompileStmt(stmt);
+        CompileStmts(node.Body);
 
         var bytecode = Generator.ToBytecode();
 
@@ -514,8 +532,7 @@ partial class BytecodeCompiler
         {
             if (i == node.Items.Length)
             {
-                foreach (var stmt in node.Body)
-                    CompileStmt(stmt);
+                CompileStmts(node.Body);
                 return;
             }
 
@@ -599,8 +616,7 @@ partial class BytecodeCompiler
                 Generator.PopJumpIfFalse(nextCaseLabels[i]);
             }
 
-            foreach (var stmt in caseNode.Body)
-                CompileStmt(stmt);
+            CompileStmts(caseNode.Body);
 
             Generator.Jump(matchEndLabel);
         }
