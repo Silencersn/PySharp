@@ -258,8 +258,12 @@ public sealed class SemanticAnalyzer : ICodeMetaInfoProvider
                     for (int i = 0; i < n.Keywords.Length; i++)
                     {
                         var currentKeyword = n.Keywords[i];
+                        if (currentKeyword.Arg is null)
+                            continue;
                         foreach (var previousKeyword in n.Keywords.Take(i))
                         {
+                            if (previousKeyword.Arg is null)
+                                continue;
                             if (previousKeyword.Arg == currentKeyword.Arg)
                                 throw SyntaxError(PySR.InvalidSyntax_Semantic_KeywordArgumentRepeated, currentKeyword.Arg);
                         }
