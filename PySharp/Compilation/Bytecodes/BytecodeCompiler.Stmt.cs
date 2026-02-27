@@ -10,41 +10,25 @@ namespace PySharp.Compilation.Bytecodes;
 
 partial class BytecodeCompiler
 {
-    private void CompileStmts(ImmutableArray<AstStmtNode> stmts)
+    private void CompileStmts(ImmutableArray<AstStmtNode> stmts, out bool isPostUnreachable)
     {
+        isPostUnreachable = false;
         foreach (var stmt in stmts)
         {
-            CompileStmt(stmt);
-            if (IsPostUnreachable(stmt))
+            CompileStmt(stmt, out isPostUnreachable);
+            if (isPostUnreachable)
                 break;
         }
     }
 
-    private static bool IsPostUnreachable(AstStmtNode stmt)
+    private void CompileStmts(ImmutableArray<AstStmtNode> stmts)
     {
-        switch (stmt)
-        {
-            case ReturnNode:
-            case RaiseNode:
-            case BreakNode:
-            case ContinueNode:
-                return true;
-
-            case IfNode n:
-                return AnyPostUnreachable(n.Body) && AnyPostUnreachable(n.OrElse);
-
-            default:
-                return false;
-        }
-
-        static bool AnyPostUnreachable(ImmutableArray<AstStmtNode> stmts)
-        {
-            return stmts.Any(IsPostUnreachable);
-        }
+        CompileStmts(stmts, out _);
     }
 
-    private void CompileStmt(AstStmtNode node)
+    private void CompileStmt(AstStmtNode node, out bool isPostUnreachable)
     {
+        isPostUnreachable = false;
         Generator.PushMetaInfo(node.MetaInfo);
         switch (node)
         {
@@ -54,16 +38,16 @@ partial class BytecodeCompiler
             case AugAssignNode n: CompileAugAssign(n); break;
             case AnnAssignNode n: CompileAnnAssign(n); break;
             case DeleteNode n: CompileDelete(n); break;
-            case RaiseNode n: CompileRaise(n); break;
-            case BreakNode n: CompileBreak(n); break;
-            case ContinueNode n: CompileContinue(n); break;
-            case ReturnNode n: CompileReturn(n); break;
+            case RaiseNode n: CompileRaise(n, out isPostUnreachable); break;
+            case BreakNode n: CompileBreak(n, out isPostUnreachable); break;
+            case ContinueNode n: CompileContinue(n, out isPostUnreachable); break;
+            case ReturnNode n: CompileReturn(n, out isPostUnreachable); break;
             case ImportNode n: CompileImport(n); break;
             case ImportFromNode n: CompileImportFrom(n); break;
             case GlobalNode n: CompileGlobal(n); break;
             case NonlocalNode n: CompileNonlocal(n); break;
             case AssertNode n: CompileAssert(n); break;
-            case IfNode n: CompileIf(n); break;
+            case IfNode n: CompileIf(n, out isPostUnreachable); break;
             case TryNode n: CompileTry(n); break;
             case TryStarNode n: CompileTryStar(n); break;
             case ForNode n: CompileFor(n); break;
@@ -105,7 +89,7 @@ partial class BytecodeCompiler
         StoreExpr(node.Target);
     }
 
-    private void CompileIf(IfNode node)
+    private void CompileIf(IfNode node, out bool isPostUnreachable)
     {
         var elseBlockLabel = Generator.DefineLabel();
         var ifStmtEndLabel = Generator.DefineLabel();
@@ -114,17 +98,21 @@ partial class BytecodeCompiler
         Generator.Emit(OpCode.ToBool);
         Generator.PopJumpIfFalse(elseBlockLabel);
 
-        CompileStmts(node.Body);
+        CompileStmts(node.Body, out var bodyPostUnreachable);
         Generator.Jump(ifStmtEndLabel);
 
         Generator.MarkLabel(elseBlockLabel);
-        CompileStmts(node.OrElse);
+        CompileStmts(node.OrElse, out var orElsePostUnreachable);
 
         Generator.MarkLabel(ifStmtEndLabel);
+
+        isPostUnreachable = bodyPostUnreachable && orElsePostUnreachable;
     }
 
-    private void CompileRaise(RaiseNode node)
+    private void CompileRaise(RaiseNode node, out bool isPostUnreachable)
     {
+        isPostUnreachable = true;
+
         if (node.Exc is null)
         {
             Generator.Emit(OpCode.RaiseVarArgs, 0);
@@ -277,13 +265,15 @@ partial class BytecodeCompiler
         Loops.Pop();
     }
 
-    private void CompileBreak(BreakNode node)
+    private void CompileBreak(BreakNode node, out bool isPostUnreachable)
     {
+        isPostUnreachable = true;
         Generator.Jump(Loops.Peek().LoopEnd);
     }
 
-    private void CompileContinue(ContinueNode node)
+    private void CompileContinue(ContinueNode node, out bool isPostUnreachable)
     {
+        isPostUnreachable = true;
         Generator.Jump(Loops.Peek().LoopBegin);
     }
 
@@ -371,8 +361,10 @@ partial class BytecodeCompiler
         StoreName(node.Name);
     }
 
-    private void CompileReturn(ReturnNode node)
+    private void CompileReturn(ReturnNode node, out bool isPostUnreachable)
     {
+        isPostUnreachable = true;
+
         if (node.Value is not null)
             LoadExpr(node.Value);
         else
