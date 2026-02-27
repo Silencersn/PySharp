@@ -56,7 +56,7 @@ partial class BytecodeCompiler
             case MatchNode n: CompileMatch(n); break;
             case FunctionDefNode n: CompileFunctionDef(n); break;
             case ClassDefNode n: CompileClassDef(n); break;
-            default: throw new NotImplementedException();
+            default: throw new UnreachableException();
         }
         Generator.PopMetaInfo();
     }
@@ -91,6 +91,13 @@ partial class BytecodeCompiler
 
     private void CompileIf(IfNode node, out bool isPostUnreachable)
     {
+        var test = Reducer.ToBool(node.Test);
+        if (test is not null)
+        {
+            CompileStmts(test.Value ? node.Body : node.OrElse, out isPostUnreachable);
+            return;
+        }
+
         var elseBlockLabel = Generator.DefineLabel();
         var ifStmtEndLabel = Generator.DefineLabel();
 
@@ -319,10 +326,13 @@ partial class BytecodeCompiler
             Generator.Emit(OpCode.ReturnGenerator);
             Generator.Emit(OpCode.PopTop); // pop the first sent to activate the generator
         }
-        CompileStmts(node.Body);
+        CompileStmts(node.Body, out var bodyPostUnreachable);
+        if (!bodyPostUnreachable)
+        {
+            Generator.Emit(OpCode.LoadConst, PyNoneObject.None);
+            Generator.Emit(OpCode.ReturnValue);
+        }
 
-        Generator.Emit(OpCode.LoadConst, PyNoneObject.None);
-        Generator.Emit(OpCode.ReturnValue);
         var bytecode = Generator.ToBytecode();
 
         Generator = currentGenerator;
