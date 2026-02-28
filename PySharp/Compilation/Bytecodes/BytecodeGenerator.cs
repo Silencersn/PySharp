@@ -92,20 +92,12 @@ internal sealed class DefaultBytecodeGenerator : BytecodeGenerator
             var labelId = BinaryPrimitives.ReadInt32BigEndian(bytes);
             var arg = _labelOffsets[labelId - 1];
 
-            if (arg > byte.MaxValue)
-            {
-                BinaryPrimitives.WriteInt32BigEndian(bytes, arg);
-                arg = bytes[3];
+            BinaryPrimitives.WriteInt32BigEndian(bytes, arg);
+            for (int j = 0; j < 3; j++)
+                _instructions[i + j] = new Instruction(OpCode.ExtendedArg, bytes[j]);
+            _instructions[i + 3] = new Instruction(instruction.OpCode & ~OpCode.__LabelFlag, bytes[3]);
 
-                foreach (var b in bytes[..3].TrimStart((byte)0))
-                    _instructions[i++] = new Instruction(OpCode.ExtendedArg, b);
-            }
-            _instructions[i++] = new Instruction(instruction.OpCode & ~OpCode.__LabelFlag, (byte)arg);
-
-            while (i < _instructions.Count && _instructions[i].OpCode is OpCode.__LabelFlag)
-                _instructions[i++] = default; // NOP
-
-            i--;
+            i += 3;
         }
     }
 
@@ -129,7 +121,7 @@ internal sealed class DefaultBytecodeGenerator : BytecodeGenerator
             BinaryPrimitives.WriteInt32BigEndian(bytes, arg);
             arg = bytes[3];
 
-            foreach (var b in bytes[..3].TrimStart((byte)0))
+            foreach (var b in bytes[..3].TrimStart(default(byte)))
                 _instructions.Add(new Instruction(OpCode.ExtendedArg, b));
         }
 
