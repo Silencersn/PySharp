@@ -1,6 +1,6 @@
 ﻿namespace PySharp.Compilation.Bytecodes;
 
-internal enum OpCode
+internal enum OpCode : byte
 {
     NoOperation = 0,
 
@@ -135,5 +135,9 @@ internal enum OpCode
 
     _CallPrintIfNotNone,
 
+    ExtendedArg,
+
     __BytecodeEnd,
+
+    __LabelFlag = 0b10000000,
 }

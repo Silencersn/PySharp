@@ -136,6 +136,7 @@ internal sealed class Bytecode
                 case OpCode._PopExceptionAndJumpIfNull:
                 case OpCode._UnaryOp:
                 case OpCode.UnaryNot:
+                case OpCode.ExtendedArg:
                 case OpCode.__BytecodeEnd:
                     break;
 

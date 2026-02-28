@@ -6,14 +6,14 @@ namespace PySharp.Compilation.Bytecodes;
 internal readonly struct Instruction
 {
     public readonly OpCode OpCode;
-    public readonly int Arg;
+    public readonly byte Arg;
 
     public Instruction(OpCode opCode)
     {
         OpCode = opCode;
         Arg = 0;
     }
-    public Instruction(OpCode opCode, int arg)
+    public Instruction(OpCode opCode, byte arg)
     {
         OpCode = opCode;
         Arg = arg;

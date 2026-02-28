@@ -1,6 +1,7 @@
 ﻿using PySharp.Compilation.CodeAnalysis;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Comparison;
+using System.Buffers.Binary;
 using System.Collections.Immutable;
 using System.Diagnostics;
 
@@ -73,22 +74,38 @@ internal sealed class DefaultBytecodeGenerator : BytecodeGenerator
 
     private void Complete()
     {
+        Span<byte> bytes = stackalloc byte[4];
+
         for (int i = 0; i < _instructions.Count; i++)
         {
             var instruction = _instructions[i];
 
-            if (instruction.Arg >= 0)
+            if (!instruction.OpCode.HasFlag(OpCode.__LabelFlag))
                 continue;
 
-            _instructions[i] = new Instruction(instruction.OpCode, LabelToOffset(-instruction.Arg));
-        }
+            bytes.Clear();
+            bytes[0] = instruction.Arg;
 
-        int LabelToOffset(int labelId)
-        {
-            Debug.Assert(labelId > 0);
-            Debug.Assert(_labelOffsets[labelId - 1] >= 0);
+            for (int j = 1; j < 4; j++)
+                bytes[j] = _instructions[i + j].Arg;
 
-            return _labelOffsets[labelId - 1];
+            var labelId = BinaryPrimitives.ReadInt32BigEndian(bytes);
+            var arg = _labelOffsets[labelId - 1];
+
+            if (arg > byte.MaxValue)
+            {
+                BinaryPrimitives.WriteInt32BigEndian(bytes, arg);
+                arg = bytes[3];
+
+                foreach (var b in bytes[..3].TrimStart((byte)0))
+                    _instructions[i++] = new Instruction(OpCode.ExtendedArg, b);
+            }
+            _instructions[i++] = new Instruction(instruction.OpCode & ~OpCode.__LabelFlag, (byte)arg);
+
+            while (i < _instructions.Count && _instructions[i].OpCode is OpCode.__LabelFlag)
+                _instructions[i++] = default; // NOP
+
+            i--;
         }
     }
 
@@ -104,8 +121,19 @@ internal sealed class DefaultBytecodeGenerator : BytecodeGenerator
         };
     }
 
-    private void InternalEmit(Instruction instruction)
+    private void InternalEmit(OpCode opCode, int arg)
     {
+        if (arg > byte.MaxValue)
+        {
+            Span<byte> bytes = stackalloc byte[4];
+            BinaryPrimitives.WriteInt32BigEndian(bytes, arg);
+            arg = bytes[3];
+
+            foreach (var b in bytes[..3].TrimStart((byte)0))
+                _instructions.Add(new Instruction(OpCode.ExtendedArg, b));
+        }
+
+        var instruction = new Instruction(opCode, (byte)arg);
         _instructions.Add(instruction);
         _lastInstruction = instruction;
     }
@@ -118,14 +146,14 @@ internal sealed class DefaultBytecodeGenerator : BytecodeGenerator
                 return;
         }
 
-        InternalEmit(new Instruction(opCode));
+        InternalEmit(opCode, arg: default);
     }
 
     public override void Emit(OpCode opCode, int arg)
     {
         Debug.Assert(arg >= 0, "Negative arg is used for label.");
 
-        InternalEmit(new Instruction(opCode, arg));
+        InternalEmit(opCode, arg);
     }
 
     public override void Emit(OpCode opCode, Label label)
@@ -141,21 +169,26 @@ internal sealed class DefaultBytecodeGenerator : BytecodeGenerator
             }
         }
 
-        InternalEmit(new Instruction(opCode, -label.Id));
+        opCode |= OpCode.__LabelFlag;
+        Span<byte> bytes = stackalloc byte[4];
+        BinaryPrimitives.WriteInt32BigEndian(bytes, label.Id);
+        InternalEmit(opCode, bytes[0]);
+        for (int i = 1; i < 4; i++)
+            InternalEmit(OpCode.__LabelFlag, bytes[i]);
     }
 
     public override void Emit(OpCode opCode, PyObject pyObject)
     {
         if (!_consts.TryGetValue(pyObject, out var index))
             _consts[pyObject] = index = _consts.Count;
-        InternalEmit(new Instruction(opCode, index));
+        InternalEmit(opCode, index);
     }
 
     public override void Emit(OpCode opCode, string name)
     {
         if (!_names.TryGetValue(name, out var index))
             _names[name] = index = _names.Count;
-        InternalEmit(new Instruction(opCode, index));
+        InternalEmit(opCode, index);
     }
 
     public override Label DefineLabel()
