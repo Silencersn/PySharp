@@ -1,5 +1,4 @@
-﻿using PySharp.Compilation.CodeAnalysis;
-using PySharp.Modules.Builtins;
+﻿using PySharp.Modules.Builtins;
 using PySharp.Utility;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -91,7 +90,7 @@ public sealed class Bytecode
                     if (IsJump(instruction.OpCode))
                     {
                         int nextTarget = instruction.Arg;
-                        
+
                         if (nextTarget < instructions.Length && stackSizes[nextTarget] == -1)
                         {
                             stackSizes[nextTarget] = _currentStackSize;
@@ -121,7 +120,7 @@ public sealed class Bytecode
                 _maxStackSize = _currentStackSize;
             if (_currentStackSize < 0)
                 _currentStackSize = 0;
-}
+        }
 
         private void IncrementStackSizeByInstruction(Instruction instruction)
         {

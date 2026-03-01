@@ -126,7 +126,7 @@ internal sealed class LineTable
     {
         if (_source is null || index < 0)
             return null;
-        
+
         var position = 0;
 
         var currentIndex = 0;
@@ -187,7 +187,7 @@ internal sealed class LineTable
     {
         return bytes[position++];
     }
-    
+
     private static int Read7BitEncodedInt(ReadOnlySpan<byte> bytes, ref int position)
     {
         uint result = 0;

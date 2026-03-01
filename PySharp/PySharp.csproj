@@ -5,8 +5,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Authors>Silencersn</Authors>
-    <Version>0.24.0</Version>
-    <Copyright>Copyright © 2025 Silencersn. All rights reserved.</Copyright>
+    <Version>0.25.0</Version>
+    <Copyright>Copyright © 2025-2026 Silencersn. All rights reserved.</Copyright>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

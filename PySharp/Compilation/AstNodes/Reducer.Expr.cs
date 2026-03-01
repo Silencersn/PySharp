@@ -1,9 +1,5 @@
-﻿using PySharp.Compilation.Primitives;
-using PySharp.Modules.Builtins;
-using PySharp.Runtime;
+﻿using PySharp.Runtime;
 using PySharp.Runtime.Calls;
-using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Compilation.AstNodes;
@@ -16,7 +12,7 @@ partial class Reducer
         if (node is null)
         {
             changed = false;
-            return null; 
+            return null;
         }
 
         var reduced = (node switch
