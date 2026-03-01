@@ -3,15 +3,10 @@ using System.Text;
 
 namespace PySharp.Compilation.Bytecodes;
 
-internal sealed class LineTable
+internal sealed class LineTableBuilder
 {
-    private const byte RangeFlag = 0b0001;
-    private const byte CrucialRangeFlag = 0b0010;
-    private const byte NegativeRangeStartDiffFlag = 0b0100;
-
-    private readonly MemoryStream _stream;
+    internal readonly MemoryStream _stream;
     private readonly BinaryWriter _writer;
-    private readonly BinaryReader _reader;
 
     private CodeSource? _source;
 
@@ -21,14 +16,22 @@ internal sealed class LineTable
     private int _lastIndex;
     private int _lastNonEmptyRangeStart;
 
-    internal LineTable()
+    internal LineTableBuilder()
     {
         _stream = new MemoryStream();
         _writer = new BinaryWriter(_stream, Encoding.ASCII, leaveOpen: true);
-        _reader = new BinaryReader(_stream, Encoding.ASCII, leaveOpen: true);
 
         _indexToWrite = -1;
         _infoToWrite = null;
+    }
+
+    public LineTable ToLineTable()
+    {
+        EnsureWritten();
+        var lineTable = new LineTable(_source, _stream.GetBuffer(), (int)_stream.Length);
+        _stream.Dispose();
+        _writer.Dispose();
+        return lineTable;
     }
 
     public void Write(int index, CodeMetaInfo? info)
@@ -71,15 +74,15 @@ internal sealed class LineTable
             return;
         }
 
-        var flag = RangeFlag;
+        var flag = LineTable.RangeFlag;
         if (!crucialRange.IsEmpty)
-            flag |= CrucialRangeFlag;
+            flag |= LineTable.CrucialRangeFlag;
 
         var rangeStartDiff = range.Start - _lastNonEmptyRangeStart;
         if (rangeStartDiff < 0)
         {
             rangeStartDiff = -rangeStartDiff;
-            flag |= NegativeRangeStartDiffFlag;
+            flag |= LineTable.NegativeRangeStartDiffFlag;
         }
 
         _writer.Write(flag);
@@ -93,16 +96,38 @@ internal sealed class LineTable
             _writer.Write7BitEncodedInt(range.Length - crucialRange.Length);
         }
     }
+}
+
+internal sealed class LineTable
+{
+    internal const byte RangeFlag = 0b0001;
+    internal const byte CrucialRangeFlag = 0b0010;
+    internal const byte NegativeRangeStartDiffFlag = 0b0100;
+
+    private readonly CodeSource? _source;
+    private readonly byte[] _bytes;
+    private readonly int _length;
+
+    public LineTable(CodeSource? source, byte[] bytes, int length)
+    {
+        _source = source;
+        _bytes = bytes;
+        _length = length;
+
+        if (_source is null)
+        {
+            _bytes = [];
+            _length = 0;
+        }
+    }
 
     public CodeMetaInfo? Read(int index)
     {
-        // TODO: thread-safe
-
         if (_source is null || index < 0)
             return null;
         
-        _stream.Position = 0;
-        var length = _stream.Length;
+        using var stream = new MemoryStream(_bytes, index: 0, count: _length, writable: false, publiclyVisible: false);
+        using var reader = new BinaryReader(stream, Encoding.ASCII, leaveOpen: true);
 
         var currentIndex = 0;
         var currentRangeStart = 0;
@@ -110,15 +135,15 @@ internal sealed class LineTable
         var range = CodeTextSpan.Empty;
         var crucialRange = CodeTextSpan.Empty;
 
-        while (_stream.Position < length)
+        while (stream.Position < _length)
         {
-            var indexDiff = _reader.Read7BitEncodedInt();
+            var indexDiff = reader.Read7BitEncodedInt();
             var nextIndex = currentIndex + indexDiff;
             if (index >= currentIndex && index < nextIndex)
                 return CodeMetaInfo.FromSpan(_source, range, crucialRange);
             currentIndex = nextIndex;
 
-            var flag = _reader.ReadByte();
+            var flag = reader.ReadByte();
 
             if ((flag & RangeFlag) is 0)
             {
@@ -127,11 +152,11 @@ internal sealed class LineTable
                 continue;
             }
 
-            var rangeStartDiff = _reader.Read7BitEncodedInt();
+            var rangeStartDiff = reader.Read7BitEncodedInt();
             if ((flag & NegativeRangeStartDiffFlag) is not 0)
                 rangeStartDiff = -rangeStartDiff;
             currentRangeStart += rangeStartDiff;
-            var rangeLength = _reader.Read7BitEncodedInt();
+            var rangeLength = reader.Read7BitEncodedInt();
             range = new CodeTextSpan(currentRangeStart, rangeLength);
 
             if ((flag & CrucialRangeFlag) is 0)
@@ -140,8 +165,8 @@ internal sealed class LineTable
                 continue;
             }
 
-            var crucialRangeStart = currentRangeStart + _reader.Read7BitEncodedInt();
-            var crucialLength = rangeLength - _reader.Read7BitEncodedInt();
+            var crucialRangeStart = currentRangeStart + reader.Read7BitEncodedInt();
+            var crucialLength = rangeLength - reader.Read7BitEncodedInt();
             crucialRange = new CodeTextSpan(crucialRangeStart, crucialLength);
         }
 
