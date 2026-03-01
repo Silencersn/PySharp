@@ -6,15 +6,16 @@ using System.Diagnostics;
 
 namespace PySharp.Compilation.Bytecodes;
 
-internal sealed class Bytecode
+public sealed class Bytecode
 {
-    private readonly ImmutableArray<Instruction> _instructions;
+    private bool _trimmed;
+    private ImmutableArray<Instruction> _instructions;
     private readonly LineTable _lineTable;
     private readonly ImmutableArray<PyObject> _consts;
     private readonly ImmutableArray<string> _names;
     private readonly int _stackSize;
 
-    public Bytecode(ImmutableArray<Instruction> instructions, LineTable lineTable, ImmutableArray<PyObject> consts, ImmutableArray<string> names)
+    internal Bytecode(ImmutableArray<Instruction> instructions, LineTable lineTable, ImmutableArray<PyObject> consts, ImmutableArray<string> names)
     {
         _instructions = instructions;
         _lineTable = lineTable;
@@ -25,9 +26,33 @@ internal sealed class Bytecode
 
     internal ImmutableArray<Instruction> Instructions => _instructions;
     internal LineTable LineTable => _lineTable;
-    internal ImmutableArray<PyObject> Consts => _consts;
-    internal ImmutableArray<string> Names => _names;
-    internal int StackSize => _stackSize;
+
+    public ImmutableArray<PyObject> Consts => _consts;
+    public ImmutableArray<string> Names => _names;
+    public int StackSize => _stackSize;
+
+    public void TrimExcess()
+    {
+        if (_trimmed)
+            return;
+
+        var instructionsCount = _instructions.Length;
+        for (int i = instructionsCount - 1; i >= 0; i--)
+        {
+            if (_instructions[i].OpCode is not OpCode.__BytecodeEnd)
+                continue;
+
+            instructionsCount = i;
+            break;
+        }
+
+        var instructionsThreshold = _instructions.Length * 0.9;
+        if (instructionsCount < instructionsThreshold)
+            _instructions = _instructions.AsSpan()[..instructionsCount].ToImmutableArray();
+
+        _lineTable.TrimExcess();
+        _trimmed = true;
+    }
 
     private class StackSizeHelper
     {

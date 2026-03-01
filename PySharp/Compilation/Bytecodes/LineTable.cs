@@ -1,4 +1,5 @@
 ﻿using PySharp.Compilation.CodeAnalysis;
+using System.Diagnostics;
 using System.Text;
 
 namespace PySharp.Compilation.Bytecodes;
@@ -105,7 +106,7 @@ internal sealed class LineTable
     internal const byte NegativeRangeStartDiffFlag = 0b0100;
 
     private readonly CodeSource? _source;
-    private readonly byte[] _bytes;
+    private byte[] _bytes;
     private readonly int _length;
 
     public LineTable(CodeSource? source, byte[] bytes, int length)
@@ -126,8 +127,7 @@ internal sealed class LineTable
         if (_source is null || index < 0)
             return null;
         
-        using var stream = new MemoryStream(_bytes, index: 0, count: _length, writable: false, publiclyVisible: false);
-        using var reader = new BinaryReader(stream, Encoding.ASCII, leaveOpen: true);
+        var position = 0;
 
         var currentIndex = 0;
         var currentRangeStart = 0;
@@ -135,15 +135,15 @@ internal sealed class LineTable
         var range = CodeTextSpan.Empty;
         var crucialRange = CodeTextSpan.Empty;
 
-        while (stream.Position < _length)
+        while (position < _length)
         {
-            var indexDiff = reader.Read7BitEncodedInt();
+            var indexDiff = Read7BitEncodedInt(_bytes, ref position);
             var nextIndex = currentIndex + indexDiff;
             if (index >= currentIndex && index < nextIndex)
                 return CodeMetaInfo.FromSpan(_source, range, crucialRange);
             currentIndex = nextIndex;
 
-            var flag = reader.ReadByte();
+            var flag = ReadByte(_bytes, ref position);
 
             if ((flag & RangeFlag) is 0)
             {
@@ -152,11 +152,11 @@ internal sealed class LineTable
                 continue;
             }
 
-            var rangeStartDiff = reader.Read7BitEncodedInt();
+            var rangeStartDiff = Read7BitEncodedInt(_bytes, ref position);
             if ((flag & NegativeRangeStartDiffFlag) is not 0)
                 rangeStartDiff = -rangeStartDiff;
             currentRangeStart += rangeStartDiff;
-            var rangeLength = reader.Read7BitEncodedInt();
+            var rangeLength = Read7BitEncodedInt(_bytes, ref position);
             range = new CodeTextSpan(currentRangeStart, rangeLength);
 
             if ((flag & CrucialRangeFlag) is 0)
@@ -165,8 +165,8 @@ internal sealed class LineTable
                 continue;
             }
 
-            var crucialRangeStart = currentRangeStart + reader.Read7BitEncodedInt();
-            var crucialLength = rangeLength - reader.Read7BitEncodedInt();
+            var crucialRangeStart = currentRangeStart + Read7BitEncodedInt(_bytes, ref position);
+            var crucialLength = rangeLength - Read7BitEncodedInt(_bytes, ref position);
             crucialRange = new CodeTextSpan(crucialRangeStart, crucialLength);
         }
 
@@ -174,5 +174,39 @@ internal sealed class LineTable
             return CodeMetaInfo.FromSpan(_source, range, crucialRange);
 
         return null;
+    }
+
+    public void TrimExcess()
+    {
+        var threshold = _bytes.Length * 0.9;
+        if (_length < threshold)
+            _bytes = _bytes[.._length];
+    }
+
+    private static byte ReadByte(ReadOnlySpan<byte> bytes, ref int position)
+    {
+        return bytes[position++];
+    }
+    
+    private static int Read7BitEncodedInt(ReadOnlySpan<byte> bytes, ref int position)
+    {
+        uint result = 0;
+        byte byteReadJustNow;
+
+        const int MaxBytesWithoutOverflow = 4;
+        for (int shift = 0; shift < MaxBytesWithoutOverflow * 7; shift += 7)
+        {
+            byteReadJustNow = ReadByte(bytes, ref position);
+            result |= (byteReadJustNow & 0x7Fu) << shift;
+
+            if (byteReadJustNow <= 0x7Fu)
+                return (int)result;
+        }
+
+        byteReadJustNow = ReadByte(bytes, ref position);
+        Debug.Assert(byteReadJustNow <= 0b_1111u);
+
+        result |= (uint)byteReadJustNow << (MaxBytesWithoutOverflow * 7);
+        return (int)result;
     }
 }

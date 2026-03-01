@@ -10,7 +10,6 @@ namespace PySharp.Modules.Builtins;
 public sealed class PyCodeObject : PyObject
 {
     internal FrozenDictionary<string, int> LocalsTable { get; }
-    internal Bytecode Bytecode { get; }
 
     internal string? VarArg { get; }
     internal string? KwArg { get; }
@@ -18,6 +17,7 @@ public sealed class PyCodeObject : PyObject
     internal int KwDefaultsCount { get; }
 
 
+    public Bytecode Bytecode { get; }
     public string Name { get; }
     public string QualName { get; }
     public int ArgCount { get; }
