@@ -27,17 +27,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
     {
         get
         {
-            var infos = Bytecode.MetaInfos;
-            var index = InstructionIndex;
-
-            // TODO: do not O(n)
-            foreach (var tuple in infos)
-            {
-                if (tuple.Index <= index)
-                    return tuple.Info;
-            }
-
-            return null;
+            return Bytecode.LineTable.Read(InstructionIndex);
         }
     }
 

@@ -33,6 +33,11 @@ public sealed record class CodeMetaInfo
     {
         return FromPosition(source, start, CodeTextPosition.Empty);
     }
+
+    internal static CodeMetaInfo FromSpan(CodeSource source, CodeTextSpan range, CodeTextSpan crucialRange)
+    {
+        return new CodeMetaInfo(source, range, crucialRange);
+    }
 }
 
 
