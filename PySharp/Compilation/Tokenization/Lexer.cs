@@ -636,7 +636,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         {
             _indentationLevels.Push(indentationLevel);
             Debug.Assert(_currentContent is not null);
-            AppendToken(TokenType.Indent, _currentContent.Substring(_offset, indentationLevel));
+            AppendToken(TokenType.Indent, new CodeTextSpan(_offset, indentationLevel));
             return;
         }
 
@@ -660,92 +660,202 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         public readonly CodeTextSpan Span => new(Index, Length);
     }
 
-    private void TokenizeToken(out ValueGroup group)
+    private int GetWhitespaceCount()
     {
-        var success = IsStrictMatchFromCurrent(LexerRegexes.Whitespace, out group);
-        Debug.Assert(success);
+        Debug.Assert(_currentContent is not null);
+        var span = _currentContent.AsSpan()[_offset..];
+        for (int i = 0; i < span.Length; i++)
+        {
+            if (span[i] is ' ' or '\t' or '\f')
+                continue;
 
-        EnsureIndentation(group.Length);
-        _offset += group.Length;
+            return i;
+        }
+        return span.Length;
+    }
 
-        if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithPseudoExtras, out group))
+    private void TokenizePseudoExtras(ValueGroup group)
+    {
+        if (group.Length is 0)
         {
-            if (group.Length is 0)
-            {
-            }
-            else if (group.Value.StartsWith('\\'))
-            {
-                _explicitLineJoining = true;
-                _needSetNewLine = true;
-            }
-            else if (group.Value[0] is '#')
-            {
-                AppendToken(TokenType.Comment, group.Span);
-            }
-            else
-            {
-                _isRawString = group.Value.ContainsAny('r', 'R');
-                _wrapper = group.Value[^1];
-                _stringStart = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
-                _preStringSpan = group.Span;
-                CurrentState = LexerState.TokenizingTripleString;
-            }
         }
-        else if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithNumber, out group))
+        else if (group.Value.StartsWith('\\'))
         {
-            AppendToken(TokenType.Number, group.Span);
+            _explicitLineJoining = true;
+            _needSetNewLine = true;
         }
-        else if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithFunny, out group))
+        else if (group.Value[0] is '#')
         {
-            if (group.Value is "\r\n" or "\n")
-            {
-                AppendNewLineToken(group.Value.ToString());
-                _needSetNewLine = true;
-            }
-            else
-            {
-                AppendToken(TokenType.Operator, group.Span);
-                if (group.Value is "(" or "[" or "{")
-                    _parenLevel++;
-                else if (group.Value is ")" or "]" or "}")
-                    _parenLevel--;
-            }
-        }
-        else if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithContStr, out group))
-        {
-            var prefix = GetStringPrefix(group.Value, out _wrapper);
-
-            _isRawString = prefix.ContainsAny('r', 'R');
-            if (group.Value.EndsWith("\\\r\n") || group.Value.EndsWith("\\\n"))
-            {
-                _stringStart = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
-                _preStringSpan = group.Span;
-                CurrentState = LexerState.TokenizingMultiLineSingleOrDoubleString;
-            }
-            else
-            {
-                AppendToken(TokenType.String, group.Span);
-            }
-        }
-        else if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithName, out group))
-        {
-            AppendToken(TokenType.Name, group.Span);
+            AppendToken(TokenType.Comment, group.Span);
         }
         else
         {
-            Debug.Assert(_currentContent is not null);
+            _isRawString = group.Value.ContainsAny('r', 'R');
+            _wrapper = group.Value[^1];
+            _stringStart = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
+            _preStringSpan = group.Span;
+            CurrentState = LexerState.TokenizingTripleString;
+        }
+    }
 
-            if (_currentContent[_offset] is '\r')
-            {
-                AppendNewLineToken("\r");
-                _needSetNewLine = true;
-                group.TotalContent = _currentContent;
-                group.Index = _offset;
-                group.Length = 1;
-                return;
-            }
+    private void TokenizeFunny(ValueGroup group)
+    {
+        if (group.Value is "\r\n" or "\n")
+        {
+            AppendNewLineToken(group.Value.ToString());
+            _needSetNewLine = true;
+        }
+        else
+        {
+            AppendToken(TokenType.Operator, group.Span);
+            if (group.Value is "(" or "[" or "{")
+                _parenLevel++;
+            else if (group.Value is ")" or "]" or "}")
+                _parenLevel--;
+        }
+    }
 
-            throw SyntaxError();
+    private void TokenizeContStr(ValueGroup group)
+    {
+        var prefix = GetStringPrefix(group.Value, out _wrapper);
+
+        _isRawString = prefix.ContainsAny('r', 'R');
+        if (group.Value.EndsWith("\\\r\n") || group.Value.EndsWith("\\\n"))
+        {
+            _stringStart = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
+            _preStringSpan = group.Span;
+            CurrentState = LexerState.TokenizingMultiLineSingleOrDoubleString;
+        }
+        else
+        {
+            AppendToken(TokenType.String, group.Span);
+        }
+
+    }
+
+    private void TokenizeFallback(out ValueGroup group)
+    {
+        Debug.Assert(_currentContent is not null);
+
+        if (_currentContent[_offset] is '\r')
+        {
+            AppendNewLineToken("\r");
+            _needSetNewLine = true;
+            group.TotalContent = _currentContent;
+            group.Index = _offset;
+            group.Length = 1;
+            return;
+        }
+
+        throw SyntaxError();
+    }
+
+    private void TokenizeToken(out ValueGroup group)
+    {
+        var indentationLevel = GetWhitespaceCount();
+        EnsureIndentation(indentationLevel);
+        _offset += indentationLevel;
+
+        Debug.Assert(_currentContent is not null);
+        if (_offset >= _currentContent.Length)
+        {
+            group = default;
+            group.Index = _offset;
+            return;
+        }
+        var c = _currentContent[_offset];
+
+        switch (c)
+        {
+            case '\\':
+            case '#':
+                if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithPseudoExtras, out group))
+                    TokenizePseudoExtras(group);
+                else
+                    throw SyntaxError();
+                break;
+
+            case '\'':
+            case '"':
+                if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithPseudoExtras, out group))
+                    TokenizePseudoExtras(group);
+                else if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithContStr, out group))
+                    TokenizeContStr(group);
+                else
+                    throw SyntaxError();
+                break;
+
+            case 'b':
+            case 'B':
+            case 'f':
+            case 'F':
+            case 'r':
+            case 'R':
+            case 'u':
+            case 'U':
+                if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithPseudoExtras, out group))
+                    TokenizePseudoExtras(group);
+                else if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithContStr, out group))
+                    TokenizeContStr(group);
+                else if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithName, out group))
+                    AppendToken(TokenType.Name, group.Span);
+                else
+                    throw SyntaxError();
+                break;
+
+            case >= '0' and <= '9':
+                if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithNumber, out group))
+                    AppendToken(TokenType.Number, group.Span);
+                else
+                    throw SyntaxError();
+                break;
+
+            case '.':
+                if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithNumber, out group))
+                    AppendToken(TokenType.Number, group.Span);
+                else if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithFunny, out group))
+                    TokenizeFunny(group);
+                else
+                    throw SyntaxError();
+                break;
+
+            case '\r':
+            case '\n':
+            case '~':
+            case '}':
+            case '|':
+            case '{':
+            case '^':
+            case ']':
+            case '[':
+            case '@':
+            case '>':
+            case '=':
+            case '<':
+            case ';':
+            case ':':
+            case '/':
+            case '-':
+            case ',':
+            case '+':
+            case '*':
+            case ')':
+            case '(':
+            case '&':
+            case '%':
+            case '!':
+                if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithFunny, out group))
+                    TokenizeFunny(group);
+                else
+                    TokenizeFallback(out group);
+                break;
+
+            default:
+                if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithName, out group))
+                    AppendToken(TokenType.Name, group.Span);
+                else
+                    TokenizeFallback(out group);
+                break;
         }
     }
 }
