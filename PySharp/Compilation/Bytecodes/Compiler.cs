@@ -14,10 +14,10 @@ internal static class Compiler
         var source = new CodeSource(sourceName, code);
         var tokens = Lexer.Tokenize(context, source);
         if (appendNewLine)
-            tokens.Insert(tokens.Count - 1, new TokenInfo(TokenType.NewLine, string.Empty, default, default, source));
+            tokens.Insert(tokens.Count - 1, new Token(TokenType.NewLine, default, source));
         var node = parse(context, source, tokens);
-        var model = SemanticAnalyzer.Analyze(context, node);
-        var bytecode = BytecodeCompiler.Compile(model, onlyAsName);
+        var model = SemanticAnalyzer.Analyze(context, source, node);
+        var bytecode = BytecodeCompiler.Compile(model, source, onlyAsName);
         return new PyCodeObject(sourceName, bytecode);
     }
 

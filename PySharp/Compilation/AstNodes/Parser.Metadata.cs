@@ -28,6 +28,7 @@ partial class Parser
         }
 
         public static implicit operator CodeMetaInfo(AstMetaInfo metaInfo) => metaInfo.ToCodeMetaInfo();
+        public static implicit operator ValueCodeMetaInfo(AstMetaInfo metaInfo) => metaInfo.ToValueCodeMetaInfo();
 
         public AstMetaInfo WithEnd()
         {
@@ -53,11 +54,30 @@ partial class Parser
         {
             var startToken = _parser._tokenStream.GetTokenAt(StartTokenPosition);
             var endToken = _parser._tokenStream.GetTokenAt(EndTokenPosition);
+            var source = _parser._codeSource;
+            if (CrucialStartTokenPosition is 0 && CrucialEndTokenPosition is 0)
+                return CodeMetaInfo.FromPosition(source,
+                    startToken.GetStart(source), endToken.GetEnd(source));
+
             var crucialStartToken = _parser._tokenStream.GetTokenAt(CrucialStartTokenPosition);
             var crucialEndToken = _parser._tokenStream.GetTokenAt(CrucialEndTokenPosition);
+            return CodeMetaInfo.FromPosition(source,
+                startToken.GetStart(source), endToken.GetEnd(source), crucialStartToken.GetStart(source), crucialEndToken.GetEnd(source));
+        }
+        public ValueCodeMetaInfo ToValueCodeMetaInfo()
+        {
+            var startToken = _parser._tokenStream.GetTokenAt(StartTokenPosition);
+            var endToken = _parser._tokenStream.GetTokenAt(EndTokenPosition);
+            var rangeLength = endToken.StringSpan.End - startToken.StringSpan.Start;
 
-            return CodeMetaInfo.FromPosition(_parser._codeSource,
-                startToken.Start, endToken.End, crucialStartToken.Start, crucialEndToken.End);
+            if (CrucialStartTokenPosition is 0 && CrucialEndTokenPosition is 0)
+                return ValueCodeMetaInfo.FromSpan(new(startToken.StringSpan.Start, rangeLength), default);
+
+            var crucialStartToken = _parser._tokenStream.GetTokenAt(CrucialStartTokenPosition);
+            var crucialEndToken = _parser._tokenStream.GetTokenAt(CrucialEndTokenPosition);
+            return ValueCodeMetaInfo.FromSpan(
+                new(startToken.StringSpan.Start, rangeLength),
+                new(crucialStartToken.StringSpan.Start, crucialEndToken.StringSpan.End - crucialStartToken.StringSpan.Start));
         }
     }
 

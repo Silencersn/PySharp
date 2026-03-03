@@ -76,7 +76,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         set => _tokenStream.Position = value;
     }
 
-    internal TokenInfo CurrentToken
+    internal Token CurrentToken
     {
         get
         {
@@ -86,8 +86,10 @@ public sealed partial class Parser : ICodeMetaInfoProvider
     }
 
     internal TokenType CurrentTokenType => CurrentToken.Type;
+    private ReadOnlySpan<char> CurrentTokenStringAsSpan => _codeSource.Code.GetString(CurrentToken.StringSpan);
+    private string CurrentTokenString => CurrentTokenStringAsSpan.ToString();
 
-    private bool IsCurrentIdentifier => CurrentTokenType is TokenType.Name && !IsKeyword(CurrentToken.String);
+    private bool IsCurrentIdentifier => CurrentTokenType is TokenType.Name && !IsKeyword(CurrentTokenString);
 
     CodeMetaInfo? ICodeMetaInfoProvider.MetaInfo => CreateAstMetaInfo();
 
@@ -110,7 +112,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         return _context.SyntaxError(message, args);
     }
 
-    private static bool IsUselessToken(TokenInfo tokenInfo)
+    private static bool IsUselessToken(Token tokenInfo)
     {
         return tokenInfo.Type is TokenType.NL or TokenType.Comment;
     }
@@ -138,7 +140,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         if (CurrentTokenType is not TokenType.Name)
             return false;
 
-        return CurrentToken.StringAsSpan.Equals(keyword, StringComparison.Ordinal);
+        return CurrentTokenStringAsSpan.Equals(keyword, StringComparison.Ordinal);
     }
     private void EnsureKeywordThenMove(string keyword, string message = PySR.InvalidSyntax)
     {

@@ -106,7 +106,7 @@ internal static class AstUtils
         return array;
     }
 
-    public static T With<T>(this T node, CodeMetaInfo? metaInfo) where T : AstNode
+    public static T With<T>(this T node, ValueCodeMetaInfo metaInfo) where T : AstNode
     {
         node.MetaInfo = metaInfo;
         return node;

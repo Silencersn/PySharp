@@ -40,17 +40,17 @@ public sealed class SemanticModel
 
 public sealed class SemanticAnalyzer : ICodeMetaInfoProvider
 {
-    public static SemanticModel Analyze(PyCallContext context, AstModNode root)
+    public static SemanticModel Analyze(PyCallContext context, CodeSource source, AstModNode root)
     {
-        var scope = InternalAnalyze(context, root);
+        var scope = InternalAnalyze(context, source, root);
         var model = new SemanticModel(root);
         scope.Bind(model);
         return model;
     }
 
-    internal static RootVariableScope InternalAnalyze(PyCallContext context, AstModNode root)
+    internal static RootVariableScope InternalAnalyze(PyCallContext context, CodeSource source, AstModNode root)
     {
-        var analyzer = new SemanticAnalyzer(context);
+        var analyzer = new SemanticAnalyzer(context, source);
         var scope = analyzer.BuildBasicScope(root);
         FillUnknownVariables(scope);
         analyzer.CheckClosureAndFillCapturedVariables(scope);
@@ -58,16 +58,18 @@ public sealed class SemanticAnalyzer : ICodeMetaInfoProvider
         return scope;
     }
 
+    private readonly CodeSource _source;
     private readonly PyCallContext _context;
     private readonly Stack<AstNode> _nodesToRoot;
 
-    CodeMetaInfo? ICodeMetaInfoProvider.MetaInfo => _nodesToRoot.TryPeek(out var node) ? node.MetaInfo : null;
+    CodeMetaInfo? ICodeMetaInfoProvider.MetaInfo => _nodesToRoot.TryPeek(out var node) ? CodeMetaInfo.FromSpan(_source, node.MetaInfo.Range, node.MetaInfo.CrucialRange) : null;
 
-    private SemanticAnalyzer(PyCallContext context)
+    private SemanticAnalyzer(PyCallContext context, CodeSource source)
     {
         _nodesToRoot = [];
         _context = context;
         _context.CurrentFrame.MetaInfoProvider = this;
+        _source = source;
     }
 
     public PyRuntimeException SyntaxError(string message = PySR.InvalidSyntax, params ReadOnlySpan<object?> args)

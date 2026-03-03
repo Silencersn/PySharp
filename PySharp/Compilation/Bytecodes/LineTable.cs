@@ -9,21 +9,22 @@ internal sealed class LineTableBuilder
     internal readonly MemoryStream _stream;
     private readonly BinaryWriter _writer;
 
-    private CodeSource? _source;
+    private readonly CodeSource _source;
 
     private int _indexToWrite;
-    private CodeMetaInfo? _infoToWrite;
+    private ValueCodeMetaInfo _infoToWrite;
 
     private int _lastIndex;
     private int _lastNonEmptyRangeStart;
 
-    internal LineTableBuilder()
+    internal LineTableBuilder(CodeSource source)
     {
         _stream = new MemoryStream();
         _writer = new BinaryWriter(_stream, Encoding.ASCII, leaveOpen: true);
 
         _indexToWrite = -1;
-        _infoToWrite = null;
+        _infoToWrite = ValueCodeMetaInfo.Empty;
+        _source = source;
     }
 
     public LineTable ToLineTable()
@@ -35,10 +36,8 @@ internal sealed class LineTableBuilder
         return lineTable;
     }
 
-    public void Write(int index, CodeMetaInfo? info)
+    public void Write(int index, ValueCodeMetaInfo info)
     {
-        _source ??= info?.Source;
-
         if (_indexToWrite is not -1 && _indexToWrite != index)
             InternalWrite(_indexToWrite, _infoToWrite);
 
@@ -53,16 +52,16 @@ internal sealed class LineTableBuilder
 
         InternalWrite(_indexToWrite, _infoToWrite);
         _indexToWrite = -1;
-        _infoToWrite = null;
+        _infoToWrite = ValueCodeMetaInfo.Empty;
     }
 
-    private void InternalWrite(int index, CodeMetaInfo? info)
+    private void InternalWrite(int index, ValueCodeMetaInfo info)
     {
         _writer.Write7BitEncodedInt(index - _lastIndex);
         _lastIndex = index;
         var range = CodeTextSpan.Empty;
         var crucialRange = CodeTextSpan.Empty;
-        if (info is not null)
+        if (!info.IsEmpty)
         {
             range = info.Range;
             if (!range.IsEmpty)
@@ -105,21 +104,15 @@ internal sealed class LineTable
     internal const byte CrucialRangeFlag = 0b0010;
     internal const byte NegativeRangeStartDiffFlag = 0b0100;
 
-    private readonly CodeSource? _source;
+    private readonly CodeSource _source;
     private byte[] _bytes;
     private readonly int _length;
 
-    public LineTable(CodeSource? source, byte[] bytes, int length)
+    public LineTable(CodeSource source, byte[] bytes, int length)
     {
         _source = source;
         _bytes = bytes;
         _length = length;
-
-        if (_source is null)
-        {
-            _bytes = [];
-            _length = 0;
-        }
     }
 
     public CodeMetaInfo? Read(int index)

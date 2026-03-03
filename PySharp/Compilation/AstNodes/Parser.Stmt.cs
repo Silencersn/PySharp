@@ -115,7 +115,7 @@ partial class Parser
             if (!IsCurrentIdentifier)
                 return false;
 
-            var name = CurrentToken.String;
+            var name = CurrentTokenString;
             MoveNextToken();
             if (CurrentTokenType is not TokenType.Colon)
                 return false;
@@ -264,7 +264,7 @@ partial class Parser
     }
 
     [GrammarSyntaxRule("import_from_as_names")]
-    private List<AstAliasNode> ParseImportFromAsNames(out TokenInfo? endsWithComma)
+    private List<AstAliasNode> ParseImportFromAsNames(out Token? endsWithComma)
     {
         return ParseSomethingList(ParseImportFromAsName, StopPredicates.UntilNewLineOrSemicolonOrRightParen, out endsWithComma);
     }
@@ -463,9 +463,9 @@ partial class Parser
     {
         var metaInfo = CreateAstMetaInfo();
 
-        if (CurrentTokenType is TokenType.Name && IsKeyword(CurrentToken.String))
+        if (CurrentTokenType is TokenType.Name && IsKeyword(CurrentTokenString))
         {
-            AstStmtNode? stmt = CurrentToken.String switch
+            AstStmtNode? stmt = CurrentTokenString switch
             {
                 "return" => ParseReturnStmt(),
                 "import" or "from" => ParseImportStmt(),
@@ -575,7 +575,7 @@ partial class Parser
         if (decorators.Count > 0 && !(IsCurrentKeyword("def") || IsCurrentKeyword("class")))
             throw SyntaxError();
 
-        compoundStmt = CurrentToken.StringAsSpan switch
+        compoundStmt = CurrentTokenStringAsSpan switch
         {
             "def" => ParseFunctionDef(decorators),
             "if" => ParseIfStmt("if"),
@@ -690,7 +690,7 @@ partial class Parser
         if (CurrentTokenType is not TokenType.NewLine)
             return ParseSimpleStmts();
 
-        var lineno = CurrentToken.Start.Line;
+        var lineno = CurrentToken.GetStart(_codeSource).Line;
         MoveNextToken();
         if (CurrentTokenType is not TokenType.Indent)
         {
@@ -847,7 +847,7 @@ partial class Parser
     {
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("for");
-        var target = ParseStarTargets(StopPredicates.UntilKeywordIn);
+        var target = ParseStarTargets(StopPredicates.UntilKeywordIn(this));
         AstUtils.SetContext(target, ExprContextType.Store);
         EnsureKeywordThenMove("in");
         var iter = ParseStarExpressions(StopPredicates.UntilColon);

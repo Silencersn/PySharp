@@ -25,7 +25,7 @@ partial class Parser
     {
         if (!IsCurrentIdentifier)
             throw SyntaxError();
-        var ret = CurrentToken.String;
+        var ret = CurrentTokenString;
         MoveNextToken();
         return ret;
     }
@@ -137,7 +137,8 @@ partial class Parser
         if (CurrentTokenType is not TokenType.FStringMiddle)
             return ParseFStringReplacementField(isRaw);
 
-        var str = isRaw ? CurrentToken.String : FromLiteralToString(CurrentToken.StringAsSpan, true);
+        var literal = PyStrConverter.FromSourceToLiteral(CurrentTokenStringAsSpan, isRaw);
+        var str = isRaw ? literal : FromLiteralToString(literal, true);
         var middle = Ast.Constant(str).With(CreateAstMetaInfo());
         MoveNextToken();
         return middle;
@@ -156,7 +157,7 @@ partial class Parser
         if (CurrentTokenType is TokenType.RightBrace)
             throw SyntaxError(PySR.InvalidSyntax_FString_ReplacementField_BeforeRightBrace);
 
-        var start = CurrentToken.Start;
+        var start = CurrentToken.GetStart(_codeSource);
         var metaInfo = CreateAstMetaInfo();
         var value = ParseAnnotatedRhs(StopPredicates.UntilRightBraceOrEqualOrExclamationOrColon);
 
@@ -164,7 +165,7 @@ partial class Parser
         if (CurrentTokenType is TokenType.Equal)
         {
             MoveNextToken();
-            var end = CurrentToken.Start;
+            var end = CurrentToken.GetStart(_codeSource);
 
             if (!_codeSource.Code.TryGetRange(start, end, out var range))
                 throw _context.PySharpException("incorrect code text position");
@@ -209,9 +210,9 @@ partial class Parser
         if (!IsCurrentIdentifier)
             throw SyntaxError(PySR.InvalidSyntax_FString_ConversionCharacter_Invalid);
 
-        var conversion = CurrentToken.String;
+        var conversion = CurrentTokenStringAsSpan;
         if (conversion is not ("s" or "r" or "a"))
-            throw SyntaxError(PySR.InvalidSyntax_FString_ConversionCharacter_InvalidCharacter, conversion);
+            throw SyntaxError(PySR.InvalidSyntax_FString_ConversionCharacter_InvalidCharacter, CurrentTokenString);
         MoveNextToken();
 
         return conversion[0];
@@ -246,7 +247,7 @@ partial class Parser
     {
         var metaInfo = CreateAstMetaInfo();
         EnsureTokenType(TokenType.FStringStart);
-        var isRaw = CurrentToken.StringAsSpan.Contains('r');
+        var isRaw = CurrentTokenStringAsSpan.Contains('r');
         MoveNextToken();
 
         // ConstantNode(string) or FormattedValueNode or JoinedStrNode
@@ -283,7 +284,10 @@ partial class Parser
     private ConstantNode ParseString()
     {
         EnsureTokenType(TokenType.String);
-        var str = Ast.Constant(FromLiteralToString(CurrentToken.StringAsSpan, noWrapper: false));
+        var source = CurrentTokenStringAsSpan;
+        var isRaw = source[..source.IndexOf(source[^1])].ContainsAny('r', 'R');
+        var literal = PyStrConverter.FromSourceToLiteral(CurrentTokenStringAsSpan, isRaw);
+        var str = Ast.Constant(FromLiteralToString(literal, noWrapper: false));
         MoveNextToken();
         return str;
     }
@@ -421,17 +425,17 @@ partial class Parser
         var metaInfo = CreateAstMetaInfo();
         if (CurrentTokenType is TokenType.Name)
         {
-            if (IsKeyword(CurrentToken.String))
+            if (IsKeyword(CurrentTokenString))
             {
                 // keyword literal
 
-                if (CurrentToken.String is "True" or "False")
+                if (CurrentTokenString is "True" or "False")
                 {
-                    var value = CurrentToken.String;
+                    var value = CurrentTokenString;
                     MoveNextToken();
                     return Ast.Constant(bool.Parse(value)).With(metaInfo);
                 }
-                else if (CurrentToken.String is "None")
+                else if (CurrentTokenString is "None")
                 {
                     MoveNextToken();
                     return Ast.Constant(PyNoneObject.None).With(metaInfo);
@@ -439,7 +443,7 @@ partial class Parser
 
                 throw SyntaxError();
             }
-            else if (CurrentToken.String is PySpecialNames.Debug)
+            else if (CurrentTokenString is PySpecialNames.Debug)
             {
                 // __debug__
 
@@ -984,7 +988,7 @@ partial class Parser
     }
 
     [GrammarSyntaxRule("star_named_expressions")]
-    private List<AstExprNode> ParseStarNamedExpressions(StopPredicate predicate, out TokenInfo? endsWithComma)
+    private List<AstExprNode> ParseStarNamedExpressions(StopPredicate predicate, out Token? endsWithComma)
     {
         return ParseSomethingList(ParseStarNamedExpression, predicate, out endsWithComma);
     }
@@ -997,42 +1001,41 @@ partial class Parser
     /// <param name="list"></param>
     /// <param name="endsWithComma"></param>
     /// <returns></returns>
-    private static AstExprNode UnwrapOrMakeTuple(List<AstExprNode> list, TokenInfo? endsWithComma)
+    private static AstExprNode UnwrapOrMakeTuple(List<AstExprNode> list, Token? endsWithComma)
     {
         return UnwrapOrPackSomething(list, endsWithComma, Ast.Tuple);
     }
 
-    private static TResult PackSomething<TSource, TResult>(List<TSource> list, TokenInfo? endsWithComma, Func<List<TSource>, TResult> packer)
+    private static TResult PackSomething<TSource, TResult>(List<TSource> list, Token? endsWithComma, Func<List<TSource>, TResult> packer)
         where TSource : AstNode
         where TResult : AstNode
     {
-        CodeMetaInfo? metaInfo = null;
+        ValueCodeMetaInfo metaInfo = ValueCodeMetaInfo.Empty;
 
         var startMetaInfo = list[0].MetaInfo;
-        if (startMetaInfo is not null)
+        if (!startMetaInfo.IsEmpty)
         {
-            var source = startMetaInfo.Source;
-            var start = startMetaInfo.Start;
-            var end = CodeTextPosition.Empty;
+            var start = startMetaInfo.Range.Start;
+            var end = start;
 
             if (endsWithComma is not null)
             {
-                end = endsWithComma.End;
+                end = endsWithComma.Value.StringSpan.End;
             }
             else
             {
                 var endMetaInfo = list[^1].MetaInfo;
-                if (endMetaInfo is not null)
-                    end = endMetaInfo.End;
+                if (!endMetaInfo.IsEmpty)
+                    end = endMetaInfo.Range.End;
             }
 
-            metaInfo = CodeMetaInfo.FromPosition(source, start, end);
+            metaInfo = ValueCodeMetaInfo.FromSpan(new CodeTextSpan(start, end - start), default);
         }
 
         return packer(list).With(metaInfo);
     }
 
-    private static T UnwrapOrPackSomething<T>(List<T> list, TokenInfo? endsWithComma, Func<List<T>, T> packer) where T : AstNode
+    private static T UnwrapOrPackSomething<T>(List<T> list, Token? endsWithComma, Func<List<T>, T> packer) where T : AstNode
     {
         Debug.Assert(list.Count > 0);
 
@@ -1178,7 +1181,7 @@ partial class Parser
     }
 
     [GrammarSyntaxRule("expressions")]
-    private List<AstExprNode> ParseExpressions(StopPredicate predicate, out TokenInfo? endsWithComma)
+    private List<AstExprNode> ParseExpressions(StopPredicate predicate, out Token? endsWithComma)
     {
         return ParseSomethingList(ParseExpression, predicate, out endsWithComma);
     }
@@ -1206,7 +1209,7 @@ partial class Parser
         return Ast.Yield(value).With(metaInfo.WithPreviousEnd());
     }
 
-    private List<T> ParseSomethingList<T>(Func<T> parse, StopPredicate predicate, out TokenInfo? endsWithComma, TokenType separator = TokenType.Comma)
+    private List<T> ParseSomethingList<T>(Func<T> parse, StopPredicate predicate, out Token? endsWithComma, TokenType separator = TokenType.Comma)
     {
         endsWithComma = null;
         List<T> list = [parse()];
@@ -1260,7 +1263,7 @@ partial class Parser
             throw new NotSupportedException();
 
         EnsureKeywordThenMove("for");
-        var target = ParseStarTargets(StopPredicates.UntilKeywordIn);
+        var target = ParseStarTargets(StopPredicates.UntilKeywordIn(this));
         EnsureKeywordThenMove("in", PySR.InvalidSyntax_ForStmt_ExpectedIn);
 
         var iter = ParseDisjunction();
@@ -1422,7 +1425,7 @@ partial class Parser
     }
 
     [GrammarSyntaxRule("args")]
-    private (IEnumerable<AstExprNode> Args, IEnumerable<AstKeywordNode> Kwargs) ParseArgs(out TokenInfo? endsWithComma)
+    private (IEnumerable<AstExprNode> Args, IEnumerable<AstKeywordNode> Kwargs) ParseArgs(out Token? endsWithComma)
     {
         if (CurrentTokenType is TokenType.RightParen)
         {
@@ -1471,7 +1474,7 @@ partial class Parser
     }
 
     [GrammarSyntaxRule("kwargs")]
-    private (IEnumerable<StarredNode> Args, IEnumerable<AstKeywordNode> Kwargs) ParseKwargs(out TokenInfo? endsWithComma)
+    private (IEnumerable<StarredNode> Args, IEnumerable<AstKeywordNode> Kwargs) ParseKwargs(out Token? endsWithComma)
     {
         if (CurrentTokenType is TokenType.DoubleStar)
         {

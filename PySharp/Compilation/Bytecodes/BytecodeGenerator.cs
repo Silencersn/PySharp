@@ -10,7 +10,7 @@ namespace PySharp.Compilation.Bytecodes;
 internal abstract class BytecodeGenerator
 {
     internal abstract Bytecode ToBytecode();
-    internal abstract void PushMetaInfo(CodeMetaInfo? info);
+    internal abstract void PushMetaInfo(ValueCodeMetaInfo info);
     internal abstract void PopMetaInfo();
     public abstract void Emit(OpCode opCode);
     public abstract void Emit(OpCode opCode, int arg);
@@ -20,9 +20,9 @@ internal abstract class BytecodeGenerator
     public abstract Label DefineLabel();
     public abstract void MarkLabel(Label label);
 
-    public static BytecodeGenerator Create()
+    public static BytecodeGenerator Create(CodeSource source)
     {
-        return new DefaultBytecodeGenerator();
+        return new DefaultBytecodeGenerator(source);
     }
 }
 
@@ -30,11 +30,18 @@ internal sealed class DefaultBytecodeGenerator : BytecodeGenerator
 {
     private readonly ImmutableArray<Instruction>.Builder _instructions = ImmutableArray.CreateBuilder<Instruction>();
     private readonly List<int> _labelOffsets = [];
-    private readonly LineTableBuilder _lineTableBuilder = new();
+    private readonly LineTableBuilder _lineTableBuilder;
     private readonly OrderedDictionary<PyObject, int> _consts = new(PyObjectConstEqualityComparer.Shared);
     private readonly OrderedDictionary<string, int> _names = new(StringComparer.Ordinal);
-    private readonly Stack<CodeMetaInfo?> _metaInfoStack = [];
+    private readonly Stack<ValueCodeMetaInfo> _metaInfoStack = [];
+    private readonly CodeSource _source;
     private Instruction _lastInstruction;
+
+    internal DefaultBytecodeGenerator(CodeSource source)
+    {
+        _source = source;
+        _lineTableBuilder = new LineTableBuilder(_source);
+    }
 
     internal override Bytecode ToBytecode()
     {
@@ -54,7 +61,7 @@ internal sealed class DefaultBytecodeGenerator : BytecodeGenerator
 
         return new Bytecode(_instructions.MoveToImmutable(), _lineTableBuilder.ToLineTable(), [.. _consts.Keys], [.. _names.Keys]);
     }
-    internal override void PushMetaInfo(CodeMetaInfo? info)
+    internal override void PushMetaInfo(ValueCodeMetaInfo info)
     {
         _metaInfoStack.Push(info);
         _lineTableBuilder.Write(_instructions.Count, info);
@@ -63,7 +70,7 @@ internal sealed class DefaultBytecodeGenerator : BytecodeGenerator
     internal override void PopMetaInfo()
     {
         _metaInfoStack.Pop();
-        _lineTableBuilder.Write(_instructions.Count, _metaInfoStack.TryPeek(out var info) ? info : null);
+        _lineTableBuilder.Write(_instructions.Count, _metaInfoStack.TryPeek(out var info) ? info : ValueCodeMetaInfo.Empty);
     }
 
     private void Complete()

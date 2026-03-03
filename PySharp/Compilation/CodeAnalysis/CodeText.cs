@@ -186,6 +186,8 @@ public sealed class CodeText
 
     internal int PositionToOffset(CodeTextPosition position)
     {
+        if (position.Line >= _lineSpans.Length)
+            return -1;
         return _lineSpans[position.Line].Start + position.Offset;
     }
 

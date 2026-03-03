@@ -10,7 +10,7 @@ partial class Parser
     private MatchNode ParseMatchStmt()
     {
         var metaInfo = CreateAstMetaInfo();
-        var lineno = CurrentToken.Start.Line;
+        var lineno = CurrentToken.GetStart(_codeSource).Line;
         EnsureKeywordThenMove("match");
 
         var subject = ParseSubjectExpr();
@@ -76,7 +76,7 @@ partial class Parser
     private MatchSequenceNode ParseOpenSequencePattern(StopPredicate predicate)
     {
         var pattern = ParseMaybeStarPattern();
-        var endsWithComma = CurrentToken;
+        Token? endsWithComma = CurrentToken;
         EnsureTokenTypeThenMove(TokenType.Comma);
         if (predicate(CurrentToken))
             return PackSomething([pattern], endsWithComma, Ast.MatchSequence);
@@ -122,12 +122,12 @@ partial class Parser
         var pos = TokenStreamPosition;
 
         if (CurrentTokenType is TokenType.Number or TokenType.String or TokenType.FStringStart ||
-            CurrentTokenType is TokenType.Name && IsKeyword(CurrentToken.String))
+            CurrentTokenType is TokenType.Name && IsKeyword(CurrentTokenString))
             return ParseLiteralPattern();
 
         if (CurrentTokenType is TokenType.Name)
         {
-            if (CurrentToken.String is "_")
+            if (CurrentTokenStringAsSpan is "_")
                 return ParseWildcardPattern();
 
             var nameOrAttr = ParseNameOrAttr();
@@ -244,7 +244,7 @@ partial class Parser
         else if (CurrentTokenType is TokenType.Name)
         {
             var metaInfo = CreateAstMetaInfo();
-            var s = CurrentToken.String;
+            var s = CurrentTokenString;
             return (s switch
             {
                 "True" => Ast.Constant(PyBoolObject.True),
@@ -317,7 +317,7 @@ partial class Parser
     {
         var metaInfo = CreateAstMetaInfo();
         EnsureTokenType(TokenType.Number);
-        var value = CurrentToken.String;
+        var value = CurrentTokenString;
         MoveNextToken();
 
         if (value.EndsWith('j'))
@@ -376,7 +376,7 @@ partial class Parser
     }
 
     [GrammarSyntaxRule("maybe_sequence_pattern")]
-    private List<AstPatternNode> ParseMaybeSequencePattern(StopPredicate predicate, out TokenInfo? endsWithComma)
+    private List<AstPatternNode> ParseMaybeSequencePattern(StopPredicate predicate, out Token? endsWithComma)
     {
         return ParseSomethingList(ParseMaybeStarPattern, predicate, out endsWithComma);
     }
@@ -472,7 +472,7 @@ partial class Parser
     }
 
     [GrammarSyntaxRule("items_pattern")]
-    private List<KeyValuePair<AstExprNode, AstPatternNode>> ParseItemsPattern(out TokenInfo? endsWithComma)
+    private List<KeyValuePair<AstExprNode, AstPatternNode>> ParseItemsPattern(out Token? endsWithComma)
     {
         return ParseSomethingList(ParseKeyValuePattern, StopPredicates.UntilRightBraceOrDoubleStar, out endsWithComma);
     }

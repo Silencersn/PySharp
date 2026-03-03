@@ -1,6 +1,6 @@
 ﻿namespace PySharp.Compilation.Tokenization;
 
-public enum TokenType
+public enum TokenType : byte
 {
     None = 0,
 

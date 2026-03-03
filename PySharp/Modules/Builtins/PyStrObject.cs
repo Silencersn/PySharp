@@ -677,4 +677,20 @@ public static class PyStrConverter
                 UnicodeCategory.SpaceSeparator
             );
     }
+
+    public static string FromSourceToLiteral(ReadOnlySpan<char> str, bool isRaw)
+    {
+        var builder = new StringBuilder(str.Length);
+        builder.Append(str);
+
+        // all the \r\n or \r should be \n
+        builder.Replace("\r\n", "\n");
+        builder.Replace('\r', '\n');
+
+        if (!isRaw)
+            // explicit line joining
+            builder.Replace("\\\n", string.Empty);
+
+        return builder.ToString();
+    }
 }

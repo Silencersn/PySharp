@@ -6,7 +6,7 @@ using System.Text;
 
 namespace PySharp.Compilation.Tokenization;
 
-public sealed record class TokenInfo
+public readonly record struct Token
 {
     public static readonly FrozenDictionary<string, TokenType> ExactTokenTypes = new Dictionary<string, TokenType>
     {
@@ -117,96 +117,41 @@ public sealed record class TokenInfo
         };
     }
 
-    private string? _string;
-    private CodeSource Source { get; }
     internal CodeTextSpan StringSpan { get; }
     public TokenType Type { get; }
-    public ReadOnlySpan<char> StringAsSpan => _string ?? Source.Code.GetString(StringSpan);
-    public string String => _string ??= StringAsSpan.ToString();
-    public CodeTextPosition Start { get; }
-    public CodeTextPosition End { get; }
-    public ReadOnlySpan<char> Line
-    {
-        get
-        {
-            var startLine = Start.Line;
-            var endLine = End.Line;
 
-            if (startLine < 1 || startLine > Source.Code.LineCount)
-                return [];
-            if (endLine < 1 || endLine > Source.Code.LineCount)
-                return [];
-
-            Debug.Assert(startLine <= endLine);
-            return Source.Code.GetMultiLines(startLine, endLine);
-        }
-    }
-
-    internal TokenInfo(TokenType type, CodeTextSpan span, CodeTextPosition start, CodeTextPosition end, CodeSource source)
+    internal Token(TokenType type, CodeTextSpan span, CodeSource source)
     {
         Debug.Assert((uint)type < (uint)TokenType.Count);
         Debug.Assert(source is not null);
 
-        Source = source;
         StringSpan = span;
-        Start = start;
-        End = end;
+        
         if (type is TokenType.Operator)
-            type = GetExactTokenType(StringAsSpan);
-
-        Type = type;
-    }
-    internal TokenInfo(TokenType type, string str, CodeTextPosition start, CodeTextPosition end, CodeSource source)
-    {
-        Debug.Assert((uint)type < (uint)TokenType.Count);
-        Debug.Assert(str is not null);
-        Debug.Assert(source is not null);
-
-        Source = source;
-        _string = str;
-        Start = start;
-        End = end;
-        if (type is TokenType.Operator)
-            type = GetExactTokenType(str);
+            type = GetExactTokenType(source.Code.GetString(StringSpan));
 
         Type = type;
     }
 
-    public override string ToString()
+    public CodeTextPosition GetStart(CodeSource source)
     {
-        var builder = new StringBuilder()
-            .Append(nameof(TokenInfo))
-            .Append('(')
+        return source.Code.OffsetToPosition(StringSpan.Start);
+    }
+    public CodeTextPosition GetEnd(CodeSource source)
+    {
+        return source.Code.OffsetToPosition(StringSpan.End);
+    }
+    public ReadOnlySpan<char> GetLine(CodeSource source)
+    {
+        var startLine = GetStart(source).Line;
+        var endLine = GetStart(source).Line;
 
-            .Append(nameof(Type))
-            .Append('=')
-            .Append(Type)
+        if (startLine < 1 || startLine > source.Code.LineCount)
+            return [];
+        if (endLine < 1 || endLine > source.Code.LineCount)
+            return [];
 
-            .Append(", ")
-
-            .Append(nameof(String))
-            .Append('=')
-            .Append(PyStrConverter.FromStringToLiteral(StringAsSpan))
-
-            .Append(", ")
-
-            .Append(nameof(Start))
-            .Append('=')
-            .AppendFormat("({0}, {1})", Start.Line, Start.Offset)
-
-            .Append(", ")
-
-            .Append(nameof(End))
-            .Append('=')
-            .AppendFormat("({0}, {1})", End.Line, End.Offset)
-
-            .Append(", ")
-            .Append(nameof(Line))
-            .Append('=')
-            .Append(PyStrConverter.FromStringToLiteral(Line))
-
-            .Append(')');
-
-        return builder.ToString();
+        Debug.Assert(startLine <= endLine);
+        return source.Code.GetMultiLines(startLine, endLine);
     }
 }

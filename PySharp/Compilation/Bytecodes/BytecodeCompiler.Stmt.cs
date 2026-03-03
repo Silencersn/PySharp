@@ -315,7 +315,7 @@ partial class BytecodeCompiler
     private void CompileFunctionDef(FunctionDefNode node)
     {
         var currentGenerator = Generator;
-        Generator = BytecodeGenerator.Create();
+        Generator = BytecodeGenerator.Create(_source);
         var currentScope = VariableScope;
         var scope = Model.GetVariableScope<CallableVariableScope>(node);
         Debug.Assert(scope is not null);
@@ -395,7 +395,7 @@ partial class BytecodeCompiler
     private void CompileClassDef(ClassDefNode node)
     {
         var currentGenerator = Generator;
-        Generator = BytecodeGenerator.Create();
+        Generator = BytecodeGenerator.Create(_source);
         var currentScope = VariableScope;
         var scope = Model.GetVariableScope<ClassVariableScope>(node);
         Debug.Assert(scope is not null);
