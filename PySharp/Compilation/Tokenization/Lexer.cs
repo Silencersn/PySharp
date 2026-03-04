@@ -3,6 +3,7 @@ using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -112,7 +113,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         _context = context;
         _context.CurrentFrame.MetaInfoProvider = this;
         _codeSource = codeSource;
-        _tokens = [];
+        _tokens = new List<Token>(GetTokensDefaultCapacity(codeSource.Code.Text.Length));
         _lineno = 0;
         _offsetOfPreviousLine = 0;
         _offset = 0;
@@ -123,6 +124,12 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         _currentContent = null;
         _fstringStack = [];
         CurrentState = LexerState.Default;
+    }
+
+    private static int GetTokensDefaultCapacity(int charsLength)
+    {
+        Debug.Assert(charsLength >= 0);
+        return (int)BitOperations.RoundUpToPowerOf2((uint)charsLength / 4);
     }
 
     public PyRuntimeException SyntaxError(string message = PySR.InvalidSyntax, params ReadOnlySpan<object?> args)
