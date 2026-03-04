@@ -18,8 +18,8 @@ public sealed record class CodeMetaInfo
     public CodeTextPosition End => Source.Code.OffsetToPosition(Range.End);
     public CodeTextPosition CrucialStart => Source.Code.OffsetToPosition(CrucialRange.Start);
     public CodeTextPosition CrucialEnd => Source.Code.OffsetToPosition(CrucialRange.End);
-    public bool HasRange => !Range.IsEmpty;
-    public bool HasCrucialRange => !CrucialRange.IsEmpty;
+    public bool HasRange => !Range.IsEmpty && Range.Length > 0;
+    public bool HasCrucialRange => !CrucialRange.IsEmpty && CrucialRange.Length > 0;
 
     internal static CodeMetaInfo FromPosition(CodeSource source, CodeTextPosition start, CodeTextPosition end, CodeTextPosition crucialStart, CodeTextPosition crucialEnd)
     {

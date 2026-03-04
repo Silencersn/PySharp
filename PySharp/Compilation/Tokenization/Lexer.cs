@@ -38,26 +38,28 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
     private sealed class FStringInfo
     {
         public LexerState State;
-        public string Wrapper { get; }
+        public char WrapperChar { get; }
+        public int WrapperLength => IsTriple ? 3 : 1;
         public int ParenLevelWhenEntering { get; }
-        public bool IsTriple => Wrapper.Length is 3;
+        public bool IsTriple { get; }
         public bool IsRaw { get; }
         public Regex WrapperRegex { get; }
         public Stack<int> FormatSpec { get; }
 
-        public FStringInfo(bool isRaw, string wrapper, int parenLevelWhenEntering)
+        public FStringInfo(bool isRaw, char wrapperChar, bool isTriple, int parenLevelWhenEntering)
         {
             FormatSpec = [];
             State = LexerState.FStringMiddle;
-            Wrapper = wrapper;
+            WrapperChar = wrapperChar;
+            IsTriple = isTriple;
             ParenLevelWhenEntering = parenLevelWhenEntering;
             IsRaw = isRaw;
-            WrapperRegex = wrapper switch
+            WrapperRegex = wrapperChar switch
             {
-                "\'" => LexerRegexes.Single,
-                "\"" => LexerRegexes.Double,
-                "\'\'\'" => LexerRegexes.Single3,
-                "\"\"\"" => LexerRegexes.Double3,
+                '\'' when isTriple => LexerRegexes.Single3,
+                '"' when isTriple => LexerRegexes.Double3,
+                '\'' => LexerRegexes.Single,
+                '"' => LexerRegexes.Double,
                 _ => throw new UnreachableException()
             };
         }
@@ -195,34 +197,6 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                     break;
 
                 case LexerState.Default or LexerState.FStringDefault:
-                    if (IsFString(content, _offset, out var wrapper, out var whiteLength, out var prefix))
-                    {
-                        var fStringOffset = _offset + whiteLength;
-
-                        if (whiteLength > 0 && content.AsSpan().Slice(_offset, whiteLength).Contains('\n'))
-                        {
-                            _offset = content.IndexOf('\n', _offset);
-                            if (content[_offset - 1] is '\r')
-                            {
-                                _offset--;
-                                AppendNewLineToken("\r\n");
-                                _offset += 2;
-                            }
-                            else
-                            {
-                                AppendNewLineToken("\n");
-                                _offset++;
-                            }
-                            SetNewLine();
-                        }
-
-                        _offset = fStringOffset;
-                        AppendToken(TokenType.FStringStart, prefix + wrapper);
-                        _fstringStack.Push(new FStringInfo(prefix.ContainsAny('r', 'R'), wrapper, _parenLevel));
-                        _offset += prefix.Length + wrapper.Length;
-                        break;
-                    }
-
                     TokenizeToken(out var group);
                     Debug.Assert(group.Index == _offset);
                     _offset += group.Length;
@@ -270,7 +244,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                     if (!m.Success)
                         throw SyntaxError(PySR.InvalidSyntax_Tokenize_Unterminated_TripleFStringLiteral, _lineno);
 
-                    int indexOfWrapper = m.Index + m.Length - info.Wrapper.Length;
+                    int indexOfWrapper = m.Index + m.Length - info.WrapperLength;
                     var indexOfLeftBrace = content.IndexOf('{', _offset);
                     var indexOfRightBrace = content.IndexOf('}', _offset);
 
@@ -285,8 +259,8 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
 
                         var end = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
                         AppendToken(TokenType.FStringMiddle, start, end);
-                        AppendToken(TokenType.FStringEnd, info.Wrapper);
-                        _offset = indexOfWrapper + info.Wrapper.Length;
+                        AppendToken(TokenType.FStringEnd, info.WrapperLength);
+                        _offset = indexOfWrapper + info.WrapperLength;
                         _fstringStack.Pop();
                     }
                     else if (indexOfLeftBrace is not -1 &&
@@ -383,53 +357,12 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         var countOfNewLine = _currentContent.AsSpan()[_offset..untilIndex].Count('\n');
         if (countOfNewLine > 0)
         {
-            if (!info.IsTriple && !info.IsRaw)
-                throw SyntaxError(PySR.InvalidSyntax_Tokenize_Unterminated_StringLiteral, _lineno);
-
             _lineno += countOfNewLine;
             _offset = _currentContent.LastIndexOf('\n', untilIndex) + 1;
             _offsetOfPreviousLine = _offset;
         }
 
         _offset = untilIndex;
-    }
-
-    private static bool IsFString(string content, int offset, [NotNullWhen(true)] out string? wrapper, out int whiteLength, [NotNullWhen(true)] out string? prefix)
-    {
-        var current = content.AsSpan()[offset..];
-        var length = current.Length;
-        current = current.TrimStart();
-        whiteLength = length - current.Length;
-
-        prefix = null;
-        foreach (var fStringPrefix in FStringPrefixes)
-        {
-            if (current.StartsWith(fStringPrefix))
-            {
-                prefix = fStringPrefix;
-                break;
-            }
-        }
-        if (prefix is null)
-        {
-            wrapper = null;
-            return false;
-        }
-        current = current[prefix.Length..];
-
-        if (current.StartsWith("\"\"\"") || current.StartsWith("\'\'\'"))
-        {
-            wrapper = current[..3].ToString();
-            return true;
-        }
-        else if (current.StartsWith("\"") || current.StartsWith("\'"))
-        {
-            wrapper = current[..1].ToString();
-            return true;
-        }
-
-        wrapper = null;
-        return false;
     }
 
     private bool IsStrictMatchFromCurrent(Regex regex, out ValueGroup group)
@@ -494,11 +427,16 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         AppendToken(type, span);
     }
 
-    private void AppendToken(TokenType type, string str)
+    private void AppendToken(TokenType type, int length)
     {
         var start = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
-        var end = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine + str.Length);
+        var end = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine + length);
         AppendToken(type, start, end);
+    }
+
+    private void AppendToken(TokenType type, string str)
+    {
+        AppendToken(type, str.Length);
     }
 
     private void AppendNewLineToken(string str)
@@ -651,7 +589,14 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         }
         else
         {
-            _wrapper = group.Value[^1];
+            var prefix = GetStringPrefix(group.Value, out _wrapper);
+            if (prefix.ContainsAny('f', 'F'))
+            {
+                AppendToken(TokenType.FStringStart, group.Length);
+                _fstringStack.Push(new FStringInfo(prefix.ContainsAny('r', 'R'), _wrapper, isTriple: true, _parenLevel));
+                return;
+            }
+
             _stringStart = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
             _preStringSpan = group.Span;
             CurrentState = LexerState.TokenizingTripleString;
@@ -675,9 +620,16 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         }
     }
 
-    private void TokenizeContStr(ValueGroup group)
+    private void TokenizeContStr(ref ValueGroup group)
     {
         var prefix = GetStringPrefix(group.Value, out _wrapper);
+        if (prefix.ContainsAny('f', 'F'))
+        {
+            group.Length = prefix.Length + 1 /* len of wrapper */;
+            AppendToken(TokenType.FStringStart, group.Length);
+            _fstringStack.Push(new FStringInfo(prefix.ContainsAny('r', 'R'), _wrapper, isTriple: false, _parenLevel));
+            return;
+        }
 
         if (group.Value.EndsWith("\\\r\n") || group.Value.EndsWith("\\\n"))
         {
@@ -690,6 +642,34 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             AppendToken(TokenType.String, group.Span);
         }
 
+    }
+
+    private bool TryTokenizeSingleFString(out ValueGroup group)
+    {
+        Debug.Assert(_currentContent is not null);
+        Debug.Assert(_offset < _currentContent.Length);
+        Debug.Assert(_currentContent[_offset] is 'b' or 'B' or 'f' or 'F' or 'r' or 'R' or 'u' or 'U');
+
+        var searchLength = Math.Min(3 /* max len of prefix (2) + len of wrapper (1) */, _currentContent.Length - _offset);
+        var span = _currentContent.AsSpan().Slice(_offset, searchLength);
+        var indexOfWrapper = span.IndexOfAny('\'', '"');
+
+        group = default;
+
+        if (indexOfWrapper is -1)
+            return false;
+
+        var prefix = span[..indexOfWrapper];
+        if (prefix.ContainsAny('f', 'F'))
+        {
+            group.Index = _offset;
+            group.Length = prefix.Length + 1 /* len of wrapper */;
+            AppendToken(TokenType.FStringStart, group.Length);
+            _fstringStack.Push(new FStringInfo(prefix.ContainsAny('r', 'R'), span[indexOfWrapper], isTriple: false, _parenLevel));
+            return true;
+        }
+
+        return false;
     }
 
     private void TokenizeFallback(out ValueGroup group)
@@ -739,7 +719,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                 if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithPseudoExtras, out group))
                     TokenizePseudoExtras(group);
                 else if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithContStr, out group))
-                    TokenizeContStr(group);
+                    TokenizeContStr(ref group);
                 else
                     throw SyntaxError();
                 break;
@@ -755,7 +735,9 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                 if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithPseudoExtras, out group))
                     TokenizePseudoExtras(group);
                 else if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithContStr, out group))
-                    TokenizeContStr(group);
+                    TokenizeContStr(ref group);
+                else if (TryTokenizeSingleFString(out group))
+                { }
                 else if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithName, out group))
                     AppendToken(TokenType.Name, group.Span);
                 else
