@@ -678,9 +678,9 @@ public static class PyStrConverter
             );
     }
 
-    public static string FromSourceToLiteral(ReadOnlySpan<char> str, bool isRaw)
+    public static string FromSourceToLiteral(ReadOnlySpan<char> str, bool isRaw, StringBuilder builder)
     {
-        var builder = new StringBuilder(str.Length);
+        builder.Clear();
         builder.Append(str);
 
         // all the \r\n or \r should be \n

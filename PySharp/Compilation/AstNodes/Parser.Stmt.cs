@@ -463,9 +463,9 @@ partial class Parser
     {
         var metaInfo = CreateAstMetaInfo();
 
-        if (CurrentTokenType is TokenType.Name && IsKeyword(CurrentTokenString))
+        if (CurrentTokenType is TokenType.Name && IsKeyword(CurrentTokenStringAsSpan))
         {
-            AstStmtNode? stmt = CurrentTokenString switch
+            AstStmtNode? stmt = CurrentTokenStringAsSpan switch
             {
                 "return" => ParseReturnStmt(),
                 "import" or "from" => ParseImportStmt(),

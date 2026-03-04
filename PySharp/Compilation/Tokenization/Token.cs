@@ -2,10 +2,12 @@
 using PySharp.Modules.Builtins;
 using System.Collections.Frozen;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace PySharp.Compilation.Tokenization;
 
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
 public readonly record struct Token
 {
     public static readonly FrozenDictionary<string, TokenType> ExactTokenTypes = new Dictionary<string, TokenType>
@@ -117,7 +119,7 @@ public readonly record struct Token
         };
     }
 
-    internal CodeTextSpan StringSpan { get; }
+    public CodeTextSpan StringSpan { get; }
     public TokenType Type { get; }
 
     internal Token(TokenType type, CodeTextSpan span, CodeSource source)

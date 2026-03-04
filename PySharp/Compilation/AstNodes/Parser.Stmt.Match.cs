@@ -122,7 +122,7 @@ partial class Parser
         var pos = TokenStreamPosition;
 
         if (CurrentTokenType is TokenType.Number or TokenType.String or TokenType.FStringStart ||
-            CurrentTokenType is TokenType.Name && IsKeyword(CurrentTokenString))
+            CurrentTokenType is TokenType.Name && IsKeyword(CurrentTokenStringAsSpan))
             return ParseLiteralPattern();
 
         if (CurrentTokenType is TokenType.Name)
@@ -244,7 +244,7 @@ partial class Parser
         else if (CurrentTokenType is TokenType.Name)
         {
             var metaInfo = CreateAstMetaInfo();
-            var s = CurrentTokenString;
+            var s = CurrentTokenStringAsSpan;
             return (s switch
             {
                 "True" => Ast.Constant(PyBoolObject.True),

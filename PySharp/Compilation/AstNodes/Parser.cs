@@ -3,6 +3,7 @@ using PySharp.Compilation.Tokenization;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using System.Collections.Frozen;
+using System.Text;
 namespace PySharp.Compilation.AstNodes;
 
 public sealed partial class Parser : ICodeMetaInfoProvider
@@ -33,14 +34,6 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         return new Parser(context, codeSource, tokens).ParseInteractive();
     }
 
-    private static readonly FrozenSet<string> Keywords = [
-        "False", "None", "True", "and", "as", "assert",
-        "async", "await", "break", "class", "continue",
-        "def", "del", "elif", "else", "except", "finally",
-        "for", "from", "global", "if", "import", "in", "is",
-        "lambda", "nonlocal", "not", "or", "pass", "raise",
-        "return", "try", "while", "with", "yield"];
-
     private static readonly FrozenSet<TokenType> AugOperators = [
         TokenType.PlusEqual, TokenType.MinusEqual, TokenType.StarEqual, TokenType.AtEqual,
         TokenType.SlashEqual, TokenType.DoubleSlashEqual, TokenType.PercentEqual, TokenType.DoubleStarEqual,
@@ -56,9 +49,14 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         TokenType.DoubleEqual, TokenType.NotEqual, TokenType.At,
     ];
 
-    private static bool IsKeyword(string name)
+    private static bool IsKeyword(ReadOnlySpan<char> name)
     {
-        return Keywords.Contains(name);
+        return name is "False" or "None" or "True" or "and" or "as" or "assert"
+            or "async" or "await" or "break" or "class" or "continue" or "def"
+            or "del" or "elif" or "else" or "except" or "finally" or "for"
+            or "from" or "global" or "if" or "import" or "in" or "is" or "lambda"
+            or "nonlocal" or "not" or "or" or "pass" or "raise" or "return"
+            or "try" or "while" or "with" or "yield";
     }
     private static bool IsAugOperator(TokenType type)
     {
@@ -89,7 +87,8 @@ public sealed partial class Parser : ICodeMetaInfoProvider
     private ReadOnlySpan<char> CurrentTokenStringAsSpan => _codeSource.Code.GetString(CurrentToken.StringSpan);
     private string CurrentTokenString => CurrentTokenStringAsSpan.ToString();
 
-    private bool IsCurrentIdentifier => CurrentTokenType is TokenType.Name && !IsKeyword(CurrentTokenString);
+    private bool IsCurrentIdentifier => CurrentTokenType is TokenType.Name && !IsKeyword(CurrentTokenStringAsSpan);
+    private StringBuilder SharedBuilder => field ??= new StringBuilder();
 
     CodeMetaInfo? ICodeMetaInfoProvider.MetaInfo => CreateAstMetaInfo();
 

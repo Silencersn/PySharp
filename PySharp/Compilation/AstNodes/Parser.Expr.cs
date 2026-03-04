@@ -137,7 +137,7 @@ partial class Parser
         if (CurrentTokenType is not TokenType.FStringMiddle)
             return ParseFStringReplacementField(isRaw);
 
-        var literal = PyStrConverter.FromSourceToLiteral(CurrentTokenStringAsSpan, isRaw);
+        var literal = PyStrConverter.FromSourceToLiteral(CurrentTokenStringAsSpan, isRaw, SharedBuilder);
         var str = isRaw ? literal : FromLiteralToString(literal, true);
         var middle = Ast.Constant(str).With(CreateAstMetaInfo());
         MoveNextToken();
@@ -286,7 +286,7 @@ partial class Parser
         EnsureTokenType(TokenType.String);
         var source = CurrentTokenStringAsSpan;
         var isRaw = source[..source.IndexOf(source[^1])].ContainsAny('r', 'R');
-        var literal = PyStrConverter.FromSourceToLiteral(CurrentTokenStringAsSpan, isRaw);
+        var literal = PyStrConverter.FromSourceToLiteral(CurrentTokenStringAsSpan, isRaw, SharedBuilder);
         var str = Ast.Constant(FromLiteralToString(literal, noWrapper: false));
         MoveNextToken();
         return str;
@@ -425,17 +425,17 @@ partial class Parser
         var metaInfo = CreateAstMetaInfo();
         if (CurrentTokenType is TokenType.Name)
         {
-            if (IsKeyword(CurrentTokenString))
+            if (IsKeyword(CurrentTokenStringAsSpan))
             {
                 // keyword literal
 
-                if (CurrentTokenString is "True" or "False")
+                if (CurrentTokenStringAsSpan is "True" or "False")
                 {
-                    var value = CurrentTokenString;
+                    var value = CurrentTokenStringAsSpan;
                     MoveNextToken();
                     return Ast.Constant(bool.Parse(value)).With(metaInfo);
                 }
-                else if (CurrentTokenString is "None")
+                else if (CurrentTokenStringAsSpan is "None")
                 {
                     MoveNextToken();
                     return Ast.Constant(PyNoneObject.None).With(metaInfo);
@@ -443,7 +443,7 @@ partial class Parser
 
                 throw SyntaxError();
             }
-            else if (CurrentTokenString is PySpecialNames.Debug)
+            else if (CurrentTokenStringAsSpan is PySpecialNames.Debug)
             {
                 // __debug__
 
