@@ -2,16 +2,14 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace PySharp.Compilation.Tokenization;
 
 public sealed partial class Lexer : ICodeMetaInfoProvider
 {
-    private enum LexerState
+    private enum LexerState : byte
     {
         Unknown = 0,
 
@@ -30,21 +28,20 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
 
         var lexer = new Lexer(context, codeSource);
         lexer.InternalStart();
-        lexer.InternalTokenize(codeSource.Code.Text);
+        lexer.InternalTokenize();
         lexer.InternalEnd();
         return new TokenArrayStream(lexer._tokens);
     }
 
-    private sealed class FStringInfo
+    private struct FStringInfo
     {
         public LexerState State;
         public char WrapperChar { get; }
-        public int WrapperLength => IsTriple ? 3 : 1;
-        public int ParenLevelWhenEntering { get; }
         public bool IsTriple { get; }
         public bool IsRaw { get; }
-        public Regex WrapperRegex { get; }
+        public int ParenLevelWhenEntering { get; }
         public Stack<int> FormatSpec { get; }
+        public readonly int WrapperLength => IsTriple ? 3 : 1;
 
         public FStringInfo(bool isRaw, char wrapperChar, bool isTriple, int parenLevelWhenEntering)
         {
@@ -54,61 +51,31 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             IsTriple = isTriple;
             ParenLevelWhenEntering = parenLevelWhenEntering;
             IsRaw = isRaw;
-            WrapperRegex = wrapperChar switch
-            {
-                '\'' when isTriple => LexerRegexes.Single3,
-                '"' when isTriple => LexerRegexes.Double3,
-                '\'' => LexerRegexes.Single,
-                '"' => LexerRegexes.Double,
-                _ => throw new UnreachableException()
-            };
         }
     }
-    private LexerState _rootState;
-    private readonly Stack<FStringInfo> _fstringStack;
-    private FStringInfo CurrentFStringInfo => _fstringStack.Peek();
-    private LexerState CurrentState
-    {
-        get
-        {
-            if (_fstringStack.Count is 0)
-                return _rootState;
-            return CurrentFStringInfo.State;
-        }
-        set
-        {
-            if (_fstringStack.Count is 0)
-            {
-                _rootState = value;
-                return;
-            }
 
-            CurrentFStringInfo.State = value;
-        }
-    }
+    private readonly Stack<FStringInfo> _fstringStack;
+    // for the root FStringInfo, only State are used
+    private FStringInfo CurrentFStringInfo;
+    private ref LexerState CurrentState => ref CurrentFStringInfo.State;
+    private char _wrapper;
 
     private readonly PyCallContext _context;
     private readonly CodeSource _codeSource;
 
     private readonly List<Token> _tokens;
-    private int _lineno;
-    private int _offsetOfPreviousLine;
     private int _offset;
     private bool _explicitLineJoining;
     private readonly Stack<int> _indentationLevels;
 
-    private bool _needSetNewLine;
     private bool _needIndentation;
 
-    private char _wrapper;
-    private CodeTextSpan _preStringSpan;
-    private CodeTextPosition _stringStart;
+    private int _stringStartOffset;
 
     private int _parenLevel;
-    private string? _currentContent;
 
-    private ReadOnlySpan<char> CurrentLine => _codeSource.Code.GetLineOrDefault(_lineno, false);
-    CodeMetaInfo? ICodeMetaInfoProvider.MetaInfo => CodeMetaInfo.FromPosition(_codeSource, new(_lineno, 0));
+    CodeMetaInfo? ICodeMetaInfoProvider.MetaInfo => CodeMetaInfo.FromPosition(_codeSource, new(Lineno, 0));
+    private int Lineno => _codeSource.Code.OffsetToPosition(_offset).Line;
 
     internal Lexer(PyCallContext context, CodeSource codeSource)
     {
@@ -116,14 +83,11 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         _context.CurrentFrame.MetaInfoProvider = this;
         _codeSource = codeSource;
         _tokens = new List<Token>(GetTokensDefaultCapacity(codeSource.Code.Text.Length));
-        _lineno = 0;
-        _offsetOfPreviousLine = 0;
         _offset = 0;
         _explicitLineJoining = false;
         _indentationLevels = [];
         _indentationLevels.Push(0);
         _parenLevel = 0;
-        _currentContent = null;
         _fstringStack = [];
         CurrentState = LexerState.Default;
     }
@@ -141,8 +105,8 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
 
     internal void InternalStart()
     {
-        AppendToken(TokenType.Encoding, default, default);
-        SetNewLine();
+        AppendToken(TokenType.Encoding, length: 0);
+        _needIndentation = true;
     }
 
     internal void InternalClearIndentation()
@@ -150,143 +114,158 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         while (_indentationLevels.Count > 1)
         {
             _ = _indentationLevels.Pop();
-            var pos = new CodeTextPosition(_lineno, 0);
-            AppendToken(TokenType.Dedent, pos, pos);
+            AppendToken(TokenType.Dedent, 0);
         }
     }
 
     internal void InternalEnd()
     {
         if (CurrentState is LexerState.TokenizingMultiLineSingleOrDoubleString)
-            throw SyntaxError(PySR.InvalidSyntax_Tokenize_Unterminated_StringLiteral, _lineno);
+            throw SyntaxError(PySR.InvalidSyntax_Tokenize_Unterminated_StringLiteral, Lineno);
 
         if (CurrentState is LexerState.TokenizingTripleString)
-            throw SyntaxError(PySR.InvalidSyntax_Tokenize_Unterminated_TripleStringLiteral, _lineno);
+            throw SyntaxError(PySR.InvalidSyntax_Tokenize_Unterminated_TripleStringLiteral, Lineno);
 
         Debug.Assert(_tokens.Count > 0);
 
         if (_tokens[^1].Type is not (TokenType.NewLine or TokenType.NL))
         {
-            AppendNewLineToken(string.Empty);
+            AppendNewLineToken(length: 0);
         }
 
         InternalClearIndentation();
 
-        if (_offset != _offsetOfPreviousLine)
-            _lineno++;
-        var pos = new CodeTextPosition(_lineno, 0);
-        AppendToken(TokenType.EndMarker, pos, pos);
+        AppendToken(TokenType.EndMarker, length: 0);
     }
 
-    internal void InternalTokenize(string content)
+    private void EnterFString(FStringInfo info)
     {
-        _currentContent = content;
+        _fstringStack.Push(CurrentFStringInfo);
+        CurrentFStringInfo = info;
+    }
+
+    private void ExitFString()
+    {
+        CurrentFStringInfo = _fstringStack.Pop();
+    }
+
+    internal void InternalTokenize()
+    {
+        var content = _codeSource.Code.Text.AsSpan();
 
         _offset = 0;
-        _offsetOfPreviousLine = 0;
         while (_offset < content.Length)
         {
             switch (CurrentState)
             {
                 case LexerState.TokenizingMultiLineSingleOrDoubleString:
-                    TokenizeMultiLineSingleOrDoubleString();
+                    TokenizeMultiLineSingleOrDoubleString(content);
                     break;
 
                 case LexerState.TokenizingTripleString:
-                    TokenizeTripleString();
+                    TokenizeTripleString(content);
                     break;
 
-                case LexerState.Default or LexerState.FStringDefault:
-                    TokenizeToken(out var group);
-                    Debug.Assert(group.Index == _offset);
-                    _offset += group.Length;
-                    if (_needSetNewLine)
+                case LexerState.Default:
                     {
-                        SetNewLine();
-                        _needSetNewLine = false;
+                        TokenizeToken(content, out var group);
+                        Debug.Assert(group.Index == _offset);
+                        _offset += group.Length;
+                    }
+                    break;
+
+                case LexerState.FStringDefault:
+                    {
+                        TokenizeToken(content, out var group);
+                        Debug.Assert(group.Index == _offset);
+                        _offset += group.Length;
                     }
 
-                    if (CurrentState is LexerState.FStringDefault)
+                    var lastToken = _tokens[^1];
+                    if (CurrentFStringInfo.ParenLevelWhenEntering == _parenLevel)
                     {
-                        if (CurrentFStringInfo.ParenLevelWhenEntering == _parenLevel)
+                        if (lastToken.Type is TokenType.RightBrace)
+                            CurrentState = LexerState.FStringMiddle;
+                    }
+                    else
+                    {
+                        if (lastToken.Type is TokenType.Colon && _parenLevel == CurrentFStringInfo.ParenLevelWhenEntering + 1)
                         {
-                            var lastToken = _tokens[^1];
-                            if (lastToken.Type is TokenType.RightBrace)
-                            {
-                                CurrentState = LexerState.FStringMiddle;
-                            }
-                        }
-                        else
-                        {
-                            var lastToken = _tokens[^1];
-                            if (lastToken.Type is TokenType.Colon && _parenLevel == CurrentFStringInfo.ParenLevelWhenEntering + 1)
-                            {
-                                // TODO: too deep
+                            // TODO: too deep
 
-                                CurrentState = LexerState.FStringMiddle;
-                                CurrentFStringInfo.FormatSpec.Push(_parenLevel);
-                            }
-                            else if (lastToken.Type is TokenType.RightBrace)
-                            {
-                                if (CurrentFStringInfo.FormatSpec.Count > 0 && CurrentFStringInfo.FormatSpec.Peek() == _parenLevel)
-                                {
-                                    CurrentState = LexerState.FStringMiddle;
-                                }
-                            }
+                            CurrentState = LexerState.FStringMiddle;
+                            CurrentFStringInfo.FormatSpec.Push(_parenLevel);
+                        }
+                        else if (lastToken.Type is TokenType.RightBrace &&
+                            CurrentFStringInfo.FormatSpec.Count > 0 &&
+                            CurrentFStringInfo.FormatSpec.Peek() == _parenLevel)
+                        {
+                            CurrentState = LexerState.FStringMiddle;
                         }
                     }
                     break;
 
                 case LexerState.FStringMiddle:
+                    static int FindNextSpecialChar(ReadOnlySpan<char> content, FStringInfo info, int offset, out char c)
+                    {
+                        for (int i = offset; i < content.Length; i++)
+                        {
+                            c = content[i];
+                            if (c is '{' or '}')
+                                // TODO: f'\{0}' (invalid escape) it is need to warn (here or somewhere)
+                                return i;
+
+                            if (c is '\\')
+                            {
+                                i++;
+                                continue;
+                            }
+
+                            if (c != info.WrapperChar)
+                                continue;
+
+                            if (!info.IsTriple || content[i..].StartsWith([info.WrapperChar, info.WrapperChar, info.WrapperChar]))
+                                return i;
+                        }
+
+                        c = default;
+                        return -1;
+                    }
+
                     var info = CurrentFStringInfo;
+                    var indexOfChar = FindNextSpecialChar(content, info, _offset, out var c);
+                    if (indexOfChar is -1)
+                        throw SyntaxError(PySR.InvalidSyntax_Tokenize_Unterminated_TripleFStringLiteral, Lineno);
 
-                    var m = info.WrapperRegex.Match(content, _offset);
-                    if (!m.Success)
-                        throw SyntaxError(PySR.InvalidSyntax_Tokenize_Unterminated_TripleFStringLiteral, _lineno);
-
-                    int indexOfWrapper = m.Index + m.Length - info.WrapperLength;
-                    var indexOfLeftBrace = content.IndexOf('{', _offset);
-                    var indexOfRightBrace = content.IndexOf('}', _offset);
-
-                    if (IsFirstNotFoundOrBehindSecond(indexOfLeftBrace, indexOfWrapper) &&
-                        IsFirstNotFoundOrBehindSecond(indexOfRightBrace, indexOfWrapper))
+                    if (c == info.WrapperChar)
                     {
                         if (CurrentFStringInfo.FormatSpec.Count > 0)
                             throw SyntaxError(PySR.InvalidSyntax_FString_ReplacementField_ExpectingRightBraceOrSpecs);
-                        var start = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
 
-                        IncrementLinenoAndOffset(indexOfWrapper, info);
-
-                        var end = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
-                        AppendToken(TokenType.FStringMiddle, start, end);
+                        AppendToken(TokenType.FStringMiddle, indexOfChar - _offset);
+                        _offset = indexOfChar;
                         AppendToken(TokenType.FStringEnd, info.WrapperLength);
-                        _offset = indexOfWrapper + info.WrapperLength;
-                        _fstringStack.Pop();
+                        _offset = indexOfChar + info.WrapperLength;
+                        ExitFString();
                     }
-                    else if (indexOfLeftBrace is not -1 &&
-                        IsFirstNotFoundOrBehindSecond(indexOfRightBrace, indexOfLeftBrace))
+                    else if (c is '{')
                     {
-                        var start = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
-
-
-                        bool isEscape = CurrentFStringInfo.FormatSpec.Count is 0 && indexOfLeftBrace + 1 < content.Length && content[indexOfLeftBrace + 1] is '{';
-
-                        IncrementLinenoAndOffset(indexOfLeftBrace + (isEscape ? 1 : 0), info);
+                        bool isEscape = CurrentFStringInfo.FormatSpec.Count is 0 && indexOfChar + 1 < content.Length && content[indexOfChar + 1] is '{';
+                        var nextOffset = indexOfChar + (isEscape ? 1 : 0);
+                        AppendToken(TokenType.FStringMiddle, nextOffset - _offset);
+                        _offset = nextOffset;
 
                         if (isEscape)
                         {
                             // escape '{'
-                            // one is consumed by ExtractMultiLineTextInFString
+                            // one is consumed by nextOffset
                             // the other one is here
                             _offset += 1;
                         }
-
-                        var end = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
-                        AppendToken(TokenType.FStringMiddle, start, end);
-                        if (!isEscape)
+                        else
                         {
-                            AppendToken(TokenType.Operator, "{");
-                            _offset = indexOfLeftBrace + 1;
+                            AppendToken(TokenType.LeftBrace, length: 1);
+                            _offset = indexOfChar + 1;
                             CurrentState = LexerState.FStringDefault;
 
                             // increment _parenLevel here
@@ -295,51 +274,31 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                             _parenLevel++;
                         }
                     }
-                    else if (indexOfRightBrace is not -1 &&
-                        IsFirstNotFoundOrBehindSecond(indexOfLeftBrace, indexOfRightBrace))
+                    else if (c is '}')
                     {
                         if (CurrentFStringInfo.FormatSpec.Count > 0)
                         {
-                            var start = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
-
-                            IncrementLinenoAndOffset(indexOfRightBrace, info);
-
-                            var end = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
-                            AppendToken(TokenType.FStringMiddle, start, end);
-                            AppendToken(TokenType.Operator, "}");
-                            _offset = indexOfRightBrace + 1;
+                            AppendToken(TokenType.FStringMiddle, indexOfChar - _offset);
+                            _offset = indexOfChar;
+                            AppendToken(TokenType.RightBrace, length: 1);
+                            _offset = indexOfChar + 1;
                             CurrentFStringInfo.FormatSpec.Pop();
                             _parenLevel--;
                             break;
                         }
                         else
                         {
-                            if (indexOfRightBrace + 1 < content.Length && content[indexOfRightBrace + 1] is not '}')
+                            if (indexOfChar + 1 < content.Length && content[indexOfChar + 1] is not '}')
                                 throw SyntaxError(PySR.InvalidSyntax_Tokenize_FStringSingleRightBrace);
 
-                            var start = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
-
-                            IncrementLinenoAndOffset(indexOfRightBrace + 1 /* included escape '}' */, info);
-
-                            // escape '}'
-                            // one is consumed by ExtractMultiLineTextInFString
-                            // the other one is here
-                            _offset += 1;
-                            var end = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
-                            AppendToken(TokenType.FStringMiddle, start, end);
+                            AppendToken(TokenType.FStringMiddle, indexOfChar + 1 /* included escape '}' */ - _offset);
+                            _offset = indexOfChar + 2;
                         }
                     }
                     else
                     {
                         throw new UnreachableException();
                     }
-
-                    static bool IsFirstNotFoundOrBehindSecond(int indexOfFirst, int indexOfSecond)
-                    {
-                        Debug.Assert(indexOfSecond is not -1);
-                        return indexOfFirst is -1 || indexOfFirst > indexOfSecond;
-                    }
-
                     break;
 
                 default:
@@ -348,69 +307,47 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         }
     }
 
-    private static readonly string[] FStringPrefixes = ["fr", "Fr", "fR", "FR", "rf", "rF", "Rf", "RF", "f", "F"];
-
-    private void IncrementLinenoAndOffset(int untilIndex, FStringInfo info)
+    private bool IsStrictMatchFromCurrent(ReadOnlySpan<char> content, Regex regex, out ValueGroup group)
     {
-        Debug.Assert(_currentContent is not null);
-
-        var countOfNewLine = _currentContent.AsSpan()[_offset..untilIndex].Count('\n');
-        if (countOfNewLine > 0)
-        {
-            _lineno += countOfNewLine;
-            _offset = _currentContent.LastIndexOf('\n', untilIndex) + 1;
-            _offsetOfPreviousLine = _offset;
-        }
-
-        _offset = untilIndex;
-    }
-
-    private bool IsStrictMatchFromCurrent(Regex regex, out ValueGroup group)
-    {
-        Debug.Assert(_currentContent is not null);
-
         group = default;
 
-        var enumerator = regex.EnumerateMatches(_currentContent.AsSpan()[_offset..]);
-        if (!enumerator.MoveNext())
+        if (!TryMatch(regex, content[_offset..], offset: 0, out var match))
             return false;
 
-        var match = enumerator.Current;
         if (match.Index is not 0)
             return false;
 
-        group.TotalContent = _currentContent;
         group.Index = match.Index + _offset;
         group.Length = match.Length;
+        group.Value = content.Slice(group.Index, group.Length);
         return true;
     }
 
-    private static bool IsIgnored(ReadOnlySpan<char> line)
+    private bool IsIgnored(ReadOnlySpan<char> content, int indentationLevel)
     {
-        Debug.Assert(!line.ContainsAny(['\n', '\r']));
-        line = line.TrimStart();
-        return line.Length is 0 || line[0] is '#';
+        var span = content[(_offset + indentationLevel)..];
+        return span.Length is 0 || span[0] is '#' or '\n' or '\r';
     }
 
-    private static string GetStringPrefix(ReadOnlySpan<char> str, out char firstWrapper)
+    private static ReadOnlySpan<char> GetStringPrefix(ReadOnlySpan<char> str, out char firstWrapper)
     {
         Debug.Assert(str.Length >= 2);
 
         if (str[0] is '\'' or '"')
         {
             firstWrapper = str[0];
-            return string.Empty;
+            return [];
         }
 
         if (str[1] is '\'' or '"')
         {
             firstWrapper = str[1];
-            return str[0].ToString();
+            return str[..1];
         }
 
         Debug.Assert(str.Length >= 3);
         firstWrapper = str[2];
-        return str[..2].ToString();
+        return str[..2];
     }
 
     private void AppendToken(TokenType type, CodeTextSpan span)
@@ -421,25 +358,13 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             _codeSource);
         _tokens.Add(token);
     }
-    private void AppendToken(TokenType type, CodeTextPosition start, CodeTextPosition end)
-    {
-        var span = _codeSource.Code.PositionToSpan(start, end);
-        AppendToken(type, span);
-    }
 
     private void AppendToken(TokenType type, int length)
     {
-        var start = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
-        var end = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine + length);
-        AppendToken(type, start, end);
+        AppendToken(type, new CodeTextSpan(_offset, length));
     }
 
-    private void AppendToken(TokenType type, string str)
-    {
-        AppendToken(type, str.Length);
-    }
-
-    private void AppendNewLineToken(string str)
+    private void AppendNewLineToken(int length)
     {
         bool isNewLine = false;
         Debug.Assert(_parenLevel >= 0);
@@ -459,63 +384,55 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             }
         }
 
-        AppendToken(isNewLine ? TokenType.NewLine : TokenType.NL, str);
+        AppendToken(isNewLine ? TokenType.NewLine : TokenType.NL, length);
     }
 
-    private void SetNewLine()
+    private static bool TryMatch(Regex regex, ReadOnlySpan<char> content, int offset, out ValueMatch match)
     {
-        _lineno++;
-        _offsetOfPreviousLine = _offset;
-        _needIndentation = true;
-    }
-
-    private void TokenizeMultiLineString(Regex wrapper, bool isTriple)
-    {
-        Debug.Assert(_currentContent is not null);
-
-        var m = wrapper.Match(_currentContent, _offset);
-        if (!m.Success)
+        var enumerator = regex.EnumerateMatches(content, offset);
+        if (!enumerator.MoveNext())
         {
-            if (isTriple)
-                throw SyntaxError(PySR.InvalidSyntax_Tokenize_Unterminated_TripleStringLiteral, _lineno);
-
-            throw SyntaxError(PySR.InvalidSyntax_Tokenize_Unterminated_StringLiteral, _lineno);
+            match = default;
+            return false;
         }
 
-        Debug.Assert(!_preStringSpan.IsEmpty);
-        Debug.Assert(_offset == _preStringSpan.End);
-        var pastString = _currentContent.AsSpan()[_offset..(m.Index + m.Length)];
+        match = enumerator.Current;
+        return true;
+    }
 
-        _lineno += pastString.Count('\n');
+    private void TokenizeMultiLineString(ReadOnlySpan<char> content, Regex wrapper, bool isTriple)
+    {
+        if (!TryMatch(wrapper, content, _offset, out var m))
+        {
+            if (isTriple)
+                throw SyntaxError(PySR.InvalidSyntax_Tokenize_Unterminated_TripleStringLiteral, Lineno);
 
-        _offsetOfPreviousLine = _currentContent.LastIndexOf('\n', m.Index + m.Length - 1, m.Index + m.Length - _offset + 1) + 1;
-        var end = new CodeTextPosition(_lineno, (m.Index + m.Length) - _offsetOfPreviousLine);
+            throw SyntaxError(PySR.InvalidSyntax_Tokenize_Unterminated_StringLiteral, Lineno);
+        }
 
-        AppendToken(TokenType.String, _stringStart, end);
-        _offset = m.Index + m.Length;
+        var endOffset = m.Index + m.Length;
+        AppendToken(TokenType.String, new CodeTextSpan(_stringStartOffset, endOffset - _stringStartOffset));
+        _offset = endOffset;
         CurrentState = LexerState.Default;
     }
 
-    private void TokenizeMultiLineSingleOrDoubleString()
+    private void TokenizeMultiLineSingleOrDoubleString(ReadOnlySpan<char> content)
     {
-        Debug.Assert(_currentContent is not null);
         Debug.Assert(CurrentState is LexerState.TokenizingMultiLineSingleOrDoubleString);
         Debug.Assert(_wrapper is '\'' or '"');
 
-        _lineno++;
-        TokenizeMultiLineString(_wrapper is '"' ? LexerRegexes.Double : LexerRegexes.Single, false);
+        TokenizeMultiLineString(content, _wrapper is '"' ? LexerRegexes.Double : LexerRegexes.Single, false);
     }
 
-    private void TokenizeTripleString()
+    private void TokenizeTripleString(ReadOnlySpan<char> content)
     {
-        Debug.Assert(_currentContent is not null);
         Debug.Assert(CurrentState is LexerState.TokenizingTripleString);
         Debug.Assert(_wrapper is '\'' or '"');
 
-        TokenizeMultiLineString(_wrapper is '"' ? LexerRegexes.Double3 : LexerRegexes.Single3, true);
+        TokenizeMultiLineString(content, _wrapper is '"' ? LexerRegexes.Double3 : LexerRegexes.Single3, true);
     }
 
-    private void EnsureIndentation(int indentationLevel)
+    private void EnsureIndentation(ReadOnlySpan<char> content, int indentationLevel)
     {
         if (!_needIndentation)
             return;
@@ -528,41 +445,36 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             return;
         }
 
-        if (_parenLevel is not 0 || IsIgnored(CurrentLine))
+        if (_parenLevel is not 0 || IsIgnored(content, indentationLevel))
             return;
 
         if (indentationLevel > _indentationLevels.Peek())
         {
             _indentationLevels.Push(indentationLevel);
-            Debug.Assert(_currentContent is not null);
-            AppendToken(TokenType.Indent, new CodeTextSpan(_offset, indentationLevel));
+            AppendToken(TokenType.Indent, indentationLevel);
             return;
         }
 
         while (_indentationLevels.Peek() > indentationLevel)
         {
             _ = _indentationLevels.Pop();
-            var pos = new CodeTextPosition(_lineno, 0);
-            AppendToken(TokenType.Dedent, pos, pos);
+            AppendToken(TokenType.Dedent, length: 0);
         }
 
         if (indentationLevel != _indentationLevels.Peek())
             throw _context.IndentationError(PySR.InvalidSyntax_Tokenize_UnindentNotMatch);
     }
 
-    private struct ValueGroup
+    private ref struct ValueGroup
     {
-        public string TotalContent;
+        public ReadOnlySpan<char> Value;
         public int Index;
         public int Length;
-        public readonly ReadOnlySpan<char> Value => TotalContent.AsSpan(Index, Length);
-        public readonly CodeTextSpan Span => new(Index, Length);
     }
 
-    private int GetWhitespaceCount()
+    private int GetWhitespaceCount(ReadOnlySpan<char> content)
     {
-        Debug.Assert(_currentContent is not null);
-        var span = _currentContent.AsSpan()[_offset..];
+        var span = content[_offset..];
         for (int i = 0; i < span.Length; i++)
         {
             if (span[i] is ' ' or '\t' or '\f')
@@ -581,11 +493,11 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         else if (group.Value.StartsWith('\\'))
         {
             _explicitLineJoining = true;
-            _needSetNewLine = true;
+            _needIndentation = true;
         }
         else if (group.Value[0] is '#')
         {
-            AppendToken(TokenType.Comment, group.Span);
+            AppendToken(TokenType.Comment, group.Length);
         }
         else
         {
@@ -593,12 +505,11 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             if (prefix.ContainsAny('f', 'F'))
             {
                 AppendToken(TokenType.FStringStart, group.Length);
-                _fstringStack.Push(new FStringInfo(prefix.ContainsAny('r', 'R'), _wrapper, isTriple: true, _parenLevel));
+                EnterFString(new FStringInfo(prefix.ContainsAny('r', 'R'), _wrapper, isTriple: true, _parenLevel));
                 return;
             }
 
-            _stringStart = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
-            _preStringSpan = group.Span;
+            _stringStartOffset = _offset;
             CurrentState = LexerState.TokenizingTripleString;
         }
     }
@@ -607,12 +518,12 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
     {
         if (group.Value is "\r\n" or "\n")
         {
-            AppendNewLineToken(group.Value.ToString());
-            _needSetNewLine = true;
+            AppendNewLineToken(group.Length);
+            _needIndentation = true;
         }
         else
         {
-            AppendToken(TokenType.Operator, group.Span);
+            AppendToken(TokenType.Operator, group.Length);
             if (group.Value is "(" or "[" or "{")
                 _parenLevel++;
             else if (group.Value is ")" or "]" or "}")
@@ -627,31 +538,29 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         {
             group.Length = prefix.Length + 1 /* len of wrapper */;
             AppendToken(TokenType.FStringStart, group.Length);
-            _fstringStack.Push(new FStringInfo(prefix.ContainsAny('r', 'R'), _wrapper, isTriple: false, _parenLevel));
+            EnterFString(new FStringInfo(prefix.ContainsAny('r', 'R'), _wrapper, isTriple: false, _parenLevel));
             return;
         }
 
         if (group.Value.EndsWith("\\\r\n") || group.Value.EndsWith("\\\n"))
         {
-            _stringStart = new CodeTextPosition(_lineno, _offset - _offsetOfPreviousLine);
-            _preStringSpan = group.Span;
+            _stringStartOffset = _offset;
             CurrentState = LexerState.TokenizingMultiLineSingleOrDoubleString;
         }
         else
         {
-            AppendToken(TokenType.String, group.Span);
+            AppendToken(TokenType.String, group.Length);
         }
 
     }
 
-    private bool TryTokenizeSingleFString(out ValueGroup group)
+    private bool TryTokenizeSingleFString(ReadOnlySpan<char> content, out ValueGroup group)
     {
-        Debug.Assert(_currentContent is not null);
-        Debug.Assert(_offset < _currentContent.Length);
-        Debug.Assert(_currentContent[_offset] is 'b' or 'B' or 'f' or 'F' or 'r' or 'R' or 'u' or 'U');
+        Debug.Assert(_offset < content.Length);
+        Debug.Assert(content[_offset] is 'b' or 'B' or 'f' or 'F' or 'r' or 'R' or 'u' or 'U');
 
-        var searchLength = Math.Min(3 /* max len of prefix (2) + len of wrapper (1) */, _currentContent.Length - _offset);
-        var span = _currentContent.AsSpan().Slice(_offset, searchLength);
+        var searchLength = Math.Min(3 /* max len of prefix (2) + len of wrapper (1) */, content.Length - _offset);
+        var span = content.Slice(_offset, searchLength);
         var indexOfWrapper = span.IndexOfAny('\'', '"');
 
         group = default;
@@ -665,50 +574,47 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             group.Index = _offset;
             group.Length = prefix.Length + 1 /* len of wrapper */;
             AppendToken(TokenType.FStringStart, group.Length);
-            _fstringStack.Push(new FStringInfo(prefix.ContainsAny('r', 'R'), span[indexOfWrapper], isTriple: false, _parenLevel));
+            EnterFString(new FStringInfo(prefix.ContainsAny('r', 'R'), span[indexOfWrapper], isTriple: false, _parenLevel));
             return true;
         }
 
         return false;
     }
 
-    private void TokenizeFallback(out ValueGroup group)
+    private void TokenizeFallback(ReadOnlySpan<char> content, out ValueGroup group)
     {
-        Debug.Assert(_currentContent is not null);
-
-        if (_currentContent[_offset] is '\r')
+        if (content[_offset] is '\r')
         {
-            AppendNewLineToken("\r");
-            _needSetNewLine = true;
-            group.TotalContent = _currentContent;
+            AppendNewLineToken(length: 1);
+            _needIndentation = true;
             group.Index = _offset;
             group.Length = 1;
+            group.Value = content.Slice(group.Index, group.Length);
             return;
         }
 
         throw SyntaxError();
     }
 
-    private void TokenizeToken(out ValueGroup group)
+    private void TokenizeToken(ReadOnlySpan<char> content, out ValueGroup group)
     {
-        var indentationLevel = GetWhitespaceCount();
-        EnsureIndentation(indentationLevel);
+        var indentationLevel = GetWhitespaceCount(content);
+        EnsureIndentation(content, indentationLevel);
         _offset += indentationLevel;
 
-        Debug.Assert(_currentContent is not null);
-        if (_offset >= _currentContent.Length)
+        if (_offset >= content.Length)
         {
             group = default;
             group.Index = _offset;
             return;
         }
-        var c = _currentContent[_offset];
+        var c = content[_offset];
 
         switch (c)
         {
             case '\\':
             case '#':
-                if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithPseudoExtras, out group))
+                if (IsStrictMatchFromCurrent(content, LexerRegexes.StartsWithPseudoExtras, out group))
                     TokenizePseudoExtras(group);
                 else
                     throw SyntaxError();
@@ -716,9 +622,9 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
 
             case '\'':
             case '"':
-                if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithPseudoExtras, out group))
+                if (IsStrictMatchFromCurrent(content, LexerRegexes.StartsWithPseudoExtras, out group))
                     TokenizePseudoExtras(group);
-                else if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithContStr, out group))
+                else if (IsStrictMatchFromCurrent(content, LexerRegexes.StartsWithContStr, out group))
                     TokenizeContStr(ref group);
                 else
                     throw SyntaxError();
@@ -732,29 +638,29 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             case 'R':
             case 'u':
             case 'U':
-                if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithPseudoExtras, out group))
+                if (IsStrictMatchFromCurrent(content, LexerRegexes.StartsWithPseudoExtras, out group))
                     TokenizePseudoExtras(group);
-                else if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithContStr, out group))
+                else if (IsStrictMatchFromCurrent(content, LexerRegexes.StartsWithContStr, out group))
                     TokenizeContStr(ref group);
-                else if (TryTokenizeSingleFString(out group))
+                else if (TryTokenizeSingleFString(content, out group))
                 { }
-                else if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithName, out group))
-                    AppendToken(TokenType.Name, group.Span);
+                else if (IsStrictMatchFromCurrent(content, LexerRegexes.StartsWithName, out group))
+                    AppendToken(TokenType.Name, group.Length);
                 else
                     throw SyntaxError();
                 break;
 
             case >= '0' and <= '9':
-                if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithNumber, out group))
-                    AppendToken(TokenType.Number, group.Span);
+                if (IsStrictMatchFromCurrent(content, LexerRegexes.StartsWithNumber, out group))
+                    AppendToken(TokenType.Number, group.Length);
                 else
                     throw SyntaxError();
                 break;
 
             case '.':
-                if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithNumber, out group))
-                    AppendToken(TokenType.Number, group.Span);
-                else if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithFunny, out group))
+                if (IsStrictMatchFromCurrent(content, LexerRegexes.StartsWithNumber, out group))
+                    AppendToken(TokenType.Number, group.Length);
+                else if (IsStrictMatchFromCurrent(content, LexerRegexes.StartsWithFunny, out group))
                     TokenizeFunny(group);
                 else
                     throw SyntaxError();
@@ -785,17 +691,17 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             case '&':
             case '%':
             case '!':
-                if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithFunny, out group))
+                if (IsStrictMatchFromCurrent(content, LexerRegexes.StartsWithFunny, out group))
                     TokenizeFunny(group);
                 else
-                    TokenizeFallback(out group);
+                    TokenizeFallback(content, out group);
                 break;
 
             default:
-                if (IsStrictMatchFromCurrent(LexerRegexes.StartsWithName, out group))
-                    AppendToken(TokenType.Name, group.Span);
+                if (IsStrictMatchFromCurrent(content, LexerRegexes.StartsWithName, out group))
+                    AppendToken(TokenType.Name, group.Length);
                 else
-                    TokenizeFallback(out group);
+                    TokenizeFallback(content, out group);
                 break;
         }
     }
