@@ -1,9 +1,6 @@
 ﻿using PySharp.Compilation.CodeAnalysis;
-using PySharp.Modules.Builtins;
-using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Text;
 
 namespace PySharp.Compilation.Tokenization;
 
@@ -76,7 +73,7 @@ public readonly record struct Token
         Debug.Assert(source is not null);
 
         StringSpan = span;
-        
+
         if (type is TokenType.Operator)
             type = GetExactTokenType(source.Code.GetString(StringSpan));
 
