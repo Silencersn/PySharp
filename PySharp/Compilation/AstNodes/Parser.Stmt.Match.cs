@@ -63,12 +63,12 @@ partial class Parser
         if (CurrentTokenType is TokenType.Star)
             return ParseOpenSequencePattern(StopPredicates.UntilColon);
 
-        var pos = TokenStreamPosition;
+        var pos = TokenPosition;
         var pattern = ParsePattern();
         if (CurrentTokenType is not TokenType.Comma)
             return pattern;
 
-        TokenStreamPosition = pos;
+        TokenPosition = pos;
         return ParseOpenSequencePattern(StopPredicates.UntilColon);
     }
 
@@ -88,10 +88,10 @@ partial class Parser
     [GrammarSyntaxRule("pattern")]
     private AstPatternNode ParsePattern()
     {
-        var pos = TokenStreamPosition;
+        var pos = TokenPosition;
         _ = ParseOrPattern();
         var isAsPattern = IsCurrentKeyword("as");
-        TokenStreamPosition = pos;
+        TokenPosition = pos;
 
         if (isAsPattern)
             return ParseAsPattern();
@@ -119,7 +119,7 @@ partial class Parser
     [GrammarSyntaxRule("closed_pattern")]
     private AstPatternNode ParseClosedPattern()
     {
-        var pos = TokenStreamPosition;
+        var pos = TokenPosition;
 
         if (CurrentTokenType is TokenType.Number or TokenType.String or TokenType.FStringStart ||
             CurrentTokenType is TokenType.Name && IsKeyword(CurrentTokenStringAsSpan))
@@ -132,7 +132,7 @@ partial class Parser
 
             var nameOrAttr = ParseNameOrAttr();
             var isClass = CurrentTokenType is TokenType.LeftParen;
-            TokenStreamPosition = pos;
+            TokenPosition = pos;
 
             if (isClass)
                 return ParseClassPattern();
@@ -149,7 +149,7 @@ partial class Parser
 
             if (CurrentTokenType is TokenType.Star or TokenType.RightParen)
             {
-                TokenStreamPosition = pos;
+                TokenPosition = pos;
                 return ParseSequencePattern();
             }
 
@@ -160,7 +160,7 @@ partial class Parser
                 return pattern;
             }
 
-            TokenStreamPosition = pos;
+            TokenPosition = pos;
             return ParseSequencePattern();
         }
 
@@ -228,13 +228,13 @@ partial class Parser
     {
         if (CurrentTokenType is TokenType.Number)
         {
-            var pos = TokenStreamPosition;
+            var pos = TokenPosition;
 
             var signedNumber = ParseSignedNumber();
             if (CurrentTokenType is not (TokenType.Plus or TokenType.Minus))
                 return signedNumber;
 
-            TokenStreamPosition = pos;
+            TokenPosition = pos;
             return ParseComplexNumber();
         }
         else if (CurrentTokenType is TokenType.String)
@@ -365,13 +365,13 @@ partial class Parser
     [GrammarSyntaxRule("name_or_attr")]
     private AstExprNode ParseNameOrAttr()
     {
-        var pos = TokenStreamPosition;
+        var pos = TokenPosition;
         var metaInfo = CreateAstMetaInfo();
         var name = ParseIdentifier();
         if (CurrentTokenType is not TokenType.Dot)
             return Ast.Name(name).With(metaInfo);
 
-        TokenStreamPosition = pos;
+        TokenPosition = pos;
         return ParseAttr();
     }
 
@@ -534,10 +534,10 @@ partial class Parser
         if (!IsCurrentIdentifier)
             return false;
 
-        var pos = TokenStreamPosition;
+        var pos = TokenPosition;
         MoveNextToken();
         var result = CurrentTokenType is TokenType.Equal;
-        TokenStreamPosition = pos;
+        TokenPosition = pos;
         return result;
     }
 

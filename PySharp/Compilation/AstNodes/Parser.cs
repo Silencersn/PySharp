@@ -8,7 +8,7 @@ namespace PySharp.Compilation.AstNodes;
 
 public sealed partial class Parser : ICodeMetaInfoProvider
 {
-    public static ModuleNode ParseModule(PyCallContext context, CodeSource codeSource, TokenStream tokens)
+    public static ModuleNode ParseModule(PyCallContext context, CodeSource codeSource, TokenSequence tokens)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(codeSource);
@@ -16,7 +16,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
 
         return new Parser(context, codeSource, tokens).ParseFile();
     }
-    public static ExpressionNode ParseExpression(PyCallContext context, CodeSource codeSource, TokenStream tokens)
+    public static ExpressionNode ParseExpression(PyCallContext context, CodeSource codeSource, TokenSequence tokens)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(codeSource);
@@ -25,7 +25,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         return new Parser(context, codeSource, tokens).ParseEval();
     }
 
-    public static InteractiveNode ParseInteractive(PyCallContext context, CodeSource codeSource, TokenStream tokens)
+    public static InteractiveNode ParseInteractive(PyCallContext context, CodeSource codeSource, TokenSequence tokens)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(codeSource);
@@ -66,22 +66,20 @@ public sealed partial class Parser : ICodeMetaInfoProvider
     private readonly PyCallContext _context;
     private readonly CodeSource _codeSource;
     private readonly OptimizationOptions _options;
-    private readonly TokenStream _tokenStream;
+    private readonly TokenSequence _tokenSequence;
+    private int _position;
 
-    private int TokenStreamPosition
+    private int TokenPosition
     {
-        get { SkipUselessToken(); return _tokenStream.Position; }
-        set => _tokenStream.Position = value;
-    }
-
-    internal Token CurrentToken
-    {
-        get
+        get => _position;
+        set
         {
-            SkipUselessToken();
-            return _tokenStream.CurrentToken;
+            _position = value;
+            CurrentToken = _tokenSequence[_position];
         }
     }
+
+    internal Token CurrentToken { get; private set; }
 
     internal TokenType CurrentTokenType => CurrentToken.Type;
     private ReadOnlySpan<char> CurrentTokenStringAsSpan => _codeSource.Code.GetString(CurrentToken.StringSpan);
@@ -92,13 +90,14 @@ public sealed partial class Parser : ICodeMetaInfoProvider
 
     CodeMetaInfo? ICodeMetaInfoProvider.MetaInfo => CreateAstMetaInfo();
 
-    internal Parser(PyCallContext context, CodeSource codeSource, TokenStream tokenStream)
+    internal Parser(PyCallContext context, CodeSource codeSource, TokenSequence tokens)
     {
         _context = context;
         _options = _context.PyEnvironment.OptimizationOptions;
-        _tokenStream = tokenStream;
+        _tokenSequence = tokens;
         _codeSource = codeSource;
         _context.CurrentFrame.MetaInfoProvider = this;
+        SkipUselessToken();
     }
 
     private bool IsCurrentTypeTokenAnyOf(params ReadOnlySpan<TokenType> expectedTypes)
@@ -117,16 +116,18 @@ public sealed partial class Parser : ICodeMetaInfoProvider
     }
     private void SkipUselessToken()
     {
-        while (IsUselessToken(_tokenStream.CurrentToken))
-            _tokenStream.MoveNextToken();
+        var span = _tokenSequence.AsSpan();
+        CurrentToken = span[_position];
+        while (IsUselessToken(CurrentToken))
+            CurrentToken = span[++_position];
     }
 
     internal void MoveNextToken()
     {
-        if (_tokenStream.CurrentToken.Type is TokenType.EndMarker)
+        if (CurrentTokenType is TokenType.EndMarker)
             return;
 
-        _tokenStream.MoveNextToken();
+        _position++;
         SkipUselessToken();
     }
     private void EnsureTokenType(TokenType type, string message = PySR.InvalidSyntax)

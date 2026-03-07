@@ -65,7 +65,7 @@ partial class Parser
 
         bool TestIsDictRatherThanSet()
         {
-            var pos = TokenStreamPosition;
+            var pos = TokenPosition;
             bool isDict;
             EnsureTokenTypeThenMove(TokenType.LeftBrace);
 
@@ -94,7 +94,7 @@ partial class Parser
                 _ = ParseExpression();
                 isDict = CurrentTokenType is TokenType.Colon;
             }
-            TokenStreamPosition = pos;
+            TokenPosition = pos;
 
             return isDict;
         }
@@ -103,12 +103,12 @@ partial class Parser
     [GrammarSyntaxRule("group")]
     private bool TryParseGroup([NotNullWhen(true)] out AstExprNode? group)
     {
-        var pos = TokenStreamPosition;
+        var pos = TokenPosition;
         EnsureTokenTypeThenMove(TokenType.LeftParen);
 
         if (CurrentTokenType is TokenType.RightParen)
         {
-            TokenStreamPosition = pos;
+            TokenPosition = pos;
             group = null;
             return false;
         }
@@ -127,7 +127,7 @@ partial class Parser
             return true;
         }
 
-        TokenStreamPosition = pos;
+        TokenPosition = pos;
         return false;
     }
 
@@ -577,10 +577,10 @@ partial class Parser
             }
             else if (CurrentTokenType is TokenType.LeftParen)
             {
-                var pos = TokenStreamPosition;
+                var pos = TokenPosition;
                 MoveNextToken();
                 var isGenExp = TestIsGenExp();
-                TokenStreamPosition = pos;
+                TokenPosition = pos;
 
                 if (isGenExp)
                 {
@@ -603,12 +603,12 @@ partial class Parser
 
                     if (IsCurrentIdentifier)
                     {
-                        var pos = TokenStreamPosition;
+                        var pos = TokenPosition;
                         MoveNextToken();
                         if (CurrentTokenType is TokenType.Equal)
                             // func(arg=value)
                             return false;
-                        TokenStreamPosition = pos;
+                        TokenPosition = pos;
                     }
 
                     _ = ParseNamedExpression();
@@ -935,10 +935,10 @@ partial class Parser
         if (!IsCurrentIdentifier)
             return false;
 
-        var pos = TokenStreamPosition;
+        var pos = TokenPosition;
         MoveNextToken();
         var isAssignment = CurrentTokenType is TokenType.ColonEqual;
-        TokenStreamPosition = pos;
+        TokenPosition = pos;
         return isAssignment;
     }
 
@@ -1056,10 +1056,10 @@ partial class Parser
             // comprehension should start with named_expression
             return false;
 
-        var index = TokenStreamPosition;
+        var index = TokenPosition;
         _ = parseItem();
         var isComp = IsCurrentKeyword("for") || IsCurrentKeyword("async");
-        TokenStreamPosition = index;
+        TokenPosition = index;
         return isComp;
     }
 
@@ -1409,10 +1409,10 @@ partial class Parser
         where TSequence : AstExprNode
         where TComprehension : AstExprNode
     {
-        var pos = TokenStreamPosition;
+        var pos = TokenPosition;
         EnsureTokenTypeThenMove(openToken);
         var isComp = TestIsComprehension(closeToken, parseItem);
-        TokenStreamPosition = pos;
+        TokenPosition = pos;
         return isComp ? parseComprehension() : parseSequence();
     }
 
@@ -1465,10 +1465,10 @@ partial class Parser
         if (!IsCurrentIdentifier)
             return false;
 
-        var pos = TokenStreamPosition;
+        var pos = TokenPosition;
         MoveNextToken();
         var isKwarg = CurrentTokenType is TokenType.Equal;
-        TokenStreamPosition = pos;
+        TokenPosition = pos;
 
         return isKwarg;
     }

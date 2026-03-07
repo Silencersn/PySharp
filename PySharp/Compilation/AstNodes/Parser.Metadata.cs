@@ -32,49 +32,52 @@ partial class Parser
 
         public AstMetaInfo WithEnd()
         {
-            return new(_parser, StartTokenPosition, _parser.TokenStreamPosition, CrucialStartTokenPosition, CrucialEndTokenPosition);
+            return new(_parser, StartTokenPosition, _parser.TokenPosition, CrucialStartTokenPosition, CrucialEndTokenPosition);
         }
         public AstMetaInfo WithCrucial()
         {
-            return new(_parser, StartTokenPosition, EndTokenPosition, _parser.TokenStreamPosition, _parser.TokenStreamPosition);
+            return new(_parser, StartTokenPosition, EndTokenPosition, _parser.TokenPosition, _parser.TokenPosition);
         }
         public AstMetaInfo WithAllEnd()
         {
-            return new(_parser, StartTokenPosition, _parser.TokenStreamPosition, CrucialStartTokenPosition, _parser.TokenStreamPosition);
+            return new(_parser, StartTokenPosition, _parser.TokenPosition, CrucialStartTokenPosition, _parser.TokenPosition);
         }
         public AstMetaInfo WithPreviousEnd()
         {
-            var position = _parser._tokenStream.Position - 1;
-            while (IsUselessToken(_parser._tokenStream.GetTokenAt(position)))
+            var position = _parser.TokenPosition - 1;
+            var span = _parser._tokenSequence.AsSpan();
+            while (IsUselessToken(span[position]))
                 position--;
             return new(_parser, StartTokenPosition, position, CrucialStartTokenPosition, CrucialEndTokenPosition);
         }
 
         public CodeMetaInfo ToCodeMetaInfo()
         {
-            var startToken = _parser._tokenStream.GetTokenAt(StartTokenPosition);
-            var endToken = _parser._tokenStream.GetTokenAt(EndTokenPosition);
+            var span = _parser._tokenSequence.AsSpan();
+            var startToken = span[StartTokenPosition];
+            var endToken = span[EndTokenPosition];
             var source = _parser._codeSource;
             if (CrucialStartTokenPosition is 0 && CrucialEndTokenPosition is 0)
                 return CodeMetaInfo.FromPosition(source,
                     startToken.GetStart(source), endToken.GetEnd(source));
 
-            var crucialStartToken = _parser._tokenStream.GetTokenAt(CrucialStartTokenPosition);
-            var crucialEndToken = _parser._tokenStream.GetTokenAt(CrucialEndTokenPosition);
+            var crucialStartToken = span[CrucialStartTokenPosition];
+            var crucialEndToken = span[CrucialEndTokenPosition];
             return CodeMetaInfo.FromPosition(source,
                 startToken.GetStart(source), endToken.GetEnd(source), crucialStartToken.GetStart(source), crucialEndToken.GetEnd(source));
         }
         public ValueCodeMetaInfo ToValueCodeMetaInfo()
         {
-            var startToken = _parser._tokenStream.GetTokenAt(StartTokenPosition);
-            var endToken = _parser._tokenStream.GetTokenAt(EndTokenPosition);
+            var span = _parser._tokenSequence.AsSpan();
+            var startToken = span[StartTokenPosition];
+            var endToken = span[EndTokenPosition];
             var rangeLength = endToken.StringSpan.End - startToken.StringSpan.Start;
 
             if (CrucialStartTokenPosition is 0 && CrucialEndTokenPosition is 0)
                 return ValueCodeMetaInfo.FromSpan(new(startToken.StringSpan.Start, rangeLength), default);
 
-            var crucialStartToken = _parser._tokenStream.GetTokenAt(CrucialStartTokenPosition);
-            var crucialEndToken = _parser._tokenStream.GetTokenAt(CrucialEndTokenPosition);
+            var crucialStartToken = span[CrucialStartTokenPosition];
+            var crucialEndToken = span[CrucialEndTokenPosition];
             return ValueCodeMetaInfo.FromSpan(
                 new(startToken.StringSpan.Start, rangeLength),
                 new(crucialStartToken.StringSpan.Start, crucialEndToken.StringSpan.End - crucialStartToken.StringSpan.Start));
@@ -83,6 +86,6 @@ partial class Parser
 
     internal AstMetaInfo CreateAstMetaInfo()
     {
-        return new AstMetaInfo(this, TokenStreamPosition);
+        return new AstMetaInfo(this, TokenPosition);
     }
 }

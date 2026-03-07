@@ -21,7 +21,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         FStringDefault,
     }
 
-    public static TokenArrayStream Tokenize(PyCallContext context, CodeSource codeSource)
+    public static TokenSequence Tokenize(PyCallContext context, CodeSource codeSource, bool extraNewLine = false)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(codeSource);
@@ -30,7 +30,9 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         lexer.InternalStart();
         lexer.InternalTokenize();
         lexer.InternalEnd();
-        return new TokenArrayStream(lexer._tokens);
+        if (extraNewLine)
+            lexer._tokens.Insert(lexer._tokens.Count - 1, new Token(TokenType.NewLine, default, codeSource));
+        return new TokenSequence(lexer._tokens);
     }
 
     private struct FStringInfo

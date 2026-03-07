@@ -61,17 +61,17 @@ partial class Parser
     private bool TryParseAssignment([NotNullWhen(true)] out AstStmtNode? assignment, out AstExprNode? starExpressions)
     {
         var metaInfo = CreateAstMetaInfo();
-        var pos = TokenStreamPosition;
+        var pos = TokenPosition;
         starExpressions = null;
 
         if (TryParseSimpleAnnAssign(out assignment))
             return true;
 
-        TokenStreamPosition = pos;
+        TokenPosition = pos;
         if (TryParseAnnAssignOrAugAssign(out assignment))
             return true;
 
-        TokenStreamPosition = pos;
+        TokenPosition = pos;
         starExpressions = ParseStarExpressions(StopPredicates.UntilNewLineOrSemicolonOrEqual);
 
         if (CurrentTokenType is not TokenType.Equal)
@@ -593,9 +593,9 @@ partial class Parser
 
         bool TestIsMatchStmt()
         {
-            var pos = TokenStreamPosition;
+            var pos = TokenPosition;
             var isMatchStmt = TestIsMatchStmtFast();
-            TokenStreamPosition = pos;
+            TokenPosition = pos;
             if (isMatchStmt is not null)
                 return isMatchStmt.Value;
 
@@ -623,7 +623,7 @@ partial class Parser
             }
             finally
             {
-                TokenStreamPosition = pos;
+                TokenPosition = pos;
             }
 
             bool? TestIsMatchStmtFast()
@@ -769,10 +769,10 @@ partial class Parser
             {
                 if (isStar is null)
                 {
-                    var pos = TokenStreamPosition;
+                    var pos = TokenPosition;
                     MoveNextToken();
                     isStar = CurrentTokenType is TokenType.Star;
-                    TokenStreamPosition = pos;
+                    TokenPosition = pos;
                 }
                 exceptors.Add(ParseExceptBlock(isStar.Value));
             }

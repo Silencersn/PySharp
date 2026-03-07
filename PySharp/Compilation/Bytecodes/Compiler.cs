@@ -9,12 +9,10 @@ namespace PySharp.Compilation.Bytecodes;
 internal static class Compiler
 {
     private static PyCodeObject InternalCompileBytecode(PyCallContext context, string code, string sourceName,
-        Func<PyCallContext, CodeSource, TokenStream, AstModNode> parse, bool appendNewLine = false, bool onlyAsName = false)
+        Func<PyCallContext, CodeSource, TokenSequence, AstModNode> parse, bool appendNewLine = false, bool onlyAsName = false)
     {
         var source = new CodeSource(sourceName, code);
-        var tokens = Lexer.Tokenize(context, source);
-        if (appendNewLine)
-            tokens.Insert(tokens.Count - 1, new Token(TokenType.NewLine, default, source));
+        var tokens = Lexer.Tokenize(context, source, appendNewLine);
         var node = parse(context, source, tokens);
         var model = SemanticAnalyzer.Analyze(context, source, node);
         var bytecode = BytecodeCompiler.Compile(model, source, onlyAsName);
