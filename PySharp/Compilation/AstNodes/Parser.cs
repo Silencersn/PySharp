@@ -86,6 +86,8 @@ public sealed partial class Parser : ICodeMetaInfoProvider
     private string CurrentTokenString => CurrentTokenStringAsSpan.ToString();
 
     private bool IsCurrentIdentifier => CurrentTokenType is TokenType.Name && !IsKeyword(CurrentTokenStringAsSpan);
+
+    // there should be no reentrancy risk where SharedBuilder is used
     private StringBuilder SharedBuilder => field ??= new StringBuilder();
 
     CodeMetaInfo? ICodeMetaInfoProvider.MetaInfo => CreateAstMetaInfo();

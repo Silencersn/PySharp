@@ -12,11 +12,6 @@ namespace PySharp.Compilation.AstNodes;
 partial class Parser
 {
     /// <summary>
-    /// only for token string, being never used by multiple methods at hre same time
-    /// </summary>
-    private readonly StringBuilder _builderForTokenString = new();
-
-    /// <summary>
     /// identifier: &lt;NAME, except keywords&gt;
     /// </summary>
     /// <returns></returns>
@@ -318,7 +313,7 @@ partial class Parser
             if (nodes.Count is 1)
                 return nodes[0];
 
-            var builder = _builderForTokenString.Clear();
+            var builder = SharedBuilder.Clear();
             foreach (var node in nodes.Skip(skipCount))
             {
                 var constant = (ConstantNode)node;
