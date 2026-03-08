@@ -83,7 +83,23 @@ public sealed partial class Parser : ICodeMetaInfoProvider
 
     internal TokenType CurrentTokenType => CurrentToken.Type;
     private ReadOnlySpan<char> CurrentTokenStringAsSpan => _codeSource.Code.GetString(CurrentToken.StringSpan);
-    private string CurrentTokenString => CurrentTokenStringAsSpan.ToString();
+    private HashSet<string>? _stringPool;
+
+    private string CurrentTokenString
+    {
+        get
+        {
+            _stringPool ??= [];
+
+            var span = CurrentTokenStringAsSpan;
+            if (_stringPool.GetAlternateLookup<ReadOnlySpan<char>>().TryGetValue(span, out var value))
+                return value;
+
+            value = span.ToString();
+            _stringPool.Add(value);
+            return value;
+        }
+    }
 
     private bool IsCurrentIdentifier => CurrentTokenType is TokenType.Name && !IsKeyword(CurrentTokenStringAsSpan);
 
