@@ -1,22 +1,23 @@
 ﻿using PySharp.Modules.Builtins;
+using System.Collections.Frozen;
 
 namespace PySharp.Runtime.Calls;
 
 public sealed class PyArguments
 {
-    public static PyArguments Empty { get; } = new([], [], [], []);
+    public static PyArguments Empty { get; } = new([], FrozenDictionary<string, PyObject>.Empty, [], FrozenDictionary<string, PyObject>.Empty);
 
     public IReadOnlyList<PyObject> Args { get; }
     public IReadOnlyDictionary<string, PyObject> Kwargs { get; }
     public IReadOnlyList<PyObject> ExtraArgs { get; }
     public IReadOnlyDictionary<string, PyObject> ExtraKwargs { get; }
 
-    internal PyArguments(IEnumerable<PyObject> args, IEnumerable<PyObject> extraArgs, IEnumerable<KeyValuePair<string, PyObject>> kwargs, IEnumerable<KeyValuePair<string, PyObject>> extraKwargs)
+    internal PyArguments(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, IReadOnlyList<PyObject> extraArgs, IReadOnlyDictionary<string, PyObject> extraKwargs)
     {
-        Args = [.. args];
-        ExtraArgs = [.. extraArgs];
-        Kwargs = kwargs.ToDictionary();
-        ExtraKwargs = new OrderedDictionary<string, PyObject>(extraKwargs);
+        Args = args;
+        Kwargs = kwargs;
+        ExtraArgs = extraArgs;
+        ExtraKwargs = extraKwargs;
     }
 
     public PyObject this[int index]
@@ -47,16 +48,5 @@ public sealed class PyArguments
 
             throw new KeyNotFoundException(key);
         }
-    }
-
-    public (PyObject Target, PyArguments Arguments) ToMethodArguments()
-    {
-        var target = Args[0];
-        var arguments = new PyArguments(
-            Args.Skip(1),
-            ExtraArgs,
-            Kwargs,
-            ExtraKwargs);
-        return (target, arguments);
     }
 }

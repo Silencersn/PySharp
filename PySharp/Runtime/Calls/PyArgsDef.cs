@@ -1,6 +1,7 @@
 ﻿using PySharp.Compilation.AstNodes;
 using PySharp.Modules.Builtins;
 using PySharp.Utility;
+using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
@@ -245,79 +246,71 @@ public sealed class PyArgsDef
     {
         result = null;
 
-        var defaultsForPosonly = int.Max(0, Defaults.Length - Args.Length);
-        if (args.Count < PosonlyArgs.Length - defaultsForPosonly)
+        var defaultsCountForPosonly = int.Max(0, Defaults.Length - Args.Length);
+        var leastPosonlyArgsCount = PosonlyArgs.Length - defaultsCountForPosonly;
+        if (args.Count < leastPosonlyArgsCount)
             return false;
 
-        List<PyObject> resultPosonlyArgs;
-
-        if (args.Count >= PosonlyArgs.Length)
-        {
-            resultPosonlyArgs = [.. args.Take(PosonlyArgs.Length)];
-        }
-        else
-        {
-            resultPosonlyArgs = [.. args, .. Defaults.Take(PosonlyArgs.Length - args.Count)];
-        }
-
-        var resultArgs = Args.ToDictionary(static arg => arg, static _ => (PyObject?)null);
-
-
-        var defaultsForArgs = int.Min(Args.Length, Defaults.Length);
-        for (int i = 1; i <= defaultsForArgs; i++)
-        {
-            resultArgs[Args[^i]] = Defaults[^i];
-        }
-
-        var minLength = int.Min(Args.Length, args.Count - PosonlyArgs.Length);
-        for (int i = 0; i < minLength; i++)
-        {
-            resultArgs[Args[i]] = args[i + PosonlyArgs.Length];
-        }
-
-        var resultExtraArgs = args.Skip(PosonlyArgs.Length + Args.Length).ToList();
-        if (VarArg is null && resultExtraArgs.Count > 0)
+        var totalArgsCount = PosonlyArgs.Length + Args.Length;
+        if (args.Count > totalArgsCount && VarArg is null)
             return false;
 
-        var resultKwonlyArgs = Enumerable.Range(0, KwonlyArgs.Length).ToDictionary(i => KwonlyArgs[i], i => KwDefaults[i]);
-        var resultExtraKwargs = new List<KeyValuePair<string, PyObject>>();
-
-        foreach (var kwarg in kwargs)
+        var resultArgs = new PyObject[totalArgsCount];
+        for (int i = 0; i < PosonlyArgs.Length; i++)
         {
-            if (resultArgs.TryGetValue(kwarg.Key, out var value))
-            {
-                resultArgs[kwarg.Key] = kwarg.Value;
-            }
-            else if (resultKwonlyArgs.TryGetValue(kwarg.Key, out value))
-            {
-                resultKwonlyArgs[kwarg.Key] = kwarg.Value;
-            }
+            if (i < args.Count)
+                resultArgs[i] = args[i];
             else
-            {
-                if (KwArg is null)
-                    return false;
-                resultExtraKwargs.Add(kwarg);
-            }
+                resultArgs[i] = Defaults[i - leastPosonlyArgsCount];
         }
 
-        foreach (var value in resultArgs.Values)
+        if (Defaults.Length > Args.Length)
+            Defaults.AsSpan()[^Args.Length..].CopyTo(resultArgs.AsSpan()[^Args.Length..]);
+        else
+            Defaults.CopyTo(resultArgs.AsSpan()[^Defaults.Length..]);
+
+        var maxLength = int.Min(resultArgs.Length, args.Count);
+        for (int i = PosonlyArgs.Length; i < maxLength; i++)
+            resultArgs[i] = args[i];
+
+        IReadOnlyList<PyObject> resultExtraArgs = [];
+        if (VarArg is not null && args.Count > totalArgsCount)
+            resultExtraArgs = [.. args.Skip(totalArgsCount)];
+
+        var resultKwargs = new Dictionary<string, PyObject?>(KwonlyArgs.Length);
+        for (int i = 0; i < KwonlyArgs.Length; i++)
+            resultKwargs[KwonlyArgs[i]] = KwDefaults[i];
+
+        IDictionary<string, PyObject>? resultExtraKwargs = null;
+
+        int index;
+        foreach (var pair in kwargs)
+        {
+            if (resultKwargs.ContainsKey(pair.Key))
+                resultKwargs[pair.Key] = pair.Value;
+            else if ((index = Args.IndexOf(pair.Key)) is not -1)
+                resultArgs[PosonlyArgs.Length + index] = pair.Value;
+            else if (KwArg is not null)
+                (resultExtraKwargs ??= new Dictionary<string, PyObject>())[pair.Key] = pair.Value;
+            else
+                return false;
+        }
+
+        foreach (var arg in resultArgs.AsSpan()[^Args.Length..])
+        {
+            if (arg is null)
+                return false;
+        }
+
+        foreach (var value in resultKwargs.Values)
         {
             if (value is null)
                 return false;
         }
 
-        foreach (var value in resultKwonlyArgs.Values)
-        {
-            if (value is null)
-                return false;
-        }
+        resultExtraKwargs ??= FrozenDictionary<string, PyObject>.Empty;
 
-        result = new PyArguments(
-            resultPosonlyArgs.Concat(Args.Select(arg => resultArgs[arg]!)),
-            resultExtraArgs,
-            KwonlyArgs.Select(arg => KeyValuePair.Create(arg, resultKwonlyArgs[arg]!)),
-            resultExtraKwargs);
-
+        result = new PyArguments(resultArgs, resultKwargs!, resultExtraArgs, (IReadOnlyDictionary<string, PyObject>)resultExtraKwargs);
         return true;
     }
 
