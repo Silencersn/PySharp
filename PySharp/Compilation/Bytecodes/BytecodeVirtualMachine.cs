@@ -75,6 +75,12 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
         Stack.Push(value);
     }
 
+    // cache, clear before using
+    private List<PyObject> CacheArgs => field ??= [];
+    private OrderedDictionary<string, PyObject> CacheKwargs => field ??= [];
+    private List<KeyValuePair<PyObject, PyObject>> CachePairs => field ??= [];
+    private StringBuilder CacheBuilder => field ??= new();
+
     internal PyResult Eval(PyCallContext context, PyFrame frame)
     {
         ref int currentIndex = ref InstructionIndex;
@@ -86,12 +92,8 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
         // cache, clear before using
         PyObject value, left, right;
         bool boolValue;
-        List<PyObject> args = [];
-        OrderedDictionary<string, PyObject> kwargs = [];
         PyResult result;
         PyObject? returnValue = null, intermediateValue = null;
-        List<KeyValuePair<PyObject, PyObject>> pairs = [];
-        StringBuilder builder = new();
 
         int instructionArg = 0;
 
@@ -289,12 +291,12 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                             if (isNull)
                                 instructionArg--;
 
-                            LoadArgs(args, instructionArg);
+                            LoadArgs(CacheArgs, instructionArg);
                             if (isNull)
                                 Stack.Pop();
 
                             var callable = Stack.Pop();
-                            value = callable.Call(context, args).PyUnwrap(context);
+                            value = callable.Call(context, CacheArgs).PyUnwrap(context);
                             Stack.Push(value);
                         }
                         break;
@@ -302,27 +304,27 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                     case OpCode.CallKw:
                         {
                             var tuple = (PyTupleObject)Stack.Pop();
-                            kwargs.Clear();
+                            CacheKwargs.Clear();
 
-                            LoadArgs(args, tuple.Count);
+                            LoadArgs(CacheArgs, tuple.Count);
 
                             for (int i = 0; i < tuple.Count; i++)
                             {
                                 var str = (PyStrObject)tuple[i];
-                                kwargs.Add(str.Value, args[i]);
+                                CacheKwargs.Add(str.Value, CacheArgs[i]);
                             }
 
-                            var argsCount = instructionArg - kwargs.Count;
+                            var argsCount = instructionArg - CacheKwargs.Count;
                             var isNull = argsCount > 0 && Stack[-argsCount] is null;
                             if (isNull)
                                 argsCount--;
 
-                            LoadArgs(args, argsCount);
+                            LoadArgs(CacheArgs, argsCount);
                             if (isNull)
                                 Stack.Pop();
 
                             var callable = Stack.Pop();
-                            value = callable.Call(context, args, kwargs).PyUnwrap(context);
+                            value = callable.Call(context, CacheArgs, CacheKwargs).PyUnwrap(context);
                             Stack.Push(value);
                         }
                         break;
@@ -331,16 +333,16 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                         {
                             var dict = (PyDictObject)Stack.Pop();
                             var pyargs = (PyListObject)Stack.Pop();
-                            kwargs.Clear();
+                            CacheKwargs.Clear();
 
                             foreach (var pair in dict)
                             {
                                 if (pair.Key is not PyStrObject str)
                                     throw context.TypeError(PySR.Runtime_Keyword_KeywordsMustBeStrings);
-                                kwargs.Add(str.Value, pair.Value);
+                                CacheKwargs.Add(str.Value, pair.Value);
                             }
 
-                            Stack[-1] = Stack[-1].Call(context, pyargs, kwargs).PyUnwrap(context);
+                            Stack[-1] = Stack[-1].Call(context, pyargs, CacheKwargs).PyUnwrap(context);
                         }
                         break;
 
@@ -467,28 +469,28 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                         break;
 
                     case OpCode.BuildList:
-                        LoadArgs(args, instructionArg);
-                        Stack.Push(PyListObject.CreateList(args));
+                        LoadArgs(CacheArgs, instructionArg);
+                        Stack.Push(PyListObject.CreateList(CacheArgs));
                         break;
 
                     case OpCode.BuildTuple:
-                        LoadArgs(args, instructionArg);
-                        Stack.Push(PyTupleObject.CreateTuple(args));
+                        LoadArgs(CacheArgs, instructionArg);
+                        Stack.Push(PyTupleObject.CreateTuple(CacheArgs));
                         break;
 
                     case OpCode.BuildSet:
-                        LoadArgs(args, instructionArg);
-                        Stack.Push(PySetObject.CreateSet(args));
+                        LoadArgs(CacheArgs, instructionArg);
+                        Stack.Push(PySetObject.CreateSet(CacheArgs));
                         break;
 
                     case OpCode.BuildMap:
-                        LoadArgs(args, instructionArg * 2);
-                        pairs.Clear();
+                        LoadArgs(CacheArgs, instructionArg * 2);
+                        CachePairs.Clear();
                         for (int i = 0; i < instructionArg; i++)
                         {
-                            pairs.Add(KeyValuePair.Create(args[i * 2], args[i * 2 + 1]));
+                            CachePairs.Add(KeyValuePair.Create(CacheArgs[i * 2], CacheArgs[i * 2 + 1]));
                         }
-                        Stack.Push(PyDictObject.CreateDict(pairs));
+                        Stack.Push(PyDictObject.CreateDict(CachePairs));
                         break;
 
                     case OpCode._EnterInlineFrame:
@@ -719,14 +721,14 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                         }
                         else
                         {
-                            builder.Clear();
-                            LoadArgs(args, instructionArg);
-                            foreach (var arg in args)
+                            CacheBuilder.Clear();
+                            LoadArgs(CacheArgs, instructionArg);
+                            foreach (var arg in CacheArgs)
                             {
                                 Debug.Assert(arg is PyStrObject);
-                                builder.Append(((PyStrObject)arg).Value);
+                                CacheBuilder.Append(((PyStrObject)arg).Value);
                             }
-                            Stack.Push(PyStrObject.FromString(builder.ToString()));
+                            Stack.Push(PyStrObject.FromString(CacheBuilder.ToString()));
                         }
                         break;
 
@@ -812,8 +814,8 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                             var codeObj = (PyCodeObject)Stack.Pop();
 
                             List<PyTypeObject> bases = [];
-                            LoadArgs(args, instructionArg);
-                            foreach (var arg in args)
+                            LoadArgs(CacheArgs, instructionArg);
+                            foreach (var arg in CacheArgs)
                             {
                                 if (arg is not PyTypeObject baseType)
                                     throw new NotSupportedException();
