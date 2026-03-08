@@ -16,40 +16,21 @@ internal static class PyCore
         return vm.Eval();
     }
 
-    public static IEnumerable<PyCellObject> GetFreeVars(PyFrame frame, PyCodeObject code)
+    public static PyCellObject[]? GetFreeVars(PyFrame frame, PyCodeObject code)
     {
         if (code.FreeVars.Length is 0)
-            yield break;
+            return null;
 
-        foreach (var name in code.FreeVars)
-        {
+        return [.. code.FreeVars.Select(name => {
             var obj = frame.Variables.Locals[name];
             Debug.Assert(obj is PyCellObject);
-            yield return (PyCellObject)obj;
-        }
+            return (PyCellObject)obj;
+        })];
     }
 
     public static PyFunctionObject MakeFunction(PyFrame frame, PyCodeObject codeObject, PyArgsDef def)
     {
-        PyFunctionObject func = null!;
-        func = new PyFunctionObject(codeObject.Name, Call, GetFreeVars(frame, codeObject), frame.Variables._globals, codeObject, def);
-        return func;
-
-        PyResult Call(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
-        {
-            if (!def.TryParse(args, kwargs, out var arguments))
-                return PyResult.TypeError(null /* TODO */);
-
-            var backFrame = context.CurrentFrame;
-            var frame = backFrame.CreateFuncCallFrame(func.Name, func, FrameType.Function, (args, kwargs), func._globals, func.Code);
-
-            Debug.Assert(frame.Variables._locals is not null);
-            frame.Variables._locals.InitCells(func.Closure);
-            frame.InitArgs(func._def, arguments);
-
-            using var withFrame = context.WithFrame(frame);
-            return Eval(context, codeObject.Bytecode);
-        }
+        return new PyFunctionObject(codeObject.Name, GetFreeVars(frame, codeObject), frame.Variables._globals, codeObject, def);
     }
 
     public static PyTypeObject BuildClass(PyCallContext context, PyCodeObject codeObject, List<PyTypeObject> bases)

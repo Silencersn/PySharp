@@ -1,13 +1,14 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
+using System.Diagnostics;
+using System.Runtime.InteropServices.Marshalling;
 
 namespace PySharp.Modules.Builtins;
 
 public sealed class PyFunctionObject : PyObject, IPyObjectName
 {
     internal readonly PyArgsDef _def;
-    internal readonly PyUncompoundedDelegate _function;
     internal readonly PyCellObject[]? _closure;
     internal PyObject? _pyClosure;
     internal PyFrame.PyFrameGlobals _globals;
@@ -19,12 +20,11 @@ public sealed class PyFunctionObject : PyObject, IPyObjectName
 
     public override PyTypeObject DefaultPyType => PyFunctionObjectType.Shared;
 
-    internal PyFunctionObject(string name, PyUncompoundedDelegate function, IEnumerable<PyCellObject>? closure, PyFrame.PyFrameGlobals globals, PyCodeObject code, PyArgsDef def)
+    internal PyFunctionObject(string name, PyCellObject[]? closure, PyFrame.PyFrameGlobals globals, PyCodeObject code, PyArgsDef def)
     {
         Name = name;
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
-        _function = function;
-        _closure = closure?.ToArray();
+        _closure = closure;
         _globals = globals;
         _code = code;
         _def = def;
@@ -41,7 +41,18 @@ public sealed partial class PyFunctionObjectType : PyTypeObject<PyFunctionObject
 
     protected override PyResult Call(PyCallContext context, PyFunctionObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        return self._function.Invoke(context, args, kwargs);
+        if (!self._def.TryParse(args, kwargs, out var arguments))
+            return PyResult.TypeError(null /* TODO */);
+
+        var backFrame = context.CurrentFrame;
+        var frame = backFrame.CreateFuncCallFrame(self.Name, self, FrameType.Function, (args, kwargs), self._globals, self.Code);
+
+        Debug.Assert(frame.Variables._locals is not null);
+        frame.Variables._locals.InitCells(self.Closure);
+        frame.InitArgs(self._def, arguments);
+
+        using var withFrame = context.WithFrame(frame);
+        return PyCore.Eval(context, self.Code.Bytecode);
     }
 
     protected override PyResult Get(PyCallContext context, PyFunctionObject self, PyObject instance, PyObject owner)
