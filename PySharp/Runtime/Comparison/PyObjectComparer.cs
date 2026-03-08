@@ -1,14 +1,18 @@
 ﻿using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.Calls.Extensions;
 using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Runtime.Comparison;
 
-public sealed class PyObjectComparer : IEqualityComparer<PyObject>, IComparer<PyObject>
+public sealed class PyObjectComparer :
+    IEqualityComparer<PyObject>,
+    IComparer<PyObject>,
+    IAlternateEqualityComparer<(PyCallContext Context, PyObject Object), PyObject>
 {
     public static PyObjectComparer Default { get; } = new();
 
-    private PyCallContext Context { get; } = PyCallContext.PyObjectComparison;
+    private PyCallContext DefaultContext { get; } = PyCallContext.PyObjectComparison;
 
     private PyObjectComparer() { }
 
@@ -23,42 +27,59 @@ public sealed class PyObjectComparer : IEqualityComparer<PyObject>, IComparer<Py
         if (Equals(x, y))
             return 0;
 
-        var lt = PyOperators.Lt(Context, x, y);
+        var lt = PyOperators.Lt(DefaultContext, x, y);
         if (lt.IsError)
-            throw new PyRuntimeException(Context, lt.Exception);
+            throw new PyRuntimeException(DefaultContext, lt.Exception);
 
-        var ltBool = PySpecialMethods.Bool(Context, lt.Value);
+        var ltBool = PySpecialMethods.Bool(DefaultContext, lt.Value);
         if (ltBool.IsError)
-            throw new PyRuntimeException(Context, ltBool.Exception);
+            throw new PyRuntimeException(DefaultContext, ltBool.Exception);
 
         return ltBool.Value.BoolValue ? -1 : 1;
     }
 
-    public bool Equals(PyObject? x, PyObject? y)
+    private static PyResult<PyBoolObject> Equals(PyCallContext context, PyObject? x, PyObject? y)
     {
         if (x is null)
-            return y is null;
+            return PyBoolObject.FromBoolean(y is null);
 
         if (y is null)
-            return false;
+            return PyBoolObject.False;
 
-        var eq = PyOperators.Eq(Context, x, y);
+        var eq = PyOperators.Eq(context, x, y);
         if (eq.IsError)
-            throw new PyRuntimeException(Context, eq.Exception);
+            return eq.Of<PyBoolObject>();
 
-        var eqBool = PySpecialMethods.Bool(Context, eq.Value);
-        if (eqBool.IsError)
-            throw new PyRuntimeException(Context, eqBool.Exception);
+        return PySpecialMethods.Bool(context, eq.Value);
+    }
 
-        return eqBool.Value.BoolValue;
+    private static PyResult<PyIntObject> GetHashCode(PyCallContext context, [DisallowNull] PyObject obj)
+    {
+        return PySpecialMethods.Hash(context, obj);
+    }
+
+    public bool Equals(PyObject? x, PyObject? y)
+    {
+        return Equals(DefaultContext, x, y).PyUnwrap(DefaultContext).BoolValue;
     }
 
     public int GetHashCode([DisallowNull] PyObject obj)
     {
-        var hash = PySpecialMethods.Hash(Context, obj);
-        if (hash.IsError)
-            throw new PyRuntimeException(Context, hash.Exception);
+        return GetHashCode(DefaultContext, obj).PyUnwrap(DefaultContext).Value.GetHashCode();
+    }
 
-        return hash.Value.Value.GetHashCode();
+    public bool Equals((PyCallContext Context, PyObject Object) alternate, PyObject other)
+    {
+        return Equals(alternate.Context, alternate.Object, other).PyUnwrap(alternate.Context).BoolValue;
+    }
+
+    public int GetHashCode((PyCallContext Context, PyObject Object) alternate)
+    {
+        return GetHashCode(alternate.Context, alternate.Object).PyUnwrap(alternate.Context).Value.GetHashCode();
+    }
+
+    public PyObject Create((PyCallContext Context, PyObject Object) alternate)
+    {
+        return alternate.Object;
     }
 }
