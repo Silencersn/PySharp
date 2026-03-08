@@ -317,13 +317,19 @@ partial class Parser
     {
         var metaInfo = CreateAstMetaInfo();
         EnsureTokenType(TokenType.Number);
-        var value = CurrentTokenString;
+        var value = CurrentTokenStringAsSpan;
         MoveNextToken();
 
         if (value.EndsWith('j'))
         {
-            value = value.Replace("_", string.Empty);
-            var imag = double.Parse(value.AsSpan()[..^1]);
+            if (value.Contains('_'))
+                value = SharedBuilder
+                    .Clear()
+                    .Append(value[..^1])
+                    .Replace("_", string.Empty)
+                    .ToString();
+
+            var imag = double.Parse(value);
             var complex = PyComplexObject.FromRealImag(0, imag);
             return Ast.Constant(complex).With(metaInfo);
         }
@@ -331,7 +337,11 @@ partial class Parser
         if (BigIntegerHelper.TryParse(value, 0, out var integer))
             return Ast.Constant(integer).With(metaInfo);
 
-        value = value.Replace("_", string.Empty);
+        if (value.Contains('_'))
+            value = SharedBuilder
+                .Clear()
+                .Replace("_", string.Empty)
+                .ToString();
         return Ast.Constant(double.Parse(value)).With(metaInfo);
     }
 

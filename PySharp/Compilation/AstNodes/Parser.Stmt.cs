@@ -690,7 +690,7 @@ partial class Parser
         if (CurrentTokenType is not TokenType.NewLine)
             return ParseSimpleStmts();
 
-        var lineno = CurrentToken.GetStart(_codeSource).Line;
+        var pos = TokenPosition;
         MoveNextToken();
         if (CurrentTokenType is not TokenType.Indent)
         {
@@ -700,6 +700,7 @@ partial class Parser
                 "class" => "class definition",
                 _ => $"'{keyword}' statement"
             };
+            var lineno = _tokenSequence[pos].GetStart(_codeSource).Line;
             throw _context.IndentationError(PySR.InvalidSyntax_Indentation_ExpectedForBlock, statementName, lineno);
         }
         MoveNextToken();

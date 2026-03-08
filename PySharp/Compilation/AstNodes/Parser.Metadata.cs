@@ -56,15 +56,18 @@ partial class Parser
             var span = _parser._tokenSequence.AsSpan();
             var startToken = span[StartTokenPosition];
             var endToken = span[EndTokenPosition];
+            var rangeLength = endToken.StringSpan.End - startToken.StringSpan.Start;
             var source = _parser._codeSource;
+
             if (CrucialStartTokenPosition is 0 && CrucialEndTokenPosition is 0)
                 return CodeMetaInfo.FromPosition(source,
                     startToken.GetStart(source), endToken.GetEnd(source));
 
             var crucialStartToken = span[CrucialStartTokenPosition];
             var crucialEndToken = span[CrucialEndTokenPosition];
-            return CodeMetaInfo.FromPosition(source,
-                startToken.GetStart(source), endToken.GetEnd(source), crucialStartToken.GetStart(source), crucialEndToken.GetEnd(source));
+            return CodeMetaInfo.FromSpan(source,
+                new(startToken.StringSpan.Start, rangeLength),
+                new(crucialStartToken.StringSpan.Start, crucialEndToken.StringSpan.End - crucialStartToken.StringSpan.Start));
         }
         public ValueCodeMetaInfo ToValueCodeMetaInfo()
         {
