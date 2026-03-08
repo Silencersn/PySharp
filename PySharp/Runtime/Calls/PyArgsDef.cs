@@ -4,6 +4,8 @@ using PySharp.Utility;
 using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace PySharp.Runtime.Calls;
 
@@ -20,25 +22,23 @@ public sealed class PyArgsDef
     {
         PosonlyArgs = posonlyArgs;
         Args = args;
-        KwonlyArgs = kwonlyArgs;
-        KwDefaults = kwDefaults;
+        KwonlyArgsWithDefaults = kwonlyArgs.Zip(kwDefaults).ToDictionary();
         Defaults = defaults;
         VarArg = varArg;
         KwArg = kwArg;
 
         ParametersType = PyArgsDefParametersType.Unknown;
-        if (PosonlyArgs.Length is 0 && Args.Length is 0 && KwonlyArgs.Length is 0 && VarArg is null && KwArg is null)
+        if (PosonlyArgs.Length is 0 && Args.Length is 0 && KwonlyArgsWithDefaults.Count is 0 && VarArg is null && KwArg is null)
             ParametersType = PyArgsDefParametersType.NoArgsOrKwargs;
     }
 
     internal PyArgsDefParametersType ParametersType { get; }
-    public string[] PosonlyArgs { get; }
-    public string[] Args { get; }
-    public string[] KwonlyArgs { get; }
-    public PyObject?[] KwDefaults { get; }
-    public PyObject[] Defaults { get; }
-    public string? VarArg { get; }
-    public string? KwArg { get; }
+    internal string[] PosonlyArgs { get; }
+    internal string[] Args { get; }
+    internal Dictionary<string, PyObject?> KwonlyArgsWithDefaults { get; }
+    internal PyObject[] Defaults { get; }
+    internal string? VarArg { get; }
+    internal string? KwArg { get; }
 
     private static PyObject ParseLiteral(ReadOnlySpan<char> literal)
     {
@@ -277,21 +277,24 @@ public sealed class PyArgsDef
         if (VarArg is not null && args.Count > totalArgsCount)
             resultExtraArgs = [.. args.Skip(totalArgsCount)];
 
-        var resultKwargs = new Dictionary<string, PyObject?>(KwonlyArgs.Length);
-        for (int i = 0; i < KwonlyArgs.Length; i++)
-            resultKwargs[KwonlyArgs[i]] = KwDefaults[i];
+        Dictionary<string, PyObject?>? resultKwargs = KwonlyArgsWithDefaults.Count > 0 ?
+            new Dictionary<string, PyObject?>(KwonlyArgsWithDefaults) : null;
 
-        IDictionary<string, PyObject>? resultExtraKwargs = null;
+        Dictionary<string, PyObject>? resultExtraKwargs = null;
 
         int index;
         foreach (var pair in kwargs)
         {
-            if (resultKwargs.ContainsKey(pair.Key))
-                resultKwargs[pair.Key] = pair.Value;
+            ref PyObject? valueRef = ref Unsafe.NullRef<PyObject?>();
+            if (resultKwargs is not null)
+                valueRef = ref CollectionsMarshal.GetValueRefOrNullRef(resultKwargs, pair.Key);
+
+            if (!Unsafe.IsNullRef(ref valueRef))
+                valueRef = pair.Value;
             else if ((index = Args.IndexOf(pair.Key)) is not -1)
                 resultArgs[PosonlyArgs.Length + index] = pair.Value;
             else if (KwArg is not null)
-                (resultExtraKwargs ??= new Dictionary<string, PyObject>())[pair.Key] = pair.Value;
+                (resultExtraKwargs ??= [])[pair.Key] = pair.Value;
             else
                 return false;
         }
@@ -302,15 +305,20 @@ public sealed class PyArgsDef
                 return false;
         }
 
-        foreach (var value in resultKwargs.Values)
+        if (resultKwargs is not null)
         {
-            if (value is null)
-                return false;
+            foreach (var value in resultKwargs.Values)
+            {
+                if (value is null)
+                    return false;
+            }
         }
 
-        resultExtraKwargs ??= FrozenDictionary<string, PyObject>.Empty;
-
-        result = new PyArguments(resultArgs, resultKwargs!, resultExtraArgs, (IReadOnlyDictionary<string, PyObject>)resultExtraKwargs);
+        result = new PyArguments(
+            resultArgs,
+            (IReadOnlyDictionary<string, PyObject>)resultKwargs! ?? FrozenDictionary<string, PyObject>.Empty,
+            resultExtraArgs,
+            (IReadOnlyDictionary<string, PyObject>)resultExtraKwargs! ?? FrozenDictionary<string, PyObject>.Empty);
         return true;
     }
 
