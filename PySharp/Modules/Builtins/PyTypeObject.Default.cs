@@ -23,6 +23,9 @@ partial class PyTypeObject
     }
     internal static PyResult DefaultGetAttribute(PyCallContext context, PyObject self, PyObject item)
     {
+        // if this method changed,
+        // change PyCore.GetAttrOrMethod together
+
         if (item is not PyStrObject str)
             return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, item.PyType.FullName);
 

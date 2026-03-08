@@ -274,9 +274,25 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                         }
                         break;
 
+                    case OpCode.LoadMethod:
+                        {
+                            value = Stack[-1];
+                            var method = PyCore.GetAttrOrMethod(context, value, names[instructionArg], out var isMethod).PyUnwrap(context);
+                            Stack[-1] = method;
+                            Stack.Push(isMethod ? value : null! /* this null will be handled by OpCode.Call or OpCode.CallKw */);
+                        }
+                        break;
+
                     case OpCode.Call:
                         {
+                            var isNull = instructionArg > 0 && Stack[-instructionArg] is null;
+                            if (isNull)
+                                instructionArg--;
+
                             LoadArgs(args, instructionArg);
+                            if (isNull)
+                                Stack.Pop();
+
                             var callable = Stack.Pop();
                             value = callable.Call(context, args).PyUnwrap(context);
                             Stack.Push(value);
@@ -296,7 +312,14 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                                 kwargs.Add(str.Value, args[i]);
                             }
 
-                            LoadArgs(args, instructionArg - kwargs.Count);
+                            var argsCount = instructionArg - kwargs.Count;
+                            var isNull = argsCount > 0 && Stack[-argsCount] is null;
+                            if (isNull)
+                                argsCount--;
+
+                            LoadArgs(args, argsCount);
+                            if (isNull)
+                                Stack.Pop();
 
                             var callable = Stack.Pop();
                             value = callable.Call(context, args, kwargs).PyUnwrap(context);

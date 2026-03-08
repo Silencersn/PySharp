@@ -71,6 +71,8 @@ public partial class PyObject
 [PyType("object")]
 public sealed partial class PyObjectType : PyTypeObject<PyObjectType, PyObject>
 {
+    internal static readonly PyBinaryFunction GenericGetAttribute = DefaultGetAttribute;
+
     public override IReadOnlyList<PyTypeObject> Bases => [];
 
     public PyObjectType()
@@ -85,7 +87,7 @@ public sealed partial class PyObjectType : PyTypeObject<PyObjectType, PyObject>
         FillSlot(PySpecialNames.Le, ref Slots.Le, DefaultBinaryOperator);
         FillSlot(PySpecialNames.Gt, ref Slots.Gt, DefaultBinaryOperator);
         FillSlot(PySpecialNames.Ge, ref Slots.Ge, DefaultBinaryOperator);
-        FillSlot(PySpecialNames.GetAttribute, ref Slots.GetAttribute, DefaultGetAttribute);
+        FillSlot(PySpecialNames.GetAttribute, ref Slots.GetAttribute, GenericGetAttribute);
         FillSlot(PySpecialNames.SetAttr, ref Slots.SetAttr, DefaultSetAttr);
         FillSlot(PySpecialNames.DelAttr, ref Slots.DelAttr, DefaultDelAttr);
         FillSlot(PySpecialNames.Init, ref Slots.Init, DefaultInit);

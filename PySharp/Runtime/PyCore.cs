@@ -1,5 +1,6 @@
 ﻿using PySharp.Compilation.Bytecodes;
 using PySharp.Compilation.Primitives;
+using PySharp.Modules;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
@@ -384,5 +385,47 @@ internal static class PyCore
             PyDictObject => true,
             _ => false,// TODO: support other valid mapping
         };
+    }
+
+    internal static PyResult GetAttrOrMethod(PyCallContext context, PyObject self, string name, out bool isMethod)
+    {
+        isMethod = false;
+        if (!ReferenceEquals(self.PyType.Slots.GetAttribute, PyObjectType.GenericGetAttribute))
+            return PyOperators.GetAttr(context, self, name);
+
+        var type = self.PyType;
+
+        if (name is PySpecialNames.Class)
+            return type;
+
+        if (PyObject.TryLookupAttrInMro(type, name, out var attr))
+        {
+            if (Utils.IsDataDescriptor(attr))
+            {
+                var getFunc = attr.PyType.Slots.Get;
+                if (getFunc is not null)
+                    return getFunc(context, attr, self, type);
+            }
+        }
+
+        if (self._pyAttributes?.TryGetValue(name, out var value) is true)
+            return value;
+
+        if (attr is not null)
+        {
+            if (attr is PyFunctionObject or PyWrapperDescriptorObject)
+            {
+                isMethod = true;
+                return attr;
+            }
+
+            var getFunc = attr.PyType.Slots.Get;
+            if (getFunc is not null)
+                return getFunc(context, attr, self, type);
+
+            return attr;
+        }
+
+        return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.FullName, name);
     }
 }

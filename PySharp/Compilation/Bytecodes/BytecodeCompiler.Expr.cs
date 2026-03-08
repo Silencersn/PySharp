@@ -166,13 +166,24 @@ partial class BytecodeCompiler
         }
     }
 
-
     private void CompileCall(CallNode node)
     {
-        LoadExpr(node.Func);
-
+        var callMethod = false;
         var hasStarred = node.Args.Any(static arg => arg is StarredNode)
             || node.Keywords.Any(static kwarg => kwarg.Arg is null);
+
+        if (!hasStarred && node.Func is AttributeNode attributeNode)
+        {
+            // a.b()
+
+            callMethod = true;
+            LoadExpr(attributeNode.Value);
+            Generator.Emit(OpCode.LoadMethod, attributeNode.Identifier);
+        }
+        else
+        {
+            LoadExpr(node.Func);
+        }
 
         if (!hasStarred)
             CompileCallOrCallKw();
@@ -184,9 +195,13 @@ partial class BytecodeCompiler
             foreach (var arg in node.Args)
                 LoadExpr(arg);
 
+            var argsLength = node.Args.Length;
+            if (callMethod)
+                argsLength++;
+
             if (node.Keywords.Length is 0)
             {
-                Generator.Emit(OpCode.Call, node.Args.Length);
+                Generator.Emit(OpCode.Call, argsLength);
                 return;
             }
 
@@ -196,7 +211,7 @@ partial class BytecodeCompiler
             var tuple = PyTupleObject.CreateTuple(node.Keywords.Select(k => PyStrObject.FromString(k.Arg ?? throw new UnreachableException())));
             Generator.Emit(OpCode.LoadConst, tuple);
 
-            Generator.Emit(OpCode.CallKw, node.Args.Length + node.Keywords.Length);
+            Generator.Emit(OpCode.CallKw, argsLength + node.Keywords.Length);
         }
 
         void CompileCallFunctionEx()

@@ -187,6 +187,10 @@ public sealed class Bytecode
                     IncrementStackSize(1);
                     break;
 
+                case OpCode.LoadMethod:
+                    IncrementStackSize(2);
+                    break;
+
                 case OpCode._LoadExcInfo:
                     IncrementStackSize(3);
                     break;

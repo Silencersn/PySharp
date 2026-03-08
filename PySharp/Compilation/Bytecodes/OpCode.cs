@@ -137,6 +137,8 @@ internal enum OpCode : byte
 
     ExtendedArg,
 
+    LoadMethod,
+
     __BytecodeEnd,
 
     __LabelFlag = 0b10000000,
