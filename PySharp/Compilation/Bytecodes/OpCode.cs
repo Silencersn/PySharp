@@ -77,6 +77,7 @@ internal enum OpCode : byte
     _LoadClass,
 
     MakeCell,
+    _MakeCellFast,
 
     PushNull,
 

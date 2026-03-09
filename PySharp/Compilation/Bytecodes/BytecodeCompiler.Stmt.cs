@@ -321,6 +321,9 @@ partial class BytecodeCompiler
         Debug.Assert(scope is not null);
         VariableScope = scope;
 
+        foreach (var cell in scope.CellVars)
+            Generator.Emit(OpCode._MakeCellFast, scope.LocalsTable[cell]);
+
         if (scope.HasYield)
         {
             Generator.Emit(OpCode.ReturnGenerator);

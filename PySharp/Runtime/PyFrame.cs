@@ -5,6 +5,7 @@ using PySharp.Utility;
 using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Xml.Linq;
 
 namespace PySharp.Runtime;
 
@@ -101,10 +102,10 @@ public sealed partial class PyFrame
         { CallingArguments = callingArguments, CodeObject = code };
     }
 
-    internal PyFrame CreateClassBuildFrame(PyTypeObject buildingClass)
+    internal PyFrame CreateClassBuildFrame(PyTypeObject buildingClass, PyCodeObject code)
     {
         var variables = PyFrameVariables.Create(_frameVariables._globals,
-            _frameVariables._locals?.ToClassClosure() ?? new PyFrameLocals(FrozenDictionary<string, int>.Empty, 0));
+            _frameVariables._locals?.ToClassClosure(code) ?? new PyFrameLocals(FrozenDictionary<string, int>.Empty, 0));
 
         return new PyFrame(
             this,
@@ -152,26 +153,18 @@ public sealed partial class PyFrame
         return inlineFrame;
     }
 
-    internal void InitArgs(PyArgsDef def, PyArguments arguments)
+    internal void InitArgs(PyArgsDef def, PyCodeObject code, PyArguments arguments)
     {
-        for (int i = 0; i < def.PosonlyArgs.Length; i++)
-        {
-            SetVariable(def.PosonlyArgs[i], arguments.Args[i]);
-        }
-        for (int i = 0; i < def.Args.Length; i++)
-        {
-            var index = i + def.PosonlyArgs.Length;
-            SetVariable(def.Args[i], arguments.Args[index]);
-        }
+        for (int i = 0; i < code.ArgCount; i++)
+            Variables.StoreFast(i, arguments[i]);
         foreach (var kwarg in arguments.Kwargs)
-        {
-            SetVariable(kwarg.Key, kwarg.Value);
-        }
+            Variables.StoreLocal(kwarg.Key, kwarg.Value);
 
+        var index = code.ArgCount + code.KwOnlyArgCount;
         if (def.VarArg is not null)
-            SetVariable(def.VarArg, PyTupleObject.CreateTuple(arguments.ExtraArgs));
+            Variables.StoreFast(index++, PyTupleObject.CreateTuple(arguments.ExtraArgs));
         if (def.KwArg is not null)
-            SetVariable(def.KwArg, PyDictObject.CreateDict(arguments.ExtraKwargs.Select(static kvp => KeyValuePair.Create((PyObject)PyStrObject.FromString(kvp.Key), kvp.Value))));
+            Variables.StoreFast(index, PyDictObject.CreateDict(arguments.ExtraKwargs.Select(static kvp => KeyValuePair.Create((PyObject)PyStrObject.FromString(kvp.Key), kvp.Value))));
     }
 
     public PyResult SetVariable(string name, PyObject value)

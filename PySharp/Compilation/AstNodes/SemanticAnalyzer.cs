@@ -715,8 +715,19 @@ public sealed class SemanticAnalyzer : ICodeMetaInfoProvider
             if (scope is not CallableVariableScope callableScope)
                 return;
 
+            var varArg = callableScope.ArgumentsNode.VarArg?.Arg;
+            var kwArg = callableScope.ArgumentsNode.KwArg?.Arg;
             callableScope.VarNames = [.. callableScope.Variables
                 .Where(pair => pair.Value is PyVariableType.Local or PyVariableType.Parameter or PyVariableType.CapturedParameter)
+                .OrderBy(pair => {
+                    if (pair.Value is PyVariableType.Local)
+                        return 2;
+                    
+                    if (pair.Key == varArg || pair.Key == kwArg)
+                            return 1;
+
+                    return 0;
+                })
                 .Select(pair => pair.Key)];
 
             callableScope.CellVars = [.. callableScope.Variables
@@ -725,9 +736,7 @@ public sealed class SemanticAnalyzer : ICodeMetaInfoProvider
 
             callableScope.FreeVars = [.. callableScope.TempFrees.Distinct()];
 
-            callableScope.LocalsTable = callableScope.Variables
-                .Where(pair => pair.Value is PyVariableType.Local or PyVariableType.Parameter)
-                .Select(pair => pair.Key)
+            callableScope.LocalsTable = callableScope.VarNames
                 .Concat(callableScope.CellVars)
                 .Concat(callableScope.FreeVars)
                 .Distinct()

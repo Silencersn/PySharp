@@ -73,7 +73,9 @@ public sealed class PyCodeObject : PyObject
         Debug.Assert(scope.Name is not null);
         Debug.Assert(scope.QualName is not null);
 
-        LocalsTable = FrozenDictionary<string, int>.Empty;
+        LocalsTable = scope.FreeVars.Length is 0 ?
+            FrozenDictionary<string, int>.Empty :
+            scope.FreeVars.Index().ToFrozenDictionary(static tuple => tuple.Item, static tuple => tuple.Index);
         Bytecode = bytecode;
 
         Name = scope.Name;

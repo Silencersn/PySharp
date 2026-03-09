@@ -54,6 +54,10 @@ public sealed class TrackbackInfo
                 var end = info.End.Line == info.Start.Line
                     ? info.End.Offset + offset
                     : line.Length;
+
+                if (start == end)
+                    return;
+
                 Debug.Assert(end > start);
 
                 if (!info.HasCrucialRange || info.CrucialStart.Line != info.Start.Line)

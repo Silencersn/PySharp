@@ -3,6 +3,7 @@ using PySharp.Runtime.Comparison;
 using PySharp.Utility;
 using System.Collections;
 using System.Collections.Frozen;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Runtime;
@@ -60,20 +61,22 @@ partial class PyFrame
             return clone;
         }
 
-        public PyFrameLocals ToClassClosure()
+        public PyFrameLocals ToClassClosure(PyCodeObject code)
         {
+            PyCellObject[] freeVars = [..code.FreeVars.Select(name =>
+            {
+                var obj = Locals[name];
+                Debug.Assert(obj is PyCellObject);
+                return (PyCellObject)obj;
+            })];
+
             var skipCount = _localsPlus.Length - _cellCount;
 
-            return new PyFrameLocals(_localsTable
-                .Where(pair => pair.Value >= skipCount)
-                .ToDictionary(static pair => pair.Key, pair => _localsPlus[pair.Value]));
+            return new PyFrameLocals(code.LocalsTable, freeVars.Length, freeVars);
         }
 
         internal void InitCells(ReadOnlySpan<PyCellObject> closure)
         {
-            foreach (ref var cell in _localsPlus.AsSpan()[^_cellCount..^closure.Length])
-                cell = PyCellObject.CreateEmpty();
-
             if (closure.Length is 0)
                 return;
 

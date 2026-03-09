@@ -144,6 +144,7 @@ public sealed class Bytecode
                 case OpCode.GetYieldFromIter:
                 case OpCode._CheckExcToRaise:
                 case OpCode.MakeCell:
+                case OpCode._MakeCellFast:
                 case OpCode._ListToTuple:
                 case OpCode._ListToSet:
                 case OpCode._EnterInlineFrame:

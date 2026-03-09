@@ -46,7 +46,7 @@ internal static class PyCore
         else
             type.ModuleAsObject = PyStrObject.FromString("builtins");
 
-        var newFrame = context.CurrentFrame.CreateClassBuildFrame(type);
+        var newFrame = context.CurrentFrame.CreateClassBuildFrame(type, codeObject);
 
         using (var withFrame = context.WithFrame(newFrame))
             Eval(context, codeObject.Bytecode);

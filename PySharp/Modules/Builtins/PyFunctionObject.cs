@@ -49,7 +49,7 @@ public sealed partial class PyFunctionObjectType : PyTypeObject<PyFunctionObject
 
         Debug.Assert(frame.Variables._locals is not null);
         frame.Variables._locals.InitCells(self.Closure);
-        frame.InitArgs(self._def, arguments);
+        frame.InitArgs(self._def, self.Code, arguments);
 
         using var withFrame = context.WithFrame(frame);
         return PyCore.Eval(context, self.Code.Bytecode);

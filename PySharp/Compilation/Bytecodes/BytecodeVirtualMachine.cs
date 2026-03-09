@@ -839,6 +839,14 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                         frame.Variables.StoreLocal(names[instructionArg], PyCellObject.CreateEmpty());
                         break;
 
+                    case OpCode._MakeCellFast:
+                        {
+                            Debug.Assert(frame.Variables._locals is not null);
+                            var content = frame.Variables._locals.LocalsPlus[instructionArg];
+                            frame.Variables.StoreFast(instructionArg, PyCellObject.CreateCell(content));
+                        }
+                        break;
+
                     case OpCode.RaiseVarArgs:
                         if (instructionArg is 0)
                         {
