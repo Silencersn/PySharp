@@ -29,12 +29,12 @@ public readonly ref struct PyArguments
         get
         {
             ArgumentOutOfRangeException.ThrowIfNegative(index);
-            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, Args.Count + ExtraArgs.Count);
+            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, _args.Length + ExtraArgs.Count);
 
-            if (index < Args.Count)
-                return InternalArgs[index];
+            if (index < _args.Length)
+                return _args[index];
 
-            return ExtraArgs[index - Args.Count];
+            return ExtraArgs[index - _args.Length];
         }
     }
 

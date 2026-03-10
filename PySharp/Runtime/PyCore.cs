@@ -10,9 +10,9 @@ namespace PySharp.Runtime;
 
 internal static class PyCore
 {
-    public static PyResult Eval(PyCallContext context, Bytecode bytecode)
+    public static PyResult Eval(PyCallContext context, Bytecode bytecode, bool usingLocalsPlusAsOperandStack = false)
     {
-        var vm = new BytecodeVirtualMachine(context, bytecode);
+        var vm = new BytecodeVirtualMachine(context, bytecode, usingLocalsPlusAsOperandStack);
         return vm.Eval();
     }
 

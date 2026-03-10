@@ -52,7 +52,7 @@ public sealed partial class PyFunctionObjectType : PyTypeObject<PyFunctionObject
         frame.InitArgs(self._def, self.Code, arguments);
 
         using var withFrame = context.WithFrame(ref frame, dispose: false);
-        return PyCore.Eval(context, self.Code.Bytecode);
+        return PyCore.Eval(context, self.Code.Bytecode, usingLocalsPlusAsOperandStack: self.Code.Flags is CodeObjectFlags.Function);
     }
 
     protected override PyResult Get(PyCallContext context, PyFunctionObject self, PyObject instance, PyObject owner)
