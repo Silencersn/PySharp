@@ -25,10 +25,10 @@ public abstract class PyGeneratorObject : PyObject, IPyObjectName
 public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
 {
     private bool IsGeneratorRunning;
-    private readonly PyFrame _frame;
+    private PyInternalFrame _frame;
     private readonly BytecodeVirtualMachine _vm;
 
-    internal PyBytecodeGeneratorObject(string name, PyFrame frame, BytecodeVirtualMachine vm) : base(name)
+    internal PyBytecodeGeneratorObject(string name, PyInternalFrame frame, BytecodeVirtualMachine vm) : base(name)
     {
         _frame = frame;
         _vm = vm;
@@ -40,8 +40,8 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
             return PyResult.StopIteration();
 
         IsGeneratorRunning = true;
-        _frame.Back = context.CurrentFrame;
-        using var withFrame = context.WithFrame(_frame);
+        _frame.BackFrameIndex = context.FrameState.CurrentFrameIndex;
+        using var withFrame = context.WithFrame(ref _frame, dispose: false);
         _vm.SetYieldReceivedValue(value);
         var result = _vm.Eval();
         if (result.IsError)
@@ -59,8 +59,8 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
             return PyNoneObject.None;
 
         _vm.ExceptionToRaise = PyGeneratorExitObjectType.Shared.Create();
-        _frame.Back = context.CurrentFrame;
-        using var withFrame = context.WithFrame(_frame);
+        _frame.BackFrameIndex = context.FrameState.CurrentFrameIndex;
+        using var withFrame = context.WithFrame(ref _frame, dispose: false);
         var result = _vm.Eval();
 
         if (result.IsError)
@@ -112,8 +112,8 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
             return PyResult.FromException(exc);
 
         _vm.ExceptionToRaise = exc;
-        _frame.Back = context.CurrentFrame;
-        using var withFrame = context.WithFrame(_frame);
+        _frame.BackFrameIndex = context.FrameState.CurrentFrameIndex;
+        using var withFrame = context.WithFrame(ref _frame, dispose: false);
         var result = _vm.Eval();
         if (result.IsError)
             return result;

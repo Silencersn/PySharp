@@ -1,11 +1,12 @@
 ﻿using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
 using System.Collections.Frozen;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Runtime;
 
-partial class PyFrame
+partial struct PyInternalFrame
 {
     internal sealed class PyFrameVariables
     {
@@ -21,13 +22,23 @@ partial class PyFrame
             _locals = locals;
         }
 
+        // do not call Dispose if the frame is exposed to the outside
+        public void Dispose(PyCallContext context)
+        {
+            _locals?.Dispose(context);
+        }
+
         public static PyFrameVariables CreateModule()
         {
             return new PyFrameVariables(new PyFrameGlobals(), null);
         }
-        public static PyFrameVariables Create(PyFrameGlobals globals, FrozenDictionary<string, int>? localsTable, int cellCount)
+        public static PyFrameVariables CreateForCommonFunctionCall(PyCallContext context, PyFrameGlobals globals, PyCodeObject codeObject)
         {
-            return new PyFrameVariables(globals, new PyFrameLocals(localsTable ?? FrozenDictionary<string, int>.Empty, cellCount));
+            return new PyFrameVariables(globals, new PyFrameLocals(context, codeObject));
+        }
+        public static PyFrameVariables Create(PyFrameGlobals globals, FrozenDictionary<string, int>? localsTable)
+        {
+            return new PyFrameVariables(globals, new PyFrameLocals(localsTable ?? FrozenDictionary<string, int>.Empty));
         }
         public static PyFrameVariables Create(PyFrameGlobals globals, PyFrameLocals? locals)
         {
@@ -57,33 +68,27 @@ partial class PyFrame
             if (_locals is null)
                 return Globals;
 
-            var skipCount = _locals.LocalsPlus.Length - _locals._cellCount;
-
+            // TODO: unbox cell object
             return _locals._localsTable
                 .Where(pair =>
                 {
-                    var value = _locals.LocalsPlus[pair.Value];
-                    if (pair.Value >= skipCount)
-                        value = ((PyCellObject)value!).Value;
+                    var value = _locals.LocalsSpan[pair.Value];
                     return value is not null;
                 })
                 .Select(pair =>
                 {
-                    var value = _locals.LocalsPlus[pair.Value];
-                    if (pair.Value >= skipCount)
-                        value = ((PyCellObject)value!).Value;
+                    var value = _locals.LocalsSpan[pair.Value];
                     return KeyValuePair.Create(pair.Key, value!);
                 });
         }
 
         internal PyResult LoadFast(int index)
         {
-            if (_locals is null)
-                return PyResult.RaisePySharpException("no locals");
+            Debug.Assert(_locals is not null, "locals is null");
 
-            var locals = _locals.LocalsPlus;
-            if (index < 0 || index >= locals.Length)
-                return PyResult.RaisePySharpException("out of range");
+            var locals = _locals.LocalsSpanUnsafe;
+
+            Debug.Assert(index >= 0 && index < locals.Length, "index out of range");
 
             var value = locals[index];
             if (value is null)
@@ -97,8 +102,9 @@ partial class PyFrame
             if (result.IsError)
                 return result;
 
-            if (result.Value is not PyCellObject cell)
-                return PyResult.RaisePySharpException($"variable [{index}] is not cell");
+            Debug.Assert(result.Value is PyCellObject, $"variable [{index}] is not cell");
+
+            var cell = (PyCellObject)result.Value;
 
             if (cell.Value is null)
                 return PyResult.UnboundLocalError($"cannot access local or free variable '[{index /* TODO: name */}]' where it is not associated with a value");
@@ -123,8 +129,9 @@ partial class PyFrame
             if (result.IsError)
                 return result;
 
-            if (result.Value is not PyCellObject cell)
-                return PyResult.RaisePySharpException($"variable '{name}' is not cell");
+            Debug.Assert(result.Value is PyCellObject, $"variable '{name}' is not cell");
+
+            var cell = (PyCellObject)result.Value;
 
             if (cell.Value is null)
                 return PyResult.UnboundLocalError($"cannot access local or free variable '{name}' where it is not associated with a value");
@@ -156,12 +163,11 @@ partial class PyFrame
 
         internal PyResult StoreFast(int index, PyObject value)
         {
-            if (_locals is null)
-                return PyResult.RaisePySharpException("no locals");
+            Debug.Assert(_locals is not null, "locals is null");
 
-            var locals = _locals.LocalsPlus;
-            if (index < 0 || index >= locals.Length)
-                return PyResult.RaisePySharpException("out of range");
+            var locals = _locals.LocalsSpanUnsafe;
+
+            Debug.Assert(index >= 0 && index < locals.Length, "index out of range");
 
             locals[index] = value;
             return PyNoneObject.None;
@@ -173,8 +179,9 @@ partial class PyFrame
             if (result.IsError)
                 return result;
 
-            if (result.Value is not PyCellObject cell)
-                return PyResult.RaisePySharpException($"variable [{index}] is not cell");
+            Debug.Assert(result.Value is PyCellObject, $"variable [{index}] is not cell");
+
+            var cell = (PyCellObject)result.Value;
 
             cell.Value = value;
             return PyNoneObject.None;
@@ -192,8 +199,9 @@ partial class PyFrame
             if (result.IsError)
                 return result;
 
-            if (result.Value is not PyCellObject cell)
-                return PyResult.RaisePySharpException($"variable '{name}' is not cell");
+            Debug.Assert(result.Value is PyCellObject, $"variable '{name}' is not cell");
+
+            var cell = (PyCellObject)result.Value;
 
             cell.Value = value;
             return PyNoneObject.None;
@@ -212,12 +220,11 @@ partial class PyFrame
 
         internal PyResult DeleteFast(int index)
         {
-            if (_locals is null)
-                return PyResult.RaisePySharpException("no locals");
+            Debug.Assert(_locals is not null, "locals is null");
 
-            var locals = _locals.LocalsPlus;
-            if (index < 0 || index >= locals.Length)
-                return PyResult.RaisePySharpException("out of range");
+            var locals = _locals.LocalsSpanUnsafe;
+
+            Debug.Assert(index >= 0 && index < locals.Length, "index out of range");
 
             if (locals[index] is null)
                 return PyResult.UnboundLocalError($"cannot access local variable '[{index /* TODO: name */}]' where it is not associated with a value");

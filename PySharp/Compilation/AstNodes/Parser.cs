@@ -114,7 +114,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         _options = _context.PyEnvironment.OptimizationOptions;
         _tokenSequence = tokens;
         _codeSource = codeSource;
-        _context.CurrentFrame.MetaInfoProvider = this;
+        _context.CurrentInternalFrame.MetaInfoProvider = this;
         SkipUselessToken();
     }
 

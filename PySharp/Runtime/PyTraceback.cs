@@ -94,18 +94,16 @@ internal static class PyTraceback
 {
     public static PyTracebackObject CaptureCurrentFrame(PyCallContext context)
     {
-        var frame = context.CurrentFrame;
-        var provider = frame.MetaInfoProvider;
+        var provider = context.CurrentInternalFrame.MetaInfoProvider;
         var info = provider?.MetaInfo;
-        return new PyTracebackObject(frame, info, provider);
+        return new PyTracebackObject(info, provider);
     }
 
     public static TrackbackInfo GetTracebackInfo(PyCallContext context)
     {
-        Stack<(CodeMetaInfo? Info, string CallerName)> stack = [];
+        List<(CodeMetaInfo? Info, string CallerName)> list = new(context.FrameState.CurrentFrameCount);
         string? threadInfo = null;
-        var frame = context.CurrentFrame;
-        while (frame is not null)
+        foreach (ref var frame in context.FrameState.Frames)
         {
             if (frame.FrameType is FrameType.ThreadRoot)
                 threadInfo = $"Exception in thread Thread-{Environment.CurrentManagedThreadId} ({frame.CallerName}):";
@@ -113,10 +111,8 @@ internal static class PyTraceback
             var provider = frame.MetaInfoProvider;
 
             if (provider is not null)
-                stack.Push((provider.MetaInfo, frame.CallerName));
-
-            frame = frame.Back;
+                list.Add((provider.MetaInfo, frame.CallerName));
         }
-        return new TrackbackInfo([.. stack], threadInfo);
+        return new TrackbackInfo([.. list], threadInfo);
     }
 }

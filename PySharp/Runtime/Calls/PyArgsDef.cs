@@ -234,7 +234,7 @@ public sealed class PyArgsDef
             );
     }
 
-    public bool TryParse(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, [NotNullWhen(true)] out PyArguments? result)
+    public bool TryParse(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, out PyArguments result)
     {
         if (ParametersType is PyArgsDefParametersType.NoArgsOrKwargs)
             return TryParseEmpty(args, kwargs, out result);
@@ -242,9 +242,9 @@ public sealed class PyArgsDef
         return TryParseGeneral(args, kwargs, out result);
     }
 
-    private bool TryParseGeneral(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, [NotNullWhen(true)] out PyArguments? result)
+    private bool TryParseGeneral(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, out PyArguments result)
     {
-        result = null;
+        result = default;
 
         var defaultsCountForPosonly = int.Max(0, Defaults.Length - Args.Length);
         var leastPosonlyArgsCount = PosonlyArgs.Length - defaultsCountForPosonly;
@@ -322,7 +322,7 @@ public sealed class PyArgsDef
         return true;
     }
 
-    private bool TryParseEmpty(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, [NotNullWhen(true)] out PyArguments? result)
+    private bool TryParseEmpty(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, out PyArguments result)
     {
         Debug.Assert(ParametersType is PyArgsDefParametersType.NoArgsOrKwargs);
         if (args.Count is 0 && kwargs.Count is 0)
@@ -331,7 +331,7 @@ public sealed class PyArgsDef
             return true;
         }
 
-        result = null;
+        result = default;
         return false;
     }
 }

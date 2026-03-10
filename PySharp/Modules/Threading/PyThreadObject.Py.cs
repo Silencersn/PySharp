@@ -13,12 +13,12 @@ partial class PyThreadObject : PyObject
         if (_thread is not null)
             throw new InvalidOperationException();
 
-        var metaInfoProvider = context.CurrentFrame.MetaInfoProvider;
+        var metaInfoProvider = context.CurrentInternalFrame.MetaInfoProvider;
 
         _thread = new Thread(() =>
         {
-            var threadContext = PyCallContext.FromCreatingThread(context);
-            var frame = threadContext.FrameState.CurrentFrame;
+            using var threadContext = PyCallContext.FromCreatingThread(context);
+            var frame = threadContext.CurrentInternalFrame;
             frame.MetaInfoProvider = metaInfoProvider;
             try
             {
@@ -26,9 +26,10 @@ partial class PyThreadObject : PyObject
             }
             catch (ThreadInterruptedException)
             {
-                threadContext.EnsureFrameState(frame);
+                // TODO:
+                //threadContext.EnsureFrameState(frame);
             }
-            Debug.Assert(threadContext.CurrentFrame.IsRoot);
+            Debug.Assert(threadContext.CurrentInternalFrame.IsRoot);
             // no need to context.ExitFrame()
             Debug.Assert(_thread is not null);
             context.PyEnvironment.Threads.Remove(_thread);

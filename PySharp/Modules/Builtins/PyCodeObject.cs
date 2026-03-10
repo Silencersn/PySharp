@@ -7,17 +7,33 @@ using System.Diagnostics;
 
 namespace PySharp.Modules.Builtins;
 
+[Flags]
+public enum CodeObjectFlags
+{
+    None = 0,
+
+    VarArgs = 1,
+    VarKeywords = 1 << 1,
+    Function = 1 << 2,
+    Generator = 1 << 3,
+    Class = 1 << 4,
+}
+
 public sealed class PyCodeObject : PyObject
 {
     internal FrozenDictionary<string, int> LocalsTable { get; }
 
-    internal string? VarArg { get; }
-    internal string? KwArg { get; }
+    internal string? VarArg => Flags.HasFlag(CodeObjectFlags.VarArgs) ?
+        VarNames[ArgCount + KwOnlyArgCount] : null;
+    internal string? KwArg => Flags.HasFlag(CodeObjectFlags.VarKeywords) ?
+        VarNames[ArgCount + KwOnlyArgCount + (VarArg is null ? 0 : 1)] : null;
+
     internal int DefaultsCount { get; }
     internal int KwDefaultsCount { get; }
 
 
     public Bytecode Bytecode { get; }
+    public CodeObjectFlags Flags { get; }
     public string Name { get; }
     public string QualName { get; }
     public int ArgCount { get; }
@@ -27,6 +43,7 @@ public sealed class PyCodeObject : PyObject
     public ImmutableArray<string> VarNames { get; }
     public ImmutableArray<string> CellVars { get; }
     public ImmutableArray<string> FreeVars { get; }
+
     internal override bool IsImmutable => true;
 
     public override PyTypeObject DefaultPyType => PyCodeObjectType.Shared;
@@ -39,12 +56,18 @@ public sealed class PyCodeObject : PyObject
         LocalsTable = scope.LocalsTable;
         Bytecode = bytecode;
 
+        Flags = CodeObjectFlags.Function;
+        if (scope.HasYield)
+            Flags |= CodeObjectFlags.Generator;
+
         Name = scope.Name;
         QualName = scope.QualName;
 
         var arg = scope.ArgumentsNode;
-        VarArg = arg.VarArg?.Arg;
-        KwArg = arg.KwArg?.Arg;
+        if (arg.VarArg is not null)
+            Flags |= CodeObjectFlags.VarArgs;
+        if (arg.KwArg is not null)
+            Flags |= CodeObjectFlags.VarKeywords;
         DefaultsCount = arg.Defaults.Length;
         KwDefaultsCount = arg.KwDefaults.Length;
 
@@ -77,6 +100,7 @@ public sealed class PyCodeObject : PyObject
             FrozenDictionary<string, int>.Empty :
             scope.FreeVars.Index().ToFrozenDictionary(static tuple => tuple.Item, static tuple => tuple.Index);
         Bytecode = bytecode;
+        Flags = CodeObjectFlags.Class;
 
         Name = scope.Name;
         QualName = scope.QualName;
@@ -103,6 +127,7 @@ public sealed class PyCodeObject : PyObject
 
         LocalsTable = FrozenDictionary<string, int>.Empty;
         Bytecode = bytecode;
+        Flags = CodeObjectFlags.Generator;
 
         Name = name;
         QualName = name;
@@ -125,6 +150,4 @@ public sealed class PyCodeObject : PyObject
 }
 
 [PyType("code")]
-public sealed partial class PyCodeObjectType : PyTypeObject<PyCodeObjectType, PyCodeObject>
-{
-}
+public sealed partial class PyCodeObjectType : PyTypeObject<PyCodeObjectType, PyCodeObject>;

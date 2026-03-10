@@ -3,18 +3,22 @@ using System.Collections.Frozen;
 
 namespace PySharp.Runtime.Calls;
 
-public sealed class PyArguments
+public readonly ref struct PyArguments
 {
-    public static PyArguments Empty { get; } = new([], FrozenDictionary<string, PyObject>.Empty, [], FrozenDictionary<string, PyObject>.Empty);
+    public static PyArguments Empty => new([], FrozenDictionary<string, PyObject>.Empty, [], FrozenDictionary<string, PyObject>.Empty);
 
-    public IReadOnlyList<PyObject> Args { get; }
+    private readonly PyObject[] _args;
+
+    internal ReadOnlySpan<PyObject> InternalArgs => _args;
+
+    public IReadOnlyList<PyObject> Args => _args;
     public IReadOnlyDictionary<string, PyObject> Kwargs { get; }
     public IReadOnlyList<PyObject> ExtraArgs { get; }
     public IReadOnlyDictionary<string, PyObject> ExtraKwargs { get; }
 
-    internal PyArguments(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, IReadOnlyList<PyObject> extraArgs, IReadOnlyDictionary<string, PyObject> extraKwargs)
+    internal PyArguments(PyObject[] args, IReadOnlyDictionary<string, PyObject> kwargs, IReadOnlyList<PyObject> extraArgs, IReadOnlyDictionary<string, PyObject> extraKwargs)
     {
-        Args = args;
+        _args = args;
         Kwargs = kwargs;
         ExtraArgs = extraArgs;
         ExtraKwargs = extraKwargs;
@@ -28,7 +32,7 @@ public sealed class PyArguments
             ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, Args.Count + ExtraArgs.Count);
 
             if (index < Args.Count)
-                return Args[index];
+                return InternalArgs[index];
 
             return ExtraArgs[index - Args.Count];
         }

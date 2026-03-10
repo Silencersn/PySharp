@@ -209,12 +209,12 @@ public static partial class PyBuiltinFunctions
         if (localsDict is null && locals is not PyNoneObject)
             return PyResult.TypeError(PySR.Runtime_Builtin_ExecEval_Locals);
 
-        var frame = context.CurrentFrame;
+        ref var frame = ref context.CurrentInternalFrame;
 
         if (source is PyCodeObject code)
         {
-            var newFrame = frame.CreateExecEvalFrame(FrameType.Eval, globalsDict, localsDict);
-            using var withFrame = context.WithFrame(newFrame);
+            var newFrame = frame.CreateExecEvalFrame(context, FrameType.Eval, globalsDict, localsDict);
+            using var withFrame = context.WithFrame(ref newFrame);
             return PyCore.Eval(context, code.Bytecode);
         }
 
@@ -222,15 +222,16 @@ public static partial class PyBuiltinFunctions
 
         try
         {
-            var newFrame = frame.CreateExecEvalFrame(FrameType.Eval, globalsDict, localsDict);
-            using var withFrame = context.WithFrame(newFrame);
+            var newFrame = frame.CreateExecEvalFrame(context, FrameType.Eval, globalsDict, localsDict);
+            using var withFrame = context.WithFrame(ref newFrame);
             var codeObj = Compiler.CompileEval(context, ((PyStrObject)source).Value, "<string>", onlyAsName: true);
             return PyCore.Eval(context, codeObj.Bytecode);
         }
         catch (PyRuntimeException e)
         {
             e.PyException.WithTraceback(context, overwriteExisting: false);
-            context.EnsureFrameState(frame);
+            // TODO:
+            //context.EnsureFrameState(frame);
 
             return PyResult.FromException(e.PyException);
         }
@@ -256,7 +257,7 @@ public static partial class PyBuiltinFunctions
         if (closure is not PyNoneObject && source is not PyCodeObject)
             return PyResult.TypeError(PySR.Runtime_Builtin_Exec_ClosureForNonCodeObj);
 
-        var frame = context.CurrentFrame;
+        ref var frame = ref context.CurrentInternalFrame;
 
         if (source is PyCodeObject code)
         {
@@ -273,8 +274,8 @@ public static partial class PyBuiltinFunctions
             }
 
             Debug.Assert(code.Bytecode is not null);
-            var newFrame = frame.CreateExecEvalFrame(FrameType.Exec, globalsDict, localsDict, closureTuple, code);
-            using var withFrame = context.WithFrame(newFrame);
+            var newFrame = frame.CreateExecEvalFrame(context, FrameType.Exec, globalsDict, localsDict, closureTuple, code);
+            using var withFrame = context.WithFrame(ref newFrame);
             return PyCore.Eval(context, code.Bytecode);
         }
 
@@ -283,15 +284,16 @@ public static partial class PyBuiltinFunctions
 
         try
         {
-            var newFrame = frame.CreateExecEvalFrame(FrameType.Exec, globalsDict, localsDict);
-            using var withFrame = context.WithFrame(newFrame);
+            var newFrame = frame.CreateExecEvalFrame(context, FrameType.Exec, globalsDict, localsDict);
+            using var withFrame = context.WithFrame(ref newFrame);
             var codeObj = Compiler.CompileExec(context, ((PyStrObject)source).Value, "<string>", onlyAsName: true);
             return PyCore.Eval(context, codeObj.Bytecode);
         }
         catch (PyRuntimeException e)
         {
             e.PyException.WithTraceback(context, overwriteExisting: false);
-            context.EnsureFrameState(frame);
+            // TODO:
+            //context.EnsureFrameState(frame);
 
             return PyResult.FromException(e.PyException);
         }
@@ -550,7 +552,7 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef()]
     private static PyResult DirImpl_1(PyCallContext context, PyArguments arguments)
     {
-        var result = PyListObject.CreateList(context.CurrentFrame.Variables
+        var result = PyListObject.CreateList(context.CurrentInternalFrame.Variables
             .EnumerateLocals()
             .Select(static pair => PyStrObject.FromString(pair.Key)));
         return result;
@@ -591,7 +593,7 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef()]
     private static PyResult LocalsImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = PyDictObject.CreateDict(context.CurrentFrame.Variables
+        var result = PyDictObject.CreateDict(context.CurrentInternalFrame.Variables
             .EnumerateLocals()
             .Select(static pair => KeyValuePair.Create((PyObject)PyStrObject.FromString(pair.Key), pair.Value)));
         return result;
@@ -600,7 +602,7 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef()]
     private static PyResult GlobalsImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = context.CurrentFrame.Variables._globals.PyDict;
+        var result = context.CurrentInternalFrame.Variables._globals.PyDict;
         return result;
     }
 

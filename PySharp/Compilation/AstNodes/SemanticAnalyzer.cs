@@ -68,7 +68,7 @@ public sealed class SemanticAnalyzer : ICodeMetaInfoProvider
     {
         _nodesToRoot = [];
         _context = context;
-        _context.CurrentFrame.MetaInfoProvider = this;
+        _context.CurrentInternalFrame.MetaInfoProvider = this;
         _source = source;
     }
 

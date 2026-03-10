@@ -1,6 +1,8 @@
 ﻿using PySharp.Modules.Builtins;
+using PySharp.Runtime.Calls;
 using PySharp.Runtime.Comparison;
 using PySharp.Utility;
+using System.Buffers;
 using System.Collections;
 using System.Collections.Frozen;
 using System.Diagnostics;
@@ -8,33 +10,46 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Runtime;
 
-partial class PyFrame
+partial struct PyInternalFrame
 {
     internal sealed class PyFrameLocals
     {
-        private readonly PyObject?[] _localsPlus;
+        private bool _canDispose;
+        private Memory<PyObject?> _memory;
+        private PyObject?[]? _localsPlus;
+
         internal readonly FrozenDictionary<string, int> _localsTable;
-        internal readonly int _cellCount;
         private IDictionary<string, PyObject?>? _locals;
         private PyDictObject? _pyDict;
 
-        internal PyFrameLocals(FrozenDictionary<string, int> localsTable, int cellCount)
+        internal PyFrameLocals(PyCallContext context, PyCodeObject codeObject)
         {
-            _localsTable = localsTable;
-            _cellCount = cellCount;
-            _localsPlus = new PyObject[_localsTable.Count];
+            Debug.Assert(codeObject.Flags is CodeObjectFlags.Function); // common function
+
+            _localsTable = codeObject.LocalsTable;
+            var size = _localsTable.Count + codeObject.Bytecode.StackSize;
+            if (size > 0 && size < PyCallContextFrameState.PyObjectMemoryAllocator.DataChunkSize)
+            {
+                _memory = context.FrameState.Alloc(size);
+            }
+            else
+            {
+                _localsPlus = ArrayPool<PyObject?>.Shared.Rent(size);
+                _memory = _localsPlus;
+            }
+            _canDispose = true;
         }
-        private PyFrameLocals(FrozenDictionary<string, int> localsTable, int cellCount, PyObject?[] localPlus)
+        internal PyFrameLocals(FrozenDictionary<string, int> localsTable)
         {
             _localsTable = localsTable;
-            _cellCount = cellCount;
+            _localsPlus = ArrayPool<PyObject?>.Shared.Rent(localsTable.Count);
+            _memory = _localsPlus;
+        }
+        private PyFrameLocals(FrozenDictionary<string, int> localsTable, PyObject?[] localPlus)
+        {
+            _localsTable = localsTable;
             _localsPlus = localPlus;
-        }
-        private PyFrameLocals(IDictionary<string, PyObject?> locals)
-        {
-            _localsTable = FrozenDictionary<string, int>.Empty;
-            _localsPlus = [];
-            _locals = locals;
+            _memory = _localsPlus;
         }
         internal PyFrameLocals(PyDictObject dict)
         {
@@ -44,35 +59,60 @@ partial class PyFrame
             _locals = new StringKeyDict(_pyDict)!;
         }
 
-        internal PyObject?[] LocalsPlus => _localsPlus;
-        public IDictionary<string, PyObject?> Locals => _locals ??= new LocalDictionary(_localsTable, _localsPlus);
+        public void Dispose(PyCallContext context)
+        {
+            if (!_canDispose)
+                return;
+
+            if (_localsPlus is null)
+            {
+                context.FrameState.Free(_memory);
+                _memory = default;
+                _canDispose = false;
+                return;
+            }
+
+            if (_locals is not null || _pyDict is not null)
+                return;
+
+            if (_localsPlus is null)
+                return;
+
+            ArrayPool<PyObject?>.Shared.Return(_localsPlus, clearArray: true);
+            _localsPlus = null!;
+            _canDispose = false;
+        }
+
+        internal Memory<PyObject?> LocalsPlusMemroy => _memory;
+        internal Span<PyObject?> LocalsSpan => LocalsPlusMemroy.Span[.._localsTable.Count];
+        internal Span<PyObject?> LocalsSpanUnsafe => LocalsPlusMemroy.Span;
+        internal Span<PyObject> OperandStackSpan => LocalsPlusMemroy.Span[_localsTable.Count..]!;
+        public IDictionary<string, PyObject?> Locals => _locals ??= new LocalDictionary(_localsTable, LocalsPlusMemroy);
         public PyDictObject PyDict => _pyDict ??= PyDictObject.CreateProxy(new DictAdapter(Locals));
 
         public PyFrameLocals Clone()
         {
             // only clone string keys, PyObject keys will be ignored
 
-            var clone = new PyFrameLocals(_localsTable, _cellCount, [.. _localsPlus]);
+            var clone = new PyFrameLocals(_localsTable, [.. LocalsSpan]);
             if (_locals is null)
                 return clone;
 
             var extraDict = _locals is LocalDictionary localDict ? localDict.ExtraLocals : _locals;
-            clone._locals = new LocalDictionary(_localsTable, clone._localsPlus, extraDict is null ? null : new(extraDict));
+            clone._locals = new LocalDictionary(_localsTable, clone.LocalsPlusMemroy, extraDict is null ? null : new(extraDict));
             return clone;
         }
 
         public PyFrameLocals ToClassClosure(PyCodeObject code)
         {
-            PyCellObject[] freeVars = [..code.FreeVars.Select(name =>
+            PyObject[] freeVars = [..code.FreeVars.Select(name =>
             {
                 var obj = Locals[name];
                 Debug.Assert(obj is PyCellObject);
-                return (PyCellObject)obj;
+                return obj;
             })];
 
-            var skipCount = _localsPlus.Length - _cellCount;
-
-            return new PyFrameLocals(code.LocalsTable, freeVars.Length, freeVars);
+            return new PyFrameLocals(code.LocalsTable, freeVars);
         }
 
         internal void InitCells(ReadOnlySpan<PyCellObject> closure)
@@ -80,24 +120,24 @@ partial class PyFrame
             if (closure.Length is 0)
                 return;
 
-            closure.CopyTo(UnsafeUtils.CastSpan<PyObject?, PyCellObject>(_localsPlus.AsSpan()[^closure.Length..]));
+            closure.CopyTo(UnsafeUtils.CastSpan<PyObject?, PyCellObject>(LocalsSpan[^closure.Length..]));
         }
-
         internal sealed class LocalDictionary : IDictionary<string, PyObject?>
         {
             private readonly FrozenDictionary<string, int> _localsTable;
-            private readonly PyObject?[] _localsPlus;
+            private readonly Memory<PyObject?> _localsPlusMemory;
+            private Span<PyObject?> LocalsPlusSpan => _localsPlusMemory.Span;
             private Dictionary<string, PyObject?>? _extraLocals;
 
             internal Dictionary<string, PyObject?>? ExtraLocals => _extraLocals;
 
-            internal LocalDictionary(FrozenDictionary<string, int> localsTable, PyObject?[] localsPlus, Dictionary<string, PyObject?>? extraLocals)
+            internal LocalDictionary(FrozenDictionary<string, int> localsTable, Memory<PyObject?> localsPlusMemory, Dictionary<string, PyObject?>? extraLocals)
             {
-                _localsPlus = localsPlus;
+                _localsPlusMemory = localsPlusMemory;
                 _localsTable = localsTable;
                 _extraLocals = extraLocals;
             }
-            internal LocalDictionary(FrozenDictionary<string, int> localsTable, PyObject?[] localsPlus) : this(localsTable, localsPlus, null)
+            internal LocalDictionary(FrozenDictionary<string, int> localsTable, Memory<PyObject?> localsPlusMemory) : this(localsTable, localsPlusMemory, null)
             {
             }
 
@@ -106,7 +146,7 @@ partial class PyFrame
                 get
                 {
                     if (_localsTable.TryGetValue(key, out var index))
-                        return _localsPlus[index];
+                        return LocalsPlusSpan[index];
 
                     return _extraLocals?.GetValueOrDefault(key);
                 }
@@ -114,7 +154,7 @@ partial class PyFrame
                 {
                     if (_localsTable.TryGetValue(key, out var index))
                     {
-                        _localsPlus[index] = value;
+                        LocalsPlusSpan[index] = value;
                         return;
                     }
                     _extraLocals ??= [];
@@ -124,7 +164,7 @@ partial class PyFrame
 
             public ICollection<string> Keys => _extraLocals is null ? _localsTable.Keys : [.. _localsTable.Keys, .. _extraLocals.Keys];
 
-            public ICollection<PyObject?> Values => _extraLocals is null ? [.. _localsPlus] : [.. _localsPlus, .. _extraLocals.Values];
+            public ICollection<PyObject?> Values => _extraLocals is null ? [.. LocalsPlusSpan] : [.. LocalsPlusSpan, .. _extraLocals.Values];
 
             public int Count => _localsTable.Count + _extraLocals?.Count ?? 0;
 
@@ -134,9 +174,9 @@ partial class PyFrame
             {
                 if (_localsTable.TryGetValue(key, out var index))
                 {
-                    if (_localsPlus[index] is not null)
+                    if (LocalsPlusSpan[index] is not null)
                         throw new ArgumentException($"An item with the same key has already been added. Key: {key}");
-                    _localsPlus[index] = value;
+                    LocalsPlusSpan[index] = value;
                 }
                 else
                 {
@@ -152,14 +192,14 @@ partial class PyFrame
 
             public void Clear()
             {
-                _localsPlus.AsSpan().Clear();
+                LocalsPlusSpan.Clear();
                 _extraLocals?.Clear();
             }
 
             bool ICollection<KeyValuePair<string, PyObject?>>.Contains(KeyValuePair<string, PyObject?> item)
             {
                 if (_localsTable.TryGetValue(item.Key, out var index))
-                    return PyObjectComparer.Default.Equals(_localsPlus[index], item.Value);
+                    return PyObjectComparer.Default.Equals(LocalsPlusSpan[index], item.Value);
 
                 if (_extraLocals is null)
                     return false;
@@ -180,7 +220,7 @@ partial class PyFrame
                 ArgumentOutOfRangeException.ThrowIfGreaterThan(arrayIndex + Count, array.Length);
 
                 foreach (var pair in _localsTable)
-                    array[arrayIndex++] = KeyValuePair.Create(pair.Key, _localsPlus[pair.Value]);
+                    array[arrayIndex++] = KeyValuePair.Create(pair.Key, LocalsPlusSpan[pair.Value]);
 
                 if (_extraLocals is null)
                     return;
@@ -192,7 +232,7 @@ partial class PyFrame
             public IEnumerator<KeyValuePair<string, PyObject?>> GetEnumerator()
             {
                 foreach (var pair in _localsTable)
-                    yield return KeyValuePair.Create(pair.Key, _localsPlus[pair.Value]);
+                    yield return KeyValuePair.Create(pair.Key, LocalsPlusSpan[pair.Value]);
 
                 if (_extraLocals is null)
                     yield break;
@@ -205,10 +245,10 @@ partial class PyFrame
             {
                 if (_localsTable.TryGetValue(key, out var index))
                 {
-                    if (_localsPlus[index] is null)
+                    if (LocalsPlusSpan[index] is null)
                         return false;
 
-                    _localsPlus[index] = null;
+                    LocalsPlusSpan[index] = null;
                     return true;
                 }
 
@@ -219,13 +259,13 @@ partial class PyFrame
             {
                 if (_localsTable.TryGetValue(item.Key, out var index))
                 {
-                    if (_localsPlus[index] is null)
+                    if (LocalsPlusSpan[index] is null)
                         return item.Value is null;
 
-                    if (!PyObjectComparer.Default.Equals(_localsPlus[index], item.Value))
+                    if (!PyObjectComparer.Default.Equals(LocalsPlusSpan[index], item.Value))
                         return false;
 
-                    _localsPlus[index] = null;
+                    LocalsPlusSpan[index] = null;
                     return true;
                 }
 
@@ -236,7 +276,7 @@ partial class PyFrame
             {
                 if (_localsTable.TryGetValue(key, out var index))
                 {
-                    value = _localsPlus[index];
+                    value = LocalsPlusSpan[index];
                     return true;
                 }
 

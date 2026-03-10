@@ -31,11 +31,11 @@ public static partial class PyVirtualMachine
     internal static void ExecuteToObject(PyCallContext context, Bytecode bytecode, PyModuleObject module)
     {
         // module will be reloaded
-        module._pyAttributes = context.CurrentFrame.Variables._globals.Globals;
+        module._pyAttributes = context.CurrentInternalFrame.Variables._globals.Globals;
 
         _ = PyCore.Eval(context, bytecode).PyUnwrap(context);
 
-        Debug.Assert(ReferenceEquals(module.PyAttributes, context.CurrentFrame.Variables._globals.Globals));
+        Debug.Assert(ReferenceEquals(module.PyAttributes, context.CurrentInternalFrame.Variables._globals.Globals));
         module.PyAttributes[PySpecialNames.Name] = PyStrObject.FromString(module.Name);
     }
 }

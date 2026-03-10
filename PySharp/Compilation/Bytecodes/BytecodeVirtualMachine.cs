@@ -18,7 +18,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
     internal PyExceptionObject? ExceptionToRaise;
     internal bool RunToEnd { get; private set; }
     private Stack<ExceptionHandler> ExceptionHandlers => field ??= [];
-    private readonly OperandStack Stack;
+    private readonly OperandStack? Stack;
 
     private PyCallContext Context { get; }
     private Bytecode Bytecode { get; }
@@ -31,21 +31,32 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
         }
     }
 
-    internal BytecodeVirtualMachine(PyCallContext context, Bytecode bytecode)
+    internal BytecodeVirtualMachine(PyCallContext context, Bytecode bytecode, bool usingLocalsPlusAsOperandStack = false)
     {
         Context = context;
         Bytecode = bytecode;
-        Stack = new(bytecode.StackSize);
+        Stack = usingLocalsPlusAsOperandStack ? null : new(bytecode.StackSize);
     }
 
     internal PyResult Eval()
     {
-        var frame = Context.CurrentFrame;
-        using var withMetaInfo = new MetaInfoProviderSetter(frame, this);
-        var result = Eval(Context, frame);
-        Debug.Assert(!RunToEnd || Stack.Count is 0);
+        ref var frame = ref Context.CurrentInternalFrame;
+        var origProvider = frame.MetaInfoProvider;
+        frame.MetaInfoProvider = this;
+        var result = Eval(Context, ref frame, out var stack);
+        frame.MetaInfoProvider = origProvider;
+
+        Debug.Assert(!RunToEnd || stack.Count is 0);
         if (RunToEnd)
-            Stack.Dispose();
+        {
+            frame.Dispose(Context);
+            Stack?.Dispose();
+        }
+        else
+        {
+            Debug.Assert(Stack is not null);
+            Stack.Count = stack.Count;
+        }
         return result;
     }
 
@@ -72,6 +83,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
 
     internal void SetYieldReceivedValue(PyObject value)
     {
+        Debug.Assert(Stack is not null);
         Stack.Push(value);
     }
 
@@ -81,13 +93,22 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
     private List<KeyValuePair<PyObject, PyObject>> CachePairs => field ??= [];
     private StringBuilder CacheBuilder => field ??= new();
 
-    internal PyResult Eval(PyCallContext context, PyFrame frame)
+    internal PyResult Eval(PyCallContext context, ref PyInternalFrame frame, out ValueOperandStack Stack)
     {
         ref int currentIndex = ref InstructionIndex;
         var instructions = Bytecode.Instructions.AsSpan();
         var consts = Bytecode.Consts.AsSpan();
         var names = Bytecode.Names.AsSpan();
         var length = instructions.Length;
+        if (this.Stack is not null)
+        {
+            Stack = this.Stack.AsValueOperandStack();
+        }
+        else
+        {
+            Debug.Assert(frame.Variables._locals is not null);
+            Stack = new ValueOperandStack(frame.Variables._locals.OperandStackSpan);
+        }
 
         // cache, clear before using
         PyObject value, left, right;
@@ -200,13 +221,17 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                     case OpCode._StoreNameIncludedNonInlineFrame:
                         value = Stack.Pop();
                         frame.Variables.StoreName(names[instructionArg], value);
-                        frame._outerNonInlineFrame?.Variables.StoreName(names[instructionArg], value);
+                        if (frame.OuterNonInlineFrameIndex is not -1)
+                            context.FrameState.Frames[frame.OuterNonInlineFrameIndex]
+                                .Variables.StoreName(names[instructionArg], value);
                         break;
 
                     case OpCode._StoreDerefIncludedNonInlineFrame:
                         value = Stack.Pop();
                         _ = frame.Variables.StoreDeref(names[instructionArg], value).PyUnwrap(context);
-                        _ = frame._outerNonInlineFrame?.Variables.StoreDeref(names[instructionArg], value).PyUnwrap(context);
+                        if (frame.OuterNonInlineFrameIndex is not -1)
+                            context.FrameState.Frames[frame.OuterNonInlineFrameIndex]
+                                .Variables.StoreDeref(names[instructionArg], value).PyUnwrap(context);
                         break;
 
                     case OpCode.DeleteName:
@@ -291,7 +316,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                             if (isNull)
                                 instructionArg--;
 
-                            LoadArgs(CacheArgs, instructionArg);
+                            LoadArgs(ref Stack, CacheArgs, instructionArg);
                             if (isNull)
                                 Stack.Pop();
 
@@ -306,7 +331,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                             var tuple = (PyTupleObject)Stack.Pop();
                             CacheKwargs.Clear();
 
-                            LoadArgs(CacheArgs, tuple.Count);
+                            LoadArgs(ref Stack, CacheArgs, tuple.Count);
 
                             for (int i = 0; i < tuple.Count; i++)
                             {
@@ -319,7 +344,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                             if (isNull)
                                 argsCount--;
 
-                            LoadArgs(CacheArgs, argsCount);
+                            LoadArgs(ref Stack, CacheArgs, argsCount);
                             if (isNull)
                                 Stack.Pop();
 
@@ -469,22 +494,22 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                         break;
 
                     case OpCode.BuildList:
-                        LoadArgs(CacheArgs, instructionArg);
+                        LoadArgs(ref Stack, CacheArgs, instructionArg);
                         Stack.Push(PyListObject.CreateList(CacheArgs));
                         break;
 
                     case OpCode.BuildTuple:
-                        LoadArgs(CacheArgs, instructionArg);
+                        LoadArgs(ref Stack, CacheArgs, instructionArg);
                         Stack.Push(PyTupleObject.CreateTuple(CacheArgs));
                         break;
 
                     case OpCode.BuildSet:
-                        LoadArgs(CacheArgs, instructionArg);
+                        LoadArgs(ref Stack, CacheArgs, instructionArg);
                         Stack.Push(PySetObject.CreateSet(CacheArgs));
                         break;
 
                     case OpCode.BuildMap:
-                        LoadArgs(CacheArgs, instructionArg * 2);
+                        LoadArgs(ref Stack, CacheArgs, instructionArg * 2);
                         CachePairs.Clear();
                         for (int i = 0; i < instructionArg; i++)
                         {
@@ -494,13 +519,16 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                         break;
 
                     case OpCode._EnterInlineFrame:
-                        frame = frame.CreateInlineFrame(FrameType.Comprehension);
-                        context.FrameState.EnterFrame(frame);
+                        {
+                            var inlineFrame = frame.CreateInlineFrame(context, FrameType.Comprehension);
+                            context.FrameState.EnterFrame(ref inlineFrame);
+                            frame = ref context.CurrentInternalFrame;
+                        }
                         break;
 
                     case OpCode._ExitInlineFrame:
-                        context.FrameState.ExitFrame();
-                        frame = context.CurrentFrame;
+                        context.FrameState.ExitInternalFrame(context, dispose: true);
+                        frame = ref context.CurrentInternalFrame;
                         break;
 
                     case OpCode.ListAppend:
@@ -722,7 +750,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                         else
                         {
                             CacheBuilder.Clear();
-                            LoadArgs(CacheArgs, instructionArg);
+                            LoadArgs(ref Stack, CacheArgs, instructionArg);
                             foreach (var arg in CacheArgs)
                             {
                                 Debug.Assert(arg is PyStrObject);
@@ -756,7 +784,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                         break;
 
                     case OpCode._ImportAllFrom:
-                        PyCore.ImportAllFrom(context, frame, (PyModuleObject)Stack.Pop());
+                        PyCore.ImportAllFrom(context, ref frame, (PyModuleObject)Stack.Pop());
                         break;
 
                     case OpCode.BuildSlice:
@@ -790,7 +818,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                             Stack.PopReversedRange(defaults);
                             var def = PyArgsDef.FromCodeObjectAndDefaults(codeObj, kwDefaults, defaults);
 
-                            var func = PyCore.MakeFunction(frame, codeObj, def);
+                            var func = PyCore.MakeFunction(ref frame, codeObj, def);
 
                             Stack.Push(func);
                         }
@@ -801,8 +829,9 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                             var codeObj = (PyCodeObject)Stack.Pop();
                             Debug.Assert(codeObj.Bytecode is not null);
 
-                            var inlineFrame = frame.CreateInlineFrame(FrameType.Comprehension);
+                            var inlineFrame = frame.CreateInlineFrame(context, FrameType.Comprehension);
                             var vm = new BytecodeVirtualMachine(context, codeObj.Bytecode);
+
                             var generator = new PyBytecodeGeneratorObject(codeObj.Name, inlineFrame, vm);
 
                             Stack.Push(generator);
@@ -814,7 +843,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                             var codeObj = (PyCodeObject)Stack.Pop();
 
                             List<PyTypeObject> bases = [];
-                            LoadArgs(CacheArgs, instructionArg);
+                            LoadArgs(ref Stack, CacheArgs, instructionArg);
                             foreach (var arg in CacheArgs)
                             {
                                 if (arg is not PyTypeObject baseType)
@@ -842,7 +871,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                     case OpCode._MakeCellFast:
                         {
                             Debug.Assert(frame.Variables._locals is not null);
-                            var content = frame.Variables._locals.LocalsPlus[instructionArg];
+                            var content = frame.Variables._locals.LocalsSpan[instructionArg];
                             frame.Variables.StoreFast(instructionArg, PyCellObject.CreateCell(content));
                         }
                         break;
@@ -850,18 +879,18 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                     case OpCode.RaiseVarArgs:
                         if (instructionArg is 0)
                         {
-                            PyCore.Raise(context, frame, excObj: null, causeObj: null);
+                            PyCore.Raise(context, ref frame, excObj: null, causeObj: null);
                         }
                         else if (instructionArg is 1)
                         {
                             var excObj = Stack.Pop();
-                            PyCore.Raise(context, frame, excObj, causeObj: null);
+                            PyCore.Raise(context, ref frame, excObj, causeObj: null);
                         }
                         else if (instructionArg is 2)
                         {
                             var causeObj = Stack.Pop();
                             var excObj = Stack.Pop();
-                            PyCore.Raise(context, frame, excObj, causeObj);
+                            PyCore.Raise(context, ref frame, excObj, causeObj);
                         }
                         else
                         {
@@ -1154,7 +1183,9 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
                     Stack.Pop();
 
                 e.PyException.WithTraceback(context, overwriteExisting: false);
-                context.EnsureFrameState(frame);
+
+                // TODO:
+                //context.EnsureFrameState(frame);
 
                 frame.Exceptions.Push(e.PyException);
             }
@@ -1164,7 +1195,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
 
             currentIndex = nextIndex;
 
-            void LoadArgs(List<PyObject> args, int count)
+            static void LoadArgs(ref ValueOperandStack stack, List<PyObject> args, int count)
             {
                 // equals to:
                 // args.Clear();
@@ -1174,7 +1205,7 @@ internal sealed class BytecodeVirtualMachine : ICodeMetaInfoProvider
 
                 CollectionsMarshal.SetCount(args, count);
                 var argsSpan = CollectionsMarshal.AsSpan(args);
-                Stack.PopReversedRange(argsSpan);
+                stack.PopReversedRange(argsSpan);
             }
         }
 

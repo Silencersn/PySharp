@@ -16,21 +16,22 @@ internal static class PyCore
         return vm.Eval();
     }
 
-    public static PyCellObject[]? GetFreeVars(PyFrame frame, PyCodeObject code)
+    public static PyCellObject[]? GetFreeVars(ref PyInternalFrame frame, PyCodeObject code)
     {
         if (code.FreeVars.Length is 0)
             return null;
 
+        var variables = frame.Variables;
         return [.. code.FreeVars.Select(name => {
-            var obj = frame.Variables.Locals[name];
+            var obj = variables.Locals[name];
             Debug.Assert(obj is PyCellObject);
             return (PyCellObject)obj;
         })];
     }
 
-    public static PyFunctionObject MakeFunction(PyFrame frame, PyCodeObject codeObject, PyArgsDef def)
+    public static PyFunctionObject MakeFunction(ref PyInternalFrame frame, PyCodeObject codeObject, PyArgsDef def)
     {
-        return new PyFunctionObject(codeObject.Name, GetFreeVars(frame, codeObject), frame.Variables._globals, codeObject, def);
+        return new PyFunctionObject(codeObject.Name, GetFreeVars(ref frame, codeObject), frame.Variables._globals, codeObject, def);
     }
 
     public static PyTypeObject BuildClass(PyCallContext context, PyCodeObject codeObject, List<PyTypeObject> bases)
@@ -41,14 +42,15 @@ internal static class PyCore
         PyTypeObject.ValidateBases(context, bases, out var layoutTypeOwner);
         var type = layoutTypeOwner.CreateUserDefinedTypeWithSameLayout(codeObject.Name, codeObject.QualName, bases);
 
-        if (context.CurrentFrame.Variables.Globals.TryGetValue(PySpecialNames.Name, out var module))
+        if (context.CurrentInternalFrame.Variables.Globals.TryGetValue(PySpecialNames.Name, out var module))
             type.ModuleAsObject = module;
         else
             type.ModuleAsObject = PyStrObject.FromString("builtins");
 
-        var newFrame = context.CurrentFrame.CreateClassBuildFrame(type, codeObject);
+        var newFrame = context.CurrentInternalFrame.CreateClassBuildFrame(context, type, codeObject);
 
-        using (var withFrame = context.WithFrame(newFrame))
+        using (var withFrame = context.WithFrame(ref newFrame))
+            // TODO: unwrap
             Eval(context, codeObject.Bytecode);
 
         foreach (var pair in newFrame.Variables.Locals)
@@ -166,7 +168,7 @@ internal static class PyCore
         return type;
     }
 
-    public static void ImportAllFrom(PyCallContext context, PyFrame frame, PyModuleObject module)
+    public static void ImportAllFrom(PyCallContext context, ref PyInternalFrame frame, PyModuleObject module)
     {
         // if module has __all__, import only those names
         // item in __all__ must be str
@@ -195,7 +197,7 @@ internal static class PyCore
         }
     }
 
-    public static void Raise(PyCallContext context, PyFrame frame, PyObject? excObj, PyObject? causeObj)
+    public static void Raise(PyCallContext context, ref PyInternalFrame frame, PyObject? excObj, PyObject? causeObj)
     {
         var exc = ToException(context, excObj)
             ?? throw new PyRuntimeException(context, frame.CurrentException);

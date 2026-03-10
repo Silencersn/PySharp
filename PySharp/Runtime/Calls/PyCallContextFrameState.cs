@@ -1,119 +1,68 @@
-﻿using System.Diagnostics;
+﻿using PySharp.Modules.Builtins;
+using System.Diagnostics;
 
 namespace PySharp.Runtime.Calls;
 
-internal sealed class PyCallContextFrameState
+internal sealed partial class PyCallContextFrameState : IDisposable
 {
-    private readonly Lock _lock;
-    private int _asyncModeCounter;
-    private PyFrame _currentSyncFrame;
-    private AsyncLocal<PyFrame>? _currentAsyncFrame;
+    private PyInternalFrame[] _frames;
+    private int _frameCount;
+    private readonly PyObjectMemoryAllocator _allocator;
 
-    internal PyCallContextFrameState(PyFrame rootFrame)
+    internal PyCallContextFrameState(PyInternalFrame rootFrame)
     {
-        _lock = new Lock();
-        _asyncModeCounter = 0;
-        _currentSyncFrame = rootFrame;
+        _frames = new PyInternalFrame[4];
+        _frames[0] = rootFrame;
+        _frameCount = 1;
+        _allocator = new PyObjectMemoryAllocator();
     }
 
-    public PyFrame CurrentFrame
+    internal int CurrentFrameCount => _frameCount;
+    internal int CurrentFrameIndex => _frameCount - 1;
+    internal ref PyInternalFrame CurrentInternalFrame => ref _frames[CurrentFrameIndex];
+    internal Span<PyInternalFrame> Frames => _frames.AsSpan()[.._frameCount];
+
+    public void EnterFrame(ref PyInternalFrame frame)
     {
-        get
-        {
-            lock (_lock)
-            {
-                if (_currentAsyncFrame is null)
-                    return _currentSyncFrame;
+        Debug.Assert(frame.BackFrameIndex == CurrentFrameIndex);
 
-                var frame = _currentAsyncFrame.Value;
-                Debug.Assert(frame is not null);
-                return frame;
-            }
-        }
-        set
-        {
-            lock (_lock)
-            {
-                if (_currentAsyncFrame is not null)
-                    throw new NotSupportedException("Cannot directly set CurrentFrame while in async mode");
+        if (_frameCount == _frames.Length)
+            Array.Resize(ref _frames, _frames.Length * 2);
 
-                _currentSyncFrame = value;
-            }
-        }
+        _frames[_frameCount++] = frame;
+        frame = ref CurrentInternalFrame;
     }
 
-    public void EnterFrame(PyFrame frame)
+    public void ExitInternalFrame(PyCallContext context, bool dispose)
     {
-        lock (_lock)
-        {
-            if (_currentAsyncFrame is null)
-            {
-                Debug.Assert(ReferenceEquals(frame.Back, _currentSyncFrame));
-                _currentSyncFrame = frame;
-                return;
-            }
+        ref var frame = ref CurrentInternalFrame;
+        if (frame.BackFrameIndex is -1)
+            throw new InvalidOperationException("Could not exit frame, because it is the root frame");
 
-            Debug.Assert(ReferenceEquals(frame.Back, _currentAsyncFrame.Value));
-            _currentAsyncFrame.Value = frame;
-        }
+        Debug.Assert(frame.BackFrameIndex == CurrentFrameIndex - 1);
+
+        if (dispose)
+            frame.Dispose(context);
+        _frames[--_frameCount] = default;
     }
 
-    public void ExitFrame()
+    public Memory<PyObject?> Alloc(int size)
     {
-        lock (_lock)
-        {
-            if (_currentAsyncFrame is null)
-            {
-                if (_currentSyncFrame.Back is null)
-                    throw new InvalidOperationException("Could not exit frame, because it is the root frame");
-
-                _currentSyncFrame = _currentSyncFrame.Back;
-                return;
-            }
-
-            var frame = _currentAsyncFrame.Value;
-            Debug.Assert(frame is not null);
-
-            if (ReferenceEquals(frame, _currentSyncFrame))
-                throw new InvalidOperationException("Cannot exit frame: attempted to exit the root frame of async mode without exiting async mode first.");
-
-            Debug.Assert(frame.Back is not null);
-            _currentAsyncFrame.Value = frame.Back;
-        }
+        return _allocator.Alloc(size);
     }
 
-    public void EnterAsyncMode()
+    public void Free(Memory<PyObject?> memory)
     {
-        Debug.Assert(_asyncModeCounter >= 0);
-
-        lock (_lock)
-        {
-            _asyncModeCounter++;
-
-            if (_currentAsyncFrame is not null)
-                return;
-
-            _currentAsyncFrame = new AsyncLocal<PyFrame> { Value = _currentSyncFrame };
-        }
+        _allocator.Free(memory);
     }
 
-    public void ExitAsyncMode()
+    public void Dispose()
     {
-        lock (_lock)
-        {
-            if (_asyncModeCounter <= 0)
-                throw new InvalidOperationException("Cannot exit async mode when not in async mode.");
+        if (_frameCount is -1)
+            return;
 
-            _asyncModeCounter--;
-
-            if (_asyncModeCounter > 0)
-                return;
-
-            Debug.Assert(_currentAsyncFrame is not null);
-            if (!ReferenceEquals(_currentAsyncFrame.Value, _currentSyncFrame))
-                throw new InvalidOperationException("Cannot exit async mode: current async frame does not match the root sync frame.");
-
-            _currentAsyncFrame = null;
-        }
+        _frames.AsSpan().Clear();
+        _allocator.Dispose();
+        _frameCount = -1;
     }
 }

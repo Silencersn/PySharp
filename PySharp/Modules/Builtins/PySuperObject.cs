@@ -67,7 +67,7 @@ public sealed partial class PySuperObjectType : PyTypeObject<PySuperObjectType, 
     [PyFunctionArgsDef()]
     private static PyResult NewImpl_1(PyCallContext context, PyArguments arguments)
     {
-        var frame = context.CurrentFrame;
+        var frame = context.CurrentInternalFrame;
         if (frame.CallingArguments is null)
             // TODO: in what situations would this happen?
             return PyResult.RuntimeError(PySR.Runtime_Super_NoArgs);

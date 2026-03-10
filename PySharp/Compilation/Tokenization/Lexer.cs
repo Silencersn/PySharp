@@ -82,7 +82,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
     internal Lexer(PyCallContext context, CodeSource codeSource)
     {
         _context = context;
-        _context.CurrentFrame.MetaInfoProvider = this;
+        _context.CurrentInternalFrame.MetaInfoProvider = this;
         _codeSource = codeSource;
         _tokens = new List<Token>(GetTokensDefaultCapacity(codeSource.Code.Text.Length));
         _offset = 0;

@@ -4,7 +4,7 @@ using System.Collections.Concurrent;
 
 namespace PySharp.Runtime;
 
-partial class PyFrame
+partial struct PyInternalFrame
 {
     internal sealed class PyFrameGlobals
     {

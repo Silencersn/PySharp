@@ -11,7 +11,7 @@ public sealed class PyFunctionObject : PyObject, IPyObjectName
     internal readonly PyArgsDef _def;
     internal readonly PyCellObject[]? _closure;
     internal PyObject? _pyClosure;
-    internal PyFrame.PyFrameGlobals _globals;
+    internal PyInternalFrame.PyFrameGlobals _globals;
     private readonly PyCodeObject _code;
 
     public string Name { get; }
@@ -20,7 +20,7 @@ public sealed class PyFunctionObject : PyObject, IPyObjectName
 
     public override PyTypeObject DefaultPyType => PyFunctionObjectType.Shared;
 
-    internal PyFunctionObject(string name, PyCellObject[]? closure, PyFrame.PyFrameGlobals globals, PyCodeObject code, PyArgsDef def)
+    internal PyFunctionObject(string name, PyCellObject[]? closure, PyInternalFrame.PyFrameGlobals globals, PyCodeObject code, PyArgsDef def)
     {
         Name = name;
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
@@ -44,14 +44,14 @@ public sealed partial class PyFunctionObjectType : PyTypeObject<PyFunctionObject
         if (!self._def.TryParse(args, kwargs, out var arguments))
             return PyResult.TypeError(null /* TODO */);
 
-        var backFrame = context.CurrentFrame;
-        var frame = backFrame.CreateFuncCallFrame(self.Name, self, FrameType.Function, (args, kwargs), self._globals, self.Code);
+        ref var backFrame = ref context.CurrentInternalFrame;
+        var frame = PyInternalFrame.CreateFuncCallFrame(context, self.Name, self, FrameType.Function, (args, kwargs), self._globals, self.Code);
 
         Debug.Assert(frame.Variables._locals is not null);
         frame.Variables._locals.InitCells(self.Closure);
         frame.InitArgs(self._def, self.Code, arguments);
 
-        using var withFrame = context.WithFrame(frame);
+        using var withFrame = context.WithFrame(ref frame, dispose: false);
         return PyCore.Eval(context, self.Code.Bytecode);
     }
 

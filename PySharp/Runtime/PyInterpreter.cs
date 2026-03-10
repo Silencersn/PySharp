@@ -10,7 +10,7 @@ using System.Text;
 
 namespace PySharp.Runtime;
 
-public class PyInterpreter
+public sealed class PyInterpreter : IDisposable
 {
     private readonly PyEnvironment _environment;
     private readonly PyModuleObject _mainModule;
@@ -24,7 +24,7 @@ public class PyInterpreter
         _environment = environment;
         _mainModule = new PyModuleObject(PySpecialNames.Main);
         _mainContext = PyCallContext.CreateInterpreterMainContext(this);
-        _mainModule._pyAttributes = _mainContext.CurrentFrame.Variables._globals.Globals;
+        _mainModule._pyAttributes = _mainContext.CurrentInternalFrame.Variables._globals.Globals;
     }
 
     public static PyInterpreter Create(PyEnvironment environment)
@@ -60,7 +60,7 @@ public class PyInterpreter
 
     internal static void PyTryCatch(PyCallContext context, Action action, bool alwaysThrow = false)
     {
-        var frame = context.CurrentFrame;
+        var frame = context.CurrentInternalFrame;
         try
         {
             action();
@@ -73,7 +73,8 @@ public class PyInterpreter
                 if (currentException is PyRuntimeException pyRuntimeException)
                 {
                     var exc = pyRuntimeException.PyException.WithTraceback(context, overwriteExisting: false);
-                    context.EnsureFrameState(frame);
+                    // TODO:
+                    //context.EnsureFrameState(frame);
 
                     if (PySystemExitObjectType.Shared.IsInstance(exc))
                     {
@@ -117,7 +118,7 @@ public class PyInterpreter
             .System.AppendSysPath(Path.GetDirectoryName(Path.GetFullPath(filename))).AppendArgument(filename)
             .Build();
 
-        var interpreter = Create(environment);
+        using var interpreter = Create(environment);
         interpreter.Execute(code, Path.GetFullPath(filename));
         return interpreter.GetModule(moduleName);
     }
@@ -132,7 +133,7 @@ public class PyInterpreter
             .FileSystem.WithEmptyMemoryFileSystem()
             .Build();
 
-        var interpreter = Create(environment);
+        using var interpreter = Create(environment);
         interpreter.Execute(code, sourceName ?? "<string>");
         return moduleName is not null ? interpreter.GetModule(moduleName) : null;
     }
@@ -160,7 +161,7 @@ public class PyInterpreter
 
         environment.Out.WriteLine($"{nameof(PySharp)} (v{typeof(PyInterpreter).Assembly.GetName().Version}) on {Environment.OSVersion}");
 
-        var interpreter = Create(environment);
+        using var interpreter = Create(environment);
         var context = interpreter._mainContext;
         var builder = new StringBuilder();
 
@@ -191,7 +192,7 @@ public class PyInterpreter
                             throw;
 
                         // TODO: currently, depend on implementation details
-                        if (context.CurrentFrame.MetaInfoProvider is not Parser parser)
+                        if (context.CurrentInternalFrame.MetaInfoProvider is not Parser parser)
                             throw;
 
                         if (PyIndentationErrorObjectType.Shared.IsInstance(e.PyException))
@@ -206,8 +207,13 @@ public class PyInterpreter
                 }
 
                 _ = PyCore.Eval(context, codeObj.Bytecode).PyUnwrap(context);
-                Debug.Assert(context.CurrentFrame.IsRoot);
+                Debug.Assert(context.CurrentInternalFrame.IsRoot);
             });
         }
+    }
+
+    public void Dispose()
+    {
+        _mainContext.Dispose();
     }
 }
