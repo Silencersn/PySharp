@@ -26,28 +26,28 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
 {
     private bool IsGeneratorRunning;
     private PyInternalFrame _frame;
-    private readonly BytecodeVirtualMachine _vm;
+    private BytecodeVirtualMachineStates _vmStates;
 
-    internal PyBytecodeGeneratorObject(string name, PyInternalFrame frame, BytecodeVirtualMachine vm) : base(name)
+    internal PyBytecodeGeneratorObject(string name, PyInternalFrame frame, BytecodeVirtualMachineStates states) : base(name)
     {
         _frame = frame;
-        _vm = vm;
+        _vmStates = states;
     }
 
     private PyResult Send(PyCallContext context, PyObject value)
     {
-        if (_vm.RunToEnd)
+        if (_vmStates.RunToEnd)
             return PyResult.StopIteration();
 
         IsGeneratorRunning = true;
         _frame.BackFrameIndex = context.FrameState.CurrentFrameIndex;
         using var withFrame = context.WithFrame(ref _frame, dispose: false);
-        _vm.SetYieldReceivedValue(value);
-        var result = _vm.Eval();
+        _vmStates.SetYieldReceivedValue(value);
+        var result = BytecodeVirtualMachine.Eval(ref _vmStates);
         if (result.IsError)
             return result;
 
-        if (_vm.RunToEnd)
+        if (_vmStates.RunToEnd)
             return PyResult.StopIteration(result.Value);
 
         return result;
@@ -55,13 +55,13 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
 
     internal override PyResult PyClose(PyCallContext context)
     {
-        if (_vm.RunToEnd)
+        if (_vmStates.RunToEnd)
             return PyNoneObject.None;
 
-        _vm.ExceptionToRaise = PyGeneratorExitObjectType.Shared.Create();
+        _vmStates.ExceptionToRaise = PyGeneratorExitObjectType.Shared.Create();
         _frame.BackFrameIndex = context.FrameState.CurrentFrameIndex;
         using var withFrame = context.WithFrame(ref _frame, dispose: false);
-        var result = _vm.Eval();
+        var result = BytecodeVirtualMachine.Eval(ref _vmStates);
 
         if (result.IsError)
         {
@@ -71,7 +71,7 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
             return result;
         }
 
-        if (!_vm.RunToEnd)
+        if (!_vmStates.RunToEnd)
             // still yield value
             return PyResult.RuntimeError(PySR.Runtime_Generator_IgnoredGeneratorExit);
 
@@ -108,17 +108,17 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
         if (pyObject is not PyExceptionObject exc)
             return PyResult.TypeError(PySR.Runtime_Exception_NonException, pyObject.PyType.FullName);
 
-        if (_vm.RunToEnd)
+        if (_vmStates.RunToEnd)
             return PyResult.FromException(exc);
 
-        _vm.ExceptionToRaise = exc;
+        _vmStates.ExceptionToRaise = exc;
         _frame.BackFrameIndex = context.FrameState.CurrentFrameIndex;
         using var withFrame = context.WithFrame(ref _frame, dispose: false);
-        var result = _vm.Eval();
+        var result = BytecodeVirtualMachine.Eval(ref _vmStates);
         if (result.IsError)
             return result;
 
-        if (_vm.RunToEnd)
+        if (_vmStates.RunToEnd)
             // return value
             return PyResult.StopIteration(result.Value);
 

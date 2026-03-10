@@ -12,8 +12,8 @@ internal static class PyCore
 {
     public static PyResult Eval(PyCallContext context, Bytecode bytecode, bool usingLocalsPlusAsOperandStack = false)
     {
-        var vm = new BytecodeVirtualMachine(context, bytecode, usingLocalsPlusAsOperandStack);
-        return vm.Eval();
+        var vmStates = new BytecodeVirtualMachineStates(context, bytecode, usingLocalsPlusAsOperandStack);
+        return BytecodeVirtualMachine.Eval(ref vmStates);
     }
 
     public static PyCellObject[]? GetFreeVars(ref PyInternalFrame frame, PyCodeObject code)
