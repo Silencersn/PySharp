@@ -105,7 +105,7 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObjectType, PyIn
     [PyFunctionArgsDef("number=0", "/")]
     private static PyResult NewImpl_1(PyCallContext context, PyArguments arguments)
     {
-        if (arguments.Args[0] is PyStrObject str)
+        if (arguments[0] is PyStrObject str)
         {
             if (!BigIntegerHelper.TryParse(str.Value, 10, out var integer))
                 return PyResult.ValueError(PySR.Runtime_Number_Int_InvalidLiteral, 10, str.Value);
@@ -122,13 +122,13 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObjectType, PyIn
     [PyFunctionArgsDef("string", "/", "base=10")]
     private static PyResult NewImpl_2(PyCallContext context, PyArguments arguments)
     {
-        if (arguments.Args[1] is not PyIntObject numBase)
-            return PyResult.TypeError(PySR.Runtime_Number_Int_CannotInterpretedAsInt, arguments.Args[1].PyType.FullName);
+        if (arguments[1] is not PyIntObject numBase)
+            return PyResult.TypeError(PySR.Runtime_Number_Int_CannotInterpretedAsInt, arguments[1].PyType.FullName);
 
         if (!((numBase.Value >= 2 && numBase.Value <= 36) || numBase.Value.IsZero))
             return PyResult.ValueError(PySR.Runtime_Number_Int_BaseOutOfRange);
 
-        if (arguments.Args[0] is PyStrObject str)
+        if (arguments[0] is PyStrObject str)
         {
             if (!BigIntegerHelper.TryParse(str.Value, numBase.Int32Value, out var result))
                 return PyResult.ValueError(PySR.Runtime_Number_Int_InvalidLiteral, numBase.Value, str.Value);

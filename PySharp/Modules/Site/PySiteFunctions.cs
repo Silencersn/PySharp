@@ -12,7 +12,7 @@ public static class PySiteFunctions
     [PyFunctionArgsDef("code=None")]
     private static PyResult ExitImpl(PyCallContext context, PyArguments arguments)
     {
-        int? exitCode = arguments.Args[0] switch
+        int? exitCode = arguments[0] switch
         {
             PyIntObject intObj => intObj.Int32Value,
             PyNoneObject => 0,

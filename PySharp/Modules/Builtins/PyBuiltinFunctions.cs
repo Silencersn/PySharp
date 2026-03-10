@@ -156,9 +156,9 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef("base", "exp", "mod=None")]
     private static PyResult PowImpl(PyCallContext context, PyArguments arguments)
     {
-        var baseObj = arguments.Args[0];
-        var expObj = arguments.Args[1];
-        var modObj = arguments.Args[2];
+        var baseObj = arguments[0];
+        var expObj = arguments[1];
+        var modObj = arguments[2];
 
         var result = PyOperators.Pow(context, baseObj, expObj, modObj);
         if (result.IsError)
@@ -170,7 +170,7 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef("a", "b", "/")]
     private static PyResult DivModImpl(PyCallContext context, PyArguments arguments)
     {
-        return PySpecialMethods.DivMod(context, arguments.Args[0], arguments.Args[1]);
+        return PySpecialMethods.DivMod(context, arguments[0], arguments[1]);
     }
     [PyFunctionArgsDef()]
     private static PyResult InputImpl_1(PyCallContext context, PyArguments arguments)
@@ -302,7 +302,7 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef("iterable")]
     private static PyResult AllImpl(PyCallContext context, PyArguments arguments)
     {
-        var iterable = arguments.Args[0];
+        var iterable = arguments[0];
         if (!Utils.TryEnumerateIterable(context, iterable, out var elements, out var err))
             return err.Value;
         foreach (var element in elements)
@@ -321,7 +321,7 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef("iterable")]
     private static PyResult AnyImpl(PyCallContext context, PyArguments arguments)
     {
-        var iterable = arguments.Args[0];
+        var iterable = arguments[0];
         if (!Utils.TryEnumerateIterable(context, iterable, out var elements, out var err))
             return err.Value;
         foreach (var element in elements)
