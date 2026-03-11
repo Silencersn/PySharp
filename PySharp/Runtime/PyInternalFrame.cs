@@ -160,7 +160,7 @@ internal partial struct PyInternalFrame
     {
         Debug.Assert(Variables._locals is not null);
         var localsSpan = Variables._locals.LocalsSpan;
-        arguments.InternalArgs.CopyTo(localsSpan!);
+        arguments.Args.CopyTo(localsSpan!);
 
         if (arguments.Kwargs is not null)
         {

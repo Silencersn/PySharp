@@ -1,25 +1,27 @@
 ﻿using PySharp.Modules.Builtins;
 using System.Collections.Frozen;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace PySharp.Runtime.Calls;
 
 public readonly ref struct PyArguments
 {
+    internal const int BufferLength = 8;
+
     public static PyArguments Empty => new([], FrozenDictionary<string, PyObject>.Empty, [], FrozenDictionary<string, PyObject>.Empty);
 
-    private readonly PyObject[] _args;
     private readonly PyObject[] _extraArgs;
 
-    internal ReadOnlySpan<PyObject> InternalArgs => _args;
-
-    public IReadOnlyList<PyObject> Args => _args;
+    public readonly ReadOnlySpan<PyObject> Args;
     public IReadOnlyDictionary<string, PyObject> Kwargs { get; }
-    public IReadOnlyList<PyObject> ExtraArgs => _extraArgs;
+    public readonly IReadOnlyList<PyObject> ExtraArgs => _extraArgs;
     public IReadOnlyDictionary<string, PyObject> ExtraKwargs { get; }
 
-    internal PyArguments(PyObject[] args, IReadOnlyDictionary<string, PyObject> kwargs, PyObject[] extraArgs, IReadOnlyDictionary<string, PyObject> extraKwargs)
+    internal PyArguments(ReadOnlySpan<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, PyObject[] extraArgs, IReadOnlyDictionary<string, PyObject> extraKwargs)
     {
-        _args = args;
+        Args = args;
         _extraArgs = extraArgs;
         Kwargs = kwargs;
         ExtraKwargs = extraKwargs;
@@ -30,12 +32,12 @@ public readonly ref struct PyArguments
         get
         {
             ArgumentOutOfRangeException.ThrowIfNegative(index);
-            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, _args.Length + ExtraArgs.Count);
+            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, Args.Length + ExtraArgs.Count);
 
-            if (index < _args.Length)
-                return _args[index];
+            if (index < Args.Length)
+                return Args[index];
 
-            return _extraArgs[index - _args.Length];
+            return _extraArgs[index - Args.Length];
         }
     }
 
