@@ -43,7 +43,7 @@ public sealed partial class PyFunctionObjectType : PyTypeObject<PyFunctionObject
     protected override PyResult Call(PyCallContext context, PyFunctionObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         InlineArray8<PyObject> buffer = default;
-        if (!self._def.TryParse(args, kwargs, ref buffer, out var arguments))
+        if (!self._def.TryParse(args, kwargs, buffer, out var arguments))
             return PyResult.TypeError(null /* TODO */);
 
         ref var backFrame = ref context.CurrentInternalFrame;

@@ -8,8 +8,6 @@ namespace PySharp.Runtime.Calls;
 
 public readonly ref struct PyArguments
 {
-    internal const int BufferLength = 8;
-
     public static PyArguments Empty => new([], FrozenDictionary<string, PyObject>.Empty, [], FrozenDictionary<string, PyObject>.Empty);
 
     private readonly PyObject[] _extraArgs;
@@ -31,9 +29,6 @@ public readonly ref struct PyArguments
     {
         get
         {
-            ArgumentOutOfRangeException.ThrowIfNegative(index);
-            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, Args.Length + ExtraArgs.Count);
-
             if (index < Args.Length)
                 return Args[index];
 
@@ -45,8 +40,6 @@ public readonly ref struct PyArguments
     {
         get
         {
-            ArgumentNullException.ThrowIfNull(key);
-
             if (Kwargs.TryGetValue(key, out var value))
                 return value;
 

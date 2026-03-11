@@ -227,7 +227,7 @@ public sealed class PyArgsDef
             );
     }
 
-    internal bool TryParse(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, ref InlineArray8<PyObject> buffer, out PyArguments result)
+    internal bool TryParse(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, Span<PyObject> buffer, out PyArguments result)
     {
         if (ParametersType is PyArgsDefParametersType.NoAnyArgs)
             return TryParse_NoAnyArgs(args, kwargs, out result);
@@ -235,16 +235,16 @@ public sealed class PyArgsDef
         if (ParametersType is PyArgsDefParametersType.OnlyArgs)
         {
             if (kwargs.Count is 0)
-                return TryParse_OnlyArgs(args, ref buffer, out result);
+                return TryParse_OnlyArgs(args, buffer, out result);
         }
 
         if (kwargs.Count is 0)
-            return TryParseGeneral(args, ref buffer, out result);
+            return TryParseGeneral(args, buffer, out result);
 
-        return TryParseGeneral(args, kwargs, ref buffer, out result);
+        return TryParseGeneral(args, kwargs, buffer, out result);
     }
 
-    private bool TryParseArgsPart(IReadOnlyList<PyObject> args, ref InlineArray8<PyObject> buffer, out Span<PyObject> resultArgs, [NotNullWhen(true)] out PyObject[]? resultExtraArgs)
+    private bool TryParseArgsPart(IReadOnlyList<PyObject> args, Span<PyObject> buffer, out Span<PyObject> resultArgs, [NotNullWhen(true)] out PyObject[]? resultExtraArgs)
     {
         resultArgs = null;
         resultExtraArgs = null;
@@ -258,11 +258,11 @@ public sealed class PyArgsDef
         if (args.Count > totalArgsCount && VarArg is null)
             return false;
 
-        resultArgs = buffer;
-        if (totalArgsCount > PyArguments.BufferLength)
+        if (totalArgsCount > buffer.Length)
             resultArgs = new PyObject[totalArgsCount];
         else
-            resultArgs = resultArgs[..totalArgsCount];
+            resultArgs = buffer[..totalArgsCount];
+
         for (int i = 0; i < PosonlyArgs.Length; i++)
         {
             if (i < args.Count)
@@ -287,11 +287,11 @@ public sealed class PyArgsDef
         return true;
     }
 
-    private bool TryParseGeneral(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, ref InlineArray8<PyObject> buffer, out PyArguments result)
+    private bool TryParseGeneral(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, Span<PyObject> buffer, out PyArguments result)
     {
         result = default;
 
-        if (!TryParseArgsPart(args, ref buffer, out var resultArgs, out var resultExtraArgs))
+        if (!TryParseArgsPart(args, buffer, out var resultArgs, out var resultExtraArgs))
             return false;
 
         Dictionary<string, PyObject?>? resultKwargs = KwonlyArgsWithDefaults.Count > 0 ?
@@ -339,14 +339,14 @@ public sealed class PyArgsDef
         return true;
     }
 
-    private bool TryParseGeneral(IReadOnlyList<PyObject> args, ref InlineArray8<PyObject> buffer, out PyArguments result)
+    private bool TryParseGeneral(IReadOnlyList<PyObject> args, Span<PyObject> buffer, out PyArguments result)
     {
         result = default;
 
         if (KwonlyArgsWithDefaults.Count > 0 && KwonlyArgsWithDefaults.Values.Any(static value => value is null))
             return false;
 
-        if (!TryParseArgsPart(args, ref buffer, out var resultArgs, out var resultExtraArgs))
+        if (!TryParseArgsPart(args, buffer, out var resultArgs, out var resultExtraArgs))
             return false;
 
         foreach (var arg in resultArgs[^Args.Length..])
@@ -375,7 +375,7 @@ public sealed class PyArgsDef
         return false;
     }
 
-    private bool TryParse_OnlyArgs(IReadOnlyList<PyObject> args, ref InlineArray8<PyObject> buffer, out PyArguments result)
+    private bool TryParse_OnlyArgs(IReadOnlyList<PyObject> args, Span<PyObject> buffer, out PyArguments result)
     {
         Debug.Assert(ParametersType is PyArgsDefParametersType.OnlyArgs);
 
@@ -388,10 +388,9 @@ public sealed class PyArgsDef
         if (argsCount > Args.Length)
             return false;
 
-        if (Args.Length <= PyArguments.BufferLength)
+        if (Args.Length <= buffer.Length)
         {
-            Span<PyObject> span = buffer;
-            span = span[..Args.Length];
+            Span<PyObject> span = buffer[..Args.Length];
 
             for (int i = 0; i < argsCount; i++)
                 span[i] = args[i];

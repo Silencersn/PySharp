@@ -72,7 +72,7 @@ public static class PyDelegateConverter
 
             args = [.. args.Skip(1)];
             InlineArray8<PyObject> buffer = default;
-            if (def.TryParse(args, kwargs, ref buffer, out var result))
+            if (def.TryParse(args, kwargs, buffer, out var result))
                 return method.Invoke(context, selfOfT, result);
 
             return PyResult.TypeError(null);
@@ -95,7 +95,7 @@ public static class PyDelegateConverter
             for (int i = 0; i < defs.Length; i++)
             {
                 InlineArray8<PyObject> buffer = default;
-                if (defs[i].TryParse(args, kwargs, ref buffer, out var result))
+                if (defs[i].TryParse(args, kwargs, buffer, out var result))
                     return methods[i].Invoke(context, selfOfT, result);
             }
 
@@ -135,7 +135,7 @@ public static class PyDelegateConverter
             for (int i = 0; i < defs.Length; i++)
             {
                 InlineArray8<PyObject> buffer = default;
-                if (defs[i].TryParse(args, kwargs, ref buffer, out var result))
+                if (defs[i].TryParse(args, kwargs, buffer, out var result))
                     return functions[i].Invoke(context, result);
             }
 
