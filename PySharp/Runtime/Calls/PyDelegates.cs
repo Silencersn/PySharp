@@ -1,6 +1,7 @@
 ﻿using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls.Extensions;
 using PySharp.Runtime.PyAttributes;
+using PySharp.Utility;
 using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -71,7 +72,7 @@ public static class PyDelegateConverter
             def ??= PyArgsDef.FromDef(method.Method.GetCustomAttribute<PyFunctionArgsDefAttribute>()!.Parameters);
 
             args = [.. args.Skip(1)];
-            InlineArray8<PyObject> buffer = default;
+            InlinePyObjectArray buffer = default;
             if (def.TryParse(args, kwargs, buffer, out var result))
                 return method.Invoke(context, selfOfT, result);
 
@@ -94,7 +95,7 @@ public static class PyDelegateConverter
             args = [.. args.Skip(1)];
             for (int i = 0; i < defs.Length; i++)
             {
-                InlineArray8<PyObject> buffer = default;
+                InlinePyObjectArray buffer = default;
                 if (defs[i].TryParse(args, kwargs, buffer, out var result))
                     return methods[i].Invoke(context, selfOfT, result);
             }
@@ -134,7 +135,7 @@ public static class PyDelegateConverter
 
             for (int i = 0; i < defs.Length; i++)
             {
-                InlineArray8<PyObject> buffer = default;
+                InlinePyObjectArray buffer = default;
                 if (defs[i].TryParse(args, kwargs, buffer, out var result))
                     return functions[i].Invoke(context, result);
             }

@@ -1,6 +1,7 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
+using PySharp.Utility;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices.Marshalling;
@@ -42,7 +43,7 @@ public sealed partial class PyFunctionObjectType : PyTypeObject<PyFunctionObject
 
     protected override PyResult Call(PyCallContext context, PyFunctionObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        InlineArray8<PyObject> buffer = default;
+        InlinePyObjectArray buffer = default;
         if (!self._def.TryParse(args, kwargs, buffer, out var arguments))
             return PyResult.TypeError(null /* TODO */);
 
