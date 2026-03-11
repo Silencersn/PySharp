@@ -48,14 +48,15 @@ public sealed partial class PyFunctionObjectType : PyTypeObject<PyFunctionObject
             return PyResult.TypeError(null /* TODO */);
 
         ref var backFrame = ref context.CurrentInternalFrame;
-        var frame = PyInternalFrame.CreateFuncCallFrame(context, self.Name, self, FrameType.Function, (args, kwargs), self._globals, self.Code);
+        var code = self.Code;
+        var frame = PyInternalFrame.CreateFuncCallFrame(context, self.Name, self, FrameType.Function, (args, kwargs), self._globals, code);
 
         Debug.Assert(frame.Variables._locals is not null);
         frame.Variables._locals.InitCells(self.Closure);
-        frame.InitArgs(self._def, self.Code, arguments);
+        frame.InitArgs(self._def, code, arguments);
 
         using var withFrame = context.WithFrame(ref frame, dispose: false);
-        return PyCore.Eval(context, self.Code.Bytecode, usingLocalsPlusAsOperandStack: self.Code.Flags is CodeObjectFlags.Function);
+        return PyCore.Eval(context, code.Bytecode, usingLocalsPlusAsOperandStack: code.Flags is CodeObjectFlags.Function);
     }
 
     protected override PyResult Get(PyCallContext context, PyFunctionObject self, PyObject instance, PyObject owner)

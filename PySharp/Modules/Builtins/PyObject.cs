@@ -30,7 +30,7 @@ public partial class PyObject
 
     internal static bool TryLookupAttrInMro(PyTypeObject pyType, string name, [NotNullWhen(true)] out PyObject? attr)
     {
-        foreach (var baseType in pyType.MRO)
+        foreach (var baseType in pyType.InternalMRO)
         {
             if (baseType.PyAttributes.TryGetValue(name, out attr))
                 return true;
@@ -45,7 +45,7 @@ public partial class PyObject
         if (pyObj._pyAttributes is not null && pyObj._pyAttributes.ContainsKey(name))
             return true;
 
-        foreach (var pyType in pyObj.PyType.MRO)
+        foreach (var pyType in pyObj.PyType.InternalMRO)
         {
             // check pyObj while not check pyType
             // because pyType._pyAttributes is always not null

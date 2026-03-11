@@ -8,8 +8,11 @@ namespace PySharp.Modules.Builtins;
 
 public abstract partial class PyTypeObject : PyObject, IPyObjectName
 {
+    private readonly PyTypeObject[] _mro;
+
     public virtual IReadOnlyList<PyTypeObject> Bases => [PyObjectType.Shared];
-    public IReadOnlyList<PyTypeObject> MRO { get; }
+    internal ReadOnlySpan<PyTypeObject> InternalMRO => _mro;
+    public IReadOnlyList<PyTypeObject> MRO => _mro;
     protected virtual string? DefaultModule => "builtins";
     public string? Module =>
         ModuleAsObject is PyStrObject str ? str.Value :
@@ -43,7 +46,7 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
             ModuleAsObject = PyStrObject.FromString(DefaultModule);
         Name = DefaultName;
         QualName = DefaultQualName;
-        MRO = [this, .. CreateMROWithoutSelf(Bases)];
+        _mro = [this, .. CreateMROWithoutSelf(Bases)];
         Slots = PyTypeSlots.Create(MRO.Skip(1));
         PyAttributes.Add(PySpecialNames.Doc, PyNoneObject.None);
     }
@@ -54,7 +57,7 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
             ModuleAsObject = PyStrObject.FromString(DefaultModule);
         Name = qualName.Split('.').Last();
         QualName = qualName;
-        MRO = [this, .. CreateMROWithoutSelf(bases)];
+        _mro = [this, .. CreateMROWithoutSelf(bases)];
         Slots = PyTypeSlots.Create(MRO.Skip(1));
         PyAttributes.Add(PySpecialNames.Doc, PyNoneObject.None);
     }
@@ -66,7 +69,7 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
 
     public bool IsSubclassOf(PyTypeObject pyType)
     {
-        foreach (var baseType in MRO)
+        foreach (var baseType in InternalMRO)
         {
             if (PyObjectComparer.Default.Equals(baseType, pyType))
                 return true;

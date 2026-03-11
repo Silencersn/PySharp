@@ -120,7 +120,7 @@ partial struct PyInternalFrame
             if (closure.Length is 0)
                 return;
 
-            closure.CopyTo(UnsafeUtils.CastSpan<PyObject?, PyCellObject>(LocalsSpan[^closure.Length..]));
+            ReadOnlySpan<PyObject>.CastUp(closure).CopyTo(LocalsSpan[^closure.Length..]!);
         }
         internal sealed class LocalDictionary : IDictionary<string, PyObject?>
         {
