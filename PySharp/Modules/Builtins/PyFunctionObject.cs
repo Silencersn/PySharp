@@ -13,7 +13,7 @@ public sealed class PyFunctionObject : PyObject, IPyObjectName
     internal readonly PyArgsDef _def;
     internal readonly PyCellObject[]? _closure;
     internal PyObject? _pyClosure;
-    internal PyInternalFrame.PyFrameGlobals _globals;
+    internal PyGlobals _globals;
     private readonly PyCodeObject _code;
 
     public string Name { get; }
@@ -22,7 +22,7 @@ public sealed class PyFunctionObject : PyObject, IPyObjectName
 
     public override PyTypeObject DefaultPyType => PyFunctionObjectType.Shared;
 
-    internal PyFunctionObject(string name, PyCellObject[]? closure, PyInternalFrame.PyFrameGlobals globals, PyCodeObject code, PyArgsDef def)
+    internal PyFunctionObject(string name, PyCellObject[]? closure, PyGlobals globals, PyCodeObject code, PyArgsDef def)
     {
         Name = name;
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
@@ -51,9 +51,7 @@ public sealed partial class PyFunctionObjectType : PyTypeObject<PyFunctionObject
         var code = self.Code;
         var frame = PyInternalFrame.CreateFuncCallFrame(context, self.Name, self, FrameType.Function, (args, kwargs), self._globals, code);
 
-        Debug.Assert(frame.Variables._locals is not null);
-        frame.Variables._locals.InitCells(self.Closure);
-        frame.InitArgs(self._def, code, arguments);
+        frame.InitArgs(self._def, code, arguments, self.Closure);
 
         using var withFrame = context.WithFrame(ref frame, dispose: false);
         return PyCore.Eval(context, code.Bytecode, usingLocalsPlusAsOperandStack: code.Flags is CodeObjectFlags.Function);

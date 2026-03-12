@@ -64,14 +64,9 @@ internal static class BytecodeVirtualMachine
         var names = states.Bytecode.Names.AsSpan();
         var length = instructions.Length;
         if (states.Stack is not null)
-        {
             Stack = states.Stack.AsValueOperandStack();
-        }
         else
-        {
-            Debug.Assert(frame.Variables._locals is not null);
-            Stack = new ValueOperandStack(frame.Variables._locals.OperandStackSpan);
-        }
+            Stack = new ValueOperandStack(frame.Variables.OperandStackSpan);
 
         // cache, clear before using
         PyObject value, left, right;
@@ -833,8 +828,7 @@ internal static class BytecodeVirtualMachine
 
                     case OpCode._MakeCellFast:
                         {
-                            Debug.Assert(frame.Variables._locals is not null);
-                            var content = frame.Variables._locals.LocalsSpan[instructionArg];
+                            var content = frame.Variables.LocalsSpan[instructionArg];
                             frame.Variables.StoreFast(instructionArg, PyCellObject.CreateCell(content));
                         }
                         break;

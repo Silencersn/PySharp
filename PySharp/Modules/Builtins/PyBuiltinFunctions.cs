@@ -602,7 +602,7 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef()]
     private static PyResult GlobalsImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = context.CurrentInternalFrame.Variables._globals.PyDict;
+        var result = context.CurrentInternalFrame.Variables.Globals.PyDict;
         return result;
     }
 

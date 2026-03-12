@@ -1,4 +1,5 @@
-﻿using PySharp.Compilation.CodeAnalysis;
+﻿using PySharp.Compilation.AstNodes;
+using PySharp.Compilation.CodeAnalysis;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
 using PySharp.Utility;
@@ -24,7 +25,7 @@ internal enum FrameType
 internal partial struct PyInternalFrame
 {
     internal string CallerName;
-    internal PyFrameVariables Variables;
+    internal PyVariables Variables;
     internal PyObject? Caller;
     internal PyCodeObject? CodeObject;
     internal ICodeMetaInfoProvider? MetaInfoProvider;
@@ -41,22 +42,22 @@ internal partial struct PyInternalFrame
     private PyInternalFrame(PyCallContext context, bool isRoot)
     {
         BackFrameIndex = isRoot ? -1 : context.FrameState.CurrentFrameIndex;
-        Variables = PyFrameVariables.CreateModule();
+        Variables = PyVariables.CreateGlobal();
         CallerName = "<module>";
         Caller = null;
         FrameType = isRoot ? FrameType.MainRoot : FrameType.Module;
     }
-    private PyInternalFrame(PyFrameVariables variables)
+    private PyInternalFrame(PyVariables variables)
     {
         BackFrameIndex = -1;
-        Variables = PyFrameVariables.Create(variables._globals, FrozenDictionary<string, int>.Empty);
+        Variables = variables.CreatePlaceholder();
         CallerName = $"<thread-{Environment.CurrentManagedThreadId}>";
         Caller = null;
         FrameType = FrameType.ThreadRoot;
     }
     private PyInternalFrame(
         PyCallContext context,
-        PyFrameVariables variables,
+        PyVariables variables,
         string callerName,
         PyObject? caller,
         FrameType frameType)
@@ -77,8 +78,8 @@ internal partial struct PyInternalFrame
     {
         var frame = new PyInternalFrame(context, isRoot);
         var builtins = context.PyEnvironment.LoadBuiltinModule(context, "builtins");
-        frame.SetVariable(PySpecialNames.Builtins, builtins);
-        frame.SetVariable(PySpecialNames.Name, PyStrObject.FromString(moduleQualifiedName));
+        frame.Variables.Globals.Dict[PySpecialNames.Builtins] = builtins;
+        frame.Variables.Globals.Dict[PySpecialNames.Name] = PyStrObject.FromString(moduleQualifiedName);
 
         // TODO: add flag to control whether adding site
         _ = context.PyEnvironment.LoadBuiltinModule(context, "site");
@@ -87,14 +88,14 @@ internal partial struct PyInternalFrame
     }
     internal static PyInternalFrame CreateFuncCallFrame(PyCallContext context, string callerName, PyObject caller, FrameType frameType,
         (IReadOnlyList<PyObject> Args, IReadOnlyDictionary<string, PyObject> Kwargs) callingArguments,
-        PyFrameGlobals globals,
+        PyGlobals globals,
         PyCodeObject code)
     {
         Debug.Assert(frameType is FrameType.Function);
 
         var variables = code.Flags is CodeObjectFlags.Function ?
-            PyFrameVariables.CreateForCommonFunctionCall(context, globals, code) :
-            PyFrameVariables.Create(globals, code.LocalsTable);
+            PyVariables.CreateUsingStackMemoryAllocator(globals, context, code) :
+            PyVariables.CreateUsingArrayPool(globals, code.LocalsTable);
 
         return new PyInternalFrame(
             context,
@@ -107,8 +108,7 @@ internal partial struct PyInternalFrame
 
     internal readonly PyInternalFrame CreateClassBuildFrame(PyCallContext context, PyTypeObject buildingClass, PyCodeObject code)
     {
-        var variables = PyFrameVariables.Create(Variables._globals,
-            Variables._locals?.ToClassClosure(code) ?? new PyFrameLocals(FrozenDictionary<string, int>.Empty));
+        var variables = Variables.CreateForBuildingClass(code);
 
         return new PyInternalFrame(
             context,
@@ -127,19 +127,22 @@ internal partial struct PyInternalFrame
     {
         Debug.Assert(frameType is FrameType.Exec or FrameType.Eval);
 
-        var globalVariables = globals is null ? Variables._globals : new PyFrameGlobals(globals);
-        if (!globalVariables.Globals.ContainsKey(PySpecialNames.Builtins))
-            globalVariables.Globals[PySpecialNames.Builtins] = new PyBuiltinsModuleObject();
+        PyGlobals pyGlobals = globals is null ?
+            Variables.Globals :
+            new(new StringKeyDict(globals));
 
-        var localVariables = locals is null ? null : new PyFrameLocals(locals);
+        IDictionary<string, PyObject?>? localsDictionary = (locals is null ?
+            null :
+            new StringKeyDict(locals))!;
+
         if (closure is not null)
         {
             Debug.Assert(code is not null);
-            localVariables ??= new PyFrameLocals(code.FreeVars.Index().ToFrozenDictionary(static tuple => tuple.Item, static tuple => tuple.Index));
-            localVariables.InitCells(UnsafeUtils.CastReadOnlySpan<PyObject, PyCellObject>(closure.AsSpan()));
+            var localsTable = code.FreeVars.Index().ToFrozenDictionary(static tuple => tuple.Item, static tuple => tuple.Index);
+            localsDictionary = new PyVariables.LocalDictionary(localsTable, closure.InternalArray);
         }
 
-        var variables = PyFrameVariables.Create(globalVariables, localVariables);
+        var variables = PyVariables.CreateExecEval(pyGlobals, localsDictionary);
         return new PyInternalFrame(context, variables, CallerName, Caller, frameType);
     }
 
@@ -147,7 +150,7 @@ internal partial struct PyInternalFrame
     {
         Debug.Assert(frameType is FrameType.Comprehension);
 
-        var variables = Variables.Clone();
+        var variables = Variables.CreateInline();
         var inlineFrame = new PyInternalFrame(context, variables, CallerName, Caller, frameType)
         {
             OuterNonInlineFrameIndex = OuterNonInlineFrameIndex is -1 ? context.FrameState.CurrentFrameIndex : OuterNonInlineFrameIndex,
@@ -156,11 +159,11 @@ internal partial struct PyInternalFrame
         return inlineFrame;
     }
 
-    internal readonly void InitArgs(PyArgsDef def, PyCodeObject code, PyArguments arguments)
+    internal readonly void InitArgs(PyArgsDef def, PyCodeObject code, PyArguments arguments, ReadOnlySpan<PyCellObject> closure)
     {
-        Debug.Assert(Variables._locals is not null);
-        var localsSpan = Variables._locals.LocalsSpan;
+        var localsSpan = Variables.LocalsSpan;
         arguments.Args.CopyTo(localsSpan!);
+        ReadOnlySpan<PyObject>.CastUp(closure).CopyTo(localsSpan[^closure.Length..]!);
 
         if (arguments.Kwargs is not null)
         {
@@ -174,13 +177,4 @@ internal partial struct PyInternalFrame
         if (def.KwArg is not null)
             Variables.StoreFast(index, PyDictObject.CreateDict(arguments.ExtraKwargs.Select(static kvp => KeyValuePair.Create((PyObject)PyStrObject.FromString(kvp.Key), kvp.Value))));
     }
-
-    public readonly PyResult SetVariable(string name, PyObject value)
-    {
-        if (CodeObject is not null && (CodeObject.CellVars.Contains(name) || CodeObject.FreeVars.Contains(name)))
-            return Variables.StoreDeref(name, value);
-        else
-            return Variables.StoreLocal(name, value);
-    }
-
 }

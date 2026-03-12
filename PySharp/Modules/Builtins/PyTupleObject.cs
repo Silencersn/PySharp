@@ -10,6 +10,8 @@ public class PyTupleObject : PyObject, IPyObjectRecursiveRepr, IReadOnlyList<PyO
 {
     private readonly PyObject[] _array;
 
+    internal PyObject[] InternalArray => _array;
+
     public override PyTypeObject DefaultPyType => PyTupleObjectType.Shared;
     public static PyTupleObject Empty { get; } = new([]);
 

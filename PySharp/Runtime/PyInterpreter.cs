@@ -24,7 +24,7 @@ public sealed class PyInterpreter : IDisposable
         _environment = environment;
         _mainModule = new PyModuleObject(PySpecialNames.Main);
         _mainContext = PyCallContext.CreateInterpreterMainContext(this);
-        _mainModule._pyAttributes = _mainContext.CurrentInternalFrame.Variables._globals.Globals;
+        _mainModule._pyAttributes = _mainContext.CurrentInternalFrame.Variables.Globals.Dict;
     }
 
     public static PyInterpreter Create(PyEnvironment environment)

@@ -23,10 +23,9 @@ internal static class PyCore
 
         var cells = new PyCellObject[code.FreeVars.Length];
 
-        var locals = frame.Variables._locals;
-        Debug.Assert(locals is not null);
-        var span = locals.LocalsSpan;
-        var table = locals._localsTable;
+        var variables = frame.Variables;
+        var span = variables.LocalsSpan;
+        var table = variables.LocalsTable;
         for (int i = 0; i < code.FreeVars.Length; i++)
         {
             var name = code.FreeVars[i];
@@ -43,9 +42,8 @@ internal static class PyCore
             {
                 // class
 
-                Debug.Assert(locals._locals is not null);
-                Debug.Assert(locals._locals[name] is not null);
-                obj = locals._locals[name]!;
+                Debug.Assert(variables.Locals[name] is not null);
+                obj = variables.Locals[name]!;
             }
             Debug.Assert(obj is PyCellObject);
             cells[i] = (PyCellObject)obj;
@@ -56,7 +54,7 @@ internal static class PyCore
 
     public static PyFunctionObject MakeFunction(ref PyInternalFrame frame, PyCodeObject codeObject, PyArgsDef def)
     {
-        return new PyFunctionObject(codeObject.Name, GetFreeVars(ref frame, codeObject), frame.Variables._globals, codeObject, def);
+        return new PyFunctionObject(codeObject.Name, GetFreeVars(ref frame, codeObject), frame.Variables.Globals, codeObject, def);
     }
 
     public static PyTypeObject BuildClass(PyCallContext context, PyCodeObject codeObject, List<PyTypeObject> bases)
@@ -67,7 +65,7 @@ internal static class PyCore
         PyTypeObject.ValidateBases(context, bases, out var layoutTypeOwner);
         var type = layoutTypeOwner.CreateUserDefinedTypeWithSameLayout(codeObject.Name, codeObject.QualName, bases);
 
-        if (context.CurrentInternalFrame.Variables.Globals.TryGetValue(PySpecialNames.Name, out var module))
+        if (context.CurrentInternalFrame.Variables.GlobalsDict.TryGetValue(PySpecialNames.Name, out var module))
             type.ModuleAsObject = module;
         else
             type.ModuleAsObject = PyStrObject.FromString("builtins");
@@ -78,8 +76,7 @@ internal static class PyCore
             // TODO: unwrap
             Eval(context, codeObject.Bytecode);
 
-        Debug.Assert(newFrame.Variables._locals is not null);
-        foreach (var pair in newFrame.Variables._locals.EnumerateVariablesForBuildingClass())
+        foreach (var pair in newFrame.Variables.EnumerateVariablesForBuildingClass())
         {
             if (pair.Value is null)
                 continue;
