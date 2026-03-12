@@ -147,7 +147,7 @@ public sealed class PyInterpreter : IDisposable
     internal static void RunCodeWithContext(PyCallContext context, string code, PyModuleObject module, string sourceName)
     {
         var codeObj = Compiler.CompileExec(context, code, sourceName);
-        PyVirtualMachine.ExecuteToObject(context, codeObj.Bytecode, module);
+        PyVirtualMachine.ExecuteToObject(context, codeObj, module);
     }
 
     public static void RunRepl()

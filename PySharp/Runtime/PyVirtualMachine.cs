@@ -25,15 +25,16 @@ public static partial class PyVirtualMachine
     internal static PyModuleObject Execute(PyCallContext context, PyCodeObject code)
     {
         var module = new PyModuleObject(code.Name);
-        ExecuteToObject(context, code.Bytecode, module);
+        ExecuteToObject(context, code, module);
         return module;
     }
-    internal static void ExecuteToObject(PyCallContext context, Bytecode bytecode, PyModuleObject module)
+    internal static void ExecuteToObject(PyCallContext context, PyCodeObject code, PyModuleObject module)
     {
         // module will be reloaded
         module._pyAttributes = context.CurrentInternalFrame.Variables.Globals.Dict;
 
-        _ = PyCore.Eval(context, bytecode).PyUnwrap(context);
+        context.CurrentInternalFrame.CodeObject = code;
+        _ = PyCore.Eval(context, code.Bytecode).PyUnwrap(context);
 
         Debug.Assert(ReferenceEquals(module.PyAttributes, context.CurrentInternalFrame.Variables.Globals.Dict));
         module.PyAttributes[PySpecialNames.Name] = PyStrObject.FromString(module.Name);

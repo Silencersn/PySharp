@@ -37,7 +37,7 @@ partial class PyEnvironment
         var frame = PyInternalFrame.CreateModuleFrame(context, isRoot: false, qualifiedName);
         using var withFrame = context.WithFrame(ref frame);
 
-            module = PyStandardLibrary.TryCreateModule(context, qualifiedName);
+        module = PyStandardLibrary.TryCreateModule(context, qualifiedName);
         if (module is not null)
         {
             module.OnImport(context, this);

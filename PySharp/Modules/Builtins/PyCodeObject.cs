@@ -123,8 +123,6 @@ public sealed class PyCodeObject : PyObject
 
     internal PyCodeObject(string name, Bytecode bytecode)
     {
-        // used by generator expression
-
         LocalsTable = FrozenDictionary<string, int>.Empty;
         Bytecode = bytecode;
         Flags = CodeObjectFlags.Generator;
