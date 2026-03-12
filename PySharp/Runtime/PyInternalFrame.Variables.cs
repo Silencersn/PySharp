@@ -13,7 +13,6 @@ partial struct PyInternalFrame
         internal readonly PyFrameGlobals _globals;
         internal readonly PyFrameLocals? _locals;
 
-        public IDictionary<string, PyObject?> Locals => _locals?.Locals ?? _globals.Globals!;
         public IDictionary<string, PyObject> Globals => _globals.Globals;
 
         private PyFrameVariables(PyFrameGlobals globals, PyFrameLocals? locals)
@@ -51,7 +50,10 @@ partial struct PyInternalFrame
 
         private bool TryLoadFromLocal(string name, [MaybeNullWhen(true)] out PyObject? value)
         {
-            return Locals.TryGetValue(name, out value);
+            if (_locals is null)
+                return Globals.TryGetValue(name, out value);
+
+            return _locals.TryGetVariable(name, out value);
         }
 
         private bool TryLoadFromBuiltins(string name, [NotNullWhen(true)] out PyObject? value)
@@ -189,7 +191,11 @@ partial struct PyInternalFrame
 
         public PyResult StoreLocal(string name, PyObject value)
         {
-            Locals[name] = value;
+            if (_locals is not null)
+                _locals.SetVariable(name, value);
+            else
+                Globals[name] = value;
+
             return PyNoneObject.None;
         }
 
@@ -240,8 +246,16 @@ partial struct PyInternalFrame
 
         public PyResult DeleteLocal(string name)
         {
-            if (Locals.Remove(name))
-                return PyNoneObject.None;
+            if (_locals is not null)
+            {
+                if (_locals.DeleteVariable(name))
+                    return PyNoneObject.None;
+            }
+            else
+            {
+                if (Globals.Remove(name))
+                    return PyNoneObject.None;
+            }
 
             return PyResult.UnboundLocalError($"cannot access local variable '{name}' where it is not associated with a value");
         }

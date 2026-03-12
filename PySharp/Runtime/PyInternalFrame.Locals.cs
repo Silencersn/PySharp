@@ -17,9 +17,9 @@ partial struct PyInternalFrame
         private bool _canDispose;
         private Memory<PyObject?> _memory;
         private PyObject?[]? _localsPlus;
-
         internal readonly FrozenDictionary<string, int> _localsTable;
-        private IDictionary<string, PyObject?>? _locals;
+
+        internal IDictionary<string, PyObject?>? _locals;
         private PyDictObject? _pyDict;
 
         internal PyFrameLocals(PyCallContext context, PyCodeObject codeObject)
@@ -44,6 +44,7 @@ partial struct PyInternalFrame
             _localsTable = localsTable;
             _localsPlus = ArrayPool<PyObject?>.Shared.Rent(localsTable.Count);
             _memory = _localsPlus;
+            _canDispose = true;
         }
         private PyFrameLocals(FrozenDictionary<string, int> localsTable, PyObject?[] localPlus)
         {
@@ -87,8 +88,41 @@ partial struct PyInternalFrame
         internal Span<PyObject?> LocalsSpan => LocalsPlusMemroy.Span[.._localsTable.Count];
         internal Span<PyObject?> LocalsSpanUnsafe => LocalsPlusMemroy.Span;
         internal Span<PyObject> OperandStackSpan => LocalsPlusMemroy.Span[_localsTable.Count..]!;
-        public IDictionary<string, PyObject?> Locals => _locals ??= new LocalDictionary(_localsTable, LocalsPlusMemroy);
+        private IDictionary<string, PyObject?> Locals => _locals ??= new LocalDictionary(_localsTable, LocalsPlusMemroy);
         public PyDictObject PyDict => _pyDict ??= PyDictObject.CreateProxy(new DictAdapter(Locals));
+
+        public bool TryGetVariable(string name, out PyObject? value)
+        {
+            if (_localsTable.TryGetValue(name, out var index))
+            {
+                value = LocalsSpanUnsafe[index];
+                return true;
+            }
+
+            return Locals.TryGetValue(name, out value);
+        }
+
+        public void SetVariable(string name, PyObject value)
+        {
+            if (_localsTable.TryGetValue(name, out var index))
+            {
+                LocalsSpanUnsafe[index] = value;
+                return;
+            }
+
+            Locals[name] = value;
+        }
+        public bool DeleteVariable(string name)
+        {
+            if (_localsTable.TryGetValue(name, out var index))
+            {
+                var orig = LocalsSpanUnsafe[index];
+                LocalsSpanUnsafe[index] = null;
+                return orig is not null;
+            }
+
+            return Locals.Remove(name);
+        }
 
         public PyFrameLocals Clone()
         {
@@ -105,14 +139,31 @@ partial struct PyInternalFrame
 
         public PyFrameLocals ToClassClosure(PyCodeObject code)
         {
-            PyObject[] freeVars = [..code.FreeVars.Select(name =>
-            {
-                var obj = Locals[name];
-                Debug.Assert(obj is PyCellObject);
-                return obj;
-            })];
+            var localsPlus = new PyObject?[code.LocalsTable.Count];
+            Debug.Assert(localsPlus is not null);
 
-            return new PyFrameLocals(code.LocalsTable, freeVars);
+            var span = LocalsSpan;
+            for (int i = 0; i < code.FreeVars.Length; i++)
+            {
+                var name = code.FreeVars[i];
+                var obj = span[_localsTable[name]];
+                localsPlus[i] = obj;
+            }
+
+            return new PyFrameLocals(code.LocalsTable, localsPlus);
+        }
+
+        internal IEnumerable<KeyValuePair<string, PyObject>> EnumerateVariablesForBuildingClass()
+        {
+            if (_locals is null)
+                return [];
+
+            Debug.Assert(_locals is LocalDictionary);
+            var extra = ((LocalDictionary)_locals).ExtraLocals;
+            if (extra is null)
+                return [];
+
+            return extra.Where(static pair => pair.Value is not null)!;
         }
 
         internal void InitCells(ReadOnlySpan<PyCellObject> closure)

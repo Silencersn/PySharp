@@ -21,12 +21,37 @@ internal static class PyCore
         if (code.FreeVars.Length is 0)
             return null;
 
-        var variables = frame.Variables;
-        return [.. code.FreeVars.Select(name => {
-            var obj = variables.Locals[name];
+        var cells = new PyCellObject[code.FreeVars.Length];
+
+        var locals = frame.Variables._locals;
+        Debug.Assert(locals is not null);
+        var span = locals.LocalsSpan;
+        var table = locals._localsTable;
+        for (int i = 0; i < code.FreeVars.Length; i++)
+        {
+            var name = code.FreeVars[i];
+
+            PyObject obj;
+            if (table.TryGetValue(name, out var index))
+            {
+                // function
+
+                Debug.Assert(span[index] is not null);
+                obj = span[index]!;
+            }
+            else
+            {
+                // class
+
+                Debug.Assert(locals._locals is not null);
+                Debug.Assert(locals._locals[name] is not null);
+                obj = locals._locals[name]!;
+            }
             Debug.Assert(obj is PyCellObject);
-            return (PyCellObject)obj;
-        })];
+            cells[i] = (PyCellObject)obj;
+        }
+
+        return cells;
     }
 
     public static PyFunctionObject MakeFunction(ref PyInternalFrame frame, PyCodeObject codeObject, PyArgsDef def)
@@ -53,7 +78,8 @@ internal static class PyCore
             // TODO: unwrap
             Eval(context, codeObject.Bytecode);
 
-        foreach (var pair in newFrame.Variables.Locals)
+        Debug.Assert(newFrame.Variables._locals is not null);
+        foreach (var pair in newFrame.Variables._locals.EnumerateVariablesForBuildingClass())
         {
             if (pair.Value is null)
                 continue;
