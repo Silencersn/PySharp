@@ -8,7 +8,9 @@ namespace PySharp.Runtime.Comparison;
 public sealed class PyObjectComparer :
     IEqualityComparer<PyObject>,
     IComparer<PyObject>,
-    IAlternateEqualityComparer<(PyCallContext Context, PyObject Object), PyObject>
+    IAlternateEqualityComparer<(PyCallContext Context, PyObject Object), PyObject>,
+    IAlternateEqualityComparer<string, PyObject>,
+    IAlternateEqualityComparer<ReadOnlySpan<char>, PyObject>
 {
     public static PyObjectComparer Default { get; } = new();
 
@@ -81,5 +83,38 @@ public sealed class PyObjectComparer :
     public PyObject Create((PyCallContext Context, PyObject Object) alternate)
     {
         return alternate.Object;
+    }
+
+    public bool Equals(string alternate, PyObject other)
+    {
+        return Equals(alternate.AsSpan(), other);
+    }
+
+    public int GetHashCode(string alternate)
+    {
+        return alternate.GetHashCode();
+    }
+
+    public PyObject Create(string alternate)
+    {
+        return PyStrObject.FromString(alternate);
+    }
+
+    public bool Equals(ReadOnlySpan<char> alternate, PyObject other)
+    {
+        if (other is not PyStrObject strObj)
+            return false;
+
+        return alternate.Equals(strObj.Value, StringComparison.Ordinal);
+    }
+
+    public int GetHashCode(ReadOnlySpan<char> alternate)
+    {
+        return string.GetHashCode(alternate);
+    }
+
+    public PyObject Create(ReadOnlySpan<char> alternate)
+    {
+        return PyStrObject.FromString(alternate.ToString());
     }
 }
