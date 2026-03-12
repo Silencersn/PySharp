@@ -58,7 +58,7 @@ internal static class BytecodeVirtualMachine
 
     internal static PyResult Eval(PyCallContext context, ref PyInternalFrame frame, ref BytecodeVirtualMachineStates states, out ValueOperandStack Stack)
     {
-        ref int currentIndex = ref states.InstructionIndex;
+        ref int currentIndex = ref frame.InstructionIndex;
         var instructions = states.Bytecode.Instructions.AsSpan();
         var consts = states.Bytecode.Consts.AsSpan();
         var names = states.Bytecode.Names.AsSpan();
@@ -589,7 +589,7 @@ internal static class BytecodeVirtualMachine
 
                     case OpCode.ReturnGenerator:
                         {
-                            states.InstructionIndex = currentIndex + 1;
+                            currentIndex++;
                             var generator = new PyBytecodeGeneratorObject(frame.CallerName, frame, states);
                             intermediateValue = generator;
                         }
@@ -598,7 +598,7 @@ internal static class BytecodeVirtualMachine
                     case OpCode.YieldValue:
                         {
                             intermediateValue = Stack.Pop();
-                            states.InstructionIndex = currentIndex + 1;
+                            currentIndex++;
                         }
                         break;
 

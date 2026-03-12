@@ -1,4 +1,5 @@
 ﻿using PySharp.Compilation.AstNodes;
+using PySharp.Compilation.Bytecodes;
 using PySharp.Compilation.CodeAnalysis;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
@@ -34,6 +35,7 @@ internal partial struct PyInternalFrame
     internal int OuterNonInlineFrameIndex = -1;
     internal int BackFrameIndex = -1;
     internal FrameType FrameType;
+    internal int InstructionIndex;
 
     internal readonly bool IsRoot => BackFrameIndex is -1;
     internal Stack<PyExceptionObject> Exceptions => _exceptions ??= [];

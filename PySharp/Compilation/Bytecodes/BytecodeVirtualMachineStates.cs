@@ -9,7 +9,6 @@ namespace PySharp.Compilation.Bytecodes;
 
 internal struct BytecodeVirtualMachineStates
 {
-    internal int InstructionIndex;
     internal PyExceptionObject? ExceptionToRaise;
     internal bool RunToEnd;
     internal Stack<BytecodeVirtualMachine.ExceptionHandler> ExceptionHandlers => field ??= [];

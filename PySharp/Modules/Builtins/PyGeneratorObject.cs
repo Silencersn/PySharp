@@ -44,6 +44,7 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
         using var withFrame = context.WithFrame(ref _frame, dispose: false);
         _vmStates.SetYieldReceivedValue(value);
         var result = BytecodeVirtualMachine.Eval(ref _vmStates);
+        _frame.InstructionIndex = context.FrameState.CurrentInternalFrame.InstructionIndex;
         if (result.IsError)
             return result;
 
@@ -62,6 +63,7 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
         _frame.BackFrameIndex = context.FrameState.CurrentFrameIndex;
         using var withFrame = context.WithFrame(ref _frame, dispose: false);
         var result = BytecodeVirtualMachine.Eval(ref _vmStates);
+        _frame.InstructionIndex = context.FrameState.CurrentInternalFrame.InstructionIndex;
 
         if (result.IsError)
         {
@@ -115,6 +117,7 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
         _frame.BackFrameIndex = context.FrameState.CurrentFrameIndex;
         using var withFrame = context.WithFrame(ref _frame, dispose: false);
         var result = BytecodeVirtualMachine.Eval(ref _vmStates);
+        _frame.InstructionIndex = context.FrameState.CurrentInternalFrame.InstructionIndex;
         if (result.IsError)
             return result;
 
