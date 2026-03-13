@@ -1,4 +1,5 @@
-﻿using PySharp.Modules.Builtins;
+﻿using PySharp.Compilation.CodeAnalysis;
+using PySharp.Modules.Builtins;
 
 namespace PySharp.Runtime.Calls;
 
@@ -44,6 +45,12 @@ partial class PyCallContext
     internal PyRuntimeException SyntaxError(string? format, params ReadOnlySpan<object?> args)
     {
         return CreateException(PySyntaxErrorObjectType.Shared, format, args);
+    }
+
+    internal PyRuntimeException SyntaxError(ICodeMetaInfoProvider compiler, string format, params ReadOnlySpan<object?> args)
+    {
+        var exc = PySyntaxErrorObjectType.Shared.Create(PyStrObject.FromString(PySR.Format(format, args)));
+        return new PyRuntimeException(this, exc, compiler);
     }
 
     internal PyRuntimeException UnicodeEncodeError(string? format, params ReadOnlySpan<object?> args)

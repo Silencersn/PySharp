@@ -82,7 +82,6 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
     internal Lexer(PyCallContext context, CodeSource codeSource)
     {
         _context = context;
-        _context.CurrentInternalFrame.MetaInfoProvider = this;
         _codeSource = codeSource;
         _tokens = new List<Token>(GetTokensDefaultCapacity(codeSource.Code.Text.Length));
         _offset = 0;
@@ -102,7 +101,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
 
     public PyRuntimeException SyntaxError(string message = PySR.InvalidSyntax, params ReadOnlySpan<object?> args)
     {
-        return _context.SyntaxError(message, args);
+        return _context.SyntaxError(this, message, args);
     }
 
     internal void InternalStart()

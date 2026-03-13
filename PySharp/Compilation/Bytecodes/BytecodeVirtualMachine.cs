@@ -37,9 +37,7 @@ internal static class BytecodeVirtualMachine
     internal static PyResult Eval(ref BytecodeVirtualMachineStates states)
     {
         ref var frame = ref states.Context.CurrentInternalFrame;
-        var origProvider = frame.MetaInfoProvider;
         var result = Eval(states.Context, ref frame, ref states, out var stack);
-        frame.MetaInfoProvider = origProvider;
 
         Debug.Assert(!states.RunToEnd || stack.Count is 0);
         if (states.RunToEnd)
@@ -477,7 +475,7 @@ internal static class BytecodeVirtualMachine
 
                     case OpCode._EnterInlineFrame:
                         {
-                            var inlineFrame = frame.CreateInlineFrame(context, FrameType.Comprehension);
+                            var inlineFrame = frame.CreateInlineFrame(FrameType.Comprehension);
                             context.FrameState.EnterFrame(ref inlineFrame);
                             frame = ref context.CurrentInternalFrame;
                         }
@@ -786,7 +784,7 @@ internal static class BytecodeVirtualMachine
                             var codeObj = (PyCodeObject)Stack.Pop();
                             Debug.Assert(codeObj.Bytecode is not null);
 
-                            var inlineFrame = frame.CreateInlineFrame(context, FrameType.Comprehension);
+                            var inlineFrame = frame.CreateInlineFrame(FrameType.Comprehension);
                             var vmStates = new BytecodeVirtualMachineStates(context, codeObj.Bytecode);
 
                             var generator = new PyBytecodeGeneratorObject(codeObj.Name, inlineFrame, vmStates);

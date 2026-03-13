@@ -3,6 +3,7 @@ using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
 using PySharp.Utility;
 using System.Diagnostics;
+using System.Xml.Linq;
 
 namespace PySharp.Runtime;
 
@@ -94,17 +95,23 @@ internal static class PyTraceback
 {
     public static PyTracebackObject CaptureCurrentFrame(PyCallContext context)
     {
-        var provider = context.CurrentInternalFrame.MetaInfoProvider;
-        var info = provider?.MetaInfo;
-        return new PyTracebackObject(info, provider);
+        ref var frame = ref context.CurrentInternalFrame;
+        if (frame.CodeObject is not null)
+        {
+            var info = frame.CodeObject.Bytecode.LineTable.Read(frame.InstructionIndex);
+            return new PyTracebackObject(info, null);
+        }
+        return new PyTracebackObject(null, null);
     }
 
-    public static TrackbackInfo GetTracebackInfo(PyCallContext context)
+    public static TrackbackInfo GetTracebackInfo(PyCallContext context, ICodeMetaInfoProvider? compiler = null)
     {
         List<(CodeMetaInfo? Info, string CallerName)> list = new(context.FrameState.CurrentFrameCount);
         string? threadInfo = null;
-        foreach (ref var frame in context.FrameState.Frames)
+        for (int i = 0; i < context.FrameState.CurrentFrameCount; i++)
         {
+            ref var frame = ref context.FrameState.Frames[i];
+
             if (frame.FrameType is FrameType.ThreadRoot)
                 threadInfo = $"Exception in thread Thread-{Environment.CurrentManagedThreadId} ({frame.CallerName}):";
 
@@ -113,14 +120,13 @@ internal static class PyTraceback
                 var info = frame.CodeObject.Bytecode.LineTable.Read(frame.InstructionIndex);
                 list.Add((info, frame.CallerName));
             }
-            else
+            else if (i == context.FrameState.CurrentFrameCount - 1)
             {
-                var provider = frame.MetaInfoProvider;
-
-                if (provider is not null)
-                    list.Add((provider.MetaInfo, frame.CallerName));
+                if (compiler is not null)
+                    list.Add((compiler.MetaInfo, frame.CallerName));
             }
         }
+
         return new TrackbackInfo([.. list], threadInfo);
     }
 }

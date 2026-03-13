@@ -192,8 +192,7 @@ public sealed class PyInterpreter : IDisposable
                         if (!PySyntaxErrorObjectType.Shared.IsInstance(e.PyException))
                             throw;
 
-                        // TODO: currently, depend on implementation details
-                        if (context.CurrentInternalFrame.MetaInfoProvider is not Parser parser)
+                        if (e.Compiler is not Parser parser)
                             throw;
 
                         if (PyIndentationErrorObjectType.Shared.IsInstance(e.PyException))

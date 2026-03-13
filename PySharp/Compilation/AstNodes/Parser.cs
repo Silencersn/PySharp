@@ -114,7 +114,6 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         _options = _context.PyEnvironment.OptimizationOptions;
         _tokenSequence = tokens;
         _codeSource = codeSource;
-        _context.CurrentInternalFrame.MetaInfoProvider = this;
         SkipUselessToken();
     }
 
@@ -125,7 +124,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
 
     public PyRuntimeException SyntaxError(string message = PySR.InvalidSyntax, params ReadOnlySpan<object?> args)
     {
-        return _context.SyntaxError(message, args);
+        return _context.SyntaxError(this, message, args);
     }
 
     private static bool IsUselessToken(Token tokenInfo)

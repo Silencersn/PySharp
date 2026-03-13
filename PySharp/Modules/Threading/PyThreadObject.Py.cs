@@ -13,13 +13,11 @@ partial class PyThreadObject : PyObject
         if (_thread is not null)
             throw new InvalidOperationException();
 
-        var metaInfoProvider = context.CurrentInternalFrame.MetaInfoProvider;
 
         _thread = new Thread(() =>
         {
             using var threadContext = PyCallContext.FromCreatingThread(context);
-            var frame = threadContext.CurrentInternalFrame;
-            frame.MetaInfoProvider = metaInfoProvider;
+            ref var frame = ref threadContext.CurrentInternalFrame;
             try
             {
                 PyInterpreter.PyTryCatch(threadContext, () => PyRun(threadContext));

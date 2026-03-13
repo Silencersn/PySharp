@@ -68,13 +68,12 @@ public sealed class SemanticAnalyzer : ICodeMetaInfoProvider
     {
         _nodesToRoot = [];
         _context = context;
-        _context.CurrentInternalFrame.MetaInfoProvider = this;
         _source = source;
     }
 
     public PyRuntimeException SyntaxError(string message = PySR.InvalidSyntax, params ReadOnlySpan<object?> args)
     {
-        return _context.SyntaxError(message, args);
+        return _context.SyntaxError(this, message, args);
     }
 
     private sealed class ScopeStats

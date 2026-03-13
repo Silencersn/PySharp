@@ -1,4 +1,5 @@
-﻿using PySharp.Runtime;
+﻿using PySharp.Compilation.CodeAnalysis;
+using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Utility;
 using System.Diagnostics;
@@ -31,10 +32,10 @@ public sealed class PyExceptionObject : PyObject
     internal bool IsGroup => AsGroup is not null;
     internal ExceptionGroupInfo? AsGroup { get; }
 
-    internal PyExceptionObject WithTraceback(PyCallContext context, bool overwriteExisting = false)
+    internal PyExceptionObject WithTraceback(PyCallContext context, bool overwriteExisting = false, ICodeMetaInfoProvider? compiler = null)
     {
         if (Traceback is null || overwriteExisting)
-            Traceback = PyTraceback.GetTracebackInfo(context);
+            Traceback = PyTraceback.GetTracebackInfo(context, compiler);
 
         return this;
     }

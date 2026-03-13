@@ -29,7 +29,6 @@ internal partial struct PyInternalFrame
     internal PyVariables Variables;
     internal PyObject? Caller;
     internal PyCodeObject? CodeObject;
-    internal ICodeMetaInfoProvider? MetaInfoProvider;
     internal Stack<PyExceptionObject>? _exceptions;
     internal FrameType FrameType;
     internal int InstructionIndex;
@@ -37,7 +36,7 @@ internal partial struct PyInternalFrame
     internal Stack<PyExceptionObject> Exceptions => _exceptions ??= [];
     internal PyExceptionObject CurrentException => Exceptions.Peek();
 
-    private PyInternalFrame(PyCallContext context, bool isRoot)
+    private PyInternalFrame(bool isRoot)
     {
         Variables = PyVariables.CreateGlobal();
         CallerName = "<module>";
@@ -52,7 +51,6 @@ internal partial struct PyInternalFrame
         FrameType = FrameType.ThreadRoot;
     }
     private PyInternalFrame(
-        PyCallContext context,
         PyVariables variables,
         string callerName,
         PyObject? caller,
@@ -71,7 +69,7 @@ internal partial struct PyInternalFrame
 
     internal static PyInternalFrame CreateModuleFrame(PyCallContext context, bool isRoot, string moduleQualifiedName)
     {
-        var frame = new PyInternalFrame(context, isRoot);
+        var frame = new PyInternalFrame(isRoot);
         var builtins = context.PyEnvironment.LoadBuiltinModule(context, "builtins");
         frame.Variables.Globals.Dict[PySpecialNames.Builtins] = builtins;
         frame.Variables.Globals.Dict[PySpecialNames.Name] = PyStrObject.FromString(moduleQualifiedName);
@@ -92,7 +90,6 @@ internal partial struct PyInternalFrame
             PyVariables.CreateUsingArrayPool(globals, code.LocalsTable);
 
         return new PyInternalFrame(
-            context,
             variables,
             callerName,
             caller,
@@ -100,12 +97,11 @@ internal partial struct PyInternalFrame
         { CodeObject = code };
     }
 
-    internal readonly PyInternalFrame CreateClassBuildFrame(PyCallContext context, PyTypeObject buildingClass, PyCodeObject code)
+    internal readonly PyInternalFrame CreateClassBuildFrame(PyTypeObject buildingClass, PyCodeObject code)
     {
         var variables = Variables.CreateForBuildingClass(code);
 
         return new PyInternalFrame(
-            context,
             variables,
             buildingClass.Name,
             buildingClass,
@@ -118,7 +114,7 @@ internal partial struct PyInternalFrame
         return new PyInternalFrame(Variables);
     }
 
-    internal readonly PyInternalFrame CreateExecEvalFrame(PyCallContext context, FrameType frameType, PyDictObject? globals, PyDictObject? locals, PyCodeObject? code = null, PyTupleObject? closure = null)
+    internal readonly PyInternalFrame CreateExecEvalFrame(FrameType frameType, PyDictObject? globals, PyDictObject? locals, PyCodeObject? code = null, PyTupleObject? closure = null)
     {
         Debug.Assert(frameType is FrameType.Exec or FrameType.Eval);
 
@@ -138,17 +134,16 @@ internal partial struct PyInternalFrame
         }
 
         var variables = PyVariables.CreateExecEval(pyGlobals, localsDictionary);
-        return new PyInternalFrame(context, variables, CallerName, Caller, frameType);
+        return new PyInternalFrame(variables, CallerName, Caller, frameType);
     }
 
-    internal readonly PyInternalFrame CreateInlineFrame(PyCallContext context, FrameType frameType)
+    internal readonly PyInternalFrame CreateInlineFrame(FrameType frameType)
     {
         Debug.Assert(frameType is FrameType.Comprehension);
 
         var variables = Variables.CreateInline();
-        var inlineFrame = new PyInternalFrame(context, variables, CallerName, Caller, frameType)
+        var inlineFrame = new PyInternalFrame(variables, CallerName, Caller, frameType)
         {
-            MetaInfoProvider = MetaInfoProvider,
             CodeObject = CodeObject
         };
         return inlineFrame;
