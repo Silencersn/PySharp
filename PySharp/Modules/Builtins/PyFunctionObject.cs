@@ -49,7 +49,7 @@ public sealed partial class PyFunctionObjectType : PyTypeObject<PyFunctionObject
 
         ref var backFrame = ref context.CurrentInternalFrame;
         var code = self.Code;
-        var frame = PyInternalFrame.CreateFuncCallFrame(context, self.Name, self, FrameType.Function, (args, kwargs), self._globals, code);
+        var frame = PyInternalFrame.CreateFuncCallFrame(context, self.Name, self, FrameType.Function, self._globals, code);
 
         frame.InitArgs(self._def, code, arguments, self.Closure);
 

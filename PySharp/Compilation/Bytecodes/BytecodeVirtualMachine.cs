@@ -38,7 +38,6 @@ internal static class BytecodeVirtualMachine
     {
         ref var frame = ref states.Context.CurrentInternalFrame;
         var origProvider = frame.MetaInfoProvider;
-        //frame.MetaInfoProvider = this; TODO
         var result = Eval(states.Context, ref frame, ref states, out var stack);
         frame.MetaInfoProvider = origProvider;
 

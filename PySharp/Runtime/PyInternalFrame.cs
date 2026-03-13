@@ -31,7 +31,6 @@ internal partial struct PyInternalFrame
     internal PyCodeObject? CodeObject;
     internal ICodeMetaInfoProvider? MetaInfoProvider;
     internal Stack<PyExceptionObject>? _exceptions;
-    internal (IReadOnlyList<PyObject> Args, IReadOnlyDictionary<string, PyObject> Kwargs)? CallingArguments;
     internal int OuterNonInlineFrameIndex = -1;
     internal int BackFrameIndex = -1;
     internal FrameType FrameType;
@@ -88,10 +87,9 @@ internal partial struct PyInternalFrame
 
         return frame;
     }
-    internal static PyInternalFrame CreateFuncCallFrame(PyCallContext context, string callerName, PyObject caller, FrameType frameType,
-        (IReadOnlyList<PyObject> Args, IReadOnlyDictionary<string, PyObject> Kwargs) callingArguments,
-        PyGlobals globals,
-        PyCodeObject code)
+    internal static PyInternalFrame CreateFuncCallFrame(PyCallContext context, string callerName,
+        PyObject caller, FrameType frameType,
+        PyGlobals globals, PyCodeObject code)
     {
         Debug.Assert(frameType is FrameType.Function);
 
@@ -105,7 +103,7 @@ internal partial struct PyInternalFrame
             callerName,
             caller,
             frameType)
-        { CallingArguments = callingArguments, CodeObject = code };
+        { CodeObject = code };
     }
 
     internal readonly PyInternalFrame CreateClassBuildFrame(PyCallContext context, PyTypeObject buildingClass, PyCodeObject code)

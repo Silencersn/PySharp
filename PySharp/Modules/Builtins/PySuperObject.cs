@@ -3,6 +3,7 @@ using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
 using PySharp.Runtime.Comparison;
 using PySharp.Runtime.PyAttributes;
+using System.Diagnostics;
 
 namespace PySharp.Modules.Builtins;
 
@@ -67,16 +68,15 @@ public sealed partial class PySuperObjectType : PyTypeObject<PySuperObjectType, 
     [PyFunctionArgsDef()]
     private static PyResult NewImpl_1(PyCallContext context, PyArguments arguments)
     {
-        var frame = context.CurrentInternalFrame;
-        if (frame.CallingArguments is null)
-            // TODO: in what situations would this happen?
+        var variables = context.CurrentInternalFrame.Variables;
+
+        if (variables.LocalsSpan.Length is 0)
             return PyResult.RuntimeError(PySR.Runtime_Super_NoArgs);
 
-        var (args, _) = frame.CallingArguments.Value;
-        if (args.Count is 0)
-            return PyResult.RuntimeError(PySR.Runtime_Super_NoArgs);
+        var objectOrType = variables.LocalsSpan[0];
+        Debug.Assert(objectOrType is not null);
 
-        var cellResult = frame.Variables.LoadLocal(PySpecialNames.Class);
+        var cellResult = variables.LoadLocal(PySpecialNames.Class);
         if (cellResult.IsError || cellResult.Value is not PyCellObject cell)
             return PyResult.RuntimeError(PySR.Runtime_Super_ClassCellNotFound);
 
@@ -86,7 +86,7 @@ public sealed partial class PySuperObjectType : PyTypeObject<PySuperObjectType, 
         if (cell.Value is not PyTypeObject type)
             return PyResult.RuntimeError(PySR.Format(PySR.Runtime_Super_ClassNonType, cell.Value.PyType.FullName));
 
-        return PySuperObject.CreateSuper(type, args[0]);
+        return PySuperObject.CreateSuper(type, objectOrType);
     }
 
     [PyFunctionArgsDef("type", "object_or_type=None", "/")]
