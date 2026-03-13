@@ -220,10 +220,10 @@ internal static class PyCore
         }
     }
 
-    public static void Raise(PyCallContext context, ref PyInternalFrame frame, PyObject? excObj, PyObject? causeObj)
+    public static void Raise(PyCallContext context, ref BytecodeVirtualMachineStates states, PyObject? excObj, PyObject? causeObj)
     {
         var exc = ToException(context, excObj)
-            ?? throw new PyRuntimeException(context, frame.CurrentException);
+            ?? throw new PyRuntimeException(context, states.CurrentException);
 
         if (causeObj is not null)
         {
@@ -238,7 +238,7 @@ internal static class PyCore
             }
         }
 
-        if (frame.Exceptions.TryPeek(out var pre))
+        if (states.Exceptions.TryPeek(out var pre))
             exc.Context = pre;
 
         throw new PyRuntimeException(context, exc);

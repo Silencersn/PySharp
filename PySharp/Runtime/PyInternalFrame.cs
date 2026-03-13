@@ -28,12 +28,8 @@ internal partial struct PyInternalFrame
     internal PyVariables Variables;
     internal PyObject? Caller;
     internal PyCodeObject? CodeObject;
-    internal Stack<PyExceptionObject>? _exceptions;
     internal FrameType FrameType;
     internal int InstructionIndex;
-
-    internal Stack<PyExceptionObject> Exceptions => _exceptions ??= [];
-    internal PyExceptionObject CurrentException => Exceptions.Peek();
 
     // currently, only thread root frame do not have code object at runtime
     internal readonly string CallerName => CodeObject is null ?
@@ -134,7 +130,7 @@ internal partial struct PyInternalFrame
         }
 
         var variables = PyVariables.CreateExecEval(pyGlobals, localsDictionary);
-        return new PyInternalFrame(variables, Caller, frameType);
+        return new PyInternalFrame(variables, Caller, frameType) { CodeObject = code };
     }
 
     internal readonly PyInternalFrame CreateInlineFrame(FrameType frameType)

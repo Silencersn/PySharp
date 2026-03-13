@@ -114,7 +114,7 @@ internal static class BytecodeVirtualMachine
 
                     case OpCode._LoadExcInfo:
                         {
-                            var exc = frame.CurrentException;
+                            var exc = states.CurrentException;
                             Stack.PushRange(exc.PyType, exc, PyTraceback.CaptureCurrentFrame(context));
                         }
                         break;
@@ -785,6 +785,7 @@ internal static class BytecodeVirtualMachine
                             Debug.Assert(codeObj.Bytecode is not null);
 
                             var inlineFrame = frame.CreateInlineFrame(FrameType.Comprehension);
+                            inlineFrame.CodeObject = codeObj;
                             var vmStates = new BytecodeVirtualMachineStates(context, codeObj.Bytecode);
 
                             var generator = new PyBytecodeGeneratorObject(codeObj.Name, inlineFrame, vmStates);
@@ -833,18 +834,18 @@ internal static class BytecodeVirtualMachine
                     case OpCode.RaiseVarArgs:
                         if (instructionArg is 0)
                         {
-                            PyCore.Raise(context, ref frame, excObj: null, causeObj: null);
+                            PyCore.Raise(context, ref states, excObj: null, causeObj: null);
                         }
                         else if (instructionArg is 1)
                         {
                             var excObj = Stack.Pop();
-                            PyCore.Raise(context, ref frame, excObj, causeObj: null);
+                            PyCore.Raise(context, ref states, excObj, causeObj: null);
                         }
                         else if (instructionArg is 2)
                         {
                             var causeObj = Stack.Pop();
                             var excObj = Stack.Pop();
-                            PyCore.Raise(context, ref frame, excObj, causeObj);
+                            PyCore.Raise(context, ref states, excObj, causeObj);
                         }
                         else
                         {
@@ -854,20 +855,20 @@ internal static class BytecodeVirtualMachine
 
                     case OpCode.CheckExcMatch:
                         var condition = PyCore.MakeExceptCondition(context, Stack[-1]);
-                        Stack[-1] = PyBoolObject.FromBoolean(condition(frame.CurrentException));
+                        Stack[-1] = PyBoolObject.FromBoolean(condition(states.CurrentException));
                         break;
 
                     case OpCode.CheckEgMatch:
                         {
-                            var exc = frame.CurrentException;
+                            var exc = states.CurrentException;
                             if (!exc.IsGroup)
                                 exc = PyBaseExceptionGroupObjectType.CreateExceptionGroup(string.Empty, [exc]);
 
                             var type = Stack.Pop();
                             var (rest, match) = PyCore.SplitExceptionGroup(context, exc, type);
-                            frame.Exceptions.Pop();
+                            states.Exceptions.Pop();
                             states.ExceptionHandlers.Peek().PyException = rest;
-                            frame.Exceptions.Push(rest! /* null if rest is None, OpCode._PopExceptionAndJumpIfNull should handle that */);
+                            states.Exceptions.Push(rest! /* null if rest is None, OpCode._PopExceptionAndJumpIfNull should handle that */);
                             Stack.Push(match);
                         }
                         break;
@@ -881,7 +882,7 @@ internal static class BytecodeVirtualMachine
                         break;
 
                     case OpCode._LoadExc:
-                        Stack.Push(frame.CurrentException);
+                        Stack.Push(states.CurrentException);
                         break;
 
                     case OpCode._SetupFinally:
@@ -907,13 +908,13 @@ internal static class BytecodeVirtualMachine
                             throw new PyRuntimeException(exc);
                         }
                         states.ExceptionHandlers.Pop();
-                        frame.Exceptions.Clear();
+                        states.Exceptions.Clear();
                         if (currentHandler.ReturnValue is not null)
                             returnValue = Move(ref currentHandler.ReturnValue);
                         break;
 
                     case OpCode._PopException:
-                        frame.Exceptions.Pop();
+                        states.Exceptions.Pop();
                         states.ExceptionHandlers.Peek().PyException = null;
                         break;
 
@@ -925,7 +926,7 @@ internal static class BytecodeVirtualMachine
                         break;
 
                     case OpCode._PopExceptionAndJumpIfNull:
-                        if (frame.Exceptions.Peek() is null)
+                        if (states.Exceptions.Peek() is null)
                         {
                             nextIndex = instructionArg;
                             goto case OpCode._PopException;
@@ -1110,7 +1111,7 @@ internal static class BytecodeVirtualMachine
                 {
                     // raise exception during finally body
 
-                    frame.Exceptions.Clear();
+                    states.Exceptions.Clear();
                     states.ExceptionHandlers.Pop();
 
                     goto handle;
@@ -1141,7 +1142,7 @@ internal static class BytecodeVirtualMachine
                 // TODO:
                 //context.EnsureFrameState(frame);
 
-                frame.Exceptions.Push(e.PyException);
+                states.Exceptions.Push(e.PyException);
             }
 
             if (instruction.OpCode is not OpCode.ExtendedArg)

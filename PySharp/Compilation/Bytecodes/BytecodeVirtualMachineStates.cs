@@ -15,6 +15,8 @@ internal struct BytecodeVirtualMachineStates
     internal readonly OperandStack? Stack;
     internal PyCallContext Context { get; }
     internal Bytecode Bytecode { get; }
+    internal Stack<PyExceptionObject> Exceptions => field ??= [];
+    internal PyExceptionObject CurrentException => Exceptions.Peek();
 
     internal List<PyObject> CacheArgs => field ??= [];
     internal OrderedDictionary<string, PyObject> CacheKwargs => field ??= [];
