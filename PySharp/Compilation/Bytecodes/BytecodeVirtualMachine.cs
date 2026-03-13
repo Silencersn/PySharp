@@ -4,6 +4,7 @@ using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
+using System.Collections;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
@@ -36,25 +37,13 @@ internal static class BytecodeVirtualMachine
 
     internal static PyResult Eval(ref BytecodeVirtualMachineStates states)
     {
-        ref var frame = ref states.Context.CurrentInternalFrame;
-        var result = Eval(states.Context, ref frame, ref states, out var stack);
+        var context = states.Context;
+        ref var frame = ref context.CurrentInternalFrame;
+        ValueOperandStack Stack;
+        PyResult evalResult;
 
-        Debug.Assert(!states.RunToEnd || stack.Count is 0);
-        if (states.RunToEnd)
-        {
-            frame.Dispose(states.Context);
-            states.Stack?.Dispose();
-        }
-        else
-        {
-            Debug.Assert(states.Stack is not null);
-            states.Stack.Count = stack.Count;
-        }
-        return result;
-    }
+        #region Eval Body
 
-    internal static PyResult Eval(PyCallContext context, ref PyInternalFrame frame, ref BytecodeVirtualMachineStates states, out ValueOperandStack Stack)
-    {
         ref int currentIndex = ref frame.InstructionIndex;
         var instructions = states.Bytecode.Instructions.AsSpan();
         var consts = states.Bytecode.Consts.AsSpan();
@@ -1068,7 +1057,10 @@ internal static class BytecodeVirtualMachine
                 #endregion Eval OpCode
 
                 if (intermediateValue is not null)
-                    return intermediateValue;
+                {
+                    evalResult = intermediateValue;
+                    goto eval_end;
+                }
 
                 if (returnValue is not null)
                 {
@@ -1076,7 +1068,8 @@ internal static class BytecodeVirtualMachine
                     if (!states.ExceptionHandlers.TryPeek(out var handler))
                     {
                         states.RunToEnd = true;
-                        return returnValue;
+                        evalResult = returnValue;
+                        goto eval_end;
                     }
 
                     if (handler.State is ExceptionHandler.State_Finally)
@@ -1097,7 +1090,8 @@ internal static class BytecodeVirtualMachine
                 {
                     Stack.Clear();
                     states.RunToEnd = true;
-                    return PyResult.FromException(e.PyException);
+                    evalResult = PyResult.FromException(e.PyException);
+                    goto eval_end;
                 }
 
                 if (currentHandler.State is ExceptionHandler.State_Except)
@@ -1165,7 +1159,24 @@ internal static class BytecodeVirtualMachine
         }
 
         states.RunToEnd = true;
-        return PyNoneObject.None;
+        evalResult = PyNoneObject.None;
+
+        #endregion Eval Body
+
+    eval_end:
+        Debug.Assert(!states.RunToEnd || Stack.Count is 0);
+        if (states.RunToEnd)
+        {
+            frame.Dispose(states.Context);
+            states.Stack?.Dispose();
+        }
+        else
+        {
+            Debug.Assert(states.Stack is not null);
+            states.Stack.Count = Stack.Count;
+        }
+
+        return evalResult;
     }
 
 
