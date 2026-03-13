@@ -25,7 +25,6 @@ internal enum FrameType
 
 internal partial struct PyInternalFrame
 {
-    internal string CallerName;
     internal PyVariables Variables;
     internal PyObject? Caller;
     internal PyCodeObject? CodeObject;
@@ -36,28 +35,31 @@ internal partial struct PyInternalFrame
     internal Stack<PyExceptionObject> Exceptions => _exceptions ??= [];
     internal PyExceptionObject CurrentException => Exceptions.Peek();
 
+    // currently, only thread root frame do not have code object at runtime
+    internal readonly string CallerName => CodeObject is null ?
+        $"<thread-{Environment.CurrentManagedThreadId}>" :
+        CodeObject.Flags is CodeObjectFlags.Module ?
+        "<module>" :
+        CodeObject.Name;
+
     private PyInternalFrame(bool isRoot)
     {
         Variables = PyVariables.CreateGlobal();
-        CallerName = "<module>";
         Caller = null;
         FrameType = isRoot ? FrameType.MainRoot : FrameType.Module;
     }
     private PyInternalFrame(PyVariables variables)
     {
         Variables = variables.CreatePlaceholder();
-        CallerName = $"<thread-{Environment.CurrentManagedThreadId}>";
         Caller = null;
         FrameType = FrameType.ThreadRoot;
     }
     private PyInternalFrame(
         PyVariables variables,
-        string callerName,
         PyObject? caller,
         FrameType frameType)
     {
         Variables = variables;
-        CallerName = callerName;
         Caller = caller;
         FrameType = frameType;
     }
@@ -79,9 +81,9 @@ internal partial struct PyInternalFrame
 
         return frame;
     }
-    internal static PyInternalFrame CreateFuncCallFrame(PyCallContext context, string callerName,
-        PyObject caller, FrameType frameType,
-        PyGlobals globals, PyCodeObject code)
+    internal static PyInternalFrame CreateFuncCallFrame(PyCallContext context, PyObject caller,
+        FrameType frameType, PyGlobals globals,
+        PyCodeObject code)
     {
         Debug.Assert(frameType is FrameType.Function);
 
@@ -91,7 +93,6 @@ internal partial struct PyInternalFrame
 
         return new PyInternalFrame(
             variables,
-            callerName,
             caller,
             frameType)
         { CodeObject = code };
@@ -103,7 +104,6 @@ internal partial struct PyInternalFrame
 
         return new PyInternalFrame(
             variables,
-            buildingClass.Name,
             buildingClass,
             FrameType.Class)
         { CodeObject = code };
@@ -134,7 +134,7 @@ internal partial struct PyInternalFrame
         }
 
         var variables = PyVariables.CreateExecEval(pyGlobals, localsDictionary);
-        return new PyInternalFrame(variables, CallerName, Caller, frameType);
+        return new PyInternalFrame(variables, Caller, frameType);
     }
 
     internal readonly PyInternalFrame CreateInlineFrame(FrameType frameType)
@@ -142,7 +142,7 @@ internal partial struct PyInternalFrame
         Debug.Assert(frameType is FrameType.Comprehension);
 
         var variables = Variables.CreateInline();
-        var inlineFrame = new PyInternalFrame(variables, CallerName, Caller, frameType)
+        var inlineFrame = new PyInternalFrame(variables, Caller, frameType)
         {
             CodeObject = CodeObject
         };

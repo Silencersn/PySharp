@@ -16,20 +16,20 @@ public sealed class PyFunctionObject : PyObject, IPyObjectName
     internal PyGlobals _globals;
     private readonly PyCodeObject _code;
 
-    public string Name { get; }
+    public string Name => _code.Name;
     internal ReadOnlySpan<PyCellObject> Closure => _closure;
     internal PyCodeObject Code => _code;
 
     public override PyTypeObject DefaultPyType => PyFunctionObjectType.Shared;
 
-    internal PyFunctionObject(string name, PyCellObject[]? closure, PyGlobals globals, PyCodeObject code, PyArgsDef def)
+    internal PyFunctionObject(PyCellObject[]? closure, PyGlobals globals, PyCodeObject code, PyArgsDef def)
     {
-        Name = name;
-        PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
         _closure = closure;
         _globals = globals;
         _code = code;
         _def = def;
+
+        PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
     }
 }
 
@@ -49,7 +49,7 @@ public sealed partial class PyFunctionObjectType : PyTypeObject<PyFunctionObject
 
         ref var backFrame = ref context.CurrentInternalFrame;
         var code = self.Code;
-        var frame = PyInternalFrame.CreateFuncCallFrame(context, self.Name, self, FrameType.Function, self._globals, code);
+        var frame = PyInternalFrame.CreateFuncCallFrame(context, self, FrameType.Function, self._globals, code);
 
         frame.InitArgs(self._def, code, arguments, self.Closure);
 

@@ -54,7 +54,7 @@ internal static class PyCore
 
     public static PyFunctionObject MakeFunction(ref PyInternalFrame frame, PyCodeObject codeObject, PyArgsDef def)
     {
-        return new PyFunctionObject(codeObject.Name, GetFreeVars(ref frame, codeObject), frame.Variables.Globals, codeObject, def);
+        return new PyFunctionObject(GetFreeVars(ref frame, codeObject), frame.Variables.Globals, codeObject, def);
     }
 
     public static PyTypeObject BuildClass(PyCallContext context, PyCodeObject codeObject, List<PyTypeObject> bases)

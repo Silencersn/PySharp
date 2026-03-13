@@ -9,10 +9,10 @@ namespace PySharp.Runtime;
 
 public sealed class TrackbackInfo
 {
-    public IReadOnlyList<(CodeMetaInfo? Info, string CallerName)> Frames { get; }
+    public IReadOnlyList<(CodeMetaInfo? Info, string? CallerName)> Frames { get; }
     public string? ThreadInfo { get; }
 
-    public TrackbackInfo(IReadOnlyList<(CodeMetaInfo? Info, string CallerName)> frames, string? threadInfo = null)
+    public TrackbackInfo(IReadOnlyList<(CodeMetaInfo? Info, string? CallerName)> frames, string? threadInfo = null)
     {
         Frames = frames;
         ThreadInfo = threadInfo;
@@ -29,13 +29,14 @@ public sealed class TrackbackInfo
         }
     }
 
-    internal static void Print(IndentedStringBuilder builder, CodeMetaInfo info, string callerName)
+    internal static void Print(IndentedStringBuilder builder, CodeMetaInfo info, string? callerName)
     {
         using (builder.Indent())
         {
-            builder
-                .AppendFormat("File \"{0}\", line {1}, in {2}", info.Source?.Name ?? "<unknown>", info.Start.Line, callerName)
-                .AppendLine();
+            builder.AppendFormat("File \"{0}\", line {1}", info.Source?.Name ?? "<unknown>", info.Start.Line);
+            if (callerName is not null)
+                builder.AppendFormat(", in {0}", callerName);
+            builder.AppendLine();
 
             var origLine = info.FirstLine.TrimEnd();
             var line = origLine.TrimStart();
@@ -106,7 +107,7 @@ internal static class PyTraceback
 
     public static TrackbackInfo GetTracebackInfo(PyCallContext context, ICodeMetaInfoProvider? compiler = null)
     {
-        List<(CodeMetaInfo? Info, string CallerName)> list = new(context.FrameState.CurrentFrameCount);
+        List<(CodeMetaInfo? Info, string? CallerName)> list = new(context.FrameState.CurrentFrameCount);
         string? threadInfo = null;
         for (int i = 0; i < context.FrameState.CurrentFrameCount; i++)
         {
@@ -123,7 +124,7 @@ internal static class PyTraceback
             else if (i == context.FrameState.CurrentFrameCount - 1)
             {
                 if (compiler is not null)
-                    list.Add((compiler.MetaInfo, frame.CallerName));
+                    list.Add((compiler.MetaInfo, null));
             }
         }
 
