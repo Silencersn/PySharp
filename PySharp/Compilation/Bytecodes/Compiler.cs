@@ -16,7 +16,7 @@ internal static class Compiler
         var node = parse(context, source, tokens);
         var model = SemanticAnalyzer.Analyze(context, source, node);
         var bytecode = BytecodeCompiler.Compile(model, source, onlyAsName);
-        return new PyCodeObject(sourceName, bytecode);
+        return new PyCodeObject(sourceName, bytecode, CodeObjectFlags.Module);
     }
 
     public static PyCodeObject CompileExec(PyCallContext context, string code, string sourceName, bool onlyAsName = false)

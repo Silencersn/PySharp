@@ -578,7 +578,7 @@ partial class BytecodeCompiler
 
         Generator = currentGenerator;
 
-        var codeObj = new PyCodeObject("<genexpr>", bytecode);
+        var codeObj = new PyCodeObject("<genexpr>", bytecode, CodeObjectFlags.Generator);
         Generator.Emit(OpCode.LoadConst, codeObj);
         Generator.Emit(OpCode._MakeGeneratorExp);
     }

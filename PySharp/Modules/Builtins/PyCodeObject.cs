@@ -17,6 +17,7 @@ public enum CodeObjectFlags
     Function = 1 << 2,
     Generator = 1 << 3,
     Class = 1 << 4,
+    Module = 1 << 5,
 }
 
 public sealed class PyCodeObject : PyObject
@@ -121,11 +122,11 @@ public sealed class PyCodeObject : PyObject
         PyAttributes.Add("co_stacksize", PyIntObject.FromInteger(bytecode.StackSize));
     }
 
-    internal PyCodeObject(string name, Bytecode bytecode)
+    internal PyCodeObject(string name, Bytecode bytecode, CodeObjectFlags flags)
     {
         LocalsTable = FrozenDictionary<string, int>.Empty;
         Bytecode = bytecode;
-        Flags = CodeObjectFlags.Generator;
+        Flags = flags;
 
         Name = name;
         QualName = name;

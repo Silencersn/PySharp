@@ -843,17 +843,17 @@ public static partial class PyBuiltinFunctions
         if (arguments[2] is not PyStrObject mode)
             return PyResult.TypeError(PySR.Runtime_Builtin_Compile_ModeWrongType, arguments[2].PyType.FullName);
 
-        var bytecode = mode.Value switch
+        var codeObject = mode.Value switch
         {
-            "exec" => Compiler.CompileExec(context, source.Value, filename.Value, onlyAsName: true).Bytecode,
-            "eval" => Compiler.CompileEval(context, source.Value, filename.Value, onlyAsName: true).Bytecode,
-            "single" => Compiler.CompileSingle(context, source.Value, filename.Value, appendNewLine: false, onlyAsName: true).Bytecode,
+            "exec" => Compiler.CompileExec(context, source.Value, filename.Value, onlyAsName: true),
+            "eval" => Compiler.CompileEval(context, source.Value, filename.Value, onlyAsName: true),
+            "single" => Compiler.CompileSingle(context, source.Value, filename.Value, appendNewLine: false, onlyAsName: true),
             _ => null
         };
 
-        if (bytecode is null)
+        if (codeObject is null)
             return PyResult.TypeError(PySR.Runtime_Builtin_Compile_WrongMode);
 
-        return new PyCodeObject(filename.Value, bytecode);
+        return codeObject;
     }
 }
