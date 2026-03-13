@@ -178,16 +178,16 @@ internal static class BytecodeVirtualMachine
                     case OpCode._StoreNameIncludedNonInlineFrame:
                         value = Stack.Pop();
                         frame.Variables.StoreName(names[instructionArg], value);
-                        if (frame.OuterNonInlineFrameIndex is not -1)
-                            context.FrameState.Frames[frame.OuterNonInlineFrameIndex]
+                        if (frame.FrameType is FrameType.Comprehension)
+                            context.FrameState.FindOuterNonInlineFrame()
                                 .Variables.StoreName(names[instructionArg], value);
                         break;
 
                     case OpCode._StoreDerefIncludedNonInlineFrame:
                         value = Stack.Pop();
                         _ = frame.Variables.StoreDeref(names[instructionArg], value).PyUnwrap(context);
-                        if (frame.OuterNonInlineFrameIndex is not -1)
-                            context.FrameState.Frames[frame.OuterNonInlineFrameIndex]
+                        if (frame.FrameType is FrameType.Comprehension)
+                            context.FrameState.FindOuterNonInlineFrame()
                                 .Variables.StoreDeref(names[instructionArg], value).PyUnwrap(context);
                         break;
 

@@ -29,7 +29,7 @@ partial class PyThreadObject : PyObject
                 // TODO:
                 //threadContext.EnsureFrameState(frame);
             }
-            Debug.Assert(threadContext.CurrentInternalFrame.IsRoot);
+            Debug.Assert(threadContext.FrameState.CurrentFrameCount is 1);
             // no need to context.ExitFrame()
             Debug.Assert(_thread is not null);
             context.PyEnvironment.Threads.Remove(_thread);

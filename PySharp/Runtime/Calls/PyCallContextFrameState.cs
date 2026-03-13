@@ -24,8 +24,6 @@ internal sealed partial class PyCallContextFrameState : IDisposable
 
     public void EnterFrame(ref PyInternalFrame frame)
     {
-        Debug.Assert(frame.BackFrameIndex == CurrentFrameIndex);
-
         if (_frameCount == _frames.Length)
             Array.Resize(ref _frames, _frames.Length * 2);
 
@@ -35,15 +33,24 @@ internal sealed partial class PyCallContextFrameState : IDisposable
 
     public void ExitInternalFrame(PyCallContext context, bool dispose)
     {
+        if (_frameCount is 0)
+            throw new InvalidOperationException("Could not exit frame, because it is the root");
+
         ref var frame = ref CurrentInternalFrame;
-        if (frame.BackFrameIndex is -1)
-            throw new InvalidOperationException("Could not exit frame, because it is the root frame");
-
-        Debug.Assert(frame.BackFrameIndex == CurrentFrameIndex - 1);
-
         if (dispose)
             frame.Dispose(context);
         _frames[--_frameCount] = default;
+    }
+
+    public ref PyInternalFrame FindOuterNonInlineFrame()
+    {
+        for (int i = _frameCount - 1; i >= 0; --i)
+        {
+            ref var frame = ref _frames[i];
+            if (frame.FrameType is not FrameType.Comprehension)
+                return ref frame;
+        }
+        throw new UnreachableException();
     }
 
     public Memory<PyObject?> Alloc(int size)

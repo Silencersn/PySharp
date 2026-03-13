@@ -31,18 +31,14 @@ internal partial struct PyInternalFrame
     internal PyCodeObject? CodeObject;
     internal ICodeMetaInfoProvider? MetaInfoProvider;
     internal Stack<PyExceptionObject>? _exceptions;
-    internal int OuterNonInlineFrameIndex = -1;
-    internal int BackFrameIndex = -1;
     internal FrameType FrameType;
     internal int InstructionIndex;
 
-    internal readonly bool IsRoot => BackFrameIndex is -1;
     internal Stack<PyExceptionObject> Exceptions => _exceptions ??= [];
     internal PyExceptionObject CurrentException => Exceptions.Peek();
 
     private PyInternalFrame(PyCallContext context, bool isRoot)
     {
-        BackFrameIndex = isRoot ? -1 : context.FrameState.CurrentFrameIndex;
         Variables = PyVariables.CreateGlobal();
         CallerName = "<module>";
         Caller = null;
@@ -50,7 +46,6 @@ internal partial struct PyInternalFrame
     }
     private PyInternalFrame(PyVariables variables)
     {
-        BackFrameIndex = -1;
         Variables = variables.CreatePlaceholder();
         CallerName = $"<thread-{Environment.CurrentManagedThreadId}>";
         Caller = null;
@@ -63,7 +58,6 @@ internal partial struct PyInternalFrame
         PyObject? caller,
         FrameType frameType)
     {
-        BackFrameIndex = context.FrameState.CurrentFrameIndex;
         Variables = variables;
         CallerName = callerName;
         Caller = caller;
@@ -154,7 +148,6 @@ internal partial struct PyInternalFrame
         var variables = Variables.CreateInline();
         var inlineFrame = new PyInternalFrame(context, variables, CallerName, Caller, frameType)
         {
-            OuterNonInlineFrameIndex = OuterNonInlineFrameIndex is -1 ? context.FrameState.CurrentFrameIndex : OuterNonInlineFrameIndex,
             MetaInfoProvider = MetaInfoProvider,
             CodeObject = CodeObject
         };

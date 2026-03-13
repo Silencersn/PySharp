@@ -208,7 +208,7 @@ public sealed class PyInterpreter : IDisposable
                 }
 
                 _ = PyCore.Eval(context, codeObj.Bytecode).PyUnwrap(context);
-                Debug.Assert(context.CurrentInternalFrame.IsRoot);
+                Debug.Assert(context.FrameState.CurrentFrameCount is 1);
             });
         }
     }
