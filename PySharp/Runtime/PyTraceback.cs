@@ -108,10 +108,18 @@ internal static class PyTraceback
             if (frame.FrameType is FrameType.ThreadRoot)
                 threadInfo = $"Exception in thread Thread-{Environment.CurrentManagedThreadId} ({frame.CallerName}):";
 
-            var provider = frame.MetaInfoProvider;
+            if (frame.CodeObject is not null)
+            {
+                var info = frame.CodeObject.Bytecode.LineTable.Read(frame.InstructionIndex);
+                list.Add((info, frame.CallerName));
+            }
+            else
+            {
+                var provider = frame.MetaInfoProvider;
 
-            if (provider is not null)
-                list.Add((provider.MetaInfo, frame.CallerName));
+                if (provider is not null)
+                    list.Add((provider.MetaInfo, frame.CallerName));
+            }
         }
         return new TrackbackInfo([.. list], threadInfo);
     }
