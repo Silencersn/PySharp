@@ -6,6 +6,7 @@ using PySharp.Runtime;
 using PySharp.Modules.Builtins;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Diagnostics;
 
 namespace PySharp.Compilation.AstNodes;
 
@@ -186,9 +187,65 @@ partial class SemanticAnalyzer
     {
         if (_currentScopeStats is { Scope: ClassVariableScope, ComprehensionDepth.Count: > 0 })
             throw SyntaxError(PySR.InvalidSyntax_Semantic_NamedExprInComprehensionInClass);
+
+        if (IsComprehensionIterationVariable(node.Target.Id))
+            throw SyntaxError(PySR.InvalidSyntax_Semantic_NamedExprRebindCompIterVar, node.Target.Id);
+
         VisitNode(node.Target);
         VisitNode(node.Value);
     }
+
+    private bool IsComprehensionIterationVariable(string name)
+    {
+        foreach (var comp in _currentScopeStats.ComprehensionDepth)
+        {
+            var generators = comp switch
+            {
+                ListCompNode n => n.Generators,
+                SetCompNode n => n.Generators,
+                DictCompNode n => n.Generators,
+                GeneratorExpNode n => n.Generators,
+                _ => throw new UnreachableException()
+            };
+
+            foreach (var generator in generators)
+            {
+                if (ContainsName(generator.Target, name))
+                    return true;
+            }
+        }
+        return false;
+
+        static bool ContainsName(AstExprNode target, string varName)
+        {
+            switch (target)
+            {
+                case NameNode n:
+                    return n.Id == varName;
+
+                case TupleNode n:
+                    foreach (var elt in n.Elts)
+                    {
+                        if (ContainsName(elt, varName))
+                            return true;
+                    }
+                    break;
+
+                case ListNode n:
+                    foreach (var elt in n.Elts)
+                    {
+                        if (ContainsName(elt, varName))
+                            return true;
+                    }
+                    break;
+
+                case StarredNode n:
+                    return ContainsName(n.Value, varName);
+            }
+            return false;
+        }
+    }
+
 
     private void VisitSubscript(SubscriptNode node)
     {
