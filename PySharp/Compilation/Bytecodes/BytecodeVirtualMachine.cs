@@ -1,14 +1,11 @@
-﻿using PySharp.Compilation.CodeAnalysis;
-using PySharp.Compilation.Primitives;
+﻿using PySharp.Compilation.Primitives;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
-using System.Collections;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
-using System.Text;
 
 namespace PySharp.Compilation.Bytecodes;
 

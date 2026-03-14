@@ -1,5 +1,4 @@
 using PySharp.Compilation.CodeAnalysis;
-using PySharp.Runtime;
 using PySharp.Runtime.PyAttributes;
 
 namespace PySharp.Modules.Builtins;

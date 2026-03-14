@@ -721,7 +721,7 @@ public sealed class SemanticAnalyzer : ICodeMetaInfoProvider
                 .OrderBy(pair => {
                     if (pair.Value is PyVariableType.Local)
                         return 2;
-                    
+
                     if (pair.Key == varArg || pair.Key == kwArg)
                             return 1;
 

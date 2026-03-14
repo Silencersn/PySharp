@@ -5,7 +5,6 @@ using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Text;
 
 namespace PySharp.Compilation.AstNodes;
 

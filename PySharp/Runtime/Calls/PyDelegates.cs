@@ -4,7 +4,6 @@ using PySharp.Runtime.PyAttributes;
 using PySharp.Utility;
 using System.Diagnostics;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 
 namespace PySharp.Runtime.Calls;
 
