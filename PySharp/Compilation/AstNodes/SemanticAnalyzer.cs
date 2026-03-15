@@ -277,6 +277,11 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
         Debug.Assert(ReferenceEquals(poppedNode, node));
     }
 
+    private void AddParameter(string name)
+    {
+        _currentScopeStats.Scope.Variables.Add(name, PyVariableType.Parameter);
+    }
+
     private void VisitMisc(AstNode node)
     {
         switch (node)
@@ -284,7 +289,7 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
             case AstArgNode n: 
                 if (_currentScopeStats.Scope.Variables.ContainsKey(n.Arg))
                     throw SyntaxError(PySR.InvalidSyntax_Semantic_DuplicateArgument, n.Arg);
-                _currentScopeStats.Scope.Variables[n.Arg] = PyVariableType.Parameter;
+                AddParameter(n.Arg);
                 break;
 
             case AstAliasNode n:

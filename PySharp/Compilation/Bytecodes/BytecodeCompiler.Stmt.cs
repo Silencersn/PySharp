@@ -324,7 +324,7 @@ partial class BytecodeCompiler
         foreach (var cell in scope.CellVars)
             Generator.Emit(OpCode._MakeCellFast, scope.LocalsTable[cell]);
 
-        if (scope.HasYield)
+        if (scope.IsGenerator)
         {
             Generator.Emit(OpCode.ReturnGenerator);
             Generator.Emit(OpCode.PopTop); // pop the first sent to activate the generator

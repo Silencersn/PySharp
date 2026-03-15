@@ -68,7 +68,7 @@ internal abstract class VariableScope
 
                 var currentName = Name;
                 var parent = Parent;
-                while (!parent.IsRoot && (currentName is "<lambda>" || parent.Variables[currentName] is not PyVariableType.Global))
+                while (!parent.IsRoot && (currentName is "<lambda>" or "<genexpr>" || parent.Variables[currentName] is not PyVariableType.Global))
                 {
                     if (parent is CallableVariableScope)
                         nameToRoot.Push("<locals>");
@@ -178,7 +178,7 @@ internal sealed class ClassVariableScope : VariableScope, IScopeWithFreeVars
 internal abstract class CallableVariableScope : VariableScope, IScopeWithFreeVars
 {
     internal abstract AstArgumentsNode ArgumentsNode { get; }
-    public bool HasYield { get; internal set; }
+    public bool IsGenerator { get; internal set; }
     public FrozenDictionary<string, int> LocalsTable { get; internal set; } = FrozenDictionary<string, int>.Empty;
     public ImmutableArray<string> VarNames { get; internal set; } = [];
     public ImmutableArray<string> CellVars { get; internal set; } = [];
@@ -224,5 +224,18 @@ internal sealed class LambdaVariableScope : CallableVariableScope
     public LambdaVariableScope(LambdaNode owner, VariableScope parent) : base(parent)
     {
         Owner = owner;
+    }
+}
+
+internal sealed class GeneratorExpVariableScope : CallableVariableScope
+{
+    internal override AstArgumentsNode ArgumentsNode => AstArgumentsNode.GeneratorExp;
+    public override GeneratorExpNode Owner { get; }
+    public override string? Name => "<genexpr>";
+
+    public GeneratorExpVariableScope(GeneratorExpNode owner, VariableScope parent) : base(parent)
+    {
+        Owner = owner;
+        IsGenerator = true;
     }
 }

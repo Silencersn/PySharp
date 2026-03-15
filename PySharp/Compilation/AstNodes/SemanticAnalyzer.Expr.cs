@@ -1,12 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using PySharp.Compilation.Primitives;
-using PySharp.Runtime;
+﻿using PySharp.Compilation.Primitives;
 using PySharp.Modules.Builtins;
+using PySharp.Runtime;
+using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
+using System.Data.Common;
 using System.Diagnostics;
+using System.Linq;
+using System.Text;
 
 namespace PySharp.Compilation.AstNodes;
 
@@ -50,9 +51,14 @@ partial class SemanticAnalyzer
     {
     }
 
+    private void VisitName(string name, ExprContextType ctx)
+    {
+        _currentScopeStats.Scope.AppendVariable(name, ctx);
+    }
+
     private void VisitName(NameNode node)
     {
-        _currentScopeStats.Scope.AppendVariable(node.Id, node.Ctx);
+        VisitName(node.Id, node.Ctx);
     }
 
     private void VisitCall(CallNode node)
@@ -153,9 +159,33 @@ partial class SemanticAnalyzer
 
     private void VisitGeneratorExp(GeneratorExpNode node)
     {
+        const string FirstIterVarName = ".0";
+
         _currentScopeStats.ComprehensionDepth.Push(node);
+
+        var generators = node.Generators;
+        Debug.Assert(generators.Length > 0);
+        // first iter is passed as an argument named '.0'
+        VisitNode(generators[0].Iter);
+
+        var scope = new GeneratorExpVariableScope(node, _currentScopeStats.Scope);
+        PushScope(scope);
+
+        AddParameter(FirstIterVarName);
+
         VisitNode(node.Elt);
-        VisitNodes(node.Generators);
+        for (int i = 0; i < generators.Length; i++)
+        {
+            var gen = generators[i];
+            VisitNode(gen.Target);
+            if (i is 0)
+                VisitName(FirstIterVarName, ExprContextType.Load);
+            else
+                VisitNode(gen.Iter);
+        }
+
+        PopScope();
+
         _currentScopeStats.ComprehensionDepth.Pop();
     }
 
@@ -167,7 +197,7 @@ partial class SemanticAnalyzer
         if (_currentScopeStats.Scope is not CallableVariableScope callableYieldScope)
             throw SyntaxError(PySR.InvalidSyntax_Semantic_YieldOutsideFunction);
 
-        callableYieldScope.HasYield = true;
+        callableYieldScope.IsGenerator = true;
         VisitNullableNode(node.Value);
     }
 
@@ -179,7 +209,7 @@ partial class SemanticAnalyzer
         if (_currentScopeStats.Scope is not CallableVariableScope callableYieldFromScope)
             throw SyntaxError(PySR.InvalidSyntax_Semantic_YieldFromOutsideFunction);
 
-        callableYieldFromScope.HasYield = true;
+        callableYieldFromScope.IsGenerator = true;
         VisitNode(node.Value);
     }
 

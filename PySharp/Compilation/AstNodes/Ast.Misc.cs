@@ -55,7 +55,7 @@ public static partial class Ast
 
     public static AstArgumentsNode Arguments()
     {
-        return Arguments([], [], null, [], null, [], []);
+        return AstArgumentsNode.Empty;
     }
 
     public static AstWithItemNode WithItem(AstExprNode contextExpr, AstExprNode? optionalVars)

@@ -765,21 +765,6 @@ internal static class BytecodeVirtualMachine
                         }
                         break;
 
-                    case OpCode._MakeGeneratorExp:
-                        {
-                            var codeObj = (PyCodeObject)Stack.Pop();
-                            Debug.Assert(codeObj.Bytecode is not null);
-
-                            var inlineFrame = frame.CreateInlineFrame(FrameType.Comprehension);
-                            inlineFrame.CodeObject = codeObj;
-                            var vmStates = new BytecodeVirtualMachineStates(context, codeObj.Bytecode);
-
-                            var generator = new PyBytecodeGeneratorObject(codeObj.Name, inlineFrame, vmStates);
-
-                            Stack.Push(generator);
-                        }
-                        break;
-
                     case OpCode._BuildClass:
                         {
                             var codeObj = (PyCodeObject)Stack.Pop();

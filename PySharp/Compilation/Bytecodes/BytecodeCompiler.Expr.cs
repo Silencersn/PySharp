@@ -450,7 +450,7 @@ partial class BytecodeCompiler
         }
     }
 
-    private void InternalCompileGenerators(ImmutableArray<AstComprehensionNode> generators, Action compileElt)
+    private void InternalCompileGenerators(ImmutableArray<AstComprehensionNode> generators, Action compileElt, bool isGeneratorExp = false)
     {
         CompileGenerator(0);
 
@@ -467,8 +467,15 @@ partial class BytecodeCompiler
 
             var generator = generators[i];
 
-            LoadExpr(generator.Iter);
-            Generator.Emit(OpCode.GetIter);
+            if (i is 0 && isGeneratorExp)
+            {
+                LoadName(".0");
+            }
+            else
+            {
+                LoadExpr(generator.Iter);
+                Generator.Emit(OpCode.GetIter);
+            }
             Generator.MarkLabel(forIterLabel);
             Generator.Emit(OpCode.ForIter, endForLabel);
             StoreExpr(generator.Target);
@@ -564,7 +571,13 @@ partial class BytecodeCompiler
     {
         var currentGenerator = Generator;
         Generator = BytecodeGenerator.Create(_source);
+        var currentScope = VariableScope;
 
+        var scope = Model.GetVariableScope<CallableVariableScope>(node);
+        Debug.Assert(scope is not null);
+        VariableScope = scope;
+
+        Generator.Emit(OpCode.ReturnGenerator);
         Generator.Emit(OpCode.PopTop); // pop the first sent to activate the generator
 
         InternalCompileGenerators(node.Generators, () =>
@@ -573,14 +586,20 @@ partial class BytecodeCompiler
             Generator.Emit(OpCode.YieldValue);
             Generator.Emit(OpCode._CheckExcToRaise);
             Generator.Emit(OpCode.PopTop); // no raising, pop received value
-        });
+        }, isGeneratorExp: true);
         var bytecode = Generator.ToBytecode();
 
         Generator = currentGenerator;
+        VariableScope = currentScope;
 
-        var codeObj = new PyCodeObject("<genexpr>", bytecode, CodeObjectFlags.Generator);
+        var codeObj = new PyCodeObject(scope, bytecode);
         Generator.Emit(OpCode.LoadConst, codeObj);
-        Generator.Emit(OpCode._MakeGeneratorExp);
+        Generator.Emit(OpCode._MakeFunctionWithPyArgsDef);
+
+        LoadExpr(node.Generators[0].Iter);
+        Generator.Emit(OpCode.GetIter);
+
+        Generator.Emit(OpCode.Call, 1);
     }
 
     private void CompileNamedExpr(NamedExprNode node)
@@ -637,7 +656,7 @@ partial class BytecodeCompiler
         Debug.Assert(scope is not null);
         VariableScope = scope;
 
-        if (scope.HasYield)
+        if (scope.IsGenerator)
         {
             Generator.Emit(OpCode.ReturnGenerator);
             Generator.Emit(OpCode.PopTop); // pop the first sent to activate the generator

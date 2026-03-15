@@ -98,7 +98,6 @@ internal enum OpCode : byte
     MapAdd,
     DictUpdate,
     DictMerge,
-    _MakeGeneratorExp,
 
     UnpackSequence,
     UnpackEx,

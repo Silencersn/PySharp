@@ -149,7 +149,6 @@ public sealed class Bytecode
                 case OpCode._ListToSet:
                 case OpCode._EnterInlineFrame:
                 case OpCode._ExitInlineFrame:
-                case OpCode._MakeGeneratorExp:
                 case OpCode.ConvertValue:
                 case OpCode.FormatSimple:
                 case OpCode._SetupFinally:

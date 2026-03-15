@@ -51,6 +51,9 @@ public class AstArgNode : AstNode
 
 public class AstArgumentsNode : AstNode
 {
+    internal static AstArgumentsNode Empty { get; } = new([], [], null, [], null, [], []);
+    internal static AstArgumentsNode GeneratorExp { get; } = new([Ast.Arg(".0", null)], [], null, [], null, [], []);
+
     internal AstArgumentsNode(ImmutableArray<AstArgNode> posonlyArgs, ImmutableArray<AstArgNode> args, AstArgNode? varArg, ImmutableArray<AstArgNode> kwonlyArgs, AstArgNode? kwArg, ImmutableArray<AstExprNode?> kwDefaults, ImmutableArray<AstExprNode> defaults)
     {
         PosonlyArgs = posonlyArgs;

@@ -58,7 +58,7 @@ public sealed class PyCodeObject : PyObject
         Bytecode = bytecode;
 
         Flags = CodeObjectFlags.Function;
-        if (scope.HasYield)
+        if (scope.IsGenerator)
             Flags |= CodeObjectFlags.Generator;
 
         Name = scope.Name;
