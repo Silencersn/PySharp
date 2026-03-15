@@ -8,6 +8,7 @@ using System.Data.Common;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Xml.Linq;
 
 namespace PySharp.Compilation.AstNodes;
 
@@ -134,67 +135,87 @@ partial class SemanticAnalyzer
 
     private void VisitListComp(ListCompNode node)
     {
-        _currentScopeStats.ComprehensionDepth.Push(node);
+        _currentNestedComprehensionStats.PushComprehension(node);
+        _currentNestedComprehensionStats.CurrentComprehensionStats.VisitingPart = ComprehensionStatsVisitingPart.Element;
         VisitNode(node.Elt);
         VisitNodes(node.Generators);
-        _currentScopeStats.ComprehensionDepth.Pop();
+        _currentNestedComprehensionStats.PopComprehension();
     }
 
     private void VisitSetComp(SetCompNode node)
     {
-        _currentScopeStats.ComprehensionDepth.Push(node);
+        _currentNestedComprehensionStats.PushComprehension(node);
+        _currentNestedComprehensionStats.CurrentComprehensionStats.VisitingPart = ComprehensionStatsVisitingPart.Element;
         VisitNode(node.Elt);
         VisitNodes(node.Generators);
-        _currentScopeStats.ComprehensionDepth.Pop();
+        _currentNestedComprehensionStats.PopComprehension();
     }
 
     private void VisitDictComp(DictCompNode node)
     {
-        _currentScopeStats.ComprehensionDepth.Push(node);
+        _currentNestedComprehensionStats.PushComprehension(node);
+        _currentNestedComprehensionStats.CurrentComprehensionStats.VisitingPart = ComprehensionStatsVisitingPart.Element;
         VisitNode(node.Key);
         VisitNode(node.Value);
         VisitNodes(node.Generators);
-        _currentScopeStats.ComprehensionDepth.Pop();
+        _currentNestedComprehensionStats.PopComprehension();
     }
 
     private void VisitGeneratorExp(GeneratorExpNode node)
     {
         const string FirstIterVarName = ".0";
 
-        _currentScopeStats.ComprehensionDepth.Push(node);
+        _currentNestedComprehensionStats.PushComprehension(node);
 
+        _currentNestedComprehensionStats.CurrentComprehensionStats.VisitingPart = ComprehensionStatsVisitingPart.GeneratorIter;
         var generators = node.Generators;
         Debug.Assert(generators.Length > 0);
         // first iter is passed as an argument named '.0'
         VisitNode(generators[0].Iter);
+        _currentNestedComprehensionStats.CurrentComprehensionStats.VisitingPart = ComprehensionStatsVisitingPart.None;
 
         var scope = new GeneratorExpVariableScope(node, _currentScopeStats.Scope);
         PushScope(scope);
 
         AddParameter(FirstIterVarName);
 
+        _currentNestedComprehensionStats.CurrentComprehensionStats.VisitingPart = ComprehensionStatsVisitingPart.Element;
         VisitNode(node.Elt);
         for (int i = 0; i < generators.Length; i++)
         {
             var gen = generators[i];
+
+            _nodesToRoot.Push(gen);
+
+            _currentNestedComprehensionStats.CurrentComprehensionStats.VisitingPart = ComprehensionStatsVisitingPart.GeneratorTarget;
             VisitNode(gen.Target);
+
+            _currentNestedComprehensionStats.CurrentComprehensionStats.VisitingPart = ComprehensionStatsVisitingPart.GeneratorIter;
             if (i is 0)
                 VisitName(FirstIterVarName, ExprContextType.Load);
             else
                 VisitNode(gen.Iter);
+
+            _currentNestedComprehensionStats.CurrentComprehensionStats.VisitingPart = ComprehensionStatsVisitingPart.GeneratorIfs;
+            VisitNodes(gen.Ifs);
+            _currentNestedComprehensionStats.CurrentComprehensionStats.VisitingPart = ComprehensionStatsVisitingPart.None;
+
+            _nodesToRoot.Pop();
         }
 
         PopScope();
 
-        _currentScopeStats.ComprehensionDepth.Pop();
+        _currentNestedComprehensionStats.PopComprehension();
     }
 
     private void VisitYield(YieldNode node)
     {
-        if (_currentScopeStats.CurrentComprehension is not null)
-            throw SyntaxError(PySR.InvalidSyntax_Semantic_YieldInsideComprehension, AstUtils.GetExprNodeName(_currentScopeStats.CurrentComprehension));
+        if (_currentNestedComprehensionStats.IsWithinComprehension)
+            throw SyntaxError(PySR.InvalidSyntax_Semantic_YieldInsideComprehension,
+                AstUtils.GetExprNodeName(_currentNestedComprehensionStats.CurrentComprehension));
 
-        if (_currentScopeStats.Scope is not CallableVariableScope callableYieldScope)
+        if (_currentScopeStats.Scope is not CallableVariableScope callableYieldScope
+            /* this callable scope is never genexpr because of the first if */)
             throw SyntaxError(PySR.InvalidSyntax_Semantic_YieldOutsideFunction);
 
         callableYieldScope.IsGenerator = true;
@@ -203,10 +224,12 @@ partial class SemanticAnalyzer
 
     private void VisitYieldFrom(YieldFromNode node)
     {
-        if (_currentScopeStats.CurrentComprehension is not null)
-            throw SyntaxError(PySR.InvalidSyntax_Semantic_YieldFromInsideComprehension, AstUtils.GetExprNodeName(_currentScopeStats.CurrentComprehension));
+        if (_currentNestedComprehensionStats.IsWithinComprehension)
+            throw SyntaxError(PySR.InvalidSyntax_Semantic_YieldFromInsideComprehension,
+                AstUtils.GetExprNodeName(_currentNestedComprehensionStats.CurrentComprehension));
 
-        if (_currentScopeStats.Scope is not CallableVariableScope callableYieldFromScope)
+        if (_currentScopeStats.Scope is not CallableVariableScope callableYieldFromScope
+            /* this callable scope is never genexpr because of the first if */)
             throw SyntaxError(PySR.InvalidSyntax_Semantic_YieldFromOutsideFunction);
 
         callableYieldFromScope.IsGenerator = true;
@@ -215,36 +238,100 @@ partial class SemanticAnalyzer
 
     private void VisitNamedExpr(NamedExprNode node)
     {
-        if (_currentScopeStats is { Scope: ClassVariableScope, ComprehensionDepth.Count: > 0 })
+        if (_currentScopeStats.Scope is ClassVariableScope && _currentNestedComprehensionStats.IsWithinComprehension)
             throw SyntaxError(PySR.InvalidSyntax_Semantic_NamedExprInComprehensionInClass);
 
-        if (IsComprehensionIterationVariable(node.Target.Id))
-            throw SyntaxError(PySR.InvalidSyntax_Semantic_NamedExprRebindCompIterVar, node.Target.Id);
+        CheckNamedExprIfWithinComprehension(node.Target.Id);
 
         VisitNode(node.Target);
         VisitNode(node.Value);
     }
 
-    private bool IsComprehensionIterationVariable(string name)
+    private void CheckNamedExprIfWithinComprehension(string name)
     {
-        foreach (var comp in _currentScopeStats.ComprehensionDepth)
-        {
-            var generators = comp switch
-            {
-                ListCompNode n => n.Generators,
-                SetCompNode n => n.Generators,
-                DictCompNode n => n.Generators,
-                GeneratorExpNode n => n.Generators,
-                _ => throw new UnreachableException()
-            };
+        if (!_currentNestedComprehensionStats.IsWithinComprehension)
+            return;
 
-            foreach (var generator in generators)
-            {
-                if (ContainsName(generator.Target, name))
-                    return true;
-            }
+        CheckNamedExprWithinComprehension(name, _currentNestedComprehensionStats.CurrentComprehensionStats);
+        foreach (var stats in _currentNestedComprehensionStats.ComprehensionStatsStack)
+        {
+            if (stats.Node is null)
+                // it is the root stats
+                break;
+
+            CheckNamedExprWithinComprehension(name, stats);
         }
-        return false;
+    }
+
+    private void CheckNamedExprWithinComprehension(string name, ComprehensionStats stats)
+    {
+        Debug.Assert(stats.Node is not null);
+
+        var generators = stats.Node switch
+        {
+            ListCompNode n => n.Generators,
+            SetCompNode n => n.Generators,
+            DictCompNode n => n.Generators,
+            GeneratorExpNode n => n.Generators,
+            _ => throw new UnreachableException()
+        };
+
+        switch (stats.VisitingPart)
+        {
+            case ComprehensionStatsVisitingPart.Element:
+                {
+                    foreach (var generator in generators)
+                    {
+                        if (ContainsName(generator.Target, name))
+                            throw SyntaxError(PySR.InvalidSyntax_Semantic_NamedExprRebindCompIterVar, name);
+                    }
+                }
+                break;
+
+            case ComprehensionStatsVisitingPart.GeneratorTarget:
+                throw new UnreachableException("handled by parser");
+
+            case ComprehensionStatsVisitingPart.GeneratorIter:
+                throw SyntaxError(PySR.InvalidSyntax_Semantic_NamedExprUsedInCompIter);
+
+            case ComprehensionStatsVisitingPart.GeneratorIfs:
+                {
+                    AstComprehensionNode? generator = null;
+                    int index = -1;
+                    foreach (var n in _nodesToRoot)
+                    {
+                        if (n is not AstComprehensionNode comp)
+                            continue;
+
+                        index = generators.IndexOf(comp);
+                        if (index >= 0)
+                        {
+                            generator = comp;
+                            break;
+                        }
+                    }
+                    Debug.Assert(generator is not null);
+                    Debug.Assert(index >= 0);
+
+                    for (int i = 0; i < generators.Length; i++)
+                    {
+                        if (i <= index)
+                        {
+                            if (ContainsName(generators[i].Target, name))
+                                throw SyntaxError(PySR.InvalidSyntax_Semantic_NamedExprRebindCompIterVar, name);
+                        }
+                        else
+                        {
+                            if (ContainsName(generators[i].Target, name))
+                                throw SyntaxError(PySR.InvalidSyntax_Semantic_CompIterVarRebindNamedExpr, name);
+                        }
+                    }
+                }
+                break;
+
+            default:
+                throw new UnreachableException();
+        }
 
         static bool ContainsName(AstExprNode target, string varName)
         {
@@ -275,7 +362,6 @@ partial class SemanticAnalyzer
             return false;
         }
     }
-
 
     private void VisitSubscript(SubscriptNode node)
     {

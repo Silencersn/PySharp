@@ -42,6 +42,8 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
     
     private readonly Stack<ScopeStats> _scopeStatsStack;
     private ScopeStats _currentScopeStats;
+    private readonly Stack<NestedComprehensionStats> _nestedComprehensionStatsStack;
+    private NestedComprehensionStats _currentNestedComprehensionStats;
 
     CodeMetaInfo? ICodeMetaInfoProvider.MetaInfo => _nodesToRoot.TryPeek(out var node) ? CodeMetaInfo.FromSpan(_source, node.MetaInfo.Range, node.MetaInfo.CrucialRange) : null;
 
@@ -52,6 +54,8 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
         _context = context;
         _source = source;
         _currentScopeStats = null!;
+        _nestedComprehensionStatsStack = [];
+        _currentNestedComprehensionStats = null!;
     }
 
     public PyRuntimeException SyntaxError(string message = PySR.InvalidSyntax, params ReadOnlySpan<object?> args)
@@ -64,8 +68,6 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
         public int LoopDepth;
         public int FinallyDepth;
         public readonly VariableScope Scope;
-        public Stack<AstExprNode> ComprehensionDepth => field ??= [];
-        public AstExprNode? CurrentComprehension => ComprehensionDepth.TryPeek(out var comp) ? comp : null;
 
         internal ScopeStats(VariableScope scope)
         {
@@ -73,6 +75,46 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
             LoopDepth = 0;
             FinallyDepth = 0;
         }
+    }
+
+    private sealed class NestedComprehensionStats
+    {
+        public Stack<ComprehensionStats> ComprehensionStatsStack => field ??= [];
+        public ComprehensionStats CurrentComprehensionStats;
+        public AstExprNode? CurrentComprehension => CurrentComprehensionStats.Node;
+        [MemberNotNullWhen(true, nameof(CurrentComprehension))]
+        public bool IsWithinComprehension => CurrentComprehensionStats.Node is not null;
+
+        internal void PushComprehension(AstExprNode node)
+        {
+            ComprehensionStatsStack.Push(CurrentComprehensionStats);
+            CurrentComprehensionStats = new ComprehensionStats(node);
+        }
+
+        internal void PopComprehension()
+        {
+            CurrentComprehensionStats = ComprehensionStatsStack.Pop();
+        }
+    }
+
+    private struct ComprehensionStats
+    {
+        public readonly AstExprNode? Node;
+        public ComprehensionStatsVisitingPart VisitingPart;
+
+        public ComprehensionStats(AstExprNode node)
+        {
+            Node = node;
+        }
+    }
+
+    private enum ComprehensionStatsVisitingPart
+    {
+        None,
+        Element,
+        GeneratorTarget,
+        GeneratorIter,
+        GeneratorIfs
     }
 
     internal static void FillUnknownVariables(RootVariableScope root)
@@ -201,9 +243,10 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
     internal RootVariableScope BuildBasicScope(AstModNode root)
     {
         var rootScope = new RootVariableScope(root);
-        _currentScopeStats = new ScopeStats(rootScope);
 
+        PushScope(rootScope);
         VisitNode(root);
+        PopScope();
 
         Debug.Assert(_scopeStatsStack.Count is 0);
         return rootScope;
@@ -231,12 +274,19 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
     {
         _scopeStatsStack.Push(_currentScopeStats);
         _currentScopeStats = new ScopeStats(nextScope);
+        if (nextScope is not GeneratorExpVariableScope)
+        {
+            _nestedComprehensionStatsStack.Push(_currentNestedComprehensionStats);
+            _currentNestedComprehensionStats = new NestedComprehensionStats();
+        }
     }
 
     private void PopScope()
     {
-        Debug.Assert(_currentScopeStats.CurrentComprehension is null);
         Debug.Assert(_currentScopeStats.LoopDepth is 0);
+
+        if (_currentScopeStats.Scope is not GeneratorExpVariableScope)
+            _currentNestedComprehensionStats = _nestedComprehensionStatsStack.Pop();
         _currentScopeStats = _scopeStatsStack.Pop();
     }
 
@@ -308,9 +358,14 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
                 break;
 
             case AstComprehensionNode n:
+                ref var part = ref _currentNestedComprehensionStats.CurrentComprehensionStats.VisitingPart;
+                part = ComprehensionStatsVisitingPart.GeneratorTarget;
                 VisitNode(n.Target);
+                part = ComprehensionStatsVisitingPart.GeneratorIter;
                 VisitNode(n.Iter);
+                part = ComprehensionStatsVisitingPart.GeneratorIfs;
                 VisitNodes(n.Ifs);
+                part = ComprehensionStatsVisitingPart.None;
                 break;
 
             case AstKeywordNode n:
