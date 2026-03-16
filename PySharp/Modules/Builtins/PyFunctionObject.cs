@@ -45,7 +45,7 @@ public sealed class PyFunctionObject : PyObject, IPyObjectName
     }
 }
 
-[PyType("function")]
+[PyType("function", IsSealed = true)]
 public sealed partial class PyFunctionObjectType : PyTypeObject<PyFunctionObjectType, PyFunctionObject>
 {
     protected override PyResult Repr(PyCallContext context, PyFunctionObject self)

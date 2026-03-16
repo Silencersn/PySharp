@@ -77,6 +77,7 @@ public class PyTypeGenerator : IIncrementalGenerator
                         .AppendLine($"protected override string DefaultName => {name};")
                         .AppendLine($"protected override string DefaultQualName => {qualName};")
                         .AppendLine($"protected override string DefaultModule => {pyType.AttributeData.GetNamedArgumentLiteralOrDefault("Module", "\"builtins\"")};")
+                        .AppendLine($"public override bool IsSealed => {pyType.AttributeData.GetNamedArgumentLiteralOrDefault("IsSealed", "false")};")
 
                         .AppendLine("protected override void FillSlots()")
                         .EnterBlock()

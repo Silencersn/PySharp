@@ -10,10 +10,9 @@ public class PyNoneObject : PyObject
     private PyNoneObject() { }
 }
 
-[PyType("NoneType")]
+[PyType("NoneType", IsSealed = true)]
 public sealed partial class PyNoneObjectType : PyTypeObject<PyNoneObjectType, PyNoneObject>
 {
-    public override bool IsSealed => true;
     private static readonly PyStrObject _repr = PyStrObject.FromString("None");
 
     protected override PyResult Repr(PyCallContext context, PyNoneObject self)

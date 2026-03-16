@@ -10,10 +10,9 @@ public sealed class PyEllipsisObject : PyObject
     private PyEllipsisObject() { }
 }
 
-[PyType("ellipsis")]
+[PyType("ellipsis", IsSealed = true)]
 public sealed partial class PyEllipsisObjectType : PyTypeObject<PyEllipsisObjectType, PyEllipsisObject>
 {
-    public override bool IsSealed => true;
     private static readonly PyStrObject _repr = PyStrObject.FromString("Ellipsis");
 
     protected override PyResult Repr(PyCallContext context, PyEllipsisObject self)
