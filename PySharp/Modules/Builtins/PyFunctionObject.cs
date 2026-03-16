@@ -28,6 +28,21 @@ public sealed class PyFunctionObject : PyObject, IPyObjectName
 
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
     }
+
+    internal PyResult InternalCall(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        InlinePyObjectArray buffer = default;
+        if (!_def.TryParse(args, kwargs, buffer, out var arguments))
+            return PyResult.TypeError(null /* TODO */);
+
+        ref var backFrame = ref context.CurrentInternalFrame;
+        var frame = PyInternalFrame.CreateFuncCallFrame(context, this, FrameType.Function, _globals, _code);
+
+        frame.InitArgs(_def, _code, arguments, Closure);
+
+        using var withFrame = context.WithFrame(ref frame, dispose: false);
+        return PyCore.Eval(context, _code.Bytecode, usingLocalsPlusAsOperandStack: _code.Flags is CodeObjectFlags.Function);
+    }
 }
 
 [PyType("function")]
@@ -40,18 +55,7 @@ public sealed partial class PyFunctionObjectType : PyTypeObject<PyFunctionObject
 
     protected override PyResult Call(PyCallContext context, PyFunctionObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        InlinePyObjectArray buffer = default;
-        if (!self._def.TryParse(args, kwargs, buffer, out var arguments))
-            return PyResult.TypeError(null /* TODO */);
-
-        ref var backFrame = ref context.CurrentInternalFrame;
-        var code = self.Code;
-        var frame = PyInternalFrame.CreateFuncCallFrame(context, self, FrameType.Function, self._globals, code);
-
-        frame.InitArgs(self._def, code, arguments, self.Closure);
-
-        using var withFrame = context.WithFrame(ref frame, dispose: false);
-        return PyCore.Eval(context, code.Bytecode, usingLocalsPlusAsOperandStack: code.Flags is CodeObjectFlags.Function);
+        return self.InternalCall(context, args, kwargs);
     }
 
     protected override PyResult Get(PyCallContext context, PyFunctionObject self, PyObject instance, PyObject owner)

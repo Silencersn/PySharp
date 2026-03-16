@@ -3,6 +3,7 @@ using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
+using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
@@ -262,7 +263,10 @@ internal static class BytecodeVirtualMachine
                                 Stack.Pop();
 
                             var callable = Stack.Pop();
-                            value = callable.Call(context, states.CacheArgs).PyUnwrap(context);
+                            if (callable is PyFunctionObject func)
+                                value = func.InternalCall(context, states.CacheArgs, FrozenDictionary<string, PyObject>.Empty).PyUnwrap(context);
+                            else
+                                value = callable.Call(context, states.CacheArgs).PyUnwrap(context);
                             Stack.Push(value);
                         }
                         break;
@@ -290,7 +294,10 @@ internal static class BytecodeVirtualMachine
                                 Stack.Pop();
 
                             var callable = Stack.Pop();
-                            value = callable.Call(context, states.CacheArgs, states.CacheKwargs).PyUnwrap(context);
+                            if (callable is PyFunctionObject func)
+                                value = func.InternalCall(context, states.CacheArgs, states.CacheKwargs).PyUnwrap(context);
+                            else
+                                value = callable.Call(context, states.CacheArgs, states.CacheKwargs).PyUnwrap(context);
                             Stack.Push(value);
                         }
                         break;
@@ -308,7 +315,11 @@ internal static class BytecodeVirtualMachine
                                 states.CacheKwargs.Add(str.Value, pair.Value);
                             }
 
-                            Stack[-1] = Stack[-1].Call(context, pyargs, states.CacheKwargs).PyUnwrap(context);
+                            var callable = Stack[-1];
+                            if (callable is PyFunctionObject func)
+                                Stack[-1] = func.InternalCall(context, states.CacheArgs, states.CacheKwargs).PyUnwrap(context);
+                            else
+                                Stack[-1] = callable.Call(context, pyargs, states.CacheKwargs).PyUnwrap(context);
                         }
                         break;
 
