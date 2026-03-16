@@ -67,26 +67,6 @@ public sealed partial class PyCallContext : IDisposable
         return new FrameSetter(this, ref frame, dispose);
     }
 
-    internal void EnsureFrameState(ref PyInternalFrame expectedFrame)
-    {
-        throw new NotImplementedException();
-
-        //if (ReferenceEquals(FrameState.CurrentFrame, expectedFrame))
-        //    return;
-
-        //var currentFrame = FrameState.CurrentFrame;
-        //while (currentFrame is not null && !ReferenceEquals(currentFrame, expectedFrame))
-        //    currentFrame = currentFrame.Back;
-
-        //if (currentFrame is not null)
-        //{
-        //    FrameState.CurrentFrame = currentFrame;
-        //    return;
-        //}
-
-        //throw new InvalidOperationException("Failed to restore the frame state.");
-    }
-
     internal void Exit(int exitCode)
     {
         PyEnvironment.ExitCode = exitCode;

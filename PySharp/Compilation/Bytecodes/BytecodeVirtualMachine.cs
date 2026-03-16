@@ -1126,9 +1126,6 @@ internal static class BytecodeVirtualMachine
 
                 e.PyException.WithTraceback(context, overwriteExisting: false);
 
-                // TODO:
-                //context.EnsureFrameState(frame);
-
                 states.Exceptions.Push(e.PyException);
             }
 

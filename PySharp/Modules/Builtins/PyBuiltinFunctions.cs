@@ -231,9 +231,6 @@ public static partial class PyBuiltinFunctions
         catch (PyRuntimeException e)
         {
             e.PyException.WithTraceback(context, overwriteExisting: false);
-            // TODO:
-            //context.EnsureFrameState(frame);
-
             return PyResult.FromException(e.PyException);
         }
     }
@@ -294,9 +291,6 @@ public static partial class PyBuiltinFunctions
         catch (PyRuntimeException e)
         {
             e.PyException.WithTraceback(context, overwriteExisting: false);
-            // TODO:
-            //context.EnsureFrameState(frame);
-
             return PyResult.FromException(e.PyException);
         }
     }
