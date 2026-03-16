@@ -90,5 +90,53 @@ public class PyBuiltinsModuleObject : PyModuleObject
 
         AddObjToAttrs(PyBaseExceptionGroupObjectType.Shared); // BaseExceptionGroup
         AddObjToAttrs(PyExceptionGroupObjectType.Shared); // ExceptionGroup
+
+        AddObjToAttrs(PyKeyboardInterruptObjectType.Shared); // KeyboardInterrupt
+        AddObjToAttrs(PyFloatingPointErrorObjectType.Shared); // FloatingPointError
+        AddObjToAttrs(PyOverflowErrorObjectType.Shared); // OverflowError
+        AddObjToAttrs(PyBufferErrorObjectType.Shared); // BufferError
+        AddObjToAttrs(PyEOFErrorObjectType.Shared); // EOFError
+        AddObjToAttrs(PyMemoryErrorObjectType.Shared); // MemoryError
+        AddObjToAttrs(PyOSErrorObjectType.Shared); // OSError
+        AddObjToAttrs(PyBlockingIOErrorObjectType.Shared); // BlockingIOError
+        AddObjToAttrs(PyChildProcessErrorObjectType.Shared); // ChildProcessError
+        AddObjToAttrs(PyConnectionErrorObjectType.Shared); // ConnectionError
+        AddObjToAttrs(PyBrokenPipeErrorObjectType.Shared); // BrokenPipeError
+        AddObjToAttrs(PyConnectionAbortedErrorObjectType.Shared); // ConnectionAbortedError
+        AddObjToAttrs(PyConnectionRefusedErrorObjectType.Shared); // ConnectionRefusedError
+        AddObjToAttrs(PyConnectionResetErrorObjectType.Shared); // ConnectionResetError
+        AddObjToAttrs(PyFileExistsErrorObjectType.Shared); // FileExistsError
+        AddObjToAttrs(PyFileNotFoundErrorObjectType.Shared); // FileNotFoundError
+        AddObjToAttrs(PyInterruptedErrorObjectType.Shared); // InterruptedError
+        AddObjToAttrs(PyIsADirectoryErrorObjectType.Shared); // IsADirectoryError
+        AddObjToAttrs(PyNotADirectoryErrorObjectType.Shared); // NotADirectoryError
+        AddObjToAttrs(PyPermissionErrorObjectType.Shared); // PermissionError
+        AddObjToAttrs(PyProcessLookupErrorObjectType.Shared); // ProcessLookupError
+        AddObjToAttrs(PyTimeoutErrorObjectType.Shared); // TimeoutError
+        AddObjToAttrs(PyReferenceErrorObjectType.Shared); // ReferenceError
+        AddObjToAttrs(PyNotImplementedErrorObjectType.Shared); // NotImplementedError
+        AddObjToAttrs(PyPythonFinalizationErrorObjectType.Shared); // PythonFinalizationError
+        AddObjToAttrs(PyRecursionErrorObjectType.Shared); // RecursionError
+        AddObjToAttrs(PyStopAsyncIterationObjectType.Shared); // StopAsyncIteration
+        AddObjToAttrs(PyTabErrorObjectType.Shared); // TabError
+        AddObjToAttrs(PySystemErrorObjectType.Shared); // SystemError
+        AddObjToAttrs(PyUnicodeErrorObjectType.Shared); // UnicodeError
+        AddObjToAttrs(PyUnicodeEncodeErrorObjectType.Shared); // UnicodeEncodeError
+        AddObjToAttrs(PyUnicodeDecodeErrorObjectType.Shared); // UnicodeDecodeError
+        AddObjToAttrs(PyUnicodeTranslateErrorObjectType.Shared); // UnicodeTranslateError
+
+        AddObjToAttrs(PyWarningObjectType.Shared); // Warning
+        AddObjToAttrs(PyUserWarningObjectType.Shared); // UserWarning
+        AddObjToAttrs(PySyntaxWarningObjectType.Shared); // SyntaxWarning
+        AddObjToAttrs(PyDeprecationWarningObjectType.Shared); // DeprecationWarning
+        AddObjToAttrs(PyBytesWarningObjectType.Shared); // BytesWarning
+        AddObjToAttrs(PyEncodingWarningObjectType.Shared); // EncodingWarning
+        AddObjToAttrs(PyFutureWarningObjectType.Shared); // FutureWarning
+        AddObjToAttrs(PyImportWarningObjectType.Shared); // ImportWarning
+        AddObjToAttrs(PyPendingDeprecationWarningObjectType.Shared); // PendingDeprecationWarning
+        AddObjToAttrs(PyResourceWarningObjectType.Shared); // ResourceWarning
+        AddObjToAttrs(PyRuntimeWarningObjectType.Shared); // RuntimeWarning
+        AddObjToAttrs(PyUnicodeWarningObjectType.Shared); // UnicodeWarning
     }
 }
+

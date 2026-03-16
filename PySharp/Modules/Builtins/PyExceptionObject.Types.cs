@@ -158,6 +158,99 @@ public sealed partial class PyAssertionErrorObjectType : PyExceptionType<PyAsser
 [PyType("RuntimeError")]
 public sealed partial class PyRuntimeErrorObjectType : PyExceptionType<PyRuntimeErrorObjectType, PyExceptionObjectType>;
 
+[PyType("KeyboardInterrupt")]
+public sealed partial class PyKeyboardInterruptObjectType : PyExceptionType<PyKeyboardInterruptObjectType, PyBaseExceptionObjectType>;
+
+[PyType("FloatingPointError")]
+public sealed partial class PyFloatingPointErrorObjectType : PyExceptionType<PyFloatingPointErrorObjectType, PyArithmeticErrorObjectType>;
+
+[PyType("OverflowError")]
+public sealed partial class PyOverflowErrorObjectType : PyExceptionType<PyOverflowErrorObjectType, PyArithmeticErrorObjectType>;
+
+[PyType("BufferError")]
+public sealed partial class PyBufferErrorObjectType : PyExceptionType<PyBufferErrorObjectType, PyExceptionObjectType>;
+
+[PyType("EOFError")]
+public sealed partial class PyEOFErrorObjectType : PyExceptionType<PyEOFErrorObjectType, PyExceptionObjectType>;
+
+[PyType("MemoryError")]
+public sealed partial class PyMemoryErrorObjectType : PyExceptionType<PyMemoryErrorObjectType, PyExceptionObjectType>;
+
+[PyType("OSError")]
+public sealed partial class PyOSErrorObjectType : PyExceptionType<PyOSErrorObjectType, PyExceptionObjectType>;
+
+[PyType("BlockingIOError")]
+public sealed partial class PyBlockingIOErrorObjectType : PyExceptionType<PyBlockingIOErrorObjectType, PyOSErrorObjectType>;
+
+[PyType("ChildProcessError")]
+public sealed partial class PyChildProcessErrorObjectType : PyExceptionType<PyChildProcessErrorObjectType, PyOSErrorObjectType>;
+
+[PyType("ConnectionError")]
+public sealed partial class PyConnectionErrorObjectType : PyExceptionType<PyConnectionErrorObjectType, PyOSErrorObjectType>;
+
+[PyType("BrokenPipeError")]
+public sealed partial class PyBrokenPipeErrorObjectType : PyExceptionType<PyBrokenPipeErrorObjectType, PyConnectionErrorObjectType>;
+
+[PyType("ConnectionAbortedError")]
+public sealed partial class PyConnectionAbortedErrorObjectType : PyExceptionType<PyConnectionAbortedErrorObjectType, PyConnectionErrorObjectType>;
+
+[PyType("ConnectionRefusedError")]
+public sealed partial class PyConnectionRefusedErrorObjectType : PyExceptionType<PyConnectionRefusedErrorObjectType, PyConnectionErrorObjectType>;
+
+[PyType("ConnectionResetError")]
+public sealed partial class PyConnectionResetErrorObjectType : PyExceptionType<PyConnectionResetErrorObjectType, PyConnectionErrorObjectType>;
+
+[PyType("FileExistsError")]
+public sealed partial class PyFileExistsErrorObjectType : PyExceptionType<PyFileExistsErrorObjectType, PyOSErrorObjectType>;
+
+[PyType("FileNotFoundError")]
+public sealed partial class PyFileNotFoundErrorObjectType : PyExceptionType<PyFileNotFoundErrorObjectType, PyOSErrorObjectType>;
+
+[PyType("InterruptedError")]
+public sealed partial class PyInterruptedErrorObjectType : PyExceptionType<PyInterruptedErrorObjectType, PyOSErrorObjectType>;
+
+[PyType("IsADirectoryError")]
+public sealed partial class PyIsADirectoryErrorObjectType : PyExceptionType<PyIsADirectoryErrorObjectType, PyOSErrorObjectType>;
+
+[PyType("NotADirectoryError")]
+public sealed partial class PyNotADirectoryErrorObjectType : PyExceptionType<PyNotADirectoryErrorObjectType, PyOSErrorObjectType>;
+
+[PyType("PermissionError")]
+public sealed partial class PyPermissionErrorObjectType : PyExceptionType<PyPermissionErrorObjectType, PyOSErrorObjectType>;
+
+[PyType("ProcessLookupError")]
+public sealed partial class PyProcessLookupErrorObjectType : PyExceptionType<PyProcessLookupErrorObjectType, PyOSErrorObjectType>;
+
+[PyType("TimeoutError")]
+public sealed partial class PyTimeoutErrorObjectType : PyExceptionType<PyTimeoutErrorObjectType, PyOSErrorObjectType>;
+
+[PyType("ReferenceError")]
+public sealed partial class PyReferenceErrorObjectType : PyExceptionType<PyReferenceErrorObjectType, PyExceptionObjectType>;
+
+[PyType("NotImplementedError")]
+public sealed partial class PyNotImplementedErrorObjectType : PyExceptionType<PyNotImplementedErrorObjectType, PyRuntimeErrorObjectType>;
+
+[PyType("PythonFinalizationError")]
+public sealed partial class PyPythonFinalizationErrorObjectType : PyExceptionType<PyPythonFinalizationErrorObjectType, PyRuntimeErrorObjectType>;
+
+[PyType("RecursionError")]
+public sealed partial class PyRecursionErrorObjectType : PyExceptionType<PyRecursionErrorObjectType, PyRuntimeErrorObjectType>;
+
+[PyType("StopAsyncIteration")]
+public sealed partial class PyStopAsyncIterationObjectType : PyExceptionType<PyStopAsyncIterationObjectType, PyExceptionObjectType>;
+
+[PyType("TabError")]
+public sealed partial class PyTabErrorObjectType : PyExceptionType<PyTabErrorObjectType, PyIndentationErrorObjectType>;
+
+[PyType("SystemError")]
+public sealed partial class PySystemErrorObjectType : PyExceptionType<PySystemErrorObjectType, PyExceptionObjectType>;
+
+[PyType("UnicodeDecodeError")]
+public sealed partial class PyUnicodeDecodeErrorObjectType : PyExceptionType<PyUnicodeDecodeErrorObjectType, PyUnicodeErrorObjectType>;
+
+[PyType("UnicodeTranslateError")]
+public sealed partial class PyUnicodeTranslateErrorObjectType : PyExceptionType<PyUnicodeTranslateErrorObjectType, PyUnicodeErrorObjectType>;
+
 #endregion Concrete Exceptions
 
 #region Warnings
@@ -173,5 +266,29 @@ public sealed partial class PySyntaxWarningObjectType : PyExceptionType<PySyntax
 
 [PyType("DeprecationWarning")]
 public sealed partial class PyDeprecationWarningObjectType : PyExceptionType<PyDeprecationWarningObjectType, PyWarningObjectType>;
+
+[PyType("BytesWarning")]
+public sealed partial class PyBytesWarningObjectType : PyExceptionType<PyBytesWarningObjectType, PyWarningObjectType>;
+
+[PyType("EncodingWarning")]
+public sealed partial class PyEncodingWarningObjectType : PyExceptionType<PyEncodingWarningObjectType, PyWarningObjectType>;
+
+[PyType("FutureWarning")]
+public sealed partial class PyFutureWarningObjectType : PyExceptionType<PyFutureWarningObjectType, PyWarningObjectType>;
+
+[PyType("ImportWarning")]
+public sealed partial class PyImportWarningObjectType : PyExceptionType<PyImportWarningObjectType, PyWarningObjectType>;
+
+[PyType("PendingDeprecationWarning")]
+public sealed partial class PyPendingDeprecationWarningObjectType : PyExceptionType<PyPendingDeprecationWarningObjectType, PyWarningObjectType>;
+
+[PyType("ResourceWarning")]
+public sealed partial class PyResourceWarningObjectType : PyExceptionType<PyResourceWarningObjectType, PyWarningObjectType>;
+
+[PyType("RuntimeWarning")]
+public sealed partial class PyRuntimeWarningObjectType : PyExceptionType<PyRuntimeWarningObjectType, PyWarningObjectType>;
+
+[PyType("UnicodeWarning")]
+public sealed partial class PyUnicodeWarningObjectType : PyExceptionType<PyUnicodeWarningObjectType, PyWarningObjectType>;
 
 #endregion
