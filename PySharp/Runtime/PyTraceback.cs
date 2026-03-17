@@ -19,12 +19,37 @@ public sealed class TrackbackInfo
 
     internal void Print(IndentedStringBuilder builder)
     {
+        CodeMetaInfo? preInfo = null;
+        int repeatCount = 0;
         foreach (var (info, callerName) in Frames)
         {
             if (info is null)
                 continue;
 
-            Print(builder, info, callerName);
+            if (info == preInfo)
+            {
+                repeatCount++;
+            }
+            else
+            {
+                if (repeatCount > 3)
+                {
+                    using (builder.Indent())
+                        builder.AppendLine($"[Previous line repeated {repeatCount - 3} more times]");
+                }
+
+                repeatCount = 1;
+            }
+            
+            if (repeatCount <= 3)
+                Print(builder, info, callerName);
+            preInfo = info;
+        }
+
+        if (repeatCount > 3)
+        {
+            using (builder.Indent())
+                builder.AppendLine($"[Previous line repeated {repeatCount - 3} more times]");
         }
     }
 
