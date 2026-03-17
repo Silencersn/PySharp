@@ -20,7 +20,6 @@ public partial class PyObject
     public int PyId => _pyId ??= Interlocked.Increment(ref _pyNextId);
 
     internal IDictionary<string, PyObject> PyAttributes => _pyAttributes ??= new ConcurrentDictionary<string, PyObject>();
-    internal bool IsSelfDefaultType => ReferenceEquals(PyType, DefaultPyType);
     [DebuggerBrowsable(DebuggerBrowsableState.Never)]
     internal virtual bool IsImmutable => PyType.IsTypeImmutable;
 
