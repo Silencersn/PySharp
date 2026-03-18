@@ -284,7 +284,6 @@ internal static class BytecodeVirtualMachine
                             {
                                 if (func.Code.Flags is CodeObjectFlags.Function)
                                 {
-                                    callDepth++;
                                     InlinePyObjectArray buffer = default;
                                     if (!func._def.TryParse(states.CacheArgs, FrozenDictionary<string, PyObject>.Empty, buffer, out var arguments))
                                         return PyResult.TypeError(null /* TODO */);
@@ -293,6 +292,7 @@ internal static class BytecodeVirtualMachine
                                     var newFrame = PyInternalFrame.CreateFuncCallFrame(context, func, FrameType.Function, func._globals, func.Code);
                                     newFrame.InitArgs(func._def, func.Code, arguments, func.Closure);
                                     context.FrameState.EnterFrame(ref newFrame);
+                                    callDepth++;
                                     frame = ref context.CurrentInternalFrame;
                                     states.OperandStackSize = Stack.Count;
                                     context.FrameState.PushStates(ref states);

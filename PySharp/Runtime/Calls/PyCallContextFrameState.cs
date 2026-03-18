@@ -6,7 +6,7 @@ namespace PySharp.Runtime.Calls;
 
 internal sealed partial class PyCallContextFrameState : IDisposable
 {
-    internal const int MaxRecursionDepth = 128;
+    internal const int MaxRecursionDepth = 1000;
 
     private PyInternalFrame[] _frames;
     private BytecodeVirtualMachineStates[] _statesStack;
