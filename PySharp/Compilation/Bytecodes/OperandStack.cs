@@ -93,6 +93,11 @@ internal ref struct ValueOperandStack
         _size = size;
     }
 
+    internal void SetSize(int size)
+    {
+        _size = size;
+    }
+
     public void Push(PyObject value)
     {
         _span[_size++] = value;

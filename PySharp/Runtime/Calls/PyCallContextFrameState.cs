@@ -1,4 +1,5 @@
-﻿using PySharp.Modules.Builtins;
+﻿using PySharp.Compilation.Bytecodes;
+using PySharp.Modules.Builtins;
 using System.Diagnostics;
 
 namespace PySharp.Runtime.Calls;
@@ -8,7 +9,9 @@ internal sealed partial class PyCallContextFrameState : IDisposable
     internal const int MaxRecursionDepth = 128;
 
     private PyInternalFrame[] _frames;
+    private BytecodeVirtualMachineStates[] _statesStack;
     private int _frameCount;
+    private int _statesCount;
     private readonly PyObjectMemoryAllocator _allocator;
 
     internal PyCallContextFrameState(PyInternalFrame rootFrame)
@@ -16,6 +19,8 @@ internal sealed partial class PyCallContextFrameState : IDisposable
         _frames = new PyInternalFrame[4];
         _frames[0] = rootFrame;
         _frameCount = 1;
+        _statesStack = new BytecodeVirtualMachineStates[4];
+        _statesCount = 0;
         _allocator = new PyObjectMemoryAllocator();
     }
 
@@ -45,6 +50,20 @@ internal sealed partial class PyCallContextFrameState : IDisposable
         if (dispose)
             frame.Dispose(context);
         _frames[--_frameCount] = default;
+    }
+
+    public void PushStates(ref BytecodeVirtualMachineStates states)
+    {
+        if (_statesCount == _statesStack.Length)
+            Array.Resize(ref _statesStack, _statesStack.Length * 2);
+        _statesStack[_statesCount++] = states;
+    }
+
+    public BytecodeVirtualMachineStates PopStates()
+    {
+        var states = _statesStack[_statesCount - 1];
+        _statesStack[--_statesCount] = default;
+        return states;
     }
 
     public ref PyInternalFrame FindOuterNonInlineFrame()

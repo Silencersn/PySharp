@@ -9,6 +9,7 @@ internal struct BytecodeVirtualMachineStates
 {
     internal PyExceptionObject? ExceptionToRaise;
     internal bool RunToEnd;
+    internal int OperandStackSize;
     internal Stack<BytecodeVirtualMachine.ExceptionHandler> ExceptionHandlers => field ??= [];
     internal readonly OperandStack? Stack;
     internal PyCallContext Context { get; }
@@ -28,9 +29,10 @@ internal struct BytecodeVirtualMachineStates
         Stack = usingLocalsPlusAsOperandStack ? null : new(context.CurrentInternalFrame.CodeObject.Bytecode.StackSize);
     }
 
-    internal readonly void SetYieldReceivedValue(PyObject value)
+    internal void SetYieldReceivedValue(PyObject value)
     {
         Debug.Assert(Stack is not null);
         Stack.Push(value);
+        OperandStackSize = Stack.Count;
     }
 }

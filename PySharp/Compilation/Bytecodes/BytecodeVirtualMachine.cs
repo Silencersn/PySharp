@@ -1,9 +1,10 @@
-﻿using PySharp.Compilation.CodeAnalysis;
+using PySharp.Compilation.CodeAnalysis;
 using PySharp.Compilation.Primitives;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
+using PySharp.Utility;
 using System.Collections;
 using System.Collections.Frozen;
 using System.Diagnostics;
@@ -41,22 +42,25 @@ internal static class BytecodeVirtualMachine
     {
         var context = states.Context;
         ref var frame = ref context.CurrentInternalFrame;
-        ValueOperandStack Stack;
-        PyResult evalResult;
+        var callDepth = 0;
+        PyResult evalResult = default;
+        bool needCheckEvalResult = false;
 
         #region Eval Body
 
-        ref int currentIndex = ref frame.InstructionIndex;
-
+    eval_begin:
         Debug.Assert(frame.CodeObject is not null);
+        ref int currentIndex = ref frame.InstructionIndex;
         var instructions = frame.CodeObject.Bytecode.Instructions.AsSpan();
         var consts = frame.CodeObject.Bytecode.Consts.AsSpan();
         var names = frame.CodeObject.Bytecode.Names.AsSpan();
         var length = instructions.Length;
+        ValueOperandStack Stack;
         if (states.Stack is not null)
             Stack = states.Stack.AsValueOperandStack();
         else
             Stack = new ValueOperandStack(frame.Variables.OperandStackSpan);
+        Stack.SetSize(states.OperandStackSize);
 
         // cache, clear before using
         PyObject value, left, right;
@@ -73,6 +77,12 @@ internal static class BytecodeVirtualMachine
 
             try
             {
+                if (needCheckEvalResult)
+                {
+                    needCheckEvalResult = false;
+                    Stack.Push(evalResult.PyUnwrap(context));
+                }
+
                 #region Eval OpCode
 
                 instructionArg |= instruction.Arg;
@@ -271,10 +281,35 @@ internal static class BytecodeVirtualMachine
 
                             value = Stack.Pop(); // callable
                             if (value is PyFunctionObject func)
-                                value = func.InternalCall(context, states.CacheArgs, FrozenDictionary<string, PyObject>.Empty).PyUnwrap(context);
+                            {
+                                if (func.Code.Flags is CodeObjectFlags.Function)
+                                {
+                                    callDepth++;
+                                    InlinePyObjectArray buffer = default;
+                                    if (!func._def.TryParse(states.CacheArgs, FrozenDictionary<string, PyObject>.Empty, buffer, out var arguments))
+                                        return PyResult.TypeError(null /* TODO */);
+
+                                    frame.InstructionIndex++;
+                                    var newFrame = PyInternalFrame.CreateFuncCallFrame(context, func, FrameType.Function, func._globals, func.Code);
+                                    newFrame.InitArgs(func._def, func.Code, arguments, func.Closure);
+                                    context.FrameState.EnterFrame(ref newFrame);
+                                    frame = ref context.CurrentInternalFrame;
+                                    states.OperandStackSize = Stack.Count;
+                                    context.FrameState.PushStates(ref states);
+                                    states = new BytecodeVirtualMachineStates(context, usingLocalsPlusAsOperandStack: true);
+                                    goto eval_begin;
+                                }
+                                else
+                                {
+                                    value = func.InternalCall(context, states.CacheArgs, FrozenDictionary<string, PyObject>.Empty).PyUnwrap(context);
+                                    Stack.Push(value);
+                                }
+                            }
                             else
+                            {
                                 value = value.Call(context, states.CacheArgs).PyUnwrap(context);
-                            Stack.Push(value);
+                                Stack.Push(value);
+                            }
                         }
                         break;
 
@@ -438,12 +473,14 @@ internal static class BytecodeVirtualMachine
                             var inlineFrame = frame.CreateInlineFrame(FrameType.Comprehension);
                             context.FrameState.EnterFrame(ref inlineFrame);
                             frame = ref context.CurrentInternalFrame;
+                            currentIndex = ref frame.InstructionIndex;
                         }
                         break;
 
                     case OpCode._ExitInlineFrame:
                         context.FrameState.ExitInternalFrame(context, dispose: true);
                         frame = ref context.CurrentInternalFrame;
+                        currentIndex = ref frame.InstructionIndex;
                         break;
 
                     case OpCode.ListAppend:
@@ -835,6 +872,17 @@ internal static class BytecodeVirtualMachine
         {
             Debug.Assert(states.Stack is not null);
             states.Stack.Count = Stack.Count;
+            states.OperandStackSize = Stack.Count;
+        }
+
+        if (callDepth > 0)
+        {
+            callDepth--;
+            needCheckEvalResult = true;
+            context.FrameState.ExitInternalFrame(context, dispose: true);
+            frame = ref context.CurrentInternalFrame;
+            states = context.FrameState.PopStates();
+            goto eval_begin;
         }
 
         return evalResult;
