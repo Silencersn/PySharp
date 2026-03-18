@@ -74,18 +74,19 @@ internal static class BytecodeVirtualMachine
 
         int instructionArg = 0;
 
-        while (currentIndex < length)
+    eval_resume:
+        try
         {
-            var instruction = instructions[currentIndex];
-            var nextIndex = currentIndex + 1;
-
-            try
+            if (needCheckEvalResult)
             {
-                if (needCheckEvalResult)
-                {
-                    needCheckEvalResult = false;
-                    Stack.Push(evalResult.PyUnwrap(context));
-                }
+                needCheckEvalResult = false;
+                Stack.Push(evalResult.PyUnwrap(context));
+            }
+
+            while (currentIndex < length)
+            {
+                var instruction = instructions[currentIndex];
+                var nextIndex = currentIndex + 1;
 
                 #region Eval OpCode
 
@@ -847,11 +848,18 @@ internal static class BytecodeVirtualMachine
                     returnValue = null;
                     nextIndex = handler.FinallyOffset;
                 }
+
+                if (instruction.OpCode is not OpCode.ExtendedArg)
+                    instructionArg = 0;
+
+                currentIndex = nextIndex;
             }
-            catch (PyRuntimeException e)
-            {
-            handle:
-                if (!states.ExceptionHandlers.TryPeek(out var currentHandler))
+        }
+        catch (PyRuntimeException e)
+        {
+            int nextIndex;
+        handle:
+            if (!states.ExceptionHandlers.TryPeek(out var currentHandler))
                 {
                     Stack.Clear();
                     states.RunToEnd = true;
@@ -899,13 +907,10 @@ internal static class BytecodeVirtualMachine
                 e.PyException.WithTraceback(context, overwriteExisting: false);
 
                 states.Exceptions.Push(e.PyException);
-            }
 
-            if (instruction.OpCode is not OpCode.ExtendedArg)
                 instructionArg = 0;
-
-            currentIndex = nextIndex;
-
+                currentIndex = nextIndex;
+                goto eval_resume;
         }
 
         states.RunToEnd = true;
