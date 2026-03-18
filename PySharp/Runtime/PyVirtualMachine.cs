@@ -33,7 +33,7 @@ public static partial class PyVirtualMachine
         module._pyAttributes = context.CurrentInternalFrame.Variables.Globals.Dict;
 
         context.CurrentInternalFrame.CodeObject = code;
-        _ = PyCore.Eval(context, code.Bytecode).PyUnwrap(context);
+        _ = PyCore.Eval(context).PyUnwrap(context);
 
         Debug.Assert(ReferenceEquals(module.PyAttributes, context.CurrentInternalFrame.Variables.Globals.Dict));
         module.PyAttributes[PySpecialNames.Name] = PyStrObject.FromString(module.Name);

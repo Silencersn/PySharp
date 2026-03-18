@@ -215,7 +215,7 @@ public static partial class PyBuiltinFunctions
         {
             var newFrame = frame.CreateExecEvalFrame(FrameType.Eval, globalsDict, localsDict, code);
             using var withFrame = context.WithFrame(ref newFrame);
-            return PyCore.Eval(context, code.Bytecode);
+            return PyCore.Eval(context);
         }
 
         Debug.Assert(source is PyStrObject);
@@ -226,7 +226,7 @@ public static partial class PyBuiltinFunctions
             using var withFrame = context.WithFrame(ref newFrame);
             var codeObj = Compiler.CompileEval(context, ((PyStrObject)source).Value, "<string>", onlyAsName: true);
             context.CurrentInternalFrame.CodeObject = codeObj;
-            return PyCore.Eval(context, codeObj.Bytecode);
+            return PyCore.Eval(context);
         }
         catch (PyRuntimeException e)
         {
@@ -274,7 +274,7 @@ public static partial class PyBuiltinFunctions
             Debug.Assert(code.Bytecode is not null);
             var newFrame = frame.CreateExecEvalFrame(FrameType.Exec, globalsDict, localsDict, code, closureTuple);
             using var withFrame = context.WithFrame(ref newFrame);
-            return PyCore.Eval(context, code.Bytecode);
+            return PyCore.Eval(context);
         }
 
         Debug.Assert(closure is PyNoneObject);
@@ -286,7 +286,7 @@ public static partial class PyBuiltinFunctions
             using var withFrame = context.WithFrame(ref newFrame);
             var codeObj = Compiler.CompileExec(context, ((PyStrObject)source).Value, "<string>", onlyAsName: true);
             context.CurrentInternalFrame.CodeObject = codeObj;
-            return PyCore.Eval(context, codeObj.Bytecode);
+            return PyCore.Eval(context);
         }
         catch (PyRuntimeException e)
         {

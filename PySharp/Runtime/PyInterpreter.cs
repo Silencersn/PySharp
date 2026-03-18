@@ -38,7 +38,7 @@ public sealed class PyInterpreter : IDisposable
     {
         var codeObj = Compiler.CompileExec(context, code, sourceName);
         context.CurrentInternalFrame.CodeObject = codeObj;
-        _ = PyCore.Eval(context, codeObj.Bytecode).PyUnwrap(context);
+        _ = PyCore.Eval(context).PyUnwrap(context);
     }
 
     public void Execute(string code, string sourceName)
@@ -204,7 +204,7 @@ public sealed class PyInterpreter : IDisposable
                     }
                 }
 
-                _ = PyCore.Eval(context, codeObj.Bytecode).PyUnwrap(context);
+                _ = PyCore.Eval(context).PyUnwrap(context);
                 Debug.Assert(context.FrameState.CurrentFrameCount is 1);
             });
         }

@@ -12,7 +12,6 @@ internal struct BytecodeVirtualMachineStates
     internal Stack<BytecodeVirtualMachine.ExceptionHandler> ExceptionHandlers => field ??= [];
     internal readonly OperandStack? Stack;
     internal PyCallContext Context { get; }
-    internal Bytecode Bytecode { get; }
     internal Stack<PyExceptionObject> Exceptions => field ??= [];
     internal PyExceptionObject CurrentException => Exceptions.Peek();
 
@@ -21,11 +20,12 @@ internal struct BytecodeVirtualMachineStates
     internal List<KeyValuePair<PyObject, PyObject>> CachePairs => field ??= [];
     internal StringBuilder CacheBuilder => field ??= new();
 
-    internal BytecodeVirtualMachineStates(PyCallContext context, Bytecode bytecode, bool usingLocalsPlusAsOperandStack = false)
+    internal BytecodeVirtualMachineStates(PyCallContext context, bool usingLocalsPlusAsOperandStack = false)
     {
+        Debug.Assert(context.CurrentInternalFrame.CodeObject is not null);
+
         Context = context;
-        Bytecode = bytecode;
-        Stack = usingLocalsPlusAsOperandStack ? null : new(bytecode.StackSize);
+        Stack = usingLocalsPlusAsOperandStack ? null : new(context.CurrentInternalFrame.CodeObject.Bytecode.StackSize);
     }
 
     internal readonly void SetYieldReceivedValue(PyObject value)

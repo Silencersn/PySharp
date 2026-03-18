@@ -10,9 +10,10 @@ namespace PySharp.Runtime;
 
 internal static class PyCore
 {
-    public static PyResult Eval(PyCallContext context, Bytecode bytecode, bool usingLocalsPlusAsOperandStack = false)
+    public static PyResult Eval(PyCallContext context, bool usingLocalsPlusAsOperandStack = false)
     {
-        var vmStates = new BytecodeVirtualMachineStates(context, bytecode, usingLocalsPlusAsOperandStack);
+        Debug.Assert(context.CurrentInternalFrame.CodeObject is not null);
+        var vmStates = new BytecodeVirtualMachineStates(context, usingLocalsPlusAsOperandStack);
         return BytecodeVirtualMachine.Eval(ref vmStates);
     }
 
@@ -74,7 +75,7 @@ internal static class PyCore
 
         using (var withFrame = context.WithFrame(ref newFrame))
             // TODO: unwrap
-            Eval(context, codeObject.Bytecode);
+            Eval(context);
 
         foreach (var pair in newFrame.Variables.EnumerateVariablesForBuildingClass())
         {

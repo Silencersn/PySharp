@@ -1,12 +1,16 @@
-﻿using PySharp.Compilation.Primitives;
+﻿using PySharp.Compilation.CodeAnalysis;
+using PySharp.Compilation.Primitives;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
+using System.Collections;
 using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Xml.Linq;
 
 namespace PySharp.Compilation.Bytecodes;
 
@@ -43,9 +47,11 @@ internal static class BytecodeVirtualMachine
         #region Eval Body
 
         ref int currentIndex = ref frame.InstructionIndex;
-        var instructions = states.Bytecode.Instructions.AsSpan();
-        var consts = states.Bytecode.Consts.AsSpan();
-        var names = states.Bytecode.Names.AsSpan();
+
+        Debug.Assert(frame.CodeObject is not null);
+        var instructions = frame.CodeObject.Bytecode.Instructions.AsSpan();
+        var consts = frame.CodeObject.Bytecode.Consts.AsSpan();
+        var names = frame.CodeObject.Bytecode.Names.AsSpan();
         var length = instructions.Length;
         if (states.Stack is not null)
             Stack = states.Stack.AsValueOperandStack();
@@ -204,123 +210,80 @@ internal static class BytecodeVirtualMachine
 
                     case OpCode.StoreAttr:
                         {
-                            var obj = Stack.Pop();
-                            value = Stack.Pop();
-                            PyOperators.SetAttr(context, obj, names[instructionArg], value).PyUnwrap(context);
+                            // Stack: [..., value, obj]
+
+                            PyOperators.SetAttr(context, Stack.Pop(), names[instructionArg], Stack.Pop()).PyUnwrap(context);
                         }
                         break;
 
                     case OpCode.DeleteAttr:
                         {
-                            var obj = Stack.Pop();
-                            PyOperators.DelAttr(context, obj, names[instructionArg]).PyUnwrap(context);
+                            value = Stack.Pop();
+                            PyOperators.DelAttr(context, value, names[instructionArg]).PyUnwrap(context);
                         }
                         break;
 
                     case OpCode.BinarySubscr:
                         {
-                            var key = Stack.Pop();
-                            var container = Stack.Pop();
-                            value = PySpecialMethods.GetItem(context, container, key).PyUnwrap(context);
+                            // Stack: [..., container, key]
+
+                            value = Stack.Pop(); // key
+                            value = PySpecialMethods.GetItem(context, Stack.Pop() /* container */, value).PyUnwrap(context);
                             Stack.Push(value);
                         }
                         break;
 
                     case OpCode.StoreSubscr:
                         {
-                            var key = Stack.Pop();
-                            var container = Stack.Pop();
-                            value = Stack.Pop();
-                            _ = PySpecialMethods.SetItem(context, container, key, value).PyUnwrap(context);
+                            // Stack: [..., value, container, key]
+
+                            value = Stack.Pop(); // key
+                            _ = PySpecialMethods.SetItem(context, Stack.Pop() /* container */, value, Stack.Pop() /* value */).PyUnwrap(context);
                         }
                         break;
 
                     case OpCode.DeleteSubscr:
                         {
-                            var key = Stack.Pop();
-                            var container = Stack.Pop();
-                            _ = PySpecialMethods.DelItem(context, container, key).PyUnwrap(context);
+                            // Stack: [..., container, key]
+
+                            value = Stack.Pop(); // key
+                            _ = PySpecialMethods.DelItem(context, Stack.Pop() /* container */, value).PyUnwrap(context);
                         }
                         break;
 
                     case OpCode.LoadMethod:
                         {
                             value = Stack[-1];
-                            var method = PyCore.GetAttrOrMethod(context, value, names[instructionArg], out var isMethod).PyUnwrap(context);
-                            Stack[-1] = method;
+                            Stack[-1] = PyCore.GetAttrOrMethod(context, value, names[instructionArg], out var isMethod).PyUnwrap(context);
                             Stack.Push(isMethod ? value : null! /* this null will be handled by OpCode.Call or OpCode.CallKw */);
                         }
                         break;
 
                     case OpCode.Call:
                         {
-                            var isNull = instructionArg > 0 && Stack[-instructionArg] is null;
-                            if (isNull)
+                            boolValue = instructionArg > 0 && Stack[-instructionArg] is null;
+                            if (boolValue)
                                 instructionArg--;
 
                             LoadArgs(ref Stack, states.CacheArgs, instructionArg);
-                            if (isNull)
+                            if (boolValue)
                                 Stack.Pop();
 
-                            var callable = Stack.Pop();
-                            if (callable is PyFunctionObject func)
+                            value = Stack.Pop(); // callable
+                            if (value is PyFunctionObject func)
                                 value = func.InternalCall(context, states.CacheArgs, FrozenDictionary<string, PyObject>.Empty).PyUnwrap(context);
                             else
-                                value = callable.Call(context, states.CacheArgs).PyUnwrap(context);
+                                value = value.Call(context, states.CacheArgs).PyUnwrap(context);
                             Stack.Push(value);
                         }
                         break;
 
                     case OpCode.CallKw:
-                        {
-                            var tuple = (PyTupleObject)Stack.Pop();
-                            states.CacheKwargs.Clear();
-
-                            LoadArgs(ref Stack, states.CacheArgs, tuple.Count);
-
-                            for (int i = 0; i < tuple.Count; i++)
-                            {
-                                var str = (PyStrObject)tuple[i];
-                                states.CacheKwargs.Add(str.Value, states.CacheArgs[i]);
-                            }
-
-                            var argsCount = instructionArg - states.CacheKwargs.Count;
-                            var isNull = argsCount > 0 && Stack[-argsCount] is null;
-                            if (isNull)
-                                argsCount--;
-
-                            LoadArgs(ref Stack, states.CacheArgs, argsCount);
-                            if (isNull)
-                                Stack.Pop();
-
-                            var callable = Stack.Pop();
-                            if (callable is PyFunctionObject func)
-                                value = func.InternalCall(context, states.CacheArgs, states.CacheKwargs).PyUnwrap(context);
-                            else
-                                value = callable.Call(context, states.CacheArgs, states.CacheKwargs).PyUnwrap(context);
-                            Stack.Push(value);
-                        }
+                        InternalCallKw(context, ref Stack, ref states, instructionArg);
                         break;
 
                     case OpCode.CallFunctionEx:
-                        {
-                            var dict = (PyDictObject)Stack.Pop();
-                            var pyargs = (PyListObject)Stack.Pop();
-                            states.CacheKwargs.Clear();
-
-                            foreach (var pair in dict)
-                            {
-                                if (pair.Key is not PyStrObject str)
-                                    throw context.TypeError(PySR.Runtime_Keyword_KeywordsMustBeStrings);
-                                states.CacheKwargs.Add(str.Value, pair.Value);
-                            }
-
-                            var callable = Stack[-1];
-                            if (callable is PyFunctionObject func)
-                                Stack[-1] = func.InternalCall(context, states.CacheArgs, states.CacheKwargs).PyUnwrap(context);
-                            else
-                                Stack[-1] = callable.Call(context, pyargs, states.CacheKwargs).PyUnwrap(context);
-                        }
+                        InternalCallFunctionEx(context, ref Stack, ref states);
                         break;
 
                     case OpCode.PopTop:
@@ -486,95 +449,54 @@ internal static class BytecodeVirtualMachine
                     case OpCode.ListAppend:
                         {
                             value = Stack.Pop();
-                            var list = (PyListObject)Stack[-instructionArg];
-                            list.Add(value);
+                            ((PyListObject)Stack[-instructionArg]).Add(value);
                         }
                         break;
 
                     case OpCode.ListExtend:
                         {
                             value = Stack.Pop();
-                            var list = (PyListObject)Stack[-instructionArg];
-                            _ = list.PyExtend(context, value).PyUnwrap(context);
+                            _ = ((PyListObject)Stack[-instructionArg]).PyExtend(context, value).PyUnwrap(context);
                         }
                         break;
 
                     case OpCode._ListToTuple:
                         {
-                            var list = (PyListObject)Stack[-1];
-                            Stack[-1] = PyTupleObject.CreateTuple(list);
+                            Stack[-1] = PyTupleObject.CreateTuple((PyListObject)Stack[-1]);
                         }
                         break;
 
                     case OpCode._ListToSet:
                         {
-                            var list = (PyListObject)Stack[-1];
-                            Stack[-1] = PySetObject.CreateSet(list);
+                            Stack[-1] = PySetObject.CreateSet((PyListObject)Stack[-1]);
                         }
                         break;
 
                     case OpCode.SetAdd:
                         {
                             value = Stack.Pop();
-                            var set = (PySetObject)Stack[-instructionArg];
-                            set.Add(value);
+                            ((PySetObject)Stack[-instructionArg]).Add(value);
                         }
                         break;
 
                     case OpCode.MapAdd:
-                        {
-                            value = Stack.Pop();
-                            var key = Stack.Pop();
-                            var dict = (PyDictObject)Stack[-instructionArg];
-                            dict[key] = value;
-                        }
+                        InternalMapAdd(context, ref Stack, instructionArg);
                         break;
 
                     case OpCode.DictUpdate:
-                        {
-                            var map = Stack.Pop();
-                            var dict = (PyDictObject)Stack[-instructionArg];
-                            _ = dict.PyUpdate(context, map).PyUnwrap(context);
-                        }
+                        InternalDictUpdate(context, ref Stack, instructionArg);
                         break;
 
                     case OpCode.DictMerge:
-                        {
-                            var map = Stack.Pop();
-                            var dictToMerge = PyUtils.ToDict(context, map).PyUnwrap(context);
-                            var dict = (PyDictObject)Stack[-instructionArg];
-                            foreach (var pair in dictToMerge)
-                            {
-                                if (!dict.TryAdd(pair.Key, pair.Value))
-                                    throw context.TypeError(PySR.Runtime_Arguments_MultipleKeywords, pair.Key);
-                            }
-                        }
+                        InternalDictMerge(context, ref Stack, instructionArg);
                         break;
 
                     case OpCode.UnpackSequence:
-                        {
-                            var list = PyUtils.IterableToList(context, Stack.Pop()).PyUnwrap(context);
-                            var span = CollectionsMarshal.AsSpan(list.InternalList);
-                            if (span.Length > instructionArg)
-                                throw context.ValueError(PySR.Runtime_Assignment_TooManyToUnpack, instructionArg, span.Length);
-                            else if (span.Length < instructionArg)
-                                throw context.ValueError(PySR.Runtime_Assignment_NotEnoughToUnpack, instructionArg, span.Length);
-                            Stack.PushReversedRange(span);
-                        }
+                        InternalUnpackSequence(context, ref Stack, instructionArg);
                         break;
 
                     case OpCode.UnpackEx:
-                        {
-                            var postCount = instructionArg & ushort.MaxValue;
-                            var preCount = (instructionArg >> 16) & ushort.MaxValue;
-                            var list = PyUtils.IterableToList(context, Stack.Pop()).PyUnwrap(context);
-                            var span = CollectionsMarshal.AsSpan(list.InternalList);
-                            if (span.Length < preCount + postCount)
-                                throw context.ValueError(PySR.Runtime_Assignment_NotEnoughToUnpackStarred, preCount + postCount, span.Length);
-                            Stack.PushReversedRange(span[^postCount..]);
-                            Stack.Push(PyListObject.CreateList(span[preCount..^postCount]));
-                            Stack.PushReversedRange(span[..preCount]);
-                        }
+                        InternalUnpackEx(context, ref Stack, instructionArg);
                         break;
 
                     case OpCode.ReturnValue:
@@ -584,8 +506,7 @@ internal static class BytecodeVirtualMachine
                     case OpCode.ReturnGenerator:
                         {
                             currentIndex++;
-                            var generator = new PyBytecodeGeneratorObject(frame.CallerName, frame, states);
-                            intermediateValue = generator;
+                            intermediateValue = new PyBytecodeGeneratorObject(frame.CallerName, frame, states);
                         }
                         break;
 
@@ -602,60 +523,7 @@ internal static class BytecodeVirtualMachine
                         break;
 
                     case OpCode.Send:
-                        {
-                            PyObject iter;
-                            if (states.ExceptionToRaise is not null)
-                            {
-                                // throw or close
-
-                                iter = Stack[-1];
-
-                                if (PyGeneratorExitObjectType.Shared.IsInstance(states.ExceptionToRaise))
-                                {
-                                    // close sub generator
-                                    var close = PyOperators.GetAttr(context, iter, "close");
-                                    if (!close.IsAttributeError)
-                                        _ = close.PyUnwrap(context).Call(context).PyUnwrap(context);
-
-                                    // close self
-                                    goto case OpCode._CheckExcToRaise;
-                                }
-                                else
-                                {
-                                    var throwMethod = PyOperators.GetAttr(context, iter, "throw");
-                                    if (!throwMethod.IsAttributeError)
-                                    {
-                                        var exc = Move(ref states.ExceptionToRaise);
-                                        value = throwMethod.PyUnwrap(context).Call(context, [exc]).PyUnwrap(context);
-                                        Stack.Push(value);
-                                    }
-                                    else
-                                    {
-                                        // throw at self
-                                        goto case OpCode._CheckExcToRaise;
-                                    }
-                                    break;
-                                }
-                            }
-
-                            iter = Stack[-2];
-                            value = Stack[-1];
-                            if (value is PyNoneObject)
-                                result = PySpecialMethods.Next(context, iter);
-                            else
-                                result = iter.CallMethod(context, "send", [value]);
-
-                            if (result.IsStopIteration)
-                            {
-                                // replace sent value with received value by 'yield from'
-                                Stack[-1] = result.Exception.Args.FirstOrDefault(PyNoneObject.None);
-                                nextIndex = instructionArg;
-                            }
-                            else
-                            {
-                                Stack[-1] = result.PyUnwrap(context);
-                            }
-                        }
+                        InternalSend(context, ref states, ref Stack, ref nextIndex, instructionArg);
                         break;
 
                     case OpCode._CheckExcToRaise:
@@ -684,10 +552,8 @@ internal static class BytecodeVirtualMachine
                         break;
 
                     case OpCode.FormatWithSpec:
-                        {
-                            var spec = Stack.Pop();
-                            Stack[-1] = PySpecialMethods.Format(context, Stack[-1], spec).PyUnwrap(context);
-                        }
+                        value = Stack.Pop();
+                        Stack[-1] = PySpecialMethods.Format(context, Stack[-1], value).PyUnwrap(context);
                         break;
 
                     case OpCode.BuildString:
@@ -713,21 +579,7 @@ internal static class BytecodeVirtualMachine
                         break;
 
                     case OpCode.ImportName:
-                        {
-                            var fromList = Stack.Pop();
-                            var level = (PyIntObject)Stack.Pop();
-
-                            if (level.Value > 0)
-                                throw new NotSupportedException();
-
-                            if (names[instructionArg].Contains('.'))
-                                throw new NotSupportedException();
-
-                            if (!context.PyEnvironment.TryLoadModule(context, names[instructionArg], out var module))
-                                throw context.ModuleNotFoundError(PySR.Runtime_Import_ModuleNotFound, names[instructionArg]);
-
-                            Stack.Push(module);
-                        }
+                        InternalImportName(context, ref Stack, names, instructionArg);
                         break;
 
                     case OpCode.ImportFrom:
@@ -740,60 +592,15 @@ internal static class BytecodeVirtualMachine
                         break;
 
                     case OpCode.BuildSlice:
-                        {
-                            if (instructionArg is 2)
-                            {
-                                var end = Stack.Pop();
-                                var start = Stack.Pop();
-                                var slice = new PySliceObject(start, end, PyNoneObject.None);
-                                Stack.Push(slice);
-                            }
-                            else
-                            {
-                                Debug.Assert(instructionArg is 3);
-                                var step = Stack.Pop();
-                                var end = Stack.Pop();
-                                var start = Stack.Pop();
-                                var slice = new PySliceObject(start, end, step);
-                                Stack.Push(slice);
-                            }
-                        }
+                        InternalBuildSlice(ref Stack, instructionArg);
                         break;
 
                     case OpCode._MakeFunctionWithPyArgsDef:
-                        {
-                            var codeObj = (PyCodeObject)Stack.Pop();
-
-                            PyObject?[] kwDefaults = new PyObject?[codeObj.KwDefaultsCount];
-                            Stack.PopReversedRange(kwDefaults!);
-                            PyObject[] defaults = new PyObject[codeObj.DefaultsCount];
-                            Stack.PopReversedRange(defaults);
-                            var def = PyArgsDef.FromCodeObjectAndDefaults(codeObj, kwDefaults, defaults);
-
-                            var func = PyCore.MakeFunction(ref frame, codeObj, def);
-
-                            Stack.Push(func);
-                        }
+                        InternalMakeFunctionWithPyArgsDef(ref frame, ref Stack);
                         break;
 
                     case OpCode._BuildClass:
-                        {
-                            var codeObj = (PyCodeObject)Stack.Pop();
-
-                            List<PyTypeObject> bases = [];
-                            LoadArgs(ref Stack, states.CacheArgs, instructionArg);
-                            foreach (var arg in states.CacheArgs)
-                            {
-                                if (arg is not PyTypeObject baseType)
-                                    throw new NotSupportedException();
-
-                                bases.Add(baseType);
-                            }
-
-                            var type = PyCore.BuildClass(context, codeObj, bases);
-
-                            Stack.Push(type);
-                        }
+                        InternalBuildClass(context, ref Stack, ref states, instructionArg);
                         break;
 
                     case OpCode._LoadClass:
@@ -808,31 +615,13 @@ internal static class BytecodeVirtualMachine
 
                     case OpCode._MakeCellFast:
                         {
-                            var content = frame.Variables.LocalsSpan[instructionArg];
-                            frame.Variables.StoreFast(instructionArg, PyCellObject.CreateCell(content));
+                            value = PyCellObject.CreateCell(frame.Variables.LocalsSpan[instructionArg]);
+                            frame.Variables.StoreFast(instructionArg, value);
                         }
                         break;
 
                     case OpCode.RaiseVarArgs:
-                        if (instructionArg is 0)
-                        {
-                            PyCore.Raise(context, ref states, excObj: null, causeObj: null);
-                        }
-                        else if (instructionArg is 1)
-                        {
-                            var excObj = Stack.Pop();
-                            PyCore.Raise(context, ref states, excObj, causeObj: null);
-                        }
-                        else if (instructionArg is 2)
-                        {
-                            var causeObj = Stack.Pop();
-                            var excObj = Stack.Pop();
-                            PyCore.Raise(context, ref states, excObj, causeObj);
-                        }
-                        else
-                        {
-                            throw new UnreachableException();
-                        }
+                        InternalRaiseVarArgs(context, ref Stack, ref states, instructionArg);
                         break;
 
                     case OpCode.CheckExcMatch:
@@ -841,18 +630,7 @@ internal static class BytecodeVirtualMachine
                         break;
 
                     case OpCode.CheckEgMatch:
-                        {
-                            var exc = states.CurrentException;
-                            if (!exc.IsGroup)
-                                exc = PyBaseExceptionGroupObjectType.CreateExceptionGroup(string.Empty, [exc]);
-
-                            var type = Stack.Pop();
-                            var (rest, match) = PyCore.SplitExceptionGroup(context, exc, type);
-                            states.Exceptions.Pop();
-                            states.ExceptionHandlers.Peek().PyException = rest;
-                            states.Exceptions.Push(rest! /* null if rest is None, OpCode._PopExceptionAndJumpIfNull should handle that */);
-                            Stack.Push(match);
-                        }
+                        InternalCheckEgMatch(context, ref Stack, ref states, instructionArg);
                         break;
 
                     case OpCode._CheckMatch:
@@ -937,106 +715,11 @@ internal static class BytecodeVirtualMachine
                         break;
 
                     case OpCode.MatchKeys:
-                        {
-                            var keys = (PyTupleObject)Stack.Peek();
-                            var subject = Stack[-2];
-                            var array = new PyObject[keys.Count];
-                            var matched = true;
-                            for (int i = 0; matched && i < array.Length; i++)
-                            {
-                                var key = keys[i];
-                                result = PySpecialMethods.GetItem(context, subject, key);
-                                if (result.IsError && PyKeyErrorObjectType.Shared.IsInstance(result.Exception))
-                                {
-                                    matched = false;
-                                    break;
-                                }
-                                array[i] = result.PyUnwrap(context);
-                            }
-                            Stack.Push(matched ? PyTupleObject.CreateProxy(array) : PyNoneObject.None);
-                        }
+                        InternalMatchKeys(context, ref Stack);
                         break;
 
                     case OpCode.MatchClass:
-                        {
-                            var keys = (PyTupleObject)Stack.Pop();
-                            value = Stack.Pop();
-                            if (value is not PyTypeObject cls)
-                                throw context.TypeError(PySR.Runtime_MatchStmt_CallNonClass);
-                            var subject = Stack.Pop();
-
-                            if (!cls.IsInstance(subject))
-                            {
-                                Stack.Push(PyNoneObject.None);
-                                break;
-                            }
-
-                            var values = new PyObject[instructionArg + keys.Count];
-
-                            if (IsSpecialType(cls))
-                            {
-                                if (instructionArg > 1)
-                                    throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsLengthNotEnough, cls.FullName, 1, instructionArg);
-                                else if (instructionArg is 1)
-                                    values[0] = subject;
-                            }
-                            else if (instructionArg > 0)
-                            {
-                                var matchArgs = PyOperators.GetAttr(context, cls, PySpecialNames.MatchArgs).PyUnwrap(context);
-
-                                if (matchArgs is not PyTupleObject tuple)
-                                    throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsIsNonTuple, cls.FullName, matchArgs.PyType.FullName);
-                                if (instructionArg > tuple.Count)
-                                    throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsLengthNotEnough, cls.FullName, tuple.Count, instructionArg);
-
-                                for (int i = 0; i < instructionArg; i++)
-                                {
-                                    if (tuple[i] is not PyStrObject attrName)
-                                        throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsEltMustBeString, tuple[i].PyType.FullName);
-
-                                    var attr = PyOperators.GetAttr(context, subject, attrName);
-                                    if (attr.IsAttributeError)
-                                    {
-                                        Stack.Push(PyNoneObject.None);
-                                        goto match_class_break;
-                                    }
-
-                                    values[i] = attr.PyUnwrap(context);
-                                }
-                            }
-
-                            for (int i = 0; i < keys.Count; i++)
-                            {
-                                var attrName = keys[i];
-                                Debug.Assert(attrName is PyStrObject);
-
-                                var attr = PyOperators.GetAttr(context, subject, attrName);
-                                if (attr.IsAttributeError)
-                                {
-                                    Stack.Push(PyNoneObject.None);
-                                    goto match_class_break;
-                                }
-
-                                values[instructionArg + i] = attr.PyUnwrap(context);
-                            }
-
-                            Stack.Push(PyTupleObject.CreateProxy(values));
-
-                            static bool IsSpecialType(PyTypeObject type)
-                            {
-                                // TODO: not implemented: bytearray bytes frozenset
-                                return type is
-                                    PyBoolObjectType or
-                                    PyDictObjectType or
-                                    PyFloatObjectType or
-                                    PyIntObjectType or
-                                    PyListObjectType or
-                                    PySetObjectType or
-                                    PyStrObjectType or
-                                    PyTupleObjectType;
-                            }
-                        }
-                    match_class_break:
+                        InternalMatchClass(context, ref Stack, instructionArg);
                         break;
 
                     case OpCode.__BytecodeEnd:
@@ -1134,18 +817,6 @@ internal static class BytecodeVirtualMachine
 
             currentIndex = nextIndex;
 
-            static void LoadArgs(ref ValueOperandStack stack, List<PyObject> args, int count)
-            {
-                // equals to:
-                // args.Clear();
-                // for (int i = 0; i < count; i++)
-                //     args.Add(Stack.Pop());
-                // args.Reverse();
-
-                CollectionsMarshal.SetCount(args, count);
-                var argsSpan = CollectionsMarshal.AsSpan(args);
-                stack.PopReversedRange(argsSpan);
-            }
         }
 
         states.RunToEnd = true;
@@ -1170,10 +841,402 @@ internal static class BytecodeVirtualMachine
     }
 
 
+    private static void InternalUnpackEx(PyCallContext context, ref ValueOperandStack stack, int instructionArg)
+    {
+        var postCount = instructionArg & ushort.MaxValue;
+        var preCount = (instructionArg >> 16) & ushort.MaxValue;
+        var list = PyUtils.IterableToList(context, stack.Pop()).PyUnwrap(context);
+        var span = CollectionsMarshal.AsSpan(list.InternalList);
+        if (span.Length < preCount + postCount)
+            throw context.ValueError(PySR.Runtime_Assignment_NotEnoughToUnpackStarred, preCount + postCount, span.Length);
+        stack.PushReversedRange(span[^postCount..]);
+        stack.Push(PyListObject.CreateList(span[preCount..^postCount]));
+        stack.PushReversedRange(span[..preCount]);
+    }
+
+    private static void InternalMatchClass(PyCallContext context, ref ValueOperandStack stack, int instructionArg)
+    {
+        var keys = (PyTupleObject)stack.Pop();
+        var value = stack.Pop();
+        if (value is not PyTypeObject cls)
+            throw context.TypeError(PySR.Runtime_MatchStmt_CallNonClass);
+        var subject = stack.Pop();
+
+        if (!cls.IsInstance(subject))
+        {
+            stack.Push(PyNoneObject.None);
+            return;
+        }
+
+        var values = new PyObject[instructionArg + keys.Count];
+
+        if (IsSpecialType(cls))
+        {
+            if (instructionArg > 1)
+                throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsLengthNotEnough, cls.FullName, 1, instructionArg);
+            else if (instructionArg is 1)
+                values[0] = subject;
+        }
+        else if (instructionArg > 0)
+        {
+            var matchArgs = PyOperators.GetAttr(context, cls, PySpecialNames.MatchArgs).PyUnwrap(context);
+
+            if (matchArgs is not PyTupleObject tuple)
+                throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsIsNonTuple, cls.FullName, matchArgs.PyType.FullName);
+            if (instructionArg > tuple.Count)
+                throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsLengthNotEnough, cls.FullName, tuple.Count, instructionArg);
+
+            for (int i = 0; i < instructionArg; i++)
+            {
+                if (tuple[i] is not PyStrObject attrName)
+                    throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsEltMustBeString, tuple[i].PyType.FullName);
+
+                var attr = PyOperators.GetAttr(context, subject, attrName);
+                if (attr.IsAttributeError)
+                {
+                    stack.Push(PyNoneObject.None);
+                    return;
+                }
+
+                values[i] = attr.PyUnwrap(context);
+            }
+        }
+
+        for (int i = 0; i < keys.Count; i++)
+        {
+            var attrName = keys[i];
+            Debug.Assert(attrName is PyStrObject);
+
+            var attr = PyOperators.GetAttr(context, subject, attrName);
+            if (attr.IsAttributeError)
+            {
+                stack.Push(PyNoneObject.None);
+                return;
+            }
+
+            values[instructionArg + i] = attr.PyUnwrap(context);
+        }
+
+        stack.Push(PyTupleObject.CreateProxy(values));
+
+        static bool IsSpecialType(PyTypeObject type)
+        {
+            // TODO: not implemented: bytearray bytes frozenset
+            return type is
+                PyBoolObjectType or
+                PyDictObjectType or
+                PyFloatObjectType or
+                PyIntObjectType or
+                PyListObjectType or
+                PySetObjectType or
+                PyStrObjectType or
+                PyTupleObjectType;
+        }
+    }
+
+    private static void InternalMatchKeys(PyCallContext context, ref ValueOperandStack stack)
+    {
+        var keys = (PyTupleObject)stack.Peek();
+        var subject = stack[-2];
+        var array = new PyObject[keys.Count];
+        var matched = true;
+        for (int i = 0; matched && i < array.Length; i++)
+        {
+            var key = keys[i];
+            var result = PySpecialMethods.GetItem(context, subject, key);
+            if (result.IsError && PyKeyErrorObjectType.Shared.IsInstance(result.Exception))
+            {
+                matched = false;
+                break;
+            }
+            array[i] = result.PyUnwrap(context);
+        }
+        stack.Push(matched ? PyTupleObject.CreateProxy(array) : PyNoneObject.None);
+    }
+
+    private static void InternalSend(PyCallContext context, ref BytecodeVirtualMachineStates states,
+        ref ValueOperandStack stack, ref int nextIndex, int instructionArg)
+    {
+        PyObject iter, value;
+        PyResult result;
+
+        if (states.ExceptionToRaise is not null)
+        {
+            // throw or close
+
+            iter = stack[-1];
+
+            if (PyGeneratorExitObjectType.Shared.IsInstance(states.ExceptionToRaise))
+            {
+                // close sub generator
+                var close = PyOperators.GetAttr(context, iter, "close");
+                if (!close.IsAttributeError)
+                    _ = close.PyUnwrap(context).Call(context).PyUnwrap(context);
+
+                // close self
+                if (states.ExceptionToRaise is not null)
+                {
+                    var exc = Move(ref states.ExceptionToRaise);
+                    throw new PyRuntimeException(exc);
+                }
+            }
+            else
+            {
+                var throwMethod = PyOperators.GetAttr(context, iter, "throw");
+                if (!throwMethod.IsAttributeError)
+                {
+                    var exc = Move(ref states.ExceptionToRaise);
+                    value = throwMethod.PyUnwrap(context).Call(context, [exc]).PyUnwrap(context);
+                    stack.Push(value);
+                }
+                else
+                {
+                    // throw at self
+                    if (states.ExceptionToRaise is not null)
+                    {
+                        var exc = Move(ref states.ExceptionToRaise);
+                        throw new PyRuntimeException(exc);
+                    }
+                }
+                return;
+            }
+        }
+
+        iter = stack[-2];
+        value = stack[-1];
+        if (value is PyNoneObject)
+            result = PySpecialMethods.Next(context, iter);
+        else
+            result = iter.CallMethod(context, "send", [value]);
+
+        if (result.IsStopIteration)
+        {
+            // replace sent value with received value by 'yield from'
+            stack[-1] = result.Exception.Args.FirstOrDefault(PyNoneObject.None);
+            nextIndex = instructionArg;
+        }
+        else
+        {
+            stack[-1] = result.PyUnwrap(context);
+        }
+    }
+
+    private static void InternalCallKw(PyCallContext context, ref ValueOperandStack stack, ref BytecodeVirtualMachineStates states, int instructionArg)
+    {
+        PyObject value;
+
+        var tuple = (PyTupleObject)stack.Pop();
+        states.CacheKwargs.Clear();
+
+        LoadArgs(ref stack, states.CacheArgs, tuple.Count);
+
+        for (int i = 0; i < tuple.Count; i++)
+        {
+            var str = (PyStrObject)tuple[i];
+            states.CacheKwargs.Add(str.Value, states.CacheArgs[i]);
+        }
+
+        var argsCount = instructionArg - states.CacheKwargs.Count;
+        var isNull = argsCount > 0 && stack[-argsCount] is null;
+        if (isNull)
+            argsCount--;
+
+        LoadArgs(ref stack, states.CacheArgs, argsCount);
+        if (isNull)
+            stack.Pop();
+
+        var callable = stack.Pop();
+        if (callable is PyFunctionObject func)
+            value = func.InternalCall(context, states.CacheArgs, states.CacheKwargs).PyUnwrap(context);
+        else
+            value = callable.Call(context, states.CacheArgs, states.CacheKwargs).PyUnwrap(context);
+        stack.Push(value);
+    }
+
+    private static void InternalCallFunctionEx(PyCallContext context, ref ValueOperandStack stack, ref BytecodeVirtualMachineStates states)
+    {
+        var dict = (PyDictObject)stack.Pop();
+        var pyargs = (PyListObject)stack.Pop();
+        states.CacheKwargs.Clear();
+
+        foreach (var pair in dict)
+        {
+            if (pair.Key is not PyStrObject str)
+                throw context.TypeError(PySR.Runtime_Keyword_KeywordsMustBeStrings);
+            states.CacheKwargs.Add(str.Value, pair.Value);
+        }
+
+        var callable = stack[-1];
+        if (callable is PyFunctionObject func)
+            stack[-1] = func.InternalCall(context, states.CacheArgs, states.CacheKwargs).PyUnwrap(context);
+        else
+            stack[-1] = callable.Call(context, pyargs, states.CacheKwargs).PyUnwrap(context);
+    }
+
+    private static void InternalMapAdd(PyCallContext context, ref ValueOperandStack stack, int instructionArg)
+    {
+        var value = stack.Pop();
+        var key = stack.Pop();
+        var dict = (PyDictObject)stack[-instructionArg];
+        dict[key] = value;
+    }
+
+    private static void InternalDictUpdate(PyCallContext context, ref ValueOperandStack stack, int instructionArg)
+    {
+        var map = stack.Pop();
+        var dict = (PyDictObject)stack[-instructionArg];
+        _ = dict.PyUpdate(context, map).PyUnwrap(context);
+    }
+
+    private static void InternalDictMerge(PyCallContext context, ref ValueOperandStack stack, int instructionArg)
+    {
+        var map = stack.Pop();
+        var dictToMerge = PyUtils.ToDict(context, map).PyUnwrap(context);
+        var dict = (PyDictObject)stack[-instructionArg];
+        foreach (var pair in dictToMerge)
+        {
+            if (!dict.TryAdd(pair.Key, pair.Value))
+                throw context.TypeError(PySR.Runtime_Arguments_MultipleKeywords, pair.Key);
+        }
+    }
+
+    private static void InternalRaiseVarArgs(PyCallContext context, ref ValueOperandStack stack, ref BytecodeVirtualMachineStates states, int instructionArg)
+    {
+        if (instructionArg is 0)
+        {
+            PyCore.Raise(context, ref states, excObj: null, causeObj: null);
+        }
+        else if (instructionArg is 1)
+        {
+            var excObj = stack.Pop();
+            PyCore.Raise(context, ref states, excObj, causeObj: null);
+        }
+        else if (instructionArg is 2)
+        {
+            var causeObj = stack.Pop();
+            var excObj = stack.Pop();
+            PyCore.Raise(context, ref states, excObj, causeObj);
+        }
+        else
+        {
+            throw new UnreachableException();
+        }
+    }
+
+    private static void InternalCheckEgMatch(PyCallContext context, ref ValueOperandStack stack, ref BytecodeVirtualMachineStates states, int instructionArg)
+    {
+        var exc = states.CurrentException;
+        if (!exc.IsGroup)
+            exc = PyBaseExceptionGroupObjectType.CreateExceptionGroup(string.Empty, [exc]);
+
+        var type = stack.Pop();
+        var (rest, match) = PyCore.SplitExceptionGroup(context, exc, type);
+        states.Exceptions.Pop();
+        states.ExceptionHandlers.Peek().PyException = rest;
+        states.Exceptions.Push(rest! /* null if rest is None, OpCode._PopExceptionAndJumpIfNull should handle that */);
+        stack.Push(match);
+    }
+
+    private static void InternalBuildSlice(ref ValueOperandStack stack, int instructionArg)
+    {
+        if (instructionArg is 2)
+        {
+            var end = stack.Pop();
+            var start = stack.Pop();
+            var slice = new PySliceObject(start, end, PyNoneObject.None);
+            stack.Push(slice);
+        }
+        else
+        {
+            Debug.Assert(instructionArg is 3);
+            var step = stack.Pop();
+            var end = stack.Pop();
+            var start = stack.Pop();
+            var slice = new PySliceObject(start, end, step);
+            stack.Push(slice);
+        }
+    }
+
+    private static void InternalMakeFunctionWithPyArgsDef(ref PyInternalFrame frame, ref ValueOperandStack stack)
+    {
+        var codeObj = (PyCodeObject)stack.Pop();
+
+        PyObject?[] kwDefaults = new PyObject?[codeObj.KwDefaultsCount];
+        stack.PopReversedRange(kwDefaults!);
+        PyObject[] defaults = new PyObject[codeObj.DefaultsCount];
+        stack.PopReversedRange(defaults);
+        var def = PyArgsDef.FromCodeObjectAndDefaults(codeObj, kwDefaults, defaults);
+
+        var func = PyCore.MakeFunction(ref frame, codeObj, def);
+
+        stack.Push(func);
+    }
+
+    private static void InternalBuildClass(PyCallContext context, ref ValueOperandStack stack, ref BytecodeVirtualMachineStates states, int instructionArg)
+    {
+        var codeObj = (PyCodeObject)stack.Pop();
+
+        List<PyTypeObject> bases = [];
+        LoadArgs(ref stack, states.CacheArgs, instructionArg);
+        foreach (var arg in states.CacheArgs)
+        {
+            if (arg is not PyTypeObject baseType)
+                throw new NotSupportedException();
+
+            bases.Add(baseType);
+        }
+
+        var type = PyCore.BuildClass(context, codeObj, bases);
+
+        stack.Push(type);
+    }
+
+    private static void InternalUnpackSequence(PyCallContext context, ref ValueOperandStack stack, int instructionArg)
+    {
+        var list = PyUtils.IterableToList(context, stack.Pop()).PyUnwrap(context);
+        var span = CollectionsMarshal.AsSpan(list.InternalList);
+        if (span.Length > instructionArg)
+            throw context.ValueError(PySR.Runtime_Assignment_TooManyToUnpack, instructionArg, span.Length);
+        else if (span.Length < instructionArg)
+            throw context.ValueError(PySR.Runtime_Assignment_NotEnoughToUnpack, instructionArg, span.Length);
+        stack.PushReversedRange(span);
+    }
+
+    private static void InternalImportName(PyCallContext context, ref ValueOperandStack stack, ReadOnlySpan<string> names, int instructionArg)
+    {
+        var fromList = stack.Pop();
+        var level = (PyIntObject)stack.Pop();
+
+        if (level.Value > 0)
+            throw new NotSupportedException();
+
+        if (names[instructionArg].Contains('.'))
+            throw new NotSupportedException();
+
+        if (!context.PyEnvironment.TryLoadModule(context, names[instructionArg], out var module))
+            throw context.ModuleNotFoundError(PySR.Runtime_Import_ModuleNotFound, names[instructionArg]);
+
+        stack.Push(module);
+    }
+
     private static T Move<T>([DisallowNull] ref T? value)
     {
         var result = value;
         value = default;
         return result;
     }
+
+    static void LoadArgs(ref ValueOperandStack stack, List<PyObject> args, int count)
+    {
+        // equals to:
+        // args.Clear();
+        // for (int i = 0; i < count; i++)
+        //     args.Add(Stack.Pop());
+        // args.Reverse();
+
+        CollectionsMarshal.SetCount(args, count);
+        var argsSpan = CollectionsMarshal.AsSpan(args);
+        stack.PopReversedRange(argsSpan);
+    }
+
 }

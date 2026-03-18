@@ -41,7 +41,7 @@ public sealed class PyFunctionObject : PyObject, IPyObjectName
         frame.InitArgs(_def, _code, arguments, Closure);
 
         using var withFrame = context.WithFrame(ref frame, dispose: false);
-        return PyCore.Eval(context, _code.Bytecode, usingLocalsPlusAsOperandStack: _code.Flags is CodeObjectFlags.Function);
+        return PyCore.Eval(context, usingLocalsPlusAsOperandStack: _code.Flags is CodeObjectFlags.Function);
     }
 }
 
