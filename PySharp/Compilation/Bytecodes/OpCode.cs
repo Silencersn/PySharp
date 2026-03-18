@@ -40,6 +40,8 @@ internal enum OpCode : byte
     Call,
     CallKw,
     CallFunctionEx,
+    __CallImpl,
+
     BinaryOp,
     CompareOp,
     ContainsOp,

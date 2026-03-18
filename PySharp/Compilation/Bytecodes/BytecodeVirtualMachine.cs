@@ -68,6 +68,10 @@ internal static class BytecodeVirtualMachine
         PyResult result;
         PyObject? returnValue = null, intermediateValue = null;
 
+        PyObject? callable = null;
+        IReadOnlyList<PyObject>? callArgs = null;
+        IReadOnlyDictionary<string, PyObject>? callKwargs = null;
+
         int instructionArg = 0;
 
         while (currentIndex < length)
@@ -279,47 +283,95 @@ internal static class BytecodeVirtualMachine
                             if (boolValue)
                                 Stack.Pop();
 
-                            value = Stack.Pop(); // callable
-                            if (value is PyFunctionObject func)
-                            {
-                                if (func.Code.Flags is CodeObjectFlags.Function)
-                                {
-                                    InlinePyObjectArray buffer = default;
-                                    if (!func._def.TryParse(states.CacheArgs, FrozenDictionary<string, PyObject>.Empty, buffer, out var arguments))
-                                        return PyResult.TypeError(null /* TODO */);
-
-                                    frame.InstructionIndex++;
-                                    var newFrame = PyInternalFrame.CreateFuncCallFrame(context, func, FrameType.Function, func._globals, func.Code);
-                                    newFrame.InitArgs(func._def, func.Code, arguments, func.Closure);
-                                    context.FrameState.EnterFrame(ref newFrame);
-                                    callDepth++;
-                                    frame = ref context.CurrentInternalFrame;
-                                    states.OperandStackSize = Stack.Count;
-                                    context.FrameState.PushStates(ref states);
-                                    states = new BytecodeVirtualMachineStates(context, usingLocalsPlusAsOperandStack: true);
-                                    goto eval_begin;
-                                }
-                                else
-                                {
-                                    value = func.InternalCall(context, states.CacheArgs, FrozenDictionary<string, PyObject>.Empty).PyUnwrap(context);
-                                    Stack.Push(value);
-                                }
-                            }
-                            else
-                            {
-                                value = value.Call(context, states.CacheArgs).PyUnwrap(context);
-                                Stack.Push(value);
-                            }
+                            callable = Stack.Pop();
+                            callArgs = states.CacheArgs;
+                            callKwargs = FrozenDictionary<string, PyObject>.Empty;
+                            goto case OpCode.__CallImpl;
                         }
-                        break;
 
                     case OpCode.CallKw:
-                        InternalCallKw(context, ref Stack, ref states, instructionArg);
-                        break;
+                        {
+                            var tuple = (PyTupleObject)Stack.Pop();
+                            states.CacheKwargs.Clear();
+
+                            LoadArgs(ref Stack, states.CacheArgs, tuple.Count);
+
+                            for (int i = 0; i < tuple.Count; i++)
+                            {
+                                var str = (PyStrObject)tuple[i];
+                                states.CacheKwargs.Add(str.Value, states.CacheArgs[i]);
+                            }
+
+                            var argsCount = instructionArg - states.CacheKwargs.Count;
+                            var isNull = argsCount > 0 && Stack[-argsCount] is null;
+                            if (isNull)
+                                argsCount--;
+
+                            LoadArgs(ref Stack, states.CacheArgs, argsCount);
+                            if (isNull)
+                                Stack.Pop();
+
+                            callable = Stack.Pop();
+                            callArgs = states.CacheArgs;
+                            callKwargs = states.CacheKwargs;
+                            goto case OpCode.__CallImpl;
+                        }
 
                     case OpCode.CallFunctionEx:
-                        InternalCallFunctionEx(context, ref Stack, ref states);
-                        break;
+                        {
+                            var dict = (PyDictObject)Stack.Pop();
+                            var pyargs = (PyListObject)Stack.Pop();
+                            states.CacheKwargs.Clear();
+
+                            foreach (var pair in dict)
+                            {
+                                if (pair.Key is not PyStrObject str)
+                                    throw context.TypeError(PySR.Runtime_Keyword_KeywordsMustBeStrings);
+                                states.CacheKwargs.Add(str.Value, pair.Value);
+                            }
+
+                            callable = Stack.Pop();
+                            callArgs = pyargs;
+                            callKwargs = states.CacheKwargs;
+                            goto case OpCode.__CallImpl;
+                        }
+
+                    case OpCode.__CallImpl:
+                        {
+                            Debug.Assert(instruction.OpCode is OpCode.Call or OpCode.CallKw or OpCode.CallFunctionEx);
+                            Debug.Assert(callable is not null);
+                            Debug.Assert(callArgs is not null);
+                            Debug.Assert(callKwargs is not null);
+
+                            if (callable is not PyFunctionObject func)
+                            {
+                                value = callable.Call(context, callArgs, callKwargs).PyUnwrap(context);
+                                Stack.Push(value);
+                                break;
+                            }
+
+                            if (func.Code.Flags is not CodeObjectFlags.Function)
+                            {
+                                value = func.InternalCall(context, callArgs, callKwargs).PyUnwrap(context);
+                                Stack.Push(value);
+                                break;
+                            }
+                            
+                            InlinePyObjectArray buffer = default;
+                            if (!func._def.TryParse(callArgs, callKwargs, buffer, out var arguments))
+                                return PyResult.TypeError(null /* TODO */);
+
+                            frame.InstructionIndex++;
+                            var newFrame = PyInternalFrame.CreateFuncCallFrame(context, func, FrameType.Function, func._globals, func.Code);
+                            newFrame.InitArgs(func._def, func.Code, arguments, func.Closure);
+                            context.FrameState.EnterFrame(ref newFrame);
+                            callDepth++;
+                            frame = ref context.CurrentInternalFrame;
+                            states.OperandStackSize = Stack.Count;
+                            context.FrameState.PushStates(ref states);
+                            states = new BytecodeVirtualMachineStates(context, usingLocalsPlusAsOperandStack: true);
+                            goto eval_begin;
+                        }
 
                     case OpCode.PopTop:
                         Stack.Pop();
@@ -1067,58 +1119,6 @@ internal static class BytecodeVirtualMachine
         {
             stack[-1] = result.PyUnwrap(context);
         }
-    }
-
-    private static void InternalCallKw(PyCallContext context, ref ValueOperandStack stack, ref BytecodeVirtualMachineStates states, int instructionArg)
-    {
-        PyObject value;
-
-        var tuple = (PyTupleObject)stack.Pop();
-        states.CacheKwargs.Clear();
-
-        LoadArgs(ref stack, states.CacheArgs, tuple.Count);
-
-        for (int i = 0; i < tuple.Count; i++)
-        {
-            var str = (PyStrObject)tuple[i];
-            states.CacheKwargs.Add(str.Value, states.CacheArgs[i]);
-        }
-
-        var argsCount = instructionArg - states.CacheKwargs.Count;
-        var isNull = argsCount > 0 && stack[-argsCount] is null;
-        if (isNull)
-            argsCount--;
-
-        LoadArgs(ref stack, states.CacheArgs, argsCount);
-        if (isNull)
-            stack.Pop();
-
-        var callable = stack.Pop();
-        if (callable is PyFunctionObject func)
-            value = func.InternalCall(context, states.CacheArgs, states.CacheKwargs).PyUnwrap(context);
-        else
-            value = callable.Call(context, states.CacheArgs, states.CacheKwargs).PyUnwrap(context);
-        stack.Push(value);
-    }
-
-    private static void InternalCallFunctionEx(PyCallContext context, ref ValueOperandStack stack, ref BytecodeVirtualMachineStates states)
-    {
-        var dict = (PyDictObject)stack.Pop();
-        var pyargs = (PyListObject)stack.Pop();
-        states.CacheKwargs.Clear();
-
-        foreach (var pair in dict)
-        {
-            if (pair.Key is not PyStrObject str)
-                throw context.TypeError(PySR.Runtime_Keyword_KeywordsMustBeStrings);
-            states.CacheKwargs.Add(str.Value, pair.Value);
-        }
-
-        var callable = stack[-1];
-        if (callable is PyFunctionObject func)
-            stack[-1] = func.InternalCall(context, states.CacheArgs, states.CacheKwargs).PyUnwrap(context);
-        else
-            stack[-1] = callable.Call(context, pyargs, states.CacheKwargs).PyUnwrap(context);
     }
 
     private static void InternalMapAdd(PyCallContext context, ref ValueOperandStack stack, int instructionArg)
