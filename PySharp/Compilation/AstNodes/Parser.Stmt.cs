@@ -572,7 +572,7 @@ partial class Parser
             return false;
         }
 
-        if (decorators.Count > 0 && !(IsCurrentKeyword("def") || IsCurrentKeyword("class")))
+        if (decorators.Count > 0 && !(IsCurrentKeyword("def") || IsCurrentKeyword("class") || IsMatchKeywordsSequence("async", "def")))
             throw SyntaxError();
 
         compoundStmt = CurrentTokenStringAsSpan switch
@@ -585,7 +585,7 @@ partial class Parser
             "try" => ParseTryStmt(),
             "while" => ParseWhileStmt(),
             "match" when TestIsMatchStmt() => ParseMatchStmt(),
-            "async" => throw new NotSupportedException(),
+            "async" => ParseAsyncStmt(decorators),
             _ => null,
         };
 
@@ -899,9 +899,6 @@ partial class Parser
     [GrammarSyntaxRule("function_def")]
     private FunctionDefNode ParseFunctionDef(IReadOnlyList<AstExprNode> decorators)
     {
-        if (IsCurrentKeyword("async"))
-            throw new NotSupportedException();
-
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("def");
         var name = ParseIdentifier();
@@ -1019,5 +1016,52 @@ partial class Parser
     {
         EnsureTokenTypeThenMove(TokenType.Equal);
         return ParseExpression();
+    }
+
+    private AstStmtNode ParseAsyncStmt(List<AstExprNode> decorators)
+    {
+        var pos = TokenPosition;
+        EnsureKeywordThenMove("async");
+        
+        if (CurrentTokenType is not TokenType.Name || !IsKeyword(CurrentTokenStringAsSpan))
+            throw SyntaxError();
+
+        var keyword = CurrentTokenStringAsSpan;
+        TokenPosition = pos;
+
+        return keyword switch
+        {
+            "def" => ParseAsyncFunctionDef(decorators),
+
+            _ => throw new NotSupportedException()
+        };
+    }
+
+    private AsyncFunctionDefNode ParseAsyncFunctionDef(List<AstExprNode> decorators)
+    {
+        var metaInfo = CreateAstMetaInfo();
+
+        EnsureKeywordThenMove("async");
+        EnsureKeywordThenMove("def");
+        var name = ParseIdentifier();
+
+        IEnumerable<AstTypeParamNode> typeParams = [];
+        if (CurrentTokenType is TokenType.LeftSquareBracket)
+            typeParams = ParseTypeParams();
+
+        EnsureTokenTypeThenMove(TokenType.LeftParen);
+        var args = CurrentTokenType is TokenType.RightParen ? Ast.Arguments() : ParseParams(isLambda: false);
+        EnsureTokenTypeThenMove(TokenType.RightParen);
+
+        var returns = null as AstExprNode;
+        if (CurrentTokenType is TokenType.RightArrow)
+        {
+            MoveNextToken();
+            returns = ParseExpression();
+        }
+
+        EnsureTokenTypeThenMove(TokenType.Colon);
+        var body = ParseBlock("def");
+        return Ast.AsyncFunctionDef(name, args, body, decorators, returns, typeParams).With(metaInfo);
     }
 }

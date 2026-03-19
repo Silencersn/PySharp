@@ -225,6 +225,71 @@ public sealed class FunctionDefNode : AstStmtNode, IScopedSubNodesProvider
     }
 }
 
+public sealed class AsyncFunctionDefNode : AstStmtNode, IScopedSubNodesProvider
+{
+    internal AsyncFunctionDefNode(string name, AstArgumentsNode args, ImmutableArray<AstStmtNode> body, ImmutableArray<AstExprNode> decoratorList, AstExprNode? returns, ImmutableArray<AstTypeParamNode> typeParams)
+    {
+        Name = name;
+        Args = args;
+        Body = body;
+        DecoratorList = decoratorList;
+        Returns = returns;
+        TypeParams = typeParams;
+    }
+
+    public string Name { get; }
+    public AstArgumentsNode Args { get; }
+    public ImmutableArray<AstStmtNode> Body { get; }
+    public ImmutableArray<AstExprNode> DecoratorList { get; }
+    public AstExprNode? Returns { get; }
+    public ImmutableArray<AstTypeParamNode> TypeParams { get; }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        foreach (var d in DecoratorList)
+            yield return d;
+
+        yield return Args;
+
+        foreach (var stmt in Body)
+            yield return stmt;
+    }
+
+    IEnumerable<AstNode> IScopedSubNodesProvider.EnumerateSubNodesOuterScope()
+    {
+        foreach (var d in DecoratorList)
+            yield return d;
+
+        foreach (var d in Args.KwDefaults)
+            if (d is not null)
+                yield return d;
+
+        foreach (var d in Args.Defaults)
+            yield return d;
+    }
+
+    IEnumerable<AstNode> IScopedSubNodesProvider.EnumerateSubNodesInnerScope()
+    {
+        foreach (var n in Args.PosonlyArgs)
+            yield return n;
+
+        foreach (var n in Args.Args)
+            yield return n;
+
+        if (Args.VarArg is not null)
+            yield return Args.VarArg;
+
+        foreach (var n in Args.KwonlyArgs)
+            yield return n;
+
+        if (Args.KwArg is not null)
+            yield return Args.KwArg;
+
+        foreach (var stmt in Body)
+            yield return stmt;
+    }
+}
+
 public sealed class ClassDefNode : AstStmtNode, IScopedSubNodesProvider
 {
     internal ClassDefNode(string name, ImmutableArray<AstExprNode> bases, ImmutableArray<AstKeywordNode> keywords, ImmutableArray<AstStmtNode> body, ImmutableArray<AstExprNode> decoratorList, ImmutableArray<AstTypeParamNode> typeParams)

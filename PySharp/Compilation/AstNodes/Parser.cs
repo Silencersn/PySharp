@@ -159,6 +159,23 @@ public sealed partial class Parser : ICodeMetaInfoProvider
 
         return CurrentTokenStringAsSpan.Equals(keyword, StringComparison.Ordinal);
     }
+    private bool IsMatchKeywordsSequence(params ReadOnlySpan<string> keywords)
+    {
+        var pos = TokenPosition;
+        var result = true;
+        foreach (var keyword in keywords)
+        {
+            if (!IsKeyword(keyword))
+            {
+                result = false;
+                break;
+            }
+
+            MoveNextToken();
+        }
+        TokenPosition = pos;
+        return result;
+    }
     private void EnsureKeywordThenMove(string keyword, string message = PySR.InvalidSyntax)
     {
         EnsureTokenType(TokenType.Name);

@@ -167,7 +167,7 @@ partial class Ast
 
         return new ImportFromNode(module, names.ToImmutableArray(true), level);
     }
-
+    
     public static FunctionDefNode FunctionDef(string name, AstArgumentsNode args, IEnumerable<AstStmtNode> body, IEnumerable<AstExprNode> decoratorList, AstExprNode? returns, IEnumerable<AstTypeParamNode> typeParams)
     {
         ArgumentNullException.ThrowIfNull(name);
@@ -177,6 +177,17 @@ partial class Ast
         ArgumentNullException.ThrowIfNull(typeParams);
 
         return new FunctionDefNode(name, args, body.ToImmutableArray(true), decoratorList.ToImmutableArray(true), returns, typeParams.ToImmutableArray(true));
+    }
+
+    public static AsyncFunctionDefNode AsyncFunctionDef(string name, AstArgumentsNode args, IEnumerable<AstStmtNode> body, IEnumerable<AstExprNode> decoratorList, AstExprNode? returns, IEnumerable<AstTypeParamNode> typeParams)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        ArgumentNullException.ThrowIfNull(args);
+        ArgumentNullException.ThrowIfNull(body);
+        ArgumentNullException.ThrowIfNull(decoratorList);
+        ArgumentNullException.ThrowIfNull(typeParams);
+
+        return new AsyncFunctionDefNode(name, args, body.ToImmutableArray(true), decoratorList.ToImmutableArray(true), returns, typeParams.ToImmutableArray(true));
     }
 
     public static ClassDefNode ClassDef(string name, IEnumerable<AstExprNode> bases, IEnumerable<AstKeywordNode> keywords, IEnumerable<AstStmtNode> body, IEnumerable<AstExprNode> decoratorList, IEnumerable<AstTypeParamNode> typeParams)
