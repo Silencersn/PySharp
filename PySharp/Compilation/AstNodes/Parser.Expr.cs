@@ -634,10 +634,10 @@ partial class Parser
         if (!IsCurrentKeyword("await"))
             return ParsePrimary();
 
-        //var metaInfo = CreateAstMetaInfo();
-        //MoveNextToken();
-        //var expr = ParsePrimary();
-        throw new NotSupportedException();
+        var metaInfo = CreateAstMetaInfo();
+        MoveNextToken();
+        var expr = ParsePrimary();
+        return Ast.Await(expr).With(metaInfo.WithPreviousEnd());
     }
 
     [GrammarSyntaxRule("power")]

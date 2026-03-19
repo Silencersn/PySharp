@@ -574,3 +574,18 @@ public sealed class NamedExprNode : AstExprNode
         yield return Value;
     }
 }
+
+public sealed class AwaitNode : AstExprNode
+{
+    internal AwaitNode(AstExprNode value)
+    {
+        Value = value;
+    }
+
+    public AstExprNode Value { get; }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Value;
+    }
+}

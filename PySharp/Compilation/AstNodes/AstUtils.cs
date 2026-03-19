@@ -12,7 +12,7 @@ internal static class AstUtils
     {
         return exprNode switch
         {
-            // NamedExprNode => "named expression",
+            NamedExprNode => "named expression",
             LambdaNode => "lambda",
             IfExpNode => "conditional expression",
             DictNode => "dict literal",
@@ -21,7 +21,7 @@ internal static class AstUtils
             DictCompNode => "dict comprehension",
             SetCompNode => "set comprehension",
             GeneratorExpNode => "generator expression",
-            // AwaitNode => "await expression",
+            AwaitNode => "await expression",
             YieldNode or YieldFromNode => "yield expression",
             CompareNode => "comparison",
             CallNode => "function call",

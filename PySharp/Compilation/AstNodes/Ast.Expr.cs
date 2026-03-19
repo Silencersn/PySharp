@@ -301,4 +301,11 @@ partial class Ast
 
         return new NamedExprNode(target, value);
     }
+
+    public static AwaitNode Await(AstExprNode value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+
+        return new AwaitNode(value);
+    }
 }
