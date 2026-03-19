@@ -14,7 +14,7 @@ internal static class PyCore
     {
         Debug.Assert(context.CurrentInternalFrame.CodeObject is not null);
         var vmStates = new BytecodeVirtualMachineStates(context, usingLocalsPlusAsOperandStack);
-        return BytecodeVirtualMachine.Eval(ref vmStates);
+        return BytecodeVirtualMachine.Eval(context, ref vmStates);
     }
 
     public static PyCellObject[]? GetFreeVars(ref PyInternalFrame frame, PyCodeObject code)

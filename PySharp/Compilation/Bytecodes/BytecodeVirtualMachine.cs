@@ -38,9 +38,8 @@ internal static class BytecodeVirtualMachine
         }
     }
 
-    internal static PyResult Eval(ref BytecodeVirtualMachineStates states)
+    internal static PyResult Eval(PyCallContext context, ref BytecodeVirtualMachineStates states)
     {
-        var context = states.Context;
         ref var frame = ref context.CurrentInternalFrame;
         var callDepth = 0;
         PyResult evalResult = default;
@@ -922,7 +921,7 @@ internal static class BytecodeVirtualMachine
         Debug.Assert(!states.RunToEnd || Stack.Count is 0);
         if (states.RunToEnd)
         {
-            frame.Dispose(states.Context);
+            frame.Dispose(context);
             states.Stack?.Dispose();
         }
         else
