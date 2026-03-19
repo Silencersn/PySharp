@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using PySharp.Compilation.CodeAnalysis;
+﻿using PySharp.Compilation.CodeAnalysis;
 using PySharp.Compilation.Primitives;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime;
@@ -12,7 +9,6 @@ using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 
 namespace PySharp.Compilation.AstNodes;
 
@@ -39,7 +35,7 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
     private readonly CodeSource _source;
     private readonly PyCallContext _context;
     private readonly Stack<AstNode> _nodesToRoot;
-    
+
     private readonly Stack<ScopeStats> _scopeStatsStack;
     private ScopeStats _currentScopeStats;
     private readonly Stack<NestedComprehensionStats> _nestedComprehensionStatsStack;
@@ -336,7 +332,7 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
     {
         switch (node)
         {
-            case AstArgNode n: 
+            case AstArgNode n:
                 if (_currentScopeStats.Scope.Variables.ContainsKey(n.Arg))
                     throw SyntaxError(PySR.InvalidSyntax_Semantic_DuplicateArgument, n.Arg);
                 AddParameter(n.Arg);

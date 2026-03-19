@@ -40,7 +40,7 @@ public sealed class TrackbackInfo
 
                 repeatCount = 1;
             }
-            
+
             if (repeatCount <= 3)
                 Print(builder, info, callerName);
             preInfo = info;

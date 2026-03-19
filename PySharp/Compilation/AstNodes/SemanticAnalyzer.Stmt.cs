@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using PySharp.Compilation.Primitives;
-using PySharp.Runtime;
-using PySharp.Modules.Builtins;
-using System.Collections.Immutable;
-using System.Linq;
+﻿using PySharp.Compilation.Primitives;
 
 namespace PySharp.Compilation.AstNodes;
 
@@ -281,7 +274,7 @@ partial class SemanticAnalyzer
             if (i < node.Cases.Length - 1)
                 ThrowUnreachable(irrefutablePattern);
         }
-        
+
         IEnumerable<AstPatternNode> EnumeratePossiblyIrrefutablePatterns(AstPatternNode pattern)
         {
             yield return pattern;
@@ -298,7 +291,7 @@ partial class SemanticAnalyzer
                     yield return p;
             }
         }
-        
+
         void ThrowUnreachable(MatchAsNode irrefutablePattern)
         {
             if (irrefutablePattern.Name is null)

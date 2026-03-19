@@ -1,17 +1,13 @@
-using PySharp.Compilation.CodeAnalysis;
 using PySharp.Compilation.Primitives;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
 using PySharp.Utility;
-using System.Collections;
 using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Xml.Linq;
 
 namespace PySharp.Compilation.Bytecodes;
 
@@ -356,7 +352,7 @@ internal static class BytecodeVirtualMachine
                                 Stack.Push(value);
                                 break;
                             }
-                            
+
                             InlinePyObjectArray buffer = default;
                             if (!func._def.TryParse(callArgs, callKwargs, buffer, out var arguments))
                                 return PyResult.TypeError(null /* TODO */);
@@ -859,57 +855,57 @@ internal static class BytecodeVirtualMachine
             int nextIndex;
         handle:
             if (!states.ExceptionHandlers.TryPeek(out var currentHandler))
+            {
+                Stack.Clear();
+                states.RunToEnd = true;
+                evalResult = PyResult.FromException(e.PyException);
+                goto eval_end;
+            }
+
+            if (currentHandler.State is ExceptionHandler.State_Except)
+            {
+                // raise exception during except body
+
+                currentHandler.PyException = e.PyException;
+                nextIndex = currentHandler.FinallyOffset;
+            }
+            else if (currentHandler.State is ExceptionHandler.State_Finally)
+            {
+                // raise exception during finally body
+
+                states.Exceptions.Clear();
+                states.ExceptionHandlers.Pop();
+
+                goto handle;
+            }
+            else
+            {
+                Debug.Assert(currentHandler.State is ExceptionHandler.State_Init);
+                currentHandler.PyException = e.PyException;
+
+                currentHandler.HitExcept = true;
+                if (currentHandler.ExceptOffset is not -1)
                 {
-                    Stack.Clear();
-                    states.RunToEnd = true;
-                    evalResult = PyResult.FromException(e.PyException);
-                    goto eval_end;
-                }
-
-                if (currentHandler.State is ExceptionHandler.State_Except)
-                {
-                    // raise exception during except body
-
-                    currentHandler.PyException = e.PyException;
-                    nextIndex = currentHandler.FinallyOffset;
-                }
-                else if (currentHandler.State is ExceptionHandler.State_Finally)
-                {
-                    // raise exception during finally body
-
-                    states.Exceptions.Clear();
-                    states.ExceptionHandlers.Pop();
-
-                    goto handle;
+                    currentHandler.State = ExceptionHandler.State_Except;
+                    nextIndex = currentHandler.ExceptOffset;
                 }
                 else
                 {
-                    Debug.Assert(currentHandler.State is ExceptionHandler.State_Init);
-                    currentHandler.PyException = e.PyException;
-
-                    currentHandler.HitExcept = true;
-                    if (currentHandler.ExceptOffset is not -1)
-                    {
-                        currentHandler.State = ExceptionHandler.State_Except;
-                        nextIndex = currentHandler.ExceptOffset;
-                    }
-                    else
-                    {
-                        nextIndex = currentHandler.FinallyOffset;
-                    }
+                    nextIndex = currentHandler.FinallyOffset;
                 }
+            }
 
-                // TODO: rollback until what?
-                while (currentHandler.StackDepth < Stack.Count)
-                    Stack.Pop();
+            // TODO: rollback until what?
+            while (currentHandler.StackDepth < Stack.Count)
+                Stack.Pop();
 
-                e.PyException.WithTraceback(context, overwriteExisting: false);
+            e.PyException.WithTraceback(context, overwriteExisting: false);
 
-                states.Exceptions.Push(e.PyException);
+            states.Exceptions.Push(e.PyException);
 
-                instructionArg = 0;
-                currentIndex = nextIndex;
-                goto eval_resume;
+            instructionArg = 0;
+            currentIndex = nextIndex;
+            goto eval_resume;
         }
 
         states.RunToEnd = true;
