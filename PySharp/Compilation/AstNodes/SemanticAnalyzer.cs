@@ -9,6 +9,7 @@ using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Xml.Linq;
 
 namespace PySharp.Compilation.AstNodes;
 
@@ -463,6 +464,21 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
             default:
                 throw new UnreachableException();
         }
+    }
+
+    private void VisitArgumentsDefaults(AstArgumentsNode args)
+    {
+        VisitNullableNodes(args.KwDefaults);
+        VisitNodes(args.Defaults);
+    }
+
+    private void VisitArgumentsArgs(AstArgumentsNode args)
+    {
+        VisitNodes(args.PosonlyArgs);
+        VisitNodes(args.Args);
+        VisitNullableNode(args.VarArg);
+        VisitNodes(args.KwonlyArgs);
+        VisitNullableNode(args.KwArg);
     }
 
     private static IEnumerable<AstPatternNode> EnumeratePatterns(AstPatternNode pattern)

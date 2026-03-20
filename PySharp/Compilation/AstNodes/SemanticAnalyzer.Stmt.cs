@@ -31,6 +31,7 @@ partial class SemanticAnalyzer
             case WithNode n: VisitWith(n); break;
             case MatchNode n: VisitMatch(n); break;
             case FunctionDefNode n: VisitFunctionDef(n); break;
+            case AsyncFunctionDefNode n: VisitAsyncFunctionDef(n); break;
             case ClassDefNode n: VisitClassDef(n); break;
             default: throw new NotImplementedException();
         }
@@ -309,17 +310,28 @@ partial class SemanticAnalyzer
         _currentScopeStats.Scope.AppendVariable(node.Name, ExprContextType.Store);
 
         VisitNodes(node.DecoratorList);
-        VisitNullableNodes(node.Args.KwDefaults);
-        VisitNodes(node.Args.Defaults);
+        VisitArgumentsDefaults(node.Args);
 
         var scope = new FunctionVariableScope(node, _currentScopeStats.Scope);
         PushScope(scope);
 
-        VisitNodes(node.Args.PosonlyArgs);
-        VisitNodes(node.Args.Args);
-        VisitNullableNode(node.Args.VarArg);
-        VisitNodes(node.Args.KwonlyArgs);
-        VisitNullableNode(node.Args.KwArg);
+        VisitArgumentsArgs(node.Args);
+        VisitNodes(node.Body);
+
+        PopScope();
+    }
+
+    private void VisitAsyncFunctionDef(AsyncFunctionDefNode node)
+    {
+        _currentScopeStats.Scope.AppendVariable(node.Name, ExprContextType.Store);
+
+        VisitNodes(node.DecoratorList);
+        VisitArgumentsDefaults(node.Args);
+
+        var scope = new AsyncFunctionVariableScope(node, _currentScopeStats.Scope);
+        PushScope(scope);
+
+        VisitArgumentsArgs(node.Args);
         VisitNodes(node.Body);
 
         PopScope();

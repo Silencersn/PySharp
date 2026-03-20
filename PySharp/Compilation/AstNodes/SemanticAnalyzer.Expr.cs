@@ -36,6 +36,7 @@ partial class SemanticAnalyzer
             case JoinedStrNode n: VisitJoinedStr(n); break;
             case BoolOpNode n: VisitBoolOp(n); break;
             case StarredNode n: VisitStarred(n); break;
+            case AwaitNode n: VisitAwait(n); break;
             default: throw new NotImplementedException();
         }
     }
@@ -220,6 +221,10 @@ partial class SemanticAnalyzer
             throw SyntaxError(PySR.InvalidSyntax_Semantic_YieldFromInsideComprehension,
                 AstUtils.GetExprNodeName(_currentNestedComprehensionStats.CurrentComprehension));
 
+        if (_currentScopeStats.Scope is AsyncFunctionVariableScope)
+            throw SyntaxError(PySR.InvalidSyntax_Semantic_YieldFromInsideAsyncFunc);
+
+        Debug.Assert(_currentScopeStats.Scope is not GeneratorExpVariableScope);
         if (_currentScopeStats.Scope is not CallableVariableScope callableYieldFromScope
             /* this callable scope is never genexpr because of the first if */)
             throw SyntaxError(PySR.InvalidSyntax_Semantic_YieldFromOutsideFunction);
@@ -377,17 +382,12 @@ partial class SemanticAnalyzer
 
     private void VisitLambda(LambdaNode node)
     {
-        VisitNullableNodes(node.Args.KwDefaults);
-        VisitNodes(node.Args.Defaults);
+        VisitArgumentsDefaults(node.Args);
 
         var scope = new LambdaVariableScope(node, _currentScopeStats.Scope);
         PushScope(scope);
 
-        VisitNodes(node.Args.PosonlyArgs);
-        VisitNodes(node.Args.Args);
-        VisitNullableNode(node.Args.VarArg);
-        VisitNodes(node.Args.KwonlyArgs);
-        VisitNullableNode(node.Args.KwArg);
+        VisitArgumentsArgs(node.Args);
         VisitNode(node.Body);
 
         PopScope();
@@ -411,6 +411,14 @@ partial class SemanticAnalyzer
 
     private void VisitStarred(StarredNode node)
     {
+        VisitNode(node.Value);
+    }
+
+    private void VisitAwait(AwaitNode node)
+    {
+        if (_currentScopeStats.Scope is not AsyncFunctionVariableScope)
+            throw SyntaxError(PySR.InvalidSyntax_Semantic_AwaitOutsideAsyncFunc);
+
         VisitNode(node.Value);
     }
 }

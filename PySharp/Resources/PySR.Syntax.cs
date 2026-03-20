@@ -102,6 +102,8 @@ partial class PySR
     public const string InvalidSyntax_Semantic_YieldInsideComprehension = "'yield' inside {0}";
     public const string InvalidSyntax_Semantic_YieldFromOutsideFunction = "'yield from' outside function";
     public const string InvalidSyntax_Semantic_YieldFromInsideComprehension = "'yield from' inside {0}";
+    public const string InvalidSyntax_Semantic_YieldFromInsideAsyncFunc = "'yield from' inside async function";
+    public const string InvalidSyntax_Semantic_AwaitOutsideAsyncFunc = "'await' outside async function";
     public const string InvalidSyntax_Semantic_ImportStarNotAtModuleLevel = "import * only allowed at module level";
     public const string InvalidSyntax_Semantic_NamedExprInComprehensionInClass = "assignment expression within a comprehension cannot be used in a class body";
     public const string InvalidSyntax_Semantic_NamedExprRebindCompIterVar = "assignment expression cannot rebind comprehension iteration variable '{0}'";

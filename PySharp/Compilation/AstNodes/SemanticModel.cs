@@ -211,6 +211,18 @@ internal sealed class FunctionVariableScope : CallableVariableScope
     }
 }
 
+internal sealed class AsyncFunctionVariableScope : CallableVariableScope
+{
+    internal override AstArgumentsNode ArgumentsNode => Owner.Args;
+    public override AsyncFunctionDefNode Owner { get; }
+    public override string? Name => Owner.Name;
+
+    public AsyncFunctionVariableScope(AsyncFunctionDefNode owner, VariableScope parent) : base(parent)
+    {
+        Owner = owner;
+    }
+}
+
 internal sealed class LambdaVariableScope : CallableVariableScope
 {
     internal override AstArgumentsNode ArgumentsNode => Owner.Args;
