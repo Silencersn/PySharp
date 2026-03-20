@@ -149,4 +149,6 @@ partial class PySR
     public const string Runtime_Recursion_MaxRecursionDepthExceeded = "maximum recursion depth exceeded";
 
     public const string Runtime_Async_NonAwaitable = "'{0}' object can't be awaited";
+    public const string Runtime_Async_SendNonNoneAtFirst = "can't send non-None value to a just-started coroutine";
+    public const string Runtime_Async_IgnoredGeneratorExit = "coroutine ignored GeneratorExit";
 }

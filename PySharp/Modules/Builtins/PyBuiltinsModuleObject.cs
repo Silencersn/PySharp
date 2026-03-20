@@ -65,6 +65,7 @@ public class PyBuiltinsModuleObject : PyModuleObject
         AddObjToAttrs(PyClassMethodObjectType.Shared); // classmethod
 
         AddObjToAttrs("Ellipsis", PyEllipsisObject.Ellipsis); // Ellipsis
+        AddObjToAttrs("NotImplemented", PyNotImplementedObject.NotImplemented); // NotImplemented
 
         AddObjToAttrs(PyBaseExceptionObjectType.Shared); // BaseException
         AddObjToAttrs(PySystemExitObjectType.Shared); // SystemExit

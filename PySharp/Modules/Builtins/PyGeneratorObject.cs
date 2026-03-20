@@ -26,11 +26,11 @@ public abstract class PyGeneratorObject : PyObject, IPyObjectName
 
 public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
 {
-    // TODO: type error msg match type (generator or coroutine)
-
     private bool IsGeneratorRunning;
     private PyInternalFrame _frame;
     private BytecodeVirtualMachineStates _vmStates;
+
+    private bool IsCoroutine => _pyType is PyCoroutineObjectType;
 
     internal PyBytecodeGeneratorObject(PyTypeObject type, string name, PyInternalFrame frame, BytecodeVirtualMachineStates states) : base(type, name)
     {
@@ -47,7 +47,7 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
         using var withFrame = context.WithFrame(ref _frame, dispose: false);
         _vmStates.SetYieldReceivedValue(value);
         var result = BytecodeVirtualMachine.Eval(context, ref _vmStates);
-        _frame.InstructionIndex = context.FrameState.CurrentInternalFrame.InstructionIndex;
+        _frame.InstructionIndex = context.CurrentInternalFrame.InstructionIndex;
         if (result.IsError)
             return result;
 
@@ -65,7 +65,7 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
         _vmStates.ExceptionToRaise = PyGeneratorExitObjectType.Shared.Create();
         using var withFrame = context.WithFrame(ref _frame, dispose: false);
         var result = BytecodeVirtualMachine.Eval(context, ref _vmStates);
-        _frame.InstructionIndex = context.FrameState.CurrentInternalFrame.InstructionIndex;
+        _frame.InstructionIndex = context.CurrentInternalFrame.InstructionIndex;
 
         if (result.IsError)
         {
@@ -76,8 +76,9 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
         }
 
         if (!_vmStates.RunToEnd)
-            // still yield value
-            return PyResult.RuntimeError(PySR.Runtime_Generator_IgnoredGeneratorExit);
+            // still yield or await value
+            return PyResult.RuntimeError(IsCoroutine ?
+                PySR.Runtime_Async_IgnoredGeneratorExit : PySR.Runtime_Generator_IgnoredGeneratorExit);
 
         return result;
     }
@@ -90,7 +91,8 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
     internal override PyResult PySend(PyCallContext context, PyObject pyObject)
     {
         if (!IsGeneratorRunning && pyObject is not PyNoneObject)
-            return PyResult.TypeError(PySR.Runtime_Generator_SendNonNoneAtFirst);
+            return PyResult.TypeError(IsCoroutine ?
+                PySR.Runtime_Async_SendNonNoneAtFirst : PySR.Runtime_Generator_SendNonNoneAtFirst);
 
         return Send(context, pyObject);
     }
@@ -118,7 +120,7 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
         _vmStates.ExceptionToRaise = exc;
         using var withFrame = context.WithFrame(ref _frame, dispose: false);
         var result = BytecodeVirtualMachine.Eval(context, ref _vmStates);
-        _frame.InstructionIndex = context.FrameState.CurrentInternalFrame.InstructionIndex;
+        _frame.InstructionIndex = context.CurrentInternalFrame.InstructionIndex;
         if (result.IsError)
             return result;
 
@@ -126,7 +128,7 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
             // return value
             return PyResult.StopIteration(result.Value);
 
-        // yield value
+        // yield or await value
         return result;
     }
 }
