@@ -94,6 +94,8 @@ public static class PySpecialNames
     public const string Enter = "__enter__";
     public const string Exit = "__exit__";
 
+    public const string Await = "__await__";
+
 
     // attributes
     public const string Bases = "__bases__";

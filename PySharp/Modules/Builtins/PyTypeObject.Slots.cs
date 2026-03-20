@@ -106,6 +106,8 @@ partial class PyTypeObject
         internal PySelfArgsKwargsFunction? Init;
         internal PyBinaryFunction? Format;
 
+        internal PyUnaryFunction? Await;
+
         internal PyTypeSlots Clone()
         {
             return (PyTypeSlots)MemberwiseClone();
@@ -202,6 +204,8 @@ partial class PyTypeObject
             Missing ??= other.Missing;
             Init ??= other.Init;
             Format ??= other.Format;
+
+            Await ??= other.Await;
         }
 
         internal static PyTypeSlots Create(IEnumerable<PyTypeObject> types)

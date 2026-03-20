@@ -356,4 +356,8 @@ partial class PyTypeObject
     {
         throw new UnreachableException("Implemented by PyTypeObject<TObject>");
     }
+    private protected virtual PyResult Await(PyCallContext context, PyObject self)
+    {
+        throw new UnreachableException("Implemented by PyTypeObject<TObject>");
+    }
 }

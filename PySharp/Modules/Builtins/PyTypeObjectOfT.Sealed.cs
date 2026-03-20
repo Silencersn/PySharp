@@ -504,4 +504,10 @@ partial class PyTypeObject<TObject>
             return PyResult.TypeError(PySR.Runtime_Type_MethodReceiveSelfWithWrongType, PySpecialNames.Exit, FullName, self.PyType.FullName);
         return Exit(context, selfOfT, excType, excVal, excTb);
     }
+    private protected sealed override PyResult Await(PyCallContext context, PyObject self)
+    {
+        if (self is not TObject selfOfT)
+            return PyResult.TypeError(PySR.Runtime_Type_MethodReceiveSelfWithWrongType, PySpecialNames.Enter, FullName, self.PyType.FullName);
+        return Await(context, selfOfT);
+    }
 }

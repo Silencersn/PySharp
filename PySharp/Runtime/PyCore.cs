@@ -187,6 +187,8 @@ internal static class PyCore
                 case PySpecialNames.Missing: type.Slots.Missing = value.ToBinaryFunction(); break;
                 case PySpecialNames.Init: type.Slots.Init = value.ToSelfArgsKwargsFunction(); break;
                 case PySpecialNames.Format: type.Slots.Format = value.ToBinaryFunction(); break;
+
+                case PySpecialNames.Await: type.Slots.Await = value.ToUnaryFunction(); break;
             }
         }
         return type;

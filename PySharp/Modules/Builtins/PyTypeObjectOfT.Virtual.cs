@@ -445,4 +445,10 @@ partial class PyTypeObject<TObject>
     {
         throw new NotImplementedException($"{PySpecialNames.Exit} does not have default implementation");
     }
+
+    [PySlot]
+    protected virtual PyResult Await(PyCallContext context, TObject self)
+    {
+        throw new NotImplementedException($"{PySpecialNames.Await} does not have default implementation");
+    }
 }
