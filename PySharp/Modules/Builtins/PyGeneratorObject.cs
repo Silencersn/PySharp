@@ -9,10 +9,12 @@ namespace PySharp.Modules.Builtins;
 public abstract class PyGeneratorObject : PyObject, IPyObjectName
 {
     public string Name { get; }
-    public override PyTypeObject DefaultPyType => PyGeneratorObjectType.Shared;
+    public override PyTypeObject DefaultPyType { get; }
 
-    public PyGeneratorObject(string name)
+    public PyGeneratorObject(PyTypeObject type, string name)
     {
+        _pyType = type;
+        DefaultPyType = type;
         Name = name;
     }
 
@@ -24,11 +26,13 @@ public abstract class PyGeneratorObject : PyObject, IPyObjectName
 
 public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
 {
+    // TODO: type error msg match type (generator or coroutine)
+
     private bool IsGeneratorRunning;
     private PyInternalFrame _frame;
     private BytecodeVirtualMachineStates _vmStates;
 
-    internal PyBytecodeGeneratorObject(string name, PyInternalFrame frame, BytecodeVirtualMachineStates states) : base(name)
+    internal PyBytecodeGeneratorObject(PyTypeObject type, string name, PyInternalFrame frame, BytecodeVirtualMachineStates states) : base(type, name)
     {
         _frame = frame;
         _vmStates = states;

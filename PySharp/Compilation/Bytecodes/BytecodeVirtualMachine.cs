@@ -590,8 +590,11 @@ internal static class BytecodeVirtualMachine
 
                     case OpCode.ReturnGenerator:
                         {
+                            Debug.Assert(frame.CodeObject is not null);
                             currentIndex++;
-                            intermediateValue = new PyBytecodeGeneratorObject(frame.CallerName, frame, states);
+                            intermediateValue = new PyBytecodeGeneratorObject(
+                                frame.CodeObject.Flags.HasFlag(CodeObjectFlags.Coroutine) ? PyCoroutineObjectType.Shared : PyGeneratorObjectType.Shared,
+                                frame.CallerName, frame, states);
                         }
                         break;
 
@@ -605,6 +608,13 @@ internal static class BytecodeVirtualMachine
                     case OpCode.GetYieldFromIter:
                         if (!PyGeneratorObjectType.Shared.IsInstance(Stack[-1]))
                             goto case OpCode.GetIter;
+                        break;
+
+                    case OpCode.GetAwaitable:
+                        if (PyCoroutineObjectType.Shared.IsInstance(Stack[-1]))
+                            break;
+
+                        Stack[-1] = PySpecialMethods.Await(context, Stack[-1]).PyUnwrap(context);
                         break;
 
                     case OpCode.Send:
@@ -1104,10 +1114,20 @@ internal static class BytecodeVirtualMachine
 
         iter = stack[-2];
         value = stack[-1];
-        if (value is PyNoneObject)
-            result = PySpecialMethods.Next(context, iter);
+        if (iter is PyGeneratorObject gen)
+        {
+            if (value is PyNoneObject)
+                result = gen.PyNext(context);
+            else
+                result = gen.PySend(context, value);
+        }
         else
-            result = iter.CallMethod(context, "send", [value]);
+        {
+            if (value is PyNoneObject)
+                result = PySpecialMethods.Next(context, iter);
+            else
+                result = iter.CallMethod(context, "send", [value]);
+        }
 
         if (result.IsStopIteration)
         {

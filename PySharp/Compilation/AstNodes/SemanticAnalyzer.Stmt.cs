@@ -93,7 +93,7 @@ partial class SemanticAnalyzer
 
     private void VisitReturn(ReturnNode node)
     {
-        if (_currentScopeStats.Scope is not FunctionVariableScope)
+        if (_currentScopeStats.Scope is not (FunctionVariableScope or AsyncFunctionVariableScope))
             throw SyntaxError(PySR.InvalidSyntax_Semantic_ReturnOutsideFunction);
         if (_currentScopeStats.FinallyDepth > 0)
             CheckControlStmtNotInFinallyUntil(static n => n is FunctionDefNode, PySR.InvalidSyntax_Semantic_ReturnInFinally);

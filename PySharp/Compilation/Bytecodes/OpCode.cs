@@ -72,6 +72,7 @@ internal enum OpCode : byte
     ReturnGenerator,
     YieldValue,
     GetYieldFromIter,
+    GetAwaitable,
     _CheckExcToRaise,
     Send,
 

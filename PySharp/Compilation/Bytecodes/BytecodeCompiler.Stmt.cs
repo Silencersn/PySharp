@@ -5,6 +5,7 @@ using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Xml.Linq;
 
 namespace PySharp.Compilation.Bytecodes;
 
@@ -56,6 +57,7 @@ partial class BytecodeCompiler
             case MatchNode n: CompileMatch(n); break;
             case FunctionDefNode n: CompileFunctionDef(n); break;
             case ClassDefNode n: CompileClassDef(n); break;
+            case AsyncFunctionDefNode n: CompileAsyncFunctionDef(n); break;
             default: throw new UnreachableException();
         }
         Generator.PopMetaInfo();
@@ -312,19 +314,19 @@ partial class BytecodeCompiler
         Generator.Emit(OpCode.NoOperation);
     }
 
-    private void CompileFunctionDef(FunctionDefNode node)
+    private void InternalCompileIFunctionDef(IFunctionDefNode node)
     {
         var currentGenerator = Generator;
         Generator = BytecodeGenerator.Create(_source);
         var currentScope = VariableScope;
-        var scope = Model.GetVariableScope<CallableVariableScope>(node);
+        var scope = Model.GetVariableScope<CallableVariableScope>((AstNode)node);
         Debug.Assert(scope is not null);
         VariableScope = scope;
 
         foreach (var cell in scope.CellVars)
             Generator.Emit(OpCode._MakeCellFast, scope.LocalsTable[cell]);
 
-        if (scope.IsGenerator)
+        if (scope.IsGenerator || scope is AsyncFunctionVariableScope)
         {
             Generator.Emit(OpCode.ReturnGenerator);
             Generator.Emit(OpCode.PopTop); // pop the first sent to activate the generator
@@ -372,6 +374,16 @@ partial class BytecodeCompiler
             Generator.Emit(OpCode.Call, 1);
 
         StoreName(node.Name);
+    }
+
+    private void CompileFunctionDef(FunctionDefNode node)
+    {
+        InternalCompileIFunctionDef(node);
+    }
+
+    private void CompileAsyncFunctionDef(AsyncFunctionDefNode node)
+    {
+        InternalCompileIFunctionDef(node);
     }
 
     private void CompileReturn(ReturnNode node, out bool isPostUnreachable)

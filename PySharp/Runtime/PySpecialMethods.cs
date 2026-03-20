@@ -130,7 +130,7 @@ public static class PySpecialMethods
             return PySR.Format(PySR.Runtime_Object_SpecialMethodReturnsWrongType, PySpecialNames.Len, "int", o.PyType.FullName);
         }
     }
-
+    
     public static PyResult Iter(PyCallContext context, PyObject obj)
     {
         var iterFunc = obj.PyType.Slots.Iter;
@@ -142,6 +142,15 @@ public static class PySpecialMethods
             return new PyIteratorObject(obj);
 
         return PyResult.TypeError(PySR.Runtime_Sequence_NonIterable, obj.PyType.FullName);
+    }
+
+    public static PyResult Await(PyCallContext context, PyObject obj)
+    {
+        var func = obj.PyType.Slots.Await;
+        if (func is not null)
+            return func(context, obj);
+
+        return PyResult.TypeError(PySR.Runtime_Async_NonAwaitable, obj.PyType.FullName);
     }
 
     public static PyResult Next(PyCallContext context, PyObject obj)

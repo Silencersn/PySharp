@@ -159,8 +159,15 @@ internal interface IScopedSubNodesProvider
     IEnumerable<AstNode> EnumerateSubNodesInnerScope();
 }
 
+internal interface IFunctionDefNode
+{
+    public string Name { get; }
+    public AstArgumentsNode Args { get; }
+    public ImmutableArray<AstStmtNode> Body { get; }
+    public ImmutableArray<AstExprNode> DecoratorList { get; }
+}
 
-public sealed class FunctionDefNode : AstStmtNode, IScopedSubNodesProvider
+public sealed class FunctionDefNode : AstStmtNode, IScopedSubNodesProvider, IFunctionDefNode
 {
     internal FunctionDefNode(string name, AstArgumentsNode args, ImmutableArray<AstStmtNode> body, ImmutableArray<AstExprNode> decoratorList, AstExprNode? returns, ImmutableArray<AstTypeParamNode> typeParams)
     {
@@ -225,7 +232,7 @@ public sealed class FunctionDefNode : AstStmtNode, IScopedSubNodesProvider
     }
 }
 
-public sealed class AsyncFunctionDefNode : AstStmtNode, IScopedSubNodesProvider
+public sealed class AsyncFunctionDefNode : AstStmtNode, IScopedSubNodesProvider, IFunctionDefNode
 {
     internal AsyncFunctionDefNode(string name, AstArgumentsNode args, ImmutableArray<AstStmtNode> body, ImmutableArray<AstExprNode> decoratorList, AstExprNode? returns, ImmutableArray<AstTypeParamNode> typeParams)
     {

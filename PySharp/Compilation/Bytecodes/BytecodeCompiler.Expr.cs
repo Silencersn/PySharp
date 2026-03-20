@@ -4,6 +4,7 @@ using PySharp.Compilation.Primitives;
 using PySharp.Modules.Builtins;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Xml.Linq;
 
 namespace PySharp.Compilation.Bytecodes;
 
@@ -49,6 +50,7 @@ partial class BytecodeCompiler
             case JoinedStrNode n: CompileJoinedStr(n); break;
             case BoolOpNode n: CompileBoolOp(n); break;
             case StarredNode n: CompileStarred(n, ctx); break;
+            case AwaitNode n: CompileAwait(n); break;
             default: throw new NotImplementedException();
         }
         Generator.PopMetaInfo();
@@ -549,13 +551,13 @@ partial class BytecodeCompiler
         Generator.Emit(OpCode._CheckExcToRaise);
     }
 
-    private void CompileYieldFrom(YieldFromNode node)
+    private void InternalCompileYieldFromOrAwait(AstExprNode nodeValue, bool isAwait)
     {
         var sendLabel = Generator.DefineLabel();
         var endSendLabel = Generator.DefineLabel();
 
-        LoadExpr(node.Value);
-        Generator.Emit(OpCode.GetYieldFromIter);
+        LoadExpr(nodeValue);
+        Generator.Emit(isAwait ? OpCode.GetAwaitable : OpCode.GetYieldFromIter);
         Generator.Emit(OpCode.LoadConst, PyNoneObject.None); // activate the iter
         Generator.MarkLabel(sendLabel);
         Generator.Emit(OpCode.Send, endSendLabel);
@@ -565,6 +567,10 @@ partial class BytecodeCompiler
         Generator.MarkLabel(endSendLabel);
         Generator.Emit(OpCode.Swap, 2); // swap iter and StopIteration.value
         Generator.Emit(OpCode.PopTop); // pop iter
+    }
+    private void CompileYieldFrom(YieldFromNode node)
+    {
+        InternalCompileYieldFromOrAwait(node.Value, isAwait: false);
     }
 
     private void CompileGeneratorExp(GeneratorExpNode node)
@@ -764,5 +770,10 @@ partial class BytecodeCompiler
             LoadExpr(node.Step);
 
         Generator.Emit(OpCode.BuildSlice, node.Step is not null ? 3 : 2);
+    }
+
+    private void CompileAwait(AwaitNode node)
+    {
+        InternalCompileYieldFromOrAwait(node.Value, isAwait: true);
     }
 }

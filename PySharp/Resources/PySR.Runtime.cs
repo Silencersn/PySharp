@@ -147,4 +147,6 @@ partial class PySR
     public const string Runtime_Arguments_MultipleKeywords = "got multiple values for keyword argument '{0}'";
 
     public const string Runtime_Recursion_MaxRecursionDepthExceeded = "maximum recursion depth exceeded";
+
+    public const string Runtime_Async_NonAwaitable = "'{0}' object can't be awaited";
 }

@@ -22,6 +22,8 @@ public static class PyObjectCallExtensions
 
     public static PyResult CallMethod(this PyObject obj, PyCallContext context, string methodName, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
+        // TODO: call PyCore.GetAttrOrMethod
+
         var method = PyOperators.GetAttr(context, obj, methodName);
         if (method.IsError)
             return method;

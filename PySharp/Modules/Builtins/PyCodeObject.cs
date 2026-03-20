@@ -18,6 +18,7 @@ public enum CodeObjectFlags
     Generator = 1 << 3,
     Class = 1 << 4,
     Module = 1 << 5,
+    Coroutine = 1 << 6,
 }
 
 public sealed class PyCodeObject : PyObject
@@ -60,6 +61,8 @@ public sealed class PyCodeObject : PyObject
         Flags = CodeObjectFlags.Function;
         if (scope.IsGenerator)
             Flags |= CodeObjectFlags.Generator;
+        if (scope is AsyncFunctionVariableScope)
+            Flags |= CodeObjectFlags.Coroutine;
 
         Name = scope.Name;
         QualName = scope.QualName;
