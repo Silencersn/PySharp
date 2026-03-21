@@ -82,6 +82,9 @@ public static class PySpecialMethods
 
     public static PyResult<PyIntObject> Index(PyCallContext context, PyObject obj)
     {
+        if (obj is PyIntObject intObj)
+            return intObj;
+
         var func = obj.PyType.Slots.Index;
         if (func is not null)
             return ValidateResultOf<PyIntObject>(func(context, obj), MessageCreator);

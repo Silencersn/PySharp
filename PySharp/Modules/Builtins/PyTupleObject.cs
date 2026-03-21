@@ -35,6 +35,13 @@ public class PyTupleObject : PyObject, IPyObjectRecursiveRepr, IReadOnlyList<PyO
 
         return new PyTupleObject(array);
     }
+    public static PyTupleObject CreateTuple(params ReadOnlySpan<PyObject> items)
+    {
+        if (items.IsEmpty)
+            return Empty;
+
+        return new PyTupleObject(items.ToArray());
+    }
 
     public static PyTupleObject CreateProxy(PyObject[] array)
     {

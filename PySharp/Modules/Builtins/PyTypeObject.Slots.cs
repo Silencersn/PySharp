@@ -108,6 +108,8 @@ partial class PyTypeObject
 
         internal PyUnaryFunction? Await;
 
+        internal PyUnaryFunction? Reversed;
+
         internal PyTypeSlots Clone()
         {
             return (PyTypeSlots)MemberwiseClone();
@@ -206,6 +208,7 @@ partial class PyTypeObject
             Format ??= other.Format;
 
             Await ??= other.Await;
+            Reversed ??= other.Reversed;
         }
 
         internal static PyTypeSlots Create(IEnumerable<PyTypeObject> types)

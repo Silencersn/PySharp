@@ -189,6 +189,8 @@ internal static class PyCore
                 case PySpecialNames.Format: type.Slots.Format = value.ToBinaryFunction(); break;
 
                 case PySpecialNames.Await: type.Slots.Await = value.ToUnaryFunction(); break;
+
+                case PySpecialNames.Reversed: type.Slots.Reversed = value.ToUnaryFunction(); break;
             }
         }
         return type;

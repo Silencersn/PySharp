@@ -360,4 +360,8 @@ partial class PyTypeObject
     {
         throw new UnreachableException("Implemented by PyTypeObject<TObject>");
     }
+    private protected virtual PyResult Reversed(PyCallContext context, PyObject self)
+    {
+        throw new UnreachableException("Implemented by PyTypeObject<TObject>");
+    }
 }

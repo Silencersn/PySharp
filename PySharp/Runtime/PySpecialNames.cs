@@ -96,6 +96,7 @@ public static class PySpecialNames
 
     public const string Await = "__await__";
 
+    public const string Reversed = "__reversed__";
 
     // attributes
     public const string Bases = "__bases__";

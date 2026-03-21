@@ -547,7 +547,7 @@ internal static class BytecodeVirtualMachine
 
                     case OpCode._ListToTuple:
                         {
-                            Stack[-1] = PyTupleObject.CreateTuple((PyListObject)Stack[-1]);
+                            Stack[-1] = PyTupleObject.CreateTuple((IEnumerable<PyObject>)(PyListObject)Stack[-1]);
                         }
                         break;
 

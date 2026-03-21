@@ -19,7 +19,7 @@ public static partial class PyBuiltinFunctions
 
     // B
     public static readonly PyBuiltinFunctionOrMethodObject Bin = PyBuiltinFunctionOrMethodObject.CreateFunction("bin", BinImpl);
-    // bool -> PyBoolObject
+    // bool -> PyBoolObjectType
     // TODO: breakpoint()
     // TODO: bytearray()
     // TODO: bytes()
@@ -27,24 +27,24 @@ public static partial class PyBuiltinFunctions
     // C
     public static readonly PyBuiltinFunctionOrMethodObject Callable = PyBuiltinFunctionOrMethodObject.CreateFunction("callable", CallableImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Chr = PyBuiltinFunctionOrMethodObject.CreateFunction("chr", ChrImpl);
-    // classmethod -> PyClassMethodObject
+    // classmethod -> PyClassMethodObjectType
     public static readonly PyBuiltinFunctionOrMethodObject Compile = PyBuiltinFunctionOrMethodObject.CreateFunction("compile", CompileImpl);
-    // complex -> PyComplexObject
+    // complex -> PyComplexObjectType
 
     // D
     public static readonly PyBuiltinFunctionOrMethodObject DelAttr = PyBuiltinFunctionOrMethodObject.CreateFunction("delattr", DelAttrImpl);
-    // dict -> PyDictObject
+    // dict -> PyDictObjectType
     public static readonly PyBuiltinFunctionOrMethodObject Dir = PyBuiltinFunctionOrMethodObject.CreateFunction("dir", DirImpl_1, DirImpl_2);
     public static readonly PyBuiltinFunctionOrMethodObject DivMod = PyBuiltinFunctionOrMethodObject.CreateFunction("divmod", DivModImpl);
 
     // E
-    // TODO: enumerate()
+    // enumerate -> PyEnumerateObjectType
     public static readonly PyBuiltinFunctionOrMethodObject Eval = PyBuiltinFunctionOrMethodObject.CreateFunction("eval", EvalImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Exec = PyBuiltinFunctionOrMethodObject.CreateFunction("exec", ExecImpl);
 
     // F
     // TODO: filter
-    // float -> PyFloatObject
+    // float -> PyFloatObjectType
     public static readonly PyBuiltinFunctionOrMethodObject Format = PyBuiltinFunctionOrMethodObject.CreateFunction("format", FormatImpl);
     // TODO: frozenset()
 
@@ -61,18 +61,18 @@ public static partial class PyBuiltinFunctions
     // I
     public static readonly PyBuiltinFunctionOrMethodObject Id = PyBuiltinFunctionOrMethodObject.CreateFunction("id", IdImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Input = PyBuiltinFunctionOrMethodObject.CreateFunction("input", InputImpl_1, InputImpl_2);
-    // int -> PyIntObject
+    // int -> PyIntObjectType
     public static readonly PyBuiltinFunctionOrMethodObject IsInstance = PyBuiltinFunctionOrMethodObject.CreateFunction("isinstance", IsInstanceImpl);
     public static readonly PyBuiltinFunctionOrMethodObject IsSubclass = PyBuiltinFunctionOrMethodObject.CreateFunction("issubclass", IsSubclassImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Iter = PyBuiltinFunctionOrMethodObject.CreateFunction("iter", IterImpl);
 
     // L
     public static readonly PyBuiltinFunctionOrMethodObject Len = PyBuiltinFunctionOrMethodObject.CreateFunction("len", LenImpl);
-    // list -> PyListObject
+    // list -> PyListObjectType
     public static readonly PyBuiltinFunctionOrMethodObject Locals = PyBuiltinFunctionOrMethodObject.CreateFunction("locals", LocalsImpl);
 
     // M
-    // map -> PyMapObject
+    // map -> PyMapObjectType
     public static readonly PyBuiltinFunctionOrMethodObject Max = PyBuiltinFunctionOrMethodObject.CreateFunction("max", MaxImpl_1, MaxImpl_2, MaxImpl_3);
     // TODO: memoryview()
     public static readonly PyBuiltinFunctionOrMethodObject Min = PyBuiltinFunctionOrMethodObject.CreateFunction("min", MinImpl_1, MinImpl_2, MinImpl_3);
@@ -81,7 +81,7 @@ public static partial class PyBuiltinFunctions
     public static readonly PyBuiltinFunctionOrMethodObject Next = PyBuiltinFunctionOrMethodObject.CreateFunction("next", NextImpl_1, NextImpl_2);
 
     // O
-    // object -> PyObject
+    // object -> PyObjectType
     public static readonly PyBuiltinFunctionOrMethodObject Oct = PyBuiltinFunctionOrMethodObject.CreateFunction("oct", OctImpl);
     // TODO: open()
     public static readonly PyBuiltinFunctionOrMethodObject Ord = PyBuiltinFunctionOrMethodObject.CreateFunction("ord", OrdImpl);
@@ -89,33 +89,33 @@ public static partial class PyBuiltinFunctions
     // P
     public static readonly PyBuiltinFunctionOrMethodObject Pow = PyBuiltinFunctionOrMethodObject.CreateFunction("pow", PowImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Print = PyBuiltinFunctionOrMethodObject.CreateFunction("print", PrintImpl);
-    // property -> PyPropertyObject
+    // property -> PyPropertyObjectType
 
     // R
-    // range -> PyRangeObject
+    // range -> PyRangeObjectType
     public static readonly PyBuiltinFunctionOrMethodObject Repr = PyBuiltinFunctionOrMethodObject.CreateFunction("repr", ReprImpl);
-    // TODO: reversed()
+    // reversed -> PyReversedObjectType
     // TODO: round()
 
     // S
-    // set -> PySetObject
+    // set -> PySetObjectType
     public static readonly PyBuiltinFunctionOrMethodObject SetAttr = PyBuiltinFunctionOrMethodObject.CreateFunction("setattr", SetAttrImpl);
-    // slice -> PySliceObject
+    // slice -> PySliceObjectType
     // TODO: sorted()
-    // staticmethod -> PyStaticMethodObject
+    // staticmethod -> PyStaticMethodObjectType
     // str -> PyStrObject
     public static readonly PyBuiltinFunctionOrMethodObject Sum = PyBuiltinFunctionOrMethodObject.CreateFunction("sum", SumImpl);
-    // super -> PySuperObject
+    // super -> PySuperObjectType
 
     // T
-    // tuple -> PyTupleObject
-    // type -> PyTypeObject
+    // tuple -> PyTupleObjectType
+    // type -> PyTypeObjectType
 
     // V
     // TODO: vars()
 
     // Z
-    // zip -> PyZipObject
+    // zip -> PyZipObjectType
 
     // _
     public static readonly PyBuiltinFunctionOrMethodObject Import = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.Import, ImportImpl);
