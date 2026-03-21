@@ -303,27 +303,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObjectType, Py
     [PyFunctionArgsDef("*", "key=None", "reverse=False")]
     private static PyResult Sort(PyCallContext context, PyListObject self, PyArguments arguments)
     {
-        var keySelector = arguments["key"];
-        var result = PySpecialMethods.Bool(context, arguments["reverse"]);
-        if (result.IsError)
-            return result;
-        if (keySelector is PyNoneObject)
-        {
-            self.PySort(reverse: result.Value.BoolValue);
-        }
-        else
-        {
-            Dictionary<PyObject, PyObject> itemToKey = [];
-            foreach (var item in self)
-            {
-                var key = keySelector.Call(context, [item], FrozenDictionary<string, PyObject>.Empty);
-                if (key.IsError)
-                    return key;
-                itemToKey[item] = key.Value;
-            }
-            self.PySort(item => itemToKey[item], result.Value.BoolValue);
-        }
-        return PyNoneObject.None;
+        return self.PySort(context, arguments["key"], arguments["reverse"]);
     }
 
     [PyMethod("reverse")]

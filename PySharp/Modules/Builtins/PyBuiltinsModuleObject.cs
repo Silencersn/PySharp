@@ -43,6 +43,7 @@ public class PyBuiltinsModuleObject : PyModuleObject
         AddObjToAttrs(PyBuiltinFunctions.Format); // format
         AddObjToAttrs(PyBuiltinFunctions.DelAttr); // delattr
         AddObjToAttrs(PyBuiltinFunctions.Compile); // compile
+        AddObjToAttrs(PyBuiltinFunctions.Sorted); // sorted
 
         AddObjToAttrs(PyObjectType.Shared); // object
         AddObjToAttrs(PyStrObjectType.Shared); // str
@@ -65,6 +66,7 @@ public class PyBuiltinsModuleObject : PyModuleObject
         AddObjToAttrs(PyClassMethodObjectType.Shared); // classmethod
         AddObjToAttrs(PyEnumerateObjectType.Shared); // enumerate
         AddObjToAttrs(PyReversedObjectType.Shared); // reversed
+        AddObjToAttrs(PyFilterObjectType.Shared); // filter
 
         AddObjToAttrs("Ellipsis", PyEllipsisObject.Ellipsis); // Ellipsis
         AddObjToAttrs("NotImplemented", PyNotImplementedObject.NotImplemented); // NotImplemented

@@ -43,7 +43,7 @@ public static partial class PyBuiltinFunctions
     public static readonly PyBuiltinFunctionOrMethodObject Exec = PyBuiltinFunctionOrMethodObject.CreateFunction("exec", ExecImpl);
 
     // F
-    // TODO: filter
+    // filter -> PyFilterObjectType
     // float -> PyFloatObjectType
     public static readonly PyBuiltinFunctionOrMethodObject Format = PyBuiltinFunctionOrMethodObject.CreateFunction("format", FormatImpl);
     // TODO: frozenset()
@@ -101,7 +101,7 @@ public static partial class PyBuiltinFunctions
     // set -> PySetObjectType
     public static readonly PyBuiltinFunctionOrMethodObject SetAttr = PyBuiltinFunctionOrMethodObject.CreateFunction("setattr", SetAttrImpl);
     // slice -> PySliceObjectType
-    // TODO: sorted()
+    public static readonly PyBuiltinFunctionOrMethodObject Sorted = PyBuiltinFunctionOrMethodObject.CreateFunction("sorted", SortedImpl);
     // staticmethod -> PyStaticMethodObjectType
     // str -> PyStrObject
     public static readonly PyBuiltinFunctionOrMethodObject Sum = PyBuiltinFunctionOrMethodObject.CreateFunction("sum", SumImpl);
@@ -849,5 +849,19 @@ public static partial class PyBuiltinFunctions
             return PyResult.TypeError(PySR.Runtime_Builtin_Compile_WrongMode);
 
         return codeObject;
+    }
+
+    [PyFunctionArgsDef("iterable", "/", "*", "key=None", "reverse=False")]
+    private static PyResult SortedImpl(PyCallContext context, PyArguments arguments)
+    {
+        var list = PyUtils.IterableToList(context, arguments[0]);
+        if (list.IsError)
+            return list;
+
+        var result = list.Value.PySort(context, arguments["key"], arguments["reverse"]);
+        if (result.IsError)
+            return result;
+
+        return list.Value;
     }
 }

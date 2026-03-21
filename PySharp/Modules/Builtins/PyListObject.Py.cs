@@ -1,6 +1,9 @@
+using PySharp.Compilation.CodeAnalysis;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.Calls.Extensions;
 using PySharp.Runtime.Comparison;
+using System.Collections.Frozen;
 
 namespace PySharp.Modules.Builtins;
 
@@ -76,26 +79,50 @@ partial class PyListObject
         return _list.Count(listItem => listItem.Equals(item));
     }
 
+    internal PyResult PySort(PyCallContext context, PyObject keySelector, PyObject reverse)
+    {
+        var result = PySpecialMethods.Bool(context, reverse);
+        if (result.IsError)
+            return result;
+        if (keySelector is PyNoneObject)
+        {
+            PySort(reverse: result.Value.BoolValue);
+        }
+        else
+        {
+            Dictionary<PyObject, PyObject> itemToKey = [];
+            foreach (var item in _list)
+            {
+                var key = keySelector.Call(context, [item]);
+                if (key.IsError)
+                    return key;
+                itemToKey[item] = key.Value;
+            }
+            PySort(item => itemToKey[item], result.Value.BoolValue);
+        }
+        return PyNoneObject.None;
+    }
+
     public void PySort(Func<PyObject, PyObject>? key = null, bool reverse = false)
     {
-        IEnumerable<PyObject> _sortedItems;
+        IEnumerable<PyObject> sortedItems;
 
         if (key is null)
         {
-            _sortedItems = reverse
+            sortedItems = reverse
                 ? _list.OrderDescending(PyObjectComparer.Default)
                 : _list.Order(PyObjectComparer.Default);
         }
         else
         {
-            _sortedItems = reverse
+            sortedItems = reverse
                 ? _list.OrderByDescending(key, PyObjectComparer.Default)
                 : _list.OrderBy(key, PyObjectComparer.Default);
         }
 
-        List<PyObject> newList = [.. _sortedItems];
+        var items = sortedItems.ToArray();
         _list.Clear();
-        _list.AddRange(newList);
+        _list.AddRange(items);
     }
 
     public void PyReverse()
