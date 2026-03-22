@@ -40,19 +40,19 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         public LexerState State;
         public char WrapperChar { get; }
         public bool IsTriple { get; }
-        public bool IsRaw { get; }
+        public bool IsTemplate { get; }
         public int ParenLevelWhenEntering { get; }
         public Stack<int> FormatSpec { get; }
         public readonly int WrapperLength => IsTriple ? 3 : 1;
 
-        public FStringInfo(bool isRaw, char wrapperChar, bool isTriple, int parenLevelWhenEntering)
+        public FStringInfo(bool isTemplate, char wrapperChar, bool isTriple, int parenLevelWhenEntering)
         {
+            IsTemplate = isTemplate;
             FormatSpec = [];
             State = LexerState.FStringMiddle;
             WrapperChar = wrapperChar;
             IsTriple = isTriple;
             ParenLevelWhenEntering = parenLevelWhenEntering;
-            IsRaw = isRaw;
         }
     }
 
@@ -243,9 +243,9 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                         if (CurrentFStringInfo.FormatSpec.Count > 0)
                             throw SyntaxError(PySR.InvalidSyntax_FString_ReplacementField_ExpectingRightBraceOrSpecs);
 
-                        AppendToken(TokenType.FStringMiddle, indexOfChar - _offset);
+                        AppendToken(info.IsTemplate ? TokenType.TStringMiddle : TokenType.FStringMiddle, indexOfChar - _offset);
                         _offset = indexOfChar;
-                        AppendToken(TokenType.FStringEnd, info.WrapperLength);
+                        AppendToken(info.IsTemplate ? TokenType.TStringEnd : TokenType.FStringEnd, info.WrapperLength);
                         _offset = indexOfChar + info.WrapperLength;
                         ExitFString();
                     }
@@ -253,7 +253,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                     {
                         bool isEscape = CurrentFStringInfo.FormatSpec.Count is 0 && indexOfChar + 1 < content.Length && content[indexOfChar + 1] is '{';
                         var nextOffset = indexOfChar + (isEscape ? 1 : 0);
-                        AppendToken(TokenType.FStringMiddle, nextOffset - _offset);
+                        AppendToken(info.IsTemplate ? TokenType.TStringMiddle : TokenType.FStringMiddle, nextOffset - _offset);
                         _offset = nextOffset;
 
                         if (isEscape)
@@ -279,7 +279,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                     {
                         if (CurrentFStringInfo.FormatSpec.Count > 0)
                         {
-                            AppendToken(TokenType.FStringMiddle, indexOfChar - _offset);
+                            AppendToken(info.IsTemplate ? TokenType.TStringMiddle : TokenType.FStringMiddle, indexOfChar - _offset);
                             _offset = indexOfChar;
                             AppendToken(TokenType.RightBrace, length: 1);
                             _offset = indexOfChar + 1;
@@ -292,7 +292,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                             if (indexOfChar + 1 < content.Length && content[indexOfChar + 1] is not '}')
                                 throw SyntaxError(PySR.InvalidSyntax_Tokenize_FStringSingleRightBrace);
 
-                            AppendToken(TokenType.FStringMiddle, indexOfChar + 1 /* included escape '}' */ - _offset);
+                            AppendToken(info.IsTemplate ? TokenType.TStringMiddle : TokenType.FStringMiddle, indexOfChar + 1 /* included escape '}' */ - _offset);
                             _offset = indexOfChar + 2;
                         }
                     }
@@ -503,10 +503,13 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         else
         {
             var prefix = GetStringPrefix(group.Value, out _wrapper);
-            if (prefix.ContainsAny('f', 'F'))
+            var isFString = prefix.ContainsAny('f', 'F');
+            var isTString = prefix.ContainsAny('t', 'T');
+
+            if (isFString || isTString)
             {
-                AppendToken(TokenType.FStringStart, group.Length);
-                EnterFString(new FStringInfo(prefix.ContainsAny('r', 'R'), _wrapper, isTriple: true, _parenLevel));
+                AppendToken(isTString ? TokenType.TStringStart : TokenType.FStringStart, group.Length);
+                EnterFString(new FStringInfo(isTString, _wrapper, isTriple: true, parenLevelWhenEntering: _parenLevel));
                 return;
             }
 
@@ -535,11 +538,14 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
     private void TokenizeContStr(ref ValueGroup group)
     {
         var prefix = GetStringPrefix(group.Value, out _wrapper);
-        if (prefix.ContainsAny('f', 'F'))
+        var isFString = prefix.ContainsAny('f', 'F');
+        var isTString = prefix.ContainsAny('t', 'T');
+
+        if (isFString || isTString)
         {
             group.Length = prefix.Length + 1 /* len of wrapper */;
-            AppendToken(TokenType.FStringStart, group.Length);
-            EnterFString(new FStringInfo(prefix.ContainsAny('r', 'R'), _wrapper, isTriple: false, _parenLevel));
+            AppendToken(isTString ? TokenType.TStringStart : TokenType.FStringStart, group.Length);
+            EnterFString(new FStringInfo(isTString, _wrapper, isTriple: false, parenLevelWhenEntering: _parenLevel));
             return;
         }
 
@@ -558,7 +564,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
     private bool TryTokenizeSingleFString(ReadOnlySpan<char> content, out ValueGroup group)
     {
         Debug.Assert(_offset < content.Length);
-        Debug.Assert(content[_offset] is 'b' or 'B' or 'f' or 'F' or 'r' or 'R' or 'u' or 'U');
+        Debug.Assert(content[_offset] is 'b' or 'B' or 'f' or 'F' or 't' or 'T' or 'r' or 'R' or 'u' or 'U');
 
         var searchLength = Math.Min(3 /* max len of prefix (2) + len of wrapper (1) */, content.Length - _offset);
         var span = content.Slice(_offset, searchLength);
@@ -570,12 +576,15 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             return false;
 
         var prefix = span[..indexOfWrapper];
-        if (prefix.ContainsAny('f', 'F'))
+        var isFString = prefix.ContainsAny('f', 'F');
+        var isTString = prefix.ContainsAny('t', 'T');
+
+        if (isFString || isTString)
         {
             group.Index = _offset;
             group.Length = prefix.Length + 1 /* len of wrapper */;
-            AppendToken(TokenType.FStringStart, group.Length);
-            EnterFString(new FStringInfo(prefix.ContainsAny('r', 'R'), span[indexOfWrapper], isTriple: false, _parenLevel));
+            AppendToken(isTString ? TokenType.TStringStart : TokenType.FStringStart, group.Length);
+            EnterFString(new FStringInfo(isTString, span[indexOfWrapper], isTriple: false, parenLevelWhenEntering: _parenLevel));
             return true;
         }
 
@@ -635,6 +644,8 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             case 'B':
             case 'f':
             case 'F':
+            case 't':
+            case 'T':
             case 'r':
             case 'R':
             case 'u':

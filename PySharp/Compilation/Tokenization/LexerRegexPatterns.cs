@@ -74,7 +74,7 @@ public static class LexerRegexPatterns
     public const string Triple = @$"({StringPrefix}'''|{StringPrefix}"""""")";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
-    public const string StringPrefix = "(|B|BR|Br|F|FR|Fr|R|RB|RF|Rb|Rf|U|b|bR|br|f|fR|fr|r|rB|rF|rb|rf|u)";
+    public const string StringPrefix = "(|B|BR|Br|F|FR|Fr|R|RB|RF|RT|Rb|Rf|Rt|T|TR|Tr|U|b|bR|br|f|fR|fr|r|rB|rF|rT|rb|rf|rt|t|tR|tr|u)";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
     public const string String = @$"({StringPrefix}'[^\n'\\]*(?:\\.[^\n'\\]*)*'|{StringPrefix}""[^\n""\\]*(?:\\.[^\n""\\]*)*"")";
