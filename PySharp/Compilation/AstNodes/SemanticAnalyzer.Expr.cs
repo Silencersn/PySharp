@@ -34,6 +34,8 @@ partial class SemanticAnalyzer
             case LambdaNode n: VisitLambda(n); break;
             case FormattedValueNode n: VisitFormattedValue(n); break;
             case JoinedStrNode n: VisitJoinedStr(n); break;
+            case InterpolationNode n: VisitInterpolation(n); break;
+            case TemplateStrNode n: VisitTemplateStr(n); break;
             case BoolOpNode n: VisitBoolOp(n); break;
             case StarredNode n: VisitStarred(n); break;
             case AwaitNode n: VisitAwait(n); break;
@@ -404,6 +406,17 @@ partial class SemanticAnalyzer
     }
 
     private void VisitJoinedStr(JoinedStrNode node)
+    {
+        VisitNodes(node.Values);
+    }
+
+    private void VisitInterpolation(InterpolationNode node)
+    {
+        VisitNode(node.Value);
+        VisitNullableNode(node.FormatSpec);
+    }
+
+    private void VisitTemplateStr(TemplateStrNode node)
     {
         VisitNodes(node.Values);
     }

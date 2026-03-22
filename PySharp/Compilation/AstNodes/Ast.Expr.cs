@@ -308,4 +308,18 @@ partial class Ast
 
         return new AwaitNode(value);
     }
+
+    public static TemplateStrNode TemplateStr(IEnumerable<AstExprNode> values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+
+        return new TemplateStrNode(values.ToImmutableArray(true));
+    }
+
+    public static InterpolationNode Interpolation(AstExprNode value, string str, int conversion, AstExprNode? formatSpec)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+
+        return new InterpolationNode(value, str, conversion, formatSpec);
+    }
 }

@@ -34,6 +34,21 @@ partial class PySR
     public const string InvalidSyntax_FString_ConversionCharacter_Invalid = "f-string: invalid conversion character";
     public const string InvalidSyntax_FString_ConversionCharacter_InvalidCharacter = "f-string: invalid conversion character '{0}': expected 's', 'r', or 'a'";
 
+    public const string InvalidSyntax_TString_ReplacementField_BeforeEqual = "t-string: valid expression required before '='";
+    public const string InvalidSyntax_TString_ReplacementField_BeforeExclamation = "t-string: valid expression required before '!'";
+    public const string InvalidSyntax_TString_ReplacementField_BeforeColon = "t-string: valid expression required before ':'";
+    public const string InvalidSyntax_TString_ReplacementField_BeforeRightBrace = "t-string: valid expression required before '}'";
+    public const string InvalidSyntax_TString_ReplacementField_ExpectingEqual = "t-string: expecting '=', or '!', or ':', or '}'";
+    public const string InvalidSyntax_TString_ReplacementField_ExpectingExclamation = "t-string: expecting '!', or ':', or '}'";
+    public const string InvalidSyntax_TString_ReplacementField_ExpectingColon = "t-string: expecting ':' or '}'";
+    public const string InvalidSyntax_TString_ReplacementField_ExpectingRightBraceOrSpecs = "t-string: expecting '}', or format specs";
+    public const string InvalidSyntax_TString_ReplacementField_ExpectingRightBrace = "t-string: expecting '}'";
+
+    public const string InvalidSyntax_TString_ConversionCharacter_Missing = "t-string: missing conversion character";
+    public const string InvalidSyntax_TString_ConversionCharacter_Invalid = "t-string: invalid conversion character";
+    public const string InvalidSyntax_TString_ConversionCharacter_InvalidCharacter = "t-string: invalid conversion character '{0}': expected 's', 'r', or 'a'";
+
+
     public const string InvalidSyntax_NamedExpression_InvalidTarget = "cannot use assignment expressions with {0}";
     public const string InvalidSyntax_NamedExpression_NameWithEqual = "invalid syntax. Maybe you meant '==' or ':=' instead of '='?";
 

@@ -589,3 +589,39 @@ public sealed class AwaitNode : AstExprNode
         yield return Value;
     }
 }
+
+public sealed class TemplateStrNode : AstExprNode
+{
+    internal TemplateStrNode(ImmutableArray<AstExprNode> values)
+    {
+        Values = values;
+    }
+
+    public ImmutableArray<AstExprNode> Values { get; }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        foreach (var v in Values) yield return v;
+    }
+}
+
+public sealed class InterpolationNode : AstExprNode
+{
+    internal InterpolationNode(AstExprNode value, string str, int conversion, AstExprNode? formatSpec)
+    {
+        Value = value;
+        Str = str;
+        Conversion = conversion;
+        FormatSpec = formatSpec;
+    }
+
+    public AstExprNode Value { get; }
+    public string Str { get; }
+    public int Conversion { get; }
+    public AstExprNode? FormatSpec { get; }
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Value;
+        if (FormatSpec is not null) yield return FormatSpec;
+    }
+}

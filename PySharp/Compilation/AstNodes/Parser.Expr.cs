@@ -286,9 +286,198 @@ partial class Parser
         return str;
     }
 
+    [GrammarSyntaxRule("tstring_middle")]
+    private void ParseTStringMiddle(List<AstExprNode> values, bool isRaw)
+    {
+        if (CurrentTokenType is not TokenType.TStringMiddle)
+        {
+            var (debugSpec, interpolation) = ParseTStringReplacementField(isRaw);
+            if (debugSpec is not null)
+                values.Add(debugSpec);
+            values.Add(interpolation);
+            return;
+        }
+
+        var literal = PyStrConverter.FromSourceToLiteral(CurrentTokenStringAsSpan, isRaw, SharedBuilder);
+        var str = isRaw ? literal : FromLiteralToString(literal, true);
+        var middle = Ast.Constant(str).With(CreateAstMetaInfo());
+        MoveNextToken();
+        values.Add(middle);
+    }
+
+    [GrammarSyntaxRule("tstring_replacement_field")]
+    private (ConstantNode? DebugSpec, InterpolationNode Interpolation) ParseTStringReplacementField(bool isRaw)
+    {
+        EnsureTokenTypeThenMove(TokenType.LeftBrace);
+        if (CurrentTokenType is TokenType.Equal)
+            throw SyntaxError(PySR.InvalidSyntax_TString_ReplacementField_BeforeEqual);
+        if (CurrentTokenType is TokenType.Exclamation)
+            throw SyntaxError(PySR.InvalidSyntax_TString_ReplacementField_BeforeExclamation);
+        if (CurrentTokenType is TokenType.Colon)
+            throw SyntaxError(PySR.InvalidSyntax_TString_ReplacementField_BeforeColon);
+        if (CurrentTokenType is TokenType.RightBrace)
+            throw SyntaxError(PySR.InvalidSyntax_TString_ReplacementField_BeforeRightBrace);
+
+        var start = CurrentToken.GetStart(_codeSource);
+        var metaInfo = CreateAstMetaInfo();
+        var value = ParseAnnotatedRhs(StopPredicates.UntilRightBraceOrEqualOrExclamationOrColon);
+        string str;
+        {
+            var position = TokenPosition - 1;
+            var span = _tokenSequence.AsSpan();
+            while (IsUselessToken(span[position]))
+                position--;
+            var exprEndToken = span[position];
+            var end = exprEndToken.GetEnd(_codeSource);
+
+            if (!_codeSource.Code.TryGetRange(start, end, out var range))
+                throw _context.PySharpException("incorrect code text position");
+
+            str = range.ToString();
+        }
+
+        var debugSpec = null as ConstantNode;
+        if (CurrentTokenType is TokenType.Equal)
+        {
+            MoveNextToken();
+            var end = CurrentToken.GetStart(_codeSource);
+
+            if (!_codeSource.Code.TryGetRange(start, end, out var range))
+                throw _context.PySharpException("incorrect code text position");
+
+            debugSpec = Ast.Constant(range.ToString()).With(metaInfo.WithEnd());
+        }
+        else
+        {
+            if (!IsCurrentTypeTokenAnyOf(TokenType.Exclamation, TokenType.Colon, TokenType.RightBrace))
+                throw SyntaxError(PySR.InvalidSyntax_TString_ReplacementField_ExpectingEqual);
+        }
+
+        var conversion = -1;
+        if (CurrentTokenType is TokenType.Exclamation)
+            conversion = ParseTStringConversion();
+        else if (!IsCurrentTypeTokenAnyOf(TokenType.Colon, TokenType.RightBrace))
+            throw SyntaxError(PySR.InvalidSyntax_TString_ReplacementField_ExpectingExclamation);
+
+        var format_spec = null as JoinedStrNode;
+        if (CurrentTokenType is TokenType.Colon)
+            format_spec = ParseTStringFullFormatSpec(isRaw);
+        else if (!IsCurrentTypeTokenAnyOf(TokenType.RightBrace))
+            throw SyntaxError(PySR.InvalidSyntax_TString_ReplacementField_ExpectingColon);
+
+        EnsureTokenTypeThenMove(TokenType.RightBrace, format_spec is null
+            ? PySR.InvalidSyntax_TString_ReplacementField_ExpectingRightBrace
+            : PySR.InvalidSyntax_TString_ReplacementField_ExpectingRightBraceOrSpecs);
+
+        var interpolation = Ast.Interpolation(value, str, conversion, format_spec).With(metaInfo.WithPreviousEnd());
+        return (debugSpec, interpolation);
+    }
+
+    [GrammarSyntaxRule("tstring_conversion")]
+    private int ParseTStringConversion()
+    {
+        EnsureTokenTypeThenMove(TokenType.Exclamation);
+        if (IsCurrentTypeTokenAnyOf(TokenType.Colon, TokenType.RightBrace))
+            throw SyntaxError(PySR.InvalidSyntax_TString_ConversionCharacter_Missing);
+
+        if (!IsCurrentIdentifier)
+            throw SyntaxError(PySR.InvalidSyntax_TString_ConversionCharacter_Invalid);
+
+        var conversion = CurrentTokenStringAsSpan;
+        if (conversion is not ("s" or "r" or "a"))
+            throw SyntaxError(PySR.InvalidSyntax_TString_ConversionCharacter_InvalidCharacter, CurrentTokenString);
+        MoveNextToken();
+
+        return conversion[0];
+    }
+
+    [GrammarSyntaxRule("tstring_full_format_spec")]
+    private JoinedStrNode ParseTStringFullFormatSpec(bool isRaw)
+    {
+        EnsureTokenTypeThenMove(TokenType.Colon);
+
+        var metaInfo = CreateAstMetaInfo();
+
+        // ConstantNode(string) or FormattedValueNode or JoinedStrNode
+        List<AstExprNode> formatSpecs = [];
+        while (CurrentTokenType is not TokenType.RightBrace)
+        {
+            var formatSpec = ParseTStringFormatSpec(isRaw);
+            formatSpecs.Add(formatSpec);
+        }
+
+        return ConcatToJoinedStr(formatSpecs).With(metaInfo.WithPreviousEnd());
+    }
+
+    [GrammarSyntaxRule("tstring_format_spec")]
+    private AstExprNode ParseTStringFormatSpec(bool isRaw)
+    {
+        return ParseFStringMiddle(isRaw);
+    }
+
+    private static TemplateStrNode ConcatToTemplateStr(List<AstExprNode> nodes)
+    {
+        if (nodes.Count is 0 || nodes[0] is not ConstantNode)
+            nodes.Insert(0, Ast.Constant(string.Empty));
+
+        var preNode = nodes[0];
+        Debug.Assert(preNode is ConstantNode);
+
+        for (int i = 1; i < nodes.Count; i++)
+        {
+            var node = nodes[i];
+            Debug.Assert(node is ConstantNode or InterpolationNode);
+            Debug.Assert((preNode is ConstantNode && node is ConstantNode or InterpolationNode)
+                || (preNode is InterpolationNode && node is ConstantNode));
+
+            if (node is ConstantNode constant && preNode is ConstantNode preConstant)
+            {
+                Debug.Assert(constant.Value is PyStrObject);
+                Debug.Assert(preConstant.Value is PyStrObject);
+
+                node = nodes[i] = Ast.Constant(((PyStrObject)preConstant.Value).Value + ((PyStrObject)constant.Value).Value);
+                nodes[i - 1] = null!;
+            }
+
+            preNode = node;
+        }
+
+        return Ast.TemplateStr(nodes.Where(static node => node is not null));
+    }
+
+    [GrammarSyntaxRule("tstring")]
+    private void ParseTString(List<AstExprNode> values)
+    {
+        EnsureTokenType(TokenType.TStringStart);
+        var isRaw = CurrentTokenStringAsSpan.Contains('r');
+        MoveNextToken();
+
+        while (CurrentTokenType is not TokenType.TStringEnd)
+            ParseTStringMiddle(values, isRaw);
+        MoveNextToken();
+    }
+
+    private TemplateStrNode ParseTStrings()
+    {
+        Debug.Assert(CurrentTokenType is TokenType.TStringStart);
+
+        var metaInfo = CreateAstMetaInfo();
+
+        // ConstantNode(string) or InterpolationNode
+        List<AstExprNode> values = [];
+
+        while (CurrentTokenType is TokenType.TStringStart)
+            ParseTString(values);
+
+        return ConcatToTemplateStr(values).With(metaInfo.WithPreviousEnd());
+    }
+
     [GrammarSyntaxRule("strings")]
     private AstExprNode ParseStrings()
     {
+        if (CurrentTokenType is TokenType.TStringStart)
+            return ParseTStrings();
+
         if (CurrentTokenType is not (TokenType.String or TokenType.FStringStart))
             throw SyntaxError();
 
@@ -452,7 +641,7 @@ partial class Parser
                 return nameNode;
             }
         }
-        else if (CurrentTokenType is TokenType.String or TokenType.FStringStart)
+        else if (CurrentTokenType is TokenType.String or TokenType.FStringStart or TokenType.TStringStart)
         {
             return ParseStrings();
         }
