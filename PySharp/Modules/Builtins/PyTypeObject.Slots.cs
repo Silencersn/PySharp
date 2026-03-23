@@ -45,6 +45,7 @@ partial class PyTypeObject
         internal PyBinaryFunction? Add;
         internal PyBinaryFunction? Sub;
         internal PyBinaryFunction? Mul;
+        internal PyBinaryFunction? MatMul;
         internal PyBinaryFunction? TrueDiv;
         internal PyBinaryFunction? FloorDiv;
         internal PyBinaryFunction? Mod;
@@ -67,6 +68,7 @@ partial class PyTypeObject
         internal PyBinaryFunction? RAdd;
         internal PyBinaryFunction? RSub;
         internal PyBinaryFunction? RMul;
+        internal PyBinaryFunction? RMatMul;
         internal PyBinaryFunction? RTrueDiv;
         internal PyBinaryFunction? RFloorDiv;
         internal PyBinaryFunction? RMod;
@@ -150,6 +152,7 @@ partial class PyTypeObject
             Add ??= other.Add;
             Sub ??= other.Sub;
             Mul ??= other.Mul;
+            MatMul ??= other.MatMul;
             TrueDiv ??= other.TrueDiv;
             FloorDiv ??= other.FloorDiv;
             Mod ??= other.Mod;
@@ -170,6 +173,7 @@ partial class PyTypeObject
             RAdd ??= other.RAdd;
             RSub ??= other.RSub;
             RMul ??= other.RMul;
+            RMatMul ??= other.RMatMul;
             RTrueDiv ??= other.RTrueDiv;
             RFloorDiv ??= other.RFloorDiv;
             RMod ??= other.RMod;

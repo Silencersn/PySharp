@@ -40,6 +40,7 @@ public static class PySpecialNames
     public const string Add = "__add__";
     public const string Sub = "__sub__";
     public const string Mul = "__mul__";
+    public const string MatMul = "__matmul__";
     public const string TrueDiv = "__truediv__";
     public const string FloorDiv = "__floordiv__";
     public const string Mod = "__mod__";
@@ -54,6 +55,7 @@ public static class PySpecialNames
     public const string RAdd = "__radd__";
     public const string RSub = "__rsub__";
     public const string RMul = "__rmul__";
+    public const string RMatMul = "__rmatmul__";
     public const string RTrueDiv = "__rtruediv__";
     public const string RFloorDiv = "__rfloordiv__";
     public const string RMod = "__rmod__";

@@ -147,6 +147,10 @@ partial class PyTypeObject
     {
         throw new UnreachableException("Implemented by PyTypeObject<TObject>");
     }
+    private protected virtual PyResult MatMul(PyCallContext context, PyObject self, PyObject other)
+    {
+        throw new UnreachableException("Implemented by PyTypeObject<TObject>");
+    }
     private protected virtual PyResult TrueDiv(PyCallContext context, PyObject self, PyObject other)
     {
         throw new UnreachableException("Implemented by PyTypeObject<TObject>");
@@ -197,6 +201,10 @@ partial class PyTypeObject
         throw new UnreachableException("Implemented by PyTypeObject<TObject>");
     }
     private protected virtual PyResult RMul(PyCallContext context, PyObject self, PyObject other)
+    {
+        throw new UnreachableException("Implemented by PyTypeObject<TObject>");
+    }
+    private protected virtual PyResult RMatMul(PyCallContext context, PyObject self, PyObject other)
     {
         throw new UnreachableException("Implemented by PyTypeObject<TObject>");
     }

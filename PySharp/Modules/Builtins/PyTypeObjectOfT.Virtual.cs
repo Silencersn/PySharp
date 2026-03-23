@@ -187,6 +187,11 @@ partial class PyTypeObject<TObject>
         return DefaultBinaryOperator(context, self, other);
     }
     [PySlot]
+    protected virtual PyResult MatMul(PyCallContext context, TObject self, PyObject other)
+    {
+        return DefaultBinaryOperator(context, self, other);
+    }
+    [PySlot]
     protected virtual PyResult TrueDiv(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
@@ -249,6 +254,11 @@ partial class PyTypeObject<TObject>
     }
     [PySlot]
     protected virtual PyResult RMul(PyCallContext context, TObject self, PyObject other)
+    {
+        return DefaultBinaryOperator(context, self, other);
+    }
+    [PySlot]
+    protected virtual PyResult RMatMul(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }

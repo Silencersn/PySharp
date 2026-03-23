@@ -56,6 +56,8 @@ public partial class PyStrObject : PyObject
     public static PyStrObject FromString(string value)
     {
         ArgumentNullException.ThrowIfNull(value);
+        if (value.Length is 0)
+            return Empty;
         if (value.Length is 1 && value[0] < CharPoolSize)
             return _charPool[value[0]];
         return new PyStrObject(value);

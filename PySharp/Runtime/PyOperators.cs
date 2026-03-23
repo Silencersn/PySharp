@@ -10,6 +10,7 @@ public enum PyOperatorTypes
     Add,
     Sub,
     Mult,
+    MatMult,
     TrueDiv,
     FloorDiv,
     Mod,
@@ -37,6 +38,7 @@ public static class PyOperators
             PyOperatorTypes.Add => "+",
             PyOperatorTypes.Sub => "-",
             PyOperatorTypes.Mult => "*",
+            PyOperatorTypes.MatMult => "@",
             PyOperatorTypes.TrueDiv => "/",
             PyOperatorTypes.FloorDiv => "//",
             PyOperatorTypes.Mod => "%",
@@ -111,6 +113,9 @@ public static class PyOperators
             case PyOperatorTypes.Mult:
                 result = EvalReflectiveOperator(context, left, right, leftType.Slots.Mul, rightType.Slots.RMul);
                 break;
+            case PyOperatorTypes.MatMult:
+                result = EvalReflectiveOperator(context, left, right, leftType.Slots.MatMul, rightType.Slots.RMatMul);
+                break;
             case PyOperatorTypes.TrueDiv:
                 result = EvalReflectiveOperator(context, left, right, leftType.Slots.TrueDiv, rightType.Slots.RTrueDiv);
                 break;
@@ -177,6 +182,9 @@ public static class PyOperators
             case PyOperatorTypes.Mult:
                 result = EvalReflectiveOperator(context, right, left, rightType.Slots.RMul, leftType.Slots.Mul);
                 break;
+            case PyOperatorTypes.MatMult:
+                result = EvalReflectiveOperator(context, right, left, rightType.Slots.RMatMul, leftType.Slots.MatMul);
+                break;
             case PyOperatorTypes.TrueDiv:
                 result = EvalReflectiveOperator(context, right, left, rightType.Slots.RTrueDiv, leftType.Slots.TrueDiv);
                 break;
@@ -240,6 +248,7 @@ public static class PyOperators
                 PyOperatorTypes.Add => slots.IAdd,
                 PyOperatorTypes.Sub => slots.ISub,
                 PyOperatorTypes.Mult => slots.IMul,
+                PyOperatorTypes.MatMult => slots.IMatMul,
                 PyOperatorTypes.TrueDiv => slots.ITrueDiv,
                 PyOperatorTypes.FloorDiv => slots.IFloorDiv,
                 PyOperatorTypes.Mod => slots.IMod,
@@ -293,6 +302,10 @@ public static class PyOperators
     public static PyResult Mult(PyCallContext context, PyObject left, PyObject right)
     {
         return ReflectiveOperator(context, PyOperatorTypes.Mult, left, right);
+    }
+    public static PyResult MatMult(PyCallContext context, PyObject left, PyObject right)
+    {
+        return ReflectiveOperator(context, PyOperatorTypes.MatMult, left, right);
     }
     public static PyResult TrueDiv(PyCallContext context, PyObject left, PyObject right)
     {
@@ -358,6 +371,10 @@ public static class PyOperators
     public static PyResult InPlaceMult(PyCallContext context, PyObject left, PyObject right)
     {
         return InPlaceOperator(context, PyOperatorTypes.Mult, left, right);
+    }
+    public static PyResult InPlaceMatMult(PyCallContext context, PyObject left, PyObject right)
+    {
+        return InPlaceOperator(context, PyOperatorTypes.MatMult, left, right);
     }
     public static PyResult InPlaceTrueDiv(PyCallContext context, PyObject left, PyObject right)
     {

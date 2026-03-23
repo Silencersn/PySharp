@@ -198,6 +198,12 @@ partial class PyTypeObject<TObject>
             return PyResult.TypeError(PySR.Runtime_Type_MethodReceiveSelfWithWrongType, PySpecialNames.Mul, FullName, self.PyType.FullName);
         return Mul(context, selfOfT, other);
     }
+    private protected sealed override PyResult MatMul(PyCallContext context, PyObject self, PyObject other)
+    {
+        if (self is not TObject selfOfT)
+            return PyResult.TypeError(PySR.Runtime_Type_MethodReceiveSelfWithWrongType, PySpecialNames.MatMul, FullName, self.PyType.FullName);
+        return MatMul(context, selfOfT, other);
+    }
     private protected sealed override PyResult TrueDiv(PyCallContext context, PyObject self, PyObject other)
     {
         if (self is not TObject selfOfT)
@@ -276,6 +282,12 @@ partial class PyTypeObject<TObject>
         if (self is not TObject selfOfT)
             return PyResult.TypeError(PySR.Runtime_Type_MethodReceiveSelfWithWrongType, PySpecialNames.RMul, FullName, self.PyType.FullName);
         return RMul(context, selfOfT, other);
+    }
+    private protected sealed override PyResult RMatMul(PyCallContext context, PyObject self, PyObject other)
+    {
+        if (self is not TObject selfOfT)
+            return PyResult.TypeError(PySR.Runtime_Type_MethodReceiveSelfWithWrongType, PySpecialNames.RMatMul, FullName, self.PyType.FullName);
+        return RMatMul(context, selfOfT, other);
     }
     private protected sealed override PyResult RTrueDiv(PyCallContext context, PyObject self, PyObject other)
     {

@@ -20,6 +20,9 @@ internal static class PyMath
             case PyOperatorTypes.Mult:
                 return PyIntObject.FromInteger(left.Value * right.Value);
 
+            case PyOperatorTypes.MatMult:
+                return PyResult.TypeError(PySR.Runtime_Operator_UnsupportedBetween, "@", "int", "int");
+
             case PyOperatorTypes.TrueDiv:
                 if (right.Value.IsZero)
                     return PyResult.ZeroDivisionError();
