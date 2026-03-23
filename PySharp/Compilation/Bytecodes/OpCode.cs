@@ -142,6 +142,9 @@ internal enum OpCode : byte
 
     LoadMethod,
 
+    BuildTemplate,
+    BuildInterpolation,
+
     __BytecodeEnd,
 
     __LabelFlag = 0b10000000,

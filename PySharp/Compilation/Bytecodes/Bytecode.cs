@@ -225,6 +225,7 @@ public sealed class Bytecode
                 case OpCode.PopJumpIfFalse:
                 case OpCode.PopJumpIfTrue:
                 case OpCode.PopJumpIfNone:
+                case OpCode.BuildTemplate:
                     IncrementStackSize(-1);
                     break;
 
@@ -269,6 +270,10 @@ public sealed class Bytecode
 
                 case OpCode.StoreSubscr:
                     IncrementStackSize(-3);
+                    break;
+
+                case OpCode.BuildInterpolation:
+                    IncrementStackSize(-(instruction.Arg & 0b11) + 1);
                     break;
 
                 default:

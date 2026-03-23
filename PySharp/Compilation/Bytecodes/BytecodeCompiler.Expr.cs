@@ -48,6 +48,8 @@ partial class BytecodeCompiler
             case LambdaNode n: CompileLambda(n); break;
             case FormattedValueNode n: CompileFormattedValue(n); break;
             case JoinedStrNode n: CompileJoinedStr(n); break;
+            case InterpolationNode n: CompileInterpolation(n); break;
+            case TemplateStrNode n: CompileTemplateStr(n); break;
             case BoolOpNode n: CompileBoolOp(n); break;
             case StarredNode n: CompileStarred(n, ctx); break;
             case AwaitNode n: CompileAwait(n); break;
@@ -775,5 +777,76 @@ partial class BytecodeCompiler
     private void CompileAwait(AwaitNode node)
     {
         InternalCompileYieldFromOrAwait(node.Value, isAwait: true);
+    }
+
+    private void CompileInterpolation(InterpolationNode node)
+    {
+        int conversion = node.Conversion switch
+        {
+            -1 => 0,
+            's' => 1,
+            'r' => 2,
+            'a' => 3,
+            _ => throw new UnreachableException()
+        };
+
+        int arg = 2 | conversion << 2;
+
+        LoadExpr(node.Value);
+        Generator.Emit(OpCode.LoadConst, PyStrObject.FromString(node.Str));
+
+        if (node.FormatSpec is not null)
+        {
+            LoadExpr(node.FormatSpec);
+            arg++;
+        }
+
+        Generator.Emit(OpCode.BuildInterpolation, arg);
+    }
+
+    private void CompileTemplateStr(TemplateStrNode node)
+    {
+        var strings = new List<PyStrObject>(node.Values.Length / 2 + 1 /* inaccurate capacity */);
+        var interpolations = new List<InterpolationNode>(node.Values.Length / 2 /* inaccurate capacity */);
+
+        var needString = true;
+        foreach (var value in node.Values)
+        {
+            if (value is ConstantNode c)
+            {
+                if (needString)
+                {
+                    strings.Add((PyStrObject)c.Value);
+                    needString = false;
+                }
+                else
+                {
+                    var last = strings[^1];
+                    strings[^1] = PyStrObject.FromString(last.Value + ((PyStrObject)c.Value).Value);
+                }
+            }
+            else if (value is InterpolationNode i)
+            {
+                if (needString)
+                    strings.Add(PyStrObject.Empty);
+                interpolations.Add(i);
+                needString = true;
+            }
+            else
+            {
+                throw new UnreachableException();
+            }
+        }
+
+        if (needString)
+            strings.Add(PyStrObject.Empty);
+
+        Generator.Emit(OpCode.LoadConst, PyTupleObject.CreateTuple(strings));
+
+        foreach (var interp in interpolations)
+            LoadExpr(interp);
+
+        Generator.Emit(OpCode.BuildTuple, interpolations.Count);
+        Generator.Emit(OpCode.BuildTemplate);
     }
 }

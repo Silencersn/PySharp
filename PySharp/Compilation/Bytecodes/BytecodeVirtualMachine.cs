@@ -1,5 +1,6 @@
 using PySharp.Compilation.Primitives;
 using PySharp.Modules.Builtins;
+using PySharp.Modules.String.TemplateLib;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
@@ -670,6 +671,33 @@ internal static class BytecodeVirtualMachine
                                 states.CacheBuilder.Append(((PyStrObject)arg).Value);
                             }
                             Stack.Push(PyStrObject.FromString(states.CacheBuilder.ToString()));
+                        }
+                        break;
+
+                    case OpCode.BuildInterpolation:
+                        {
+                            var formatSpec = ((instructionArg & 1) is not 0) ? (PyStrObject)Stack.Pop() : PyStrObject.Empty;
+                            var expression = (PyStrObject)Stack.Pop();
+                            value = Stack.Pop();
+
+                            var conversion = (instructionArg >> 2) switch
+                            {
+                                0 => PyStrObject.Empty,
+                                1 => PyStrObject.FromString("s"),
+                                2 => PyStrObject.FromString("r"),
+                                3 => PyStrObject.FromString("a"),
+                                _ => throw new UnreachableException()
+                            };
+
+                            Stack.Push(new PyInterpolationObject(value, expression, conversion, formatSpec));
+                        }
+                        break;
+
+                    case OpCode.BuildTemplate:
+                        {
+                            var interpolations = (PyTupleObject)Stack.Pop();
+                            var strings = (PyTupleObject)Stack[-1];
+                            Stack[-1] = new PyTemplateObject(strings, interpolations);
                         }
                         break;
 
