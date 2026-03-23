@@ -52,6 +52,11 @@ public partial class PyStrObject : PyObject
         return _runeToPyStr.GetOrAdd(value, static rune => FromString(rune.ToString()));
     }
 
+    internal string Repr()
+    {
+        return PyStrConverter.FromStringToLiteral(Value);
+    }
+
     public Rune PyCharAt(int index)
     {
         return Rune.GetRuneAt(Value, index);
@@ -69,7 +74,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObjectType, PySt
     }
     protected override PyResult Repr(PyCallContext context, PyStrObject self)
     {
-        return PyStrObject.FromString(PyStrConverter.FromStringToLiteral(self.Value));
+        return PyStrObject.FromString(self.Repr());
     }
     protected override PyResult Str(PyCallContext context, PyStrObject self)
     {

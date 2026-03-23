@@ -128,7 +128,7 @@ partial class Parser
     [GrammarSyntaxRule("fstring_middle")]
     private AstExprNode ParseFStringMiddle(bool isRaw)
     {
-        if (CurrentTokenType is not TokenType.FStringMiddle)
+        if (CurrentTokenType is not (TokenType.FStringMiddle or TokenType.TStringMiddle))
             return ParseFStringReplacementField(isRaw);
 
         var literal = PyStrConverter.FromSourceToLiteral(CurrentTokenStringAsSpan, isRaw, SharedBuilder);
