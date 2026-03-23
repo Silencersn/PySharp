@@ -682,7 +682,7 @@ internal static class BytecodeVirtualMachine
 
                             var conversion = (instructionArg >> 2) switch
                             {
-                                0 => PyStrObject.Empty,
+                                0 => null,
                                 1 => PyStrObject.FromString("s"),
                                 2 => PyStrObject.FromString("r"),
                                 3 => PyStrObject.FromString("a"),

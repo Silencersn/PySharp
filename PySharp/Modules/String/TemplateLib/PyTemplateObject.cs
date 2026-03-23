@@ -13,6 +13,8 @@ public sealed class PyTemplateObject : PyObject
     internal readonly PyTupleObject _strings;
     internal readonly PyTupleObject _interpolations;
 
+    public override PyTypeObject DefaultPyType => PyTemplateObjectType.Shared;
+
     internal PyTemplateObject(PyTupleObject strings, PyTupleObject interpolations)
     {
         _strings = strings;
@@ -23,6 +25,19 @@ public sealed class PyTemplateObject : PyObject
 [PyType("Template", Module = "string.templatelib")]
 public sealed partial class PyTemplateObjectType : PyTypeObject<PyTemplateObjectType, PyTemplateObject>
 {
+    protected override PyResult Repr(PyCallContext context, PyTemplateObject self)
+    {
+        var stringsRepr = PySpecialMethods.Repr(context, self._strings);
+        if (stringsRepr.IsError)
+            return stringsRepr;
+
+        var interpolationsRepr = PySpecialMethods.Repr(context, self._interpolations);
+        if (interpolationsRepr.IsError)
+            return interpolationsRepr;
+
+        return PyStrObject.FromString($"Template(strings={stringsRepr.Value.Value}, interpolations={interpolationsRepr.Value.Value})");
+    }
+
     [PyProperty("strings")]
     private static PyResult Get_Strings(PyCallContext context, PyTemplateObject self)
     {
