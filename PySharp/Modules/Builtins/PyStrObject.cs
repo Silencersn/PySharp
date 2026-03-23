@@ -3,6 +3,7 @@ using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
 using System.Buffers;
 using System.Collections.Concurrent;
+using System.Data;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
@@ -12,6 +13,16 @@ namespace PySharp.Modules.Builtins;
 
 public partial class PyStrObject : PyObject
 {
+    private const int CharPoolSize = 256;
+    private static readonly PyStrObject[] _charPool;
+
+    static PyStrObject()
+    {
+        _charPool = new PyStrObject[CharPoolSize];
+        for (int i = 0; i < CharPoolSize; i++)
+            _charPool[i] = new PyStrObject(((char)i).ToString());
+    }
+
     public string Value { get; }
     public int PyLength
     {
@@ -41,15 +52,19 @@ public partial class PyStrObject : PyObject
             throw new ArgumentException($"failed to parse {text}");
         return FromString(str);
     }
+
     public static PyStrObject FromString(string value)
     {
         ArgumentNullException.ThrowIfNull(value);
+        if (value.Length is 1 && value[0] < CharPoolSize)
+            return _charPool[value[0]];
         return new PyStrObject(value);
     }
-    private static readonly ConcurrentDictionary<Rune, PyStrObject> _runeToPyStr = [];
     public static PyStrObject FromRune(Rune value)
     {
-        return _runeToPyStr.GetOrAdd(value, static rune => FromString(rune.ToString()));
+        if (value.Value < CharPoolSize)
+            return _charPool[value.Value];
+        return new PyStrObject(value.ToString());
     }
 
     internal string Repr()
@@ -57,9 +72,14 @@ public partial class PyStrObject : PyObject
         return PyStrConverter.FromStringToLiteral(Value);
     }
 
-    public Rune PyCharAt(int index)
+    internal Rune PyCharAt(int index)
     {
-        return Rune.GetRuneAt(Value, index);
+        foreach (var rune in Value.EnumerateRunes())
+        {
+            if (index-- is 0)
+                return rune;
+        }
+        throw new UnreachableException();
     }
 }
 
@@ -106,7 +126,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObjectType, PySt
         index = Utils.MapIndex(index, self.PyLength);
         if (index < 0 || index >= self.PyLength)
             return PyResult.IndexError(PySR.Runtime_String_IndexOutOfRange);
-        return PyStrObject.FromRune(self.Value.EnumerateRunes().ElementAt(index));
+        return PyStrObject.FromRune(self.PyCharAt(index));
     }
     protected override PyResult Add(PyCallContext context, PyStrObject self, PyObject other)
     {
@@ -155,9 +175,7 @@ public static class PyStrConverter
         public int Length;
     }
 
-    public const int ExtraInfoOffset = 16;
-
-    public enum ConvertError : uint
+    public enum ConvertError : byte
     {
         None = 0,
         DestinationNotEnough,
