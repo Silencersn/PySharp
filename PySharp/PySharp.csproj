@@ -24,6 +24,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\PySharp.SourceGeneration.Internal\PySharp.SourceGeneration.Internal.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="Modules\Warnings\" />
   </ItemGroup>
 
