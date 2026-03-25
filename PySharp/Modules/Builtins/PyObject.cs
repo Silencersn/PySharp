@@ -67,7 +67,8 @@ public partial class PyObject
     }
 }
 
-[PyType("object", CustomConstructor = true)]
+[PyType("object")]
+[PyTypeConstructor(DoNotGenerateConstructor = true)]
 public sealed partial class PyObjectType : PyTypeObject<PyObject>
 {
     internal static readonly PyBinaryFunction GenericGetAttribute = DefaultGetAttribute;

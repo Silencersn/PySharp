@@ -165,11 +165,14 @@ public sealed partial class PyQueueObjectType : PyTypeObject<PyQueueObject>
     }
 }
 
-[PyType("Full", Module = "queue", CustomConstructor = true)]
+[PyType("Full", Module = "queue")]
+[PyTypeConstructor(DoNotGenerateConstructor = true)]
 public sealed partial class PyFullObjectType : PyExceptionType<PyFullObjectType, PyExceptionObjectType>;
 
-[PyType("Empty", Module = "queue", CustomConstructor = true)]
+[PyType("Empty", Module = "queue")]
+[PyTypeConstructor(DoNotGenerateConstructor = true)]
 public sealed partial class PyEmptyObjectType : PyExceptionType<PyEmptyObjectType, PyExceptionObjectType>;
 
-[PyType("ShutDown", Module = "queue", CustomConstructor = true)]
+[PyType("ShutDown", Module = "queue")]
+[PyTypeConstructor(DoNotGenerateConstructor = true)]
 public sealed partial class PyShutDownObjectType : PyExceptionType<PyShutDownObjectType, PyExceptionObjectType>;

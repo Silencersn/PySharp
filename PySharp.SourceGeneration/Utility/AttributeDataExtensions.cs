@@ -1,4 +1,4 @@
-﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using System.Collections.Generic;
 using System.Linq;
@@ -28,6 +28,24 @@ internal static class AttributeDataExtensions
 
             if (attributeData.AttributeClass.ToDisplayString() == fullyQualifiedAttributeName)
                 return attributeData;
+        }
+
+        return null;
+    }
+
+    public static AttributeData? GetAttribute(this ITypeSymbol symbol, string fullyQualifiedAttributeName, bool inherit)
+    {
+        var current = symbol;
+        while (current is not null)
+        {
+            var attr = GetAttribute(current, fullyQualifiedAttributeName);
+            if (attr is not null)
+                return attr;
+
+            if (!inherit)
+                break;
+
+            current = current.BaseType;
         }
 
         return null;
@@ -76,3 +94,4 @@ internal static class AttributeDataExtensions
         return defaultValue;
     }
 }
+

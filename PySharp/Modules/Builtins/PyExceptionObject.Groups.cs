@@ -1,4 +1,4 @@
-﻿using PySharp.Runtime;
+using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
 using PySharp.Runtime.PyAttributes;
@@ -7,7 +7,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Modules.Builtins;
 
-[PyType("BaseExceptionGroup", CustomConstructor = true)]
+[PyType("BaseExceptionGroup")]
 public sealed partial class PyBaseExceptionGroupObjectType : PyExceptionType<PyBaseExceptionGroupObjectType, PyBaseExceptionObjectType>
 {
     internal static PyExceptionObject CreateExceptionGroup(string message, IEnumerable<PyExceptionObject> excs)
@@ -276,7 +276,7 @@ public sealed partial class PyBaseExceptionGroupObjectType : PyExceptionType<PyB
     }
 }
 
-[PyType("ExceptionGroup", CustomConstructor = true)]
+[PyType("ExceptionGroup")]
 public sealed partial class PyExceptionGroupObjectType : PyExceptionType<PyExceptionGroupObjectType>
 {
     public override IReadOnlyList<PyTypeObject> Bases => [PyBaseExceptionGroupObjectType.Shared, PyExceptionObjectType.Shared];

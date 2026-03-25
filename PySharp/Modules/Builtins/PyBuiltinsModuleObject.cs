@@ -144,4 +144,3 @@ public class PyBuiltinsModuleObject : PyModuleObject
         AddObjToAttrs(PyUnicodeWarningObjectType.Shared); // UnicodeWarning
     }
 }
-
