@@ -60,7 +60,7 @@ public class PySuperObject : PyObject
 }
 
 [PyType("super")]
-public sealed partial class PySuperObjectType : PyTypeObject<PySuperObjectType, PySuperObject>
+public sealed partial class PySuperObjectType : PyTypeObject<PySuperObject>
 {
 
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl_1, NewImpl_2);

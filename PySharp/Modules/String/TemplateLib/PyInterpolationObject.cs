@@ -1,4 +1,4 @@
-﻿using PySharp.Modules.Builtins;
+using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
@@ -27,7 +27,7 @@ public sealed class PyInterpolationObject : PyObject
 }
 
 [PyType("Interpolation", Module = "string.templatelib")]
-public sealed partial class PyInterpolationObjectType : PyTypeObject<PyInterpolationObjectType, PyInterpolationObject>
+public sealed partial class PyInterpolationObjectType : PyTypeObject<PyInterpolationObject>
 {
     protected override PyResult Repr(PyCallContext context, PyInterpolationObject self)
     {

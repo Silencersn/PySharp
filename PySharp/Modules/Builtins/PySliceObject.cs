@@ -25,7 +25,7 @@ public class PySliceObject : PyObject
 }
 
 [PyType("slice")]
-public sealed partial class PySliceObjectType : PyTypeObject<PySliceObjectType, PySliceObject>
+public sealed partial class PySliceObjectType : PyTypeObject<PySliceObject>
 {
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl_1, NewImpl_2);
 

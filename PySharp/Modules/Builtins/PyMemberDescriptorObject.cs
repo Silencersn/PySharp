@@ -22,7 +22,7 @@ public sealed class PyMemberDescriptorObject : PyObject
 }
 
 [PyType("member_descriptor")]
-public sealed partial class PyMemberDescriptorObjectType : PyTypeObject<PyMemberDescriptorObjectType, PyMemberDescriptorObject>
+public sealed partial class PyMemberDescriptorObjectType : PyTypeObject<PyMemberDescriptorObject>
 {
 
     protected override PyResult Get(PyCallContext context, PyMemberDescriptorObject self, PyObject instance, PyObject owner)

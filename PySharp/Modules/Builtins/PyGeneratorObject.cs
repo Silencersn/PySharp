@@ -134,7 +134,7 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
 }
 
 [PyType("generator")]
-public sealed partial class PyGeneratorObjectType : PyTypeObject<PyGeneratorObjectType, PyGeneratorObject>
+public sealed partial class PyGeneratorObjectType : PyTypeObject<PyGeneratorObject>
 {
     protected override PyResult Repr(PyCallContext context, PyGeneratorObject self)
     {

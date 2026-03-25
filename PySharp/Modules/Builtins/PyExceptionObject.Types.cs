@@ -42,7 +42,7 @@ public abstract class PyExceptionType<TSelf, TBase> : PyExceptionType<TSelf>
 
 #region Base Classes
 
-[PyType("BaseException")]
+[PyType("BaseException", CustomConstructor = true)]
 public sealed partial class PyBaseExceptionObjectType : PyExceptionType<PyBaseExceptionObjectType>
 {
 
@@ -88,207 +88,207 @@ public sealed partial class PyBaseExceptionObjectType : PyExceptionType<PyBaseEx
     }
 }
 
-[PyType("Exception")]
+[PyType("Exception", CustomConstructor = true)]
 public sealed partial class PyExceptionObjectType : PyExceptionType<PyExceptionObjectType, PyBaseExceptionObjectType>;
 
-[PyType("LookupError")]
+[PyType("LookupError", CustomConstructor = true)]
 public sealed partial class PyLookupErrorObjectType : PyExceptionType<PyLookupErrorObjectType, PyExceptionObjectType>;
 
-[PyType("ArithmeticError")]
+[PyType("ArithmeticError", CustomConstructor = true)]
 public sealed partial class PyArithmeticErrorObjectType : PyExceptionType<PyArithmeticErrorObjectType, PyExceptionObjectType>;
 
 #endregion Base Classes
 
 #region Concrete Exceptions
 
-[PyType("SystemExit")]
+[PyType("SystemExit", CustomConstructor = true)]
 public sealed partial class PySystemExitObjectType : PyExceptionType<PySystemExitObjectType, PyBaseExceptionObjectType>;
 
-[PyType("GeneratorExit")]
+[PyType("GeneratorExit", CustomConstructor = true)]
 public sealed partial class PyGeneratorExitObjectType : PyExceptionType<PyGeneratorExitObjectType, PyBaseExceptionObjectType>;
 
-[PyType("TypeError")]
+[PyType("TypeError", CustomConstructor = true)]
 public sealed partial class PyTypeErrorObjectType : PyExceptionType<PyTypeErrorObjectType, PyExceptionObjectType>;
 
-[PyType("StopIteration")]
+[PyType("StopIteration", CustomConstructor = true)]
 public sealed partial class PyStopIterationObjectType : PyExceptionType<PyStopIterationObjectType, PyExceptionObjectType>;
 
-[PyType("AttributeError")]
+[PyType("AttributeError", CustomConstructor = true)]
 public sealed partial class PyAttributeErrorObjectType : PyExceptionType<PyAttributeErrorObjectType, PyExceptionObjectType>;
 
-[PyType("KeyError")]
+[PyType("KeyError", CustomConstructor = true)]
 public sealed partial class PyKeyErrorObjectType : PyExceptionType<PyKeyErrorObjectType, PyLookupErrorObjectType>;
 
-[PyType("IndexError")]
+[PyType("IndexError", CustomConstructor = true)]
 public sealed partial class PyIndexErrorObjectType : PyExceptionType<PyIndexErrorObjectType, PyLookupErrorObjectType>;
 
-[PyType("ValueError")]
+[PyType("ValueError", CustomConstructor = true)]
 public sealed partial class PyValueErrorObjectType : PyExceptionType<PyValueErrorObjectType, PyExceptionObjectType>;
 
-[PyType("UnicodeError")]
+[PyType("UnicodeError", CustomConstructor = true)]
 public sealed partial class PyUnicodeErrorObjectType : PyExceptionType<PyUnicodeErrorObjectType, PyValueErrorObjectType>;
 
-[PyType("UnicodeEncodeError")]
+[PyType("UnicodeEncodeError", CustomConstructor = true)]
 public sealed partial class PyUnicodeEncodeErrorObjectType : PyExceptionType<PyUnicodeEncodeErrorObjectType, PyUnicodeErrorObjectType>;
 
-[PyType("NameError")]
+[PyType("NameError", CustomConstructor = true)]
 public sealed partial class PyNameErrorObjectType : PyExceptionType<PyNameErrorObjectType, PyExceptionObjectType>;
 
-[PyType("UnboundLocalError")]
+[PyType("UnboundLocalError", CustomConstructor = true)]
 public sealed partial class PyUnboundLocalErrorObjectType : PyExceptionType<PyUnboundLocalErrorObjectType, PyNameErrorObjectType>;
 
-[PyType("ImportError")]
+[PyType("ImportError", CustomConstructor = true)]
 public sealed partial class PyImportErrorObjectType : PyExceptionType<PyImportErrorObjectType, PyExceptionObjectType>;
 
-[PyType("ModuleNotFoundError")]
+[PyType("ModuleNotFoundError", CustomConstructor = true)]
 public sealed partial class PyModuleNotFoundErrorObjectType : PyExceptionType<PyModuleNotFoundErrorObjectType, PyImportErrorObjectType>;
 
-[PyType("SyntaxError")]
+[PyType("SyntaxError", CustomConstructor = true)]
 public sealed partial class PySyntaxErrorObjectType : PyExceptionType<PySyntaxErrorObjectType, PyExceptionObjectType>;
 
-[PyType("IndentationError")]
+[PyType("IndentationError", CustomConstructor = true)]
 public sealed partial class PyIndentationErrorObjectType : PyExceptionType<PyIndentationErrorObjectType, PySyntaxErrorObjectType>;
 
-[PyType("ZeroDivisionError")]
+[PyType("ZeroDivisionError", CustomConstructor = true)]
 public sealed partial class PyZeroDivisionErrorObjectType : PyExceptionType<PyZeroDivisionErrorObjectType, PyArithmeticErrorObjectType>;
 
-[PyType("AssertionError")]
+[PyType("AssertionError", CustomConstructor = true)]
 public sealed partial class PyAssertionErrorObjectType : PyExceptionType<PyAssertionErrorObjectType, PyExceptionObjectType>;
 
-[PyType("RuntimeError")]
+[PyType("RuntimeError", CustomConstructor = true)]
 public sealed partial class PyRuntimeErrorObjectType : PyExceptionType<PyRuntimeErrorObjectType, PyExceptionObjectType>;
 
-[PyType("KeyboardInterrupt")]
+[PyType("KeyboardInterrupt", CustomConstructor = true)]
 public sealed partial class PyKeyboardInterruptObjectType : PyExceptionType<PyKeyboardInterruptObjectType, PyBaseExceptionObjectType>;
 
-[PyType("FloatingPointError")]
+[PyType("FloatingPointError", CustomConstructor = true)]
 public sealed partial class PyFloatingPointErrorObjectType : PyExceptionType<PyFloatingPointErrorObjectType, PyArithmeticErrorObjectType>;
 
-[PyType("OverflowError")]
+[PyType("OverflowError", CustomConstructor = true)]
 public sealed partial class PyOverflowErrorObjectType : PyExceptionType<PyOverflowErrorObjectType, PyArithmeticErrorObjectType>;
 
-[PyType("BufferError")]
+[PyType("BufferError", CustomConstructor = true)]
 public sealed partial class PyBufferErrorObjectType : PyExceptionType<PyBufferErrorObjectType, PyExceptionObjectType>;
 
-[PyType("EOFError")]
+[PyType("EOFError", CustomConstructor = true)]
 public sealed partial class PyEOFErrorObjectType : PyExceptionType<PyEOFErrorObjectType, PyExceptionObjectType>;
 
-[PyType("MemoryError")]
+[PyType("MemoryError", CustomConstructor = true)]
 public sealed partial class PyMemoryErrorObjectType : PyExceptionType<PyMemoryErrorObjectType, PyExceptionObjectType>;
 
-[PyType("OSError")]
+[PyType("OSError", CustomConstructor = true)]
 public sealed partial class PyOSErrorObjectType : PyExceptionType<PyOSErrorObjectType, PyExceptionObjectType>;
 
-[PyType("BlockingIOError")]
+[PyType("BlockingIOError", CustomConstructor = true)]
 public sealed partial class PyBlockingIOErrorObjectType : PyExceptionType<PyBlockingIOErrorObjectType, PyOSErrorObjectType>;
 
-[PyType("ChildProcessError")]
+[PyType("ChildProcessError", CustomConstructor = true)]
 public sealed partial class PyChildProcessErrorObjectType : PyExceptionType<PyChildProcessErrorObjectType, PyOSErrorObjectType>;
 
-[PyType("ConnectionError")]
+[PyType("ConnectionError", CustomConstructor = true)]
 public sealed partial class PyConnectionErrorObjectType : PyExceptionType<PyConnectionErrorObjectType, PyOSErrorObjectType>;
 
-[PyType("BrokenPipeError")]
+[PyType("BrokenPipeError", CustomConstructor = true)]
 public sealed partial class PyBrokenPipeErrorObjectType : PyExceptionType<PyBrokenPipeErrorObjectType, PyConnectionErrorObjectType>;
 
-[PyType("ConnectionAbortedError")]
+[PyType("ConnectionAbortedError", CustomConstructor = true)]
 public sealed partial class PyConnectionAbortedErrorObjectType : PyExceptionType<PyConnectionAbortedErrorObjectType, PyConnectionErrorObjectType>;
 
-[PyType("ConnectionRefusedError")]
+[PyType("ConnectionRefusedError", CustomConstructor = true)]
 public sealed partial class PyConnectionRefusedErrorObjectType : PyExceptionType<PyConnectionRefusedErrorObjectType, PyConnectionErrorObjectType>;
 
-[PyType("ConnectionResetError")]
+[PyType("ConnectionResetError", CustomConstructor = true)]
 public sealed partial class PyConnectionResetErrorObjectType : PyExceptionType<PyConnectionResetErrorObjectType, PyConnectionErrorObjectType>;
 
-[PyType("FileExistsError")]
+[PyType("FileExistsError", CustomConstructor = true)]
 public sealed partial class PyFileExistsErrorObjectType : PyExceptionType<PyFileExistsErrorObjectType, PyOSErrorObjectType>;
 
-[PyType("FileNotFoundError")]
+[PyType("FileNotFoundError", CustomConstructor = true)]
 public sealed partial class PyFileNotFoundErrorObjectType : PyExceptionType<PyFileNotFoundErrorObjectType, PyOSErrorObjectType>;
 
-[PyType("InterruptedError")]
+[PyType("InterruptedError", CustomConstructor = true)]
 public sealed partial class PyInterruptedErrorObjectType : PyExceptionType<PyInterruptedErrorObjectType, PyOSErrorObjectType>;
 
-[PyType("IsADirectoryError")]
+[PyType("IsADirectoryError", CustomConstructor = true)]
 public sealed partial class PyIsADirectoryErrorObjectType : PyExceptionType<PyIsADirectoryErrorObjectType, PyOSErrorObjectType>;
 
-[PyType("NotADirectoryError")]
+[PyType("NotADirectoryError", CustomConstructor = true)]
 public sealed partial class PyNotADirectoryErrorObjectType : PyExceptionType<PyNotADirectoryErrorObjectType, PyOSErrorObjectType>;
 
-[PyType("PermissionError")]
+[PyType("PermissionError", CustomConstructor = true)]
 public sealed partial class PyPermissionErrorObjectType : PyExceptionType<PyPermissionErrorObjectType, PyOSErrorObjectType>;
 
-[PyType("ProcessLookupError")]
+[PyType("ProcessLookupError", CustomConstructor = true)]
 public sealed partial class PyProcessLookupErrorObjectType : PyExceptionType<PyProcessLookupErrorObjectType, PyOSErrorObjectType>;
 
-[PyType("TimeoutError")]
+[PyType("TimeoutError", CustomConstructor = true)]
 public sealed partial class PyTimeoutErrorObjectType : PyExceptionType<PyTimeoutErrorObjectType, PyOSErrorObjectType>;
 
-[PyType("ReferenceError")]
+[PyType("ReferenceError", CustomConstructor = true)]
 public sealed partial class PyReferenceErrorObjectType : PyExceptionType<PyReferenceErrorObjectType, PyExceptionObjectType>;
 
-[PyType("NotImplementedError")]
+[PyType("NotImplementedError", CustomConstructor = true)]
 public sealed partial class PyNotImplementedErrorObjectType : PyExceptionType<PyNotImplementedErrorObjectType, PyRuntimeErrorObjectType>;
 
-[PyType("PythonFinalizationError")]
+[PyType("PythonFinalizationError", CustomConstructor = true)]
 public sealed partial class PyPythonFinalizationErrorObjectType : PyExceptionType<PyPythonFinalizationErrorObjectType, PyRuntimeErrorObjectType>;
 
-[PyType("RecursionError")]
+[PyType("RecursionError", CustomConstructor = true)]
 public sealed partial class PyRecursionErrorObjectType : PyExceptionType<PyRecursionErrorObjectType, PyRuntimeErrorObjectType>;
 
-[PyType("StopAsyncIteration")]
+[PyType("StopAsyncIteration", CustomConstructor = true)]
 public sealed partial class PyStopAsyncIterationObjectType : PyExceptionType<PyStopAsyncIterationObjectType, PyExceptionObjectType>;
 
-[PyType("TabError")]
+[PyType("TabError", CustomConstructor = true)]
 public sealed partial class PyTabErrorObjectType : PyExceptionType<PyTabErrorObjectType, PyIndentationErrorObjectType>;
 
-[PyType("SystemError")]
+[PyType("SystemError", CustomConstructor = true)]
 public sealed partial class PySystemErrorObjectType : PyExceptionType<PySystemErrorObjectType, PyExceptionObjectType>;
 
-[PyType("UnicodeDecodeError")]
+[PyType("UnicodeDecodeError", CustomConstructor = true)]
 public sealed partial class PyUnicodeDecodeErrorObjectType : PyExceptionType<PyUnicodeDecodeErrorObjectType, PyUnicodeErrorObjectType>;
 
-[PyType("UnicodeTranslateError")]
+[PyType("UnicodeTranslateError", CustomConstructor = true)]
 public sealed partial class PyUnicodeTranslateErrorObjectType : PyExceptionType<PyUnicodeTranslateErrorObjectType, PyUnicodeErrorObjectType>;
 
 #endregion Concrete Exceptions
 
 #region Warnings
 
-[PyType("Warning")]
+[PyType("Warning", CustomConstructor = true)]
 public sealed partial class PyWarningObjectType : PyExceptionType<PyWarningObjectType, PyExceptionObjectType>;
 
-[PyType("UserWarning")]
+[PyType("UserWarning", CustomConstructor = true)]
 public sealed partial class PyUserWarningObjectType : PyExceptionType<PyUserWarningObjectType, PyWarningObjectType>;
 
-[PyType("SyntaxWarning")]
+[PyType("SyntaxWarning", CustomConstructor = true)]
 public sealed partial class PySyntaxWarningObjectType : PyExceptionType<PySyntaxWarningObjectType, PyWarningObjectType>;
 
-[PyType("DeprecationWarning")]
+[PyType("DeprecationWarning", CustomConstructor = true)]
 public sealed partial class PyDeprecationWarningObjectType : PyExceptionType<PyDeprecationWarningObjectType, PyWarningObjectType>;
 
-[PyType("BytesWarning")]
+[PyType("BytesWarning", CustomConstructor = true)]
 public sealed partial class PyBytesWarningObjectType : PyExceptionType<PyBytesWarningObjectType, PyWarningObjectType>;
 
-[PyType("EncodingWarning")]
+[PyType("EncodingWarning", CustomConstructor = true)]
 public sealed partial class PyEncodingWarningObjectType : PyExceptionType<PyEncodingWarningObjectType, PyWarningObjectType>;
 
-[PyType("FutureWarning")]
+[PyType("FutureWarning", CustomConstructor = true)]
 public sealed partial class PyFutureWarningObjectType : PyExceptionType<PyFutureWarningObjectType, PyWarningObjectType>;
 
-[PyType("ImportWarning")]
+[PyType("ImportWarning", CustomConstructor = true)]
 public sealed partial class PyImportWarningObjectType : PyExceptionType<PyImportWarningObjectType, PyWarningObjectType>;
 
-[PyType("PendingDeprecationWarning")]
+[PyType("PendingDeprecationWarning", CustomConstructor = true)]
 public sealed partial class PyPendingDeprecationWarningObjectType : PyExceptionType<PyPendingDeprecationWarningObjectType, PyWarningObjectType>;
 
-[PyType("ResourceWarning")]
+[PyType("ResourceWarning", CustomConstructor = true)]
 public sealed partial class PyResourceWarningObjectType : PyExceptionType<PyResourceWarningObjectType, PyWarningObjectType>;
 
-[PyType("RuntimeWarning")]
+[PyType("RuntimeWarning", CustomConstructor = true)]
 public sealed partial class PyRuntimeWarningObjectType : PyExceptionType<PyRuntimeWarningObjectType, PyWarningObjectType>;
 
-[PyType("UnicodeWarning")]
+[PyType("UnicodeWarning", CustomConstructor = true)]
 public sealed partial class PyUnicodeWarningObjectType : PyExceptionType<PyUnicodeWarningObjectType, PyWarningObjectType>;
 
 #endregion

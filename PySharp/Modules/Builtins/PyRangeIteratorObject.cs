@@ -17,7 +17,7 @@ public class PyRangeIteratorObject : PyObject
 }
 
 [PyType("range_iterator")]
-public sealed partial class PyRangeIteratorObjectType : PyTypeObject<PyRangeIteratorObjectType, PyRangeIteratorObject>
+public sealed partial class PyRangeIteratorObjectType : PyTypeObject<PyRangeIteratorObject>
 {
 
     protected override PyResult Iter(PyCallContext context, PyRangeIteratorObject self)
@@ -55,7 +55,7 @@ public class PyLongRangeIteratorObject : PyObject
 }
 
 [PyType("longrange_iterator")]
-public sealed partial class PyLongRangeIteratorObjectType : PyTypeObject<PyLongRangeIteratorObjectType, PyLongRangeIteratorObject>
+public sealed partial class PyLongRangeIteratorObjectType : PyTypeObject<PyLongRangeIteratorObject>
 {
 
     protected override PyResult Iter(PyCallContext context, PyLongRangeIteratorObject self)

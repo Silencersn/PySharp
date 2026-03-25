@@ -20,7 +20,7 @@ public sealed class PyFilterObject : PyObject
 }
 
 [PyType("filter")]
-public sealed partial class PyFilterObjectType : PyTypeObject<PyFilterObjectType, PyFilterObject>
+public sealed partial class PyFilterObjectType : PyTypeObject<PyFilterObject>
 {
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
 

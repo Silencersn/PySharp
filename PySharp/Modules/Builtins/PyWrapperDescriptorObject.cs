@@ -20,7 +20,7 @@ internal sealed class PyWrapperDescriptorObject : PyObject
 }
 
 [PyType("wrapper_descriptor")]
-internal sealed partial class PyWrapperDescriptorObjectType : PyTypeObject<PyWrapperDescriptorObjectType, PyWrapperDescriptorObject>
+internal sealed partial class PyWrapperDescriptorObjectType : PyTypeObject<PyWrapperDescriptorObject>
 {
 
     protected override PyResult Get(PyCallContext context, PyWrapperDescriptorObject self, PyObject instance, PyObject owner)

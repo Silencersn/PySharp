@@ -1,4 +1,4 @@
-﻿using PySharp.Modules.Builtins;
+using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
@@ -24,7 +24,7 @@ public partial class PyRandomObject : PyObject
 }
 
 [PyType("Random", Module = "random")]
-public sealed partial class PyRandomObjectType : PyTypeObject<PyRandomObjectType, PyRandomObject>
+public sealed partial class PyRandomObjectType : PyTypeObject<PyRandomObject>
 {
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {

@@ -21,7 +21,7 @@ public class PyComplexObject : PyObject
 }
 
 [PyType("complex")]
-public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObjectType, PyComplexObject>
+public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
 {
 
     protected override PyResult Repr(PyCallContext context, PyComplexObject self)

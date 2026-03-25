@@ -1,4 +1,4 @@
-﻿using PySharp.Modules.Builtins;
+using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
@@ -30,7 +30,7 @@ public sealed partial class PyQueueObject : PyObject
 }
 
 [PyType("Queue", Module = "queue")]
-public sealed partial class PyQueueObjectType : PyTypeObject<PyQueueObjectType, PyQueueObject>
+public sealed partial class PyQueueObjectType : PyTypeObject<PyQueueObject>
 {
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
 
@@ -165,11 +165,11 @@ public sealed partial class PyQueueObjectType : PyTypeObject<PyQueueObjectType, 
     }
 }
 
-[PyType("Full", Module = "queue")]
+[PyType("Full", Module = "queue", CustomConstructor = true)]
 public sealed partial class PyFullObjectType : PyExceptionType<PyFullObjectType, PyExceptionObjectType>;
 
-[PyType("Empty", Module = "queue")]
+[PyType("Empty", Module = "queue", CustomConstructor = true)]
 public sealed partial class PyEmptyObjectType : PyExceptionType<PyEmptyObjectType, PyExceptionObjectType>;
 
-[PyType("ShutDown", Module = "queue")]
+[PyType("ShutDown", Module = "queue", CustomConstructor = true)]
 public sealed partial class PyShutDownObjectType : PyExceptionType<PyShutDownObjectType, PyExceptionObjectType>;

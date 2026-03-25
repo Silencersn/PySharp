@@ -8,9 +8,11 @@ internal sealed class PyTypeAttribute : PyAttribute
         QualName = qualName;
         Module = "builtins";
         IsSealed = false;
+        CustomConstructor = false;
     }
 
     public string QualName { get; }
     public string? Module { get; set; }
     public bool IsSealed { get; set; }
+    public bool CustomConstructor { get; set; }
 }

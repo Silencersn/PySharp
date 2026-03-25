@@ -86,7 +86,7 @@ public partial class PyStrObject : PyObject
 }
 
 [PyType("str")]
-public sealed partial class PyStrObjectType : PyTypeObject<PyStrObjectType, PyStrObject>
+public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 {
     [PyMethod("join")]
     [PyFunctionArgsDef("iterable", "/")]

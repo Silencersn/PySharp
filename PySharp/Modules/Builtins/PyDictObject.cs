@@ -115,7 +115,7 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr, IDictionar
 }
 
 [PyType("dict")]
-public sealed partial class PyDictObjectType : PyTypeObject<PyDictObjectType, PyDictObject>
+public sealed partial class PyDictObjectType : PyTypeObject<PyDictObject>
 {
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl_1, NewImpl_2);
 

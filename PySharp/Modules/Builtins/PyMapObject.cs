@@ -21,7 +21,7 @@ public sealed class PyMapObject : PyObject
 }
 
 [PyType("map")]
-public sealed partial class PyMapObjectType : PyTypeObject<PyMapObjectType, PyMapObject>
+public sealed partial class PyMapObjectType : PyTypeObject<PyMapObject>
 {
 
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);

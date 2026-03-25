@@ -11,7 +11,7 @@ public class PyNoneObject : PyObject
 }
 
 [PyType("NoneType", IsSealed = true)]
-public sealed partial class PyNoneObjectType : PyTypeObject<PyNoneObjectType, PyNoneObject>
+public sealed partial class PyNoneObjectType : PyTypeObject<PyNoneObject>
 {
     private static readonly PyStrObject _repr = PyStrObject.FromString("None");
 

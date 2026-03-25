@@ -45,7 +45,7 @@ public abstract partial class PyTypeObject<TObject> : PyTypeObject where TObject
 }
 
 [PyType("type")]
-public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObjectType, PyTypeObject>
+public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
 {
     protected override PyResult Call(PyCallContext context, PyTypeObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
@@ -157,11 +157,4 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObjectType, Py
         self.ModuleAsObject = value;
         return PyNoneObject.None;
     }
-}
-
-public abstract class PyTypeObject<TSelf, TObject> : PyTypeObject<TObject>
-    where TSelf : PyTypeObject<TSelf, TObject>, new()
-    where TObject : PyObject
-{
-    public static TSelf Shared { get; } = new();
 }

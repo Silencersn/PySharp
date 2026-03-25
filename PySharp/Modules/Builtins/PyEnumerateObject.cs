@@ -20,7 +20,7 @@ public sealed class PyEnumerateObject : PyObject
 }
 
 [PyType("enumerate")]
-public sealed partial class PyEnumerateObjectType : PyTypeObject<PyEnumerateObjectType, PyEnumerateObject>
+public sealed partial class PyEnumerateObjectType : PyTypeObject<PyEnumerateObject>
 {
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
 

@@ -19,7 +19,7 @@ public class PyIteratorObject : PyObject
 }
 
 [PyType("iterator")]
-public sealed partial class PyIteratorObjectType : PyTypeObject<PyIteratorObjectType, PyIteratorObject>
+public sealed partial class PyIteratorObjectType : PyTypeObject<PyIteratorObject>
 {
 
     protected override PyResult Iter(PyCallContext context, PyIteratorObject self)

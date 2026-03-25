@@ -16,7 +16,7 @@ public class PyStrIteratorObject : PyObject
 }
 
 [PyType("str_iterator")]
-public sealed partial class PyStrIteratorObjectType : PyTypeObject<PyStrIteratorObjectType, PyStrIteratorObject>
+public sealed partial class PyStrIteratorObjectType : PyTypeObject<PyStrIteratorObject>
 {
 
     protected override PyResult Iter(PyCallContext context, PyStrIteratorObject self)

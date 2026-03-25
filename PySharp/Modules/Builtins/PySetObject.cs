@@ -134,7 +134,7 @@ public class PySetObject : PyObject, IPyObjectRecursiveRepr, ISet<PyObject>
 }
 
 [PyType("set")]
-public sealed partial class PySetObjectType : PyTypeObject<PySetObjectType, PySetObject>
+public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
 {
 
     protected override PyResult Repr(PyCallContext context, PySetObject self)

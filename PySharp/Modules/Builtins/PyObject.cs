@@ -67,14 +67,16 @@ public partial class PyObject
     }
 }
 
-[PyType("object")]
-public sealed partial class PyObjectType : PyTypeObject<PyObjectType, PyObject>
+[PyType("object", CustomConstructor = true)]
+public sealed partial class PyObjectType : PyTypeObject<PyObject>
 {
     internal static readonly PyBinaryFunction GenericGetAttribute = DefaultGetAttribute;
+    public static PyTypeObject Shared { get; } = new PyObjectType();
+
 
     public override IReadOnlyList<PyTypeObject> Bases => [];
 
-    public PyObjectType()
+    private PyObjectType()
     {
         FillSlot(PySpecialNames.Repr, ref Slots.Repr, DefaultRepr);
         FillSlot(PySpecialNames.Str, ref Slots.Str, DefaultStr);
@@ -90,18 +92,11 @@ public sealed partial class PyObjectType : PyTypeObject<PyObjectType, PyObject>
         FillSlot(PySpecialNames.SetAttr, ref Slots.SetAttr, DefaultSetAttr);
         FillSlot(PySpecialNames.DelAttr, ref Slots.DelAttr, DefaultDelAttr);
         FillSlot(PySpecialNames.Init, ref Slots.Init, DefaultInit);
-
-        void FillSlot<TDelegate>(string name, ref TDelegate? field, TDelegate func) where TDelegate : Delegate
-        {
-            field = func;
-            PyAttributes.Add(name, new PyWrapperDescriptorObject(func));
-        }
     }
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        if (ReferenceEquals(cls, this) /* Do we need to consider an externally created PyObjectType? */
-            && (args.Count is not 0 || kwargs.Count is not 0))
+        if (ReferenceEquals(cls, this) && (args.Count is not 0 || kwargs.Count is not 0))
             return PyResult.TypeError(PySR.Runtime_Object_NewTakesExactlyOneArg);
 
         return new PyObject { _pyType = cls };

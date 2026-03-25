@@ -11,7 +11,7 @@ public class PyNotImplementedObject : PyObject
 }
 
 [PyType("NotImplementedType", IsSealed = true)]
-public sealed partial class PyNotImplementedObjectType : PyTypeObject<PyNotImplementedObjectType, PyNotImplementedObject>
+public sealed partial class PyNotImplementedObjectType : PyTypeObject<PyNotImplementedObject>
 {
     private static readonly PyStrObject _repr = PyStrObject.FromString("NotImplemented");
 

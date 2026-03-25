@@ -18,7 +18,7 @@ public sealed class PyClassMethodObject : PyObject
 }
 
 [PyType("classmethod")]
-public sealed partial class PyClassMethodObjectType : PyTypeObject<PyClassMethodObjectType, PyClassMethodObject>
+public sealed partial class PyClassMethodObjectType : PyTypeObject<PyClassMethodObject>
 {
 
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);

@@ -22,7 +22,7 @@ public class PyZipObject : PyObject
 }
 
 [PyType("zip")]
-public sealed partial class PyZipObjectType : PyTypeObject<PyZipObjectType, PyZipObject>
+public sealed partial class PyZipObjectType : PyTypeObject<PyZipObject>
 {
 
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);

@@ -20,7 +20,7 @@ public sealed class PyReversedObject : PyObject
 }
 
 [PyType("reversed")]
-public sealed partial class PyReversedObjectType : PyTypeObject<PyReversedObjectType, PyReversedObject>
+public sealed partial class PyReversedObjectType : PyTypeObject<PyReversedObject>
 {
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
 

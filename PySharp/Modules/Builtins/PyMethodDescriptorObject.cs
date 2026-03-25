@@ -29,7 +29,7 @@ public sealed class PyMethodDescriptorObject : PyObject
 }
 
 [PyType("method_descriptor")]
-public sealed partial class PyMethodDescriptorObjectType : PyTypeObject<PyMethodDescriptorObjectType, PyMethodDescriptorObject>
+public sealed partial class PyMethodDescriptorObjectType : PyTypeObject<PyMethodDescriptorObject>
 {
 
     protected override PyResult Get(PyCallContext context, PyMethodDescriptorObject self, PyObject instance, PyObject owner)

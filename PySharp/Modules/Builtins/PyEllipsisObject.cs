@@ -11,7 +11,7 @@ public sealed class PyEllipsisObject : PyObject
 }
 
 [PyType("ellipsis", IsSealed = true)]
-public sealed partial class PyEllipsisObjectType : PyTypeObject<PyEllipsisObjectType, PyEllipsisObject>
+public sealed partial class PyEllipsisObjectType : PyTypeObject<PyEllipsisObject>
 {
     private static readonly PyStrObject _repr = PyStrObject.FromString("Ellipsis");
 

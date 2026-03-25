@@ -1,4 +1,4 @@
-﻿using PySharp.Modules.Builtins;
+using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
@@ -25,7 +25,7 @@ public partial class PyThreadObject : PyObject
 }
 
 [PyType("Thread", Module = "threading")]
-public sealed partial class PyThreadObjectType : PyTypeObject<PyThreadObjectType, PyThreadObject>
+public sealed partial class PyThreadObjectType : PyTypeObject<PyThreadObject>
 {
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
 

@@ -19,7 +19,7 @@ public class PyFloatObject : PyObject
 }
 
 [PyType("float")]
-public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObjectType, PyFloatObject>
+public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
 {
 
     protected override PyResult Repr(PyCallContext context, PyFloatObject self)

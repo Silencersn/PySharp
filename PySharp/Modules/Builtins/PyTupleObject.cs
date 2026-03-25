@@ -71,7 +71,7 @@ public class PyTupleObject : PyObject, IPyObjectRecursiveRepr, IReadOnlyList<PyO
 }
 
 [PyType("tuple")]
-public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObjectType, PyTupleObject>
+public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
 {
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)

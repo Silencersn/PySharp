@@ -1,4 +1,4 @@
-﻿using PySharp.Modules.Builtins;
+using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
@@ -23,7 +23,7 @@ public sealed class PyTemplateObject : PyObject
 }
 
 [PyType("Template", Module = "string.templatelib")]
-public sealed partial class PyTemplateObjectType : PyTypeObject<PyTemplateObjectType, PyTemplateObject>
+public sealed partial class PyTemplateObjectType : PyTypeObject<PyTemplateObject>
 {
     protected override PyResult Repr(PyCallContext context, PyTemplateObject self)
     {

@@ -111,7 +111,7 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr, IList<PyOb
 }
 
 [PyType("list")]
-public sealed partial class PyListObjectType : PyTypeObject<PyListObjectType, PyListObject>
+public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
 {
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
 

@@ -20,7 +20,7 @@ public sealed class PyMethodObject : PyObject
 }
 
 [PyType("method")]
-public sealed partial class PyMethodObjectType : PyTypeObject<PyMethodObjectType, PyMethodObject>
+public sealed partial class PyMethodObjectType : PyTypeObject<PyMethodObject>
 {
     protected override PyResult Call(PyCallContext context, PyMethodObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {

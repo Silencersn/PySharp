@@ -1,4 +1,4 @@
-﻿using PySharp.Runtime.Calls;
+using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
 using System;
 using System.Collections.Generic;
@@ -7,7 +7,7 @@ using System.Text;
 namespace PySharp.Modules.Builtins;
 
 [PyType("coroutine")]
-public sealed partial class PyCoroutineObjectType : PyTypeObject<PyCoroutineObjectType, PyGeneratorObject>
+public sealed partial class PyCoroutineObjectType : PyTypeObject<PyGeneratorObject>
 {
     protected override PyResult Repr(PyCallContext context, PyGeneratorObject self)
     {

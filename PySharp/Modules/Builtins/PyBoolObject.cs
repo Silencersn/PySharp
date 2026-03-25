@@ -27,7 +27,7 @@ public sealed class PyBoolObject : PyIntObject
 }
 
 [PyType("bool", IsSealed = true)]
-public sealed partial class PyBoolObjectType : PyTypeObject<PyBoolObjectType, PyBoolObject>
+public sealed partial class PyBoolObjectType : PyTypeObject<PyBoolObject>
 {
     public override IReadOnlyList<PyTypeObject> Bases => [PyIntObjectType.Shared];
 

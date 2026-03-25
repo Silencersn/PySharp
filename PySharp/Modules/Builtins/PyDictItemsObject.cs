@@ -15,7 +15,7 @@ public class PyDictItemsObject : PyObject
 }
 
 [PyType("dict_items")]
-public sealed partial class PyDictItemsObjectType : PyTypeObject<PyDictItemsObjectType, PyDictItemsObject>
+public sealed partial class PyDictItemsObjectType : PyTypeObject<PyDictItemsObject>
 {
 
     protected override PyResult Iter(PyCallContext context, PyDictItemsObject self)
@@ -39,7 +39,7 @@ public class PyDictItemIteratorObject : PyObject
 }
 
 [PyType("dict_itemiterator")]
-public sealed partial class PyDictItemIteratorObjectType : PyTypeObject<PyDictItemIteratorObjectType, PyDictItemIteratorObject>
+public sealed partial class PyDictItemIteratorObjectType : PyTypeObject<PyDictItemIteratorObject>
 {
 
     protected override PyResult Iter(PyCallContext context, PyDictItemIteratorObject self)
