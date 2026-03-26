@@ -34,7 +34,6 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
     protected virtual string DefaultQualName => DefaultName;
     public string QualName { get; internal set; }
 
-    public virtual string Document => string.Empty;
     public virtual bool IsSealed => false;
     public override PyTypeObject DefaultPyType => PyTypeObjectType.Shared;
     public abstract Type LayoutType { get; }
