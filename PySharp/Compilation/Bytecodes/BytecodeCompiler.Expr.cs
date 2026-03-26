@@ -600,7 +600,7 @@ partial class BytecodeCompiler
         Generator = currentGenerator;
         VariableScope = currentScope;
 
-        var codeObj = new PyCodeObject(scope, bytecode);
+        var codeObj = new PyCodeObject(_source.Name, scope, bytecode);
         Generator.Emit(OpCode.LoadConst, codeObj);
         Generator.Emit(OpCode._MakeFunctionWithPyArgsDef);
 
@@ -677,7 +677,7 @@ partial class BytecodeCompiler
         Generator = currentGenerator;
         VariableScope = currentScope;
 
-        var codeObj = new PyCodeObject(scope, bytecode);
+        var codeObj = new PyCodeObject(_source.Name, scope, bytecode);
 
         foreach (var argDefault in node.Args.Defaults)
             LoadExpr(argDefault);

@@ -4,6 +4,7 @@ using PySharp.Runtime.PyAttributes;
 using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Runtime.Versioning;
 
 namespace PySharp.Modules.Builtins;
 
@@ -37,6 +38,7 @@ public sealed class PyCodeObject : PyObject
     public Bytecode Bytecode { get; }
     public CodeObjectFlags Flags { get; }
     public string Name { get; }
+    public string Filename { get; }
     public string QualName { get; }
     public int ArgCount { get; }
     public int PosOnlyArgCount { get; }
@@ -50,7 +52,7 @@ public sealed class PyCodeObject : PyObject
 
     public override PyTypeObject DefaultPyType => PyCodeObjectType.Shared;
 
-    internal PyCodeObject(CallableVariableScope scope, Bytecode bytecode)
+    internal PyCodeObject(string filename, CallableVariableScope scope, Bytecode bytecode)
     {
         Debug.Assert(scope.Name is not null);
         Debug.Assert(scope.QualName is not null);
@@ -65,6 +67,7 @@ public sealed class PyCodeObject : PyObject
             Flags |= CodeObjectFlags.Coroutine;
 
         Name = scope.Name;
+        Filename = filename;
         QualName = scope.QualName;
 
         var arg = scope.ArgumentsNode;
@@ -84,6 +87,7 @@ public sealed class PyCodeObject : PyObject
         FreeVars = scope.FreeVars;
 
         PyAttributes.Add("co_name", PyStrObject.FromString(Name));
+        PyAttributes.Add("co_filename", PyStrObject.FromString(Filename));
         PyAttributes.Add("co_qualname", PyStrObject.FromString(QualName));
         PyAttributes.Add("co_argcount", PyIntObject.FromInteger(ArgCount));
         PyAttributes.Add("co_posonlyargcount", PyIntObject.FromInteger(PosOnlyArgCount));
@@ -95,7 +99,7 @@ public sealed class PyCodeObject : PyObject
         PyAttributes.Add("co_stacksize", PyIntObject.FromInteger(bytecode.StackSize));
     }
 
-    internal PyCodeObject(ClassVariableScope scope, Bytecode bytecode)
+    internal PyCodeObject(string filename, ClassVariableScope scope, Bytecode bytecode)
     {
         Debug.Assert(scope.Name is not null);
         Debug.Assert(scope.QualName is not null);
@@ -107,6 +111,7 @@ public sealed class PyCodeObject : PyObject
         Flags = CodeObjectFlags.Class;
 
         Name = scope.Name;
+        Filename = filename;
         QualName = scope.QualName;
         NLocals = 0;
         VarNames = [];
@@ -114,6 +119,7 @@ public sealed class PyCodeObject : PyObject
         FreeVars = scope.FreeVars;
 
         PyAttributes.Add("co_name", PyStrObject.FromString(Name));
+        PyAttributes.Add("co_filename", PyStrObject.FromString(Filename));
         PyAttributes.Add("co_qualname", PyStrObject.FromString(QualName));
         PyAttributes.Add("co_argcount", PyIntObject.Zero);
         PyAttributes.Add("co_posonlyargcount", PyIntObject.Zero);
@@ -125,13 +131,14 @@ public sealed class PyCodeObject : PyObject
         PyAttributes.Add("co_stacksize", PyIntObject.FromInteger(bytecode.StackSize));
     }
 
-    internal PyCodeObject(string name, Bytecode bytecode, CodeObjectFlags flags)
+    internal PyCodeObject(string name, string filename, Bytecode bytecode, CodeObjectFlags flags)
     {
         LocalsTable = FrozenDictionary<string, int>.Empty;
         Bytecode = bytecode;
         Flags = flags;
 
         Name = name;
+        Filename = filename;
         QualName = name;
         NLocals = 0;
         VarNames = [];
@@ -139,6 +146,7 @@ public sealed class PyCodeObject : PyObject
         FreeVars = [];
 
         PyAttributes.Add("co_name", PyStrObject.FromString(Name));
+        PyAttributes.Add("co_filename", PyStrObject.FromString(Filename));
         PyAttributes.Add("co_qualname", PyStrObject.FromString(QualName));
         PyAttributes.Add("co_argcount", PyIntObject.Zero);
         PyAttributes.Add("co_posonlyargcount", PyIntObject.Zero);

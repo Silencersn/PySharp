@@ -343,7 +343,7 @@ partial class BytecodeCompiler
         Generator = currentGenerator;
         VariableScope = currentScope;
 
-        var codeObj = new PyCodeObject(scope, bytecode);
+        var codeObj = new PyCodeObject(_source.Name, scope, bytecode);
 
         foreach (var decorator in node.DecoratorList)
             LoadExpr(decorator);
@@ -436,7 +436,7 @@ partial class BytecodeCompiler
         Generator = currentGenerator;
         VariableScope = currentScope;
 
-        var codeObj = new PyCodeObject(scope, bytecode);
+        var codeObj = new PyCodeObject(_source.Name, scope, bytecode);
 
         foreach (var decorator in node.DecoratorList)
             LoadExpr(decorator);
@@ -499,22 +499,30 @@ partial class BytecodeCompiler
 
             if (name.AsName is null)
             {
-                StoreName(name.Name);
+                var parts = name.Name.Split('.');
+                StoreName(parts[0]);
             }
             else
             {
                 var parts = name.Name.Split('.');
-                for (int i = 1; i < parts.Length - 1; i++)
+                if (parts.Length is 1)
                 {
-                    // [mod]
-                    Generator.Emit(OpCode.ImportFrom, parts[i]); // -> [mod, mod.submod]
-                    Generator.Emit(OpCode.Swap, 2); // -> [mod.submod, mod]
-                    Generator.Emit(OpCode.PopTop); // -> [mod.submod]
+                    StoreName(name.AsName);
                 }
-                Generator.Emit(OpCode.ImportFrom, parts[^1]);
-                StoreName(name.AsName);
+                else
+                {
+                    for (int i = 1; i < parts.Length - 1; i++)
+                    {
+                        // [mod]
+                        Generator.Emit(OpCode.ImportFrom, parts[i]); // -> [mod, mod.submod]
+                        Generator.Emit(OpCode.Swap, 2); // -> [mod.submod, mod]
+                        Generator.Emit(OpCode.PopTop); // -> [mod.submod]
+                    }
+                    Generator.Emit(OpCode.ImportFrom, parts[^1]);
+                    StoreName(name.AsName);
 
-                Generator.Emit(OpCode.PopTop);
+                    Generator.Emit(OpCode.PopTop);
+                }
             }
         }
     }

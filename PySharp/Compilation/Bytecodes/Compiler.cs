@@ -8,29 +8,29 @@ namespace PySharp.Compilation.Bytecodes;
 
 internal static class Compiler
 {
-    private static PyCodeObject InternalCompileBytecode(PyCallContext context, string code, string sourceName,
+    private static PyCodeObject InternalCompileBytecode(PyCallContext context, string code, string filename, string name,
         Func<PyCallContext, CodeSource, TokenSequence, AstModNode> parse, bool appendNewLine = false, bool onlyAsName = false)
     {
-        var source = new CodeSource(sourceName, code);
+        var source = new CodeSource(filename, code);
         var tokens = Lexer.Tokenize(context, source, appendNewLine);
         var node = parse(context, source, tokens);
         var model = SemanticAnalyzer.Analyze(context, source, node);
         var bytecode = BytecodeCompiler.Compile(model, source, onlyAsName);
-        return new PyCodeObject(sourceName, bytecode, CodeObjectFlags.Module);
+        return new PyCodeObject(name, filename, bytecode, CodeObjectFlags.Module);
     }
 
-    public static PyCodeObject CompileExec(PyCallContext context, string code, string sourceName, bool onlyAsName = false)
+    public static PyCodeObject CompileExec(PyCallContext context, string code, string filename, string name, bool onlyAsName = false)
     {
-        return InternalCompileBytecode(context, code, sourceName, Parser.ParseModule, onlyAsName: onlyAsName);
+        return InternalCompileBytecode(context, code, filename, name, Parser.ParseModule, onlyAsName: onlyAsName);
     }
 
-    public static PyCodeObject CompileEval(PyCallContext context, string code, string sourceName, bool onlyAsName = false)
+    public static PyCodeObject CompileEval(PyCallContext context, string code, string filename, string name, bool onlyAsName = false)
     {
-        return InternalCompileBytecode(context, code, sourceName, Parser.ParseExpression, onlyAsName: onlyAsName);
+        return InternalCompileBytecode(context, code, filename, name, Parser.ParseExpression, onlyAsName: onlyAsName);
     }
 
-    public static PyCodeObject CompileSingle(PyCallContext context, string code, string sourceName, bool appendNewLine, bool onlyAsName = false)
+    public static PyCodeObject CompileSingle(PyCallContext context, string code, string filename, string name, bool appendNewLine, bool onlyAsName = false)
     {
-        return InternalCompileBytecode(context, code, sourceName, Parser.ParseInteractive, appendNewLine, onlyAsName);
+        return InternalCompileBytecode(context, code, filename, name, Parser.ParseInteractive, appendNewLine, onlyAsName);
     }
 }

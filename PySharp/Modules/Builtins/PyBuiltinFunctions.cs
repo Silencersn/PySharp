@@ -5,6 +5,7 @@ using PySharp.Runtime.PyAttributes;
 using PySharp.Utility;
 using System.Diagnostics;
 using System.Text;
+using System.Xml.Linq;
 
 namespace PySharp.Modules.Builtins;
 
@@ -224,7 +225,7 @@ public static partial class PyBuiltinFunctions
         {
             var newFrame = frame.CreateExecEvalFrame(FrameType.Eval, globalsDict, localsDict);
             using var withFrame = context.WithFrame(ref newFrame);
-            var codeObj = Compiler.CompileEval(context, ((PyStrObject)source).Value, "<string>", onlyAsName: true);
+            var codeObj = Compiler.CompileEval(context, ((PyStrObject)source).Value, filename: "<string>", name: "<module>", onlyAsName: true);
             context.CurrentInternalFrame.CodeObject = codeObj;
             return PyCore.Eval(context);
         }
@@ -284,7 +285,7 @@ public static partial class PyBuiltinFunctions
         {
             var newFrame = frame.CreateExecEvalFrame(FrameType.Exec, globalsDict, localsDict);
             using var withFrame = context.WithFrame(ref newFrame);
-            var codeObj = Compiler.CompileExec(context, ((PyStrObject)source).Value, "<string>", onlyAsName: true);
+            var codeObj = Compiler.CompileExec(context, ((PyStrObject)source).Value, filename: "<string>", name: "<module>", onlyAsName: true);
             context.CurrentInternalFrame.CodeObject = codeObj;
             return PyCore.Eval(context);
         }
@@ -839,9 +840,9 @@ public static partial class PyBuiltinFunctions
 
         var codeObject = mode.Value switch
         {
-            "exec" => Compiler.CompileExec(context, source.Value, filename.Value, onlyAsName: true),
-            "eval" => Compiler.CompileEval(context, source.Value, filename.Value, onlyAsName: true),
-            "single" => Compiler.CompileSingle(context, source.Value, filename.Value, appendNewLine: false, onlyAsName: true),
+            "exec" => Compiler.CompileExec(context, source.Value, filename.Value, name: "<module>", onlyAsName: true),
+            "eval" => Compiler.CompileEval(context, source.Value, filename.Value, name: "<module>", onlyAsName: true),
+            "single" => Compiler.CompileSingle(context, source.Value, filename.Value, name: "<module>", appendNewLine: false, onlyAsName: true),
             _ => null
         };
 

@@ -36,7 +36,7 @@ public sealed class PyInterpreter : IDisposable
 
     internal static void InternalExecute(PyCallContext context, string code, string sourceName)
     {
-        var codeObj = Compiler.CompileExec(context, code, sourceName);
+        var codeObj = Compiler.CompileExec(context, code, sourceName, name: "<module>");
         context.CurrentInternalFrame.CodeObject = codeObj;
         _ = PyCore.Eval(context).PyUnwrap(context);
     }
@@ -139,13 +139,13 @@ public sealed class PyInterpreter : IDisposable
 
     internal static PyModuleObject RunCodeWithContext(PyCallContext context, string code, string moduleName, string sourceName)
     {
-        var codeObj = Compiler.CompileExec(context, code, sourceName);
+        var codeObj = Compiler.CompileExec(context, code, sourceName, moduleName);
         return PyVirtualMachine.Execute(context, codeObj);
     }
 
     internal static void RunCodeWithContext(PyCallContext context, string code, PyModuleObject module, string sourceName)
     {
-        var codeObj = Compiler.CompileExec(context, code, sourceName);
+        var codeObj = Compiler.CompileExec(context, code, sourceName, module.Name);
         PyVirtualMachine.ExecuteToObject(context, codeObj, module);
     }
 
@@ -182,7 +182,7 @@ public sealed class PyInterpreter : IDisposable
 
                     try
                     {
-                        codeObj = Compiler.CompileSingle(context, builder.ToString(), "<stdin>", string.IsNullOrWhiteSpace(line));
+                        codeObj = Compiler.CompileSingle(context, builder.ToString(), "<stdin>", name: "<module>", string.IsNullOrWhiteSpace(line));
                         break;
                     }
                     catch (PyRuntimeException e)
