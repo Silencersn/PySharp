@@ -30,6 +30,12 @@ public static partial class PyVirtualMachine
     internal static void ExecuteToObject(PyCallContext context, PyCodeObject code, PyModuleObject module)
     {
         // module will be reloaded
+        var dict = context.CurrentInternalFrame.Variables.Globals.Dict;
+        if (module._pyAttributes is not null)
+        {
+            foreach (var pair in module._pyAttributes)
+                dict[pair.Key] = pair.Value;
+        }
         module._pyAttributes = context.CurrentInternalFrame.Variables.Globals.Dict;
 
         context.CurrentInternalFrame.CodeObject = code;

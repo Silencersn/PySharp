@@ -24,6 +24,8 @@ public static partial class PySpecialNames
     public const string Module = "__module__";
     public const string QualName = "__qualname__";
 
+    public const string Path = "__path__";
+
     public const string MatchArgs = "__match_args__";
 
 

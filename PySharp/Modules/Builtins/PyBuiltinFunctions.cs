@@ -609,8 +609,12 @@ public static partial class PyBuiltinFunctions
         if (arguments[0] is not PyStrObject strObj)
             return PyResult.TypeError(PySR.Runtime_Builtin_Import_NameMustBeString);
         var name = strObj.Value;
-        if (!context.PyEnvironment.TryLoadModule(context, name, out var module))
+        if (!context.PyEnvironment.TryLoadModule(context, name, out var rootModule, out var module))
             return PyResult.ModuleNotFoundError(PySR.Runtime_Import_ModuleNotFound, name);
+
+        var fromList = arguments[3];
+        if (fromList is PyNoneObject || fromList is PyListObject { Count: 0 } || fromList is PyTupleObject { Count: 0 })
+            return rootModule;
         return module;
     }
 

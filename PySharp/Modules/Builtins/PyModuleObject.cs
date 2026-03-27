@@ -32,6 +32,13 @@ public class PyModuleObject : PyObject, IPyObjectName
     }
 
     public virtual void OnImport(PyCallContext context, PyEnvironment environment) { }
+
+    internal static PyModuleObject CreatePackage(string name, IReadOnlyList<string> paths)
+    {
+        var package = new PyModuleObject(name);
+        package.PyAttributes.Add(PySpecialNames.Path, PyListObject.CreateList(paths.Select(PyStrObject.FromString)));
+        return package;
+    }
 }
 
 [PyType("module")]

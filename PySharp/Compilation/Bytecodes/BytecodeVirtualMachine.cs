@@ -1306,13 +1306,13 @@ internal static class BytecodeVirtualMachine
         if (level.Value > 0)
             throw new NotSupportedException();
 
-        if (names[instructionArg].Contains('.'))
-            throw new NotSupportedException();
-
-        if (!context.PyEnvironment.TryLoadModule(context, names[instructionArg], out var module))
+        if (!context.PyEnvironment.TryLoadModule(context, names[instructionArg], out var rootModule, out var module))
             throw context.ModuleNotFoundError(PySR.Runtime_Import_ModuleNotFound, names[instructionArg]);
 
-        stack.Push(module);
+        if (fromList is PyNoneObject || fromList is PyListObject { Count: 0 } || fromList is PyTupleObject { Count: 0 })
+            stack.Push(rootModule);
+        else
+            stack.Push(module);
     }
 
     private static T Move<T>([DisallowNull] ref T? value)
