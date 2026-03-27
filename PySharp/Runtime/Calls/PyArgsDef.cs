@@ -1,4 +1,5 @@
-﻿using PySharp.Modules.Builtins;
+﻿using PySharp.Compilation.AstNodes;
+using PySharp.Modules.Builtins;
 using PySharp.Utility;
 using System.Collections.Frozen;
 using System.Diagnostics;
@@ -44,36 +45,6 @@ public sealed class PyArgsDef
     internal PyObject[] Defaults { get; }
     internal string? VarArg { get; }
     internal string? KwArg { get; }
-
-    private static PyObject ParseLiteral(ReadOnlySpan<char> literal)
-    {
-        // literal should be no leading or trailing whitespaces
-
-        if (literal is "None")
-            return PyNoneObject.None;
-
-        if (literal is "True" or "False")
-            return PyBoolObject.FromBoolean(literal is "True");
-
-        if (literal[0] is '"' or '\'')
-            return PyStrObject.FromLiteral(literal);
-
-        if (literal is "()")
-            return PyTupleObject.CreateTuple();
-
-        if (literal is "[]")
-            return PyListObject.CreateList();
-
-        if (literal is "{}")
-            return PyDictObject.CreateDict();
-
-        if (BigIntegerHelper.TryParse(literal, 0, out var resultInt))
-            return PyIntObject.FromInteger(resultInt);
-
-        if (double.TryParse(literal, out var resultDouble))
-            return new PyFloatObject(resultDouble);
-        throw new NotSupportedException();
-    }
 
     internal static PyArgsDef FromDef(params ReadOnlySpan<string> parameters)
     {
@@ -167,7 +138,7 @@ public sealed class PyArgsDef
             if (indexOfEqual is not -1)
             {
                 posonlyArgsResult[i] = arg[..indexOfEqual];
-                var d = ParseLiteral(arg.AsSpan()[(indexOfEqual + 1)..]);
+                var d = LiteralParser.LiteralEval(arg.AsSpan()[(indexOfEqual + 1)..]);
                 defaults.Add(d);
             }
             else
@@ -184,7 +155,7 @@ public sealed class PyArgsDef
             if (indexOfEqual is not -1)
             {
                 argsResult[i] = arg[..indexOfEqual];
-                var d = ParseLiteral(arg.AsSpan()[(indexOfEqual + 1)..]);
+                var d = LiteralParser.LiteralEval(arg.AsSpan()[(indexOfEqual + 1)..]);
                 defaults.Add(d);
             }
             else
@@ -202,7 +173,7 @@ public sealed class PyArgsDef
             if (indexOfEqual is not -1)
             {
                 kwonlyArgsResult[i] = kwarg[..indexOfEqual];
-                kwDefaults[i] = ParseLiteral(kwarg.AsSpan()[(indexOfEqual + 1)..]);
+                kwDefaults[i] = LiteralParser.LiteralEval(kwarg.AsSpan()[(indexOfEqual + 1)..]);
             }
             else
             {
