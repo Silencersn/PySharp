@@ -38,6 +38,11 @@ internal sealed class LineTableBuilder
 
     public void Write(int index, ValueCodeMetaInfo info)
     {
+        Debug.Assert(index >= _indexToWrite);
+
+        if (_infoToWrite == info)
+            return;
+
         if (_indexToWrite is not -1 && _indexToWrite != index)
             InternalWrite(_indexToWrite, _infoToWrite);
 
@@ -57,10 +62,9 @@ internal sealed class LineTableBuilder
 
     private void InternalWrite(int index, ValueCodeMetaInfo info)
     {
-        _writer.Write7BitEncodedInt(index - _lastIndex);
-        _lastIndex = index;
         var range = CodeTextSpan.Empty;
         var crucialRange = CodeTextSpan.Empty;
+
         if (!info.IsEmpty)
         {
             range = info.Range;
@@ -68,27 +72,34 @@ internal sealed class LineTableBuilder
                 crucialRange = info.CrucialRange;
         }
 
-        if (range.IsEmpty)
-        {
-            _writer.Write(default(byte));
-            return;
-        }
-
-        var flag = LineTable.RangeFlag;
+        byte flag = 0;
+        if (!range.IsEmpty)
+            flag |= LineTable.HasRangeFlag;
         if (!crucialRange.IsEmpty)
-            flag |= LineTable.CrucialRangeFlag;
+            flag |= LineTable.HasCrucialRangeFlag;
 
-        var rangeStartDiff = range.Start - _lastNonEmptyRangeStart;
-        if (rangeStartDiff < 0)
+        int indexDiff = index - _lastIndex;
+        _lastIndex = index;
+
+        if (indexDiff < 63)
         {
-            rangeStartDiff = -rangeStartDiff;
-            flag |= LineTable.NegativeRangeStartDiffFlag;
+            _writer.Write((byte)((indexDiff << 2) | flag));
+        }
+        else
+        {
+            _writer.Write((byte)((63 << 2) | flag));
+            _writer.Write7BitEncodedInt(indexDiff - 63);
         }
 
-        _writer.Write(flag);
-        _writer.Write7BitEncodedInt(rangeStartDiff);
-        _writer.Write7BitEncodedInt(range.Length);
+        if (range.IsEmpty)
+            return;
+
+        int rangeStartDiff = range.Start - _lastNonEmptyRangeStart;
         _lastNonEmptyRangeStart = range.Start;
+
+        int zigzagRangeStartDiff = (rangeStartDiff << 1) ^ (rangeStartDiff >> 31);
+        _writer.Write7BitEncodedInt(zigzagRangeStartDiff);
+        _writer.Write7BitEncodedInt(range.Length);
 
         if (!crucialRange.IsEmpty)
         {
@@ -100,9 +111,8 @@ internal sealed class LineTableBuilder
 
 internal sealed class LineTable
 {
-    internal const byte RangeFlag = 0b0001;
-    internal const byte CrucialRangeFlag = 0b0010;
-    internal const byte NegativeRangeStartDiffFlag = 0b0100;
+    internal const byte HasRangeFlag = 0b01;
+    internal const byte HasCrucialRangeFlag = 0b10;
 
     private readonly CodeSource _source;
     private byte[] _bytes;
@@ -121,7 +131,6 @@ internal sealed class LineTable
             return null;
 
         var position = 0;
-
         var currentIndex = 0;
         var currentRangeStart = 0;
 
@@ -130,29 +139,35 @@ internal sealed class LineTable
 
         while (position < _length)
         {
-            var indexDiff = Read7BitEncodedInt(_bytes, ref position);
+            var firstByte = ReadByte(_bytes, ref position);
+            var flag = firstByte & 0b11; 
+            var indexDiff = firstByte >> 2; 
+
+            if (indexDiff is 63)
+                indexDiff += Read7BitEncodedInt(_bytes, ref position);
+
             var nextIndex = currentIndex + indexDiff;
+
             if (index >= currentIndex && index < nextIndex)
                 return CodeMetaInfo.FromSpan(_source, range, crucialRange);
+
             currentIndex = nextIndex;
 
-            var flag = ReadByte(_bytes, ref position);
-
-            if ((flag & RangeFlag) is 0)
+            if ((flag & HasRangeFlag) is 0)
             {
                 range = CodeTextSpan.Empty;
                 crucialRange = CodeTextSpan.Empty;
                 continue;
             }
 
-            var rangeStartDiff = Read7BitEncodedInt(_bytes, ref position);
-            if ((flag & NegativeRangeStartDiffFlag) is not 0)
-                rangeStartDiff = -rangeStartDiff;
+            int zigzag = Read7BitEncodedInt(_bytes, ref position);
+            int rangeStartDiff = (zigzag >> 1) ^ -(zigzag & 1);
+
             currentRangeStart += rangeStartDiff;
             var rangeLength = Read7BitEncodedInt(_bytes, ref position);
             range = new CodeTextSpan(currentRangeStart, rangeLength);
 
-            if ((flag & CrucialRangeFlag) is 0)
+            if ((flag & HasCrucialRangeFlag) is 0)
             {
                 crucialRange = CodeTextSpan.Empty;
                 continue;
