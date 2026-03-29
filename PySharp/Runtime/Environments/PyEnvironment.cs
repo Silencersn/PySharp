@@ -25,7 +25,7 @@ public sealed partial class PyEnvironment
         TextWriter? stderr = null,
         bool isInteractive = false,
         IVirtualFileSystem? fileSystem = null,
-        OptimizationOptions? optimizationOptions = null)
+        int optimizationLevel = 0)
     {
         In = stdin ?? TextReader.Null;
         Out = stdout ?? TextWriter.Null;
@@ -34,7 +34,7 @@ public sealed partial class PyEnvironment
         Args = [];
         IsInteractive = isInteractive;
         FileSystem = fileSystem ?? MemoryFileSystem.CreateBuilder().Build();
-        OptimizationOptions = optimizationOptions ?? OptimizationOptions.O0;
+        OptimizationLevel = optimizationLevel;
     }
 
     internal TextReader In { get; }
@@ -48,7 +48,7 @@ public sealed partial class PyEnvironment
     internal event PyExitEventHandler? Exit;
     internal bool IsInteractive { get; set; }
     internal IVirtualFileSystem FileSystem { get; }
-    internal OptimizationOptions OptimizationOptions { get; }
+    internal int OptimizationLevel { get; }
 
     internal void OnExit()
     {

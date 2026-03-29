@@ -74,8 +74,7 @@ internal static class PyCore
         var newFrame = context.CurrentInternalFrame.CreateClassBuildFrame(type, codeObject);
 
         using (var withFrame = context.WithFrame(ref newFrame))
-            // TODO: unwrap
-            Eval(context);
+            Eval(context).PyUnwrap(context);
 
         foreach (var pair in newFrame.Variables.EnumerateVariablesForBuildingClass())
         {

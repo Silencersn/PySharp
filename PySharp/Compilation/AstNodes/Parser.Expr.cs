@@ -631,7 +631,7 @@ partial class Parser
                 // __debug__
 
                 MoveNextToken();
-                return Ast.Constant(_options.Debug).With(metaInfo);
+                return Ast.Constant(_optimizationLevel is 0).With(metaInfo);
             }
             else
             {

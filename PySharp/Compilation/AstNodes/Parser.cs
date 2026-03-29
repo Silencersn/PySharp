@@ -65,8 +65,8 @@ public sealed partial class Parser : ICodeMetaInfoProvider
 
     private readonly PyCallContext _context;
     private readonly CodeSource _codeSource;
-    private readonly OptimizationOptions _options;
     private readonly TokenSequence _tokenSequence;
+    private readonly int _optimizationLevel;
     private int _position;
 
     private int TokenPosition
@@ -111,7 +111,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
     internal Parser(PyCallContext context, CodeSource codeSource, TokenSequence tokens)
     {
         _context = context;
-        _options = _context.PyEnvironment.OptimizationOptions;
+        _optimizationLevel = _context.PyEnvironment.OptimizationLevel;
         _tokenSequence = tokens;
         _codeSource = codeSource;
         SkipUselessToken();
