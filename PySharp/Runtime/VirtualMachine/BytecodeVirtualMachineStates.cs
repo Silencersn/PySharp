@@ -1,9 +1,10 @@
-﻿using PySharp.Modules.Builtins;
+﻿using PySharp.Compilation.Bytecodes;
+using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
 using System.Diagnostics;
 using System.Text;
 
-namespace PySharp.Compilation.Bytecodes;
+namespace PySharp.Runtime.VirtualMachine;
 
 internal struct BytecodeVirtualMachineStates
 {

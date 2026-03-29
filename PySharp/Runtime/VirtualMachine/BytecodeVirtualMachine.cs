@@ -1,3 +1,4 @@
+using PySharp.Compilation.Bytecodes;
 using PySharp.Compilation.Primitives;
 using PySharp.Modules.Builtins;
 using PySharp.Modules.String.TemplateLib;
@@ -10,7 +11,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
-namespace PySharp.Compilation.Bytecodes;
+namespace PySharp.Runtime.VirtualMachine;
 
 internal static class BytecodeVirtualMachine
 {

@@ -1,9 +1,9 @@
-﻿using PySharp.Compilation.Bytecodes;
-using PySharp.Compilation.Primitives;
+﻿using PySharp.Compilation.Primitives;
 using PySharp.Modules;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
+using PySharp.Runtime.VirtualMachine;
 using System.Diagnostics;
 
 namespace PySharp.Runtime;

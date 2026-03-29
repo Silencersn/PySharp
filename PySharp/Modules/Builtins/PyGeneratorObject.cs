@@ -1,8 +1,8 @@
-using PySharp.Compilation.Bytecodes;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
 using PySharp.Runtime.PyAttributes;
+using PySharp.Runtime.VirtualMachine;
 
 namespace PySharp.Modules.Builtins;
 
