@@ -30,24 +30,41 @@ public sealed class Bytecode
     public ImmutableArray<string> Names => _names;
     public int StackSize => _stackSize;
 
-    public void TrimExcess()
+    public void TrimExcess(bool recursive = false)
     {
+        if (recursive)
+        {
+            foreach (var obj in _consts)
+            {
+                if (obj is not PyCodeObject { Bytecode: var bytecode })
+                    continue;
+
+                bytecode.TrimExcess(recursive: true);
+            }
+        }
+
         if (_trimmed)
             return;
 
-        var instructionsCount = _instructions.Length;
-        for (int i = instructionsCount - 1; i >= 0; i--)
+        var instructionsCount = 0;
+        for (int i = _instructions.Length - 1; i >= 0; i--)
         {
-            if (_instructions[i].OpCode is not OpCode.__BytecodeEnd)
+            // if _instructions contains OpCode.__BytecodeEnd,
+            // it must end with nops
+
+            var opCode = _instructions[i].OpCode;
+
+            if (opCode is OpCode.NoOperation)
                 continue;
 
-            instructionsCount = i;
+            // OpCode.__BytecodeEnd should be trimmed
+            instructionsCount = opCode is OpCode.__BytecodeEnd ? i : i + 1;
             break;
         }
 
         var instructionsThreshold = _instructions.Length * 0.9;
         if (instructionsCount < instructionsThreshold)
-            _instructions = _instructions.AsSpan()[..instructionsCount].ToImmutableArray();
+            _instructions = _instructions[..instructionsCount];
 
         _lineTable.TrimExcess();
         _trimmed = true;
