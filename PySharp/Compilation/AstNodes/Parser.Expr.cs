@@ -17,11 +17,17 @@ partial class Parser
     /// <exception cref="PyRuntimeException"></exception>
     private string ParseIdentifier()
     {
+        return ParseIdentifier(out _);
+    }
+
+    private string ParseIdentifier(out string originalIdentifier)
+    {
         if (!IsCurrentIdentifier)
             throw SyntaxError();
-        var ret = CurrentTokenString;
+
+        originalIdentifier = CurrentTokenString;
         MoveNextToken();
-        return ret;
+        return MangleIdentifier(originalIdentifier);
     }
 
     /// <summary>

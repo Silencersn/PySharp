@@ -3,35 +3,37 @@ using PySharp.Compilation.Tokenization;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using System.Collections.Frozen;
+using System.Diagnostics;
 using System.Text;
 namespace PySharp.Compilation.AstNodes;
 
 public sealed partial class Parser : ICodeMetaInfoProvider
 {
-    public static ModuleNode ParseModule(PyCallContext context, CodeSource codeSource, TokenSequence tokens)
+    public static ModuleNode ParseModule(PyCallContext context, CodeSource codeSource, TokenSequence tokens, bool enableNameMangling = true)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(codeSource);
         ArgumentNullException.ThrowIfNull(tokens);
 
-        return new Parser(context, codeSource, tokens).ParseFile();
-    }
-    public static ExpressionNode ParseExpression(PyCallContext context, CodeSource codeSource, TokenSequence tokens)
-    {
-        ArgumentNullException.ThrowIfNull(context);
-        ArgumentNullException.ThrowIfNull(codeSource);
-        ArgumentNullException.ThrowIfNull(tokens);
-
-        return new Parser(context, codeSource, tokens).ParseEval();
+        return new Parser(context, codeSource, tokens, enableNameMangling).ParseFile();
     }
 
-    public static InteractiveNode ParseInteractive(PyCallContext context, CodeSource codeSource, TokenSequence tokens)
+    public static ExpressionNode ParseExpression(PyCallContext context, CodeSource codeSource, TokenSequence tokens, bool enableNameMangling = true)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(codeSource);
         ArgumentNullException.ThrowIfNull(tokens);
 
-        return new Parser(context, codeSource, tokens).ParseInteractive();
+        return new Parser(context, codeSource, tokens, enableNameMangling).ParseEval();
+    }
+
+    public static InteractiveNode ParseInteractive(PyCallContext context, CodeSource codeSource, TokenSequence tokens, bool enableNameMangling = true)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(codeSource);
+        ArgumentNullException.ThrowIfNull(tokens);
+
+        return new Parser(context, codeSource, tokens, enableNameMangling).ParseInteractive();
     }
 
     private static readonly FrozenSet<TokenType> AugOperators = [
@@ -67,6 +69,8 @@ public sealed partial class Parser : ICodeMetaInfoProvider
     private readonly CodeSource _codeSource;
     private readonly TokenSequence _tokenSequence;
     private readonly int _optimizationLevel;
+    private readonly bool _enableNameMangling;
+    private readonly Stack<string> _classNameStack = [];
     private int _position;
 
     private int TokenPosition
@@ -108,13 +112,37 @@ public sealed partial class Parser : ICodeMetaInfoProvider
 
     CodeMetaInfo? ICodeMetaInfoProvider.MetaInfo => CreateAstMetaInfo();
 
-    internal Parser(PyCallContext context, CodeSource codeSource, TokenSequence tokens)
+    internal Parser(PyCallContext context, CodeSource codeSource, TokenSequence tokens, bool enableNameMangling = true)
     {
         _context = context;
         _optimizationLevel = _context.PyEnvironment.OptimizationLevel;
         _tokenSequence = tokens;
         _codeSource = codeSource;
+        _enableNameMangling = enableNameMangling;
         SkipUselessToken();
+    }
+
+    private string MangleIdentifier(string identifier)
+    {
+        Debug.Assert(!identifier.Contains('.'));
+
+        if (!_enableNameMangling)
+            return identifier;
+
+        if (!_classNameStack.TryPeek(out var className))
+            return identifier;
+
+        if (!identifier.StartsWith("__", StringComparison.Ordinal))
+            return identifier;
+
+        if (identifier.EndsWith("__", StringComparison.Ordinal))
+            return identifier;
+
+        var strippedClassName = className.TrimStart('_');
+        if (strippedClassName.Length is 0)
+            return identifier;
+
+        return $"_{strippedClassName}{identifier}";
     }
 
     private bool IsCurrentTypeTokenAnyOf(params ReadOnlySpan<TokenType> expectedTypes)

@@ -209,4 +209,11 @@ public sealed class TestPyFiles
         var module = RunModule("test_with.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestNameMangling()
+    {
+        var module = RunModule("test_name_mangling.py");
+        Assert.IsNotNull(module);
+    }
 }

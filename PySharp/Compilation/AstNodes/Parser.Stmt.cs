@@ -928,7 +928,7 @@ partial class Parser
     {
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("class");
-        var name = ParseIdentifier();
+        var name = ParseIdentifier(out var className);
 
         IEnumerable<AstTypeParamNode> typeParams = [];
         if (CurrentTokenType is TokenType.LeftSquareBracket)
@@ -944,8 +944,10 @@ partial class Parser
         }
 
         EnsureTokenTypeThenMove(TokenType.Colon);
-
-        var body = ParseBlock("class");
+        List<AstStmtNode> body;
+        _classNameStack.Push(className);
+        body = ParseBlock("class");
+        _classNameStack.Pop();
         return Ast.ClassDef(name, bases, keywords, body, decorators, typeParams).With(metaInfo);
     }
 
