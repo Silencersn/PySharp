@@ -215,8 +215,10 @@ partial class Parser
     [GrammarSyntaxRule("dotted_name")]
     private string ParseDottedName()
     {
-        var list = ParseSomethingList(ParseIdentifier, StopPredicates.UntilNonName, out _, separator: TokenType.Dot);
-        return string.Join('.', list);
+        var list = ParseSomethingList(ParseNonMangledIdentifier, StopPredicates.UntilNonName, out _, separator: TokenType.Dot);
+        if (list.Count is not 1)
+            return string.Join('.', list);
+        return MangleIdentifier(list[0]);
     }
 
     [GrammarSyntaxRule("dotted_as_name")]
@@ -945,9 +947,9 @@ partial class Parser
 
         EnsureTokenTypeThenMove(TokenType.Colon);
         List<AstStmtNode> body;
-        _classNameStack.Push(className);
+        _classNameTrimmedStack.Push(className.TrimStart('_'));
         body = ParseBlock("class");
-        _classNameStack.Pop();
+        _classNameTrimmedStack.Pop();
         return Ast.ClassDef(name, bases, keywords, body, decorators, typeParams).With(metaInfo);
     }
 

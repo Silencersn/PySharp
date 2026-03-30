@@ -70,7 +70,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
     private readonly TokenSequence _tokenSequence;
     private readonly int _optimizationLevel;
     private readonly bool _enableNameMangling;
-    private readonly Stack<string> _classNameStack = [];
+    private readonly Stack<string> _classNameTrimmedStack = [];
     private int _position;
 
     private int TokenPosition
@@ -89,21 +89,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
     private ReadOnlySpan<char> CurrentTokenStringAsSpan => _codeSource.Code.GetString(CurrentToken.StringSpan);
     private HashSet<string>? _stringPool;
 
-    private string CurrentTokenString
-    {
-        get
-        {
-            _stringPool ??= [];
-
-            var span = CurrentTokenStringAsSpan;
-            if (_stringPool.GetAlternateLookup<ReadOnlySpan<char>>().TryGetValue(span, out var value))
-                return value;
-
-            value = span.ToString();
-            _stringPool.Add(value);
-            return value;
-        }
-    }
+    private string CurrentTokenString => GetOrAddFromPool(CurrentTokenStringAsSpan);
 
     private bool IsCurrentIdentifier => CurrentTokenType is TokenType.Name && !IsKeyword(CurrentTokenStringAsSpan);
 
@@ -122,6 +108,18 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         SkipUselessToken();
     }
 
+    private string GetOrAddFromPool(ReadOnlySpan<char> span)
+    {
+        _stringPool ??= [];
+
+        if (_stringPool.GetAlternateLookup<ReadOnlySpan<char>>().TryGetValue(span, out var value))
+            return value;
+
+        value = span.ToString();
+        _stringPool.Add(value);
+        return value;
+    }
+
     private string MangleIdentifier(string identifier)
     {
         Debug.Assert(!identifier.Contains('.'));
@@ -129,7 +127,10 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         if (!_enableNameMangling)
             return identifier;
 
-        if (!_classNameStack.TryPeek(out var className))
+        if (!_classNameTrimmedStack.TryPeek(out var className))
+            return identifier;
+
+        if (className.Length is 0)
             return identifier;
 
         if (!identifier.StartsWith("__", StringComparison.Ordinal))
@@ -138,11 +139,11 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         if (identifier.EndsWith("__", StringComparison.Ordinal))
             return identifier;
 
-        var strippedClassName = className.TrimStart('_');
-        if (strippedClassName.Length is 0)
-            return identifier;
-
-        return $"_{strippedClassName}{identifier}";
+        Span<char> mangledName = stackalloc char[1 + className.Length + identifier.Length];
+        mangledName[0] = '_';
+        className.CopyTo(mangledName[1..]);
+        identifier.CopyTo(mangledName[^identifier.Length..]);
+        return GetOrAddFromPool(mangledName);
     }
 
     private bool IsCurrentTypeTokenAnyOf(params ReadOnlySpan<TokenType> expectedTypes)

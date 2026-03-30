@@ -20,13 +20,19 @@ partial class Parser
         return ParseIdentifier(out _);
     }
 
-    private string ParseIdentifier(out string originalIdentifier)
+    private string ParseNonMangledIdentifier()
     {
         if (!IsCurrentIdentifier)
             throw SyntaxError();
 
-        originalIdentifier = CurrentTokenString;
+        var id = CurrentTokenString;
         MoveNextToken();
+        return id;
+    }
+
+    private string ParseIdentifier(out string originalIdentifier)
+    {
+        originalIdentifier = ParseNonMangledIdentifier();
         return MangleIdentifier(originalIdentifier);
     }
 
