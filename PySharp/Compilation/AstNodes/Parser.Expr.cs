@@ -1701,7 +1701,7 @@ partial class Parser
             throw SyntaxError(PySR.InvalidSyntax_Arguments_PosArgFollowsKeyword);
 
         var metaInfo = CreateAstMetaInfo();
-        var arg = ParseIdentifier();
+        var arg = ParseNonMangledIdentifier();
         EnsureTokenTypeThenMove(TokenType.Equal, PySR.InvalidSyntax_Arguments_PosArgFollowsKeyword);
         var value = ParseExpression();
         return Ast.Keyword(arg, value).With(metaInfo.WithPreviousEnd());

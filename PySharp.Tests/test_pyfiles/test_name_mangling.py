@@ -27,7 +27,7 @@ class ___:
 assert ___.__v == 3
 
 class Kw:
-    v = dict(__x=1)["_Kw__x"]
+    v = dict(__x=1)["__x"]
 
 assert Kw.v == 1
 
