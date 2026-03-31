@@ -34,6 +34,7 @@ internal sealed partial class BytecodeCompiler
 
     private BytecodeGenerator Generator { get; set; }
     private SemanticModel Model => _model;
+    private int OptimizationLevel => _context.PyEnvironment.OptimizationLevel;
     private VariableScope VariableScope { get; set; }
     private Stack<(Label LoopBegin, Label LoopEnd)> Loops { get; } = [];
     private bool IsInteractive { get; set; }

@@ -362,7 +362,7 @@ partial class BytecodeCompiler
         Generator.Emit(OpCode.LoadConst, codeObj);
         Generator.Emit(OpCode._MakeFunctionWithPyArgsDef);
 
-        if (TryGetDoc(node.Body, out var doc))
+        if (OptimizationLevel < 2 && TryGetDoc(node.Body, out var doc))
         {
             Generator.Emit(OpCode.Copy, 1);
             Generator.Emit(OpCode.LoadConst, doc);
@@ -423,7 +423,7 @@ partial class BytecodeCompiler
             Generator.Emit(OpCode.StoreDeref, PySpecialNames.Class);
         }
 
-        if (TryGetDoc(node.Body, out var doc))
+        if (OptimizationLevel < 2 && TryGetDoc(node.Body, out var doc))
         {
             Generator.Emit(OpCode.LoadConst, doc);
             StoreName(PySpecialNames.Doc);
@@ -457,7 +457,7 @@ partial class BytecodeCompiler
 
     private void CompileAssert(AssertNode node)
     {
-        if (_context.PyEnvironment.OptimizationLevel > 0)
+        if (OptimizationLevel > 0)
             return;
 
         var noRaisingLabel = Generator.DefineLabel();
