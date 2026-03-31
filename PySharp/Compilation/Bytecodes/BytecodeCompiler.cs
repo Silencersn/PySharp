@@ -2,6 +2,7 @@
 using PySharp.Compilation.CodeAnalysis;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime;
+using PySharp.Runtime.Calls;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
@@ -9,19 +10,21 @@ namespace PySharp.Compilation.Bytecodes;
 
 internal sealed partial class BytecodeCompiler
 {
-    public static Bytecode Compile(SemanticModel model, CodeSource source, bool onlyAsName = false)
+    public static Bytecode Compile(PyCallContext context, SemanticModel model, CodeSource source, bool onlyAsName = false)
     {
-        var compiler = new BytecodeCompiler(model, source) { OnlyAsName = onlyAsName };
+        var compiler = new BytecodeCompiler(context, model, source) { OnlyAsName = onlyAsName };
         compiler.Compile();
         return compiler.Generator.ToBytecode();
     }
 
+    private readonly PyCallContext _context;
     private readonly SemanticModel _model;
     private readonly CodeSource _source;
 
-    internal BytecodeCompiler(SemanticModel model, CodeSource source)
+    internal BytecodeCompiler(PyCallContext context, SemanticModel model, CodeSource source)
     {
         Generator = BytecodeGenerator.Create(source);
+        _context = context;
         _model = model;
         _source = source;
         var scope = _model.GetVariableScope<RootVariableScope>(_model.Root);

@@ -15,7 +15,7 @@ internal static class Compiler
         var tokens = Lexer.Tokenize(context, source, appendNewLine);
         var node = parse(context, source, tokens, true);
         var model = SemanticAnalyzer.Analyze(context, source, node);
-        var bytecode = BytecodeCompiler.Compile(model, source, onlyAsName);
+        var bytecode = BytecodeCompiler.Compile(context, model, source, onlyAsName);
         return new PyCodeObject(name, filename, bytecode, CodeObjectFlags.Module);
     }
 

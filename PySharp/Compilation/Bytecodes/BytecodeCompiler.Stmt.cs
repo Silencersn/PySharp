@@ -457,6 +457,9 @@ partial class BytecodeCompiler
 
     private void CompileAssert(AssertNode node)
     {
+        if (_context.PyEnvironment.OptimizationLevel > 0)
+            return;
+
         var noRaisingLabel = Generator.DefineLabel();
 
         LoadExpr(node.Test);
