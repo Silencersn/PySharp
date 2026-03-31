@@ -1,5 +1,6 @@
 ﻿using PySharp.Compilation.CodeAnalysis;
 using PySharp.Compilation.Tokenization;
+using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using System.Collections.Frozen;
@@ -110,9 +111,12 @@ public sealed partial class Parser : ICodeMetaInfoProvider
 
     private string GetOrAddFromPool(ReadOnlySpan<char> span)
     {
+        if (PyStrObject.InternPool.TryGetStaticInternedString(span, out var value))
+            return value;
+
         _stringPool ??= [];
 
-        if (_stringPool.GetAlternateLookup<ReadOnlySpan<char>>().TryGetValue(span, out var value))
+        if (_stringPool.GetAlternateLookup<ReadOnlySpan<char>>().TryGetValue(span, out value))
             return value;
 
         value = span.ToString();

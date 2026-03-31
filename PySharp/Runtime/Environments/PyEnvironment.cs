@@ -50,6 +50,8 @@ public sealed partial class PyEnvironment
     internal IVirtualFileSystem FileSystem { get; }
     internal int OptimizationLevel { get; }
 
+    public PyStrObject.InternPool InternPool { get; } = new();
+
     internal void OnExit()
     {
         var args = new PyExitEventArgs(ExitCode, null /* TODO: how to process this arg? */);

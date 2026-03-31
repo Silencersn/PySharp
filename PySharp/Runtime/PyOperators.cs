@@ -469,15 +469,15 @@ public static class PyOperators
 
     public static PyResult GetAttr(PyCallContext context, PyObject target, string name)
     {
-        return GetAttr(context, target, PyStrObject.FromString(name));
+        return GetAttr(context, target, context.PyEnvironment.InternPool.Intern(name));
     }
     public static PyResult SetAttr(PyCallContext context, PyObject target, string name, PyObject value)
     {
-        return SetAttr(context, target, PyStrObject.FromString(name), value);
+        return SetAttr(context, target, context.PyEnvironment.InternPool.Intern(name), value);
     }
     public static PyResult DelAttr(PyCallContext context, PyObject target, string name)
     {
-        return DelAttr(context, target, PyStrObject.FromString(name));
+        return DelAttr(context, target, context.PyEnvironment.InternPool.Intern(name));
     }
     public static PyResult GetAttr(PyCallContext context, PyObject target, PyObject name)
     {

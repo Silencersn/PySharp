@@ -31,4 +31,7 @@ public static partial class PySpecialNames
 
     // functions
     public const string Import = "__import__";
+
+    internal static partial IEnumerable<string> EnumerateNonGeneratedNames();
+    internal static partial IEnumerable<string> EnumerateGeneratedNames();
 }
