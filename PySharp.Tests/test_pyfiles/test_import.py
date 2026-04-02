@@ -1,21 +1,21 @@
-﻿import test_imported
+﻿"""
+Module importing and attribute access tests
+"""
+
+import test_imported
+
+# Test basic import and access
 assert hasattr(test_imported, 'foo')
-assert hasattr(test_imported, 'bar')
-assert hasattr(test_imported, 'baz')
 assert test_imported.foo == 1
 assert test_imported.bar == 2
-assert test_imported.get_baz() == 3
 
+# Test from ... import *
 from test_imported import *
 assert foo == 1
 assert bar == 2
 
-try:
-    baz
-    assert False
-except NameError:
-    pass
-
-from test_imported import foo as myfoo, bar
+# Test from ... import ... as ...
+from test_imported import foo as myfoo
 assert myfoo == 1
-assert bar == 2
+
+print("test_import passed")

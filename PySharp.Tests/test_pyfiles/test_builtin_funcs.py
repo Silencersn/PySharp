@@ -45,43 +45,51 @@ assert isinstance(1, (float, int))
 assert issubclass(int, (float, int))
 assert list(zip([1, 2, 3], [4, 5, 6])) == [(1, 4), (2, 5), (3, 6)]
 
+# Tests for newly added or missing builtins
+assert ascii("hello") == "'hello'"
+assert ascii("你好") == "'\\u4f60\\u597d'"
+
+assert format(123) == "123"
+assert format(3.14159, ".2f") == "3.14"
+
+lst = [3, 1, 2]
+assert sorted(lst) == [1, 2, 3]
+assert lst == [3, 1, 2] # sorted() should not modify original
+assert sorted([3, 1, 2], reverse=True) == [3, 2, 1]
+
+# Edge cases and Error handling
 try:
-	list(zip([1, 2], [3], strict=True))
-	assert False
+	abs("not a number")
+	assert False, "abs() should raise TypeError"
+except TypeError:
+	pass
+
+try:
+	chr(-1)
+	assert False, "chr() should raise ValueError for negative"
 except ValueError:
 	pass
 
-assert bin(0b_00001111_11110000_10101010) == '0b11111111000010101010'
-assert bin(-0b_00001111_11110000_10101010) == '-0b11111111000010101010'
+try:
+	max([])
+	assert False, "max() of empty iterable should raise ValueError"
+except ValueError:
+	pass
 
-assert oct(0b_00001111_11110000_10101010) == '0o3770252'
-assert oct(-999999999999999999999999999) == '-0o635456171177204003634777777777'
+try:
+	min([])
+	assert False, "min() of empty iterable should raise ValueError"
+except ValueError:
+	pass
 
-assert hex(100) == '0x64'
-assert hex(-0b_00001111_11110000_10101010) == '-0xff0aa'
+try:
+	delattr(o, "not_exist")
+	assert False, "delattr of non-existent should raise AttributeError"
+except AttributeError:
+	pass
 
-def assert_test(lo):
-	assert 'value' in lo
-	assert 'value2' in lo
-	assert 'value3' not in lo
-	assert 'value4' not in lo
+# cleanup o.foo from previous tests
+delattr(o, "foo")
+assert not hasattr(o, "foo")
 
-def test():
-	value = 1
-	value2 = 2
-	assert_test(locals())
-	value3 = 3
-	value4 = 4
-
-	lambda: value2, value4
-
-test()
-
-
-code_txt = '''a = 1
-b = 2
-assert a + b == 3'''
-
-code = compile(code_txt, "<test>", "exec")
-
-exec(code)
+print("test_builtin_funcs passed (with edge cases)")

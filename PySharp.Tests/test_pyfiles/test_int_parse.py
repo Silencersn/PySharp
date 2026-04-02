@@ -1,4 +1,8 @@
-﻿assert int('123') == 123
+﻿"""
+Integer parsing tests (various bases and formatting)
+"""
+
+assert int('123') == 123
 assert int('-456') == -456
 assert int('+789') == 789
 assert int('0b1010', 2) == 10

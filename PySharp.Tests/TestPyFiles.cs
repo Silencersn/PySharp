@@ -223,4 +223,53 @@ public sealed class TestPyFiles
         var module = RunModule("test_name_mangling.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestException()
+    {
+        var module = RunModule("test_exception.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestTuple()
+    {
+        var module = RunModule("test_tuple.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestSet()
+    {
+        var module = RunModule("test_set.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestRange()
+    {
+        var module = RunModule("test_range.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestKeywordArgs()
+    {
+        var module = RunModule("test_keyword_args.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestZipEnumerate()
+    {
+        var module = RunModule("test_zip_enumerate.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestMatchCase()
+    {
+        var module = RunModule("test_match_case.py");
+        Assert.IsNotNull(module);
+    }
 }

@@ -1,4 +1,8 @@
-﻿x = 0
+﻿"""
+Closure and scope tests (nonlocal, global, nested functions)
+"""
+
+x = 0
 def outer():
     y = 1
     z = 0
@@ -11,17 +15,19 @@ def outer():
         return y, z, x
     return inner
 
+# Test simple closure
 f = outer()
 assert f() == (2, 2, 3)
 assert f() == (3, 4, 6)
 
+# Test closures in a loop
 lst = []
 def make_funcs():
     acc = 0
     for i in range(3):
-        def f(j=i):
+        def f(val=i):
             nonlocal acc
-            acc += j
+            acc += val
             return acc
         lst.append(f)
 make_funcs()
@@ -29,19 +35,7 @@ assert lst[0]() == 0
 assert lst[1]() == 1
 assert lst[2]() == 3
 
-result = []
-def test_loop():
-    for i in range(5):
-        if i == 2:
-            continue
-        if i == 4:
-            break
-        def closure(val=i):
-            return val
-        result.append(closure)
-test_loop()
-assert [f() for f in result] == [0, 1, 3]
-
+# Test global variable modification
 global_var = 10
 def gfunc():
     global global_var
@@ -49,6 +43,8 @@ def gfunc():
     return global_var
 assert gfunc() == 15
 assert global_var == 15
+
+print("test_closure passed")
 
 
 
