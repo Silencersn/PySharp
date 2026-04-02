@@ -1,6 +1,7 @@
 using PySharp.Modules.CSharp;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.Calls.Extensions;
 using PySharp.Runtime.PyAttributes;
 
 namespace PySharp.Modules.Builtins;
@@ -74,9 +75,102 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        if (!PyArgsValidator.ValidateSinglePositionalArg(args, kwargs, out var err))
-            return err.Value;
-        return args[0].PyType;
+        if (args.Count is 1 && kwargs.Count is 0)
+            return args[0].PyType;
+
+        if (args.Count is not 3)
+            return PyResult.TypeError(PySR.Runtime_Type_New_WrongArgCount);
+
+        var nameObj = args[0];
+        var basesObj = args[1];
+        var dictObj = args[2];
+
+        if (nameObj is not PyStrObject { Value: var typeName })
+            return PyResult.TypeError(PySR.Runtime_Type_New_Arg1MustBeStr, nameObj.PyType.FullName);
+
+        if (basesObj is not PyTupleObject basesTuple)
+            return PyResult.TypeError(PySR.Runtime_Type_New_Arg2MustBeStr, basesObj.PyType.FullName);
+
+        if (dictObj is not PyDictObject dict)
+            return PyResult.TypeError(PySR.Runtime_Type_New_Arg3MustBeStr, dictObj.PyType.FullName);
+
+        var bases = new List<PyTypeObject>();
+        foreach (var baseObj in basesTuple)
+        {
+            if (baseObj is not PyTypeObject baseType)
+                return PyResult.RaisePySharpException("non-type element in bases is not supported");
+
+            bases.Add(baseType);
+        }
+
+        if (bases.Count is 0)
+            bases.Add(PyObjectType.Shared);
+
+        var layoutTypeOwnerResult = ValidateBasesAndResolveLayoutTypeOwner(bases);
+        if (layoutTypeOwnerResult.IsError)
+            return layoutTypeOwnerResult;
+
+        var typeQualName = typeName;
+        if (dict.TryGetValue(PyStrObject.InternPool.FromString(PySpecialNames.QualName), out var qualNameObj) &&
+            qualNameObj is PyStrObject { Value: var qualNameStr })
+            typeQualName = qualNameStr;
+        else if (kwargs.TryGetValue(PySpecialNames.QualName, out qualNameObj) &&
+            qualNameObj is PyStrObject { Value: var qualNameStrFromKwargs })
+            typeQualName = qualNameStrFromKwargs;
+
+        var type = layoutTypeOwnerResult.Value.CreateUserDefinedTypeWithSameLayout(typeName, typeQualName, bases);
+        type._pyType = cls;
+
+        if (context.CurrentInternalFrame.Variables.GlobalsDict.TryGetValue(PySpecialNames.Name, out var module))
+            type.ModuleAsObject = module;
+        else
+            type.ModuleAsObject = PyStrObject.FromString("builtins");
+
+        foreach (var (attrObj, value) in dict)
+        {
+            if (attrObj is not PyStrObject { Value: var attr })
+                // TODO: RuntimeWarning: non-string key in the __dict__ of class xxx
+                continue;
+
+            if (value is null)
+                continue;
+
+            if (attr is PySpecialNames.Class && value is PyCellObject cell)
+            {
+                cell.Value = type;
+                continue;
+            }
+
+            type.PyAttributes[attr] = value;
+            type.Slots.TrySetSlot(attr, value);
+        }
+
+        foreach (var (name, value) in type.PyAttributes)
+        {
+            var setNameFunc = value.PyType.Slots.SetName;
+            if (setNameFunc is null)
+                continue;
+            var result = setNameFunc(context, value, type, PyStrObject.FromString(name));
+            if (result.IsError)
+                return result;
+        }
+
+        var initSubclass = PyOperators.GetAttr(context, type, PyStrObject.InternPool.FromString(PySpecialNames.InitSubclass));
+        if (initSubclass.IsError)
+        {
+            if (initSubclass.IsAttributeError)
+                return type;
+
+            return initSubclass;
+        }
+        else
+        {
+            var result = initSubclass.Value.Call(context, [type]/* , TODO: new StringKeyDict(dict) */);
+            if (result.IsError)
+                return result;
+        }
+        
+        return type;
     }
 
     protected override PyResult Repr(PyCallContext context, PyTypeObject self)

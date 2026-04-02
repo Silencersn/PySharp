@@ -1272,18 +1272,31 @@ internal static class BytecodeVirtualMachine
     private static void InternalBuildClass(PyCallContext context, ref ValueOperandStack stack, ref BytecodeVirtualMachineStates states, int instructionArg)
     {
         var codeObj = (PyCodeObject)stack.Pop();
+        var tuple = (PyTupleObject)stack.Pop();
 
-        List<PyTypeObject> bases = [];
-        LoadArgs(ref stack, states.CacheArgs, instructionArg);
+        int kwCount = tuple.Count;
+        int basesCount = instructionArg - kwCount;
+
+        states.CacheKwargs.Clear();
+        var kwargs = states.CacheKwargs;
+        if (kwCount > 0)
+        {
+            LoadArgs(ref stack, states.CacheArgs, kwCount);
+            for (int i = 0; i < tuple.Count; i++)
+            {
+                var str = (PyStrObject)tuple[i];
+                kwargs[str.Value] = states.CacheArgs[i];
+            }
+        }
+
+        LoadArgs(ref stack, states.CacheArgs, basesCount);
         foreach (var arg in states.CacheArgs)
         {
             if (arg is not PyTypeObject baseType)
-                throw new NotSupportedException();
-
-            bases.Add(baseType);
+                throw new PyRuntimeException(PyResult.PySharpException.Shared.Create(PyStrObject.FromString("non-type base is not supported")));
         }
 
-        var type = PyCore.BuildClass(context, codeObj, bases);
+        var type = PyCore.BuildClass(context, codeObj, [..states.CacheArgs.Cast<PyTypeObject>()], kwargs);
 
         stack.Push(type);
     }

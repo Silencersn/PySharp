@@ -4,6 +4,7 @@ using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
 using PySharp.Runtime.VirtualMachine;
+using PySharp.Utility;
 using System.Diagnostics;
 
 namespace PySharp.Runtime;
@@ -58,41 +59,58 @@ internal static class PyCore
         return new PyFunctionObject(GetFreeVars(ref frame, codeObject), frame.Variables.Globals, codeObject, def);
     }
 
-    public static PyTypeObject BuildClass(PyCallContext context, PyCodeObject codeObject, List<PyTypeObject> bases)
+    public static PyObject BuildClass(PyCallContext context, PyCodeObject codeObject, List<PyTypeObject> bases, OrderedDictionary<string, PyObject> kwargs)
     {
+        PyTypeObject metaClass = PyTypeObjectType.Shared;
+
+        if (bases.Count > 0)
+            metaClass = bases[0].PyType;
+
+        if (kwargs.Remove("metaclass", out var metaObj))
+        {
+            if (metaObj is not PyTypeObject typeObj)
+                throw context.PySharpException("non-type metaclass is not supported");
+
+            metaClass = typeObj;
+        }
+
+        // check if there is a conflict and find the most derived metaclass
+        for (int i = 0; i < bases.Count; i++)
+        {
+            var otherMetaClass = bases[i].PyType;
+
+            if (otherMetaClass.IsSubclassOf(metaClass))
+                metaClass = otherMetaClass;
+            else if (!metaClass.IsSubclassOf(otherMetaClass))
+                throw context.TypeError(PySR.Runtime_Inheritance_MetaclassConflict);
+        }
+
         if (bases.Count is 0)
             bases.Add(PyObjectType.Shared);
 
-        PyTypeObject.ValidateBases(context, bases, out var layoutTypeOwner);
-        var type = layoutTypeOwner.CreateUserDefinedTypeWithSameLayout(codeObject.Name, codeObject.QualName, bases);
-
-        if (context.CurrentInternalFrame.Variables.GlobalsDict.TryGetValue(PySpecialNames.Name, out var module))
-            type.ModuleAsObject = module;
-        else
-            type.ModuleAsObject = PyStrObject.FromString("builtins");
-
-        var newFrame = context.CurrentInternalFrame.CreateClassBuildFrame(type, codeObject);
-
+        var newFrame = context.CurrentInternalFrame.CreateClassBuildFrame(codeObject);
+        var ns = newFrame.Variables.Locals;
         using (var withFrame = context.WithFrame(ref newFrame))
             Eval(context).PyUnwrap(context);
 
-        foreach (var pair in newFrame.Variables.EnumerateVariablesForBuildingClass())
-        {
-            if (pair.Value is null)
-                continue;
+        var nameStr = PyStrObject.FromString(codeObject.Name);
+        var basesTuple = PyTupleObject.CreateTuple(bases);
+        var nsObj = PyDictObject.CreateProxy(new DictAdapter(ns));
+        var args = PyTupleObject.CreateTuple([nameStr, basesTuple, nsObj]);
 
-            type.PyAttributes[pair.Key] = pair.Value;
+        var newFunc = metaClass.Slots.New ?? throw context.TypeError(null);
+        var obj = newFunc(context, metaClass, args, kwargs).PyUnwrap(context);
+        if (!metaClass.IsInstance(obj))
+            return obj;
+            
+        if (metaClass != PyTypeObjectType.Shared)
+        {
+            var initFunc = metaClass.Slots.Init;
+            if (initFunc is not null)
+                _ = initFunc(context, obj, args, kwargs).PyUnwrap(context);
         }
 
-        foreach (var (name, value) in type.PyAttributes)
-        {
-            var setNameFunc = value.PyType.Slots.SetName;
-            if (setNameFunc is not null)
-                setNameFunc(context, value, type, PyStrObject.FromString(name)).PyUnwrap(context);
-
-            type.Slots.TrySetSlot(name, value);
-        }
-        return type;
+        return obj;
     }
 
     public static void ImportAllFrom(PyCallContext context, ref PyInternalFrame frame, PyModuleObject module)

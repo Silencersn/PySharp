@@ -5,7 +5,6 @@ using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Xml.Linq;
 
 namespace PySharp.Compilation.Bytecodes;
 
@@ -417,11 +416,7 @@ partial class BytecodeCompiler
         VariableScope = scope;
 
         if (scope.ClassCaptured)
-        {
             Generator.Emit(OpCode.MakeCell, PySpecialNames.Class);
-            Generator.Emit(OpCode._LoadClass);
-            Generator.Emit(OpCode.StoreDeref, PySpecialNames.Class);
-        }
 
         if (OptimizationLevel < 2 && TryGetDoc(node.Body, out var doc))
         {
@@ -444,10 +439,15 @@ partial class BytecodeCompiler
         foreach (var baseType in node.Bases)
             LoadExpr(baseType);
 
-        // TODO: Keywords
+        foreach (var kwarg in node.Keywords)
+            LoadExpr(kwarg.Value);
+
+        var tuple = node.Keywords.Length is 0 ? PyTupleObject.Empty : PyTupleObject.CreateTuple(node.Keywords.Select(k => PyStrObject.FromString(k.Arg ?? throw new UnreachableException())));
+        Generator.Emit(OpCode.LoadConst, tuple);
 
         Generator.Emit(OpCode.LoadConst, codeObj);
-        Generator.Emit(OpCode._BuildClass, node.Bases.Length);
+        int arg = node.Bases.Length + node.Keywords.Length;
+        Generator.Emit(OpCode._BuildClass, arg);
 
         for (int i = 0; i < node.DecoratorList.Length; i++)
             Generator.Emit(OpCode.Call, 1);

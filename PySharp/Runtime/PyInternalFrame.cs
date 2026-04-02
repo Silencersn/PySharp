@@ -91,13 +91,13 @@ internal partial struct PyInternalFrame
         { CodeObject = code };
     }
 
-    internal readonly PyInternalFrame CreateClassBuildFrame(PyTypeObject buildingClass, PyCodeObject code)
+    internal readonly PyInternalFrame CreateClassBuildFrame(PyCodeObject code)
     {
         var variables = Variables.CreateForBuildingClass(code);
 
         return new PyInternalFrame(
             variables,
-            buildingClass,
+            caller: null, // deferred assignment
             FrameType.Class)
         { CodeObject = code };
     }

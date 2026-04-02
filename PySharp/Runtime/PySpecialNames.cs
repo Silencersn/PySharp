@@ -4,6 +4,7 @@ public static partial class PySpecialNames
 {
     // methods
     public const string New = "__new__";
+    public const string InitSubclass = "__init_subclass__";
 
     // attributes
     public const string Bases = "__bases__";

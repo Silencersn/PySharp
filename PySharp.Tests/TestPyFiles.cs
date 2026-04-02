@@ -29,6 +29,13 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestMetaclass()
+    {
+        var module = RunModule("test_metaclass.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestClassSpecialMethods()
     {
         var module = RunModule("test_class_special_methods.py");

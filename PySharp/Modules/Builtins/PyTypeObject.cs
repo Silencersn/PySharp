@@ -79,13 +79,13 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
 
     internal abstract PyTypeObject CreateUserDefinedTypeWithSameLayout(string name, string qualName, IReadOnlyList<PyTypeObject> bases);
 
-    internal static void ValidateBases(PyCallContext context, IEnumerable<PyTypeObject> bases, out PyTypeObject layoutTypeOwner)
+    internal static PyResult<PyTypeObject> ValidateBasesAndResolveLayoutTypeOwner(IEnumerable<PyTypeObject> bases)
     {
-        layoutTypeOwner = PyObjectType.Shared;
+        var layoutTypeOwner = PyObjectType.Shared;
         foreach (var baseType in bases)
         {
             if (baseType.IsSealed)
-                throw context.TypeError(PySR.Runtime_Inheritance_UnacceptableBaseType, baseType.Name);
+                return PyResult.TypeError(PySR.Runtime_Inheritance_UnacceptableBaseType, baseType.Name).Of<PyTypeObject>();
 
             if (baseType.LayoutType == layoutTypeOwner.LayoutType)
                 continue;
@@ -93,11 +93,13 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
             if (baseType.LayoutType.IsSubclassOf(layoutTypeOwner.LayoutType))
                 layoutTypeOwner = baseType;
             else if (!layoutTypeOwner.LayoutType.IsAssignableFrom(baseType.LayoutType))
-                throw context.TypeError(PySR.Runtime_Inheritance_LayoutConflict);
+                return PyResult.TypeError(PySR.Runtime_Inheritance_LayoutConflict).Of<PyTypeObject>();
         }
 
         if (!TryCreateMROWithoutSelf(bases, out _))
-            throw context.TypeError(PySR.Runtime_Inheritance_CannotCreateMRO);
+            return PyResult.TypeError(PySR.Runtime_Inheritance_CannotCreateMRO).Of<PyTypeObject>();
+
+        return layoutTypeOwner;
     }
 
     private static bool TryCreateMROWithoutSelf(IEnumerable<PyTypeObject> bases, [NotNullWhen(true)] out List<PyTypeObject>? mro)
