@@ -1,4 +1,6 @@
-﻿namespace PySharp.Runtime;
+﻿using PySharp.Modules.Builtins;
+
+namespace PySharp.Runtime;
 
 public static partial class PySpecialNames
 {
@@ -35,4 +37,6 @@ public static partial class PySpecialNames
 
     internal static partial IEnumerable<string> EnumerateNonGeneratedNames();
     internal static partial IEnumerable<string> EnumerateGeneratedNames();
+
+    public static partial class Interned;
 }

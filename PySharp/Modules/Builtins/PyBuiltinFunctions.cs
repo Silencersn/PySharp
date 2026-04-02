@@ -693,7 +693,7 @@ public static partial class PyBuiltinFunctions
     [PyFunctionArgsDef("object", "/")]
     private static PyResult CallableImpl(PyCallContext context, PyArguments arguments)
     {
-        var attr = PyOperators.GetAttr(context, arguments[0], PySpecialNames.Call);
+        var attr = PyOperators.GetAttr(context, arguments[0], PySpecialNames.Interned.Call);
         if (attr.IsSuccessful)
             return PyBoolObject.True;
         if (attr.IsAttributeError)

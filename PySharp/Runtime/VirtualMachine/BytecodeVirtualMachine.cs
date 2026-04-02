@@ -1018,7 +1018,7 @@ internal static class BytecodeVirtualMachine
         }
         else if (instructionArg > 0)
         {
-            var matchArgs = PyOperators.GetAttr(context, cls, PySpecialNames.MatchArgs).PyUnwrap(context);
+            var matchArgs = PyOperators.GetAttr(context, cls, PySpecialNames.Interned.MatchArgs).PyUnwrap(context);
 
             if (matchArgs is not PyTupleObject tuple)
                 throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsIsNonTuple, cls.FullName, matchArgs.PyType.FullName);

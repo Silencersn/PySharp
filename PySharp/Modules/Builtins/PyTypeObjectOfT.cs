@@ -155,7 +155,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
                 return result;
         }
 
-        var initSubclass = PyOperators.GetAttr(context, type, PyStrObject.InternPool.FromString(PySpecialNames.InitSubclass));
+        var initSubclass = PyOperators.GetAttr(context, type, PySpecialNames.Interned.InitSubclass);
         if (initSubclass.IsError)
         {
             if (initSubclass.IsAttributeError)
