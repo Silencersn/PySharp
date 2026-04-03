@@ -272,4 +272,11 @@ public sealed class TestPyFiles
         var module = RunModule("test_match_case.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestSetFull()
+    {
+        var module = RunModule("test_set_full.py");
+        Assert.IsNotNull(module);
+    }
 }

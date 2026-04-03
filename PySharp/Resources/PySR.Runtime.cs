@@ -90,6 +90,13 @@ partial class PySR
     public const string Runtime_List_PopIndexOutOfRange = "pop index out of range";
     public const string Runtime_List_IndexOutOfRange = "list index out of range";
 
+    [AIGenerated]
+    public const string Runtime_Tuple_ItemNotFound = "tuple.{0}(x): x not in tuple";
+    [AIGenerated] 
+    public const string Runtime_Tuple_IndexOutOfRange = "tuple index out of range";
+    [AIGenerated] 
+    public const string Runtime_Tuple_AddNonTuple = "can only concatenate tuple (not \"{0}\") to tuple";
+
     public const string Runtime_Dictionary_UpdateEltLengthNotMatch = "dictionary update sequence element #{0} has length {1}; 2 is required";
     public const string Runtime_Dictionary_PopEmptyDict = "popitem(): dictionary is empty";
     public const string Runtime_Dictionary_NotAMapping = "'{0}' object is not a mapping";

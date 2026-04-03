@@ -1,5 +1,6 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.Calls.Extensions;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
@@ -10,6 +11,18 @@ partial class PyDictObject
     public PyDictItemsObject PyItems()
     {
         return new PyDictItemsObject(this);
+    }
+
+    [AIGenerated]
+    public PyDictKeysObject PyKeys()
+    {
+        return new PyDictKeysObject(this);
+    }
+
+    [AIGenerated]
+    public PyDictValuesObject PyValues()
+    {
+        return new PyDictValuesObject(this);
     }
 
     public void PySetItem(PyObject key, PyObject value)
@@ -73,5 +86,36 @@ partial class PyDictObject
         if (_dict.TryGetValue(key, out var value))
             return value;
         return _dict[key] = defaultValue;
+    }
+
+    [AIGenerated]
+    public static PyResult PyFromKeys(PyCallContext context, PyTypeObject cls, PyObject iterable, PyObject? value = null)
+    {
+        var result = cls.Call(context);
+        if (result.IsError)
+            return result;
+
+        if (result.Value is not PyDictObject dict)
+            return PyResult.TypeError($"'{cls.FullName}' is not a dict type");
+
+        var val = value ?? PyNoneObject.None;
+        var iterResult = PySpecialMethods.Iter(context, iterable);
+        if (iterResult.IsError)
+            return iterResult;
+
+        var iterator = iterResult.Value;
+        while (true)
+        {
+            var next = PySpecialMethods.Next(context, iterator);
+            if (next.IsError)
+            {
+                if (next.IsStopIteration)
+                    break;
+                return next;
+            }
+            dict.PySetItem(next.Value, val);
+        }
+
+        return dict;
     }
 }

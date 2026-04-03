@@ -200,6 +200,22 @@ public sealed partial class PyDictObjectType : PyTypeObject<PyDictObject>
         return self.PyItems();
     }
 
+    [AIGenerated]
+    [PyMethod("keys")]
+    [PyFunctionArgsDef()]
+    private static PyResult Keys(PyCallContext context, PyDictObject self, PyArguments arguments)
+    {
+        return self.PyKeys();
+    }
+
+    [AIGenerated]
+    [PyMethod("values")]
+    [PyFunctionArgsDef()]
+    private static PyResult Values(PyCallContext context, PyDictObject self, PyArguments arguments)
+    {
+        return self.PyValues();
+    }
+
     [PyMethod("clear")]
     [PyFunctionArgsDef()]
     private static PyResult Clear(PyCallContext context, PyDictObject self, PyArguments arguments)
@@ -260,10 +276,62 @@ public sealed partial class PyDictObjectType : PyTypeObject<PyDictObject>
     }
 
     [PyMethod("update")]
-    [PyFunctionArgsDef("iterable_or_mapping")]
-    private static PyResult Update(PyCallContext context, PyDictObject self, PyArguments arguments)
+    [PyFunctionArgsDef("iterable_or_mapping=None", "**kwargs")]
+    private static PyResult UpdateImpl(PyCallContext context, PyDictObject self, PyArguments arguments)
     {
-        // TODO: **kwargs
-        return self.PyUpdate(context, arguments[0]);
+        if (arguments[0] is not PyNoneObject)
+        {
+            var result = self.PyUpdate(context, arguments[0]);
+            if (result.IsError)
+                return result;
+        }
+
+        foreach (var pair in arguments.ExtraKwargs)
+            self.PySetItem(PyStrObject.FromString(pair.Key), pair.Value);
+
+        return PyNoneObject.None;
+    }
+
+    [AIGenerated]
+    [PyMethod("fromkeys")]
+    [PyFunctionArgsDef("iterable", "value=None", "/")]
+    private static PyResult FromKeysImpl(PyCallContext context, PyDictObject self, PyArguments arguments)
+    {
+        return PyDictObject.PyFromKeys(context, self.PyType, arguments[0], arguments[1]);
+    }
+
+    [AIGenerated]
+    protected override PyResult Iter(PyCallContext context, PyDictObject self)
+    {
+        return new PyDictKeyIteratorObject(self);
+    }
+
+    [AIGenerated]
+    protected override PyResult Eq(PyCallContext context, PyDictObject self, PyObject other)
+    {
+        if (other is not PyDictObject otherDict)
+            return base.Eq(context, self, other);
+
+        if (self.Count != otherDict.Count)
+            return PyBoolObject.False;
+
+        foreach (var (key, value) in self)
+        {
+            if (!otherDict.TryGetValue(key, out var otherValue))
+                return PyBoolObject.False;
+
+            var eqResult = PyOperators.Eq(context, value, otherValue);
+            if (eqResult.IsError)
+                return eqResult;
+            
+            var eq = PySpecialMethods.Bool(context, eqResult.Value);
+            if (eq.IsError)
+                return eq;
+            
+            if (!eq.Value.BoolValue)
+                return PyBoolObject.False;
+        }
+
+        return PyBoolObject.True;
     }
 }

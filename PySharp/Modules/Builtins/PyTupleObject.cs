@@ -6,7 +6,7 @@ using System.Collections;
 
 namespace PySharp.Modules.Builtins;
 
-public class PyTupleObject : PyObject, IPyObjectRecursiveRepr, IReadOnlyList<PyObject>
+public partial class PyTupleObject : PyObject, IPyObjectRecursiveRepr, IReadOnlyList<PyObject>
 {
     private readonly PyObject[] _array;
 
@@ -93,12 +93,10 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
         return new PyTupleIteratorObject(self);
     }
 
+    [AIGenerated]
     protected override PyResult GetItem(PyCallContext context, PyTupleObject self, PyObject item)
     {
-        var result = PySpecialMethods.Index(context, item);
-        if (result.IsError)
-            return result;
-        return Utils.GetListItem(self, result.Value.Int32Value, "IndexError: tuple index out of range");
+        return self.PyGetItem(context, item);
     }
 
     protected override PyResult Contains(PyCallContext context, PyTupleObject self, PyObject item)
@@ -126,5 +124,116 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
         if (other is not PyTupleObject otherTuple)
             return base.Eq(context, self, other);
         return PyBoolObject.FromBoolean(self.SequenceEqual(otherTuple, PyObjectComparer.Default));
+    }
+
+    [AIGenerated]
+    protected override PyResult Lt(PyCallContext context, PyTupleObject self, PyObject other)
+    {
+        if (other is not PyTupleObject otherTuple)
+            return base.Lt(context, self, other);
+        return PyBoolObject.FromBoolean(self.SequenceCompare(otherTuple, PyObjectComparer.Default) < 0);
+    }
+
+    [AIGenerated]
+    protected override PyResult Le(PyCallContext context, PyTupleObject self, PyObject other)
+    {
+        if (other is not PyTupleObject otherTuple)
+            return base.Le(context, self, other);
+        return PyBoolObject.FromBoolean(self.SequenceCompare(otherTuple, PyObjectComparer.Default) <= 0);
+    }
+
+    [AIGenerated]
+    protected override PyResult Gt(PyCallContext context, PyTupleObject self, PyObject other)
+    {
+        if (other is not PyTupleObject otherTuple)
+            return base.Gt(context, self, other);
+        return PyBoolObject.FromBoolean(self.SequenceCompare(otherTuple, PyObjectComparer.Default) > 0);
+    }
+
+    [AIGenerated]
+    protected override PyResult Ge(PyCallContext context, PyTupleObject self, PyObject other)
+    {
+        if (other is not PyTupleObject otherTuple)
+            return base.Ge(context, self, other);
+        return PyBoolObject.FromBoolean(self.SequenceCompare(otherTuple, PyObjectComparer.Default) >= 0);
+    }
+
+    [AIGenerated]
+    protected override PyResult Hash(PyCallContext context, PyTupleObject self)
+    {
+        return self.PyHash(context);
+    }
+
+    [AIGenerated]
+    protected override PyResult Add(PyCallContext context, PyTupleObject self, PyObject other)
+    {
+        return self.PyAdd(other);
+    }
+
+    [AIGenerated]
+    protected override PyResult Mul(PyCallContext context, PyTupleObject self, PyObject other)
+    {
+        var result = PySpecialMethods.Index(context, other);
+        if (result.IsError)
+            return result;
+        return self.PyMul(result.Value.Int32Value);
+    }
+
+    [AIGenerated]
+    protected override PyResult RMul(PyCallContext context, PyTupleObject self, PyObject other)
+    {
+        return Mul(context, self, other);
+    }
+
+    [PyMethod("index", Order = 1)]
+    [PyFunctionArgsDef("x", "/")]
+    [AIGenerated]
+    private static PyResult Index_1(PyCallContext context, PyTupleObject self, PyArguments arguments)
+    {
+        var index = self.PyIndex(arguments[0]);
+        if (index is -1)
+            return PyResult.ValueError(PySR.Runtime_Tuple_ItemNotFound, "index");
+        return PyIntObject.FromInteger(index);
+    }
+
+    [PyMethod("index", Order = 2)]
+    [PyFunctionArgsDef("x", "start", "/")]
+    [AIGenerated]
+    private static PyResult Index_2(PyCallContext context, PyTupleObject self, PyArguments arguments)
+    {
+        var startResult = PySpecialMethods.Index(context, arguments[1]);
+        if (startResult.IsError)
+            return startResult;
+
+        var index = self.PyIndex(arguments[0], startResult.Value.Int32Value);
+        if (index is -1)
+            return PyResult.ValueError(PySR.Runtime_Tuple_ItemNotFound, "index");
+        return PyIntObject.FromInteger(index);
+    }
+
+    [PyMethod("index", Order = 3)]
+    [PyFunctionArgsDef("x", "start", "end", "/")]
+    [AIGenerated]
+    private static PyResult Index_3(PyCallContext context, PyTupleObject self, PyArguments arguments)
+    {
+        var startResult = PySpecialMethods.Index(context, arguments[1]);
+        if (startResult.IsError)
+            return startResult;
+        var endResult = PySpecialMethods.Index(context, arguments[2]);
+        if (endResult.IsError)
+            return endResult;
+
+        var index = self.PyIndex(arguments[0], startResult.Value.Int32Value, endResult.Value.Int32Value);
+        if (index is -1)
+            return PyResult.ValueError(PySR.Runtime_Tuple_ItemNotFound, "index");
+        return PyIntObject.FromInteger(index);
+    }
+
+    [PyMethod("count")]
+    [PyFunctionArgsDef("x", "/")]
+    [AIGenerated]
+    private static PyResult Count(PyCallContext context, PyTupleObject self, PyArguments arguments)
+    {
+        return PyIntObject.FromInteger(self.PyCount(arguments[0]));
     }
 }

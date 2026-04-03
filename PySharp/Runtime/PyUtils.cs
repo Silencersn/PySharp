@@ -41,6 +41,11 @@ internal static class PyUtils
         return IterableToContainer(context, iterable, PyListObject.CreateProxy);
     }
 
+    public static PyResult<PySetObject> IterableToSet(PyCallContext context, PyObject iterable)
+    {
+        return IterableToContainer(context, iterable, list => PySetObject.CreateSet(list));
+    }
+
     public static PyResult<PyTupleObject> IterableToTuple(PyCallContext context, PyObject iterable)
     {
         return IterableToContainer(context, iterable, PyTupleObject.CreateTuple);
