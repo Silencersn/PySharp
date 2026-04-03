@@ -304,6 +304,18 @@ partial class PyTypeObject
         [PySpecialMethod("__reversed__", typeof(PyUnaryFunction))]
         static partial void Reversed(PyCallContext context, TObject self);
 
+        [PySpecialMethod("__round__", typeof(PyBinaryFunction))]
+        static partial void Round(PyCallContext context, TObject self, PyObject ndigits);
+
+        [PySpecialMethod("__trunc__", typeof(PyUnaryFunction))]
+        static partial void Trunc(PyCallContext context, TObject self);
+
+        [PySpecialMethod("__floor__", typeof(PyUnaryFunction))]
+        static partial void Floor(PyCallContext context, TObject self);
+
+        [PySpecialMethod("__ceil__", typeof(PyUnaryFunction))]
+        static partial void Ceil(PyCallContext context, TObject self);
+
 #pragma warning restore IDE0060
 #pragma warning restore IDE0051
     }
