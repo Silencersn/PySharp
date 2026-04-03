@@ -134,4 +134,150 @@ partial class PyListObject
     {
         return CreateList(_list);
     }
+
+    public PyResult PyAdd(PyObject other)
+    {
+        if (other is not PyListObject otherList)
+            return PyNotImplementedObject.NotImplemented;
+
+        var newList = new List<PyObject>(_list.Count + otherList.Count);
+        newList.AddRange(_list);
+        newList.AddRange(otherList._list);
+        return new PyListObject(newList);
+    }
+
+    public PyListObject PyMul(int n)
+    {
+        if (n <= 0)
+            return new PyListObject();
+
+        var newList = new List<PyObject>(_list.Count * n);
+        for (int i = 0; i < n; i++)
+            newList.AddRange(_list);
+        return new PyListObject(newList);
+    }
+
+    public PyListObject PyIMul(int n)
+    {
+        if (n <= 0)
+        {
+            _list.Clear();
+            return this;
+        }
+
+        if (n is 1)
+            return this;
+
+        var originalItems = _list.ToArray();
+        for (int i = 1; i < n; i++)
+            _list.AddRange(originalItems);
+
+        return this;
+    }
+
+    [AIGenerated]
+    public PyResult PyGetItem(PyCallContext context, PyObject item)
+    {
+        if (item is PySliceObject slice)
+        {
+            var (start, stop, step, sliceLength) = slice.Indices(_list.Count);
+            var resultList = new List<PyObject>(sliceLength);
+            for (int i = 0, idx = start; i < sliceLength; i++, idx += step)
+            {
+                resultList.Add(_list[idx]);
+            }
+            return new PyListObject(resultList);
+        }
+
+        var indexResult = PySpecialMethods.Index(context, item);
+        if (indexResult.IsError)
+            return indexResult;
+
+        return Utils.GetListItem(_list, indexResult.Value.Int32Value, PySR.Runtime_List_IndexOutOfRange);
+    }
+
+    [AIGenerated]
+    public PyResult PySetItem(PyCallContext context, PyObject key, PyObject value)
+    {
+        if (key is PySliceObject slice)
+        {
+            var (start, stop, step, sliceLength) = slice.Indices(_list.Count);
+            var iterableResult = PyUtils.IterableToList(context, value);
+            if (iterableResult.IsError)
+                return iterableResult;
+
+            var values = iterableResult.Value._list;
+
+            if (step != 1 && values.Count != sliceLength)
+                return PyResult.ValueError(PySR.Runtime_Sequence_SliceStep_AssignWrongSize, sliceLength, values.Count);
+
+            if (step == 1)
+            {
+                int lower = int.Min(start, stop);
+                int upper = int.Max(start, stop);
+                _list.RemoveRange(lower, upper - lower);
+                _list.InsertRange(lower, values);
+            }
+            else
+            {
+                for (int i = 0, idx = start; i < sliceLength; i++, idx += step)
+                {
+                    _list[idx] = values[i];
+                }
+            }
+
+            return PyNoneObject.None;
+        }
+
+        var indexResult = PySpecialMethods.Index(context, key);
+        if (indexResult.IsError)
+            return indexResult;
+
+        if (!Utils.TrySetListItem(_list, indexResult.Value.Int32Value, value))
+            return PyResult.IndexError(PySR.Runtime_List_IndexOutOfRange);
+
+        return PyNoneObject.None;
+    }
+
+    [AIGenerated]
+    public PyResult PyDelItem(PyCallContext context, PyObject key)
+    {
+        if (key is PySliceObject slice)
+        {
+            var (start, stop, step, sliceLength) = slice.Indices(_list.Count);
+            if (step == 1)
+            {
+                int lower = int.Min(start, stop);
+                int upper = int.Max(start, stop);
+                _list.RemoveRange(lower, upper - lower);
+            }
+            else
+            {
+                if (sliceLength == 0) return PyNoneObject.None;
+
+                var indicesToDelete = new List<int>(sliceLength);
+                for (int i = 0, idx = start; i < sliceLength; i++, idx += step)
+                {
+                    indicesToDelete.Add(idx);
+                }
+                indicesToDelete.Sort();
+                for (int i = indicesToDelete.Count - 1; i >= 0; i--)
+                {
+                    _list.RemoveAt(indicesToDelete[i]);
+                }
+            }
+            return PyNoneObject.None;
+        }
+
+        var indexResult = PySpecialMethods.Index(context, key);
+        if (indexResult.IsError)
+            return indexResult;
+
+        int index = indexResult.Value.Int32Value;
+        if (Utils.IsIndexOutOfRange(index, _list.Count))
+            return PyResult.IndexError(PySR.Runtime_List_IndexOutOfRange);
+
+        _list.RemoveAt(Utils.MapIndex(index, _list.Count));
+        return PyNoneObject.None;
+    }
 }

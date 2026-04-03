@@ -118,3 +118,32 @@ public sealed class PyObjectComparer :
         return PyStrObject.FromString(alternate.ToString());
     }
 }
+
+[AIGenerated]
+public static class ComparisonExtensions
+{
+    public static int SequenceCompare<T>(this IEnumerable<T> x, IEnumerable<T> y, IComparer<T> comparer)
+    {
+        using var xe = x.GetEnumerator();
+        using var ye = y.GetEnumerator();
+
+        while (true)
+        {
+            var xHasNext = xe.MoveNext();
+            var yHasNext = ye.MoveNext();
+
+            if (!xHasNext && !yHasNext)
+                return 0;
+
+            if (!xHasNext)
+                return -1;
+
+            if (!yHasNext)
+                return 1;
+
+            var result = comparer.Compare(xe.Current, ye.Current);
+            if (result != 0)
+                return result;
+        }
+    }
+}

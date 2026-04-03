@@ -130,22 +130,22 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
         return obj;
     }
 
+    [AIGenerated]
     protected override PyResult GetItem(PyCallContext context, PyListObject self, PyObject item)
     {
-        var result = PySpecialMethods.Index(context, item);
-        if (result.IsError)
-            return result;
-        return Utils.GetListItem(self, result.Value.Int32Value, PySR.Runtime_List_IndexOutOfRange);
+        return self.PyGetItem(context, item);
     }
 
+    [AIGenerated]
     protected override PyResult SetItem(PyCallContext context, PyListObject self, PyObject key, PyObject value)
     {
-        var result = PySpecialMethods.Index(context, key);
-        if (result.IsError)
-            return result;
-        if (!Utils.TrySetListItem(self, result.Value.Int32Value, value))
-            return PyResult.IndexError(PySR.Runtime_List_IndexOutOfRange);
-        return PyNoneObject.None;
+        return self.PySetItem(context, key, value);
+    }
+
+    [AIGenerated]
+    protected override PyResult DelItem(PyCallContext context, PyListObject self, PyObject key)
+    {
+        return self.PyDelItem(context, key);
     }
 
     protected override PyResult Contains(PyCallContext context, PyListObject self, PyObject item)
@@ -178,6 +178,79 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
         if (other is not PyListObject otherList)
             return base.Eq(context, self, other);
         return PyBoolObject.FromBoolean(self.SequenceEqual(otherList, PyObjectComparer.Default));
+    }
+
+    [AIGenerated]
+    protected override PyResult Lt(PyCallContext context, PyListObject self, PyObject other)
+    {
+        if (other is not PyListObject otherList)
+            return base.Lt(context, self, other);
+        return PyBoolObject.FromBoolean(self.InternalList.SequenceCompare(otherList.InternalList, PyObjectComparer.Default) < 0);
+    }
+
+    [AIGenerated]
+    protected override PyResult Le(PyCallContext context, PyListObject self, PyObject other)
+    {
+        if (other is not PyListObject otherList)
+            return base.Le(context, self, other);
+        return PyBoolObject.FromBoolean(self.InternalList.SequenceCompare(otherList.InternalList, PyObjectComparer.Default) <= 0);
+    }
+
+    [AIGenerated]
+    protected override PyResult Gt(PyCallContext context, PyListObject self, PyObject other)
+    {
+        if (other is not PyListObject otherList)
+            return base.Gt(context, self, other);
+        return PyBoolObject.FromBoolean(self.InternalList.SequenceCompare(otherList.InternalList, PyObjectComparer.Default) > 0);
+    }
+
+    [AIGenerated]
+    protected override PyResult Ge(PyCallContext context, PyListObject self, PyObject other)
+    {
+        if (other is not PyListObject otherList)
+            return base.Ge(context, self, other);
+        return PyBoolObject.FromBoolean(self.InternalList.SequenceCompare(otherList.InternalList, PyObjectComparer.Default) >= 0);
+    }
+
+    [AIGenerated]
+    protected override PyResult Add(PyCallContext context, PyListObject self, PyObject other)
+    {
+        if (other is not PyListObject)
+            return PyNotImplementedObject.NotImplemented;
+        return self.PyAdd(other);
+    }
+
+    [AIGenerated]
+    protected override PyResult IAdd(PyCallContext context, PyListObject self, PyObject other)
+    {
+        var result = self.PyExtend(context, other);
+        if (result.IsError)
+            return result;
+        return self;
+    }
+
+    [AIGenerated]
+    protected override PyResult Mul(PyCallContext context, PyListObject self, PyObject other)
+    {
+        var result = PySpecialMethods.Index(context, other);
+        if (result.IsError)
+            return result;
+        return self.PyMul(result.Value.Int32Value);
+    }
+
+    [AIGenerated]
+    protected override PyResult RMul(PyCallContext context, PyListObject self, PyObject other)
+    {
+        return Mul(context, self, other);
+    }
+
+    [AIGenerated]
+    protected override PyResult IMul(PyCallContext context, PyListObject self, PyObject other)
+    {
+        var result = PySpecialMethods.Index(context, other);
+        if (result.IsError)
+            return result;
+        return self.PyIMul(result.Value.Int32Value);
     }
 
     [PyMethod("append")]

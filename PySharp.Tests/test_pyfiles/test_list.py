@@ -64,4 +64,39 @@ assert 10 in a
 assert 40 not in a
 assert 20 in a
 
+# Operators
+a = [1, 2] + [3, 4]
+assert a == [1, 2, 3, 4]
+
+a += [5, 6]
+assert a == [1, 2, 3, 4, 5, 6]
+
+a = [0] * 3
+assert a == [0, 0, 0]
+
+a *= 2
+assert a == [0, 0, 0, 0, 0, 0]
+
+# Slicing
+a = [0, 1, 2, 3, 4, 5]
+assert a[1:4] == [1, 2, 3]
+assert a[:3] == [0, 1, 2]
+assert a[3:] == [3, 4, 5]
+assert a[:] == [0, 1, 2, 3, 4, 5]
+assert a[::2] == [0, 2, 4]
+assert a[::-1] == [5, 4, 3, 2, 1, 0]
+
+a[1:3] = [10, 20, 30]
+assert a == [0, 10, 20, 30, 3, 4, 5]
+
+del a[1:4]
+assert a == [0, 3, 4, 5]
+
+# Comparison
+assert [1, 2, 3] == [1, 2, 3]
+assert [1, 2] < [1, 2, 3]
+assert [1, 3] > [1, 2, 4]
+assert [1, 2] <= [1, 2]
+assert [1, 2] >= [1, 2]
+
 print("test_list passed")

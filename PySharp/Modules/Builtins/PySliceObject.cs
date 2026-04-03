@@ -22,6 +22,44 @@ public class PySliceObject : PyObject
         Stop = stop;
         Step = step;
     }
+
+    [AIGenerated]
+    public (int start, int stop, int step, int sliceLength) Indices(int length)
+    {
+        int step = Step is PyNoneObject ? 1 : ((PyIntObject)Step).Int32Value;
+        int start, stop;
+
+        if (step > 0)
+        {
+            start = Start is PyNoneObject ? 0 : Utils.MapIndex(((PyIntObject)Start).Int32Value, length);
+            stop = Stop is PyNoneObject ? length : Utils.MapIndex(((PyIntObject)Stop).Int32Value, length);
+            start = Math.Clamp(start, 0, length);
+            stop = Math.Clamp(stop, 0, length);
+        }
+        else if (step < 0)
+        {
+            start = Start is PyNoneObject ? length - 1 : Utils.MapIndex(((PyIntObject)Start).Int32Value, length);
+            stop = Stop is PyNoneObject ? -1 : Utils.MapIndex(((PyIntObject)Stop).Int32Value, length);
+            start = Math.Clamp(start, -1, length - 1);
+            stop = Math.Clamp(stop, -1, length - 1);
+        }
+        else
+        {
+            throw new ArgumentException("slice step cannot be zero");
+        }
+
+        int sliceLength = 0;
+        if (step > 0 && start < stop)
+        {
+            sliceLength = (stop - start + step - 1) / step;
+        }
+        else if (step < 0 && start > stop)
+        {
+            sliceLength = (stop - start + step + 1) / step;
+        }
+
+        return (start, stop, step, sliceLength);
+    }
 }
 
 [PyType("slice")]
