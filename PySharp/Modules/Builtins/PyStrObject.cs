@@ -488,9 +488,20 @@ public static class PyStrConverter
             {
                 isRaw = true;
             }
-            else if (prefix[0] is 'u' or 'U')
+            else if (prefix[0] is 'u' or 'U' or 'b' or 'B')
             {
                 isRaw = false;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        else if (prefix.Length is 2)
+        {
+            if (prefix.ContainsAny('r', 'R') && prefix.ContainsAny('b', 'B'))
+            {
+                isRaw = true;
             }
             else
             {

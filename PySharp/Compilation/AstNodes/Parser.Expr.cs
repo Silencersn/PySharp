@@ -5,6 +5,8 @@ using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace PySharp.Compilation.AstNodes;
 
@@ -291,11 +293,16 @@ partial class Parser
     {
         EnsureTokenType(TokenType.String);
         var source = CurrentTokenStringAsSpan;
-        var isRaw = source[..source.IndexOf(source[^1])].ContainsAny('r', 'R');
+        var prefix = source[..source.IndexOfAny('\'', '"')];
+        var isRaw = prefix.ContainsAny('r', 'R');
         var literal = PyStrConverter.FromSourceToLiteral(CurrentTokenStringAsSpan, isRaw, SharedBuilder);
-        var str = Ast.Constant(FromLiteralToString(literal, noWrapper: false));
+        var isBytes = prefix.ContainsAny('b', 'B');
+
+        var constant = isBytes ? Ast.Constant(FromLiteralToBytes(literal))
+            : Ast.Constant(FromLiteralToString(literal, noWrapper: false));
+
         MoveNextToken();
-        return str;
+        return constant;
     }
 
     [GrammarSyntaxRule("tstring_middle")]
@@ -495,7 +502,7 @@ partial class Parser
 
         var metaInfo = CreateAstMetaInfo();
 
-        // ConstantNode(string) or JoinedStrNode
+        // ConstantNode(string/bytes) or JoinedStrNode
         List<AstExprNode> nodes = [];
 
         while (CurrentTokenType is TokenType.String or TokenType.FStringStart)
@@ -510,14 +517,39 @@ partial class Parser
 
         AstExprNode ConcatConstants(List<AstExprNode> nodes, int skipCount = 0)
         {
-            if (nodes.Count is 1)
-                return nodes[0];
+            var span = Unsafe.BitCast<Span<AstExprNode>, Span<ConstantNode>>(CollectionsMarshal.AsSpan(nodes)[skipCount..]);
+            Debug.Assert(!span.IsEmpty);
+
+            if (span.Length is 1)
+                return span[0];
+
+            if (span[0].Value is PyBytesObject)
+            {
+                var totalLength = 0;
+                foreach (var node in span)
+                {
+                    if (node.Value is not PyBytesObject bytes)
+                        throw SyntaxError();
+                    totalLength += bytes.Length;
+                }
+
+                var combined = new byte[totalLength];
+                var offset = 0;
+                foreach (var node in span)
+                {
+                    var bytes = (PyBytesObject)node.Value;
+                    bytes.AsSpan().CopyTo(combined.AsSpan(offset));
+                    offset += bytes.Length;
+                }
+
+                return Ast.Constant(PyBytesObject.MoveBytes(combined));
+            }
 
             var builder = SharedBuilder.Clear();
-            foreach (var node in nodes.Skip(skipCount))
+            foreach (var node in span)
             {
-                var constant = (ConstantNode)node;
-                var value = (PyStrObject)constant.Value;
+                if (node.Value is not PyStrObject value)
+                    throw SyntaxError();
                 builder.Append(value.Value);
             }
 
@@ -528,6 +560,9 @@ partial class Parser
         {
             if (nodes.All(static node => node is ConstantNode))
                 return ConcatConstants(nodes);
+
+            if (nodes.Any(static node => node is ConstantNode { Value: PyBytesObject }))
+                throw SyntaxError();
 
             var flattened = nodes.SelectMany(static node => node switch
             {
@@ -567,10 +602,25 @@ partial class Parser
             return ConcatToJoinedStr(combinedNodes);
         }
     }
+
+    private PyBytesObject FromLiteralToBytes(ReadOnlySpan<char> literal)
+    {
+        var text = FromLiteralToString(literal, noWrapper: false);
+
+        var bytes = new byte[text.Length];
+        for (int i = 0; i < text.Length; i++)
+        {
+            var ch = text[i];
+            if (ch > byte.MaxValue)
+                throw SyntaxError();
+            bytes[i] = (byte)ch;
+        }
+
+        return PyBytesObject.MoveBytes(bytes);
+    }
+
     string FromLiteralToString(ReadOnlySpan<char> literal, bool noWrapper)
     {
-        // TODO: prefix 'b'
-
         bool successful;
         string? str;
         PyStrConverter.ConvertErrorInfo info;

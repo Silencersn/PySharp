@@ -67,6 +67,7 @@ public class PyBuiltinsModuleObject : PyModuleObject
         AddObjToAttrs(PyEnumerateObjectType.Shared); // enumerate
         AddObjToAttrs(PyReversedObjectType.Shared); // reversed
         AddObjToAttrs(PyFilterObjectType.Shared); // filter
+        AddObjToAttrs(PyBytesObjectType.Shared); // bytes
 
         AddObjToAttrs("Ellipsis", PyEllipsisObject.Ellipsis); // Ellipsis
         AddObjToAttrs("NotImplemented", PyNotImplementedObject.NotImplemented); // NotImplemented

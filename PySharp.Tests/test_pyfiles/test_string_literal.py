@@ -23,6 +23,11 @@ assert '\\u0041' == r'\u0041'
 assert '\\x41' == r'\x41'
 assert '\\101' == r'\101'
 
+assert b'' == b''
+assert b'abc' == b'abc'
+assert b'\x41' == b'A'
+assert b'a' b'b' == b'ab'
+
 try:
     eval("'\\x4'")
     assert False
@@ -73,6 +78,12 @@ except SyntaxError:
 
 try:
     eval("'\\U'")
+    assert False
+except SyntaxError:
+    pass
+
+try:
+    eval("b'a' 'b'")
     assert False
 except SyntaxError:
     pass

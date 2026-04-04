@@ -166,4 +166,10 @@ partial class PySR
     public const string Runtime_Async_NonAwaitable = "'{0}' object can't be awaited";
     public const string Runtime_Async_SendNonNoneAtFirst = "can't send non-None value to a just-started coroutine";
     public const string Runtime_Async_IgnoredGeneratorExit = "coroutine ignored GeneratorExit";
+
+    public const string Runtime_Bytes_StrWithoutEncoding = "string argument without an encoding";
+    public const string Runtime_Bytes_OutOfRange = "bytes must be in range(0, 256)";
+    public const string Runtime_Bytes_CannotConcat = "can't concat {0} to bytes";
+
+    public const string Runtime_IndexOutOfRange = "index out of range";
 }

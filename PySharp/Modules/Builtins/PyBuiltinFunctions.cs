@@ -23,7 +23,7 @@ public static partial class PyBuiltinFunctions
     // bool -> PyBoolObjectType
     // TODO: breakpoint()
     // TODO: bytearray()
-    // TODO: bytes()
+    // bytes -> PyBytesObjectType
 
     // C
     public static readonly PyBuiltinFunctionOrMethodObject Callable = PyBuiltinFunctionOrMethodObject.CreateFunction("callable", CallableImpl);
