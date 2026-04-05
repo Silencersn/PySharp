@@ -217,4 +217,12 @@ partial class Ast
 
         return new MatchNode(subject, cases.ToImmutableArray(true));
     }
+    public static TypeAliasNode TypeAlias(string name, IEnumerable<AstTypeParamNode> typeParams, AstExprNode value)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        ArgumentNullException.ThrowIfNull(typeParams);
+        ArgumentNullException.ThrowIfNull(value);
+
+        return new TypeAliasNode(name, typeParams.ToImmutableArray(true), value);
+    }
 }

@@ -255,3 +255,22 @@ public sealed class NonlocalNode : AstStmtNode
         return [];
     }
 }
+
+public sealed class TypeAliasNode : AstStmtNode
+{
+    internal TypeAliasNode(string name, ImmutableArray<AstTypeParamNode> typeParams, AstExprNode value)
+    {
+        Name = name;
+        TypeParams = typeParams;
+        Value = value;
+    }
+
+    public string Name { get; }
+    public ImmutableArray<AstTypeParamNode> TypeParams { get; }
+    public AstExprNode Value { get; }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Value;
+    }
+}

@@ -469,6 +469,7 @@ partial class Parser
         {
             AstStmtNode? stmt = CurrentTokenStringAsSpan switch
             {
+                "type" => TryParseTypeAliasStmt(),
                 "return" => ParseReturnStmt(),
                 "import" or "from" => ParseImportStmt(),
                 "raise" => ParseRaiseStmt(),
@@ -1067,5 +1068,30 @@ partial class Parser
         EnsureTokenTypeThenMove(TokenType.Colon);
         var body = ParseBlock("def");
         return Ast.AsyncFunctionDef(name, args, body, decorators, returns, typeParams).With(metaInfo);
+    }
+
+    [GrammarSyntaxRule("type_alias_stmt")]
+    private TypeAliasNode? TryParseTypeAliasStmt()
+    {
+        var pos = TokenPosition;
+        var metaInfo = CreateAstMetaInfo();
+
+        if (IsCurrentKeyword("type"))
+        {
+            MoveNextToken();
+            if (IsCurrentIdentifier)
+            {
+                var name = ParseIdentifier();
+                IEnumerable<AstTypeParamNode> typeParams = [];
+                if (CurrentTokenType is TokenType.LeftSquareBracket)
+                    typeParams = ParseTypeParams();
+                EnsureTokenTypeThenMove(TokenType.Equal);
+                var value = ParseExpression();
+                return Ast.TypeAlias(name, typeParams, value).With(metaInfo);
+            }
+        }
+
+        TokenPosition = pos;
+        return null;
     }
 }
