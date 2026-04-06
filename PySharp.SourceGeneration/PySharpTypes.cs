@@ -6,6 +6,7 @@ internal static class PySharpTypes
     public const string PySlotAttribute = $"{AttributesNamespace}.{nameof(PySlotAttribute)}";
     public const string PyTypeAttribute = $"{AttributesNamespace}.{nameof(PyTypeAttribute)}";
     public const string PyMethodAttribute = $"{AttributesNamespace}.{nameof(PyMethodAttribute)}";
+    public const string PyClassMethodAttribute = $"{AttributesNamespace}.{nameof(PyClassMethodAttribute)}";
     public const string PyPropertyAttribute = $"{AttributesNamespace}.{nameof(PyPropertyAttribute)}";
     public const string PyTypeConstructorAttribute = $"{AttributesNamespace}.{nameof(PyTypeConstructorAttribute)}";
 

@@ -292,12 +292,11 @@ public sealed partial class PyDictObjectType : PyTypeObject<PyDictObject>
         return PyNoneObject.None;
     }
 
-    [AIGenerated]
-    [PyMethod("fromkeys")]
+    [PyClassMethod("fromkeys")]
     [PyFunctionArgsDef("iterable", "value=None", "/")]
-    private static PyResult FromKeysImpl(PyCallContext context, PyDictObject self, PyArguments arguments)
+    private static PyResult FromKeysImpl(PyCallContext context, PyTypeObject cls, PyArguments arguments)
     {
-        return PyDictObject.PyFromKeys(context, self.PyType, arguments[0], arguments[1]);
+        return PyDictObject.PyFromKeys(context, cls, arguments[0], arguments[1]);
     }
 
     [AIGenerated]

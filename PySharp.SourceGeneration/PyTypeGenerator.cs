@@ -48,6 +48,10 @@ public class PyTypeGenerator : IIncrementalGenerator
                         if (methodAttribute is not null)
                             pyTypeInfo.Methods.Add(new(methodSymbol.Name, methodAttribute.ConstructorArguments[0].ToCSharpString(), methodAttribute.GetNamedArgumentOrDefault("Order", 1)));
 
+                        var classMethodAttribute = methodSymbol.GetAttribute(PySharpTypes.PyClassMethodAttribute);
+                        if (classMethodAttribute is not null)
+                            pyTypeInfo.ClassMethods.Add(new(methodSymbol.Name, classMethodAttribute.ConstructorArguments[0].ToCSharpString(), classMethodAttribute.GetNamedArgumentOrDefault("Order", 1)));
+
                         var propertyAttribute = methodSymbol.GetAttribute(PySharpTypes.PyPropertyAttribute);
                         if (propertyAttribute is not null)
                         {
@@ -115,6 +119,10 @@ public class PyTypeGenerator : IIncrementalGenerator
                             {
                                 builder.AppendLine($"AppendMethodDescriptor({impls.Key}, {string.Join(", ", impls.OrderBy(static info => info.Order).Select(static info => info.Name))});");
                             })
+                            .ForEach(pyType.ClassMethods.GroupBy(static info => info.PyNameLiteral), static (builder, impls) =>
+                            {
+                                builder.AppendLine($"AppendClassMethod({impls.Key}, {string.Join(", ", impls.OrderBy(static info => info.Order).Select(static info => info.Name))});");
+                            })
                         .ExitBlock()
 
                         .AppendLine("protected override void RegisterProperties()")
@@ -143,6 +151,7 @@ public class PyTypeGenerator : IIncrementalGenerator
             DoNotGenerateConstructor = doNotGenerateConstructor;
             AccessModifier = accessModifier;
             Methods = [];
+            ClassMethods = [];
             Properties = [];
         }
 
@@ -150,6 +159,7 @@ public class PyTypeGenerator : IIncrementalGenerator
         public string Name { get; }
         public List<string> Slots { get; }
         public List<PyMethodInfo> Methods { get; }
+        public List<PyMethodInfo> ClassMethods { get; }
         public Dictionary<string, PyPropertyInfo> Properties { get; }
         public AttributeData AttributeData { get; }
         public bool DoNotGenerateConstructor { get; }

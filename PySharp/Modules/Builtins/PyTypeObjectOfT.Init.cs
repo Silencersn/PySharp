@@ -15,10 +15,33 @@ partial class PyTypeObject<TObject>
     }
 
     [EditorBrowsable(EditorBrowsableState.Never)]
+    protected void AppendMethodDescriptor(string name, PyMethod<TObject> method)
+    {
+        var uncompoundedDelegate = method.ToUncompounded();
+        PyAttributes.Add(name, new PyMethodDescriptorObject(name, this, uncompoundedDelegate));
+    }
+
+    [EditorBrowsable(EditorBrowsableState.Never)]
     protected void AppendMethodDescriptor(string name, params PyMethod<TObject>[] methods)
     {
         var uncompoundedDelegate = methods.Length is 1 ? methods[0].ToUncompounded() : PyDelegateConverter.CreateOverloadDispatcher(methods);
         PyAttributes.Add(name, new PyMethodDescriptorObject(name, this, uncompoundedDelegate));
+    }
+
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    protected void AppendClassMethod(string name, PyClassMethod classMethod)
+    {
+        var uncompoundedDelegate = classMethod.ToUncompounded();
+        var func = PyBuiltinFunctionOrMethodObject.CreateFunction(name, classMethod.ToUncompounded());
+        PyAttributes.Add(name, new PyClassMethodObject(func));
+    }
+
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    protected void AppendClassMethod(string name, params PyClassMethod[] classMethods)
+    {
+        var uncompoundedDelegate = classMethods.Length is 1 ? classMethods[0].ToUncompounded() : PyDelegateConverter.CreateOverloadDispatcher(classMethods);
+        var func = PyBuiltinFunctionOrMethodObject.CreateFunction(name, uncompoundedDelegate);
+        PyAttributes.Add(name, new PyClassMethodObject(func));
     }
 
     [EditorBrowsable(EditorBrowsableState.Never)]

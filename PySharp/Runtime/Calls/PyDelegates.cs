@@ -10,7 +10,7 @@ namespace PySharp.Runtime.Calls;
 public delegate PyResult PyFunction(PyCallContext context, PyArguments arguments);
 public delegate PyResult PyMethod(PyCallContext context, PyObject self, PyArguments arguments);
 public delegate PyResult PyMethod<TObject>(PyCallContext context, TObject self, PyArguments arguments) where TObject : PyObject;
-public delegate PyResult PyStaticMethod(PyCallContext context, PyTypeObject cls, PyArguments arguments);
+public delegate PyResult PyClassMethod(PyCallContext context, PyTypeObject cls, PyArguments arguments);
 public delegate PyResult PyUncompoundedDelegate(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs);
 public delegate PyResult PyMemberGetter(PyCallContext context, PyObject self);
 public delegate PyResult PyMemberGetter<TObject>(PyCallContext context, TObject self) where TObject : PyObject;
@@ -77,6 +77,71 @@ public static class PyDelegateConverter
 
             return PyResult.TypeError(null);
         };
+    }
+
+    public static PyUncompoundedDelegate ToUncompounded(this PyClassMethod method)
+    {
+        PyArgsDef? def = null;
+
+        return (context, args, kwargs) =>
+        {
+            if (args.Count is 0 || args[0] is not PyTypeObject cls)
+                return PyResult.TypeError(null);
+
+            def ??= PyArgsDef.FromDef(method.Method.GetCustomAttribute<PyFunctionArgsDefAttribute>()!.Parameters);
+
+            args = [.. args.Skip(1)];
+            InlinePyObjectArray buffer = default;
+            if (def.TryParse(args, kwargs, buffer, out var result))
+                return method.Invoke(context, cls, result);
+
+            return PyResult.TypeError(null);
+        };
+    }
+
+    public static PyUncompoundedDelegate CreateOverloadDispatcher(params PyClassMethod[] methods)
+    {
+        PyArgsDef[]? defs = null;
+
+        return (context, args, kwargs) =>
+        {
+            if (args.Count is 0 || args[0] is not PyTypeObject cls)
+                return PyResult.TypeError(null);
+
+            EnsureDefCache();
+            Debug.Assert(defs is not null);
+
+            args = [.. args.Skip(1)];
+            for (int i = 0; i < defs.Length; i++)
+            {
+                InlinePyObjectArray buffer = default;
+                if (defs[i].TryParse(args, kwargs, buffer, out var result))
+                    return methods[i].Invoke(context, cls, result);
+            }
+
+            return PyResult.TypeError(null);
+        };
+
+        void EnsureDefCache()
+        {
+            if (defs is not null)
+                return;
+
+            lock (methods)
+            {
+                if (defs is not null)
+                    return;
+
+                var cache = new PyArgsDef[methods.Length];
+                for (int i = 0; i < cache.Length; i++)
+                {
+                    var argsDef = methods[i].Method.GetCustomAttribute<PyFunctionArgsDefAttribute>();
+                    Debug.Assert(argsDef is not null);
+                    cache[i] = PyArgsDef.FromDef(argsDef.Parameters);
+                }
+                defs = cache;
+            }
+        }
     }
 
     public static PyUncompoundedDelegate CreateOverloadDispatcher<TObject>(params PyMethod<TObject>[] methods) where TObject : PyObject
