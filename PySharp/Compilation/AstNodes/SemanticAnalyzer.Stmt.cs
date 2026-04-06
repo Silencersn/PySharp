@@ -18,6 +18,7 @@ partial class SemanticAnalyzer
             case BreakNode n: VisitBreak(n); break;
             case ContinueNode n: VisitContinue(n); break;
             case ReturnNode n: VisitReturn(n); break;
+            case TypeAliasNode n: VisitTypeAlias(n); break;
             case ImportNode n: VisitImport(n); break;
             case ImportFromNode n: VisitImportFrom(n); break;
             case GlobalNode n: VisitGlobal(n); break;
@@ -351,5 +352,10 @@ partial class SemanticAnalyzer
         VisitNodes(node.Body);
 
         PopScope();
+    }
+
+    private void VisitTypeAlias(TypeAliasNode node)
+    {
+        VisitName(node.Name, ExprContextType.Store);
     }
 }

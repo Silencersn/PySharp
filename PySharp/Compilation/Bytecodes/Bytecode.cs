@@ -202,6 +202,7 @@ public sealed class Bytecode
                 case OpCode.MatchKeys:
                 case OpCode.ImportFrom:
                 case OpCode.ReturnGenerator:
+                case OpCode._MakeTypeAlias:
                     IncrementStackSize(1);
                     break;
 

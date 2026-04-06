@@ -42,6 +42,7 @@ partial class BytecodeCompiler
             case BreakNode n: CompileBreak(n, out isPostUnreachable); break;
             case ContinueNode n: CompileContinue(n, out isPostUnreachable); break;
             case ReturnNode n: CompileReturn(n, out isPostUnreachable); break;
+            case TypeAliasNode n: CompileTypeAlias(n); break;
             case ImportNode n: CompileImport(n); break;
             case ImportFromNode n: CompileImportFrom(n); break;
             case GlobalNode n: CompileGlobal(n); break;
@@ -60,6 +61,12 @@ partial class BytecodeCompiler
             default: throw new UnreachableException();
         }
         Generator.PopMetaInfo();
+    }
+
+    private void CompileTypeAlias(TypeAliasNode n)
+    {
+        Generator.Emit(OpCode._MakeTypeAlias, n.Name);
+        StoreName(n.Name);
     }
 
     private void CompileExpr(ExprNode node)

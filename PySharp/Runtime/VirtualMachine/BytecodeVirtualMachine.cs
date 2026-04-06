@@ -2,6 +2,7 @@ using PySharp.Compilation.Bytecodes;
 using PySharp.Compilation.Primitives;
 using PySharp.Modules.Builtins;
 using PySharp.Modules.String.TemplateLib;
+using PySharp.Modules.Typing;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
@@ -844,6 +845,11 @@ internal static class BytecodeVirtualMachine
 
                     case OpCode.MatchClass:
                         InternalMatchClass(context, ref Stack, instructionArg);
+                        break;
+
+                    case OpCode._MakeTypeAlias:
+                        value = new PyTypeAliasTypeObject(names[instructionArg]);
+                        Stack.Push(value);
                         break;
 
                     case OpCode.__BytecodeEnd:

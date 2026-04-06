@@ -120,6 +120,8 @@ internal enum OpCode : byte
     MatchKeys,
     MatchClass,
 
+    _MakeTypeAlias,
+
     ImportName,
     ImportFrom,
     _ImportAllFrom,
