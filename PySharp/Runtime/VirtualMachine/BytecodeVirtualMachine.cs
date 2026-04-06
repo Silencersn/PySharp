@@ -848,8 +848,11 @@ internal static class BytecodeVirtualMachine
                         break;
 
                     case OpCode._MakeTypeAlias:
-                        value = new PyTypeAliasTypeObject(names[instructionArg]);
-                        Stack.Push(value);
+                        {
+                            var func = (PyFunctionObject)Stack[-1];
+                            value = new PyTypeAliasTypeObject(names[instructionArg], func);
+                            Stack[-1] = value;
+                        }
                         break;
 
                     case OpCode.__BytecodeEnd:

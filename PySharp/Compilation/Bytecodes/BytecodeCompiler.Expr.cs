@@ -602,7 +602,7 @@ partial class BytecodeCompiler
 
         var codeObj = new PyCodeObject(_source.Name, scope, bytecode);
         Generator.Emit(OpCode.LoadConst, codeObj);
-        Generator.Emit(OpCode._MakeFunctionWithPyArgsDef);
+        Generator.Emit(OpCode._MakeFunctionWithPyArgsDef, arg: 1);
 
         LoadExpr(node.Generators[0].Iter);
         Generator.Emit(OpCode.GetIter);
@@ -691,7 +691,7 @@ partial class BytecodeCompiler
         }
 
         Generator.Emit(OpCode.LoadConst, codeObj);
-        Generator.Emit(OpCode._MakeFunctionWithPyArgsDef);
+        Generator.Emit(OpCode._MakeFunctionWithPyArgsDef, node.Args.Defaults.Length + node.Args.KwDefaults.Length);
     }
 
     private void CompileJoinedStr(JoinedStrNode node)

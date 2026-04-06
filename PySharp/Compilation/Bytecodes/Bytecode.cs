@@ -178,6 +178,7 @@ public sealed class Bytecode
                 case OpCode._PopExceptionAndJumpIfNull:
                 case OpCode._UnaryOp:
                 case OpCode.UnaryNot:
+                case OpCode._MakeTypeAlias:
                 case OpCode.ExtendedArg:
                 case OpCode.__BytecodeEnd:
                     break;
@@ -202,7 +203,6 @@ public sealed class Bytecode
                 case OpCode.MatchKeys:
                 case OpCode.ImportFrom:
                 case OpCode.ReturnGenerator:
-                case OpCode._MakeTypeAlias:
                     IncrementStackSize(1);
                     break;
 

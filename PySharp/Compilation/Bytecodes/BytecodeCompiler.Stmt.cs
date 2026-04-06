@@ -65,6 +65,19 @@ partial class BytecodeCompiler
 
     private void CompileTypeAlias(TypeAliasNode n)
     {
+        var currentGenerator = Generator;
+        Generator = BytecodeGenerator.Create(_source);
+
+        LoadExpr(n.Value);
+        Generator.Emit(OpCode.ReturnValue);
+
+        var bytecode = Generator.ToBytecode();
+        Generator = currentGenerator;
+
+        var codeObj = new PyCodeObject(n.Name, _source.Name, bytecode, CodeObjectFlags.Function);
+        Generator.Emit(OpCode.LoadConst, codeObj);
+        Generator.Emit(OpCode._MakeFunctionWithPyArgsDef, arg: 0);
+
         Generator.Emit(OpCode._MakeTypeAlias, n.Name);
         StoreName(n.Name);
     }
@@ -366,7 +379,7 @@ partial class BytecodeCompiler
         }
 
         Generator.Emit(OpCode.LoadConst, codeObj);
-        Generator.Emit(OpCode._MakeFunctionWithPyArgsDef);
+        Generator.Emit(OpCode._MakeFunctionWithPyArgsDef, node.Args.Defaults.Length + node.Args.KwDefaults.Length);
 
         if (OptimizationLevel < 2 && TryGetDoc(node.Body, out var doc))
         {
