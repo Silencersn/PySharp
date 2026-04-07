@@ -167,7 +167,7 @@ partial class Ast
 
         return new ImportFromNode(module, names.ToImmutableArray(true), level);
     }
-    
+
     public static FunctionDefNode FunctionDef(string name, AstArgumentsNode args, IEnumerable<AstStmtNode> body, IEnumerable<AstExprNode> decoratorList, AstExprNode? returns, IEnumerable<AstTypeParamNode> typeParams)
     {
         ArgumentNullException.ThrowIfNull(name);

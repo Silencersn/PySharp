@@ -4,7 +4,6 @@ using PySharp.Runtime.PyAttributes;
 using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Runtime.Versioning;
 
 namespace PySharp.Modules.Builtins;
 

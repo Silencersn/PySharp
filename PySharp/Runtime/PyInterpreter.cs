@@ -3,7 +3,6 @@ using PySharp.Compilation.Bytecodes;
 using PySharp.Compilation.Tokenization;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
-using PySharp.Runtime.Calls.Extensions;
 using PySharp.Runtime.Environments;
 using System.Diagnostics;
 using System.Text;

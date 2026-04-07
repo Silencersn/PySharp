@@ -4,7 +4,6 @@ using PySharp.Compilation.Primitives;
 using PySharp.Modules.Builtins;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Xml.Linq;
 
 namespace PySharp.Compilation.Bytecodes;
 

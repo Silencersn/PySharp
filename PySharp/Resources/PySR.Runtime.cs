@@ -92,9 +92,9 @@ partial class PySR
 
     [AIGenerated]
     public const string Runtime_Tuple_ItemNotFound = "tuple.{0}(x): x not in tuple";
-    [AIGenerated] 
+    [AIGenerated]
     public const string Runtime_Tuple_IndexOutOfRange = "tuple index out of range";
-    [AIGenerated] 
+    [AIGenerated]
     public const string Runtime_Tuple_AddNonTuple = "can only concatenate tuple (not \"{0}\") to tuple";
 
     public const string Runtime_Dictionary_UpdateEltLengthNotMatch = "dictionary update sequence element #{0} has length {1}; 2 is required";

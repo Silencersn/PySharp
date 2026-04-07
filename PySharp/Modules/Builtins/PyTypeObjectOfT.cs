@@ -1,7 +1,6 @@
 using PySharp.Modules.CSharp;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
-using PySharp.Runtime.Calls.Extensions;
 using PySharp.Runtime.PyAttributes;
 
 namespace PySharp.Modules.Builtins;
@@ -169,7 +168,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
             if (result.IsError)
                 return result;
         }
-        
+
         return type;
     }
 

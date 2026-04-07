@@ -1027,7 +1027,7 @@ partial class Parser
     {
         var pos = TokenPosition;
         EnsureKeywordThenMove("async");
-        
+
         if (CurrentTokenType is not TokenType.Name || !IsKeyword(CurrentTokenStringAsSpan))
             throw SyntaxError();
 

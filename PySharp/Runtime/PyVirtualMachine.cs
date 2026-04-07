@@ -1,6 +1,5 @@
 ﻿using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
-using PySharp.Runtime.Calls.Extensions;
 using System.Diagnostics;
 
 namespace PySharp.Runtime;

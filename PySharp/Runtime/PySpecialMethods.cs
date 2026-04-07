@@ -133,7 +133,7 @@ public static class PySpecialMethods
             return PySR.Format(PySR.Runtime_Object_SpecialMethodReturnsWrongType, PySpecialNames.Len, "int", o.PyType.FullName);
         }
     }
-    
+
     public static PyResult Iter(PyCallContext context, PyObject obj)
     {
         var iterFunc = obj.PyType.Slots.Iter;

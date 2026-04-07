@@ -2,7 +2,6 @@
 using PySharp.Modules;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
-using PySharp.Runtime.Calls.Extensions;
 using PySharp.Runtime.VirtualMachine;
 using PySharp.Utility;
 using System.Diagnostics;
@@ -102,7 +101,7 @@ internal static class PyCore
         var obj = newFunc(context, metaClass, args, kwargs).PyUnwrap(context);
         if (!metaClass.IsInstance(obj))
             return obj;
-            
+
         if (metaClass != PyTypeObjectType.Shared)
         {
             var initFunc = metaClass.Slots.Init;

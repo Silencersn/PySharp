@@ -3,9 +3,7 @@ using PySharp.Compilation.Primitives;
 using PySharp.Modules.Builtins;
 using PySharp.Modules.String.TemplateLib;
 using PySharp.Modules.Typing;
-using PySharp.Runtime;
 using PySharp.Runtime.Calls;
-using PySharp.Runtime.Calls.Extensions;
 using PySharp.Utility;
 using System.Collections.Frozen;
 using System.Diagnostics;
@@ -1305,7 +1303,7 @@ internal static class BytecodeVirtualMachine
                 throw new PyRuntimeException(PyResult.PySharpException.Shared.Create(PyStrObject.FromString("non-type base is not supported")));
         }
 
-        var type = PyCore.BuildClass(context, codeObj, [..states.CacheArgs.Cast<PyTypeObject>()], kwargs);
+        var type = PyCore.BuildClass(context, codeObj, [.. states.CacheArgs.Cast<PyTypeObject>()], kwargs);
 
         stack.Push(type);
     }

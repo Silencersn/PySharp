@@ -1,7 +1,6 @@
 ﻿using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
-using System.Collections;
 using System.Text;
 
 namespace PySharp.Modules.Builtins;
@@ -36,7 +35,7 @@ public sealed class PyBytesObject : PyObject
         if (data.Length is 0)
             return Empty;
 
-        return new PyBytesObject([..data]);
+        return new PyBytesObject([.. data]);
     }
 
     internal static PyBytesObject MoveBytes(byte[] data)

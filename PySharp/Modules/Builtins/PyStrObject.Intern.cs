@@ -1,10 +1,7 @@
 ﻿using PySharp.Runtime;
-using System;
 using System.Collections.Concurrent;
 using System.Collections.Frozen;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Text;
 
 namespace PySharp.Modules.Builtins;
 
@@ -28,7 +25,7 @@ partial class PyStrObject
                 internedString = internedStr.Value;
                 return true;
             }
-            
+
             internedString = null;
             return false;
         }

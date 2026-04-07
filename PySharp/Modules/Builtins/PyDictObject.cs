@@ -1,6 +1,5 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
-using PySharp.Runtime.Calls.Extensions;
 using PySharp.Runtime.Comparison;
 using PySharp.Runtime.PyAttributes;
 using System.Collections;
@@ -322,11 +321,11 @@ public sealed partial class PyDictObjectType : PyTypeObject<PyDictObject>
             var eqResult = PyOperators.Eq(context, value, otherValue);
             if (eqResult.IsError)
                 return eqResult;
-            
+
             var eq = PySpecialMethods.Bool(context, eqResult.Value);
             if (eq.IsError)
                 return eq;
-            
+
             if (!eq.Value.BoolValue)
                 return PyBoolObject.False;
         }

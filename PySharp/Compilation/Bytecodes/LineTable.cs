@@ -140,8 +140,8 @@ internal sealed class LineTable
         while (position < _length)
         {
             var firstByte = ReadByte(_bytes, ref position);
-            var flag = firstByte & 0b11; 
-            var indexDiff = firstByte >> 2; 
+            var flag = firstByte & 0b11;
+            var indexDiff = firstByte >> 2;
 
             if (indexDiff is 63)
                 indexDiff += Read7BitEncodedInt(_bytes, ref position);

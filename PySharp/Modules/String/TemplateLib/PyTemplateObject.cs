@@ -2,9 +2,6 @@ using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace PySharp.Modules.String.TemplateLib;
 

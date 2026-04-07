@@ -3,7 +3,6 @@ using PySharp.Runtime.Calls;
 using PySharp.Runtime.Comparison;
 using PySharp.Runtime.PyAttributes;
 using System.Collections;
-using System.Linq;
 
 namespace PySharp.Modules.Builtins;
 

@@ -1,7 +1,6 @@
 using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
-using PySharp.Runtime.Calls.Extensions;
 using PySharp.Runtime.PyAttributes;
 using System.Collections.Concurrent;
 using System.Diagnostics;

@@ -69,7 +69,7 @@ partial class PyTupleObject
     {
         start = Utils.MapIndex(start, Count);
         end = Utils.MapIndex(end, Count);
-        
+
         for (int i = int.Max(0, start); i < int.Min(end, Count); i++)
         {
             if (PyObjectComparer.Default.Equals(_array[i], item))
@@ -115,15 +115,15 @@ partial class PyTupleObject
             var h = PySpecialMethods.Hash(context, item);
             if (h.IsError)
                 return h;
-            
+
             hash = (hash ^ (long)h.Value.Value) * multiplier;
             multiplier += 82520L + (long)Count * 2;
         }
-        
+
         hash += 97531;
         if (hash is -1)
             hash = -2;
-            
+
         return PyIntObject.FromInteger((int)hash);
     }
 }

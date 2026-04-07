@@ -5,7 +5,6 @@ using PySharp.Runtime.PyAttributes;
 using PySharp.Utility;
 using System.Diagnostics;
 using System.Text;
-using System.Xml.Linq;
 
 namespace PySharp.Modules.Builtins;
 
