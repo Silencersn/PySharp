@@ -45,6 +45,20 @@ partial class PyTypeObject<TObject>
     }
 
     [EditorBrowsable(EditorBrowsableState.Never)]
+    protected void AppendStaticMethod(string name, PyFunction staticMethod)
+    {
+        var func = PyBuiltinFunctionOrMethodObject.CreateFunction(name, staticMethod);
+        PyAttributes.Add(name, new PyStaticMethodObject(func));
+    }
+
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    protected void AppendStaticMethod(string name, params PyFunction[] staticMethods)
+    {
+        var func = PyBuiltinFunctionOrMethodObject.CreateFunction(name, staticMethods);
+        PyAttributes.Add(name, new PyStaticMethodObject(func));
+    }
+
+    [EditorBrowsable(EditorBrowsableState.Never)]
     protected void FillSlot<TDelegate>(string name, ref TDelegate? field, TDelegate func) where TDelegate : Delegate
     {
         field = func;

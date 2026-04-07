@@ -52,6 +52,10 @@ public class PyTypeGenerator : IIncrementalGenerator
                         if (classMethodAttribute is not null)
                             pyTypeInfo.ClassMethods.Add(new(methodSymbol.Name, classMethodAttribute.ConstructorArguments[0].ToCSharpString(), classMethodAttribute.GetNamedArgumentOrDefault("Order", 1)));
 
+                        var staticMethodAttribute = methodSymbol.GetAttribute(PySharpTypes.PyStaticMethodAttribute);
+                        if (staticMethodAttribute is not null)
+                            pyTypeInfo.StaticMethods.Add(new(methodSymbol.Name, staticMethodAttribute.ConstructorArguments[0].ToCSharpString(), staticMethodAttribute.GetNamedArgumentOrDefault("Order", 1)));
+
                         var propertyAttribute = methodSymbol.GetAttribute(PySharpTypes.PyPropertyAttribute);
                         if (propertyAttribute is not null)
                         {
@@ -123,6 +127,10 @@ public class PyTypeGenerator : IIncrementalGenerator
                             {
                                 builder.AppendLine($"AppendClassMethod({impls.Key}, {string.Join(", ", impls.OrderBy(static info => info.Order).Select(static info => info.Name))});");
                             })
+                            .ForEach(pyType.StaticMethods.GroupBy(static info => info.PyNameLiteral), static (builder, impls) =>
+                            {
+                                builder.AppendLine($"AppendStaticMethod({impls.Key}, {string.Join(", ", impls.OrderBy(static info => info.Order).Select(static info => info.Name))});");
+                            })
                         .ExitBlock()
 
                         .AppendLine("protected override void RegisterProperties()")
@@ -152,6 +160,7 @@ public class PyTypeGenerator : IIncrementalGenerator
             AccessModifier = accessModifier;
             Methods = [];
             ClassMethods = [];
+            StaticMethods = [];
             Properties = [];
         }
 
@@ -160,6 +169,7 @@ public class PyTypeGenerator : IIncrementalGenerator
         public List<string> Slots { get; }
         public List<PyMethodInfo> Methods { get; }
         public List<PyMethodInfo> ClassMethods { get; }
+        public List<PyMethodInfo> StaticMethods { get; }
         public Dictionary<string, PyPropertyInfo> Properties { get; }
         public AttributeData AttributeData { get; }
         public bool DoNotGenerateConstructor { get; }
