@@ -74,7 +74,7 @@ partial class PyEnvironment
 
     internal bool InternalTryLoadRootModule(PyCallContext context, string name, [NotNullWhen(true)] out PyModuleObject? module)
     {
-        return InternalTryLoadModule(context, Paths, name, name, out module);
+        return InternalTryLoadModule(context, Host.Paths, name, name, out module);
     }
 
     internal bool InternalTryLoadModule(PyCallContext context, IReadOnlyList<string> paths, string qualifiedName, string name, [NotNullWhen(true)] out PyModuleObject? module)

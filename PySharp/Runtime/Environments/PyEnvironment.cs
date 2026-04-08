@@ -7,46 +7,29 @@ namespace PySharp.Runtime.Environments;
 
 public sealed partial class PyEnvironment
 {
-    public static PyEnvironment Console => CreateBuilder().StandardIO.WithConsole().Build();
-
-    public static PyEnvironment Shared { get; }
-    internal static PyEnvironment ParsingEnvironment { get; }
-
     static PyEnvironment()
     {
-        Shared = new PyEnvironment();
-        ParsingEnvironment = new PyEnvironment();
     }
 
-    internal PyEnvironment(
-        TextReader? stdin = null,
-        TextWriter? stdout = null,
-        TextWriter? stderr = null,
-        bool isInteractive = false,
-        IVirtualFileSystem? fileSystem = null,
-        int optimizationLevel = 0)
+    internal PyEnvironment(PyEnvironmentHost host, int optimizationLevel = 0)
     {
-        In = stdin ?? TextReader.Null;
-        Out = stdout ?? TextWriter.Null;
-        Error = stderr ?? TextWriter.Null;
-        Paths = [];
-        Args = [];
-        IsInteractive = isInteractive;
-        FileSystem = fileSystem ?? MemoryFileSystem.CreateBuilder().Build();
+        Host = host;
         OptimizationLevel = optimizationLevel;
     }
 
-    internal TextReader In { get; }
-    internal TextWriter Out { get; }
-    internal TextWriter Error { get; }
+    public PyEnvironmentHost Host { get; }
+
+    internal TextReader In => Host.In;
+    internal TextWriter Out => Host.Out;
+    internal TextWriter Error => Host.Error;
     internal Dictionary<string, PyModuleObject?> Modules { get; } = [];
     internal ConcurrentSet<Thread> Threads { get; } = [];
-    internal List<string> Paths { get; }
-    internal List<string> Args { get; }
+    internal List<string> Paths => Host.Paths;
+    internal List<string> Args => Host.Args;
     internal int ExitCode { get; set; }
     internal event PyExitEventHandler? Exit;
-    internal bool IsInteractive { get; set; }
-    internal IVirtualFileSystem FileSystem { get; }
+    internal bool IsInteractive => Host.IsInteractive;
+    internal IVirtualFileSystem FileSystem => Host.FileSystem;
     internal int OptimizationLevel { get; }
 
     public PyStrObject.InternPool InternPool { get; } = new();
@@ -70,5 +53,15 @@ public sealed partial class PyEnvironment
     public static IPyEnvironmentBuilder CreateBuilder()
     {
         return new PyEnvironmentBuilder();
+    }
+
+    public static PyEnvironment CreateNull()
+    {
+        return new PyEnvironment(PyEnvironmentHost.CreateNull());
+    }
+
+    public static PyEnvironment CreateConsole()
+    {
+        return new PyEnvironment(PyEnvironmentHost.CreateConsole());
     }
 }

@@ -109,11 +109,14 @@ public sealed class PyInterpreter : IDisposable
 
         var code = File.ReadAllText(filename);
         var moduleName = Path.GetFileNameWithoutExtension(filename);
+        var host = PyEnvironmentHost.CreateConsole(usingPhysicalFileSystem: true);
+
+        host.Paths.Add(Path.GetDirectoryName(Path.GetFullPath(filename))!);
+        host.Args.Add(filename);
+
         var environment = PyEnvironment
             .CreateBuilder()
-            .StandardIO.WithConsole()
-            .FileSystem.WithPhysicalFileSystem()
-            .System.AppendSysPath(Path.GetDirectoryName(Path.GetFullPath(filename))).AppendArgument(filename)
+            .UseHost(host)
             .Build();
 
         using var interpreter = Create(environment);
@@ -127,8 +130,7 @@ public sealed class PyInterpreter : IDisposable
 
         var environment = PyEnvironment
             .CreateBuilder()
-            .StandardIO.WithConsole()
-            .FileSystem.WithEmptyMemoryFileSystem()
+            .UseHost(PyEnvironmentHost.CreateConsole())
             .Build();
 
         using var interpreter = Create(environment);
@@ -152,8 +154,7 @@ public sealed class PyInterpreter : IDisposable
     {
         var environment = PyEnvironment
             .CreateBuilder()
-            .StandardIO.WithConsole()
-            .InterpreterMode.Interactive()
+            .UseHost(PyEnvironmentHost.CreateRepl())
             .Initialization.SyncExit()
             .Build();
 
