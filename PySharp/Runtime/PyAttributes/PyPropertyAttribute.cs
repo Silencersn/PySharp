@@ -1,7 +1,7 @@
 ﻿namespace PySharp.Runtime.PyAttributes;
 
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = false)]
-internal sealed class PyPropertyAttribute : PyAttribute
+public sealed class PyPropertyAttribute : PyAttribute
 {
     public PyPropertyAttribute(string name)
     {

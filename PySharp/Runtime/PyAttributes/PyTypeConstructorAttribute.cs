@@ -1,7 +1,7 @@
 namespace PySharp.Runtime.PyAttributes;
 
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
-internal sealed class PyTypeConstructorAttribute : PyAttribute
+public sealed class PyTypeConstructorAttribute : PyAttribute
 {
     public PyTypeConstructorAttribute()
     {
