@@ -63,7 +63,7 @@ partial class PyEnvironment
             }
 
             var qualName = string.Join('.', parts[..(i + 1)]);
-            if (!InternalTryLoadModule(context, paths, qualName, parts[i], out module))
+            if (!InternalTryLoadModule(context, paths, qualName, out module))
                 return false;
             preModule.PyAttributes[parts[i]] = module;
             preModule = module;
@@ -74,14 +74,12 @@ partial class PyEnvironment
 
     internal bool InternalTryLoadRootModule(PyCallContext context, string name, [NotNullWhen(true)] out PyModuleObject? module)
     {
-        return InternalTryLoadModule(context, Host.Paths, name, name, out module);
+        return InternalTryLoadModule(context, Host.Paths, name, out module);
     }
 
-    internal bool InternalTryLoadModule(PyCallContext context, IReadOnlyList<string> paths, string qualifiedName, string name, [NotNullWhen(true)] out PyModuleObject? module)
+    internal bool InternalTryLoadModule(PyCallContext context, IReadOnlyList<string> paths, string qualifiedName, [NotNullWhen(true)] out PyModuleObject? module)
     {
         Debug.Assert(!qualifiedName.StartsWith('.'));
-        Debug.Assert(!name.Contains('.'));
-        Debug.Assert(qualifiedName.EndsWith(name));
 
         if (Modules.TryGetValue(qualifiedName, out module))
             // the key may be assigned to None,
@@ -91,37 +89,11 @@ partial class PyEnvironment
         var frame = PyInternalFrame.CreateModuleFrame(context, isRoot: false, qualifiedName);
         using var withFrame = context.WithFrame(ref frame);
 
-        module = PyStandardLibrary.TryCreateModule(context, qualifiedName);
-        if (module is not null)
+        foreach (var provider in Host.ModuleProviders)
         {
-            module.OnImport(context, this);
-            Modules.Add(qualifiedName, module);
-            return true;
-        }
-
-        foreach (var path in paths)
-        {
-            var dir = Path.Combine(path, name);
-            if (FileSystem.ExistsDirectory(dir))
-            {
-                var package = PyModuleObject.CreatePackage(qualifiedName, [dir]);
-                var initFilename = Path.Combine(dir, "__init__.py");
-                if (FileSystem.ExistsFile(initFilename))
-                {
-                    var initCode = FileSystem.ReadAllText(initFilename);
-                    PyInterpreter.RunCodeWithContext(context, initCode, package, initFilename);
-                }
-                Modules.Add(qualifiedName, module = package);
-                return true;
-            }
-
-            var filename = dir + ".py";
-            if (!FileSystem.ExistsFile(filename))
+            if (!provider.TryGetModule(context, qualifiedName, paths, out module))
                 continue;
 
-            var code = FileSystem.ReadAllText(filename);
-            module = PyInterpreter.RunCodeWithContext(context, code, qualifiedName, FileSystem.GetFullPath(filename));
-            module.OnImport(context, this);
             Modules.Add(qualifiedName, module);
             return true;
         }

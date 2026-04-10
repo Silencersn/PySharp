@@ -13,6 +13,7 @@ internal sealed class PyEnvironmentHostBuilder : IPyEnvironmentHostBuilder
     private bool _isInteractive;
     private readonly List<string> _paths = [];
     private readonly List<string> _args = [];
+    private readonly List<PyModuleProvider> _moduleProviders = [BuiltinModuleProvider.Shared, PathProvider.Shared];
 
     public IPyEnvironmentHostBuilder UseIn(TextReader reader)
     {
@@ -56,6 +57,12 @@ internal sealed class PyEnvironmentHostBuilder : IPyEnvironmentHostBuilder
         return this;
     }
 
+    public IPyEnvironmentHostBuilder AddModuleProvider(PyModuleProvider provider)
+    {
+        _moduleProviders.Add(provider);
+        return this;
+    }
+
     public PyEnvironmentHost Build()
     {
         return new ConfigurablePyEnvironmentHost(
@@ -65,7 +72,8 @@ internal sealed class PyEnvironmentHostBuilder : IPyEnvironmentHostBuilder
             _fileSystem ?? MemoryFileSystem.CreateBuilder().Build(),
             _isInteractive,
             [.. _paths],
-            [.. _args]);
+            [.. _args],
+            [.. _moduleProviders]);
     }
 
     private sealed class ConfigurablePyEnvironmentHost(
@@ -75,7 +83,8 @@ internal sealed class PyEnvironmentHostBuilder : IPyEnvironmentHostBuilder
         IVirtualFileSystem fileSystem,
         bool isInteractive,
         List<string> paths,
-        List<string> args) : PyEnvironmentHost
+        List<string> args,
+        List<PyModuleProvider> moduleProviders) : PyEnvironmentHost
     {
         public override TextReader In => cin;
         public override TextWriter Out => cout;
@@ -84,6 +93,7 @@ internal sealed class PyEnvironmentHostBuilder : IPyEnvironmentHostBuilder
         public override bool IsInteractive => isInteractive;
         public override List<string> Paths { get; } = paths;
         public override List<string> Args { get; } = args;
+        public override List<PyModuleProvider> ModuleProviders { get; } = moduleProviders;
     }
 }
 
@@ -96,5 +106,6 @@ public interface IPyEnvironmentHostBuilder
     IPyEnvironmentHostBuilder SetInteractive(bool isInteractive);
     IPyEnvironmentHostBuilder AddPath(string path);
     IPyEnvironmentHostBuilder AddArg(string arg);
+    IPyEnvironmentHostBuilder AddModuleProvider(PyModuleProvider provider);
     PyEnvironmentHost Build();
 }

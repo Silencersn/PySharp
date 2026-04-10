@@ -17,6 +17,8 @@ public abstract class PyEnvironmentHost
     public abstract List<string> Paths { get; }
     public abstract List<string> Args { get; }
 
+    public abstract List<PyModuleProvider> ModuleProviders { get; }
+
     public static PyEnvironmentHost CreateNull()
     {
         return new NullPyEnvironmentHost();
@@ -46,6 +48,7 @@ public abstract class PyEnvironmentHost
         public override bool IsInteractive => true;
         public override List<string> Paths { get; } = [];
         public override List<string> Args { get; } = [];
+        public override List<PyModuleProvider> ModuleProviders { get; } = [BuiltinModuleProvider.Shared, PathProvider.Shared];
     }
 
     private sealed class ConsolePyEnvironmentHost : PyEnvironmentHost
@@ -57,6 +60,7 @@ public abstract class PyEnvironmentHost
         public override bool IsInteractive => false;
         public override List<string> Paths { get; } = [];
         public override List<string> Args { get; } = [];
+        public override List<PyModuleProvider> ModuleProviders { get; } = [BuiltinModuleProvider.Shared, PathProvider.Shared];
     }
 
     private sealed class PhysicalConsolePyEnvironmentHost : PyEnvironmentHost
@@ -68,6 +72,7 @@ public abstract class PyEnvironmentHost
         public override bool IsInteractive => false;
         public override List<string> Paths { get; } = [];
         public override List<string> Args { get; } = [];
+        public override List<PyModuleProvider> ModuleProviders { get; } = [BuiltinModuleProvider.Shared, PathProvider.Shared];
     }
 
     private sealed class ReplPyEnvironmentHost : PyEnvironmentHost
@@ -79,5 +84,6 @@ public abstract class PyEnvironmentHost
         public override bool IsInteractive => true;
         public override List<string> Paths { get; } = [];
         public override List<string> Args { get; } = [];
+        public override List<PyModuleProvider> ModuleProviders { get; } = [BuiltinModuleProvider.Shared, PathProvider.Shared];
     }
 }
