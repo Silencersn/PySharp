@@ -5,6 +5,7 @@ using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Environments;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 namespace PySharp.Runtime;
@@ -60,7 +61,6 @@ public sealed class PyInterpreter : IDisposable
 
     internal static void PyTryCatch(PyCallContext context, Action action, bool alwaysThrow = false)
     {
-        var frame = context.CurrentInternalFrame;
         try
         {
             action();
@@ -81,10 +81,12 @@ public sealed class PyInterpreter : IDisposable
                     {
                         if (context.PyEnvironment.ExitCode is 0)
                             context.PyEnvironment.ExitCode = 1;
-                        var color = Console.ForegroundColor;
-                        Console.ForegroundColor = ConsoleColor.Red;
+
+                        const string ANSIColorRed = "\e[31m";
+                        const string ANSIClearColor = "\e[0m";
+                        context.Error.Write(ANSIColorRed); 
                         context.Error.WriteLine(exc.ToMessage(context));
-                        Console.ForegroundColor = color;
+                        context.Error.Write(ANSIClearColor);
                     }
 
                     if (alwaysThrow)
@@ -124,6 +126,7 @@ public sealed class PyInterpreter : IDisposable
         return interpreter.GetModule(moduleName);
     }
 
+    [return: NotNullIfNotNull(nameof(moduleName))]
     public static PyModuleObject? RunCode(string code, string? moduleName = null, string? sourceName = null)
     {
         ArgumentNullException.ThrowIfNull(code);
