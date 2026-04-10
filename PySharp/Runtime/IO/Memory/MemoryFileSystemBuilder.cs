@@ -2,12 +2,13 @@
 
 public sealed class MemoryFileSystemBuilder
 {
-    private const string DefaultWorkingDirectory = "C:\\";
     private readonly MemoryFileSystem _fileSystem;
+    private readonly PathHelper? _pathHelper;
 
-    public MemoryFileSystemBuilder()
+    public MemoryFileSystemBuilder(PathHelper? pathHelper = null)
     {
-        _fileSystem = new MemoryFileSystem(DefaultWorkingDirectory);
+        _pathHelper = pathHelper;
+        _fileSystem = new MemoryFileSystem(Environment.CurrentDirectory, _pathHelper);
     }
 
     public MemoryFileSystemBuilder WithFile(string name, ReadOnlySpan<char> content)
@@ -17,7 +18,7 @@ public sealed class MemoryFileSystemBuilder
     }
     public MemoryFileSystemBuilder WithWorkingDirectory(string? workingDirectory)
     {
-        _fileSystem.CurrentDirectory = workingDirectory ?? DefaultWorkingDirectory;
+        _fileSystem.CurrentDirectory = workingDirectory ?? Environment.CurrentDirectory;
         return this;
     }
     public MemoryFileSystem Build()

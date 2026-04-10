@@ -1,29 +1,31 @@
-﻿using PySharp.Utility;
-using System.Collections.Concurrent;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Runtime.IO.Memory;
 
 public sealed class MemoryFileSystem : IVirtualFileSystem
 {
-    internal readonly ConcurrentSet<string> _roots;
-    internal readonly ConcurrentDictionary<string, ConcurrentSet<string>> _directoryToSubdirectories;
-    internal readonly ConcurrentDictionary<string, ConcurrentSet<string>> _directoryToFiles;
-    internal readonly ConcurrentDictionary<string, MemoryFileStream> _files;
+    internal readonly PathHelper Path;
+    internal readonly Lock SyncRoot = new();
+
+    internal readonly HashSet<string> _roots;
+    internal readonly Dictionary<string, HashSet<string>> _directoryToSubdirectories;
+    internal readonly Dictionary<string, HashSet<string>> _directoryToFiles;
+    internal readonly Dictionary<string, MemoryFileData> _files;
 
     public string CurrentDirectory
     {
         get;
         internal set
         {
-            field = Path.GetFullPath(value);
+            field = Path.GetFullPath(value, field);
             GetDirectory(field).Create();
         }
     }
 
-    public MemoryFileSystem(string currentDirectory)
+    public MemoryFileSystem(string currentDirectory, PathHelper? pathHelper = null)
     {
+        Path = pathHelper ?? PathHelper.Default;
         _roots = [];
         _directoryToSubdirectories = [];
         _directoryToFiles = [];
@@ -31,9 +33,9 @@ public sealed class MemoryFileSystem : IVirtualFileSystem
         CurrentDirectory = currentDirectory;
     }
 
-    public static MemoryFileSystemBuilder CreateBuilder()
+    public static MemoryFileSystemBuilder CreateBuilder(PathHelper? pathHelper = null)
     {
-        return new MemoryFileSystemBuilder();
+        return new MemoryFileSystemBuilder(pathHelper);
     }
 
     public IVirtualDirectoryInfo GetDirectory(string path)
@@ -59,89 +61,99 @@ public sealed class MemoryFileSystem : IVirtualFileSystem
 
     internal void InternalCreateDirectory(string fullPath)
     {
-        if (InternalExistsDirectory(fullPath))
-            return;
+        lock (SyncRoot)
+        {
+            if (InternalExistsDirectory(fullPath))
+                return;
 
-        var parentPath = Path.GetDirectoryName(fullPath);
-        if (parentPath is not null)
-        {
-            InternalCreateDirectory(parentPath);
-            _directoryToSubdirectories[parentPath].Add(fullPath);
+            var parentPath = Path.GetDirectoryName(fullPath);
+            if (parentPath is not null)
+            {
+                InternalCreateDirectory(parentPath);
+                _directoryToSubdirectories[parentPath].Add(fullPath);
+            }
+            else
+            {
+                _roots.Add(fullPath);
+            }
+            _directoryToSubdirectories[fullPath] = [];
+            _directoryToFiles[fullPath] = [];
         }
-        else
-        {
-            _roots.Add(fullPath);
-        }
-        _directoryToSubdirectories[fullPath] = [];
-        _directoryToFiles[fullPath] = [];
     }
 
-    internal MemoryFileStream InternalCreateFile(string fullName)
+    internal MemoryFileData InternalCreateFile(string fullName)
     {
-        var directory = Path.GetDirectoryName(fullName);
-        Debug.Assert(directory is not null);
-        if (!InternalExistsDirectory(directory))
-            throw new DirectoryNotFoundException(directory);
-        _directoryToFiles[directory].Add(fullName);
-        if (_files.TryRemove(fullName, out var stream))
-            stream.Dispose();
-        return _files[fullName] = new MemoryFileStream();
+        lock (SyncRoot)
+        {
+            var directory = Path.GetDirectoryName(fullName);
+            Debug.Assert(directory is not null);
+            if (!InternalExistsDirectory(directory))
+                throw new DirectoryNotFoundException(directory);
+            _directoryToFiles[directory].Add(fullName);
+            return _files[fullName] = new MemoryFileData();
+        }
     }
 
     internal void InternalDeleteDirectory(string fullPath)
     {
-        if (!InternalExistsDirectory(fullPath))
-            return;
-
-        foreach (var subdirectory in _directoryToSubdirectories[fullPath].ToArray())
+        lock (SyncRoot)
         {
-            InternalDeleteDirectory(subdirectory);
-        }
+            if (!InternalExistsDirectory(fullPath))
+                return;
 
-        foreach (var file in _directoryToFiles[fullPath].ToArray())
-        {
-            InternalDeleteFile(file);
-        }
+            foreach (var subdirectory in _directoryToSubdirectories[fullPath].ToArray())
+            {
+                InternalDeleteDirectory(subdirectory);
+            }
 
-        var removed = _directoryToFiles.TryRemove(fullPath, out _);
-        Debug.Assert(removed);
+            foreach (var file in _directoryToFiles[fullPath].ToArray())
+            {
+                InternalDeleteFile(file);
+            }
 
-        removed = _directoryToSubdirectories.TryRemove(fullPath, out _);
-        Debug.Assert(removed);
-
-        var parentPath = Path.GetDirectoryName(fullPath);
-        if (parentPath is not null)
-        {
-            _directoryToSubdirectories[parentPath].Remove(fullPath);
-        }
-        else
-        {
-            removed = _roots.Remove(fullPath);
+            var removed = _directoryToFiles.Remove(fullPath);
             Debug.Assert(removed);
+
+            removed = _directoryToSubdirectories.Remove(fullPath);
+            Debug.Assert(removed);
+
+            var parentPath = Path.GetDirectoryName(fullPath);
+            if (parentPath is not null)
+            {
+                _directoryToSubdirectories[parentPath].Remove(fullPath);
+            }
+            else
+            {
+                removed = _roots.Remove(fullPath);
+                Debug.Assert(removed);
+            }
         }
     }
 
     internal void InternalDeleteFile(string fullName)
     {
-        var directory = Path.GetDirectoryName(fullName);
-        Debug.Assert(directory is not null);
-        if (!InternalExistsDirectory(directory))
-            return;
-        _directoryToFiles[directory].Remove(fullName);
-        if (_files.TryRemove(fullName, out var stream))
-            stream.Dispose();
-        else
-            Debug.Fail(null);
+        lock (SyncRoot)
+        {
+            var directory = Path.GetDirectoryName(fullName);
+            Debug.Assert(directory is not null);
+            if (!InternalExistsDirectory(directory))
+                return;
+            _directoryToFiles[directory].Remove(fullName);
+            if (!_files.Remove(fullName))
+                throw new UnreachableException();
+        }
     }
 
     internal bool InternalExistsDirectory(string fullPath)
     {
-        return _directoryToSubdirectories.ContainsKey(fullPath);
+        lock (SyncRoot)
+            return _directoryToSubdirectories.ContainsKey(fullPath);
     }
 
-    internal bool InternalTryGetFile(string fullName, [NotNullWhen(true)] out MemoryFileStream? stream)
+    internal bool InternalTryGetFile(string fullName, [NotNullWhen(true)] out MemoryFileData? data)
     {
-        return _files.TryGetValue(fullName, out stream);
+        lock (SyncRoot)
+            return _files.TryGetValue(fullName, out data);
     }
 
     public bool ExistsDirectory(string? path)
@@ -157,7 +169,8 @@ public sealed class MemoryFileSystem : IVirtualFileSystem
         if (path is null)
             return false;
 
-        return _files.ContainsKey(GetFullPath(path));
+        lock (SyncRoot)
+            return _files.ContainsKey(GetFullPath(path));
     }
 }
 
@@ -180,8 +193,8 @@ public sealed class MemoryDirectoryInfo : MemoryFileSystemInfo, IVirtualDirector
     {
         _owner = owner;
         FullName = fullPath;
-        Name = Path.GetFileName(fullPath);
-        _parentPath = Path.GetDirectoryName(fullPath);
+        Name = _owner.Path.GetFileName(fullPath);
+        _parentPath = _owner.Path.GetDirectoryName(fullPath);
     }
 
     public override string Name { get; }
@@ -192,7 +205,7 @@ public sealed class MemoryDirectoryInfo : MemoryFileSystemInfo, IVirtualDirector
 
     public IVirtualDirectoryInfo? Parent => _parentPath is null ? null : _owner.GetDirectory(_parentPath);
 
-    public IVirtualDirectoryInfo Root => _owner.GetDirectory(Path.GetPathRoot(FullName)!);
+    public IVirtualDirectoryInfo? Root => _owner.Path.GetPathRoot(FullName) is string { Length: > 0 } root ? _owner.GetDirectory(root) : null;
 
     public override void Create()
     {
@@ -206,18 +219,24 @@ public sealed class MemoryDirectoryInfo : MemoryFileSystemInfo, IVirtualDirector
 
     public IEnumerable<IVirtualDirectoryInfo> EnumerateDirectories()
     {
-        if (!Exists)
-            throw new DirectoryNotFoundException();
+        lock (_owner.SyncRoot)
+        {
+            if (!Exists)
+                throw new DirectoryNotFoundException(FullName);
 
-        return _owner._directoryToSubdirectories[FullName].Select(_owner.GetDirectory);
+            return [.. _owner._directoryToSubdirectories[FullName].Select(_owner.GetDirectory)];
+        }
     }
 
     public IEnumerable<IVirtualFileInfo> EnumerateFiles()
     {
-        if (!Exists)
-            throw new DirectoryNotFoundException();
+        lock (_owner.SyncRoot)
+        {
+            if (!Exists)
+                throw new DirectoryNotFoundException(FullName);
 
-        return _owner._directoryToFiles[FullName].Select(_owner.GetFile);
+            return [.. _owner._directoryToFiles[FullName].Select(_owner.GetFile)];
+        }
     }
 }
 
@@ -229,7 +248,7 @@ public sealed class MemoryFileInfo : MemoryFileSystemInfo, IVirtualFileInfo
     {
         _owner = owner;
         FullName = fullPath;
-        Name = Path.GetFileName(fullPath);
+        Name = _owner.Path.GetFileName(fullPath);
     }
 
     public override string Name { get; }
@@ -238,7 +257,7 @@ public sealed class MemoryFileInfo : MemoryFileSystemInfo, IVirtualFileInfo
 
     public override bool Exists => _owner.ExistsFile(FullName);
 
-    public IVirtualDirectoryInfo Directory => _owner.GetDirectory(Path.GetDirectoryName(FullName)!);
+    public IVirtualDirectoryInfo Directory => _owner.GetDirectory(_owner.Path.GetDirectoryName(FullName)!);
 
     public override void Create()
     {
@@ -252,41 +271,41 @@ public sealed class MemoryFileInfo : MemoryFileSystemInfo, IVirtualFileInfo
 
     public Stream Open(FileMode mode, FileAccess access, FileShare share)
     {
-        MemoryFileStream? stream;
+        MemoryFileData? data;
         switch (mode)
         {
             case FileMode.Open:
-                if (!_owner.InternalTryGetFile(FullName, out stream))
+                if (!_owner.InternalTryGetFile(FullName, out data))
                     throw new FileNotFoundException(FullName);
                 break;
 
             case FileMode.Create or FileMode.OpenOrCreate:
-                if (!_owner.InternalTryGetFile(FullName, out stream))
-                    stream = _owner.InternalCreateFile(FullName);
+                if (!_owner.InternalTryGetFile(FullName, out data))
+                    data = _owner.InternalCreateFile(FullName);
                 break;
 
             case FileMode.CreateNew:
                 if (_owner.InternalTryGetFile(FullName, out _))
                     throw new IOException(FullName);
-                stream = _owner.InternalCreateFile(FullName);
+                data = _owner.InternalCreateFile(FullName);
                 break;
 
             case FileMode.Truncate:
-                if (!_owner.InternalTryGetFile(FullName, out stream))
+                if (!_owner.InternalTryGetFile(FullName, out data))
                     throw new FileNotFoundException(FullName);
                 break;
 
             case FileMode.Append:
                 EnsureWriteAccess();
-                if (!_owner.InternalTryGetFile(FullName, out stream))
-                    stream = _owner.InternalCreateFile(FullName);
+                if (!_owner.InternalTryGetFile(FullName, out data))
+                    data = _owner.InternalCreateFile(FullName);
                 break;
 
             default:
                 throw new ArgumentException(null, nameof(mode));
         }
 
-        if (!stream.TryAccess(access, share))
+        if (!data.TryAccess(access, share, out var stream))
             throw new IOException(FullName);
 
         switch (mode)
@@ -317,30 +336,115 @@ public sealed class MemoryFileInfo : MemoryFileSystemInfo, IVirtualFileInfo
     }
 }
 
+internal sealed class MemoryFileData
+{
+    private byte[] _data = [];
+    private readonly Lock _lock = new();
+    private readonly List<MemoryFileStream> _streams = [];
+
+    public bool TryAccess(FileAccess access, FileShare share, [NotNullWhen(true)] out MemoryFileStream? stream)
+    {
+        stream = null;
+
+        lock (_lock)
+        {
+            foreach (var existing in _streams)
+            {
+                if (access.HasFlag(FileAccess.Write))
+                {
+                    if (!existing.Share.HasFlag(FileShare.Write))
+                        return false;
+
+                    if (existing.Access.HasFlag(FileAccess.Write))
+                        return false;
+                }
+
+                if (access.HasFlag(FileAccess.Read) && !existing.Share.HasFlag(FileShare.Read))
+                    return false;
+            }
+
+            stream = new MemoryFileStream(this, access, share);
+            _streams.Add(stream);
+            return true;
+        }
+    }
+
+    public void Release(MemoryFileStream stream)
+    {
+        lock (_lock)
+            _streams.Remove(stream);
+    }
+
+    public int Read(long position, byte[] buffer, int offset, int count)
+    {
+        lock (_lock)
+        {
+            if (position >= _data.Length)
+                return 0;
+            int available = _data.Length - (int)position;
+            int toRead = Math.Min(available, count);
+            Array.Copy(_data, position, buffer, offset, toRead);
+            return toRead;
+        }
+    }
+
+    public void Write(long position, byte[] buffer, int offset, int count)
+    {
+        lock (_lock)
+        {
+            if (position + count > _data.Length)
+                Array.Resize(ref _data, (int)(position + count));
+            Array.Copy(buffer, offset, _data, position, count);
+        }
+    }
+
+    public void SetLength(long length)
+    {
+        lock (_lock)
+            Array.Resize(ref _data, (int)length);
+    }
+
+    public long Length
+    {
+        get
+        {
+            lock (_lock)
+                return _data.Length;
+        }
+    }
+}
+
 internal sealed class MemoryFileStream : Stream
 {
-    private MemoryStream? _stream;
-    private int _sharingCount;
+    private MemoryFileData? _data;
+    private long _position;
+    private readonly FileAccess _access;
+    private readonly FileShare _share;
 
-    internal MemoryStream Stream => _stream ??= new();
-    internal bool IsReadOnly { get; set; }
-    internal bool CanDelete { get; set; } = true;
-    internal FileAccess Access { get; set; }
-    internal FileShare Share { get; set; }
+    public MemoryFileStream(MemoryFileData data, FileAccess access, FileShare share)
+    {
+        _data = data;
+        _access = access;
+        _share = share;
+    }
 
-    public override bool CanRead => Access.HasFlag(FileAccess.Read);
+    public override bool CanRead => _access.HasFlag(FileAccess.Read);
 
     public override bool CanSeek => true;
 
-    public override bool CanWrite => !IsReadOnly && Access.HasFlag(FileAccess.Write);
+    public override bool CanWrite => _access.HasFlag(FileAccess.Write);
 
-    public override long Length => _stream?.Length ?? 0;
+    public override long Length => _data?.Length ?? 0;
 
     public override long Position
     {
-        get => _stream?.Position ?? 0;
-        set => Stream.Position = value;
+        get => _position;
+        set => _position = value;
     }
+
+    internal FileAccess Access => _access;
+
+    internal FileShare Share => _share;
 
     private void EnsureReadable()
     {
@@ -354,90 +458,55 @@ internal sealed class MemoryFileStream : Stream
             throw new NotSupportedException("Stream does not support writing");
     }
 
-    internal bool TryAccess(FileAccess access, FileShare share)
-    {
-        lock (this)
-        {
-            if (_sharingCount is 0)
-            {
-                Access = access;
-                Share = share;
-                _sharingCount++;
-                return true;
-            }
-
-            if (!share.HasFlag(Share))
-                return false;
-
-            // allows multiple readers or one writer (and reader)
-            if (Access.HasFlag(FileAccess.Write))
-                return false;
-
-            Debug.Assert(Access is FileAccess.Read);
-            if (access is FileAccess.Read)
-            {
-                _sharingCount++;
-                return true;
-            }
-
-            return false;
-        }
-    }
-
     public override void Flush()
     {
-        // do nothing, the same as MemoryStream
+        // do nothing
     }
 
     public override int Read(byte[] buffer, int offset, int count)
     {
         EnsureReadable();
-        return Stream.Read(buffer, offset, count);
+        ObjectDisposedException.ThrowIf(_data is null, typeof(MemoryFileStream));
+        int read = _data.Read(_position, buffer, offset, count);
+        _position += read;
+        return read;
     }
 
     public override long Seek(long offset, SeekOrigin origin)
     {
-        return Stream.Seek(offset, origin);
+        ObjectDisposedException.ThrowIf(_data is null, typeof(MemoryFileStream));
+        _position = origin switch
+        {
+            SeekOrigin.Begin => offset,
+            SeekOrigin.Current => _position + offset,
+            SeekOrigin.End => _data.Length + offset,
+            _ => throw new ArgumentException(null, nameof(origin))
+        };
+        return _position;
     }
 
     public override void SetLength(long value)
     {
         EnsureWritable();
-        Stream.SetLength(value);
+        ObjectDisposedException.ThrowIf(_data is null, typeof(MemoryFileStream));
+        _data.SetLength(value);
     }
 
     public override void Write(byte[] buffer, int offset, int count)
     {
         EnsureWritable();
-        Stream.Write(buffer, offset, count);
+        ObjectDisposedException.ThrowIf(_data is null, typeof(MemoryFileStream));
+        _data.Write(_position, buffer, offset, count);
+        _position += count;
     }
 
-    public override void Close()
+    protected override void Dispose(bool disposing)
     {
-        if (_sharingCount is 0)
-            return;
-
-        lock (this)
+        if (disposing && _data is not null)
         {
-            if (_sharingCount is 0)
-                return;
-
-            if (Access.HasFlag(FileAccess.Write))
-            {
-                Debug.Assert(_sharingCount is 1);
-                _sharingCount = 0;
-                Access = default;
-                Share = default;
-            }
-            else // Access is FileAccess.Read
-            {
-                _sharingCount--;
-                if (_sharingCount is 0)
-                {
-                    Access = default;
-                    Share = default;
-                }
-            }
+            _data.Release(this);
+            _data = null;
         }
+        base.Dispose(disposing);
     }
 }
