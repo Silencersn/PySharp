@@ -49,7 +49,7 @@ public sealed class PyObjectComparer :
 
         var eq = PyOperators.Eq(context, x, y);
         if (eq.IsError)
-            return eq.Of<PyBoolObject>();
+            return eq.ExceptionResult;
 
         return PySpecialMethods.Bool(context, eq.Value);
     }

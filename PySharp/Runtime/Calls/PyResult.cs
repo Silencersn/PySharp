@@ -28,6 +28,7 @@ public readonly partial struct PyResult
     // default(PyResult) is regarded as PyResult.FromValue(PyNoneObject.None)
     public PyObject? Value => _value ?? (IsError ? null : PyNoneObject.None);
     public PyExceptionObject? Exception => _exception;
+    public PyExceptionResult ExceptionResult => new(_exception);
 
     private PyResult(PyObject value)
     {
@@ -44,6 +45,13 @@ public readonly partial struct PyResult
     public static implicit operator PyResult(PyObject value)
     {
         return FromValue(value);
+    }
+    public static implicit operator PyResult(PyExceptionResult value)
+    {
+        if (value.Exception is null)
+            return default;
+
+        return FromException(value.Exception);
     }
 
     public PyResult<TObject> Of<TObject>() where TObject : PyObject

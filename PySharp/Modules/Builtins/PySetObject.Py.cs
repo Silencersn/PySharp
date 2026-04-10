@@ -43,7 +43,7 @@ partial class PySetObject
     public PyResult<PyObject> PyPop()
     {
         if (_set.Count is 0)
-            return PyResult.KeyError(PyStrObject.FromString("pop from an empty set")).Of<PyObject>();
+            return PyResult.KeyError(PyStrObject.FromString("pop from an empty set"));
 
         var item = _set.First();
         _set.Remove(item);
@@ -55,7 +55,7 @@ partial class PySetObject
     {
         var otherIter = PySpecialMethods.Iter(context, other);
         if (otherIter.IsError)
-            return otherIter.Of<PyBoolObject>();
+            return otherIter.ExceptionResult;
 
         var iterator = otherIter.Value;
         while (true)
@@ -65,7 +65,7 @@ partial class PySetObject
             {
                 if (item.IsStopIteration)
                     break;
-                return item.Of<PyBoolObject>();
+                return item.ExceptionResult;
             }
 
             if (_set.Contains(item.Value))
@@ -83,7 +83,7 @@ partial class PySetObject
 
         var otherResult = PyUtils.IterableToSet(context, other);
         if (otherResult.IsError)
-            return otherResult.Of<PyBoolObject>();
+            return otherResult.ExceptionResult;
 
         return PyBoolObject.FromBoolean(_set.IsSubsetOf(otherResult.Value._set));
     }
@@ -96,7 +96,7 @@ partial class PySetObject
 
         var otherResult = PyUtils.IterableToSet(context, other);
         if (otherResult.IsError)
-            return otherResult.Of<PyBoolObject>();
+            return otherResult.ExceptionResult;
 
         return PyBoolObject.FromBoolean(_set.IsSupersetOf(otherResult.Value._set));
     }
@@ -122,7 +122,7 @@ partial class PySetObject
         var newSet = PyCopy();
         var result = newSet.PyUpdate(context, others);
         if (result.IsError)
-            return result.Of<PySetObject>();
+            return result.ExceptionResult;
 
         return newSet;
     }
@@ -148,7 +148,7 @@ partial class PySetObject
         var newSet = PyCopy();
         var result = newSet.PyIntersectionUpdate(context, others);
         if (result.IsError)
-            return result.Of<PySetObject>();
+            return result.ExceptionResult;
 
         return newSet;
     }
@@ -174,7 +174,7 @@ partial class PySetObject
         var newSet = PyCopy();
         var result = newSet.PyDifferenceUpdate(context, others);
         if (result.IsError)
-            return result.Of<PySetObject>();
+            return result.ExceptionResult;
 
         return newSet;
     }
@@ -196,7 +196,7 @@ partial class PySetObject
         var newSet = PyCopy();
         var result = newSet.PySymmetricDifferenceUpdate(context, other);
         if (result.IsError)
-            return result.Of<PySetObject>();
+            return result.ExceptionResult;
 
         return newSet;
     }

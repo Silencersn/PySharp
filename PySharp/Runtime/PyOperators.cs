@@ -455,7 +455,7 @@ public static class PyOperators
     {
         var contains = PySpecialMethods.Contains(context, right, left);
         if (contains.IsError)
-            return contains.Of<PyBoolObject>();
+            return contains.ExceptionResult;
         return PySpecialMethods.Bool(context, contains.Value);
     }
     public static PyResult<PyBoolObject> NotIn(PyCallContext context, PyObject left, PyObject right)

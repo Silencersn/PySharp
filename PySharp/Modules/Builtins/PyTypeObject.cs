@@ -85,7 +85,7 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
         foreach (var baseType in bases)
         {
             if (baseType.IsSealed)
-                return PyResult.TypeError(PySR.Runtime_Inheritance_UnacceptableBaseType, baseType.Name).Of<PyTypeObject>();
+                return PyResult.TypeError(PySR.Runtime_Inheritance_UnacceptableBaseType, baseType.Name);
 
             if (baseType.LayoutType == layoutTypeOwner.LayoutType)
                 continue;
@@ -93,11 +93,11 @@ public abstract partial class PyTypeObject : PyObject, IPyObjectName
             if (baseType.LayoutType.IsSubclassOf(layoutTypeOwner.LayoutType))
                 layoutTypeOwner = baseType;
             else if (!layoutTypeOwner.LayoutType.IsAssignableFrom(baseType.LayoutType))
-                return PyResult.TypeError(PySR.Runtime_Inheritance_LayoutConflict).Of<PyTypeObject>();
+                return PyResult.TypeError(PySR.Runtime_Inheritance_LayoutConflict);
         }
 
         if (!TryCreateMROWithoutSelf(bases, out _))
-            return PyResult.TypeError(PySR.Runtime_Inheritance_CannotCreateMRO).Of<PyTypeObject>();
+            return PyResult.TypeError(PySR.Runtime_Inheritance_CannotCreateMRO);
 
         return layoutTypeOwner;
     }

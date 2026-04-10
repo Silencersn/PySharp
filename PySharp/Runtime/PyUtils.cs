@@ -9,7 +9,7 @@ internal static class PyUtils
     {
         var iterator = PySpecialMethods.Iter(context, iterable);
         if (iterator.IsError)
-            return iterator.Of<T>();
+            return iterator.ExceptionResult;
 
         return IteratorToContainer(context, iterator.Value, createContainer);
     }
@@ -26,7 +26,7 @@ internal static class PyUtils
                 if (item.IsStopIteration)
                     break;
 
-                return item.Of<T>();
+                return item.ExceptionResult;
             }
 
             list.Add(item.Value);
@@ -64,11 +64,11 @@ internal static class PyUtils
     {
         var keys = keysMethod.Call(context);
         if (keys.IsError)
-            return keys.Of<PyDictObject>();
+            return keys.ExceptionResult;
 
         var keysList = IterableToList(context, keys.Value);
         if (keysList.IsError)
-            return keysList.Of<PyDictObject>();
+            return keysList.ExceptionResult;
 
         PyDictObject dict = PyDictObject.CreateDict();
 
@@ -76,7 +76,7 @@ internal static class PyUtils
         {
             var value = PySpecialMethods.GetItem(context, mapping, key);
             if (value.IsError)
-                return value.Of<PyDictObject>();
+                return value.ExceptionResult;
 
             dict.PySetItem(key, value.Value);
         }
@@ -88,7 +88,7 @@ internal static class PyUtils
     {
         var pairs = IterableToList(context, iterable);
         if (pairs.IsError)
-            return pairs.Of<PyDictObject>();
+            return pairs.ExceptionResult;
 
         var dict = PyDictObject.CreateDict();
 
@@ -96,11 +96,11 @@ internal static class PyUtils
         {
             var pairList = IterableToList(context, pairs.Value[i]);
             if (pairList.IsError)
-                return pairList.Of<PyDictObject>();
+                return pairList.ExceptionResult;
 
             var count = pairList.Value.Count;
             if (count is not 2)
-                return PyResult.ValueError(PySR.Runtime_Dictionary_UpdateEltLengthNotMatch, i, count).Of<PyDictObject>();
+                return PyResult.ValueError(PySR.Runtime_Dictionary_UpdateEltLengthNotMatch, i, count);
 
             var key = pairList.Value[0];
             var value = pairList.Value[1];
@@ -121,6 +121,6 @@ internal static class PyUtils
         else if (keysMethod.IsAttributeError)
             return IterableToDict(context, iterableOrMapping);
         else
-            return keysMethod.Of<PyDictObject>();
+            return keysMethod.ExceptionResult;
     }
 }

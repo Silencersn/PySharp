@@ -1,5 +1,6 @@
 ﻿using PySharp.Modules.Builtins;
 using System.Diagnostics.CodeAnalysis;
+using static PySharp.Runtime.Calls.PyResult;
 
 namespace PySharp.Runtime.Calls;
 
@@ -27,6 +28,7 @@ public readonly partial struct PyResult<TObject> where TObject : PyObject
 
     public TObject? Value => _value;
     public PyExceptionObject? Exception => _exception;
+    public PyExceptionResult ExceptionResult => new(_exception);
 
     private PyResult(TObject value)
     {
@@ -44,10 +46,18 @@ public readonly partial struct PyResult<TObject> where TObject : PyObject
     {
         return FromValue(value);
     }
+    public static implicit operator PyResult<TObject>(PyExceptionResult value)
+    {
+        if (value.Exception is null)
+            return default;
+
+        return FromException(value.Exception);
+    }
     public static implicit operator PyResult(PyResult<TObject> result)
     {
         return result.IsSuccessful ? PyResult.FromValue(result.Value) : PyResult.FromException(result.Exception);
     }
+
     public PyResult<TOtherObject> Of<TOtherObject>() where TOtherObject : PyObject
     {
         if (IsError)

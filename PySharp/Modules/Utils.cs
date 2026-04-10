@@ -110,7 +110,7 @@ internal static class Utils
                     first = false;
 
                 if (!IPyObjectRecursiveRepr.TryGetRecursiveRepr(context, item, ids, out var str, out var result))
-                    return result.Of<PyStrObject>();
+                    return result.ExceptionResult;
 
                 builder.Append(str.Value);
                 itemsCount++;
@@ -145,10 +145,10 @@ internal static class Utils
                     first = false;
 
                 if (!IPyObjectRecursiveRepr.TryGetRecursiveRepr(context, pair.Key, ids, out var keyStr, out var keyResult))
-                    return keyResult.Of<PyStrObject>();
+                    return keyResult.ExceptionResult;
 
                 if (!IPyObjectRecursiveRepr.TryGetRecursiveRepr(context, pair.Value, ids, out var valueStr, out var valueResult))
-                    return valueResult.Of<PyStrObject>();
+                    return valueResult.ExceptionResult;
 
                 builder
                     .Append(keyStr.Value)

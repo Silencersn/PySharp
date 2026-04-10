@@ -8,10 +8,10 @@ public static class PySpecialMethods
     private static PyResult<TObject> ValidateResultOf<TObject>(PyResult result, Func<PyObject, string> getErrMsg) where TObject : PyObject
     {
         if (result.IsError)
-            return result.Of<TObject>();
+            return result.ExceptionResult;
 
         if (result.Value is not TObject objOfT)
-            return PyResult.TypeError(getErrMsg(result.Value)).Of<TObject>();
+            return PyResult.TypeError(getErrMsg(result.Value));
 
         return objOfT;
     }
@@ -51,7 +51,7 @@ public static class PySpecialMethods
         {
             var result = Len(context, obj);
             if (result.IsError)
-                return result.Of<PyBoolObject>();
+                return result.ExceptionResult;
 
             return PyBoolObject.FromBoolean(result.Value.Value > 0);
         }
@@ -68,7 +68,7 @@ public static class PySpecialMethods
     {
         var func = obj.PyType.Slots.Hash;
         if (func is null)
-            return PyResult.TypeError(PySR.Runtime_Object_Unhashable, obj.PyType.FullName).Of<PyIntObject>();
+            return PyResult.TypeError(PySR.Runtime_Object_Unhashable, obj.PyType.FullName);
         var hash = ValidateResultOf<PyIntObject>(func(context, obj), MessageCreator);
         if (hash.IsError || hash.Value.Value != -1)
             return hash;
@@ -89,7 +89,7 @@ public static class PySpecialMethods
         if (func is not null)
             return ValidateResultOf<PyIntObject>(func(context, obj), MessageCreator);
 
-        return PyResult.TypeError(PySR.Runtime_Number_Int_CannotInterpretedAsInt, obj.PyType.FullName).Of<PyIntObject>();
+        return PyResult.TypeError(PySR.Runtime_Number_Int_CannotInterpretedAsInt, obj.PyType.FullName);
 
         static string MessageCreator(PyObject o)
         {
@@ -103,7 +103,7 @@ public static class PySpecialMethods
         if (func is not null)
             return ValidateResultOf<PyFloatObject>(func(context, obj), MessageCreator);
 
-        return PyResult.TypeError(PySR.Runtime_Number_Float_WrongArg, obj.PyType.FullName).Of<PyFloatObject>();
+        return PyResult.TypeError(PySR.Runtime_Number_Float_WrongArg, obj.PyType.FullName);
 
         static string MessageCreator(PyObject o)
         {
@@ -123,10 +123,10 @@ public static class PySpecialMethods
             if (result.Value.Value >= 0)
                 return result;
 
-            return PyResult.ValueError(PySR.Runtime_Sequence_NegativeLen).Of<PyIntObject>();
+            return PyResult.ValueError(PySR.Runtime_Sequence_NegativeLen);
         }
 
-        return PyResult.TypeError(PySR.Runtime_Sequence_NoLen, obj.PyType.FullName).Of<PyIntObject>();
+        return PyResult.TypeError(PySR.Runtime_Sequence_NoLen, obj.PyType.FullName);
 
         static string MessageCreator(PyObject o)
         {

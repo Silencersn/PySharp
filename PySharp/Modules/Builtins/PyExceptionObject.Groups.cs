@@ -119,7 +119,7 @@ public sealed partial class PyBaseExceptionGroupObjectType : PyExceptionType<PyB
             {
                 var result = conditionObj.Call(context, [exc]);
                 if (result.IsError)
-                    return result.Of<PyBoolObject>();
+                    return result.ExceptionResult;
 
                 return PySpecialMethods.Bool(context, result.Value);
             };
@@ -202,10 +202,10 @@ public sealed partial class PyBaseExceptionGroupObjectType : PyExceptionType<PyB
                 var list = PyListObject.CreateList(excs);
                 var result = exceptionGroup.CallMethod(context, "derive", [list]);
                 if (result.IsError)
-                    return result.Of<PyExceptionObject>();
+                    return result.ExceptionResult;
 
                 if (result.Value is not PyExceptionObject exc || !exc.IsGroup || !Shared.IsInstance(result.Value))
-                    return PyResult.TypeError(PySR.Runtime_ExceptionGroup_DeriveReturnNonGroup).Of<PyExceptionObject>();
+                    return PyResult.TypeError(PySR.Runtime_ExceptionGroup_DeriveReturnNonGroup);
 
                 return exc;
             }
