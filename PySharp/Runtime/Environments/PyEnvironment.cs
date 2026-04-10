@@ -65,3 +65,17 @@ public sealed partial class PyEnvironment
         return new PyEnvironment(PyEnvironmentHost.CreateConsole());
     }
 }
+
+public sealed class PyExitEventArgs : EventArgs
+{
+    public int ExitCode { get; }
+    public PyExceptionObject? Exception { get; }
+
+    internal PyExitEventArgs(int exitCode, PyExceptionObject? exception = null)
+    {
+        ExitCode = exitCode;
+        Exception = exception;
+    }
+}
+
+public delegate void PyExitEventHandler(PyExitEventArgs args);

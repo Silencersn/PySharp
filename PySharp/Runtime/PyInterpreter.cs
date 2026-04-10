@@ -41,6 +41,30 @@ public sealed class PyInterpreter : IDisposable
         _ = PyCore.Eval(context).PyUnwrap(context);
     }
 
+    internal static PyModuleObject InternalExecuteNewModule(PyCallContext context, PyCodeObject code)
+    {
+        var module = new PyModuleObject(code.Name);
+        InternalExecuteToModule(context, code, module);
+        return module;
+    }
+    internal static void InternalExecuteToModule(PyCallContext context, PyCodeObject code, PyModuleObject module)
+    {
+        // module will be reloaded
+        var dict = context.CurrentInternalFrame.Variables.Globals.Dict;
+        if (module._pyAttributes is not null)
+        {
+            foreach (var pair in module._pyAttributes)
+                dict[pair.Key] = pair.Value;
+        }
+        module._pyAttributes = context.CurrentInternalFrame.Variables.Globals.Dict;
+
+        context.CurrentInternalFrame.CodeObject = code;
+        _ = PyCore.Eval(context).PyUnwrap(context);
+
+        Debug.Assert(ReferenceEquals(module.PyAttributes, context.CurrentInternalFrame.Variables.Globals.Dict));
+        module.PyAttributes[PySpecialNames.Name] = PyStrObject.FromString(module.Name);
+    }
+
     public void Execute(string code, string sourceName)
     {
         ArgumentNullException.ThrowIfNull(code);
@@ -52,7 +76,7 @@ public sealed class PyInterpreter : IDisposable
         }, alwaysThrow: true);
     }
 
-    public PyModuleObject GetModule(string moduleName)
+    public PyModuleObject MakeModule(string moduleName)
     {
         ArgumentNullException.ThrowIfNull(moduleName);
 
@@ -122,14 +146,15 @@ public sealed class PyInterpreter : IDisposable
             .Build();
 
         using var interpreter = Create(environment);
-        interpreter.Execute(code, Path.GetFullPath(filename));
-        return interpreter.GetModule(moduleName);
+        var sourceName = Path.GetFullPath(filename);
+        return RunCodeWithContext(interpreter.MainContext, code, moduleName, sourceName);
     }
 
-    [return: NotNullIfNotNull(nameof(moduleName))]
     public static PyModuleObject? RunCode(string code, string? moduleName = null, string? sourceName = null)
     {
         ArgumentNullException.ThrowIfNull(code);
+        moduleName ??= "<module>";
+        sourceName ??= "<string>";
 
         var environment = PyEnvironment
             .CreateBuilder()
@@ -137,20 +162,19 @@ public sealed class PyInterpreter : IDisposable
             .Build();
 
         using var interpreter = Create(environment);
-        interpreter.Execute(code, sourceName ?? "<string>");
-        return moduleName is not null ? interpreter.GetModule(moduleName) : null;
+        return RunCodeWithContext(interpreter.MainContext, code, moduleName, sourceName);
     }
 
     internal static PyModuleObject RunCodeWithContext(PyCallContext context, string code, string moduleName, string sourceName)
     {
         var codeObj = Compiler.CompileExec(context, code, sourceName, moduleName);
-        return PyVirtualMachine.Execute(context, codeObj);
+        return InternalExecuteNewModule(context, codeObj);
     }
 
     internal static void RunCodeWithContext(PyCallContext context, string code, PyModuleObject module, string sourceName)
     {
         var codeObj = Compiler.CompileExec(context, code, sourceName, module.Name);
-        PyVirtualMachine.ExecuteToObject(context, codeObj, module);
+        InternalExecuteToModule(context, codeObj, module);
     }
 
     public static void RunRepl()
