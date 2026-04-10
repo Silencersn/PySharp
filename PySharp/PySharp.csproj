@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Authors>Silencersn</Authors>
-    <Version>0.30.0</Version>
+    <Version>0.30.1.2</Version>
     <Copyright>Copyright © 2025-2026 Silencersn. All rights reserved.</Copyright>
   </PropertyGroup>
 
@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\PySharp.SourceGeneration\PySharp.SourceGeneration.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <None Include="..\PySharp.SourceGeneration\bin\$(Configuration)\netstandard2.0\PySharp.SourceGeneration.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
   </ItemGroup>
 
   <ItemGroup>
