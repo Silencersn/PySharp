@@ -2,7 +2,7 @@ namespace PySharp.Modules.Builtins;
 
 public class PyBuiltinsModuleObject : PyModuleObject
 {
-    public override string? ReprPrompt => "(built-in)";
+    public override string? Origin => "built-in";
 
     public PyBuiltinsModuleObject() : base("builtins")
     {

@@ -6,7 +6,7 @@ namespace PySharp.Modules.Site;
 
 public class PySiteModuleObject : PyModuleObject
 {
-    public override string? ReprPrompt => "(frozen)";
+    public override string? Origin => "built-in";
 
     public PySiteModuleObject() : base("site")
     {

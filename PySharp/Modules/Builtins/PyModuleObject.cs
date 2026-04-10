@@ -1,16 +1,18 @@
+using PySharp.Compilation.Bytecodes;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Environments;
 using PySharp.Runtime.PyAttributes;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.InteropServices.Marshalling;
 
 namespace PySharp.Modules.Builtins;
 
 public class PyModuleObject : PyObject, IPyObjectName
 {
     public string Name { get; }
-    public virtual string? ReprPrompt => null;
+    public virtual string? Origin => null;
     public override PyTypeObject DefaultPyType => PyModuleObjectType.Shared;
 
     public PyModuleObject(string name)
@@ -47,8 +49,8 @@ public sealed partial class PyModuleObjectType : PyTypeObject<PyModuleObject>
 
     protected override PyResult Repr(PyCallContext context, PyModuleObject self)
     {
-        if (self.ReprPrompt is not null)
-            return PyStrObject.FromString($"<module '{self.Name}' {self.ReprPrompt}>");
+        if (self.Origin is not null)
+            return PyStrObject.FromString($"<module '{self.Name}' ({self.Origin})>");
         return PyStrObject.FromString($"<module '{self.Name}'>");
     }
 
@@ -58,16 +60,21 @@ public sealed partial class PyModuleObjectType : PyTypeObject<PyModuleObject>
     }
 }
 
-public abstract class PyCodeBasedModuleObject : PyModuleObject
+public abstract class PyFrozenModuleObject : PyModuleObject
 {
-    protected PyCodeBasedModuleObject(string name) : base(name)
+    public sealed override string? Origin => "frozen";
+
+    protected PyFrozenModuleObject(string name) : base(name)
     {
     }
 
     public abstract string Code { get; }
 
+    private PyCodeObject? CodeObject;
+
     public override void OnImport(PyCallContext context, PyEnvironment environment)
     {
-        PyInterpreter.RunCodeWithContext(context, Code, this, $"{Name}.py");
+        CodeObject ??= Compiler.CompileExec(context, Code, $"{Name}.py", Name);
+        PyInterpreter.InternalExecuteToModule(context, CodeObject, this);
     }
 }

@@ -2,7 +2,7 @@ using PySharp.Modules.Builtins;
 
 namespace PySharp.Modules.This;
 
-public class PyThisModuleObject : PyCodeBasedModuleObject
+public class PyThisModuleObject : PyFrozenModuleObject
 {
     public PyThisModuleObject() : base("this")
     {
