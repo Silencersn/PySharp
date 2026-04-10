@@ -106,40 +106,43 @@ public class PyTypeGenerator : IIncrementalGenerator
                                 .ExitBlock()
                                 .AppendLine($"public static PyTypeObject Shared {{ get; }} = new {pyType.Name}();");
                         })
-                        .AppendLine("protected override void FillSlots()")
-                        .EnterBlock()
-                            .ForEach(pyType.Slots, static (builder, slot) =>
-                            {
-                                if (slot is "New")
-                                    builder.AppendLine("FillNewSlot();");
-                                else
-                                    builder.AppendLine($"FillSlot(PySpecialNames.{slot}, ref Slots.{slot}, {slot});");
-                            })
-                        .ExitBlock()
+                        .If(pyType.Slots.Count > 0, builder => builder
+                            .AppendLine("protected override void FillSlots()")
+                            .EnterBlock()
+                                .ForEach(pyType.Slots, static (builder, slot) =>
+                                {
+                                    if (slot is "New")
+                                        builder.AppendLine("FillNewSlot();");
+                                    else
+                                        builder.AppendLine($"FillSlot(PySpecialNames.{slot}, ref Slots.{slot}, {slot});");
+                                })
+                            .ExitBlock())
 
-                        .AppendLine("protected override void RegisterMethods()")
-                        .EnterBlock()
-                            .ForEach(pyType.Methods.GroupBy(static info => info.PyNameLiteral), static (builder, impls) =>
-                            {
-                                builder.AppendLine($"AppendMethodDescriptor({impls.Key}, {string.Join(", ", impls.OrderBy(static info => info.Order).Select(static info => info.Name))});");
-                            })
-                            .ForEach(pyType.ClassMethods.GroupBy(static info => info.PyNameLiteral), static (builder, impls) =>
-                            {
-                                builder.AppendLine($"AppendClassMethod({impls.Key}, {string.Join(", ", impls.OrderBy(static info => info.Order).Select(static info => info.Name))});");
-                            })
-                            .ForEach(pyType.StaticMethods.GroupBy(static info => info.PyNameLiteral), static (builder, impls) =>
-                            {
-                                builder.AppendLine($"AppendStaticMethod({impls.Key}, {string.Join(", ", impls.OrderBy(static info => info.Order).Select(static info => info.Name))});");
-                            })
-                        .ExitBlock()
+                        .If(pyType.Methods.Count > 0 || pyType.ClassMethods.Count > 0 || pyType.StaticMethods.Count > 0, builder => builder
+                            .AppendLine("protected override void RegisterMethods()")
+                            .EnterBlock()
+                                .ForEach(pyType.Methods.GroupBy(static info => info.PyNameLiteral), static (builder, impls) =>
+                                {
+                                    builder.AppendLine($"AppendMethodDescriptor({impls.Key}, {string.Join(", ", impls.OrderBy(static info => info.Order).Select(static info => info.Name))});");
+                                })
+                                .ForEach(pyType.ClassMethods.GroupBy(static info => info.PyNameLiteral), static (builder, impls) =>
+                                {
+                                    builder.AppendLine($"AppendClassMethod({impls.Key}, {string.Join(", ", impls.OrderBy(static info => info.Order).Select(static info => info.Name))});");
+                                })
+                                .ForEach(pyType.StaticMethods.GroupBy(static info => info.PyNameLiteral), static (builder, impls) =>
+                                {
+                                    builder.AppendLine($"AppendStaticMethod({impls.Key}, {string.Join(", ", impls.OrderBy(static info => info.Order).Select(static info => info.Name))});");
+                                })
+                            .ExitBlock())
 
-                        .AppendLine("protected override void RegisterProperties()")
-                        .EnterBlock()
-                            .ForEach(pyType.Properties, static (builder, pair) =>
-                            {
-                                builder.AppendLine($"AppendMemberDescriptor({pair.Key}, {pair.Value.Getter ?? "null"}, {pair.Value.Setter ?? "null"}, {pair.Value.Deleter ?? "null"});");
-                            })
-                        .ExitBlock()
+                        .If(pyType.Properties.Count > 0, builder => builder
+                            .AppendLine("protected override void RegisterProperties()")
+                            .EnterBlock()
+                                .ForEach(pyType.Properties, static (builder, pair) =>
+                                {
+                                    builder.AppendLine($"AppendMemberDescriptor({pair.Key}, {pair.Value.Getter ?? "null"}, {pair.Value.Setter ?? "null"}, {pair.Value.Deleter ?? "null"});");
+                                })
+                            .ExitBlock())
 
                     .ExitBlock()
                 .ExitBlock();
