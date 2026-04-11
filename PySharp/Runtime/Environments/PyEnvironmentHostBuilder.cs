@@ -57,6 +57,12 @@ internal sealed class PyEnvironmentHostBuilder : IPyEnvironmentHostBuilder
         return this;
     }
 
+    public IPyEnvironmentHostBuilder ClearModuleProviders()
+    {
+        _moduleProviders.Clear();
+        return this;
+    }
+
     public IPyEnvironmentHostBuilder AddModuleProvider(PyModuleProvider provider)
     {
         _moduleProviders.Add(provider);

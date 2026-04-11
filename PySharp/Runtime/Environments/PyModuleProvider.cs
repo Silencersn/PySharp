@@ -1,6 +1,7 @@
 ﻿using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
 using System;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Security.AccessControl;
@@ -11,7 +12,38 @@ namespace PySharp.Runtime.Environments;
 
 public abstract class PyModuleProvider
 {
+    public static PyModuleProvider Builtin => BuiltinModuleProvider.Shared;
+    public static PyModuleProvider Path => PathProvider.Shared;
+
     public abstract bool TryGetModule(PyCallContext context, string fullName, IReadOnlyList<string>? path, [NotNullWhen(true)] out PyModuleObject? module);
+
+    public static PyModuleProvider Create(IDictionary<string, Func<PyModuleObject>> mapping)
+    {
+        return new MappingModuleProvider(mapping);
+    }
+}
+
+internal sealed class MappingModuleProvider : PyModuleProvider
+{
+    private readonly FrozenDictionary<string, Func<PyModuleObject>> _mapping;
+
+    public MappingModuleProvider(IDictionary<string, Func<PyModuleObject>> mapping)
+    {
+        _mapping = mapping.ToFrozenDictionary();
+    }
+
+    public override bool TryGetModule(PyCallContext context, string fullName, IReadOnlyList<string>? path, [NotNullWhen(true)] out PyModuleObject? module)
+    {
+        if (_mapping.TryGetValue(fullName, out var factory))
+        {
+            module = factory();
+            module.OnImport(context, context.PyEnvironment);
+            return true;
+        }
+
+        module = null;
+        return false;
+    }
 }
 
 internal sealed class BuiltinModuleProvider : PyModuleProvider
