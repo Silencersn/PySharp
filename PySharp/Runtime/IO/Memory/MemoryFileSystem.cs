@@ -23,6 +23,8 @@ public sealed class MemoryFileSystem : IVirtualFileSystem
         }
     }
 
+    public PathHelper PathHelper => Path;
+
     public MemoryFileSystem(string currentDirectory, PathHelper? pathHelper = null)
     {
         Path = pathHelper ?? PathHelper.Default;

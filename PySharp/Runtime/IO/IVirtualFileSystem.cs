@@ -5,6 +5,7 @@ namespace PySharp.Runtime.IO;
 public interface IVirtualFileSystem
 {
     string CurrentDirectory { get; }
+    PathHelper PathHelper { get; }
 
     IVirtualDirectoryInfo GetDirectory(string path);
     IVirtualFileInfo GetFile(string fileName);
@@ -30,5 +31,8 @@ public interface IVirtualFileSystem
         writer.Write(contents);
     }
 
-    string GetFullPath(string path);
+    string GetFullPath(string path)
+    {
+        return PathHelper.GetFullPath(path, CurrentDirectory);
+    }
 }

@@ -5,6 +5,7 @@ public sealed class PhysicalFileSystem : IVirtualFileSystem
     public static PhysicalFileSystem Shared { get; } = new PhysicalFileSystem();
 
     public string CurrentDirectory => Environment.CurrentDirectory;
+    public PathHelper PathHelper => PathHelper.Default;
 
     private PhysicalFileSystem()
     {

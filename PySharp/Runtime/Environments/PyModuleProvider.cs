@@ -67,14 +67,15 @@ internal sealed class PathProvider : PyModuleProvider
         path ??= context.PyEnvironment.Host.Paths;
         var name = fullName.Split('.')[^1];
         var fileSystem = context.PyEnvironment.Host.FileSystem;
+        var pathHelper = fileSystem.PathHelper;
 
         foreach (var p in path)
         {
-            var dir = Path.Combine(p, name);
+            var dir = pathHelper.Combine(p, name);
             if (fileSystem.ExistsDirectory(dir))
             {
                 var package = PyModuleObject.CreatePackage(fullName, [dir]);
-                var initFilename = Path.Combine(dir, "__init__.py");
+                var initFilename = pathHelper.Combine(dir, "__init__.py");
                 if (fileSystem.ExistsFile(initFilename))
                 {
                     var initCode = fileSystem.ReadAllText(initFilename);

@@ -8,9 +8,14 @@ public abstract class PathHelper
     public abstract string GetFileName(string path);
     public abstract string GetFullPath(string path, string basePath);
     public abstract string? GetPathRoot(string path);
+    public abstract string Combine(params ReadOnlySpan<string> paths);
 
     private sealed class DefaultPathHelper : PathHelper
     {
+        public override string Combine(params ReadOnlySpan<string> paths)
+        {
+            return Path.Combine(paths);
+        }
         public override string? GetDirectoryName(string path)
         {
             return Path.GetDirectoryName(path);
