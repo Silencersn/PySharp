@@ -137,17 +137,17 @@ public sealed class PyInterpreter : IDisposable
         var moduleName = Path.GetFileNameWithoutExtension(filename);
         var host = PyEnvironmentHost.CreateConsole(usingPhysicalFileSystem: true);
 
-        host.Paths.Add(Path.GetDirectoryName(Path.GetFullPath(filename))!);
-        host.Args.Add(filename);
+        var fullPath = Path.GetFullPath(filename);
+        var scriptDirectory = Path.GetDirectoryName(fullPath)!;
 
         var environment = PyEnvironment
-            .CreateBuilder()
-            .UseHost(host)
+            .CreateBuilder(host)
+            .AddPath(scriptDirectory)
+            .AddArg(filename)
             .Build();
 
         using var interpreter = Create(environment);
-        var sourceName = Path.GetFullPath(filename);
-        return RunCodeWithContext(interpreter.MainContext, code, moduleName, sourceName);
+        return RunCodeWithContext(interpreter.MainContext, code, moduleName, fullPath);
     }
 
     public static PyModuleObject? RunCode(string code, string? moduleName = null, string? sourceName = null)
@@ -157,8 +157,7 @@ public sealed class PyInterpreter : IDisposable
         sourceName ??= "<string>";
 
         var environment = PyEnvironment
-            .CreateBuilder()
-            .UseHost(PyEnvironmentHost.CreateConsole())
+            .CreateBuilder(PyEnvironmentHost.CreateConsole())
             .Build();
 
         using var interpreter = Create(environment);
@@ -180,8 +179,8 @@ public sealed class PyInterpreter : IDisposable
     public static void RunRepl()
     {
         var environment = PyEnvironment
-            .CreateBuilder()
-            .UseHost(PyEnvironmentHost.CreateRepl())
+            .CreateBuilder(PyEnvironmentHost.CreateRepl())
+            .SetInteractive(true)
             .Initialization.SyncExit()
             .Build();
 

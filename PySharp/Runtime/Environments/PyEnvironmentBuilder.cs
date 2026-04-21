@@ -1,29 +1,41 @@
-﻿using PySharp.Runtime.IO;
-using PySharp.Runtime.IO.Memory;
-using PySharp.Runtime.IO.Physical;
-
-namespace PySharp.Runtime.Environments;
+﻿namespace PySharp.Runtime.Environments;
 
 internal sealed class PyEnvironmentBuilder :
     IPyEnvironmentBuilder,
     IPyEnvironmentInitializationBuilder
 {
-    private PyEnvironmentHost? _host;
+    private readonly PyEnvironmentHost _host;
+    private bool _isInteractive;
+    private readonly List<string> _paths = [];
+    private readonly List<string> _args = [];
 
     private bool _syncExit;
     private bool _importSite;
 
-    internal PyEnvironmentBuilder()
+    internal PyEnvironmentBuilder(PyEnvironmentHost host)
     {
         _syncExit = false;
         _importSite = true;
+        _host = host;
     }
 
     public IPyEnvironmentInitializationBuilder Initialization => this;
 
-    public IPyEnvironmentBuilder UseHost(PyEnvironmentHost host)
+    public IPyEnvironmentBuilder SetInteractive(bool isInteractive)
     {
-        _host = host;
+        _isInteractive = isInteractive;
+        return this;
+    }
+
+    public IPyEnvironmentBuilder AddPath(string path)
+    {
+        _paths.Add(path);
+        return this;
+    }
+
+    public IPyEnvironmentBuilder AddArg(string arg)
+    {
+        _args.Add(arg);
         return this;
     }
 
@@ -31,7 +43,7 @@ internal sealed class PyEnvironmentBuilder :
     {
         var host = _host ?? PyEnvironmentHost.CreateNull();
 
-        var environment = new PyEnvironment(host);
+        var environment = new PyEnvironment(host, _isInteractive, _paths, _args);
 
         var options = new PyEnvironmentOptions()
         {
@@ -61,7 +73,9 @@ internal sealed class PyEnvironmentBuilder :
 
 public interface IPyEnvironmentBuilder
 {
-    IPyEnvironmentBuilder UseHost(PyEnvironmentHost host);
+    IPyEnvironmentBuilder SetInteractive(bool isInteractive);
+    IPyEnvironmentBuilder AddPath(string path);
+    IPyEnvironmentBuilder AddArg(string arg);
     IPyEnvironmentInitializationBuilder Initialization { get; }
     PyEnvironment Build();
 }

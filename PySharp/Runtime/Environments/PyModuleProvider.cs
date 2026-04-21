@@ -64,7 +64,7 @@ internal sealed class PathProvider : PyModuleProvider
 
     public override bool TryGetModule(PyCallContext context, string fullName, IReadOnlyList<string>? path, [NotNullWhen(true)] out PyModuleObject? module)
     {
-        path ??= context.PyEnvironment.Host.Paths;
+        path ??= context.PyEnvironment.Paths;
         var name = fullName.Split('.')[^1];
         var fileSystem = context.PyEnvironment.Host.FileSystem;
         var pathHelper = fileSystem.PathHelper;

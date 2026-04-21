@@ -6,18 +6,11 @@ namespace PySharp.Runtime.Environments;
 
 public abstract class PyEnvironmentHost
 {
-    public abstract TextReader In { get; }
-    public abstract TextWriter Out { get; }
-    public abstract TextWriter Error { get; }
+    public abstract TextReader AllocateStdIn();
+    public abstract TextWriter AllocateStdOut();
+    public abstract TextWriter AllocateStdErr();
 
     public abstract IVirtualFileSystem FileSystem { get; }
-
-    public abstract bool IsInteractive { get; }
-
-    public abstract List<string> Paths { get; }
-    public abstract List<string> Args { get; }
-
-    public abstract List<PyModuleProvider> ModuleProviders { get; }
 
     public static PyEnvironmentHost CreateNull()
     {
@@ -41,49 +34,33 @@ public abstract class PyEnvironmentHost
 
     private sealed class NullPyEnvironmentHost : PyEnvironmentHost
     {
-        public override TextReader In => TextReader.Null;
-        public override TextWriter Out => TextWriter.Null;
-        public override TextWriter Error => TextWriter.Null;
+        public override TextReader AllocateStdIn() => TextReader.Null;
+        public override TextWriter AllocateStdOut() => TextWriter.Null;
+        public override TextWriter AllocateStdErr() => TextWriter.Null;
         public override IVirtualFileSystem FileSystem { get; } = MemoryFileSystem.CreateBuilder().Build();
-        public override bool IsInteractive => true;
-        public override List<string> Paths { get; } = [];
-        public override List<string> Args { get; } = [];
-        public override List<PyModuleProvider> ModuleProviders { get; } = [BuiltinModuleProvider.Shared, PathProvider.Shared];
     }
 
     private sealed class ConsolePyEnvironmentHost : PyEnvironmentHost
     {
-        public override TextReader In => Console.In;
-        public override TextWriter Out => Console.Out;
-        public override TextWriter Error => Console.Error;
+        public override TextReader AllocateStdIn() => Console.In;
+        public override TextWriter AllocateStdOut() => Console.Out;
+        public override TextWriter AllocateStdErr() => Console.Error;
         public override IVirtualFileSystem FileSystem { get; } = MemoryFileSystem.CreateBuilder().Build();
-        public override bool IsInteractive => false;
-        public override List<string> Paths { get; } = [];
-        public override List<string> Args { get; } = [];
-        public override List<PyModuleProvider> ModuleProviders { get; } = [BuiltinModuleProvider.Shared, PathProvider.Shared];
     }
 
     private sealed class PhysicalConsolePyEnvironmentHost : PyEnvironmentHost
     {
-        public override TextReader In => Console.In;
-        public override TextWriter Out => Console.Out;
-        public override TextWriter Error => Console.Error;
+        public override TextReader AllocateStdIn() => Console.In;
+        public override TextWriter AllocateStdOut() => Console.Out;
+        public override TextWriter AllocateStdErr() => Console.Error;
         public override IVirtualFileSystem FileSystem { get; } = PhysicalFileSystem.Shared;
-        public override bool IsInteractive => false;
-        public override List<string> Paths { get; } = [];
-        public override List<string> Args { get; } = [];
-        public override List<PyModuleProvider> ModuleProviders { get; } = [BuiltinModuleProvider.Shared, PathProvider.Shared];
     }
 
     private sealed class ReplPyEnvironmentHost : PyEnvironmentHost
     {
-        public override TextReader In => Console.In;
-        public override TextWriter Out => Console.Out;
-        public override TextWriter Error => Console.Error;
+        public override TextReader AllocateStdIn() => Console.In;
+        public override TextWriter AllocateStdOut() => Console.Out;
+        public override TextWriter AllocateStdErr() => Console.Error;
         public override IVirtualFileSystem FileSystem { get; } = MemoryFileSystem.CreateBuilder().Build();
-        public override bool IsInteractive => true;
-        public override List<string> Paths { get; } = [];
-        public override List<string> Args { get; } = [];
-        public override List<PyModuleProvider> ModuleProviders { get; } = [BuiltinModuleProvider.Shared, PathProvider.Shared];
     }
 }

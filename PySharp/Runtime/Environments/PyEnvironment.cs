@@ -7,28 +7,48 @@ namespace PySharp.Runtime.Environments;
 
 public sealed partial class PyEnvironment
 {
+    private readonly TextReader _in;
+    private readonly TextWriter _out;
+    private readonly TextWriter _error;
+    private readonly bool _isInteractive;
+    private readonly List<string> _paths;
+    private readonly List<string> _args;
+
     static PyEnvironment()
     {
     }
 
-    internal PyEnvironment(PyEnvironmentHost host, int optimizationLevel = 0)
+    internal PyEnvironment(
+        PyEnvironmentHost host,
+        bool isInteractive = false,
+        IEnumerable<string>? paths = null,
+        IEnumerable<string>? args = null,
+        int optimizationLevel = 0)
     {
         Host = host;
+        _in = host.AllocateStdIn();
+        _out = host.AllocateStdOut();
+        _error = host.AllocateStdErr();
+        _isInteractive = isInteractive;
+        _paths = paths is null ? [] : [.. paths];
+        _args = args is null ? [] : [.. args];
         OptimizationLevel = optimizationLevel;
+        ModuleProviders = [BuiltinModuleProvider.Shared, PathProvider.Shared];
     }
 
     public PyEnvironmentHost Host { get; }
 
-    internal TextReader In => Host.In;
-    internal TextWriter Out => Host.Out;
-    internal TextWriter Error => Host.Error;
+    internal TextReader In => _in;
+    internal TextWriter Out => _out;
+    internal TextWriter Error => _error;
     internal Dictionary<string, PyModuleObject?> Modules { get; } = [];
     internal ConcurrentSet<Thread> Threads { get; } = [];
-    internal List<string> Paths => Host.Paths;
-    internal List<string> Args => Host.Args;
+    internal List<string> Paths => _paths;
+    internal List<string> Args => _args;
+    internal List<PyModuleProvider> ModuleProviders { get; }
     internal int ExitCode { get; set; }
     internal event PyExitEventHandler? Exit;
-    internal bool IsInteractive => Host.IsInteractive;
+    internal bool IsInteractive => _isInteractive;
     internal IVirtualFileSystem FileSystem => Host.FileSystem;
     internal int OptimizationLevel { get; }
 
@@ -50,14 +70,16 @@ public sealed partial class PyEnvironment
             thread.Join();
     }
 
-    public static IPyEnvironmentBuilder CreateBuilder()
+    public static IPyEnvironmentBuilder CreateBuilder(PyEnvironmentHost host)
     {
-        return new PyEnvironmentBuilder();
+        ArgumentNullException.ThrowIfNull(host);
+
+        return new PyEnvironmentBuilder(host);
     }
 
     public static PyEnvironment CreateNull()
     {
-        return new PyEnvironment(PyEnvironmentHost.CreateNull());
+        return new PyEnvironment(PyEnvironmentHost.CreateNull(), isInteractive: true);
     }
 
     public static PyEnvironment CreateConsole()

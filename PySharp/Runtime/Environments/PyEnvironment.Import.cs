@@ -74,7 +74,7 @@ partial class PyEnvironment
 
     internal bool InternalTryLoadRootModule(PyCallContext context, string name, [NotNullWhen(true)] out PyModuleObject? module)
     {
-        return InternalTryLoadModule(context, Host.Paths, name, out module);
+        return InternalTryLoadModule(context, Paths, name, out module);
     }
 
     internal bool InternalTryLoadModule(PyCallContext context, IReadOnlyList<string> paths, string qualifiedName, [NotNullWhen(true)] out PyModuleObject? module)
@@ -89,7 +89,7 @@ partial class PyEnvironment
         var frame = PyInternalFrame.CreateModuleFrame(context, isRoot: false, qualifiedName);
         using var withFrame = context.WithFrame(ref frame);
 
-        foreach (var provider in Host.ModuleProviders)
+        foreach (var provider in ModuleProviders)
         {
             if (!provider.TryGetModule(context, qualifiedName, paths, out module))
                 continue;

@@ -10,10 +10,6 @@ internal sealed class PyEnvironmentHostBuilder : IPyEnvironmentHostBuilder
     private TextWriter _out = TextWriter.Null;
     private TextWriter _error = TextWriter.Null;
     private IVirtualFileSystem? _fileSystem;
-    private bool _isInteractive;
-    private readonly List<string> _paths = [];
-    private readonly List<string> _args = [];
-    private readonly List<PyModuleProvider> _moduleProviders = [BuiltinModuleProvider.Shared, PathProvider.Shared];
 
     public IPyEnvironmentHostBuilder UseIn(TextReader reader)
     {
@@ -39,67 +35,25 @@ internal sealed class PyEnvironmentHostBuilder : IPyEnvironmentHostBuilder
         return this;
     }
 
-    public IPyEnvironmentHostBuilder SetInteractive(bool isInteractive)
-    {
-        _isInteractive = isInteractive;
-        return this;
-    }
-
-    public IPyEnvironmentHostBuilder AddPath(string path)
-    {
-        _paths.Add(path);
-        return this;
-    }
-
-    public IPyEnvironmentHostBuilder AddArg(string arg)
-    {
-        _args.Add(arg);
-        return this;
-    }
-
-    public IPyEnvironmentHostBuilder ClearModuleProviders()
-    {
-        _moduleProviders.Clear();
-        return this;
-    }
-
-    public IPyEnvironmentHostBuilder AddModuleProvider(PyModuleProvider provider)
-    {
-        _moduleProviders.Add(provider);
-        return this;
-    }
-
     public PyEnvironmentHost Build()
     {
         return new ConfigurablePyEnvironmentHost(
             _in,
             _out,
             _error,
-            _fileSystem ?? MemoryFileSystem.CreateBuilder().Build(),
-            _isInteractive,
-            [.. _paths],
-            [.. _args],
-            [.. _moduleProviders]);
+            _fileSystem ?? MemoryFileSystem.CreateBuilder().Build());
     }
 
     private sealed class ConfigurablePyEnvironmentHost(
         TextReader cin,
         TextWriter cout,
         TextWriter cerr,
-        IVirtualFileSystem fileSystem,
-        bool isInteractive,
-        List<string> paths,
-        List<string> args,
-        List<PyModuleProvider> moduleProviders) : PyEnvironmentHost
+        IVirtualFileSystem fileSystem) : PyEnvironmentHost
     {
-        public override TextReader In => cin;
-        public override TextWriter Out => cout;
-        public override TextWriter Error => cerr;
+        public override TextReader AllocateStdIn() => cin;
+        public override TextWriter AllocateStdOut() => cout;
+        public override TextWriter AllocateStdErr() => cerr;
         public override IVirtualFileSystem FileSystem => fileSystem;
-        public override bool IsInteractive => isInteractive;
-        public override List<string> Paths { get; } = paths;
-        public override List<string> Args { get; } = args;
-        public override List<PyModuleProvider> ModuleProviders { get; } = moduleProviders;
     }
 }
 
@@ -109,9 +63,5 @@ public interface IPyEnvironmentHostBuilder
     IPyEnvironmentHostBuilder UseOut(TextWriter writer);
     IPyEnvironmentHostBuilder UseError(TextWriter writer);
     IPyEnvironmentHostBuilder UseFileSystem(IVirtualFileSystem fileSystem);
-    IPyEnvironmentHostBuilder SetInteractive(bool isInteractive);
-    IPyEnvironmentHostBuilder AddPath(string path);
-    IPyEnvironmentHostBuilder AddArg(string arg);
-    IPyEnvironmentHostBuilder AddModuleProvider(PyModuleProvider provider);
     PyEnvironmentHost Build();
 }
