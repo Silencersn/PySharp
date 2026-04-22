@@ -128,7 +128,7 @@ public abstract class PathHelper
         {
             if (string.IsNullOrWhiteSpace(path))
                 return null;
-            
+
             return path.StartsWith('/') ? "/" : string.Empty;
         }
     }

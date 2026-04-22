@@ -1,6 +1,5 @@
 using PySharp.Runtime.IO;
 using PySharp.Runtime.IO.Memory;
-using PySharp.Runtime.IO.Physical;
 
 namespace PySharp.Runtime.Environments;
 

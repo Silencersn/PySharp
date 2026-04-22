@@ -18,7 +18,7 @@ public abstract class PyEnvironmentHost
     }
     public static PyEnvironmentHost CreateConsole(bool usingPhysicalFileSystem = false)
     {
-        return usingPhysicalFileSystem 
+        return usingPhysicalFileSystem
             ? new PhysicalConsolePyEnvironmentHost()
             : new ConsolePyEnvironmentHost();
     }

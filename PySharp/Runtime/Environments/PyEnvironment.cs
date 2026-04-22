@@ -1,6 +1,5 @@
 ﻿using PySharp.Modules.Builtins;
 using PySharp.Runtime.IO;
-using PySharp.Runtime.IO.Memory;
 using PySharp.Utility;
 
 namespace PySharp.Runtime.Environments;

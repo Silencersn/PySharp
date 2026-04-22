@@ -5,7 +5,6 @@ using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Environments;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 namespace PySharp.Runtime;
@@ -108,7 +107,7 @@ public sealed class PyInterpreter : IDisposable
 
                         const string ANSIColorRed = "\e[31m";
                         const string ANSIClearColor = "\e[0m";
-                        context.Error.Write(ANSIColorRed); 
+                        context.Error.Write(ANSIColorRed);
                         context.Error.WriteLine(exc.ToMessage(context));
                         context.Error.Write(ANSIClearColor);
                     }
