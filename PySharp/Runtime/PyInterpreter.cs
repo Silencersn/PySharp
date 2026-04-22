@@ -140,7 +140,7 @@ public sealed class PyInterpreter : IDisposable
         var fullPath = Path.GetFullPath(filename);
         var scriptDirectory = Path.GetDirectoryName(fullPath)!;
 
-        var environment = PyEnvironment
+        using var environment = PyEnvironment
             .CreateBuilder(host)
             .AddPath(scriptDirectory)
             .AddArg(filename)
@@ -156,7 +156,7 @@ public sealed class PyInterpreter : IDisposable
         moduleName ??= "<module>";
         sourceName ??= "<string>";
 
-        var environment = PyEnvironment
+        using var environment = PyEnvironment
             .CreateBuilder(PyEnvironmentHost.CreateConsole())
             .Build();
 
@@ -178,7 +178,7 @@ public sealed class PyInterpreter : IDisposable
 
     public static void RunRepl()
     {
-        var environment = PyEnvironment
+        using var environment = PyEnvironment
             .CreateBuilder(PyEnvironmentHost.CreateRepl())
             .SetInteractive(true)
             .Initialization.SyncExit()
@@ -239,5 +239,6 @@ public sealed class PyInterpreter : IDisposable
     public void Dispose()
     {
         _mainContext.Dispose();
+        _environment.Dispose();
     }
 }

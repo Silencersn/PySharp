@@ -5,7 +5,7 @@ using PySharp.Utility;
 
 namespace PySharp.Runtime.Environments;
 
-public sealed partial class PyEnvironment
+public sealed partial class PyEnvironment : IDisposable
 {
     private readonly TextReader _in;
     private readonly TextWriter _out;
@@ -13,6 +13,7 @@ public sealed partial class PyEnvironment
     private readonly bool _isInteractive;
     private readonly List<string> _paths;
     private readonly List<string> _args;
+    private bool _disposed;
 
     static PyEnvironment()
     {
@@ -68,6 +69,19 @@ public sealed partial class PyEnvironment
             thread.Interrupt();
         foreach (var thread in Threads)
             thread.Join();
+
+        _in.Dispose();
+        _out.Dispose();
+        _error.Dispose();
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        OnExit();
     }
 
     public static IPyEnvironmentBuilder CreateBuilder(PyEnvironmentHost host)
