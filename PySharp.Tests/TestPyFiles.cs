@@ -279,4 +279,11 @@ public sealed class TestPyFiles
         var module = RunModule("test_set_full.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestByteArray()
+    {
+        var module = RunModule("test_bytearray.py");
+        Assert.IsNotNull(module);
+    }
 }
