@@ -186,7 +186,7 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
     }
 
     [PyMethod("index", Order = 1)]
-    [PyFunctionArgsDef("x", "/")]
+    [PyFunctionParameters("x", "/")]
     [AIGenerated]
     private static PyResult Index_1(PyCallContext context, PyTupleObject self, PyArguments arguments)
     {
@@ -197,7 +197,7 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
     }
 
     [PyMethod("index", Order = 2)]
-    [PyFunctionArgsDef("x", "start", "/")]
+    [PyFunctionParameters("x", "start", "/")]
     [AIGenerated]
     private static PyResult Index_2(PyCallContext context, PyTupleObject self, PyArguments arguments)
     {
@@ -212,7 +212,7 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
     }
 
     [PyMethod("index", Order = 3)]
-    [PyFunctionArgsDef("x", "start", "end", "/")]
+    [PyFunctionParameters("x", "start", "end", "/")]
     [AIGenerated]
     private static PyResult Index_3(PyCallContext context, PyTupleObject self, PyArguments arguments)
     {
@@ -230,7 +230,7 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
     }
 
     [PyMethod("count")]
-    [PyFunctionArgsDef("x", "/")]
+    [PyFunctionParameters("x", "/")]
     [AIGenerated]
     private static PyResult Count(PyCallContext context, PyTupleObject self, PyArguments arguments)
     {

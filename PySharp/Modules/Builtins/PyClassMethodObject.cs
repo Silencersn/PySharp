@@ -22,7 +22,7 @@ public sealed partial class PyClassMethodObjectType : PyTypeObject<PyClassMethod
 
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
 
-    [PyFunctionArgsDef("wrapped", "/")]
+    [PyFunctionParameters("wrapped", "/")]
     private static PyResult NewImpl(PyCallContext context, PyArguments arguments)
     {
         return new PyClassMethodObject(arguments[0]);

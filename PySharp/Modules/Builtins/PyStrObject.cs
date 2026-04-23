@@ -87,7 +87,7 @@ public partial class PyStrObject : PyObject
 public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 {
     [PyMethod("join")]
-    [PyFunctionArgsDef("iterable", "/")]
+    [PyFunctionParameters("iterable", "/")]
     private static PyResult Join(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
         return self.PyJoin(context, arguments[0]);

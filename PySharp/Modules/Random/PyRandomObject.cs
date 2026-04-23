@@ -43,14 +43,14 @@ public sealed partial class PyRandomObjectType : PyTypeObject<PyRandomObject>
     }
 
     [PyMethod("random")]
-    [PyFunctionArgsDef()]
+    [PyFunctionParameters()]
     private static PyResult Random(PyCallContext context, PyRandomObject self, PyArguments arguments)
     {
         return PyFloatObject.FromDouble(self.PyRandom());
     }
 
     [PyMethod("uniform")]
-    [PyFunctionArgsDef("a", "b")]
+    [PyFunctionParameters("a", "b")]
     private static PyResult Uniform(PyCallContext context, PyRandomObject self, PyArguments arguments)
     {
         var aResult = PySpecialMethods.Float(context, arguments[0]);
@@ -63,7 +63,7 @@ public sealed partial class PyRandomObjectType : PyTypeObject<PyRandomObject>
     }
 
     [PyMethod("randrange", Order = 1)]
-    [PyFunctionArgsDef("stop", "/")]
+    [PyFunctionParameters("stop", "/")]
     private static PyResult RandRange_1(PyCallContext context, PyRandomObject self, PyArguments arguments)
     {
         var result = PySpecialMethods.Index(context, arguments[0]);
@@ -77,7 +77,7 @@ public sealed partial class PyRandomObjectType : PyTypeObject<PyRandomObject>
     }
 
     [PyMethod("randrange", Order = 2)]
-    [PyFunctionArgsDef("start", "stop", "step=1", "/")]
+    [PyFunctionParameters("start", "stop", "step=1", "/")]
     private static PyResult RandRange_2(PyCallContext context, PyRandomObject self, PyArguments arguments)
     {
         var startResult = PySpecialMethods.Index(context, arguments[0]);
@@ -105,7 +105,7 @@ public sealed partial class PyRandomObjectType : PyTypeObject<PyRandomObject>
     }
 
     [PyMethod("randint")]
-    [PyFunctionArgsDef("a", "b")]
+    [PyFunctionParameters("a", "b")]
     private static PyResult RandInt(PyCallContext context, PyRandomObject self, PyArguments arguments)
     {
         var aResult = PySpecialMethods.Index(context, arguments[0]);

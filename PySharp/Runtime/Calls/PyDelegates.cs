@@ -67,7 +67,7 @@ public static class PyDelegateConverter
             if (args.Count is 0 || args[0] is not TObject selfOfT)
                 return PyResult.TypeError(null);
 
-            def ??= PyArgsDef.FromDef(method.Method.GetCustomAttribute<PyFunctionArgsDefAttribute>()!.Parameters);
+            def ??= PyArgsDef.FromDef(method.Method.GetCustomAttribute<PyFunctionParametersAttribute>()!.Parameters);
 
             args = [.. args.Skip(1)];
             InlinePyObjectArray buffer = default;
@@ -87,7 +87,7 @@ public static class PyDelegateConverter
             if (args.Count is 0 || args[0] is not PyTypeObject cls)
                 return PyResult.TypeError(null);
 
-            def ??= PyArgsDef.FromDef(method.Method.GetCustomAttribute<PyFunctionArgsDefAttribute>()!.Parameters);
+            def ??= PyArgsDef.FromDef(method.Method.GetCustomAttribute<PyFunctionParametersAttribute>()!.Parameters);
 
             args = [.. args.Skip(1)];
             InlinePyObjectArray buffer = default;
@@ -134,7 +134,7 @@ public static class PyDelegateConverter
                 var cache = new PyArgsDef[methods.Length];
                 for (int i = 0; i < cache.Length; i++)
                 {
-                    var argsDef = methods[i].Method.GetCustomAttribute<PyFunctionArgsDefAttribute>();
+                    var argsDef = methods[i].Method.GetCustomAttribute<PyFunctionParametersAttribute>();
                     Debug.Assert(argsDef is not null);
                     cache[i] = PyArgsDef.FromDef(argsDef.Parameters);
                 }
@@ -179,7 +179,7 @@ public static class PyDelegateConverter
                 var cache = new PyArgsDef[methods.Length];
                 for (int i = 0; i < cache.Length; i++)
                 {
-                    var argsDef = methods[i].Method.GetCustomAttribute<PyFunctionArgsDefAttribute>();
+                    var argsDef = methods[i].Method.GetCustomAttribute<PyFunctionParametersAttribute>();
                     Debug.Assert(argsDef is not null);
                     cache[i] = PyArgsDef.FromDef(argsDef.Parameters);
                 }
@@ -219,7 +219,7 @@ public static class PyDelegateConverter
                 var cache = new PyArgsDef[functions.Length];
                 for (int i = 0; i < cache.Length; i++)
                 {
-                    var argsDef = functions[i].Method.GetCustomAttribute<PyFunctionArgsDefAttribute>();
+                    var argsDef = functions[i].Method.GetCustomAttribute<PyFunctionParametersAttribute>();
                     Debug.Assert(argsDef is not null);
                     cache[i] = PyArgsDef.FromDef(argsDef.Parameters);
                 }

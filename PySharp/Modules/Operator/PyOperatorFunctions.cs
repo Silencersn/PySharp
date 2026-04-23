@@ -26,93 +26,93 @@ public static class PyOperatorFunctions
     public static readonly PyBuiltinFunctionOrMethodObject Gt = PyBuiltinFunctionOrMethodObject.CreateFunction("gt", GtImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Ge = PyBuiltinFunctionOrMethodObject.CreateFunction("ge", GeImpl);
 
-    [PyFunctionArgsDef("a", "b", "/")]
+    [PyFunctionParameters("a", "b", "/")]
     private static PyResult AddImpl(PyCallContext context, PyArguments arguments)
     {
         return PyOperators.Add(context, arguments[0], arguments[1]);
     }
 
-    [PyFunctionArgsDef("a", "b", "/")]
+    [PyFunctionParameters("a", "b", "/")]
     private static PyResult SubImpl(PyCallContext context, PyArguments arguments)
     {
         return PyOperators.Sub(context, arguments[0], arguments[1]);
     }
-    [PyFunctionArgsDef("a", "b", "/")]
+    [PyFunctionParameters("a", "b", "/")]
     private static PyResult MulImpl(PyCallContext context, PyArguments arguments)
     {
         return PyOperators.Mult(context, arguments[0], arguments[1]);
     }
-    [PyFunctionArgsDef("a", "b", "/")]
+    [PyFunctionParameters("a", "b", "/")]
     private static PyResult TrueDivImpl(PyCallContext context, PyArguments arguments)
     {
         return PyOperators.TrueDiv(context, arguments[0], arguments[1]);
     }
-    [PyFunctionArgsDef("a", "b", "/")]
+    [PyFunctionParameters("a", "b", "/")]
     private static PyResult FloorDivImpl(PyCallContext context, PyArguments arguments)
     {
         return PyOperators.FloorDiv(context, arguments[0], arguments[1]);
     }
-    [PyFunctionArgsDef("a", "b", "/")]
+    [PyFunctionParameters("a", "b", "/")]
     private static PyResult ModImpl(PyCallContext context, PyArguments arguments)
     {
         return PyOperators.Mod(context, arguments[0], arguments[1]);
     }
-    [PyFunctionArgsDef("a", "b", "/")]
+    [PyFunctionParameters("a", "b", "/")]
     private static PyResult PowImpl(PyCallContext context, PyArguments arguments)
     {
         return PyOperators.Pow(context, arguments[0], arguments[1], PyNoneObject.None);
     }
-    [PyFunctionArgsDef("a", "b", "/")]
+    [PyFunctionParameters("a", "b", "/")]
     private static PyResult LShiftImpl(PyCallContext context, PyArguments arguments)
     {
         return PyOperators.LShift(context, arguments[0], arguments[1]);
     }
-    [PyFunctionArgsDef("a", "b", "/")]
+    [PyFunctionParameters("a", "b", "/")]
     private static PyResult RShiftImpl(PyCallContext context, PyArguments arguments)
     {
         return PyOperators.RShift(context, arguments[0], arguments[1]);
     }
-    [PyFunctionArgsDef("a", "b", "/")]
+    [PyFunctionParameters("a", "b", "/")]
     private static PyResult AndImpl(PyCallContext context, PyArguments arguments)
     {
         return PyOperators.BitAnd(context, arguments[0], arguments[1]);
     }
-    [PyFunctionArgsDef("a", "b", "/")]
+    [PyFunctionParameters("a", "b", "/")]
     private static PyResult XorImpl(PyCallContext context, PyArguments arguments)
     {
         return PyOperators.BitXor(context, arguments[0], arguments[1]);
     }
-    [PyFunctionArgsDef("a", "b", "/")]
+    [PyFunctionParameters("a", "b", "/")]
     private static PyResult OrImpl(PyCallContext context, PyArguments arguments)
     {
         return PyOperators.BitOr(context, arguments[0], arguments[1]);
     }
-    [PyFunctionArgsDef("a", "b", "/")]
+    [PyFunctionParameters("a", "b", "/")]
     private static PyResult LtImpl(PyCallContext context, PyArguments arguments)
     {
         return PyOperators.Lt(context, arguments[0], arguments[1]);
     }
-    [PyFunctionArgsDef("a", "b", "/")]
+    [PyFunctionParameters("a", "b", "/")]
     private static PyResult LeImpl(PyCallContext context, PyArguments arguments)
     {
         return PyOperators.LtE(context, arguments[0], arguments[1]);
     }
-    [PyFunctionArgsDef("a", "b", "/")]
+    [PyFunctionParameters("a", "b", "/")]
     private static PyResult EqImpl(PyCallContext context, PyArguments arguments)
     {
         return PyOperators.Eq(context, arguments[0], arguments[1]);
     }
-    [PyFunctionArgsDef("a", "b", "/")]
+    [PyFunctionParameters("a", "b", "/")]
     private static PyResult NeImpl(PyCallContext context, PyArguments arguments)
     {
         return PyOperators.NotEq(context, arguments[0], arguments[1]);
     }
-    [PyFunctionArgsDef("a", "b", "/")]
+    [PyFunctionParameters("a", "b", "/")]
     private static PyResult GtImpl(PyCallContext context, PyArguments arguments)
     {
         return PyOperators.Gt(context, arguments[0], arguments[1]);
     }
-    [PyFunctionArgsDef("a", "b", "/")]
+    [PyFunctionParameters("a", "b", "/")]
     private static PyResult GeImpl(PyCallContext context, PyArguments arguments)
     {
         return PyOperators.GtE(context, arguments[0], arguments[1]);

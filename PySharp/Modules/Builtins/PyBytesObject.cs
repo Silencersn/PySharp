@@ -49,7 +49,7 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
 {
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
 
-    [PyFunctionArgsDef("source=b''")]
+    [PyFunctionParameters("source=b''")]
     private static PyResult NewImpl(PyCallContext context, PyArguments arguments)
     {
         var source = arguments[0];

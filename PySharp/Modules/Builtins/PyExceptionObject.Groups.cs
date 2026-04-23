@@ -58,7 +58,7 @@ public sealed partial class PyBaseExceptionGroupObjectType : PyExceptionType<PyB
     }
 
     [PyMethod("derive")]
-    [PyFunctionArgsDef("excs", "/")]
+    [PyFunctionParameters("excs", "/")]
     private static PyResult Derive(PyCallContext context, PyExceptionObject self, PyArguments arguments)
     {
         if (!self.IsGroup)
@@ -85,7 +85,7 @@ public sealed partial class PyBaseExceptionGroupObjectType : PyExceptionType<PyB
     }
 
     [PyMethod("split")]
-    [PyFunctionArgsDef("condition", "/")]
+    [PyFunctionParameters("condition", "/")]
     private static PyResult Split(PyCallContext context, PyExceptionObject self, PyArguments arguments)
     {
         if (!self.IsGroup)

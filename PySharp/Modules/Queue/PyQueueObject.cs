@@ -33,7 +33,7 @@ public sealed partial class PyQueueObjectType : PyTypeObject<PyQueueObject>
 {
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
 
-    [PyFunctionArgsDef("maxsize=0")]
+    [PyFunctionParameters("maxsize=0")]
     private static PyResult NewImpl(PyCallContext context, PyArguments arguments)
     {
         var result = PySpecialMethods.Index(context, arguments[0]);
@@ -52,28 +52,28 @@ public sealed partial class PyQueueObjectType : PyTypeObject<PyQueueObject>
     }
 
     [PyMethod("qsize")]
-    [PyFunctionArgsDef()]
+    [PyFunctionParameters()]
     private static PyResult QSize(PyCallContext context, PyQueueObject self, PyArguments arguments)
     {
         return PyIntObject.FromInteger(self.PyQSize());
     }
 
     [PyMethod("empty")]
-    [PyFunctionArgsDef()]
+    [PyFunctionParameters()]
     private static PyResult Empty(PyCallContext context, PyQueueObject self, PyArguments arguments)
     {
         return PyBoolObject.FromBoolean(self.PyEmpty());
     }
 
     [PyMethod("full")]
-    [PyFunctionArgsDef()]
+    [PyFunctionParameters()]
     private static PyResult Full(PyCallContext context, PyQueueObject self, PyArguments arguments)
     {
         return PyBoolObject.FromBoolean(self.PyFull());
     }
 
     [PyMethod("put")]
-    [PyFunctionArgsDef("item", "block=True", "timeout=None")]
+    [PyFunctionParameters("item", "block=True", "timeout=None")]
     private static PyResult Put(PyCallContext context, PyQueueObject self, PyArguments arguments)
     {
         var blockResult = PySpecialMethods.Bool(context, arguments[1]);
@@ -99,7 +99,7 @@ public sealed partial class PyQueueObjectType : PyTypeObject<PyQueueObject>
     }
 
     [PyMethod("put_nowait")]
-    [PyFunctionArgsDef("item")]
+    [PyFunctionParameters("item")]
     private static PyResult PutNoWait(PyCallContext context, PyQueueObject self, PyArguments arguments)
     {
         var ex = self.PyPut(arguments[0], false, null);
@@ -109,7 +109,7 @@ public sealed partial class PyQueueObjectType : PyTypeObject<PyQueueObject>
     }
 
     [PyMethod("get")]
-    [PyFunctionArgsDef("block=True", "timeout=None")]
+    [PyFunctionParameters("block=True", "timeout=None")]
     private static PyResult Get(PyCallContext context, PyQueueObject self, PyArguments arguments)
     {
         var blockResult = PySpecialMethods.Bool(context, arguments[0]);
@@ -136,7 +136,7 @@ public sealed partial class PyQueueObjectType : PyTypeObject<PyQueueObject>
     }
 
     [PyMethod("get_nowait")]
-    [PyFunctionArgsDef()]
+    [PyFunctionParameters()]
     private static PyResult GetNoWait(PyCallContext context, PyQueueObject self, PyArguments arguments)
     {
         var (item, ex) = self.PyGet(false, null);
@@ -147,7 +147,7 @@ public sealed partial class PyQueueObjectType : PyTypeObject<PyQueueObject>
     }
 
     [PyMethod("task_done")]
-    [PyFunctionArgsDef()]
+    [PyFunctionParameters()]
     private static PyResult TaskDone(PyCallContext context, PyQueueObject self, PyArguments arguments)
     {
         if (self.PyTryTaskDone())
@@ -156,7 +156,7 @@ public sealed partial class PyQueueObjectType : PyTypeObject<PyQueueObject>
     }
 
     [PyMethod("join")]
-    [PyFunctionArgsDef()]
+    [PyFunctionParameters()]
     private static PyResult Join(PyCallContext context, PyQueueObject self, PyArguments arguments)
     {
         self.PyJoin();

@@ -23,7 +23,7 @@ public sealed partial class PyReversedObjectType : PyTypeObject<PyReversedObject
 {
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
 
-    [PyFunctionArgsDef("object", "/")]
+    [PyFunctionParameters("object", "/")]
     private static PyResult NewImpl(PyCallContext context, PyArguments arguments)
     {
         var obj = arguments[0];

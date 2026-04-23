@@ -113,7 +113,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
 {
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
 
-    [PyFunctionArgsDef("iterable=()", "/")]
+    [PyFunctionParameters("iterable=()", "/")]
     private static PyResult NewImpl(PyCallContext context, PyArguments arguments)
     {
         return PyUtils.IterableToList(context, arguments[0]);
@@ -252,7 +252,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
     }
 
     [PyMethod("append")]
-    [PyFunctionArgsDef("x", "/")]
+    [PyFunctionParameters("x", "/")]
     private static PyResult Append(PyCallContext context, PyListObject self, PyArguments arguments)
     {
         self.PyAppend(arguments[0]);
@@ -260,14 +260,14 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
     }
 
     [PyMethod("extend")]
-    [PyFunctionArgsDef("iterable", "/")]
+    [PyFunctionParameters("iterable", "/")]
     private static PyResult Extend(PyCallContext context, PyListObject self, PyArguments arguments)
     {
         return self.PyExtend(context, arguments[0]);
     }
 
     [PyMethod("insert")]
-    [PyFunctionArgsDef("i", "x", "/")]
+    [PyFunctionParameters("i", "x", "/")]
     private static PyResult Insert(PyCallContext context, PyListObject self, PyArguments arguments)
     {
         var result = PySpecialMethods.Index(context, arguments[0]);
@@ -278,7 +278,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
     }
 
     [PyMethod("remove")]
-    [PyFunctionArgsDef("x", "/")]
+    [PyFunctionParameters("x", "/")]
     private static PyResult Remove(PyCallContext context, PyListObject self, PyArguments arguments)
     {
         if (self.PyRemove(arguments[0]))
@@ -287,7 +287,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
     }
 
     [PyMethod("pop")]
-    [PyFunctionArgsDef("i=-1", "/")]
+    [PyFunctionParameters("i=-1", "/")]
     private static PyResult Pop(PyCallContext context, PyListObject self, PyArguments arguments)
     {
         var result = PySpecialMethods.Index(context, arguments[0]);
@@ -299,7 +299,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
     }
 
     [PyMethod("clear")]
-    [PyFunctionArgsDef()]
+    [PyFunctionParameters()]
     private static PyResult Clear(PyCallContext context, PyListObject self, PyArguments arguments)
     {
         self.PyClear();
@@ -307,7 +307,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
     }
 
     [PyMethod("index", Order = 1)]
-    [PyFunctionArgsDef("x", "/")]
+    [PyFunctionParameters("x", "/")]
     private static PyResult Index_1(PyCallContext context, PyListObject self, PyArguments arguments)
     {
         var index = self.PyIndex(arguments[0]);
@@ -323,7 +323,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
     }
 
     [PyMethod("index", Order = 2)]
-    [PyFunctionArgsDef("x", "start", "/")]
+    [PyFunctionParameters("x", "start", "/")]
     private static PyResult Index_2(PyCallContext context, PyListObject self, PyArguments arguments)
     {
         var result = PySpecialMethods.Index(context, arguments[1]);
@@ -342,7 +342,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
     }
 
     [PyMethod("index", Order = 3)]
-    [PyFunctionArgsDef("x", "start", "end", "/")]
+    [PyFunctionParameters("x", "start", "end", "/")]
     private static PyResult Index_3(PyCallContext context, PyListObject self, PyArguments arguments)
     {
         var startResult = PySpecialMethods.Index(context, arguments[1]);
@@ -364,21 +364,21 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
     }
 
     [PyMethod("count")]
-    [PyFunctionArgsDef("x", "/")]
+    [PyFunctionParameters("x", "/")]
     private static PyResult Count(PyCallContext context, PyListObject self, PyArguments arguments)
     {
         return PyIntObject.FromInteger(self.PyCount(arguments[0]));
     }
 
     [PyMethod("sort")]
-    [PyFunctionArgsDef("*", "key=None", "reverse=False")]
+    [PyFunctionParameters("*", "key=None", "reverse=False")]
     private static PyResult Sort(PyCallContext context, PyListObject self, PyArguments arguments)
     {
         return self.PySort(context, arguments["key"], arguments["reverse"]);
     }
 
     [PyMethod("reverse")]
-    [PyFunctionArgsDef()]
+    [PyFunctionParameters()]
     private static PyResult Reverse(PyCallContext context, PyListObject self, PyArguments arguments)
     {
         self.PyReverse();
@@ -386,7 +386,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
     }
 
     [PyMethod("copy")]
-    [PyFunctionArgsDef()]
+    [PyFunctionParameters()]
     private static PyResult Copy(PyCallContext context, PyListObject self, PyArguments arguments)
     {
         return self.PyCopy();

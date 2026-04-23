@@ -151,7 +151,7 @@ public sealed partial class PyGeneratorObjectType : PyTypeObject<PyGeneratorObje
     }
 
     [PyMethod("send")]
-    [PyFunctionArgsDef("value")]
+    [PyFunctionParameters("value")]
     private static PyResult Send(PyCallContext context, PyGeneratorObject self, PyArguments arguments)
     {
         if (arguments[0] is PyNoneObject)
@@ -161,14 +161,14 @@ public sealed partial class PyGeneratorObjectType : PyTypeObject<PyGeneratorObje
     }
 
     [PyMethod("throw")]
-    [PyFunctionArgsDef("value")]
+    [PyFunctionParameters("value")]
     private static PyResult Throw(PyCallContext context, PyGeneratorObject self, PyArguments arguments)
     {
         return self.PyThrow(context, arguments[0]);
     }
 
     [PyMethod("close")]
-    [PyFunctionArgsDef()]
+    [PyFunctionParameters()]
     private static PyResult Close(PyCallContext context, PyGeneratorObject self, PyArguments arguments)
     {
         return self.PyClose(context);

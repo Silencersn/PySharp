@@ -141,14 +141,14 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl_1, NewImpl_2);
 
     [AIGenerated]
-    [PyFunctionArgsDef()]
+    [PyFunctionParameters()]
     private static PyResult NewImpl_1(PyCallContext context, PyArguments arguments)
     {
         return new PySetObject();
     }
 
     [AIGenerated]
-    [PyFunctionArgsDef("iterable", "/")]
+    [PyFunctionParameters("iterable", "/")]
     private static PyResult NewImpl_2(PyCallContext context, PyArguments arguments)
     {
         return PyUtils.IterableToSet(context, arguments[0]);
@@ -336,7 +336,7 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
 
     [AIGenerated]
     [PyMethod("add")]
-    [PyFunctionArgsDef("item", "/")]
+    [PyFunctionParameters("item", "/")]
     private static PyResult Add(PyCallContext context, PySetObject self, PyArguments arguments)
     {
         self.PyAdd(arguments[0]);
@@ -345,7 +345,7 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
 
     [AIGenerated]
     [PyMethod("clear")]
-    [PyFunctionArgsDef()]
+    [PyFunctionParameters()]
     private static PyResult Clear(PyCallContext context, PySetObject self, PyArguments arguments)
     {
         self.PyClear();
@@ -354,7 +354,7 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
 
     [AIGenerated]
     [PyMethod("copy")]
-    [PyFunctionArgsDef()]
+    [PyFunctionParameters()]
     private static PyResult Copy(PyCallContext context, PySetObject self, PyArguments arguments)
     {
         return self.PyCopy();
@@ -362,7 +362,7 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
 
     [AIGenerated]
     [PyMethod("difference")]
-    [PyFunctionArgsDef("*others")]
+    [PyFunctionParameters("*others")]
     private static PyResult Difference(PyCallContext context, PySetObject self, PyArguments arguments)
     {
         return self.PyDifference(context, arguments.ExtraArgs);
@@ -370,7 +370,7 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
 
     [AIGenerated]
     [PyMethod("difference_update")]
-    [PyFunctionArgsDef("*others")]
+    [PyFunctionParameters("*others")]
     private static PyResult DifferenceUpdate(PyCallContext context, PySetObject self, PyArguments arguments)
     {
         return self.PyDifferenceUpdate(context, arguments.ExtraArgs);
@@ -378,7 +378,7 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
 
     [AIGenerated]
     [PyMethod("discard")]
-    [PyFunctionArgsDef("item", "/")]
+    [PyFunctionParameters("item", "/")]
     private static PyResult Discard(PyCallContext context, PySetObject self, PyArguments arguments)
     {
         return self.PyDiscard(arguments[0]);
@@ -386,7 +386,7 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
 
     [AIGenerated]
     [PyMethod("intersection")]
-    [PyFunctionArgsDef("*others")]
+    [PyFunctionParameters("*others")]
     private static PyResult Intersection(PyCallContext context, PySetObject self, PyArguments arguments)
     {
         return self.PyIntersection(context, arguments.ExtraArgs);
@@ -394,7 +394,7 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
 
     [AIGenerated]
     [PyMethod("intersection_update")]
-    [PyFunctionArgsDef("*others")]
+    [PyFunctionParameters("*others")]
     private static PyResult IntersectionUpdate(PyCallContext context, PySetObject self, PyArguments arguments)
     {
         return self.PyIntersectionUpdate(context, arguments.ExtraArgs);
@@ -402,7 +402,7 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
 
     [AIGenerated]
     [PyMethod("isdisjoint")]
-    [PyFunctionArgsDef("other", "/")]
+    [PyFunctionParameters("other", "/")]
     private static PyResult IsDisjoint(PyCallContext context, PySetObject self, PyArguments arguments)
     {
         return self.PyIsDisjoint(context, arguments[0]);
@@ -410,7 +410,7 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
 
     [AIGenerated]
     [PyMethod("issubset")]
-    [PyFunctionArgsDef("other", "/")]
+    [PyFunctionParameters("other", "/")]
     private static PyResult IsSubset(PyCallContext context, PySetObject self, PyArguments arguments)
     {
         return self.PyIsSubset(context, arguments[0]);
@@ -418,7 +418,7 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
 
     [AIGenerated]
     [PyMethod("issuperset")]
-    [PyFunctionArgsDef("other", "/")]
+    [PyFunctionParameters("other", "/")]
     private static PyResult IsSuperset(PyCallContext context, PySetObject self, PyArguments arguments)
     {
         return self.PyIsSuperset(context, arguments[0]);
@@ -426,7 +426,7 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
 
     [AIGenerated]
     [PyMethod("pop")]
-    [PyFunctionArgsDef()]
+    [PyFunctionParameters()]
     private static PyResult Pop(PyCallContext context, PySetObject self, PyArguments arguments)
     {
         return self.PyPop();
@@ -434,7 +434,7 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
 
     [AIGenerated]
     [PyMethod("remove")]
-    [PyFunctionArgsDef("item", "/")]
+    [PyFunctionParameters("item", "/")]
     private static PyResult Remove(PyCallContext context, PySetObject self, PyArguments arguments)
     {
         return self.PyRemove(arguments[0]);
@@ -442,7 +442,7 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
 
     [AIGenerated]
     [PyMethod("symmetric_difference")]
-    [PyFunctionArgsDef("other", "/")]
+    [PyFunctionParameters("other", "/")]
     private static PyResult SymmetricDifference(PyCallContext context, PySetObject self, PyArguments arguments)
     {
         return self.PySymmetricDifference(context, arguments[0]);
@@ -450,7 +450,7 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
 
     [AIGenerated]
     [PyMethod("symmetric_difference_update")]
-    [PyFunctionArgsDef("other", "/")]
+    [PyFunctionParameters("other", "/")]
     private static PyResult SymmetricDifferenceUpdate(PyCallContext context, PySetObject self, PyArguments arguments)
     {
         return self.PySymmetricDifferenceUpdate(context, arguments[0]);
@@ -458,7 +458,7 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
 
     [AIGenerated]
     [PyMethod("union")]
-    [PyFunctionArgsDef("*others")]
+    [PyFunctionParameters("*others")]
     private static PyResult Union(PyCallContext context, PySetObject self, PyArguments arguments)
     {
         return self.PyUnion(context, arguments.ExtraArgs);
@@ -466,7 +466,7 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
 
     [AIGenerated]
     [PyMethod("update")]
-    [PyFunctionArgsDef("*others")]
+    [PyFunctionParameters("*others")]
     private static PyResult Update(PyCallContext context, PySetObject self, PyArguments arguments)
     {
         return self.PyUpdate(context, arguments.ExtraArgs);

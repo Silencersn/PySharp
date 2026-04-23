@@ -8,7 +8,7 @@ public static class PyTimeFunctions
 {
     public static readonly PyBuiltinFunctionOrMethodObject Time = PyBuiltinFunctionOrMethodObject.CreateFunction("time", TimeImpl);
 
-    [PyFunctionArgsDef()]
+    [PyFunctionParameters()]
     private static PyResult TimeImpl(PyCallContext context, PyArguments arguments)
     {
         var span = DateTime.UtcNow - DateTime.UnixEpoch;

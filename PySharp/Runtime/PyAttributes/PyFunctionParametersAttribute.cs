@@ -1,9 +1,9 @@
 ﻿namespace PySharp.Runtime.PyAttributes;
 
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = true)]
-public sealed class PyFunctionArgsDefAttribute : PyAttribute
+public sealed class PyFunctionParametersAttribute : PyAttribute
 {
-    public PyFunctionArgsDefAttribute(params string[] parameters)
+    public PyFunctionParametersAttribute(params string[] parameters)
     {
         ArgumentNullException.ThrowIfNull(parameters);
 

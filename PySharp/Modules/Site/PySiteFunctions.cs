@@ -9,7 +9,7 @@ public static class PySiteFunctions
     public static readonly PyBuiltinFunctionOrMethodObject Exit = PyBuiltinFunctionOrMethodObject.CreateFunction("exit", ExitImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Quit = Exit;
 
-    [PyFunctionArgsDef("code=None")]
+    [PyFunctionParameters("code=None")]
     private static PyResult ExitImpl(PyCallContext context, PyArguments arguments)
     {
         int? exitCode = arguments[0] switch

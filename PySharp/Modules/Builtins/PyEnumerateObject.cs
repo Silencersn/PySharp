@@ -23,7 +23,7 @@ public sealed partial class PyEnumerateObjectType : PyTypeObject<PyEnumerateObje
 {
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
 
-    [PyFunctionArgsDef("iterable", "start=0")]
+    [PyFunctionParameters("iterable", "start=0")]
     private static PyResult NewImpl(PyCallContext context, PyArguments arguments)
     {
         var iter = PySpecialMethods.Iter(context, arguments[0]);

@@ -25,7 +25,7 @@ public sealed partial class PyMapObjectType : PyTypeObject<PyMapObject>
 
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
 
-    [PyFunctionArgsDef("function", "/", "*iterables", "strict=False")]
+    [PyFunctionParameters("function", "/", "*iterables", "strict=False")]
     private static PyResult NewImpl(PyCallContext context, PyArguments arguments)
     {
         var function = arguments[0];

@@ -23,7 +23,7 @@ public sealed partial class PyFilterObjectType : PyTypeObject<PyFilterObject>
 {
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
 
-    [PyFunctionArgsDef("function", "iterable", "/")]
+    [PyFunctionParameters("function", "iterable", "/")]
     private static PyResult NewImpl(PyCallContext context, PyArguments arguments)
     {
         var func = arguments[0];

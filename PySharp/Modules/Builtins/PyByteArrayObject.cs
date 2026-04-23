@@ -125,7 +125,7 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
 {
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
 
-    [PyFunctionArgsDef("source=b''")]
+    [PyFunctionParameters("source=b''")]
     private static PyResult NewImpl(PyCallContext context, PyArguments arguments)
     {
         var source = arguments[0];
@@ -307,7 +307,7 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
     }
 
     [PyMethod("append")]
-    [PyFunctionArgsDef("item", "/")]
+    [PyFunctionParameters("item", "/")]
     private static PyResult Append(PyCallContext context, PyByteArrayObject self, PyArguments arguments)
     {
         var byteResult = TryGetByteValue(context, arguments[0], out var b);
@@ -319,7 +319,7 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
     }
 
     [PyMethod("extend")]
-    [PyFunctionArgsDef("iterable", "/")]
+    [PyFunctionParameters("iterable", "/")]
     private static PyResult Extend(PyCallContext context, PyByteArrayObject self, PyArguments arguments)
     {
         var valuesResult = TryGetByteList(context, arguments[0], out var values);

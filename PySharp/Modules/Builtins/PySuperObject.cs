@@ -64,7 +64,7 @@ public sealed partial class PySuperObjectType : PyTypeObject<PySuperObject>
 
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl_1, NewImpl_2);
 
-    [PyFunctionArgsDef()]
+    [PyFunctionParameters()]
     private static PyResult NewImpl_1(PyCallContext context, PyArguments arguments)
     {
         var variables = context.CurrentInternalFrame.Variables;
@@ -88,7 +88,7 @@ public sealed partial class PySuperObjectType : PyTypeObject<PySuperObject>
         return PySuperObject.CreateSuper(type, objectOrType);
     }
 
-    [PyFunctionArgsDef("type", "object_or_type=None", "/")]
+    [PyFunctionParameters("type", "object_or_type=None", "/")]
     private static PyResult NewImpl_2(PyCallContext context, PyArguments arguments)
     {
         if (arguments[0] is not PyTypeObject type)

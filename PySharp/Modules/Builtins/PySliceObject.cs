@@ -66,13 +66,13 @@ public sealed partial class PySliceObjectType : PyTypeObject<PySliceObject>
 {
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl_1, NewImpl_2);
 
-    [PyFunctionArgsDef("stop", "/")]
+    [PyFunctionParameters("stop", "/")]
     private static PyResult NewImpl_1(PyCallContext context, PyArguments arguments)
     {
         return new PySliceObject(PyNoneObject.None, arguments[0], PyNoneObject.None);
     }
 
-    [PyFunctionArgsDef("start", "stop", "step=None", "/")]
+    [PyFunctionParameters("start", "stop", "step=None", "/")]
     private static PyResult NewImpl_2(PyCallContext context, PyArguments arguments)
     {
         return new PySliceObject(arguments[0], arguments[1], arguments[2]);

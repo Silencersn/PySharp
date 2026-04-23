@@ -121,7 +121,7 @@ public static partial class PyBuiltinFunctions
     public static readonly PyBuiltinFunctionOrMethodObject Import = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.Import, ImportImpl);
 
 
-    [PyFunctionArgsDef("*objects", "sep=' '", "end='\\n'", "file=None", "flush=False")]
+    [PyFunctionParameters("*objects", "sep=' '", "end='\\n'", "file=None", "flush=False")]
     private static PyResult PrintImpl(PyCallContext context, PyArguments arguments)
     {
         var sepObj = arguments.Kwargs["sep"];
@@ -153,7 +153,7 @@ public static partial class PyBuiltinFunctions
         return PyNoneObject.None;
     }
 
-    [PyFunctionArgsDef("base", "exp", "mod=None")]
+    [PyFunctionParameters("base", "exp", "mod=None")]
     private static PyResult PowImpl(PyCallContext context, PyArguments arguments)
     {
         var baseObj = arguments[0];
@@ -167,18 +167,18 @@ public static partial class PyBuiltinFunctions
         Debug.Assert(!result.IsNotImplemented);
         return result;
     }
-    [PyFunctionArgsDef("a", "b", "/")]
+    [PyFunctionParameters("a", "b", "/")]
     private static PyResult DivModImpl(PyCallContext context, PyArguments arguments)
     {
         return PySpecialMethods.DivMod(context, arguments[0], arguments[1]);
     }
-    [PyFunctionArgsDef()]
+    [PyFunctionParameters()]
     private static PyResult InputImpl_1(PyCallContext context, PyArguments arguments)
     {
         var str = PyStrObject.FromString(context.In.ReadLine() ?? string.Empty);
         return str;
     }
-    [PyFunctionArgsDef("prompt", "/")]
+    [PyFunctionParameters("prompt", "/")]
     private static PyResult InputImpl_2(PyCallContext context, PyArguments arguments)
     {
         var result = PySpecialMethods.Str(context, arguments[0]);
@@ -189,7 +189,7 @@ public static partial class PyBuiltinFunctions
         var str = PyStrObject.FromString(context.In.ReadLine() ?? string.Empty);
         return str;
     }
-    [PyFunctionArgsDef("source", "/", "globals=None", "locals=None")]
+    [PyFunctionParameters("source", "/", "globals=None", "locals=None")]
     private static PyResult EvalImpl(PyCallContext context, PyArguments arguments)
     {
         var source = arguments[0];
@@ -234,7 +234,7 @@ public static partial class PyBuiltinFunctions
             return PyResult.FromException(e.PyException);
         }
     }
-    [PyFunctionArgsDef("source", "/", "globals=None", "locals=None", "*", "closure=None")]
+    [PyFunctionParameters("source", "/", "globals=None", "locals=None", "*", "closure=None")]
     private static PyResult ExecImpl(PyCallContext context, PyArguments arguments)
     {
         var source = arguments[0];
@@ -295,7 +295,7 @@ public static partial class PyBuiltinFunctions
         }
     }
 
-    [PyFunctionArgsDef("iterable")]
+    [PyFunctionParameters("iterable")]
     private static PyResult AllImpl(PyCallContext context, PyArguments arguments)
     {
         var iterable = arguments[0];
@@ -314,7 +314,7 @@ public static partial class PyBuiltinFunctions
         return PyBoolObject.True;
     }
 
-    [PyFunctionArgsDef("iterable")]
+    [PyFunctionParameters("iterable")]
     private static PyResult AnyImpl(PyCallContext context, PyArguments arguments)
     {
         var iterable = arguments[0];
@@ -333,7 +333,7 @@ public static partial class PyBuiltinFunctions
         return PyBoolObject.False;
     }
 
-    [PyFunctionArgsDef("iterable", "/", "*", "key=None")]
+    [PyFunctionParameters("iterable", "/", "*", "key=None")]
     private static PyResult MaxImpl_1(PyCallContext context, PyArguments arguments)
     {
         var iterable = arguments[0];
@@ -366,7 +366,7 @@ public static partial class PyBuiltinFunctions
         return result;
     }
 
-    [PyFunctionArgsDef("iterable", "/", "*", "default", "key=None")]
+    [PyFunctionParameters("iterable", "/", "*", "default", "key=None")]
     private static PyResult MaxImpl_2(PyCallContext context, PyArguments arguments)
     {
         var iterable = arguments[0];
@@ -392,7 +392,7 @@ public static partial class PyBuiltinFunctions
         return result;
     }
 
-    [PyFunctionArgsDef("arg1", "arg2", "/", "*args", "key=None")]
+    [PyFunctionParameters("arg1", "arg2", "/", "*args", "key=None")]
     private static PyResult MaxImpl_3(PyCallContext context, PyArguments arguments)
     {
         if (arguments["key"] is not PyNoneObject)
@@ -412,7 +412,7 @@ public static partial class PyBuiltinFunctions
         return result;
     }
 
-    [PyFunctionArgsDef("iterable", "/", "*", "key=None")]
+    [PyFunctionParameters("iterable", "/", "*", "key=None")]
     private static PyResult MinImpl_1(PyCallContext context, PyArguments arguments)
     {
         var iterable = arguments[0];
@@ -445,7 +445,7 @@ public static partial class PyBuiltinFunctions
         return result;
     }
 
-    [PyFunctionArgsDef("iterable", "/", "*", "default", "key=None")]
+    [PyFunctionParameters("iterable", "/", "*", "default", "key=None")]
     private static PyResult MinImpl_2(PyCallContext context, PyArguments arguments)
     {
         var iterable = arguments[0];
@@ -471,7 +471,7 @@ public static partial class PyBuiltinFunctions
         return result;
     }
 
-    [PyFunctionArgsDef("arg1", "arg2", "/", "*args", "key=None")]
+    [PyFunctionParameters("arg1", "arg2", "/", "*args", "key=None")]
     private static PyResult MinImpl_3(PyCallContext context, PyArguments arguments)
     {
         if (arguments["key"] is not PyNoneObject)
@@ -491,7 +491,7 @@ public static partial class PyBuiltinFunctions
         return result;
     }
 
-    [PyFunctionArgsDef("iterable", "/", "start=0")]
+    [PyFunctionParameters("iterable", "/", "start=0")]
     private static PyResult SumImpl(PyCallContext context, PyArguments arguments)
     {
         var start = arguments[1];
@@ -513,13 +513,13 @@ public static partial class PyBuiltinFunctions
         return result;
     }
 
-    [PyFunctionArgsDef("object", "name", "/")]
+    [PyFunctionParameters("object", "name", "/")]
     private static PyResult GetAttrImpl_1(PyCallContext context, PyArguments arguments)
     {
         return PyOperators.GetAttr(context, arguments[0], arguments[1]);
     }
 
-    [PyFunctionArgsDef("object", "name", "default", "/")]
+    [PyFunctionParameters("object", "name", "default", "/")]
     private static PyResult GetAttrImpl_2(PyCallContext context, PyArguments arguments)
     {
         var attr = PyOperators.GetAttr(context, arguments[0], arguments[1]);
@@ -528,13 +528,13 @@ public static partial class PyBuiltinFunctions
         return arguments[2];
     }
 
-    [PyFunctionArgsDef("object", "name", "value", "/")]
+    [PyFunctionParameters("object", "name", "value", "/")]
     private static PyResult SetAttrImpl(PyCallContext context, PyArguments arguments)
     {
         return PyOperators.SetAttr(context, arguments[0], arguments[1], arguments[2]);
     }
 
-    [PyFunctionArgsDef("object", "name", "/")]
+    [PyFunctionParameters("object", "name", "/")]
     private static PyResult HasAttrImpl(PyCallContext context, PyArguments arguments)
     {
         var attr = PyOperators.GetAttr(context, arguments[0], arguments[1]);
@@ -545,7 +545,7 @@ public static partial class PyBuiltinFunctions
         return attr;
     }
 
-    [PyFunctionArgsDef()]
+    [PyFunctionParameters()]
     private static PyResult DirImpl_1(PyCallContext context, PyArguments arguments)
     {
         var result = PyListObject.CreateList(context.CurrentInternalFrame.Variables
@@ -553,7 +553,7 @@ public static partial class PyBuiltinFunctions
             .Select(static pair => PyStrObject.FromString(pair.Key)));
         return result;
     }
-    [PyFunctionArgsDef("object", "/")]
+    [PyFunctionParameters("object", "/")]
     private static PyResult DirImpl_2(PyCallContext context, PyArguments arguments)
     {
         List<string> attrs = [];
@@ -565,7 +565,7 @@ public static partial class PyBuiltinFunctions
         return result;
     }
 
-    [PyFunctionArgsDef("codepoint", "/")]
+    [PyFunctionParameters("codepoint", "/")]
     private static PyResult ChrImpl(PyCallContext context, PyArguments arguments)
     {
         var result = PySpecialMethods.Index(context, arguments[0]);
@@ -576,7 +576,7 @@ public static partial class PyBuiltinFunctions
         return PyStrObject.FromRune(rune);
     }
 
-    [PyFunctionArgsDef("c", "/")]
+    [PyFunctionParameters("c", "/")]
     private static PyResult OrdImpl(PyCallContext context, PyArguments arguments)
     {
         if (arguments[0] is not PyStrObject strObj)
@@ -586,7 +586,7 @@ public static partial class PyBuiltinFunctions
         return PyIntObject.FromInteger(strObj.PyCharAt(0).Value);
     }
 
-    [PyFunctionArgsDef()]
+    [PyFunctionParameters()]
     private static PyResult LocalsImpl(PyCallContext context, PyArguments arguments)
     {
         var result = PyDictObject.CreateDict(context.CurrentInternalFrame.Variables
@@ -595,14 +595,14 @@ public static partial class PyBuiltinFunctions
         return result;
     }
 
-    [PyFunctionArgsDef()]
+    [PyFunctionParameters()]
     private static PyResult GlobalsImpl(PyCallContext context, PyArguments arguments)
     {
         var result = context.CurrentInternalFrame.Variables.Globals.PyDict;
         return result;
     }
 
-    [PyFunctionArgsDef("name", "globals=None", "locals=None", "fromlist=()", "level=0")]
+    [PyFunctionParameters("name", "globals=None", "locals=None", "fromlist=()", "level=0")]
     private static PyResult ImportImpl(PyCallContext context, PyArguments arguments)
     {
         if (arguments[0] is not PyStrObject strObj)
@@ -617,7 +617,7 @@ public static partial class PyBuiltinFunctions
         return module;
     }
 
-    [PyFunctionArgsDef("object", "classinfo", "/")]
+    [PyFunctionParameters("object", "classinfo", "/")]
     private static PyResult IsInstanceImpl(PyCallContext context, PyArguments arguments)
     {
         var ret = IsInstanceForUnknown(arguments[0], arguments[1]);
@@ -652,7 +652,7 @@ public static partial class PyBuiltinFunctions
         }
     }
 
-    [PyFunctionArgsDef("class", "classinfo", "/")]
+    [PyFunctionParameters("class", "classinfo", "/")]
     private static PyResult IsSubclassImpl(PyCallContext context, PyArguments arguments)
     {
         if (arguments[0] is not PyTypeObject typeObj)
@@ -689,7 +689,7 @@ public static partial class PyBuiltinFunctions
         }
     }
 
-    [PyFunctionArgsDef("object", "/")]
+    [PyFunctionParameters("object", "/")]
     private static PyResult CallableImpl(PyCallContext context, PyArguments arguments)
     {
         var attr = PyOperators.GetAttr(context, arguments[0], PySpecialNames.Interned.Call);
@@ -700,38 +700,38 @@ public static partial class PyBuiltinFunctions
         return attr;
     }
 
-    [PyFunctionArgsDef("object", "/")]
+    [PyFunctionParameters("object", "/")]
     private static PyResult IdImpl(PyCallContext context, PyArguments arguments)
     {
         return PyIntObject.FromInteger(arguments[0].PyId);
     }
 
-    [PyFunctionArgsDef("object", "/")]
+    [PyFunctionParameters("object", "/")]
     private static PyResult HashImpl(PyCallContext context, PyArguments arguments)
     {
         return PySpecialMethods.Hash(context, arguments[0]);
     }
 
-    [PyFunctionArgsDef("object", "/")]
+    [PyFunctionParameters("object", "/")]
     private static PyResult IterImpl(PyCallContext context, PyArguments arguments)
     {
         return PySpecialMethods.Iter(context, arguments[0]);
     }
 
-    [PyFunctionArgsDef("object", "/")]
+    [PyFunctionParameters("object", "/")]
     private static PyResult LenImpl(PyCallContext context, PyArguments arguments)
     {
         return PySpecialMethods.Len(context, arguments[0]);
     }
 
-    [PyFunctionArgsDef("iterator", "/")]
+    [PyFunctionParameters("iterator", "/")]
     private static PyResult NextImpl_1(PyCallContext context, PyArguments arguments)
     {
         var iterator = arguments[0];
         return PySpecialMethods.Next(context, iterator);
     }
 
-    [PyFunctionArgsDef("iterator", "default", "/")]
+    [PyFunctionParameters("iterator", "default", "/")]
     private static PyResult NextImpl_2(PyCallContext context, PyArguments arguments)
     {
         var iterator = arguments[0];
@@ -741,20 +741,20 @@ public static partial class PyBuiltinFunctions
         return result;
     }
 
-    [PyFunctionArgsDef("object", "/")]
+    [PyFunctionParameters("object", "/")]
     private static PyResult ReprImpl(PyCallContext context, PyArguments arguments)
     {
         return PySpecialMethods.Repr(context, arguments[0]);
     }
 
 
-    [PyFunctionArgsDef("x", "/")]
+    [PyFunctionParameters("x", "/")]
     private static PyResult AbsImpl(PyCallContext context, PyArguments arguments)
     {
         return PySpecialMethods.Abs(context, arguments[0]);
     }
 
-    [PyFunctionArgsDef("integer", "/")]
+    [PyFunctionParameters("integer", "/")]
     private static PyResult BinImpl(PyCallContext context, PyArguments arguments)
     {
         var result = PySpecialMethods.Index(context, arguments[0]);
@@ -765,7 +765,7 @@ public static partial class PyBuiltinFunctions
         return PyStrObject.FromString(value);
     }
 
-    [PyFunctionArgsDef("integer", "/")]
+    [PyFunctionParameters("integer", "/")]
     private static PyResult OctImpl(PyCallContext context, PyArguments arguments)
     {
         var result = PySpecialMethods.Index(context, arguments[0]);
@@ -776,7 +776,7 @@ public static partial class PyBuiltinFunctions
         return PyStrObject.FromString(value);
     }
 
-    [PyFunctionArgsDef("integer", "/")]
+    [PyFunctionParameters("integer", "/")]
     private static PyResult HexImpl(PyCallContext context, PyArguments arguments)
     {
         var result = PySpecialMethods.Index(context, arguments[0]);
@@ -787,7 +787,7 @@ public static partial class PyBuiltinFunctions
         return PyStrObject.FromString(value);
     }
 
-    [PyFunctionArgsDef("object", "/")]
+    [PyFunctionParameters("object", "/")]
     private static PyResult AsciiImpl(PyCallContext context, PyArguments arguments)
     {
         var result = PySpecialMethods.Repr(context, arguments[0]);
@@ -816,19 +816,19 @@ public static partial class PyBuiltinFunctions
         return PyStrObject.FromString(builder.ToString());
     }
 
-    [PyFunctionArgsDef("value", "format_spec=''", "/")]
+    [PyFunctionParameters("value", "format_spec=''", "/")]
     private static PyResult FormatImpl(PyCallContext context, PyArguments arguments)
     {
         return PySpecialMethods.Format(context, arguments[0], arguments[1]);
     }
 
-    [PyFunctionArgsDef("object", "name", "/")]
+    [PyFunctionParameters("object", "name", "/")]
     private static PyResult DelAttrImpl(PyCallContext context, PyArguments arguments)
     {
         return PyOperators.DelAttr(context, arguments[0], arguments[1]);
     }
 
-    [PyFunctionArgsDef("source", "filename", "mode" /* flags=0, dont_inherit=False, optimize=-1 */)]
+    [PyFunctionParameters("source", "filename", "mode" /* flags=0, dont_inherit=False, optimize=-1 */)]
     private static PyResult CompileImpl(PyCallContext context, PyArguments arguments)
     {
         if (arguments[0] is not PyStrObject source)
@@ -855,7 +855,7 @@ public static partial class PyBuiltinFunctions
         return codeObject;
     }
 
-    [PyFunctionArgsDef("iterable", "/", "*", "key=None", "reverse=False")]
+    [PyFunctionParameters("iterable", "/", "*", "key=None", "reverse=False")]
     private static PyResult SortedImpl(PyCallContext context, PyArguments arguments)
     {
         var list = PyUtils.IterableToList(context, arguments[0]);
