@@ -275,4 +275,40 @@ public static class PySpecialMethods
             return PySR.Format(PySR.Runtime_Object_FormatReturnsNonString, o.PyType.FullName);
         }
     }
+
+    public static PyResult Round(PyCallContext context, PyObject obj, PyObject ndigits)
+    {
+        var func = obj.PyType.Slots.Round;
+        if (func is not null)
+            return func(context, obj, ndigits);
+
+        return PyResult.TypeError(null);
+    }
+
+    public static PyResult Trunc(PyCallContext context, PyObject obj)
+    {
+        var func = obj.PyType.Slots.Trunc;
+        if (func is not null)
+            return func(context, obj);
+
+        return PyResult.TypeError(null);
+    }
+
+    public static PyResult Floor(PyCallContext context, PyObject obj)
+    {
+        var func = obj.PyType.Slots.Floor;
+        if (func is not null)
+            return func(context, obj);
+
+        return PyResult.TypeError(null);
+    }
+
+    public static PyResult Ceil(PyCallContext context, PyObject obj)
+    {
+        var func = obj.PyType.Slots.Ceil;
+        if (func is not null)
+            return func(context, obj);
+
+        return PyResult.TypeError(null);
+    }
 }

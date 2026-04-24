@@ -32,7 +32,7 @@ internal static class LiteralParser
                 return PyIntObject.FromInteger(resultInt);
 
             if (double.TryParse(literal, out var resultDouble))
-                return new PyFloatObject(resultDouble);
+                return PyFloatObject.FromDouble(resultDouble);
         }
 
         if (literal[0] is '[' && literal[^1] is ']')

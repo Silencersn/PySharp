@@ -7,11 +7,26 @@ namespace PySharp.Modules.Builtins;
 
 public class PyFloatObject : PyObject
 {
+    public static PyFloatObject Zero { get; } = FromDouble(0);
+    public static PyFloatObject NegativeZero { get; } = FromDouble(double.NegativeZero);
+    public static PyFloatObject One { get; } = FromDouble(1);
+    public static PyFloatObject MinusOne { get; } = FromDouble(-1);
+    public static PyFloatObject NaN { get; } = FromDouble(double.NaN);
+    public static PyFloatObject PositiveInfinity { get; } = FromDouble(double.PositiveInfinity);
+    public static PyFloatObject NegativeInfinity { get; } = FromDouble(double.NegativeInfinity);
+    public static PyFloatObject Pi { get; } = FromDouble(double.Pi);
+    public static PyFloatObject E { get; } = FromDouble(double.E);
+    public static PyFloatObject Epsilon { get; } = FromDouble(double.Epsilon);
+    public static PyFloatObject Tau { get; } = FromDouble(double.Tau);
+
+
     public double Value { get; set; }
     public override PyTypeObject DefaultPyType => PyFloatObjectType.Shared;
 
-    public PyFloatObject() { }
-    public PyFloatObject(double value) : this() { Value = value; }
+    private PyFloatObject(double value)
+    {
+        Value = value;
+    }
     public static PyFloatObject FromDouble(double value)
     {
         return new PyFloatObject(value);
@@ -21,7 +36,6 @@ public class PyFloatObject : PyObject
 [PyType("float")]
 public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
 {
-
     protected override PyResult Repr(PyCallContext context, PyFloatObject self)
     {
         return PyStrObject.FromString(self.Value.ToString());
@@ -314,6 +328,67 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
                 text = text.PadLeft(width, spec.Fill ?? ' ');
         }
         return PyStrObject.FromString(text);
+    }
+
+    protected override PyResult Round(PyCallContext context, PyFloatObject self, PyObject ndigits)
+    {
+        if (ndigits is PyNoneObject)
+        {
+            if (!double.IsFinite(self.Value))
+                return PyResult.TypeError(null);
+
+            return PyIntObject.FromInteger((BigInteger)Math.Round(self.Value));
+        }
+
+        var result = PySpecialMethods.Index(context, ndigits);
+        if (result.IsError)
+            return result;
+
+        var digits = result.Value.Int32Value;
+
+        if (digits < 0)
+        {
+            var factor = Math.Pow(10, -digits);
+            var value = Math.Round(self.Value / factor) * factor;
+            if (value.Equals(self.Value))
+                return self;
+            return PyFloatObject.FromDouble(value);
+        }
+        else if (digits > 15)
+        {
+            return self;
+        }
+        else
+        {
+            var value = Math.Round(self.Value, digits);
+            if (value.Equals(self.Value))
+                return self;
+            return PyFloatObject.FromDouble(value);
+        }
+    }
+
+    protected override PyResult Trunc(PyCallContext context, PyFloatObject self)
+    {
+        var value = Math.Truncate(self.Value);
+        if (value.Equals(self.Value))
+            return self;
+        return PyFloatObject.FromDouble(value);
+    }
+
+    protected override PyResult Floor(PyCallContext context, PyFloatObject self)
+    {
+        var value = Math.Floor(self.Value);
+        if (value.Equals(self.Value))
+            return self;
+        return PyFloatObject.FromDouble(value);
+    }
+
+    protected override PyResult Ceil(PyCallContext context, PyFloatObject self)
+    {
+        var value = Math.Ceiling(self.Value);
+        if (value.Equals(self.Value))
+            return self;
+        return PyFloatObject.FromDouble(value);
     }
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
