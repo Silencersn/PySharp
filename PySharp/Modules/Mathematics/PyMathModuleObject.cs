@@ -35,5 +35,9 @@ public class PyMathModuleObject : PyModuleObject
         AddObjToAttrs(PyMathFunctions.Pow);
         AddObjToAttrs(PyMathFunctions.Gcd);
         AddObjToAttrs(PyMathFunctions.Lcm);
+        AddObjToAttrs(PyMathFunctions.Log);
+        AddObjToAttrs(PyMathFunctions.Log2);
+        AddObjToAttrs(PyMathFunctions.Log10);
+        AddObjToAttrs(PyMathFunctions.Log1p);
     }
 }

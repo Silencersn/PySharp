@@ -36,8 +36,12 @@ internal static class PyMathFunctions
     public static readonly PyBuiltinFunctionOrMethodObject Pow = PyBuiltinFunctionOrMethodObject.CreateFunction("pow", PowImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Gcd = PyBuiltinFunctionOrMethodObject.CreateFunction("gcd", GcdImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Lcm = PyBuiltinFunctionOrMethodObject.CreateFunction("lcm", LcmImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject Log = PyBuiltinFunctionOrMethodObject.CreateFunction("log", LogImpl_1, LogImpl_2);
+    public static readonly PyBuiltinFunctionOrMethodObject Log2 = PyBuiltinFunctionOrMethodObject.CreateFunction("log2", Log2Impl);
+    public static readonly PyBuiltinFunctionOrMethodObject Log10 = PyBuiltinFunctionOrMethodObject.CreateFunction("log10", Log10Impl);
+    public static readonly PyBuiltinFunctionOrMethodObject Log1p = PyBuiltinFunctionOrMethodObject.CreateFunction("log1p", Log1pImpl);
 
-    private static PyResult Math1Imlp(PyCallContext context, PyObject arg, Func<double, double> func, bool canOverflow, string? errMsg)
+    private static PyResult<PyFloatObject> Math1Impl(PyCallContext context, PyObject arg, Func<double, double> func, bool canOverflow, string? errMsg)
     {
         var xResult = PySpecialMethods.Float(context, arg);
         if (xResult.IsError)
@@ -66,7 +70,7 @@ internal static class PyMathFunctions
         return PyFloatObject.FromDouble(r);
     }
 
-    private static PyResult Math2Impl(PyCallContext context, PyObject arg0, PyObject arg1, Func<double, double, double> func)
+    private static PyResult<PyFloatObject> Math2Impl(PyCallContext context, PyObject arg0, PyObject arg1, Func<double, double, double> func)
     {
         var xResult = PySpecialMethods.Float(context, arg0);
         if (xResult.IsError)
@@ -100,91 +104,91 @@ internal static class PyMathFunctions
     [PyFunctionParameters("x", "/")]
     private static PyResult SqrtImpl(PyCallContext context, PyArguments arguments)
     {
-        return Math1Imlp(context, arguments[0], Math.Sqrt, canOverflow: false, errMsg: "expected a nonnegative input, got {0}");
+        return Math1Impl(context, arguments[0], Math.Sqrt, canOverflow: false, errMsg: "expected a nonnegative input, got {0}");
     }
 
     [PyFunctionParameters("x", "/")]
     private static PyResult AcosImpl(PyCallContext context, PyArguments arguments)
     {
-        return Math1Imlp(context, arguments[0], Math.Acos, canOverflow: false, errMsg: "expected a number in range from -1 up to 1, got {0}");
+        return Math1Impl(context, arguments[0], Math.Acos, canOverflow: false, errMsg: "expected a number in range from -1 up to 1, got {0}");
     }
 
     [PyFunctionParameters("x", "/")]
     private static PyResult AsinImpl(PyCallContext context, PyArguments arguments)
     {
-        return Math1Imlp(context, arguments[0], Math.Asin, canOverflow: false, errMsg: "expected a number in range from -1 up to 1, got {0}");
+        return Math1Impl(context, arguments[0], Math.Asin, canOverflow: false, errMsg: "expected a number in range from -1 up to 1, got {0}");
     }
 
     [PyFunctionParameters("x", "/")]
     private static PyResult AtanImpl(PyCallContext context, PyArguments arguments)
     {
-        return Math1Imlp(context, arguments[0], Math.Atan, canOverflow: false, errMsg: null);
+        return Math1Impl(context, arguments[0], Math.Atan, canOverflow: false, errMsg: null);
     }
 
     [PyFunctionParameters("x", "/")]
     private static PyResult CosImpl(PyCallContext context, PyArguments arguments)
     {
-        return Math1Imlp(context, arguments[0], Math.Cos, canOverflow: false, errMsg: "expected a finite input, got {0}");
+        return Math1Impl(context, arguments[0], Math.Cos, canOverflow: false, errMsg: "expected a finite input, got {0}");
     }
 
     [PyFunctionParameters("x", "/")]
     private static PyResult SinImpl(PyCallContext context, PyArguments arguments)
     {
-        return Math1Imlp(context, arguments[0], Math.Sin, canOverflow: false, errMsg: "expected a finite input, got {0}");
+        return Math1Impl(context, arguments[0], Math.Sin, canOverflow: false, errMsg: "expected a finite input, got {0}");
     }
 
     [PyFunctionParameters("x", "/")]
     private static PyResult TanImpl(PyCallContext context, PyArguments arguments)
     {
-        return Math1Imlp(context, arguments[0], Math.Tan, canOverflow: false, errMsg: "expected a finite input, got {0}");
+        return Math1Impl(context, arguments[0], Math.Tan, canOverflow: false, errMsg: "expected a finite input, got {0}");
     }
 
     [PyFunctionParameters("x", "/")]
     private static PyResult ExpImpl(PyCallContext context, PyArguments arguments)
     {
-        return Math1Imlp(context, arguments[0], Math.Exp, canOverflow: true, errMsg: null);
+        return Math1Impl(context, arguments[0], Math.Exp, canOverflow: true, errMsg: null);
     }
 
     [PyFunctionParameters("x", "/")]
     private static PyResult AcoshImpl(PyCallContext context, PyArguments arguments)
     {
-        return Math1Imlp(context, arguments[0], Math.Acosh, canOverflow: false, errMsg: "expected argument value not less than 1, got {0}");
+        return Math1Impl(context, arguments[0], Math.Acosh, canOverflow: false, errMsg: "expected argument value not less than 1, got {0}");
     }
 
     [PyFunctionParameters("x", "/")]
     private static PyResult AsinhImpl(PyCallContext context, PyArguments arguments)
     {
-        return Math1Imlp(context, arguments[0], Math.Asinh, canOverflow: false, errMsg: null);
+        return Math1Impl(context, arguments[0], Math.Asinh, canOverflow: false, errMsg: null);
     }
 
     [PyFunctionParameters("x", "/")]
     private static PyResult AtanhImpl(PyCallContext context, PyArguments arguments)
     {
-        return Math1Imlp(context, arguments[0], Math.Atanh, canOverflow: false, errMsg: "expected a number between -1 and 1, got {0}");
+        return Math1Impl(context, arguments[0], Math.Atanh, canOverflow: false, errMsg: "expected a number between -1 and 1, got {0}");
     }
 
     [PyFunctionParameters("x", "/")]
     private static PyResult CoshImpl(PyCallContext context, PyArguments arguments)
     {
-        return Math1Imlp(context, arguments[0], Math.Cosh, canOverflow: true, errMsg: null);
+        return Math1Impl(context, arguments[0], Math.Cosh, canOverflow: true, errMsg: null);
     }
 
     [PyFunctionParameters("x", "/")]
     private static PyResult SinhImpl(PyCallContext context, PyArguments arguments)
     {
-        return Math1Imlp(context, arguments[0], Math.Sinh, canOverflow: true, errMsg: null);
+        return Math1Impl(context, arguments[0], Math.Sinh, canOverflow: true, errMsg: null);
     }
 
     [PyFunctionParameters("x", "/")]
     private static PyResult TanhImpl(PyCallContext context, PyArguments arguments)
     {
-        return Math1Imlp(context, arguments[0], Math.Tanh, canOverflow: false, errMsg: null);
+        return Math1Impl(context, arguments[0], Math.Tanh, canOverflow: false, errMsg: null);
     }
 
     [PyFunctionParameters("x", "/")]
     private static PyResult FabsImpl(PyCallContext context, PyArguments arguments)
     {
-        return Math1Imlp(context, arguments[0], Math.Abs, canOverflow: false, errMsg: null);
+        return Math1Impl(context, arguments[0], Math.Abs, canOverflow: false, errMsg: null);
     }
 
     [PyFunctionParameters("x", "/")]
@@ -310,6 +314,84 @@ internal static class PyMathFunctions
                 return BigInteger.Abs(left);
 
             return BigInteger.Abs(left / BigInteger.GreatestCommonDivisor(left, right) * right);
+        }
+    }
+
+    private static PyResult<PyFloatObject> MathLogImpl(PyCallContext context, PyObject arg, Func<BigInteger, double> intFunc, Func<double, double> doubleFunc)
+    {
+        if (arg is PyIntObject { Value: var intValue })
+            return PyFloatObject.FromDouble(intFunc(intValue));
+
+        if (arg.PyType.Slots.Float is not null)
+        {
+            var result = PySpecialMethods.Float(context, arg);
+            if (result.IsError)
+                return result;
+
+            return Math1Impl(context, result.Value, doubleFunc, canOverflow: false, errMsg: "expected a positive input, got {0}");
+        }
+        else
+        {
+            var result = PySpecialMethods.Index(context, arg);
+            if (result.IsError)
+                return result.ExceptionResult;
+
+            return PyFloatObject.FromDouble(intFunc(result.Value.Value));
+        }
+    }
+
+    [PyFunctionParameters("x", "/")]
+    private static PyResult LogImpl_1(PyCallContext context, PyArguments arguments)
+    {
+        return MathLogImpl(context, arguments[0], BigInteger.Log, Math.Log);
+    }
+    [PyFunctionParameters("x", "base", "/")]
+    private static PyResult LogImpl_2(PyCallContext context, PyArguments arguments)
+    {
+        var num = MathLogImpl(context, arguments[0], BigInteger.Log, Math.Log);
+        if (num.IsError)
+            return num;
+
+        var den = MathLogImpl(context, arguments[1], BigInteger.Log, Math.Log);
+        if (den.IsError)
+            return den;
+        
+        return PyFloatObject.FromDouble(num.Value.Value / den.Value.Value);
+    }
+
+    [PyFunctionParameters("x", "/")]
+    private static PyResult Log2Impl(PyCallContext context, PyArguments arguments)
+    {
+        return MathLogImpl(context, arguments[0], static i => (double)BigInteger.Log(i, 2), Math.Log2);
+    }
+    [PyFunctionParameters("x", "/")]
+    private static PyResult Log10Impl(PyCallContext context, PyArguments arguments)
+    {
+        return MathLogImpl(context, arguments[0], BigInteger.Log10, Math.Log10);
+    }
+    [PyFunctionParameters("x", "/")]
+    private static PyResult Log1pImpl(PyCallContext context, PyArguments arguments)
+    {
+        return Math1Impl(context, arguments[0], Log1p, canOverflow: false, errMsg: "expected argument value > -1, got {0}");
+
+        static double Log1p(double value)
+        {
+            if (double.IsNaN(value) || value < -1.0)
+                return double.NaN;
+
+            if (value is -1.0)
+                return double.NegativeInfinity;
+
+            if (double.IsPositiveInfinity(value))
+                return double.PositiveInfinity;
+
+            double u = 1.0 + value;
+            double epsilon = u - 1.0;
+
+            if (epsilon is 0)
+                return value;
+            
+            return Math.Log(u) * (value / epsilon);
         }
     }
 }
