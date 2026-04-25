@@ -1,4 +1,5 @@
 ﻿using PySharp.Modules.Builtins;
+using PySharp.Modules.Mathematics;
 using PySharp.Modules.Operator;
 using PySharp.Modules.Queue;
 using PySharp.Modules.Random;
@@ -20,6 +21,7 @@ internal static class PyStandardLibrary
             "builtins" => new PyBuiltinsModuleObject(),
             "site" => new PySiteModuleObject(),
             "operator" => new PyOperatorModuleObject(),
+            "math" => new PyMathModuleObject(),
             "time" => new PyTimeModuleObject(),
             "random" => new PyRandomModuleObject(),
             "this" => new PyThisModuleObject(),

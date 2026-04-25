@@ -44,12 +44,15 @@ partial struct PyResult
     {
         return RaiseException(PyTypeErrorObjectType.Shared, format, args);
     }
-
+    
     public static PyExceptionResult ValueError(string? format, params ReadOnlySpan<object?> args)
     {
         return RaiseException(PyValueErrorObjectType.Shared, format, args);
     }
-
+    public static PyExceptionResult OverflowError(string? format, params ReadOnlySpan<object?> args)
+    {
+        return RaiseException(PyOverflowErrorObjectType.Shared, format, args);
+    }
     public static PyExceptionResult IndexError(string? format, params ReadOnlySpan<object?> args)
     {
         return RaiseException(PyIndexErrorObjectType.Shared, format, args);
