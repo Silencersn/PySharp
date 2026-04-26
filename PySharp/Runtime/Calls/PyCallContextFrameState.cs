@@ -1,6 +1,8 @@
 ﻿using PySharp.Modules.Builtins;
 using PySharp.Runtime.VirtualMachine;
+using PySharp.Utility;
 using System.Diagnostics;
+using System.Xml.Linq;
 
 namespace PySharp.Runtime.Calls;
 
@@ -37,10 +39,7 @@ internal sealed partial class PyCallContextFrameState : IDisposable
             // that may lead to stack overflow on .NET
             throw new PyRuntimeException(PyRecursionErrorObjectType.Shared.Create(PyStrObject.FromString(PySR.Runtime_Recursion_MaxRecursionDepthExceeded)));
 
-        if (_frameCount == _frames.Length)
-            Array.Resize(ref _frames, _frames.Length * 2);
-
-        _frames[_frameCount++] = frame;
+        ArrayStackHelper.Push(ref _frames, ref _frameCount, frame);
         frame = ref CurrentInternalFrame;
     }
 
@@ -57,16 +56,12 @@ internal sealed partial class PyCallContextFrameState : IDisposable
 
     public void PushStates(ref BytecodeVirtualMachineStates states)
     {
-        if (_statesCount == _statesStack.Length)
-            Array.Resize(ref _statesStack, _statesStack.Length * 2);
-        _statesStack[_statesCount++] = states;
+        ArrayStackHelper.Push(ref _statesStack, ref _statesCount, states);
     }
 
     public BytecodeVirtualMachineStates PopStates()
     {
-        var states = _statesStack[_statesCount - 1];
-        _statesStack[--_statesCount] = default;
-        return states;
+        return ArrayStackHelper.Pop(_statesStack, ref _statesCount);
     }
 
     public ref PyInternalFrame FindOuterNonInlineFrame()

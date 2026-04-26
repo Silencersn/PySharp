@@ -1,4 +1,5 @@
 ﻿using PySharp.Modules.Builtins;
+using PySharp.Utility;
 using System.Buffers;
 using System.Diagnostics;
 
@@ -46,16 +47,10 @@ partial class PyCallContextFrameState
                 index = 0;
 
                 if (targetChunk == _chunkCount)
-                {
-                    if (_chunkCount == _chunks.Length)
-                        Array.Resize(ref _chunks, _chunks.Length * 2);
-                    _chunks[_chunkCount++] = ArrayPool<PyObject?>.Shared.Rent(DataChunkSize);
-                }
+                    ArrayStackHelper.Push(ref _chunks, ref _chunkCount, ArrayPool<PyObject?>.Shared.Rent(DataChunkSize));
             }
 
-            if (_previousFreePtrsCount == _previousFreePtrs.Length)
-                Array.Resize(ref _previousFreePtrs, _previousFreePtrs.Length * 2);
-            _previousFreePtrs[_previousFreePtrsCount++] = _freePtr;
+            ArrayStackHelper.Push(ref _previousFreePtrs, ref _previousFreePtrsCount, _freePtr);
 
             _freePtr = new FreePtr
             {
@@ -69,7 +64,7 @@ partial class PyCallContextFrameState
         public void Free(Memory<PyObject?> memory)
         {
             memory.Span.Clear();
-            _freePtr = _previousFreePtrs[--_previousFreePtrsCount];
+            _freePtr = ArrayStackHelper.Pop(_previousFreePtrs, ref _previousFreePtrsCount);
         }
 
         public void Dispose()
