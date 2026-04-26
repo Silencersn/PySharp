@@ -194,7 +194,6 @@ public class InternalPyTypeObjectGenerator : IIncrementalGenerator
                         }));
 
                         builder
-                            .AppendLine("[PySlot]")
                             .AppendLine($"protected virtual partial PyResult {method.Name}({parameters});")
                             .AppendLine();
                     })

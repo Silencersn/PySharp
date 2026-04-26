@@ -112,7 +112,7 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
             return PyIntObject.FromInteger(integer);
         }
 
-        var result = PyNumber.Int(context, arguments[0]);
+        var result = PySpecialMethods.Int(context, arguments[0]);
         if (result.IsError)
             return result;
 

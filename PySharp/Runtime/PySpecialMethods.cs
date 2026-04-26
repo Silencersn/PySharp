@@ -311,4 +311,37 @@ public static class PySpecialMethods
 
         return PyResult.TypeError(null);
     }
+
+    public static PyResult<PyIntObject> Int(PyCallContext context, PyObject obj)
+    {
+        var toInt = obj.PyType.Slots.Int;
+        if (toInt is not null)
+        {
+            var result = toInt(context, obj);
+            if (result.IsError)
+                return result.ExceptionResult;
+
+            if (result.Value is not PyIntObject intObj)
+                return PyResult.TypeError(PySR.Runtime_Object_SpecialMethodReturnsWrongType,
+                    PySpecialNames.Int, "int", result.Value.PyType.FullName);
+
+            return intObj;
+        }
+
+        var index = obj.PyType.Slots.Index;
+        if (index is not null)
+        {
+            var result = index(context, obj);
+            if (result.IsError)
+                return result.ExceptionResult;
+
+            if (result.Value is not PyIntObject intObj)
+                return PyResult.TypeError(PySR.Runtime_Object_SpecialMethodReturnsWrongType,
+                    PySpecialNames.Index, "int", result.Value.PyType.FullName);
+
+            return intObj;
+        }
+
+        return PyResult.TypeError(PySR.Runtime_Number_Int_WrongArg, obj.PyType.FullName);
+    }
 }
