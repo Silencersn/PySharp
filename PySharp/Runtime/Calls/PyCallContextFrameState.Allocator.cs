@@ -13,24 +13,23 @@ partial class PyCallContextFrameState
         private PyObject?[][] _chunks;
         private int _chunkCount;
 
-        private struct AllocRecord
+        private struct FreePtr
         {
             public int Chunk;
             public int Index;
-            public int Size;
         }
 
-        private AllocRecord[] _records;
-        private int _recordCount;
+        private FreePtr[] _previousFreePtrs;
+        private int _previousFreePtrsCount;
 
-        private AllocRecord _currentAllocRecord;
+        private FreePtr _freePtr;
 
         public PyObjectMemoryAllocator()
         {
             _chunks = new PyObject?[4][];
-            _records = new AllocRecord[16];
+            _previousFreePtrs = new FreePtr[16];
 
-            _currentAllocRecord = new AllocRecord { Chunk = -1, Index = 0, Size = 0 };
+            _freePtr = new FreePtr { Chunk = -1, Index = DataChunkSize };
         }
 
         public Memory<PyObject?> Alloc(int size)
@@ -38,13 +37,13 @@ partial class PyCallContextFrameState
             Debug.Assert(size > 0);
             Debug.Assert(size <= DataChunkSize);
 
-            int targetChunk = _currentAllocRecord.Chunk;
-            int nextIndex = _currentAllocRecord.Index + _currentAllocRecord.Size;
+            int targetChunk = _freePtr.Chunk;
+            int index = _freePtr.Index;
 
-            if (targetChunk == -1 || nextIndex + size > DataChunkSize)
+            if (index + size > DataChunkSize)
             {
                 targetChunk++;
-                nextIndex = 0;
+                index = 0;
 
                 if (targetChunk == _chunkCount)
                 {
@@ -54,26 +53,23 @@ partial class PyCallContextFrameState
                 }
             }
 
-            if (_recordCount == _records.Length)
-                Array.Resize(ref _records, _records.Length * 2);
-            _records[_recordCount++] = _currentAllocRecord;
+            if (_previousFreePtrsCount == _previousFreePtrs.Length)
+                Array.Resize(ref _previousFreePtrs, _previousFreePtrs.Length * 2);
+            _previousFreePtrs[_previousFreePtrsCount++] = _freePtr;
 
-            _currentAllocRecord = new AllocRecord
+            _freePtr = new FreePtr
             {
                 Chunk = targetChunk,
-                Index = nextIndex,
-                Size = size
+                Index = index + size,
             };
 
-            return new Memory<PyObject?>(_chunks[targetChunk], nextIndex, size);
+            return new Memory<PyObject?>(_chunks[targetChunk], index, size);
         }
 
         public void Free(Memory<PyObject?> memory)
         {
-            Debug.Assert(memory.Length == _currentAllocRecord.Size);
-
             memory.Span.Clear();
-            _currentAllocRecord = _records[--_recordCount];
+            _freePtr = _previousFreePtrs[--_previousFreePtrsCount];
         }
 
         public void Dispose()
@@ -84,7 +80,7 @@ partial class PyCallContextFrameState
                 _chunks[i] = null!;
             }
             _chunkCount = 0;
-            _recordCount = 0;
+            _previousFreePtrsCount = 0;
         }
     }
 }
