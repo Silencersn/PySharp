@@ -74,7 +74,7 @@ internal sealed class PathProvider : PyModuleProvider
                 if (fileSystem.ExistsFile(initFilename))
                 {
                     var initCode = fileSystem.ReadAllText(initFilename);
-                    PyInterpreter.RunCodeWithContext(context, initCode, package, initFilename);
+                    PyInterpreter.RunCodeWithContext(context, initCode, package, initFilename, isMain: false);
                 }
                 module = package;
                 return true;
@@ -85,7 +85,7 @@ internal sealed class PathProvider : PyModuleProvider
                 continue;
 
             var code = fileSystem.ReadAllText(filename);
-            module = PyInterpreter.RunCodeWithContext(context, code, fullName, fileSystem.GetFullPath(filename));
+            module = PyInterpreter.RunCodeWithContext(context, code, fullName, fileSystem.GetFullPath(filename), isMain: false);
             module.OnImport(context, context.PyEnvironment);
             return true;
         }

@@ -40,13 +40,13 @@ public sealed class PyInterpreter : IDisposable
         _ = PyCore.Eval(context).PyUnwrap(context);
     }
 
-    internal static PyModuleObject InternalExecuteNewModule(PyCallContext context, PyCodeObject code)
+    internal static PyModuleObject InternalExecuteNewModule(PyCallContext context, PyCodeObject code, bool isMain)
     {
         var module = new PyModuleObject(code.Name);
-        InternalExecuteToModule(context, code, module);
+        InternalExecuteToModule(context, code, module, isMain);
         return module;
     }
-    internal static void InternalExecuteToModule(PyCallContext context, PyCodeObject code, PyModuleObject module)
+    internal static void InternalExecuteToModule(PyCallContext context, PyCodeObject code, PyModuleObject module, bool isMain)
     {
         // module will be reloaded
         var dict = context.CurrentInternalFrame.Variables.Globals.Dict;
@@ -56,6 +56,7 @@ public sealed class PyInterpreter : IDisposable
                 dict[pair.Key] = pair.Value;
         }
         module._pyAttributes = context.CurrentInternalFrame.Variables.Globals.Dict;
+        module.PyAttributes[PySpecialNames.Name] = isMain ? PySpecialNames.Interned.Main : PyStrObject.FromString(module.Name);
 
         context.CurrentInternalFrame.CodeObject = code;
         PyTryCatch(context, () =>
@@ -64,7 +65,8 @@ public sealed class PyInterpreter : IDisposable
         });
 
         Debug.Assert(ReferenceEquals(module.PyAttributes, context.CurrentInternalFrame.Variables.Globals.Dict));
-        module.PyAttributes[PySpecialNames.Name] = PyStrObject.FromString(module.Name);
+        if (isMain)
+            module.PyAttributes[PySpecialNames.Name] = PyStrObject.FromString(module.Name);
     }
 
     public void Execute(string code, string sourceName)
@@ -149,7 +151,7 @@ public sealed class PyInterpreter : IDisposable
             .Build();
 
         using var interpreter = Create(environment);
-        return RunCodeWithContext(interpreter.MainContext, code, moduleName, fullPath);
+        return RunCodeWithContext(interpreter.MainContext, code, moduleName, fullPath, isMain: true);
     }
 
     public static PyModuleObject? RunCode(string code, string? moduleName = null, string? sourceName = null)
@@ -163,19 +165,19 @@ public sealed class PyInterpreter : IDisposable
             .Build();
 
         using var interpreter = Create(environment);
-        return RunCodeWithContext(interpreter.MainContext, code, moduleName, sourceName);
+        return RunCodeWithContext(interpreter.MainContext, code, moduleName, sourceName, isMain: true);
     }
 
-    internal static PyModuleObject RunCodeWithContext(PyCallContext context, string code, string moduleName, string sourceName)
+    internal static PyModuleObject RunCodeWithContext(PyCallContext context, string code, string moduleName, string sourceName, bool isMain)
     {
         var codeObj = Compiler.CompileExec(context, code, sourceName, moduleName);
-        return InternalExecuteNewModule(context, codeObj);
+        return InternalExecuteNewModule(context, codeObj, isMain);
     }
 
-    internal static void RunCodeWithContext(PyCallContext context, string code, PyModuleObject module, string sourceName)
+    internal static void RunCodeWithContext(PyCallContext context, string code, PyModuleObject module, string sourceName, bool isMain)
     {
         var codeObj = Compiler.CompileExec(context, code, sourceName, module.Name);
-        InternalExecuteToModule(context, codeObj, module);
+        InternalExecuteToModule(context, codeObj, module, isMain);
     }
 
     public static void RunRepl()

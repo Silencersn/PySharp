@@ -74,6 +74,6 @@ public abstract class PyFrozenModuleObject : PyModuleObject
     public override void OnImport(PyCallContext context, PyEnvironment environment)
     {
         CodeObject ??= Compiler.CompileExec(context, Code, $"{Name}.py", Name);
-        PyInterpreter.InternalExecuteToModule(context, CodeObject, this);
+        PyInterpreter.InternalExecuteToModule(context, CodeObject, this, isMain: false);
     }
 }
