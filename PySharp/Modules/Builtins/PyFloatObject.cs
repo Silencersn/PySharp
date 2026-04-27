@@ -2,6 +2,7 @@ using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
 using System.Numerics;
+using System.Globalization;
 
 namespace PySharp.Modules.Builtins;
 
@@ -270,6 +271,8 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
             _ => base.Eq(context, self, other),
         };
     }
+
+    [AIGenerated]
     protected override PyResult Format(PyCallContext context, PyFloatObject self, PyObject formatSpec)
     {
         if (formatSpec is not PyStrObject str)
@@ -278,56 +281,139 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
         if (!PyFormatSpec.TryParse(str.Value, out var spec))
             return PyResult.ValueError(PySR.Runtime_Object_FormatSpecInvalid, str.Value, self.PyType.FullName);
 
+        double val = self.Value;
+        var formatType = spec.Type ?? 'g';
         int precision = spec.Precision ?? 6;
-        string text;
-        if (!double.IsNormal(self.Value))
+
+        if (spec.CoercePositiveZero && val == 0.0 && double.IsNegative(val))
         {
-            if (double.IsInfinity(self.Value))
-                text = spec.Type is 'f' ? "inf" : "INF";
-            else
-                text = spec.Type is 'f' ? "nan" : "NAN";
+            val = 0.0;
+        }
+
+        string text;
+        bool isSpecial = !double.IsFinite(val);
+
+        if (isSpecial)
+        {
+            text = double.IsNaN(val)
+                ? (char.IsUpper(formatType) ? "NAN" : "nan")
+                : (char.IsUpper(formatType) ? "INF" : "inf");
         }
         else
         {
-            switch (spec.Type)
+            var absValue = double.Abs(val);
+            switch (char.ToLowerInvariant(formatType))
             {
-                case 'f' or 'F':
-                    Span<char> format = stackalloc char[2 + 2 + precision];
-                    var offset = 0;
+                case 'f':
+                    text = absValue.ToString($"F{precision}", CultureInfo.InvariantCulture);
                     if (spec.WidthGrouping is not null)
+                        text = ApplyGrouping(text, spec.WidthGrouping.Value);
+                    break;
+                case 'e':
+                    text = absValue.ToString($"E{precision}", CultureInfo.InvariantCulture);
+                    if (formatType == 'e') text = text.ToLowerInvariant();
+                    break;
+                case 'g':
+                case 'n':
+                    string fmt = formatType is 'n' ? $"N{precision}" : $"G{precision}";
+                    text = absValue.ToString(fmt, CultureInfo.InvariantCulture);
+
+                    if (formatType is 'g' or 'G')
                     {
-                        "#,".CopyTo(format[offset..]);
-                        offset += 2;
+                        if (!spec.AlternateForm && text.Contains('.'))
+                        {
+                            text = text.TrimEnd('0').TrimEnd('.');
+                        }
+
+                        if (text == "0") text = "0.0";
                     }
-                    "0.".CopyTo(format[offset..]);
-                    offset += 2;
-                    format.Slice(offset, precision).Fill('0');
-                    offset += precision;
-                    text = double.Abs(self.Value).ToString(format[..offset].ToString());
+
                     if (spec.WidthGrouping is '_')
                         text = text.Replace(',', '_');
                     break;
+                case '%':
+                    text = (absValue * 100).ToString($"F{precision}", CultureInfo.InvariantCulture);
+                    if (spec.WidthGrouping is not null)
+                        text = ApplyGrouping(text, spec.WidthGrouping.Value);
+                    text += "%";
+                    break;
                 default:
-                    throw new NotImplementedException();
+                    return PyResult.ValueError(PySR.Runtime_Object_FormatUnsupported, self.PyType.FullName);
+            }
+
+            if (spec.AlternateForm && !text.Contains('.'))
+            {
+                if (text.Contains('e') || text.Contains('E'))
+                {
+                    int eIndex = text.IndexOfAny(['e', 'E']);
+                    text = text.Insert(eIndex, ".");
+                }
+                else if (formatType != '%')
+                {
+                    text += ".";
+                }
             }
         }
-        if (spec.Width is not null && spec.Align is '=')
-            throw new NotImplementedException();
-        if (self.Value < 0 && !double.IsNaN(self.Value))
-            text = '-' + text;
-        else if (spec.Sign is '+' or ' ')
-            text = spec.Sign + text;
+
+        var prefix = string.Empty;
+        if (double.IsNegative(val) && !double.IsNaN(val))
+        {
+            prefix = "-";
+        }
+        else if (!double.IsNaN(val))
+        {
+            if (spec.Sign is '+' or ' ')
+                prefix = spec.Sign.Value.ToString();
+        }
+
         if (spec.Width is not null)
         {
             var width = spec.Width.Value;
-            if (spec.Align is '<')
-                text = text.PadRight(width, spec.Fill ?? ' ');
-            else if (spec.Align is '^')
-                throw new NotImplementedException();
-            else
-                text = text.PadLeft(width, spec.Fill ?? ' ');
+            var fill = spec.Fill ?? (spec.SignAwareZeroPadding && spec.Align is null ? '0' : ' ');
+            var align = spec.Align ?? (spec.SignAwareZeroPadding ? '=' : '>');
+            text = ApplyWidth(prefix, text, width, fill, align);
         }
+        else
+        {
+            text = prefix + text;
+        }
+
         return PyStrObject.FromString(text);
+
+        static string ApplyGrouping(string value, char grouping)
+        {
+            if (grouping is not ',')
+                return value.Replace(',', '_');
+            return value;
+        }
+
+        static string ApplyWidth(string prefix, string body, int width, char fill, char align)
+        {
+            var text = prefix + body;
+            if (text.Length >= width)
+                return text;
+
+            var padding = width - text.Length;
+            return align switch
+            {
+                '<' => text.PadRight(width, fill),
+                '^' => PadCenter(text, width, fill),
+                '=' => prefix + body.PadLeft(body.Length + padding, fill),
+                _ => text.PadLeft(width, fill),
+            };
+        }
+
+        static string PadCenter(string text, int width, char fill)
+        {
+            var totalPadding = width - text.Length;
+            var leftPadding = totalPadding / 2;
+            return string.Create(width, (text, fill, leftPadding), static (span, state) =>
+            {
+                span[..state.leftPadding].Fill(state.fill);
+                state.text.AsSpan().CopyTo(span[state.leftPadding..]);
+                span[(state.leftPadding + state.text.Length)..].Fill(state.fill);
+            });
+        }
     }
 
     protected override PyResult Round(PyCallContext context, PyFloatObject self, PyObject ndigits)
