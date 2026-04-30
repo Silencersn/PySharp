@@ -315,4 +315,153 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
             return base.Eq(context, self, other);
         return PyMath.CalculatePyIntObject(PyOperatorTypes.Eq, self, intObj);
     }
+
+    [AIGenerated]
+    protected override PyResult Format(PyCallContext context, PyIntObject self, PyObject formatSpec)
+    {
+        if (formatSpec is not PyStrObject str)
+            return PyResult.TypeError(PySR.Runtime_Object_FormatArg2NonString, formatSpec.PyType.FullName);
+
+        if (!PyFormatSpec.TryParse(str.Value, out var spec))
+            return PyResult.ValueError(PySR.Runtime_Object_FormatSpecInvalid, str.Value, self.PyType.FullName);
+
+        var val = self.Value;
+        var formatType = spec.Type ?? 'd';
+
+        string text;
+        int numBase;
+        string basePrefix = string.Empty;
+
+        switch (char.ToLowerInvariant(formatType))
+        {
+            case 'b':
+                numBase = 2;
+                if (spec.AlternateForm) basePrefix = char.IsUpper(formatType) ? "0B" : "0b";
+                text = BigIntegerHelper.ToString(BigInteger.Abs(val), numBase);
+                if (spec.WidthGrouping is not null)
+                {
+                    text = ApplyGrouping(text, spec.WidthGrouping.Value, 4);
+                }
+                break;
+            case 'o':
+                numBase = 8;
+                if (spec.AlternateForm) basePrefix = char.IsUpper(formatType) ? "0O" : "0o";
+                text = BigIntegerHelper.ToString(BigInteger.Abs(val), numBase);
+                break;
+            case 'x':
+                numBase = 16;
+                if (spec.AlternateForm) basePrefix = char.IsUpper(formatType) ? "0X" : "0x";
+                text = BigIntegerHelper.ToString(BigInteger.Abs(val), numBase);
+                if (char.IsUpper(formatType)) text = text.ToUpperInvariant();
+                if (spec.WidthGrouping is not null)
+                {
+                     text = ApplyGrouping(text, spec.WidthGrouping.Value, 4);
+                }
+                break;
+            case 'd':
+            case 'n':
+                text = BigInteger.Abs(val).ToString();
+                if (spec.WidthGrouping is not null)
+                {
+                    text = ApplyGrouping(text, spec.WidthGrouping.Value, 3);
+                }
+                break;
+            case 'c':
+                if (val < 0 || val > 0x10FFFF)
+                    return PyResult.OverflowError($"%c arg not in range(0x110000)");
+                text = char.ConvertFromUtf32((int)val);
+                break;
+            case 'e':
+            case 'f':
+            case 'g':
+            case '%':
+                // fallback to float format
+                return PySpecialMethods.Format(context, PyFloatObject.FromDouble((double)val), formatSpec);
+            default:
+                return PyResult.ValueError(PySR.Runtime_Object_FormatUnsupported, self.PyType.FullName);
+        }
+
+        var prefix = string.Empty;
+        if (val < 0)
+        {
+            prefix = "-";
+        }
+        else
+        {
+            if (spec.Sign is '+' or ' ')
+                prefix = spec.Sign.Value.ToString();
+        }
+
+        string fullPrefix = prefix + basePrefix;
+
+        if (spec.Width is not null)
+        {
+            var width = spec.Width.Value;
+            var fill = spec.Fill ?? (spec.SignAwareZeroPadding && spec.Align is null ? '0' : ' ');
+            var align = spec.Align ?? (spec.SignAwareZeroPadding ? '=' : '>');
+            text = ApplyWidth(fullPrefix, text, width, fill, align);
+        }
+        else
+        {
+            text = fullPrefix + text;
+        }
+
+        return PyStrObject.FromString(text);
+
+        static string ApplyGrouping(string value, char grouping, int groupSize)
+        {
+            if (grouping is not ',' and not '_') return value;
+
+            int len = value.Length;
+            if (len <= groupSize) return value;
+            
+            // Calculate number of separators
+            int sepCount = (len - 1) / groupSize;
+            Span<char> span = stackalloc char[len + sepCount];
+            
+            int dst = span.Length - 1;
+            int src = len - 1;
+            int count = 0;
+            
+            while (src >= 0)
+            {
+                span[dst--] = value[src--];
+                count++;
+                if (count == groupSize && src >= 0)
+                {
+                    span[dst--] = grouping;
+                    count = 0;
+                }
+            }
+            return span.ToString();
+        }
+
+        static string ApplyWidth(string prefix, string body, int width, char fill, char align)
+        {
+            var text = prefix + body;
+            if (text.Length >= width)
+                return text;
+
+            var padding = width - text.Length;
+            return align switch
+            {
+                '<' => text.PadRight(width, fill),
+                '^' => PadCenter(text, width, fill),
+                '=' => prefix + body.PadLeft(body.Length + padding, fill),
+                _ => text.PadLeft(width, fill),
+            };
+        }
+
+        static string PadCenter(string text, int width, char fill)
+        {
+            var totalPadding = width - text.Length;
+            var leftPadding = totalPadding / 2;
+            return string.Create(width, (text, fill, leftPadding), static (span, state) =>
+            {
+                span[..state.leftPadding].Fill(state.fill);
+                state.text.AsSpan().CopyTo(span[state.leftPadding..]);
+                span[(state.leftPadding + state.text.Length)..].Fill(state.fill);
+            });
+        }
+    }
 }
