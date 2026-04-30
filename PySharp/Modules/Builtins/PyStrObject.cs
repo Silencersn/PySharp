@@ -92,6 +92,370 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     {
         return self.PyJoin(context, arguments[0]);
     }
+
+    [PyMethod("upper")]
+    [AIGenerated]
+    [PyFunctionParameters]
+    private static PyResult Upper(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        return PyStrObject.FromString(self.Value.ToUpperInvariant());
+    }
+
+    [PyMethod("lower")]
+    [AIGenerated]
+    [PyFunctionParameters]
+    private static PyResult Lower(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        return PyStrObject.FromString(self.Value.ToLowerInvariant());
+    }
+
+    [PyMethod("strip")]
+    [AIGenerated]
+    [PyFunctionParameters("chars=None", "/")]
+    private static PyResult Strip(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        if (arguments[0] is PyNoneObject)
+            return PyStrObject.FromString(self.Value.Trim());
+        if (arguments[0] is PyStrObject charsStr)
+            return PyStrObject.FromString(self.Value.Trim(charsStr.Value.ToCharArray()));
+        return PyResult.TypeError($"strip arg must be None or str");
+    }
+
+    [PyMethod("lstrip")]
+    [AIGenerated]
+    [PyFunctionParameters("chars=None", "/")]
+    private static PyResult LStrip(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        if (arguments[0] is PyNoneObject)
+            return PyStrObject.FromString(self.Value.TrimStart());
+        if (arguments[0] is PyStrObject charsStr)
+            return PyStrObject.FromString(self.Value.TrimStart(charsStr.Value.ToCharArray()));
+        return PyResult.TypeError($"lstrip arg must be None or str");
+    }
+
+    [PyMethod("rstrip")]
+    [AIGenerated]
+    [PyFunctionParameters("chars=None", "/")]
+    private static PyResult RStrip(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        if (arguments[0] is PyNoneObject)
+            return PyStrObject.FromString(self.Value.TrimEnd());
+        if (arguments[0] is PyStrObject charsStr)
+            return PyStrObject.FromString(self.Value.TrimEnd(charsStr.Value.ToCharArray()));
+        return PyResult.TypeError($"rstrip arg must be None or str");
+    }
+
+    [PyMethod("startswith")]
+    [AIGenerated]
+    [PyFunctionParameters("prefix", "/")]
+    private static PyResult StartsWith(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        if (arguments[0] is PyStrObject prefixStr)
+            return PyBoolObject.FromBoolean(self.Value.StartsWith(prefixStr.Value));
+        return PyResult.TypeError($"startswith first arg must be str");
+    }
+
+    [PyMethod("endswith")]
+    [AIGenerated]
+    [PyFunctionParameters("suffix", "/")]
+    private static PyResult EndsWith(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        if (arguments[0] is PyStrObject suffixStr)
+            return PyBoolObject.FromBoolean(self.Value.EndsWith(suffixStr.Value));
+        return PyResult.TypeError($"endswith first arg must be str");
+    }
+
+    [PyMethod("replace")]
+    [AIGenerated]
+    [PyFunctionParameters("old", "new", "/", "count=-1")]
+    private static PyResult Replace(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        if (arguments[0] is not PyStrObject oldStr || arguments[1] is not PyStrObject newStr)
+            return PyResult.TypeError($"replace args must be str");
+
+        if (arguments[2] is not PyIntObject countArg)
+            return PyResult.TypeError($"replace count must be int");
+
+        int count = countArg.Int32Value;
+        if (count < 0)
+            return PyStrObject.FromString(self.Value.Replace(oldStr.Value, newStr.Value));
+
+        if (string.IsNullOrEmpty(oldStr.Value))
+        {
+            var sb = new StringBuilder();
+            sb.Append(newStr.Value);
+            int charsAppended = 0;
+            for (int i = 0; i < self.Value.Length && count > 0; i++, count--)
+            {
+                sb.Append(self.Value[i]);
+                sb.Append(newStr.Value);
+                charsAppended++;
+            }
+            if (count == 0)
+            {
+                sb.Append(self.Value.AsSpan(charsAppended));
+            }
+            return PyStrObject.FromString(sb.ToString());
+        }
+
+        var resObj = self.Value;
+        int startIndex = 0;
+        while (count > 0)
+        {
+            int idx = resObj.IndexOf(oldStr.Value, startIndex);
+            if (idx == -1) break;
+            resObj = resObj.Remove(idx, oldStr.Value.Length).Insert(idx, newStr.Value);
+            startIndex = idx + newStr.Value.Length;
+            count--;
+        }
+        return PyStrObject.FromString(resObj);
+    }
+
+    [PyMethod("split")]
+    [AIGenerated]
+    [PyFunctionParameters("sep=None", "maxsplit=-1")]
+    private static PyResult Split(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        var sepObj = arguments[0];
+        var maxsplitObj = arguments[1];
+
+        int maxsplit = -1;
+        if (maxsplitObj is PyIntObject maxsplitInt) maxsplit = maxsplitInt.Int32Value;
+        
+        string[] parts;
+        if (sepObj is PyNoneObject)
+        {
+            if (maxsplit < 0) parts = self.Value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+            else parts = self.Value.Split((char[]?)null, maxsplit + 1, StringSplitOptions.RemoveEmptyEntries);
+        }
+        else if (sepObj is PyStrObject sepStr)
+        {
+            if (string.IsNullOrEmpty(sepStr.Value))
+                return PyResult.ValueError("empty separator");
+
+            if (maxsplit < 0) parts = self.Value.Split([sepStr.Value], StringSplitOptions.None);
+            else parts = self.Value.Split([sepStr.Value], maxsplit + 1, StringSplitOptions.None);
+        }
+        else
+        {
+            return PyResult.TypeError("must be str or None");
+        }
+
+        var list = new List<PyObject>(parts.Length);
+        foreach (var p in parts)
+            list.Add(PyStrObject.FromString(p));
+        
+        return PyListObject.CreateList(list);
+    }
+
+    [PyMethod("find")]
+    [AIGenerated]
+    [PyFunctionParameters("sub", "/")] // simplification, skip start/end support for now
+    private static PyResult Find(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        if (arguments[0] is PyStrObject subStr)
+            return PyIntObject.FromInteger(self.Value.IndexOf(subStr.Value));
+        return PyResult.TypeError($"find arg must be str");
+    }
+
+    [PyMethod("rfind")]
+    [AIGenerated]
+    [PyFunctionParameters("sub", "/")]
+    private static PyResult RFind(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        if (arguments[0] is PyStrObject subStr)
+            return PyIntObject.FromInteger(self.Value.LastIndexOf(subStr.Value));
+        return PyResult.TypeError($"rfind arg must be str");
+    }
+
+    [PyMethod("capitalize")]
+    [AIGenerated]
+    [PyFunctionParameters]
+    private static PyResult Capitalize(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        if (self.Value.Length == 0) return self;
+        var first = char.ToUpperInvariant(self.Value[0]);
+        if (self.Value.Length == 1) return PyStrObject.FromString(first.ToString());
+        return PyStrObject.FromString(first + self.Value[1..].ToLowerInvariant());
+    }
+
+    [PyMethod("casefold")]
+    [AIGenerated]
+    [PyFunctionParameters]
+    private static PyResult Casefold(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        return PyStrObject.FromString(self.Value.ToLowerInvariant()); // C# doesn't have a direct casefold, toLowerInvariant works mostly identical for standard cases.
+    }
+
+    [PyMethod("center")]
+    [AIGenerated]
+    [PyFunctionParameters("width", "fillchar=' '", "/")]
+    private static PyResult Center(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        if (arguments[0] is not PyIntObject widthObj)
+            return PyResult.TypeError("width must be int");
+        
+        string fillchar = " ";
+        if (arguments[1] is PyStrObject fillStr)
+        {
+            if (fillStr.Value.Length != 1) return PyResult.TypeError("fillchar must be a string of length 1");
+            fillchar = fillStr.Value;
+        }
+        else if (arguments[1] is not PyNoneObject)
+        {
+            return PyResult.TypeError("fillchar must be a character");
+        }
+
+        int width = widthObj.Int32Value;
+        if (width <= self.Value.Length) return self;
+
+        int padLeft = (width - self.Value.Length) / 2;
+        int padRight = width - self.Value.Length - padLeft;
+
+        var sb = new StringBuilder(width);
+        sb.Append(fillchar[0], padLeft);
+        sb.Append(self.Value);
+        sb.Append(fillchar[0], padRight);
+        return PyStrObject.FromString(sb.ToString());
+    }
+
+    [PyMethod("count")]
+    [AIGenerated]
+    [PyFunctionParameters("sub", "/")]
+    private static PyResult Count(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        if (arguments[0] is not PyStrObject subStr) return PyResult.TypeError("count arg must be str");
+        if (string.IsNullOrEmpty(subStr.Value)) return PyIntObject.FromInteger(self.Value.Length + 1);
+
+        int count = 0;
+        int index = 0;
+        while ((index = self.Value.IndexOf(subStr.Value, index)) != -1)
+        {
+            count++;
+            index += subStr.Value.Length;
+        }
+        return PyIntObject.FromInteger(count);
+    }
+
+    [PyMethod("isalnum")]
+    [AIGenerated]
+    [PyFunctionParameters]
+    private static PyResult IsAlnum(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        if (self.Value.Length == 0) return PyBoolObject.False;
+        foreach (char c in self.Value)
+            if (!char.IsLetterOrDigit(c)) return PyBoolObject.False;
+        return PyBoolObject.True;
+    }
+
+    [PyMethod("isalpha")]
+    [AIGenerated]
+    [PyFunctionParameters]
+    private static PyResult IsAlpha(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        if (self.Value.Length == 0) return PyBoolObject.False;
+        foreach (char c in self.Value)
+            if (!char.IsLetter(c)) return PyBoolObject.False;
+        return PyBoolObject.True;
+    }
+
+    [PyMethod("isdigit")]
+    [AIGenerated]
+    [PyFunctionParameters]
+    private static PyResult IsDigit(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        if (self.Value.Length == 0) return PyBoolObject.False;
+        foreach (char c in self.Value)
+            if (!char.IsDigit(c)) return PyBoolObject.False;
+        return PyBoolObject.True;
+    }
+
+    [PyMethod("islower")]
+    [AIGenerated]
+    [PyFunctionParameters]
+    private static PyResult IsLower(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        if (self.Value.Length == 0) return PyBoolObject.False;
+        bool hasCased = false;
+        foreach (char c in self.Value)
+        {
+            if (char.IsUpper(c)) return PyBoolObject.False;
+            if (char.IsLower(c)) hasCased = true;
+        }
+        return PyBoolObject.FromBoolean(hasCased);
+    }
+
+    [PyMethod("isupper")]
+    [AIGenerated]
+    [PyFunctionParameters]
+    private static PyResult IsUpper(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        if (self.Value.Length == 0) return PyBoolObject.False;
+        bool hasCased = false;
+        foreach (char c in self.Value)
+        {
+            if (char.IsLower(c)) return PyBoolObject.False;
+            if (char.IsUpper(c)) hasCased = true;
+        }
+        return PyBoolObject.FromBoolean(hasCased);
+    }
+
+    [PyMethod("title")]
+    [AIGenerated]
+    [PyFunctionParameters]
+    private static PyResult Title(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        if (self.Value.Length == 0) return self;
+        var sb = new StringBuilder(self.Value.Length);
+        bool newWord = true;
+        foreach (char c in self.Value)
+        {
+            if (char.IsLetter(c))
+            {
+                sb.Append(newWord ? char.ToUpperInvariant(c) : char.ToLowerInvariant(c));
+                newWord = false;
+            }
+            else
+            {
+                sb.Append(c);
+                newWord = true;
+            }
+        }
+        return PyStrObject.FromString(sb.ToString());
+    }
+
+    [PyMethod("swapcase")]
+    [AIGenerated]
+    [PyFunctionParameters]
+    private static PyResult Swapcase(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        var sb = new StringBuilder(self.Value.Length);
+        foreach (char c in self.Value)
+        {
+            if (char.IsUpper(c)) sb.Append(char.ToLowerInvariant(c));
+            else if (char.IsLower(c)) sb.Append(char.ToUpperInvariant(c));
+            else sb.Append(c);
+        }
+        return PyStrObject.FromString(sb.ToString());
+    }
+
+    [PyMethod("zfill")]
+    [AIGenerated]
+    [PyFunctionParameters("width", "/")]
+    private static PyResult Zfill(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        if (arguments[0] is not PyIntObject widthObj) return PyResult.TypeError("width must be int");
+        int width = widthObj.Int32Value;
+        if (width <= self.Value.Length) return self;
+
+        if (self.Value.Length > 0 && (self.Value[0] == '+' || self.Value[0] == '-'))
+        {
+            return PyStrObject.FromString(self.Value[0] + self.Value[1..].PadLeft(width - 1, '0'));
+        }
+        
+        return PyStrObject.FromString(self.Value.PadLeft(width, '0'));
+    }
+
     protected override PyResult Repr(PyCallContext context, PyStrObject self)
     {
         return PyStrObject.FromString(self.Repr());
