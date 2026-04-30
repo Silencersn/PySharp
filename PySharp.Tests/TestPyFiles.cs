@@ -176,6 +176,13 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestRoundVars()
+    {
+        var module = RunModule("test_round_vars.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestInt()
     {
         var module = RunModule("test_int.py");

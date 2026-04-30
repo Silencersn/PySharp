@@ -131,6 +131,9 @@ partial class PySR
     public const string Runtime_Builtin_ExecEval_Arg1WrongType = "{0}() arg 1 must be a string, bytes or code object";
     public const string Runtime_Builtin_Exec_CannotUseClosure = "cannot use a closure with this code object";
     public const string Runtime_Builtin_Eval_PassCodeObjWithFreeVars = "code object passed to eval() may not contain free variables";
+
+    public const string Runtime_Builtin_Vars_WithoutDict = "vars() argument must have __dict__ attribute";
+
     public const string Runtime_Builtin_Compile_Arg1WrongType = "compile() arg 1 must be a string, bytes or AST object";
     public const string Runtime_Builtin_Compile_WrongMode = "compile() mode must be 'exec', 'eval' or 'single'";
     public const string Runtime_Builtin_Compile_FilenameWrongType = "expected str, bytes or os.PathLike object, not {0}";

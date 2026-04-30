@@ -95,7 +95,7 @@ public static partial class PyBuiltinFunctions
     // range -> PyRangeObjectType
     public static readonly PyBuiltinFunctionOrMethodObject Repr = PyBuiltinFunctionOrMethodObject.CreateFunction("repr", ReprImpl);
     // reversed -> PyReversedObjectType
-    // TODO: round()
+    public static readonly PyBuiltinFunctionOrMethodObject Round = PyBuiltinFunctionOrMethodObject.CreateFunction("round", RoundImpl_1, RoundImpl_2);
 
     // S
     // set -> PySetObjectType
@@ -112,7 +112,7 @@ public static partial class PyBuiltinFunctions
     // type -> PyTypeObjectType
 
     // V
-    // TODO: vars()
+    public static readonly PyBuiltinFunctionOrMethodObject Vars = PyBuiltinFunctionOrMethodObject.CreateFunction("vars", VarsImpl_1, VarsImpl_2);
 
     // Z
     // zip -> PyZipObjectType
@@ -867,5 +867,33 @@ public static partial class PyBuiltinFunctions
             return result;
 
         return list.Value;
+    }
+
+    [AIGenerated]
+    [PyFunctionParameters("number", "/")]
+    private static PyResult RoundImpl_1(PyCallContext context, PyArguments arguments)
+    {
+        return PySpecialMethods.Round(context, arguments[0], PyNoneObject.None);
+    }
+
+    [AIGenerated]
+    [PyFunctionParameters("number", "ndigits", "/")]
+    private static PyResult RoundImpl_2(PyCallContext context, PyArguments arguments)
+    {
+        return PySpecialMethods.Round(context, arguments[0], arguments[1]);
+    }
+
+    [PyFunctionParameters()]
+    private static PyResult VarsImpl_1(PyCallContext context, PyArguments arguments)
+    {
+        return LocalsImpl(context, arguments);
+    }
+
+    [AIGenerated]
+    [PyFunctionParameters("object", "/")]
+    private static PyResult VarsImpl_2(PyCallContext context, PyArguments arguments)
+    {
+        var obj = arguments[0];
+        return PyDictObject.CreateProxy(new DictAdapter(obj.PyAttributes!));
     }
 }
