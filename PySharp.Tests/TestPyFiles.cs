@@ -169,6 +169,13 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestFrozenSet()
+    {
+        var module = RunModule("test_frozenset.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestInt()
     {
         var module = RunModule("test_int.py");

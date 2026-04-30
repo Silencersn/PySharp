@@ -61,6 +61,7 @@ public class PyBuiltinsModuleObject : PyModuleObject
         AddObjToAttrs(PySliceObjectType.Shared); // slice
         AddObjToAttrs(PyMapObjectType.Shared); // map
         AddObjToAttrs(PySetObjectType.Shared); // set
+        AddObjToAttrs(PyFrozenSetObjectType.Shared); // frozenset
         AddObjToAttrs(PyComplexObjectType.Shared); // complex
         AddObjToAttrs(PyStaticMethodObjectType.Shared); // staticmethod
         AddObjToAttrs(PyClassMethodObjectType.Shared); // classmethod
