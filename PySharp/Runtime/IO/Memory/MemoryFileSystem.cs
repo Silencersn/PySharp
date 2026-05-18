@@ -18,7 +18,7 @@ public sealed class MemoryFileSystem : IVirtualFileSystem
         get;
         internal set
         {
-            field = Path.GetFullPath(value, field);
+            field = field is null ? value : Path.GetFullPath(value, field);
             GetDirectory(field).Create();
         }
     }
