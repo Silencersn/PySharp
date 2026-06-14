@@ -475,4 +475,11 @@ public sealed class TestPyFiles
         var module = RunModule("test_exception_group.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestByteArrayIter()
+    {
+        var module = RunModule("test_bytearray_iter.py");
+        Assert.IsNotNull(module);
+    }
 }
