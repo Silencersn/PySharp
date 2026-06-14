@@ -440,4 +440,39 @@ public sealed class TestPyFiles
         var module = RunModule("test_module_attrs.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestComplexExtended()
+    {
+        var module = RunModule("test_complex_extended.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestBytesExtended()
+    {
+        var module = RunModule("test_bytes_extended.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestFrozenSetExtended()
+    {
+        var module = RunModule("test_frozenset_extended.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestObjectBuiltinsEdge()
+    {
+        var module = RunModule("test_object_builtins_edge.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestExceptionGroup()
+    {
+        var module = RunModule("test_exception_group.py");
+        Assert.IsNotNull(module);
+    }
 }

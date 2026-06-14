@@ -166,7 +166,15 @@ public sealed partial class PyFrozenSetObjectType : PyTypeObject<PyFrozenSetObje
     [AIGenerated]
     protected override PyResult Hash(PyCallContext context, PyFrozenSetObject self)
     {
-        return PyIntObject.FromInteger(PyObjectComparer.Default.GetHashCode(self));
+        int hash = 0;
+        foreach (var item in self)
+        {
+            var itemHash = PySpecialMethods.Hash(context, item);
+            if (itemHash.IsError)
+                return itemHash;
+            hash ^= unchecked(itemHash.Value.Value.GetHashCode() + (int)0x9e3779b9 + (hash << 6) + (hash >> 2));
+        }
+        return PyIntObject.FromInteger(hash);
     }
 
     [AIGenerated]
