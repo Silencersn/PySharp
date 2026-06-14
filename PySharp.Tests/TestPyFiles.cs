@@ -307,4 +307,109 @@ public sealed class TestPyFiles
         var module = RunModule("test_bytearray.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestDictExtended()
+    {
+        var module = RunModule("test_dict_extended.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestSortingComparison()
+    {
+        var module = RunModule("test_sorting_comparison.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestExceptionExtended()
+    {
+        var module = RunModule("test_exception_extended.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestBuiltinExtended()
+    {
+        var module = RunModule("test_builtin_extended.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestFunctionArgs()
+    {
+        var module = RunModule("test_function_args.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestIterationExtended()
+    {
+        var module = RunModule("test_iteration_extended.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestMath()
+    {
+        var module = RunModule("test_math.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestTime()
+    {
+        var module = RunModule("test_time.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestRandom()
+    {
+        var module = RunModule("test_random.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestQueue()
+    {
+        var module = RunModule("test_queue.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestBytes()
+    {
+        var module = RunModule("test_bytes.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestComplex()
+    {
+        var module = RunModule("test_complex.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestTupleExtended()
+    {
+        var module = RunModule("test_tuple_extended.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestRangeExtended()
+    {
+        var module = RunModule("test_range_extended.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestRegressionSorting()
+    {
+        var module = RunModule("test_regression_sorting.py");
+        Assert.IsNotNull(module);
+    }
 }

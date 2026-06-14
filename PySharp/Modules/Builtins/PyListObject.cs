@@ -175,7 +175,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
     {
         if (other is not PyListObject otherList)
             return base.Eq(context, self, other);
-        return PyBoolObject.FromBoolean(self.SequenceEqual(otherList, PyObjectComparer.Default));
+        return PyBoolObject.FromBoolean(self.SequenceEqual(otherList, context.Comparer));
     }
 
     [AIGenerated]
@@ -183,7 +183,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
     {
         if (other is not PyListObject otherList)
             return base.Lt(context, self, other);
-        return PyBoolObject.FromBoolean(self.InternalList.SequenceCompare(otherList.InternalList, PyObjectComparer.Default) < 0);
+        return PyBoolObject.FromBoolean(self.InternalList.SequenceCompare(otherList.InternalList, context.Comparer) < 0);
     }
 
     [AIGenerated]
@@ -191,7 +191,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
     {
         if (other is not PyListObject otherList)
             return base.Le(context, self, other);
-        return PyBoolObject.FromBoolean(self.InternalList.SequenceCompare(otherList.InternalList, PyObjectComparer.Default) <= 0);
+        return PyBoolObject.FromBoolean(self.InternalList.SequenceCompare(otherList.InternalList, context.Comparer) <= 0);
     }
 
     [AIGenerated]
@@ -199,7 +199,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
     {
         if (other is not PyListObject otherList)
             return base.Gt(context, self, other);
-        return PyBoolObject.FromBoolean(self.InternalList.SequenceCompare(otherList.InternalList, PyObjectComparer.Default) > 0);
+        return PyBoolObject.FromBoolean(self.InternalList.SequenceCompare(otherList.InternalList, context.Comparer) > 0);
     }
 
     [AIGenerated]
@@ -207,7 +207,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
     {
         if (other is not PyListObject otherList)
             return base.Ge(context, self, other);
-        return PyBoolObject.FromBoolean(self.InternalList.SequenceCompare(otherList.InternalList, PyObjectComparer.Default) >= 0);
+        return PyBoolObject.FromBoolean(self.InternalList.SequenceCompare(otherList.InternalList, context.Comparer) >= 0);
     }
 
     [AIGenerated]

@@ -83,7 +83,7 @@ partial class PyListObject
             return result;
         if (keySelector is PyNoneObject)
         {
-            PySort(reverse: result.Value.BoolValue);
+            PySort(context, reverse: result.Value.BoolValue);
         }
         else
         {
@@ -95,26 +95,26 @@ partial class PyListObject
                     return key;
                 itemToKey[item] = key.Value;
             }
-            PySort(item => itemToKey[item], result.Value.BoolValue);
+            PySort(context, item => itemToKey[item], result.Value.BoolValue);
         }
         return PyNoneObject.None;
     }
 
-    public void PySort(Func<PyObject, PyObject>? key = null, bool reverse = false)
+    public void PySort(PyCallContext context, Func<PyObject, PyObject>? key = null, bool reverse = false)
     {
         IEnumerable<PyObject> sortedItems;
 
         if (key is null)
         {
             sortedItems = reverse
-                ? _list.OrderDescending(PyObjectComparer.Default)
-                : _list.Order(PyObjectComparer.Default);
+                ? _list.OrderDescending(context.Comparer)
+                : _list.Order(context.Comparer);
         }
         else
         {
             sortedItems = reverse
-                ? _list.OrderByDescending(key, PyObjectComparer.Default)
-                : _list.OrderBy(key, PyObjectComparer.Default);
+                ? _list.OrderByDescending(key, context.Comparer)
+                : _list.OrderBy(key, context.Comparer);
         }
 
         var items = sortedItems.ToArray();

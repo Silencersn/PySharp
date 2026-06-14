@@ -149,7 +149,7 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
         Debug.Assert(obj is PyIntObject);
         var value = ((PyIntObject)obj).Value;
 
-        if (!PyObjectComparer.Default.Equals(cls, this) && value > -PyIntObject.NegativePoolSize && value < PyIntObject.PositivesPoolSize)
+        if (!context.Comparer.Equals(cls, this) && value > -PyIntObject.NegativePoolSize && value < PyIntObject.PositivesPoolSize)
             obj = PyIntObject.FromIntegerNoCache(value);
 
         obj._pyType = cls;

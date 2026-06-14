@@ -286,7 +286,7 @@ public static class PyOperators
         if (left.PyType is PyIntObjectType && right.PyType is PyIntObjectType)
             return PyMath.CalculatePyIntObject(op, (PyIntObject)left, (PyIntObject)right, modulo);
 
-        if (!PyObjectComparer.Default.Equals(left.PyType, right.PyType) && right.PyType.IsSubclassOf(left.PyType))
+        if (!context.Comparer.Equals(left.PyType, right.PyType) && right.PyType.IsSubclassOf(left.PyType))
             return EvalRightFirstReflectiveOperator(context, op, left, right, modulo);
         return EvalLeftFirstReflectiveOperator(context, op, left, right, modulo);
     }

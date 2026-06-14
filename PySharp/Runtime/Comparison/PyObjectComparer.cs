@@ -11,11 +11,14 @@ public sealed class PyObjectComparer :
     IAlternateEqualityComparer<string, PyObject>,
     IAlternateEqualityComparer<ReadOnlySpan<char>, PyObject>
 {
-    public static PyObjectComparer Default { get; } = new();
+    public static PyObjectComparer Default { get; } = new(PyCallContext.PyObjectComparison);
 
-    private PyCallContext DefaultContext { get; } = PyCallContext.PyObjectComparison;
+    private PyCallContext Context { get; }
 
-    private PyObjectComparer() { }
+    internal PyObjectComparer(PyCallContext context)
+    {
+        Context = context;
+    }
 
     public int Compare(PyObject? x, PyObject? y)
     {
@@ -28,13 +31,13 @@ public sealed class PyObjectComparer :
         if (Equals(x, y))
             return 0;
 
-        var lt = PyOperators.Lt(DefaultContext, x, y);
+        var lt = PyOperators.Lt(Context, x, y);
         if (lt.IsError)
-            throw new PyRuntimeException(DefaultContext, lt.Exception);
+            throw new PyRuntimeException(Context, lt.Exception);
 
-        var ltBool = PySpecialMethods.Bool(DefaultContext, lt.Value);
+        var ltBool = PySpecialMethods.Bool(Context, lt.Value);
         if (ltBool.IsError)
-            throw new PyRuntimeException(DefaultContext, ltBool.Exception);
+            throw new PyRuntimeException(Context, ltBool.Exception);
 
         return ltBool.Value.BoolValue ? -1 : 1;
     }
@@ -61,12 +64,12 @@ public sealed class PyObjectComparer :
 
     public bool Equals(PyObject? x, PyObject? y)
     {
-        return Equals(DefaultContext, x, y).PyUnwrap(DefaultContext).BoolValue;
+        return Equals(Context, x, y).PyUnwrap(Context).BoolValue;
     }
 
     public int GetHashCode([DisallowNull] PyObject obj)
     {
-        return GetHashCode(DefaultContext, obj).PyUnwrap(DefaultContext).Value.GetHashCode();
+        return GetHashCode(Context, obj).PyUnwrap(Context).Value.GetHashCode();
     }
 
     public bool Equals((PyCallContext Context, PyObject Object) alternate, PyObject other)

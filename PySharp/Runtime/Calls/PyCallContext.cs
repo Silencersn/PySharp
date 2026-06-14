@@ -1,4 +1,6 @@
-﻿using PySharp.Runtime.Environments;
+﻿using PySharp.Modules.Builtins;
+using PySharp.Runtime.Comparison;
+using PySharp.Runtime.Environments;
 
 namespace PySharp.Runtime.Calls;
 
@@ -16,6 +18,7 @@ public sealed partial class PyCallContext : IDisposable
     internal PyEnvironment PyEnvironment => _interpreter.PyEnvironment;
     internal PyInterpreter Interpreter => _interpreter;
     internal PyCallContextFrameState FrameState => _state ?? throw new InvalidOperationException("Context is not initialized or is disposed.");
+    internal PyObjectComparer Comparer => field ??= new PyObjectComparer(this);
 
     private PyCallContext(string prompt)
     {

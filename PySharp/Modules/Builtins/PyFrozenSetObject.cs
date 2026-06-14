@@ -126,7 +126,7 @@ public sealed partial class PyFrozenSetObjectType : PyTypeObject<PyFrozenSetObje
         if (obj.IsError)
             return obj;
 
-        if (!PyObjectComparer.Default.Equals(cls, this))
+        if (!context.Comparer.Equals(cls, this))
         {
             obj.Value._pyType = cls;
         }
