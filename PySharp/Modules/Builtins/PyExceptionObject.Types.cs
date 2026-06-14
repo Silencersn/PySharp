@@ -87,6 +87,30 @@ public sealed partial class PyBaseExceptionObjectType : PyExceptionType<PyBaseEx
 
         return PySpecialMethods.Str(context, PyTupleObject.CreateTuple(self.Args));
     }
+
+    [PyProperty(PySpecialNames.Cause)]
+    private static PyResult Get_Cause(PyCallContext context, PyExceptionObject self)
+    {
+        return (PyObject?)self.Cause ?? PyNoneObject.None;
+    }
+
+    [PyProperty(PySpecialNames.Context)]
+    private static PyResult Get_Context(PyCallContext context, PyExceptionObject self)
+    {
+        return (PyObject?)self.Context ?? PyNoneObject.None;
+    }
+
+    [PyProperty(PySpecialNames.Traceback)]
+    private static PyResult Get_Traceback(PyCallContext context, PyExceptionObject self)
+    {
+        return PyNoneObject.None;
+    }
+
+    [PyProperty(PySpecialNames.SuppressContext)]
+    private static PyResult Get_SuppressContext(PyCallContext context, PyExceptionObject self)
+    {
+        return PyBoolObject.FromBoolean(self.SuppressContext);
+    }
 }
 
 [PyType("Exception")]

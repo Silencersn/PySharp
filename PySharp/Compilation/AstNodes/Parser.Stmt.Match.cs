@@ -322,15 +322,7 @@ partial class Parser
 
         if (value.EndsWith('j'))
         {
-            if (value.Contains('_'))
-                value = SharedBuilder
-                    .Clear()
-                    .Append(value[..^1])
-                    .Replace("_", string.Empty)
-                    .ToString();
-
-            var imag = double.Parse(value);
-            var complex = PyComplexObject.FromRealImag(0, imag);
+            var complex = PyComplexObject.FromString(value);
             return Ast.Constant(complex).With(metaInfo);
         }
 

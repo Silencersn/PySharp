@@ -412,4 +412,32 @@ public sealed class TestPyFiles
         var module = RunModule("test_regression_sorting.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestExceptionDetails()
+    {
+        var module = RunModule("test_exception_details.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestDictMethods()
+    {
+        var module = RunModule("test_dict_methods.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestFunctionAttrs()
+    {
+        var module = RunModule("test_function_attrs.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestModuleAttrs()
+    {
+        var module = RunModule("test_module_attrs.py");
+        Assert.IsNotNull(module);
+    }
 }

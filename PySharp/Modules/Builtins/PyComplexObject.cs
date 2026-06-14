@@ -18,6 +18,32 @@ public class PyComplexObject : PyObject
     private PyComplexObject(Complex value) { Value = value; }
     public static PyComplexObject FromComplex(Complex value) => new(value);
     public static PyComplexObject FromRealImag(double real, double imag = 0) => new(new Complex(real, imag));
+
+    /// <summary>
+    /// Parse a complex number from a string like "2j", "3.5j", "1_000j".
+    /// </summary>
+    public static PyComplexObject FromString(ReadOnlySpan<char> value)
+    {
+        if (!value.EndsWith('j'))
+            throw new FormatException("Complex number must end with 'j'");
+
+        value = value[..^1]; // strip 'j'
+
+        if (value.Contains('_'))
+        {
+            var builder = new System.Text.StringBuilder(value.Length);
+            foreach (var c in value)
+            {
+                if (c != '_')
+                    builder.Append(c);
+            }
+            var imag = double.Parse(builder.ToString());
+            return FromRealImag(0, imag);
+        }
+
+        var imagValue = double.Parse(value);
+        return FromRealImag(0, imagValue);
+    }
 }
 
 [PyType("complex")]

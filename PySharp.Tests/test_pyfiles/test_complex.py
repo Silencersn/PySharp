@@ -2,12 +2,13 @@
 Tests for complex numbers - covers PyComplexObject, PyComplexObjectType
 """
 
-# complex() constructor (avoids literal as parser may not support j suffix)
-c = complex(1, 2)
+# Complex literal
+c = 1 + 2j
 assert isinstance(c, complex)
 assert c.real == 1.0
 assert c.imag == 2.0
 
+# complex() constructor
 c2 = complex(3, 4)
 assert c2.real == 3.0
 assert c2.imag == 4.0

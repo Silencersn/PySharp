@@ -30,6 +30,12 @@ public static partial class PySpecialNames
 
     public const string MatchArgs = "__match_args__";
 
+    // exception attributes
+    public const string Cause = "__cause__";
+    public const string Context = "__context__";
+    public const string Traceback = "__traceback__";
+    public const string SuppressContext = "__suppress_context__";
+
 
     // functions
     public const string Import = "__import__";
