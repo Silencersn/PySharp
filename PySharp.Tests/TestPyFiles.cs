@@ -496,4 +496,32 @@ public sealed class TestPyFiles
         var module = RunModule("test_tstring.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestMatchExtended()
+    {
+        var module = RunModule("test_match_extended.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestUnpackExtended()
+    {
+        var module = RunModule("test_unpack_extended.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestNotExpr()
+    {
+        var module = RunModule("test_not_expr.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestDefaultsEdge()
+    {
+        var module = RunModule("test_defaults_edge.py");
+        Assert.IsNotNull(module);
+    }
 }

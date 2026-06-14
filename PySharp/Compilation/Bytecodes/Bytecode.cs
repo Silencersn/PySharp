@@ -70,15 +70,16 @@ public sealed class Bytecode
         _trimmed = true;
     }
 
-    private class StackSizeHelper
+    private struct StackSizeHelper
     {
         public static int Calculate(ImmutableArray<Instruction> instructions)
         {
             return new StackSizeHelper().InternalCalculate(instructions);
         }
 
-        private int _maxStackSize = 0;
-        private int _currentStackSize = 0;
+        private int _maxStackSize;
+        private int _currentStackSize;
+        private int _arg;
 
         private int InternalCalculate(ImmutableArray<Instruction> instructions)
         {
@@ -141,8 +142,11 @@ public sealed class Bytecode
 
         private void IncrementStackSizeByInstruction(Instruction instruction)
         {
+            _arg |= instruction.Arg;
+
             switch (instruction.OpCode)
             {
+                case OpCode.ExtendedArg:
                 case OpCode.NoOperation:
                 case OpCode.DeleteName:
                 case OpCode.DeleteGlobal:
@@ -179,7 +183,6 @@ public sealed class Bytecode
                 case OpCode._UnaryOp:
                 case OpCode.UnaryNot:
                 case OpCode._MakeTypeAlias:
-                case OpCode.ExtendedArg:
                 case OpCode.__BytecodeEnd:
                     break;
 
@@ -258,12 +261,12 @@ public sealed class Bytecode
                 case OpCode.Call:
                 case OpCode.RaiseVarArgs:
                 case OpCode._MakeFunctionWithPyArgsDef:
-                    IncrementStackSize(-instruction.Arg);
+                    IncrementStackSize(-_arg);
                     break;
 
                 case OpCode._BuildClass:
                 case OpCode.CallKw:
-                    IncrementStackSize(-instruction.Arg - 1);
+                    IncrementStackSize(-_arg - 1);
                     break;
 
                 case OpCode.BuildList:
@@ -271,19 +274,19 @@ public sealed class Bytecode
                 case OpCode.BuildSet:
                 case OpCode.BuildSlice:
                 case OpCode.BuildString:
-                    IncrementStackSize(-instruction.Arg + 1);
+                    IncrementStackSize(-_arg + 1);
                     break;
 
                 case OpCode.BuildMap:
-                    IncrementStackSize(-instruction.Arg * 2 + 1);
+                    IncrementStackSize(-_arg * 2 + 1);
                     break;
 
                 case OpCode.UnpackSequence:
-                    IncrementStackSize(instruction.Arg - 1);
+                    IncrementStackSize(_arg - 1);
                     break;
 
                 case OpCode.UnpackEx:
-                    IncrementStackSize((instruction.Arg & ushort.MaxValue) + ((instruction.Arg >> 16) & ushort.MaxValue));
+                    IncrementStackSize((_arg & ushort.MaxValue) + ((_arg >> 16) & ushort.MaxValue));
                     break;
 
                 case OpCode.StoreSubscr:
@@ -291,12 +294,17 @@ public sealed class Bytecode
                     break;
 
                 case OpCode.BuildInterpolation:
-                    IncrementStackSize(-(instruction.Arg & 0b11) + 1);
+                    IncrementStackSize(-(_arg & 0b11) + 1);
                     break;
 
                 default:
                     throw new UnreachableException();
             }
+
+            if (instruction.OpCode is OpCode.ExtendedArg)
+                _arg <<= sizeof(byte);
+            else
+                _arg = 0;
         }
     }
 }

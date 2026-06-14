@@ -114,7 +114,7 @@ partial class Parser
         var pos = TokenPosition;
         EnsureTokenTypeThenMove(TokenType.LeftParen);
 
-        if (CurrentTokenType is TokenType.RightParen)
+        if (CurrentTokenType is TokenType.RightParen or TokenType.Star)
         {
             TokenPosition = pos;
             group = null;

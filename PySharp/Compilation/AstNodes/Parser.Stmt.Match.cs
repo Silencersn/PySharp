@@ -245,6 +245,7 @@ partial class Parser
         {
             var metaInfo = CreateAstMetaInfo();
             var s = CurrentTokenStringAsSpan;
+            MoveNextToken();
             return (s switch
             {
                 "True" => Ast.Constant(PyBoolObject.True),
