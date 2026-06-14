@@ -482,4 +482,18 @@ public sealed class TestPyFiles
         var module = RunModule("test_bytearray_iter.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestTypeAlias()
+    {
+        var module = RunModule("test_type_alias.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestTString()
+    {
+        var module = RunModule("test_tstring.py");
+        Assert.IsNotNull(module);
+    }
 }
