@@ -198,7 +198,6 @@ public sealed class Bytecode
                 case OpCode.Copy:
                 case OpCode._LoadExc:
                 case OpCode.Send:
-                case OpCode._LoadClass:
                 case OpCode.PushNull:
                 case OpCode.MatchSequence:
                 case OpCode.MatchMapping:

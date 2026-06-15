@@ -726,12 +726,6 @@ internal static class BytecodeVirtualMachine
                         InternalBuildClass(context, ref Stack, ref states, instructionArg);
                         break;
 
-                    case OpCode._LoadClass:
-                        Debug.Assert(frame.Caller is not null);
-                        value = frame.Caller;
-                        Stack.Push(value);
-                        break;
-
                     case OpCode.MakeCell:
                         frame.Variables.StoreLocal(names[instructionArg], PyCellObject.CreateEmpty());
                         break;

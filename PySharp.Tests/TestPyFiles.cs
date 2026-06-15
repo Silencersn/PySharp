@@ -524,4 +524,18 @@ public sealed class TestPyFiles
         var module = RunModule("test_defaults_edge.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestDelVariable()
+    {
+        var module = RunModule("test_del_variable.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestOpcodeEdge()
+    {
+        var module = RunModule("test_opcode_edge.py");
+        Assert.IsNotNull(module);
+    }
 }
