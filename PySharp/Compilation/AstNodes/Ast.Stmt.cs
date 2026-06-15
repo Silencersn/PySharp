@@ -210,6 +210,24 @@ partial class Ast
         return new WithNode(items.ToImmutableArray(true), body.ToImmutableArray(true));
     }
 
+    public static AsyncForNode AsyncFor(AstExprNode target, AstExprNode iter, IEnumerable<AstStmtNode> body, IEnumerable<AstStmtNode> orElse)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        ArgumentNullException.ThrowIfNull(iter);
+        ArgumentNullException.ThrowIfNull(body);
+        ArgumentNullException.ThrowIfNull(orElse);
+
+        return new AsyncForNode(target, iter, body.ToImmutableArray(true), orElse.ToImmutableArray(true));
+    }
+
+    public static AsyncWithNode AsyncWith(IEnumerable<AstWithItemNode> items, IEnumerable<AstStmtNode> body)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        ArgumentNullException.ThrowIfNull(body);
+
+        return new AsyncWithNode(items.ToImmutableArray(true), body.ToImmutableArray(true));
+    }
+
     public static MatchNode Match(AstExprNode subject, IEnumerable<AstMatchCaseNode> cases)
     {
         ArgumentNullException.ThrowIfNull(subject);

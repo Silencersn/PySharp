@@ -1037,9 +1037,50 @@ partial class Parser
         return keyword switch
         {
             "def" => ParseAsyncFunctionDef(decorators),
+            "for" => ParseAsyncForStmt(),
+            "with" => ParseAsyncWithStmt(),
 
             _ => throw new NotSupportedException()
         };
+    }
+
+    private AsyncForNode ParseAsyncForStmt()
+    {
+        var metaInfo = CreateAstMetaInfo();
+        EnsureKeywordThenMove("async");
+        EnsureKeywordThenMove("for");
+        var target = ParseStarTargets(StopPredicates.UntilKeywordIn(this));
+        AstUtils.SetContext(target, ExprContextType.Store);
+        EnsureKeywordThenMove("in");
+        var iter = ParseStarExpressions(StopPredicates.UntilColon);
+        EnsureTokenTypeThenMove(TokenType.Colon);
+        var body = ParseBlock("for");
+        IEnumerable<AstStmtNode> orElse = IsCurrentKeyword("else") ? ParseElseBlock() : [];
+        return Ast.AsyncFor(target, iter, body, orElse).With(metaInfo);
+    }
+
+    private AsyncWithNode ParseAsyncWithStmt()
+    {
+        var metaInfo = CreateAstMetaInfo();
+        EnsureKeywordThenMove("async");
+        EnsureKeywordThenMove("with");
+
+        List<AstWithItemNode> items;
+        if (CurrentTokenType is TokenType.LeftParen)
+        {
+            MoveNextToken();
+            items = ParseSomethingList(ParseWithItem, StopPredicates.UntilRightParen, out _);
+            EnsureTokenTypeThenMove(TokenType.RightParen);
+        }
+        else
+        {
+            items = ParseSomethingList(ParseWithItem, StopPredicates.UntilColon, out _);
+        }
+        EnsureTokenTypeThenMove(TokenType.Colon);
+
+        var body = ParseBlock("with");
+
+        return Ast.AsyncWith(items, body).With(metaInfo);
     }
 
     private AsyncFunctionDefNode ParseAsyncFunctionDef(List<AstExprNode> decorators)

@@ -67,6 +67,29 @@ public sealed class ForNode : AstStmtNode
     }
 }
 
+public sealed class AsyncForNode : AstStmtNode
+{
+    internal AsyncForNode(AstExprNode target, AstExprNode iter, ImmutableArray<AstStmtNode> body, ImmutableArray<AstStmtNode> orElse)
+    {
+        Target = target;
+        Iter = iter;
+        Body = body;
+        OrElse = orElse;
+    }
+
+    public AstExprNode Target { get; }
+    public AstExprNode Iter { get; }
+    public ImmutableArray<AstStmtNode> Body { get; }
+    public ImmutableArray<AstStmtNode> OrElse { get; }
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        yield return Target;
+        yield return Iter;
+        foreach (var stmt in Body) yield return stmt;
+        foreach (var stmt in OrElse) yield return stmt;
+    }
+}
+
 public sealed class TryNode : AstStmtNode
 {
     internal TryNode(ImmutableArray<AstStmtNode> body, ImmutableArray<ExceptHandlerNode> exceptors, ImmutableArray<AstStmtNode> orElse, ImmutableArray<AstStmtNode> finalBody)
@@ -117,6 +140,26 @@ public sealed class TryStarNode : AstStmtNode
 public sealed class WithNode : AstStmtNode
 {
     internal WithNode(ImmutableArray<AstWithItemNode> items, ImmutableArray<AstStmtNode> body)
+    {
+        Items = items;
+        Body = body;
+    }
+
+    public ImmutableArray<AstWithItemNode> Items { get; }
+    public ImmutableArray<AstStmtNode> Body { get; }
+
+    public override IEnumerable<AstNode> EnumerateSubNodes()
+    {
+        foreach (var item in Items)
+            yield return item;
+        foreach (var stmt in Body)
+            yield return stmt;
+    }
+}
+
+public sealed class AsyncWithNode : AstStmtNode
+{
+    internal AsyncWithNode(ImmutableArray<AstWithItemNode> items, ImmutableArray<AstStmtNode> body)
     {
         Items = items;
         Body = body;

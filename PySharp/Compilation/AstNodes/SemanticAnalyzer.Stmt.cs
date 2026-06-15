@@ -28,8 +28,10 @@ partial class SemanticAnalyzer
             case TryNode n: VisitTry(n); break;
             case TryStarNode n: VisitTryStar(n); break;
             case ForNode n: VisitFor(n); break;
+            case AsyncForNode n: VisitAsyncFor(n); break;
             case WhileNode n: VisitWhile(n); break;
             case WithNode n: VisitWith(n); break;
+            case AsyncWithNode n: VisitAsyncWith(n); break;
             case MatchNode n: VisitMatch(n); break;
             case FunctionDefNode n: VisitFunctionDef(n); break;
             case AsyncFunctionDefNode n: VisitAsyncFunctionDef(n); break;
@@ -81,7 +83,7 @@ partial class SemanticAnalyzer
         if (_currentScopeStats.LoopDepth is 0)
             throw SyntaxError(PySR.InvalidSyntax_Semantic_BreakOutsideLoop);
         if (_currentScopeStats.FinallyDepth > 0)
-            CheckControlStmtNotInFinallyUntil(static n => n is ForNode or WhileNode, PySR.InvalidSyntax_Semantic_BreakInFinally);
+            CheckControlStmtNotInFinallyUntil(static n => n is ForNode or WhileNode or AsyncForNode, PySR.InvalidSyntax_Semantic_BreakInFinally);
     }
 
     private void VisitContinue(ContinueNode node)
@@ -89,7 +91,7 @@ partial class SemanticAnalyzer
         if (_currentScopeStats.LoopDepth is 0)
             throw SyntaxError(PySR.InvalidSyntax_Semantic_ContinueOutsideLoop);
         if (_currentScopeStats.FinallyDepth > 0)
-            CheckControlStmtNotInFinallyUntil(static n => n is ForNode or WhileNode, PySR.InvalidSyntax_Semantic_ContinueInFinally);
+            CheckControlStmtNotInFinallyUntil(static n => n is ForNode or WhileNode or AsyncForNode, PySR.InvalidSyntax_Semantic_ContinueInFinally);
     }
 
     private void VisitReturn(ReturnNode node)
@@ -97,7 +99,7 @@ partial class SemanticAnalyzer
         if (_currentScopeStats.Scope is not (FunctionVariableScope or AsyncFunctionVariableScope))
             throw SyntaxError(PySR.InvalidSyntax_Semantic_ReturnOutsideFunction);
         if (_currentScopeStats.FinallyDepth > 0)
-            CheckControlStmtNotInFinallyUntil(static n => n is FunctionDefNode, PySR.InvalidSyntax_Semantic_ReturnInFinally);
+            CheckControlStmtNotInFinallyUntil(static n => n is FunctionDefNode /* TODO is it needed ? need add async def ? */, PySR.InvalidSyntax_Semantic_ReturnInFinally);
         VisitNullableNode(node.Value);
     }
 
@@ -229,6 +231,16 @@ partial class SemanticAnalyzer
         _currentScopeStats.LoopDepth--;
     }
 
+    private void VisitAsyncFor(AsyncForNode node)
+    {
+        _currentScopeStats.LoopDepth++;
+        VisitNode(node.Target);
+        VisitNode(node.Iter);
+        VisitNodes(node.Body);
+        VisitNodes(node.OrElse);
+        _currentScopeStats.LoopDepth--;
+    }
+
     private void VisitWhile(WhileNode node)
     {
         _currentScopeStats.LoopDepth++;
@@ -239,6 +251,12 @@ partial class SemanticAnalyzer
     }
 
     private void VisitWith(WithNode node)
+    {
+        VisitNodes(node.Items);
+        VisitNodes(node.Body);
+    }
+
+    private void VisitAsyncWith(AsyncWithNode node)
     {
         VisitNodes(node.Items);
         VisitNodes(node.Body);
