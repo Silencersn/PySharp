@@ -156,6 +156,15 @@ public static class PySpecialMethods
         return PyResult.TypeError(PySR.Runtime_Async_NonAwaitable, obj.PyType.FullName);
     }
 
+    public static PyResult AIter(PyCallContext context, PyObject obj)
+    {
+        var func = obj.PyType.Slots.AIter;
+        if (func is not null)
+            return func(context, obj);
+
+        return PyResult.TypeError(PySR.Runtime_AsyncFor_MissingAIter, obj.PyType.FullName);
+    }
+
     public static PyResult Next(PyCallContext context, PyObject obj)
     {
         var func = obj.PyType.Slots.Next;

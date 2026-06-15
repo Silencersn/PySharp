@@ -170,6 +170,15 @@ partial class PySR
     public const string Runtime_Async_SendNonNoneAtFirst = "can't send non-None value to a just-started coroutine";
     public const string Runtime_Async_IgnoredGeneratorExit = "coroutine ignored GeneratorExit";
 
+    public const string Runtime_AsyncFor_MissingAIter = "'async for' requires an object with __aiter__ method, got '{0}'";
+    public const string Runtime_AsyncFor_MissingANext = "'async for' requires an iterator with __anext__ method, got '{0}'";
+    public const string Runtime_AsyncFor_InvalidANextResult = "'async for' received an invalid object from __anext__: '{0}'";
+
+    public const string Runtime_AsyncWith_MissingAEnter = "'{0}' object does not support the asynchronous context manager protocol (missed __aenter__ method)";
+    public const string Runtime_AsyncWith_MissingAExit = "'{0}' object does not support the asynchronous context manager protocol (missed __aexit__ method)";
+    public const string Runtime_AsyncWith_NonAwaitableAEnter = "'async with' received an object from __aenter__ that does not implement __await__: '{0}'";
+    public const string Runtime_AsyncWith_NonAwaitableAExit = "'async with' received an object from __aexit__ that does not implement __await__: '{0}'";
+
     public const string Runtime_Bytes_StrWithoutEncoding = "string argument without an encoding";
     public const string Runtime_Bytes_OutOfRange = "bytes must be in range(0, 256)";
     public const string Runtime_Bytes_CannotConcat = "can't concat {0} to bytes";

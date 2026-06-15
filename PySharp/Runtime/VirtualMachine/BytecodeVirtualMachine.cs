@@ -110,6 +110,15 @@ internal static class BytecodeVirtualMachine
                             PySpecialNames.Exit => new PyWrapperDescriptorObject(
                                 Stack[-1].PyType.Slots.Exit ??
                                 throw context.TypeError(PySR.Runtime_WithStmt_MissingExit, Stack[-1].PyType.FullName)),
+                            PySpecialNames.ANext => new PyWrapperDescriptorObject(
+                                Stack[-1].PyType.Slots.ANext ??
+                                throw context.TypeError(PySR.Runtime_AsyncFor_MissingANext, Stack[-1].PyType.FullName)),
+                            PySpecialNames.AEnter => new PyWrapperDescriptorObject(
+                                Stack[-1].PyType.Slots.AEnter ??
+                                throw context.TypeError(PySR.Runtime_AsyncWith_MissingAEnter, Stack[-1].PyType.FullName)),
+                            PySpecialNames.AExit => new PyWrapperDescriptorObject(
+                                Stack[-1].PyType.Slots.AExit ??
+                                throw context.TypeError(PySR.Runtime_AsyncWith_MissingAExit, Stack[-1].PyType.FullName)),
 
                             _ => throw new UnreachableException()
                         };

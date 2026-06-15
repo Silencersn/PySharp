@@ -463,6 +463,30 @@ partial class PyTypeObject<TObject>
     }
 
     [PySlot]
+    protected virtual partial PyResult AIter(PyCallContext context, TObject self)
+    {
+        throw new NotImplementedException($"{PySpecialNames.AIter} does not have default implementation");
+    }
+
+    [PySlot]
+    protected virtual partial PyResult ANext(PyCallContext context, TObject self)
+    {
+        throw new NotImplementedException($"{PySpecialNames.ANext} does not have default implementation");
+    }
+
+    [PySlot]
+    protected virtual partial PyResult AEnter(PyCallContext context, TObject self)
+    {
+        throw new NotImplementedException($"{PySpecialNames.AEnter} does not have default implementation");
+    }
+
+    [PySlot]
+    protected virtual partial PyResult AExit(PyCallContext context, TObject self, PyObject excType, PyObject excVal, PyObject excTb)
+    {
+        throw new NotImplementedException($"{PySpecialNames.AExit} does not have default implementation");
+    }
+
+    [PySlot]
     protected virtual partial PyResult Reversed(PyCallContext context, TObject self)
     {
         throw new NotImplementedException($"{PySpecialNames.Reversed} does not have default implementation");

@@ -296,6 +296,18 @@ partial class PyTypeObject
         [PySpecialMethod("__await__", typeof(PyUnaryFunction))]
         static partial void Await(PyCallContext context, TObject self);
 
+        [PySpecialMethod("__aiter__", typeof(PyUnaryFunction))]
+        static partial void AIter(PyCallContext context, TObject self);
+
+        [PySpecialMethod("__anext__", typeof(PyUnaryFunction))]
+        static partial void ANext(PyCallContext context, TObject self);
+
+        [PySpecialMethod("__aenter__", typeof(PyUnaryFunction))]
+        static partial void AEnter(PyCallContext context, TObject self);
+
+        [PySpecialMethod("__aexit__", typeof(PyQuaternaryFunction))]
+        static partial void AExit(PyCallContext context, TObject self, PyObject excType, PyObject excVal, PyObject excTb);
+
         [PySpecialMethod("__reversed__", typeof(PyUnaryFunction))]
         static partial void Reversed(PyCallContext context, TObject self);
 
