@@ -52,8 +52,10 @@ partial class BytecodeCompiler
             case TryNode n: CompileTry(n); break;
             case TryStarNode n: CompileTryStar(n); break;
             case ForNode n: CompileFor(n); break;
+            case AsyncForNode n: CompileAsyncFor(n); break;
             case WhileNode n: CompileWhile(n); break;
             case WithNode n: CompileWith(n); break;
+            case AsyncWithNode n: CompileAsyncWith(n); break;
             case MatchNode n: CompileMatch(n); break;
             case FunctionDefNode n: CompileFunctionDef(n); break;
             case ClassDefNode n: CompileClassDef(n); break;
@@ -572,6 +574,81 @@ partial class BytecodeCompiler
         Generator.Emit(OpCode.PopTop);
     }
 
+    [AIGenerated]
+    private void CompileAsyncFor(AsyncForNode node)
+    {
+        var forIterLabel = Generator.DefineLabel();
+        var forElseLabel = Generator.DefineLabel();
+        var endForLabel = Generator.DefineLabel();
+        Loops.Push((forIterLabel, endForLabel));
+
+        LoadExpr(node.Iter);
+        Generator.Emit(OpCode.GetAIter);
+
+        Generator.MarkLabel(forIterLabel);
+        // Equivalent to CPython GET_ANEXT: get __anext__ via slot, call it, wrap in awaitable
+        Generator.Emit(OpCode.GetANext);
+
+        // Wrap await in try/except to catch StopAsyncIteration
+        var exceptLabel = Generator.DefineLabel();
+        var cleanupLabel = Generator.DefineLabel();
+        var afterStopLabel = Generator.DefineLabel();
+        Generator.Emit(OpCode._SetupFinally, cleanupLabel);
+        Generator.Emit(OpCode._SetupExcept, exceptLabel);
+
+        // Await __anext__() via Send
+        Generator.Emit(OpCode.LoadConst, PyNoneObject.None);
+
+        var sendLabel = Generator.DefineLabel();
+        var afterAwaitLabel = Generator.DefineLabel();
+        Generator.MarkLabel(sendLabel);
+        Generator.Emit(OpCode.Send, afterAwaitLabel);
+        Generator.Emit(OpCode.YieldValue);
+        Generator.Jump(sendLabel);
+
+        // Normal: have a value from __anext__()
+        Generator.MarkLabel(afterAwaitLabel);
+        Generator.Emit(OpCode.Swap, 2);
+        Generator.Emit(OpCode.PopTop);
+        StoreExpr(node.Target);
+
+        CompileStmts(node.Body);
+        Generator.Jump(cleanupLabel);
+
+        // StopAsyncIteration handler
+        Generator.MarkLabel(exceptLabel);
+        Generator.Emit(OpCode.LoadConst, PyStopAsyncIterationObjectType.Shared);
+        Generator.Emit(OpCode.CheckExcMatch);
+        Generator.PopJumpIfFalse(cleanupLabel); // not StopAsyncIteration → re-raise via cleanup
+        Generator.Emit(OpCode._PopException);
+        Generator.Emit(OpCode.PopTop); // pop the coroutine, leaving [iter]
+        Generator.Jump(cleanupLabel);
+
+        // Cleanup — enters handler; then branches based on HitExcept
+        Generator.MarkLabel(cleanupLabel);
+        Generator.Emit(OpCode._EnterFinally);
+        Generator.Emit(OpCode._LoadHitExcept);
+        Generator.PopJumpIfTrue(afterStopLabel);
+        // HitExcept=false: normal iteration done → pop handler and loop back
+        Generator.Emit(OpCode._ExitFinally);
+        Generator.Jump(forIterLabel);
+
+        // HitExcept=true: exception was caught
+        Generator.MarkLabel(afterStopLabel);
+        Generator.Emit(OpCode._ExitFinally);
+        // If _ExitFinally re-raised (non-StopAsyncIteration), execution stops here
+        // For StopAsyncIteration: PyException=null → handler popped, fall through to else
+
+        // Else clause
+        Generator.MarkLabel(forElseLabel);
+        CompileStmts(node.OrElse);
+
+        Generator.MarkLabel(endForLabel);
+        Generator.Emit(OpCode.PopIter);
+
+        Loops.Pop();
+    }
+
     private void CompileWith(WithNode node)
     {
         CompileWithItem(0);
@@ -630,6 +707,118 @@ partial class BytecodeCompiler
             Generator.Emit(OpCode.LoadConst, PyNoneObject.None);
             Generator.Emit(OpCode.Call, 4);
             Generator.Emit(OpCode.PopTop);
+
+            Generator.MarkLabel(exitFinallyLabel);
+            Generator.Emit(OpCode._ExitFinally);
+        }
+    }
+
+    [AIGenerated]
+    private void CompileAsyncWith(AsyncWithNode node)
+    {
+        CompileAsyncWithItem(0);
+
+        void CompileAsyncWithItem(int i)
+        {
+            if (i == node.Items.Length)
+            {
+                CompileStmts(node.Body);
+                return;
+            }
+
+            var finallyLabel = Generator.DefineLabel();
+            var exitFinallyLabel = Generator.DefineLabel();
+            var exceptLabel = Generator.DefineLabel();
+
+            var item = node.Items[i];
+
+            // []
+            LoadExpr(item.ContextExpr); // -> [manager]
+            Generator.Emit(OpCode.LoadSpecial, PySpecialNames.AEnter); // -> [manager, aenter]
+            Generator.Emit(OpCode.Swap, 2); // [aenter, manager]
+            Generator.Emit(OpCode.LoadSpecial, PySpecialNames.AExit); // -> [aenter, manager, aexit]
+            Generator.Emit(OpCode.Swap, 3); // -> [aexit, manager, aenter]
+            Generator.Emit(OpCode.Copy, 2); // -> [aexit, manager, aenter, manager]
+            Generator.Emit(OpCode.Call, 1); // -> [aexit, manager, coroutine]
+
+            // Await __aenter__() result
+            Generator.Emit(OpCode.GetAwaitable);
+            Generator.Emit(OpCode.LoadConst, PyNoneObject.None);
+
+            var sendEnterLabel = Generator.DefineLabel();
+            var afterEnterLabel = Generator.DefineLabel();
+            Generator.MarkLabel(sendEnterLabel);
+            Generator.Emit(OpCode.Send, afterEnterLabel);
+            Generator.Emit(OpCode.YieldValue);
+            Generator.Jump(sendEnterLabel);
+
+            Generator.MarkLabel(afterEnterLabel);
+            Generator.Emit(OpCode.Swap, 2); // swap coroutine and value
+            Generator.Emit(OpCode.PopTop); // pop coroutine
+            // -> [aexit, manager, value]
+
+            Generator.Emit(OpCode._SetupFinally, finallyLabel);
+            Generator.Emit(OpCode._SetupExcept, exceptLabel);
+
+            if (item.OptionalVars is not null)
+                StoreExpr(item.OptionalVars);
+            else
+                Generator.Emit(OpCode.PopTop);
+            // -> [aexit, manager]
+
+            CompileAsyncWithItem(i + 1);
+            Generator.Jump(finallyLabel);
+
+            Generator.MarkLabel(exceptLabel);
+            Generator.Emit(OpCode._LoadExcInfo); // -> [aexit, manager, exc_type, exc, traceback]
+            Generator.Emit(OpCode.Call, 4); // -> [coroutine]
+
+            // Await __aexit__() result
+            Generator.Emit(OpCode.GetAwaitable);
+            Generator.Emit(OpCode.LoadConst, PyNoneObject.None);
+
+            var sendExitLabel = Generator.DefineLabel();
+            var afterExitLabel = Generator.DefineLabel();
+            Generator.MarkLabel(sendExitLabel);
+            Generator.Emit(OpCode.Send, afterExitLabel);
+            Generator.Emit(OpCode.YieldValue);
+            Generator.Jump(sendExitLabel);
+
+            Generator.MarkLabel(afterExitLabel);
+            Generator.Emit(OpCode.Swap, 2); // [result, coroutine]
+            Generator.Emit(OpCode.PopTop);  // pop coroutine
+            // [result]
+            Generator.Emit(OpCode.ToBool); // -> [handled_bool]
+            Generator.Emit(OpCode._PopExceptionIfTrue);
+            Generator.PopJumpIfTrue(finallyLabel); // -> []
+            Generator.Emit(OpCode.RaiseVarArgs, 0);
+
+            Generator.MarkLabel(finallyLabel);
+            Generator.Emit(OpCode._EnterFinally);
+
+            Generator.Emit(OpCode._LoadHitExcept);
+            Generator.PopJumpIfTrue(exitFinallyLabel);
+
+            Generator.Emit(OpCode.LoadConst, PyNoneObject.None);
+            Generator.Emit(OpCode.LoadConst, PyNoneObject.None);
+            Generator.Emit(OpCode.LoadConst, PyNoneObject.None);
+            Generator.Emit(OpCode.Call, 4);
+
+            // Await __aexit__() result for normal exit
+            Generator.Emit(OpCode.GetAwaitable);
+            Generator.Emit(OpCode.LoadConst, PyNoneObject.None);
+
+            var sendExitNormalLabel = Generator.DefineLabel();
+            var afterExitNormalLabel = Generator.DefineLabel();
+            Generator.MarkLabel(sendExitNormalLabel);
+            Generator.Emit(OpCode.Send, afterExitNormalLabel);
+            Generator.Emit(OpCode.YieldValue);
+            Generator.Jump(sendExitNormalLabel);
+
+            Generator.MarkLabel(afterExitNormalLabel);
+            Generator.Emit(OpCode.Swap, 2); // [result, coroutine]
+            Generator.Emit(OpCode.PopTop);  // pop coroutine
+            Generator.Emit(OpCode.PopTop);  // pop result
 
             Generator.MarkLabel(exitFinallyLabel);
             Generator.Emit(OpCode._ExitFinally);

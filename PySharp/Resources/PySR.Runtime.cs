@@ -173,6 +173,7 @@ partial class PySR
     public const string Runtime_AsyncFor_MissingAIter = "'async for' requires an object with __aiter__ method, got '{0}'";
     public const string Runtime_AsyncFor_MissingANext = "'async for' requires an iterator with __anext__ method, got '{0}'";
     public const string Runtime_AsyncFor_InvalidANextResult = "'async for' received an invalid object from __anext__: '{0}'";
+    public const string Runtime_AsyncFor_AIterReturnsNoANext = "'async for' received an object from __aiter__ that does not implement __anext__: '{0}'";
 
     public const string Runtime_AsyncWith_MissingAEnter = "'{0}' object does not support the asynchronous context manager protocol (missed __aenter__ method)";
     public const string Runtime_AsyncWith_MissingAExit = "'{0}' object does not support the asynchronous context manager protocol (missed __aexit__ method)";

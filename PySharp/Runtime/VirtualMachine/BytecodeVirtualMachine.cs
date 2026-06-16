@@ -627,6 +627,28 @@ internal static class BytecodeVirtualMachine
                         Stack[-1] = PySpecialMethods.Await(context, Stack[-1]).PyUnwrap(context);
                         break;
 
+                    case OpCode.GetAIter:
+                        {
+                            var aiter = PySpecialMethods.AIter(context, Stack[-1]).PyUnwrap(context);
+                            // CPython 3.14 validates that the result of __aiter__() has __anext__
+                            if (aiter.PyType.Slots.ANext is null)
+                                throw context.TypeError(PySR.Runtime_AsyncFor_AIterReturnsNoANext, aiter.PyType.FullName);
+                            Stack[-1] = aiter;
+                        }
+                        break;
+
+                    case OpCode.GetANext:
+                        {
+                            // CPython GET_ANEXT: get __anext__ via slot, call it, wrap in awaitable
+                            var aiter = Stack[-1];
+                            var slot = aiter.PyType.Slots.ANext ?? throw context.TypeError(PySR.Runtime_AsyncFor_MissingANext, aiter.PyType.FullName);
+                            var nextIter = slot(context, aiter).PyUnwrap(context);
+                            if (!PyCoroutineObjectType.Shared.IsInstance(nextIter))
+                                nextIter = PySpecialMethods.Await(context, nextIter).PyUnwrap(context);
+                            Stack.Push(nextIter);
+                        }
+                        break;
+
                     case OpCode.Send:
                         InternalSend(context, ref states, ref Stack, ref nextIndex, instructionArg);
                         break;

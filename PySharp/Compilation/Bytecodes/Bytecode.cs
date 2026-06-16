@@ -164,6 +164,7 @@ public sealed class Bytecode
                 case OpCode.YieldValue:
                 case OpCode.GetYieldFromIter:
                 case OpCode.GetAwaitable:
+                case OpCode.GetAIter:
                 case OpCode._CheckExcToRaise:
                 case OpCode.MakeCell:
                 case OpCode._MakeCellFast:
@@ -198,6 +199,7 @@ public sealed class Bytecode
                 case OpCode.Copy:
                 case OpCode._LoadExc:
                 case OpCode.Send:
+                case OpCode.GetANext:
                 case OpCode.PushNull:
                 case OpCode.MatchSequence:
                 case OpCode.MatchMapping:

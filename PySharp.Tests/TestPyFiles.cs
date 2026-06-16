@@ -538,4 +538,11 @@ public sealed class TestPyFiles
         var module = RunModule("test_opcode_edge.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestAsyncFor()
+    {
+        var module = RunModule("test_async_for.py");
+        Assert.IsNotNull(module);
+    }
 }
