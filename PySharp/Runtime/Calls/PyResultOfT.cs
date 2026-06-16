@@ -1,4 +1,4 @@
-﻿using PySharp.Modules.Builtins;
+using PySharp.Modules.Builtins;
 using System.Diagnostics.CodeAnalysis;
 using static PySharp.Runtime.Calls.PyResult;
 

@@ -1,4 +1,4 @@
-﻿namespace PySharp.Compilation.CodeAnalysis;
+namespace PySharp.Compilation.CodeAnalysis;
 
 public readonly record struct ValueCodeMetaInfo
 {

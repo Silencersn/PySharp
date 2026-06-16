@@ -1,4 +1,4 @@
-﻿using PySharp.Modules.Builtins;
+using PySharp.Modules.Builtins;
 using PySharp.Runtime.VirtualMachine;
 using PySharp.Utility;
 using System.Diagnostics;

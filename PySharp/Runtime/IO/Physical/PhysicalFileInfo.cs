@@ -1,4 +1,4 @@
-﻿namespace PySharp.Runtime.IO.Physical;
+namespace PySharp.Runtime.IO.Physical;
 
 public sealed class PhysicalFileInfo : PhysicalFileSystemInfo, IVirtualFileInfo
 {

@@ -1,4 +1,4 @@
-﻿namespace PySharp.Runtime.IO.Memory;
+namespace PySharp.Runtime.IO.Memory;
 
 public sealed class MemoryFileSystemBuilder
 {

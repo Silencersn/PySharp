@@ -1,4 +1,4 @@
-﻿using PySharp.Compilation.CodeAnalysis;
+using PySharp.Compilation.CodeAnalysis;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 

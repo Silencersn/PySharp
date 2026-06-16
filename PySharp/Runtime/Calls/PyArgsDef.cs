@@ -1,4 +1,4 @@
-﻿using PySharp.Compilation.AstNodes;
+using PySharp.Compilation.AstNodes;
 using PySharp.Modules.Builtins;
 using System.Collections.Frozen;
 using System.Diagnostics;

@@ -1,4 +1,4 @@
-﻿namespace PySharp.Runtime.IO;
+namespace PySharp.Runtime.IO;
 
 public interface IVirtualFileSystemInfo
 {

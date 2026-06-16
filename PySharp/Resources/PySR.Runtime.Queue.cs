@@ -1,4 +1,4 @@
-﻿namespace PySharp.Resources;
+namespace PySharp.Resources;
 
 partial class PySR
 {

@@ -1,4 +1,4 @@
-﻿namespace PySharp.Runtime;
+namespace PySharp.Runtime;
 
 public static partial class PySpecialNames
 {

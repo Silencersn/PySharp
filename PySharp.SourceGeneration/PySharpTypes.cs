@@ -1,4 +1,4 @@
-﻿namespace PySharp.SourceGeneration;
+namespace PySharp.SourceGeneration;
 
 internal static class PySharpTypes
 {

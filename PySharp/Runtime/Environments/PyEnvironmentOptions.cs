@@ -1,4 +1,4 @@
-﻿namespace PySharp.Runtime.Environments;
+namespace PySharp.Runtime.Environments;
 
 public sealed record class PyEnvironmentOptions
 {

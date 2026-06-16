@@ -1,4 +1,4 @@
-﻿namespace PySharp.Compilation.Bytecodes.Extensions;
+namespace PySharp.Compilation.Bytecodes.Extensions;
 
 internal static class BytecodeGeneratorExtensions
 {

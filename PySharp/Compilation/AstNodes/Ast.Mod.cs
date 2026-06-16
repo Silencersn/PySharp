@@ -1,4 +1,4 @@
-﻿namespace PySharp.Compilation.AstNodes;
+namespace PySharp.Compilation.AstNodes;
 
 
 partial class Ast

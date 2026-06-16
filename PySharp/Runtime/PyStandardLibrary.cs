@@ -1,4 +1,4 @@
-﻿using PySharp.Modules.Builtins;
+using PySharp.Modules.Builtins;
 using PySharp.Modules.Mathematics;
 using PySharp.Modules.Operator;
 using PySharp.Modules.Queue;

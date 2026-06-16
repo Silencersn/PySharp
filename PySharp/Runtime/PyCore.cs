@@ -1,4 +1,4 @@
-﻿using PySharp.Compilation.Primitives;
+using PySharp.Compilation.Primitives;
 using PySharp.Modules;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;

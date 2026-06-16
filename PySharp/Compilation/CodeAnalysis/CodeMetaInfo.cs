@@ -1,4 +1,4 @@
-﻿namespace PySharp.Compilation.CodeAnalysis;
+namespace PySharp.Compilation.CodeAnalysis;
 
 public sealed record class CodeMetaInfo
 {

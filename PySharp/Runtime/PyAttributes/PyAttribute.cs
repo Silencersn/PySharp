@@ -1,4 +1,4 @@
-﻿namespace PySharp.Runtime.PyAttributes;
+namespace PySharp.Runtime.PyAttributes;
 
 public abstract class PyAttribute : Attribute
 {

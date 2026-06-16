@@ -1,4 +1,4 @@
-﻿namespace PySharp.Compilation.Tokenization;
+namespace PySharp.Compilation.Tokenization;
 
 public enum TokenType : byte
 {

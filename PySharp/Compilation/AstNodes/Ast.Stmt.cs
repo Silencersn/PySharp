@@ -1,4 +1,4 @@
-﻿using PySharp.Compilation.Primitives;
+using PySharp.Compilation.Primitives;
 
 namespace PySharp.Compilation.AstNodes;
 

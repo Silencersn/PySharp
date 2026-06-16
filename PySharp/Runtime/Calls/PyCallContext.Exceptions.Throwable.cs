@@ -1,4 +1,4 @@
-﻿using PySharp.Compilation.CodeAnalysis;
+using PySharp.Compilation.CodeAnalysis;
 using PySharp.Modules.Builtins;
 
 namespace PySharp.Runtime.Calls;

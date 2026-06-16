@@ -1,4 +1,4 @@
-﻿namespace PySharp.Compilation.Primitives;
+namespace PySharp.Compilation.Primitives;
 
 public enum OperatorType
 {

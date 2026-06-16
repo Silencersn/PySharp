@@ -1,4 +1,4 @@
-﻿using PySharp.Compilation.Tokenization;
+using PySharp.Compilation.Tokenization;
 
 namespace PySharp.Compilation.AstNodes;
 

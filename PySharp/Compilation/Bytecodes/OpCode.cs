@@ -1,4 +1,4 @@
-﻿namespace PySharp.Compilation.Bytecodes;
+namespace PySharp.Compilation.Bytecodes;
 
 internal enum OpCode : byte
 {

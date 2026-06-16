@@ -1,4 +1,4 @@
-﻿using PySharp.Compilation.AstNodes;
+using PySharp.Compilation.AstNodes;
 using PySharp.Compilation.Bytecodes.Extensions;
 using PySharp.Compilation.Primitives;
 using PySharp.Modules.Builtins;

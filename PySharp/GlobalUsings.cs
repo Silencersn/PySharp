@@ -1,4 +1,4 @@
-﻿global using PySharp.Resources;
+global using PySharp.Resources;
 global using PySharp.Runtime.Calls.Extensions;
 
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("PySharp.Tests")]

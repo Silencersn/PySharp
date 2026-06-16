@@ -1,4 +1,4 @@
-﻿namespace PySharp.Runtime.Environments;
+namespace PySharp.Runtime.Environments;
 
 internal sealed class PyEnvironmentBuilder :
     IPyEnvironmentBuilder,

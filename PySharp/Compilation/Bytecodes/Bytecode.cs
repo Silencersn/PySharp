@@ -1,4 +1,4 @@
-﻿using PySharp.Modules.Builtins;
+using PySharp.Modules.Builtins;
 using PySharp.Utility;
 using System.Collections.Immutable;
 using System.Diagnostics;

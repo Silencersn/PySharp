@@ -1,4 +1,4 @@
-﻿using PySharp.Modules.Builtins;
+using PySharp.Modules.Builtins;
 using System.Collections.Immutable;
 
 namespace PySharp.Compilation.AstNodes;

@@ -1,4 +1,4 @@
-﻿using PySharp.Modules.Builtins;
+using PySharp.Modules.Builtins;
 using System.Runtime.CompilerServices;
 
 namespace PySharp.Utility;

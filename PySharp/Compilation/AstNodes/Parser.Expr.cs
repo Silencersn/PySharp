@@ -1,4 +1,4 @@
-﻿using PySharp.Compilation.CodeAnalysis;
+using PySharp.Compilation.CodeAnalysis;
 using PySharp.Compilation.Primitives;
 using PySharp.Compilation.Tokenization;
 using PySharp.Modules.Builtins;

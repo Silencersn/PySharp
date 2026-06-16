@@ -1,4 +1,4 @@
-﻿using PySharp.Compilation.Primitives;
+using PySharp.Compilation.Primitives;
 using PySharp.Compilation.Tokenization;
 using PySharp.Runtime;
 using System.Diagnostics.CodeAnalysis;
