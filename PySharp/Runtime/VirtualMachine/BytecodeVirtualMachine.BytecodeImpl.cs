@@ -1,0 +1,365 @@
+using PySharp.Compilation.Bytecodes;
+using PySharp.Compilation.Primitives;
+using PySharp.Modules.Builtins;
+using PySharp.Modules.String.TemplateLib;
+using PySharp.Modules.Typing;
+using PySharp.Runtime.Calls;
+using PySharp.Utility;
+using System.Collections.Frozen;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Runtime.InteropServices;
+
+namespace PySharp.Runtime.VirtualMachine;
+
+internal static partial class BytecodeVirtualMachine
+{
+    private static void InternalUnpackEx(PyCallContext context, ref ValueOperandStack stack, int instructionArg)
+    {
+        var postCount = instructionArg & ushort.MaxValue;
+        var preCount = (instructionArg >> 16) & ushort.MaxValue;
+        var list = PyUtils.IterableToList(context, stack.Pop()).PyUnwrap(context);
+        var span = CollectionsMarshal.AsSpan(list.InternalList);
+        if (span.Length < preCount + postCount)
+            throw context.ValueError(PySR.Runtime_Assignment_NotEnoughToUnpackStarred, preCount + postCount, span.Length);
+        stack.PushReversedRange(span[^postCount..]);
+        stack.Push(PyListObject.CreateList(span[preCount..^postCount]));
+        stack.PushReversedRange(span[..preCount]);
+    }
+
+    private static void InternalMatchClass(PyCallContext context, ref ValueOperandStack stack, int instructionArg)
+    {
+        var keys = (PyTupleObject)stack.Pop();
+        var value = stack.Pop();
+        if (value is not PyTypeObject cls)
+            throw context.TypeError(PySR.Runtime_MatchStmt_CallNonClass);
+        var subject = stack.Pop();
+
+        if (!cls.IsInstance(subject))
+        {
+            stack.Push(PyNoneObject.None);
+            return;
+        }
+
+        var values = new PyObject[instructionArg + keys.Count];
+
+        if (IsSpecialType(cls))
+        {
+            if (instructionArg > 1)
+                throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsLengthNotEnough, cls.FullName, 1, instructionArg);
+            else if (instructionArg is 1)
+                values[0] = subject;
+        }
+        else if (instructionArg > 0)
+        {
+            var matchArgs = PyOperators.GetAttr(context, cls, PySpecialNames.Interned.MatchArgs).PyUnwrap(context);
+
+            if (matchArgs is not PyTupleObject tuple)
+                throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsIsNonTuple, cls.FullName, matchArgs.PyType.FullName);
+            if (instructionArg > tuple.Count)
+                throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsLengthNotEnough, cls.FullName, tuple.Count, instructionArg);
+
+            for (int i = 0; i < instructionArg; i++)
+            {
+                if (tuple[i] is not PyStrObject attrName)
+                    throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsEltMustBeString, tuple[i].PyType.FullName);
+
+                var attr = PyOperators.GetAttr(context, subject, attrName);
+                if (attr.IsAttributeError)
+                {
+                    stack.Push(PyNoneObject.None);
+                    return;
+                }
+
+                values[i] = attr.PyUnwrap(context);
+            }
+        }
+
+        for (int i = 0; i < keys.Count; i++)
+        {
+            var attrName = keys[i];
+            Debug.Assert(attrName is PyStrObject);
+
+            var attr = PyOperators.GetAttr(context, subject, attrName);
+            if (attr.IsAttributeError)
+            {
+                stack.Push(PyNoneObject.None);
+                return;
+            }
+
+            values[instructionArg + i] = attr.PyUnwrap(context);
+        }
+
+        stack.Push(PyTupleObject.CreateProxy(values));
+
+        static bool IsSpecialType(PyTypeObject type)
+        {
+            // TODO: not implemented: bytearray bytes frozenset
+            return type is
+                PyBoolObjectType or
+                PyDictObjectType or
+                PyFloatObjectType or
+                PyIntObjectType or
+                PyListObjectType or
+                PySetObjectType or
+                PyStrObjectType or
+                PyTupleObjectType;
+        }
+    }
+
+    private static void InternalMatchKeys(PyCallContext context, ref ValueOperandStack stack)
+    {
+        var keys = (PyTupleObject)stack.Peek();
+        var subject = stack[-2];
+        var array = new PyObject[keys.Count];
+        var matched = true;
+        for (int i = 0; matched && i < array.Length; i++)
+        {
+            var key = keys[i];
+            var result = PySpecialMethods.GetItem(context, subject, key);
+            if (result.IsError && PyKeyErrorObjectType.Shared.IsInstance(result.Exception))
+            {
+                matched = false;
+                break;
+            }
+            array[i] = result.PyUnwrap(context);
+        }
+        stack.Push(matched ? PyTupleObject.CreateProxy(array) : PyNoneObject.None);
+    }
+
+    private static void InternalSend(PyCallContext context, ref BytecodeVirtualMachineStates states,
+        ref ValueOperandStack stack, ref int nextIndex, int instructionArg)
+    {
+        PyObject iter, value;
+        PyResult result;
+
+        if (states.ExceptionToRaise is not null)
+        {
+            // throw or close
+
+            iter = stack[-1];
+
+            if (PyGeneratorExitObjectType.Shared.IsInstance(states.ExceptionToRaise))
+            {
+                // close sub generator
+                var close = PyOperators.GetAttr(context, iter, "close");
+                if (!close.IsAttributeError)
+                    _ = close.PyUnwrap(context).Call(context).PyUnwrap(context);
+
+                // close self
+                if (states.ExceptionToRaise is not null)
+                {
+                    var exc = Move(ref states.ExceptionToRaise);
+                    throw new PyRuntimeException(exc);
+                }
+            }
+            else
+            {
+                var throwMethod = PyOperators.GetAttr(context, iter, "throw");
+                if (!throwMethod.IsAttributeError)
+                {
+                    var exc = Move(ref states.ExceptionToRaise);
+                    value = throwMethod.PyUnwrap(context).Call(context, [exc]).PyUnwrap(context);
+                    stack.Push(value);
+                }
+                else
+                {
+                    // throw at self
+                    if (states.ExceptionToRaise is not null)
+                    {
+                        var exc = Move(ref states.ExceptionToRaise);
+                        throw new PyRuntimeException(exc);
+                    }
+                }
+                return;
+            }
+        }
+
+        iter = stack[-2];
+        value = stack[-1];
+        if (iter is PyGeneratorObject gen)
+        {
+            if (value is PyNoneObject)
+                result = gen.PyNext(context);
+            else
+                result = gen.PySend(context, value);
+        }
+        else
+        {
+            if (value is PyNoneObject)
+                result = PySpecialMethods.Next(context, iter);
+            else
+                result = iter.CallMethod(context, "send", [value]);
+        }
+
+        if (result.IsStopIteration)
+        {
+            // replace sent value with received value by 'yield from'
+            stack[-1] = result.Exception.Args.FirstOrDefault(PyNoneObject.None);
+            nextIndex = instructionArg;
+        }
+        else
+        {
+            stack[-1] = result.PyUnwrap(context);
+        }
+    }
+
+    private static void InternalMapAdd(PyCallContext context, ref ValueOperandStack stack, int instructionArg)
+    {
+        var value = stack.Pop();
+        var key = stack.Pop();
+        var dict = (PyDictObject)stack[-instructionArg];
+        dict[key] = value;
+    }
+
+    private static void InternalDictUpdate(PyCallContext context, ref ValueOperandStack stack, int instructionArg)
+    {
+        var map = stack.Pop();
+        var dict = (PyDictObject)stack[-instructionArg];
+        _ = dict.PyUpdate(context, map).PyUnwrap(context);
+    }
+
+    private static void InternalDictMerge(PyCallContext context, ref ValueOperandStack stack, int instructionArg)
+    {
+        var map = stack.Pop();
+        var dictToMerge = PyUtils.ToDict(context, map).PyUnwrap(context);
+        var dict = (PyDictObject)stack[-instructionArg];
+        foreach (var pair in dictToMerge)
+        {
+            if (!dict.TryAdd(pair.Key, pair.Value))
+                throw context.TypeError(PySR.Runtime_Arguments_MultipleKeywords, pair.Key);
+        }
+    }
+
+    private static void InternalRaiseVarArgs(PyCallContext context, ref ValueOperandStack stack, ref BytecodeVirtualMachineStates states, int instructionArg)
+    {
+        if (instructionArg is 0)
+        {
+            PyCore.Raise(context, ref states, excObj: null, causeObj: null);
+        }
+        else if (instructionArg is 1)
+        {
+            var excObj = stack.Pop();
+            PyCore.Raise(context, ref states, excObj, causeObj: null);
+        }
+        else if (instructionArg is 2)
+        {
+            var causeObj = stack.Pop();
+            var excObj = stack.Pop();
+            PyCore.Raise(context, ref states, excObj, causeObj);
+        }
+        else
+        {
+            throw new UnreachableException();
+        }
+    }
+
+    private static void InternalCheckEgMatch(PyCallContext context, ref ValueOperandStack stack, ref BytecodeVirtualMachineStates states, int instructionArg)
+    {
+        var exc = states.CurrentException;
+        if (!exc.IsGroup)
+            exc = PyBaseExceptionGroupObjectType.CreateExceptionGroup(string.Empty, [exc]);
+
+        var type = stack.Pop();
+        var (rest, match) = PyCore.SplitExceptionGroup(context, exc, type);
+        states.Exceptions.Pop();
+        states.ExceptionHandlers.Peek().PyException = rest;
+        states.Exceptions.Push(rest! /* null if rest is None, OpCode._PopExceptionAndJumpIfNull should handle that */);
+        stack.Push(match);
+    }
+
+    private static void InternalBuildSlice(ref ValueOperandStack stack, int instructionArg)
+    {
+        if (instructionArg is 2)
+        {
+            var end = stack.Pop();
+            var start = stack.Pop();
+            var slice = new PySliceObject(start, end, PyNoneObject.None);
+            stack.Push(slice);
+        }
+        else
+        {
+            Debug.Assert(instructionArg is 3);
+            var step = stack.Pop();
+            var end = stack.Pop();
+            var start = stack.Pop();
+            var slice = new PySliceObject(start, end, step);
+            stack.Push(slice);
+        }
+    }
+
+    private static void InternalMakeFunctionWithPyArgsDef(ref PyInternalFrame frame, ref ValueOperandStack stack)
+    {
+        var codeObj = (PyCodeObject)stack.Pop();
+
+        PyObject?[] kwDefaults = new PyObject?[codeObj.KwDefaultsCount];
+        stack.PopReversedRange(kwDefaults!);
+        PyObject[] defaults = new PyObject[codeObj.DefaultsCount];
+        stack.PopReversedRange(defaults);
+        var def = PyArgsDef.FromCodeObjectAndDefaults(codeObj, kwDefaults, defaults);
+
+        var func = PyCore.MakeFunction(ref frame, codeObj, def);
+
+        stack.Push(func);
+    }
+
+    private static void InternalBuildClass(PyCallContext context, ref ValueOperandStack stack, ref BytecodeVirtualMachineStates states, int instructionArg)
+    {
+        var codeObj = (PyCodeObject)stack.Pop();
+        var tuple = (PyTupleObject)stack.Pop();
+
+        int kwCount = tuple.Count;
+        int basesCount = instructionArg - kwCount;
+
+        states.CacheKwargs.Clear();
+        var kwargs = states.CacheKwargs;
+        if (kwCount > 0)
+        {
+            LoadArgs(ref stack, states.CacheArgs, kwCount);
+            for (int i = 0; i < tuple.Count; i++)
+            {
+                var str = (PyStrObject)tuple[i];
+                kwargs[str.Value] = states.CacheArgs[i];
+            }
+        }
+
+        LoadArgs(ref stack, states.CacheArgs, basesCount);
+        foreach (var arg in states.CacheArgs)
+        {
+            if (arg is not PyTypeObject baseType)
+                throw new PyRuntimeException(PyResult.PySharpException.Shared.Create(PyStrObject.FromString("non-type base is not supported")));
+        }
+
+        var type = PyCore.BuildClass(context, codeObj, [.. states.CacheArgs.Cast<PyTypeObject>()], kwargs);
+
+        stack.Push(type);
+    }
+
+    private static void InternalUnpackSequence(PyCallContext context, ref ValueOperandStack stack, int instructionArg)
+    {
+        var list = PyUtils.IterableToList(context, stack.Pop()).PyUnwrap(context);
+        var span = CollectionsMarshal.AsSpan(list.InternalList);
+        if (span.Length > instructionArg)
+            throw context.ValueError(PySR.Runtime_Assignment_TooManyToUnpack, instructionArg, span.Length);
+        else if (span.Length < instructionArg)
+            throw context.ValueError(PySR.Runtime_Assignment_NotEnoughToUnpack, instructionArg, span.Length);
+        stack.PushReversedRange(span);
+    }
+
+    private static void InternalImportName(PyCallContext context, ref ValueOperandStack stack, ReadOnlySpan<string> names, int instructionArg)
+    {
+        var fromList = stack.Pop();
+        var level = (PyIntObject)stack.Pop();
+
+        if (level.Value > 0)
+            throw new NotSupportedException();
+
+        if (!context.PyEnvironment.TryLoadModule(context, names[instructionArg], out var rootModule, out var module))
+            throw context.ModuleNotFoundError(PySR.Runtime_Import_ModuleNotFound, names[instructionArg]);
+
+        if (fromList is PyNoneObject || fromList is PyListObject { Count: 0 } || fromList is PyTupleObject { Count: 0 })
+            stack.Push(rootModule);
+        else
+            stack.Push(module);
+    }
+}

@@ -669,9 +669,9 @@ partial class BytecodeCompiler
 
             // []
             LoadExpr(item.ContextExpr); // -> [manager]
-            Generator.Emit(OpCode.LoadSpecial, PySpecialNames.Enter); // -> [manager, enter]
+            Generator.Emit(OpCode.LoadSpecial, (int)LoadSpecialMethods.Enter); // -> [manager, enter]
             Generator.Emit(OpCode.Swap, 2); // [enter, manager]
-            Generator.Emit(OpCode.LoadSpecial, PySpecialNames.Exit); // -> [enter, manager, exit]
+            Generator.Emit(OpCode.LoadSpecial, (int)LoadSpecialMethods.Exit); // -> [enter, manager, exit]
             Generator.Emit(OpCode.Swap, 3); // -> [exit, manager, enter]
             Generator.Emit(OpCode.Copy, 2); // -> [exit, manager, enter, manager]
             Generator.Emit(OpCode.Call, 1); // -> [exit, manager, value]
@@ -734,9 +734,9 @@ partial class BytecodeCompiler
 
             // []
             LoadExpr(item.ContextExpr); // -> [manager]
-            Generator.Emit(OpCode.LoadSpecial, PySpecialNames.AEnter); // -> [manager, aenter]
+            Generator.Emit(OpCode.LoadSpecial, (int)LoadSpecialMethods.AEnter); // -> [manager, aenter]
             Generator.Emit(OpCode.Swap, 2); // [aenter, manager]
-            Generator.Emit(OpCode.LoadSpecial, PySpecialNames.AExit); // -> [aenter, manager, aexit]
+            Generator.Emit(OpCode.LoadSpecial, (int)LoadSpecialMethods.AExit); // -> [aenter, manager, aexit]
             Generator.Emit(OpCode.Swap, 3); // -> [aexit, manager, aenter]
             Generator.Emit(OpCode.Copy, 2); // -> [aexit, manager, aenter, manager]
             Generator.Emit(OpCode.Call, 1); // -> [aexit, manager, coroutine]

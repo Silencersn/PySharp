@@ -1,5 +1,6 @@
 ﻿using PySharp.Modules.Builtins;
 using System.Buffers;
+using System.Diagnostics;
 
 namespace PySharp.Runtime.VirtualMachine;
 
@@ -43,7 +44,14 @@ internal ref struct ValueOperandStack
 
     public readonly int Count => _size;
 
-    public readonly ref PyObject this[int index] => ref _span[_size + index];
+    public readonly ref PyObject this[int index]
+    {
+        get
+        {
+            Debug.Assert(index < 0);
+            return ref _span[_size + index];
+        }
+    }
 
     internal ValueOperandStack(Span<PyObject> span, int size = 0)
     {
