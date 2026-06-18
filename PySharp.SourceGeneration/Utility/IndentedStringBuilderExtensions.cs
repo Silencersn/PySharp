@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Data.SqlTypes;
 
 namespace PySharp.SourceGeneration.Utility;
 
@@ -35,7 +34,7 @@ internal static class IndentedStringBuilderExtensions
     {
         return builder.AppendLine($"using {namespaceName};");
     }
-    
+
 
     public static IndentedStringBuilder AppendLineComment(this IndentedStringBuilder builder, string comment)
     {

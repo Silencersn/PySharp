@@ -1,8 +1,8 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
-using System.Numerics;
 using System.Globalization;
+using System.Numerics;
 
 namespace PySharp.Modules.Builtins;
 

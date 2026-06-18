@@ -1,13 +1,6 @@
-using PySharp.Compilation.Bytecodes;
-using PySharp.Compilation.Primitives;
 using PySharp.Modules.Builtins;
-using PySharp.Modules.String.TemplateLib;
-using PySharp.Modules.Typing;
 using PySharp.Runtime.Calls;
-using PySharp.Utility;
-using System.Collections.Frozen;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
 namespace PySharp.Runtime.VirtualMachine;

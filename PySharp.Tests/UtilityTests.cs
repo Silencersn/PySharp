@@ -1,8 +1,6 @@
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Comparison;
-using PySharp.Runtime.IO;
 using PySharp.Runtime.IO.Memory;
-using PySharp.Runtime.IO.Physical;
 using PySharp.Utility;
 
 #pragma warning disable MSTEST0037

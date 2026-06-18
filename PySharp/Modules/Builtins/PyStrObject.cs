@@ -221,7 +221,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
         int maxsplit = -1;
         if (maxsplitObj is PyIntObject maxsplitInt) maxsplit = maxsplitInt.Int32Value;
-        
+
         string[] parts;
         if (sepObj is PyNoneObject)
         {
@@ -244,7 +244,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         var list = new List<PyObject>(parts.Length);
         foreach (var p in parts)
             list.Add(PyStrObject.FromString(p));
-        
+
         return PyListObject.CreateList(list);
     }
 
@@ -294,7 +294,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     {
         if (arguments[0] is not PyIntObject widthObj)
             return PyResult.TypeError("width must be int");
-        
+
         string fillchar = " ";
         if (arguments[1] is PyStrObject fillStr)
         {
@@ -452,7 +452,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         {
             return PyStrObject.FromString(self.Value[0] + self.Value[1..].PadLeft(width - 1, '0'));
         }
-        
+
         return PyStrObject.FromString(self.Value.PadLeft(width, '0'));
     }
 

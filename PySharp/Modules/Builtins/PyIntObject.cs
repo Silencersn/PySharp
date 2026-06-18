@@ -1,6 +1,5 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
-using PySharp.Runtime.Comparison;
 using PySharp.Runtime.PyAttributes;
 using PySharp.Utility;
 using System.Diagnostics;
@@ -355,7 +354,7 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
                 if (char.IsUpper(formatType)) text = text.ToUpperInvariant();
                 if (spec.WidthGrouping is not null)
                 {
-                     text = ApplyGrouping(text, spec.WidthGrouping.Value, 4);
+                    text = ApplyGrouping(text, spec.WidthGrouping.Value, 4);
                 }
                 break;
             case 'd':
@@ -414,15 +413,15 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
 
             int len = value.Length;
             if (len <= groupSize) return value;
-            
+
             // Calculate number of separators
             int sepCount = (len - 1) / groupSize;
             Span<char> span = stackalloc char[len + sepCount];
-            
+
             int dst = span.Length - 1;
             int src = len - 1;
             int count = 0;
-            
+
             while (src >= 0)
             {
                 span[dst--] = value[src--];

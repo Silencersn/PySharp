@@ -44,7 +44,7 @@ partial struct PyResult
     {
         return RaiseException(PyTypeErrorObjectType.Shared, format, args);
     }
-    
+
     public static PyExceptionResult ValueError(string? format, params ReadOnlySpan<object?> args)
     {
         return RaiseException(PyValueErrorObjectType.Shared, format, args);

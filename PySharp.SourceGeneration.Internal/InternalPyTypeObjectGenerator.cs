@@ -1,10 +1,7 @@
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Text;
-using PySharp.SourceGeneration.Utility;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace PySharp.SourceGeneration.Internal;
 

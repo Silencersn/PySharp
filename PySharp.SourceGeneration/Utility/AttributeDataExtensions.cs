@@ -1,5 +1,3 @@
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -25,7 +23,7 @@ internal static class AttributeDataExtensions
         {
             if (attributeData.AttributeClass is null)
                 continue;
-            
+
             if (attributeData.AttributeClass.ToDisplayString() == fullyQualifiedAttributeName)
                 return attributeData;
         }

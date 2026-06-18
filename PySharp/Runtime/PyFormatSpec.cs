@@ -1,5 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace PySharp.Runtime;
 
 internal readonly struct PyFormatSpec

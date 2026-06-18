@@ -2,10 +2,7 @@ using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
-using System;
-using System.Collections.Generic;
 using System.Numerics;
-using System.Text;
 
 namespace PySharp.Modules.Mathematics;
 
@@ -355,7 +352,7 @@ internal static class PyMathFunctions
         var den = MathLogImpl(context, arguments[1], BigInteger.Log, Math.Log);
         if (den.IsError)
             return den;
-        
+
         return PyFloatObject.FromDouble(num.Value.Value / den.Value.Value);
     }
 
@@ -390,7 +387,7 @@ internal static class PyMathFunctions
 
             if (epsilon is 0)
                 return value;
-            
+
             return Math.Log(u) * (value / epsilon);
         }
     }
