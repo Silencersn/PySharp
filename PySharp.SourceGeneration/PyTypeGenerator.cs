@@ -42,7 +42,11 @@ public class PyTypeGenerator : IIncrementalGenerator
                             continue;
 
                         if (methodSymbol.IsDefined(PySharpTypes.PySlotAttribute, inherit: true))
-                            pyTypeInfo.Slots.Add(methodSymbol.Name);
+                        {
+                            var slotAttr = methodSymbol.GetAttributes(PySharpTypes.PySlotAttribute, inherit: true).Single();
+                            var slotsMember = slotAttr.GetNamedArgumentOrDefault<string?>("SlotsMember", null);
+                            pyTypeInfo.Slots.Add(new(methodSymbol.Name, slotsMember));
+                        }
 
                         var methodAttribute = methodSymbol.GetAttribute(PySharpTypes.PyMethodAttribute);
                         if (methodAttribute is not null)
@@ -111,10 +115,12 @@ public class PyTypeGenerator : IIncrementalGenerator
                             .EnterBlock()
                                 .ForEach(pyType.Slots, static (builder, slot) =>
                                 {
-                                    if (slot is "New")
+                                    if (slot.Name is "New")
                                         builder.AppendLine("FillNewSlot();");
+                                    else if (slot.SlotsMember is not null)
+                                        builder.AppendLine($"FillSlot(PySpecialNames.{slot.Name}, ref Slots.{slot.SlotsMember}.{slot.Name}, {slot.Name});");
                                     else
-                                        builder.AppendLine($"FillSlot(PySpecialNames.{slot}, ref Slots.{slot}, {slot});");
+                                        builder.AppendLine($"FillSlot(PySpecialNames.{slot.Name}, ref Slots.{slot.Name}, {slot.Name});");
                                 })
                             .ExitBlock())
 
@@ -169,7 +175,7 @@ public class PyTypeGenerator : IIncrementalGenerator
 
         public string Namespace { get; }
         public string Name { get; }
-        public List<string> Slots { get; }
+        public List<PySlotInfo> Slots { get; }
         public List<PyMethodInfo> Methods { get; }
         public List<PyMethodInfo> ClassMethods { get; }
         public List<PyMethodInfo> StaticMethods { get; }
@@ -177,6 +183,18 @@ public class PyTypeGenerator : IIncrementalGenerator
         public AttributeData AttributeData { get; }
         public bool DoNotGenerateConstructor { get; }
         public string AccessModifier { get; }
+    }
+
+    public record class PySlotInfo
+    {
+        public PySlotInfo(string name, string? slotsMember)
+        {
+            Name = name;
+            SlotsMember = slotsMember;
+        }
+
+        public string Name { get; }
+        public string? SlotsMember { get; }
     }
 
     public record class PyMethodInfo

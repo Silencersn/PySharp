@@ -11,6 +11,7 @@ partial class PyTypeObject
         // TODO: support different protocols
 
         internal PyClsArgsKwargsFunction? New;
+        internal PyNumberMethods? Number;
 
         internal static PyTypeSlots Create(IEnumerable<PyTypeObject> types)
         {
@@ -21,6 +22,11 @@ partial class PyTypeObject
                 slots.New ??= type.Slots.New;
             }
             return slots;
+        }
+
+        internal sealed partial class PyNumberMethods
+        {
+
         }
     }
 }

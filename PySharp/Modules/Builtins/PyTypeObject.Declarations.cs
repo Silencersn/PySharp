@@ -40,7 +40,10 @@ partial class PyTypeObject
         /// <param name="delegateType">The delegate type handling the call, e.g., typeof(PyUnaryFunction).</param>
         [AttributeUsage(AttributeTargets.Method, AllowMultiple = false, Inherited = false)]
 #pragma warning disable CS9113
-        private sealed class PySpecialMethodAttribute(string name, Type delegateType) : PyAttribute;
+        private sealed class PySpecialMethodAttribute(string name, Type delegateType) : PyAttribute
+        {
+            public string? SlotsMember { get; set; }
+        }
 #pragma warning restore CS9113
 
         /// <summary>
@@ -80,19 +83,19 @@ partial class PyTypeObject
         [PySpecialMethod("__delattr__", typeof(PyBinaryFunction))]
         static partial void DelAttr(PyCallContext context, TObject self, PyObject item);
 
-        [PySpecialMethod("__bool__", typeof(PyUnaryFunction))]
+        [PySpecialMethod("__bool__", typeof(PyUnaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void Bool(PyCallContext context, TObject self);
 
-        [PySpecialMethod("__int__", typeof(PyUnaryFunction))]
+        [PySpecialMethod("__int__", typeof(PyUnaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void Int(PyCallContext context, TObject self);
 
-        [PySpecialMethod("__float__", typeof(PyUnaryFunction))]
+        [PySpecialMethod("__float__", typeof(PyUnaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void Float(PyCallContext context, TObject self);
 
         [PySpecialMethod("__complex__", typeof(PyUnaryFunction))]
         static partial void Complex(PyCallContext context, TObject self);
 
-        [PySpecialMethod("__index__", typeof(PyUnaryFunction))]
+        [PySpecialMethod("__index__", typeof(PyUnaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void Index(PyCallContext context, TObject self);
 
         [PySpecialMethod("__contains__", typeof(PyBinaryFunction))]
@@ -116,100 +119,100 @@ partial class PyTypeObject
         [PySpecialMethod("__next__", typeof(PyUnaryFunction))]
         static partial void Next(PyCallContext context, TObject self);
 
-        [PySpecialMethod("__neg__", typeof(PyUnaryFunction))]
+        [PySpecialMethod("__neg__", typeof(PyUnaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void Neg(PyCallContext context, TObject self);
 
-        [PySpecialMethod("__pos__", typeof(PyUnaryFunction))]
+        [PySpecialMethod("__pos__", typeof(PyUnaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void Pos(PyCallContext context, TObject self);
 
-        [PySpecialMethod("__invert__", typeof(PyUnaryFunction))]
+        [PySpecialMethod("__invert__", typeof(PyUnaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void Invert(PyCallContext context, TObject self);
 
-        [PySpecialMethod("__abs__", typeof(PyUnaryFunction))]
+        [PySpecialMethod("__abs__", typeof(PyUnaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void Abs(PyCallContext context, TObject self);
 
-        [PySpecialMethod("__add__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__add__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void Add(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__sub__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__sub__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void Sub(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__mul__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__mul__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void Mul(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__matmul__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__matmul__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void MatMul(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__truediv__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__truediv__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void TrueDiv(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__floordiv__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__floordiv__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void FloorDiv(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__mod__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__mod__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void Mod(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__divmod__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__divmod__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void DivMod(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__pow__", typeof(PyTernaryFunction))]
+        [PySpecialMethod("__pow__", typeof(PyTernaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void Pow(PyCallContext context, TObject self, PyObject other, PyObject modulo);
 
-        [PySpecialMethod("__lshift__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__lshift__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void LShift(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__rshift__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__rshift__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void RShift(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__and__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__and__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void And(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__xor__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__xor__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void Xor(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__or__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__or__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void Or(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__radd__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__radd__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void RAdd(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__rsub__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__rsub__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void RSub(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__rmul__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__rmul__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void RMul(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__rmatmul__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__rmatmul__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void RMatMul(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__rtruediv__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__rtruediv__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void RTrueDiv(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__rfloordiv__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__rfloordiv__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void RFloorDiv(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__rmod__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__rmod__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void RMod(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__rdivmod__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__rdivmod__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void RDivMod(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__rpow__", typeof(PyTernaryFunction))]
+        [PySpecialMethod("__rpow__", typeof(PyTernaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void RPow(PyCallContext context, TObject self, PyObject other, PyObject modulo);
 
-        [PySpecialMethod("__rlshift__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__rlshift__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void RLShift(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__rrshift__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__rrshift__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void RRShift(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__rand__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__rand__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void RAnd(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__rxor__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__rxor__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void RXor(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__ror__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__ror__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void ROr(PyCallContext context, TObject self, PyObject other);
 
         [PySpecialMethod("__lt__", typeof(PyBinaryFunction))]
@@ -248,43 +251,43 @@ partial class PyTypeObject
         [PySpecialMethod("__format__", typeof(PyBinaryFunction))]
         static partial void Format(PyCallContext context, TObject self, PyObject formatSpec);
 
-        [PySpecialMethod("__iadd__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__iadd__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void IAdd(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__isub__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__isub__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void ISub(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__imul__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__imul__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void IMul(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__imatmul__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__imatmul__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void IMatMul(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__itruediv__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__itruediv__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void ITrueDiv(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__ifloordiv__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__ifloordiv__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void IFloorDiv(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__imod__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__imod__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void IMod(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__ipow__", typeof(PyTernaryFunction))]
+        [PySpecialMethod("__ipow__", typeof(PyTernaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void IPow(PyCallContext context, TObject self, PyObject other, PyObject modulo);
 
-        [PySpecialMethod("__ilshift__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__ilshift__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void ILShift(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__irshift__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__irshift__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void IRShift(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__iand__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__iand__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void IAnd(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__ixor__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__ixor__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void IXor(PyCallContext context, TObject self, PyObject other);
 
-        [PySpecialMethod("__ior__", typeof(PyBinaryFunction))]
+        [PySpecialMethod("__ior__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void IOr(PyCallContext context, TObject self, PyObject other);
 
         [PySpecialMethod("__enter__", typeof(PyUnaryFunction))]

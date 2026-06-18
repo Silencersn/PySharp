@@ -77,18 +77,18 @@ partial class PyTypeObject<TObject>
         return DefaultDelAttr(context, self, item);
     }
 
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult Bool(PyCallContext context, TObject self)
     {
         return DefaultBool(context, self);
     }
 
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult Int(PyCallContext context, TObject self)
     {
         throw new NotImplementedException($"{PySpecialNames.Int} does not have default implementation");
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult Float(PyCallContext context, TObject self)
     {
         throw new NotImplementedException($"{PySpecialNames.Float} does not have default implementation");
@@ -99,7 +99,7 @@ partial class PyTypeObject<TObject>
         throw new NotImplementedException($"{PySpecialNames.Complex} does not have default implementation");
     }
 
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult Index(PyCallContext context, TObject self)
     {
         throw new NotImplementedException($"{PySpecialNames.Index} does not have default implementation");
@@ -147,167 +147,167 @@ partial class PyTypeObject<TObject>
         throw new NotImplementedException($"{PySpecialNames.Next} does not have default implementation");
     }
 
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult Neg(PyCallContext context, TObject self)
     {
         throw new NotImplementedException($"{PySpecialNames.Neg} does not have default implementation");
     }
 
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult Pos(PyCallContext context, TObject self)
     {
         throw new NotImplementedException($"{PySpecialNames.Pos} does not have default implementation");
     }
 
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult Invert(PyCallContext context, TObject self)
     {
         throw new NotImplementedException($"{PySpecialNames.Invert} does not have default implementation");
     }
 
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult Abs(PyCallContext context, TObject self)
     {
         throw new NotImplementedException($"{PySpecialNames.Abs} does not have default implementation");
     }
 
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult Add(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult Sub(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult Mul(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult MatMul(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult TrueDiv(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult FloorDiv(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult Mod(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult DivMod(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult Pow(PyCallContext context, TObject self, PyObject other, PyObject modulo)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult LShift(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult RShift(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult And(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult Xor(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult Or(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
 
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult RAdd(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult RSub(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult RMul(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult RMatMul(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult RTrueDiv(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult RFloorDiv(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult RMod(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult RDivMod(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult RPow(PyCallContext context, TObject self, PyObject other, PyObject modulo)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult RLShift(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult RRShift(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult RAnd(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult RXor(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult ROr(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
@@ -380,67 +380,67 @@ partial class PyTypeObject<TObject>
         return DefaultFormat(context, self, formatSpec);
     }
 
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult IAdd(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult ISub(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult IMul(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult IMatMul(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult ITrueDiv(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult IFloorDiv(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult IMod(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult IPow(PyCallContext context, TObject self, PyObject other, PyObject modulo)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult ILShift(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult IRShift(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult IAnd(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult IXor(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
     }
-    [PySlot]
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult IOr(PyCallContext context, TObject self, PyObject other)
     {
         return DefaultBinaryOperator(context, self, other);
