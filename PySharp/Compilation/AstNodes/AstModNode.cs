@@ -13,10 +13,6 @@ public class ModuleNode : AstModNode
 
     public ImmutableArray<AstStmtNode> Body { get; }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        return Body;
-    }
 }
 
 public class ExpressionNode : AstModNode
@@ -28,10 +24,6 @@ public class ExpressionNode : AstModNode
         Body = body;
     }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Body;
-    }
 }
 
 public class InteractiveNode : AstModNode
@@ -41,9 +33,5 @@ public class InteractiveNode : AstModNode
     internal InteractiveNode(ImmutableArray<AstStmtNode> body)
     {
         Body = body;
-    }
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        return Body;
     }
 }

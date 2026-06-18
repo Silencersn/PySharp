@@ -99,7 +99,7 @@ partial class SemanticAnalyzer
         if (_currentScopeStats.Scope is not (FunctionVariableScope or AsyncFunctionVariableScope))
             throw SyntaxError(PySR.InvalidSyntax_Semantic_ReturnOutsideFunction);
         if (_currentScopeStats.FinallyDepth > 0)
-            CheckControlStmtNotInFinallyUntil(static n => n is FunctionDefNode /* TODO is it needed ? need add async def ? */, PySR.InvalidSyntax_Semantic_ReturnInFinally);
+            CheckControlStmtNotInFinallyUntil(static n => false, PySR.InvalidSyntax_Semantic_ReturnInFinally);
         VisitNullableNode(node.Value);
     }
 
@@ -110,11 +110,8 @@ partial class SemanticAnalyzer
 
     private void VisitImportFrom(ImportFromNode node)
     {
-        if (_currentScopeStats.Scope is not RootVariableScope)
-        {
-            if (node.IsImportStar())
-                throw SyntaxError(PySR.InvalidSyntax_Semantic_ImportStarNotAtModuleLevel);
-        }
+        if (_currentScopeStats.Scope is not RootVariableScope && node.IsImportStar())
+            throw SyntaxError(PySR.InvalidSyntax_Semantic_ImportStarNotAtModuleLevel);
         VisitNodes(node.Names);
     }
 
@@ -268,22 +265,10 @@ partial class SemanticAnalyzer
         {
             var c = node.Cases[i];
 
-            var enumerator = EnumeratePossiblyIrrefutablePatterns(c.Pattern).GetEnumerator();
-
-            MatchAsNode? irrefutablePattern = null;
-            while (enumerator.MoveNext())
-            {
-                if (enumerator.Current is not MatchAsNode { Pattern: null } matchAs)
-                    continue;
-
-                irrefutablePattern = matchAs;
-                break;
-            }
+            var irrefutablePattern = FindIrrefutablePattern(c.Pattern, out var isLast);
 
             if (irrefutablePattern is null)
                 continue;
-
-            var isLast = !enumerator.MoveNext();
 
             if (!isLast)
                 ThrowUnreachable(irrefutablePattern);
@@ -295,21 +280,30 @@ partial class SemanticAnalyzer
                 ThrowUnreachable(irrefutablePattern);
         }
 
-        IEnumerable<AstPatternNode> EnumeratePossiblyIrrefutablePatterns(AstPatternNode pattern)
+        MatchAsNode? FindIrrefutablePattern(AstPatternNode pattern, out bool isLast)
         {
-            yield return pattern;
-
-            if (pattern is not (MatchAsNode or MatchOrNode))
-                yield break;
-
-            foreach (var sub in pattern.EnumerateSubNodes())
+            if (pattern is MatchAsNode matchAsNode)
             {
-                if (sub is not AstPatternNode subPattern)
+                isLast = true;
+                return matchAsNode.Pattern is null ? matchAsNode : null;
+            }
+
+            isLast = false;
+            if (pattern is not MatchOrNode matchOrNode)
+                return null;
+
+            var span = matchOrNode.Patterns.AsSpan();
+            for (int i = 0; i < span.Length; i++)
+            {
+                var result = FindIrrefutablePattern(span[i], out var isSubLast);
+                if (result is null)
                     continue;
 
-                foreach (var p in EnumeratePossiblyIrrefutablePatterns(subPattern))
-                    yield return p;
+                isLast = isSubLast && (i == span.Length - 1);
+                return result;
             }
+
+            return null;
         }
 
         void ThrowUnreachable(MatchAsNode irrefutablePattern)

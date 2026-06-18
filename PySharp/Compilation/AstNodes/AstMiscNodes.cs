@@ -14,11 +14,6 @@ public class AstAliasNode : AstNode
     public string Name { get; }
     public string? AsName { get; }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        return [];
-    }
-
     internal string GetLocalName()
     {
         if (AsName is not null)
@@ -43,10 +38,6 @@ public class AstArgNode : AstNode
         Annotation = annotation;
     }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        return [];
-    }
 }
 
 public class AstArgumentsNode : AstNode
@@ -73,20 +64,6 @@ public class AstArgumentsNode : AstNode
     public ImmutableArray<AstExprNode?> KwDefaults { get; }
     public ImmutableArray<AstExprNode> Defaults { get; }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        foreach (var n in PosonlyArgs) yield return n;
-        foreach (var n in Args) yield return n;
-        if (VarArg is not null)
-            yield return VarArg;
-        foreach (var n in KwonlyArgs) yield return n;
-        if (KwArg is not null)
-            yield return KwArg;
-        foreach (var d in KwDefaults)
-            if (d is not null)
-                yield return d;
-        foreach (var d in Defaults) yield return d;
-    }
 }
 
 public class AstComprehensionNode : AstNode
@@ -102,12 +79,6 @@ public class AstComprehensionNode : AstNode
     public AstExprNode Iter { get; }
     public ImmutableArray<AstExprNode> Ifs { get; }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Target;
-        yield return Iter;
-        foreach (var f in Ifs) yield return f;
-    }
 }
 
 
@@ -121,11 +92,6 @@ public class AstKeywordNode : AstNode
 
     public string? Arg { get; }
     public AstExprNode Value { get; }
-
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Value;
-    }
 }
 
 public sealed class ExceptHandlerNode : AstNode
@@ -141,13 +107,6 @@ public sealed class ExceptHandlerNode : AstNode
     public string? Name { get; }
     public ImmutableArray<AstStmtNode> Body { get; }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        if (Type is not null)
-            yield return Type;
-        foreach (var stmt in Body)
-            yield return stmt;
-    }
 }
 
 public sealed class AstWithItemNode : AstNode
@@ -161,12 +120,6 @@ public sealed class AstWithItemNode : AstNode
     public AstExprNode ContextExpr { get; }
     public AstExprNode? OptionalVars { get; }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return ContextExpr;
-        if (OptionalVars is not null)
-            yield return OptionalVars;
-    }
 }
 
 public sealed class AstMatchCaseNode : AstNode
@@ -181,18 +134,12 @@ public sealed class AstMatchCaseNode : AstNode
     public AstPatternNode Pattern { get; }
     public AstExprNode? Guard { get; }
     public ImmutableArray<AstStmtNode> Body { get; }
-
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Pattern;
-        if (Guard is not null)
-            yield return Guard;
-        foreach (var stmt in Body)
-            yield return stmt;
-    }
 }
 
-public abstract class AstPatternNode : AstNode;
+public abstract class AstPatternNode : AstNode
+{
+    public abstract IEnumerable<AstPatternNode> EnumerateSubPatterns();
+}
 
 public sealed class MatchValueNode : AstPatternNode
 {
@@ -203,9 +150,9 @@ public sealed class MatchValueNode : AstPatternNode
 
     public AstExprNode Value { get; }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
+    public override IEnumerable<AstPatternNode> EnumerateSubPatterns()
     {
-        yield return Value;
+        return [];
     }
 }
 
@@ -218,7 +165,7 @@ public sealed class MatchSingletonNode : AstPatternNode
 
     public PyObject Value { get; }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
+    public override IEnumerable<AstPatternNode> EnumerateSubPatterns()
     {
         return [];
     }
@@ -233,7 +180,7 @@ public sealed class MatchSequenceNode : AstPatternNode
 
     public ImmutableArray<AstPatternNode> Patterns { get; }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
+    public override IEnumerable<AstPatternNode> EnumerateSubPatterns()
     {
         foreach (var p in Patterns)
             yield return p;
@@ -253,10 +200,8 @@ public sealed class MatchMappingNode : AstPatternNode
     public ImmutableArray<AstPatternNode> Patterns { get; }
     public string? Rest { get; }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
+    public override IEnumerable<AstPatternNode> EnumerateSubPatterns()
     {
-        foreach (var k in Keys)
-            yield return k;
         foreach (var p in Patterns)
             yield return p;
     }
@@ -277,9 +222,8 @@ public sealed class MatchClassNode : AstPatternNode
     public ImmutableArray<string> KwdAttrs { get; }
     public ImmutableArray<AstPatternNode> KwdPatterns { get; }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
+    public override IEnumerable<AstPatternNode> EnumerateSubPatterns()
     {
-        yield return Cls;
         foreach (var p in Patterns)
             yield return p;
         foreach (var kp in KwdPatterns)
@@ -296,7 +240,7 @@ public sealed class MatchStarNode : AstPatternNode
 
     public string? Name { get; }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
+    public override IEnumerable<AstPatternNode> EnumerateSubPatterns()
     {
         return [];
     }
@@ -313,7 +257,7 @@ public sealed class MatchAsNode : AstPatternNode
     public AstPatternNode? Pattern { get; }
     public string? Name { get; }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
+    public override IEnumerable<AstPatternNode> EnumerateSubPatterns()
     {
         if (Pattern is not null)
             yield return Pattern;
@@ -329,7 +273,7 @@ public sealed class MatchOrNode : AstPatternNode
 
     public ImmutableArray<AstPatternNode> Patterns { get; }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
+    public override IEnumerable<AstPatternNode> EnumerateSubPatterns()
     {
         foreach (var p in Patterns)
             yield return p;
@@ -351,13 +295,6 @@ public sealed class TypeVarNode : AstTypeParamNode
     public AstExprNode? Bound { get; }
     public AstExprNode? DefaultValue { get; }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        if (Bound is not null)
-            yield return Bound;
-        if (DefaultValue is not null)
-            yield return DefaultValue;
-    }
 }
 
 public sealed class ParamSpecNode : AstTypeParamNode
@@ -371,11 +308,6 @@ public sealed class ParamSpecNode : AstTypeParamNode
     public string Name { get; }
     public AstExprNode? DefaultValue { get; }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        if (DefaultValue is not null)
-            yield return DefaultValue;
-    }
 }
 
 public sealed class TypeVarTupleNode : AstTypeParamNode
@@ -389,9 +321,4 @@ public sealed class TypeVarTupleNode : AstTypeParamNode
     public string Name { get; }
     public AstExprNode? DefaultValue { get; }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        if (DefaultValue is not null)
-            yield return DefaultValue;
-    }
 }

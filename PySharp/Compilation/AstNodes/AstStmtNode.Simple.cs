@@ -13,11 +13,6 @@ public sealed class ExprNode : AstStmtNode
     {
         Value = value;
     }
-
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Value;
-    }
 }
 
 public sealed class AssignNode : AstStmtNode
@@ -30,12 +25,6 @@ public sealed class AssignNode : AstStmtNode
 
     public ImmutableArray<AstExprNode> Targets { get; }
     public AstExprNode Value { get; }
-
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        foreach (var t in Targets) yield return t;
-        yield return Value;
-    }
 }
 
 public sealed class AugAssignNode : AstStmtNode
@@ -50,12 +39,6 @@ public sealed class AugAssignNode : AstStmtNode
     public AstExprNode Target { get; }
     public OperatorType Op { get; }
     public AstExprNode Value { get; }
-
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Target;
-        yield return Value;
-    }
 }
 
 public sealed class AnnAssignNode : AstStmtNode
@@ -72,17 +55,6 @@ public sealed class AnnAssignNode : AstStmtNode
     public AstExprNode Annotation { get; }
     public AstExprNode? Value { get; }
     public bool Simple { get; }
-
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Target;
-
-        // TODO: if EnumerateSubNodes is called by SemanticAnalyzer, it should not enumerate Annotation
-        //yield return Annotation;
-
-        if (Value is not null)
-            yield return Value;
-    }
 }
 
 public sealed class AssertNode : AstStmtNode
@@ -96,22 +68,12 @@ public sealed class AssertNode : AstStmtNode
     public AstExprNode Test { get; }
     public AstExprNode? Msg { get; }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Test;
-        if (Msg is not null)
-            yield return Msg;
-    }
 }
 
 public sealed class PassNode : AstStmtNode
 {
     internal PassNode()
     {
-    }
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        return [];
     }
 }
 
@@ -122,10 +84,6 @@ public sealed class DeleteNode : AstStmtNode
     internal DeleteNode(ImmutableArray<AstExprNode> targets)
     {
         Targets = targets;
-    }
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        foreach (var t in Targets) yield return t;
     }
 }
 
@@ -138,11 +96,6 @@ public sealed class ReturnNode : AstStmtNode
         Value = value;
     }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        if (Value is not null)
-            yield return Value;
-    }
 }
 
 public sealed class RaiseNode : AstStmtNode
@@ -156,13 +109,6 @@ public sealed class RaiseNode : AstStmtNode
     public AstExprNode? Exc { get; }
     public AstExprNode? Cause { get; }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        if (Exc is not null)
-            yield return Exc;
-        if (Cause is not null)
-            yield return Cause;
-    }
 }
 
 public sealed class BreakNode : AstStmtNode
@@ -170,20 +116,12 @@ public sealed class BreakNode : AstStmtNode
     internal BreakNode()
     {
     }
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        return [];
-    }
 }
 
 public sealed class ContinueNode : AstStmtNode
 {
     internal ContinueNode()
     {
-    }
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        return [];
     }
 }
 
@@ -196,10 +134,6 @@ public sealed class ImportNode : AstStmtNode
         Names = names;
     }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        foreach (var n in Names) yield return n;
-    }
 }
 
 public sealed class ImportFromNode : AstStmtNode
@@ -220,10 +154,6 @@ public sealed class ImportFromNode : AstStmtNode
         return Names.Length is 1 && Names[0].Name is "*";
     }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        return Names;
-    }
 }
 
 public sealed class GlobalNode : AstStmtNode
@@ -235,10 +165,6 @@ public sealed class GlobalNode : AstStmtNode
 
     public ImmutableArray<string> Names { get; }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        return [];
-    }
 }
 
 public sealed class NonlocalNode : AstStmtNode
@@ -250,10 +176,6 @@ public sealed class NonlocalNode : AstStmtNode
 
     public ImmutableArray<string> Names { get; }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        return [];
-    }
 }
 
 public sealed class TypeAliasNode : AstStmtNode
@@ -268,9 +190,4 @@ public sealed class TypeAliasNode : AstStmtNode
     public string Name { get; }
     public ImmutableArray<AstTypeParamNode> TypeParams { get; }
     public AstExprNode Value { get; }
-
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Value;
-    }
 }

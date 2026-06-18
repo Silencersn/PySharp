@@ -15,12 +15,6 @@ public sealed class IfNode : AstStmtNode
         OrElse = orElse;
     }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Test;
-        foreach (var stmt in Body) yield return stmt;
-        foreach (var stmt in OrElse) yield return stmt;
-    }
 }
 
 public sealed class WhileNode : AstStmtNode
@@ -36,12 +30,6 @@ public sealed class WhileNode : AstStmtNode
         OrElse = orElse;
     }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Test;
-        foreach (var stmt in Body) yield return stmt;
-        foreach (var stmt in OrElse) yield return stmt;
-    }
 }
 
 public sealed class ForNode : AstStmtNode
@@ -58,13 +46,6 @@ public sealed class ForNode : AstStmtNode
     public AstExprNode Iter { get; }
     public ImmutableArray<AstStmtNode> Body { get; }
     public ImmutableArray<AstStmtNode> OrElse { get; }
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Target;
-        yield return Iter;
-        foreach (var stmt in Body) yield return stmt;
-        foreach (var stmt in OrElse) yield return stmt;
-    }
 }
 
 public sealed class AsyncForNode : AstStmtNode
@@ -81,13 +62,6 @@ public sealed class AsyncForNode : AstStmtNode
     public AstExprNode Iter { get; }
     public ImmutableArray<AstStmtNode> Body { get; }
     public ImmutableArray<AstStmtNode> OrElse { get; }
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Target;
-        yield return Iter;
-        foreach (var stmt in Body) yield return stmt;
-        foreach (var stmt in OrElse) yield return stmt;
-    }
 }
 
 public sealed class TryNode : AstStmtNode
@@ -104,13 +78,6 @@ public sealed class TryNode : AstStmtNode
     public ImmutableArray<ExceptHandlerNode> Exceptors { get; }
     public ImmutableArray<AstStmtNode> OrElse { get; }
     public ImmutableArray<AstStmtNode> FinalBody { get; }
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        foreach (var stmt in Body) yield return stmt;
-        foreach (var ex in Exceptors) yield return ex;
-        foreach (var stmt in OrElse) yield return stmt;
-        foreach (var stmt in FinalBody) yield return stmt;
-    }
 }
 
 public sealed class TryStarNode : AstStmtNode
@@ -128,13 +95,6 @@ public sealed class TryStarNode : AstStmtNode
     public ImmutableArray<AstStmtNode> OrElse { get; }
     public ImmutableArray<AstStmtNode> FinalBody { get; }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        foreach (var stmt in Body) yield return stmt;
-        foreach (var ex in Exceptors) yield return ex;
-        foreach (var stmt in OrElse) yield return stmt;
-        foreach (var stmt in FinalBody) yield return stmt;
-    }
 }
 
 public sealed class WithNode : AstStmtNode
@@ -148,13 +108,6 @@ public sealed class WithNode : AstStmtNode
     public ImmutableArray<AstWithItemNode> Items { get; }
     public ImmutableArray<AstStmtNode> Body { get; }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        foreach (var item in Items)
-            yield return item;
-        foreach (var stmt in Body)
-            yield return stmt;
-    }
 }
 
 public sealed class AsyncWithNode : AstStmtNode
@@ -168,13 +121,6 @@ public sealed class AsyncWithNode : AstStmtNode
     public ImmutableArray<AstWithItemNode> Items { get; }
     public ImmutableArray<AstStmtNode> Body { get; }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        foreach (var item in Items)
-            yield return item;
-        foreach (var stmt in Body)
-            yield return stmt;
-    }
 }
 
 public sealed class MatchNode : AstStmtNode
@@ -188,12 +134,6 @@ public sealed class MatchNode : AstStmtNode
     public AstExprNode Subject { get; }
     public ImmutableArray<AstMatchCaseNode> Cases { get; }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Subject;
-        foreach (var c in Cases)
-            yield return c;
-    }
 }
 
 internal interface IScopedSubNodesProvider
@@ -228,17 +168,6 @@ public sealed class FunctionDefNode : AstStmtNode, IScopedSubNodesProvider, IFun
     public ImmutableArray<AstExprNode> DecoratorList { get; }
     public AstExprNode? Returns { get; }
     public ImmutableArray<AstTypeParamNode> TypeParams { get; }
-
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        foreach (var d in DecoratorList)
-            yield return d;
-
-        yield return Args;
-
-        foreach (var stmt in Body)
-            yield return stmt;
-    }
 
     IEnumerable<AstNode> IScopedSubNodesProvider.EnumerateSubNodesOuterScope()
     {
@@ -294,17 +223,6 @@ public sealed class AsyncFunctionDefNode : AstStmtNode, IScopedSubNodesProvider,
     public AstExprNode? Returns { get; }
     public ImmutableArray<AstTypeParamNode> TypeParams { get; }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        foreach (var d in DecoratorList)
-            yield return d;
-
-        yield return Args;
-
-        foreach (var stmt in Body)
-            yield return stmt;
-    }
-
     IEnumerable<AstNode> IScopedSubNodesProvider.EnumerateSubNodesOuterScope()
     {
         foreach (var d in DecoratorList)
@@ -358,21 +276,6 @@ public sealed class ClassDefNode : AstStmtNode, IScopedSubNodesProvider
     public ImmutableArray<AstStmtNode> Body { get; }
     public ImmutableArray<AstExprNode> DecoratorList { get; }
     public ImmutableArray<AstTypeParamNode> TypeParams { get; }
-
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        foreach (var d in DecoratorList)
-            yield return d;
-
-        foreach (var b in Bases)
-            yield return b;
-
-        foreach (var k in Keywords)
-            yield return k;
-
-        foreach (var stmt in Body)
-            yield return stmt;
-    }
 
     IEnumerable<AstNode> IScopedSubNodesProvider.EnumerateSubNodesOuterScope()
     {

@@ -251,7 +251,7 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
     {
         foreach (var node in _nodesToRoot)
         {
-            if (node is ModuleNode or ClassDefNode or FunctionDefNode or LambdaNode)
+            if (node == _currentScopeStats.Scope.Owner)
                 return;
 
             if (stopPredicate(node))
@@ -483,11 +483,8 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
     {
         yield return pattern;
 
-        foreach (var node in pattern.EnumerateSubNodes())
+        foreach (var subPattern in pattern.EnumerateSubPatterns())
         {
-            if (node is not AstPatternNode subPattern)
-                continue;
-
             foreach (var p in EnumeratePatterns(subPattern))
                 yield return p;
         }

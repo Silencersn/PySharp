@@ -24,10 +24,6 @@ public sealed class NameNode : AstExprNode, IExprContextNode
     public string Id { get; }
     public ExprContextType Ctx { get; set; } = ExprContextType.Load;
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        return [];
-    }
 }
 
 public sealed class ConstantNode : AstExprNode
@@ -38,10 +34,6 @@ public sealed class ConstantNode : AstExprNode
     }
 
     public PyObject Value { get; }
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        return [];
-    }
 }
 
 public sealed class AttributeNode : AstExprNode, IExprContextNode
@@ -58,10 +50,6 @@ public sealed class AttributeNode : AstExprNode, IExprContextNode
     public AstExprNode Value { get; }
     public string Identifier { get; }
     public ExprContextType Ctx { get; set; } = ExprContextType.Load;
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Value;
-    }
 }
 
 public sealed class SubscriptNode : AstExprNode, IExprContextNode
@@ -75,12 +63,6 @@ public sealed class SubscriptNode : AstExprNode, IExprContextNode
     public AstExprNode Value { get; }
     public AstExprNode Slice { get; }
     public ExprContextType Ctx { get; set; } = ExprContextType.Load;
-
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Value;
-        yield return Slice;
-    }
 }
 
 public sealed class SliceNode : AstExprNode
@@ -95,12 +77,6 @@ public sealed class SliceNode : AstExprNode
     public AstExprNode? Lower { get; }
     public AstExprNode? Upper { get; }
     public AstExprNode? Step { get; }
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        if (Lower is not null) yield return Lower;
-        if (Upper is not null) yield return Upper;
-        if (Step is not null) yield return Step;
-    }
 }
 
 public sealed class CallNode : AstExprNode
@@ -115,12 +91,6 @@ public sealed class CallNode : AstExprNode
     public AstExprNode Func { get; }
     public ImmutableArray<AstExprNode> Args { get; }
     public ImmutableArray<AstKeywordNode> Keywords { get; }
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Func;
-        foreach (var arg in Args) yield return arg;
-        foreach (var kw in Keywords) yield return kw;
-    }
 }
 
 public sealed class ListNode : AstExprNode, IExprContextNode
@@ -144,10 +114,6 @@ public sealed class ListNode : AstExprNode, IExprContextNode
                     node.Ctx = value;
             }
         }
-    }
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        foreach (var elt in Elts) yield return elt;
     }
 }
 
@@ -173,10 +139,6 @@ public sealed class TupleNode : AstExprNode, IExprContextNode
             }
         }
     }
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        foreach (var elt in Elts) yield return elt;
-    }
 }
 
 public sealed class DictNode : AstExprNode
@@ -191,17 +153,6 @@ public sealed class DictNode : AstExprNode
 
     public ImmutableArray<AstExprNode?> Keys { get; }
     public ImmutableArray<AstExprNode> Values { get; }
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        foreach (var k in Keys)
-        {
-            if (k is not null)
-                yield return k;
-        }
-
-        foreach (var v in Values)
-            yield return v;
-    }
 }
 
 public sealed class SetNode : AstExprNode
@@ -211,10 +162,6 @@ public sealed class SetNode : AstExprNode
         Elts = elts;
     }
     public ImmutableArray<AstExprNode> Elts { get; }
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        foreach (var elt in Elts) yield return elt;
-    }
 }
 
 public sealed class BoolOpNode : AstExprNode
@@ -227,11 +174,6 @@ public sealed class BoolOpNode : AstExprNode
 
     public BoolOpType Op { get; }
     public ImmutableArray<AstExprNode> Values { get; }
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        foreach (var v in Values)
-            yield return v;
-    }
 
     public static (bool Result, PyResult Value) GetBoolAndValue(PyCallContext context, IEnumerable<PyObject> values)
     {
@@ -284,12 +226,6 @@ public sealed class BinOpNode : AstExprNode
     public OperatorType Operator { get; }
     public AstExprNode Left { get; }
     public AstExprNode Right { get; }
-
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Left;
-        yield return Right;
-    }
 }
 
 public sealed class UnaryOpNode : AstExprNode
@@ -302,11 +238,6 @@ public sealed class UnaryOpNode : AstExprNode
 
     public UnaryOpType Op { get; }
     public AstExprNode Operand { get; }
-
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Operand;
-    }
 }
 
 public sealed class CompareNode : AstExprNode
@@ -322,11 +253,6 @@ public sealed class CompareNode : AstExprNode
     public ImmutableArray<CmpopType> Ops { get; }
     public ImmutableArray<AstExprNode> Comparators { get; }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Left;
-        foreach (var cmp in Comparators) yield return cmp;
-    }
 }
 
 public sealed class IfExpNode : AstExprNode
@@ -341,13 +267,6 @@ public sealed class IfExpNode : AstExprNode
     public AstExprNode Test { get; }
     public AstExprNode Body { get; }
     public AstExprNode OrElse { get; }
-
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Test;
-        yield return Body;
-        yield return OrElse;
-    }
 }
 
 public sealed class ListCompNode : AstExprNode
@@ -360,11 +279,6 @@ public sealed class ListCompNode : AstExprNode
 
     public AstExprNode Elt { get; }
     public ImmutableArray<AstComprehensionNode> Generators { get; }
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Elt;
-        foreach (var gen in Generators) yield return gen;
-    }
 }
 
 public sealed class SetCompNode : AstExprNode
@@ -377,11 +291,6 @@ public sealed class SetCompNode : AstExprNode
 
     public AstExprNode Elt { get; }
     public ImmutableArray<AstComprehensionNode> Generators { get; }
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Elt;
-        foreach (var gen in Generators) yield return gen;
-    }
 }
 
 public sealed class DictCompNode : AstExprNode
@@ -396,12 +305,6 @@ public sealed class DictCompNode : AstExprNode
     public AstExprNode Key { get; }
     public AstExprNode Value { get; }
     public ImmutableArray<AstComprehensionNode> Generators { get; }
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Key;
-        yield return Value;
-        foreach (var gen in Generators) yield return gen;
-    }
 }
 
 public sealed class GeneratorExpNode : AstExprNode
@@ -414,11 +317,6 @@ public sealed class GeneratorExpNode : AstExprNode
 
     public AstExprNode Elt { get; }
     public ImmutableArray<AstComprehensionNode> Generators { get; }
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Elt;
-        foreach (var gen in Generators) yield return gen;
-    }
 }
 
 public sealed class LambdaNode : AstExprNode, IScopedSubNodesProvider
@@ -431,12 +329,6 @@ public sealed class LambdaNode : AstExprNode, IScopedSubNodesProvider
 
     public AstArgumentsNode Args { get; }
     public AstExprNode Body { get; }
-
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Args;
-        yield return Body;
-    }
 
     IEnumerable<AstNode> IScopedSubNodesProvider.EnumerateSubNodesOuterScope()
     {
@@ -477,11 +369,6 @@ public sealed class JoinedStrNode : AstExprNode
     }
 
     public ImmutableArray<AstExprNode> Values { get; }
-
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        foreach (var v in Values) yield return v;
-    }
 }
 
 public sealed class FormattedValueNode : AstExprNode
@@ -496,11 +383,6 @@ public sealed class FormattedValueNode : AstExprNode
     public AstExprNode Value { get; }
     public int Conversion { get; }
     public AstExprNode? FormatSpec { get; }
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Value;
-        if (FormatSpec is not null) yield return FormatSpec;
-    }
 }
 
 public sealed class YieldNode : AstExprNode
@@ -510,11 +392,6 @@ public sealed class YieldNode : AstExprNode
         Value = value;
     }
     public AstExprNode? Value { get; }
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        if (Value is not null)
-            yield return Value;
-    }
 }
 
 public sealed class YieldFromNode : AstExprNode
@@ -524,10 +401,6 @@ public sealed class YieldFromNode : AstExprNode
         Value = value;
     }
     public AstExprNode Value { get; }
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Value;
-    }
 }
 
 
@@ -551,10 +424,6 @@ public sealed class StarredNode : AstExprNode, IExprContextNode
         }
     }
 
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Value;
-    }
 }
 
 public sealed class NamedExprNode : AstExprNode
@@ -567,12 +436,6 @@ public sealed class NamedExprNode : AstExprNode
 
     public NameNode Target { get; }
     public AstExprNode Value { get; }
-
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Target;
-        yield return Value;
-    }
 }
 
 public sealed class AwaitNode : AstExprNode
@@ -583,11 +446,6 @@ public sealed class AwaitNode : AstExprNode
     }
 
     public AstExprNode Value { get; }
-
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Value;
-    }
 }
 
 public sealed class TemplateStrNode : AstExprNode
@@ -598,11 +456,6 @@ public sealed class TemplateStrNode : AstExprNode
     }
 
     public ImmutableArray<AstExprNode> Values { get; }
-
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        foreach (var v in Values) yield return v;
-    }
 }
 
 public sealed class InterpolationNode : AstExprNode
@@ -619,9 +472,4 @@ public sealed class InterpolationNode : AstExprNode
     public string Str { get; }
     public int Conversion { get; }
     public AstExprNode? FormatSpec { get; }
-    public override IEnumerable<AstNode> EnumerateSubNodes()
-    {
-        yield return Value;
-        if (FormatSpec is not null) yield return FormatSpec;
-    }
 }

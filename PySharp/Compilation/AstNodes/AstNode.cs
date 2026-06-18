@@ -5,6 +5,4 @@ namespace PySharp.Compilation.AstNodes;
 public abstract partial class AstNode
 {
     public ValueCodeMetaInfo MetaInfo { get; internal set; }
-
-    public abstract IEnumerable<AstNode> EnumerateSubNodes();
 }
