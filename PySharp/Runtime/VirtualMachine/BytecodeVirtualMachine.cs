@@ -57,6 +57,9 @@ internal static partial class BytecodeVirtualMachine
         else
             Stack = new ValueOperandStack(frame.Variables.OperandStackSpan);
         Stack.SetSize(states.OperandStackSize);
+        Span<PyObject?> locals = [];
+        if (frame.Variables.HasLocals)
+            locals = frame.Variables.LocalsSpan;
 
         // cache, clear before using
         PyObject value, left, right;
@@ -144,12 +147,16 @@ internal static partial class BytecodeVirtualMachine
                         break;
 
                     case OpCode.LoadFast:
-                        value = frame.Variables.LoadFast(instructionArg).PyUnwrap(context);
+                        value = locals[instructionArg]
+                            ?? throw context.UnboundLocalError(PySR.Runtime_Variable_UnboundLocalError, $"[{instructionArg /* TODO: name */}]");
                         Stack.Push(value);
                         break;
 
                     case OpCode._LoadDerefFast:
-                        value = frame.Variables.LoadDerefFast(instructionArg).PyUnwrap(context);
+                        value = locals[instructionArg]
+                            ?? throw context.UnboundLocalError(PySR.Runtime_Variable_UnboundLocalError, $"[{instructionArg /* TODO: name */}]");
+                        value = ((PyCellObject)value).Value
+                            ?? throw context.UnboundLocalError(PySR.Runtime_Variable_UnboundLocalOrFreeError, $"[{instructionArg /* TODO: name */}]");
                         Stack.Push(value);
                         break;
 
@@ -169,13 +176,13 @@ internal static partial class BytecodeVirtualMachine
                         break;
 
                     case OpCode.StoreFast:
-                        value = Stack.Pop();
-                        frame.Variables.StoreFast(instructionArg, value);
+                        locals[instructionArg] = Stack.Pop();
                         break;
 
                     case OpCode._StoreDerefFast:
-                        value = Stack.Pop();
-                        _ = frame.Variables.StoreDerefFast(instructionArg, value).PyUnwrap(context);
+                        value = locals[instructionArg]
+                            ?? throw context.UnboundLocalError(PySR.Runtime_Variable_UnboundLocalError, $"[{instructionArg /* TODO: name */}]");
+                        ((PyCellObject)value).Value = Stack.Pop();
                         break;
 
                     case OpCode.StoreDeref:
@@ -208,11 +215,15 @@ internal static partial class BytecodeVirtualMachine
                         break;
 
                     case OpCode.DeleteFast:
-                        frame.Variables.DeleteFast(instructionArg).PyUnwrap(context);
+                        if (locals[instructionArg] is null)
+                            throw context.UnboundLocalError(PySR.Runtime_Variable_UnboundLocalError, $"[{instructionArg /* TODO: name */}]");
+                        locals[instructionArg] = null;
                         break;
 
                     case OpCode._DeleteDerefFast:
-                        frame.Variables.DeleteDerefFast(instructionArg).PyUnwrap(context);
+                        value = locals[instructionArg]
+                            ?? throw context.UnboundLocalError(PySR.Runtime_Variable_UnboundLocalError, $"[{instructionArg /* TODO: name */}]");
+                        ((PyCellObject)value).Value = null;
                         break;
 
                     case OpCode.DeleteDeref:
@@ -761,7 +772,7 @@ internal static partial class BytecodeVirtualMachine
                     case OpCode._MakeCellFast:
                         {
                             value = PyCellObject.CreateCell(frame.Variables.LocalsSpan[instructionArg]);
-                            frame.Variables.StoreFast(instructionArg, value);
+                            locals[instructionArg] = value;
                         }
                         break;
 

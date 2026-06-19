@@ -9,11 +9,10 @@ namespace PySharp.Runtime;
 
 internal sealed partial class PyVariables
 {
-    private readonly bool _hasLocals;
     private bool _canDispose;
     private Memory<PyObject?> _memory;
     private PyObject?[]? _localsPlus;
-    private readonly FrozenDictionary<string, int> _localsTable;
+    private readonly FrozenDictionary<string, int>? _localsTable;
 
     private readonly PyGlobals _globals;
     private IDictionary<string, PyObject?>? _locals;
@@ -21,8 +20,7 @@ internal sealed partial class PyVariables
     private PyVariables(PyGlobals globals)
     {
         _globals = globals;
-        _localsTable = FrozenDictionary<string, int>.Empty;
-        _hasLocals = false;
+        _localsTable = null;
     }
     private PyVariables(PyGlobals globals, PyCallContext context, PyCodeObject codeObject)
     {
@@ -40,7 +38,6 @@ internal sealed partial class PyVariables
             _memory = _localsPlus = ArrayPool<PyObject?>.Shared.Rent(size);
 
         _canDispose = true;
-        _hasLocals = true;
     }
     private PyVariables(PyGlobals globals, FrozenDictionary<string, int> localsTable)
     {
@@ -49,35 +46,26 @@ internal sealed partial class PyVariables
         _localsPlus = ArrayPool<PyObject?>.Shared.Rent(localsTable.Count);
         _memory = _localsPlus;
         _canDispose = true;
-        _hasLocals = true;
     }
     private PyVariables(PyGlobals globals, IDictionary<string, PyObject?>? locals)
     {
-        _localsTable = FrozenDictionary<string, int>.Empty;
+        _localsTable = locals is null ? null : FrozenDictionary<string, int>.Empty;
 
         _globals = globals;
         _locals = locals;
-        _hasLocals = _locals is not null;
     }
 
+    [MemberNotNullWhen(true, nameof(_localsTable))]
+    internal bool HasLocals => _localsTable is not null;
     internal Memory<PyObject?> LocalsPlusMemroy => _memory;
-    internal Span<PyObject?> LocalsSpan => LocalsPlusMemroy.Span[.._localsTable.Count];
+    internal Span<PyObject?> LocalsSpan => LocalsPlusMemroy.Span[.._localsTable!.Count];
     internal Span<PyObject?> LocalsSpanUnsafe => LocalsPlusMemroy.Span;
-    internal Span<PyObject> OperandStackSpan => LocalsPlusMemroy.Span[_localsTable.Count..]!;
+    internal Span<PyObject> OperandStackSpan => LocalsPlusMemroy.Span[_localsTable!.Count..]!;
 
     internal PyGlobals Globals => _globals;
     internal IDictionary<string, PyObject> GlobalsDict => Globals.Dict;
-    internal FrozenDictionary<string, int> LocalsTable => _localsTable;
-    internal IDictionary<string, PyObject?> Locals
-    {
-        get
-        {
-            if (_locals is not null)
-                return _locals;
-
-            throw new NotSupportedException();
-        }
-    }
+    internal FrozenDictionary<string, int> LocalsTable => _localsTable ?? throw new InvalidOperationException();
+    internal IDictionary<string, PyObject?> Locals => _locals ?? throw new NotSupportedException();
 
     // do not call Dispose if the frame is exposed to the outside
     public void Dispose(PyCallContext context)
@@ -94,18 +82,9 @@ internal sealed partial class PyVariables
         }
 
         ArrayPool<PyObject?>.Shared.Return(_localsPlus, clearArray: true);
+        _memory = default;
         _localsPlus = null!;
         _canDispose = false;
-    }
-
-    internal IEnumerable<KeyValuePair<string, PyObject>> EnumerateVariablesForBuildingClass()
-    {
-        Debug.Assert(_locals is LocalDictionary);
-        var extra = ((LocalDictionary)_locals).ExtraLocals;
-        if (extra is null)
-            return [];
-
-        return extra.Where(static pair => pair.Value is not null)!;
     }
 
     internal static PyVariables CreateGlobal()
@@ -127,7 +106,7 @@ internal sealed partial class PyVariables
     }
     internal PyVariables CreateForBuildingClass(PyCodeObject codeObject)
     {
-        if (!_hasLocals)
+        if (!HasLocals)
             return new PyVariables(_globals,
                 new LocalDictionary(FrozenDictionary<string, int>.Empty, Memory<PyObject?>.Empty));
 
@@ -151,7 +130,7 @@ internal sealed partial class PyVariables
     }
     internal PyVariables CreateInline()
     {
-        if (!_hasLocals)
+        if (!HasLocals)
             return new PyVariables(_globals.Clone());
 
         var variables = new PyVariables(_globals.Clone(), _localsTable);
@@ -163,7 +142,7 @@ internal sealed partial class PyVariables
 
     private bool TryLoadFromLocals(string name, [MaybeNullWhen(true)] out PyObject? value)
     {
-        Debug.Assert(_hasLocals, "no locals");
+        Debug.Assert(HasLocals, "no locals");
 
         if (_localsTable.TryGetValue(name, out var index))
         {
@@ -189,7 +168,7 @@ internal sealed partial class PyVariables
 
     internal IEnumerable<KeyValuePair<string, PyObject>> EnumerateLocals()
     {
-        if (!_hasLocals)
+        if (!HasLocals)
             return GlobalsDict;
 
         if (_locals is not null)
@@ -216,54 +195,22 @@ internal sealed partial class PyVariables
             .Where(static pair => pair.Value is not null)!;
     }
 
-    internal PyResult LoadFast(int index)
-    {
-        Debug.Assert(_hasLocals, "no locals");
-
-        var locals = LocalsSpanUnsafe;
-
-        Debug.Assert(index >= 0 && index < locals.Length, "index out of range");
-
-        var value = locals[index];
-        if (value is null)
-            return PyResult.UnboundLocalError($"cannot access local variable '[{index /* TODO: name */}]' where it is not associated with a value");
-        return value;
-    }
-
-    internal PyResult LoadDerefFast(int index)
-    {
-        Debug.Assert(_hasLocals, "no locals");
-
-        var result = LoadFast(index);
-        if (result.IsError)
-            return result;
-
-        Debug.Assert(result.Value is PyCellObject, $"variable [{index}] is not cell");
-
-        var cell = (PyCellObject)result.Value;
-
-        if (cell.Value is null)
-            return PyResult.UnboundLocalError($"cannot access local or free variable '[{index /* TODO: name */}]' where it is not associated with a value");
-
-        return cell.Value;
-    }
-
     public PyResult LoadLocal(string name)
     {
-        Debug.Assert(_hasLocals, "no locals");
+        Debug.Assert(HasLocals, "no locals");
 
         if (!TryLoadFromLocals(name, out var value))
-            return PyResult.NameError($"name '{name}' is not defined");
+            return PyResult.NameError(PySR.Runtime_Variable_NameNotDefined, name);
 
         if (value is null)
-            return PyResult.UnboundLocalError($"cannot access local variable '{name}' where it is not associated with a value");
+            return PyResult.UnboundLocalError(PySR.Runtime_Variable_UnboundLocalError, name);
 
         return value;
     }
 
     public PyResult LoadDeref(string name)
     {
-        Debug.Assert(_hasLocals, "no locals");
+        Debug.Assert(HasLocals, "no locals");
 
         var result = LoadLocal(name);
         if (result.IsError)
@@ -274,7 +221,7 @@ internal sealed partial class PyVariables
         var cell = (PyCellObject)result.Value;
 
         if (cell.Value is null)
-            return PyResult.UnboundLocalError($"cannot access local or free variable '{name}' where it is not associated with a value");
+            return PyResult.UnboundLocalError(PySR.Runtime_Variable_UnboundLocalOrFreeError, name);
 
         return cell.Value;
     }
@@ -287,54 +234,26 @@ internal sealed partial class PyVariables
         if (TryLoadFromBuiltins(name, out value))
             return value;
 
-        return PyResult.NameError($"name '{name}' is not defined");
+        return PyResult.NameError(PySR.Runtime_Variable_NameNotDefined, name);
     }
 
     public PyResult LoadName(string name)
     {
-        if (!_hasLocals)
+        if (!HasLocals)
             return LoadGlobal(name);
 
         if (!TryLoadFromLocals(name, out var value))
             return LoadGlobal(name);
 
         if (value is null)
-            return PyResult.UnboundLocalError($"cannot access local variable '{name}' where it is not associated with a value");
+            return PyResult.UnboundLocalError(PySR.Runtime_Variable_UnboundLocalError, name);
 
         return value;
     }
 
-    internal PyResult StoreFast(int index, PyObject value)
-    {
-        Debug.Assert(_hasLocals, "no locals");
-
-        var locals = LocalsSpanUnsafe;
-
-        Debug.Assert(index >= 0 && index < locals.Length, "index out of range");
-
-        locals[index] = value;
-        return PyNoneObject.None;
-    }
-
-    internal PyResult StoreDerefFast(int index, PyObject? value)
-    {
-        Debug.Assert(_hasLocals, "no locals");
-
-        var result = LoadFast(index);
-        if (result.IsError)
-            return result;
-
-        Debug.Assert(result.Value is PyCellObject, $"variable [{index}] is not cell");
-
-        var cell = (PyCellObject)result.Value;
-
-        cell.Value = value;
-        return PyNoneObject.None;
-    }
-
     public PyResult StoreLocal(string name, PyObject value)
     {
-        Debug.Assert(_hasLocals, "no locals");
+        Debug.Assert(HasLocals, "no locals");
 
         if (_localsTable.TryGetValue(name, out var index))
             LocalsSpanUnsafe[index] = value;
@@ -346,7 +265,7 @@ internal sealed partial class PyVariables
 
     public PyResult StoreDeref(string name, PyObject? value)
     {
-        Debug.Assert(_hasLocals, "no locals");
+        Debug.Assert(HasLocals, "no locals");
 
         var result = LoadLocal(name);
         if (result.IsError)
@@ -368,37 +287,15 @@ internal sealed partial class PyVariables
 
     public PyResult StoreName(string name, PyObject value)
     {
-        if (_hasLocals)
+        if (HasLocals)
             return StoreLocal(name, value);
 
         return StoreGlobal(name, value);
     }
 
-    internal PyResult DeleteFast(int index)
-    {
-        Debug.Assert(_hasLocals, "no locals");
-
-        var locals = LocalsSpanUnsafe;
-
-        Debug.Assert(index >= 0 && index < locals.Length, "index out of range");
-
-        if (locals[index] is null)
-            return PyResult.UnboundLocalError($"cannot access local variable '[{index /* TODO: name */}]' where it is not associated with a value");
-
-        locals[index] = null;
-        return PyNoneObject.None;
-    }
-
-    internal PyResult DeleteDerefFast(int index)
-    {
-        Debug.Assert(_hasLocals, "no locals");
-
-        return StoreDerefFast(index, value: null);
-    }
-
     public PyResult DeleteLocal(string name)
     {
-        Debug.Assert(_hasLocals, "no locals");
+        Debug.Assert(HasLocals, "no locals");
 
         if (_localsTable.TryGetValue(name, out var index))
         {
@@ -409,12 +306,12 @@ internal sealed partial class PyVariables
         if (_locals is not null && _locals.Remove(name))
             return PyNoneObject.None;
 
-        return PyResult.UnboundLocalError($"cannot access local variable '{name}' where it is not associated with a value");
+        return PyResult.UnboundLocalError(PySR.Runtime_Variable_UnboundLocalError, name);
     }
 
     public PyResult DeleteDeref(string name)
     {
-        Debug.Assert(_hasLocals, "no locals");
+        Debug.Assert(HasLocals, "no locals");
 
         return StoreDeref(name, value: null);
     }
@@ -424,12 +321,12 @@ internal sealed partial class PyVariables
         if (GlobalsDict.Remove(name))
             return PyNoneObject.None;
 
-        return PyResult.NameError($"name '{name}' is not defined");
+        return PyResult.NameError(PySR.Runtime_Variable_NameNotDefined, name);
     }
 
     public PyResult DeleteName(string name)
     {
-        if (_hasLocals)
+        if (HasLocals)
             return DeleteLocal(name);
 
         return DeleteGlobal(name);
