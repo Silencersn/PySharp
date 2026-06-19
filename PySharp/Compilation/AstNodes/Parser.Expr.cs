@@ -3,6 +3,7 @@ using PySharp.Compilation.Primitives;
 using PySharp.Compilation.Tokenization;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
@@ -788,14 +789,14 @@ partial class Parser
     [GrammarSyntaxRule("slices")]
     private AstExprNode ParseSlices()
     {
-        var list = ParseSomethingList(ParseSliceOrStarredExpression, StopPredicates.UntilRightSquareBracket, out var endsWithComma);
+        var result = ParseSomethingList(ParseSliceOrStarredExpression, StopPredicates.UntilRightSquareBracket, out var endsWithComma);
 
         // return directly if it is single slice without comma
-        if (list.Count is 1 && endsWithComma is null && list[0] is not StarredNode)
-            return list[0];
+        if (result.Builder is null && endsWithComma is null && result.First is not StarredNode)
+            return result.First;
 
         // single StarredNode is allowed
-        return PackSomething(list, endsWithComma, Ast.Tuple);
+        return PackSomething(result.MakeArray(), endsWithComma, Ast.Tuple);
 
         AstExprNode ParseSliceOrStarredExpression()
         {
@@ -1233,7 +1234,7 @@ partial class Parser
     }
 
     [GrammarSyntaxRule("star_named_expressions")]
-    private List<AstExprNode> ParseStarNamedExpressions(StopPredicate predicate, out Token? endsWithComma)
+    private ParseSomethingListResult<AstExprNode> ParseStarNamedExpressions(StopPredicate predicate, out Token? endsWithComma)
     {
         return ParseSomethingList(ParseStarNamedExpression, predicate, out endsWithComma);
     }
@@ -1246,12 +1247,12 @@ partial class Parser
     /// <param name="list"></param>
     /// <param name="endsWithComma"></param>
     /// <returns></returns>
-    private static AstExprNode UnwrapOrMakeTuple(List<AstExprNode> list, Token? endsWithComma)
+    private static AstExprNode UnwrapOrMakeTuple(ParseSomethingListResult<AstExprNode> list, Token? endsWithComma)
     {
         return UnwrapOrPackSomething(list, endsWithComma, Ast.Tuple);
     }
 
-    private static TResult PackSomething<TSource, TResult>(List<TSource> list, Token? endsWithComma, Func<List<TSource>, TResult> packer)
+    private static TResult PackSomething<TSource, TResult>(ImmutableArray<TSource> list, Token? endsWithComma, Func<ImmutableArray<TSource>, TResult> packer)
         where TSource : AstNode
         where TResult : AstNode
     {
@@ -1280,14 +1281,12 @@ partial class Parser
         return packer(list).With(metaInfo);
     }
 
-    private static T UnwrapOrPackSomething<T>(List<T> list, Token? endsWithComma, Func<List<T>, T> packer) where T : AstNode
+    private static T UnwrapOrPackSomething<T>(ParseSomethingListResult<T> result, Token? endsWithComma, Func<ImmutableArray<T>, T> packer) where T : AstNode
     {
-        Debug.Assert(list.Count > 0);
+        if (result.Builder is null)
+            return result.First;
 
-        if (list.Count is 1 && endsWithComma is null)
-            return list[0];
-
-        return PackSomething(list, endsWithComma, packer);
+        return PackSomething(result.Builder.DrainToImmutable(), endsWithComma, packer);
     }
 
     private bool TestIsComprehension<TItem>(TokenType closeToken, Func<TItem> parseItem)
@@ -1426,7 +1425,7 @@ partial class Parser
     }
 
     [GrammarSyntaxRule("expressions")]
-    private List<AstExprNode> ParseExpressions(StopPredicate predicate, out Token? endsWithComma)
+    private ParseSomethingListResult<AstExprNode> ParseExpressions(StopPredicate predicate, out Token? endsWithComma)
     {
         return ParseSomethingList(ParseExpression, predicate, out endsWithComma);
     }
@@ -1454,10 +1453,36 @@ partial class Parser
         return Ast.Yield(value).With(metaInfo.WithPreviousEnd());
     }
 
-    private List<T> ParseSomethingList<T>(Func<T> parse, StopPredicate predicate, out Token? endsWithComma, TokenType separator = TokenType.Comma)
+    private readonly ref struct ParseSomethingListResult<T>
+    {
+        internal readonly T First;
+        internal readonly ImmutableArray<T>.Builder? Builder;
+   
+        internal readonly ImmutableArray<T>.Builder GetBuilder(int capacity = 2)
+        {
+            if (Builder is not null)
+                return Builder;
+            var builder = ImmutableArray.CreateBuilder<T>(capacity);
+            builder.Add(First);
+            return builder;
+        }
+        internal readonly ImmutableArray<T> MakeArray()
+        {
+            return Builder?.DrainToImmutable() ?? [First];
+        }
+        internal ParseSomethingListResult(T first, ImmutableArray<T>.Builder? builder)
+        {
+            First = first;
+            Builder = builder;
+        }
+    }
+
+    private ParseSomethingListResult<T> ParseSomethingList<T>(Func<T> parse, StopPredicate predicate, out Token? endsWithComma, TokenType separator = TokenType.Comma)
     {
         endsWithComma = null;
-        List<T> list = [parse()];
+
+        var first = parse();
+        ImmutableArray<T>.Builder? builder = null;
         while (CurrentTokenType == separator)
         {
             MoveNextToken();
@@ -1466,10 +1491,15 @@ partial class Parser
                 endsWithComma = CurrentToken;
                 break;
             }
-            list.Add(parse());
+            if (builder is null)
+            {
+                builder = ImmutableArray.CreateBuilder<T>(2);
+                builder.Add(first);
+            }
+            builder.Add(parse());
         }
 
-        return list;
+        return new ParseSomethingListResult<T>(first, builder);
     }
 
     [GrammarSyntaxRule("star_target")]
@@ -1576,7 +1606,7 @@ partial class Parser
 
     private TSequence ParseSequence<TSequence, TItem>(
         TokenType openToken, TokenType closeToken,
-        Func<TItem> parseItem, Func<IEnumerable<TItem>, TSequence> factory,
+        Func<TItem> parseItem, Func<ImmutableArray<TItem>, TSequence> factory,
         bool allowSingleItemWithoutComma = true, bool allowEmptySequence = true)
         where TSequence : AstNode
     {
@@ -1592,12 +1622,12 @@ partial class Parser
             return factory([]).With(metaInfo.WithPreviousEnd());
         }
 
-        var list = ParseSomethingList(parseItem, StopPredicates.Until(closeToken), out var endsWithComma);
-        if (!allowSingleItemWithoutComma && list.Count is 1 && endsWithComma is null)
+        var result = ParseSomethingList(parseItem, StopPredicates.Until(closeToken), out var endsWithComma);
+        if (!allowSingleItemWithoutComma && result.Builder is null && endsWithComma is null)
             throw SyntaxError();
 
         EnsureTokenTypeThenMove(closeToken);
-        return factory(list).With(metaInfo.WithPreviousEnd());
+        return factory(result.MakeArray()).With(metaInfo.WithPreviousEnd());
     }
 
     [GrammarSyntaxRule("list")]
@@ -1685,13 +1715,13 @@ partial class Parser
             _ => CurrentTokenType is TokenType.RightParen or TokenType.Equal || TestIsKwarg(), out endsWithComma);
 
         if (CurrentTokenType is TokenType.RightParen)
-            return (args, []);
+            return (args.MakeArray(), []);
 
         if (CurrentTokenType is TokenType.Equal)
             throw SyntaxError(PySR.InvalidSyntax_Arguments_ExpressionContainsAssignment);
 
         var (restArgs, kwargs) = ParseKwargs(out endsWithComma);
-        return (args.Concat(restArgs), kwargs);
+        return (args.GetBuilder().Concat(restArgs), kwargs);
     }
 
     private AstExprNode ParseStarredExpressionOrNamedExpression()
@@ -1724,10 +1754,10 @@ partial class Parser
         if (CurrentTokenType is TokenType.DoubleStar)
         {
             var kwargs = ParseSomethingList(ParseKwargOrDoubleStarred, StopPredicates.UntilRightParen, out endsWithComma);
-            return ([], kwargs);
+            return ([], kwargs.MakeArray());
         }
 
-        var list = ParseSomethingList(ParseKwargOrStarred, StopPredicates.UntilRightParenOrDoubleStar, out endsWithComma);
+        var list = ParseSomethingList(ParseKwargOrStarred, StopPredicates.UntilRightParenOrDoubleStar, out endsWithComma).GetBuilder();
         if (CurrentTokenType is TokenType.RightParen)
             return (WhereNotNull(list.Select(static pair => pair.Arg)),
                 WhereNotNull(list.Select(static pair => pair.Kwarg)));
@@ -1735,7 +1765,7 @@ partial class Parser
         if (endsWithComma is null)
             throw SyntaxError();
 
-        var kwlist = ParseSomethingList(ParseKwargOrDoubleStarred, StopPredicates.UntilRightParen, out endsWithComma);
+        var kwlist = ParseSomethingList(ParseKwargOrDoubleStarred, StopPredicates.UntilRightParen, out endsWithComma).GetBuilder();
         return (WhereNotNull(list.Select(static pair => pair.Arg)),
             WhereNotNull(list.Select(static pair => pair.Kwarg)).Concat(kwlist));
 

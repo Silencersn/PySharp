@@ -1,4 +1,5 @@
 using PySharp.Compilation.Primitives;
+using System.Collections.Immutable;
 
 namespace PySharp.Compilation.AstNodes;
 
@@ -20,6 +21,11 @@ partial class Ast
         targetsArray.CheckValidTargetThenSetContext(ExprContextType.Store);
 
         return new AssignNode(targetsArray, value);
+    }
+    internal static AssignNode Assign(ImmutableArray<AstExprNode> targets, AstExprNode value)
+    {
+        targets.CheckValidTargetThenSetContext(ExprContextType.Store);
+        return new AssignNode(targets, value);
     }
 
     public static AnnAssignNode AnnAssign(AstExprNode target, AstExprNode annotation, AstExprNode? value, bool simple)

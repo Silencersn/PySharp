@@ -81,8 +81,11 @@ partial class Parser
         if (predicate(CurrentToken))
             return PackSomething([pattern], endsWithComma, Ast.MatchSequence);
 
-        var list = ParseMaybeSequencePattern(predicate, out endsWithComma);
-        return PackSomething([pattern, .. list], endsWithComma, Ast.MatchSequence);
+        var result = ParseMaybeSequencePattern(predicate, out endsWithComma);
+        if (result.Builder is null)
+            return PackSomething([pattern, result.First], endsWithComma, Ast.MatchSequence);
+        result.Builder.Insert(0, pattern);
+        return PackSomething(result.Builder.DrainToImmutable(), endsWithComma, Ast.MatchSequence);
     }
 
     [GrammarSyntaxRule("pattern")]
@@ -176,8 +179,8 @@ partial class Parser
     [GrammarSyntaxRule("or_pattern")]
     private AstPatternNode ParseOrPattern()
     {
-        var list = ParseSomethingList(ParseClosedPattern, StopPredicates.UntilColon, out var endsWithComma, TokenType.Pipe);
-        return UnwrapOrPackSomething(list, endsWithComma, Ast.MatchOr);
+        var result = ParseSomethingList(ParseClosedPattern, StopPredicates.UntilColon, out var endsWithComma, TokenType.Pipe);
+        return UnwrapOrPackSomething(result, endsWithComma, Ast.MatchOr);
     }
 
     [GrammarSyntaxRule("as_pattern")]
@@ -379,7 +382,7 @@ partial class Parser
     }
 
     [GrammarSyntaxRule("maybe_sequence_pattern")]
-    private List<AstPatternNode> ParseMaybeSequencePattern(StopPredicate predicate, out Token? endsWithComma)
+    private ParseSomethingListResult<AstPatternNode> ParseMaybeSequencePattern(StopPredicate predicate, out Token? endsWithComma)
     {
         return ParseSomethingList(ParseMaybeStarPattern, predicate, out endsWithComma);
     }
@@ -399,8 +402,8 @@ partial class Parser
             }
             else
             {
-                var list = ParseMaybeSequencePattern(StopPredicates.UntilRightSquareBracket, out var endsWithComma);
-                var pattern = PackSomething(list, endsWithComma, Ast.MatchSequence);
+                var result = ParseMaybeSequencePattern(StopPredicates.UntilRightSquareBracket, out var endsWithComma);
+                var pattern = PackSomething(result.MakeArray(), endsWithComma, Ast.MatchSequence);
                 EnsureTokenTypeThenMove(TokenType.RightSquareBracket);
                 return pattern.With(metaInfo.WithPreviousEnd());
             }
@@ -446,7 +449,7 @@ partial class Parser
             return pattern.With(metaInfo.WithPreviousEnd());
         }
 
-        var items = ParseItemsPattern(out var endsWithComma);
+        var items = ParseItemsPattern(out var endsWithComma).GetBuilder();
         if (CurrentTokenType is TokenType.DoubleStar)
         {
             if (endsWithComma is null)
@@ -475,7 +478,7 @@ partial class Parser
     }
 
     [GrammarSyntaxRule("items_pattern")]
-    private List<KeyValuePair<AstExprNode, AstPatternNode>> ParseItemsPattern(out Token? endsWithComma)
+    private ParseSomethingListResult<KeyValuePair<AstExprNode, AstPatternNode>> ParseItemsPattern(out Token? endsWithComma)
     {
         return ParseSomethingList(ParseKeyValuePattern, StopPredicates.UntilRightBraceOrDoubleStar, out endsWithComma);
     }
@@ -503,13 +506,13 @@ partial class Parser
 
         if (TestIsKeywordPattern())
         {
-            var kwds = ParseKeywordPatterns();
+            var kwds = ParseKeywordPatterns().GetBuilder();
             var pattern = Ast.MatchClass(cls, patterns: [], kwds.Select(static kwd => kwd.Key), kwds.Select(static kwd => kwd.Value));
             EnsureTokenTypeThenMove(TokenType.RightParen);
             return pattern.With(metaInfo.WithPreviousEnd());
         }
 
-        var patterns = ParsePositionalPatterns();
+        var patterns = ParsePositionalPatterns().MakeArray();
 
         if (CurrentTokenType is TokenType.RightParen)
         {
@@ -519,7 +522,7 @@ partial class Parser
         }
         else
         {
-            var kwds = ParseKeywordPatterns();
+            var kwds = ParseKeywordPatterns().GetBuilder();
             var pattern = Ast.MatchClass(cls, patterns, kwds.Select(static kwd => kwd.Key), kwds.Select(static kwd => kwd.Value));
             EnsureTokenTypeThenMove(TokenType.RightParen);
             return pattern.With(metaInfo.WithPreviousEnd());
@@ -527,7 +530,7 @@ partial class Parser
     }
 
     [GrammarSyntaxRule("positional_patterns")]
-    private List<AstPatternNode> ParsePositionalPatterns()
+    private ParseSomethingListResult<AstPatternNode> ParsePositionalPatterns()
     {
         return ParseSomethingList(ParsePattern, _ => CurrentTokenType is TokenType.RightParen || TestIsKeywordPattern(), out _);
     }
@@ -554,7 +557,7 @@ partial class Parser
     }
 
     [GrammarSyntaxRule("keyword_patterns")]
-    private List<KeyValuePair<string, AstPatternNode>> ParseKeywordPatterns()
+    private ParseSomethingListResult<KeyValuePair<string, AstPatternNode>> ParseKeywordPatterns()
     {
         return ParseSomethingList(ParseKeywordPattern, StopPredicates.UntilRightParen, out _);
     }

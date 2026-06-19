@@ -1,5 +1,6 @@
 using PySharp.Compilation.Primitives;
 using PySharp.Modules.Builtins;
+using System.Collections.Immutable;
 using System.Numerics;
 
 namespace PySharp.Compilation.AstNodes;
@@ -150,6 +151,10 @@ partial class Ast
 
         return new DictNode([.. pairs.Select(static pair => pair.Key)], pairs.Select(static pair => pair.Value).ToImmutableArray(true));
     }
+    internal static DictNode Dict(ImmutableArray<KeyValuePair<AstExprNode?, AstExprNode>> pairs)
+    {
+        return new DictNode([.. pairs.Select(static pair => pair.Key)], pairs.Select(static pair => pair.Value).ToImmutableArray(true));
+    }
     public static DictCompNode DictComp(KeyValuePair<AstExprNode, AstExprNode> kvpair, IEnumerable<AstComprehensionNode> generators)
     {
         ArgumentNullException.ThrowIfNull(kvpair.Key);
@@ -195,6 +200,10 @@ partial class Ast
 
         return new ListNode(elts.ToImmutableArray(true));
     }
+    internal static ListNode List(ImmutableArray<AstExprNode> elts)
+    {
+        return new ListNode(elts);
+    }
 
     public static ListCompNode ListComp(AstExprNode elt, IEnumerable<AstComprehensionNode> generators)
     {
@@ -214,6 +223,10 @@ partial class Ast
         ArgumentNullException.ThrowIfNull(elts);
 
         return new SetNode(elts.ToImmutableArray(true));
+    }
+    internal static SetNode Set(ImmutableArray<AstExprNode> elts)
+    {
+        return new SetNode(elts);
     }
     public static SetCompNode SetComp(AstExprNode elt, IEnumerable<AstComprehensionNode> generators)
     {
@@ -240,6 +253,11 @@ partial class Ast
         ArgumentNullException.ThrowIfNull(elts);
 
         return new TupleNode(elts.ToImmutableArray(true));
+    }
+
+    internal static TupleNode Tuple(ImmutableArray<AstExprNode> elts)
+    {
+        return new TupleNode(elts);
     }
 
     public static UnaryOpNode UnaryOp(UnaryOpType op, AstExprNode operand)

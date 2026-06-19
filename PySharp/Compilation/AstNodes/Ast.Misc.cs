@@ -1,5 +1,6 @@
 using PySharp.Compilation.Primitives;
 using PySharp.Modules.Builtins;
+using System.Collections.Immutable;
 
 namespace PySharp.Compilation.AstNodes;
 
@@ -95,6 +96,11 @@ public static partial class Ast
 
         return new MatchSequenceNode(patterns.ToImmutableArray(true));
     }
+    internal static MatchSequenceNode MatchSequence(ImmutableArray<AstPatternNode> patterns)
+    {
+        return new MatchSequenceNode(patterns);
+    }
+
 
     public static MatchMappingNode MatchMapping(IEnumerable<AstExprNode> keys, IEnumerable<AstPatternNode> patterns, string? rest)
     {
@@ -129,6 +135,10 @@ public static partial class Ast
         ArgumentNullException.ThrowIfNull(patterns);
 
         return new MatchOrNode(patterns.ToImmutableArray(true));
+    }
+    internal static MatchOrNode MatchOr(ImmutableArray<AstPatternNode> patterns)
+    {
+        return new MatchOrNode(patterns);
     }
 
     public static TypeVarNode TypeVar(string name, AstExprNode? bound, AstExprNode? defaultValue)

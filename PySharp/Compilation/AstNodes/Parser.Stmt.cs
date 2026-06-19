@@ -1,6 +1,8 @@
 using PySharp.Compilation.Primitives;
 using PySharp.Compilation.Tokenization;
 using PySharp.Runtime;
+using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Compilation.AstNodes;
@@ -85,7 +87,7 @@ partial class Parser
             return false;
         }
 
-        List<AstExprNode> targets = [];
+        var targets = ImmutableArray.CreateBuilder<AstExprNode>(initialCapacity: 4);
 
         while (CurrentTokenType is TokenType.Equal)
         {
@@ -99,7 +101,7 @@ partial class Parser
             if (IsCurrentKeyword("yield"))
             {
                 var value = ParseAnnotatedRhs(StopPredicates.UntilNewLineOrSemicolonOrEqual);
-                assignment = Ast.Assign(targets, value).With(metaInfo);
+                assignment = Ast.Assign(targets.DrainToImmutable(), value).With(metaInfo);
                 return true;
             }
 
@@ -215,10 +217,10 @@ partial class Parser
     [GrammarSyntaxRule("dotted_name")]
     private string ParseDottedName()
     {
-        var list = ParseSomethingList(ParseNonMangledIdentifier, StopPredicates.UntilNonName, out _, separator: TokenType.Dot);
-        if (list.Count is not 1)
-            return string.Join('.', list);
-        return MangleIdentifier(list[0]);
+        var result = ParseSomethingList(ParseNonMangledIdentifier, StopPredicates.UntilNonName, out _, separator: TokenType.Dot);
+        if (result.Builder is not null)
+            return string.Join('.', result.Builder);
+        return MangleIdentifier(result.First);
     }
 
     [GrammarSyntaxRule("dotted_as_name")]
@@ -235,12 +237,12 @@ partial class Parser
     }
 
     [GrammarSyntaxRule("dotted_as_names")]
-    private List<AstAliasNode> ParseDottedAsNames()
+    private ImmutableArray<AstAliasNode> ParseDottedAsNames()
     {
-        var list = ParseSomethingList(ParseDottedAsName, StopPredicates.UntilNewLineOrSemicolon, out var endsWithComma);
+        var result = ParseSomethingList(ParseDottedAsName, StopPredicates.UntilNewLineOrSemicolon, out var endsWithComma);
         if (endsWithComma is not null)
             throw SyntaxError();
-        return list;
+        return result.MakeArray();
     }
 
     [GrammarSyntaxRule("import_name")]
@@ -266,13 +268,13 @@ partial class Parser
     }
 
     [GrammarSyntaxRule("import_from_as_names")]
-    private List<AstAliasNode> ParseImportFromAsNames(out Token? endsWithComma)
+    private ParseSomethingListResult<AstAliasNode> ParseImportFromAsNames(out Token? endsWithComma)
     {
         return ParseSomethingList(ParseImportFromAsName, StopPredicates.UntilNewLineOrSemicolonOrRightParen, out endsWithComma);
     }
 
     [GrammarSyntaxRule("import_from_targets")]
-    private List<AstAliasNode> ParseImportFromTargets()
+    private ImmutableArray<AstAliasNode> ParseImportFromTargets()
     {
         if (CurrentTokenType is TokenType.Star)
         {
@@ -284,16 +286,16 @@ partial class Parser
         if (CurrentTokenType is TokenType.LeftParen)
         {
             MoveNextToken();
-            var list = ParseImportFromAsNames(out _);
+            var result = ParseImportFromAsNames(out _);
             EnsureTokenTypeThenMove(TokenType.RightParen);
-            return list;
+            return result.MakeArray();
         }
         else
         {
-            var list = ParseImportFromAsNames(out var endsWithComma);
+            var result = ParseImportFromAsNames(out var endsWithComma);
             if (endsWithComma is not null)
                 throw SyntaxError();
-            return list;
+            return result.MakeArray();
         }
     }
 
@@ -388,7 +390,7 @@ partial class Parser
     }
 
     [GrammarSyntaxRule("del_targets")]
-    private List<AstExprNode> ParseDelTargets()
+    private ParseSomethingListResult<AstExprNode> ParseDelTargets()
     {
         return ParseSomethingList(ParseDelTarget, StopPredicates.UntilNewLineOrSemicolon, out _);
     }
@@ -398,7 +400,7 @@ partial class Parser
     {
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("del");
-        var targets = ParseDelTargets();
+        var targets = ParseDelTargets().MakeArray();
         return Ast.Delete(targets).With(metaInfo);
     }
 
@@ -447,7 +449,7 @@ partial class Parser
     {
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("global");
-        var names = ParseIdentifiers();
+        var names = ParseIdentifiers().MakeArray();
         return Ast.Global(names).With(metaInfo);
     }
 
@@ -456,7 +458,7 @@ partial class Parser
     {
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("nonlocal");
-        var names = ParseIdentifiers();
+        var names = ParseIdentifiers().MakeArray();
         return Ast.Nonlocal(names).With(metaInfo);
     }
 
@@ -494,39 +496,50 @@ partial class Parser
         return Ast.Expr(starExpressions).With(metaInfo);
     }
 
-    private List<string> ParseIdentifiers()
+    private ParseSomethingListResult<string> ParseIdentifiers()
     {
         return ParseSomethingList(ParseIdentifier, StopPredicates.UntilNewLineOrSemicolon, out _);
     }
 
     [GrammarSyntaxRule("simple_stmts")]
-    private List<AstStmtNode> ParseSimpleStmts()
+    private ImmutableArray<AstStmtNode>.Builder ParseSimpleStmts()
     {
-        var list = ParseSomethingList(ParseSimpleStmt, StopPredicates.UntilNewLine, out _, separator: TokenType.Semicolon);
+        var result = ParseSomethingList(ParseSimpleStmt, StopPredicates.UntilNewLine, out _, separator: TokenType.Semicolon);
         EnsureTokenTypeThenMove(TokenType.NewLine);
-        return list;
+        return result.GetBuilder();
     }
 
     [GrammarSyntaxRule("statement")]
-    private List<AstStmtNode> ParseStatement()
+    private (AstStmtNode? Compound, ImmutableArray<AstStmtNode>.Builder? Simples) ParseStatement()
     {
         if (TryParseCompoundStmt(out var compoundStmt))
-            return [compoundStmt];
+            return (compoundStmt, null);
 
-        return ParseSimpleStmts();
+        return (null, ParseSimpleStmts());
     }
 
     [GrammarSyntaxRule("statements")]
-    private List<AstStmtNode> ParseStatements()
+    private ImmutableArray<AstStmtNode> ParseStatements()
     {
-        List<AstStmtNode> stmts = [];
+        var stmts = ImmutableArray.CreateBuilder<AstStmtNode>(initialCapacity: 4);
         while (CurrentTokenType is not (TokenType.Dedent or TokenType.EndMarker))
-            stmts.AddRange(ParseStatement());
-        return stmts;
+        {
+            var (compound, simples) = ParseStatement();
+            if (compound is not null)
+            {
+                stmts.Add(compound);
+            }
+            else
+            {
+                Debug.Assert(simples is not null);
+                stmts.AddRange(simples);
+            }
+        }
+        return stmts.DrainToImmutable();
     }
 
     [GrammarSyntaxRule("statement_newline")]
-    private List<AstStmtNode> ParseStatementNewLine()
+    private ImmutableArray<AstStmtNode> ParseStatementNewLine()
     {
         if (CurrentTokenType is TokenType.NewLine or TokenType.EndMarker)
         {
@@ -540,7 +553,7 @@ partial class Parser
             return [compoundStmt];
         }
 
-        return ParseSimpleStmts();
+        return ParseSimpleStmts().DrainToImmutable();
     }
 
     [GrammarSyntaxRule("decorators")]
@@ -562,20 +575,20 @@ partial class Parser
     [GrammarSyntaxRule("compound_stmt")]
     private bool TryParseCompoundStmt([NotNullWhen(true)] out AstStmtNode? compoundStmt)
     {
-        List<AstExprNode> decorators = [];
+        List<AstExprNode>? decorators = null;
         if (CurrentTokenType is TokenType.At)
             decorators = ParseDecorators();
 
         if (CurrentTokenType is not TokenType.Name)
         {
-            if (decorators.Count > 0)
+            if (decorators?.Count > 0)
                 throw SyntaxError();
 
             compoundStmt = null;
             return false;
         }
 
-        if (decorators.Count > 0 && !(IsCurrentKeyword("def") || IsCurrentKeyword("class") || IsMatchKeywordsSequence("async", "def")))
+        if (decorators?.Count > 0 && !(IsCurrentKeyword("def") || IsCurrentKeyword("class") || IsMatchKeywordsSequence("async", "def")))
             throw SyntaxError();
 
         compoundStmt = CurrentTokenStringAsSpan switch
@@ -688,10 +701,10 @@ partial class Parser
     }
 
     [GrammarSyntaxRule("block")]
-    private List<AstStmtNode> ParseBlock(string keyword)
+    private ImmutableArray<AstStmtNode> ParseBlock(string keyword)
     {
         if (CurrentTokenType is not TokenType.NewLine)
-            return ParseSimpleStmts();
+            return ParseSimpleStmts().DrainToImmutable();
 
         var pos = TokenPosition;
         MoveNextToken();
@@ -710,11 +723,11 @@ partial class Parser
 
         var stmts = ParseStatements();
         EnsureTokenTypeThenMove(TokenType.Dedent);
-        return stmts;
+        return [.. stmts];
     }
 
     [GrammarSyntaxRule("else_block")]
-    private List<AstStmtNode> ParseElseBlock()
+    private ImmutableArray<AstStmtNode> ParseElseBlock()
     {
         EnsureKeywordThenMove("else");
         EnsureTokenTypeThenMove(TokenType.Colon);
@@ -763,7 +776,7 @@ partial class Parser
         var body = ParseBlock("try");
         if (!IsCurrentKeyword("except") && !IsCurrentKeyword("finally"))
             throw SyntaxError(PySR.InvalidSyntax_TryStmt_ExpectedExceptOrFinally);
-        List<ExceptHandlerNode> exceptors = [];
+        var exceptors = ImmutableArray.CreateBuilder<ExceptHandlerNode>(initialCapacity: 4);
         IEnumerable<AstStmtNode> orElse = [];
         IEnumerable<AstStmtNode> finalBody = [];
         bool? isStar = null;
@@ -790,8 +803,8 @@ partial class Parser
             finalBody = ParseFinallyBlock();
         }
         return isStar ?? false
-            ? Ast.TryStar(body, exceptors, orElse, finalBody).With(metaInfo)
-            : Ast.Try(body, exceptors, orElse, finalBody).With(metaInfo);
+            ? Ast.TryStar(body, exceptors.ToImmutable(), orElse, finalBody).With(metaInfo)
+            : Ast.Try(body, exceptors.ToImmutable(), orElse, finalBody).With(metaInfo);
     }
 
     [GrammarSyntaxRule("except_block")]
@@ -815,7 +828,7 @@ partial class Parser
 
             if (IsCurrentKeyword("as"))
             {
-                if (exprs.Count > 1)
+                if (exprs.Builder is not null)
                     throw SyntaxError(PySR.InvalidSyntax_TryStmt_MultipleExceptionTypesUsingAs);
 
                 if (endsWithComma is not null)
@@ -839,7 +852,7 @@ partial class Parser
     }
 
     [GrammarSyntaxRule("finally_block")]
-    private List<AstStmtNode> ParseFinallyBlock()
+    private ImmutableArray<AstStmtNode> ParseFinallyBlock()
     {
         EnsureKeywordThenMove("finally");
         EnsureTokenTypeThenMove(TokenType.Colon);
@@ -867,16 +880,16 @@ partial class Parser
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("with");
 
-        List<AstWithItemNode> items;
+        ImmutableArray<AstWithItemNode> items;
         if (CurrentTokenType is TokenType.LeftParen)
         {
             MoveNextToken();
-            items = ParseSomethingList(ParseWithItem, StopPredicates.UntilRightParen, out _);
+            items = ParseSomethingList(ParseWithItem, StopPredicates.UntilRightParen, out _).MakeArray();
             EnsureTokenTypeThenMove(TokenType.RightParen);
         }
         else
         {
-            items = ParseSomethingList(ParseWithItem, StopPredicates.UntilColon, out _);
+            items = ParseSomethingList(ParseWithItem, StopPredicates.UntilColon, out _).MakeArray();
         }
         EnsureTokenTypeThenMove(TokenType.Colon);
 
@@ -900,7 +913,7 @@ partial class Parser
     }
 
     [GrammarSyntaxRule("function_def")]
-    private FunctionDefNode ParseFunctionDef(IReadOnlyList<AstExprNode> decorators)
+    private FunctionDefNode ParseFunctionDef(IReadOnlyList<AstExprNode>? decorators)
     {
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("def");
@@ -923,11 +936,11 @@ partial class Parser
 
         EnsureTokenTypeThenMove(TokenType.Colon);
         var body = ParseBlock("def");
-        return Ast.FunctionDef(name, args, body, decorators, returns, typeParams).With(metaInfo);
+        return Ast.FunctionDef(name, args, body, decorators ?? [], returns, typeParams).With(metaInfo);
     }
 
     [GrammarSyntaxRule("class_def")]
-    private ClassDefNode ParseClassDef(IReadOnlyList<AstExprNode> decorators)
+    private ClassDefNode ParseClassDef(IReadOnlyList<AstExprNode>? decorators)
     {
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("class");
@@ -947,24 +960,24 @@ partial class Parser
         }
 
         EnsureTokenTypeThenMove(TokenType.Colon);
-        List<AstStmtNode> body;
+        ImmutableArray<AstStmtNode> body;
         _classNameTrimmedStack.Push(className.TrimStart('_'));
         body = ParseBlock("class");
         _classNameTrimmedStack.Pop();
-        return Ast.ClassDef(name, bases, keywords, body, decorators, typeParams).With(metaInfo);
+        return Ast.ClassDef(name, bases, keywords, body, decorators ?? [], typeParams).With(metaInfo);
     }
 
     [GrammarSyntaxRule("type_params")]
-    private List<AstTypeParamNode> ParseTypeParams()
+    private ImmutableArray<AstTypeParamNode> ParseTypeParams()
     {
         EnsureTokenTypeThenMove(TokenType.LeftSquareBracket);
-        var list = ParseTypeParamSeq(StopPredicates.UntilRightSquareBracket);
+        var result = ParseTypeParamSeq(StopPredicates.UntilRightSquareBracket);
         EnsureTokenTypeThenMove(TokenType.RightSquareBracket);
-        return list;
+        return result.MakeArray();
     }
 
     [GrammarSyntaxRule("type_param_seq")]
-    private List<AstTypeParamNode> ParseTypeParamSeq(StopPredicate predicate)
+    private ParseSomethingListResult<AstTypeParamNode> ParseTypeParamSeq(StopPredicate predicate)
     {
         return ParseSomethingList(ParseTypeParam, predicate, out _);
     }
@@ -1023,7 +1036,7 @@ partial class Parser
         return ParseExpression();
     }
 
-    private AstStmtNode ParseAsyncStmt(List<AstExprNode> decorators)
+    private AstStmtNode ParseAsyncStmt(IReadOnlyList<AstExprNode>? decorators)
     {
         var pos = TokenPosition;
         EnsureKeywordThenMove("async");
@@ -1065,16 +1078,16 @@ partial class Parser
         EnsureKeywordThenMove("async");
         EnsureKeywordThenMove("with");
 
-        List<AstWithItemNode> items;
+        ImmutableArray<AstWithItemNode> items;
         if (CurrentTokenType is TokenType.LeftParen)
         {
             MoveNextToken();
-            items = ParseSomethingList(ParseWithItem, StopPredicates.UntilRightParen, out _);
+            items = ParseSomethingList(ParseWithItem, StopPredicates.UntilRightParen, out _).MakeArray();
             EnsureTokenTypeThenMove(TokenType.RightParen);
         }
         else
         {
-            items = ParseSomethingList(ParseWithItem, StopPredicates.UntilColon, out _);
+            items = ParseSomethingList(ParseWithItem, StopPredicates.UntilColon, out _).MakeArray();
         }
         EnsureTokenTypeThenMove(TokenType.Colon);
 
@@ -1083,7 +1096,7 @@ partial class Parser
         return Ast.AsyncWith(items, body).With(metaInfo);
     }
 
-    private AsyncFunctionDefNode ParseAsyncFunctionDef(List<AstExprNode> decorators)
+    private AsyncFunctionDefNode ParseAsyncFunctionDef(IReadOnlyList<AstExprNode>? decorators)
     {
         var metaInfo = CreateAstMetaInfo();
 
@@ -1108,7 +1121,7 @@ partial class Parser
 
         EnsureTokenTypeThenMove(TokenType.Colon);
         var body = ParseBlock("def");
-        return Ast.AsyncFunctionDef(name, args, body, decorators, returns, typeParams).With(metaInfo);
+        return Ast.AsyncFunctionDef(name, args, body, decorators ?? [], returns, typeParams).With(metaInfo);
     }
 
     [GrammarSyntaxRule("type_alias_stmt")]
