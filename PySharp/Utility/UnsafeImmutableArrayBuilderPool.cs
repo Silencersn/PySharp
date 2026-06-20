@@ -15,6 +15,8 @@ namespace PySharp.Utility;
 /// </summary>
 internal sealed class UnsafeImmutableArrayBuilderPool : IDisposable
 {
+    private const int MaxBuilderCapacity = 32;
+
     private ObjectPool<ImmutableArray<object>.Builder> _pool = new(capacity: 16, ImmutableArray.CreateBuilder<object>);
 
     internal ImmutableArray<T>.Builder Rent<T>()
@@ -31,12 +33,8 @@ internal sealed class UnsafeImmutableArrayBuilderPool : IDisposable
         if (typeof(T).IsValueType)
             return builderOfT.DrainToImmutable();
 
-        Debug.Assert(builderOfT is ImmutableArray<object>.Builder);
-
         var result = builderOfT.ToImmutable();
-        var builder = Unsafe.As<ImmutableArray<T>.Builder, ImmutableArray<object>.Builder>(ref builderOfT);
-        builder.Clear();
-        _pool.Return(builder);
+        Return(builderOfT);
         return result;
     }
 
@@ -49,6 +47,10 @@ internal sealed class UnsafeImmutableArrayBuilderPool : IDisposable
 
         var builder = Unsafe.As<ImmutableArray<T>.Builder, ImmutableArray<object>.Builder>(ref builderOfT);
         builder.Clear();
+
+        if (builder.Capacity > MaxBuilderCapacity)
+            return;
+
         _pool.Return(builder);
     }
 
