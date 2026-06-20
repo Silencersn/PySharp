@@ -85,7 +85,7 @@ partial class Parser
         if (result.Builder is null)
             return PackSomething([pattern, result.First], endsWithComma, Ast.MatchSequence);
         result.Builder.Insert(0, pattern);
-        return PackSomething(result.Builder.DrainToImmutable(), endsWithComma, Ast.MatchSequence);
+        return PackSomething(result.MakeArray(), endsWithComma, Ast.MatchSequence);
     }
 
     [GrammarSyntaxRule("pattern")]
@@ -449,7 +449,7 @@ partial class Parser
             return pattern.With(metaInfo.WithPreviousEnd());
         }
 
-        var items = ParseItemsPattern(out var endsWithComma).GetBuilder();
+        var items = ParseItemsPattern(out var endsWithComma).MakeArray();
         if (CurrentTokenType is TokenType.DoubleStar)
         {
             if (endsWithComma is null)
@@ -506,7 +506,7 @@ partial class Parser
 
         if (TestIsKeywordPattern())
         {
-            var kwds = ParseKeywordPatterns().GetBuilder();
+            var kwds = ParseKeywordPatterns().MakeArray();
             var pattern = Ast.MatchClass(cls, patterns: [], kwds.Select(static kwd => kwd.Key), kwds.Select(static kwd => kwd.Value));
             EnsureTokenTypeThenMove(TokenType.RightParen);
             return pattern.With(metaInfo.WithPreviousEnd());
@@ -522,7 +522,7 @@ partial class Parser
         }
         else
         {
-            var kwds = ParseKeywordPatterns().GetBuilder();
+            var kwds = ParseKeywordPatterns().MakeArray();
             var pattern = Ast.MatchClass(cls, patterns, kwds.Select(static kwd => kwd.Key), kwds.Select(static kwd => kwd.Value));
             EnsureTokenTypeThenMove(TokenType.RightParen);
             return pattern.With(metaInfo.WithPreviousEnd());

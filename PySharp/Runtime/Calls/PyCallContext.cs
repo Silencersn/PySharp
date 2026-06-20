@@ -1,5 +1,6 @@
 using PySharp.Runtime.Comparison;
 using PySharp.Runtime.Environments;
+using PySharp.Utility;
 
 namespace PySharp.Runtime.Calls;
 
@@ -13,11 +14,13 @@ public sealed partial class PyCallContext : IDisposable
     private readonly string _prompt;
     private readonly PyInterpreter _interpreter;
     private PyCallContextFrameState? _state;
+    private UnsafeImmutableArrayBuilderPool? _builderPool;
 
     internal PyEnvironment PyEnvironment => _interpreter.PyEnvironment;
     internal PyInterpreter Interpreter => _interpreter;
     internal PyCallContextFrameState FrameState => _state ?? throw new InvalidOperationException("Context is not initialized or is disposed.");
     internal PyObjectComparer Comparer => field ??= new PyObjectComparer(this);
+    internal UnsafeImmutableArrayBuilderPool BuilderPool => _builderPool ??= new();
 
     private PyCallContext(string prompt)
     {
@@ -103,5 +106,8 @@ public sealed partial class PyCallContext : IDisposable
 
         _state.Dispose();
         _state = null;
+
+        _builderPool?.Dispose();
+        _builderPool = null;
     }
 }

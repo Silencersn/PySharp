@@ -87,7 +87,7 @@ partial class Parser
             return false;
         }
 
-        var targets = ImmutableArray.CreateBuilder<AstExprNode>(initialCapacity: 4);
+        var targets = _context.BuilderPool.Rent<AstExprNode>();
 
         while (CurrentTokenType is TokenType.Equal)
         {
@@ -101,14 +101,14 @@ partial class Parser
             if (IsCurrentKeyword("yield"))
             {
                 var value = ParseAnnotatedRhs(StopPredicates.UntilNewLineOrSemicolonOrEqual);
-                assignment = Ast.Assign(targets.DrainToImmutable(), value).With(metaInfo);
+                assignment = Ast.Assign(_context.BuilderPool.ToImmutableThenReturn(targets), value).With(metaInfo);
                 return true;
             }
 
             starExpressions = ParseStarExpressions(StopPredicates.UntilNewLineOrSemicolonOrEqual);
         }
 
-        assignment = Ast.Assign(targets, starExpressions).With(metaInfo);
+        assignment = Ast.Assign(_context.BuilderPool.ToImmutableThenReturn(targets), starExpressions).With(metaInfo);
         return true;
 
         bool TryParseSimpleAnnAssign([NotNullWhen(true)] out AstStmtNode? annAssign)
@@ -219,7 +219,7 @@ partial class Parser
     {
         var result = ParseSomethingList(ParseNonMangledIdentifier, StopPredicates.UntilNonName, out _, separator: TokenType.Dot);
         if (result.Builder is not null)
-            return string.Join('.', result.Builder);
+            return string.Join('.', result.MakeArray());
         return MangleIdentifier(result.First);
     }
 
@@ -521,7 +521,7 @@ partial class Parser
     [GrammarSyntaxRule("statements")]
     private ImmutableArray<AstStmtNode> ParseStatements()
     {
-        var stmts = ImmutableArray.CreateBuilder<AstStmtNode>(initialCapacity: 4);
+        var stmts = _context.BuilderPool.Rent<AstStmtNode>();
         while (CurrentTokenType is not (TokenType.Dedent or TokenType.EndMarker))
         {
             var (compound, simples) = ParseStatement();
@@ -533,9 +533,10 @@ partial class Parser
             {
                 Debug.Assert(simples is not null);
                 stmts.AddRange(simples);
+                _context.BuilderPool.Return(simples);
             }
         }
-        return stmts.DrainToImmutable();
+        return _context.BuilderPool.ToImmutableThenReturn(stmts);
     }
 
     [GrammarSyntaxRule("statement_newline")]
@@ -553,7 +554,7 @@ partial class Parser
             return [compoundStmt];
         }
 
-        return ParseSimpleStmts().DrainToImmutable();
+        return _context.BuilderPool.ToImmutableThenReturn(ParseSimpleStmts());
     }
 
     [GrammarSyntaxRule("decorators")]
@@ -704,7 +705,7 @@ partial class Parser
     private ImmutableArray<AstStmtNode> ParseBlock(string keyword)
     {
         if (CurrentTokenType is not TokenType.NewLine)
-            return ParseSimpleStmts().DrainToImmutable();
+            return _context.BuilderPool.ToImmutableThenReturn(ParseSimpleStmts());
 
         var pos = TokenPosition;
         MoveNextToken();
@@ -776,7 +777,7 @@ partial class Parser
         var body = ParseBlock("try");
         if (!IsCurrentKeyword("except") && !IsCurrentKeyword("finally"))
             throw SyntaxError(PySR.InvalidSyntax_TryStmt_ExpectedExceptOrFinally);
-        var exceptors = ImmutableArray.CreateBuilder<ExceptHandlerNode>(initialCapacity: 4);
+        var exceptors = _context.BuilderPool.Rent<ExceptHandlerNode>();
         IEnumerable<AstStmtNode> orElse = [];
         IEnumerable<AstStmtNode> finalBody = [];
         bool? isStar = null;
@@ -802,9 +803,11 @@ partial class Parser
         {
             finalBody = ParseFinallyBlock();
         }
+
+        var exceptorsArray = _context.BuilderPool.ToImmutableThenReturn(exceptors);
         return isStar ?? false
-            ? Ast.TryStar(body, exceptors.ToImmutable(), orElse, finalBody).With(metaInfo)
-            : Ast.Try(body, exceptors.ToImmutable(), orElse, finalBody).With(metaInfo);
+            ? Ast.TryStar(body, exceptorsArray, orElse, finalBody).With(metaInfo)
+            : Ast.Try(body, exceptorsArray, orElse, finalBody).With(metaInfo);
     }
 
     [GrammarSyntaxRule("except_block")]

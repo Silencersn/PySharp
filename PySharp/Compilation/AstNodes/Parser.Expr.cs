@@ -3,6 +3,7 @@ using PySharp.Compilation.Primitives;
 using PySharp.Compilation.Tokenization;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime;
+using PySharp.Runtime.Calls;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -1286,7 +1287,7 @@ partial class Parser
         if (result.Builder is null)
             return result.First;
 
-        return PackSomething(result.Builder.DrainToImmutable(), endsWithComma, packer);
+        return PackSomething(result.MakeArray(), endsWithComma, packer);
     }
 
     private bool TestIsComprehension<TItem>(TokenType closeToken, Func<TItem> parseItem)
@@ -1453,27 +1454,36 @@ partial class Parser
         return Ast.Yield(value).With(metaInfo.WithPreviousEnd());
     }
 
-    private readonly ref struct ParseSomethingListResult<T>
+    private ref struct ParseSomethingListResult<T>
     {
         internal readonly T First;
         internal readonly ImmutableArray<T>.Builder? Builder;
+        private readonly PyCallContext _context;
+        private bool _returned;
    
         internal readonly ImmutableArray<T>.Builder GetBuilder(int capacity = 2)
         {
             if (Builder is not null)
                 return Builder;
-            var builder = ImmutableArray.CreateBuilder<T>(capacity);
+            var builder = _context.BuilderPool.Rent<T>();
             builder.Add(First);
             return builder;
         }
-        internal readonly ImmutableArray<T> MakeArray()
+        internal ImmutableArray<T> MakeArray()
         {
-            return Builder?.DrainToImmutable() ?? [First];
+            Debug.Assert(!_returned);
+            _returned = true;
+
+            if (Builder is not null)
+                return _context.BuilderPool.ToImmutableThenReturn(Builder);
+
+            return [First];
         }
-        internal ParseSomethingListResult(T first, ImmutableArray<T>.Builder? builder)
+        internal ParseSomethingListResult(T first, ImmutableArray<T>.Builder? builder, PyCallContext context)
         {
             First = first;
             Builder = builder;
+            _context = context;
         }
     }
 
@@ -1493,13 +1503,13 @@ partial class Parser
             }
             if (builder is null)
             {
-                builder = ImmutableArray.CreateBuilder<T>(2);
+                builder = _context.BuilderPool.Rent<T>();
                 builder.Add(first);
             }
             builder.Add(parse());
         }
 
-        return new ParseSomethingListResult<T>(first, builder);
+        return new ParseSomethingListResult<T>(first, builder, _context);
     }
 
     [GrammarSyntaxRule("star_target")]
@@ -1721,7 +1731,7 @@ partial class Parser
             throw SyntaxError(PySR.InvalidSyntax_Arguments_ExpressionContainsAssignment);
 
         var (restArgs, kwargs) = ParseKwargs(out endsWithComma);
-        return (args.GetBuilder().Concat(restArgs), kwargs);
+        return (args.MakeArray().Concat(restArgs), kwargs);
     }
 
     private AstExprNode ParseStarredExpressionOrNamedExpression()
@@ -1757,7 +1767,7 @@ partial class Parser
             return ([], kwargs.MakeArray());
         }
 
-        var list = ParseSomethingList(ParseKwargOrStarred, StopPredicates.UntilRightParenOrDoubleStar, out endsWithComma).GetBuilder();
+        var list = ParseSomethingList(ParseKwargOrStarred, StopPredicates.UntilRightParenOrDoubleStar, out endsWithComma).MakeArray();
         if (CurrentTokenType is TokenType.RightParen)
             return (WhereNotNull(list.Select(static pair => pair.Arg)),
                 WhereNotNull(list.Select(static pair => pair.Kwarg)));
@@ -1765,7 +1775,7 @@ partial class Parser
         if (endsWithComma is null)
             throw SyntaxError();
 
-        var kwlist = ParseSomethingList(ParseKwargOrDoubleStarred, StopPredicates.UntilRightParen, out endsWithComma).GetBuilder();
+        var kwlist = ParseSomethingList(ParseKwargOrDoubleStarred, StopPredicates.UntilRightParen, out endsWithComma).MakeArray();
         return (WhereNotNull(list.Select(static pair => pair.Arg)),
             WhereNotNull(list.Select(static pair => pair.Kwarg)).Concat(kwlist));
 
