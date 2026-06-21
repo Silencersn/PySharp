@@ -5,7 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Utility;
 
-internal sealed class StringKeyDict : IDictionary<string, PyObject>
+internal sealed class StringKeyDict : IDictionary<string, PyObject>, IReadOnlyDictionary<string, PyObject>
 {
     private readonly IDictionary<PyObject, PyObject> _dict;
 
@@ -36,6 +36,20 @@ internal sealed class StringKeyDict : IDictionary<string, PyObject>
 
     bool ICollection<KeyValuePair<string, PyObject>>.IsReadOnly
         => _dict.IsReadOnly;
+
+    IEnumerable<string> IReadOnlyDictionary<string, PyObject>.Keys
+        => [.. GetStringKeys()];
+
+    IEnumerable<PyObject> IReadOnlyDictionary<string, PyObject>.Values
+        => [.. _dict.Where(static pair => pair.Key is PyStrObject).Select(static pair => pair.Value)];
+
+    int IReadOnlyCollection<KeyValuePair<string, PyObject>>.Count
+        => _dict.Count(static pair => pair.Key is PyStrObject);
+
+    PyObject IReadOnlyDictionary<string, PyObject>.this[string key]
+    {
+        get => _dict[ConvertKey(key)];
+    }
 
     void IDictionary<string, PyObject>.Add(string key, PyObject value)
     {
@@ -92,9 +106,7 @@ internal sealed class StringKeyDict : IDictionary<string, PyObject>
     bool ICollection<KeyValuePair<string, PyObject>>.Remove(KeyValuePair<string, PyObject> item)
     {
         if (_dict.TryGetValue(ConvertKey(item.Key), out var value) && EqualityComparer<PyObject>.Default.Equals(value, item.Value))
-        {
             return _dict.Remove(ConvertKey(item.Key));
-        }
         return false;
     }
 
@@ -110,5 +122,15 @@ internal sealed class StringKeyDict : IDictionary<string, PyObject>
             if (key is PyStrObject strKey)
                 yield return strKey.Value;
         }
+    }
+
+    bool IReadOnlyDictionary<string, PyObject>.ContainsKey(string key)
+    {
+        return _dict.ContainsKey(ConvertKey(key));
+    }
+
+    bool IReadOnlyDictionary<string, PyObject>.TryGetValue(string key, [NotNullWhen(true)] out PyObject? value)
+    {
+        return _dict.TryGetValue(ConvertKey(key), out value);
     }
 }

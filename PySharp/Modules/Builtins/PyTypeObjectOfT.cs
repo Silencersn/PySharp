@@ -3,6 +3,7 @@ using PySharp.Modules.CSharp;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
+using PySharp.Utility;
 
 namespace PySharp.Modules.Builtins;
 
@@ -167,7 +168,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
         }
         else
         {
-            var result = initSubclass.Value.Call(context, [type]/* , TODO: new StringKeyDict(dict) */);
+            var result = initSubclass.Value.Call(context, [type], new StringKeyDict(dict));
             if (result.IsError)
                 return result;
         }
