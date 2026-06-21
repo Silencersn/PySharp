@@ -21,7 +21,7 @@ public enum CodeObjectFlags
     Coroutine = 1 << 6,
 }
 
-public sealed class PyCodeObject : PyObject
+public sealed class PyCodeObject : PyObjectManagedDict
 {
     internal FrozenDictionary<string, int> LocalsTable { get; }
 

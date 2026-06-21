@@ -8,7 +8,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Modules.Builtins;
 
-public class PyModuleObject : PyObject, IPyObjectName
+public class PyModuleObject : PyObjectManagedDict, IPyObjectName
 {
     public string Name { get; }
     public virtual string? Origin => null;

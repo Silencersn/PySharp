@@ -5,7 +5,7 @@ using PySharp.Utility;
 
 namespace PySharp.Modules.Builtins;
 
-public sealed class PyFunctionObject : PyObject, IPyObjectName
+public sealed class PyFunctionObject : PyObjectManagedDict, IPyObjectName
 {
     internal readonly PyArgsDef _def;
     internal readonly PyCellObject[]? _closure;

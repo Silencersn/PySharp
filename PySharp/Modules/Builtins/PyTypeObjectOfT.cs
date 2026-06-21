@@ -1,3 +1,4 @@
+using PySharp.Compilation.AstNodes;
 using PySharp.Modules.CSharp;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
@@ -40,6 +41,8 @@ public abstract partial class PyTypeObject<TObject> : PyTypeObject where TObject
 
     internal sealed override PyTypeObject CreateUserDefinedTypeWithSameLayout(string name, string qualName, IReadOnlyList<PyTypeObject> bases)
     {
+        if (typeof(TObject) == typeof(PyObject))
+            return new UserDefinedType<PyObjectManagedDict>(name, qualName, bases);
         return new UserDefinedType<TObject>(name, qualName, bases);
     }
 }

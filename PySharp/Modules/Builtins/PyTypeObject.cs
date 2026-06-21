@@ -6,7 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Modules.Builtins;
 
-public abstract partial class PyTypeObject : PyObject, IPyObjectName
+public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
 {
     private readonly PyTypeObject[] _mro;
 

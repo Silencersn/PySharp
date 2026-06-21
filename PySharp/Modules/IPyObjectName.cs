@@ -13,7 +13,7 @@ public interface IPyObjectName
 
 public interface IPyObjectRecursiveRepr
 {
-    PyResult<PyStrObject> RecursiveRepr(PyCallContext context, HashSet<int> ids);
+    PyResult<PyStrObject> RecursiveRepr(PyCallContext context, HashSet<PyObject> ids);
 
     public static PyResult<PyStrObject> RecursiveRepr(PyCallContext context, PyObject pyObj)
     {
@@ -22,7 +22,7 @@ public interface IPyObjectRecursiveRepr
         return RecursiveRepr(context, pyObj, []);
     }
 
-    public static PyResult<PyStrObject> RecursiveRepr(PyCallContext context, PyObject pyObj, HashSet<int> ids)
+    public static PyResult<PyStrObject> RecursiveRepr(PyCallContext context, PyObject pyObj, HashSet<PyObject> ids)
     {
         ArgumentNullException.ThrowIfNull(pyObj);
 
@@ -32,7 +32,7 @@ public interface IPyObjectRecursiveRepr
         return PySpecialMethods.Repr(context, pyObj);
     }
 
-    public static bool TryGetRecursiveRepr(PyCallContext context, PyObject pyObj, HashSet<int> ids, [NotNullWhen(true)] out PyStrObject? s, out PyResult<PyStrObject> result)
+    public static bool TryGetRecursiveRepr(PyCallContext context, PyObject pyObj, HashSet<PyObject> ids, [NotNullWhen(true)] out PyStrObject? s, out PyResult<PyStrObject> result)
     {
         ArgumentNullException.ThrowIfNull(pyObj);
 

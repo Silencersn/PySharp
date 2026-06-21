@@ -24,7 +24,7 @@ public partial class PyFrozenSetObject : PyObject, IPyObjectRecursiveRepr, IRead
         _set = new HashSet<PyObject>(set, PyObjectComparer.Default);
     }
 
-    PyResult<PyStrObject> IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<int> ids)
+    PyResult<PyStrObject> IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<PyObject> ids)
     {
         if (_set.Count is 0)
             return PyStrObject.FromString("frozenset()");

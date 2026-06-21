@@ -2,24 +2,44 @@ using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
 using System.Collections.Concurrent;
+using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 
 namespace PySharp.Modules.Builtins;
 
 public partial class PyObject
 {
-    private static int _pyNextId = 0;
+    private static ConditionalWeakTable<PyObject, IDictionary<string, PyObject>> GlobalDictManager { get; } = [];
+    private static ConditionalWeakTable<PyObject, object> GlobalIdManager { get; } = [];
 
-    internal int? _pyId;
-    internal IDictionary<string, PyObject>? _pyAttributes;
+    private static long _pyNextId = 0;
+
     internal PyTypeObject? _pyType;
 
     public PyTypeObject PyType => _pyType ?? DefaultPyType;
     public virtual PyTypeObject DefaultPyType => PyObjectType.Shared;
-    public int PyId => _pyId ??= Interlocked.Increment(ref _pyNextId);
+    public long PyId => (long)GlobalIdManager.GetOrAdd(this, static _ => Interlocked.Increment(ref _pyNextId));
+    
+    internal virtual IDictionary<string, PyObject> PyAttributes
+    {
+        get
+        {
+            if (IsImmutable)
+                return FrozenDictionary<string, PyObject>.Empty;
 
-    internal IDictionary<string, PyObject> PyAttributes => _pyAttributes ??= new ConcurrentDictionary<string, PyObject>();
+            return GlobalDictManager.GetOrAdd(this, static _ => new ConcurrentDictionary<string, PyObject>());
+        }
+        set
+        {
+            if (IsImmutable)
+                throw new NotSupportedException();
+
+            GlobalDictManager.AddOrUpdate(this, value);
+        }
+    }
+
     [DebuggerBrowsable(DebuggerBrowsableState.Never)]
     internal virtual bool IsImmutable => PyType.IsTypeImmutable;
 
@@ -41,7 +61,7 @@ public partial class PyObject
 
     internal static bool PyObjectHasAttribute(PyObject pyObj, string name)
     {
-        if (pyObj._pyAttributes is not null && pyObj._pyAttributes.ContainsKey(name))
+        if (pyObj.PyAttributes.ContainsKey(name))
             return true;
 
         foreach (var pyType in pyObj.PyType.InternalMRO)
@@ -102,6 +122,20 @@ public sealed partial class PyObjectType : PyTypeObject<PyObject>
         if (ReferenceEquals(cls, this) && (args.Count is not 0 || kwargs.Count is not 0))
             return PyResult.TypeError(PySR.Runtime_Object_NewTakesExactlyOneArg);
 
+        if (cls.LayoutType == typeof(PyObjectManagedDict))
+            return new PyObjectManagedDict { _pyType = cls };
+
         return new PyObject { _pyType = cls };
+    }
+}
+
+public partial class PyObjectManagedDict : PyObject
+{
+    internal IDictionary<string, PyObject>? _pyAttributes;
+
+    internal override IDictionary<string, PyObject> PyAttributes
+    {
+        get => _pyAttributes ??= new ConcurrentDictionary<string, PyObject>();
+        set => _pyAttributes = value;
     }
 }

@@ -93,14 +93,13 @@ internal static class Utils
         return true;
     }
 
-    public static PyResult<PyStrObject> CollectionRecursiveRepr(PyCallContext context, PyObject collection, IEnumerable<PyObject> items, string startWrapper, string endWrapper, HashSet<int> ids, bool forceTrailingComma = false)
+    public static PyResult<PyStrObject> CollectionRecursiveRepr(PyCallContext context, PyObject collection, IEnumerable<PyObject> items, string startWrapper, string endWrapper, HashSet<PyObject> ids, bool forceTrailingComma = false)
     {
         var builder = new StringBuilder().Append(startWrapper);
         var itemsCount = 0;
 
-        if (!ids.Contains(collection.PyId))
+        if (ids.Add(collection))
         {
-            ids.Add(collection.PyId);
             bool first = true;
             foreach (var item in items)
             {
@@ -115,7 +114,7 @@ internal static class Utils
                 builder.Append(str.Value);
                 itemsCount++;
             }
-            ids.Remove(collection.PyId);
+            ids.Remove(collection);
         }
         else
         {
@@ -129,13 +128,12 @@ internal static class Utils
         return PyStrObject.FromString(builder.ToString());
     }
 
-    public static PyResult<PyStrObject> DictionaryRecursiveRepr(PyCallContext context, PyObject collection, IEnumerable<KeyValuePair<PyObject, PyObject>> pairs, string startWrapper, string endWrapper, HashSet<int> ids)
+    public static PyResult<PyStrObject> DictionaryRecursiveRepr(PyCallContext context, PyObject collection, IEnumerable<KeyValuePair<PyObject, PyObject>> pairs, string startWrapper, string endWrapper, HashSet<PyObject> ids)
     {
         var builder = new StringBuilder().Append(startWrapper);
 
-        if (!ids.Contains(collection.PyId))
+        if (ids.Add(collection))
         {
-            ids.Add(collection.PyId);
             bool first = true;
             foreach (var pair in pairs)
             {
@@ -155,7 +153,7 @@ internal static class Utils
                     .Append(": ")
                     .Append(valueStr.Value);
             }
-            ids.Remove(collection.PyId);
+            ids.Remove(collection);
         }
         else
         {

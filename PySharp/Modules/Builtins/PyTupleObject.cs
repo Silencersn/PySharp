@@ -49,7 +49,7 @@ public partial class PyTupleObject : PyObject, IPyObjectRecursiveRepr, IReadOnly
         return new PyTupleObject(array);
     }
 
-    PyResult<PyStrObject> IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<int> ids)
+    PyResult<PyStrObject> IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<PyObject> ids)
     {
         return Utils.CollectionRecursiveRepr(context, this, _array, "(", ")", ids, forceTrailingComma: true);
     }

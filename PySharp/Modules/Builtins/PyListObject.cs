@@ -47,7 +47,7 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr, IList<PyOb
         return new PyListObject(list);
     }
 
-    PyResult<PyStrObject> IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<int> ids)
+    PyResult<PyStrObject> IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<PyObject> ids)
     {
         return Utils.CollectionRecursiveRepr(context, this, _list, "[", "]", ids);
     }

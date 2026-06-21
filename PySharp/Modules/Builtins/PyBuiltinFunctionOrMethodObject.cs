@@ -5,7 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Modules.Builtins;
 
-public class PyBuiltinFunctionOrMethodObject : PyObject, IPyObjectName
+public class PyBuiltinFunctionOrMethodObject : PyObjectManagedDict, IPyObjectName
 {
     public string Name { get; }
     [MemberNotNullWhen(true, nameof(SelfType))]
