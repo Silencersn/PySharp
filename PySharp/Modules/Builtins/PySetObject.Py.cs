@@ -5,32 +5,27 @@ namespace PySharp.Modules.Builtins;
 
 partial class PySetObject
 {
-    [AIGenerated]
     public bool PyAdd(PyObject item)
     {
         return _set.Add(item);
     }
 
-    [AIGenerated]
     public void PyClear()
     {
         _set.Clear();
     }
 
-    [AIGenerated]
     public PySetObject PyCopy()
     {
-        return new PySetObject(_set);
+        return [.. _set];
     }
 
-    [AIGenerated]
     public PyResult PyDiscard(PyObject item)
     {
         _set.Remove(item);
         return PyNoneObject.None;
     }
 
-    [AIGenerated]
     public PyResult PyRemove(PyObject item)
     {
         if (_set.Remove(item))
@@ -39,7 +34,6 @@ partial class PySetObject
         return PyResult.KeyError(item);
     }
 
-    [AIGenerated]
     public PyResult<PyObject> PyPop()
     {
         if (_set.Count is 0)
@@ -50,7 +44,6 @@ partial class PySetObject
         return item;
     }
 
-    [AIGenerated]
     public PyResult<PyBoolObject> PyIsDisjoint(PyCallContext context, PyObject other)
     {
         var otherIter = PySpecialMethods.Iter(context, other);
@@ -75,7 +68,6 @@ partial class PySetObject
         return PyBoolObject.True;
     }
 
-    [AIGenerated]
     public PyResult<PyBoolObject> PyIsSubset(PyCallContext context, PyObject other)
     {
         if (other is PySetObject otherSet)
@@ -88,7 +80,6 @@ partial class PySetObject
         return PyBoolObject.FromBoolean(_set.IsSubsetOf(otherResult.Value._set));
     }
 
-    [AIGenerated]
     public PyResult<PyBoolObject> PyIsSuperset(PyCallContext context, PyObject other)
     {
         if (other is PySetObject otherSet)
@@ -101,7 +92,6 @@ partial class PySetObject
         return PyBoolObject.FromBoolean(_set.IsSupersetOf(otherResult.Value._set));
     }
 
-    [AIGenerated]
     public PyResult PyUpdate(PyCallContext context, params IReadOnlyList<PyObject> others)
     {
         foreach (var other in others)
@@ -116,7 +106,6 @@ partial class PySetObject
         return PyNoneObject.None;
     }
 
-    [AIGenerated]
     public PyResult<PySetObject> PyUnion(PyCallContext context, params IReadOnlyList<PyObject> others)
     {
         var newSet = PyCopy();
@@ -127,7 +116,6 @@ partial class PySetObject
         return newSet;
     }
 
-    [AIGenerated]
     public PyResult PyIntersectionUpdate(PyCallContext context, params IReadOnlyList<PyObject> others)
     {
         foreach (var other in others)
@@ -142,7 +130,6 @@ partial class PySetObject
         return PyNoneObject.None;
     }
 
-    [AIGenerated]
     public PyResult<PySetObject> PyIntersection(PyCallContext context, params IReadOnlyList<PyObject> others)
     {
         var newSet = PyCopy();
@@ -153,7 +140,6 @@ partial class PySetObject
         return newSet;
     }
 
-    [AIGenerated]
     public PyResult PyDifferenceUpdate(PyCallContext context, params IReadOnlyList<PyObject> others)
     {
         foreach (var other in others)
@@ -168,7 +154,6 @@ partial class PySetObject
         return PyNoneObject.None;
     }
 
-    [AIGenerated]
     public PyResult<PySetObject> PyDifference(PyCallContext context, params IReadOnlyList<PyObject> others)
     {
         var newSet = PyCopy();
@@ -179,7 +164,6 @@ partial class PySetObject
         return newSet;
     }
 
-    [AIGenerated]
     public PyResult PySymmetricDifferenceUpdate(PyCallContext context, PyObject other)
     {
         var otherSet = PyUtils.IterableToSet(context, other);
@@ -190,7 +174,6 @@ partial class PySetObject
         return PyNoneObject.None;
     }
 
-    [AIGenerated]
     public PyResult<PySetObject> PySymmetricDifference(PyCallContext context, PyObject other)
     {
         var newSet = PyCopy();

@@ -35,7 +35,7 @@ public partial class PySetObject : PyObject, IPyObjectRecursiveRepr, ISet<PyObje
 
     public static PySetObject CreateSet(params IEnumerable<PyObject> items)
     {
-        return new PySetObject(items);
+        return [.. items];
     }
 
     public HashSet<PyObject>.Enumerator GetEnumerator()
@@ -50,7 +50,7 @@ public partial class PySetObject : PyObject, IPyObjectRecursiveRepr, ISet<PyObje
 
     IEnumerator IEnumerable.GetEnumerator()
     {
-        return ((IEnumerable)_set).GetEnumerator();
+        return GetEnumerator();
     }
 
     public bool Add(PyObject item)
@@ -137,24 +137,20 @@ public partial class PySetObject : PyObject, IPyObjectRecursiveRepr, ISet<PyObje
 [PyType("set")]
 public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
 {
-    [AIGenerated]
     private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl_1, NewImpl_2);
 
-    [AIGenerated]
     [PyFunctionParameters()]
     private static PyResult NewImpl_1(PyCallContext context, PyArguments arguments)
     {
         return new PySetObject();
     }
 
-    [AIGenerated]
     [PyFunctionParameters("iterable", "/")]
     private static PyResult NewImpl_2(PyCallContext context, PyArguments arguments)
     {
         return PyUtils.IterableToSet(context, arguments[0]);
     }
 
-    [AIGenerated]
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var obj = _new.Call(context, args, kwargs);
@@ -164,177 +160,161 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
         return obj;
     }
 
-    [AIGenerated]
     protected override PyResult Repr(PyCallContext context, PySetObject self)
     {
         return IPyObjectRecursiveRepr.RecursiveRepr(context, self);
     }
 
-    [AIGenerated]
     protected override PyResult Bool(PyCallContext context, PySetObject self)
     {
         return PyBoolObject.FromBoolean(self.Count > 0);
     }
 
-    [AIGenerated]
     protected override PyResult Contains(PyCallContext context, PySetObject self, PyObject item)
     {
         return PyBoolObject.FromBoolean(self.Contains(item));
     }
 
-    [AIGenerated]
     protected override PyResult Len(PyCallContext context, PySetObject self)
     {
         return PyIntObject.FromInteger(self.Count);
     }
 
-    [AIGenerated]
     protected override PyResult Iter(PyCallContext context, PySetObject self)
     {
-        // TODO: Create a specialized iterator for set
-        return PyListObject.CreateProxy(self.ToList()).PyType.Slots.Iter!(context, PyListObject.CreateProxy(self.ToList()));
+        return new PySetIteratorObject(self);
     }
 
-    [AIGenerated]
     protected override PyResult Add(PyCallContext context, PySetObject self, PyObject other)
     {
-        return Or(context, self, other);
+        return PyNotImplementedObject.NotImplemented;
     }
 
-    [AIGenerated]
     protected override PyResult Sub(PyCallContext context, PySetObject self, PyObject other)
     {
-        if (other is not PySetObject otherSet)
+        if (other is not PySetObject and not PyFrozenSetObject)
             return PyNotImplementedObject.NotImplemented;
 
-        return self.PyDifference(context, [otherSet]);
+        return self.PyDifference(context, [other]);
     }
 
-    [AIGenerated]
     protected override PyResult And(PyCallContext context, PySetObject self, PyObject other)
     {
-        if (other is not PySetObject otherSet)
+        if (other is not PySetObject and not PyFrozenSetObject)
             return PyNotImplementedObject.NotImplemented;
 
-        return self.PyIntersection(context, [otherSet]);
+        return self.PyIntersection(context, [other]);
     }
 
-    [AIGenerated]
     protected override PyResult Xor(PyCallContext context, PySetObject self, PyObject other)
     {
-        if (other is not PySetObject otherSet)
+        if (other is not PySetObject and not PyFrozenSetObject)
             return PyNotImplementedObject.NotImplemented;
 
-        return self.PySymmetricDifference(context, otherSet);
+        return self.PySymmetricDifference(context, other);
     }
 
-    [AIGenerated]
     protected override PyResult Or(PyCallContext context, PySetObject self, PyObject other)
     {
-        if (other is not PySetObject otherSet)
+        if (other is not PySetObject and not PyFrozenSetObject)
             return PyNotImplementedObject.NotImplemented;
 
-        return self.PyUnion(context, [otherSet]);
+        return self.PyUnion(context, [other]);
     }
 
-    [AIGenerated]
     protected override PyResult ISub(PyCallContext context, PySetObject self, PyObject other)
     {
-        if (other is not PySetObject otherSet)
+        if (other is not PySetObject and not PyFrozenSetObject)
             return PyNotImplementedObject.NotImplemented;
 
-        var result = self.PyDifferenceUpdate(context, [otherSet]);
+        var result = self.PyDifferenceUpdate(context, [other]);
         if (result.IsError)
             return result;
 
         return self;
     }
 
-    [AIGenerated]
     protected override PyResult IAnd(PyCallContext context, PySetObject self, PyObject other)
     {
-        if (other is not PySetObject otherSet)
+        if (other is not PySetObject and not PyFrozenSetObject)
             return PyNotImplementedObject.NotImplemented;
 
-        var result = self.PyIntersectionUpdate(context, [otherSet]);
+        var result = self.PyIntersectionUpdate(context, [other]);
         if (result.IsError)
             return result;
 
         return self;
     }
 
-    [AIGenerated]
     protected override PyResult IXor(PyCallContext context, PySetObject self, PyObject other)
     {
-        if (other is not PySetObject otherSet)
+        if (other is not PySetObject and not PyFrozenSetObject)
             return PyNotImplementedObject.NotImplemented;
 
-        var result = self.PySymmetricDifferenceUpdate(context, otherSet);
+        var result = self.PySymmetricDifferenceUpdate(context, other);
         if (result.IsError)
             return result;
 
         return self;
     }
 
-    [AIGenerated]
     protected override PyResult IOr(PyCallContext context, PySetObject self, PyObject other)
     {
-        if (other is not PySetObject otherSet)
+        if (other is not PySetObject and not PyFrozenSetObject)
             return PyNotImplementedObject.NotImplemented;
 
-        var result = self.PyUpdate(context, [otherSet]);
+        var result = self.PyUpdate(context, [other]);
         if (result.IsError)
             return result;
 
         return self;
     }
 
-    [AIGenerated]
     protected override PyResult Lt(PyCallContext context, PySetObject self, PyObject other)
     {
-        if (other is not PySetObject otherSet)
-            return PyNotImplementedObject.NotImplemented;
-
-        return PyBoolObject.FromBoolean(self.IsProperSubsetOf(otherSet));
+        if (other is PySetObject otherSet)
+            return PyBoolObject.FromBoolean(self.IsProperSubsetOf(otherSet));
+        if (other is PyFrozenSetObject otherFrozenSet)
+            return PyBoolObject.FromBoolean(self.IsProperSubsetOf(otherFrozenSet));
+        return PyNotImplementedObject.NotImplemented;
     }
 
-    [AIGenerated]
     protected override PyResult Le(PyCallContext context, PySetObject self, PyObject other)
     {
-        if (other is not PySetObject otherSet)
-            return PyNotImplementedObject.NotImplemented;
-
-        return PyBoolObject.FromBoolean(self.IsSubsetOf(otherSet));
+        if (other is PySetObject otherSet)
+            return PyBoolObject.FromBoolean(self.IsSubsetOf(otherSet));
+        if (other is PyFrozenSetObject otherFrozenSet)
+            return PyBoolObject.FromBoolean(self.IsSubsetOf(otherFrozenSet));
+        return PyNotImplementedObject.NotImplemented;
     }
 
-    [AIGenerated]
     protected override PyResult Gt(PyCallContext context, PySetObject self, PyObject other)
     {
-        if (other is not PySetObject otherSet)
-            return PyNotImplementedObject.NotImplemented;
-
-        return PyBoolObject.FromBoolean(self.IsProperSupersetOf(otherSet));
+        if (other is PySetObject otherSet)
+            return PyBoolObject.FromBoolean(self.IsProperSupersetOf(otherSet));
+        if (other is PyFrozenSetObject otherFrozenSet)
+            return PyBoolObject.FromBoolean(self.IsProperSupersetOf(otherFrozenSet));
+        return PyNotImplementedObject.NotImplemented;
     }
 
-    [AIGenerated]
     protected override PyResult Ge(PyCallContext context, PySetObject self, PyObject other)
     {
-        if (other is not PySetObject otherSet)
-            return PyNotImplementedObject.NotImplemented;
-
-        return PyBoolObject.FromBoolean(self.IsSupersetOf(otherSet));
+        if (other is PySetObject otherSet)
+            return PyBoolObject.FromBoolean(self.IsSupersetOf(otherSet));
+        if (other is PyFrozenSetObject otherFrozenSet)
+            return PyBoolObject.FromBoolean(self.IsSupersetOf(otherFrozenSet));
+        return PyNotImplementedObject.NotImplemented;
     }
 
-    [AIGenerated]
     protected override PyResult Eq(PyCallContext context, PySetObject self, PyObject other)
     {
-        if (other is not PySetObject otherSet)
-            return PyNotImplementedObject.NotImplemented;
-
-        return PyBoolObject.FromBoolean(self.SetEquals(otherSet));
+        if (other is PySetObject otherSet)
+            return PyBoolObject.FromBoolean(self.SetEquals(otherSet));
+        if (other is PyFrozenSetObject otherFrozenSet)
+            return PyBoolObject.FromBoolean(self.SetEquals(otherFrozenSet));
+        return PyNotImplementedObject.NotImplemented;
     }
 
-    [AIGenerated]
     [PyMethod("add")]
     [PyFunctionParameters("item", "/")]
     private static PyResult Add(PyCallContext context, PySetObject self, PyArguments arguments)
@@ -343,7 +323,6 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
         return PyNoneObject.None;
     }
 
-    [AIGenerated]
     [PyMethod("clear")]
     [PyFunctionParameters()]
     private static PyResult Clear(PyCallContext context, PySetObject self, PyArguments arguments)
@@ -352,7 +331,6 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
         return PyNoneObject.None;
     }
 
-    [AIGenerated]
     [PyMethod("copy")]
     [PyFunctionParameters()]
     private static PyResult Copy(PyCallContext context, PySetObject self, PyArguments arguments)
@@ -360,7 +338,6 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
         return self.PyCopy();
     }
 
-    [AIGenerated]
     [PyMethod("difference")]
     [PyFunctionParameters("*others")]
     private static PyResult Difference(PyCallContext context, PySetObject self, PyArguments arguments)
@@ -368,7 +345,6 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
         return self.PyDifference(context, arguments.ExtraArgs);
     }
 
-    [AIGenerated]
     [PyMethod("difference_update")]
     [PyFunctionParameters("*others")]
     private static PyResult DifferenceUpdate(PyCallContext context, PySetObject self, PyArguments arguments)
@@ -376,7 +352,6 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
         return self.PyDifferenceUpdate(context, arguments.ExtraArgs);
     }
 
-    [AIGenerated]
     [PyMethod("discard")]
     [PyFunctionParameters("item", "/")]
     private static PyResult Discard(PyCallContext context, PySetObject self, PyArguments arguments)
@@ -384,7 +359,6 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
         return self.PyDiscard(arguments[0]);
     }
 
-    [AIGenerated]
     [PyMethod("intersection")]
     [PyFunctionParameters("*others")]
     private static PyResult Intersection(PyCallContext context, PySetObject self, PyArguments arguments)
@@ -392,7 +366,6 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
         return self.PyIntersection(context, arguments.ExtraArgs);
     }
 
-    [AIGenerated]
     [PyMethod("intersection_update")]
     [PyFunctionParameters("*others")]
     private static PyResult IntersectionUpdate(PyCallContext context, PySetObject self, PyArguments arguments)
@@ -400,7 +373,6 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
         return self.PyIntersectionUpdate(context, arguments.ExtraArgs);
     }
 
-    [AIGenerated]
     [PyMethod("isdisjoint")]
     [PyFunctionParameters("other", "/")]
     private static PyResult IsDisjoint(PyCallContext context, PySetObject self, PyArguments arguments)
@@ -408,7 +380,6 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
         return self.PyIsDisjoint(context, arguments[0]);
     }
 
-    [AIGenerated]
     [PyMethod("issubset")]
     [PyFunctionParameters("other", "/")]
     private static PyResult IsSubset(PyCallContext context, PySetObject self, PyArguments arguments)
@@ -416,7 +387,6 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
         return self.PyIsSubset(context, arguments[0]);
     }
 
-    [AIGenerated]
     [PyMethod("issuperset")]
     [PyFunctionParameters("other", "/")]
     private static PyResult IsSuperset(PyCallContext context, PySetObject self, PyArguments arguments)
@@ -424,7 +394,6 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
         return self.PyIsSuperset(context, arguments[0]);
     }
 
-    [AIGenerated]
     [PyMethod("pop")]
     [PyFunctionParameters()]
     private static PyResult Pop(PyCallContext context, PySetObject self, PyArguments arguments)
@@ -432,7 +401,6 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
         return self.PyPop();
     }
 
-    [AIGenerated]
     [PyMethod("remove")]
     [PyFunctionParameters("item", "/")]
     private static PyResult Remove(PyCallContext context, PySetObject self, PyArguments arguments)
@@ -440,7 +408,6 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
         return self.PyRemove(arguments[0]);
     }
 
-    [AIGenerated]
     [PyMethod("symmetric_difference")]
     [PyFunctionParameters("other", "/")]
     private static PyResult SymmetricDifference(PyCallContext context, PySetObject self, PyArguments arguments)
@@ -448,7 +415,6 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
         return self.PySymmetricDifference(context, arguments[0]);
     }
 
-    [AIGenerated]
     [PyMethod("symmetric_difference_update")]
     [PyFunctionParameters("other", "/")]
     private static PyResult SymmetricDifferenceUpdate(PyCallContext context, PySetObject self, PyArguments arguments)
@@ -456,7 +422,6 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
         return self.PySymmetricDifferenceUpdate(context, arguments[0]);
     }
 
-    [AIGenerated]
     [PyMethod("union")]
     [PyFunctionParameters("*others")]
     private static PyResult Union(PyCallContext context, PySetObject self, PyArguments arguments)
@@ -464,7 +429,6 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
         return self.PyUnion(context, arguments.ExtraArgs);
     }
 
-    [AIGenerated]
     [PyMethod("update")]
     [PyFunctionParameters("*others")]
     private static PyResult Update(PyCallContext context, PySetObject self, PyArguments arguments)
