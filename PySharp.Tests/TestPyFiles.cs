@@ -552,4 +552,18 @@ public sealed class TestPyFiles
         var module = RunModule("test_async_for.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestListBugs()
+    {
+        var module = RunModule("test_list_bugs.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestListValueBugs()
+    {
+        var module = RunModule("test_list_value_bugs.py");
+        Assert.IsNotNull(module);
+    }
 }

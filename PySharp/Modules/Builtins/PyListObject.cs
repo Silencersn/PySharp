@@ -128,19 +128,16 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
         return obj;
     }
 
-    [AIGenerated]
     protected override PyResult GetItem(PyCallContext context, PyListObject self, PyObject item)
     {
         return self.PyGetItem(context, item);
     }
 
-    [AIGenerated]
     protected override PyResult SetItem(PyCallContext context, PyListObject self, PyObject key, PyObject value)
     {
         return self.PySetItem(context, key, value);
     }
 
-    [AIGenerated]
     protected override PyResult DelItem(PyCallContext context, PyListObject self, PyObject key)
     {
         return self.PyDelItem(context, key);
@@ -174,43 +171,38 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
     protected override PyResult Eq(PyCallContext context, PyListObject self, PyObject other)
     {
         if (other is not PyListObject otherList)
-            return base.Eq(context, self, other);
+            return PyNotImplementedObject.NotImplemented;
         return PyBoolObject.FromBoolean(self.SequenceEqual(otherList, context.Comparer));
     }
 
-    [AIGenerated]
     protected override PyResult Lt(PyCallContext context, PyListObject self, PyObject other)
     {
         if (other is not PyListObject otherList)
-            return base.Lt(context, self, other);
+            return PyNotImplementedObject.NotImplemented;
         return PyBoolObject.FromBoolean(self.InternalList.SequenceCompare(otherList.InternalList, context.Comparer) < 0);
     }
 
-    [AIGenerated]
     protected override PyResult Le(PyCallContext context, PyListObject self, PyObject other)
     {
         if (other is not PyListObject otherList)
-            return base.Le(context, self, other);
+            return PyNotImplementedObject.NotImplemented;
         return PyBoolObject.FromBoolean(self.InternalList.SequenceCompare(otherList.InternalList, context.Comparer) <= 0);
     }
 
-    [AIGenerated]
     protected override PyResult Gt(PyCallContext context, PyListObject self, PyObject other)
     {
         if (other is not PyListObject otherList)
-            return base.Gt(context, self, other);
+            return PyNotImplementedObject.NotImplemented;
         return PyBoolObject.FromBoolean(self.InternalList.SequenceCompare(otherList.InternalList, context.Comparer) > 0);
     }
 
-    [AIGenerated]
     protected override PyResult Ge(PyCallContext context, PyListObject self, PyObject other)
     {
         if (other is not PyListObject otherList)
-            return base.Ge(context, self, other);
+            return PyNotImplementedObject.NotImplemented;
         return PyBoolObject.FromBoolean(self.InternalList.SequenceCompare(otherList.InternalList, context.Comparer) >= 0);
     }
 
-    [AIGenerated]
     protected override PyResult Add(PyCallContext context, PyListObject self, PyObject other)
     {
         if (other is not PyListObject)
@@ -218,7 +210,6 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
         return self.PyAdd(other);
     }
 
-    [AIGenerated]
     protected override PyResult IAdd(PyCallContext context, PyListObject self, PyObject other)
     {
         var result = self.PyExtend(context, other);
@@ -227,7 +218,6 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
         return self;
     }
 
-    [AIGenerated]
     protected override PyResult Mul(PyCallContext context, PyListObject self, PyObject other)
     {
         var result = PySpecialMethods.Index(context, other);
@@ -236,13 +226,11 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
         return self.PyMul(result.Value.Int32Value);
     }
 
-    [AIGenerated]
     protected override PyResult RMul(PyCallContext context, PyListObject self, PyObject other)
     {
         return Mul(context, self, other);
     }
 
-    [AIGenerated]
     protected override PyResult IMul(PyCallContext context, PyListObject self, PyObject other)
     {
         var result = PySpecialMethods.Index(context, other);
@@ -281,7 +269,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
     [PyFunctionParameters("x", "/")]
     private static PyResult Remove(PyCallContext context, PyListObject self, PyArguments arguments)
     {
-        if (self.PyRemove(arguments[0]))
+        if (self.PyRemove(context, arguments[0]))
             return PyNoneObject.None;
         return PyResult.ValueError(PySR.Runtime_List_ItemNotFound, "remove");
     }
@@ -310,7 +298,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
     [PyFunctionParameters("x", "/")]
     private static PyResult Index_1(PyCallContext context, PyListObject self, PyArguments arguments)
     {
-        var index = self.PyIndex(arguments[0]);
+        var index = self.PyIndex(context, arguments[0]);
         if (index is -1)
         {
             var result = PySpecialMethods.Repr(context, arguments[0]);
@@ -329,7 +317,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
         var result = PySpecialMethods.Index(context, arguments[1]);
         if (result.IsError)
             return result;
-        var index = self.PyIndex(arguments[0], result.Value.Int32Value);
+        var index = self.PyIndex(context, arguments[0], result.Value.Int32Value);
         if (index is -1)
         {
             var reprResult = PySpecialMethods.Repr(context, arguments[0]);
@@ -351,7 +339,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
         var endResult = PySpecialMethods.Index(context, arguments[2]);
         if (endResult.IsError)
             return endResult;
-        var index = self.PyIndex(arguments[0], startResult.Value.Int32Value, endResult.Value.Int32Value);
+        var index = self.PyIndex(context, arguments[0], startResult.Value.Int32Value, endResult.Value.Int32Value);
         if (index is -1)
         {
             var reprResult = PySpecialMethods.Repr(context, arguments[0]);
@@ -367,7 +355,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
     [PyFunctionParameters("x", "/")]
     private static PyResult Count(PyCallContext context, PyListObject self, PyArguments arguments)
     {
-        return PyIntObject.FromInteger(self.PyCount(arguments[0]));
+        return PyIntObject.FromInteger(self.PyCount(context, arguments[0]));
     }
 
     [PyMethod("sort")]
