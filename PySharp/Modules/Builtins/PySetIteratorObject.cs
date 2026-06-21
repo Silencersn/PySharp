@@ -3,7 +3,6 @@ using PySharp.Runtime.PyAttributes;
 
 namespace PySharp.Modules.Builtins;
 
-[AIGenerated]
 public class PySetIteratorObject : PyObject
 {
     internal HashSet<PyObject>.Enumerator _enumerator;
@@ -19,18 +18,24 @@ public class PySetIteratorObject : PyObject
         _started = false;
         _exhausted = false;
     }
+
+    public PySetIteratorObject(PyFrozenSetObject pyFrozenSetObject)
+    {
+        ArgumentNullException.ThrowIfNull(pyFrozenSetObject);
+        _enumerator = pyFrozenSetObject.GetEnumerator();
+        _started = false;
+        _exhausted = false;
+    }
 }
 
 [PyType("set_iterator")]
 public sealed partial class PySetIteratorObjectType : PyTypeObject<PySetIteratorObject>
 {
-    [AIGenerated]
     protected override PyResult Iter(PyCallContext context, PySetIteratorObject self)
     {
         return self;
     }
 
-    [AIGenerated]
     protected override PyResult Next(PyCallContext context, PySetIteratorObject self)
     {
         if (self._exhausted)
