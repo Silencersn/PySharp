@@ -61,10 +61,17 @@ public sealed class PyCodeObject : PyObjectManagedDict
         Bytecode = bytecode;
 
         Flags = CodeObjectFlags.Function;
-        if (scope.IsGenerator)
+        if (scope is AsyncFunctionVariableScope asyncFnScope)
+        {
+            if (asyncFnScope.IsAsyncGenerator)
+                Flags |= CodeObjectFlags.AsyncGenerator;
+            else
+                Flags |= CodeObjectFlags.Coroutine;
+        }
+        else if (scope.IsGenerator)
+        {
             Flags |= CodeObjectFlags.Generator;
-        if (scope is AsyncFunctionVariableScope)
-            Flags |= CodeObjectFlags.Coroutine;
+        }
         if (scope is GeneratorExpVariableScope { IsAsyncGenerator: true })
             Flags |= CodeObjectFlags.AsyncGenerator;
 

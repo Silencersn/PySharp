@@ -216,6 +216,7 @@ internal sealed class AsyncFunctionVariableScope : CallableVariableScope
     internal override AstArgumentsNode ArgumentsNode => Owner.Args;
     public override AsyncFunctionDefNode Owner { get; }
     public override string? Name => Owner.Name;
+    public bool IsAsyncGenerator { get; internal set; }
 
     public AsyncFunctionVariableScope(AsyncFunctionDefNode owner, VariableScope parent) : base(parent)
     {

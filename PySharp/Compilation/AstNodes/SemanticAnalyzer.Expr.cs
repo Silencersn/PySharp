@@ -209,15 +209,18 @@ partial class SemanticAnalyzer
             throw SyntaxError(PySR.InvalidSyntax_Semantic_YieldInsideComprehension,
                 AstUtils.GetExprNodeName(_currentNestedComprehensionStats.CurrentComprehension));
 
-        if (_currentScopeStats.Scope is AsyncFunctionVariableScope)
-            throw new NotSupportedException("asynchronous generator is not supported");
-
-        Debug.Assert(_currentScopeStats.Scope is not GeneratorExpVariableScope);
-        if (_currentScopeStats.Scope is not CallableVariableScope callableYieldScope
-            /* this callable scope is never genexpr because of the first if */)
-            throw SyntaxError(PySR.InvalidSyntax_Semantic_YieldOutsideFunction);
-
-        callableYieldScope.IsGenerator = true;
+        if (_currentScopeStats.Scope is AsyncFunctionVariableScope asyncYieldScope)
+        {
+            asyncYieldScope.IsGenerator = true;
+            asyncYieldScope.IsAsyncGenerator = true;
+        }
+        else
+        {
+            Debug.Assert(_currentScopeStats.Scope is not GeneratorExpVariableScope);
+            if (_currentScopeStats.Scope is not CallableVariableScope callableYieldScope)
+                throw SyntaxError(PySR.InvalidSyntax_Semantic_YieldOutsideFunction);
+            callableYieldScope.IsGenerator = true;
+        }
         VisitNullableNode(node.Value);
     }
 
