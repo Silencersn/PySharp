@@ -465,6 +465,16 @@ partial class BytecodeCompiler
                 return;
             }
 
+            var generator = generators[i];
+
+            if (generator.IsAsync)
+                CompileAsyncGenerator(i);
+            else
+                CompileSyncGenerator(i);
+        }
+
+        void CompileSyncGenerator(int i)
+        {
             var forIterLabel = Generator.DefineLabel();
             var endForLabel = Generator.DefineLabel();
 
@@ -493,6 +503,75 @@ partial class BytecodeCompiler
             CompileGenerator(i + 1);
 
             Generator.Jump(forIterLabel);
+
+            Generator.MarkLabel(endForLabel);
+            Generator.Emit(OpCode.PopIter);
+        }
+
+        void CompileAsyncGenerator(int i)
+        {
+            var forIterLabel = Generator.DefineLabel();
+            var endForLabel = Generator.DefineLabel();
+            var exceptLabel = Generator.DefineLabel();
+            var cleanupLabel = Generator.DefineLabel();
+            var afterStopLabel = Generator.DefineLabel();
+
+            var generator = generators[i];
+
+            if (i is 0 && isGeneratorExp)
+            {
+                LoadName(".0");
+            }
+            else
+            {
+                LoadExpr(generator.Iter);
+                Generator.Emit(OpCode.GetAIter);
+            }
+            Generator.MarkLabel(forIterLabel);
+            Generator.Emit(OpCode.GetANext);
+            Generator.Emit(OpCode._SetupFinally, cleanupLabel);
+            Generator.Emit(OpCode._SetupExcept, exceptLabel);
+            Generator.Emit(OpCode.LoadConst, PyNoneObject.None);
+
+            var sendLabel = Generator.DefineLabel();
+            var afterAwaitLabel = Generator.DefineLabel();
+            Generator.MarkLabel(sendLabel);
+            Generator.Emit(OpCode.Send, afterAwaitLabel);
+            Generator.Emit(OpCode.YieldValue);
+            Generator.Jump(sendLabel);
+
+            Generator.MarkLabel(afterAwaitLabel);
+            Generator.Emit(OpCode.Swap, 2);
+            Generator.Emit(OpCode.PopTop);
+            StoreExpr(generator.Target);
+
+            foreach (var test in generator.Ifs)
+            {
+                LoadExpr(test);
+                Generator.Emit(OpCode.ToBool);
+                Generator.PopJumpIfFalse(forIterLabel);
+            }
+
+            CompileGenerator(i + 1);
+            Generator.Jump(cleanupLabel);
+
+            Generator.MarkLabel(exceptLabel);
+            Generator.Emit(OpCode.LoadConst, PyStopAsyncIterationObjectType.Shared);
+            Generator.Emit(OpCode.CheckExcMatch);
+            Generator.PopJumpIfFalse(cleanupLabel);
+            Generator.Emit(OpCode._PopException);
+            Generator.Emit(OpCode.PopTop);
+            Generator.Jump(cleanupLabel);
+
+            Generator.MarkLabel(cleanupLabel);
+            Generator.Emit(OpCode._EnterFinally);
+            Generator.Emit(OpCode._LoadHitExcept);
+            Generator.PopJumpIfTrue(afterStopLabel);
+            Generator.Emit(OpCode._ExitFinally);
+            Generator.Jump(forIterLabel);
+
+            Generator.MarkLabel(afterStopLabel);
+            Generator.Emit(OpCode._ExitFinally);
 
             Generator.MarkLabel(endForLabel);
             Generator.Emit(OpCode.PopIter);
@@ -604,7 +683,10 @@ partial class BytecodeCompiler
         Generator.Emit(OpCode._MakeFunctionWithPyArgsDef, arg: 1);
 
         LoadExpr(node.Generators[0].Iter);
-        Generator.Emit(OpCode.GetIter);
+        if (node.Generators[0].IsAsync)
+            Generator.Emit(OpCode.GetAIter);
+        else
+            Generator.Emit(OpCode.GetIter);
 
         Generator.Emit(OpCode.Call, 1);
     }

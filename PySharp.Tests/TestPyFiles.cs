@@ -568,6 +568,13 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestAsyncCompRuntime()
+    {
+        var module = RunModule("test_async_comp_runtime.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestListBugs()
     {
         var module = RunModule("test_list_bugs.py");

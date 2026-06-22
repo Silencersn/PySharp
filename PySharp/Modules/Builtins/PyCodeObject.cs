@@ -19,6 +19,7 @@ public enum CodeObjectFlags
     Class = 1 << 4,
     Module = 1 << 5,
     Coroutine = 1 << 6,
+    AsyncGenerator = 1 << 7,
 }
 
 public sealed class PyCodeObject : PyObjectManagedDict
@@ -64,6 +65,8 @@ public sealed class PyCodeObject : PyObjectManagedDict
             Flags |= CodeObjectFlags.Generator;
         if (scope is AsyncFunctionVariableScope)
             Flags |= CodeObjectFlags.Coroutine;
+        if (scope is GeneratorExpVariableScope { IsAsyncGenerator: true })
+            Flags |= CodeObjectFlags.AsyncGenerator;
 
         Name = scope.Name;
         Filename = filename;

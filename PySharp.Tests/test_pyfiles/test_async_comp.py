@@ -1,3 +1,8 @@
+class AsyncRange:
+    pass
+
+AsyncRange()
+
 # test_async_comp: Verify compilation of async comprehensions
 # Only defines functions, does NOT execute them
 

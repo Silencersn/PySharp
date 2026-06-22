@@ -240,6 +240,7 @@ internal sealed class GeneratorExpVariableScope : CallableVariableScope
     internal override AstArgumentsNode ArgumentsNode => AstArgumentsNode.GeneratorExp;
     public override GeneratorExpNode Owner { get; }
     public override string? Name => "<genexpr>";
+    public bool IsAsyncGenerator => Owner.Generators.Any(static g => g.IsAsync);
 
     public GeneratorExpVariableScope(GeneratorExpNode owner, VariableScope parent) : base(parent)
     {
