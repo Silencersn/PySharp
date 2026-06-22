@@ -252,79 +252,128 @@ internal static class BigIntegerHelper
 
     private static void ToOctString(Span<char> chars, BigInteger value, out int charsWritten)
     {
-        bool isNegative = value < 0;
-        value = BigInteger.Abs(value);
+        // TODO: temp fix
 
-        var count = value.GetByteCount(true);
-
-        // bytesLength should be 1 + 3*n (the 1 is padding, the 3 is the value to convert)
-        var bytesLength = count;
-        var offset = 1;
-        if (bytesLength % 3 is not 0)
-            offset += 3 - bytesLength % 3;
-        bytesLength += offset;
-
-
-        byte[]? arrayToReturn = null;
-        Span<byte> bytes = bytesLength <= 1024
-            ? stackalloc byte[bytesLength]
-            : PoolHelper.Rent(bytesLength, out arrayToReturn);
-
-        var written = value.TryWriteBytes(bytes[offset..], out var bytesWritten, isUnsigned: true, isBigEndian: true);
-        Debug.Assert(written);
-        Debug.Assert(count == bytesWritten);
-
-        if (isNegative)
-        {
-            chars[0] = '-';
-            chars[1] = '0';
-            chars[2] = 'o';
-            charsWritten = 3;
-        }
-        else
+        if (value == 0)
         {
             chars[0] = '0';
             chars[1] = 'o';
-            charsWritten = 2;
+            chars[2] = '0';
+            charsWritten = 3;
+            return;
         }
 
-        for (int i = 1; i < bytes.Length; i += 3)
+        bool isNegative = value < 0;
+        BigInteger absValue = isNegative ? -value : value;
+
+        List<char> digits = new List<char>();
+        while (absValue > 0)
         {
-            Debug.Assert(i + 3 <= bytes.Length);
-
-            // the first byte is for padding
-            // it should be zero to avoid affecting re-interpretation
-            var batch = bytes.Slice(i - 1, 4);
-            batch[0] = 0;
-            uint batchValue = BinaryPrimitives.ReadUInt32BigEndian(batch);
-
-            if (i is 1)
-            {
-                // ignore leading zero if it is first batch
-                int startIndex = charsWritten;
-                do
-                {
-                    char c = (char)('0' + (batchValue & 0b111));
-                    if (c is not '0' || charsWritten != startIndex)
-                        chars[charsWritten++] = c;
-                    batchValue >>= 3;
-                } while (batchValue is not 0);
-                chars[startIndex..charsWritten].Reverse();
-            }
-            else
-            {
-                var index = charsWritten + 8;
-                for (int j = 0; j < 8; j++)
-                {
-                    char c = (char)('0' + (batchValue & 0b111));
-                    chars[--index] = c;
-                    batchValue >>= 3;
-                }
-                charsWritten += 8;
-            }
+            BigInteger remainder = absValue % 8;
+            absValue /= 8;
+            digits.Add((char)('0' + (int)remainder));
         }
 
-        PoolHelper.ReturnIfNonNull(arrayToReturn);
+        int index = 0;
+        if (isNegative)
+        {
+            chars[index++] = '-';
+            chars[index++] = '0';
+            chars[index++] = 'o';
+        }
+        else
+        {
+            chars[index++] = '0';
+            chars[index++] = 'o';
+        }
+
+        for (int i = digits.Count - 1; i >= 0; i--)
+        {
+            chars[index++] = digits[i];
+        }
+
+        charsWritten = index;
+
+
+
+        // THIS IS WRONG
+
+        //bool isNegative = value < 0;
+        //value = BigInteger.Abs(value);
+
+        //var count = value.GetByteCount(true);
+
+        //// bytesLength should be 1 + 3*n (the 1 is padding, the 3 is the value to convert)
+        //var bytesLength = count;
+        //var offset = 1;
+        //if (bytesLength % 3 is not 0)
+        //    offset += 3 - bytesLength % 3;
+        //bytesLength += offset;
+
+
+        //byte[]? arrayToReturn = null;
+        //Span<byte> bytes = bytesLength <= 1024
+        //    ? stackalloc byte[bytesLength]
+        //    : PoolHelper.Rent(bytesLength, out arrayToReturn);
+
+        //var written = value.TryWriteBytes(bytes[offset..], out var bytesWritten, isUnsigned: true, isBigEndian: true);
+        //Debug.Assert(written);
+        //Debug.Assert(count == bytesWritten);
+
+        //if (isNegative)
+        //{
+        //    chars[0] = '-';
+        //    chars[1] = '0';
+        //    chars[2] = 'o';
+        //    charsWritten = 3;
+        //}
+        //else
+        //{
+        //    chars[0] = '0';
+        //    chars[1] = 'o';
+        //    charsWritten = 2;
+        //}
+
+        //for (int i = 1; i < bytes.Length; i += 3)
+        //{
+        //    Debug.Assert(i + 3 <= bytes.Length);
+
+        //    // the first byte is for padding
+        //    // it should be zero to avoid affecting re-interpretation
+        //    var batch = bytes.Slice(i - 1, 4);
+        //    batch[0] = 0;
+        //    uint batchValue = BinaryPrimitives.ReadUInt32BigEndian(batch);
+
+        //    if (i is 1)
+        //    {
+        //        // HERE IS WRONG
+
+        //        // ignore leading zero if it is first batch
+        //        int startIndex = charsWritten;
+        //        do
+        //        {
+        //            char c = (char)('0' + (batchValue & 0b111));
+        //            if (c is not '0' || charsWritten != startIndex)
+        //                chars[charsWritten++] = c;
+        //            batchValue >>= 3;
+        //        } while (batchValue is not 0);
+        //        chars[startIndex..charsWritten].Reverse();
+        //    }
+        //    else
+        //    {
+        //        var index = charsWritten + 8;
+        //        for (int j = 0; j < 8; j++)
+        //        {
+        //            char c = (char)('0' + (batchValue & 0b111));
+        //            chars[--index] = c;
+        //            batchValue >>= 3;
+        //        }
+        //        charsWritten += 8;
+        //    }
+        //    Console.WriteLine("TEST:" + chars.ToString());
+        //}
+
+        //PoolHelper.ReturnIfNonNull(arrayToReturn);
     }
 
     private static void ToHexString(ref Span<char> chars, BigInteger value, out int charsWritten)

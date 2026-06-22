@@ -24,12 +24,12 @@ assert s ^ s2 == frozenset([1, 2, 4, 5])
 
 # Comparisons
 assert frozenset([1, 2]).issubset(s) is True
-assert frozenset([1, 2]) <= s is True
-assert frozenset([1, 2]) < s is True
+assert (frozenset([1, 2]) <= s) is True
+assert (frozenset([1, 2]) < s) is True
 
 assert s.issuperset(frozenset([1, 2])) is True
-assert s >= frozenset([1, 2]) is True
-assert s > frozenset([1, 2]) is True
+assert (s >= frozenset([1, 2])) is True
+assert (s > frozenset([1, 2])) is True
 
 assert s.isdisjoint(frozenset([4, 5])) is True
 

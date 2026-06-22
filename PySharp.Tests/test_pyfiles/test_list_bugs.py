@@ -60,7 +60,8 @@ for op_name, op in [('>=', lambda a,b: a >= b), ('<=', lambda a,b: a <= b),
         result = op([1, 2], "abc")
         print(f"  [1,2] {op_name} 'abc' = {result}")
     except TypeError as e:
-        print(f"  [1,2] {op_name} 'abc' -> TypeError: {str(e)[:50]}")
+        msg = str(e)
+        print(f"  [1,2] {op_name} 'abc' -> TypeError (truncated): {len(msg)} chars")
     except Exception as e:
         print(f"  [1,2] {op_name} 'abc' -> FAIL: {type(e).__name__}: {e}")
 

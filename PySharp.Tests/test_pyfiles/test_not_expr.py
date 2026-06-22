@@ -12,7 +12,7 @@ assert not "" is True
 assert not [1] is False
 assert not "x" is False
 assert not not True is True
-assert not not 0 is False
+assert (not not 0) is False
 
 def check(x):
     if not x:

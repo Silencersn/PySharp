@@ -3,6 +3,7 @@ using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Environments;
 using PySharp.Runtime.PyAttributes;
+using PySharp.Utility;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
@@ -51,6 +52,12 @@ public sealed partial class PyModuleObjectType : PyTypeObject<PyModuleObject>
         if (self.Origin is not null)
             return PyStrObject.FromString($"<module '{self.Name}' ({self.Origin})>");
         return PyStrObject.FromString($"<module '{self.Name}'>");
+    }
+
+    [PyProperty("__dict__")]
+    private static PyResult Get_Dict(PyCallContext context, PyModuleObject self)
+    {
+        return PyDictObject.CreateProxy(new DictAdapter(self.PyAttributes));
     }
 
     protected override PyResult GetAttr(PyCallContext context, PyModuleObject self, PyObject item)

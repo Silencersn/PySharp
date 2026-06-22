@@ -111,6 +111,12 @@ public sealed partial class PyBaseExceptionObjectType : PyExceptionType<PyBaseEx
     {
         return PyBoolObject.FromBoolean(self.SuppressContext);
     }
+
+    [PyProperty("args")]
+    private static PyResult Get_Args(PyCallContext context, PyExceptionObject self)
+    {
+        return PyTupleObject.CreateTuple(self.Args);
+    }
 }
 
 [PyType("Exception")]

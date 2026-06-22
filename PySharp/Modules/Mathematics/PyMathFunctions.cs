@@ -317,7 +317,11 @@ internal static class PyMathFunctions
     private static PyResult<PyFloatObject> MathLogImpl(PyCallContext context, PyObject arg, Func<BigInteger, double> intFunc, Func<double, double> doubleFunc)
     {
         if (arg is PyIntObject { Value: var intValue })
+        {
+            if (intValue <= 0)
+                return PyResult.ValueError("math domain error");
             return PyFloatObject.FromDouble(intFunc(intValue));
+        }
 
         if (arg.PyType.Slots.Float is not null)
         {
@@ -333,6 +337,8 @@ internal static class PyMathFunctions
             if (result.IsError)
                 return result.ExceptionResult;
 
+            if (result.Value.Value <= 0)
+                return PyResult.ValueError("math domain error");
             return PyFloatObject.FromDouble(intFunc(result.Value.Value));
         }
     }

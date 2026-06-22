@@ -59,11 +59,7 @@ public sealed class PyInterpreter : IDisposable
         module.PyAttributes[PySpecialNames.Name] = isMain ? PySpecialNames.Interned.Main : PyStrObject.FromString(module.Name);
 
         context.CurrentInternalFrame.CodeObject = code;
-        PyTryCatch(context, () =>
-        {
-            _ = PyCore.Eval(context).PyUnwrap(context);
-        });
-
+        _ = PyCore.Eval(context).PyUnwrap(context);
         Debug.Assert(ReferenceEquals(module.PyAttributes, context.CurrentInternalFrame.Variables.Globals.Dict));
         if (isMain)
             module.PyAttributes[PySpecialNames.Name] = PyStrObject.FromString(module.Name);

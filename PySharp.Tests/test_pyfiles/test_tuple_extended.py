@@ -31,7 +31,8 @@ assert (10, 20, 30).index(30) == 2
 # tuple.index with start/end
 t = (1, 2, 3, 2, 1)
 assert t.index(2, 2) == 3
-assert t.index(1, 1, 4) == 4
+# end is exclusive in CPython, so t.index(1, 1, 5) searches indices [1,5) = [1,2,3,4] and finds 1 at index 4
+assert t.index(1, 1, 5) == 4
 
 # Tuple count
 assert (1, 2, 2, 3, 2, 1).count(2) == 3

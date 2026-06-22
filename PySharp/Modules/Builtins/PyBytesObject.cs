@@ -212,4 +212,48 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
             return PyIntObject.FromInteger(hash);
         }
     }
+
+    protected override PyResult Lt(PyCallContext context, PyBytesObject self, PyObject other)
+    {
+        if (other is not PyBytesObject otherBytes)
+            return PyNotImplementedObject.NotImplemented;
+
+        var minLen = Math.Min(self.Length, otherBytes.Length);
+        for (int i = 0; i < minLen; i++)
+        {
+            var l = self[i];
+            var r = otherBytes[i];
+
+            if (l < r)
+                return PyBoolObject.True;
+            else if (l > r)
+                return PyBoolObject.False;
+        }
+
+        return PyBoolObject.FromBoolean(self.Length < otherBytes.Length);
+    }
+
+    protected override PyResult Contains(PyCallContext context, PyBytesObject self, PyObject item)
+    {
+        // TODO: simple impl
+        if (item is not PyBytesObject otherBytes)
+            return PyResult.TypeError(null);
+
+        var source = self.AsSpan();
+        var sub = otherBytes.AsSpan();
+
+        if (sub.IsEmpty)
+            return PyBoolObject.True;
+
+        if (sub.Length > source.Length)
+            return PyBoolObject.False;
+
+        for (int i = 0; i <= source.Length - sub.Length; i++)
+        {
+            if (source.Slice(i, sub.Length).SequenceEqual(sub))
+                return PyBoolObject.True;
+        }
+
+        return PyBoolObject.False;
+    }
 }

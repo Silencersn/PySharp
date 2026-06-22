@@ -481,6 +481,16 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
     {
         if (!PyArgsValidator.ValidateSinglePositionalArg(args, kwargs, out var err))
             return err.Value;
+
+        // TODO: this is temp fix
+        if (args[0] is PyStrObject { Value: var str })
+        {
+            if (!double.TryParse(str, out var value))
+                return PyResult.TypeError(null);
+
+            return PyFloatObject.FromDouble(value);
+        }
+
         return PySpecialMethods.Float(context, args[0]);
     }
 }

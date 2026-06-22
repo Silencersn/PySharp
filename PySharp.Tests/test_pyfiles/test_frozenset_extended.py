@@ -118,8 +118,9 @@ r = repr(frozenset([1]))
 assert "frozenset({1})" in r.replace(" ", "")
 
 # frozenset with different types
+# Note: True == 1 in Python, so both are deduplicated
 fs = frozenset([1, "hello", 3.14, None, True])
-assert len(fs) == 5
+assert len(fs) == 4
 assert 1 in fs
 assert "hello" in fs
 

@@ -1,5 +1,6 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using PySharp.Utility;
 
 namespace PySharp.Modules.Builtins;
 
@@ -35,7 +36,12 @@ partial class PyTypeObject
         if (name is PySpecialNames.Class)
             return type;
 
-        // TODO: __dict__ and others
+        if (name is "__dict__")
+        {
+            if (self is PyObjectManagedDict managed)
+                return PyDictObject.CreateProxy(new DictAdapter(managed.PyAttributes));
+            return PyDictObject.CreateProxy(new DictAdapter(self.PyAttributes));
+        }
 
         if (TryLookupAttrInMro(type, name, out var attr))
         {
@@ -115,7 +121,12 @@ partial class PyTypeObject
         if (name is PySpecialNames.Class)
             return metaType;
 
-        // TODO: __dict__ and others
+        if (name is "__dict__")
+        {
+            if (self is PyObjectManagedDict managed)
+                return PyDictObject.CreateProxy(new DictAdapter(managed.PyAttributes));
+            return PyDictObject.CreateProxy(new DictAdapter(self.PyAttributes));
+        }
 
         if (TryLookupAttrInMro(metaType, name, out var metaAttr))
         {

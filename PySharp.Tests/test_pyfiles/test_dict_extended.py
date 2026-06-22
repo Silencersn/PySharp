@@ -53,7 +53,9 @@ d = {}
 d[1] = 'int_key'
 d[(1, 2)] = 'tuple_key'
 d[True] = 'bool_key'
-assert d[1] == 'int_key'
+# In CPython, True == 1, so d[True] overwrites d[1]
+# Both d[1] and d[True] access the same key
+assert d[1] == 'bool_key'
 assert d[(1, 2)] == 'tuple_key'
 assert d[True] == 'bool_key'
 

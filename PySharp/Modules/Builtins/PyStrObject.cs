@@ -527,6 +527,14 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             return err.Value;
         return PySpecialMethods.Str(context, args[0]);
     }
+
+    protected override PyResult Contains(PyCallContext context, PyStrObject self, PyObject item)
+    {
+        if (item is not PyStrObject { Value: var str })
+            return PyResult.TypeError(null);
+
+        return PyBoolObject.FromBoolean(self.Value.Contains(str));
+    }
 }
 
 public static class PyStrConverter

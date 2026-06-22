@@ -80,6 +80,11 @@ public sealed partial class PyRangeObjectType : PyTypeObject<PyRangeObject>
         return new PyLongRangeIteratorObject(self.Start, self.Step, self.RangeLen);
     }
 
+    protected override PyResult Len(PyCallContext context, PyRangeObject self)
+    {
+        return PyIntObject.FromInteger(self.RangeLen);
+    }
+
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (kwargs.Count is not 0)
