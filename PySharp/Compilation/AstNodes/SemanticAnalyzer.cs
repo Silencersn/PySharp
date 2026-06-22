@@ -353,6 +353,12 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
                 break;
 
             case AstComprehensionNode n:
+                if (n.IsAsync)
+                {
+                    var outerComp = _currentNestedComprehensionStats.CurrentComprehension;
+                    if (outerComp is not GeneratorExpNode && _currentScopeStats.Scope is not AsyncFunctionVariableScope)
+                        throw SyntaxError(PySR.InvalidSyntax_Semantic_AsyncCompOutsideAsyncFunc);
+                }
                 ref var part = ref _currentNestedComprehensionStats.CurrentComprehensionStats.VisitingPart;
                 part = ComprehensionStatsVisitingPart.GeneratorTarget;
                 VisitNode(n.Target);

@@ -200,7 +200,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         var result = true;
         foreach (var keyword in keywords)
         {
-            if (!IsKeyword(keyword))
+            if (!IsCurrentKeyword(keyword))
             {
                 result = false;
                 break;

@@ -141,6 +141,20 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestAsyncComp()
+    {
+        var module = RunModule("test_async_comp.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestAsyncCompErrors()
+    {
+        var module = RunModule("test_async_comp_errors.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestFloat()
     {
         var module = RunModule("test_float.py");

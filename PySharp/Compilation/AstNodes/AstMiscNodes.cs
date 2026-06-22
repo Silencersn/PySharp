@@ -66,18 +66,20 @@ public class AstArgumentsNode : AstNode
 
 }
 
-public class AstComprehensionNode : AstNode
+public sealed class AstComprehensionNode : AstNode
 {
-    internal AstComprehensionNode(AstExprNode target, AstExprNode iter, ImmutableArray<AstExprNode> ifs)
+    internal AstComprehensionNode(AstExprNode target, AstExprNode iter, ImmutableArray<AstExprNode> ifs, bool isAsync)
     {
         Target = target;
         Iter = iter;
         Ifs = ifs;
+        IsAsync = isAsync;
     }
 
     public AstExprNode Target { get; }
     public AstExprNode Iter { get; }
     public ImmutableArray<AstExprNode> Ifs { get; }
+    public bool IsAsync { get; }
 
 }
 

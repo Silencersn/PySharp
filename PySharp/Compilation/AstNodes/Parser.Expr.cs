@@ -1544,8 +1544,9 @@ partial class Parser
     {
         var metaInfo = CreateAstMetaInfo();
 
-        if (IsCurrentKeyword("async"))
-            throw new NotSupportedException();
+        var isAsync = IsCurrentKeyword("async");
+        if (isAsync)
+            MoveNextToken();
 
         EnsureKeywordThenMove("for");
         var target = ParseStarTargets(StopPredicates.UntilKeywordIn(this));
@@ -1559,7 +1560,7 @@ partial class Parser
             ifs.Add(ParseDisjunction());
         }
 
-        return Ast.Comprehension(target, iter, ifs).With(metaInfo.WithPreviousEnd());
+        return Ast.Comprehension(target, iter, ifs, isAsync).With(metaInfo.WithPreviousEnd());
     }
 
     [GrammarSyntaxRule("for_if_clauses")]
