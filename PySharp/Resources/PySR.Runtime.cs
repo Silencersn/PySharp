@@ -183,6 +183,8 @@ partial class PySR
     public const string Runtime_Async_SendNonNoneAtFirst = "can't send non-None value to a just-started coroutine";
     public const string Runtime_Async_IgnoredGeneratorExit = "coroutine ignored GeneratorExit";
 
+    public const string Runtime_Builtin_Aiter_NotAsyncIterable = "'{0}' object is not an async iterable";
+    public const string Runtime_Builtin_ANext_NotAsyncIterator = "'{0}' object is not an async iterator";
     public const string Runtime_AsyncFor_MissingAIter = "'async for' requires an object with __aiter__ method, got '{0}'";
     public const string Runtime_AsyncFor_MissingANext = "'async for' requires an iterator with __anext__ method, got '{0}'";
     public const string Runtime_AsyncFor_InvalidANextResult = "'async for' received an invalid object from __anext__: '{0}'";

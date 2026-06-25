@@ -12,8 +12,9 @@ public static partial class PyBuiltinFunctions
 {
     // A
     public static readonly PyBuiltinFunctionOrMethodObject Abs = PyBuiltinFunctionOrMethodObject.CreateFunction("abs", AbsImpl);
-    // TODO: aiter()
+    public static readonly PyBuiltinFunctionOrMethodObject Aiter = PyBuiltinFunctionOrMethodObject.CreateFunction("aiter", AiterImpl);
     public static readonly PyBuiltinFunctionOrMethodObject All = PyBuiltinFunctionOrMethodObject.CreateFunction("all", AllImpl);
+    public static readonly PyBuiltinFunctionOrMethodObject ANext = PyBuiltinFunctionOrMethodObject.CreateFunction("anext", ANextImpl_1, ANextImpl_2);
     public static readonly PyBuiltinFunctionOrMethodObject Any = PyBuiltinFunctionOrMethodObject.CreateFunction("any", AnyImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Ascii = PyBuiltinFunctionOrMethodObject.CreateFunction("ascii", AsciiImpl);
 
@@ -21,7 +22,7 @@ public static partial class PyBuiltinFunctions
     public static readonly PyBuiltinFunctionOrMethodObject Bin = PyBuiltinFunctionOrMethodObject.CreateFunction("bin", BinImpl);
     // bool -> PyBoolObjectType
     // TODO: breakpoint()
-    // TODO: bytearray()
+    // bytearray -> PyByteArrayObjectType
     // bytes -> PyBytesObjectType
 
     // C
@@ -46,7 +47,7 @@ public static partial class PyBuiltinFunctions
     // filter -> PyFilterObjectType
     // float -> PyFloatObjectType
     public static readonly PyBuiltinFunctionOrMethodObject Format = PyBuiltinFunctionOrMethodObject.CreateFunction("format", FormatImpl);
-    // TODO: frozenset()
+    // frozenset -> PyFrozenSetObjectType
 
     // G
     public static readonly PyBuiltinFunctionOrMethodObject GetAttr = PyBuiltinFunctionOrMethodObject.CreateFunction("getattr", GetAttrImpl_1, GetAttrImpl_2);
@@ -79,6 +80,7 @@ public static partial class PyBuiltinFunctions
 
     // N
     public static readonly PyBuiltinFunctionOrMethodObject Next = PyBuiltinFunctionOrMethodObject.CreateFunction("next", NextImpl_1, NextImpl_2);
+
 
     // O
     // object -> PyObjectType
@@ -193,8 +195,11 @@ public static partial class PyBuiltinFunctions
     private static PyResult EvalImpl(PyCallContext context, PyArguments arguments)
     {
         var source = arguments[0];
-        if (source is not PyStrObject && source is not PyCodeObject)
+        if (source is not PyStrObject && source is not PyBytesObject && source is not PyCodeObject)
             return PyResult.TypeError(PySR.Runtime_Builtin_ExecEval_Arg1WrongType, "eval");
+
+        if (source is PyBytesObject bytesSource)
+            source = PyStrObject.FromString(Encoding.UTF8.GetString(bytesSource.AsSpan()));
 
         if (source is PyCodeObject { FreeVars.Length: > 0 })
             return PyResult.TypeError(PySR.Runtime_Builtin_Eval_PassCodeObjWithFreeVars);
@@ -238,8 +243,11 @@ public static partial class PyBuiltinFunctions
     private static PyResult ExecImpl(PyCallContext context, PyArguments arguments)
     {
         var source = arguments[0];
-        if (source is not PyStrObject && source is not PyCodeObject)
+        if (source is not PyStrObject && source is not PyBytesObject && source is not PyCodeObject)
             return PyResult.TypeError(PySR.Runtime_Builtin_ExecEval_Arg1WrongType, "exec");
+
+        if (source is PyBytesObject bytesSource)
+            source = PyStrObject.FromString(Encoding.UTF8.GetString(bytesSource.AsSpan()));
 
         var globals = arguments[1];
         var globalsDict = globals as PyDictObject;
@@ -293,6 +301,32 @@ public static partial class PyBuiltinFunctions
             e.PyException.WithTraceback(context, overwriteExisting: false);
             return PyResult.FromException(e.PyException);
         }
+    }
+
+    [PyFunctionParameters("async_iterable", "/")]
+    private static PyResult AiterImpl(PyCallContext context, PyArguments arguments)
+    {
+        var obj = arguments[0];
+        var slot = obj.PyType.Slots.AIter;
+        if (slot is null)
+            return PyResult.TypeError(PySR.Runtime_Builtin_Aiter_NotAsyncIterable, obj.PyType.FullName);
+        return slot(context, obj);
+    }
+
+    [PyFunctionParameters("async_iterator", "/")]
+    private static PyResult ANextImpl_1(PyCallContext context, PyArguments arguments)
+    {
+        var obj = arguments[0];
+        var slot = obj.PyType.Slots.ANext;
+        if (slot is null)
+            return PyResult.TypeError(PySR.Runtime_Builtin_ANext_NotAsyncIterator, obj.PyType.FullName);
+        return slot(context, obj);
+    }
+
+    [PyFunctionParameters("async_iterator", "default", "/")]
+    private static PyResult ANextImpl_2(PyCallContext context, PyArguments arguments)
+    {
+        return new PyAnextAwaitableObject(arguments[0], arguments[1]);
     }
 
     [PyFunctionParameters("iterable")]
@@ -831,21 +865,32 @@ public static partial class PyBuiltinFunctions
     [PyFunctionParameters("source", "filename", "mode" /* flags=0, dont_inherit=False, optimize=-1 */)]
     private static PyResult CompileImpl(PyCallContext context, PyArguments arguments)
     {
-        if (arguments[0] is not PyStrObject source)
-            // TODO: bytes, ast
+        string sourceStr;
+        if (arguments[0] is PyStrObject source)
+            sourceStr = source.Value;
+        else if (arguments[0] is PyBytesObject sourceBytes)
+            sourceStr = Encoding.UTF8.GetString(sourceBytes.AsSpan());
+        else
+            // TODO: ast
             return PyResult.TypeError(PySR.Runtime_Builtin_Compile_Arg1WrongType);
 
-        if (arguments[1] is not PyStrObject filename)
+        string filenameStr;
+        if (arguments[1] is PyStrObject filename)
+            filenameStr = filename.Value;
+        else
             return PyResult.TypeError(PySR.Runtime_Builtin_Compile_FilenameWrongType, arguments[1].PyType.FullName);
 
-        if (arguments[2] is not PyStrObject mode)
+        string modeStr;
+        if (arguments[2] is PyStrObject mode)
+            modeStr = mode.Value;
+        else
             return PyResult.TypeError(PySR.Runtime_Builtin_Compile_ModeWrongType, arguments[2].PyType.FullName);
 
-        var codeObject = mode.Value switch
+        var codeObject = modeStr switch
         {
-            "exec" => Compiler.CompileExec(context, source.Value, filename.Value, name: "<module>", onlyAsName: true),
-            "eval" => Compiler.CompileEval(context, source.Value, filename.Value, name: "<module>", onlyAsName: true),
-            "single" => Compiler.CompileSingle(context, source.Value, filename.Value, name: "<module>", appendNewLine: false, onlyAsName: true),
+            "exec" => Compiler.CompileExec(context, sourceStr, filenameStr, name: "<module>", onlyAsName: true),
+            "eval" => Compiler.CompileEval(context, sourceStr, filenameStr, name: "<module>", onlyAsName: true),
+            "single" => Compiler.CompileSingle(context, sourceStr, filenameStr, name: "<module>", appendNewLine: false, onlyAsName: true),
             _ => null
         };
 

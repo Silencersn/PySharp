@@ -11,6 +11,8 @@ public class PyBuiltinsModuleObject : PyModuleObject
         AddObjToAttrs(PyBuiltinFunctions.Hash); // hash
         AddObjToAttrs(PyBuiltinFunctions.Len); // len
         AddObjToAttrs(PyBuiltinFunctions.Abs); // abs
+        AddObjToAttrs(PyBuiltinFunctions.Aiter); // aiter
+        AddObjToAttrs(PyBuiltinFunctions.ANext); // anext
         AddObjToAttrs(PyBuiltinFunctions.Iter); // iter
         AddObjToAttrs(PyBuiltinFunctions.Next); // next
         AddObjToAttrs(PyBuiltinFunctions.Pow); // pow

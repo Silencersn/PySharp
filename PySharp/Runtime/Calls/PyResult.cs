@@ -23,6 +23,9 @@ public readonly partial struct PyResult
     public bool IsStopIteration => _exception is not null && PyStopIterationObjectType.Shared.IsInstance(_exception);
 
     [MemberNotNullWhen(true, nameof(Exception))]
+    public bool IsStopAsyncIteration => _exception is not null && PyStopAsyncIterationObjectType.Shared.IsInstance(_exception);
+
+    [MemberNotNullWhen(true, nameof(Exception))]
     public bool IsAttributeError => _exception is not null && PyAttributeErrorObjectType.Shared.IsInstance(_exception);
 
     // default(PyResult) is regarded as PyResult.FromValue(PyNoneObject.None)

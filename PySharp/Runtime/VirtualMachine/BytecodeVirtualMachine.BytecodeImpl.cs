@@ -87,11 +87,13 @@ internal static partial class BytecodeVirtualMachine
 
         static bool IsSpecialType(PyTypeObject type)
         {
-            // TODO: not implemented: bytearray bytes frozenset
             return type is
                 PyBoolObjectType or
+                PyByteArrayObjectType or
+                PyBytesObjectType or
                 PyDictObjectType or
                 PyFloatObjectType or
+                PyFrozenSetObjectType or
                 PyIntObjectType or
                 PyListObjectType or
                 PySetObjectType or

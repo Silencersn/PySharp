@@ -582,6 +582,13 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestBuiltinAiterAnext()
+    {
+        var module = RunModule("test_builtin_aiter_anext.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestOpen()
     {
         var module = RunModule("test_open.py");
