@@ -21,7 +21,7 @@ public partial class PyObject
     public PyTypeObject PyType => _pyType ?? DefaultPyType;
     public virtual PyTypeObject DefaultPyType => PyObjectType.Shared;
     public long PyId => (long)GlobalIdManager.GetOrAdd(this, static _ => Interlocked.Increment(ref _pyNextId));
-    
+
     internal virtual IDictionary<string, PyObject> PyAttributes
     {
         get

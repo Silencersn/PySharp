@@ -1460,7 +1460,7 @@ partial class Parser
         internal readonly ImmutableArray<T>.Builder? Builder;
         private readonly PyCallContext _context;
         private bool _returned;
-   
+
         internal readonly ImmutableArray<T>.Builder GetBuilder(int capacity = 2)
         {
             if (Builder is not null)

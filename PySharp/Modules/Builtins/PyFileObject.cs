@@ -1,8 +1,6 @@
-using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
 using System.Diagnostics;
-using System.IO;
 using System.Text;
 
 namespace PySharp.Modules.Builtins;
@@ -254,7 +252,7 @@ public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
     {
         var sizeObj = arguments[0];
         if (sizeObj is PyIntObject intObj)
-            return self.Read(context, (int)intObj.Int32Value);
+            return self.Read(context, intObj.Int32Value);
         return self.Read(context);
     }
 
@@ -307,7 +305,7 @@ public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
     {
         var sizeObj = arguments[0];
         if (sizeObj is PyIntObject intObj)
-            return self.ReadLine((int)intObj.Int32Value);
+            return self.ReadLine(intObj.Int32Value);
         return self.ReadLine();
     }
 
