@@ -140,6 +140,19 @@ partial class PySR
     public const string Runtime_Builtin_Compile_ModeWrongType = "compile() argument 'mode' must be str, not {0}";
     public const string Runtime_Builtin_Reversed_NonReversible = "'{0}' object is not reversible";
 
+    public const string Runtime_Builtin_Open_Arg1Type = "expected str, bytes or os.PathLike object, not {0}";
+    public const string Runtime_Builtin_Open_Arg2Type = "open() argument 'mode' must be str, not {0}";
+    public const string Runtime_Builtin_Open_InvalidMode = "invalid mode: '{0}'";
+    public const string Runtime_Builtin_Open_ConflictingMode = "must have exactly one of create/read/write/append mode";
+
+    public const string Runtime_File_Closed = "I/O operation on closed file.";
+    public const string Runtime_File_NotReadable = "not readable";
+    public const string Runtime_File_NotWritable = "not writable";
+    public const string Runtime_File_NotSeekable = "file not seekable";
+    public const string Runtime_File_WriteNeedStr = "write() argument must be str, not {0}";
+    public const string Runtime_File_WriteNeedBytes = "a bytes-like object is required, not '{0}'";
+    public const string Runtime_File_SeekArg1NotInt = "seek() argument 1 must be int, not {0}";
+
     public const string Runtime_Descriptor_GetNoneNoneInvalid = "__get__(None, None) is invalid";
     public const string Runtime_Descriptor_ReceiveObjectOfWrongType = "descriptor '{0}' requires a '{1}' object but received a '{2}'";
     public const string Runtime_Descriptor_NeedsArg = "descriptor '{0}' of '{1}' object needs an argument";

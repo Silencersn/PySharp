@@ -45,6 +45,7 @@ public class PyBuiltinsModuleObject : PyModuleObject
         AddObjToAttrs(PyBuiltinFunctions.Compile); // compile
         AddObjToAttrs(PyBuiltinFunctions.Sorted); // sorted
         AddObjToAttrs(PyBuiltinFunctions.Round); // round
+        AddObjToAttrs(PyBuiltinFunctions.Open); // open
         AddObjToAttrs(PyBuiltinFunctions.Vars); // vars
 
         AddObjToAttrs(PyObjectType.Shared); // object

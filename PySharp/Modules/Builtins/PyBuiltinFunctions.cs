@@ -83,7 +83,7 @@ public static partial class PyBuiltinFunctions
     // O
     // object -> PyObjectType
     public static readonly PyBuiltinFunctionOrMethodObject Oct = PyBuiltinFunctionOrMethodObject.CreateFunction("oct", OctImpl);
-    // TODO: open()
+    public static readonly PyBuiltinFunctionOrMethodObject Open = PyBuiltinFunctionOrMethodObject.CreateFunction("open", OpenImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Ord = PyBuiltinFunctionOrMethodObject.CreateFunction("ord", OrdImpl);
 
     // P
@@ -895,5 +895,104 @@ public static partial class PyBuiltinFunctions
     {
         var obj = arguments[0];
         return PyDictObject.CreateProxy(new DictAdapter(obj.PyAttributes!));
+    }
+
+    [PyFunctionParameters("file", "mode='r'")]
+    private static PyResult OpenImpl(PyCallContext context, PyArguments arguments)
+    {
+        var fileObj = arguments[0];
+        var modeObj = arguments[1];
+
+        string path;
+        if (fileObj is PyStrObject pathStr)
+            path = pathStr.Value;
+        else
+            return PyResult.TypeError(PySR.Runtime_Builtin_Open_Arg1Type, fileObj.PyType.FullName);
+
+        string mode;
+        if (modeObj is PyStrObject modeStr)
+            mode = modeStr.Value;
+        else
+            return PyResult.TypeError(PySR.Runtime_Builtin_Open_Arg2Type, modeObj.PyType.FullName);
+
+        // Parse mode string
+        const string ValidModeChars = "rwaxbt+";
+        if (!mode.All(ValidModeChars.Contains) || mode.Distinct().Count() != mode.Length)
+            return PyResult.ValueError(PySR.Runtime_Builtin_Open_InvalidMode, mode);
+
+        bool reading = mode.Contains('r');
+        bool writing = mode.Contains('w');
+        bool appending = mode.Contains('a');
+        bool creating = mode.Contains('x');
+        bool updating = mode.Contains('+');
+        bool binary = mode.Contains('b');
+
+        if (new[] { creating, reading, writing, appending }.Count(v => v) > 1)
+            return PyResult.ValueError(PySR.Runtime_Builtin_Open_ConflictingMode);
+
+        // Determine file mode
+        FileMode fileMode;
+        FileAccess fileAccess;
+        bool isSeekable = true;
+
+        if (creating)
+        {
+            fileMode = FileMode.CreateNew;
+            fileAccess = updating ? FileAccess.ReadWrite : FileAccess.Write;
+        }
+        else if (writing)
+        {
+            fileMode = FileMode.Create;
+            fileAccess = updating ? FileAccess.ReadWrite : FileAccess.Write;
+        }
+        else if (appending)
+        {
+            // FileMode.Append only supports FileAccess.Write.
+            // For a+ (append + update), use OpenOrCreate with ReadWrite and seek to end.
+            fileMode = updating ? FileMode.OpenOrCreate : FileMode.Append;
+            fileAccess = updating ? FileAccess.ReadWrite : FileAccess.Write;
+        }
+        else // reading (default)
+        {
+            fileMode = FileMode.Open;
+            fileAccess = updating ? FileAccess.ReadWrite : FileAccess.Read;
+        }
+
+        var fs = context.PyEnvironment.FileSystem;
+        var fileInfo = fs.GetFile(path);
+
+        // Check existence for read-only or read-update without write/append/create
+        bool pureRead = reading && !writing && !appending && !creating;
+        if (pureRead && !fileInfo.Exists)
+            return PyResult.FromException(
+                PyFileNotFoundErrorObjectType.Shared.Create(PyStrObject.FromString(path)));
+
+        // Check non-existence for create mode
+        if (creating && fileInfo.Exists)
+            return PyResult.FromException(
+                PyFileExistsErrorObjectType.Shared.Create(PyStrObject.FromString(path)));
+
+        Stream stream;
+        try
+        {
+            stream = fileInfo.Open(fileMode, fileAccess, FileShare.None);
+        }
+        catch (Exception ex) when (ex is FileNotFoundException || ex is DirectoryNotFoundException)
+        {
+            return PyResult.FromException(
+                PyFileNotFoundErrorObjectType.Shared.Create(PyStrObject.FromString(path)));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return PyResult.RaiseException(PyPermissionErrorObjectType.Shared, path);
+        }
+
+        // For a+ mode, seek to end after opening
+        if (appending && updating)
+            stream.Seek(0, SeekOrigin.End);
+
+        return new PyFileObject(stream, mode, path,
+            isTextMode: !binary, isReadable: reading || updating,
+            isWritable: writing || appending || updating, isSeekable);
     }
 }

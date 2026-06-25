@@ -582,6 +582,13 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestOpen()
+    {
+        var module = RunModule("test_open.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestListBugs()
     {
         var module = RunModule("test_list_bugs.py");
