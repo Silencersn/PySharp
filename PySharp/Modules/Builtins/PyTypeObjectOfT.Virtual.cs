@@ -514,4 +514,16 @@ partial class PyTypeObject<TObject>
     {
         throw new NotImplementedException($"{PySpecialNames.Ceil} does not have default implementation");
     }
+
+    [PySlot]
+    protected virtual partial PyResult Buffer(PyCallContext context, TObject self, int flags)
+    {
+        throw new NotImplementedException($"{PySpecialNames.Buffer} does not have default implementation");
+    }
+
+    [PySlot]
+    protected virtual partial PyResult ReleaseBuffer(PyCallContext context, TObject self, PyObject buffer)
+    {
+        throw new NotImplementedException($"{PySpecialNames.ReleaseBuffer} does not have default implementation");
+    }
 }

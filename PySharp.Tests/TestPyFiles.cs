@@ -608,4 +608,11 @@ public sealed class TestPyFiles
         var module = RunModule("test_list_value_bugs.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestMemoryView()
+    {
+        var module = RunModule("test_memoryview.py");
+        Assert.IsNotNull(module);
+    }
 }

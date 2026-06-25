@@ -75,6 +75,7 @@ public class PyBuiltinsModuleObject : PyModuleObject
         AddObjToAttrs(PyFilterObjectType.Shared); // filter
         AddObjToAttrs(PyBytesObjectType.Shared); // bytes
         AddObjToAttrs(PyByteArrayObjectType.Shared); // bytearray
+        AddObjToAttrs(PyMemoryViewObjectType.Shared); // memoryview
 
         AddObjToAttrs("Ellipsis", PyEllipsisObject.Ellipsis); // Ellipsis
         AddObjToAttrs("NotImplemented", PyNotImplementedObject.NotImplemented); // NotImplemented

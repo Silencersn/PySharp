@@ -75,7 +75,7 @@ public static partial class PyBuiltinFunctions
     // M
     // map -> PyMapObjectType
     public static readonly PyBuiltinFunctionOrMethodObject Max = PyBuiltinFunctionOrMethodObject.CreateFunction("max", MaxImpl_1, MaxImpl_2, MaxImpl_3);
-    // TODO: memoryview()
+    // memoryview -> PyMemoryViewObjectType
     public static readonly PyBuiltinFunctionOrMethodObject Min = PyBuiltinFunctionOrMethodObject.CreateFunction("min", MinImpl_1, MinImpl_2, MinImpl_3);
 
     // N

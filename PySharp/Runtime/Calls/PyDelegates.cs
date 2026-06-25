@@ -25,6 +25,10 @@ public delegate PyResult PyQuaternaryFunction(PyCallContext context, PyObject se
 public delegate PyResult PySelfArgsKwargsFunction(PyCallContext context, PyObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs);
 public delegate PyResult PyClsArgsKwargsFunction(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs);
 
+// Buffer protocol delegates
+public delegate PyResult PyBufferFunction(PyCallContext context, PyObject self, int flags);
+public delegate PyResult PyReleaseBufferFunction(PyCallContext context, PyObject self, PyObject buffer);
+
 public static class PyDelegateConverter
 {
     public static PyMemberGetter ToNonGeneric<TObject>(this PyMemberGetter<TObject> getter) where TObject : PyObject
@@ -251,5 +255,15 @@ public static class PyDelegateConverter
     public static PyClsArgsKwargsFunction ToClsArgsKwargsFunction(this PyObject obj)
     {
         return (context, cls, args, kwargs) => obj.Call(context, [cls, .. args], kwargs);
+    }
+
+    public static PyBufferFunction ToBufferFunction(this PyObject obj)
+    {
+        return (context, self, flags) => obj.Call(context, [self, PyIntObject.FromInteger(flags)]);
+    }
+
+    public static PyReleaseBufferFunction ToReleaseBufferFunction(this PyObject obj)
+    {
+        return (context, self, buffer) => obj.Call(context, [self, buffer]);
     }
 }

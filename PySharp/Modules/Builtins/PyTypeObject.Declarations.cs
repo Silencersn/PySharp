@@ -326,6 +326,12 @@ partial class PyTypeObject
         [PySpecialMethod("__ceil__", typeof(PyUnaryFunction))]
         static partial void Ceil(PyCallContext context, TObject self);
 
+        [PySpecialMethod("__buffer__", typeof(PyBufferFunction))]
+        static partial void Buffer(PyCallContext context, TObject self, int flags);
+
+        [PySpecialMethod("__release_buffer__", typeof(PyReleaseBufferFunction))]
+        static partial void ReleaseBuffer(PyCallContext context, TObject self, PyObject buffer);
+
 #pragma warning restore IDE0060
 #pragma warning restore IDE0051
     }
