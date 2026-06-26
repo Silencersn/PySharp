@@ -334,10 +334,12 @@ partial class Parser
             return Ast.Constant(integer).With(metaInfo);
 
         if (value.Contains('_'))
+        {
             value = SharedBuilder
                 .Clear()
                 .Replace("_", string.Empty)
                 .ToString();
+        }
         return Ast.Constant(double.Parse(value)).With(metaInfo);
     }
 

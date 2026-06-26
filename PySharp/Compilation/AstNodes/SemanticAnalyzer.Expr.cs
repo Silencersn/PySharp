@@ -207,8 +207,10 @@ partial class SemanticAnalyzer
     private void VisitYield(YieldNode node)
     {
         if (_currentNestedComprehensionStats.IsWithinComprehension)
+        {
             throw SyntaxError(PySR.InvalidSyntax_Semantic_YieldInsideComprehension,
                 AstUtils.GetExprNodeName(_currentNestedComprehensionStats.CurrentComprehension));
+        }
 
         if (_currentScopeStats.Scope is AsyncFunctionVariableScope asyncYieldScope)
         {
@@ -228,8 +230,10 @@ partial class SemanticAnalyzer
     private void VisitYieldFrom(YieldFromNode node)
     {
         if (_currentNestedComprehensionStats.IsWithinComprehension)
+        {
             throw SyntaxError(PySR.InvalidSyntax_Semantic_YieldFromInsideComprehension,
                 AstUtils.GetExprNodeName(_currentNestedComprehensionStats.CurrentComprehension));
+        }
 
         if (_currentScopeStats.Scope is AsyncFunctionVariableScope)
             throw SyntaxError(PySR.InvalidSyntax_Semantic_YieldFromInsideAsyncFunc);

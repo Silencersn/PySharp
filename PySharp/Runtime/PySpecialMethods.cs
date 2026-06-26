@@ -331,8 +331,10 @@ public static class PySpecialMethods
                 return result.ExceptionResult;
 
             if (result.Value is not PyIntObject intObj)
+            {
                 return PyResult.TypeError(PySR.Runtime_Object_SpecialMethodReturnsWrongType,
                     PySpecialNames.Int, "int", result.Value.PyType.FullName);
+            }
 
             return intObj;
         }
@@ -345,8 +347,10 @@ public static class PySpecialMethods
                 return result.ExceptionResult;
 
             if (result.Value is not PyIntObject intObj)
+            {
                 return PyResult.TypeError(PySR.Runtime_Object_SpecialMethodReturnsWrongType,
                     PySpecialNames.Index, "int", result.Value.PyType.FullName);
+            }
 
             return intObj;
         }

@@ -1007,13 +1007,17 @@ public static partial class PyBuiltinFunctions
         // Check existence for read-only or read-update without write/append/create
         bool pureRead = reading && !writing && !appending && !creating;
         if (pureRead && !fileInfo.Exists)
+        {
             return PyResult.FromException(
                 PyFileNotFoundErrorObjectType.Shared.Create(PyStrObject.FromString(path)));
+        }
 
         // Check non-existence for create mode
         if (creating && fileInfo.Exists)
+        {
             return PyResult.FromException(
                 PyFileExistsErrorObjectType.Shared.Create(PyStrObject.FromString(path)));
+        }
 
         Stream stream;
         try

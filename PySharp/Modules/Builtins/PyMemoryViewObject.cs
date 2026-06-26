@@ -190,9 +190,11 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
 
             var (start, _, step, length) = slice.Indices((int)self.Shape[0]);
             if (length is 0)
+            {
                 return new PyMemoryViewObject(new PyBuffer(
                     self.Object, self.ReadOnly, self.ItemSize, self.Format,
                     self.NumberDimensions, [0], [self.Strides[0]]), []);
+            }
 
             var offset = start * self.ItemSize;
             var newData = new byte[length * self.ItemSize];

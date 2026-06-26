@@ -60,8 +60,10 @@ partial class Parser
             var source = _parser._codeSource;
 
             if (CrucialStartTokenPosition is 0 && CrucialEndTokenPosition is 0)
+            {
                 return CodeMetaInfo.FromPosition(source,
                     startToken.GetStart(source), endToken.GetEnd(source));
+            }
 
             var crucialStartToken = span[CrucialStartTokenPosition];
             var crucialEndToken = span[CrucialEndTokenPosition];

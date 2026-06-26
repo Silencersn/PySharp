@@ -333,8 +333,10 @@ public sealed class LambdaNode : AstExprNode, IScopedSubNodesProvider
     IEnumerable<AstNode> IScopedSubNodesProvider.EnumerateSubNodesOuterScope()
     {
         foreach (var d in Args.KwDefaults)
+        {
             if (d is not null)
                 yield return d;
+        }
 
         foreach (var d in Args.Defaults)
             yield return d;

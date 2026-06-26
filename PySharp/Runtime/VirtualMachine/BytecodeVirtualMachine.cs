@@ -194,16 +194,20 @@ internal static partial class BytecodeVirtualMachine
                         value = Stack.Pop();
                         frame.Variables.StoreName(names[instructionArg], value);
                         if (frame.FrameType is FrameType.Comprehension)
+                        {
                             context.FrameState.FindOuterNonInlineFrame()
                                 .Variables.StoreName(names[instructionArg], value);
+                        }
                         break;
 
                     case OpCode._StoreDerefIncludedNonInlineFrame:
                         value = Stack.Pop();
                         _ = frame.Variables.StoreDeref(names[instructionArg], value).PyUnwrap(context);
                         if (frame.FrameType is FrameType.Comprehension)
+                        {
                             context.FrameState.FindOuterNonInlineFrame()
                                 .Variables.StoreDeref(names[instructionArg], value).PyUnwrap(context);
+                        }
                         break;
 
                     case OpCode.DeleteName:

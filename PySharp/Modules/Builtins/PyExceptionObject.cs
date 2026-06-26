@@ -75,8 +75,10 @@ public sealed class PyExceptionObject : PyObject
         }
 
         if (Traceback?.ThreadInfo is not null)
+        {
             builder
                 .AppendLine(Traceback.ThreadInfo);
+        }
 
         if (IsGroup)
         {

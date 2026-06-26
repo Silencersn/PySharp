@@ -355,8 +355,10 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         if (self.Value.Length is 0)
             return PyBoolObject.False;
         foreach (char c in self.Value)
+        {
             if (!char.IsLetterOrDigit(c))
                 return PyBoolObject.False;
+        }
         return PyBoolObject.True;
     }
 
@@ -368,8 +370,10 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         if (self.Value.Length is 0)
             return PyBoolObject.False;
         foreach (char c in self.Value)
+        {
             if (!char.IsLetter(c))
                 return PyBoolObject.False;
+        }
         return PyBoolObject.True;
     }
 
@@ -381,8 +385,10 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         if (self.Value.Length is 0)
             return PyBoolObject.False;
         foreach (char c in self.Value)
+        {
             if (!char.IsDigit(c))
                 return PyBoolObject.False;
+        }
         return PyBoolObject.True;
     }
 
@@ -597,6 +603,7 @@ public static class PyStrConverter
         Span<char> cache = stackalloc char[2];
 
         for (int i = 0; i < textLength; i++)
+        {
             switch (text[i])
             {
                 case '\\':
@@ -806,6 +813,7 @@ public static class PyStrConverter
                     destination[charsWritten++] = text[i];
                     break;
             }
+        }
 
         return true;
 

@@ -64,8 +64,10 @@ partial class Parser
         else if (CurrentTokenType is TokenType.LeftBrace)
         {
             if (TestIsDictRatherThanSet())
+            {
                 return ParseSequenceOrComprehension(TokenType.LeftBrace, TokenType.RightBrace,
                     ParseKvpair, ParseDict, ParseDictComp);
+            }
 
             return ParseSequenceOrComprehension(TokenType.LeftBrace, TokenType.RightBrace,
                 ParseNamedExpression, ParseSet, ParseSetComp);
@@ -1770,8 +1772,10 @@ partial class Parser
 
         var list = ParseSomethingList(ParseKwargOrStarred, StopPredicates.UntilRightParenOrDoubleStar, out endsWithComma).MakeArray();
         if (CurrentTokenType is TokenType.RightParen)
+        {
             return (WhereNotNull(list.Select(static pair => pair.Arg)),
                 WhereNotNull(list.Select(static pair => pair.Kwarg)));
+        }
 
         if (endsWithComma is null)
             throw SyntaxError();

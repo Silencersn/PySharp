@@ -89,11 +89,13 @@ public sealed class TrackbackInfo
                 if (!info.HasCrucialRange || info.CrucialStart.Line != info.Start.Line)
                 {
                     if (start >= 0 && end - start < line.Length)
+                    {
                         // if the line is full of '^', do not draw
                         builder
                             .Append(' ', start)
                             .Append('^', end - start)
                             .AppendLine();
+                    }
                     return;
                 }
 

@@ -107,8 +107,10 @@ internal sealed partial class PyVariables
     internal PyVariables CreateForBuildingClass(PyCodeObject codeObject)
     {
         if (!HasLocals)
+        {
             return new PyVariables(_globals,
                 new LocalDictionary(FrozenDictionary<string, int>.Empty, Memory<PyObject?>.Empty));
+        }
 
         var localsPlus = new PyObject?[codeObject.LocalsTable.Count];
         Debug.Assert(localsPlus is not null);

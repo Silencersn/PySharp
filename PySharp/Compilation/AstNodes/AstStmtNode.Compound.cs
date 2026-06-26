@@ -175,8 +175,10 @@ public sealed class FunctionDefNode : AstStmtNode, IScopedSubNodesProvider, IFun
             yield return d;
 
         foreach (var d in Args.KwDefaults)
+        {
             if (d is not null)
                 yield return d;
+        }
 
         foreach (var d in Args.Defaults)
             yield return d;
@@ -229,8 +231,10 @@ public sealed class AsyncFunctionDefNode : AstStmtNode, IScopedSubNodesProvider,
             yield return d;
 
         foreach (var d in Args.KwDefaults)
+        {
             if (d is not null)
                 yield return d;
+        }
 
         foreach (var d in Args.Defaults)
             yield return d;

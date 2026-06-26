@@ -75,9 +75,11 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
         }
 
         if (!_vmStates.RunToEnd)
+        {
             // still yield or await value
             return PyResult.RuntimeError(IsCoroutine ?
                 PySR.Runtime_Async_IgnoredGeneratorExit : PySR.Runtime_Generator_IgnoredGeneratorExit);
+        }
 
         return result;
     }
@@ -90,8 +92,10 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
     internal override PyResult PySend(PyCallContext context, PyObject pyObject)
     {
         if (!IsGeneratorRunning && pyObject is not PyNoneObject)
+        {
             return PyResult.TypeError(IsCoroutine ?
                 PySR.Runtime_Async_SendNonNoneAtFirst : PySR.Runtime_Generator_SendNonNoneAtFirst);
+        }
 
         return Send(context, pyObject);
     }

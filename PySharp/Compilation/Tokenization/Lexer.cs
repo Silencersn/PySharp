@@ -154,6 +154,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
 
         _offset = 0;
         while (_offset < content.Length)
+        {
             switch (CurrentState)
             {
                 case LexerState.TokenizingMultiLineSingleOrDoubleString:
@@ -302,6 +303,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                 default:
                     throw new UnreachableException();
             }
+        }
     }
 
     private bool IsStrictMatchFromCurrent(ReadOnlySpan<char> content, Regex regex, out ValueGroup group)
