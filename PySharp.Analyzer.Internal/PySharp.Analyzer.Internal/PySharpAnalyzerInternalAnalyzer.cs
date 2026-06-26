@@ -11,6 +11,7 @@ namespace PySharp.Analyzer.Internal
     {
         public const string DiagnosticId = "PYSPI001";
         public const string DiagnosticId2 = "PYSPI002";
+        public const string DiagnosticId3 = "PYSPI003";
 
         private static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
             DiagnosticId,
@@ -30,8 +31,17 @@ namespace PySharp.Analyzer.Internal
             isEnabledByDefault: true,
             description: "Control flow statements should have their body on a separate line without braces (e.g., 'if (a)\\n    return b;').");
 
+        private static readonly DiagnosticDescriptor Rule3 = new DiagnosticDescriptor(
+            DiagnosticId3,
+            "Inconsistent brace style in if-else chain",
+            "Inconsistent brace style in if-else chain - all branches should use braces: {0}",
+            "PySharp",
+            DiagnosticSeverity.Warning,
+            isEnabledByDefault: true,
+            description: "If any branch of an if-else chain has a multi-line body, all branches should consistently use braces.");
+
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-            ImmutableArray.Create(Rule, Rule2);
+            ImmutableArray.Create(Rule, Rule2, Rule3);
 
         public override void Initialize(AnalysisContext context)
         {
@@ -44,6 +54,7 @@ namespace PySharp.Analyzer.Internal
                 SyntaxKind.ForStatement,
                 SyntaxKind.ForEachStatement,
                 SyntaxKind.WhileStatement);
+            context.RegisterSyntaxNodeAction(AnalyzeInconsistentIfChain, SyntaxKind.IfStatement);
         }
 
         private static void AnalyzeConstantComparison(SyntaxNodeAnalysisContext context)
@@ -128,7 +139,11 @@ namespace PySharp.Analyzer.Internal
                 // Single-statement block should omit braces: if (a) { return b; } or if (a)\n{\n    return b;\n}
                 // But not when the single statement is itself a control flow statement (nested if/for/etc.),
                 // because removing braces would create ambiguity.
-                if (block.Statements.Count == 1 && !IsControlFlowWithEmbeddedStatement(block.Statements[0]))
+                // Also not when this if-statement is part of a chain where another branch
+                // has a multi-statement block — braces are needed for consistency (warning 3 covers this).
+                if (block.Statements.Count == 1
+                    && !BlockNeedsBraces(block)
+                    && !IsBranchInMultiStatementChain(context.Node))
                 {
                     var sourceText = GetSourceSnippet(context.Node);
                     context.ReportDiagnostic(Diagnostic.Create(
@@ -167,6 +182,123 @@ namespace PySharp.Analyzer.Internal
             if (text.Length > maxLen)
                 text = text.Substring(0, maxLen - 3) + "...";
             return text;
+        }
+
+        private static void AnalyzeInconsistentIfChain(SyntaxNodeAnalysisContext context)
+        {
+            var ifStmt = (IfStatementSyntax)context.Node;
+
+            // Only analyze from the top-level if, skip else-if nodes
+            if (ifStmt.Parent is ElseClauseSyntax)
+                return;
+
+            var sourceText = GetSourceSnippet(ifStmt);
+
+            // Walk the chain to check consistency
+            bool hasMultiStatementBlock = false;
+            bool hasNonBlock = false;
+
+            var current = ifStmt;
+            while (current != null)
+            {
+                if (current.Statement is BlockSyntax block)
+                {
+                    if (BlockNeedsBraces(block))
+                        hasMultiStatementBlock = true;
+                }
+                else
+                {
+                    hasNonBlock = true;
+                }
+
+                if (current.Else != null)
+                {
+                    if (current.Else.Statement is IfStatementSyntax nestedIf)
+                        current = nestedIf;
+                    else if (current.Else.Statement is BlockSyntax elseBlock)
+                    {
+                        if (BlockNeedsBraces(elseBlock))
+                            hasMultiStatementBlock = true;
+                        break;
+                    }
+                    else
+                    {
+                        hasNonBlock = true;
+                        break;
+                    }
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            // Trigger warning 3 when:
+            // - Any branch has a block that needs braces, AND
+            // - Some branches don't use blocks (inconsistent)
+            if (hasMultiStatementBlock && hasNonBlock)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    Rule3, ifStmt.IfKeyword.GetLocation(), sourceText));
+            }
+        }
+
+        private static bool IsBranchInMultiStatementChain(SyntaxNode node)
+        {
+            // Only relevant for if-statements
+            if (node is not IfStatementSyntax ifStmt)
+                return false;
+
+            // Find the top-level if
+            while (ifStmt.Parent is ElseClauseSyntax elseClause && elseClause.Parent is IfStatementSyntax parentIf)
+                ifStmt = parentIf;
+
+            // Walk the chain to see if any branch has a block that needs braces
+            var current = ifStmt;
+            while (current != null)
+            {
+                if (current.Statement is BlockSyntax block && BlockNeedsBraces(block))
+                    return true;
+
+                if (current.Else != null)
+                {
+                    if (current.Else.Statement is IfStatementSyntax nestedIf)
+                        current = nestedIf;
+                    else if (current.Else.Statement is BlockSyntax elseBlock && BlockNeedsBraces(elseBlock))
+                        return true;
+                    else
+                        break;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool BlockNeedsBraces(BlockSyntax block)
+        {
+            // A block needs braces (cannot be safely reduced to a single statement) when:
+            // 1. It contains 2+ statements, OR
+            // 2. Its single statement is itself a control flow statement (if/for/while etc.),
+            //    because removing outer braces would create ambiguity, OR
+            // 3. Its single statement spans multiple lines — braces improve readability.
+            if (block.Statements.Count > 1)
+                return true;
+
+            if (block.Statements.Count == 1)
+            {
+                if (IsControlFlowWithEmbeddedStatement(block.Statements[0]))
+                    return true;
+
+                var stmtSpan = block.Statements[0].GetLocation().GetLineSpan();
+                if (stmtSpan.StartLinePosition.Line != stmtSpan.EndLinePosition.Line)
+                    return true;
+            }
+
+            return false;
         }
 
         private static bool IsControlFlowWithEmbeddedStatement(StatementSyntax statement)
