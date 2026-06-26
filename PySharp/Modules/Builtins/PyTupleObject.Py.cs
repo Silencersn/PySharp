@@ -17,9 +17,7 @@ partial class PyTupleObject
 
             var result = new PyObject[sliceLength];
             for (int i = 0, idx = start; i < sliceLength; i++, idx += step)
-            {
                 result[i] = _array[idx];
-            }
             return new PyTupleObject(result);
         }
 
@@ -58,9 +56,7 @@ partial class PyTupleObject
 
         var newArray = new PyObject[Count * n];
         for (int i = 0; i < n; i++)
-        {
             Array.Copy(_array, 0, newArray, i * Count, Count);
-        }
         return new PyTupleObject(newArray);
     }
 

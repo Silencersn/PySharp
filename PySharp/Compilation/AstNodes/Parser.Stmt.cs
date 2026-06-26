@@ -746,13 +746,9 @@ partial class Parser
         var body = ParseBlock(ifOrElif);
         IEnumerable<AstStmtNode> orElse = [];
         if (IsCurrentKeyword("elif"))
-        {
             orElse = [ParseIfStmt("elif")];
-        }
         else if (IsCurrentKeyword("else"))
-        {
             orElse = ParseElseBlock();
-        }
         return Ast.If(test, body, orElse).With(metaInfo);
     }
 
@@ -795,14 +791,10 @@ partial class Parser
                 exceptors.Add(ParseExceptBlock(isStar.Value));
             }
             if (IsCurrentKeyword("else"))
-            {
                 orElse = ParseElseBlock();
-            }
         }
         if (IsCurrentKeyword("finally"))
-        {
             finalBody = ParseFinallyBlock();
-        }
 
         var exceptorsArray = _context.BuilderPool.ToImmutableThenReturn(exceptors);
         return isStar ?? false

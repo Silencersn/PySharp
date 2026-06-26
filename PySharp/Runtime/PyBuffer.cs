@@ -53,11 +53,13 @@ internal sealed class PyBuffer
     {
         get
         {
-            if (NumberDimensions <= 1) return true;
+            if (NumberDimensions <= 1)
+                return true;
             nint expected = ItemSize;
             for (int i = 0; i < NumberDimensions; i++)
             {
-                if (Strides[i] != expected) return false;
+                if (Strides[i] != expected)
+                    return false;
                 expected *= Shape[i];
             }
             return true;
@@ -71,11 +73,13 @@ internal sealed class PyBuffer
     {
         get
         {
-            if (NumberDimensions <= 1) return true;
+            if (NumberDimensions <= 1)
+                return true;
             nint expected = ItemSize;
             for (int i = NumberDimensions - 1; i >= 0; i--)
             {
-                if (Strides[i] != expected) return false;
+                if (Strides[i] != expected)
+                    return false;
                 expected *= Shape[i];
             }
             return true;

@@ -95,9 +95,7 @@ internal sealed class DictAdapter : IDictionary<PyObject, PyObject>
             array[arrayIndex++] = KeyValuePair.Create<PyObject, PyObject>(PyStrObject.FromString(kvp.Key), kvp.Value);
         }
         foreach (var kvp in _extraDict)
-        {
             array[arrayIndex++] = kvp;
-        }
     }
 
     IEnumerator<KeyValuePair<PyObject, PyObject>> IEnumerable<KeyValuePair<PyObject, PyObject>>.GetEnumerator()

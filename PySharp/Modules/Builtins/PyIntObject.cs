@@ -25,13 +25,9 @@ public class PyIntObject : PyObject
         PositiveInts = new PyIntObject[PositivesPoolSize];
 
         for (int i = 0; i < NegativeInts.Length; i++)
-        {
             NegativeInts[i] = new PyIntObject(-i);
-        }
         for (int i = 0; i < PositiveInts.Length; i++)
-        {
             PositiveInts[i] = new PyIntObject(i);
-        }
 
         Zero = PositiveInts[0];
         One = PositiveInts[1];
@@ -335,35 +331,33 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
         {
             case 'b':
                 numBase = 2;
-                if (spec.AlternateForm) basePrefix = char.IsUpper(formatType) ? "0B" : "0b";
+                if (spec.AlternateForm)
+                    basePrefix = char.IsUpper(formatType) ? "0B" : "0b";
                 text = BigIntegerHelper.ToString(BigInteger.Abs(val), numBase);
                 if (spec.WidthGrouping is not null)
-                {
                     text = ApplyGrouping(text, spec.WidthGrouping.Value, 4);
-                }
                 break;
             case 'o':
                 numBase = 8;
-                if (spec.AlternateForm) basePrefix = char.IsUpper(formatType) ? "0O" : "0o";
+                if (spec.AlternateForm)
+                    basePrefix = char.IsUpper(formatType) ? "0O" : "0o";
                 text = BigIntegerHelper.ToString(BigInteger.Abs(val), numBase);
                 break;
             case 'x':
                 numBase = 16;
-                if (spec.AlternateForm) basePrefix = char.IsUpper(formatType) ? "0X" : "0x";
+                if (spec.AlternateForm)
+                    basePrefix = char.IsUpper(formatType) ? "0X" : "0x";
                 text = BigIntegerHelper.ToString(BigInteger.Abs(val), numBase);
-                if (char.IsUpper(formatType)) text = text.ToUpperInvariant();
+                if (char.IsUpper(formatType))
+                    text = text.ToUpperInvariant();
                 if (spec.WidthGrouping is not null)
-                {
                     text = ApplyGrouping(text, spec.WidthGrouping.Value, 4);
-                }
                 break;
             case 'd':
             case 'n':
                 text = BigInteger.Abs(val).ToString();
                 if (spec.WidthGrouping is not null)
-                {
                     text = ApplyGrouping(text, spec.WidthGrouping.Value, 3);
-                }
                 break;
             case 'c':
                 if (val < 0 || val > 0x10FFFF)
@@ -382,14 +376,9 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
 
         var prefix = string.Empty;
         if (val < 0)
-        {
             prefix = "-";
-        }
-        else
-        {
-            if (spec.Sign is '+' or ' ')
-                prefix = spec.Sign.Value.ToString();
-        }
+        else if (spec.Sign is '+' or ' ')
+            prefix = spec.Sign.Value.ToString();
 
         string fullPrefix = prefix + basePrefix;
 
@@ -409,10 +398,12 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
 
         static string ApplyGrouping(string value, char grouping, int groupSize)
         {
-            if (grouping is not ',' and not '_') return value;
+            if (grouping is not ',' and not '_')
+                return value;
 
             int len = value.Length;
-            if (len <= groupSize) return value;
+            if (len <= groupSize)
+                return value;
 
             // Calculate number of separators
             int sepCount = (len - 1) / groupSize;

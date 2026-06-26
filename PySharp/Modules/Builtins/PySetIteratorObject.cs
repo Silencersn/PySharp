@@ -42,9 +42,7 @@ public sealed partial class PySetIteratorObjectType : PyTypeObject<PySetIterator
             return PyResult.StopIteration();
 
         if (!self._started)
-        {
             self._started = true;
-        }
 
         if (self._enumerator.MoveNext())
             return self._enumerator.Current;

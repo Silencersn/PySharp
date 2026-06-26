@@ -67,7 +67,9 @@ internal sealed partial class PyAnextAwaitableObjectType : PyTypeObject<PyAnextA
 
         PyResult result;
         if (inner is PyGeneratorObject gen)
+        {
             result = gen.PyNext(context);
+        }
         else
         {
             var nextSlot = inner.PyType.Slots.Next;

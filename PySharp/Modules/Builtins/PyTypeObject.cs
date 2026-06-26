@@ -110,10 +110,8 @@ public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
         // B1 ... BN
         var baseTypes = new Queue<PyTypeObject>(bases);
         if (baseTypes.Count is 0)
-        {
             // the type of object
             return true;
-        }
 
         // L[B1] ... L[BN]
         List<Queue<PyTypeObject>> baseMros = [.. baseTypes.Select(baseType => new Queue<PyTypeObject>(baseType.MRO))];

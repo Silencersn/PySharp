@@ -100,7 +100,7 @@ public sealed partial class PyObjectType : PyTypeObject<PyObject>
     private PyObjectType()
     {
         Slots.Number = new();
-
+        
         FillSlot(PySpecialNames.Repr, ref Slots.Repr, DefaultRepr);
         FillSlot(PySpecialNames.Str, ref Slots.Str, DefaultStr);
         FillSlot(PySpecialNames.Bool, ref Slots.Number.Bool, DefaultBool);

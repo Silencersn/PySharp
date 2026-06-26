@@ -155,9 +155,13 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
                 imag = c.Imag;
             }
             else if (args[0] is PyFloatObject f)
+            {
                 real = f.Value;
+            }
             else if (args[0] is PyIntObject i)
+            {
                 real = (double)i.Value;
+            }
             else
             {
                 var result = PySpecialMethods.Index(context, args[0]);

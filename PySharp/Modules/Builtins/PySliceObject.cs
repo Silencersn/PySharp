@@ -49,13 +49,9 @@ public class PySliceObject : PyObject
 
         int sliceLength = 0;
         if (step > 0 && start < stop)
-        {
             sliceLength = (stop - start + step - 1) / step;
-        }
         else if (step < 0 && start > stop)
-        {
             sliceLength = (stop - start + step + 1) / step;
-        }
 
         return (start, stop, step, sliceLength);
     }

@@ -528,9 +528,7 @@ internal static partial class BytecodeVirtualMachine
                         LoadArgs(ref Stack, states.CacheArgs, instructionArg * 2);
                         states.CachePairs.Clear();
                         for (int i = 0; i < instructionArg; i++)
-                        {
                             states.CachePairs.Add(KeyValuePair.Create(states.CacheArgs[i * 2], states.CacheArgs[i * 2 + 1]));
-                        }
                         Stack.Push(PyDictObject.CreateDict(states.CachePairs));
                         break;
 

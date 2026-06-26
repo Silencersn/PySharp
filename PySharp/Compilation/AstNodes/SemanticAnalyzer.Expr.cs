@@ -62,7 +62,8 @@ partial class SemanticAnalyzer
         for (int i = 0; i < node.Keywords.Length; i++)
         {
             var currentKeyword = node.Keywords[i];
-            if (currentKeyword.Arg is null) continue;
+            if (currentKeyword.Arg is null)
+                continue;
             for (int j = 0; j < i; j++)
             {
                 var previousKeyword = node.Keywords[j];

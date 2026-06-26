@@ -191,9 +191,7 @@ partial class PyListObject
             var (start, stop, step, sliceLength) = slice.Indices(_list.Count);
             var resultList = new List<PyObject>(sliceLength);
             for (int i = 0, idx = start; i < sliceLength; i++, idx += step)
-            {
                 resultList.Add(_list[idx]);
-            }
             return new PyListObject(resultList);
         }
 
@@ -228,9 +226,7 @@ partial class PyListObject
             else
             {
                 for (int i = 0, idx = start; i < sliceLength; i++, idx += step)
-                {
                     _list[idx] = values[i];
-                }
             }
 
             return PyNoneObject.None;
@@ -259,18 +255,15 @@ partial class PyListObject
             }
             else
             {
-                if (sliceLength is 0) return PyNoneObject.None;
+                if (sliceLength is 0)
+                    return PyNoneObject.None;
 
                 var indicesToDelete = new List<int>(sliceLength);
                 for (int i = 0, idx = start; i < sliceLength; i++, idx += step)
-                {
                     indicesToDelete.Add(idx);
-                }
                 indicesToDelete.Sort();
                 for (int i = indicesToDelete.Count - 1; i >= 0; i--)
-                {
                     _list.RemoveAt(indicesToDelete[i]);
-                }
             }
             return PyNoneObject.None;
         }

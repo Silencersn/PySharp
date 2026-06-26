@@ -104,14 +104,10 @@ public sealed class MemoryFileSystem : IVirtualFileSystem
                 return;
 
             foreach (var subdirectory in _directoryToSubdirectories[fullPath].ToArray())
-            {
                 InternalDeleteDirectory(subdirectory);
-            }
 
             foreach (var file in _directoryToFiles[fullPath].ToArray())
-            {
                 InternalDeleteFile(file);
-            }
 
             var removed = _directoryToFiles.Remove(fullPath);
             Debug.Assert(removed);

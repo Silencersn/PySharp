@@ -192,9 +192,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 charsAppended++;
             }
             if (count is 0)
-            {
                 sb.Append(self.Value.AsSpan(charsAppended));
-            }
             return PyStrObject.FromString(sb.ToString());
         }
 
@@ -203,7 +201,8 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         while (count > 0)
         {
             int idx = resObj.IndexOf(oldStr.Value, startIndex);
-            if (idx is -1) break;
+            if (idx is -1)
+                break;
             resObj = resObj.Remove(idx, oldStr.Value.Length).Insert(idx, newStr.Value);
             startIndex = idx + newStr.Value.Length;
             count--;
@@ -220,21 +219,26 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         var maxsplitObj = arguments[1];
 
         int maxsplit = -1;
-        if (maxsplitObj is PyIntObject maxsplitInt) maxsplit = maxsplitInt.Int32Value;
+        if (maxsplitObj is PyIntObject maxsplitInt)
+            maxsplit = maxsplitInt.Int32Value;
 
         string[] parts;
         if (sepObj is PyNoneObject)
         {
-            if (maxsplit < 0) parts = self.Value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
-            else parts = self.Value.Split((char[]?)null, maxsplit + 1, StringSplitOptions.RemoveEmptyEntries);
+            if (maxsplit < 0)
+                parts = self.Value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+            else
+                parts = self.Value.Split((char[]?)null, maxsplit + 1, StringSplitOptions.RemoveEmptyEntries);
         }
         else if (sepObj is PyStrObject sepStr)
         {
             if (string.IsNullOrEmpty(sepStr.Value))
                 return PyResult.ValueError("empty separator");
 
-            if (maxsplit < 0) parts = self.Value.Split([sepStr.Value], StringSplitOptions.None);
-            else parts = self.Value.Split([sepStr.Value], maxsplit + 1, StringSplitOptions.None);
+            if (maxsplit < 0)
+                parts = self.Value.Split([sepStr.Value], StringSplitOptions.None);
+            else
+                parts = self.Value.Split([sepStr.Value], maxsplit + 1, StringSplitOptions.None);
         }
         else
         {
@@ -273,9 +277,11 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters]
     private static PyResult Capitalize(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (self.Value.Length is 0) return self;
+        if (self.Value.Length is 0)
+            return self;
         var first = char.ToUpperInvariant(self.Value[0]);
-        if (self.Value.Length is 1) return PyStrObject.FromString(first.ToString());
+        if (self.Value.Length is 1)
+            return PyStrObject.FromString(first.ToString());
         return PyStrObject.FromString(first + self.Value[1..].ToLowerInvariant());
     }
 
@@ -298,7 +304,8 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         string fillchar = " ";
         if (arguments[1] is PyStrObject fillStr)
         {
-            if (fillStr.Value.Length is not 1) return PyResult.TypeError("fillchar must be a string of length 1");
+            if (fillStr.Value.Length is not 1)
+                return PyResult.TypeError("fillchar must be a string of length 1");
             fillchar = fillStr.Value;
         }
         else if (arguments[1] is not PyNoneObject)
@@ -307,7 +314,8 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         }
 
         int width = widthObj.Int32Value;
-        if (width <= self.Value.Length) return self;
+        if (width <= self.Value.Length)
+            return self;
 
         int padLeft = (width - self.Value.Length) / 2;
         int padRight = width - self.Value.Length - padLeft;
@@ -324,8 +332,10 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters("sub", "/")]
     private static PyResult Count(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (arguments[0] is not PyStrObject subStr) return PyResult.TypeError("count arg must be str");
-        if (string.IsNullOrEmpty(subStr.Value)) return PyIntObject.FromInteger(self.Value.Length + 1);
+        if (arguments[0] is not PyStrObject subStr)
+            return PyResult.TypeError("count arg must be str");
+        if (string.IsNullOrEmpty(subStr.Value))
+            return PyIntObject.FromInteger(self.Value.Length + 1);
 
         int count = 0;
         int index = 0;
@@ -342,9 +352,11 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters]
     private static PyResult IsAlnum(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (self.Value.Length is 0) return PyBoolObject.False;
+        if (self.Value.Length is 0)
+            return PyBoolObject.False;
         foreach (char c in self.Value)
-            if (!char.IsLetterOrDigit(c)) return PyBoolObject.False;
+            if (!char.IsLetterOrDigit(c))
+                return PyBoolObject.False;
         return PyBoolObject.True;
     }
 
@@ -353,9 +365,11 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters]
     private static PyResult IsAlpha(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (self.Value.Length is 0) return PyBoolObject.False;
+        if (self.Value.Length is 0)
+            return PyBoolObject.False;
         foreach (char c in self.Value)
-            if (!char.IsLetter(c)) return PyBoolObject.False;
+            if (!char.IsLetter(c))
+                return PyBoolObject.False;
         return PyBoolObject.True;
     }
 
@@ -364,9 +378,11 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters]
     private static PyResult IsDigit(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (self.Value.Length is 0) return PyBoolObject.False;
+        if (self.Value.Length is 0)
+            return PyBoolObject.False;
         foreach (char c in self.Value)
-            if (!char.IsDigit(c)) return PyBoolObject.False;
+            if (!char.IsDigit(c))
+                return PyBoolObject.False;
         return PyBoolObject.True;
     }
 
@@ -375,12 +391,15 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters]
     private static PyResult IsLower(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (self.Value.Length is 0) return PyBoolObject.False;
+        if (self.Value.Length is 0)
+            return PyBoolObject.False;
         bool hasCased = false;
         foreach (char c in self.Value)
         {
-            if (char.IsUpper(c)) return PyBoolObject.False;
-            if (char.IsLower(c)) hasCased = true;
+            if (char.IsUpper(c))
+                return PyBoolObject.False;
+            if (char.IsLower(c))
+                hasCased = true;
         }
         return PyBoolObject.FromBoolean(hasCased);
     }
@@ -390,12 +409,15 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters]
     private static PyResult IsUpper(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (self.Value.Length is 0) return PyBoolObject.False;
+        if (self.Value.Length is 0)
+            return PyBoolObject.False;
         bool hasCased = false;
         foreach (char c in self.Value)
         {
-            if (char.IsLower(c)) return PyBoolObject.False;
-            if (char.IsUpper(c)) hasCased = true;
+            if (char.IsLower(c))
+                return PyBoolObject.False;
+            if (char.IsUpper(c))
+                hasCased = true;
         }
         return PyBoolObject.FromBoolean(hasCased);
     }
@@ -405,7 +427,8 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters]
     private static PyResult Title(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (self.Value.Length is 0) return self;
+        if (self.Value.Length is 0)
+            return self;
         var sb = new StringBuilder(self.Value.Length);
         bool newWord = true;
         foreach (char c in self.Value)
@@ -432,9 +455,12 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         var sb = new StringBuilder(self.Value.Length);
         foreach (char c in self.Value)
         {
-            if (char.IsUpper(c)) sb.Append(char.ToLowerInvariant(c));
-            else if (char.IsLower(c)) sb.Append(char.ToUpperInvariant(c));
-            else sb.Append(c);
+            if (char.IsUpper(c))
+                sb.Append(char.ToLowerInvariant(c));
+            else if (char.IsLower(c))
+                sb.Append(char.ToUpperInvariant(c));
+            else
+                sb.Append(c);
         }
         return PyStrObject.FromString(sb.ToString());
     }
@@ -444,14 +470,14 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters("width", "/")]
     private static PyResult Zfill(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (arguments[0] is not PyIntObject widthObj) return PyResult.TypeError("width must be int");
+        if (arguments[0] is not PyIntObject widthObj)
+            return PyResult.TypeError("width must be int");
         int width = widthObj.Int32Value;
-        if (width <= self.Value.Length) return self;
+        if (width <= self.Value.Length)
+            return self;
 
         if (self.Value.Length > 0 && (self.Value[0] is '+' || self.Value[0] is '-'))
-        {
             return PyStrObject.FromString(self.Value[0] + self.Value[1..].PadLeft(width - 1, '0'));
-        }
 
         return PyStrObject.FromString(self.Value.PadLeft(width, '0'));
     }
@@ -571,7 +597,6 @@ public static class PyStrConverter
         Span<char> cache = stackalloc char[2];
 
         for (int i = 0; i < textLength; i++)
-        {
             switch (text[i])
             {
                 case '\\':
@@ -781,7 +806,6 @@ public static class PyStrConverter
                     destination[charsWritten++] = text[i];
                     break;
             }
-        }
 
         return true;
 
@@ -855,13 +879,9 @@ public static class PyStrConverter
         else if (prefix.Length is 1)
         {
             if (prefix[0] is 'r' or 'R')
-            {
                 isRaw = true;
-            }
             else if (prefix[0] is 'u' or 'U' or 'b' or 'B')
-            {
                 isRaw = false;
-            }
             else
             {
                 return false;
@@ -870,9 +890,7 @@ public static class PyStrConverter
         else if (prefix.Length is 2)
         {
             if (prefix.ContainsAny('r', 'R') && prefix.ContainsAny('b', 'B'))
-            {
                 isRaw = true;
-            }
             else
             {
                 return false;

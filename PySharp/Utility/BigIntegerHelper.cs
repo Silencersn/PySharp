@@ -287,9 +287,7 @@ internal static class BigIntegerHelper
         }
 
         for (int i = digits.Count - 1; i >= 0; i--)
-        {
             chars[index++] = digits[i];
-        }
 
         charsWritten = index;
 

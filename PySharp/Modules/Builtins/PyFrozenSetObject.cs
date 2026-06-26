@@ -104,12 +104,11 @@ public sealed partial class PyFrozenSetObjectType : PyTypeObject<PyFrozenSetObje
     {
         var iterable = arguments[0];
         if (iterable is PyFrozenSetObject frozenSet)
-        {
             return frozenSet;
-        }
 
         var setResult = PyUtils.IterableToSet(context, iterable);
-        if (setResult.IsError) return setResult;
+        if (setResult.IsError)
+            return setResult;
 
         return new PyFrozenSetObject(setResult.Value);
     }
@@ -121,9 +120,7 @@ public sealed partial class PyFrozenSetObjectType : PyTypeObject<PyFrozenSetObje
             return obj;
 
         if (!context.Comparer.Equals(cls, this))
-        {
             obj.Value._pyType = cls;
-        }
         return obj;
     }
 
@@ -199,36 +196,46 @@ public sealed partial class PyFrozenSetObjectType : PyTypeObject<PyFrozenSetObje
 
     protected override PyResult Lt(PyCallContext context, PyFrozenSetObject self, PyObject other)
     {
-        if (other is PySetObject otherSet) return PyBoolObject.FromBoolean(self.IsProperSubsetOf(otherSet));
-        if (other is PyFrozenSetObject otherFrozen) return PyBoolObject.FromBoolean(self.IsProperSubsetOf(otherFrozen));
+        if (other is PySetObject otherSet)
+            return PyBoolObject.FromBoolean(self.IsProperSubsetOf(otherSet));
+        if (other is PyFrozenSetObject otherFrozen)
+            return PyBoolObject.FromBoolean(self.IsProperSubsetOf(otherFrozen));
         return PyNotImplementedObject.NotImplemented;
     }
 
     protected override PyResult Le(PyCallContext context, PyFrozenSetObject self, PyObject other)
     {
-        if (other is PySetObject otherSet) return PyBoolObject.FromBoolean(self.IsSubsetOf(otherSet));
-        if (other is PyFrozenSetObject otherFrozen) return PyBoolObject.FromBoolean(self.IsSubsetOf(otherFrozen));
+        if (other is PySetObject otherSet)
+            return PyBoolObject.FromBoolean(self.IsSubsetOf(otherSet));
+        if (other is PyFrozenSetObject otherFrozen)
+            return PyBoolObject.FromBoolean(self.IsSubsetOf(otherFrozen));
         return PyNotImplementedObject.NotImplemented;
     }
 
     protected override PyResult Gt(PyCallContext context, PyFrozenSetObject self, PyObject other)
     {
-        if (other is PySetObject otherSet) return PyBoolObject.FromBoolean(self.IsProperSupersetOf(otherSet));
-        if (other is PyFrozenSetObject otherFrozen) return PyBoolObject.FromBoolean(self.IsProperSupersetOf(otherFrozen));
+        if (other is PySetObject otherSet)
+            return PyBoolObject.FromBoolean(self.IsProperSupersetOf(otherSet));
+        if (other is PyFrozenSetObject otherFrozen)
+            return PyBoolObject.FromBoolean(self.IsProperSupersetOf(otherFrozen));
         return PyNotImplementedObject.NotImplemented;
     }
 
     protected override PyResult Ge(PyCallContext context, PyFrozenSetObject self, PyObject other)
     {
-        if (other is PySetObject otherSet) return PyBoolObject.FromBoolean(self.IsSupersetOf(otherSet));
-        if (other is PyFrozenSetObject otherFrozen) return PyBoolObject.FromBoolean(self.IsSupersetOf(otherFrozen));
+        if (other is PySetObject otherSet)
+            return PyBoolObject.FromBoolean(self.IsSupersetOf(otherSet));
+        if (other is PyFrozenSetObject otherFrozen)
+            return PyBoolObject.FromBoolean(self.IsSupersetOf(otherFrozen));
         return PyNotImplementedObject.NotImplemented;
     }
 
     protected override PyResult Eq(PyCallContext context, PyFrozenSetObject self, PyObject other)
     {
-        if (other is PySetObject otherSet) return PyBoolObject.FromBoolean(self.SetEquals(otherSet));
-        if (other is PyFrozenSetObject otherFrozen) return PyBoolObject.FromBoolean(self.SetEquals(otherFrozen));
+        if (other is PySetObject otherSet)
+            return PyBoolObject.FromBoolean(self.SetEquals(otherSet));
+        if (other is PyFrozenSetObject otherFrozen)
+            return PyBoolObject.FromBoolean(self.SetEquals(otherFrozen));
         return PyNotImplementedObject.NotImplemented;
     }
 

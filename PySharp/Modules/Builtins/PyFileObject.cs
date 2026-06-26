@@ -56,7 +56,8 @@ public sealed class PyFileObject : PyObject
     internal PyResult Read(PyCallContext context, int size = -1)
     {
         var check = CheckClosed();
-        if (check.IsError) return check;
+        if (check.IsError)
+            return check;
         if (!_isReadable)
             return PyResult.ValueError(PySR.Runtime_File_NotReadable);
 
@@ -65,9 +66,13 @@ public sealed class PyFileObject : PyObject
             Debug.Assert(_reader is not null);
             string result;
             if (size < 0)
+            {
                 result = _reader.ReadToEnd();
+            }
             else if (size is 0)
+            {
                 result = string.Empty;
+            }
             else
             {
                 var buf = new char[size];
@@ -102,7 +107,8 @@ public sealed class PyFileObject : PyObject
     internal PyResult Write(PyCallContext context, PyObject data)
     {
         var check = CheckClosed();
-        if (check.IsError) return check;
+        if (check.IsError)
+            return check;
         if (!_isWritable)
             return PyResult.ValueError(PySR.Runtime_File_NotWritable);
 
@@ -141,7 +147,8 @@ public sealed class PyFileObject : PyObject
     internal PyResult Flush()
     {
         var check = CheckClosed();
-        if (check.IsError) return check;
+        if (check.IsError)
+            return check;
         _writer?.Flush();
         _stream.Flush();
         return PyNoneObject.None;
@@ -150,7 +157,8 @@ public sealed class PyFileObject : PyObject
     internal PyResult Seek(long offset, int whence = 0)
     {
         var check = CheckClosed();
-        if (check.IsError) return check;
+        if (check.IsError)
+            return check;
         if (!_isSeekable)
             return PyResult.ValueError(PySR.Runtime_File_NotSeekable);
         // Discard StreamReader's internal buffer after seek to avoid stale data
@@ -163,7 +171,8 @@ public sealed class PyFileObject : PyObject
     internal PyResult Tell()
     {
         var check = CheckClosed();
-        if (check.IsError) return check;
+        if (check.IsError)
+            return check;
         if (!_isSeekable)
             return PyResult.ValueError(PySR.Runtime_File_NotSeekable);
         return PyIntObject.FromInteger(_stream.Position);
@@ -172,7 +181,8 @@ public sealed class PyFileObject : PyObject
     internal PyResult ReadLine(int size = -1)
     {
         var check = CheckClosed();
-        if (check.IsError) return check;
+        if (check.IsError)
+            return check;
         if (!_isReadable)
             return PyResult.ValueError(PySR.Runtime_File_NotReadable);
 
@@ -225,7 +235,8 @@ public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
     protected override PyResult Enter(PyCallContext context, PyFileObject self)
     {
         var check = self.CheckClosed();
-        if (check.IsError) return check;
+        if (check.IsError)
+            return check;
         return self;
     }
 
@@ -237,7 +248,8 @@ public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
     protected override PyResult Iter(PyCallContext context, PyFileObject self)
     {
         var check = self.CheckClosed();
-        if (check.IsError) return check;
+        if (check.IsError)
+            return check;
         return self;
     }
 

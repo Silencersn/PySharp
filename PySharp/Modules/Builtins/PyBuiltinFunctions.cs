@@ -275,9 +275,7 @@ public static partial class PyBuiltinFunctions
                 closureTuple is not null &&
                 closureTuple.Count == code.FreeVars.Length &&
                 closureTuple.All(static obj => obj is PyCellObject)))
-            {
                 return PyResult.TypeError(PySR.Runtime_Builtin_Exec_WrongClosure, code.FreeVars.Length);
-            }
 
             Debug.Assert(code.Bytecode is not null);
             var newFrame = frame.CreateExecEvalFrame(FrameType.Exec, globalsDict, localsDict, code, closureTuple);
