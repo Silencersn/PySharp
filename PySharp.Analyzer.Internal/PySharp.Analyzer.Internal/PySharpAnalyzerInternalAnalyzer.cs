@@ -10,6 +10,7 @@ namespace PySharp.Analyzer.Internal
     public class PySharpAnalyzerInternalAnalyzer : DiagnosticAnalyzer
     {
         public const string DiagnosticId = "PYSPI001";
+        public const string DiagnosticId2 = "PYSPI002";
 
         private static readonly DiagnosticDescriptor Rule = new DiagnosticDescriptor(
             DiagnosticId,
@@ -20,8 +21,17 @@ namespace PySharp.Analyzer.Internal
             isEnabledByDefault: true,
             description: "Use 'is' pattern matching (e.g., 'is null', 'is true', 'is 0') instead of '==' or '!=' with constants.");
 
+        private static readonly DiagnosticDescriptor Rule2 = new DiagnosticDescriptor(
+            DiagnosticId2,
+            "Body of control flow statement should be on a new line without braces",
+            "Body of '{0}' should be on a new line without braces: {1}",
+            "PySharp",
+            DiagnosticSeverity.Warning,
+            isEnabledByDefault: true,
+            description: "Control flow statements should have their body on a separate line without braces (e.g., 'if (a)\\n    return b;').");
+
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-            ImmutableArray.Create(Rule);
+            ImmutableArray.Create(Rule, Rule2);
 
         public override void Initialize(AnalysisContext context)
         {
@@ -29,6 +39,11 @@ namespace PySharp.Analyzer.Internal
             context.EnableConcurrentExecution();
 
             context.RegisterSyntaxNodeAction(AnalyzeConstantComparison, SyntaxKind.EqualsExpression, SyntaxKind.NotEqualsExpression);
+            context.RegisterSyntaxNodeAction(AnalyzeControlFlowBody,
+                SyntaxKind.IfStatement,
+                SyntaxKind.ForStatement,
+                SyntaxKind.ForEachStatement,
+                SyntaxKind.WhileStatement);
         }
 
         private static void AnalyzeConstantComparison(SyntaxNodeAnalysisContext context)
@@ -90,6 +105,80 @@ namespace PySharp.Analyzer.Internal
 
             context.ReportDiagnostic(Diagnostic.Create(
                 Rule, binaryExpr.OperatorToken.GetLocation(), newOp, oldOp));
+        }
+
+        private static void AnalyzeControlFlowBody(SyntaxNodeAnalysisContext context)
+        {
+            var (keywordToken, statement) = context.Node switch
+            {
+                IfStatementSyntax s => (s.IfKeyword, (SyntaxNode?)s.Statement),
+                ForStatementSyntax s => (s.ForKeyword, s.Statement),
+                ForEachStatementSyntax s => (s.ForEachKeyword, s.Statement),
+                WhileStatementSyntax s => (s.WhileKeyword, s.Statement),
+                _ => (default, null),
+            };
+
+            if (statement is null)
+                return;
+
+            var keywordLine = keywordToken.GetLocation().GetLineSpan().StartLinePosition.Line;
+
+            if (statement is BlockSyntax block)
+            {
+                // Single-statement block should omit braces: if (a) { return b; } or if (a)\n{\n    return b;\n}
+                // But not when the single statement is itself a control flow statement (nested if/for/etc.),
+                // because removing braces would create ambiguity.
+                if (block.Statements.Count == 1 && !IsControlFlowWithEmbeddedStatement(block.Statements[0]))
+                {
+                    var sourceText = GetSourceSnippet(context.Node);
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        Rule2, block.GetLocation(), GetKeywordText(context.Node), sourceText));
+                }
+                return;
+            }
+
+            // Direct statement on same line as keyword: if (a) return b;
+            var stmtLine = statement.GetLocation().GetLineSpan().StartLinePosition.Line;
+            if (stmtLine == keywordLine)
+            {
+                var sourceText = GetSourceSnippet(context.Node);
+                context.ReportDiagnostic(Diagnostic.Create(
+                    Rule2, statement.GetLocation(), GetKeywordText(context.Node), sourceText));
+            }
+        }
+
+        private static string GetKeywordText(SyntaxNode node)
+        {
+            return node switch
+            {
+                IfStatementSyntax _ => "if",
+                ForStatementSyntax _ => "for",
+                ForEachStatementSyntax _ => "foreach",
+                WhileStatementSyntax _ => "while",
+                _ => "statement",
+            };
+        }
+
+        private static string GetSourceSnippet(SyntaxNode node)
+        {
+            var text = node.ToString();
+            // Truncate long snippets to avoid excessively long messages
+            const int maxLen = 60;
+            if (text.Length > maxLen)
+                text = text.Substring(0, maxLen - 3) + "...";
+            return text;
+        }
+
+        private static bool IsControlFlowWithEmbeddedStatement(StatementSyntax statement)
+        {
+            return statement is IfStatementSyntax
+                || statement is ForStatementSyntax
+                || statement is ForEachStatementSyntax
+                || statement is WhileStatementSyntax
+                || statement is DoStatementSyntax
+                || statement is LockStatementSyntax
+                || statement is UsingStatementSyntax
+                || statement is FixedStatementSyntax;
         }
 
         private static bool IsConstant(ExpressionSyntax expr, SemanticModel semanticModel)
