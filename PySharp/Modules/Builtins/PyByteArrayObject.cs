@@ -204,10 +204,10 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
             if (valuesResult.IsError)
                 return valuesResult;
 
-            if (step != 1 && values.Count != sliceLength)
+            if (step is not 1 && values.Count != sliceLength)
                 return PyResult.ValueError(PySR.Runtime_Sequence_SliceStep_AssignWrongSize, sliceLength, values.Count);
 
-            if (step == 1)
+            if (step is 1)
                 self.ReplaceSliceStep1(start, stop, values);
             else
                 self.ReplaceSliceStepN(start, step, sliceLength, values);
@@ -401,7 +401,7 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
         {
             if (b == wrapper)
                 builder.Append('\\').Append(wrapper);
-            else if (b == '\\')
+            else if (b is (byte)'\\')
                 builder.Append("\\\\");
             else if (b is (byte)'\t')
                 builder.Append("\\t");

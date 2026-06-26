@@ -62,9 +62,9 @@ public sealed class PyMemoryViewObject : PyObject
         mappedIndex = 0;
         if (_released)
             return PyResult.ValueError("operation forbidden on released memoryview object");
-        if (_buffer.NumberDimensions == 0)
+        if (_buffer.NumberDimensions is 0)
             return PyResult.TypeError("0-dim memory has no length");
-        if (_buffer.Shape.Length == 0 || _buffer.Shape[0] == 0)
+        if (_buffer.Shape.Length is 0 || _buffer.Shape[0] is 0)
             return PyResult.IndexError("index out of bounds");
 
         var len = (int)_buffer.Shape[0];
@@ -105,7 +105,7 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
         if (obj is PyMemoryViewObject mv)
         {
             var err = mv.CheckReleased();
-            if (err != null) return err.Value;
+            if (err is not null) return err.Value;
             return new PyMemoryViewObject(mv.Buffer, mv.DataArray);
         }
 
@@ -165,9 +165,9 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
     protected override PyResult Len(PyCallContext context, PyMemoryViewObject self)
     {
         var err = self.CheckReleased();
-        if (err != null) return err.Value;
+        if (err is not null) return err.Value;
 
-        if (self.NumberDimensions == 0)
+        if (self.NumberDimensions is 0)
             return PyResult.TypeError("0-dim memory has no length");
         return PyIntObject.FromInteger((int)self.Shape[0]);
     }
@@ -177,16 +177,16 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
     protected override PyResult GetItem(PyCallContext context, PyMemoryViewObject self, PyObject item)
     {
         var err = self.CheckReleased();
-        if (err != null) return err.Value;
+        if (err is not null) return err.Value;
 
         // Slice → subview
         if (item is PySliceObject slice)
         {
-            if (self.NumberDimensions == 0)
+            if (self.NumberDimensions is 0)
                 return PyResult.TypeError("0-dim memory has no length");
 
             var (start, _, step, length) = slice.Indices((int)self.Shape[0]);
-            if (length == 0)
+            if (length is 0)
                 return new PyMemoryViewObject(new PyBuffer(
                     self.Object, self.ReadOnly, self.ItemSize, self.Format,
                     self.NumberDimensions, [0], [self.Strides[0]]), []);
@@ -213,11 +213,11 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
             return indexResult;
 
         var mapErr = self.TryMapIndex(indexResult.Value.Int32Value, out var idx);
-        if (mapErr != null) return mapErr.Value;
+        if (mapErr is not null) return mapErr.Value;
 
         var byteVal = self.DataSpan[idx * self.ItemSize];
 
-        if (self.Format == "B" || self.Format == "b" || self.Format == "c")
+        if (self.Format is "B" or "b" or "c")
             return PyIntObject.FromInteger(byteVal);
 
         return PyIntObject.FromInteger(byteVal);
@@ -229,7 +229,7 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
         PyObject key, PyObject value)
     {
         var err = self.CheckReleased();
-        if (err != null) return err.Value;
+        if (err is not null) return err.Value;
 
         if (self.ReadOnly)
             return PyResult.TypeError("cannot modify read-only memory");
@@ -242,7 +242,7 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
             return indexResult;
 
         var mapErr = self.TryMapIndex(indexResult.Value.Int32Value, out var idx);
-        if (mapErr != null) return mapErr.Value;
+        if (mapErr is not null) return mapErr.Value;
 
         var valueResult = PySpecialMethods.Index(context, value);
         if (valueResult.IsError)
@@ -259,7 +259,7 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
     protected override PyResult Iter(PyCallContext context, PyMemoryViewObject self)
     {
         var err = self.CheckReleased();
-        if (err != null) return err.Value;
+        if (err is not null) return err.Value;
         return new PyMemoryViewIteratorObject(self);
     }
 
@@ -268,7 +268,7 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
     protected override PyResult Eq(PyCallContext context, PyMemoryViewObject self, PyObject other)
     {
         var err = self.CheckReleased();
-        if (err != null) return err.Value;
+        if (err is not null) return err.Value;
 
         if (other is PyMemoryViewObject otherMv)
         {
@@ -291,13 +291,13 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
     protected override PyResult Hash(PyCallContext context, PyMemoryViewObject self)
     {
         var err = self.CheckReleased();
-        if (err != null) return err.Value;
+        if (err is not null) return err.Value;
 
         if (!self.ReadOnly)
             return PyResult.ValueError("cannot hash writable memoryview object");
-        if (self.Format != "B" && self.Format != "b" && self.Format != "c")
+        if (self.Format is not "B" and not "b" and not "c")
             return PyResult.ValueError("cannot hash memoryview object with format '{0}'", self.Format);
-        if (self.NumberDimensions != 1)
+        if (self.NumberDimensions is not 1)
             return PyResult.ValueError("cannot hash multi-dimensional memoryview object");
 
         unchecked
@@ -314,7 +314,7 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
     protected override PyResult Contains(PyCallContext context, PyMemoryViewObject self, PyObject item)
     {
         var err = self.CheckReleased();
-        if (err != null) return err.Value;
+        if (err is not null) return err.Value;
 
         var indexResult = PySpecialMethods.Index(context, item);
         if (indexResult.IsError)
@@ -331,7 +331,7 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
     private static PyResult ToBytes(PyCallContext context, PyMemoryViewObject self, PyArguments arguments)
     {
         var err = self.CheckReleased();
-        if (err != null) return err.Value;
+        if (err is not null) return err.Value;
         return PyBytesObject.FromBytes(self.DataSpan);
     }
 
@@ -340,7 +340,7 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
     private static PyResult ToList(PyCallContext context, PyMemoryViewObject self, PyArguments arguments)
     {
         var err = self.CheckReleased();
-        if (err != null) return err.Value;
+        if (err is not null) return err.Value;
 
         var list = new PyObject[self.DataSpan.Length];
         for (int i = 0; i < self.DataSpan.Length; i++)
@@ -354,7 +354,7 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
     private static PyResult Hex(PyCallContext context, PyMemoryViewObject self, PyArguments arguments)
     {
         var err = self.CheckReleased();
-        if (err != null) return err.Value;
+        if (err is not null) return err.Value;
 
         var builder = new StringBuilder(self.DataSpan.Length * 2);
         foreach (byte b in self.DataSpan)
@@ -375,7 +375,7 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
     private static PyResult ToReadOnly(PyCallContext context, PyMemoryViewObject self, PyArguments arguments)
     {
         var err = self.CheckReleased();
-        if (err != null) return err.Value;
+        if (err is not null) return err.Value;
 
         var roBuffer = new PyBuffer(
             self.Object, readOnly: true, self.ItemSize, self.Format,
@@ -389,7 +389,7 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
     private static PyResult GetObject(PyCallContext context, PyMemoryViewObject self)
     {
         var err = self.CheckReleased();
-        if (err != null) return err.Value;
+        if (err is not null) return err.Value;
         return self.Object;
     }
 
@@ -397,7 +397,7 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
     private static PyResult GetLength(PyCallContext context, PyMemoryViewObject self)
     {
         var err = self.CheckReleased();
-        if (err != null) return err.Value;
+        if (err is not null) return err.Value;
         return PyIntObject.FromInteger((long)self.Length);
     }
 
@@ -405,7 +405,7 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
     private static PyResult GetReadOnly(PyCallContext context, PyMemoryViewObject self)
     {
         var err = self.CheckReleased();
-        if (err != null) return err.Value;
+        if (err is not null) return err.Value;
         return PyBoolObject.FromBoolean(self.ReadOnly);
     }
 
@@ -413,7 +413,7 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
     private static PyResult GetFormat(PyCallContext context, PyMemoryViewObject self)
     {
         var err = self.CheckReleased();
-        if (err != null) return err.Value;
+        if (err is not null) return err.Value;
         return PyStrObject.FromString(self.Format);
     }
 
@@ -421,7 +421,7 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
     private static PyResult GetItemSize(PyCallContext context, PyMemoryViewObject self)
     {
         var err = self.CheckReleased();
-        if (err != null) return err.Value;
+        if (err is not null) return err.Value;
         return PyIntObject.FromInteger(self.ItemSize);
     }
 
@@ -429,7 +429,7 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
     private static PyResult GetNumberDimensions(PyCallContext context, PyMemoryViewObject self)
     {
         var err = self.CheckReleased();
-        if (err != null) return err.Value;
+        if (err is not null) return err.Value;
         return PyIntObject.FromInteger(self.NumberDimensions);
     }
 
@@ -437,7 +437,7 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
     private static PyResult GetShape(PyCallContext context, PyMemoryViewObject self)
     {
         var err = self.CheckReleased();
-        if (err != null) return err.Value;
+        if (err is not null) return err.Value;
 
         var items = new PyObject[self.Shape.Length];
         for (int i = 0; i < self.Shape.Length; i++)
@@ -449,7 +449,7 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
     private static PyResult GetStrides(PyCallContext context, PyMemoryViewObject self)
     {
         var err = self.CheckReleased();
-        if (err != null) return err.Value;
+        if (err is not null) return err.Value;
 
         var items = new PyObject[self.Strides.Length];
         for (int i = 0; i < self.Strides.Length; i++)
@@ -461,7 +461,7 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
     private static PyResult GetSubOffsets(PyCallContext context, PyMemoryViewObject self)
     {
         var err = self.CheckReleased();
-        if (err != null) return err.Value;
+        if (err is not null) return err.Value;
         return PyTupleObject.CreateTuple([]);
     }
 
@@ -469,7 +469,7 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
     private static PyResult GetCContiguous(PyCallContext context, PyMemoryViewObject self)
     {
         var err = self.CheckReleased();
-        if (err != null) return err.Value;
+        if (err is not null) return err.Value;
         return PyBoolObject.FromBoolean(self.CContiguous);
     }
 
@@ -477,7 +477,7 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
     private static PyResult GetFContiguous(PyCallContext context, PyMemoryViewObject self)
     {
         var err = self.CheckReleased();
-        if (err != null) return err.Value;
+        if (err is not null) return err.Value;
         return PyBoolObject.FromBoolean(self.FContiguous);
     }
 
@@ -485,7 +485,7 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
     private static PyResult GetContiguous(PyCallContext context, PyMemoryViewObject self)
     {
         var err = self.CheckReleased();
-        if (err != null) return err.Value;
+        if (err is not null) return err.Value;
         return PyBoolObject.FromBoolean(self.Contiguous);
     }
 }

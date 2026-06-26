@@ -191,7 +191,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 sb.Append(newStr.Value);
                 charsAppended++;
             }
-            if (count == 0)
+            if (count is 0)
             {
                 sb.Append(self.Value.AsSpan(charsAppended));
             }
@@ -273,9 +273,9 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters]
     private static PyResult Capitalize(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (self.Value.Length == 0) return self;
+        if (self.Value.Length is 0) return self;
         var first = char.ToUpperInvariant(self.Value[0]);
-        if (self.Value.Length == 1) return PyStrObject.FromString(first.ToString());
+        if (self.Value.Length is 1) return PyStrObject.FromString(first.ToString());
         return PyStrObject.FromString(first + self.Value[1..].ToLowerInvariant());
     }
 
@@ -298,7 +298,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         string fillchar = " ";
         if (arguments[1] is PyStrObject fillStr)
         {
-            if (fillStr.Value.Length != 1) return PyResult.TypeError("fillchar must be a string of length 1");
+            if (fillStr.Value.Length is not 1) return PyResult.TypeError("fillchar must be a string of length 1");
             fillchar = fillStr.Value;
         }
         else if (arguments[1] is not PyNoneObject)
@@ -342,7 +342,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters]
     private static PyResult IsAlnum(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (self.Value.Length == 0) return PyBoolObject.False;
+        if (self.Value.Length is 0) return PyBoolObject.False;
         foreach (char c in self.Value)
             if (!char.IsLetterOrDigit(c)) return PyBoolObject.False;
         return PyBoolObject.True;
@@ -353,7 +353,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters]
     private static PyResult IsAlpha(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (self.Value.Length == 0) return PyBoolObject.False;
+        if (self.Value.Length is 0) return PyBoolObject.False;
         foreach (char c in self.Value)
             if (!char.IsLetter(c)) return PyBoolObject.False;
         return PyBoolObject.True;
@@ -364,7 +364,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters]
     private static PyResult IsDigit(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (self.Value.Length == 0) return PyBoolObject.False;
+        if (self.Value.Length is 0) return PyBoolObject.False;
         foreach (char c in self.Value)
             if (!char.IsDigit(c)) return PyBoolObject.False;
         return PyBoolObject.True;
@@ -375,7 +375,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters]
     private static PyResult IsLower(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (self.Value.Length == 0) return PyBoolObject.False;
+        if (self.Value.Length is 0) return PyBoolObject.False;
         bool hasCased = false;
         foreach (char c in self.Value)
         {
@@ -390,7 +390,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters]
     private static PyResult IsUpper(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (self.Value.Length == 0) return PyBoolObject.False;
+        if (self.Value.Length is 0) return PyBoolObject.False;
         bool hasCased = false;
         foreach (char c in self.Value)
         {
@@ -405,7 +405,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters]
     private static PyResult Title(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (self.Value.Length == 0) return self;
+        if (self.Value.Length is 0) return self;
         var sb = new StringBuilder(self.Value.Length);
         bool newWord = true;
         foreach (char c in self.Value)
@@ -448,7 +448,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         int width = widthObj.Int32Value;
         if (width <= self.Value.Length) return self;
 
-        if (self.Value.Length > 0 && (self.Value[0] == '+' || self.Value[0] == '-'))
+        if (self.Value.Length > 0 && (self.Value[0] is '+' || self.Value[0] is '-'))
         {
             return PyStrObject.FromString(self.Value[0] + self.Value[1..].PadLeft(width - 1, '0'));
         }

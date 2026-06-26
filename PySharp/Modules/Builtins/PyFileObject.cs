@@ -66,7 +66,7 @@ public sealed class PyFileObject : PyObject
             string result;
             if (size < 0)
                 result = _reader.ReadToEnd();
-            else if (size == 0)
+            else if (size is 0)
                 result = string.Empty;
             else
             {
@@ -84,7 +84,7 @@ public sealed class PyFileObject : PyObject
                 _stream.CopyTo(ms);
                 return PyBytesObject.FromBytes(ms.ToArray());
             }
-            else if (size == 0)
+            else if (size is 0)
             {
                 return PyBytesObject.FromBytes([]);
             }
@@ -188,10 +188,10 @@ public sealed class PyFileObject : PyObject
             {
                 lineBuilder.Append((char)ch);
                 charsRead++;
-                if (ch == '\n')
+                if (ch is '\n')
                     break;
             }
-            return charsRead == 0
+            return charsRead is 0
                 ? (PyResult)PyResult.StopIteration()
                 : (PyResult)PyStrObject.FromString(lineBuilder.ToString());
         }
@@ -204,10 +204,10 @@ public sealed class PyFileObject : PyObject
             {
                 ms.WriteByte((byte)b);
                 total++;
-                if (b == '\n')
+                if (b is '\n')
                     break;
             }
-            return total == 0
+            return total is 0
                 ? (PyResult)PyResult.StopIteration()
                 : (PyResult)PyBytesObject.FromBytes(ms.ToArray());
         }

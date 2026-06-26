@@ -27,7 +27,7 @@ internal static class ArrayStackHelper
 
         if (array.Length == length)
         {
-            int newSize = length == 0 ? 4 : length * 2;
+            int newSize = length is 0 ? 4 : length * 2;
             T[] newArray = ArrayPool<T>.Shared.Rent(newSize);
             Array.Copy(array, newArray, length);
             ArrayPool<T>.Shared.Return(array, clearArray: RuntimeHelpers.IsReferenceOrContainsReferences<T>());

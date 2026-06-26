@@ -34,7 +34,7 @@ public class PyComplexObject : PyObject
             var builder = new System.Text.StringBuilder(value.Length);
             foreach (var c in value)
             {
-                if (c != '_')
+                if (c is not '_')
                     builder.Append(c);
             }
             var imag = double.Parse(builder.ToString());
@@ -64,19 +64,19 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
 
     protected override PyResult Bool(PyCallContext context, PyComplexObject self)
     {
-        return PyBoolObject.FromBoolean(self.Value.Real != 0 || self.Value.Imaginary != 0);
+        return PyBoolObject.FromBoolean(self.Value.Real is not 0 || self.Value.Imaginary is not 0);
     }
 
     protected override PyResult Int(PyCallContext context, PyComplexObject self)
     {
-        if (self.Value.Imaginary != 0)
+        if (self.Value.Imaginary is not 0)
             return PyResult.TypeError(null);
         return PyIntObject.FromInteger((BigInteger)self.Value.Real);
     }
 
     protected override PyResult Float(PyCallContext context, PyComplexObject self)
     {
-        if (self.Value.Imaginary != 0)
+        if (self.Value.Imaginary is not 0)
             return PyResult.TypeError(null);
         return PyFloatObject.FromDouble(self.Value.Real);
     }
@@ -122,13 +122,13 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
         if (other is PyIntObject i)
         {
             double v = (double)i.Value;
-            if (v == 0)
+            if (v is 0)
                 return PyResult.ZeroDivisionError();
             return PyComplexObject.FromComplex(self.Value / new Complex(v, 0));
         }
         if (other is PyFloatObject f)
         {
-            if (f.Value == 0)
+            if (f.Value is 0)
                 return PyResult.ZeroDivisionError();
             return PyComplexObject.FromComplex(self.Value / new Complex(f.Value, 0));
         }

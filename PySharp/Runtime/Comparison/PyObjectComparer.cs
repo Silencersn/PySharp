@@ -144,7 +144,7 @@ public static class ComparisonExtensions
                 return 1;
 
             var result = comparer.Compare(xe.Current, ye.Current);
-            if (result != 0)
+            if (result is not 0)
                 return result;
         }
     }

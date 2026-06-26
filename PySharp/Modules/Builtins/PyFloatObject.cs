@@ -285,7 +285,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
         var formatType = spec.Type ?? 'g';
         int precision = spec.Precision ?? 6;
 
-        if (spec.CoercePositiveZero && val == 0.0 && double.IsNegative(val))
+        if (spec.CoercePositiveZero && val is 0.0 && double.IsNegative(val))
         {
             val = 0.0;
         }
@@ -311,7 +311,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
                     break;
                 case 'e':
                     text = absValue.ToString($"E{precision}", CultureInfo.InvariantCulture);
-                    if (formatType == 'e') text = text.ToLowerInvariant();
+                    if (formatType is 'e') text = text.ToLowerInvariant();
                     break;
                 case 'g':
                 case 'n':
@@ -325,7 +325,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
                             text = text.TrimEnd('0').TrimEnd('.');
                         }
 
-                        if (text == "0") text = "0.0";
+                        if (text is "0") text = "0.0";
                     }
 
                     if (spec.WidthGrouping is '_')
@@ -348,7 +348,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
                     int eIndex = text.IndexOfAny(['e', 'E']);
                     text = text.Insert(eIndex, ".");
                 }
-                else if (formatType != '%')
+                else if (formatType is not '%')
                 {
                     text += ".";
                 }

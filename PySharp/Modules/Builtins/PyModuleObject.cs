@@ -57,7 +57,7 @@ public sealed partial class PyModuleObjectType : PyTypeObject<PyModuleObject>
     [PyProperty("__dict__")]
     private static PyResult Get_Dict(PyCallContext context, PyModuleObject self)
     {
-        return PyDictObject.CreateProxy(new DictAdapter(self.PyAttributes));
+        return PyDictObject.CreateProxy(new DictAdapter(self.PyAttributes!));
     }
 
     protected override PyResult GetAttr(PyCallContext context, PyModuleObject self, PyObject item)

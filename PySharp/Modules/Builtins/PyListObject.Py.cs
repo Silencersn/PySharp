@@ -215,10 +215,10 @@ partial class PyListObject
 
             var values = iterableResult.Value._list;
 
-            if (step != 1 && values.Count != sliceLength)
+            if (step is not 1 && values.Count != sliceLength)
                 return PyResult.ValueError(PySR.Runtime_Sequence_SliceStep_AssignWrongSize, sliceLength, values.Count);
 
-            if (step == 1)
+            if (step is 1)
             {
                 int lower = int.Min(start, stop);
                 int upper = int.Max(start, stop);
@@ -251,7 +251,7 @@ partial class PyListObject
         if (key is PySliceObject slice)
         {
             var (start, stop, step, sliceLength) = slice.Indices(_list.Count);
-            if (step == 1)
+            if (step is 1)
             {
                 int lower = int.Min(start, stop);
                 int upper = int.Max(start, stop);
@@ -259,7 +259,7 @@ partial class PyListObject
             }
             else
             {
-                if (sliceLength == 0) return PyNoneObject.None;
+                if (sliceLength is 0) return PyNoneObject.None;
 
                 var indicesToDelete = new List<int>(sliceLength);
                 for (int i = 0, idx = start; i < sliceLength; i++, idx += step)

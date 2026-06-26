@@ -39,8 +39,8 @@ partial class PyTypeObject
         if (name is "__dict__")
         {
             if (self is PyObjectManagedDict managed)
-                return PyDictObject.CreateProxy(new DictAdapter(managed.PyAttributes));
-            return PyDictObject.CreateProxy(new DictAdapter(self.PyAttributes));
+                return PyDictObject.CreateProxy(new DictAdapter(managed.PyAttributes!));
+            return PyDictObject.CreateProxy(new DictAdapter(self.PyAttributes!));
         }
 
         if (TryLookupAttrInMro(type, name, out var attr))
@@ -124,8 +124,8 @@ partial class PyTypeObject
         if (name is "__dict__")
         {
             if (self is PyObjectManagedDict managed)
-                return PyDictObject.CreateProxy(new DictAdapter(managed.PyAttributes));
-            return PyDictObject.CreateProxy(new DictAdapter(self.PyAttributes));
+                return PyDictObject.CreateProxy(new DictAdapter(managed.PyAttributes!));
+            return PyDictObject.CreateProxy(new DictAdapter(self.PyAttributes!));
         }
 
         if (TryLookupAttrInMro(metaType, name, out var metaAttr))
