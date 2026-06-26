@@ -35,76 +35,66 @@ namespace PySharp.Analyzer.Internal
         {
             var binaryExpr = (BinaryExpressionSyntax)context.Node;
 
-            // Find the constant side: literal or cast-expression wrapping a literal
-            var (constantExpr, constantText) = GetConstantExpression(binaryExpr.Left, binaryExpr.Right);
-            if (constantExpr == null)
+            // Find which side is a compile-time constant
+            var isLeftConst = IsConstant(binaryExpr.Left, context.SemanticModel);
+            var isRightConst = IsConstant(binaryExpr.Right, context.SemanticModel);
+
+            ExpressionSyntax? constExpr;
+            ExpressionSyntax targetExpr;
+
+            if (isLeftConst)
+            {
+                constExpr = binaryExpr.Left;
+                targetExpr = binaryExpr.Right;
+            }
+            else if (isRightConst)
+            {
+                constExpr = binaryExpr.Right;
+                targetExpr = binaryExpr.Left;
+            }
+            else
+            {
+                return;
+            }
+
+            // Check the target type supports constant patterns
+            var type = context.SemanticModel.GetTypeInfo(targetExpr).Type;
+            if (type is null)
                 return;
 
-            // The other side is the non-constant expression for type checking
-            var nonConstantExpr = ReferenceEquals(constantExpr, binaryExpr.Left)
-                ? binaryExpr.Right
-                : binaryExpr.Left;
-
-            var typeInfo = context.SemanticModel.GetTypeInfo(nonConstantExpr);
-            var type = typeInfo.Type;
-
-            if (type == null)
-                return;
-
-            // Unwrap nullable value types
-            var underlyingType = type.OriginalDefinition?.SpecialType == SpecialType.System_Nullable_T
+            // Unwrap Nullable<T>
+            var underlying = type.OriginalDefinition?.SpecialType is SpecialType.System_Nullable_T
                 ? ((INamedTypeSymbol)type).TypeArguments[0]
                 : type;
 
-            bool supportsConstantPattern = underlyingType.TypeKind == TypeKind.Enum
-                || IsSpecialTypeWithConstantSupport(underlyingType.SpecialType);
-
-            if (!supportsConstantPattern)
+            if (underlying.TypeKind is not TypeKind.Enum && !IsSpecialTypeWithConstantSupport(underlying.SpecialType))
                 return;
 
-            // For bare literals (not cast expressions), validate type compatibility.
-            // Cast expressions like (char)0 are already type-safe by construction.
-            if (constantExpr is LiteralExpressionSyntax bareLiteral && bareLiteral.Kind() != SyntaxKind.NullLiteralExpression)
+            // For bare non-null literals, verify the literal type is compatible with the target type
+            if (constExpr is LiteralExpressionSyntax bareLiteral
+                && bareLiteral.Kind() is not SyntaxKind.NullLiteralExpression)
             {
-                var literalTypeInfo = context.SemanticModel.GetTypeInfo(bareLiteral);
-                var literalType = literalTypeInfo.Type;
-                if (literalType != null && !IsIntegralType(underlyingType.SpecialType))
+                var litType = context.SemanticModel.GetTypeInfo(bareLiteral).Type;
+                if (litType is not null && !IsIntegralType(underlying.SpecialType))
                 {
-                    var conversion = context.Compilation.ClassifyConversion(literalType, underlyingType);
+                    var conversion = context.Compilation.ClassifyConversion(litType, underlying);
                     if (!conversion.IsImplicit && !conversion.IsIdentity)
                         return;
                 }
             }
 
+            var constText = constExpr.ToString();
             var isEquals = binaryExpr.IsKind(SyntaxKind.EqualsExpression);
-            var oldOp = isEquals ? $"== {constantText}" : $"!= {constantText}";
-            var newOp = isEquals ? $"is {constantText}" : $"is not {constantText}";
+            var oldOp = isEquals ? $"== {constText}" : $"!= {constText}";
+            var newOp = isEquals ? $"is {constText}" : $"is not {constText}";
 
-            var diagnostic = Diagnostic.Create(
-                Rule,
-                binaryExpr.OperatorToken.GetLocation(),
-                newOp,
-                oldOp);
-
-            context.ReportDiagnostic(diagnostic);
+            context.ReportDiagnostic(Diagnostic.Create(
+                Rule, binaryExpr.OperatorToken.GetLocation(), newOp, oldOp));
         }
 
-        private static (ExpressionSyntax? expression, string text) GetConstantExpression(
-            ExpressionSyntax left, ExpressionSyntax right)
+        private static bool IsConstant(ExpressionSyntax expr, SemanticModel semanticModel)
         {
-            // Direct literal: x == 0, x == null, x == true
-            if (left is LiteralExpressionSyntax lit)
-                return (left, lit.Token.Text);
-            if (right is LiteralExpressionSyntax lit2)
-                return (right, lit2.Token.Text);
-
-            // Cast expression wrapping a literal: x == (char)0, x == (int)1
-            if (left is CastExpressionSyntax castLeft && castLeft.Expression is LiteralExpressionSyntax)
-                return (left, castLeft.ToString());
-            if (right is CastExpressionSyntax castRight && castRight.Expression is LiteralExpressionSyntax)
-                return (right, castRight.ToString());
-
-            return (null, "");
+            return semanticModel.GetConstantValue(expr).HasValue;
         }
 
         private static bool IsIntegralType(SpecialType specialType)

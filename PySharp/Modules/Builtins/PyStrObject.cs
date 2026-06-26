@@ -203,7 +203,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         while (count > 0)
         {
             int idx = resObj.IndexOf(oldStr.Value, startIndex);
-            if (idx == -1) break;
+            if (idx is -1) break;
             resObj = resObj.Remove(idx, oldStr.Value.Length).Insert(idx, newStr.Value);
             startIndex = idx + newStr.Value.Length;
             count--;
@@ -329,7 +329,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
         int count = 0;
         int index = 0;
-        while ((index = self.Value.IndexOf(subStr.Value, index)) != -1)
+        while ((index = self.Value.IndexOf(subStr.Value, index)) is not -1)
         {
             count++;
             index += subStr.Value.Length;

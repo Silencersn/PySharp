@@ -33,7 +33,7 @@ internal sealed partial class PyCallContextFrameState : IDisposable
 
     public void EnterFrame(ref PyInternalFrame frame)
     {
-        if (_frameCount == MaxRecursionDepth || (_frameCount - _statesCount > MaxFramesStatesDiff))
+        if (_frameCount is MaxRecursionDepth || (_frameCount - _statesCount > MaxFramesStatesDiff))
             // if the diff is large, that means few calls are inlined (vm states are stored at stack)
             // that may lead to stack overflow on .NET
             throw new PyRuntimeException(PyRecursionErrorObjectType.Shared.Create(PyStrObject.FromString(PySR.Runtime_Recursion_MaxRecursionDepthExceeded)));

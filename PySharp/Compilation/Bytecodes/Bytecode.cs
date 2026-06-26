@@ -109,7 +109,7 @@ public sealed class Bytecode
                     {
                         int nextTarget = instruction.Arg;
 
-                        if (nextTarget < instructions.Length && stackSizes[nextTarget] == -1)
+                        if (nextTarget < instructions.Length && stackSizes[nextTarget] is -1)
                         {
                             stackSizes[nextTarget] = _currentStackSize;
                             targets.Enqueue(nextTarget);
