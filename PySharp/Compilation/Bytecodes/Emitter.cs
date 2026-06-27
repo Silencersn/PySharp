@@ -8,22 +8,22 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Compilation.Bytecodes;
 
-internal sealed partial class BytecodeCompiler
+internal sealed partial class Emitter
 {
-    public static Bytecode Compile(PyCallContext context, SemanticModel model, CodeSource source, bool onlyAsName = false)
+    public static Bytecode Emit(PyCallContext context, SemanticModel model, CodeSource source, bool onlyAsName = false)
     {
-        var compiler = new BytecodeCompiler(context, model, source) { OnlyAsName = onlyAsName };
-        compiler.Compile();
-        return compiler.Generator.ToBytecode();
+        var emitter = new Emitter(context, model, source) { OnlyAsName = onlyAsName };
+        emitter.Emit();
+        return emitter.Builder.ToBytecode();
     }
 
     private readonly PyCallContext _context;
     private readonly SemanticModel _model;
     private readonly CodeSource _source;
 
-    internal BytecodeCompiler(PyCallContext context, SemanticModel model, CodeSource source)
+    internal Emitter(PyCallContext context, SemanticModel model, CodeSource source)
     {
-        Generator = BytecodeGenerator.Create(source);
+        Builder = BytecodeBuilder.Create(source);
         _context = context;
         _model = model;
         _source = source;
@@ -32,7 +32,7 @@ internal sealed partial class BytecodeCompiler
         VariableScope = scope;
     }
 
-    private BytecodeGenerator Generator { get; set; }
+    private BytecodeBuilder Builder { get; set; }
     private SemanticModel Model => _model;
     private int OptimizationLevel => _context.PyEnvironment.OptimizationLevel;
     private VariableScope VariableScope { get; set; }
@@ -40,40 +40,40 @@ internal sealed partial class BytecodeCompiler
     private bool IsInteractive { get; set; }
     private bool OnlyAsName { get; set; }
 
-    public void Compile()
+    public void Emit()
     {
-        CompileMod(Model.Root);
+        EmitMod(Model.Root);
     }
 
-    private void CompileMod(AstModNode node)
+    private void EmitMod(AstModNode node)
     {
         Debug.Assert(VariableScope is RootVariableScope);
-        Generator.PushMetaInfo(node.MetaInfo);
+        Builder.PushMetaInfo(node.MetaInfo);
         switch (node)
         {
             case ModuleNode n:
                 if (TryGetDoc(n.Body, out var doc))
                 {
-                    Generator.Emit(OpCode.LoadConst, doc);
+                    Builder.Emit(OpCode.LoadConst, doc);
                     StoreName(PySpecialNames.Doc);
                 }
-                CompileStmts(n.Body);
+                EmitStmts(n.Body);
                 break;
 
             case ExpressionNode n:
                 LoadExpr(n.Body);
-                Generator.Emit(OpCode.ReturnValue);
+                Builder.Emit(OpCode.ReturnValue);
                 break;
 
             case InteractiveNode n:
                 IsInteractive = true;
-                CompileStmts(n.Body);
+                EmitStmts(n.Body);
                 break;
 
             default:
                 throw new NotImplementedException();
         }
-        Generator.PopMetaInfo();
+        Builder.PopMetaInfo();
     }
 
     private static bool TryGetDoc(IReadOnlyList<AstStmtNode> stmtNodes, [NotNullWhen(true)] out PyStrObject? doc)

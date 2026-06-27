@@ -7,7 +7,7 @@ using System.Diagnostics;
 
 namespace PySharp.Compilation.Bytecodes;
 
-internal abstract class BytecodeGenerator
+internal abstract class BytecodeBuilder
 {
     internal abstract Bytecode ToBytecode();
     internal abstract void PushMetaInfo(ValueCodeMetaInfo info);
@@ -20,13 +20,13 @@ internal abstract class BytecodeGenerator
     public abstract Label DefineLabel();
     public abstract void MarkLabel(Label label);
 
-    public static BytecodeGenerator Create(CodeSource source)
+    public static BytecodeBuilder Create(CodeSource source)
     {
-        return new DefaultBytecodeGenerator(source);
+        return new DefaultBytecodeBuilder(source);
     }
 }
 
-internal sealed class DefaultBytecodeGenerator : BytecodeGenerator
+internal sealed class DefaultBytecodeBuilder : BytecodeBuilder
 {
     private readonly ImmutableArray<Instruction>.Builder _instructions = ImmutableArray.CreateBuilder<Instruction>();
     private readonly List<int> _labelOffsets = [];
@@ -37,7 +37,7 @@ internal sealed class DefaultBytecodeGenerator : BytecodeGenerator
     private readonly CodeSource _source;
     private Instruction _lastInstruction;
 
-    internal DefaultBytecodeGenerator(CodeSource source)
+    internal DefaultBytecodeBuilder(CodeSource source)
     {
         _source = source;
         _lineTableBuilder = new LineTableBuilder(_source);
