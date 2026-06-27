@@ -100,8 +100,10 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
         var builder = new StringBuilder("b").Append(wrapper);
         foreach (byte b in self.AsSpan())
         {
-            if (b is (byte)'\'')
-                builder.Append('\\').Append(wrapper);
+            if (b is (byte)'\'' && wrapper is '\'')
+                builder.Append("\\'");
+            else if (b is (byte)'"' && wrapper is '"')
+                builder.Append("\\\"");
             else if (b is (byte)'\\')
                 builder.Append("\\\\");
             else if (b is (byte)'\t')
