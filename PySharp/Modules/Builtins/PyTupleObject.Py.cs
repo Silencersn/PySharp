@@ -61,14 +61,14 @@ partial class PyTupleObject
     }
 
     [AIGenerated]
-    public int PyIndex(PyObject item, int start, int end)
+    public int PyIndex(PyCallContext context, PyObject item, int start, int end)
     {
         start = Utils.MapIndex(start, Count);
         end = Utils.MapIndex(end, Count);
 
         for (int i = int.Max(0, start); i < int.Min(end, Count); i++)
         {
-            if (PyObjectComparer.Default.Equals(_array[i], item))
+            if (context.Comparer.Equals(_array[i], item))
                 return i;
         }
 
@@ -76,24 +76,24 @@ partial class PyTupleObject
     }
 
     [AIGenerated]
-    public int PyIndex(PyObject item, int start)
+    public int PyIndex(PyCallContext context, PyObject item, int start)
     {
-        return PyIndex(item, start, Count);
+        return PyIndex(context, item, start, Count);
     }
 
     [AIGenerated]
-    public int PyIndex(PyObject item)
+    public int PyIndex(PyCallContext context, PyObject item)
     {
-        return PyIndex(item, 0, Count);
+        return PyIndex(context, item, 0, Count);
     }
 
     [AIGenerated]
-    public int PyCount(PyObject item)
+    public int PyCount(PyCallContext context, PyObject item)
     {
         var count = 0;
         foreach (var x in _array)
         {
-            if (PyObjectComparer.Default.Equals(x, item))
+            if (context.Comparer.Equals(x, item))
                 count++;
         }
         return count;

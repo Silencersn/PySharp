@@ -8,7 +8,7 @@ partial class PyFrozenSetObject
 {
     internal PyResult PyDifference(PyCallContext context, IReadOnlyList<PyObject> others)
     {
-        var result = new HashSet<PyObject>(_set, PyObjectComparer.Default);
+        var result = new HashSet<PyObject>(_set, context.Comparer);
         foreach (var other in others)
         {
             var iterable = PyUtils.IterableToList(context, other);
@@ -21,7 +21,7 @@ partial class PyFrozenSetObject
 
     internal PyResult PyIntersection(PyCallContext context, IReadOnlyList<PyObject> others)
     {
-        var result = new HashSet<PyObject>(_set, PyObjectComparer.Default);
+        var result = new HashSet<PyObject>(_set, context.Comparer);
         foreach (var other in others)
         {
             var iterable = PyUtils.IterableToList(context, other);
@@ -61,7 +61,7 @@ partial class PyFrozenSetObject
 
     internal PyResult PySymmetricDifference(PyCallContext context, PyObject other)
     {
-        var result = new HashSet<PyObject>(_set, PyObjectComparer.Default);
+        var result = new HashSet<PyObject>(_set, context.Comparer);
         var iterable = PyUtils.IterableToList(context, other);
         if (iterable.IsError)
             return iterable;
@@ -71,7 +71,7 @@ partial class PyFrozenSetObject
 
     internal PyResult PyUnion(PyCallContext context, IReadOnlyList<PyObject> others)
     {
-        var result = new HashSet<PyObject>(_set, PyObjectComparer.Default);
+        var result = new HashSet<PyObject>(_set, context.Comparer);
         foreach (var other in others)
         {
             var iterable = PyUtils.IterableToList(context, other);

@@ -123,7 +123,7 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
     {
         if (other is not PyTupleObject otherTuple)
             return base.Eq(context, self, other);
-        return PyBoolObject.FromBoolean(self.SequenceEqual(otherTuple, PyObjectComparer.Default));
+        return PyBoolObject.FromBoolean(self.SequenceEqual(otherTuple, context.Comparer));
     }
 
     [AIGenerated]
@@ -131,7 +131,7 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
     {
         if (other is not PyTupleObject otherTuple)
             return base.Lt(context, self, other);
-        return PyBoolObject.FromBoolean(self.SequenceCompare(otherTuple, PyObjectComparer.Default) < 0);
+        return PyBoolObject.FromBoolean(self.SequenceCompare(otherTuple, context.Comparer) < 0);
     }
 
     [AIGenerated]
@@ -139,7 +139,7 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
     {
         if (other is not PyTupleObject otherTuple)
             return base.Le(context, self, other);
-        return PyBoolObject.FromBoolean(self.SequenceCompare(otherTuple, PyObjectComparer.Default) <= 0);
+        return PyBoolObject.FromBoolean(self.SequenceCompare(otherTuple, context.Comparer) <= 0);
     }
 
     [AIGenerated]
@@ -147,7 +147,7 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
     {
         if (other is not PyTupleObject otherTuple)
             return base.Gt(context, self, other);
-        return PyBoolObject.FromBoolean(self.SequenceCompare(otherTuple, PyObjectComparer.Default) > 0);
+        return PyBoolObject.FromBoolean(self.SequenceCompare(otherTuple, context.Comparer) > 0);
     }
 
     [AIGenerated]
@@ -155,7 +155,7 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
     {
         if (other is not PyTupleObject otherTuple)
             return base.Ge(context, self, other);
-        return PyBoolObject.FromBoolean(self.SequenceCompare(otherTuple, PyObjectComparer.Default) >= 0);
+        return PyBoolObject.FromBoolean(self.SequenceCompare(otherTuple, context.Comparer) >= 0);
     }
 
     [AIGenerated]
@@ -190,7 +190,7 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
     [AIGenerated]
     private static PyResult Index_1(PyCallContext context, PyTupleObject self, PyArguments arguments)
     {
-        var index = self.PyIndex(arguments[0]);
+        var index = self.PyIndex(context, arguments[0]);
         if (index is -1)
             return PyResult.ValueError(PySR.Runtime_Tuple_ItemNotFound, "index");
         return PyIntObject.FromInteger(index);
@@ -205,7 +205,7 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
         if (startResult.IsError)
             return startResult;
 
-        var index = self.PyIndex(arguments[0], startResult.Value.Int32Value);
+        var index = self.PyIndex(context, arguments[0], startResult.Value.Int32Value);
         if (index is -1)
             return PyResult.ValueError(PySR.Runtime_Tuple_ItemNotFound, "index");
         return PyIntObject.FromInteger(index);
@@ -223,7 +223,7 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
         if (endResult.IsError)
             return endResult;
 
-        var index = self.PyIndex(arguments[0], startResult.Value.Int32Value, endResult.Value.Int32Value);
+        var index = self.PyIndex(context, arguments[0], startResult.Value.Int32Value, endResult.Value.Int32Value);
         if (index is -1)
             return PyResult.ValueError(PySR.Runtime_Tuple_ItemNotFound, "index");
         return PyIntObject.FromInteger(index);
@@ -234,6 +234,6 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
     [AIGenerated]
     private static PyResult Count(PyCallContext context, PyTupleObject self, PyArguments arguments)
     {
-        return PyIntObject.FromInteger(self.PyCount(arguments[0]));
+        return PyIntObject.FromInteger(self.PyCount(context, arguments[0]));
     }
 }

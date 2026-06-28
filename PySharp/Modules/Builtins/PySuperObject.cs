@@ -115,7 +115,7 @@ public sealed partial class PySuperObjectType : PyTypeObject<PySuperObject>
         var iter = startType.MRO.GetEnumerator();
         while (iter.MoveNext())
         {
-            if (PyObjectComparer.Default.Equals(iter.Current, self._type))
+            if (context.Comparer.Equals(iter.Current, self._type))
                 break;
         }
         while (iter.MoveNext())
