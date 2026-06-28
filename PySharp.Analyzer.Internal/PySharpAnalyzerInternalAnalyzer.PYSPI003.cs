@@ -70,7 +70,7 @@ partial class PySharpAnalyzerInternalAnalyzer
 
         // Collect all branch bodies (if + else-if + else)
         var branches = new List<SyntaxNode?>();
-        for (var current = ifStmt; current is not null; )
+        for (var current = ifStmt; current is not null;)
         {
             branches.Add(current.Statement);
             if (current.Else?.Statement is IfStatementSyntax next)
