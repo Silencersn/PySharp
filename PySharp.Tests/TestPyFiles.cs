@@ -15,6 +15,15 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void Test_Interpreter()
+    {
+        Assert.ThrowsExactly<PyRuntimeException>(() =>
+        {
+            PyInterpreter.RunCode("raise TypeError");
+        });
+    }
+
+    [TestMethod]
     public void TestClassSimple()
     {
         var module = RunModule("test_class_simple.py");
