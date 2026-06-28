@@ -67,8 +67,8 @@ partial class PySharpAnalyzer
         // Get the method symbol
         IMethodSymbol? methodSymbol = enclosingDeclaration switch
         {
-            MethodDeclarationSyntax m => context.SemanticModel.GetDeclaredSymbol(m, context.CancellationToken) as IMethodSymbol,
-            ConstructorDeclarationSyntax c => context.SemanticModel.GetDeclaredSymbol(c, context.CancellationToken) as IMethodSymbol,
+            MethodDeclarationSyntax m => context.SemanticModel.GetDeclaredSymbol(m, context.CancellationToken),
+            ConstructorDeclarationSyntax c => context.SemanticModel.GetDeclaredSymbol(c, context.CancellationToken),
             LocalFunctionStatementSyntax lf => context.SemanticModel.GetDeclaredSymbol(lf, context.CancellationToken) as IMethodSymbol,
             _ => null
         };

@@ -416,7 +416,7 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
         var err = self.CheckReleased();
         if (err is not null)
             return err.Value;
-        return PyIntObject.FromInteger((long)self.Length);
+        return PyIntObject.FromInteger(self.Length);
     }
 
     [PyProperty("readonly")]
@@ -464,7 +464,7 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
 
         var items = new PyObject[self.Shape.Length];
         for (int i = 0; i < self.Shape.Length; i++)
-            items[i] = PyIntObject.FromInteger((long)self.Shape[i]);
+            items[i] = PyIntObject.FromInteger(self.Shape[i]);
         return PyTupleObject.CreateTuple(items);
     }
 
@@ -477,7 +477,7 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
 
         var items = new PyObject[self.Strides.Length];
         for (int i = 0; i < self.Strides.Length; i++)
-            items[i] = PyIntObject.FromInteger((long)self.Strides[i]);
+            items[i] = PyIntObject.FromInteger(self.Strides[i]);
         return PyTupleObject.CreateTuple(items);
     }
 

@@ -1,6 +1,5 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
-using PySharp.Runtime.Comparison;
 using PySharp.Runtime.PyAttributes;
 using System.Diagnostics;
 
