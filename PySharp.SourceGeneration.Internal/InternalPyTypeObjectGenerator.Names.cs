@@ -22,7 +22,8 @@ partial class InternalPyTypeObjectGenerator
                 .ForEach(methods, static (builder, method) =>
                 {
                     var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name == "PySpecialMethodAttribute");
-                    var specialName = (string)attributeData.ConstructorArguments[0].Value!;
+                    var specialName = attributeData.GetConstructorArgument<string>(0);
+                    if (specialName is null) return;
                     builder.AppendLine($"public const string {method.Name} = \"{specialName}\";");
                 })
                 .AppendLine()

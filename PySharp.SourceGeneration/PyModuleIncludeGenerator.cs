@@ -44,11 +44,7 @@ public class PyModuleIncludeGenerator : IIncrementalGenerator
 
     private static ModuleIncludeAttrInfo? ExtractIncludeInfo(AttributeData attr)
     {
-        var args = attr.ConstructorArguments;
-        if (args.Length < 2)
-            return null;
-
-        var schemeOrdinal = (int)args[0].Value!;
+        var schemeOrdinal = attr.GetConstructorArgument(0, -1);
         if (schemeOrdinal < 0 || schemeOrdinal > 2)
             return null;
 
@@ -56,7 +52,9 @@ public class PyModuleIncludeGenerator : IIncrementalGenerator
         {
             case 0: // StaticMembers(Type sourceType)
             {
-                var sourceType = (ITypeSymbol)args[1].Value!;
+                var sourceType = attr.GetConstructorArgument<ITypeSymbol>(1);
+                if (sourceType is null)
+                    return null;
                 var sourceTypeFullName = sourceType.ToDisplayString();
                 var members = GetExportableStaticMembers(sourceType);
                 return new ModuleIncludeAttrInfo(sourceTypeFullName, null, members);
@@ -64,7 +62,9 @@ public class PyModuleIncludeGenerator : IIncrementalGenerator
 
             case 1: // TypeSingleton(Type sourceType)
             {
-                var sourceType = (ITypeSymbol)args[1].Value!;
+                var sourceType = attr.GetConstructorArgument<ITypeSymbol>(1);
+                if (sourceType is null)
+                    return null;
                 var sourceTypeFullName = sourceType.ToDisplayString();
                 return new ModuleIncludeAttrInfo(sourceTypeFullName, null,
                     [new MemberInfo("Shared", sourceTypeFullName, true)]);
@@ -72,9 +72,11 @@ public class PyModuleIncludeGenerator : IIncrementalGenerator
 
             case 2: // ExplicitMember(string name, Type sourceType, string memberName)
             {
-                var name = (string)args[1].Value!;
-                var sourceType = (ITypeSymbol)args[2].Value!;
-                var memberName = (string)args[3].Value!;
+                var name = attr.GetConstructorArgument<string>(1);
+                var sourceType = attr.GetConstructorArgument<ITypeSymbol>(2);
+                var memberName = attr.GetConstructorArgument<string>(3);
+                if (sourceType is null || name is null || memberName is null)
+                    return null;
                 var sourceTypeFullName = sourceType.ToDisplayString();
                 return new ModuleIncludeAttrInfo(sourceTypeFullName, name,
                     [new MemberInfo(memberName, sourceTypeFullName, false)]);

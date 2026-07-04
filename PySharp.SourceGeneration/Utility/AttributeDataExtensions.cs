@@ -91,5 +91,33 @@ internal static class AttributeDataExtensions
 
         return defaultValue;
     }
+
+    /// <summary>
+    /// Gets the value of the constructor argument at <paramref name="index"/> as <typeparamref name="TValue"/>,
+    /// or <paramref name="defaultValue"/> if the index is out of range or the value cannot be converted.
+    /// </summary>
+    public static TValue? GetConstructorArgument<TValue>(this AttributeData attributeData, int index, TValue? defaultValue = default)
+    {
+        var args = attributeData.ConstructorArguments;
+
+        if ((uint)index >= (uint)args.Length)
+            return defaultValue;
+
+        return (TValue?)args[index].Value;
+    }
+
+    /// <summary>
+    /// Gets the constructor argument at <paramref name="index"/> formatted as a C# literal string,
+    /// or <paramref name="defaultValue"/> if the index is out of range or the constant is null/error.
+    /// </summary>
+    public static string GetConstructorArgumentLiteral(this AttributeData attributeData, int index, string defaultValue)
+    {
+        var args = attributeData.ConstructorArguments;
+
+        if ((uint)index >= (uint)args.Length)
+            return defaultValue;
+
+        return args[index].ToCSharpString();
+    }
 }
 

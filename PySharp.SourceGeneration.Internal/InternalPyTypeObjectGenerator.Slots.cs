@@ -32,7 +32,8 @@ partial class InternalPyTypeObjectGenerator
         foreach (var method in directMethods)
         {
             var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name == "PySpecialMethodAttribute");
-            var delegateType = (INamedTypeSymbol)attributeData.ConstructorArguments[1].Value!;
+            var delegateType = attributeData.GetConstructorArgument<INamedTypeSymbol>(1);
+            if (delegateType is null) continue;
             builder.AppendLine($"internal {delegateType.Name}? {method.Name};");
         }
 
@@ -49,7 +50,8 @@ partial class InternalPyTypeObjectGenerator
             foreach (var method in group)
             {
                 var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name == "PySpecialMethodAttribute");
-                var delegateType = (INamedTypeSymbol)attributeData.ConstructorArguments[1].Value!;
+                var delegateType = attributeData.GetConstructorArgument<INamedTypeSymbol>(1);
+                if (delegateType is null) continue;
                 builder.AppendLine($"internal {delegateType.Name}? {method.Name};");
             }
 
@@ -64,7 +66,8 @@ partial class InternalPyTypeObjectGenerator
             foreach (var method in group)
             {
                 var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name == "PySpecialMethodAttribute");
-                var delegateType = (INamedTypeSymbol)attributeData.ConstructorArguments[1].Value!;
+                var delegateType = attributeData.GetConstructorArgument<INamedTypeSymbol>(1);
+                if (delegateType is null) continue;
                 builder.AppendLine($"internal {delegateType.Name}? {method.Name} => {fieldName}?.{method.Name};");
             }
         }
@@ -113,8 +116,9 @@ partial class InternalPyTypeObjectGenerator
         foreach (var method in directMethods)
         {
             var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name == "PySpecialMethodAttribute");
-            var specialName = (string)attributeData.ConstructorArguments[0].Value!;
-            var delegateType = (INamedTypeSymbol)attributeData.ConstructorArguments[1].Value!;
+            var specialName = attributeData.GetConstructorArgument<string>(0);
+            var delegateType = attributeData.GetConstructorArgument<INamedTypeSymbol>(1);
+            if (specialName is null || delegateType is null) continue;
             var extMethod = GetExtensionMethodName(delegateType.Name);
             builder.AppendLine($"case \"{specialName}\": {method.Name} = value.{extMethod}(); break;");
         }
@@ -127,8 +131,9 @@ partial class InternalPyTypeObjectGenerator
             foreach (var method in group)
             {
                 var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name == "PySpecialMethodAttribute");
-                var specialName = (string)attributeData.ConstructorArguments[0].Value!;
-                var delegateType = (INamedTypeSymbol)attributeData.ConstructorArguments[1].Value!;
+                var specialName = attributeData.GetConstructorArgument<string>(0);
+                var delegateType = attributeData.GetConstructorArgument<INamedTypeSymbol>(1);
+                if (specialName is null || delegateType is null) continue;
                 var extMethod = GetExtensionMethodName(delegateType.Name);
                 builder.AppendLine($"case \"{specialName}\": {fieldName} ??= new(); {fieldName}.{method.Name} = value.{extMethod}(); break;");
             }

@@ -48,20 +48,20 @@ public class PyTypeGenerator : IIncrementalGenerator
 
                         var methodAttribute = methodSymbol.GetAttribute(PySharpTypes.PyMethodAttribute);
                         if (methodAttribute is not null)
-                            pyTypeInfo.Methods.Add(new(methodSymbol.Name, methodAttribute.ConstructorArguments[0].ToCSharpString(), methodAttribute.GetNamedArgumentOrDefault("Order", 1)));
+                            pyTypeInfo.Methods.Add(new(methodSymbol.Name, methodAttribute.GetConstructorArgumentLiteral(0, "\"\""), methodAttribute.GetNamedArgumentOrDefault("Order", 1)));
 
                         var classMethodAttribute = methodSymbol.GetAttribute(PySharpTypes.PyClassMethodAttribute);
                         if (classMethodAttribute is not null)
-                            pyTypeInfo.ClassMethods.Add(new(methodSymbol.Name, classMethodAttribute.ConstructorArguments[0].ToCSharpString(), classMethodAttribute.GetNamedArgumentOrDefault("Order", 1)));
+                            pyTypeInfo.ClassMethods.Add(new(methodSymbol.Name, classMethodAttribute.GetConstructorArgumentLiteral(0, "\"\""), classMethodAttribute.GetNamedArgumentOrDefault("Order", 1)));
 
                         var staticMethodAttribute = methodSymbol.GetAttribute(PySharpTypes.PyStaticMethodAttribute);
                         if (staticMethodAttribute is not null)
-                            pyTypeInfo.StaticMethods.Add(new(methodSymbol.Name, staticMethodAttribute.ConstructorArguments[0].ToCSharpString(), staticMethodAttribute.GetNamedArgumentOrDefault("Order", 1)));
+                            pyTypeInfo.StaticMethods.Add(new(methodSymbol.Name, staticMethodAttribute.GetConstructorArgumentLiteral(0, "\"\""), staticMethodAttribute.GetNamedArgumentOrDefault("Order", 1)));
 
                         var propertyAttribute = methodSymbol.GetAttribute(PySharpTypes.PyPropertyAttribute);
                         if (propertyAttribute is not null)
                         {
-                            var nameLiteral = propertyAttribute.ConstructorArguments[0].ToCSharpString();
+                            var nameLiteral = propertyAttribute.GetConstructorArgumentLiteral(0, "\"\"");
                             if (!pyTypeInfo.Properties.TryGetValue(nameLiteral, out var propertyInfo))
                                 propertyInfo = pyTypeInfo.Properties[nameLiteral] = new PyPropertyInfo();
                             var type = propertyAttribute.GetNamedArgumentOrDefault("Type", 0);
@@ -88,8 +88,11 @@ public class PyTypeGenerator : IIncrementalGenerator
                 .UsingNamespace("PySharp.Runtime")
                 .UsingNamespace("PySharp.Modules.Builtins");
 
-            var qualName = pyType.AttributeData.ConstructorArguments[0].ToCSharpString();
-            var name = SymbolDisplay.FormatPrimitive(((string)pyType.AttributeData.ConstructorArguments[0].Value!).Split('.').Last(), quoteStrings: true, useHexadecimalNumbers: false);
+            var qualName = pyType.AttributeData.GetConstructorArgumentLiteral(0, "\"\"");
+            var rawQualName = pyType.AttributeData.GetConstructorArgument<string>(0);
+            var name = rawQualName is not null
+                ? SymbolDisplay.FormatPrimitive(rawQualName.Split('.').Last(), quoteStrings: true, useHexadecimalNumbers: false)
+                : "\"\"";
 
             builder
                 .AppendLine($"namespace {pyType.Namespace}")
