@@ -4,8 +4,7 @@ using PySharp.Runtime.Calls;
 using PySharp.Runtime.Environments;
 using PySharp.Runtime.PyAttributes;
 using PySharp.Utility;
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
+using System.ComponentModel;
 
 namespace PySharp.Modules.Builtins;
 
@@ -20,20 +19,29 @@ public class PyModuleObject : PyObjectManagedDict, IPyObjectName
         ArgumentNullException.ThrowIfNull(name);
         Name = name;
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
+        ApplyIncludes();
     }
 
-    internal void AddObjToAttrs<TPyObject>(TPyObject pyObject) where TPyObject : PyObject, IPyObjectName
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    protected internal void AppendAttribute<TPyObject>(TPyObject pyObject) where TPyObject : PyObject, IPyObjectName
     {
         PyAttributes[pyObject.Name] = pyObject;
     }
 
-    internal void AddObjToAttrs<TPyObject>(string name, [NotNull] TPyObject? pyObject) where TPyObject : PyObject
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    protected internal void AppendAttribute(string name, PyObject pyObject)
     {
-        Debug.Assert(pyObject is not null);
+        ArgumentNullException.ThrowIfNull(pyObject);
         PyAttributes[name] = pyObject;
     }
 
     public virtual void OnImport(PyCallContext context, PyEnvironment environment) { }
+
+    /// <summary>
+    /// Called during construction to register module attributes.
+    /// Overridden by source-generated code when <see cref="PyModuleIncludeAttribute"/> is used.
+    /// </summary>
+    protected virtual void ApplyIncludes() { }
 
     internal static PyModuleObject CreatePackage(string name, IReadOnlyList<string> paths)
     {

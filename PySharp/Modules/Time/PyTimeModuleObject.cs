@@ -1,11 +1,12 @@
 using PySharp.Modules.Builtins;
+using PySharp.Runtime.PyAttributes;
 
 namespace PySharp.Modules.Time;
 
-public class PyTimeModuleObject : PyModuleObject
+[PyModuleInclude(PyModuleIncludeScheme.StaticMembers, typeof(PyTimeFunctions))]
+public partial class PyTimeModuleObject : PyModuleObject
 {
     public PyTimeModuleObject() : base("time")
     {
-        AddObjToAttrs(PyTimeFunctions.Time); // time
     }
 }

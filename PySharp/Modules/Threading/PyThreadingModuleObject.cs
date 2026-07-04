@@ -1,11 +1,12 @@
 using PySharp.Modules.Builtins;
+using PySharp.Runtime.PyAttributes;
 
 namespace PySharp.Modules.Threading;
 
-public class PyThreadingModuleObject : PyModuleObject
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyThreadObjectType))]
+public partial class PyThreadingModuleObject : PyModuleObject
 {
     public PyThreadingModuleObject() : base("threading")
     {
-        AddObjToAttrs(PyThreadObjectType.Shared);
     }
 }

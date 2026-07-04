@@ -1,155 +1,117 @@
+using PySharp.Runtime.PyAttributes;
+
 namespace PySharp.Modules.Builtins;
 
-public class PyBuiltinsModuleObject : PyModuleObject
+[PyModuleInclude(PyModuleIncludeScheme.StaticMembers, typeof(PyBuiltinFunctions))]
+
+// Built-in types
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyStrObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyIntObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyFloatObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyTupleObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyDictObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyBoolObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyListObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyTypeObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyRangeObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyZipObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyPropertyObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PySuperObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PySliceObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyMapObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PySetObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyFrozenSetObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyComplexObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyStaticMethodObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyClassMethodObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyEnumerateObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyReversedObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyFilterObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyBytesObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyByteArrayObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyMemoryViewObjectType))]
+
+// Special singletons
+[PyModuleInclude(PyModuleIncludeScheme.ExplicitMember, "Ellipsis", typeof(PyEllipsisObject), nameof(PyEllipsisObject.Ellipsis))]
+[PyModuleInclude(PyModuleIncludeScheme.ExplicitMember, "NotImplemented", typeof(PyNotImplementedObject), nameof(PyNotImplementedObject.NotImplemented))]
+
+// Base exception hierarchy
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyBaseExceptionObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PySystemExitObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyExceptionObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyTypeErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyStopIterationObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyAttributeErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyLookupErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyKeyErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyIndexErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyValueErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyNameErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyImportErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyModuleNotFoundErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PySyntaxErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyIndentationErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyArithmeticErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyZeroDivisionErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyAssertionErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyUnboundLocalErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyRuntimeErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyGeneratorExitObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyBaseExceptionGroupObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyExceptionGroupObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyKeyboardInterruptObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyFloatingPointErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyOverflowErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyBufferErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyEOFErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyMemoryErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyOSErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyBlockingIOErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyChildProcessErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyConnectionErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyBrokenPipeErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyConnectionAbortedErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyConnectionRefusedErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyConnectionResetErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyFileExistsErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyFileNotFoundErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyInterruptedErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyIsADirectoryErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyNotADirectoryErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyPermissionErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyProcessLookupErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyTimeoutErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyReferenceErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyNotImplementedErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyPythonFinalizationErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyRecursionErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyStopAsyncIterationObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyTabErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PySystemErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyUnicodeErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyUnicodeEncodeErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyUnicodeDecodeErrorObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyUnicodeTranslateErrorObjectType))]
+
+// Warning hierarchy
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyWarningObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyUserWarningObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PySyntaxWarningObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyDeprecationWarningObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyBytesWarningObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyEncodingWarningObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyFutureWarningObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyImportWarningObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyPendingDeprecationWarningObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyResourceWarningObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyRuntimeWarningObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyUnicodeWarningObjectType))]
+public partial class PyBuiltinsModuleObject : PyModuleObject
 {
     public override string? Origin => "built-in";
 
     public PyBuiltinsModuleObject() : base("builtins")
     {
-        AddObjToAttrs(PyBuiltinFunctions.Print); // print
-        AddObjToAttrs(PyBuiltinFunctions.Repr); // repr
-        AddObjToAttrs(PyBuiltinFunctions.Hash); // hash
-        AddObjToAttrs(PyBuiltinFunctions.Len); // len
-        AddObjToAttrs(PyBuiltinFunctions.Abs); // abs
-        AddObjToAttrs(PyBuiltinFunctions.Aiter); // aiter
-        AddObjToAttrs(PyBuiltinFunctions.ANext); // anext
-        AddObjToAttrs(PyBuiltinFunctions.Iter); // iter
-        AddObjToAttrs(PyBuiltinFunctions.Next); // next
-        AddObjToAttrs(PyBuiltinFunctions.Pow); // pow
-        AddObjToAttrs(PyBuiltinFunctions.DivMod); // divmod
-        AddObjToAttrs(PyBuiltinFunctions.Input); // input
-        AddObjToAttrs(PyBuiltinFunctions.Eval); // eval
-        AddObjToAttrs(PyBuiltinFunctions.Exec); // exec
-        AddObjToAttrs(PyBuiltinFunctions.All); // all
-        AddObjToAttrs(PyBuiltinFunctions.Any); // any
-        AddObjToAttrs(PyBuiltinFunctions.Max); // max
-        AddObjToAttrs(PyBuiltinFunctions.Min); // min
-        AddObjToAttrs(PyBuiltinFunctions.Sum); // sum
-        AddObjToAttrs(PyBuiltinFunctions.GetAttr); // getattr
-        AddObjToAttrs(PyBuiltinFunctions.SetAttr); // setattr
-        AddObjToAttrs(PyBuiltinFunctions.HasAttr); // hasattr
-        AddObjToAttrs(PyBuiltinFunctions.Dir); // dir
-        AddObjToAttrs(PyBuiltinFunctions.Chr); // chr
-        AddObjToAttrs(PyBuiltinFunctions.Ord); // ord
-        AddObjToAttrs(PyBuiltinFunctions.Locals); // locals
-        AddObjToAttrs(PyBuiltinFunctions.Globals); // globals
-        AddObjToAttrs(PyBuiltinFunctions.Import); // __import__
-        AddObjToAttrs(PyBuiltinFunctions.IsInstance); // isinstance
-        AddObjToAttrs(PyBuiltinFunctions.IsSubclass); // issubclass
-        AddObjToAttrs(PyBuiltinFunctions.Callable); // callable
-        AddObjToAttrs(PyBuiltinFunctions.Id); // id
-        AddObjToAttrs(PyBuiltinFunctions.Bin); // bin
-        AddObjToAttrs(PyBuiltinFunctions.Oct); // oct
-        AddObjToAttrs(PyBuiltinFunctions.Hex); // hex
-        AddObjToAttrs(PyBuiltinFunctions.Ascii); // ascii
-        AddObjToAttrs(PyBuiltinFunctions.Format); // format
-        AddObjToAttrs(PyBuiltinFunctions.DelAttr); // delattr
-        AddObjToAttrs(PyBuiltinFunctions.Compile); // compile
-        AddObjToAttrs(PyBuiltinFunctions.Sorted); // sorted
-        AddObjToAttrs(PyBuiltinFunctions.Round); // round
-        AddObjToAttrs(PyBuiltinFunctions.Open); // open
-        AddObjToAttrs(PyBuiltinFunctions.Vars); // vars
-
-        AddObjToAttrs(PyObjectType.Shared); // object
-        AddObjToAttrs(PyStrObjectType.Shared); // str
-        AddObjToAttrs(PyIntObjectType.Shared); // int
-        AddObjToAttrs(PyFloatObjectType.Shared); // float
-        AddObjToAttrs(PyTupleObjectType.Shared); // tuple
-        AddObjToAttrs(PyDictObjectType.Shared); // dict
-        AddObjToAttrs(PyBoolObjectType.Shared); // bool
-        AddObjToAttrs(PyListObjectType.Shared); // list
-        AddObjToAttrs(PyTypeObjectType.Shared); // type
-        AddObjToAttrs(PyRangeObjectType.Shared); // range
-        AddObjToAttrs(PyZipObjectType.Shared); // zip
-        AddObjToAttrs(PyPropertyObjectType.Shared); // property
-        AddObjToAttrs(PySuperObjectType.Shared); // super
-        AddObjToAttrs(PySliceObjectType.Shared); // slice
-        AddObjToAttrs(PyMapObjectType.Shared); // map
-        AddObjToAttrs(PySetObjectType.Shared); // set
-        AddObjToAttrs(PyFrozenSetObjectType.Shared); // frozenset
-        AddObjToAttrs(PyComplexObjectType.Shared); // complex
-        AddObjToAttrs(PyStaticMethodObjectType.Shared); // staticmethod
-        AddObjToAttrs(PyClassMethodObjectType.Shared); // classmethod
-        AddObjToAttrs(PyEnumerateObjectType.Shared); // enumerate
-        AddObjToAttrs(PyReversedObjectType.Shared); // reversed
-        AddObjToAttrs(PyFilterObjectType.Shared); // filter
-        AddObjToAttrs(PyBytesObjectType.Shared); // bytes
-        AddObjToAttrs(PyByteArrayObjectType.Shared); // bytearray
-        AddObjToAttrs(PyMemoryViewObjectType.Shared); // memoryview
-
-        AddObjToAttrs("Ellipsis", PyEllipsisObject.Ellipsis); // Ellipsis
-        AddObjToAttrs("NotImplemented", PyNotImplementedObject.NotImplemented); // NotImplemented
-
-        AddObjToAttrs(PyBaseExceptionObjectType.Shared); // BaseException
-        AddObjToAttrs(PySystemExitObjectType.Shared); // SystemExit
-        AddObjToAttrs(PyExceptionObjectType.Shared); // Exception
-        AddObjToAttrs(PyTypeErrorObjectType.Shared); // TypeError
-        AddObjToAttrs(PyStopIterationObjectType.Shared); // StopIteration
-        AddObjToAttrs(PyAttributeErrorObjectType.Shared); // AttributeError
-        AddObjToAttrs(PyLookupErrorObjectType.Shared); // LookupError
-        AddObjToAttrs(PyKeyErrorObjectType.Shared); // KeyError
-        AddObjToAttrs(PyIndexErrorObjectType.Shared); // IndexError
-        AddObjToAttrs(PyValueErrorObjectType.Shared); // ValueError
-        AddObjToAttrs(PyNameErrorObjectType.Shared); // NameError
-        AddObjToAttrs(PyImportErrorObjectType.Shared); // ImportError
-        AddObjToAttrs(PyModuleNotFoundErrorObjectType.Shared); // ModuleNotFoundError
-        AddObjToAttrs(PySyntaxErrorObjectType.Shared); // SyntaxError
-        AddObjToAttrs(PyIndentationErrorObjectType.Shared); // IndentationError
-        AddObjToAttrs(PyArithmeticErrorObjectType.Shared); // ArithmeticError
-        AddObjToAttrs(PyZeroDivisionErrorObjectType.Shared); // ZeroDivisionError
-        AddObjToAttrs(PyAssertionErrorObjectType.Shared); // AssertionError
-        AddObjToAttrs(PyUnboundLocalErrorObjectType.Shared); // UnboundLocalError
-        AddObjToAttrs(PyRuntimeErrorObjectType.Shared); // RuntimeError
-        AddObjToAttrs(PyGeneratorExitObjectType.Shared); // GeneratorExit
-
-        AddObjToAttrs(PyBaseExceptionGroupObjectType.Shared); // BaseExceptionGroup
-        AddObjToAttrs(PyExceptionGroupObjectType.Shared); // ExceptionGroup
-
-        AddObjToAttrs(PyKeyboardInterruptObjectType.Shared); // KeyboardInterrupt
-        AddObjToAttrs(PyFloatingPointErrorObjectType.Shared); // FloatingPointError
-        AddObjToAttrs(PyOverflowErrorObjectType.Shared); // OverflowError
-        AddObjToAttrs(PyBufferErrorObjectType.Shared); // BufferError
-        AddObjToAttrs(PyEOFErrorObjectType.Shared); // EOFError
-        AddObjToAttrs(PyMemoryErrorObjectType.Shared); // MemoryError
-        AddObjToAttrs(PyOSErrorObjectType.Shared); // OSError
-        AddObjToAttrs(PyBlockingIOErrorObjectType.Shared); // BlockingIOError
-        AddObjToAttrs(PyChildProcessErrorObjectType.Shared); // ChildProcessError
-        AddObjToAttrs(PyConnectionErrorObjectType.Shared); // ConnectionError
-        AddObjToAttrs(PyBrokenPipeErrorObjectType.Shared); // BrokenPipeError
-        AddObjToAttrs(PyConnectionAbortedErrorObjectType.Shared); // ConnectionAbortedError
-        AddObjToAttrs(PyConnectionRefusedErrorObjectType.Shared); // ConnectionRefusedError
-        AddObjToAttrs(PyConnectionResetErrorObjectType.Shared); // ConnectionResetError
-        AddObjToAttrs(PyFileExistsErrorObjectType.Shared); // FileExistsError
-        AddObjToAttrs(PyFileNotFoundErrorObjectType.Shared); // FileNotFoundError
-        AddObjToAttrs(PyInterruptedErrorObjectType.Shared); // InterruptedError
-        AddObjToAttrs(PyIsADirectoryErrorObjectType.Shared); // IsADirectoryError
-        AddObjToAttrs(PyNotADirectoryErrorObjectType.Shared); // NotADirectoryError
-        AddObjToAttrs(PyPermissionErrorObjectType.Shared); // PermissionError
-        AddObjToAttrs(PyProcessLookupErrorObjectType.Shared); // ProcessLookupError
-        AddObjToAttrs(PyTimeoutErrorObjectType.Shared); // TimeoutError
-        AddObjToAttrs(PyReferenceErrorObjectType.Shared); // ReferenceError
-        AddObjToAttrs(PyNotImplementedErrorObjectType.Shared); // NotImplementedError
-        AddObjToAttrs(PyPythonFinalizationErrorObjectType.Shared); // PythonFinalizationError
-        AddObjToAttrs(PyRecursionErrorObjectType.Shared); // RecursionError
-        AddObjToAttrs(PyStopAsyncIterationObjectType.Shared); // StopAsyncIteration
-        AddObjToAttrs(PyTabErrorObjectType.Shared); // TabError
-        AddObjToAttrs(PySystemErrorObjectType.Shared); // SystemError
-        AddObjToAttrs(PyUnicodeErrorObjectType.Shared); // UnicodeError
-        AddObjToAttrs(PyUnicodeEncodeErrorObjectType.Shared); // UnicodeEncodeError
-        AddObjToAttrs(PyUnicodeDecodeErrorObjectType.Shared); // UnicodeDecodeError
-        AddObjToAttrs(PyUnicodeTranslateErrorObjectType.Shared); // UnicodeTranslateError
-
-        AddObjToAttrs(PyWarningObjectType.Shared); // Warning
-        AddObjToAttrs(PyUserWarningObjectType.Shared); // UserWarning
-        AddObjToAttrs(PySyntaxWarningObjectType.Shared); // SyntaxWarning
-        AddObjToAttrs(PyDeprecationWarningObjectType.Shared); // DeprecationWarning
-        AddObjToAttrs(PyBytesWarningObjectType.Shared); // BytesWarning
-        AddObjToAttrs(PyEncodingWarningObjectType.Shared); // EncodingWarning
-        AddObjToAttrs(PyFutureWarningObjectType.Shared); // FutureWarning
-        AddObjToAttrs(PyImportWarningObjectType.Shared); // ImportWarning
-        AddObjToAttrs(PyPendingDeprecationWarningObjectType.Shared); // PendingDeprecationWarning
-        AddObjToAttrs(PyResourceWarningObjectType.Shared); // ResourceWarning
-        AddObjToAttrs(PyRuntimeWarningObjectType.Shared); // RuntimeWarning
-        AddObjToAttrs(PyUnicodeWarningObjectType.Shared); // UnicodeWarning
     }
 }
