@@ -527,9 +527,15 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         {
             AppendToken(TokenType.Operator, group.Length);
             if (group.Value is "(" or "[" or "{")
+            {
                 _parenLevel++;
+            }
             else if (group.Value is ")" or "]" or "}")
+            {
                 _parenLevel--;
+                if (_parenLevel < 0)
+                    throw SyntaxError($"unmatched '{group.Value}'");
+            }
         }
     }
 
