@@ -37,6 +37,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <AdditionalFiles Include="Lib\**\*.py" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="Modules\Warnings\" />
   </ItemGroup>
 
