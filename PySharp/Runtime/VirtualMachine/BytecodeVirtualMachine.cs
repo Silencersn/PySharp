@@ -828,7 +828,6 @@ internal static partial class BytecodeVirtualMachine
                             throw new PyRuntimeException(exc);
                         }
                         states.ExceptionHandlers.Pop();
-                        states.Exceptions.Clear();
                         if (currentHandler.ReturnValue is not null)
                             returnValue = Move(ref currentHandler.ReturnValue);
                         break;
