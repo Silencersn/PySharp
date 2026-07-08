@@ -58,6 +58,9 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
 
     internal override PyResult PyClose(PyCallContext context)
     {
+        if (!IsGeneratorRunning)
+            _vmStates.RunToEnd = true;
+
         if (_vmStates.RunToEnd)
             return PyNoneObject.None;
 
