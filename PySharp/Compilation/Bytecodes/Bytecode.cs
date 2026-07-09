@@ -103,11 +103,13 @@ public sealed class Bytecode
                 {
                     var instruction = instructions[i];
 
+                    var arg = instruction.Arg | _arg;
+
                     IncrementStackSizeByInstruction(instruction);
 
                     if (IsJump(instruction.OpCode))
                     {
-                        int nextTarget = instruction.Arg;
+                        int nextTarget = arg;
 
                         if (nextTarget < instructions.Length && stackSizes[nextTarget] is -1)
                         {
@@ -303,7 +305,7 @@ public sealed class Bytecode
             }
 
             if (instruction.OpCode is OpCode.ExtendedArg)
-                _arg <<= sizeof(byte);
+                _arg <<= 8;
             else
                 _arg = 0;
         }

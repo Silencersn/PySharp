@@ -624,4 +624,11 @@ public sealed class TestPyFiles
         var module = RunModule("test_memoryview.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestLongJumpExtendedArg()
+    {
+        var module = RunModule("test_long_jump_extended_arg.py");
+        Assert.IsNotNull(module);
+    }
 }
