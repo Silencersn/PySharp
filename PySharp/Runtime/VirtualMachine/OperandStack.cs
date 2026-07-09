@@ -88,6 +88,11 @@ internal ref struct ValueOperandStack
         _span[_size] = null!;
         return value;
     }
+    public void PopN(int count)
+    {
+        _size -= count;
+        _span.Slice(_size, count).Clear();
+    }
     public void PopReversedRange(Span<PyObject> values)
     {
         var span = _span.Slice(_size - values.Length, values.Length);

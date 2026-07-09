@@ -829,7 +829,21 @@ internal static partial class BytecodeVirtualMachine
                         }
                         states.ExceptionHandlers.Pop();
                         if (currentHandler.ReturnValue is not null)
+                        {
                             returnValue = Move(ref currentHandler.ReturnValue);
+
+                            // When returning through a finally block, the stack
+                            // may still hold items that were on the stack at
+                            // _SetupFinally (e.g. a for-loop iterator). Pop them.
+                            // targetDepth = StackDepth - 1 because ReturnValue
+                            // already popped the return value off the stack.
+                            var targetDepth = currentHandler.StackDepth - 1;
+                            if (targetDepth < 0)
+                                targetDepth = 0;
+                            var popCount = Stack.Count - targetDepth;
+                            if (popCount > 0)
+                                Stack.PopN(popCount);
+                        }
                         break;
 
                     case OpCode._PopException:
@@ -978,8 +992,9 @@ internal static partial class BytecodeVirtualMachine
             }
 
             // TODO: rollback until what?
-            while (currentHandler.StackDepth < Stack.Count)
-                Stack.Pop();
+            var popCount = Stack.Count - currentHandler.StackDepth;
+            if (popCount > 0)
+                Stack.PopN(popCount);
 
             e.PyException.WithTraceback(context, overwriteExisting: false);
 
