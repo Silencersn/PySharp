@@ -137,7 +137,7 @@ internal static class PyTraceback
         string? threadInfo = null;
         for (int i = 0; i < context.FrameState.CurrentFrameCount; i++)
         {
-            ref var frame = ref context.FrameState.Frames[i];
+            ref var frame = ref context.FrameState.GetFrame(i);
 
             if (frame.FrameType is FrameType.ThreadRoot)
                 threadInfo = $"Exception in thread Thread-{Environment.CurrentManagedThreadId} ({frame.CallerName}):";
