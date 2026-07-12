@@ -19,6 +19,9 @@ public class PyModuleObject : PyObjectManagedDict, IPyObjectName
         ArgumentNullException.ThrowIfNull(name);
         Name = name;
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
+        // Default __package__: parent package name (empty for top-level modules)
+        var lastDot = name.LastIndexOf('.');
+        PyAttributes.Add(PySpecialNames.Package, lastDot >= 0 ? PyStrObject.FromString(name[..lastDot]) : PyStrObject.Empty);
         ApplyIncludes();
     }
 
@@ -47,6 +50,8 @@ public class PyModuleObject : PyObjectManagedDict, IPyObjectName
     {
         var package = new PyModuleObject(name);
         package.PyAttributes.Add(PySpecialNames.Path, PyListObject.CreateList(paths.Select(PyStrObject.FromString)));
+        // For packages, __package__ should be the same as __name__
+        package.PyAttributes[PySpecialNames.Package] = PyStrObject.FromString(name);
         return package;
     }
 }

@@ -58,6 +58,24 @@ public sealed class PyInterpreter : IDisposable
         module._pyAttributes = context.CurrentInternalFrame.Variables.Globals.Dict;
         module.PyAttributes[PySpecialNames.Name] = isMain ? PySpecialNames.Interned.Main : PyStrObject.FromString(module.Name);
 
+        // Set __package__ correctly for the module
+        if (isMain)
+        {
+            module.PyAttributes[PySpecialNames.Package] = PyNoneObject.None;
+        }
+        else if (module.PyAttributes.ContainsKey(PySpecialNames.Path))
+        {
+            // Package: __package__ == __name__
+            module.PyAttributes[PySpecialNames.Package] = PyStrObject.FromString(module.Name);
+        }
+        else
+        {
+            // Non-package module: __package__ = parent package name
+            var lastDot = module.Name.LastIndexOf('.');
+            module.PyAttributes[PySpecialNames.Package] =
+                lastDot >= 0 ? PyStrObject.FromString(module.Name[..lastDot]) : PyStrObject.Empty;
+        }
+
         context.CurrentInternalFrame.CodeObject = code;
         _ = PyCore.Eval(context).PyUnwrap(context);
         Debug.Assert(ReferenceEquals(module.PyAttributes, context.CurrentInternalFrame.Variables.Globals.Dict));

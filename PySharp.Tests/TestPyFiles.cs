@@ -631,4 +631,12 @@ public sealed class TestPyFiles
         var module = RunModule("test_long_jump_extended_arg.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestRelativeImport()
+    {
+        var module = RunModule("test_relative_import.py");
+        Assert.IsNotNull(module);
+    }
+
 }

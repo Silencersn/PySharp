@@ -21,6 +21,9 @@ partial class PySR
     public const string Runtime_RaiseStmt_Cause = "The above exception was the direct cause of the following exception:";
 
     public const string Runtime_Import_ModuleNotFound = "No module named '{0}'";
+    public const string Runtime_Import_RelativeNoKnownParentPackage = "attempted relative import with no known parent package";
+    public const string Runtime_Import_RelativeBeyondTopLevel = "attempted relative import beyond top-level package";
+    public const string Runtime_Import_PackageNotString = "__package__ not set to a string";
     public const string Runtime_Import_NonIterableAll = "{0}.__all__ must be iterable";
     public const string Runtime_Import_NonStringAllElt = "Item in {0}.__all__ must be str, not {1}";
     public const string Runtime_Import_CannotImportName = "cannot import name '{0}' from '{1}'";
@@ -121,6 +124,7 @@ partial class PySR
     public const string Runtime_Builtin_Ord_ExpectedString = "ord() expected string of length 1, but {0} found";
     public const string Runtime_Builtin_Ord_ExpectedACharacter = "ord() expected a character, but string of length {0} found";
     public const string Runtime_Builtin_Import_NameMustBeString = "module name must be a string";
+    public const string Runtime_Builtin_Import_GlobalsMustBeDict = "globals must be a dict";
     public const string Runtime_Builtin_IsInstance_MustBeTypeOrTupleOfTypes = "isinstance() arg 2 must be a type or a tuple of types";
     public const string Runtime_Builtin_IsSubclass_Arg1MustBeClass = "issubclass() arg 1 must be a class";
     public const string Runtime_Builtin_IsSubclass_Arg2MustBeTypeOrTupleOfTypes = "issubclass() arg 2 must be a type or a tuple of types";

@@ -1,6 +1,7 @@
 using PySharp.Compilation.Bytecodes;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.Environments;
 using PySharp.Runtime.PyAttributes;
 using PySharp.Utility;
 using System.Diagnostics;
@@ -634,19 +635,97 @@ public static partial class PyBuiltinFunctions
         return result;
     }
 
+    [AIGenerated]
     [PyFunctionParameters("name", "globals=None", "locals=None", "fromlist=()", "level=0")]
     private static PyResult ImportImpl(PyCallContext context, PyArguments arguments)
     {
         if (arguments[0] is not PyStrObject strObj)
             return PyResult.TypeError(PySR.Runtime_Builtin_Import_NameMustBeString);
         var name = strObj.Value;
+
+        // Handle relative imports (level > 0)
+        var levelArg = arguments[4];
+        if (levelArg is PyIntObject levelObj && levelObj.Value > 0)
+        {
+            PyObject? packageObj;
+            string moduleName;
+            bool hasPath;
+
+            var globalsArg = arguments[1];
+            if (globalsArg is PyNoneObject)
+            {
+                // Use the current frame's globals
+                var globals = context.CurrentInternalFrame.Variables.Globals.Dict;
+                globals.TryGetValue(PySpecialNames.Package, out packageObj);
+                if (!globals.TryGetValue(PySpecialNames.Name, out var nameObj) || nameObj is not PyStrObject nameStr)
+                    return PyResult.TypeError(PySR.Runtime_Builtin_Import_NameMustBeString);
+                moduleName = nameStr.Value;
+                hasPath = globals.ContainsKey(PySpecialNames.Path);
+            }
+            else if (globalsArg is PyDictObject globalsDict)
+            {
+                // Extract values from the provided PyDictObject
+                var nameKey = PyStrObject.FromString(PySpecialNames.Name);
+                var packageKey = PyStrObject.FromString(PySpecialNames.Package);
+                var pathKey = PyStrObject.FromString(PySpecialNames.Path);
+                globalsDict.TryGetValue(packageKey, out packageObj);
+                if (!globalsDict.TryGetValue(nameKey, out var nameObj) || nameObj is not PyStrObject nameStr)
+                    return PyResult.TypeError(PySR.Runtime_Builtin_Import_NameMustBeString);
+                moduleName = nameStr.Value;
+                hasPath = globalsDict.ContainsKey(pathKey);
+            }
+            else
+            {
+                return PyResult.TypeError(PySR.Runtime_Builtin_Import_GlobalsMustBeDict);
+            }
+
+            // ResolveRelativeModuleName may throw PyRuntimeException;
+            // convert to PyResult to keep error-return consistency within this method
+            try
+            {
+                name = PyEnvironment.ResolveRelativeModuleName(context, packageObj, moduleName, hasPath, name, (int)levelObj.Value);
+            }
+            catch (PyRuntimeException ex)
+            {
+                return PyResult.FromException(ex.PyException);
+            }
+        }
+
         if (!context.PyEnvironment.TryLoadModule(context, name, out var rootModule, out var module))
             return PyResult.ModuleNotFoundError(PySR.Runtime_Import_ModuleNotFound, name);
 
         var fromList = arguments[3];
-        if (fromList is PyNoneObject || fromList is PyListObject { Count: 0 } || fromList is PyTupleObject { Count: 0 })
-            return rootModule;
-        return module;
+
+        // _handle_fromlist: when fromlist is non-empty and the module is a package,
+        // try to import each name as a submodule (mirrors CPython behavior)
+        bool hasFromList = fromList switch
+        {
+            PyNoneObject => false,
+            PyTupleObject t => t.Count > 0,
+            PyListObject l => l.Count > 0,
+            _ => true
+        };
+
+        if (hasFromList)
+        {
+            foreach (var item in fromList switch
+            {
+                PyTupleObject t => (IEnumerable<PyObject>)t,
+                PyListObject l => l,
+                _ => []
+            })
+            {
+                if (item is PyStrObject itemStr && !module.PyAttributes.ContainsKey(itemStr.Value))
+                {
+                    var subName = module.Name + '.' + itemStr.Value;
+                    if (context.PyEnvironment.TryLoadModule(context, subName, out _, out var subModule))
+                        module.PyAttributes[itemStr.Value] = subModule;
+                }
+            }
+            return module;
+        }
+
+        return rootModule;
     }
 
     [PyFunctionParameters("object", "classinfo", "/")]

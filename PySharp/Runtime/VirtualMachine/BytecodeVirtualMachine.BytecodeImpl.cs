@@ -1,5 +1,6 @@
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.Environments;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
@@ -341,20 +342,62 @@ internal static partial class BytecodeVirtualMachine
         stack.PushReversedRange(span);
     }
 
+    [AIGenerated]
     private static void InternalImportName(PyCallContext context, ref ValueOperandStack stack, ReadOnlySpan<string> names, int instructionArg)
     {
         var fromList = stack.Pop();
         var level = (PyIntObject)stack.Pop();
 
+        var name = names[instructionArg];
+
         if (level.Value > 0)
-            throw new NotSupportedException();
+        {
+            // Relative import: resolve the name relative to the caller's package
+            var callerGlobals = context.CurrentInternalFrame.Variables.Globals.Dict;
+            callerGlobals.TryGetValue(PySpecialNames.Package, out var packageObj);
+            var moduleName = ((PyStrObject)callerGlobals[PySpecialNames.Name]).Value;
+            var hasPath = callerGlobals.ContainsKey(PySpecialNames.Path);
+            name = PyEnvironment.ResolveRelativeModuleName(context, packageObj, moduleName, hasPath, name, (int)level.Value);
+        }
 
-        if (!context.PyEnvironment.TryLoadModule(context, names[instructionArg], out var rootModule, out var module))
-            throw context.ModuleNotFoundError(PySR.Runtime_Import_ModuleNotFound, names[instructionArg]);
+        if (!context.PyEnvironment.TryLoadModule(context, name, out var rootModule, out var module))
+            throw context.ModuleNotFoundError(PySR.Runtime_Import_ModuleNotFound, name);
 
-        if (fromList is PyNoneObject || fromList is PyListObject { Count: 0 } || fromList is PyTupleObject { Count: 0 })
-            stack.Push(rootModule);
-        else
+        // If fromlist is non-empty, try to import each name as a submodule of the package
+        // This mirrors CPython's _handle_fromlist: for from package import X, ensure X is
+        // imported as a submodule if it exists as one
+        bool hasFromList = fromList switch
+        {
+            PyNoneObject => false,
+            PyTupleObject t => t.Count > 0,
+            PyListObject l => l.Count > 0,
+            _ => true
+        };
+
+        if (hasFromList)
+        {
+            var fromItems = fromList switch
+            {
+                PyTupleObject t => (IEnumerable<PyObject>)t,
+                PyListObject l => l,
+                _ => []
+            };
+            foreach (var item in fromItems)
+            {
+                if (item is not PyStrObject itemStr || module.PyAttributes.ContainsKey(itemStr.Value))
+                    continue;
+
+                // Try to load the submodule: module.Name + "." + item
+                var subName = module.Name + '.' + itemStr.Value;
+                if (context.PyEnvironment.TryLoadModule(context, subName, out _, out var subModule))
+                    module.PyAttributes[itemStr.Value] = subModule;
+            }
             stack.Push(module);
+        }
+        else
+        {
+            // fromList is None or empty: push the root module
+            stack.Push(rootModule);
+        }
     }
 }

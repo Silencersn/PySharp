@@ -7,6 +7,68 @@ namespace PySharp.Runtime.Environments;
 
 partial class PyEnvironment
 {
+    /// <summary>
+    /// Resolves a relative import name to an absolute module name.
+    /// Implements CPython's resolve_name algorithm (PEP 328).
+    /// </summary>
+    /// <param name="context">The call context.</param>
+    /// <param name="packageObj">The __package__ value from the caller's globals (may be null, None, or a string).</param>
+    /// <param name="moduleName">The __name__ value from the caller's globals.</param>
+    /// <param name="hasPath">Whether __path__ exists in the caller's globals (indicating the caller is a package).</param>
+    /// <param name="name">The module name from the import statement (may be empty).</param>
+    /// <param name="level">The relative import level (1 = current package, 2 = parent package, etc.). Must be > 0.</param>
+    /// <returns>The resolved absolute module name.</returns>
+    [AIGenerated]
+    internal static string ResolveRelativeModuleName(PyCallContext context, PyObject? packageObj, string moduleName, bool hasPath, string name, int level)
+    {
+        Debug.Assert(level > 0);
+
+        // Step 1: Determine the current package from globals
+        string package;
+
+        if (packageObj is PyStrObject packageStr)
+        {
+            package = packageStr.Value;
+        }
+        else if (packageObj is null or PyNoneObject)
+        {
+            // __package__ is None or absent: fallback to __name__ and __path__
+            if (hasPath)
+            {
+                // Caller is a package; __package__ = __name__
+                package = moduleName;
+            }
+            else
+            {
+                // Caller is a regular module; __package__ = parent package name
+                var lastDot = moduleName.LastIndexOf('.');
+                package = lastDot >= 0 ? moduleName[..lastDot] : string.Empty;
+            }
+        }
+        else
+        {
+            // __package__ is set to a non-string value: raise TypeError
+            throw context.TypeError(PySR.Runtime_Import_PackageNotString);
+        }
+
+        // Step 2: Validate package
+        if (package.Length is 0)
+            throw context.ImportError(PySR.Runtime_Import_RelativeNoKnownParentPackage);
+
+        // Step 3: Walk up the package hierarchy based on level
+        for (int i = 1; i < level; i++)
+        {
+            var lastDot = package.LastIndexOf('.');
+            if (lastDot < 0)
+                throw context.ImportError(PySR.Runtime_Import_RelativeBeyondTopLevel);
+            package = package[..lastDot];
+        }
+
+        // Step 4: Concatenate with the (possibly empty) module name
+        if (name.Length is 0)
+            return package;
+        return package + '.' + name;
+    }
     internal PyModuleObject LoadBuiltinModule(PyCallContext context, string name)
     {
         if (Modules.TryGetValue(name, out var module))
