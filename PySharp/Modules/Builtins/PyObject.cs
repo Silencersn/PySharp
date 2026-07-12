@@ -117,6 +117,19 @@ public sealed partial class PyObjectType : PyTypeObject<PyObject>
         FillSlot(PySpecialNames.Init, ref Slots.Init, DefaultInit);
     }
 
+    /// <summary>
+    /// Implements object.__init_subclass__.
+    /// In CPython this is a no-op classmethod (METH_CLASS | METH_NOARGS).
+    /// It provides a terminal node for the cooperative __init_subclass__ chain.
+    /// Currently accepts **kwargs silently for simplicity.
+    /// </summary>
+    [PyClassMethod(PySpecialNames.InitSubclass)]
+    [PyFunctionParameters("**kwargs")]
+    private static PyResult InitSubclassImpl(PyCallContext context, PyTypeObject cls, PyArguments arguments)
+    {
+        return PyNoneObject.None;
+    }
+
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (ReferenceEquals(cls, this) && (args.Count is not 0 || kwargs.Count is not 0))

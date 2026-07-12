@@ -39,6 +39,8 @@ public class PySuperObject : PyObject
     internal readonly PyTypeObject _type;
     internal readonly PyObject _object;
 
+    public override PyTypeObject DefaultPyType => PySuperObjectType.Shared;
+
     internal PySuperObject(PyTypeObject type, PyObject obj)
     {
         _type = type;
@@ -124,7 +126,7 @@ public sealed partial class PySuperObjectType : PyTypeObject<PySuperObject>
             {
                 var getFunc = attr.PyType.Slots.Get;
                 if (getFunc is not null)
-                    return getFunc(context, attr, self._object, PyNoneObject.None);
+                    return getFunc(context, attr, self._object, self._type);
                 return attr;
             }
         }

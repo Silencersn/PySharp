@@ -143,6 +143,14 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
                 continue;
             }
 
+            // CPython's type_new_classmethod: auto-convert plain __init_subclass__
+            // (and __class_getitem__) to classmethod when defined as a regular function.
+            if (attr is PySpecialNames.InitSubclass && value is PyFunctionObject)
+            {
+                type.PyAttributes[attr] = new PyClassMethodObject(value);
+                continue;
+            }
+
             type.PyAttributes[attr] = value;
             type.Slots.TrySetSlot(attr, value);
         }
@@ -157,7 +165,13 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
                 return result;
         }
 
-        var initSubclass = PyOperators.GetAttr(context, type, PySpecialNames.Interned.InitSubclass);
+        // Follow CPython's type_new_init_subclass pattern:
+        // super(type, type).__init_subclass__(**kwargs)
+        var superObj = PySuperObject.CreateSuper(type, type);
+        if (superObj.IsError)
+            return superObj;
+
+        var initSubclass = PyOperators.GetAttr(context, superObj.Value, PySpecialNames.Interned.InitSubclass);
         if (initSubclass.IsError)
         {
             if (initSubclass.IsAttributeError)
@@ -167,7 +181,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
         }
         else
         {
-            var result = initSubclass.Value.Call(context, [type], new StringKeyDict(dict));
+            var result = initSubclass.Value.Call(context, [], kwargs);
             if (result.IsError)
                 return result;
         }

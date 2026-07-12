@@ -3,40 +3,35 @@ Metaclass keyword arguments and __init_subclass__ tests
 """
 
 # Test 1: __init_subclass__ basic call
-# TODO: __init_subclass__ not fully supported yet - skip this test
-# class BaseWithInitSubclass:
-#     init_subclass_called = False
-#     init_subclass_kwargs = {}
-# 
-#     @classmethod
-#     def __init_subclass__(cls, **kwargs):
-#         BaseWithInitSubclass.init_subclass_called = True
-#         BaseWithInitSubclass.init_subclass_kwargs = kwargs
-# 
-# class ChildA(BaseWithInitSubclass):
-#     pass
-# 
-# assert BaseWithInitSubclass.init_subclass_called, "__init_subclass__ should be called"
-# assert '__qualname__' in BaseWithInitSubclass.init_subclass_kwargs, "namespace items should be in kwargs"
+# Test 1: __init_subclass__ basic call (auto-converted from plain function)
+class BaseWithInitSubclass:
+    init_subclass_called = False
+    init_subclass_kwargs = {}
 
-# Test 2: __init_subclass__ with class attributes in namespace
-# TODO: __init_subclass__ not fully supported yet - skip this test
-# class BaseCapture:
-#     captured = None
-# 
-#     @classmethod
-#     def __init_subclass__(cls, **kwargs):
-#         BaseCapture.captured = kwargs
-# 
-# class ChildWithAttr(BaseCapture):
-#     my_attr = 42
-# 
-#     def my_method(self):
-#         return self.my_attr
-# 
-# assert BaseCapture.captured is not None
-# assert 'my_attr' in BaseCapture.captured
-# assert 'my_method' in BaseCapture.captured
+    def __init_subclass__(cls, **kwargs):
+        BaseWithInitSubclass.init_subclass_called = True
+        BaseWithInitSubclass.init_subclass_kwargs = kwargs
+
+class ChildA(BaseWithInitSubclass):
+    pass
+
+assert BaseWithInitSubclass.init_subclass_called, "__init_subclass__ should be called"
+assert BaseWithInitSubclass.init_subclass_kwargs == {}, "__init_subclass__ kwargs should be empty when no extra kwargs passed"
+
+# Test 2: __init_subclass__ with extra keyword arguments from class definition
+class BaseCapture:
+    captured = None
+
+    def __init_subclass__(cls, **kwargs):
+        BaseCapture.captured = kwargs
+
+class ChildWithKwargs(BaseCapture, custom_arg='hello', count=42):
+    pass
+
+assert BaseCapture.captured is not None, "__init_subclass__ should be called"
+assert BaseCapture.captured.get('custom_arg') == 'hello', f"Expected 'hello', got {BaseCapture.captured.get('custom_arg')}"
+assert BaseCapture.captured.get('count') == 42, f"Expected 42, got {BaseCapture.captured.get('count')}"
+assert 'my_attr' not in BaseCapture.captured, "namespace attributes should NOT be in __init_subclass__ kwargs"
 
 # Test 3: Metaclass that intercepts __init_subclass__ calls
 class TrackingMeta(type):
@@ -109,5 +104,23 @@ DynamicClass = KwargMeta('DynamicClass', (), {'x': 10}, meta_flag=True)
 assert hasattr(DynamicClass, '_type_kwargs')
 assert DynamicClass._type_kwargs.get('meta_flag') is True
 assert DynamicClass.x == 10
+
+# Test 8: __init_subclass__ with plain function (auto-conversion to classmethod)
+class AutoConvertBase:
+    auto_convert_called = False
+    auto_convert_kwargs = {}
+
+    def __init_subclass__(cls, **kwargs):
+        AutoConvertBase.auto_convert_called = True
+        AutoConvertBase.auto_convert_kwargs = kwargs
+
+class AutoConvertChild(AutoConvertBase, special='value'):
+    pass
+
+assert AutoConvertBase.auto_convert_called, "auto-converted __init_subclass__ should be called"
+assert AutoConvertBase.auto_convert_kwargs.get('special') == 'value', f"Expected 'value', got {AutoConvertBase.auto_convert_kwargs.get('special')}"
+
+# Test 9: object.__init_subclass__ exists
+assert hasattr(object, "__init_subclass__"), "object should have __init_subclass__"
 
 print("test_metaclass_kwargs passed")
