@@ -77,4 +77,36 @@ list.append(test_list, 4)
 unbound_result = test_list.copy()
 assert instance_result == unbound_result
 
+# Test method type construction via New
+def my_func(self, x):
+    return x * 2
+
+class MyClass:
+    pass
+
+obj = MyClass()
+
+# Create a bound method and get its type
+bound = my_func.__get__(obj, MyClass)
+method_type = type(bound)
+
+# The constructed method should work
+m = method_type(my_func, obj)
+assert m(21) == 42
+assert m.__self__ is obj
+assert m.__func__ is my_func
+
+# Test error cases
+try:
+    method_type("not callable", obj)
+    assert False, "Should raise TypeError"
+except TypeError:
+    pass
+
+try:
+    method_type(my_func, None)
+    assert False, "Should raise TypeError"
+except TypeError:
+    pass
+
 print("test_method_descriptor passed")
