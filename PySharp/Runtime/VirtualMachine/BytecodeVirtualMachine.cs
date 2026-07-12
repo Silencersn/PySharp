@@ -935,6 +935,12 @@ internal static partial class BytecodeVirtualMachine
                         goto find_next_finally;
                     }
 
+                    // If we're returning from an except handler (State_Except),
+                    // the exception was already handled. Clear it so _ExitFinally
+                    // doesn't re-raise it.
+                    if (handler.State is ExceptionHandler.State_Except)
+                        handler.PyException = null;
+
                     handler.ReturnValue = returnValue;
                     returnValue = null;
                     nextIndex = handler.FinallyOffset;
