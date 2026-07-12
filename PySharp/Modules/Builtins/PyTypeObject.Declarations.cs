@@ -55,6 +55,7 @@ partial class PyTypeObject
 
 #pragma warning disable IDE0051
 #pragma warning disable IDE0060
+#pragma warning disable PYSPI006
 
         [PySpecialMethod("__init__", typeof(PySelfArgsKwargsFunction))]
         static partial void Init(PyCallContext context, TObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs);
@@ -332,6 +333,7 @@ partial class PyTypeObject
         [PySpecialMethod("__release_buffer__", typeof(PyReleaseBufferFunction))]
         static partial void ReleaseBuffer(PyCallContext context, TObject self, PyObject buffer);
 
+#pragma warning restore PYSPI006
 #pragma warning restore IDE0060
 #pragma warning restore IDE0051
     }

@@ -86,7 +86,7 @@ public sealed partial class PyFunctionObjectType : PyTypeObject<PyFunctionObject
         return self.Code;
     }
 
-    [PyProperty("__defaults__")]
+    [PyProperty(PySpecialNames.Defaults)]
     private static PyResult Get_Defaults(PyCallContext context, PyFunctionObject self)
     {
         if (self._def.Defaults.Length is 0)

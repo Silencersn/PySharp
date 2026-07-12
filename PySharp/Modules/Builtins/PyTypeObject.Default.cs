@@ -36,7 +36,7 @@ partial class PyTypeObject
         if (name is PySpecialNames.Class)
             return type;
 
-        if (name is "__dict__")
+        if (name is PySpecialNames.Dict)
         {
             if (self is PyObjectManagedDict managed)
                 return PyDictObject.CreateProxy(new DictAdapter(managed.PyAttributes!));
@@ -121,7 +121,7 @@ partial class PyTypeObject
         if (name is PySpecialNames.Class)
             return metaType;
 
-        if (name is "__dict__")
+        if (name is PySpecialNames.Dict)
         {
             if (self is PyObjectManagedDict managed)
                 return PyDictObject.CreateProxy(new DictAdapter(managed.PyAttributes!));

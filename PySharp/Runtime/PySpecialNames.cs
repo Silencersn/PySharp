@@ -31,6 +31,9 @@ public static partial class PySpecialNames
 
     public const string MatchArgs = "__match_args__";
 
+    public const string Dict = "__dict__";
+    public const string Defaults = "__defaults__";
+
     // exception attributes
     public const string Cause = "__cause__";
     public const string Context = "__context__";

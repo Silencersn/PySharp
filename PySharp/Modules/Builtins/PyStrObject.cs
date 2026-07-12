@@ -502,9 +502,9 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
         for (int i = 0; i < formatStr.Length; i++)
         {
-            if (formatStr[i] == '{')
+            if (formatStr[i] is '{')
             {
-                if (i + 1 < formatStr.Length && formatStr[i + 1] == '{')
+                if (i + 1 < formatStr.Length && formatStr[i + 1] is '{')
                 {
                     sb.Append('{');
                     i++;
@@ -540,7 +540,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                         name = fieldStr;
                     }
 
-                    if (name.Length > 0 && (char.IsDigit(name[0]) || (name.Length > 1 && name[0] == '-' && char.IsDigit(name[1]))))
+                    if (name.Length > 0 && (char.IsDigit(name[0]) || (name.Length > 1 && name[0] is '-' && char.IsDigit(name[1]))))
                     {
                         // {0} or {0:spec}
                         if (!int.TryParse(name, out int idx))
@@ -573,9 +573,9 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
                 i = end;
             }
-            else if (formatStr[i] == '}')
+            else if (formatStr[i] is '}')
             {
-                if (i + 1 < formatStr.Length && formatStr[i + 1] == '}')
+                if (i + 1 < formatStr.Length && formatStr[i + 1] is '}')
                 {
                     sb.Append('}');
                     i++;
@@ -636,19 +636,23 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             char c = self.Value[i];
             int lineEndLen = 0;
 
-            if (c == '\n')
-                lineEndLen = 1;
-            else if (c == '\r')
+            if (c is '\n')
             {
                 lineEndLen = 1;
-                if (i + 1 < self.Value.Length && self.Value[i + 1] == '\n')
+            }
+            else if (c is '\r')
+            {
+                lineEndLen = 1;
+                if (i + 1 < self.Value.Length && self.Value[i + 1] is '\n')
                     lineEndLen = 2;
             }
-            else if (c == '\v' || c == '\f' || c == '\x1c' || c == '\x1d' || c == '\x1e'
-                  || c == '\x85' || c == '\u2028' || c == '\u2029')
+            else if (c is '\v' or '\f' or '\x1c' or '\x1d' or '\x1e'
+                  or '\x85' or '\u2028' or '\u2029')
+            {
                 lineEndLen = 1;
+            }
 
-            if (lineEndLen == 0)
+            if (lineEndLen is 0)
                 continue;
 
             string line = self.Value[start..i];
@@ -672,7 +676,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters]
     private static PyResult IsSpace(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (self.Value.Length == 0)
+        if (self.Value.Length is 0)
             return PyBoolObject.False;
 
         foreach (char c in self.Value)
@@ -719,13 +723,15 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 return PyResult.ValueError("tabsize must be non-negative");
         }
         else if (arguments[0] is not PyNoneObject)
+        {
             return PyResult.TypeError("tabsize must be int");
+        }
 
         var sb = new StringBuilder();
         int col = 0;
         foreach (char c in self.Value)
         {
-            if (c == '\t')
+            if (c is '\t')
             {
                 if (tabsize > 0)
                 {
@@ -735,7 +741,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 }
                 // if tabsize == 0, tab is simply removed (no spaces added)
             }
-            else if (c == '\n' || c == '\r')
+            else if (c is '\n' or '\r')
             {
                 sb.Append(c);
                 col = 0;
@@ -851,7 +857,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
         for (int i = 0; i < formatStr.Length; i++)
         {
-            if (formatStr[i] != '%')
+            if (formatStr[i] is not '%')
             {
                 sb.Append(formatStr[i]);
                 continue;
@@ -861,7 +867,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             if (i >= formatStr.Length)
                 return PyResult.ValueError("incomplete format");
 
-            if (formatStr[i] == '%')
+            if (formatStr[i] is '%')
             {
                 sb.Append('%');
                 continue;
@@ -870,7 +876,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             PyObject? value;
 
             // Handle dict-based: %(name)format
-            if (formatStr[i] == '(')
+            if (formatStr[i] is '(')
             {
                 if (dict is null)
                     return PyResult.TypeError("format requires a mapping");
@@ -917,7 +923,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
             // Parse width
             int width = -1;
-            if (i < formatStr.Length && formatStr[i] == '*')
+            if (i < formatStr.Length && formatStr[i] is '*')
             {
                 if (args is null || argIndex >= args.Count)
                     return PyResult.TypeError("not enough arguments for format string");
@@ -929,7 +935,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             }
             else
             {
-                var widthStr = "";
+                var widthStr = string.Empty;
                 while (i < formatStr.Length && char.IsDigit(formatStr[i]))
                     widthStr += formatStr[i++];
                 if (widthStr.Length > 0)
@@ -938,10 +944,10 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
             // Parse precision
             int precision = -1;
-            if (i < formatStr.Length && formatStr[i] == '.')
+            if (i < formatStr.Length && formatStr[i] is '.')
             {
                 i++;
-                if (i < formatStr.Length && formatStr[i] == '*')
+                if (i < formatStr.Length && formatStr[i] is '*')
                 {
                     if (args is null || argIndex >= args.Count)
                         return PyResult.TypeError("not enough arguments for format string");
@@ -953,7 +959,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 }
                 else
                 {
-                    var precStr = "";
+                    var precStr = string.Empty;
                     while (i < formatStr.Length && char.IsDigit(formatStr[i]))
                         precStr += formatStr[i++];
                     if (precStr.Length > 0)
@@ -964,10 +970,8 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             }
 
             // Skip 'h', 'l', 'L' length modifiers (C style, ignored by Python)
-            if (i < formatStr.Length && (formatStr[i] == 'h' || formatStr[i] == 'l' || formatStr[i] == 'L'))
-            {
+            if (i < formatStr.Length && (formatStr[i] is 'h' or 'l' or 'L'))
                 i++;
-            }
 
             // Parse format type
             if (i >= formatStr.Length)
@@ -981,7 +985,8 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 case 's':
                     {
                         var strResult = PySpecialMethods.Str(context, value);
-                        if (strResult.IsError) return strResult;
+                        if (strResult.IsError)
+                            return strResult;
                         formatted = strResult.Value.Value;
                         if (precision >= 0 && formatted.Length > precision)
                             formatted = formatted[..precision];
@@ -990,7 +995,8 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 case 'r':
                     {
                         var reprResult = PySpecialMethods.Repr(context, value);
-                        if (reprResult.IsError) return reprResult;
+                        if (reprResult.IsError)
+                            return reprResult;
                         formatted = reprResult.Value.Value;
                         if (precision >= 0 && formatted.Length > precision)
                             formatted = formatted[..precision];
@@ -999,7 +1005,8 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 case 'a':
                     {
                         var asciiResult = PyBuiltinFunctions.Ascii.Call(context, [value]);
-                        if (asciiResult.IsError) return asciiResult;
+                        if (asciiResult.IsError)
+                            return asciiResult;
                         formatted = ((PyStrObject)asciiResult.Value).Value;
                         if (precision >= 0 && formatted.Length > precision)
                             formatted = formatted[..precision];
@@ -1010,7 +1017,8 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 case 'u':
                     {
                         var indexResult = PySpecialMethods.Index(context, value);
-                        if (indexResult.IsError) return indexResult;
+                        if (indexResult.IsError)
+                            return indexResult;
                         var intVal = indexResult.Value.Value;
                         string intStr;
                         if (precision >= 0)
@@ -1029,13 +1037,14 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 case 'o':
                     {
                         var indexResult = PySpecialMethods.Index(context, value);
-                        if (indexResult.IsError) return indexResult;
+                        if (indexResult.IsError)
+                            return indexResult;
                         var octVal = indexResult.Value.Value;
                         string absOct = octVal == 0 ? "0" : BigIntegerToBase(octVal < 0 ? -octVal : octVal, 8, false);
                         // Apply precision (minimum number of digits)
                         if (precision >= 0 && absOct.Length < precision)
                             absOct = new string('0', precision - absOct.Length) + absOct;
-                        string prefix = "";
+                        string prefix = string.Empty;
                         if (octVal.Sign < 0)
                             prefix = "-";
                         else if (flagAlternate && octVal != 0)
@@ -1046,7 +1055,8 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 case 'x':
                     {
                         var indexResult = PySpecialMethods.Index(context, value);
-                        if (indexResult.IsError) return indexResult;
+                        if (indexResult.IsError)
+                            return indexResult;
                         var hexBigInt = indexResult.Value.Value;
                         string hex;
                         if (hexBigInt == 0)
@@ -1062,7 +1072,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                             string digits = hex[signLen..];
                             if (digits.Length < precision)
                                 digits = new string('0', precision - digits.Length) + digits;
-                            hex = (hexBigInt.Sign < 0 ? "-" : "") + digits;
+                            hex = (hexBigInt.Sign < 0 ? "-" : string.Empty) + digits;
                         }
                         if (flagAlternate && hexBigInt != 0)
                             formatted = "0x" + (hexBigInt.Sign < 0 ? hex[1..] : hex);
@@ -1073,7 +1083,8 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 case 'X':
                     {
                         var indexResult = PySpecialMethods.Index(context, value);
-                        if (indexResult.IsError) return indexResult;
+                        if (indexResult.IsError)
+                            return indexResult;
                         var hexBigInt = indexResult.Value.Value;
                         string hex;
                         if (hexBigInt == 0)
@@ -1089,7 +1100,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                             string digits = hex[signLen..];
                             if (digits.Length < precision)
                                 digits = new string('0', precision - digits.Length) + digits;
-                            hex = (hexBigInt.Sign < 0 ? "-" : "") + digits;
+                            hex = (hexBigInt.Sign < 0 ? "-" : string.Empty) + digits;
                         }
                         if (flagAlternate && hexBigInt != 0)
                             formatted = "0X" + (hexBigInt.Sign < 0 ? hex[1..] : hex);
@@ -1101,10 +1112,11 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 case 'E':
                     {
                         var floatResult = PySpecialMethods.Float(context, value);
-                        if (floatResult.IsError) return floatResult;
+                        if (floatResult.IsError)
+                            return floatResult;
                         double d = floatResult.Value.Value;
                         int prec = precision >= 0 ? precision : 6;
-                        string fmt = fmtType == 'e' ? $"e{prec}" : $"E{prec}";
+                        string fmt = fmtType is 'e' ? $"e{prec}" : $"E{prec}";
                         formatted = d.ToString(fmt, CultureInfo.InvariantCulture);
                         if (double.IsNaN(d) || double.IsInfinity(d))
                         {
@@ -1112,14 +1124,15 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                         }
                         else
                         {
-                            if (flagAlternate && precision == 0)
+                            if (flagAlternate && precision is 0)
                             {
                                 // Force decimal point: remove trailing digits and keep the dot
                                 int dotIndex = formatted.IndexOf('.');
                                 if (dotIndex < 0)
                                 {
                                     int eIndex = formatted.IndexOf('e');
-                                    if (eIndex < 0) eIndex = formatted.IndexOf('E');
+                                    if (eIndex < 0)
+                                        eIndex = formatted.IndexOf('E');
                                     formatted = formatted.Insert(eIndex < 0 ? formatted.Length : eIndex, ".");
                                 }
                             }
@@ -1134,7 +1147,8 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 case 'F':
                     {
                         var floatResult = PySpecialMethods.Float(context, value);
-                        if (floatResult.IsError) return floatResult;
+                        if (floatResult.IsError)
+                            return floatResult;
                         double d = floatResult.Value.Value;
                         int prec = precision >= 0 ? precision : 6;
                         string fmt = $"F{prec}";
@@ -1145,7 +1159,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                         }
                         else
                         {
-                            if (flagAlternate && precision == 0)
+                            if (flagAlternate && precision is 0)
                             {
                                 // Force decimal point: e.g. "3" -> "3."
                                 if (!formatted.Contains('.'))
@@ -1162,10 +1176,11 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 case 'G':
                     {
                         var floatResult = PySpecialMethods.Float(context, value);
-                        if (floatResult.IsError) return floatResult;
+                        if (floatResult.IsError)
+                            return floatResult;
                         double d = floatResult.Value.Value;
                         int prec = precision >= 0 ? precision : 6;
-                        string fmt = fmtType == 'g' ? $"G{prec}" : $"G{prec}";
+                        string fmt = fmtType is 'g' ? $"G{prec}" : $"G{prec}";
                         formatted = d.ToString(fmt, CultureInfo.InvariantCulture);
                         if (double.IsNaN(d) || double.IsInfinity(d))
                         {
@@ -1179,7 +1194,8 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                                 if (!formatted.Contains('.'))
                                 {
                                     int eIndex = formatted.IndexOf('e');
-                                    if (eIndex < 0) eIndex = formatted.IndexOf('E');
+                                    if (eIndex < 0)
+                                        eIndex = formatted.IndexOf('E');
                                     if (eIndex >= 0)
                                         formatted = formatted.Insert(eIndex, ".");
                                     else
@@ -1196,11 +1212,14 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 case 'c':
                     {
                         if (value is PyStrObject { Value.Length: 1 } cStr)
+                        {
                             formatted = cStr.Value;
+                        }
                         else
                         {
                             var indexResult = PySpecialMethods.Index(context, value);
-                            if (indexResult.IsError) return indexResult;
+                            if (indexResult.IsError)
+                                return indexResult;
                             int codePoint = (int)indexResult.Value.Value;
                             if (codePoint < 0 || codePoint > 0x10FFFF)
                                 return PyResult.OverflowError("%c arg not in range(0x110000)");
@@ -1222,14 +1241,18 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             {
                 char padChar = flagZeroPad && !flagLeftAlign ? '0' : ' ';
                 if (flagLeftAlign)
+                {
                     formatted = formatted.PadRight(width, padChar);
-                else if (flagZeroPad && formatted.Length > 0 && (formatted[0] == '+' || formatted[0] == '-' || formatted[0] == ' '))
+                }
+                else if (flagZeroPad && formatted.Length > 0 && (formatted[0] is '+' or '-' or ' '))
                 {
                     string sign = formatted[..1];
                     formatted = sign + formatted[1..].PadLeft(width - 1, padChar);
                 }
                 else
+                {
                     formatted = formatted.PadLeft(width, padChar);
+                }
             }
 
             sb.Append(formatted);
