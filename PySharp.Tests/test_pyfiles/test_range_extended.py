@@ -46,4 +46,38 @@ assert list(range(0, -5, 1)) == []
 assert list(range(5, 0, 1)) == []
 assert list(range(0)) == []
 
+# range.__reversed__
+assert list(reversed(range(5))) == [4, 3, 2, 1, 0]
+assert list(reversed(range(0, 10, 2))) == [8, 6, 4, 2, 0]
+assert list(reversed(range(5, 0, -1))) == [1, 2, 3, 4, 5]
+assert list(reversed(range(0))) == []
+
+# range.__getitem__ (index access)
+assert range(10)[5] == 5
+assert range(10)[-1] == 9
+assert range(0, 10, 2)[3] == 6
+assert range(5, 0, -1)[2] == 3
+
+# range.__getitem__ out of range
+try:
+    range(10)[100]
+    assert False, "Should raise IndexError"
+except IndexError:
+    pass
+
+try:
+    range(10)[-100]
+    assert False, "Should raise IndexError"
+except IndexError:
+    pass
+
+# range.__getitem__ with slice
+assert list(range(10)[2:5]) == [2, 3, 4]
+assert list(range(10)[:3]) == [0, 1, 2]
+assert list(range(10)[5:]) == [5, 6, 7, 8, 9]
+assert list(range(10)[::2]) == [0, 2, 4, 6, 8]
+assert list(range(10)[::-1]) == [9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
+assert list(range(0, 10, 2)[1:4]) == [2, 4, 6]
+assert list(range(10)[-5:-2]) == [5, 6, 7]
+
 print("test_range_extended passed")

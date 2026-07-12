@@ -5,6 +5,7 @@ using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.Numerics;
 using System.Text;
 
 namespace PySharp.Modules.Builtins;
@@ -488,6 +489,266 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         return PyStrObject.FromString(self.Value.PadLeft(width, '0'));
     }
 
+    [PyMethod("format")]
+    [AIGenerated]
+    [PyFunctionParameters("*args", "**kwargs")]
+    private static PyResult Format(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        var formatStr = self.Value;
+        var extraArgs = arguments.ExtraArgs;
+        var extraKwargs = arguments.ExtraKwargs;
+        int argIndex = 0;
+        var sb = new StringBuilder();
+
+        for (int i = 0; i < formatStr.Length; i++)
+        {
+            if (formatStr[i] == '{')
+            {
+                if (i + 1 < formatStr.Length && formatStr[i + 1] == '{')
+                {
+                    sb.Append('{');
+                    i++;
+                    continue;
+                }
+
+                int end = formatStr.IndexOf('}', i + 1);
+                if (end < 0)
+                    return PyResult.ValueError("unmatched '{' in format spec");
+
+                var fieldStr = formatStr.AsSpan(i + 1, end - i - 1);
+                PyObject? value = null;
+
+                if (fieldStr.IsEmpty)
+                {
+                    // {} - positional
+                    if (argIndex >= extraArgs.Count)
+                        return PyResult.IndexError("tuple index out of range");
+                    value = extraArgs[argIndex++];
+                }
+                else
+                {
+                    int colonIndex = fieldStr.IndexOf(':');
+                    ReadOnlySpan<char> name;
+                    ReadOnlySpan<char> fmtSpec = default;
+                    if (colonIndex >= 0)
+                    {
+                        name = fieldStr[..colonIndex];
+                        fmtSpec = fieldStr[(colonIndex + 1)..];
+                    }
+                    else
+                    {
+                        name = fieldStr;
+                    }
+
+                    if (name.Length > 0 && (char.IsDigit(name[0]) || (name.Length > 1 && name[0] == '-' && char.IsDigit(name[1]))))
+                    {
+                        // {0} or {0:spec}
+                        if (!int.TryParse(name, out int idx))
+                            return PyResult.ValueError("invalid format specifier");
+                        if (idx >= extraArgs.Count)
+                            return PyResult.IndexError("tuple index out of range");
+                        value = extraArgs[idx];
+                    }
+                    else
+                    {
+                        // {name} or {name:spec}
+                        string key = name.ToString();
+                        if (!extraKwargs.TryGetValue(key, out value))
+                            return PyResult.KeyError(key);
+                    }
+
+                    if (!fmtSpec.IsEmpty)
+                    {
+                        var formatResult = PySpecialMethods.Format(context, value, PyStrObject.FromString(fmtSpec.ToString()));
+                        if (formatResult.IsError)
+                            return formatResult;
+                        value = formatResult.Value;
+                    }
+                }
+
+                var strResult = PySpecialMethods.Str(context, value);
+                if (strResult.IsError)
+                    return strResult;
+                sb.Append(strResult.Value.Value);
+
+                i = end;
+            }
+            else if (formatStr[i] == '}')
+            {
+                if (i + 1 < formatStr.Length && formatStr[i + 1] == '}')
+                {
+                    sb.Append('}');
+                    i++;
+                    continue;
+                }
+                return PyResult.ValueError("Single '}' encountered in format string");
+            }
+            else
+            {
+                sb.Append(formatStr[i]);
+            }
+        }
+
+        return PyStrObject.FromString(sb.ToString());
+    }
+
+    [PyMethod("partition")]
+    [AIGenerated]
+    [PyFunctionParameters("sep", "/")]
+    private static PyResult Partition(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        if (arguments[0] is not PyStrObject sepStr)
+            return PyResult.TypeError("partition sep must be str");
+        if (string.IsNullOrEmpty(sepStr.Value))
+            return PyResult.ValueError("empty separator");
+
+        int idx = self.Value.IndexOf(sepStr.Value, StringComparison.Ordinal);
+        if (idx < 0)
+        {
+            return PyTupleObject.CreateTuple(
+                self,
+                PyStrObject.Empty,
+                PyStrObject.Empty
+            );
+        }
+
+        return PyTupleObject.CreateTuple(
+            PyStrObject.FromString(self.Value[..idx]),
+            PyStrObject.FromString(sepStr.Value),
+            PyStrObject.FromString(self.Value[(idx + sepStr.Value.Length)..])
+        );
+    }
+
+    [PyMethod("splitlines")]
+    [AIGenerated]
+    [PyFunctionParameters("keepends=False", "/")]
+    private static PyResult SplitLines(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        bool keepends = false;
+        if (arguments[0] is PyBoolObject keependsBool)
+            keepends = keependsBool.BoolValue;
+
+        var lines = new List<PyObject>();
+        int start = 0;
+
+        for (int i = 0; i < self.Value.Length; i++)
+        {
+            char c = self.Value[i];
+            int lineEndLen = 0;
+
+            if (c == '\n')
+                lineEndLen = 1;
+            else if (c == '\r')
+            {
+                lineEndLen = 1;
+                if (i + 1 < self.Value.Length && self.Value[i + 1] == '\n')
+                    lineEndLen = 2;
+            }
+            else if (c == '\v' || c == '\f' || c == '\x1c' || c == '\x1d' || c == '\x1e'
+                  || c == '\x85' || c == '\u2028' || c == '\u2029')
+                lineEndLen = 1;
+
+            if (lineEndLen == 0)
+                continue;
+
+            string line = self.Value[start..i];
+            if (keepends)
+                line += self.Value.Substring(i, lineEndLen);
+            lines.Add(PyStrObject.FromString(line));
+
+            i += lineEndLen - 1;
+            start = i + 1;
+        }
+
+        // Add remaining text after last line break
+        if (start < self.Value.Length)
+            lines.Add(PyStrObject.FromString(self.Value[start..]));
+
+        return PyListObject.CreateList(lines);
+    }
+
+    [PyMethod("isspace")]
+    [AIGenerated]
+    [PyFunctionParameters]
+    private static PyResult IsSpace(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        if (self.Value.Length == 0)
+            return PyBoolObject.False;
+
+        foreach (char c in self.Value)
+        {
+            if (!char.IsWhiteSpace(c))
+                return PyBoolObject.False;
+        }
+        return PyBoolObject.True;
+    }
+
+    [PyMethod("encode")]
+    [AIGenerated]
+    [PyFunctionParameters("encoding='utf-8'", "/")]
+    private static PyResult Encode(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        string encoding = "utf-8";
+        if (arguments[0] is PyStrObject encStr)
+            encoding = encStr.Value;
+        else if (arguments[0] is not PyNoneObject)
+            return PyResult.TypeError("encoding must be str");
+
+        try
+        {
+            var enc = System.Text.Encoding.GetEncoding(encoding);
+            byte[] bytes = enc.GetBytes(self.Value);
+            return PyBytesObject.MoveBytes(bytes);
+        }
+        catch (ArgumentException)
+        {
+            return PyResult.ValueError($"unknown encoding: {encoding}");
+        }
+    }
+
+    [PyMethod("expandtabs")]
+    [AIGenerated]
+    [PyFunctionParameters("tabsize=8", "/")]
+    private static PyResult ExpandTabs(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        int tabsize = 8;
+        if (arguments[0] is PyIntObject tabsizeObj)
+        {
+            tabsize = tabsizeObj.Int32Value;
+            if (tabsize < 0)
+                return PyResult.ValueError("tabsize must be non-negative");
+        }
+        else if (arguments[0] is not PyNoneObject)
+            return PyResult.TypeError("tabsize must be int");
+
+        var sb = new StringBuilder();
+        int col = 0;
+        foreach (char c in self.Value)
+        {
+            if (c == '\t')
+            {
+                if (tabsize > 0)
+                {
+                    int spaces = tabsize - (col % tabsize);
+                    sb.Append(' ', spaces);
+                    col += spaces;
+                }
+                // if tabsize == 0, tab is simply removed (no spaces added)
+            }
+            else if (c == '\n' || c == '\r')
+            {
+                sb.Append(c);
+                col = 0;
+            }
+            else
+            {
+                sb.Append(c);
+                col++;
+            }
+        }
+        return PyStrObject.FromString(sb.ToString());
+    }
+
     protected override PyResult Repr(PyCallContext context, PyStrObject self)
     {
         return PyStrObject.FromString(self.Repr());
@@ -515,6 +776,23 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     }
     protected override PyResult GetItem(PyCallContext context, PyStrObject self, PyObject item)
     {
+        if (item is PySliceObject slice)
+        {
+            var (start, _, step, length) = slice.Indices(self.PyLength);
+            if (length is 0)
+                return PyStrObject.Empty;
+
+            // Collect all runes for slicing
+            var runes = new List<Rune>(self.PyLength);
+            foreach (var rune in self.Value.EnumerateRunes())
+                runes.Add(rune);
+
+            var sb = new StringBuilder(length);
+            for (int i = start, ri = 0; ri < length; i += step, ri++)
+                sb.Append(runes[i].ToString());
+            return PyStrObject.FromString(sb.ToString());
+        }
+
         var result = PySpecialMethods.Index(context, item);
         if (result.IsError)
             return result;
@@ -553,11 +831,440 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     {
         return Mul(context, self, other);
     }
+
+    protected override PyResult Mod(PyCallContext context, PyStrObject self, PyObject other)
+    {
+        // Implement Python's % string formatting (old-style %-formatting)
+        var formatStr = self.Value;
+        IReadOnlyList<PyObject>? args = null;
+        PyDictObject? dict = null;
+
+        if (other is PyTupleObject tuple)
+            args = tuple;
+        else if (other is PyDictObject dictObj)
+            dict = dictObj;
+        else
+            args = [other];
+
+        int argIndex = 0;
+        var sb = new StringBuilder();
+
+        for (int i = 0; i < formatStr.Length; i++)
+        {
+            if (formatStr[i] != '%')
+            {
+                sb.Append(formatStr[i]);
+                continue;
+            }
+
+            i++; // skip '%'
+            if (i >= formatStr.Length)
+                return PyResult.ValueError("incomplete format");
+
+            if (formatStr[i] == '%')
+            {
+                sb.Append('%');
+                continue;
+            }
+
+            PyObject? value;
+
+            // Handle dict-based: %(name)format
+            if (formatStr[i] == '(')
+            {
+                if (dict is null)
+                    return PyResult.TypeError("format requires a mapping");
+
+                int closeParen = formatStr.IndexOf(')', i + 1);
+                if (closeParen < 0)
+                    return PyResult.ValueError("missing ')' in format spec");
+
+                string key = formatStr[(i + 1)..closeParen];
+                i = closeParen + 1;
+
+                var keyObj = PyStrObject.FromString(key);
+                if (!dict.TryGetValue(keyObj, out value))
+                    return PyResult.KeyError(key);
+            }
+            else
+            {
+                if (args is null)
+                    return PyResult.TypeError("format requires a mapping");
+                if (argIndex >= args.Count)
+                    return PyResult.TypeError("not enough arguments for format string");
+                value = args[argIndex++];
+            }
+
+            // Parse flags
+            bool flagAlternate = false;
+            bool flagZeroPad = false;
+            bool flagLeftAlign = false;
+            bool flagSpace = false;
+            bool flagSign = false;
+
+            while (i < formatStr.Length && " #0-+".Contains(formatStr[i]))
+            {
+                switch (formatStr[i])
+                {
+                    case '#': flagAlternate = true; break;
+                    case '0': flagZeroPad = true; break;
+                    case '-': flagLeftAlign = true; break;
+                    case ' ': flagSpace = true; break;
+                    case '+': flagSign = true; break;
+                }
+                i++;
+            }
+
+            // Parse width
+            int width = -1;
+            if (i < formatStr.Length && formatStr[i] == '*')
+            {
+                if (args is null || argIndex >= args.Count)
+                    return PyResult.TypeError("not enough arguments for format string");
+                if (args[argIndex] is not PyIntObject widthObj)
+                    return PyResult.TypeError("* wants int");
+                width = widthObj.Int32Value;
+                argIndex++;
+                i++;
+            }
+            else
+            {
+                var widthStr = "";
+                while (i < formatStr.Length && char.IsDigit(formatStr[i]))
+                    widthStr += formatStr[i++];
+                if (widthStr.Length > 0)
+                    width = int.Parse(widthStr);
+            }
+
+            // Parse precision
+            int precision = -1;
+            if (i < formatStr.Length && formatStr[i] == '.')
+            {
+                i++;
+                if (i < formatStr.Length && formatStr[i] == '*')
+                {
+                    if (args is null || argIndex >= args.Count)
+                        return PyResult.TypeError("not enough arguments for format string");
+                    if (args[argIndex] is not PyIntObject precObj)
+                        return PyResult.TypeError("* wants int");
+                    precision = precObj.Int32Value;
+                    argIndex++;
+                    i++;
+                }
+                else
+                {
+                    var precStr = "";
+                    while (i < formatStr.Length && char.IsDigit(formatStr[i]))
+                        precStr += formatStr[i++];
+                    if (precStr.Length > 0)
+                        precision = int.Parse(precStr);
+                    else
+                        return PyResult.ValueError("format requires a precision");
+                }
+            }
+
+            // Skip 'h', 'l', 'L' length modifiers (C style, ignored by Python)
+            if (i < formatStr.Length && (formatStr[i] == 'h' || formatStr[i] == 'l' || formatStr[i] == 'L'))
+            {
+                i++;
+            }
+
+            // Parse format type
+            if (i >= formatStr.Length)
+                return PyResult.ValueError("incomplete format");
+            char fmtType = formatStr[i];
+
+            // Format the value
+            string formatted;
+            switch (fmtType)
+            {
+                case 's':
+                    {
+                        var strResult = PySpecialMethods.Str(context, value);
+                        if (strResult.IsError) return strResult;
+                        formatted = strResult.Value.Value;
+                        if (precision >= 0 && formatted.Length > precision)
+                            formatted = formatted[..precision];
+                        break;
+                    }
+                case 'r':
+                    {
+                        var reprResult = PySpecialMethods.Repr(context, value);
+                        if (reprResult.IsError) return reprResult;
+                        formatted = reprResult.Value.Value;
+                        if (precision >= 0 && formatted.Length > precision)
+                            formatted = formatted[..precision];
+                        break;
+                    }
+                case 'a':
+                    {
+                        var asciiResult = PyBuiltinFunctions.Ascii.Call(context, [value]);
+                        if (asciiResult.IsError) return asciiResult;
+                        formatted = ((PyStrObject)asciiResult.Value).Value;
+                        if (precision >= 0 && formatted.Length > precision)
+                            formatted = formatted[..precision];
+                        break;
+                    }
+                case 'd':
+                case 'i':
+                case 'u':
+                    {
+                        var indexResult = PySpecialMethods.Index(context, value);
+                        if (indexResult.IsError) return indexResult;
+                        var intVal = indexResult.Value.Value;
+                        string intStr;
+                        if (precision >= 0)
+                            intStr = BigInteger.Abs(intVal).ToString($"D{precision}");
+                        else
+                            intStr = BigInteger.Abs(intVal).ToString();
+                        if (intVal.Sign < 0)
+                            intStr = "-" + intStr;
+                        else if (flagSign)
+                            intStr = "+" + intStr;
+                        else if (flagSpace)
+                            intStr = " " + intStr;
+                        formatted = intStr;
+                        break;
+                    }
+                case 'o':
+                    {
+                        var indexResult = PySpecialMethods.Index(context, value);
+                        if (indexResult.IsError) return indexResult;
+                        var octVal = indexResult.Value.Value;
+                        string absOct = octVal == 0 ? "0" : BigIntegerToBase(octVal < 0 ? -octVal : octVal, 8, false);
+                        // Apply precision (minimum number of digits)
+                        if (precision >= 0 && absOct.Length < precision)
+                            absOct = new string('0', precision - absOct.Length) + absOct;
+                        string prefix = "";
+                        if (octVal.Sign < 0)
+                            prefix = "-";
+                        else if (flagAlternate && octVal != 0)
+                            prefix = "0o";
+                        formatted = prefix + absOct;
+                        break;
+                    }
+                case 'x':
+                    {
+                        var indexResult = PySpecialMethods.Index(context, value);
+                        if (indexResult.IsError) return indexResult;
+                        var hexBigInt = indexResult.Value.Value;
+                        string hex;
+                        if (hexBigInt == 0)
+                            hex = "0";
+                        else if (hexBigInt.Sign < 0)
+                            hex = "-" + BigIntegerToBase(-hexBigInt, 16, false);
+                        else
+                            hex = BigIntegerToBase(hexBigInt, 16, false);
+                        // Apply precision
+                        if (precision >= 0)
+                        {
+                            int signLen = hexBigInt.Sign < 0 ? 1 : 0;
+                            string digits = hex[signLen..];
+                            if (digits.Length < precision)
+                                digits = new string('0', precision - digits.Length) + digits;
+                            hex = (hexBigInt.Sign < 0 ? "-" : "") + digits;
+                        }
+                        if (flagAlternate && hexBigInt != 0)
+                            formatted = "0x" + (hexBigInt.Sign < 0 ? hex[1..] : hex);
+                        else
+                            formatted = hex;
+                        break;
+                    }
+                case 'X':
+                    {
+                        var indexResult = PySpecialMethods.Index(context, value);
+                        if (indexResult.IsError) return indexResult;
+                        var hexBigInt = indexResult.Value.Value;
+                        string hex;
+                        if (hexBigInt == 0)
+                            hex = "0";
+                        else if (hexBigInt.Sign < 0)
+                            hex = "-" + BigIntegerToBase(-hexBigInt, 16, true);
+                        else
+                            hex = BigIntegerToBase(hexBigInt, 16, true);
+                        // Apply precision
+                        if (precision >= 0)
+                        {
+                            int signLen = hexBigInt.Sign < 0 ? 1 : 0;
+                            string digits = hex[signLen..];
+                            if (digits.Length < precision)
+                                digits = new string('0', precision - digits.Length) + digits;
+                            hex = (hexBigInt.Sign < 0 ? "-" : "") + digits;
+                        }
+                        if (flagAlternate && hexBigInt != 0)
+                            formatted = "0X" + (hexBigInt.Sign < 0 ? hex[1..] : hex);
+                        else
+                            formatted = hex;
+                        break;
+                    }
+                case 'e':
+                case 'E':
+                    {
+                        var floatResult = PySpecialMethods.Float(context, value);
+                        if (floatResult.IsError) return floatResult;
+                        double d = floatResult.Value.Value;
+                        int prec = precision >= 0 ? precision : 6;
+                        string fmt = fmtType == 'e' ? $"e{prec}" : $"E{prec}";
+                        formatted = d.ToString(fmt, CultureInfo.InvariantCulture);
+                        if (double.IsNaN(d) || double.IsInfinity(d))
+                        {
+                            formatted = d.ToString("G", CultureInfo.InvariantCulture);
+                        }
+                        else
+                        {
+                            if (flagAlternate && precision == 0)
+                            {
+                                // Force decimal point: remove trailing digits and keep the dot
+                                int dotIndex = formatted.IndexOf('.');
+                                if (dotIndex < 0)
+                                {
+                                    int eIndex = formatted.IndexOf('e');
+                                    if (eIndex < 0) eIndex = formatted.IndexOf('E');
+                                    formatted = formatted.Insert(eIndex < 0 ? formatted.Length : eIndex, ".");
+                                }
+                            }
+                            if (d >= 0 && flagSign)
+                                formatted = "+" + formatted;
+                            else if (d >= 0 && flagSpace)
+                                formatted = " " + formatted;
+                        }
+                        break;
+                    }
+                case 'f':
+                case 'F':
+                    {
+                        var floatResult = PySpecialMethods.Float(context, value);
+                        if (floatResult.IsError) return floatResult;
+                        double d = floatResult.Value.Value;
+                        int prec = precision >= 0 ? precision : 6;
+                        string fmt = $"F{prec}";
+                        formatted = d.ToString(fmt, CultureInfo.InvariantCulture);
+                        if (double.IsNaN(d) || double.IsInfinity(d))
+                        {
+                            formatted = d.ToString("G", CultureInfo.InvariantCulture);
+                        }
+                        else
+                        {
+                            if (flagAlternate && precision == 0)
+                            {
+                                // Force decimal point: e.g. "3" -> "3."
+                                if (!formatted.Contains('.'))
+                                    formatted += ".";
+                            }
+                            if (d >= 0 && flagSign)
+                                formatted = "+" + formatted;
+                            else if (d >= 0 && flagSpace)
+                                formatted = " " + formatted;
+                        }
+                        break;
+                    }
+                case 'g':
+                case 'G':
+                    {
+                        var floatResult = PySpecialMethods.Float(context, value);
+                        if (floatResult.IsError) return floatResult;
+                        double d = floatResult.Value.Value;
+                        int prec = precision >= 0 ? precision : 6;
+                        string fmt = fmtType == 'g' ? $"G{prec}" : $"G{prec}";
+                        formatted = d.ToString(fmt, CultureInfo.InvariantCulture);
+                        if (double.IsNaN(d) || double.IsInfinity(d))
+                        {
+                            formatted = d.ToString("G", CultureInfo.InvariantCulture);
+                        }
+                        else
+                        {
+                            if (flagAlternate)
+                            {
+                                // Force decimal point for # flag
+                                if (!formatted.Contains('.'))
+                                {
+                                    int eIndex = formatted.IndexOf('e');
+                                    if (eIndex < 0) eIndex = formatted.IndexOf('E');
+                                    if (eIndex >= 0)
+                                        formatted = formatted.Insert(eIndex, ".");
+                                    else
+                                        formatted += ".";
+                                }
+                            }
+                            if (d >= 0 && flagSign)
+                                formatted = "+" + formatted;
+                            else if (d >= 0 && flagSpace)
+                                formatted = " " + formatted;
+                        }
+                        break;
+                    }
+                case 'c':
+                    {
+                        if (value is PyStrObject { Value.Length: 1 } cStr)
+                            formatted = cStr.Value;
+                        else
+                        {
+                            var indexResult = PySpecialMethods.Index(context, value);
+                            if (indexResult.IsError) return indexResult;
+                            int codePoint = (int)indexResult.Value.Value;
+                            if (codePoint < 0 || codePoint > 0x10FFFF)
+                                return PyResult.OverflowError("%c arg not in range(0x110000)");
+                            formatted = char.ConvertFromUtf32(codePoint);
+                        }
+                        break;
+                    }
+                default:
+                    return PyResult.ValueError($"unsupported format character '{fmtType}' (0x{(int)fmtType:x})");
+            }
+
+            // Apply # flag for float formats that already handled precision decimal point
+            // (additional # handling for f/e/g already done above)
+
+            // Override width if the # flag added extra characters for octal/hex
+
+            // Apply width and alignment
+            if (width > formatted.Length)
+            {
+                char padChar = flagZeroPad && !flagLeftAlign ? '0' : ' ';
+                if (flagLeftAlign)
+                    formatted = formatted.PadRight(width, padChar);
+                else if (flagZeroPad && formatted.Length > 0 && (formatted[0] == '+' || formatted[0] == '-' || formatted[0] == ' '))
+                {
+                    string sign = formatted[..1];
+                    formatted = sign + formatted[1..].PadLeft(width - 1, padChar);
+                }
+                else
+                    formatted = formatted.PadLeft(width, padChar);
+            }
+
+            sb.Append(formatted);
+        }
+
+        // Check for unused arguments
+        if (args is not null && argIndex < args.Count)
+            return PyResult.TypeError("not all arguments converted during string formatting");
+
+        return PyStrObject.FromString(sb.ToString());
+    }
+
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (!PyArgsValidator.ValidateSinglePositionalArg(args, kwargs, out var err))
             return err.Value;
         return PySpecialMethods.Str(context, args[0]);
+    }
+
+    private static string BigIntegerToBase(BigInteger value, int radix, bool upper)
+    {
+        if (value.IsZero)
+            return "0";
+        var sb = new StringBuilder();
+        while (value > 0)
+        {
+            int digit = (int)(value % radix);
+            char c = digit < 10 ? (char)('0' + digit) : (char)((upper ? 'A' : 'a') + digit - 10);
+            sb.Append(c);
+            value /= radix;
+        }
+        // Reverse the string
+        var chars = sb.ToString().ToCharArray();
+        Array.Reverse(chars);
+        return new string(chars);
     }
 
     protected override PyResult Contains(PyCallContext context, PyStrObject self, PyObject item)

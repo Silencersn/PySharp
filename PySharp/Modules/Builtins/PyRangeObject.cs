@@ -1,3 +1,4 @@
+using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
 using System.Diagnostics;
@@ -83,6 +84,48 @@ public sealed partial class PyRangeObjectType : PyTypeObject<PyRangeObject>
     protected override PyResult Len(PyCallContext context, PyRangeObject self)
     {
         return PyIntObject.FromInteger(self.RangeLen);
+    }
+
+    protected override PyResult Reversed(PyCallContext context, PyRangeObject self)
+    {
+        // reversed(range(start, stop, step)) = range(start + (len-1)*step, start - step, -step)
+        BigInteger newStart = self.Start + (self.RangeLen - 1) * self.Step;
+        BigInteger newStop = self.Start - self.Step;
+        BigInteger newStep = -self.Step;
+        return PyRangeObject.CreateRange(newStart, newStop, newStep);
+    }
+
+    protected override PyResult GetItem(PyCallContext context, PyRangeObject self, PyObject item)
+    {
+        if (item is PySliceObject slice)
+        {
+            var (sStart, sStop, sStep, sLength) = slice.Indices((int)self.RangeLen);
+            if (sLength == 0)
+                return PyRangeObject.CreateRange(self.Start, self.Start, self.Step);
+
+            BigInteger newStart = self.Start + sStart * self.Step;
+            BigInteger newStop = self.Start + sStop * self.Step;
+            BigInteger newStep = self.Step * sStep;
+            return PyRangeObject.CreateRange(newStart, newStop, newStep);
+        }
+
+        var idxResult = PySpecialMethods.Index(context, item);
+        if (idxResult.IsError)
+            return idxResult;
+
+        var idx = idxResult.Value.Value;
+        if (idx < 0)
+        {
+            if (-idx > self.RangeLen)
+                return PyResult.IndexError("range object index out of range");
+            idx += self.RangeLen;
+        }
+
+        if (idx < 0 || idx >= self.RangeLen)
+            return PyResult.IndexError("range object index out of range");
+
+        BigInteger value = self.Start + idx * self.Step;
+        return PyIntObject.FromInteger(value);
     }
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)

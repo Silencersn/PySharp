@@ -258,4 +258,27 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
 
         return PyBoolObject.False;
     }
+
+    [PyMethod("decode")]
+    [AIGenerated]
+    [PyFunctionParameters("encoding='utf-8'", "/")]
+    private static PyResult Decode(PyCallContext context, PyBytesObject self, PyArguments arguments)
+    {
+        string encoding = "utf-8";
+        if (arguments[0] is PyStrObject encStr)
+            encoding = encStr.Value;
+        else if (arguments[0] is not PyNoneObject)
+            return PyResult.TypeError("decoding must be str");
+
+        try
+        {
+            var enc = System.Text.Encoding.GetEncoding(encoding);
+            string result = enc.GetString(self.AsSpan());
+            return PyStrObject.FromString(result);
+        }
+        catch (ArgumentException)
+        {
+            return PyResult.ValueError($"unknown encoding: {encoding}");
+        }
+    }
 }

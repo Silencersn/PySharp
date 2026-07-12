@@ -103,4 +103,17 @@ assert b"hello" != "hello"
 assert (b"abc" == 123) is False
 assert (b"abc" != 123) is True
 
+# bytes.decode
+assert b"hello".decode() == "hello"
+assert b"hello".decode("utf-8") == "hello"
+assert b"caf\xc3\xa9".decode("utf-8") == "caf\u00e9"
+assert b"hello".decode("ascii") == "hello"
+
+# bytes.decode with unknown encoding should raise LookupError (or TypeError)
+try:
+    b"test".decode("unknown-encoding")
+    assert False, "Should raise exception"
+except:
+    pass
+
 print("test_bytes_extended passed")
