@@ -209,12 +209,13 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
             var kwArg = callableScope.ArgumentsNode.KwArg?.Arg;
             callableScope.VarNames = [.. callableScope.Variables
                 .Where(pair => pair.Value is PyVariableType.Local or PyVariableType.Parameter or PyVariableType.CapturedParameter)
-                .OrderBy(pair => {
+                .OrderBy(pair =>
+                {
                     if (pair.Value is PyVariableType.Local)
                         return 2;
 
                     if (pair.Key == varArg || pair.Key == kwArg)
-                            return 1;
+                        return 1;
 
                     return 0;
                 })
