@@ -18,6 +18,4 @@ internal sealed class PyTracebackObject : PyObject
 }
 
 [PyType("traceback")]
-internal sealed partial class PyTracebackObjectType : PyTypeObject<PyTracebackObject>
-{
-}
+internal sealed partial class PyTracebackObjectType : PyTypeObject<PyTracebackObject>;

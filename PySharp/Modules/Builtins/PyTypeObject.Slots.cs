@@ -24,9 +24,6 @@ partial class PyTypeObject
             return slots;
         }
 
-        internal sealed partial class PyNumberMethods
-        {
-
-        }
+        internal sealed partial class PyNumberMethods;
     }
 }
