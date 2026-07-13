@@ -353,6 +353,10 @@ internal static class PyCore
             return attr;
         }
 
+        var getAttrFunc = self.PyType.Slots.GetAttr;
+        if (getAttrFunc is not null)
+            return getAttrFunc(context, self, context.PyEnvironment.InternPool.Intern(name));
+
         return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.FullName, name);
     }
 }
