@@ -613,7 +613,7 @@ internal static partial class BytecodeVirtualMachine
                             Debug.Assert(frame.CodeObject is not null);
                             currentIndex++;
                             var flags = frame.CodeObject.Flags;
-                            var genType = flags.HasFlag(CodeObjectFlags.AsyncGenerator) ? PyAsyncGeneratorObjectType.Shared
+                            PyTypeObject genType = flags.HasFlag(CodeObjectFlags.AsyncGenerator) ? PyAsyncGeneratorObjectType.Shared
                                 : flags.HasFlag(CodeObjectFlags.Coroutine) ? PyCoroutineObjectType.Shared
                                 : PyGeneratorObjectType.Shared;
                             intermediateValue = new PyBytecodeGeneratorObject(genType, frame.CallerName, frame, states);

@@ -5,7 +5,6 @@ using System.Text;
 
 namespace PySharp.Modules.Builtins;
 
-[PyTypeConstructor(DoNotGenerateConstructor = true)]
 public abstract class PyExceptionType : PyTypeObject<PyExceptionObject>
 {
     public PyExceptionObject Create()
@@ -29,6 +28,7 @@ public interface IPyException<TSelf> where TSelf : PyExceptionType, IPyException
     static abstract TSelf Shared { get; }
 }
 
+[PyTypeConstructor(DoNotGenerateConstructor = true)]
 public abstract class PyExceptionType<TSelf> : PyExceptionType, IPyException<TSelf> where TSelf : PyExceptionType<TSelf>, new()
 {
     public static TSelf Shared { get; } = new TSelf();
@@ -142,7 +142,8 @@ public sealed partial class PyGeneratorExitObjectType : PyExceptionType<PyGenera
 public sealed partial class PyTypeErrorObjectType : PyExceptionType<PyTypeErrorObjectType, PyExceptionObjectType>;
 
 [PyType("StopIteration")]
-public sealed partial class PyStopIterationObjectType : PyExceptionType<PyStopIterationObjectType, PyExceptionObjectType>;
+[PyException]
+public sealed partial class PyStopIterationObjectType : PyExceptionType;
 
 [PyType("AttributeError")]
 public sealed partial class PyAttributeErrorObjectType : PyExceptionType<PyAttributeErrorObjectType, PyExceptionObjectType>;

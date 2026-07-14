@@ -109,7 +109,7 @@ public class PyTypeGenerator : IIncrementalGenerator
                                 .AppendLine($"{pyType.AccessModifier} {pyType.Name}()")
                                 .EnterBlock()
                                 .ExitBlock()
-                                .AppendLine($"public static PyTypeObject Shared {{ get; }} = new {pyType.Name}();");
+                                .AppendLine($"public static {pyType.Name} Shared {{ get; }} = new {pyType.Name}();");
                         })
                         .If(pyType.Slots.Count > 0, builder => builder
                             .AppendLine("protected override void FillSlots()")
