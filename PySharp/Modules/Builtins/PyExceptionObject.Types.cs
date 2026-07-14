@@ -141,8 +141,7 @@ public sealed partial class PyGeneratorExitObjectType : PyExceptionType<PyGenera
 [PyType("TypeError")]
 public sealed partial class PyTypeErrorObjectType : PyExceptionType<PyTypeErrorObjectType, PyExceptionObjectType>;
 
-[PyType("StopIteration")]
-[PyException]
+[PyException("StopIteration")]
 public sealed partial class PyStopIterationObjectType : PyExceptionType;
 
 [PyType("AttributeError")]

@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 
 namespace PySharp.SourceGeneration;
 
@@ -13,149 +14,170 @@ public class PyTypeGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var provider = context.SyntaxProvider
+        var predicate = static (SyntaxNode syntaxNode, CancellationToken _) => syntaxNode is ClassDeclarationSyntax;
+
+        var pyTypeProvider = context.SyntaxProvider
             .ForAttributeWithMetadataName(
                 fullyQualifiedMetadataName: PySharpTypes.PyTypeAttribute,
-                predicate: static (syntaxNode, _) => syntaxNode is ClassDeclarationSyntax,
-                transform: static (generatorContext, _) =>
-                {
-                    var typeSymbol = (INamedTypeSymbol)generatorContext.TargetSymbol;
-                    var pyTypeAttribute = typeSymbol.GetAttribute(PySharpTypes.PyTypeAttribute)!;
+                predicate: predicate,
+                transform: static (generatorContext, ct) => Transform(generatorContext, ct));
 
-                    var pyTypeConstructorAttribute = typeSymbol.GetAttribute(PySharpTypes.PyTypeConstructorAttribute, inherit: true);
-                    bool doNotGenerateConstructor = false;
-                    string accessModifier = "private";
-                    if (pyTypeConstructorAttribute is not null)
-                    {
-                        doNotGenerateConstructor = pyTypeConstructorAttribute.GetNamedArgumentOrDefault("DoNotGenerateConstructor", false);
-                        accessModifier = pyTypeConstructorAttribute.GetNamedArgumentOrDefault("AccessModifier", "private")!;
-                    }
+        var pyExceptionProvider = context.SyntaxProvider
+            .ForAttributeWithMetadataName(
+                fullyQualifiedMetadataName: PySharpTypes.PyExceptionAttribute,
+                predicate: predicate,
+                transform: static (generatorContext, ct) => Transform(generatorContext, ct));
 
-                    var @namespace = typeSymbol.ContainingNamespace.IsGlobalNamespace ? string.Empty : typeSymbol.ContainingNamespace.ToDisplayString();
-                    var pyTypeInfo = new PyTypeInfo(@namespace, typeSymbol.Name, pyTypeAttribute, doNotGenerateConstructor, accessModifier);
+        var combined = pyTypeProvider.Collect().Combine(pyExceptionProvider.Collect())
+            .Select(static (pair, _) => pair.Left.AddRange(pair.Right));
 
-                    foreach (var member in typeSymbol.GetMembers())
-                    {
-                        if (member is not IMethodSymbol methodSymbol)
-                            continue;
-
-                        if (methodSymbol.IsDefined(PySharpTypes.PySlotAttribute, inherit: true))
-                        {
-                            var slotAttr = methodSymbol.GetAttributes(PySharpTypes.PySlotAttribute, inherit: true).Single();
-                            var slotsMember = slotAttr.GetNamedArgumentOrDefault<string?>("SlotsMember", null);
-                            pyTypeInfo.Slots.Add(new(methodSymbol.Name, slotsMember));
-                        }
-
-                        var methodAttribute = methodSymbol.GetAttribute(PySharpTypes.PyMethodAttribute);
-                        if (methodAttribute is not null)
-                            pyTypeInfo.Methods.Add(new(methodSymbol.Name, methodAttribute.GetConstructorArgumentLiteral(0, "\"\""), methodAttribute.GetNamedArgumentOrDefault("Order", 1)));
-
-                        var classMethodAttribute = methodSymbol.GetAttribute(PySharpTypes.PyClassMethodAttribute);
-                        if (classMethodAttribute is not null)
-                            pyTypeInfo.ClassMethods.Add(new(methodSymbol.Name, classMethodAttribute.GetConstructorArgumentLiteral(0, "\"\""), classMethodAttribute.GetNamedArgumentOrDefault("Order", 1)));
-
-                        var staticMethodAttribute = methodSymbol.GetAttribute(PySharpTypes.PyStaticMethodAttribute);
-                        if (staticMethodAttribute is not null)
-                            pyTypeInfo.StaticMethods.Add(new(methodSymbol.Name, staticMethodAttribute.GetConstructorArgumentLiteral(0, "\"\""), staticMethodAttribute.GetNamedArgumentOrDefault("Order", 1)));
-
-                        var propertyAttribute = methodSymbol.GetAttribute(PySharpTypes.PyPropertyAttribute);
-                        if (propertyAttribute is not null)
-                        {
-                            var nameLiteral = propertyAttribute.GetConstructorArgumentLiteral(0, "\"\"");
-                            if (!pyTypeInfo.Properties.TryGetValue(nameLiteral, out var propertyInfo))
-                                propertyInfo = pyTypeInfo.Properties[nameLiteral] = new PyPropertyInfo();
-                            var type = propertyAttribute.GetNamedArgumentOrDefault("Type", 0);
-                            if (type is 0)
-                                propertyInfo.Getter = methodSymbol.Name;
-                            else if (type is 1)
-                                propertyInfo.Setter = methodSymbol.Name;
-                            else if (type is 2)
-                                propertyInfo.Deleter = methodSymbol.Name;
-                            else
-                                throw new InvalidOperationException();
-                        }
-                    }
-
-                    return pyTypeInfo;
-                });
-
-        context.RegisterSourceOutput(provider, (spc, pyType) =>
+        context.RegisterSourceOutput(combined, (spc, pyTypes) =>
         {
-            var builder = new IndentedStringBuilder();
-            builder
-                .AppendAutoGeneratedTag()
-                .UsingNamespace("System")
-                .UsingNamespace("PySharp.Runtime")
-                .UsingNamespace("PySharp.Modules.Builtins");
-
-            var qualName = pyType.AttributeData.GetConstructorArgumentLiteral(0, "\"\"");
-            var rawQualName = pyType.AttributeData.GetConstructorArgument<string>(0);
-            var name = rawQualName is not null
-                ? SymbolDisplay.FormatPrimitive(rawQualName.Split('.').Last(), quoteStrings: true, useHexadecimalNumbers: false)
-                : "\"\"";
-
-            builder
-                .AppendLine($"namespace {pyType.Namespace}")
-                .EnterBlock()
-                    .AppendLine($"partial class {pyType.Name}")
-                    .EnterBlock()
-                        .AppendLine($"protected override string DefaultName => {name};")
-                        .AppendLine($"protected override string DefaultQualName => {qualName};")
-                        .AppendLine($"protected override string DefaultModule => {pyType.AttributeData.GetNamedArgumentLiteralOrDefault("Module", "\"builtins\"")};")
-                        .AppendLine($"public override bool IsSealed => {pyType.AttributeData.GetNamedArgumentLiteralOrDefault("IsSealed", "false")};")
-                        .If(!pyType.DoNotGenerateConstructor, builder =>
-                        {
-                            builder
-                                .AppendLine($"{pyType.AccessModifier} {pyType.Name}()")
-                                .EnterBlock()
-                                .ExitBlock()
-                                .AppendLine($"public static {pyType.Name} Shared {{ get; }} = new {pyType.Name}();");
-                        })
-                        .If(pyType.Slots.Count > 0, builder => builder
-                            .AppendLine("protected override void FillSlots()")
-                            .EnterBlock()
-                                .ForEach(pyType.Slots, static (builder, slot) =>
-                                {
-                                    if (slot.Name is "New")
-                                        builder.AppendLine("FillNewSlot();");
-                                    else if (slot.SlotsMember is not null)
-                                        builder.AppendLine($"FillSlot(PySpecialNames.{slot.Name}, ref Slots.{slot.SlotsMember}.{slot.Name}, {slot.Name});");
-                                    else
-                                        builder.AppendLine($"FillSlot(PySpecialNames.{slot.Name}, ref Slots.{slot.Name}, {slot.Name});");
-                                })
-                            .ExitBlock())
-
-                        .If(pyType.Methods.Count > 0 || pyType.ClassMethods.Count > 0 || pyType.StaticMethods.Count > 0, builder => builder
-                            .AppendLine("protected override void RegisterMethods()")
-                            .EnterBlock()
-                                .ForEach(pyType.Methods.GroupBy(static info => info.PyNameLiteral), static (builder, impls) =>
-                                {
-                                    builder.AppendLine($"AppendMethodDescriptor({impls.Key}, {string.Join(", ", impls.OrderBy(static info => info.Order).Select(static info => info.Name))});");
-                                })
-                                .ForEach(pyType.ClassMethods.GroupBy(static info => info.PyNameLiteral), static (builder, impls) =>
-                                {
-                                    builder.AppendLine($"AppendClassMethod({impls.Key}, {string.Join(", ", impls.OrderBy(static info => info.Order).Select(static info => info.Name))});");
-                                })
-                                .ForEach(pyType.StaticMethods.GroupBy(static info => info.PyNameLiteral), static (builder, impls) =>
-                                {
-                                    builder.AppendLine($"AppendStaticMethod({impls.Key}, {string.Join(", ", impls.OrderBy(static info => info.Order).Select(static info => info.Name))});");
-                                })
-                            .ExitBlock())
-
-                        .If(pyType.Properties.Count > 0, builder => builder
-                            .AppendLine("protected override void RegisterProperties()")
-                            .EnterBlock()
-                                .ForEach(pyType.Properties, static (builder, pair) =>
-                                {
-                                    builder.AppendLine($"AppendMemberDescriptor({pair.Key}, {pair.Value.Getter ?? "null"}, {pair.Value.Setter ?? "null"}, {pair.Value.Deleter ?? "null"});");
-                                })
-                            .ExitBlock())
-
-                    .ExitBlock()
-                .ExitBlock();
-
-            spc.AddSource($"{pyType.Name}.g.cs", SourceText.From(builder.ToString(), Encoding.UTF8));
+            foreach (var pyType in pyTypes)
+                GenerateSource(spc, pyType);
         });
+    }
+
+    private static PyTypeInfo Transform(GeneratorAttributeSyntaxContext generatorContext, CancellationToken _)
+    {
+        var typeSymbol = (INamedTypeSymbol)generatorContext.TargetSymbol;
+
+        var pyTypeAttribute = typeSymbol.GetAttribute(PySharpTypes.PyTypeAttribute)
+                              ?? typeSymbol.GetAttribute(PySharpTypes.PyExceptionAttribute)!;
+
+        var pyTypeConstructorAttribute = typeSymbol.GetAttribute(PySharpTypes.PyTypeConstructorAttribute, inherit: true);
+        bool doNotGenerateConstructor = false;
+        string accessModifier = "private";
+        if (pyTypeConstructorAttribute is not null)
+        {
+            doNotGenerateConstructor = pyTypeConstructorAttribute.GetNamedArgumentOrDefault("DoNotGenerateConstructor", false);
+            accessModifier = pyTypeConstructorAttribute.GetNamedArgumentOrDefault("AccessModifier", "private")!;
+        }
+
+        var @namespace = typeSymbol.ContainingNamespace.IsGlobalNamespace ? string.Empty : typeSymbol.ContainingNamespace.ToDisplayString();
+        var pyTypeInfo = new PyTypeInfo(@namespace, typeSymbol.Name, pyTypeAttribute, doNotGenerateConstructor, accessModifier);
+
+        foreach (var member in typeSymbol.GetMembers())
+        {
+            if (member is not IMethodSymbol methodSymbol)
+                continue;
+
+            if (methodSymbol.IsDefined(PySharpTypes.PySlotAttribute, inherit: true))
+            {
+                var slotAttr = methodSymbol.GetAttributes(PySharpTypes.PySlotAttribute, inherit: true).Single();
+                var slotsMember = slotAttr.GetNamedArgumentOrDefault<string?>("SlotsMember", null);
+                pyTypeInfo.Slots.Add(new(methodSymbol.Name, slotsMember));
+            }
+
+            var methodAttribute = methodSymbol.GetAttribute(PySharpTypes.PyMethodAttribute);
+            if (methodAttribute is not null)
+                pyTypeInfo.Methods.Add(new(methodSymbol.Name, methodAttribute.GetConstructorArgumentLiteral(0, "\"\""), methodAttribute.GetNamedArgumentOrDefault("Order", 1)));
+
+            var classMethodAttribute = methodSymbol.GetAttribute(PySharpTypes.PyClassMethodAttribute);
+            if (classMethodAttribute is not null)
+                pyTypeInfo.ClassMethods.Add(new(methodSymbol.Name, classMethodAttribute.GetConstructorArgumentLiteral(0, "\"\""), classMethodAttribute.GetNamedArgumentOrDefault("Order", 1)));
+
+            var staticMethodAttribute = methodSymbol.GetAttribute(PySharpTypes.PyStaticMethodAttribute);
+            if (staticMethodAttribute is not null)
+                pyTypeInfo.StaticMethods.Add(new(methodSymbol.Name, staticMethodAttribute.GetConstructorArgumentLiteral(0, "\"\""), staticMethodAttribute.GetNamedArgumentOrDefault("Order", 1)));
+
+            var propertyAttribute = methodSymbol.GetAttribute(PySharpTypes.PyPropertyAttribute);
+            if (propertyAttribute is not null)
+            {
+                var nameLiteral = propertyAttribute.GetConstructorArgumentLiteral(0, "\"\"");
+                if (!pyTypeInfo.Properties.TryGetValue(nameLiteral, out var propertyInfo))
+                    propertyInfo = pyTypeInfo.Properties[nameLiteral] = new PyPropertyInfo();
+                var type = propertyAttribute.GetNamedArgumentOrDefault("Type", 0);
+                if (type is 0)
+                    propertyInfo.Getter = methodSymbol.Name;
+                else if (type is 1)
+                    propertyInfo.Setter = methodSymbol.Name;
+                else if (type is 2)
+                    propertyInfo.Deleter = methodSymbol.Name;
+                else
+                    throw new InvalidOperationException();
+            }
+        }
+
+        return pyTypeInfo;
+    }
+
+    private static void GenerateSource(SourceProductionContext spc, PyTypeInfo pyType)
+    {
+        var builder = new IndentedStringBuilder();
+        builder
+            .AppendAutoGeneratedTag()
+            .UsingNamespace("System")
+            .UsingNamespace("PySharp.Runtime")
+            .UsingNamespace("PySharp.Modules.Builtins");
+
+        var qualName = pyType.AttributeData.GetConstructorArgumentLiteral(0, "\"\"");
+        var rawQualName = pyType.AttributeData.GetConstructorArgument<string>(0);
+        var name = rawQualName is not null
+            ? SymbolDisplay.FormatPrimitive(rawQualName.Split('.').Last(), quoteStrings: true, useHexadecimalNumbers: false)
+            : "\"\"";
+
+        builder
+            .AppendLine($"namespace {pyType.Namespace}")
+            .EnterBlock()
+                .AppendLine($"partial class {pyType.Name}")
+                .EnterBlock()
+                    .AppendLine($"protected override string DefaultName => {name};")
+                    .AppendLine($"protected override string DefaultQualName => {qualName};")
+                    .AppendLine($"protected override string DefaultModule => {pyType.AttributeData.GetNamedArgumentLiteralOrDefault("Module", "\"builtins\"")};")
+                    .AppendLine($"public override bool IsSealed => {pyType.AttributeData.GetNamedArgumentLiteralOrDefault("IsSealed", "false")};")
+                    .If(!pyType.DoNotGenerateConstructor, builder =>
+                    {
+                        builder
+                            .AppendLine($"{pyType.AccessModifier} {pyType.Name}()")
+                            .EnterBlock()
+                            .ExitBlock()
+                            .AppendLine($"public static {pyType.Name} Shared {{ get; }} = new {pyType.Name}();");
+                    })
+                    .If(pyType.Slots.Count > 0, builder => builder
+                        .AppendLine("protected override void FillSlots()")
+                        .EnterBlock()
+                            .ForEach(pyType.Slots, static (builder, slot) =>
+                            {
+                                if (slot.Name is "New")
+                                    builder.AppendLine("FillNewSlot();");
+                                else if (slot.SlotsMember is not null)
+                                    builder.AppendLine($"FillSlot(PySpecialNames.{slot.Name}, ref Slots.{slot.SlotsMember}.{slot.Name}, {slot.Name});");
+                                else
+                                    builder.AppendLine($"FillSlot(PySpecialNames.{slot.Name}, ref Slots.{slot.Name}, {slot.Name});");
+                            })
+                        .ExitBlock())
+
+                    .If(pyType.Methods.Count > 0 || pyType.ClassMethods.Count > 0 || pyType.StaticMethods.Count > 0, builder => builder
+                        .AppendLine("protected override void RegisterMethods()")
+                        .EnterBlock()
+                            .ForEach(pyType.Methods.GroupBy(static info => info.PyNameLiteral), static (builder, impls) =>
+                            {
+                                builder.AppendLine($"AppendMethodDescriptor({impls.Key}, {string.Join(", ", impls.OrderBy(static info => info.Order).Select(static info => info.Name))});");
+                            })
+                            .ForEach(pyType.ClassMethods.GroupBy(static info => info.PyNameLiteral), static (builder, impls) =>
+                            {
+                                builder.AppendLine($"AppendClassMethod({impls.Key}, {string.Join(", ", impls.OrderBy(static info => info.Order).Select(static info => info.Name))});");
+                            })
+                            .ForEach(pyType.StaticMethods.GroupBy(static info => info.PyNameLiteral), static (builder, impls) =>
+                            {
+                                builder.AppendLine($"AppendStaticMethod({impls.Key}, {string.Join(", ", impls.OrderBy(static info => info.Order).Select(static info => info.Name))});");
+                            })
+                        .ExitBlock())
+
+                    .If(pyType.Properties.Count > 0, builder => builder
+                        .AppendLine("protected override void RegisterProperties()")
+                        .EnterBlock()
+                            .ForEach(pyType.Properties, static (builder, pair) =>
+                            {
+                                builder.AppendLine($"AppendMemberDescriptor({pair.Key}, {pair.Value.Getter ?? "null"}, {pair.Value.Setter ?? "null"}, {pair.Value.Deleter ?? "null"});");
+                            })
+                        .ExitBlock())
+
+                .ExitBlock()
+            .ExitBlock();
+
+        spc.AddSource($"{pyType.Name}.g.cs", SourceText.From(builder.ToString(), Encoding.UTF8));
     }
 
     public class PyTypeInfo
