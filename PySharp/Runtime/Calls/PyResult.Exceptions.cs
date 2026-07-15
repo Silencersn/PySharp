@@ -4,8 +4,6 @@ namespace PySharp.Runtime.Calls;
 
 partial struct PyResult
 {
-    // TODO: allow user defined error types
-
     public readonly ref struct PyExceptionResult
     {
         internal readonly PyExceptionObject? Exception;
@@ -16,28 +14,17 @@ partial struct PyResult
         }
     }
 
-    internal static PyExceptionResult RaiseExceptionFromTypeOrInstance(PyObject pyObject)
-    {
-        if (pyObject is PyExceptionType exceptionType)
-            return RaiseException(exceptionType);
-
-        else if (pyObject is PyExceptionObject exceptionObject)
-            return new(exceptionObject);
-
-        return TypeError($"exceptions must be classes or instances deriving from BaseException, not {pyObject.PyType.Name}");
-    }
-
-    internal static PyExceptionResult RaiseException(PyExceptionType exceptionType)
+    internal static PyExceptionResult RaiseException(PyTypeObject<PyExceptionObject> exceptionType)
     {
         return RaiseException(exceptionType, null as PyObject);
     }
-    internal static PyExceptionResult RaiseException(PyExceptionType exceptionType, string? format, params ReadOnlySpan<object?> args)
+    internal static PyExceptionResult RaiseException(PyTypeObject<PyExceptionObject> exceptionType, string? format, params ReadOnlySpan<object?> args)
     {
         return RaiseException(exceptionType, format is null ? null : PyStrObject.FromString(PySR.Format(format, args)));
     }
-    internal static PyExceptionResult RaiseException(PyExceptionType exceptionType, PyObject? arg)
+    internal static PyExceptionResult RaiseException(PyTypeObject<PyExceptionObject> exceptionType, PyObject? arg)
     {
-        return new(exceptionType.Create(arg));
+        return new(new(exceptionType, arg is null ? [] : [arg]));
     }
 
     public static PyExceptionResult TypeError(string? format, params ReadOnlySpan<object?> args)
