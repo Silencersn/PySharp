@@ -145,10 +145,13 @@ partial struct PyResult
         return RaiseException(PyNameErrorObjectType.Shared, format, args);
     }
 
-    internal sealed class PySharpException : PyExceptionType<PySharpException, PyBaseExceptionObjectType>
+    internal sealed class PySharpException : PyExceptionType
     {
         protected override string DefaultModule => "pysharp";
         protected override string DefaultName => "PySharpException";
+        private PySharpException() { }
+        public static PySharpException Shared { get; } = new PySharpException();
+        public sealed override IReadOnlyList<PyTypeObject> Bases => [PyBaseExceptionObjectType.Shared];
     }
 
 

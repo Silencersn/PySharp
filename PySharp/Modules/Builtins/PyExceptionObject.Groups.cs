@@ -6,8 +6,8 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Modules.Builtins;
 
-[PyType("BaseExceptionGroup")]
-public sealed partial class PyBaseExceptionGroupObjectType : PyExceptionType<PyBaseExceptionGroupObjectType, PyBaseExceptionObjectType>
+[PyException("BaseExceptionGroup", Bases=[typeof(PyBaseExceptionObjectType)])]
+public sealed partial class PyBaseExceptionGroupObjectType : PyExceptionType
 {
     internal static PyExceptionObject CreateExceptionGroup(string message, IEnumerable<PyExceptionObject> excs)
     {
@@ -275,8 +275,5 @@ public sealed partial class PyBaseExceptionGroupObjectType : PyExceptionType<PyB
     }
 }
 
-[PyType("ExceptionGroup")]
-public sealed partial class PyExceptionGroupObjectType : PyExceptionType<PyExceptionGroupObjectType>
-{
-    public override IReadOnlyList<PyTypeObject> Bases => [PyBaseExceptionGroupObjectType.Shared, PyExceptionObjectType.Shared];
-}
+[PyException("ExceptionGroup", Bases=[typeof(PyBaseExceptionGroupObjectType), typeof(PyExceptionObjectType)])]
+public sealed partial class PyExceptionGroupObjectType : PyExceptionType;
