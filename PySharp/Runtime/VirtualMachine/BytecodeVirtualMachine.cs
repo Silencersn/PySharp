@@ -53,9 +53,19 @@ internal static partial class BytecodeVirtualMachine
         var length = instructions.Length;
         ValueOperandStack Stack;
         if (states.Stack is not null)
+        {
             Stack = states.Stack.AsValueOperandStack();
+        }
         else
-            Stack = new ValueOperandStack(frame.Variables.OperandStackSpan);
+        {
+            // Inline frames (Comprehension) share the enclosing non-inline frame's
+            // operand stack, because the list/iterator lives on the outer frame's
+            // stack space and CreateInline() does not allocate stack space.
+            ref var stackFrame = ref frame.FrameType is FrameType.Comprehension
+                ? ref context.FrameState.FindOuterNonInlineFrame()
+                : ref frame;
+            Stack = new ValueOperandStack(stackFrame.Variables.OperandStackSpan);
+        }
         Stack.SetSize(states.OperandStackSize);
         Span<PyObject?> locals = [];
         if (frame.Variables.HasLocals)
