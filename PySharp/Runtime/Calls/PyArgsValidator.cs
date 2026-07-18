@@ -69,12 +69,9 @@ public static class PyArgsValidator
 
         if (self.LayoutType != typeof(PyObject) || cls.LayoutType != typeof(PyObjectManagedDict))
         {
-            // int -> PyIntObject: PyObject
-            // bool -> PyBoolObject: PyIntObject
-            // int.__new__(bool, 0) is error
-            if (cls.LayoutType.IsSubclassOf(self.LayoutType))
+            if (cls.LayoutType.IsSubclassOf(self.LayoutType)
+                && !ReferenceEquals(cls.Slots.New, self.Slots.New))
                 return PyResult.TypeError(PySR.Runtime_Type_NewClsNotSafe, self.FullName, cls.FullName);
-            Debug.Assert(cls.LayoutType == self.LayoutType || self.LayoutType.IsSubclassOf(cls.LayoutType));
         }
 
         return PyNoneObject.None;

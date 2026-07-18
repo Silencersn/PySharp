@@ -646,4 +646,11 @@ public sealed class TestPyFiles
         Assert.IsNotNull(module);
     }
 
+    [TestMethod]
+    public void TestGenericInstantiation()
+    {
+        var module = RunModule("test_generic_instantiation.py");
+        Assert.IsNotNull(module);
+    }
+
 }
