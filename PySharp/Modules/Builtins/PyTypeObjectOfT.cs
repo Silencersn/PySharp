@@ -113,7 +113,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
             return layoutTypeOwnerResult;
 
         var typeQualName = typeName;
-        if (dict.TryGetValue(PyStrObject.InternPool.FromString(PySpecialNames.QualName), out var qualNameObj) &&
+        if (dict.TryGetValue(PySpecialNames.Interned.QualName, out var qualNameObj) &&
             qualNameObj is PyStrObject { Value: var qualNameStr })
             typeQualName = qualNameStr;
         else if (kwargs.TryGetValue(PySpecialNames.QualName, out qualNameObj) &&
