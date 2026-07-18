@@ -38,17 +38,13 @@ partial class Parser
         {
             return new(_parser, StartTokenPosition, EndTokenPosition, _parser.TokenPosition, _parser.TokenPosition);
         }
-        public AstMetaInfo WithAllEnd()
-        {
-            return new(_parser, StartTokenPosition, _parser.TokenPosition, CrucialStartTokenPosition, _parser.TokenPosition);
-        }
-        public AstMetaInfo WithPreviousEnd()
+        public AstMetaInfo WithPreviousEnd(bool includeCrucial = false)
         {
             var position = _parser.TokenPosition - 1;
             var span = _parser._tokenSequence.AsSpan();
             while (IsUselessToken(span[position]))
                 position--;
-            return new(_parser, StartTokenPosition, position, CrucialStartTokenPosition, CrucialEndTokenPosition);
+            return new(_parser, StartTokenPosition, position, CrucialStartTokenPosition, includeCrucial ? position : CrucialEndTokenPosition);
         }
 
         public CodeMetaInfo ToCodeMetaInfo()

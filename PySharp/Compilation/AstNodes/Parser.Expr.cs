@@ -872,7 +872,7 @@ partial class Parser
                 var slices = ParseSlices();
                 EnsureTokenTypeThenMove(TokenType.RightSquareBracket);
 
-                primary = Ast.Subscript(primary, slices).With(currentMetaInfo.WithAllEnd());
+                primary = Ast.Subscript(primary, slices).With(currentMetaInfo.WithPreviousEnd(includeCrucial: true));
             }
             else
             {
