@@ -654,6 +654,13 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestGenericTypeVar()
+    {
+        var module = RunModule("test_generic_typevar.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestGenericInstantiation()
     {
         var module = RunModule("test_generic_instantiation.py");

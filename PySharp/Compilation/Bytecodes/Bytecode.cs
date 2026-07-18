@@ -186,6 +186,7 @@ public sealed class Bytecode
                 case OpCode._UnaryOp:
                 case OpCode.UnaryNot:
                 case OpCode.SetupAnnotations:
+                case OpCode._MakeTypeVar:
                 case OpCode._MakeTypeAlias:
                 case OpCode.__BytecodeEnd:
                     break;

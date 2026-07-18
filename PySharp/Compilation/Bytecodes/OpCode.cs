@@ -123,6 +123,7 @@ internal enum OpCode : byte
 
     SetupAnnotations,
 
+    _MakeTypeVar,
     _MakeTypeAlias,
 
     ImportName,

@@ -909,6 +909,13 @@ internal static partial class BytecodeVirtualMachine
                         InternalMatchClass(context, ref Stack, instructionArg);
                         break;
 
+                    case OpCode._MakeTypeVar:
+                        {
+                            var typeVarName = (PyStrObject)Stack.Pop();
+                            Stack.Push(new PyTypeVarObject(typeVarName.Value));
+                        }
+                        break;
+
                     case OpCode._MakeTypeAlias:
                         {
                             var func = (PyFunctionObject)Stack[-1];

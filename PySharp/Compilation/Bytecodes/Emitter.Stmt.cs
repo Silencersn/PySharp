@@ -130,6 +130,24 @@ partial class Emitter
         StoreExpr(node.Target);
     }
 
+    private void EmitTypeParams(ImmutableArray<AstTypeParamNode> typeParams)
+    {
+        foreach (var tp in typeParams)
+        {
+            var name = tp switch
+            {
+                TypeVarNode tv => tv.Name,
+                ParamSpecNode ps => ps.Name,
+                TypeVarTupleNode tvn => tvn.Name,
+                _ => throw new UnreachableException()
+            };
+            Builder.Emit(OpCode.LoadConst, PyStrObject.FromString(name));
+            Builder.Emit(OpCode._MakeTypeVar);
+            Builder.Emit(OpCode.Copy, 1);
+            StoreName(name);
+        }
+    }
+
     private void EmitIf(IfNode node, out bool isPostUnreachable)
     {
         var test = Reducer.ToBool(node.Test);
@@ -365,6 +383,12 @@ partial class Emitter
         foreach (var cell in scope.CellVars)
             Builder.Emit(OpCode._MakeCellFast, scope.LocalsTable[cell]);
 
+        // For generic functions (e.g. def test[K](self):), create TypeVar objects and bind them.
+        if (node is FunctionDefNode { TypeParams.Length: > 0 } fn)
+            EmitTypeParams(fn.TypeParams);
+        else if (node is AsyncFunctionDefNode { TypeParams.Length: > 0 } afn)
+            EmitTypeParams(afn.TypeParams);
+
         if (scope.IsGenerator || scope is AsyncFunctionVariableScope)
         {
             Builder.Emit(OpCode.ReturnGenerator);
@@ -464,27 +488,12 @@ partial class Emitter
             StoreName(PySpecialNames.Doc);
         }
 
-        // For generic classes (e.g. class Foo[T]:), store the type param names as __type_params__
-        // This is the compile-time equivalent of CPython's codegen_set_type_params_in_class.
-        //
-        // NOTE: We store string names rather than TypeVar objects (as CPython does).
-        // This is intentional: TypeVar runtime objects are not yet available, and the current
-        // scope (external subscript only) doesn't need them. String names are sufficient to:
-        //   (a) mark the class as generic (triggers auto-injection of __class_getitem__)
-        //   (b) provide basic __type_params__ metadata
-        // When class-body type-parameter references are needed, this must be upgraded to
-        // emit code that creates TypeVar objects (matching CPython's codegen_type_params).
+        // For generic classes (e.g. class Foo[T]:), create TypeVar objects and bind them to names.
+        // This allows the class body to reference T, K, etc. as runtime TypeVar objects.
         if (node.TypeParams.Length > 0)
         {
-            var typeParamNames = node.TypeParams.Select(static tp => tp switch
-            {
-                TypeVarNode tv => tv.Name,
-                ParamSpecNode ps => ps.Name,
-                TypeVarTupleNode tvn => tvn.Name,
-                _ => throw new UnreachableException()
-            });
-            var namesTuple = PyTupleObject.CreateTuple(typeParamNames.Select(PyStrObject.FromString));
-            Builder.Emit(OpCode.LoadConst, namesTuple);
+            EmitTypeParams(node.TypeParams);
+            Builder.Emit(OpCode.BuildTuple, node.TypeParams.Length);
             StoreName(PySpecialNames.TypeParams);
         }
 
