@@ -639,4 +639,11 @@ public sealed class TestPyFiles
         Assert.IsNotNull(module);
     }
 
+    [TestMethod]
+    public void TestGenericClass()
+    {
+        var module = RunModule("test_generic_class.py");
+        Assert.IsNotNull(module);
+    }
+
 }

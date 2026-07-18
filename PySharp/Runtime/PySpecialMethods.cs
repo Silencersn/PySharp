@@ -1,4 +1,5 @@
 using PySharp.Modules.Builtins;
+using PySharp.Modules.Typing;
 using PySharp.Runtime.Calls;
 
 namespace PySharp.Runtime;
@@ -176,11 +177,60 @@ public static class PySpecialMethods
 
     public static PyResult GetItem(PyCallContext context, PyObject obj, PyObject key)
     {
+        // Special handling for types (PyTypeObject): use __class_getitem__ protocol
+        // This matches CPython's PyObject_GetItem behavior in Objects/abstract.c
+        if (obj is PyTypeObject typeObj)
+        {
+            // CPython compat: type[int] creates GenericAlias directly via Py_GenericAlias,
+            // without looking up __class_getitem__ on type itself (which doesn't exist there).
+            if (typeObj is not PyTypeObjectType)
+                return TypeGetItem(context, typeObj, key);
+
+            var args = key is PyTupleObject t ? t : PyTupleObject.CreateTuple([key]);
+            return new PyGenericAliasObject(typeObj, args);
+        }
+
         var func = obj.PyType.Slots.GetItem;
         if (func is null)
             return PyResult.TypeError(PySR.Runtime_Sequence_NonSubscriptable, obj.PyType.FullName);
 
         return func(context, obj, key);
+    }
+
+    /// <summary>
+    /// Implements <c>__class_getitem__</c> dispatch for types.
+    /// When <c>SomeClass[int]</c> is evaluated, this looks up <c>__class_getitem__</c>
+    /// on the type and calls it with the key argument(s).
+    /// Matches CPython's <c>PyObject_GetItem</c> type dispatch (Objects/abstract.c).
+    /// </summary>
+    [AIGenerated]
+    private static PyResult TypeGetItem(PyCallContext context, PyTypeObject type, PyObject key)
+    {
+        // Use PyOperators.GetAttr which handles the full descriptor protocol
+        // (GetAttribute → GetAttr fallback), matching CPython's PyObject_GetOptionalAttr
+        var attrResult = PyOperators.GetAttr(context, type, PySpecialNames.ClassGetItem);
+        if (!attrResult.IsError)
+        {
+            var classGetItem = attrResult.Value;
+
+            // Call __class_getitem__(key)
+            // If key is a tuple (multiple args), pass it as a single tuple arg
+            // Note: when Parser parses Foo[int, str], it builds SubscriptNode with
+            // slice=Tuple(int,str), so key arrives already as PyTupleObject.
+            // ClassGetItem handler then detects the tuple and uses it as the args tuple.
+            var callArgs = key is PyTupleObject tuple
+                ? new PyObject[] { tuple }
+                : new PyObject[] { key };
+
+            return classGetItem.Call(context, callArgs);
+        }
+
+        // If GetAttr returned a real error (not AttributeError), propagate it.
+        // Otherwise, report the type is not subscriptable.
+        if (!attrResult.IsAttributeError)
+            return attrResult;
+
+        return PyResult.TypeError(PySR.Format("type '{0}' is not subscriptable", type.FullName));
     }
 
     public static PyResult SetItem(PyCallContext context, PyObject obj, PyObject key, PyObject value)

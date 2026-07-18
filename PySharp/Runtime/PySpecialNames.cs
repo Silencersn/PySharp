@@ -41,6 +41,13 @@ public static partial class PySpecialNames
     public const string SuppressContext = "__suppress_context__";
 
 
+    // generic/typing
+    public const string ClassGetItem = "__class_getitem__";
+    public const string Origin = "__origin__";
+    public const string Args = "__args__";
+    public const string Parameters = "__parameters__";
+    public const string TypeParams = "__type_params__";
+
     // functions
     public const string Import = "__import__";
 

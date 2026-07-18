@@ -1,4 +1,5 @@
 using PySharp.Modules.CSharp;
+using PySharp.Modules.Typing;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
@@ -142,16 +143,48 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
                 continue;
             }
 
-            // CPython's type_new_classmethod: auto-convert plain __init_subclass__
-            // (and __class_getitem__) to classmethod when defined as a regular function.
-            if (attr is PySpecialNames.InitSubclass && value is PyFunctionObject)
-            {
+            if (value is PyFunctionObject &&
+                attr is PySpecialNames.InitSubclass or PySpecialNames.ClassGetItem)
                 type.PyAttributes[attr] = new PyClassMethodObject(value);
-                continue;
-            }
 
             type.PyAttributes[attr] = value;
             type.Slots.TrySetSlot(attr, value);
+        }
+
+
+        // NOTE: AI-Generated
+        // Auto-inject __class_getitem__ if the class has __type_params__ (e.g. class Foo[T]:)
+        // but doesn't already define it explicitly or inherit it.
+        //
+        // NOTE: The injected implementation uses string-based type param tracking (from emitter).
+        // It does NOT validate arg count against __type_params__ because that would require
+        // TypeVar runtime objects. This is acceptable for the initial simplified scope.
+        if (dict.ContainsKey(PySpecialNames.Interned.TypeParams))
+        {
+            // Check the full MRO, not just the type's own dict, to respect inherited __class_getitem__
+            // (e.g. a parent class that defines a custom __class_getitem__).
+            if (!TryLookupAttrInMro(type, PySpecialNames.ClassGetItem, out _))
+            {
+                // Create a default __class_getitem__ that creates a GenericAlias
+                // Use the PyUncompoundedDelegate overload (3 params) to avoid PyFunction issues
+                //
+                // When called via PyClassMethodObject wrapper (as set below), args[0] is the
+                // bound class (cls) and args[1] is the subscript key — the wrapper inserts cls.
+                static PyResult GetItemImpl(PyCallContext ctx, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+                {
+                    if (args.Count < 2)
+                        return PyResult.TypeError($"{PySpecialNames.ClassGetItem} requires at least 2 arguments");
+
+                    var cls = args[0];
+                    var key = args[1];
+                    var argTuple = key is PyTupleObject t ? t : PyTupleObject.CreateTuple([key]);
+                    return new PyGenericAliasObject(cls, argTuple);
+                }
+                var defaultClassGetItem = PyBuiltinFunctionOrMethodObject.CreateFunction(
+                    PySpecialNames.ClassGetItem, GetItemImpl);
+
+                type.PyAttributes[PySpecialNames.ClassGetItem] = new PyClassMethodObject(defaultClassGetItem);
+            }
         }
 
         foreach (var (name, value) in type.PyAttributes)

@@ -446,6 +446,30 @@ partial class Emitter
             StoreName(PySpecialNames.Doc);
         }
 
+        // For generic classes (e.g. class Foo[T]:), store the type param names as __type_params__
+        // This is the compile-time equivalent of CPython's codegen_set_type_params_in_class.
+        //
+        // NOTE: We store string names rather than TypeVar objects (as CPython does).
+        // This is intentional: TypeVar runtime objects are not yet available, and the current
+        // scope (external subscript only) doesn't need them. String names are sufficient to:
+        //   (a) mark the class as generic (triggers auto-injection of __class_getitem__)
+        //   (b) provide basic __type_params__ metadata
+        // When class-body type-parameter references are needed, this must be upgraded to
+        // emit code that creates TypeVar objects (matching CPython's codegen_type_params).
+        if (node.TypeParams.Length > 0)
+        {
+            var typeParamNames = node.TypeParams.Select(static tp => tp switch
+            {
+                TypeVarNode tv => tv.Name,
+                ParamSpecNode ps => ps.Name,
+                TypeVarTupleNode tvn => tvn.Name,
+                _ => throw new UnreachableException()
+            });
+            var namesTuple = PyTupleObject.CreateTuple(typeParamNames.Select(PyStrObject.FromString));
+            Builder.Emit(OpCode.LoadConst, namesTuple);
+            StoreName(PySpecialNames.TypeParams);
+        }
+
         EmitStmts(node.Body);
 
         var bytecode = Builder.ToBytecode();
