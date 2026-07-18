@@ -30,7 +30,7 @@ public interface IPyException<TSelf> where TSelf : PyExceptionType, IPyException
 
 #region Base Classes
 
-[PyException("BaseException", Bases=[typeof(PyObjectType)])]
+[PyException("BaseException", Bases = [typeof(PyObjectType)])]
 public sealed partial class PyBaseExceptionObjectType : PyExceptionType
 {
 
@@ -106,7 +106,7 @@ public sealed partial class PyBaseExceptionObjectType : PyExceptionType
     }
 }
 
-[PyException("Exception", Bases=[typeof(PyBaseExceptionObjectType)])]
+[PyException("Exception", Bases = [typeof(PyBaseExceptionObjectType)])]
 public sealed partial class PyExceptionObjectType : PyExceptionType;
 
 [PyException("LookupError")]
@@ -119,10 +119,10 @@ public sealed partial class PyArithmeticErrorObjectType : PyExceptionType;
 
 #region Concrete Exceptions
 
-[PyException("SystemExit", Bases=[typeof(PyBaseExceptionObjectType)])]
+[PyException("SystemExit", Bases = [typeof(PyBaseExceptionObjectType)])]
 public sealed partial class PySystemExitObjectType : PyExceptionType;
 
-[PyException("GeneratorExit", Bases=[typeof(PyBaseExceptionObjectType)])]
+[PyException("GeneratorExit", Bases = [typeof(PyBaseExceptionObjectType)])]
 public sealed partial class PyGeneratorExitObjectType : PyExceptionType;
 
 [PyException("TypeError")]
@@ -134,40 +134,40 @@ public sealed partial class PyStopIterationObjectType : PyExceptionType;
 [PyException("AttributeError")]
 public sealed partial class PyAttributeErrorObjectType : PyExceptionType;
 
-[PyException("KeyError", Bases=[typeof(PyLookupErrorObjectType)])]
+[PyException("KeyError", Bases = [typeof(PyLookupErrorObjectType)])]
 public sealed partial class PyKeyErrorObjectType : PyExceptionType;
 
-[PyException("IndexError", Bases=[typeof(PyLookupErrorObjectType)])]
+[PyException("IndexError", Bases = [typeof(PyLookupErrorObjectType)])]
 public sealed partial class PyIndexErrorObjectType : PyExceptionType;
 
 [PyException("ValueError")]
 public sealed partial class PyValueErrorObjectType : PyExceptionType;
 
-[PyException("UnicodeError", Bases=[typeof(PyValueErrorObjectType)])]
+[PyException("UnicodeError", Bases = [typeof(PyValueErrorObjectType)])]
 public sealed partial class PyUnicodeErrorObjectType : PyExceptionType;
 
-[PyException("UnicodeEncodeError", Bases=[typeof(PyUnicodeErrorObjectType)])]
+[PyException("UnicodeEncodeError", Bases = [typeof(PyUnicodeErrorObjectType)])]
 public sealed partial class PyUnicodeEncodeErrorObjectType : PyExceptionType;
 
 [PyException("NameError")]
 public sealed partial class PyNameErrorObjectType : PyExceptionType;
 
-[PyException("UnboundLocalError", Bases=[typeof(PyNameErrorObjectType)])]
+[PyException("UnboundLocalError", Bases = [typeof(PyNameErrorObjectType)])]
 public sealed partial class PyUnboundLocalErrorObjectType : PyExceptionType;
 
 [PyException("ImportError")]
 public sealed partial class PyImportErrorObjectType : PyExceptionType;
 
-[PyException("ModuleNotFoundError", Bases=[typeof(PyImportErrorObjectType)])]
+[PyException("ModuleNotFoundError", Bases = [typeof(PyImportErrorObjectType)])]
 public sealed partial class PyModuleNotFoundErrorObjectType : PyExceptionType;
 
 [PyException("SyntaxError")]
 public sealed partial class PySyntaxErrorObjectType : PyExceptionType;
 
-[PyException("IndentationError", Bases=[typeof(PySyntaxErrorObjectType)])]
+[PyException("IndentationError", Bases = [typeof(PySyntaxErrorObjectType)])]
 public sealed partial class PyIndentationErrorObjectType : PyExceptionType;
 
-[PyException("ZeroDivisionError", Bases=[typeof(PyArithmeticErrorObjectType)])]
+[PyException("ZeroDivisionError", Bases = [typeof(PyArithmeticErrorObjectType)])]
 public sealed partial class PyZeroDivisionErrorObjectType : PyExceptionType;
 
 [PyException("AssertionError")]
@@ -176,13 +176,13 @@ public sealed partial class PyAssertionErrorObjectType : PyExceptionType;
 [PyException("RuntimeError")]
 public sealed partial class PyRuntimeErrorObjectType : PyExceptionType;
 
-[PyException("KeyboardInterrupt", Bases=[typeof(PyBaseExceptionObjectType)])]
+[PyException("KeyboardInterrupt", Bases = [typeof(PyBaseExceptionObjectType)])]
 public sealed partial class PyKeyboardInterruptObjectType : PyExceptionType;
 
-[PyException("FloatingPointError", Bases=[typeof(PyArithmeticErrorObjectType)])]
+[PyException("FloatingPointError", Bases = [typeof(PyArithmeticErrorObjectType)])]
 public sealed partial class PyFloatingPointErrorObjectType : PyExceptionType;
 
-[PyException("OverflowError", Bases=[typeof(PyArithmeticErrorObjectType)])]
+[PyException("OverflowError", Bases = [typeof(PyArithmeticErrorObjectType)])]
 public sealed partial class PyOverflowErrorObjectType : PyExceptionType;
 
 [PyException("BufferError")]
@@ -197,76 +197,76 @@ public sealed partial class PyMemoryErrorObjectType : PyExceptionType;
 [PyException("OSError")]
 public sealed partial class PyOSErrorObjectType : PyExceptionType;
 
-[PyException("BlockingIOError", Bases=[typeof(PyOSErrorObjectType)])]
+[PyException("BlockingIOError", Bases = [typeof(PyOSErrorObjectType)])]
 public sealed partial class PyBlockingIOErrorObjectType : PyExceptionType;
 
-[PyException("ChildProcessError", Bases=[typeof(PyOSErrorObjectType)])]
+[PyException("ChildProcessError", Bases = [typeof(PyOSErrorObjectType)])]
 public sealed partial class PyChildProcessErrorObjectType : PyExceptionType;
 
-[PyException("ConnectionError", Bases=[typeof(PyOSErrorObjectType)])]
+[PyException("ConnectionError", Bases = [typeof(PyOSErrorObjectType)])]
 public sealed partial class PyConnectionErrorObjectType : PyExceptionType;
 
-[PyException("BrokenPipeError", Bases=[typeof(PyConnectionErrorObjectType)])]
+[PyException("BrokenPipeError", Bases = [typeof(PyConnectionErrorObjectType)])]
 public sealed partial class PyBrokenPipeErrorObjectType : PyExceptionType;
 
-[PyException("ConnectionAbortedError", Bases=[typeof(PyConnectionErrorObjectType)])]
+[PyException("ConnectionAbortedError", Bases = [typeof(PyConnectionErrorObjectType)])]
 public sealed partial class PyConnectionAbortedErrorObjectType : PyExceptionType;
 
-[PyException("ConnectionRefusedError", Bases=[typeof(PyConnectionErrorObjectType)])]
+[PyException("ConnectionRefusedError", Bases = [typeof(PyConnectionErrorObjectType)])]
 public sealed partial class PyConnectionRefusedErrorObjectType : PyExceptionType;
 
-[PyException("ConnectionResetError", Bases=[typeof(PyConnectionErrorObjectType)])]
+[PyException("ConnectionResetError", Bases = [typeof(PyConnectionErrorObjectType)])]
 public sealed partial class PyConnectionResetErrorObjectType : PyExceptionType;
 
-[PyException("FileExistsError", Bases=[typeof(PyOSErrorObjectType)])]
+[PyException("FileExistsError", Bases = [typeof(PyOSErrorObjectType)])]
 public sealed partial class PyFileExistsErrorObjectType : PyExceptionType;
 
-[PyException("FileNotFoundError", Bases=[typeof(PyOSErrorObjectType)])]
+[PyException("FileNotFoundError", Bases = [typeof(PyOSErrorObjectType)])]
 public sealed partial class PyFileNotFoundErrorObjectType : PyExceptionType;
 
-[PyException("InterruptedError", Bases=[typeof(PyOSErrorObjectType)])]
+[PyException("InterruptedError", Bases = [typeof(PyOSErrorObjectType)])]
 public sealed partial class PyInterruptedErrorObjectType : PyExceptionType;
 
-[PyException("IsADirectoryError", Bases=[typeof(PyOSErrorObjectType)])]
+[PyException("IsADirectoryError", Bases = [typeof(PyOSErrorObjectType)])]
 public sealed partial class PyIsADirectoryErrorObjectType : PyExceptionType;
 
-[PyException("NotADirectoryError", Bases=[typeof(PyOSErrorObjectType)])]
+[PyException("NotADirectoryError", Bases = [typeof(PyOSErrorObjectType)])]
 public sealed partial class PyNotADirectoryErrorObjectType : PyExceptionType;
 
-[PyException("PermissionError", Bases=[typeof(PyOSErrorObjectType)])]
+[PyException("PermissionError", Bases = [typeof(PyOSErrorObjectType)])]
 public sealed partial class PyPermissionErrorObjectType : PyExceptionType;
 
-[PyException("ProcessLookupError", Bases=[typeof(PyOSErrorObjectType)])]
+[PyException("ProcessLookupError", Bases = [typeof(PyOSErrorObjectType)])]
 public sealed partial class PyProcessLookupErrorObjectType : PyExceptionType;
 
-[PyException("TimeoutError", Bases=[typeof(PyOSErrorObjectType)])]
+[PyException("TimeoutError", Bases = [typeof(PyOSErrorObjectType)])]
 public sealed partial class PyTimeoutErrorObjectType : PyExceptionType;
 
 [PyException("ReferenceError")]
 public sealed partial class PyReferenceErrorObjectType : PyExceptionType;
 
-[PyException("NotImplementedError", Bases=[typeof(PyRuntimeErrorObjectType)])]
+[PyException("NotImplementedError", Bases = [typeof(PyRuntimeErrorObjectType)])]
 public sealed partial class PyNotImplementedErrorObjectType : PyExceptionType;
 
-[PyException("PythonFinalizationError", Bases=[typeof(PyRuntimeErrorObjectType)])]
+[PyException("PythonFinalizationError", Bases = [typeof(PyRuntimeErrorObjectType)])]
 public sealed partial class PyPythonFinalizationErrorObjectType : PyExceptionType;
 
-[PyException("RecursionError", Bases=[typeof(PyRuntimeErrorObjectType)])]
+[PyException("RecursionError", Bases = [typeof(PyRuntimeErrorObjectType)])]
 public sealed partial class PyRecursionErrorObjectType : PyExceptionType;
 
 [PyException("StopAsyncIteration")]
 public sealed partial class PyStopAsyncIterationObjectType : PyExceptionType;
 
-[PyException("TabError", Bases=[typeof(PyIndentationErrorObjectType)])]
+[PyException("TabError", Bases = [typeof(PyIndentationErrorObjectType)])]
 public sealed partial class PyTabErrorObjectType : PyExceptionType;
 
 [PyException("SystemError")]
 public sealed partial class PySystemErrorObjectType : PyExceptionType;
 
-[PyException("UnicodeDecodeError", Bases=[typeof(PyUnicodeErrorObjectType)])]
+[PyException("UnicodeDecodeError", Bases = [typeof(PyUnicodeErrorObjectType)])]
 public sealed partial class PyUnicodeDecodeErrorObjectType : PyExceptionType;
 
-[PyException("UnicodeTranslateError", Bases=[typeof(PyUnicodeErrorObjectType)])]
+[PyException("UnicodeTranslateError", Bases = [typeof(PyUnicodeErrorObjectType)])]
 public sealed partial class PyUnicodeTranslateErrorObjectType : PyExceptionType;
 
 #endregion Concrete Exceptions
@@ -276,37 +276,37 @@ public sealed partial class PyUnicodeTranslateErrorObjectType : PyExceptionType;
 [PyException("Warning")]
 public sealed partial class PyWarningObjectType : PyExceptionType;
 
-[PyException("UserWarning", Bases=[typeof(PyWarningObjectType)])]
+[PyException("UserWarning", Bases = [typeof(PyWarningObjectType)])]
 public sealed partial class PyUserWarningObjectType : PyExceptionType;
 
-[PyException("SyntaxWarning", Bases=[typeof(PyWarningObjectType)])]
+[PyException("SyntaxWarning", Bases = [typeof(PyWarningObjectType)])]
 public sealed partial class PySyntaxWarningObjectType : PyExceptionType;
 
-[PyException("DeprecationWarning", Bases=[typeof(PyWarningObjectType)])]
+[PyException("DeprecationWarning", Bases = [typeof(PyWarningObjectType)])]
 public sealed partial class PyDeprecationWarningObjectType : PyExceptionType;
 
-[PyException("BytesWarning", Bases=[typeof(PyWarningObjectType)])]
+[PyException("BytesWarning", Bases = [typeof(PyWarningObjectType)])]
 public sealed partial class PyBytesWarningObjectType : PyExceptionType;
 
-[PyException("EncodingWarning", Bases=[typeof(PyWarningObjectType)])]
+[PyException("EncodingWarning", Bases = [typeof(PyWarningObjectType)])]
 public sealed partial class PyEncodingWarningObjectType : PyExceptionType;
 
-[PyException("FutureWarning", Bases=[typeof(PyWarningObjectType)])]
+[PyException("FutureWarning", Bases = [typeof(PyWarningObjectType)])]
 public sealed partial class PyFutureWarningObjectType : PyExceptionType;
 
-[PyException("ImportWarning", Bases=[typeof(PyWarningObjectType)])]
+[PyException("ImportWarning", Bases = [typeof(PyWarningObjectType)])]
 public sealed partial class PyImportWarningObjectType : PyExceptionType;
 
-[PyException("PendingDeprecationWarning", Bases=[typeof(PyWarningObjectType)])]
+[PyException("PendingDeprecationWarning", Bases = [typeof(PyWarningObjectType)])]
 public sealed partial class PyPendingDeprecationWarningObjectType : PyExceptionType;
 
-[PyException("ResourceWarning", Bases=[typeof(PyWarningObjectType)])]
+[PyException("ResourceWarning", Bases = [typeof(PyWarningObjectType)])]
 public sealed partial class PyResourceWarningObjectType : PyExceptionType;
 
-[PyException("RuntimeWarning", Bases=[typeof(PyWarningObjectType)])]
+[PyException("RuntimeWarning", Bases = [typeof(PyWarningObjectType)])]
 public sealed partial class PyRuntimeWarningObjectType : PyExceptionType;
 
-[PyException("UnicodeWarning", Bases=[typeof(PyWarningObjectType)])]
+[PyException("UnicodeWarning", Bases = [typeof(PyWarningObjectType)])]
 public sealed partial class PyUnicodeWarningObjectType : PyExceptionType;
 
 #endregion

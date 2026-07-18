@@ -58,7 +58,7 @@ internal sealed partial class PyCallContextFrameState : IDisposable
             _blocks[_currentBlockIndex] ??= ArrayPool<PyInternalFrame>.Shared.Rent(FrameBlockSize);
             _currentSlotIndex = 0;
         }
-        
+
         _blocks[_currentBlockIndex][_currentSlotIndex] = frame;
         _frameCount++;
         _blockCount = Math.Max(_blockCount, _currentBlockIndex + 1);

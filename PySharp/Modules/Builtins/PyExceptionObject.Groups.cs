@@ -6,7 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Modules.Builtins;
 
-[PyException("BaseExceptionGroup", Bases=[typeof(PyBaseExceptionObjectType)])]
+[PyException("BaseExceptionGroup", Bases = [typeof(PyBaseExceptionObjectType)])]
 public sealed partial class PyBaseExceptionGroupObjectType : PyExceptionType
 {
     internal static PyExceptionObject CreateExceptionGroup(string message, IEnumerable<PyExceptionObject> excs)
@@ -275,5 +275,5 @@ public sealed partial class PyBaseExceptionGroupObjectType : PyExceptionType
     }
 }
 
-[PyException("ExceptionGroup", Bases=[typeof(PyBaseExceptionGroupObjectType), typeof(PyExceptionObjectType)])]
+[PyException("ExceptionGroup", Bases = [typeof(PyBaseExceptionGroupObjectType), typeof(PyExceptionObjectType)])]
 public sealed partial class PyExceptionGroupObjectType : PyExceptionType;

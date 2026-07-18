@@ -1,9 +1,7 @@
-using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 using PySharp.SourceGeneration.Utility;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 
 namespace PySharp.SourceGeneration;
@@ -51,36 +49,36 @@ public class PyModuleIncludeGenerator : IIncrementalGenerator
         switch (schemeOrdinal)
         {
             case 0: // StaticMembers(Type sourceType)
-            {
-                var sourceType = attr.GetConstructorArgument<ITypeSymbol>(1);
-                if (sourceType is null)
-                    return null;
-                var sourceTypeFullName = sourceType.ToDisplayString();
-                var members = GetExportableStaticMembers(sourceType);
-                return new ModuleIncludeAttrInfo(sourceTypeFullName, null, members);
-            }
+                {
+                    var sourceType = attr.GetConstructorArgument<ITypeSymbol>(1);
+                    if (sourceType is null)
+                        return null;
+                    var sourceTypeFullName = sourceType.ToDisplayString();
+                    var members = GetExportableStaticMembers(sourceType);
+                    return new ModuleIncludeAttrInfo(sourceTypeFullName, null, members);
+                }
 
             case 1: // TypeSingleton(Type sourceType)
-            {
-                var sourceType = attr.GetConstructorArgument<ITypeSymbol>(1);
-                if (sourceType is null)
-                    return null;
-                var sourceTypeFullName = sourceType.ToDisplayString();
-                return new ModuleIncludeAttrInfo(sourceTypeFullName, null,
-                    [new MemberInfo("Shared", sourceTypeFullName, true)]);
-            }
+                {
+                    var sourceType = attr.GetConstructorArgument<ITypeSymbol>(1);
+                    if (sourceType is null)
+                        return null;
+                    var sourceTypeFullName = sourceType.ToDisplayString();
+                    return new ModuleIncludeAttrInfo(sourceTypeFullName, null,
+                        [new MemberInfo("Shared", sourceTypeFullName, true)]);
+                }
 
             case 2: // ExplicitMember(string name, Type sourceType, string memberName)
-            {
-                var name = attr.GetConstructorArgument<string>(1);
-                var sourceType = attr.GetConstructorArgument<ITypeSymbol>(2);
-                var memberName = attr.GetConstructorArgument<string>(3);
-                if (sourceType is null || name is null || memberName is null)
-                    return null;
-                var sourceTypeFullName = sourceType.ToDisplayString();
-                return new ModuleIncludeAttrInfo(sourceTypeFullName, name,
-                    [new MemberInfo(memberName, sourceTypeFullName, false)]);
-            }
+                {
+                    var name = attr.GetConstructorArgument<string>(1);
+                    var sourceType = attr.GetConstructorArgument<ITypeSymbol>(2);
+                    var memberName = attr.GetConstructorArgument<string>(3);
+                    if (sourceType is null || name is null || memberName is null)
+                        return null;
+                    var sourceTypeFullName = sourceType.ToDisplayString();
+                    return new ModuleIncludeAttrInfo(sourceTypeFullName, name,
+                        [new MemberInfo(memberName, sourceTypeFullName, false)]);
+                }
 
             default:
                 return null;
