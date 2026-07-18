@@ -103,7 +103,25 @@ partial class Emitter
 
     private void EmitAnnAssign(AnnAssignNode node)
     {
-        // TODO: __annotations__
+        // Store annotations as original source strings for simple names in class/module scope.
+        // Non-simple targets (self.x: int, x[i]: int) and function scope are skipped
+        // (matching CPython behavior; function annotations deferred to Phase 2).
+        if (node.Simple && VariableScope is RootVariableScope or ClassVariableScope)
+        {
+            // Extract original source text of the annotation expression using its source span
+            var span = node.Annotation.MetaInfo.Range;
+            var annotationStr = _source.Code.GetString(span);
+
+            // Ensure __annotations__ dict exists in the current scope's locals
+            Builder.Emit(OpCode.SetupAnnotations);
+
+            // Store annotation string: __annotations__["name"] = "annotation_source_text"
+            Builder.Emit(OpCode.LoadConst, PyStrObject.FromString(annotationStr.ToString()));
+            Builder.Emit(OpCode.LoadName, PySpecialNames.Annotations);
+            Debug.Assert(node.Target is NameNode);
+            Builder.Emit(OpCode.LoadConst, PyStrObject.FromString(((NameNode)node.Target).Id));
+            Builder.Emit(OpCode.StoreSubscr);
+        }
 
         if (node.Value is null)
             return;

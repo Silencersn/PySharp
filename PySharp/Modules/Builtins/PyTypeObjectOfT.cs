@@ -299,4 +299,41 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
         self.ModuleAsObject = value;
         return PyNoneObject.None;
     }
+
+    [PyProperty(PySpecialNames.Annotations)]
+    private static PyResult Get_Annotations(PyCallContext context, PyTypeObject self)
+    {
+        if (self.IsTypeImmutable)
+            return PyResult.AttributeError(PySR.Runtime_Type_AttributeNotFound, self.FullName, PySpecialNames.Annotations);
+
+        if (self.PyAttributes.TryGetValue(PySpecialNames.Annotations, out var existing))
+            return existing;
+
+        return self.PyAttributes[PySpecialNames.Annotations] = new PyDictObject();
+    }
+
+    [PyProperty(PySpecialNames.Annotations, Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_Annotations(PyCallContext context, PyTypeObject self, PyObject value)
+    {
+        if (self.IsTypeImmutable)
+            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Annotations, self.FullName);
+
+        if (value is not PyDictObject && value is not PyNoneObject)
+            return PyResult.TypeError("__annotations__ must be set to a dict object");
+
+        self.PyAttributes[PySpecialNames.Annotations] = value;
+        self.PyAttributes.Remove(PySpecialNames.Annotate);
+        return PyNoneObject.None;
+    }
+
+    [PyProperty(PySpecialNames.Annotations, Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Annotations(PyCallContext context, PyTypeObject self)
+    {
+        if (self.IsTypeImmutable)
+            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Annotations, self.FullName);
+
+        self.PyAttributes.Remove(PySpecialNames.Annotations);
+        self.PyAttributes.Remove(PySpecialNames.Annotate);
+        return PyNoneObject.None;
+    }
 }

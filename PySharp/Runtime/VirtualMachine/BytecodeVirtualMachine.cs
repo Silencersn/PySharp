@@ -775,6 +775,10 @@ internal static partial class BytecodeVirtualMachine
                         InternalMakeFunctionWithPyArgsDef(ref frame, ref Stack);
                         break;
 
+                    case OpCode.SetupAnnotations:
+                        InternalSetupAnnotations(ref frame);
+                        break;
+
                     case OpCode._BuildClass:
                         InternalBuildClass(context, ref Stack, ref states, instructionArg);
                         break;

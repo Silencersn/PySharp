@@ -514,6 +514,13 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestAnnotations()
+    {
+        var module = RunModule("test_annotations.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestTypeAlias()
     {
         var module = RunModule("test_type_alias.py");

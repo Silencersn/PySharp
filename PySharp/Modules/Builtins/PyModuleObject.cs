@@ -73,6 +73,36 @@ public sealed partial class PyModuleObjectType : PyTypeObject<PyModuleObject>
         return PyDictObject.CreateProxy(new DictAdapter(self.PyAttributes!));
     }
 
+    [PyProperty(PySpecialNames.Annotations)]
+    private static PyResult Get_Annotations(PyCallContext context, PyModuleObject self)
+    {
+        if (self.PyAttributes.TryGetValue(PySpecialNames.Annotations, out var existing))
+            return existing;
+
+        return self.PyAttributes[PySpecialNames.Annotations] = new PyDictObject();
+    }
+
+    [PyProperty(PySpecialNames.Annotations, Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_Annotations(PyCallContext context, PyModuleObject self, PyObject value)
+    {
+        if (value is not PyDictObject && value is not PyNoneObject)
+            return PyResult.TypeError("__annotations__ must be set to a dict object");
+
+        self.PyAttributes[PySpecialNames.Annotations] = value;
+        self.PyAttributes.Remove(PySpecialNames.Annotate);
+        return PyNoneObject.None;
+    }
+
+    [PyProperty(PySpecialNames.Annotations, Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Annotations(PyCallContext context, PyModuleObject self)
+    {
+        if (!self.PyAttributes.Remove(PySpecialNames.Annotations))
+            return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, PySpecialNames.Annotations);
+
+        self.PyAttributes.Remove(PySpecialNames.Annotate);
+        return PyNoneObject.None;
+    }
+
     protected override PyResult GetAttr(PyCallContext context, PyModuleObject self, PyObject item)
     {
         return PyResult.AttributeError($"module '{self.Name}' has no attribute '{item}'");

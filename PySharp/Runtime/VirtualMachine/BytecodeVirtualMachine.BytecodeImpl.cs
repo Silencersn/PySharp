@@ -299,6 +299,22 @@ internal static partial class BytecodeVirtualMachine
         stack.Push(func);
     }
 
+    private static void InternalSetupAnnotations(ref PyInternalFrame frame)
+    {
+        if (frame.FrameType is FrameType.Class)
+        {
+            var locals = frame.Variables.Locals;
+            if (!locals.ContainsKey(PySpecialNames.Annotations))
+                locals[PySpecialNames.Annotations] = new PyDictObject();
+        }
+        else if (frame.FrameType is FrameType.MainRoot or FrameType.Module)
+        {
+            var globals = frame.Variables.Globals.Dict;
+            if (!globals.ContainsKey(PySpecialNames.Annotations))
+                globals[PySpecialNames.Annotations] = new PyDictObject();
+        }
+    }
+
     private static void InternalBuildClass(PyCallContext context, ref ValueOperandStack stack, ref BytecodeVirtualMachineStates states, int instructionArg)
     {
         var codeObj = (PyCodeObject)stack.Pop();

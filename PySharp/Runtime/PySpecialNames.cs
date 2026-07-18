@@ -48,6 +48,13 @@ public static partial class PySpecialNames
     public const string Parameters = "__parameters__";
     public const string TypeParams = "__type_params__";
 
+    // annotations
+    public const string Annotations = "__annotations__";
+    public const string Annotate = "__annotate__";
+    public const string AnnotateFunc = "__annotate_func__";
+    public const string ConditionalAnnotations = "__conditional_annotations__";
+    public const string AnnotationsCache = "__annotations_cache__";
+
     // functions
     public const string Import = "__import__";
 
