@@ -326,7 +326,7 @@ internal static partial class BytecodeVirtualMachine
     {
         // Pop closure (PyNoneObject.None for non-generic; type_params PyTupleObject for generic)
         // Closure is pushed AFTER codeObj, so it's on top of stack
-        var closure = stack.Pop();
+        var closure = (PyTupleObject?)stack.Pop();
         var codeObj = (PyCodeObject)stack.Pop();
         var tuple = (PyTupleObject)stack.Pop();
 

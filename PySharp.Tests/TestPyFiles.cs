@@ -570,6 +570,13 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestClassFreeVar()
+    {
+        var module = RunModule("test_class_freevar.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestDelVariable()
     {
         var module = RunModule("test_del_variable.py");

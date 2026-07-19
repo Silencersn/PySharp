@@ -104,7 +104,7 @@ internal sealed partial class PyVariables
     {
         return new PyVariables(globals, localsTable);
     }
-    internal PyVariables CreateForBuildingClass(PyCodeObject codeObject, PyObject? closure = null)
+    internal PyVariables CreateForBuildingClass(PyCodeObject codeObject, PyTupleObject? closure)
     {
         if (!HasLocals)
         {
@@ -112,54 +112,43 @@ internal sealed partial class PyVariables
                 new LocalDictionary(FrozenDictionary<string, int>.Empty, Memory<PyObject?>.Empty));
         }
 
-        var localsPlus = new PyObject?[codeObject.LocalsTable.Count];
-        Debug.Assert(localsPlus is not null);
+        // Use the constructor that rents localsPlus and sets _localsTable
+        // (free vars). _localsTable is used by TryLoadFromLocals → LoadDeref.
+        var vars = new PyVariables(_globals, codeObject.LocalsTable);
+        var localsPlus = vars.LocalsSpanUnsafe;
 
-        // Two-phase free-var filling for class frames:
-        //
-        // Phase 1: copy ALL free vars from the parent frame's locals.
-        //   This preserves outer captured variables (e.g. `x` from an enclosing
-        //   function) that the class body references alongside type params.
-        //
-        // Phase 2: when closure is provided (generic class with type params),
+        for (int i = 0; i < codeObject.FreeVars.Length; i++)
+        {
+            var name = codeObject.FreeVars[i];
+            if (_localsTable.TryGetValue(name, out var index))
+                localsPlus[i] = LocalsSpan[index];
+            // else: leave localsPlus[i] as default (null)
+        }
+
+        //   when closure is provided (generic class with type params),
         //   overwrite the tail slots with cell-wrapped type-param values.
         //   Offset = FreeVars.Length - closureTuple.Count relies on the ordering
         //   contract: outer captured variables are added to TempFrees before
         //   type params (see SemanticAnalyzer.FillTempFrees), so FreeVars =
         //   [outer_vars..., type_params...].
-        if (closure is PyTupleObject closureTuple && closureTuple.Count > 0)
+        if (closure is not null)
         {
-            Debug.Assert(closureTuple.Count <= codeObject.FreeVars.Length,
+            Debug.Assert(closure.Count > 0);
+            Debug.Assert(closure.Count <= codeObject.FreeVars.Length,
                 "closure larger than FreeVars — type-param/FreeVar ordering mismatch");
 
-            // Phase 1: copy all free vars from parent frame
-            for (int i = 0; i < codeObject.FreeVars.Length; i++)
-            {
-                var name = codeObject.FreeVars[i];
-                localsPlus[i] = _locals is not null
-                    ? _locals[name]
-                    : LocalsSpan[_localsTable[name]];
-            }
-
-            // Phase 2: overwrite tail slots with cell-wrapped type-param values
-            int offset = codeObject.FreeVars.Length - closureTuple.Count;
-            for (int i = 0; i < closureTuple.Count; i++)
-                localsPlus[offset + i] = PyCellObject.CreateCell(closureTuple[i]);
-        }
-        else
-        {
-            for (int i = 0; i < codeObject.FreeVars.Length; i++)
-            {
-                var name = codeObject.FreeVars[i];
-                // _localsTable may be FrozenDictionary<string, int>.Empty when this
-                // PyVariables was created via the LocalDictionary constructor path.
-                // Use _locals (LocalDictionary) which has the correct name→index mapping.
-                localsPlus[i] = _locals is not null ? _locals[name] : LocalsSpan[_localsTable[name]];
-            }
+            // overwrite tail slots with type-param cells from closure.
+            // Cells are already created in the generic param scope (MakeCell +
+            // StoreDeref), so closure tuple items ARE cells — no wrapping needed.
+            int offset = codeObject.FreeVars.Length - closure.Count;
+            for (int i = 0; i < closure.Count; i++)
+                localsPlus[offset + i] = closure[i];
         }
 
-        var locals = new LocalDictionary(codeObject.LocalsTable, localsPlus);
-        return new PyVariables(_globals, locals);
+        // Use a plain dict for _locals so that only StoreName'd entries appear
+        // in the class namespace — free vars in _localsTable are NOT exposed.
+        vars._locals = new Dictionary<string, PyObject?>();
+        return vars;
     }
     internal PyVariables CreatePlaceholder()
     {

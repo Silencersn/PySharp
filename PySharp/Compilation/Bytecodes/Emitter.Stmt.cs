@@ -439,14 +439,12 @@ partial class Emitter
         PyCodeObject genericCodeObj;
         using (var sub = new EmitterSubScope(this, genericParamScope))
         {
-            // Create TypeVars first (no defaults on stack to protect anymore —
-            // defaults are bundled into tuples passed via arg slots).
+            // Create TypeVars and store into cells (no StoreName needed — only
+            // cell-based access via LoadDeref for __type_params__ and GetFreeVars).
             foreach (var tp in typeParams)
             {
                 Builder.Emit(OpCode.LoadConst, PyStrObject.FromString(tp.Name));
                 Builder.Emit(OpCode._MakeTypeVar);
-                Builder.Emit(OpCode.Copy, 1);
-                StoreName(tp.Name);
                 Builder.Emit(OpCode.MakeCell, tp.Name);
                 Builder.Emit(OpCode.StoreDeref, tp.Name);
             }
@@ -638,12 +636,14 @@ partial class Emitter
         PyCodeObject genericParamCodeObj;
         using (var sub = new EmitterSubScope(this, genericParamScope))
         {
-            // Create TypeVar objects and store in locals.
+            // Create TypeVar objects and store into cells (matching CPython:
+            // MAKE_CELL + STORE_DEREF in the generic parameters scope).
             foreach (var tp in node.TypeParams)
             {
                 Builder.Emit(OpCode.LoadConst, PyStrObject.FromString(tp.Name));
                 Builder.Emit(OpCode._MakeTypeVar);
-                StoreName(tp.Name);
+                Builder.Emit(OpCode.MakeCell, tp.Name);
+                Builder.Emit(OpCode.StoreDeref, tp.Name);
             }
 
             // Build the class; pass TypeVars as closure (individual items) for class free vars
@@ -663,14 +663,15 @@ partial class Emitter
 
             Builder.Emit(OpCode.LoadConst, classBodyCodeObj);
 
-            // Closure tuple: type-param values only, in declaration order.
-            // These map to the tail of the class body's FreeVars (after outer captured
-            // variables). The tail-position contract is enforced by
-            // SemanticAnalyzer.FillTempFrees (GenericParamScope processed after
-            // CallableVariableScope) and consumed by PyVariables.CreateForBuildingClass
-            // (offset-based overlay).
+            // Closure tuple: cell objects for each type param, in declaration order.
+            // Cells are created above (MakeCell + StoreDeref) in the generic param
+            // scope, matching CPython behavior (MAKE_CELL in generic parameters).
+            // The class body receives pre-built cells via COPY_FREE_VARS equivalent.
             foreach (var tp in node.TypeParams)
-                LoadName(tp.Name);
+            {
+                var index = genericParamScope.LocalsTable[tp.Name];
+                Builder.Emit(OpCode.LoadFast, index);
+            }
             Builder.Emit(OpCode.BuildTuple, node.TypeParams.Length);
 
             int buildClassArg = node.Bases.Length + node.Keywords.Length;
@@ -728,7 +729,7 @@ partial class Emitter
         Builder.Emit(OpCode.LoadConst, tuple);
 
         Builder.Emit(OpCode.LoadConst, codeObj);
-        Builder.Emit(OpCode.LoadConst, PyNoneObject.None); // closure placeholder
+        Builder.Emit(OpCode.PushNull); // closure placeholder
         int arg = node.Bases.Length + node.Keywords.Length;
         Builder.Emit(OpCode._BuildClass, arg);
 
