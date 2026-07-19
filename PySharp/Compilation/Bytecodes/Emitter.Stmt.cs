@@ -34,20 +34,20 @@ partial class Emitter
         switch (node)
         {
             case ExprNode n: EmitExpr(n); break;
-            case PassNode n: EmitPass(n); break;
+            case PassNode n: EmitPass(); break;
             case AssignNode n: EmitAssign(n); break;
             case AugAssignNode n: EmitAugAssign(n); break;
             case AnnAssignNode n: EmitAnnAssign(n); break;
             case DeleteNode n: EmitDelete(n); break;
             case RaiseNode n: EmitRaise(n, out isPostUnreachable); break;
-            case BreakNode n: EmitBreak(n, out isPostUnreachable); break;
-            case ContinueNode n: EmitContinue(n, out isPostUnreachable); break;
+            case BreakNode n: EmitBreak(out isPostUnreachable); break;
+            case ContinueNode n: EmitContinue(out isPostUnreachable); break;
             case ReturnNode n: EmitReturn(n, out isPostUnreachable); break;
             case TypeAliasNode n: EmitTypeAlias(n); break;
             case ImportNode n: EmitImport(n); break;
             case ImportFromNode n: EmitImportFrom(n); break;
-            case GlobalNode n: EmitGlobal(n); break;
-            case NonlocalNode n: EmitNonlocal(n); break;
+            case GlobalNode n: break;
+            case NonlocalNode n: break;
             case AssertNode n: EmitAssert(n); break;
             case IfNode n: EmitIf(n, out isPostUnreachable); break;
             case TryNode n: EmitTry(n); break;
@@ -326,13 +326,13 @@ partial class Emitter
         Loops.Pop();
     }
 
-    private void EmitBreak(BreakNode node, out bool isPostUnreachable)
+    private void EmitBreak(out bool isPostUnreachable)
     {
         isPostUnreachable = true;
         Builder.Jump(Loops.Peek().LoopEnd);
     }
 
-    private void EmitContinue(ContinueNode node, out bool isPostUnreachable)
+    private void EmitContinue(out bool isPostUnreachable)
     {
         isPostUnreachable = true;
         Builder.Jump(Loops.Peek().LoopBegin);
@@ -361,7 +361,7 @@ partial class Emitter
         Loops.Pop();
     }
 
-    private void EmitPass(PassNode node)
+    private void EmitPass()
     {
         Builder.Emit(OpCode.NoOperation);
     }
@@ -574,16 +574,6 @@ partial class Emitter
         else
             Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
         Builder.Emit(OpCode.ReturnValue);
-    }
-
-    private void EmitGlobal(GlobalNode node)
-    {
-        // do nothing
-    }
-
-    private void EmitNonlocal(NonlocalNode node)
-    {
-        // do nothing
     }
 
     private PyCodeObject MakeClassDefBodyCoObj(ClassVariableScope classScope, ClassDefNode node)
