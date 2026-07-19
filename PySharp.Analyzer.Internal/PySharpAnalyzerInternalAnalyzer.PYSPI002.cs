@@ -68,9 +68,11 @@ partial class PySharpAnalyzerInternalAnalyzer
             // because removing braces would create ambiguity.
             // Also not when this if-statement is part of a chain where another branch
             // has a multi-statement block — braces are needed for consistency (warning 3 covers this).
+            // Note: IsBranchInMultiStatementChain only applies to IfStatementSyntax nodes.
+            // For for/foreach/while nodes, the chain check is skipped.
             if (block.Statements.Count is 1
                 && !BlockNeedsBraces(block)
-                && !IsBranchInMultiStatementChain(context.Node))
+                && (context.Node is not IfStatementSyntax || !IsBranchInMultiStatementChain(context.Node)))
             {
                 var sourceText = GetSourceSnippet(context.Node);
                 context.ReportDiagnostic(Diagnostic.Create(
