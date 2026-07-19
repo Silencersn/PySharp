@@ -148,6 +148,7 @@ internal interface IFunctionDefNode
     public AstArgumentsNode Args { get; }
     public ImmutableArray<AstStmtNode> Body { get; }
     public ImmutableArray<AstExprNode> DecoratorList { get; }
+    public ImmutableArray<AstTypeParamNode> TypeParams { get; }
 }
 
 public sealed class FunctionDefNode : AstStmtNode, IScopedSubNodesProvider, IFunctionDefNode

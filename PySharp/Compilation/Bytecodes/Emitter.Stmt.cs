@@ -5,6 +5,7 @@ using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Xml.Linq;
 
 namespace PySharp.Compilation.Bytecodes;
 
@@ -367,21 +368,12 @@ partial class Emitter
 
     private void InternalEmitIFunctionDef(IFunctionDefNode node)
     {
-        var typeParams = node switch
-        {
-            FunctionDefNode fn => fn.TypeParams,
-            AsyncFunctionDefNode afn => afn.TypeParams,
-            _ => []
-        };
-        if (typeParams.Length is 0)
-        {
+        if (node.TypeParams.Length is 0)
             InternalEmitNonGenericFunction(node);
-            return;
-        }
-        InternalEmitGenericFunction(node, typeParams);
+        else
+            InternalEmitGenericFunction(node);
     }
 
-    /// <summary>Emit a non-generic function (no type params).</summary>
     private void InternalEmitNonGenericFunction(IFunctionDefNode node)
     {
         var scope = Model.GetVariableScope<CallableVariableScope>((AstNode)node);
@@ -400,29 +392,11 @@ partial class Emitter
         EmitFunctionTail(node);
     }
 
-    /// <summary>
-    /// Emit a generic function using two-layer architecture matching CPython:
-    ///
-    /// Caller (outer builder):
-    ///   LoadExpr(decorators...)
-    ///   LoadConst(type_param_co)
-    ///   _MakeFunctionWithPyArgsDef(0)    — pops only codeObj
-    ///   LoadExpr(defaults...)
-    ///   Call(n)                          — executes generic params scope
-    ///   Call(decorators)                 — apply decorators
-    ///   StoreName
-    ///
-    /// Generic params code object (inner):
-    ///   _MakeTypeVar K, Copy 1, Store, _MakeCellFast  — TypeVars → cells
-    ///   LoadFast(defaults...)              — forward defaults from args
-    ///   LoadConst(inner_body_co)
-    ///   _MakeFunctionWithPyArgsDef        — GetFreeVars reads cells from this frame
-    ///   BuildTuple n                      — __type_params__ from Copy 1 copies
-    ///   _SetFunctionTypeParams
-    ///   ReturnValue
-    /// </summary>
-    private void InternalEmitGenericFunction(IFunctionDefNode node, ImmutableArray<AstTypeParamNode> typeParams)
+    private void InternalEmitGenericFunction(IFunctionDefNode node)
     {
+        var typeParams = node.TypeParams;
+        Debug.Assert(typeParams.Length > 0);
+
         // --- Layer 1 (inner): function body code object ---
         // TypeVars accessed via LOAD_DEREF from closure cells.
         var funcScope = Model.GetVariableScope<CallableVariableScope>((AstNode)node);
@@ -439,15 +413,7 @@ partial class Emitter
         PyCodeObject genericCodeObj;
         using (var sub = new EmitterSubScope(this, genericParamScope))
         {
-            // Create TypeVars and store into cells (no StoreName needed — only
-            // cell-based access via LoadDeref for __type_params__ and GetFreeVars).
-            foreach (var tp in typeParams)
-            {
-                Builder.Emit(OpCode.LoadConst, PyStrObject.FromString(tp.Name));
-                Builder.Emit(OpCode._MakeTypeVar);
-                Builder.Emit(OpCode.MakeCell, tp.Name);
-                Builder.Emit(OpCode.StoreDeref, tp.Name);
-            }
+            EmitTypeVarCells(typeParams);
 
             // Load bundled defaults tuples from arg slots (CPython convention)
             // and pass directly to _MakeFunctionWithPyArgsDef — no unpacking needed.
@@ -467,7 +433,10 @@ partial class Emitter
 
             // Build __type_params__ by loading TypeVars from cells via LoadDeref (by name).
             foreach (var tp in typeParams)
-                Builder.Emit(OpCode.LoadDeref, tp.Name);
+            {
+                var index = genericParamScope.LocalsTable[tp.Name];
+                Builder.Emit(OpCode._LoadDerefFast, index);
+            }
             Builder.Emit(OpCode.BuildTuple, typeParams.Length);
             Builder.Emit(OpCode._SetFunctionTypeParams);
             Builder.Emit(OpCode.ReturnValue);
@@ -480,12 +449,11 @@ partial class Emitter
             LoadExpr(decorator);
 
         // 2. Create generic param function (no defaults — they become args)
-        Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
-        Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
-        Builder.Emit(OpCode.LoadConst, genericCodeObj);
-        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef);
+        EmitGenericParamPrologue(genericCodeObj);
 
-        // 3. Bundle defaults into tuples (CPython convention) and pass as args
+        // 3. Bundle defaults into tuples (CPython convention) and pass as args.
+        //    Defaults must be packed AFTER function creation so Call(n) sees
+        //    [func, defaults_tuple, kwdefaults_tuple] on the stack.
         int numTypeParamArgs = 0;
         if (defaultsCount > 0)
         {
@@ -559,6 +527,34 @@ partial class Emitter
         StoreName(node.Name);
     }
 
+    /// <summary>Emit TypeVar creation and cell storage for generic parameters.</summary>
+    private void EmitTypeVarCells(ImmutableArray<AstTypeParamNode> typeParams)
+    {
+        foreach (var tp in typeParams)
+        {
+            Builder.Emit(OpCode.LoadConst, PyStrObject.FromString(tp.Name));
+            Builder.Emit(OpCode._MakeTypeVar);
+            Builder.Emit(OpCode.MakeCell, tp.Name);
+            Builder.Emit(OpCode.StoreDeref, tp.Name);
+        }
+    }
+
+    /// <summary>
+    /// Emit the prologue for a generic param code object call.
+    /// Pushes empty defaults/kwdefaults and the code object, then runs
+    /// <c>_MakeFunctionWithPyArgsDef</c>. The caller must follow with
+    /// defaults packing (if any) and an explicit <c>Call(n)</c>.
+    /// Stack before: [...]
+    /// Stack after:  [..., func]
+    /// </summary>
+    private void EmitGenericParamPrologue(PyCodeObject genericCodeObj)
+    {
+        Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
+        Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
+        Builder.Emit(OpCode.LoadConst, genericCodeObj);
+        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef);
+    }
+
     private void EmitFunctionDef(FunctionDefNode node)
     {
         InternalEmitIFunctionDef(node);
@@ -590,13 +586,83 @@ partial class Emitter
         // do nothing
     }
 
+    private PyCodeObject MakeClassDefBodyCoObj(ClassVariableScope classScope, ClassDefNode node)
+    {
+        using var sub = new EmitterSubScope(this, classScope);
+
+        if (classScope.ClassCaptured)
+            Builder.Emit(OpCode.MakeCell, PySpecialNames.Class);
+
+        if (OptimizationLevel < 2 && TryGetDoc(node.Body, out var doc))
+        {
+            Builder.Emit(OpCode.LoadConst, doc);
+            StoreName(PySpecialNames.Doc);
+        }
+
+        int typeParamCount = node.TypeParams.Length;
+        if (typeParamCount > 0)
+        {
+            for (int i = 0; i < typeParamCount; i++)
+                LoadName(node.TypeParams[i].Name);
+            Builder.Emit(OpCode.BuildTuple, typeParamCount);
+            StoreName(PySpecialNames.TypeParams);
+        }
+
+        EmitStmts(node.Body);
+
+        return new PyCodeObject(_source.Name, classScope, Builder.ToBytecode());
+    }
+
+    private void LoadClassDefArgsAndCoObj(ClassDefNode node, PyCodeObject codeObj)
+    {
+        foreach (var baseType in node.Bases)
+            LoadExpr(baseType);
+
+        foreach (var kwarg in node.Keywords)
+            LoadExpr(kwarg.Value);
+
+        var keywordsTuple = node.Keywords.Length is 0
+            ? PyTupleObject.Empty
+            : PyTupleObject.CreateTuple(node.Keywords.Select(k => PyStrObject.FromString(k.Arg ?? throw new UnreachableException())));
+        Builder.Emit(OpCode.LoadConst, keywordsTuple);
+
+        Builder.Emit(OpCode.LoadConst, codeObj);
+    }
+
     private void EmitClassDef(ClassDefNode node)
     {
         if (node.TypeParams.Length is 0)
-        {
-            EmitNonGenericClassDef(node);
-            return;
-        }
+            InternalEmitNonGenericClassDef(node);
+        else
+            InternalEmitGenericClassDef(node);
+    }
+
+    private void InternalEmitNonGenericClassDef(ClassDefNode node)
+    {
+        var scope = Model.GetVariableScope<ClassVariableScope>(node);
+        Debug.Assert(scope is not null);
+
+        var codeObj = MakeClassDefBodyCoObj(scope, node);
+
+        foreach (var decorator in node.DecoratorList)
+            LoadExpr(decorator);
+
+        LoadClassDefArgsAndCoObj(node, codeObj);
+
+        Builder.Emit(OpCode.PushNull); // closure placeholder
+        int arg = node.Bases.Length + node.Keywords.Length;
+        Builder.Emit(OpCode._BuildClass, arg);
+
+        for (int i = 0; i < node.DecoratorList.Length; i++)
+            Builder.Emit(OpCode.Call, 1);
+
+        StoreName(node.Name);
+    }
+
+    private void InternalEmitGenericClassDef(ClassDefNode node)
+    {
+        var typeParams = node.TypeParams;
+        Debug.Assert(typeParams.Length > 0);
 
         // Generic class: two-layer architecture
         var classScope = Model.GetVariableScope<ClassVariableScope>(node);
@@ -606,132 +672,45 @@ partial class Emitter
         Debug.Assert(genericParamScope is not null);
 
         // --- Step 1: Build class body code object (inner layer) ---
-        PyCodeObject classBodyCodeObj;
-        using (var sub = new EmitterSubScope(this, classScope))
-        {
-            if (classScope.ClassCaptured)
-                Builder.Emit(OpCode.MakeCell, PySpecialNames.Class);
-
-            if (OptimizationLevel < 2 && TryGetDoc(node.Body, out var doc))
-            {
-                Builder.Emit(OpCode.LoadConst, doc);
-                StoreName(PySpecialNames.Doc);
-            }
-
-            int typeParamCount = node.TypeParams.Length;
-            if (typeParamCount > 0)
-            {
-                for (int i = 0; i < typeParamCount; i++)
-                    LoadName(node.TypeParams[i].Name);
-                Builder.Emit(OpCode.BuildTuple, typeParamCount);
-                StoreName(PySpecialNames.TypeParams);
-            }
-
-            EmitStmts(node.Body);
-
-            classBodyCodeObj = new PyCodeObject(_source.Name, classScope, Builder.ToBytecode());
-        }
+        var classBodyCodeObj = MakeClassDefBodyCoObj(classScope, node);
 
         // --- Step 2: Build generic param code object (outer layer) ---
+        // Creates TypeVars and builds the class. Decorators are NOT applied here —
+        // they are loaded and called in the outer scope (Step 3), matching CPython.
         PyCodeObject genericParamCodeObj;
         using (var sub = new EmitterSubScope(this, genericParamScope))
         {
-            // Create TypeVar objects and store into cells (matching CPython:
-            // MAKE_CELL + STORE_DEREF in the generic parameters scope).
-            foreach (var tp in node.TypeParams)
-            {
-                Builder.Emit(OpCode.LoadConst, PyStrObject.FromString(tp.Name));
-                Builder.Emit(OpCode._MakeTypeVar);
-                Builder.Emit(OpCode.MakeCell, tp.Name);
-                Builder.Emit(OpCode.StoreDeref, tp.Name);
-            }
+            EmitTypeVarCells(typeParams);
 
-            // Build the class; pass TypeVars as closure (individual items) for class free vars
-            foreach (var decorator in node.DecoratorList)
-                LoadExpr(decorator);
-
-            foreach (var baseType in node.Bases)
-                LoadExpr(baseType);
-
-            foreach (var kwarg in node.Keywords)
-                LoadExpr(kwarg.Value);
-
-            var keywordsTuple = node.Keywords.Length is 0
-                ? PyTupleObject.Empty
-                : PyTupleObject.CreateTuple(node.Keywords.Select(k => PyStrObject.FromString(k.Arg ?? throw new UnreachableException())));
-            Builder.Emit(OpCode.LoadConst, keywordsTuple);
-
-            Builder.Emit(OpCode.LoadConst, classBodyCodeObj);
+            LoadClassDefArgsAndCoObj(node, classBodyCodeObj);
 
             // Closure tuple: cell objects for each type param, in declaration order.
             // Cells are created above (MakeCell + StoreDeref) in the generic param
             // scope, matching CPython behavior (MAKE_CELL in generic parameters).
             // The class body receives pre-built cells via COPY_FREE_VARS equivalent.
-            foreach (var tp in node.TypeParams)
+            foreach (var tp in typeParams)
             {
                 var index = genericParamScope.LocalsTable[tp.Name];
                 Builder.Emit(OpCode.LoadFast, index);
             }
-            Builder.Emit(OpCode.BuildTuple, node.TypeParams.Length);
+            Builder.Emit(OpCode.BuildTuple, typeParams.Length);
 
             int buildClassArg = node.Bases.Length + node.Keywords.Length;
             Builder.Emit(OpCode._BuildClass, buildClassArg);
-
-            for (int i = 0; i < node.DecoratorList.Length; i++)
-                Builder.Emit(OpCode.Call, 1);
-
             Builder.Emit(OpCode.ReturnValue);
 
             genericParamCodeObj = new PyCodeObject(_source.Name, genericParamScope, Builder.ToBytecode());
         }
 
         // --- Step 3: Emit outer call to execute generic param code ---
-        Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
-        Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
-        Builder.Emit(OpCode.LoadConst, genericParamCodeObj);
-        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef);
-        Builder.Emit(OpCode.Call, 0);
-        StoreName(node.Name);
-    }
-
-    private void EmitNonGenericClassDef(ClassDefNode node)
-    {
-        var scope = Model.GetVariableScope<ClassVariableScope>(node);
-        Debug.Assert(scope is not null);
-
-        PyCodeObject codeObj;
-        using (var sub = new EmitterSubScope(this, scope))
-        {
-            if (scope.ClassCaptured)
-                Builder.Emit(OpCode.MakeCell, PySpecialNames.Class);
-
-            if (OptimizationLevel < 2 && TryGetDoc(node.Body, out var doc))
-            {
-                Builder.Emit(OpCode.LoadConst, doc);
-                StoreName(PySpecialNames.Doc);
-            }
-
-            EmitStmts(node.Body);
-
-            codeObj = new PyCodeObject(_source.Name, scope, Builder.ToBytecode());
-        }
-
+        // Decorators are loaded in the outer scope (matching CPython's top-level
+        // LOAD_NAME decorator before MAKE_FUNCTION), then applied after the class
+        // is returned from the generic param code object call.
         foreach (var decorator in node.DecoratorList)
             LoadExpr(decorator);
 
-        foreach (var baseType in node.Bases)
-            LoadExpr(baseType);
-
-        foreach (var kwarg in node.Keywords)
-            LoadExpr(kwarg.Value);
-
-        var tuple = node.Keywords.Length is 0 ? PyTupleObject.Empty : PyTupleObject.CreateTuple(node.Keywords.Select(k => PyStrObject.FromString(k.Arg ?? throw new UnreachableException())));
-        Builder.Emit(OpCode.LoadConst, tuple);
-
-        Builder.Emit(OpCode.LoadConst, codeObj);
-        Builder.Emit(OpCode.PushNull); // closure placeholder
-        int arg = node.Bases.Length + node.Keywords.Length;
-        Builder.Emit(OpCode._BuildClass, arg);
+        EmitGenericParamPrologue(genericParamCodeObj);
+        Builder.Emit(OpCode.Call, 0);
 
         for (int i = 0; i < node.DecoratorList.Length; i++)
             Builder.Emit(OpCode.Call, 1);
