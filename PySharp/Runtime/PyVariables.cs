@@ -115,12 +115,13 @@ internal sealed partial class PyVariables
         var localsPlus = new PyObject?[codeObject.LocalsTable.Count];
         Debug.Assert(localsPlus is not null);
 
-        var span = LocalsSpan;
         for (int i = 0; i < codeObject.FreeVars.Length; i++)
         {
             var name = codeObject.FreeVars[i];
-            var obj = span[_localsTable[name]];
-            localsPlus[i] = obj;
+            // _localsTable may be FrozenDictionary<string, int>.Empty when this
+            // PyVariables was created via the LocalDictionary constructor path.
+            // Use _locals (LocalDictionary) which has the correct name→index mapping.
+            localsPlus[i] = _locals is not null ? _locals[name] : LocalsSpan[_localsTable[name]];
         }
 
         var locals = new LocalDictionary(codeObject.LocalsTable, localsPlus);
@@ -223,7 +224,7 @@ internal sealed partial class PyVariables
         var cell = (PyCellObject)result.Value;
 
         if (cell.Value is null)
-            return PyResult.UnboundLocalError(PySR.Runtime_Variable_UnboundLocalOrFreeError, name);
+            return PyResult.NameError(PySR.Runtime_Variable_UnboundLocalOrFreeError, name);
 
         return cell.Value;
     }

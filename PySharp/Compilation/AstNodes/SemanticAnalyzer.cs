@@ -544,8 +544,10 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
                         parent is ClassVariableScope classVariableScope)
                     {
                         classVariableScope.ClassCaptured = true;
-                        if (scope is CallableVariableScope cvs)
-                            classVariableScope.ScopesRequiringFree.Add(cvs);
+                        // Register the requiring scope (function OR nested class)
+                        // so FillTempFreesClass propagates __class__ as a free var.
+                        if (scope is IScopeWithFreeVars swf)
+                            classVariableScope.ScopesRequiringFree.Add(swf);
                         break;
                     }
 

@@ -667,4 +667,11 @@ public sealed class TestPyFiles
         Assert.IsNotNull(module);
     }
 
+    [TestMethod]
+    public void TestClassNestedClassVar()
+    {
+        var module = RunModule("test_class_nested_classvar.py");
+        Assert.IsNotNull(module);
+    }
+
 }

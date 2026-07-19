@@ -166,7 +166,7 @@ internal static partial class BytecodeVirtualMachine
                         value = locals[instructionArg]
                             ?? throw context.UnboundLocalError(PySR.Runtime_Variable_UnboundLocalError, $"[{instructionArg /* TODO: name */}]");
                         value = ((PyCellObject)value).Value
-                            ?? throw context.UnboundLocalError(PySR.Runtime_Variable_UnboundLocalOrFreeError, $"[{instructionArg /* TODO: name */}]");
+                            ?? throw context.NameError(PySR.Runtime_Variable_UnboundLocalOrFreeError, $"[{instructionArg /* TODO: name */}]");
                         Stack.Push(value);
                         break;
 
