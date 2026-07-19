@@ -80,7 +80,7 @@ partial class Emitter
         Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
         Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
         Builder.Emit(OpCode.LoadConst, codeObj);
-        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef, arg: 2);
+        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef);
 
         Builder.Emit(OpCode._MakeTypeAlias, n.Name);
         StoreName(n.Name);
@@ -387,26 +387,7 @@ partial class Emitter
         var scope = Model.GetVariableScope<CallableVariableScope>((AstNode)node);
         Debug.Assert(scope is not null);
 
-        PyCodeObject codeObj;
-        using (var sub = new EmitterSubScope(this, scope))
-        {
-            foreach (var cell in scope.CellVars)
-                Builder.Emit(OpCode._MakeCellFast, scope.LocalsTable[cell]);
-
-            if (scope.IsGenerator || scope is AsyncFunctionVariableScope)
-            {
-                Builder.Emit(OpCode.ReturnGenerator);
-                Builder.Emit(OpCode.PopTop);
-            }
-            EmitStmts(node.Body, out var bodyPostUnreachable);
-            if (!bodyPostUnreachable)
-            {
-                Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
-                Builder.Emit(OpCode.ReturnValue);
-            }
-
-            codeObj = new PyCodeObject(_source.Name, scope, Builder.ToBytecode());
-        }
+        var codeObj = EmitFunctionBody(node, scope);
 
         foreach (var decorator in node.DecoratorList)
             LoadExpr(decorator);
@@ -414,20 +395,9 @@ partial class Emitter
         EmitFunctionDefaults(node.Args);
 
         Builder.Emit(OpCode.LoadConst, codeObj);
-        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef, 2);
+        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef);
 
-        if (OptimizationLevel < 2 && TryGetDoc(node.Body, out var doc))
-        {
-            Builder.Emit(OpCode.Copy, 1);
-            Builder.Emit(OpCode.LoadConst, doc);
-            Builder.Emit(OpCode.Swap, 2);
-            Builder.Emit(OpCode.StoreAttr, PySpecialNames.Doc);
-        }
-
-        for (int i = 0; i < node.DecoratorList.Length; i++)
-            Builder.Emit(OpCode.Call, 1);
-
-        StoreName(node.Name);
+        EmitFunctionTail(node);
     }
 
     /// <summary>
@@ -458,26 +428,7 @@ partial class Emitter
         var funcScope = Model.GetVariableScope<CallableVariableScope>((AstNode)node);
         Debug.Assert(funcScope is not null);
 
-        PyCodeObject innerBodyCodeObj;
-        using (var sub = new EmitterSubScope(this, funcScope))
-        {
-            foreach (var cell in funcScope.CellVars)
-                Builder.Emit(OpCode._MakeCellFast, funcScope.LocalsTable[cell]);
-
-            if (funcScope.IsGenerator || funcScope is AsyncFunctionVariableScope)
-            {
-                Builder.Emit(OpCode.ReturnGenerator);
-                Builder.Emit(OpCode.PopTop);
-            }
-            EmitStmts(node.Body, out var bodyPostUnreachable);
-            if (!bodyPostUnreachable)
-            {
-                Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
-                Builder.Emit(OpCode.ReturnValue);
-            }
-
-            innerBodyCodeObj = new PyCodeObject(_source.Name, funcScope, Builder.ToBytecode());
-        }
+        var innerBodyCodeObj = EmitFunctionBody(node, funcScope);
 
         // --- Layer 2 (outer): generic params code object ---
         // Creates TypeVars, builds __type_params__, constructs inner function.
@@ -514,7 +465,7 @@ partial class Emitter
 
             // Build inner function; GetFreeVars reads cells from this frame's locals.
             Builder.Emit(OpCode.LoadConst, innerBodyCodeObj);
-            Builder.Emit(OpCode._MakeFunctionWithPyArgsDef, 2);
+            Builder.Emit(OpCode._MakeFunctionWithPyArgsDef);
 
             // Build __type_params__ by loading TypeVars from cells via LoadDeref (by name).
             foreach (var tp in typeParams)
@@ -534,7 +485,7 @@ partial class Emitter
         Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
         Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
         Builder.Emit(OpCode.LoadConst, genericCodeObj);
-        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef, 2);
+        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef);
 
         // 3. Bundle defaults into tuples (CPython convention) and pass as args
         int numTypeParamArgs = 0;
@@ -560,7 +511,42 @@ partial class Emitter
 
         Builder.Emit(OpCode.Call, numTypeParamArgs);
 
-        // 4. Set __doc__ before decorators (matching non-generic path)
+        // 4. Set __doc__ and apply decorators
+        EmitFunctionTail(node);
+    }
+
+    /// <summary>
+    /// Emit a function body (common to both generic and non-generic functions).
+    /// Creates code object with CellVars initialization, generator header, and body.
+    /// </summary>
+    private PyCodeObject EmitFunctionBody(IFunctionDefNode node, CallableVariableScope scope)
+    {
+        using var sub = new EmitterSubScope(this, scope);
+
+        foreach (var cell in scope.CellVars)
+            Builder.Emit(OpCode._MakeCellFast, scope.LocalsTable[cell]);
+
+        if (scope.IsGenerator || scope is AsyncFunctionVariableScope)
+        {
+            Builder.Emit(OpCode.ReturnGenerator);
+            Builder.Emit(OpCode.PopTop);
+        }
+        EmitStmts(node.Body, out var bodyPostUnreachable);
+        if (!bodyPostUnreachable)
+        {
+            Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
+            Builder.Emit(OpCode.ReturnValue);
+        }
+
+        return new PyCodeObject(_source.Name, scope, Builder.ToBytecode());
+    }
+
+    /// <summary>
+    /// Emit __doc__, apply decorators, and store function name.
+    /// Common tail shared by generic and non-generic function emission.
+    /// </summary>
+    private void EmitFunctionTail(IFunctionDefNode node)
+    {
         if (OptimizationLevel < 2 && TryGetDoc(node.Body, out var doc))
         {
             Builder.Emit(OpCode.Copy, 1);
@@ -569,7 +555,6 @@ partial class Emitter
             Builder.Emit(OpCode.StoreAttr, PySpecialNames.Doc);
         }
 
-        // 5. Apply decorators
         for (int i = 0; i < node.DecoratorList.Length; i++)
             Builder.Emit(OpCode.Call, 1);
 
@@ -703,7 +688,7 @@ partial class Emitter
         Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
         Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
         Builder.Emit(OpCode.LoadConst, genericParamCodeObj);
-        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef, 2);
+        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef);
         Builder.Emit(OpCode.Call, 0);
         StoreName(node.Name);
     }

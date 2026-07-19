@@ -687,7 +687,7 @@ partial class Emitter
         Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
         Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
         Builder.Emit(OpCode.LoadConst, codeObj);
-        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef, 2);
+        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef);
 
         LoadExpr(node.Generators[0].Iter);
         if (node.Generators[0].IsAsync)
@@ -764,7 +764,7 @@ partial class Emitter
 
         EmitFunctionDefaults(node.Args);
         Builder.Emit(OpCode.LoadConst, codeObj);
-        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef, 2);
+        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef);
     }
 
     private void EmitJoinedStr(JoinedStrNode node)
