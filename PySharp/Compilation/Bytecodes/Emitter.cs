@@ -90,4 +90,41 @@ internal sealed partial class Emitter
         doc = null;
         return false;
     }
+
+    /// <summary>
+    /// Emit bundled defaults and kwdefaults tuples, matching CPython convention.
+    /// Stack: [defaults_tuple, kwdefaults_tuple]  (ready for <c>_MakeFunctionWithPyArgsDef</c>)
+    /// </summary>
+    private void EmitFunctionDefaults(AstArgumentsNode args)
+    {
+        int defCount = args.Defaults.Length;
+        int kwDefCount = args.KwDefaults.Length;
+
+        if (defCount > 0)
+        {
+            foreach (var d in args.Defaults)
+                LoadExpr(d);
+            Builder.Emit(OpCode.BuildTuple, defCount);
+        }
+        else
+        {
+            Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
+        }
+
+        if (kwDefCount > 0)
+        {
+            foreach (var d in args.KwDefaults)
+            {
+                if (d is not null)
+                    LoadExpr(d);
+                else
+                    Builder.Emit(OpCode.PushNull);
+            }
+            Builder.Emit(OpCode.BuildTuple, kwDefCount);
+        }
+        else
+        {
+            Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
+        }
+    }
 }

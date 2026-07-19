@@ -772,35 +772,7 @@ partial class Emitter
 
         var codeObj = new PyCodeObject(_source.Name, scope, bytecode);
 
-        int defCount = node.Args.Defaults.Length;
-        int kwDefCount = node.Args.KwDefaults.Length;
-
-        if (defCount > 0)
-        {
-            foreach (var argDefault in node.Args.Defaults)
-                LoadExpr(argDefault);
-            Builder.Emit(OpCode.BuildTuple, defCount);
-        }
-        else
-        {
-            Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
-        }
-
-        if (kwDefCount > 0)
-        {
-            foreach (var kwargDefault in node.Args.KwDefaults)
-            {
-                if (kwargDefault is not null)
-                    LoadExpr(kwargDefault);
-                else
-                    Builder.Emit(OpCode.PushNull);
-            }
-            Builder.Emit(OpCode.BuildTuple, kwDefCount);
-        }
-        else
-        {
-            Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
-        }
+        EmitFunctionDefaults(node.Args);
 
         Builder.Emit(OpCode.LoadConst, codeObj);
         Builder.Emit(OpCode._MakeFunctionWithPyArgsDef, 2);

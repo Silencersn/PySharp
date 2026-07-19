@@ -416,35 +416,7 @@ partial class Emitter
         foreach (var decorator in node.DecoratorList)
             LoadExpr(decorator);
 
-        int defCount = node.Args.Defaults.Length;
-        int kwDefCount = node.Args.KwDefaults.Length;
-
-        if (defCount > 0)
-        {
-            foreach (var argDefault in node.Args.Defaults)
-                LoadExpr(argDefault);
-            Builder.Emit(OpCode.BuildTuple, defCount);
-        }
-        else
-        {
-            Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
-        }
-
-        if (kwDefCount > 0)
-        {
-            foreach (var kwargDefault in node.Args.KwDefaults)
-            {
-                if (kwargDefault is not null)
-                    LoadExpr(kwargDefault);
-                else
-                    Builder.Emit(OpCode.PushNull);
-            }
-            Builder.Emit(OpCode.BuildTuple, kwDefCount);
-        }
-        else
-        {
-            Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
-        }
+        EmitFunctionDefaults(node.Args);
 
         Builder.Emit(OpCode.LoadConst, codeObj);
         Builder.Emit(OpCode._MakeFunctionWithPyArgsDef, 2);
@@ -521,7 +493,6 @@ partial class Emitter
 
         int defaultsCount = node.Args.Defaults.Length;
         int kwDefaultsCount = node.Args.KwDefaults.Length;
-        int totalArgs = defaultsCount + kwDefaultsCount;
 
         // Create TypeVars first (no defaults on stack to protect anymore —
         // defaults are bundled into tuples passed via arg slots).
@@ -537,26 +508,15 @@ partial class Emitter
 
         // Load bundled defaults tuples from arg slots (CPython convention)
         // and pass directly to _MakeFunctionWithPyArgsDef — no unpacking needed.
-        int argSlot = 0;
         if (defaultsCount > 0)
-        {
-            Builder.Emit(OpCode.LoadFast, argSlot);
-            argSlot++;
-        }
+            Builder.Emit(OpCode.LoadFast, 0);
         else
-        {
             Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
-        }
 
         if (kwDefaultsCount > 0)
-        {
-            Builder.Emit(OpCode.LoadFast, argSlot);
-            argSlot++;
-        }
+            Builder.Emit(OpCode.LoadFast, defaultsCount > 0 ? 1 : 0);
         else
-        {
             Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
-        }
 
         // Build inner function; GetFreeVars reads cells from this frame's locals.
         Builder.Emit(OpCode.LoadConst, innerBodyCodeObj);
