@@ -689,8 +689,10 @@ partial class Emitter
         VariableScope = currentScope;
 
         var codeObj = new PyCodeObject(_source.Name, scope, bytecode);
+        Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
+        Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
         Builder.Emit(OpCode.LoadConst, codeObj);
-        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef, arg: 1);
+        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef, 2);
 
         LoadExpr(node.Generators[0].Iter);
         if (node.Generators[0].IsAsync)
@@ -770,19 +772,38 @@ partial class Emitter
 
         var codeObj = new PyCodeObject(_source.Name, scope, bytecode);
 
-        foreach (var argDefault in node.Args.Defaults)
-            LoadExpr(argDefault);
+        int defCount = node.Args.Defaults.Length;
+        int kwDefCount = node.Args.KwDefaults.Length;
 
-        foreach (var kwargDefault in node.Args.KwDefaults)
+        if (defCount > 0)
         {
-            if (kwargDefault is not null)
-                LoadExpr(kwargDefault);
-            else
-                Builder.Emit(OpCode.PushNull);
+            foreach (var argDefault in node.Args.Defaults)
+                LoadExpr(argDefault);
+            Builder.Emit(OpCode.BuildTuple, defCount);
+        }
+        else
+        {
+            Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
+        }
+
+        if (kwDefCount > 0)
+        {
+            foreach (var kwargDefault in node.Args.KwDefaults)
+            {
+                if (kwargDefault is not null)
+                    LoadExpr(kwargDefault);
+                else
+                    Builder.Emit(OpCode.PushNull);
+            }
+            Builder.Emit(OpCode.BuildTuple, kwDefCount);
+        }
+        else
+        {
+            Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
         }
 
         Builder.Emit(OpCode.LoadConst, codeObj);
-        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef, node.Args.Defaults.Length + node.Args.KwDefaults.Length);
+        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef, 2);
     }
 
     private void EmitJoinedStr(JoinedStrNode node)

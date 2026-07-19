@@ -266,8 +266,12 @@ public sealed class Bytecode
 
                 case OpCode.Call:
                 case OpCode.RaiseVarArgs:
-                case OpCode._MakeFunctionWithPyArgsDef:
                     IncrementStackSize(-_arg);
+                    break;
+
+                case OpCode._MakeFunctionWithPyArgsDef:
+                    // Pops 2 tuples + codeObj, pushes 1 function. Net = -2.
+                    IncrementStackSize(-2);
                     break;
 
                 case OpCode._BuildClass:

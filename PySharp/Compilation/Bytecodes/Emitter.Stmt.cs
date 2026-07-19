@@ -77,8 +77,10 @@ partial class Emitter
         Builder = currentBuilder;
 
         var codeObj = new PyCodeObject(n.Name, _source.Name, bytecode, CodeObjectFlags.Function);
+        Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
+        Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
         Builder.Emit(OpCode.LoadConst, codeObj);
-        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef, arg: 0);
+        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef, arg: 2);
 
         Builder.Emit(OpCode._MakeTypeAlias, n.Name);
         StoreName(n.Name);
@@ -414,19 +416,38 @@ partial class Emitter
         foreach (var decorator in node.DecoratorList)
             LoadExpr(decorator);
 
-        foreach (var argDefault in node.Args.Defaults)
-            LoadExpr(argDefault);
+        int defCount = node.Args.Defaults.Length;
+        int kwDefCount = node.Args.KwDefaults.Length;
 
-        foreach (var kwargDefault in node.Args.KwDefaults)
+        if (defCount > 0)
         {
-            if (kwargDefault is not null)
-                LoadExpr(kwargDefault);
-            else
-                Builder.Emit(OpCode.PushNull);
+            foreach (var argDefault in node.Args.Defaults)
+                LoadExpr(argDefault);
+            Builder.Emit(OpCode.BuildTuple, defCount);
+        }
+        else
+        {
+            Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
+        }
+
+        if (kwDefCount > 0)
+        {
+            foreach (var kwargDefault in node.Args.KwDefaults)
+            {
+                if (kwargDefault is not null)
+                    LoadExpr(kwargDefault);
+                else
+                    Builder.Emit(OpCode.PushNull);
+            }
+            Builder.Emit(OpCode.BuildTuple, kwDefCount);
+        }
+        else
+        {
+            Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
         }
 
         Builder.Emit(OpCode.LoadConst, codeObj);
-        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef, node.Args.Defaults.Length + node.Args.KwDefaults.Length);
+        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef, 2);
 
         if (OptimizationLevel < 2 && TryGetDoc(node.Body, out var doc))
         {
@@ -502,14 +523,8 @@ partial class Emitter
         int kwDefaultsCount = node.Args.KwDefaults.Length;
         int totalArgs = defaultsCount + kwDefaultsCount;
 
-        // Push defaults onto operand stack FIRST so they're safe from
-        // StoreName overwriting the argument slots in locals.
-        for (int i = 0; i < totalArgs; i++)
-            Builder.Emit(OpCode.LoadFast, i);
-
-        // Create TypeVars, store as locals, then convert to cells so GetFreeVars
-        // can read them. Use Copy 1 + MakeCell + StoreDeref to avoid index
-        // collision with argument slots (0..totalArgs-1).
+        // Create TypeVars first (no defaults on stack to protect anymore —
+        // defaults are bundled into tuples passed via arg slots).
         foreach (var tp in typeParams)
         {
             Builder.Emit(OpCode.LoadConst, PyStrObject.FromString(tp.Name));
@@ -520,9 +535,32 @@ partial class Emitter
             Builder.Emit(OpCode.StoreDeref, tp.Name);
         }
 
+        // Load bundled defaults tuples from arg slots (CPython convention)
+        // and pass directly to _MakeFunctionWithPyArgsDef — no unpacking needed.
+        int argSlot = 0;
+        if (defaultsCount > 0)
+        {
+            Builder.Emit(OpCode.LoadFast, argSlot);
+            argSlot++;
+        }
+        else
+        {
+            Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
+        }
+
+        if (kwDefaultsCount > 0)
+        {
+            Builder.Emit(OpCode.LoadFast, argSlot);
+            argSlot++;
+        }
+        else
+        {
+            Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
+        }
+
         // Build inner function; GetFreeVars reads cells from this frame's locals.
         Builder.Emit(OpCode.LoadConst, innerBodyCodeObj);
-        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef, totalArgs);
+        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef, 2);
         // stack: [inner_func]
 
         // Build __type_params__ by loading TypeVars from cells via LoadDeref (by name).
@@ -544,21 +582,34 @@ partial class Emitter
             LoadExpr(decorator);
 
         // 2. Create generic param function (no defaults — they become args)
+        Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
+        Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
         Builder.Emit(OpCode.LoadConst, genericCodeObj);
-        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef, 0);
+        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef, 2);
 
-        // 3. Pass defaults as arguments when calling generic param function
-        foreach (var argDefault in node.Args.Defaults)
-            LoadExpr(argDefault);
-        foreach (var kwargDefault in node.Args.KwDefaults)
+        // 3. Bundle defaults into tuples (CPython convention) and pass as args
+        int numTypeParamArgs = 0;
+        if (defaultsCount > 0)
         {
-            if (kwargDefault is not null)
-                LoadExpr(kwargDefault);
-            else
-                Builder.Emit(OpCode.PushNull);
+            foreach (var argDefault in node.Args.Defaults)
+                LoadExpr(argDefault);
+            Builder.Emit(OpCode.BuildTuple, defaultsCount);
+            numTypeParamArgs++;
+        }
+        if (kwDefaultsCount > 0)
+        {
+            foreach (var kwargDefault in node.Args.KwDefaults)
+            {
+                if (kwargDefault is not null)
+                    LoadExpr(kwargDefault);
+                else
+                    Builder.Emit(OpCode.PushNull);
+            }
+            Builder.Emit(OpCode.BuildTuple, kwDefaultsCount);
+            numTypeParamArgs++;
         }
 
-        Builder.Emit(OpCode.Call, totalArgs);
+        Builder.Emit(OpCode.Call, numTypeParamArgs);
 
         // 4. Set __doc__ before decorators (matching non-generic path)
         if (OptimizationLevel < 2 && TryGetDoc(node.Body, out var doc))
@@ -714,8 +765,10 @@ partial class Emitter
         Builder = currentBuilder;
         VariableScope = currentScope;
 
+        Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
+        Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
         Builder.Emit(OpCode.LoadConst, genericParamCodeObj);
-        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef, 0);
+        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef, 2);
         Builder.Emit(OpCode.Call, 0);
         StoreName(node.Name);
     }

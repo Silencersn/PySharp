@@ -228,23 +228,35 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
 
                 genParamScope.FreeVars = [.. genParamScope.TempFrees.Distinct()];
 
-                // Compute argCount for function generics (defaults passed as args to generic param function)
-                genParamScope.ArgCount = genParamScope.Owner is IFunctionDefNode fnNode
-                    ? fnNode.Args.Defaults.Length + fnNode.Args.KwDefaults.Length
-                    : 0;
-                int argCount = genParamScope.ArgCount;
+                // Compute argCount matching CPython: at most 2 arg slots
+                // (.defaults for positional defaults, .kwdefaults for keyword defaults).
+                int argCount = 0;
+                if (genParamScope.Owner is IFunctionDefNode fnNode2)
+                {
+                    if (fnNode2.Args.Defaults.Length > 0)
+                        argCount++;
+                    if (fnNode2.Args.KwDefaults.Length > 0)
+                        argCount++;
+                }
+                genParamScope.ArgCount = argCount;
 
                 if (argCount > 0)
                 {
-                    // Prepend dummy arg names to VarNames so FromCodeObjectAndDefaults
-                    // can index VarNames[..ArgCount] when unpacking arguments.
-                    genParamScope.VarNames = [.. Enumerable.Range(0, argCount).Select(static i => $"<arg_{i}>"),
+                    // Prepend dummy arg names matching CPython convention.
+                    var argNames = new List<string>();
+                    var fnNode = (IFunctionDefNode)genParamScope.Owner;
+                    if (fnNode.Args.Defaults.Length > 0)
+                        argNames.Add(".defaults");
+                    if (fnNode.Args.KwDefaults.Length > 0)
+                        argNames.Add(".kwdefaults");
+
+                    genParamScope.VarNames = [.. argNames,
                         .. genParamScope.Variables
                             .Where(pair => pair.Value is PyVariableType.Local or PyVariableType.CapturedLocal)
                             .Select(pair => pair.Key)];
 
                     // Pad LocalsTable with dummy arg slots at indices 0..argCount-1
-                    // so InitArgs writes defaults into the local span without colliding
+                    // so InitArgs writes into the local span without colliding
                     // with type-param entries (shifted by argCount).
                     var names = genParamScope.VarNames
                         .Concat(genParamScope.CellVars)

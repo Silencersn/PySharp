@@ -563,6 +563,13 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestDefaultsNone()
+    {
+        var module = RunModule("test_defaults_none.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestDelVariable()
     {
         var module = RunModule("test_del_variable.py");

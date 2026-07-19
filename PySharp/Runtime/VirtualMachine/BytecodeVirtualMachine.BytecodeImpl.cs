@@ -288,14 +288,21 @@ internal static partial class BytecodeVirtualMachine
     {
         var codeObj = (PyCodeObject)stack.Pop();
 
-        PyObject?[] kwDefaults = new PyObject?[codeObj.KwDefaultsCount];
-        stack.PopReversedRange(kwDefaults!);
-        PyObject[] defaults = new PyObject[codeObj.DefaultsCount];
-        stack.PopReversedRange(defaults);
-        var def = PyArgsDef.FromCodeObjectAndDefaults(codeObj, kwDefaults, defaults);
+        // Pop bundled defaults tuple and kwdefaults tuple.
+        // null entries (from PushNull for missing kwdefaults) are stored directly
+        // in the tuple's internal array — no sentinel needed.
+        var kwDefaultsObj = stack.Pop();
+        var kwDefaults = kwDefaultsObj is PyTupleObject kwdt
+            ? Enumerable.Range(0, kwdt.Count).Select(i => kwdt[i]).ToArray()
+            : [];
 
+        var defaultsObj = stack.Pop();
+        var defaults = defaultsObj is PyTupleObject dt
+            ? Enumerable.Range(0, dt.Count).Select(i => dt[i]).ToArray()
+            : [];
+
+        var def = PyArgsDef.FromCodeObjectAndDefaults(codeObj, kwDefaults!, defaults!);
         var func = PyCore.MakeFunction(ref frame, codeObj, def);
-
         stack.Push(func);
     }
 
