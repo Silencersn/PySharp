@@ -325,13 +325,34 @@ partial class SemanticAnalyzer
         VisitNodes(node.DecoratorList);
         VisitArgumentsDefaults(node.Args);
 
-        var scope = new FunctionVariableScope(node, _currentScopeStats.Scope);
-        PushScope(scope);
+        // Generic functions (def foo[T]():) have an outer GenericParamVariableScope that
+        // creates TypeVar cells and passes them to the function body via closure.
+        if (node.TypeParams.Length > 0)
+        {
+            var genericParamScope = new GenericParamVariableScope(node, _currentScopeStats.Scope);
+            PushScope(genericParamScope);
+
+            foreach (var tp in node.TypeParams)
+                genericParamScope.AppendVariable(tp.Name, ExprContextType.Store);
+
+            var funcScope = new FunctionVariableScope(node, genericParamScope);
+            PushScope(funcScope);
+
+            foreach (var tp in node.TypeParams)
+                funcScope.AppendVariable(tp.Name, ExprContextType.Load);
+        }
+        else
+        {
+            var scope = new FunctionVariableScope(node, _currentScopeStats.Scope);
+            PushScope(scope);
+        }
 
         VisitArgumentsArgs(node.Args);
         VisitNodes(node.Body);
 
-        PopScope();
+        PopScope(); // pop function scope
+        if (node.TypeParams.Length > 0)
+            PopScope(); // pop generic param scope
     }
 
     private void VisitAsyncFunctionDef(AsyncFunctionDefNode node)
@@ -341,13 +362,32 @@ partial class SemanticAnalyzer
         VisitNodes(node.DecoratorList);
         VisitArgumentsDefaults(node.Args);
 
-        var scope = new AsyncFunctionVariableScope(node, _currentScopeStats.Scope);
-        PushScope(scope);
+        if (node.TypeParams.Length > 0)
+        {
+            var genericParamScope = new GenericParamVariableScope(node, _currentScopeStats.Scope);
+            PushScope(genericParamScope);
+
+            foreach (var tp in node.TypeParams)
+                genericParamScope.AppendVariable(tp.Name, ExprContextType.Store);
+
+            var funcScope = new AsyncFunctionVariableScope(node, genericParamScope);
+            PushScope(funcScope);
+
+            foreach (var tp in node.TypeParams)
+                funcScope.AppendVariable(tp.Name, ExprContextType.Load);
+        }
+        else
+        {
+            var scope = new AsyncFunctionVariableScope(node, _currentScopeStats.Scope);
+            PushScope(scope);
+        }
 
         VisitArgumentsArgs(node.Args);
         VisitNodes(node.Body);
 
-        PopScope();
+        PopScope(); // pop function scope
+        if (node.TypeParams.Length > 0)
+            PopScope(); // pop generic param scope
     }
 
     private void VisitClassDef(ClassDefNode node)

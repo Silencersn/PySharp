@@ -166,11 +166,14 @@ internal interface IScopeWithFreeVars
 /// </summary>
 internal sealed class GenericParamVariableScope : VariableScope, IScopeWithFreeVars
 {
-    public override ClassDefNode Owner { get; }
-    public override string Name => $"<generic parameters of {Owner.Name}>";
+    private const string NameTemplate = "<generic parameters of {0}>";
+
+    public override AstNode Owner { get; }
+    public override string Name { get; }
     public Dictionary<string, HashSet<IScopeWithFreeVars>> ScopesRequiringFree = [];
     public PyCodeObject? CodeObject { get; set; }
     public List<string> TempFrees { get; } = [];
+    public int ArgCount { get; internal set; }
     public ImmutableArray<string> CellVars { get; internal set; } = [];
     public ImmutableArray<string> FreeVars { get; internal set; } = [];
     public ImmutableArray<string> VarNames { get; internal set; } = [];
@@ -179,11 +182,18 @@ internal sealed class GenericParamVariableScope : VariableScope, IScopeWithFreeV
     public GenericParamVariableScope(ClassDefNode owner, VariableScope parent) : base(parent)
     {
         Owner = owner;
+        Name = string.Format(NameTemplate, owner.Name);
+    }
+
+    public GenericParamVariableScope(IFunctionDefNode owner, VariableScope parent) : base(parent)
+    {
+        Owner = (AstNode)owner;
+        Name = string.Format(NameTemplate, owner.Name);
     }
 
     public override void Bind(SemanticModel model)
     {
-        // GenericParamVariableScope shares its Owner (ClassDefNode) with ClassVariableScope.
+        // GenericParamVariableScope shares its Owner with the inner scope (class or function).
         // Skip self-registration to avoid duplicate key conflict in SemanticModel.
         foreach (var childScope in Children)
             childScope.Bind(model);

@@ -125,6 +125,7 @@ internal enum OpCode : byte
 
     _MakeTypeVar,
     _MakeTypeAlias,
+    _SetFunctionTypeParams,
 
     ImportName,
     ImportFrom,

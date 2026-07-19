@@ -365,6 +365,23 @@ partial class Emitter
 
     private void InternalEmitIFunctionDef(IFunctionDefNode node)
     {
+        var typeParams = node switch
+        {
+            FunctionDefNode fn => fn.TypeParams,
+            AsyncFunctionDefNode afn => afn.TypeParams,
+            _ => []
+        };
+        if (typeParams.Length is 0)
+        {
+            InternalEmitNonGenericFunction(node);
+            return;
+        }
+        InternalEmitGenericFunction(node, typeParams);
+    }
+
+    /// <summary>Emit a non-generic function (no type params).</summary>
+    private void InternalEmitNonGenericFunction(IFunctionDefNode node)
+    {
         var currentBuilder = Builder;
         Builder = BytecodeBuilder.Create(_source);
         var currentScope = VariableScope;
@@ -374,12 +391,6 @@ partial class Emitter
 
         foreach (var cell in scope.CellVars)
             Builder.Emit(OpCode._MakeCellFast, scope.LocalsTable[cell]);
-
-        // For generic functions (e.g. def test[K](self):), create TypeVar objects and bind them.
-        if (node is FunctionDefNode { TypeParams.Length: > 0 } fn)
-            EmitTypeParams(fn.TypeParams);
-        else if (node is AsyncFunctionDefNode { TypeParams.Length: > 0 } afn)
-            EmitTypeParams(afn.TypeParams);
 
         if (scope.IsGenerator || scope is AsyncFunctionVariableScope)
         {
@@ -425,6 +436,140 @@ partial class Emitter
             Builder.Emit(OpCode.StoreAttr, PySpecialNames.Doc);
         }
 
+        for (int i = 0; i < node.DecoratorList.Length; i++)
+            Builder.Emit(OpCode.Call, 1);
+
+        StoreName(node.Name);
+    }
+
+    /// <summary>
+    /// Emit a generic function using two-layer architecture matching CPython:
+    ///
+    /// Caller (outer builder):
+    ///   LoadExpr(decorators...)
+    ///   LoadConst(type_param_co)
+    ///   _MakeFunctionWithPyArgsDef(0)    — pops only codeObj
+    ///   LoadExpr(defaults...)
+    ///   Call(n)                          — executes generic params scope
+    ///   Call(decorators)                 — apply decorators
+    ///   StoreName
+    ///
+    /// Generic params code object (inner):
+    ///   _MakeTypeVar K, Copy 1, Store, _MakeCellFast  — TypeVars → cells
+    ///   LoadFast(defaults...)              — forward defaults from args
+    ///   LoadConst(inner_body_co)
+    ///   _MakeFunctionWithPyArgsDef        — GetFreeVars reads cells from this frame
+    ///   BuildTuple n                      — __type_params__ from Copy 1 copies
+    ///   _SetFunctionTypeParams
+    ///   ReturnValue
+    /// </summary>
+    private void InternalEmitGenericFunction(IFunctionDefNode node, ImmutableArray<AstTypeParamNode> typeParams)
+    {
+        // --- Layer 1 (inner): function body code object ---
+        // TypeVars accessed via LOAD_DEREF from closure cells.
+        var savedBuilder = Builder;
+        Builder = BytecodeBuilder.Create(_source);
+        var savedScope = VariableScope;
+        var funcScope = Model.GetVariableScope<CallableVariableScope>((AstNode)node);
+        Debug.Assert(funcScope is not null);
+        VariableScope = funcScope;
+
+        foreach (var cell in funcScope.CellVars)
+            Builder.Emit(OpCode._MakeCellFast, funcScope.LocalsTable[cell]);
+
+        if (funcScope.IsGenerator || funcScope is AsyncFunctionVariableScope)
+        {
+            Builder.Emit(OpCode.ReturnGenerator);
+            Builder.Emit(OpCode.PopTop);
+        }
+        EmitStmts(node.Body, out var bodyPostUnreachable);
+        if (!bodyPostUnreachable)
+        {
+            Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
+            Builder.Emit(OpCode.ReturnValue);
+        }
+
+        var innerBodyBytecode = Builder.ToBytecode();
+        var innerBodyCodeObj = new PyCodeObject(_source.Name, funcScope, innerBodyBytecode);
+
+        // --- Layer 2 (outer): generic params code object ---
+        // Creates TypeVars, builds __type_params__, constructs inner function.
+        var genericParamScope = (GenericParamVariableScope)funcScope.Parent!;
+        Builder = BytecodeBuilder.Create(_source);
+        VariableScope = genericParamScope;
+
+        int defaultsCount = node.Args.Defaults.Length;
+        int kwDefaultsCount = node.Args.KwDefaults.Length;
+        int totalArgs = defaultsCount + kwDefaultsCount;
+
+        // Push defaults onto operand stack FIRST so they're safe from
+        // StoreName overwriting the argument slots in locals.
+        for (int i = 0; i < totalArgs; i++)
+            Builder.Emit(OpCode.LoadFast, i);
+
+        // Create TypeVars, store as locals, then convert to cells so GetFreeVars
+        // can read them. Use Copy 1 + MakeCell + StoreDeref to avoid index
+        // collision with argument slots (0..totalArgs-1).
+        foreach (var tp in typeParams)
+        {
+            Builder.Emit(OpCode.LoadConst, PyStrObject.FromString(tp.Name));
+            Builder.Emit(OpCode._MakeTypeVar);
+            Builder.Emit(OpCode.Copy, 1);
+            StoreName(tp.Name);
+            Builder.Emit(OpCode.MakeCell, tp.Name);
+            Builder.Emit(OpCode.StoreDeref, tp.Name);
+        }
+
+        // Build inner function; GetFreeVars reads cells from this frame's locals.
+        Builder.Emit(OpCode.LoadConst, innerBodyCodeObj);
+        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef, totalArgs);
+        // stack: [inner_func]
+
+        // Build __type_params__ by loading TypeVars from cells via LoadDeref (by name).
+        foreach (var tp in typeParams)
+            Builder.Emit(OpCode.LoadDeref, tp.Name);
+        Builder.Emit(OpCode.BuildTuple, typeParams.Length);
+        Builder.Emit(OpCode._SetFunctionTypeParams);
+        Builder.Emit(OpCode.ReturnValue);
+
+        var genericBytecode = Builder.ToBytecode();
+        var genericCodeObj = new PyCodeObject(_source.Name, genericParamScope, genericBytecode);
+
+        // --- Back to outer builder ---
+        Builder = savedBuilder;
+        VariableScope = savedScope;
+
+        // 1. Load decorators (before generic function, applied after)
+        foreach (var decorator in node.DecoratorList)
+            LoadExpr(decorator);
+
+        // 2. Create generic param function (no defaults — they become args)
+        Builder.Emit(OpCode.LoadConst, genericCodeObj);
+        Builder.Emit(OpCode._MakeFunctionWithPyArgsDef, 0);
+
+        // 3. Pass defaults as arguments when calling generic param function
+        foreach (var argDefault in node.Args.Defaults)
+            LoadExpr(argDefault);
+        foreach (var kwargDefault in node.Args.KwDefaults)
+        {
+            if (kwargDefault is not null)
+                LoadExpr(kwargDefault);
+            else
+                Builder.Emit(OpCode.PushNull);
+        }
+
+        Builder.Emit(OpCode.Call, totalArgs);
+
+        // 4. Set __doc__ before decorators (matching non-generic path)
+        if (OptimizationLevel < 2 && TryGetDoc(node.Body, out var doc))
+        {
+            Builder.Emit(OpCode.Copy, 1);
+            Builder.Emit(OpCode.LoadConst, doc);
+            Builder.Emit(OpCode.Swap, 2);
+            Builder.Emit(OpCode.StoreAttr, PySpecialNames.Doc);
+        }
+
+        // 5. Apply decorators
         for (int i = 0; i < node.DecoratorList.Length; i++)
             Builder.Emit(OpCode.Call, 1);
 

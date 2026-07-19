@@ -924,6 +924,15 @@ internal static partial class BytecodeVirtualMachine
                         }
                         break;
 
+                    case OpCode._SetFunctionTypeParams:
+                        {
+                            var typeParams = Stack.Pop();
+                            var func = Stack[-1];
+                            Debug.Assert(func is PyFunctionObject);
+                            func.PyAttributes[PySpecialNames.TypeParams] = typeParams;
+                        }
+                        break;
+
                     case OpCode.__BytecodeEnd:
                         nextIndex = instructions.Length;
                         break;

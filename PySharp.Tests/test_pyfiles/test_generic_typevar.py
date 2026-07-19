@@ -168,4 +168,51 @@ assert WithPs.t.__name__ == "T"
 assert WithPs.ts.__name__ == "Ts"
 assert WithPs.p.__name__ == "P"
 
+# ===== Section 14: Class decorator preserves __type_params__ =====
+# Verify __type_params__ exists on the class before decorator runs
+_deco_log = []
+def _capture_deco(cls):
+    _deco_log.append(hasattr(cls, "__type_params__"))
+    _deco_log.append(cls.__type_params__[0].__name__ if hasattr(cls, "__type_params__") else None)
+    return cls
+
+@_capture_deco
+class DecoCls[T]:
+    value = T
+
+assert DecoCls.__type_params__[0].__name__ == "T"
+assert DecoCls.value is DecoCls.__type_params__[0]
+assert _deco_log[0] == True, f"decorator should see __type_params__, got {_deco_log}"
+assert _deco_log[1] == "T"
+
+# Decorator that replaces the class
+def _replace_deco(cls):
+    assert hasattr(cls, "__type_params__")
+    return "replaced"
+
+@_replace_deco
+class ReplacedCls[U]:
+    u = U
+
+assert ReplacedCls == "replaced"
+
+# Chained decorators
+_deco_chain_log = []
+def _chain_one(cls):
+    _deco_chain_log.append("first")
+    return cls
+
+def _chain_two(cls):
+    _deco_chain_log.append("second")
+    return cls
+
+@_chain_one
+@_chain_two
+class ChainedDeco[V]:
+    v = V
+
+assert _deco_chain_log == ["second", "first"], f"got {_deco_chain_log}"
+assert ChainedDeco.__type_params__[0].__name__ == "V"
+assert ChainedDeco.v is ChainedDeco.__type_params__[0]
+
 print("test_generic_typevar passed")

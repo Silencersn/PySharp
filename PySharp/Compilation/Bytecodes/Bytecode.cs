@@ -248,6 +248,7 @@ public sealed class Bytecode
                 case OpCode.ImportName:
                 case OpCode._ImportAllFrom:
                 case OpCode._CallPrintIfNotNone:
+                case OpCode._SetFunctionTypeParams:
                 case OpCode.PopJumpIfFalse:
                 case OpCode.PopJumpIfTrue:
                 case OpCode.PopJumpIfNone:

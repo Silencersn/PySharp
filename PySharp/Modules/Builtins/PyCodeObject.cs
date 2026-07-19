@@ -150,11 +150,11 @@ public sealed class PyCodeObject : PyObjectManagedDict
         Name = scope.Name;
         Filename = filename;
         QualName = scope.QualName;
-        NLocals = scope.VarNames.Length;
         VarNames = scope.VarNames;
+        NLocals = VarNames.Length;
         CellVars = scope.CellVars;
         FreeVars = scope.FreeVars;
-        ArgCount = 0;
+        ArgCount = scope.ArgCount;
         PosOnlyArgCount = 0;
         KwOnlyArgCount = 0;
         DefaultsCount = 0;
@@ -163,7 +163,7 @@ public sealed class PyCodeObject : PyObjectManagedDict
         PyAttributes.Add("co_name", PyStrObject.FromString(Name));
         PyAttributes.Add("co_filename", PyStrObject.FromString(Filename));
         PyAttributes.Add("co_qualname", PyStrObject.FromString(QualName));
-        PyAttributes.Add("co_argcount", PyIntObject.Zero);
+        PyAttributes.Add("co_argcount", PyIntObject.FromInteger(ArgCount));
         PyAttributes.Add("co_posonlyargcount", PyIntObject.Zero);
         PyAttributes.Add("co_kwonlyargcount", PyIntObject.Zero);
         PyAttributes.Add("co_nlocals", PyIntObject.FromInteger(NLocals));

@@ -48,6 +48,8 @@ public sealed class PyFunctionObject : PyObjectManagedDict, IPyObjectName
 [PyType("function", IsSealed = true)]
 public sealed partial class PyFunctionObjectType : PyTypeObject<PyFunctionObject>
 {
+    internal override bool IsTypeImmutable => false;
+
     protected override PyResult Repr(PyCallContext context, PyFunctionObject self)
     {
         return PyStrObject.FromString($"<function {self.Name} at 0x{self.PyId:X16}>");

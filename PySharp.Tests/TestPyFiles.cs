@@ -682,9 +682,23 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestGenericFunction()
+    {
+        var module = RunModule("test_generic_function.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestGenericNestedDeep()
     {
         var module = RunModule("test_generic_nested_deep.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestGenericNestedMixed()
+    {
+        var module = RunModule("test_generic_nested_mixed.py");
         Assert.IsNotNull(module);
     }
 
