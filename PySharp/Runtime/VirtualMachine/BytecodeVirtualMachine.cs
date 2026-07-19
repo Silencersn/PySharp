@@ -387,7 +387,7 @@ internal static partial class BytecodeVirtualMachine
 
                             InlinePyObjectArray buffer = default;
                             if (!func._def.TryParse(callArgs, callKwargs, buffer, out var arguments))
-                                return PyResult.TypeError(null /* TODO */);
+                                throw context.TypeError(null /* TODO */);
 
                             frame.InstructionIndex++;
                             var newFrame = PyInternalFrame.CreateFuncCallFrame(context, func, FrameType.Function, func._globals, func.Code);
