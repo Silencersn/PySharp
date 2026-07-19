@@ -127,4 +127,35 @@ internal sealed partial class Emitter
             Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
         }
     }
+
+    /// <summary>
+    /// Saves and restores Builder/VariableScope around a sub-scope emission.
+    /// Usage:
+    /// <code>
+    /// using var sub = new EmitterSubScope(this, scope);
+    /// // emit body...
+    /// var codeObj = new PyCodeObject(name, scope, Builder.ToBytecode());
+    /// </code>
+    /// </summary>
+    internal readonly ref struct EmitterSubScope
+    {
+        private readonly Emitter _emitter;
+        private readonly BytecodeBuilder _savedBuilder;
+        private readonly VariableScope _savedScope;
+
+        public EmitterSubScope(Emitter emitter, VariableScope scope)
+        {
+            _emitter = emitter;
+            _savedBuilder = emitter.Builder;
+            _savedScope = emitter.VariableScope;
+            emitter.Builder = BytecodeBuilder.Create(emitter._source);
+            emitter.VariableScope = scope;
+        }
+
+        public void Dispose()
+        {
+            _emitter.Builder = _savedBuilder;
+            _emitter.VariableScope = _savedScope;
+        }
+    }
 }

@@ -665,30 +665,25 @@ partial class Emitter
 
     private void EmitGeneratorExp(GeneratorExpNode node)
     {
-        var currentBuilder = Builder;
-        Builder = BytecodeBuilder.Create(_source);
-        var currentScope = VariableScope;
-
         var scope = Model.GetVariableScope<CallableVariableScope>(node);
         Debug.Assert(scope is not null);
-        VariableScope = scope;
 
-        Builder.Emit(OpCode.ReturnGenerator);
-        Builder.Emit(OpCode.PopTop); // pop the first sent to activate the generator
-
-        InternalEmitGenerators(node.Generators, () =>
+        PyCodeObject codeObj;
+        using (var sub = new EmitterSubScope(this, scope))
         {
-            LoadExpr(node.Elt);
-            Builder.Emit(OpCode.YieldValue);
-            Builder.Emit(OpCode._CheckExcToRaise);
-            Builder.Emit(OpCode.PopTop); // no raising, pop received value
-        }, isGeneratorExp: true);
-        var bytecode = Builder.ToBytecode();
+            Builder.Emit(OpCode.ReturnGenerator);
+            Builder.Emit(OpCode.PopTop);
 
-        Builder = currentBuilder;
-        VariableScope = currentScope;
+            InternalEmitGenerators(node.Generators, () =>
+            {
+                LoadExpr(node.Elt);
+                Builder.Emit(OpCode.YieldValue);
+                Builder.Emit(OpCode._CheckExcToRaise);
+                Builder.Emit(OpCode.PopTop);
+            }, isGeneratorExp: true);
 
-        var codeObj = new PyCodeObject(_source.Name, scope, bytecode);
+            codeObj = new PyCodeObject(_source.Name, scope, Builder.ToBytecode());
+        }
         Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
         Builder.Emit(OpCode.LoadConst, PyTupleObject.Empty);
         Builder.Emit(OpCode.LoadConst, codeObj);
@@ -750,30 +745,24 @@ partial class Emitter
 
     private void EmitLambda(LambdaNode node)
     {
-        var currentBuilder = Builder;
-        Builder = BytecodeBuilder.Create(_source);
-        var currentScope = VariableScope;
         var scope = Model.GetVariableScope<CallableVariableScope>(node);
         Debug.Assert(scope is not null);
-        VariableScope = scope;
 
-        if (scope.IsGenerator)
+        PyCodeObject codeObj;
+        using (var sub = new EmitterSubScope(this, scope))
         {
-            Builder.Emit(OpCode.ReturnGenerator);
-            Builder.Emit(OpCode.PopTop); // pop the first sent to activate the generator
+            if (scope.IsGenerator)
+            {
+                Builder.Emit(OpCode.ReturnGenerator);
+                Builder.Emit(OpCode.PopTop);
+            }
+            LoadExpr(node.Body);
+            Builder.Emit(OpCode.ReturnValue);
+
+            codeObj = new PyCodeObject(_source.Name, scope, Builder.ToBytecode());
         }
-        LoadExpr(node.Body);
-        Builder.Emit(OpCode.ReturnValue);
-
-        var bytecode = Builder.ToBytecode();
-
-        Builder = currentBuilder;
-        VariableScope = currentScope;
-
-        var codeObj = new PyCodeObject(_source.Name, scope, bytecode);
 
         EmitFunctionDefaults(node.Args);
-
         Builder.Emit(OpCode.LoadConst, codeObj);
         Builder.Emit(OpCode._MakeFunctionWithPyArgsDef, 2);
     }
