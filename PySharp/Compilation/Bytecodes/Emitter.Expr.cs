@@ -76,6 +76,16 @@ partial class Emitter
             else
                 AsGlobal();
         }
+        else if (VariableScope is GenericParamVariableScope genericParamScope)
+        {
+            // GenericParamScope is like a function scope with locals/cells
+            if (!genericParamScope.LocalsTable.TryGetValue(name, out var nameIndex))
+                AsGlobal();
+            else if (genericParamScope.Variables[name] is PyVariableType.CapturedLocal)
+                AsDerefFast(nameIndex);
+            else
+                AsFast(nameIndex);
+        }
         else if (VariableScope is ClassVariableScope classVariableScope)
         {
             if (classVariableScope.Variables.TryGetValue(name, out var type) && type is PyVariableType.Closure)

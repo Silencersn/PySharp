@@ -146,6 +146,14 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
                         break;
                     }
 
+                    // Type params from enclosing GenericParamVariableScope or
+                    // regular variables from ClassVariableScope are visible to nested scopes.
+                    if (parent is GenericParamVariableScope && parent.Variables.ContainsKey(name))
+                    {
+                        scope.Variables[name] = PyVariableType.Closure;
+                        break;
+                    }
+
                     parent = parent.Parent;
                 }
             }
@@ -187,6 +195,22 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
                 }
             }
 
+            // GenericParamScope is processed AFTER CallableVariableScope, so type-param
+            // names are appended to TempFrees AFTER outer captured variable names.
+            // This guarantees FreeVars = [outer_vars..., type_params...] ordering, which
+            // PyVariables.CreateForBuildingClass relies on (offset-based closure fill).
+            if (scope is GenericParamVariableScope genericParamScope)
+            {
+                foreach (var name in genericParamScope.Variables.Keys)
+                {
+                    if (!genericParamScope.ScopesRequiringFree.TryGetValue(name, out var scopes))
+                        continue;
+
+                    foreach (var s in scopes)
+                        s.TempFrees.Add(name);
+                }
+            }
+
             foreach (var child in scope.Children)
                 FillTempFrees(child);
         }
@@ -195,6 +219,27 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
         {
             foreach (var child in scope.Children)
                 FillPropertiesImpl(child);
+
+            if (scope is GenericParamVariableScope genParamScope)
+            {
+                genParamScope.VarNames = [.. genParamScope.Variables
+                    .Where(pair => pair.Value is PyVariableType.Local or PyVariableType.CapturedLocal)
+                    .Select(pair => pair.Key)];
+
+                genParamScope.CellVars = [.. genParamScope.Variables
+                    .Where(pair => pair.Value is PyVariableType.CapturedLocal)
+                    .Select(pair => pair.Key)];
+
+                genParamScope.FreeVars = [.. genParamScope.TempFrees.Distinct()];
+
+                genParamScope.LocalsTable = genParamScope.VarNames
+                    .Concat(genParamScope.CellVars)
+                    .Concat(genParamScope.FreeVars)
+                    .Distinct()
+                    .Index()
+                    .ToFrozenDictionary(static indexed => indexed.Item, static indexed => indexed.Index);
+                return;
+            }
 
             if (scope is ClassVariableScope classScope)
             {
@@ -537,6 +582,19 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
                             scopes.UnionWith(scopesRequiringFree);
                         else
                             callableVariableScope.ScopesRequiringFree[name] = scopesRequiringFree;
+                        break;
+                    }
+
+                    // Type params defined in GenericParamVariableScope (e.g. class C[T]:)
+                    // are accessible to the class body as free vars. The type param remains
+                    // Local in the producer scope (not CapturedLocal) so StoreName works,
+                    // while the consumer (class body) uses LoadDeref on cell objects.
+                    if (parent is GenericParamVariableScope genericParamScope && parent.Variables.ContainsKey(name))
+                    {
+                        if (genericParamScope.ScopesRequiringFree.TryGetValue(name, out var scopes))
+                            scopes.UnionWith(scopesRequiringFree);
+                        else
+                            genericParamScope.ScopesRequiringFree[name] = scopesRequiringFree;
                         break;
                     }
 

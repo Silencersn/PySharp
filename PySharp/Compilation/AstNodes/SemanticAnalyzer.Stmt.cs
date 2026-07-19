@@ -358,12 +358,37 @@ partial class SemanticAnalyzer
         VisitNodes(node.Bases);
         VisitNodes(node.Keywords);
 
-        var scope = new ClassVariableScope(node, _currentScopeStats.Scope);
-        PushScope(scope);
+        // Generic classes (class C[T]:) have an outer GenericParamVariableScope that creates
+        // TypeVar objects and communicates them to the class body via cell/freevar closure.
+        if (node.TypeParams.Length > 0)
+        {
+            var genericParamScope = new GenericParamVariableScope(node, _currentScopeStats.Scope);
+            PushScope(genericParamScope);
+
+            // Register each type param as a local in the generic param scope
+            foreach (var tp in node.TypeParams)
+                genericParamScope.AppendVariable(tp.Name, ExprContextType.Store);
+
+            var classScope = new ClassVariableScope(node, genericParamScope);
+            PushScope(classScope);
+
+            // Register type param names as Load references in the class scope so they
+            // are recognized as Unknown → Closure → FreeVars. This ensures the emitter
+            // can build __type_params__ from LoadDeref even when the body is `pass`.
+            foreach (var tp in node.TypeParams)
+                classScope.AppendVariable(tp.Name, ExprContextType.Load);
+        }
+        else
+        {
+            var classScope = new ClassVariableScope(node, _currentScopeStats.Scope);
+            PushScope(classScope);
+        }
 
         VisitNodes(node.Body);
 
-        PopScope();
+        PopScope(); // pop class scope
+        if (node.TypeParams.Length > 0)
+            PopScope(); // pop generic param scope
     }
 
     private void VisitTypeAlias(TypeAliasNode node)

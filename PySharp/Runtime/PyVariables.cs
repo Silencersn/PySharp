@@ -104,7 +104,7 @@ internal sealed partial class PyVariables
     {
         return new PyVariables(globals, localsTable);
     }
-    internal PyVariables CreateForBuildingClass(PyCodeObject codeObject)
+    internal PyVariables CreateForBuildingClass(PyCodeObject codeObject, PyObject? closure = null)
     {
         if (!HasLocals)
         {
@@ -115,13 +115,47 @@ internal sealed partial class PyVariables
         var localsPlus = new PyObject?[codeObject.LocalsTable.Count];
         Debug.Assert(localsPlus is not null);
 
-        for (int i = 0; i < codeObject.FreeVars.Length; i++)
+        // Two-phase free-var filling for class frames:
+        //
+        // Phase 1: copy ALL free vars from the parent frame's locals.
+        //   This preserves outer captured variables (e.g. `x` from an enclosing
+        //   function) that the class body references alongside type params.
+        //
+        // Phase 2: when closure is provided (generic class with type params),
+        //   overwrite the tail slots with cell-wrapped type-param values.
+        //   Offset = FreeVars.Length - closureTuple.Count relies on the ordering
+        //   contract: outer captured variables are added to TempFrees before
+        //   type params (see SemanticAnalyzer.FillTempFrees), so FreeVars =
+        //   [outer_vars..., type_params...].
+        if (closure is PyTupleObject closureTuple && closureTuple.Count > 0)
         {
-            var name = codeObject.FreeVars[i];
-            // _localsTable may be FrozenDictionary<string, int>.Empty when this
-            // PyVariables was created via the LocalDictionary constructor path.
-            // Use _locals (LocalDictionary) which has the correct name→index mapping.
-            localsPlus[i] = _locals is not null ? _locals[name] : LocalsSpan[_localsTable[name]];
+            Debug.Assert(closureTuple.Count <= codeObject.FreeVars.Length,
+                "closure larger than FreeVars — type-param/FreeVar ordering mismatch");
+
+            // Phase 1: copy all free vars from parent frame
+            for (int i = 0; i < codeObject.FreeVars.Length; i++)
+            {
+                var name = codeObject.FreeVars[i];
+                localsPlus[i] = _locals is not null
+                    ? _locals[name]
+                    : LocalsSpan[_localsTable[name]];
+            }
+
+            // Phase 2: overwrite tail slots with cell-wrapped type-param values
+            int offset = codeObject.FreeVars.Length - closureTuple.Count;
+            for (int i = 0; i < closureTuple.Count; i++)
+                localsPlus[offset + i] = PyCellObject.CreateCell(closureTuple[i]);
+        }
+        else
+        {
+            for (int i = 0; i < codeObject.FreeVars.Length; i++)
+            {
+                var name = codeObject.FreeVars[i];
+                // _localsTable may be FrozenDictionary<string, int>.Empty when this
+                // PyVariables was created via the LocalDictionary constructor path.
+                // Use _locals (LocalDictionary) which has the correct name→index mapping.
+                localsPlus[i] = _locals is not null ? _locals[name] : LocalsSpan[_localsTable[name]];
+            }
         }
 
         var locals = new LocalDictionary(codeObject.LocalsTable, localsPlus);

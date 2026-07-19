@@ -58,7 +58,7 @@ internal static class PyCore
         return new PyFunctionObject(GetFreeVars(ref frame, codeObject), frame.Variables.Globals, codeObject, def);
     }
 
-    public static PyObject BuildClass(PyCallContext context, PyCodeObject codeObject, List<PyTypeObject> bases, OrderedDictionary<string, PyObject> kwargs)
+    public static PyObject BuildClass(PyCallContext context, PyCodeObject codeObject, List<PyTypeObject> bases, OrderedDictionary<string, PyObject> kwargs, PyObject? closure = null)
     {
         PyTypeObject metaClass = PyTypeObjectType.Shared;
 
@@ -87,7 +87,7 @@ internal static class PyCore
         if (bases.Count is 0)
             bases.Add(PyObjectType.Shared);
 
-        var newFrame = context.CurrentInternalFrame.CreateClassBuildFrame(codeObject);
+        var newFrame = context.CurrentInternalFrame.CreateClassBuildFrame(codeObject, closure);
         var ns = newFrame.Variables.Locals;
         using (var withFrame = context.WithFrame(ref newFrame))
             Eval(context).PyUnwrap(context);

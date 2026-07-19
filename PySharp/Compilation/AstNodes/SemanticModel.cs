@@ -64,11 +64,14 @@ internal abstract class VariableScope
 
                 var currentName = Name;
                 var parent = Parent;
-                while (!parent.IsRoot && (currentName is "<lambda>" or "<genexpr>" || parent.Variables[currentName] is not PyVariableType.Global))
+                while (!parent.IsRoot && (currentName is "<lambda>" or "<genexpr>" || !parent.Variables.TryGetValue(currentName, out var varType) || varType is not PyVariableType.Global))
                 {
                     if (parent is CallableVariableScope)
                         nameToRoot.Push("<locals>");
-                    nameToRoot.Push(parent.Name);
+
+                    // Skip transparent scopes (e.g. GenericParamVariableScope) for naming
+                    if (parent is not GenericParamVariableScope)
+                        nameToRoot.Push(parent.Name);
 
                     currentName = parent.Name;
                     parent = parent.Parent;
@@ -130,7 +133,7 @@ internal abstract class VariableScope
         }
     }
 
-    public void Bind(SemanticModel model)
+    public virtual void Bind(SemanticModel model)
     {
         model.AppendScope(Owner, this);
 
@@ -155,10 +158,42 @@ internal interface IScopeWithFreeVars
     public List<string> TempFrees { get; }
 }
 
+/// <summary>
+/// Scope for the generic parameters of a generic class (e.g. the <c>[T]</c> in <c>class C[T]:</c>).
+/// Sits between the enclosing scope and <see cref="ClassVariableScope"/>.
+/// TypeVar objects are created in this scope and communicated to the class body via cell/freevar closure.
+/// Corresponds to CPython's annotation scope (<c>COMPILE_SCOPE_ANNOTATIONS</c>) for type params.
+/// </summary>
+internal sealed class GenericParamVariableScope : VariableScope, IScopeWithFreeVars
+{
+    public override ClassDefNode Owner { get; }
+    public override string Name => $"<generic parameters of {Owner.Name}>";
+    public Dictionary<string, HashSet<IScopeWithFreeVars>> ScopesRequiringFree = [];
+    public PyCodeObject? CodeObject { get; set; }
+    public List<string> TempFrees { get; } = [];
+    public ImmutableArray<string> CellVars { get; internal set; } = [];
+    public ImmutableArray<string> FreeVars { get; internal set; } = [];
+    public ImmutableArray<string> VarNames { get; internal set; } = [];
+    public FrozenDictionary<string, int> LocalsTable { get; internal set; } = FrozenDictionary<string, int>.Empty;
+
+    public GenericParamVariableScope(ClassDefNode owner, VariableScope parent) : base(parent)
+    {
+        Owner = owner;
+    }
+
+    public override void Bind(SemanticModel model)
+    {
+        // GenericParamVariableScope shares its Owner (ClassDefNode) with ClassVariableScope.
+        // Skip self-registration to avoid duplicate key conflict in SemanticModel.
+        foreach (var childScope in Children)
+            childScope.Bind(model);
+    }
+}
+
 internal sealed class ClassVariableScope : VariableScope, IScopeWithFreeVars
 {
     public override ClassDefNode Owner { get; }
-    public override string? Name => Owner.Name;
+    public override string Name => Owner.Name;
     public bool ClassCaptured { get; set; }
     internal HashSet<IScopeWithFreeVars> ScopesRequiringFree = [];
     public PyCodeObject? CodeObject { get; set; }
@@ -203,7 +238,7 @@ internal sealed class FunctionVariableScope : CallableVariableScope
 {
     internal override AstArgumentsNode ArgumentsNode => Owner.Args;
     public override FunctionDefNode Owner { get; }
-    public override string? Name => Owner.Name;
+    public override string Name => Owner.Name;
 
     public FunctionVariableScope(FunctionDefNode owner, VariableScope parent) : base(parent)
     {
@@ -215,7 +250,7 @@ internal sealed class AsyncFunctionVariableScope : CallableVariableScope
 {
     internal override AstArgumentsNode ArgumentsNode => Owner.Args;
     public override AsyncFunctionDefNode Owner { get; }
-    public override string? Name => Owner.Name;
+    public override string Name => Owner.Name;
     public bool IsAsyncGenerator { get; internal set; }
 
     public AsyncFunctionVariableScope(AsyncFunctionDefNode owner, VariableScope parent) : base(parent)
@@ -228,7 +263,7 @@ internal sealed class LambdaVariableScope : CallableVariableScope
 {
     internal override AstArgumentsNode ArgumentsNode => Owner.Args;
     public override LambdaNode Owner { get; }
-    public override string? Name => "<lambda>";
+    public override string Name => "<lambda>";
 
     public LambdaVariableScope(LambdaNode owner, VariableScope parent) : base(parent)
     {
@@ -240,7 +275,7 @@ internal sealed class GeneratorExpVariableScope : CallableVariableScope
 {
     internal override AstArgumentsNode ArgumentsNode => AstArgumentsNode.GeneratorExp;
     public override GeneratorExpNode Owner { get; }
-    public override string? Name => "<genexpr>";
+    public override string Name => "<genexpr>";
     public bool IsAsyncGenerator => Owner.Generators.Any(static g => g.IsAsync);
 
     public GeneratorExpVariableScope(GeneratorExpNode owner, VariableScope parent) : base(parent)

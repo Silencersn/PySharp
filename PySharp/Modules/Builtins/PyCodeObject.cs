@@ -110,7 +110,6 @@ public sealed class PyCodeObject : PyObjectManagedDict
 
     internal PyCodeObject(string filename, ClassVariableScope scope, Bytecode bytecode)
     {
-        Debug.Assert(scope.Name is not null);
         Debug.Assert(scope.QualName is not null);
 
         LocalsTable = scope.FreeVars.Length is 0 ?
@@ -136,6 +135,40 @@ public sealed class PyCodeObject : PyObjectManagedDict
         PyAttributes.Add("co_nlocals", PyIntObject.Zero);
         PyAttributes.Add("co_varnames", PyTupleObject.Empty);
         PyAttributes.Add("co_cellvars", PyTupleObject.Empty);
+        PyAttributes.Add("co_freevars", PyTupleObject.CreateTuple(FreeVars.Select(PyStrObject.FromString)));
+        PyAttributes.Add("co_stacksize", PyIntObject.FromInteger(bytecode.StackSize));
+    }
+
+    internal PyCodeObject(string filename, GenericParamVariableScope scope, Bytecode bytecode)
+    {
+        Debug.Assert(scope.QualName is not null);
+
+        LocalsTable = scope.LocalsTable;
+        Bytecode = bytecode;
+        Flags = CodeObjectFlags.Function;
+
+        Name = scope.Name;
+        Filename = filename;
+        QualName = scope.QualName;
+        NLocals = scope.VarNames.Length;
+        VarNames = scope.VarNames;
+        CellVars = scope.CellVars;
+        FreeVars = scope.FreeVars;
+        ArgCount = 0;
+        PosOnlyArgCount = 0;
+        KwOnlyArgCount = 0;
+        DefaultsCount = 0;
+        KwDefaultsCount = 0;
+
+        PyAttributes.Add("co_name", PyStrObject.FromString(Name));
+        PyAttributes.Add("co_filename", PyStrObject.FromString(Filename));
+        PyAttributes.Add("co_qualname", PyStrObject.FromString(QualName));
+        PyAttributes.Add("co_argcount", PyIntObject.Zero);
+        PyAttributes.Add("co_posonlyargcount", PyIntObject.Zero);
+        PyAttributes.Add("co_kwonlyargcount", PyIntObject.Zero);
+        PyAttributes.Add("co_nlocals", PyIntObject.FromInteger(NLocals));
+        PyAttributes.Add("co_varnames", PyTupleObject.CreateTuple(VarNames.Select(PyStrObject.FromString)));
+        PyAttributes.Add("co_cellvars", PyTupleObject.CreateTuple(CellVars.Select(PyStrObject.FromString)));
         PyAttributes.Add("co_freevars", PyTupleObject.CreateTuple(FreeVars.Select(PyStrObject.FromString)));
         PyAttributes.Add("co_stacksize", PyIntObject.FromInteger(bytecode.StackSize));
     }

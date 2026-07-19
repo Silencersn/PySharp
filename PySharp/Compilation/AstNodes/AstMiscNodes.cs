@@ -282,7 +282,10 @@ public sealed class MatchOrNode : AstPatternNode
     }
 }
 
-public abstract class AstTypeParamNode : AstNode;
+public abstract class AstTypeParamNode : AstNode
+{
+    public abstract string Name { get; }
+}
 
 public sealed class TypeVarNode : AstTypeParamNode
 {
@@ -293,7 +296,7 @@ public sealed class TypeVarNode : AstTypeParamNode
         DefaultValue = defaultValue;
     }
 
-    public string Name { get; }
+    public override string Name { get; }
     public AstExprNode? Bound { get; }
     public AstExprNode? DefaultValue { get; }
 
@@ -307,7 +310,7 @@ public sealed class ParamSpecNode : AstTypeParamNode
         DefaultValue = defaultValue;
     }
 
-    public string Name { get; }
+    public override string Name { get; }
     public AstExprNode? DefaultValue { get; }
 
 }
@@ -320,7 +323,7 @@ public sealed class TypeVarTupleNode : AstTypeParamNode
         DefaultValue = defaultValue;
     }
 
-    public string Name { get; }
+    public override string Name { get; }
     public AstExprNode? DefaultValue { get; }
 
 }

@@ -317,6 +317,9 @@ internal static partial class BytecodeVirtualMachine
 
     private static void InternalBuildClass(PyCallContext context, ref ValueOperandStack stack, ref BytecodeVirtualMachineStates states, int instructionArg)
     {
+        // Pop closure (PyNoneObject.None for non-generic; type_params PyTupleObject for generic)
+        // Closure is pushed AFTER codeObj, so it's on top of stack
+        var closure = stack.Pop();
         var codeObj = (PyCodeObject)stack.Pop();
         var tuple = (PyTupleObject)stack.Pop();
 
@@ -342,8 +345,11 @@ internal static partial class BytecodeVirtualMachine
                 throw new PyRuntimeException(PyResult.PySharpException.Shared.Create(PyStrObject.FromString("non-type base is not supported")));
         }
 
-        var type = PyCore.BuildClass(context, codeObj, [.. states.CacheArgs.Cast<PyTypeObject>()], kwargs);
+        var type = PyCore.BuildClass(context, codeObj, [.. states.CacheArgs.Cast<PyTypeObject>()], kwargs, closure);
 
+        // closure is passed to the class body frame to populate free var cells;
+        // __type_params__ is built inside the class body (via LoadDeref → BuildTuple → StoreName)
+        // and becomes a class attribute through type.__new__.
         stack.Push(type);
     }
 
