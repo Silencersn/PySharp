@@ -52,7 +52,7 @@ partial class Emitter
             case BoolOpNode n: EmitBoolOp(n); break;
             case StarredNode n: EmitStarred(n, ctx); break;
             case AwaitNode n: EmitAwait(n); break;
-            default: throw new NotImplementedException();
+            default: throw new UnreachableException();
         }
         Builder.PopMetaInfo();
     }

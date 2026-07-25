@@ -1,4 +1,5 @@
 using PySharp.Compilation.Primitives;
+using System.Diagnostics;
 
 namespace PySharp.Compilation.AstNodes;
 
@@ -36,7 +37,7 @@ partial class SemanticAnalyzer
             case FunctionDefNode n: VisitFunctionDef(n); break;
             case AsyncFunctionDefNode n: VisitAsyncFunctionDef(n); break;
             case ClassDefNode n: VisitClassDef(n); break;
-            default: throw new NotImplementedException();
+            default: throw new UnreachableException();
         }
     }
 

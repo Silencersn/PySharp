@@ -23,6 +23,6 @@ partial class PyCallContext
 
     internal PyRuntimeException PySharpException(string? format, params ReadOnlySpan<object?> args)
     {
-        return ThrowableException(PyResult.PySharpException.Shared, format, args);
+        return ThrowableException(Modules.CSharp.PySharpException.Shared, format, args);
     }
 }

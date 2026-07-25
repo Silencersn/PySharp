@@ -242,7 +242,7 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
             return PyResult.TypeError("cannot modify read-only memory");
 
         if (key is PySliceObject)
-            return PyResult.RaisePySharpException("memoryview slice assignment not implemented");
+            return PyResult.PySharpException("memoryview slice assignment not implemented");
 
         var indexResult = PySpecialMethods.Index(context, key);
         if (indexResult.IsError)

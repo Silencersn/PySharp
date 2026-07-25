@@ -371,7 +371,7 @@ public static partial class PyBuiltinFunctions
     {
         var iterable = arguments[0];
         if (arguments["key"] is not PyNoneObject)
-            return PyResult.RaisePySharpException("max() with key not implemented");
+            return PyResult.PySharpException("max() with key not implemented");
 
         var elements = PyUtils.IterableToList(context, iterable);
         if (elements.IsError)
@@ -404,7 +404,7 @@ public static partial class PyBuiltinFunctions
     {
         var iterable = arguments[0];
         if (arguments["key"] is not PyNoneObject)
-            throw new NotImplementedException();
+            return PyResult.PySharpException("Not Implemented");
 
         var elements = PyUtils.IterableToList(context, iterable);
         if (elements.IsError)
@@ -429,7 +429,7 @@ public static partial class PyBuiltinFunctions
     private static PyResult MaxImpl_3(PyCallContext context, PyArguments arguments)
     {
         if (arguments["key"] is not PyNoneObject)
-            throw new NotImplementedException();
+            return PyResult.PySharpException("Not Implemented");
         PyObject result = arguments[0];
         foreach (var element in arguments.ExtraArgs.Prepend(arguments[1]))
         {
@@ -450,7 +450,7 @@ public static partial class PyBuiltinFunctions
     {
         var iterable = arguments[0];
         if (arguments["key"] is not PyNoneObject)
-            throw new NotImplementedException();
+            return PyResult.PySharpException("Not Implemented");
 
         var elements = PyUtils.IterableToList(context, iterable);
         if (elements.IsError)
@@ -483,7 +483,7 @@ public static partial class PyBuiltinFunctions
     {
         var iterable = arguments[0];
         if (arguments["key"] is not PyNoneObject)
-            throw new NotImplementedException();
+            return PyResult.PySharpException("Not Implemented");
 
         var elements = PyUtils.IterableToList(context, iterable);
         if (elements.IsError)
@@ -508,7 +508,7 @@ public static partial class PyBuiltinFunctions
     private static PyResult MinImpl_3(PyCallContext context, PyArguments arguments)
     {
         if (arguments["key"] is not PyNoneObject)
-            throw new NotImplementedException();
+            return PyResult.PySharpException("Not Implemented");
         PyObject result = arguments[0];
         foreach (var element in arguments.ExtraArgs.Prepend(arguments[1]))
         {

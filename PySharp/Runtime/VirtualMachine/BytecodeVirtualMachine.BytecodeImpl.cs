@@ -349,7 +349,7 @@ internal static partial class BytecodeVirtualMachine
         foreach (var arg in states.CacheArgs)
         {
             if (arg is not PyTypeObject baseType)
-                throw new PyRuntimeException(PyResult.PySharpException.Shared.Create(PyStrObject.FromString("non-type base is not supported")));
+                throw context.PySharpException("non-type base is not supported");
         }
 
         var type = PyCore.BuildClass(context, codeObj, [.. states.CacheArgs.Cast<PyTypeObject>()], kwargs, closure);

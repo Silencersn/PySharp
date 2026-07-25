@@ -639,7 +639,7 @@ partial class Parser
             {
                 if (!_context.TryWarn<PySyntaxWarningObjectType>(
                     PySR.Format(PySR.InvalidSyntax_Warning_InvalidEscapeSequence, info.Char)))
-                    throw new NotImplementedException();
+                    throw _context.PySharpException("Not Implemented");
             }
 
             Debug.Assert(str is not null);

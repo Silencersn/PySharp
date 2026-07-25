@@ -42,18 +42,8 @@ partial struct PyResult
         return RaiseException(PyStopIterationObjectType.Shared, arg);
     }
 
-    internal sealed class PySharpException : PyExceptionType
+    internal static PyExceptionResult PySharpException(string? format, params ReadOnlySpan<object?> args)
     {
-        protected override string DefaultModule => "pysharp";
-        protected override string DefaultName => "PySharpException";
-        private PySharpException() { }
-        public static PySharpException Shared { get; } = new PySharpException();
-        public sealed override IReadOnlyList<PyTypeObject> Bases => [PyBaseExceptionObjectType.Shared];
-    }
-
-
-    internal static PyExceptionResult RaisePySharpException(string? format, params ReadOnlySpan<object?> args)
-    {
-        return RaiseException(PySharpException.Shared, format, args);
+        return RaiseException(Modules.CSharp.PySharpException.Shared, format, args);
     }
 }

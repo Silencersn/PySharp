@@ -100,7 +100,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
         foreach (var baseObj in basesTuple)
         {
             if (baseObj is not PyTypeObject baseType)
-                return PyResult.RaisePySharpException("non-type element in bases is not supported");
+                return PyResult.PySharpException("non-type element in bases is not supported");
 
             bases.Add(baseType);
         }

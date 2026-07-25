@@ -39,7 +39,7 @@ partial class SemanticAnalyzer
             case BoolOpNode n: VisitBoolOp(n); break;
             case StarredNode n: VisitStarred(n); break;
             case AwaitNode n: VisitAwait(n); break;
-            default: throw new NotImplementedException();
+            default: throw new UnreachableException();
         }
     }
 

@@ -938,7 +938,7 @@ internal static partial class BytecodeVirtualMachine
                         break;
 
                     default:
-                        throw new NotImplementedException($"OpCode {instruction.OpCode} is not implemented");
+                        throw new UnreachableException();
                 }
 
                 #endregion Eval OpCode
@@ -1047,7 +1047,17 @@ internal static partial class BytecodeVirtualMachine
         #endregion Eval Body
 
     eval_end:
-        Debug.Assert(!states.RunToEnd || Stack.Count is 0);
+
+#if DEBUG
+        if (states.RunToEnd && Stack.Count > 0)
+        {
+            var exc = context.PySharpException("Stack.Count is greater than 0 when a code object runs to the end");
+            exc.PyException.WithTraceback(context);
+            var msg = exc.Message;
+            Debug.Fail(msg);
+        }
+#endif
+
         if (states.RunToEnd)
         {
             frame.Dispose(context);

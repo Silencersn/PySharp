@@ -71,7 +71,7 @@ internal sealed partial class Emitter
                 break;
 
             default:
-                throw new NotImplementedException();
+                throw new UnreachableException();
         }
         Builder.PopMetaInfo();
     }
