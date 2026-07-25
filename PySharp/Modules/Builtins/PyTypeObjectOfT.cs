@@ -146,8 +146,8 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
             if (value is PyFunctionObject &&
                 attr is PySpecialNames.InitSubclass or PySpecialNames.ClassGetItem)
                 type.PyAttributes[attr] = new PyClassMethodObject(value);
-
-            type.PyAttributes[attr] = value;
+            else
+                type.PyAttributes[attr] = value;
             type.Slots.TrySetSlot(attr, value);
         }
 
