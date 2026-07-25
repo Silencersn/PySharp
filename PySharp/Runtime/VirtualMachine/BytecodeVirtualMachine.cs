@@ -548,7 +548,7 @@ internal static partial class BytecodeVirtualMachine
 
                     case OpCode._EnterInlineFrame:
                         {
-                            var inlineFrame = frame.CreateInlineFrame(FrameType.Comprehension);
+                            var inlineFrame = frame.CreateInlineFrame();
                             context.FrameState.EnterFrame(ref inlineFrame);
                             frame = ref context.CurrentInternalFrame;
                             currentIndex = ref frame.InstructionIndex;
@@ -1074,6 +1074,16 @@ internal static partial class BytecodeVirtualMachine
         {
             callDepth--;
             needCheckEvalResult = true;
+
+            // Pop all inline/comprehension frames that were not properly
+            // exited due to exception handling (e.g., a try-except in the
+            // enclosing function caught an exception inside a comprehension).
+            while (frame.FrameType is FrameType.Comprehension)
+            {
+                context.FrameState.ExitInternalFrame(context, dispose: true);
+                frame = ref context.CurrentInternalFrame;
+            }
+
             context.FrameState.ExitInternalFrame(context, dispose: true);
             frame = ref context.CurrentInternalFrame;
             states = context.FrameState.PopStates();

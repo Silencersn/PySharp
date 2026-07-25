@@ -130,12 +130,10 @@ internal partial struct PyInternalFrame
         return new PyInternalFrame(variables, Caller, frameType) { CodeObject = code };
     }
 
-    internal readonly PyInternalFrame CreateInlineFrame(FrameType frameType)
+    internal readonly PyInternalFrame CreateInlineFrame()
     {
-        Debug.Assert(frameType is FrameType.Comprehension);
-
         var variables = Variables.CreateInline();
-        var inlineFrame = new PyInternalFrame(variables, Caller, frameType)
+        var inlineFrame = new PyInternalFrame(variables, Caller, FrameType.Comprehension)
         {
             CodeObject = CodeObject
         };

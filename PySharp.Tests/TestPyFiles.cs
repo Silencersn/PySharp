@@ -723,4 +723,14 @@ public sealed class TestPyFiles
         Assert.IsNotNull(module);
     }
 
+    [TestMethod]
+    public void TestComprehensionException()
+    {
+        // Regression test: verify inline frame cleanup when an exception
+        // occurs inside a comprehension within a function's try-except.
+        // See: /memories/repo/inline-frame-exception-leak.md
+        var module = RunModule("test_comprehension_exception.py");
+        Assert.IsNotNull(module);
+    }
+
 }
