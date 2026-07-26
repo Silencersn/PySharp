@@ -84,6 +84,12 @@ partial class PyTypeObject
         }
 
         self.PyAttributes[name] = value;
+
+        // When setting an attribute on a type object (e.g. cls.__init__ = func),
+        // also update the corresponding slot so that Call/New etc. pick it up.
+        if (self is PyTypeObject typeObj)
+            typeObj.Slots.TrySetSlot(name, value);
+
         return PyNoneObject.None;
     }
 
