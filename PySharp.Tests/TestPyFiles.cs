@@ -206,6 +206,13 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestFloatExtended()
+    {
+        var module = RunModule("test_float_extended.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestFrozenSet()
     {
         var module = RunModule("test_frozenset.py");

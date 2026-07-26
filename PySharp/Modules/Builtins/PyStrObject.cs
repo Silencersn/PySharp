@@ -1290,7 +1290,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         return Format(context, self, fmtArgs);
     }
 
-    [PyMethod("__format__")]
+    [PyMethod(PySpecialNames.Format)]
     [AIGenerated]
     [PyFunctionParameters("format_spec", "/")]
     private static PyResult DunderFormat(PyCallContext context, PyStrObject self, PyArguments arguments)

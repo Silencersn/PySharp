@@ -39,7 +39,17 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
 {
     protected override PyResult Repr(PyCallContext context, PyFloatObject self)
     {
-        return PyStrObject.FromString(self.Value.ToString());
+        var val = self.Value;
+        if (double.IsNaN(val))
+            return PyStrObject.FromString("nan");
+        if (double.IsInfinity(val))
+            return PyStrObject.FromString(val > 0 ? "inf" : "-inf");
+
+        // Use "G" format for shortest representation, add ".0" for integer-valued floats
+        string text = val.ToString("G", CultureInfo.InvariantCulture);
+        if (!text.Contains('.') && !text.Contains('e') && !text.Contains('E'))
+            text += ".0";
+        return PyStrObject.FromString(text);
     }
 
     protected override PyResult Hash(PyCallContext context, PyFloatObject self)
@@ -272,6 +282,285 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
         };
     }
 
+    [PyMethod("conjugate")]
+    [PyFunctionParameters]
+    private static PyResult Conjugate(PyCallContext context, PyFloatObject self, PyArguments arguments)
+    {
+        return self;
+    }
+
+    [PyMethod("is_integer")]
+    [PyFunctionParameters]
+    private static PyResult IsInteger(PyCallContext context, PyFloatObject self, PyArguments arguments)
+    {
+        if (!double.IsFinite(self.Value))
+            return PyBoolObject.False;
+        return PyBoolObject.FromBoolean(self.Value == Math.Truncate(self.Value));
+    }
+
+    [PyProperty("real")]
+    private static PyResult Get_Real(PyCallContext context, PyFloatObject self)
+    {
+        return self;
+    }
+
+    [PyProperty("imag")]
+    private static PyResult Get_Imag(PyCallContext context, PyFloatObject self)
+    {
+        return PyFloatObject.FromDouble(0.0);
+    }
+
+    [PyMethod("as_integer_ratio")]
+    [PyFunctionParameters]
+    private static PyResult AsIntegerRatio(PyCallContext context, PyFloatObject self, PyArguments arguments)
+    {
+        var val = self.Value;
+        if (!double.IsFinite(val))
+            return PyResult.ValueError("cannot convert infinity/NaN to integer ratio");
+
+        long bits = BitConverter.DoubleToInt64Bits(val);
+        bool negative = (bits >> 63) is not 0;
+        int exp = (int)((bits >> 52) & 0x7FF) - 1023;
+        long mantissa = bits & 0xFFFFFFFFFFFFFL;
+
+        BigInteger numerator, denominator;
+
+        if (exp is -1023) // subnormal
+        {
+            numerator = mantissa;
+            denominator = BigInteger.One << 1074;
+        }
+        else
+        {
+            numerator = (BigInteger.One << 52) + mantissa;
+            if (exp >= 0)
+            {
+                if (exp >= 52)
+                {
+                    numerator <<= (exp - 52);
+                    denominator = BigInteger.One;
+                }
+                else
+                {
+                    denominator = BigInteger.One << (52 - exp);
+                }
+            }
+            else
+            {
+                denominator = BigInteger.One << (52 - exp);
+            }
+        }
+
+        if (negative)
+            numerator = -numerator;
+
+        // Reduce fraction
+        var gcd = BigInteger.GreatestCommonDivisor(numerator, denominator);
+        if (gcd > BigInteger.One)
+        {
+            numerator /= gcd;
+            denominator /= gcd;
+        }
+
+        return PyTupleObject.CreateTuple(
+            new PyIntObject(numerator),
+            new PyIntObject(denominator)
+        );
+    }
+
+    [PyMethod("hex")]
+    [PyFunctionParameters]
+    private static PyResult Hex(PyCallContext context, PyFloatObject self, PyArguments arguments)
+    {
+        var val = self.Value;
+        if (double.IsNaN(val))
+            return PyStrObject.FromString("nan");
+        if (double.IsInfinity(val))
+            return PyStrObject.FromString(val > 0 ? "inf" : "-inf");
+
+        long bits = BitConverter.DoubleToInt64Bits(val);
+        bool negative = (bits >> 63) is not 0;
+        int exp = (int)((bits >> 52) & 0x7FF);
+        long mantissa = bits & 0xFFFFFFFFFFFFFL;
+
+        string sign = negative ? "-" : string.Empty;
+
+        // Zero special case
+        if (val is 0)
+            return PyStrObject.FromString($"{sign}0x0.0p+0");
+
+        if (exp is 0)
+            // Subnormal: 0.mantissa * 2^(-1022)
+            return PyStrObject.FromString($"{sign}0x0.{mantissa:x013}p-1022");
+
+        // Normalized: 1.mantissa * 2^(exp - 1023)
+        int exponent = exp - 1023;
+        return PyStrObject.FromString($"{sign}0x1.{mantissa:x013}p{exponent:+0;-0}");
+    }
+
+    [PyClassMethod("fromhex")]
+    [PyFunctionParameters("string", "/")]
+    private static PyResult FromHex(PyCallContext context, PyTypeObject cls, PyArguments arguments)
+    {
+        if (arguments[0] is not PyStrObject strObj)
+            return PyResult.TypeError("fromhex arg must be str");
+
+        if (!TryParseHexFloat(strObj.Value, out double result))
+            return PyResult.ValueError("invalid hexadecimal floating-point string");
+
+        return PyFloatObject.FromDouble(result);
+    }
+
+    private static bool TryParseFloatString(string text, out double result)
+    {
+        result = 0;
+        var trimmed = text.Trim().ToLowerInvariant();
+
+        // Handle special values
+        if (trimmed is "inf" or "infinity")
+        {
+            result = double.PositiveInfinity;
+            return true;
+        }
+        if (trimmed is "-inf" or "-infinity")
+        {
+            result = double.NegativeInfinity;
+            return true;
+        }
+        if (trimmed is "+inf" or "+infinity")
+        {
+            result = double.PositiveInfinity;
+            return true;
+        }
+        if (trimmed is "nan" or "+nan" or "-nan")
+        {
+            result = double.NaN;
+            return true;
+        }
+
+        return double.TryParse(trimmed, System.Globalization.NumberStyles.Float | System.Globalization.NumberStyles.AllowThousands,
+            CultureInfo.InvariantCulture, out result);
+    }
+
+    private static bool TryParseHexFloat(string text, out double result)
+    {
+        result = 0;
+        if (string.IsNullOrWhiteSpace(text))
+            return false;
+
+        text = text.Trim().ToLowerInvariant();
+        int pos = 0;
+
+        // Parse optional sign
+        bool negative = false;
+        if (pos < text.Length && text[pos] is '-')
+        {
+            negative = true;
+            pos++;
+        }
+        else if (pos < text.Length && text[pos] is '+')
+        {
+            pos++;
+        }
+
+        // Expect "0x" prefix
+        if (pos + 1 >= text.Length || text[pos] is not '0' || text[pos + 1] is not 'x')
+            return false;
+        pos += 2;
+
+        if (pos >= text.Length)
+            return false;
+
+        // Parse hex digits
+        var intPart = new System.Text.StringBuilder();
+        var fracPart = new System.Text.StringBuilder();
+        bool hasDot = false;
+
+        while (pos < text.Length && text[pos] is not 'p')
+        {
+            if (text[pos] is '.')
+            {
+                if (hasDot)
+                return false;
+            hasDot = true;
+            pos++;
+                continue;
+            }
+            if ((text[pos] >= '0' && text[pos] <= '9') || (text[pos] >= 'a' && text[pos] <= 'f'))
+            {
+                if (hasDot)
+                    fracPart.Append(text[pos]);
+                else
+                    intPart.Append(text[pos]);
+                pos++;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        if (intPart.Length is 0 && fracPart.Length is 0)
+            return false;
+
+        // Parse exponent
+        if (pos >= text.Length || text[pos] is not 'p')
+            return false;
+        pos++;
+
+        if (pos >= text.Length)
+            return false;
+
+        bool expNegative = false;
+        if (text[pos] is '-')
+        {
+            expNegative = true;
+            pos++;
+        }
+        else if (text[pos] is '+')
+        {
+            pos++;
+        }
+
+        if (pos >= text.Length || text[pos] < '0' || text[pos] > '9')
+            return false;
+
+        int exponent = 0;
+        while (pos < text.Length && text[pos] >= '0' && text[pos] <= '9')
+        {
+            exponent = exponent * 10 + (text[pos] - '0');
+            pos++;
+        }
+
+        if (expNegative)
+            exponent = -exponent;
+
+        // Build the value
+        string hexStr = (intPart.Length > 0 ? "0x" + intPart.ToString() : "0x0") +
+                        (fracPart.Length > 0 ? "." + fracPart.ToString() : string.Empty);
+
+        // Parse as hex float: value = hex_digits * 2^exponent
+        // Convert to integer mantissa first
+        string fullHex = intPart.ToString() + fracPart.ToString();
+        if (fullHex.Length is 0)
+            fullHex = "0";
+
+        if (!long.TryParse(fullHex, System.Globalization.NumberStyles.HexNumber, null, out long mantissa))
+            return false;
+
+        int power = exponent - fracPart.Length * 4; // each hex digit = 4 bits
+
+        if (power >= 0)
+            result = mantissa * Math.Pow(2, power);
+        else
+            result = mantissa / Math.Pow(2, -power);
+
+        if (negative)
+            result = -result;
+
+        return true;
+    }
+
     [AIGenerated]
     protected override PyResult Format(PyCallContext context, PyFloatObject self, PyObject formatSpec)
     {
@@ -483,7 +772,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
         // TODO: this is temp fix
         if (args[0] is PyStrObject { Value: var str })
         {
-            if (!double.TryParse(str, out var value))
+            if (!TryParseFloatString(str, out var value))
                 return PyResult.TypeError(null);
 
             return PyFloatObject.FromDouble(value);
