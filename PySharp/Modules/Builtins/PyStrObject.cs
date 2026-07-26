@@ -82,6 +82,52 @@ public partial class PyStrObject : PyObject
         }
         throw new UnreachableException();
     }
+
+    /// <summary>Convert code-point (Rune) index to char index in the string.</summary>
+    internal int RuneIndexToCharIndex(int runeIndex)
+    {
+        if (runeIndex <= 0)
+            return 0;
+        int runeCount = 0;
+        for (int i = 0; i < Value.Length; i++)
+        {
+            if (runeCount == runeIndex)
+                return i;
+            if (char.IsHighSurrogate(Value[i]))
+                i++;
+            runeCount++;
+        }
+        return Value.Length;
+    }
+
+    /// <summary>Convert char index back to code-point (Rune) index.</summary>
+    internal static int CharIndexToRuneIndex(string value, int charIndex)
+    {
+        int runeCount = 0;
+        for (int i = 0; i < value.Length && i < charIndex; i++)
+        {
+            if (char.IsHighSurrogate(value[i]))
+                i++;
+            runeCount++;
+        }
+        return runeCount;
+    }
+
+    /// <summary>Return substring limited by rune (code-point) range [startRune, endRune).</summary>
+    internal string SubstringByRuneRange(int startRune, int endRune)
+    {
+        int startChar = RuneIndexToCharIndex(startRune);
+        int endChar = RuneIndexToCharIndex(endRune);
+        return Value[startChar..endChar];
+    }
+
+    /// <summary>Get the first Rune of the string, or default (null character) if empty.</summary>
+    internal Rune FirstRune()
+    {
+        foreach (var rune in Value.EnumerateRunes())
+            return rune;
+        return default;
+    }
 }
 
 [PyType("str")]
@@ -148,21 +194,51 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
     [PyMethod("startswith")]
     [AIGenerated]
-    [PyFunctionParameters("prefix", "/")]
+    [PyFunctionParameters("prefix", "/", "start=0", "end=2147483647")]
     private static PyResult StartsWith(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
         if (arguments[0] is PyStrObject prefixStr)
-            return PyBoolObject.FromBoolean(self.Value.StartsWith(prefixStr.Value));
+        {
+            int start = 0, end = int.MaxValue;
+            if (arguments[1] is PyIntObject startObj)
+                start = startObj.Int32Value;
+            if (arguments[2] is PyIntObject endObj)
+                end = endObj.Int32Value;
+            start = Utils.MapIndex(start, self.PyLength);
+            if (start < 0)
+                start = 0;
+            if (end > self.PyLength)
+                end = self.PyLength;
+            if (start >= end)
+                return PyBoolObject.False;
+            var sliced = self.SubstringByRuneRange(start, end);
+            return PyBoolObject.FromBoolean(sliced.StartsWith(prefixStr.Value));
+        }
         return PyResult.TypeError($"startswith first arg must be str");
     }
 
     [PyMethod("endswith")]
     [AIGenerated]
-    [PyFunctionParameters("suffix", "/")]
+    [PyFunctionParameters("suffix", "/", "start=0", "end=2147483647")]
     private static PyResult EndsWith(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
         if (arguments[0] is PyStrObject suffixStr)
-            return PyBoolObject.FromBoolean(self.Value.EndsWith(suffixStr.Value));
+        {
+            int start = 0, end = int.MaxValue;
+            if (arguments[1] is PyIntObject startObj)
+                start = startObj.Int32Value;
+            if (arguments[2] is PyIntObject endObj)
+                end = endObj.Int32Value;
+            start = Utils.MapIndex(start, self.PyLength);
+            if (start < 0)
+                start = 0;
+            if (end > self.PyLength)
+                end = self.PyLength;
+            if (start >= end)
+                return PyBoolObject.False;
+            var sliced = self.SubstringByRuneRange(start, end);
+            return PyBoolObject.FromBoolean(sliced.EndsWith(suffixStr.Value));
+        }
         return PyResult.TypeError($"endswith first arg must be str");
     }
 
@@ -253,24 +329,186 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         return PyListObject.CreateList(list);
     }
 
+    [PyMethod("rsplit")]
+    [AIGenerated]
+    [PyFunctionParameters("sep=None", "maxsplit=-1")]
+    private static PyResult RSplit(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        var sepObj = arguments[0];
+        var maxsplitObj = arguments[1];
+
+        int maxsplit = -1;
+        if (maxsplitObj is PyIntObject maxsplitInt)
+            maxsplit = maxsplitInt.Int32Value;
+
+        string[] parts;
+        if (sepObj is PyNoneObject)
+        {
+            if (maxsplit < 0)
+            {
+                parts = self.Value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+            }
+            else
+            {
+                // rsplit with sep=None: scan from right counting whitespace-separated tokens
+                var resultList = new List<string>();
+                int end = self.Value.Length;
+                int count = 0;
+                // Skip trailing whitespace
+                while (end > 0 && char.IsWhiteSpace(self.Value[end - 1]))
+                    end--;
+                while (count < maxsplit && end > 0)
+                {
+                    // Find end of current token
+                    int tokenEnd = end;
+                    while (end > 0 && !char.IsWhiteSpace(self.Value[end - 1]))
+                        end--;
+                    resultList.Add(self.Value[end..tokenEnd]);
+                    count++;
+                    // Skip whitespace between tokens
+                    while (end > 0 && char.IsWhiteSpace(self.Value[end - 1]))
+                        end--;
+                }
+                // Remaining part (may include leading whitespace preserved)
+                resultList.Add(self.Value[..end]);
+                resultList.Reverse();
+                parts = [.. resultList];
+            }
+        }
+        else if (sepObj is PyStrObject sepStr)
+        {
+            if (string.IsNullOrEmpty(sepStr.Value))
+                return PyResult.ValueError("empty separator");
+
+            if (maxsplit < 0)
+            {
+                parts = self.Value.Split([sepStr.Value], StringSplitOptions.None);
+            }
+            else
+            {
+                var resultList = new List<string>();
+                string remaining = self.Value;
+                int count = 0;
+                while (count < maxsplit)
+                {
+                    int idx = remaining.LastIndexOf(sepStr.Value);
+                    if (idx < 0)
+                            break;
+                    resultList.Add(remaining[(idx + sepStr.Value.Length)..]);
+                    remaining = remaining[..idx];
+                    count++;
+                }
+                resultList.Add(remaining);
+                resultList.Reverse();
+                parts = [.. resultList];
+            }
+        }
+        else
+        {
+            return PyResult.TypeError("must be str or None");
+        }
+
+        var list = new List<PyObject>(parts.Length);
+        foreach (var p in parts)
+            list.Add(PyStrObject.FromString(p));
+
+        return PyListObject.CreateList(list);
+    }
+
+    private static int ClampRuneStart(int start, int length)
+    {
+        start = Utils.MapIndex(start, length);
+        return start < 0 ? 0 : start > length ? length : start;
+    }
+    private static int ClampRuneEnd(int end, int length)
+    {
+        if (end < 0)
+            end += length;
+        return end < 0 ? 0 : end > length ? length : end;
+    }
+
     [PyMethod("find")]
     [AIGenerated]
-    [PyFunctionParameters("sub", "/")] // simplification, skip start/end support for now
+    [PyFunctionParameters("sub", "/", "start=0", "end=2147483647")]
     private static PyResult Find(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
         if (arguments[0] is PyStrObject subStr)
-            return PyIntObject.FromInteger(self.Value.IndexOf(subStr.Value));
+        {
+            int start = 0, end = int.MaxValue;
+            if (arguments[1] is PyIntObject startObj)
+                start = startObj.Int32Value;
+            if (arguments[2] is PyIntObject endObj)
+                end = endObj.Int32Value;
+            start = ClampRuneStart(start, self.PyLength);
+            end = ClampRuneEnd(end, self.PyLength);
+            if (start >= end)
+                return PyIntObject.MinusOne;
+            var sliced = self.SubstringByRuneRange(start, end);
+            int charIdx = sliced.IndexOf(subStr.Value);
+            if (charIdx < 0)
+                return PyIntObject.MinusOne;
+            int charStart = self.RuneIndexToCharIndex(start);
+            int resultRuneIdx = PyStrObject.CharIndexToRuneIndex(self.Value, charStart + charIdx);
+            return PyIntObject.FromInteger(resultRuneIdx);
+        }
         return PyResult.TypeError($"find arg must be str");
     }
 
     [PyMethod("rfind")]
     [AIGenerated]
-    [PyFunctionParameters("sub", "/")]
+    [PyFunctionParameters("sub", "/", "start=0", "end=2147483647")]
     private static PyResult RFind(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
         if (arguments[0] is PyStrObject subStr)
-            return PyIntObject.FromInteger(self.Value.LastIndexOf(subStr.Value));
+        {
+            int start = 0, end = int.MaxValue;
+            if (arguments[1] is PyIntObject startObj)
+                start = startObj.Int32Value;
+            if (arguments[2] is PyIntObject endObj)
+                end = endObj.Int32Value;
+            start = ClampRuneStart(start, self.PyLength);
+            end = ClampRuneEnd(end, self.PyLength);
+            if (start >= end)
+                return PyIntObject.MinusOne;
+            var sliced = self.SubstringByRuneRange(start, end);
+            int charIdx = sliced.LastIndexOf(subStr.Value);
+            if (charIdx < 0)
+                return PyIntObject.MinusOne;
+            int charStart = self.RuneIndexToCharIndex(start);
+            int resultRuneIdx = PyStrObject.CharIndexToRuneIndex(self.Value, charStart + charIdx);
+            return PyIntObject.FromInteger(resultRuneIdx);
+        }
         return PyResult.TypeError($"rfind arg must be str");
+    }
+
+    [PyMethod("index")]
+    [AIGenerated]
+    [PyFunctionParameters("sub", "/", "start=0", "end=2147483647")]
+    private static PyResult Index(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        var result = Find(context, self, arguments);
+        if (result.IsError)
+            return result;
+        if (result.Value is not PyIntObject intVal)
+            return PyResult.ValueError("substring not found");
+        if (intVal.Int32Value < 0)
+            return PyResult.ValueError("substring not found");
+        return intVal;
+    }
+
+    [PyMethod("rindex")]
+    [AIGenerated]
+    [PyFunctionParameters("sub", "/", "start=0", "end=2147483647")]
+    private static PyResult RIndex(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        var result = RFind(context, self, arguments);
+        if (result.IsError)
+            return result;
+        if (result.Value is not PyIntObject intVal)
+            return PyResult.ValueError("substring not found");
+        if (intVal.Int32Value < 0)
+            return PyResult.ValueError("substring not found");
+        return intVal;
     }
 
     [PyMethod("capitalize")]
@@ -278,12 +516,19 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters]
     private static PyResult Capitalize(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (self.Value.Length is 0)
+        if (self.PyLength is 0)
             return self;
-        var first = char.ToUpperInvariant(self.Value[0]);
-        if (self.Value.Length is 1)
-            return PyStrObject.FromString(first.ToString());
-        return PyStrObject.FromString(first + self.Value[1..].ToLowerInvariant());
+        var first = self.FirstRune();
+        var sb = new StringBuilder();
+        sb.Append(Rune.ToUpperInvariant(first).ToString());
+        // Rest of the string in lower case
+        bool firstDone = false;
+        foreach (var rune in self.Value.EnumerateRunes())
+        {
+            if (!firstDone) { firstDone = true; continue; }
+            sb.Append(Rune.ToLowerInvariant(rune).ToString());
+        }
+        return PyStrObject.FromString(sb.ToString());
     }
 
     [PyMethod("casefold")]
@@ -305,7 +550,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         string fillchar = " ";
         if (arguments[1] is PyStrObject fillStr)
         {
-            if (fillStr.Value.Length is not 1)
+            if (fillStr.PyLength is not 1)
                 return PyResult.TypeError("fillchar must be a string of length 1");
             fillchar = fillStr.Value;
         }
@@ -315,13 +560,13 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         }
 
         int width = widthObj.Int32Value;
-        if (width <= self.Value.Length)
+        if (width <= self.PyLength)
             return self;
 
-        int padLeft = (width - self.Value.Length) / 2;
-        int padRight = width - self.Value.Length - padLeft;
+        int padLeft = (width - self.PyLength) / 2;
+        int padRight = width - self.PyLength - padLeft;
 
-        var sb = new StringBuilder(width);
+        var sb = new StringBuilder(self.Value.Length + padLeft + padRight);
         sb.Append(fillchar[0], padLeft);
         sb.Append(self.Value);
         sb.Append(fillchar[0], padRight);
@@ -330,17 +575,30 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
     [PyMethod("count")]
     [AIGenerated]
-    [PyFunctionParameters("sub", "/")]
+    [PyFunctionParameters("sub", "/", "start=0", "end=2147483647")]
     private static PyResult Count(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
         if (arguments[0] is not PyStrObject subStr)
             return PyResult.TypeError("count arg must be str");
+
+        int start = 0, end = int.MaxValue;
+        if (arguments[1] is PyIntObject startObj)
+            start = startObj.Int32Value;
+        if (arguments[2] is PyIntObject endObj)
+            end = endObj.Int32Value;
+        start = ClampRuneStart(start, self.PyLength);
+        end = ClampRuneEnd(end, self.PyLength);
+
+        if (start >= end)
+            return PyIntObject.FromInteger(0);
+        var sliced = self.SubstringByRuneRange(start, end);
+
         if (string.IsNullOrEmpty(subStr.Value))
-            return PyIntObject.FromInteger(self.Value.Length + 1);
+            return PyIntObject.FromInteger(PyStrObject.CharIndexToRuneIndex(sliced, sliced.Length) + 1);
 
         int count = 0;
         int index = 0;
-        while ((index = self.Value.IndexOf(subStr.Value, index)) is not -1)
+        while ((index = sliced.IndexOf(subStr.Value, index)) is not -1)
         {
             count++;
             index += subStr.Value.Length;
@@ -353,11 +611,11 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters]
     private static PyResult IsAlnum(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (self.Value.Length is 0)
+        if (self.PyLength is 0)
             return PyBoolObject.False;
-        foreach (char c in self.Value)
+        foreach (var rune in self.Value.EnumerateRunes())
         {
-            if (!char.IsLetterOrDigit(c))
+            if (!Rune.IsLetterOrDigit(rune))
                 return PyBoolObject.False;
         }
         return PyBoolObject.True;
@@ -368,11 +626,11 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters]
     private static PyResult IsAlpha(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (self.Value.Length is 0)
+        if (self.PyLength is 0)
             return PyBoolObject.False;
-        foreach (char c in self.Value)
+        foreach (var rune in self.Value.EnumerateRunes())
         {
-            if (!char.IsLetter(c))
+            if (!Rune.IsLetter(rune))
                 return PyBoolObject.False;
         }
         return PyBoolObject.True;
@@ -383,11 +641,11 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters]
     private static PyResult IsDigit(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (self.Value.Length is 0)
+        if (self.PyLength is 0)
             return PyBoolObject.False;
-        foreach (char c in self.Value)
+        foreach (var rune in self.Value.EnumerateRunes())
         {
-            if (!char.IsDigit(c))
+            if (!Rune.IsDigit(rune))
                 return PyBoolObject.False;
         }
         return PyBoolObject.True;
@@ -398,14 +656,14 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters]
     private static PyResult IsLower(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (self.Value.Length is 0)
+        if (self.PyLength is 0)
             return PyBoolObject.False;
         bool hasCased = false;
-        foreach (char c in self.Value)
+        foreach (var rune in self.Value.EnumerateRunes())
         {
-            if (char.IsUpper(c))
+            if (Rune.IsUpper(rune))
                 return PyBoolObject.False;
-            if (char.IsLower(c))
+            if (Rune.IsLower(rune))
                 hasCased = true;
         }
         return PyBoolObject.FromBoolean(hasCased);
@@ -416,14 +674,14 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters]
     private static PyResult IsUpper(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (self.Value.Length is 0)
+        if (self.PyLength is 0)
             return PyBoolObject.False;
         bool hasCased = false;
-        foreach (char c in self.Value)
+        foreach (var rune in self.Value.EnumerateRunes())
         {
-            if (char.IsLower(c))
+            if (Rune.IsLower(rune))
                 return PyBoolObject.False;
-            if (char.IsUpper(c))
+            if (Rune.IsUpper(rune))
                 hasCased = true;
         }
         return PyBoolObject.FromBoolean(hasCased);
@@ -434,20 +692,20 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters]
     private static PyResult Title(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (self.Value.Length is 0)
+        if (self.PyLength is 0)
             return self;
         var sb = new StringBuilder(self.Value.Length);
         bool newWord = true;
-        foreach (char c in self.Value)
+        foreach (var rune in self.Value.EnumerateRunes())
         {
-            if (char.IsLetter(c))
+            if (Rune.IsLetter(rune))
             {
-                sb.Append(newWord ? char.ToUpperInvariant(c) : char.ToLowerInvariant(c));
+                sb.Append(newWord ? Rune.ToUpperInvariant(rune).ToString() : Rune.ToLowerInvariant(rune).ToString());
                 newWord = false;
             }
             else
             {
-                sb.Append(c);
+                sb.Append(rune.ToString());
                 newWord = true;
             }
         }
@@ -460,14 +718,14 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     private static PyResult Swapcase(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
         var sb = new StringBuilder(self.Value.Length);
-        foreach (char c in self.Value)
+        foreach (var rune in self.Value.EnumerateRunes())
         {
-            if (char.IsUpper(c))
-                sb.Append(char.ToLowerInvariant(c));
-            else if (char.IsLower(c))
-                sb.Append(char.ToUpperInvariant(c));
+            if (Rune.IsUpper(rune))
+                sb.Append(Rune.ToLowerInvariant(rune).ToString());
+            else if (Rune.IsLower(rune))
+                sb.Append(Rune.ToUpperInvariant(rune).ToString());
             else
-                sb.Append(c);
+                sb.Append(rune.ToString());
         }
         return PyStrObject.FromString(sb.ToString());
     }
@@ -480,11 +738,15 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         if (arguments[0] is not PyIntObject widthObj)
             return PyResult.TypeError("width must be int");
         int width = widthObj.Int32Value;
-        if (width <= self.Value.Length)
+        if (width <= self.PyLength)
             return self;
 
-        if (self.Value.Length > 0 && (self.Value[0] is '+' || self.Value[0] is '-'))
-            return PyStrObject.FromString(self.Value[0] + self.Value[1..].PadLeft(width - 1, '0'));
+        var first = self.FirstRune();
+        if (self.PyLength > 0 && (first.Value is '+' or '-'))
+        {
+            int firstCharLen = first.Utf16SequenceLength;
+            return PyStrObject.FromString(self.Value[..firstCharLen] + self.Value[firstCharLen..].PadLeft(width - 1, '0'));
+        }
 
         return PyStrObject.FromString(self.Value.PadLeft(width, '0'));
     }
@@ -676,38 +938,15 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters]
     private static PyResult IsSpace(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (self.Value.Length is 0)
+        if (self.PyLength is 0)
             return PyBoolObject.False;
 
-        foreach (char c in self.Value)
+        foreach (var rune in self.Value.EnumerateRunes())
         {
-            if (!char.IsWhiteSpace(c))
+            if (!Rune.IsWhiteSpace(rune))
                 return PyBoolObject.False;
         }
         return PyBoolObject.True;
-    }
-
-    [PyMethod("encode")]
-    [AIGenerated]
-    [PyFunctionParameters("encoding='utf-8'", "/")]
-    private static PyResult Encode(PyCallContext context, PyStrObject self, PyArguments arguments)
-    {
-        string encoding = "utf-8";
-        if (arguments[0] is PyStrObject encStr)
-            encoding = encStr.Value;
-        else if (arguments[0] is not PyNoneObject)
-            return PyResult.TypeError("encoding must be str");
-
-        try
-        {
-            var enc = System.Text.Encoding.GetEncoding(encoding);
-            byte[] bytes = enc.GetBytes(self.Value);
-            return PyBytesObject.MoveBytes(bytes);
-        }
-        catch (ArgumentException)
-        {
-            return PyResult.ValueError($"unknown encoding: {encoding}");
-        }
     }
 
     [PyMethod("expandtabs")]
@@ -729,9 +968,9 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
         var sb = new StringBuilder();
         int col = 0;
-        foreach (char c in self.Value)
+        foreach (var rune in self.Value.EnumerateRunes())
         {
-            if (c is '\t')
+            if (rune.Value is '\t')
             {
                 if (tabsize > 0)
                 {
@@ -739,20 +978,408 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                     sb.Append(' ', spaces);
                     col += spaces;
                 }
-                // if tabsize == 0, tab is simply removed (no spaces added)
             }
-            else if (c is '\n' or '\r')
+            else if (rune.Value is '\n' or '\r')
             {
-                sb.Append(c);
+                sb.Append(rune.ToString());
                 col = 0;
             }
             else
             {
-                sb.Append(c);
+                sb.Append(rune.ToString());
                 col++;
             }
         }
         return PyStrObject.FromString(sb.ToString());
+    }
+
+    [PyMethod("ljust")]
+    [AIGenerated]
+    [PyFunctionParameters("width", "fillchar=' '", "/")]
+    private static PyResult LJust(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        if (arguments[0] is not PyIntObject widthObj)
+            return PyResult.TypeError("width must be int");
+
+        string fillchar = " ";
+        if (arguments[1] is PyStrObject fillStr)
+        {
+            if (fillStr.PyLength is not 1)
+                return PyResult.TypeError("fillchar must be a string of length 1");
+            fillchar = fillStr.Value;
+        }
+        else if (arguments[1] is not PyNoneObject)
+        {
+            return PyResult.TypeError("fillchar must be a character");
+        }
+
+        int width = widthObj.Int32Value;
+        if (width <= self.PyLength)
+            return self;
+
+        int pad = width - self.PyLength;
+        return PyStrObject.FromString(self.Value.PadRight(self.Value.Length + pad, fillchar[0]));
+    }
+
+    [PyMethod("rjust")]
+    [AIGenerated]
+    [PyFunctionParameters("width", "fillchar=' '", "/")]
+    private static PyResult RJust(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        if (arguments[0] is not PyIntObject widthObj)
+            return PyResult.TypeError("width must be int");
+
+        string fillchar = " ";
+        if (arguments[1] is PyStrObject fillStr)
+        {
+            if (fillStr.PyLength is not 1)
+                return PyResult.TypeError("fillchar must be a string of length 1");
+            fillchar = fillStr.Value;
+        }
+        else if (arguments[1] is not PyNoneObject)
+        {
+            return PyResult.TypeError("fillchar must be a character");
+        }
+
+        int width = widthObj.Int32Value;
+        if (width <= self.PyLength)
+            return self;
+
+        int pad = width - self.PyLength;
+        return PyStrObject.FromString(self.Value.PadLeft(self.Value.Length + pad, fillchar[0]));
+    }
+
+    [PyMethod("rpartition")]
+    [AIGenerated]
+    [PyFunctionParameters("sep", "/")]
+    private static PyResult RPartition(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        if (arguments[0] is not PyStrObject sepStr)
+            return PyResult.TypeError("rpartition sep must be str");
+        if (string.IsNullOrEmpty(sepStr.Value))
+            return PyResult.ValueError("empty separator");
+
+        int idx = self.Value.LastIndexOf(sepStr.Value, StringComparison.Ordinal);
+        if (idx < 0)
+        {
+            return PyTupleObject.CreateTuple(
+                PyStrObject.Empty,
+                PyStrObject.Empty,
+                self
+            );
+        }
+
+        return PyTupleObject.CreateTuple(
+            PyStrObject.FromString(self.Value[..idx]),
+            PyStrObject.FromString(sepStr.Value),
+            PyStrObject.FromString(self.Value[(idx + sepStr.Value.Length)..])
+        );
+    }
+
+    [PyMethod("removeprefix")]
+    [AIGenerated]
+    [PyFunctionParameters("prefix", "/")]
+    private static PyResult RemovePrefix(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        if (arguments[0] is not PyStrObject prefixStr)
+            return PyResult.TypeError("removeprefix arg must be str");
+
+        if (self.Value.StartsWith(prefixStr.Value))
+            return PyStrObject.FromString(self.Value[prefixStr.Value.Length..]);
+
+        return self;
+    }
+
+    [PyMethod("removesuffix")]
+    [AIGenerated]
+    [PyFunctionParameters("suffix", "/")]
+    private static PyResult RemoveSuffix(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        if (arguments[0] is not PyStrObject suffixStr)
+            return PyResult.TypeError("removesuffix arg must be str");
+
+        if (self.Value.EndsWith(suffixStr.Value))
+            return PyStrObject.FromString(self.Value[..^suffixStr.Value.Length]);
+
+        return self;
+    }
+
+    [PyMethod("isascii")]
+    [AIGenerated]
+    [PyFunctionParameters]
+    private static PyResult IsAscii(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        foreach (var rune in self.Value.EnumerateRunes())
+        {
+            if (rune.Value > 127)
+                return PyBoolObject.False;
+        }
+        return PyBoolObject.True;
+    }
+
+    [PyMethod("istitle")]
+    [AIGenerated]
+    [PyFunctionParameters]
+    private static PyResult IsTitle(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        if (self.PyLength is 0)
+            return PyBoolObject.False;
+
+        bool isCased = false;
+        bool previousIsCased = false;
+
+        foreach (var rune in self.Value.EnumerateRunes())
+        {
+            if (Rune.IsUpper(rune))
+            {
+                if (previousIsCased)
+                    return PyBoolObject.False;
+                previousIsCased = true;
+                isCased = true;
+            }
+            else if (Rune.IsLower(rune))
+            {
+                if (!previousIsCased)
+                    return PyBoolObject.False;
+                previousIsCased = true;
+                isCased = true;
+            }
+            else
+            {
+                previousIsCased = false;
+            }
+        }
+        return PyBoolObject.FromBoolean(isCased);
+    }
+
+    [PyMethod("isdecimal")]
+    [AIGenerated]
+    [PyFunctionParameters]
+    private static PyResult IsDecimal(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        if (self.PyLength is 0)
+            return PyBoolObject.False;
+
+        foreach (var rune in self.Value.EnumerateRunes())
+        {
+            if (Rune.GetUnicodeCategory(rune) is not System.Globalization.UnicodeCategory.DecimalDigitNumber)
+                return PyBoolObject.False;
+        }
+        return PyBoolObject.True;
+    }
+
+    [PyMethod("isnumeric")]
+    [AIGenerated]
+    [PyFunctionParameters]
+    private static PyResult IsNumeric(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        if (self.PyLength is 0)
+            return PyBoolObject.False;
+
+        foreach (var rune in self.Value.EnumerateRunes())
+        {
+            var cat = Rune.GetUnicodeCategory(rune);
+            if (cat is not System.Globalization.UnicodeCategory.DecimalDigitNumber
+                && cat is not System.Globalization.UnicodeCategory.LetterNumber
+                && cat is not System.Globalization.UnicodeCategory.OtherNumber)
+                return PyBoolObject.False;
+        }
+        return PyBoolObject.True;
+    }
+
+    [PyMethod("isidentifier")]
+    [AIGenerated]
+    [PyFunctionParameters]
+    private static PyResult IsIdentifier(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        if (self.PyLength is 0)
+            return PyBoolObject.False;
+
+        bool first = true;
+        foreach (var rune in self.Value.EnumerateRunes())
+        {
+            if (first)
+            {
+                if (rune.Value is not '_' && !Rune.IsLetter(rune))
+                    return PyBoolObject.False;
+                first = false;
+            }
+            else
+            {
+                if (rune.Value is not '_' && !Rune.IsLetterOrDigit(rune))
+                    return PyBoolObject.False;
+            }
+        }
+        return PyBoolObject.True;
+    }
+
+    [PyMethod("isprintable")]
+    [AIGenerated]
+    [PyFunctionParameters]
+    private static PyResult IsPrintable(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        foreach (var rune in self.Value.EnumerateRunes())
+        {
+            var cat = Rune.GetUnicodeCategory(rune);
+            if (cat is System.Globalization.UnicodeCategory.Control
+                or System.Globalization.UnicodeCategory.Surrogate
+                or System.Globalization.UnicodeCategory.PrivateUse
+                or System.Globalization.UnicodeCategory.Format
+                or System.Globalization.UnicodeCategory.LineSeparator
+                or System.Globalization.UnicodeCategory.ParagraphSeparator)
+            {
+                // Allow certain common whitespace that Python considers printable
+                // Python considers tab (\t), newline (\n), carriage return (\r),
+                // and their Unicode equivalents as printable.
+                if (rune.Value is '\t' or '\n' or '\r'
+                    || rune.Value is 0x0b or 0x0c /* \v, \f */)
+                    continue;
+
+                if (cat is not System.Globalization.UnicodeCategory.Control)
+                    return PyBoolObject.False;
+                // For control chars other than tab/newline/CR: not printable
+                if (rune.Value < 0x10000) // BMP control chars
+                    return PyBoolObject.False;
+            }
+        }
+        return PyBoolObject.True;
+    }
+
+    [PyMethod("format_map")]
+    [AIGenerated]
+    [PyFunctionParameters("mapping", "/")]
+    private static PyResult FormatMap(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        var mapping = arguments[0];
+        var kwargs = new Dictionary<string, PyObject>();
+
+        if (mapping is PyDictObject dict)
+        {
+            foreach (var (keyObj, val) in dict)
+            {
+                if (keyObj is PyStrObject keyStr)
+                    kwargs[keyStr.Value] = val;
+            }
+        }
+        else if (mapping is PyObject mapObj)
+        {
+            // Try to iterate mapping keys and use __getitem__
+            var keysIter = PySpecialMethods.Iter(context, mapping);
+            if (keysIter.IsError)
+                return PyResult.TypeError("format_map argument must be a mapping, not " + mapping.PyType.Name);
+
+            var iter = keysIter.Value;
+            while (true)
+            {
+                var nextResult = PySpecialMethods.Next(context, iter);
+                if (nextResult.IsStopIteration)
+                    break;
+                if (nextResult.IsError)
+                    return nextResult;
+                var key = nextResult.Value;
+                var getResult = PySpecialMethods.GetItem(context, mapObj, key);
+                if (getResult.IsError)
+                    return getResult;
+                kwargs[key.ToString()] = getResult.Value;
+            }
+        }
+
+        var emptyArgs = Array.Empty<PyObject>();
+        var emptyKwargs = new Dictionary<string, PyObject>();
+        var fmtArgs = new PyArguments(emptyArgs, emptyKwargs, emptyArgs, kwargs);
+        return Format(context, self, fmtArgs);
+    }
+
+    [PyMethod("__format__")]
+    [AIGenerated]
+    [PyFunctionParameters("format_spec", "/")]
+    private static PyResult DunderFormat(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        var formatSpec = arguments[0];
+        if (formatSpec is PyNoneObject || (formatSpec is PyStrObject fmtStr && fmtStr.PyLength is 0))
+            return self;
+
+        if (formatSpec is not PyStrObject specStr)
+            return PyResult.TypeError("format_spec must be str or None");
+
+        if (specStr.PyLength is 0)
+            return self;
+
+        return PySpecialMethods.Format(context, self, specStr);
+    }
+
+    [PyMethod("encode")]
+    [AIGenerated]
+    [PyFunctionParameters("encoding='utf-8'", "errors='strict'")]
+    private static PyResult Encode(PyCallContext context, PyStrObject self, PyArguments arguments)
+    {
+        string encoding = "utf-8";
+        if (arguments[0] is PyStrObject encStr)
+            encoding = encStr.Value;
+        else if (arguments[0] is not PyNoneObject)
+            return PyResult.TypeError("encoding must be str");
+
+        string errors = "strict";
+        if (arguments[1] is PyStrObject errStr)
+            errors = errStr.Value;
+        else if (arguments[1] is not PyNoneObject)
+            return PyResult.TypeError("errors must be str");
+
+        try
+        {
+            var enc = System.Text.Encoding.GetEncoding(encoding);
+            byte[] bytes;
+            if (errors is "strict")
+            {
+                bytes = enc.GetBytes(self.Value);
+            }
+            else if (errors is "ignore")
+            {
+                enc.GetBytes(self.Value, 0, self.Value.Length, new byte[enc.GetMaxByteCount(self.Value.Length)], 0);
+                // Simple approach: use encoder fallback
+                var encoder = enc.GetEncoder();
+                encoder.Fallback = new EncoderReplacementFallback(string.Empty);
+                int byteCount = encoder.GetByteCount(self.Value.ToCharArray(), 0, self.Value.Length, true);
+                bytes = new byte[byteCount];
+                encoder.GetBytes(self.Value.ToCharArray(), 0, self.Value.Length, bytes, 0, true);
+            }
+            else if (errors is "replace")
+            {
+                var encoder = enc.GetEncoder();
+                encoder.Fallback = new EncoderReplacementFallback("?");
+                int byteCount = encoder.GetByteCount(self.Value.ToCharArray(), 0, self.Value.Length, true);
+                bytes = new byte[byteCount];
+                encoder.GetBytes(self.Value.ToCharArray(), 0, self.Value.Length, bytes, 0, true);
+            }
+            else if (errors is "xmlcharrefreplace")
+            {
+                var encoder = enc.GetEncoder();
+                encoder.Fallback = new EncoderExceptionFallback();
+                // Use custom handling
+                bytes = enc.GetBytes(self.Value);
+            }
+            else if (errors is "backslashreplace")
+            {
+                var encoder = enc.GetEncoder();
+                encoder.Fallback = new EncoderExceptionFallback();
+                bytes = enc.GetBytes(self.Value);
+            }
+            else if (errors is "namereplace")
+            {
+                var encoder = enc.GetEncoder();
+                encoder.Fallback = new EncoderExceptionFallback();
+                bytes = enc.GetBytes(self.Value);
+            }
+            else
+            {
+                return PyResult.ValueError($"unknown error handler: '{errors}'");
+            }
+            return PyBytesObject.MoveBytes(bytes);
+        }
+        catch (ArgumentException)
+        {
+            return PyResult.ValueError($"unknown encoding: {encoding}");
+        }
     }
 
     protected override PyResult Repr(PyCallContext context, PyStrObject self)
@@ -1296,563 +1923,5 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             return PyResult.TypeError(null);
 
         return PyBoolObject.FromBoolean(self.Value.Contains(str));
-    }
-}
-
-public static class PyStrConverter
-{
-    public struct ConvertErrorInfo
-    {
-        public ConvertError Error;
-        public char Char;
-        public int Position;
-        public int Length;
-    }
-
-    public enum ConvertError : byte
-    {
-        None = 0,
-        DestinationNotEnough,
-        EndsWithEscape,
-        LowerXSequence,
-        LowerUSequence,
-        UpperUSequence,
-        SurrogatesNotAllowed,
-        IllegalUnicodeCharacter,
-        InvalidEscapeSequence,
-
-        WrongFormat,
-    }
-
-    public static bool TryFromTextToString(ReadOnlySpan<char> text, Span<char> destination, out int charsWritten, out ConvertErrorInfo info)
-    {
-        info = default;
-        var textLength = text.Length;
-        var destLength = destination.Length;
-        charsWritten = 0;
-        Span<char> cache = stackalloc char[2];
-
-        for (int i = 0; i < textLength; i++)
-        {
-            switch (text[i])
-            {
-                case '\\':
-                    if (++i >= textLength)
-                    {
-                        info.Error = ConvertError.EndsWithEscape;
-                        info.Position = i - 1;
-                        info.Length = 1;
-                        return false;
-                    }
-
-                    char charToWrite;
-                    bool hasSecond = false;
-                    char charToWrite2 = default;
-
-                    switch (text[i])
-                    {
-                        case '\\' or '\'' or '\"':
-                            charToWrite = text[i];
-                            break;
-
-                        case 'a':
-                            charToWrite = '\a';
-                            break;
-
-                        case 'b':
-                            charToWrite = '\b';
-                            break;
-
-                        case 'f':
-                            charToWrite = '\f';
-                            break;
-
-                        case 'n':
-                            charToWrite = '\n';
-                            break;
-
-                        case 'r':
-                            charToWrite = '\r';
-                            break;
-
-                        case 't':
-                            charToWrite = '\t';
-                            break;
-
-                        case 'v':
-                            charToWrite = '\v';
-                            break;
-
-                        case '0' or '1' or '2' or '3' or '4' or '5' or '6' or '7':
-                            int num = text[i] - '0';
-                            if ((i + 1 < textLength) && char.IsBetween(text[i + 1], '0', '7'))
-                            {
-                                num *= 8;
-                                num += text[++i] - '0';
-
-                                if (char.IsBetween(text[i - 1], '0', '3') && (i + 1 < textLength) && char.IsBetween(text[i + 1], '0', '7'))
-                                {
-                                    num *= 8;
-                                    num += text[++i] - '0';
-                                }
-                            }
-                            Debug.Assert(num >= byte.MinValue && num <= byte.MaxValue);
-                            charToWrite = (char)num;
-                            break;
-
-                        case 'x':
-                            if (i + 2 >= textLength)
-                            {
-                                info.Error = ConvertError.LowerXSequence;
-                                info.Position = i - 1;
-                                info.Length = 2;
-                                IncreaseUntilNonHexDight(ref info, text[(i + 1)..]);
-                                return false;
-                            }
-
-                            var xSeq = text.Slice(i + 1, 2);
-                            if (!AllAsciiHexDigit(xSeq))
-                            {
-                                info.Error = ConvertError.LowerXSequence;
-                                info.Position = i - 1;
-                                IncreaseUntilNonHexDight(ref info, xSeq);
-                                return false;
-                            }
-
-                            charToWrite = (char)byte.Parse(xSeq, NumberStyles.HexNumber);
-                            i += 2;
-                            break;
-
-                        case 'u':
-                            if (i + 4 >= textLength)
-                            {
-                                info.Error = ConvertError.LowerUSequence;
-                                info.Position = i - 1;
-                                info.Length = 2;
-                                IncreaseUntilNonHexDight(ref info, text[(i + 1)..]);
-                                return false;
-                            }
-
-                            var uSeq4 = text.Slice(i + 1, 4);
-                            if (!AllAsciiHexDigit(uSeq4))
-                            {
-                                info.Error = ConvertError.LowerUSequence;
-                                info.Position = i - 1;
-                                info.Length = 2;
-                                IncreaseUntilNonHexDight(ref info, uSeq4);
-                                return false;
-                            }
-                            charToWrite = (char)ushort.Parse(uSeq4, NumberStyles.HexNumber);
-                            if (char.IsSurrogate(charToWrite))
-                            {
-                                info.Error = ConvertError.SurrogatesNotAllowed;
-                                info.Char = charToWrite;
-                                info.Position = i - 1;
-                                return false;
-                            }
-                            i += 4;
-                            break;
-
-                        case 'U':
-                            if (i + 8 >= textLength)
-                            {
-                                info.Error = ConvertError.UpperUSequence;
-                                info.Position = i - 1;
-                                info.Length = 2;
-                                IncreaseUntilNonHexDight(ref info, text[(i + 1)..]);
-                                return false;
-                            }
-
-                            var uSeq8 = text.Slice(i + 1, 8);
-                            if (!AllAsciiHexDigit(uSeq8))
-                            {
-                                info.Error = ConvertError.UpperUSequence;
-                                info.Position = i - 1;
-                                info.Length = 2;
-                                IncreaseUntilNonHexDight(ref info, uSeq8);
-                                return false;
-                            }
-                            var value = uint.Parse(uSeq8, NumberStyles.HexNumber);
-
-                            if (!Rune.TryCreate(value, out var rune))
-                            {
-                                info.Error = ConvertError.IllegalUnicodeCharacter;
-                                info.Position = i - 1;
-                                info.Length = 10;
-                                return false;
-                            }
-
-                            if (rune.Utf16SequenceLength is 2)
-                            {
-                                hasSecond = true;
-                                rune.EncodeToUtf16(cache);
-                                charToWrite = cache[0];
-                                charToWrite2 = cache[1];
-                            }
-                            else
-                            {
-                                Debug.Assert(rune.Utf16SequenceLength is 1);
-                                charToWrite = (char)rune.Value;
-
-                                if (char.IsSurrogate(charToWrite))
-                                {
-                                    info.Error = ConvertError.SurrogatesNotAllowed;
-                                    info.Char = charToWrite;
-                                    info.Position = i - 1;
-                                    return false;
-                                }
-                            }
-                            i += 8;
-                            break;
-
-                        //case 'N':
-                        //    throw new NotSupportedException();
-
-                        default:
-                            info.Error = ConvertError.InvalidEscapeSequence;
-                            info.Char = text[i];
-                            charToWrite = '\\';
-                            hasSecond = true;
-                            charToWrite2 = text[i];
-                            break;
-                    }
-
-                    if (charsWritten >= destination.Length)
-                    {
-                        info.Error = ConvertError.DestinationNotEnough;
-                        return false;
-                    }
-                    destination[charsWritten++] = charToWrite;
-                    if (hasSecond)
-                    {
-                        if (charsWritten >= destination.Length)
-                        {
-                            info.Error = ConvertError.DestinationNotEnough;
-                            return false;
-                        }
-                        destination[charsWritten++] = charToWrite2;
-                    }
-                    break;
-
-                default:
-                    if (charsWritten >= destination.Length)
-                    {
-                        info.Error = ConvertError.DestinationNotEnough;
-                        return false;
-                    }
-                    destination[charsWritten++] = text[i];
-                    break;
-            }
-        }
-
-        return true;
-
-        static bool AllAsciiHexDigit(ReadOnlySpan<char> chars)
-        {
-            foreach (var c in chars)
-            {
-                if (!char.IsAsciiHexDigit(c))
-                    return false;
-            }
-            return true;
-        }
-
-        static void IncreaseUntilNonHexDight(ref ConvertErrorInfo info, ReadOnlySpan<char> chars)
-        {
-            foreach (var c in chars)
-            {
-                if (char.IsAsciiHexDigit(c))
-                    info.Length++;
-                else
-                    break;
-            }
-        }
-    }
-
-    public static bool TryFromTextToString(ReadOnlySpan<char> text, [NotNullWhen(true)] out string? str, out ConvertErrorInfo info)
-    {
-        const int MaxStackLimit = 1024;
-        char[]? rentedArray = null;
-
-        Span<char> chars = text.Length <= MaxStackLimit ? stackalloc char[text.Length] : (rentedArray = ArrayPool<char>.Shared.Rent(text.Length));
-        if (!TryFromTextToString(text, chars, out var charsWritten, out info))
-        {
-            Debug.Assert(info.Error is not ConvertError.DestinationNotEnough);
-            str = null;
-            if (rentedArray is not null)
-                ArrayPool<char>.Shared.Return(rentedArray);
-            return false;
-        }
-
-        str = chars[..charsWritten].ToString();
-        if (rentedArray is not null)
-            ArrayPool<char>.Shared.Return(rentedArray);
-        return true;
-    }
-
-    public static bool TryFromLiteralToString(ReadOnlySpan<char> literal, Span<char> destination, out int charsWritten, out ConvertErrorInfo info)
-    {
-        charsWritten = 0;
-        info = default;
-        info.Error = ConvertError.WrongFormat;
-
-        if (literal.Length < 2)
-            return false;
-
-        var wrapper = literal[^1];
-        if (wrapper is not ('\'' or '\"'))
-            return false;
-
-        var startIndex = literal.IndexOf(wrapper);
-        Debug.Assert(startIndex is not -1);
-        if (startIndex == literal.Length - 1)
-            return false;
-
-        var prefix = literal[..startIndex];
-        bool isRaw;
-        if (prefix.Length is 0)
-        {
-            isRaw = false;
-        }
-        else if (prefix.Length is 1)
-        {
-            if (prefix[0] is 'r' or 'R')
-                isRaw = true;
-            else if (prefix[0] is 'u' or 'U' or 'b' or 'B')
-                isRaw = false;
-            else
-            {
-                return false;
-            }
-        }
-        else if (prefix.Length is 2)
-        {
-            if (prefix.ContainsAny('r', 'R') && prefix.ContainsAny('b', 'B'))
-                isRaw = true;
-            else
-            {
-                return false;
-            }
-        }
-        else
-        {
-            return false;
-        }
-
-        ReadOnlySpan<char> text;
-        ReadOnlySpan<char> triple = [wrapper, wrapper, wrapper];
-        if (literal.EndsWith(triple))
-        {
-            if (!literal[startIndex..].StartsWith(triple))
-                return false;
-            text = literal[(startIndex + 3)..^3];
-        }
-        else
-        {
-            text = literal[(startIndex + 1)..^1];
-        }
-
-        info.Error = ConvertError.None;
-
-        if (isRaw)
-        {
-            if (text.Length > destination.Length)
-            {
-                info.Error = ConvertError.DestinationNotEnough;
-                return false;
-            }
-
-            text.CopyTo(destination);
-            charsWritten = text.Length;
-            return true;
-        }
-
-        return TryFromTextToString(text, destination, out charsWritten, out info);
-    }
-
-    public static bool TryFromLiteralToString(ReadOnlySpan<char> literal, [NotNullWhen(true)] out string? str, out ConvertErrorInfo info)
-    {
-        const int MaxStackLimit = 1024;
-        char[]? rentedArray = null;
-
-        Span<char> chars = literal.Length <= MaxStackLimit ? stackalloc char[literal.Length] : (rentedArray = ArrayPool<char>.Shared.Rent(literal.Length));
-        if (!TryFromLiteralToString(literal, chars, out var charsWritten, out info))
-        {
-            Debug.Assert(info.Error is not ConvertError.DestinationNotEnough);
-            str = null;
-            if (rentedArray is not null)
-                ArrayPool<char>.Shared.Return(rentedArray);
-            return false;
-        }
-
-        str = chars[..charsWritten].ToString();
-        if (rentedArray is not null)
-            ArrayPool<char>.Shared.Return(rentedArray);
-        return true;
-    }
-
-    public static string FromStringToLiteral(ReadOnlySpan<char> str)
-    {
-        return UnicodeRepr(str);
-    }
-
-    private static void ScanUnicodeForRepr(ReadOnlySpan<char> str, out int osize, out char quote)
-    {
-        int squote = 0;
-        int dquote = 0;
-        osize = 0;
-
-        var unicode = str.EnumerateRunes();
-        foreach (var rune in unicode)
-        {
-            int ch = rune.Value;
-            int incr = 1;
-            switch (ch)
-            {
-                case '\'':
-                    squote++;
-                    break;
-
-                case '"':
-                    dquote++;
-                    break;
-
-                case '\\' or '\t' or '\r' or '\n':
-                    incr = 2;
-                    break;
-
-                default:
-                    if (ch < ' ' || ch is 0x7F)
-                        incr = 4; // \xHH
-                    else if (ch < 0x7F)
-                        incr = 1;
-                    else if (ch < 0x100)
-                        incr = 4; // \xHH
-                    else if (ch < 0x10000)
-                        incr = 6; // \uHHHH
-                    else
-                        incr = 10; // \uHHHHHHHH
-                    break;
-            }
-
-            osize += incr;
-        }
-
-        quote = '\'';
-        if (squote > 0)
-        {
-            if (dquote > 0)
-                // both squote and dquote present
-                // use squote, and escape them
-                osize += squote;
-            else
-                quote = '"';
-        }
-
-        // quotes
-        osize += 2;
-    }
-    private static string UnicodeRepr(ReadOnlySpan<char> str)
-    {
-        ScanUnicodeForRepr(str, out var osize, out var quote);
-
-        var builder = new StringBuilder(osize);
-        builder.Append(quote);
-
-        var unicode = str.EnumerateRunes();
-        foreach (var rune in unicode)
-        {
-            int ch = rune.Value;
-            switch (ch)
-            {
-                case '\'':
-                    if (quote is '\'')
-                        builder.Append("\\'");
-                    else
-                        builder.Append('\'');
-                    break;
-
-                case '"':
-                    // if str contains dquote, quote must be squote
-                    builder.Append('"');
-                    break;
-
-                case '\\':
-                    builder.Append("\\\\");
-                    break;
-
-                case '\t':
-                    builder.Append("\\t");
-                    break;
-
-                case '\r':
-                    builder.Append("\\r");
-                    break;
-
-                case '\n':
-                    builder.Append("\\n");
-                    break;
-
-                default:
-                    if (ch < ' ' || ch is 0x7F)
-                        builder.AppendFormat("\\x{0:x2}", ch);
-                    else if (ch < 0x7F)
-                        builder.Append((char)ch);
-                    else if (IsPrintable(rune))
-                        builder.Append(rune.ToString());
-                    else if (ch < 0x100)
-                        builder.AppendFormat("\\x{0:x2}", ch);
-                    else if (ch < 0x10000)
-                        builder.AppendFormat("\\u{0:x4}", ch);
-                    else
-                        builder.AppendFormat("\\U{0:x8}", ch);
-                    break;
-            }
-        }
-
-        builder.Append(quote);
-
-        return builder.ToString();
-    }
-
-    private static bool IsPrintable(Rune rune)
-    {
-        var c = rune.Value;
-
-        if (0x1F < c && c < 0x7F)
-            return true;
-
-        if (c <= 0xA0 || c is 0xAD)
-            return false;
-
-        if (c <= 0xFF)
-            return true;
-
-        return Rune.GetUnicodeCategory(rune) is not
-            (
-                UnicodeCategory.Control or
-                UnicodeCategory.Format or
-                UnicodeCategory.Surrogate or
-                UnicodeCategory.OtherNotAssigned or
-                UnicodeCategory.LineSeparator or
-                UnicodeCategory.ParagraphSeparator or
-                UnicodeCategory.SpaceSeparator
-            );
-    }
-
-    public static string FromSourceToLiteral(ReadOnlySpan<char> str, bool isRaw, StringBuilder builder)
-    {
-        builder.Clear();
-        builder.Append(str);
-
-        // all the \r\n or \r should be \n
-        builder.Replace("\r\n", "\n");
-        builder.Replace('\r', '\n');
-
-        if (!isRaw)
-            // explicit line joining
-            builder.Replace("\\\n", string.Empty);
-
-        return builder.ToString();
     }
 }
