@@ -976,7 +976,7 @@ internal static partial class BytecodeVirtualMachine
                     // doesn't re-raise it.
                     if (handler.State is ExceptionHandler.State_Except)
                         handler.PyException = null;
-                    
+
                     handler.ReturnValue = Move(ref returnValue);
                     nextIndex = handler.FinallyOffset;
                 }

@@ -1,5 +1,4 @@
 using PySharp.Modules.Builtins;
-using PySharp.Runtime;
 
 namespace PySharp.Modules.Typing;
 

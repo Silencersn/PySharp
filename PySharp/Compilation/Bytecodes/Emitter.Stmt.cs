@@ -3,10 +3,8 @@ using PySharp.Compilation.Bytecodes.Extensions;
 using PySharp.Compilation.Primitives;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime;
-using System.Collections;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Xml.Linq;
 
 namespace PySharp.Compilation.Bytecodes;
 
@@ -576,7 +574,7 @@ partial class Emitter
             LoadExpr(node.Value);
         else
             Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
-        
+
         Builder.Emit(OpCode.ReturnValue, CurrentForDepth);
     }
 
