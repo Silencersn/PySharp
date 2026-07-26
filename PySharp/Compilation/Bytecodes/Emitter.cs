@@ -54,7 +54,7 @@ internal sealed partial class Emitter
         switch (node)
         {
             case ModuleNode n:
-                if (TryGetDoc(n.Body, out var doc))
+                if (OptimizationLevel < 2 && TryGetDoc(n.Body, out var doc))
                 {
                     Builder.Emit(OpCode.LoadConst, doc);
                     StoreName(PySpecialNames.Doc);
