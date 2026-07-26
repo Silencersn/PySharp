@@ -1045,6 +1045,12 @@ internal static partial class BytecodeVirtualMachine
             currentIndex = nextIndex;
             goto eval_resume;
         }
+        catch (Exception e)
+        {
+            if (e is not PyRuntimeException)
+                e.Data[nameof(PySharp)] = context.PySharpException("NonPyRuntimeException").Message;
+            throw;
+        }
 
         states.RunToEnd = true;
         evalResult = PyNoneObject.None;
@@ -1055,12 +1061,7 @@ internal static partial class BytecodeVirtualMachine
 
 #if DEBUG
         if (states.RunToEnd && Stack.Count > 0)
-        {
-            var exc = context.PySharpException("Stack.Count is greater than 0 when a code object runs to the end");
-            exc.PyException.WithTraceback(context);
-            var msg = exc.Message;
-            Debug.Fail(msg);
-        }
+            Debug.Fail(context.PySharpException("Stack.Count is greater than 0 when a code object runs to the end").Message);
 #endif
 
         if (states.RunToEnd)
