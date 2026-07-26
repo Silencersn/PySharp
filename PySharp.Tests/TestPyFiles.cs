@@ -751,4 +751,14 @@ public sealed class TestPyFiles
         var module = RunModule("test_for_return_cleanup.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestClassClosure()
+    {
+        // Regression test: verify that __class__ cell variable is properly
+        // propagated through ALL intermediate nested function scopes when
+        // a metaclass __new__ defines closures whose inner functions use super().
+        var module = RunModule("test_class_closure.py");
+        Assert.IsNotNull(module);
+    }
 }

@@ -645,10 +645,13 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
                         parent is ClassVariableScope classVariableScope)
                     {
                         classVariableScope.ClassCaptured = true;
-                        // Register the requiring scope (function OR nested class)
-                        // so FillTempFreesClass propagates __class__ as a free var.
-                        if (scope is IScopeWithFreeVars swf)
-                            classVariableScope.ScopesRequiringFree.Add(swf);
+                        // Register ALL intermediate scopes (including the initiating scope)
+                        // so FillTempFreesClass propagates __class__ through the entire
+                        // nested function chain. Without this, intermediate functions
+                        // (like `outer` in `new->outer->inner`) would miss __class__
+                        // in their FreeVars, causing GetFreeVars to fall into the class
+                        // branch and crash on a function frame with no _locals dict.
+                        classVariableScope.ScopesRequiringFree.UnionWith(scopesRequiringFree);
                         break;
                     }
 
