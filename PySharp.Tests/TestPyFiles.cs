@@ -743,4 +743,12 @@ public sealed class TestPyFiles
         Assert.IsNotNull(module);
     }
 
+    [TestMethod]
+    public void TestForReturnCleanup()
+    {
+        // Regression test: verify that return inside a for-loop body
+        // properly cleans up the iterator from the operand stack.
+        var module = RunModule("test_for_return_cleanup.py");
+        Assert.IsNotNull(module);
+    }
 }

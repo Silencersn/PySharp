@@ -238,7 +238,6 @@ public sealed class Bytecode
                 case OpCode.IsOp:
                 case OpCode._AugAssignOp:
                 case OpCode.PopTop:
-                case OpCode.ReturnValue:
                 case OpCode.ListAppend:
                 case OpCode.ListExtend:
                 case OpCode.SetAdd:
@@ -277,6 +276,7 @@ public sealed class Bytecode
 
                 case OpCode._BuildClass:
                 case OpCode.CallKw:
+                case OpCode.ReturnValue:
                     IncrementStackSize(-_arg - 1);
                     break;
 

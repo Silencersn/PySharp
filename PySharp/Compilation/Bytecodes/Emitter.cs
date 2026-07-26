@@ -37,6 +37,8 @@ internal sealed partial class Emitter
     private int OptimizationLevel => _context.PyEnvironment.OptimizationLevel;
     private VariableScope VariableScope { get; set; }
     private Stack<(Label LoopBegin, Label LoopEnd)> Loops { get; } = [];
+    private Stack<int> ForDepth { get; } = [];
+    private int CurrentForDepth { get; set; }
     private bool IsInteractive { get; set; }
     private bool OnlyAsName { get; set; }
 
@@ -150,10 +152,18 @@ internal sealed partial class Emitter
             _savedScope = emitter.VariableScope;
             emitter.Builder = BytecodeBuilder.Create(emitter._source);
             emitter.VariableScope = scope;
+            if (scope is FunctionVariableScope or AsyncFunctionVariableScope)
+            {
+                emitter.ForDepth.Push(emitter.CurrentForDepth);
+                emitter.CurrentForDepth = 0;
+            }
         }
 
         public void Dispose()
         {
+            if (_emitter.VariableScope is FunctionVariableScope or AsyncFunctionVariableScope)
+                _emitter.CurrentForDepth = _emitter.ForDepth.Pop();
+
             _emitter.Builder = _savedBuilder;
             _emitter.VariableScope = _savedScope;
         }

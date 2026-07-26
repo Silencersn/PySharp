@@ -617,6 +617,7 @@ internal static partial class BytecodeVirtualMachine
 
                     case OpCode.ReturnValue:
                         returnValue = Stack.Pop();
+                        Stack.PopN(instructionArg);
                         break;
 
                     case OpCode.ReturnGenerator:
@@ -975,9 +976,8 @@ internal static partial class BytecodeVirtualMachine
                     // doesn't re-raise it.
                     if (handler.State is ExceptionHandler.State_Except)
                         handler.PyException = null;
-
-                    handler.ReturnValue = returnValue;
-                    returnValue = null;
+                    
+                    handler.ReturnValue = Move(ref returnValue);
                     nextIndex = handler.FinallyOffset;
                 }
 
@@ -1099,7 +1099,7 @@ internal static partial class BytecodeVirtualMachine
     }
 
     [return: NotNullIfNotNull(nameof(value))]
-    private static T? Move<T>(ref T? value)
+    private static T? Move<T>([MaybeNull] ref T? value)
     {
         var result = value;
         value = default;

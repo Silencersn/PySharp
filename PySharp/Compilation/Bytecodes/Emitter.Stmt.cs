@@ -307,6 +307,7 @@ partial class Emitter
         var forElseLabel = Builder.DefineLabel();
         var endForLabel = Builder.DefineLabel();
         Loops.Push((forIterLabel, endForLabel));
+        CurrentForDepth++;
 
         LoadExpr(node.Iter);
         Builder.Emit(OpCode.GetIter);
@@ -324,6 +325,7 @@ partial class Emitter
         Builder.MarkLabel(endForLabel);
         Builder.Emit(OpCode.PopIter);
 
+        CurrentForDepth--;
         Loops.Pop();
     }
 
@@ -574,7 +576,8 @@ partial class Emitter
             LoadExpr(node.Value);
         else
             Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
-        Builder.Emit(OpCode.ReturnValue);
+        
+        Builder.Emit(OpCode.ReturnValue, CurrentForDepth);
     }
 
     private PyCodeObject MakeClassDefBodyCoObj(ClassVariableScope classScope, ClassDefNode node)
