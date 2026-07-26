@@ -3,6 +3,7 @@ using PySharp.Compilation.Bytecodes.Extensions;
 using PySharp.Compilation.Primitives;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime;
+using System.Collections;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Xml.Linq;
@@ -191,32 +192,14 @@ partial class Emitter
         Builder.Emit(OpCode.RaiseVarArgs, 2);
     }
 
-    private void EmitTry(TryNode node)
+    private void InternalEmitTryExceptors(ImmutableArray<ExceptHandlerNode> exceptors, ReadOnlySpan<Label> exceptorLabels, Label finallyBlockLabel)
     {
-        var finallyBlockLabel = Builder.DefineLabel();
-        Span<Label> exceptorLabels = stackalloc Label[node.Exceptors.Length];
-        for (int i = 0; i < node.Exceptors.Length; i++)
-            exceptorLabels[i] = Builder.DefineLabel();
-        var tryStmtEndLabel = Builder.DefineLabel();
-
-        Builder.Emit(OpCode._SetupFinally, finallyBlockLabel);
-        if (exceptorLabels.Length > 0)
-            Builder.Emit(OpCode._SetupExcept, exceptorLabels[0]);
-
-        EmitStmts(node.Body);
-        EmitStmts(node.OrElse);
-        Builder.MarkLabel(finallyBlockLabel);
-        Builder.Emit(OpCode._EnterFinally);
-        EmitStmts(node.FinalBody);
-        Builder.Emit(OpCode._ExitFinally);
-        Builder.Jump(tryStmtEndLabel);
-
-        for (int i = 0; i < node.Exceptors.Length; i++)
+        for (int i = 0; i < exceptors.Length; i++)
         {
             Builder.MarkLabel(exceptorLabels[i]);
 
-            var exceptor = node.Exceptors[i];
-            if (i < node.Exceptors.Length - 1)
+            var exceptor = exceptors[i];
+            if (i < exceptors.Length - 1)
             {
                 Debug.Assert(exceptor.Type is not null);
                 LoadExpr(exceptor.Type);
@@ -248,39 +231,18 @@ partial class Emitter
             Builder.Emit(OpCode._PopException);
             Builder.Jump(finallyBlockLabel); // jump to finally
         }
-
-        Builder.MarkLabel(tryStmtEndLabel);
     }
-
-    private void EmitTryStar(TryStarNode node)
+    private void InternalEmitTryStarExceptors(ImmutableArray<ExceptHandlerNode> exceptors, ReadOnlySpan<Label> exceptorLabels, Label finallyBlockLabel)
     {
-        var finallyBlockLabel = Builder.DefineLabel();
-        Span<Label> exceptorLabels = stackalloc Label[node.Exceptors.Length];
-        for (int i = 0; i < node.Exceptors.Length; i++)
-            exceptorLabels[i] = Builder.DefineLabel();
-        var tryStmtEndLabel = Builder.DefineLabel();
-
-        Builder.Emit(OpCode._SetupFinally, finallyBlockLabel);
-        Debug.Assert(exceptorLabels.Length > 0);
-        Builder.Emit(OpCode._SetupExcept, exceptorLabels[0]);
-
-        EmitStmts(node.Body);
-        EmitStmts(node.OrElse);
-        Builder.MarkLabel(finallyBlockLabel);
-        Builder.Emit(OpCode._EnterFinally);
-        EmitStmts(node.FinalBody);
-        Builder.Emit(OpCode._ExitFinally);
-        Builder.Jump(tryStmtEndLabel);
-
-        for (int i = 0; i < node.Exceptors.Length; i++)
+        for (int i = 0; i < exceptors.Length; i++)
         {
             Builder.MarkLabel(exceptorLabels[i]);
 
-            var exceptor = node.Exceptors[i];
+            var exceptor = exceptors[i];
             Debug.Assert(exceptor.Type is not null);
             LoadExpr(exceptor.Type);
             Builder.Emit(OpCode.CheckEgMatch);
-            var nextLabel = i < node.Exceptors.Length - 1 ? exceptorLabels[i + 1] : finallyBlockLabel;
+            var nextLabel = i < exceptors.Length - 1 ? exceptorLabels[i + 1] : finallyBlockLabel;
             Builder.Emit(OpCode._CheckMatch, nextLabel); // if match None, jump to next except or finally
 
             if (exceptor.Name is not null)
@@ -296,8 +258,47 @@ partial class Emitter
             Builder.Emit(OpCode._PopExceptionAndJumpIfNull, finallyBlockLabel); // pop exc and jump to finally if rest is None
             Builder.Jump(nextLabel); // jump to next except or finally
         }
+    }
+
+    private void InternalEmitTry(ITryNode node)
+    {
+        var finallyBlockLabel = Builder.DefineLabel();
+        Span<Label> exceptorLabels = stackalloc Label[node.Exceptors.Length];
+        for (int i = 0; i < node.Exceptors.Length; i++)
+            exceptorLabels[i] = Builder.DefineLabel();
+        var tryStmtEndLabel = Builder.DefineLabel();
+
+        Builder.Emit(OpCode._SetupFinally, finallyBlockLabel);
+        if (exceptorLabels.Length > 0)
+            Builder.Emit(OpCode._SetupExcept, exceptorLabels[0]);
+        else
+            Debug.Assert(node is TryNode);
+
+        EmitStmts(node.Body);
+        Builder.Emit(OpCode._ClearExcept);
+        EmitStmts(node.OrElse);
+        Builder.MarkLabel(finallyBlockLabel);
+        Builder.Emit(OpCode._EnterFinally);
+        EmitStmts(node.FinalBody);
+        Builder.Emit(OpCode._ExitFinally);
+        Builder.Jump(tryStmtEndLabel);
+
+        if (node is TryNode)
+            InternalEmitTryExceptors(node.Exceptors, exceptorLabels, finallyBlockLabel);
+        else
+            InternalEmitTryStarExceptors(node.Exceptors, exceptorLabels, finallyBlockLabel);
 
         Builder.MarkLabel(tryStmtEndLabel);
+    }
+
+    private void EmitTry(TryNode node)
+    {
+        InternalEmitTry(node);
+    }
+
+    private void EmitTryStar(TryStarNode node)
+    {
+        InternalEmitTry(node);
     }
 
     private void EmitFor(ForNode node)

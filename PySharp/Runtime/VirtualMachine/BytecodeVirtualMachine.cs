@@ -17,6 +17,7 @@ internal static partial class BytecodeVirtualMachine
     internal sealed class ExceptionHandler
     {
         public const int State_Init = 0, State_Except = 1, State_Finally = 2, State_End = 3;
+        public const int NoExcepts = -1;
 
         public int ExceptOffset;
         public int FinallyOffset;
@@ -820,12 +821,16 @@ internal static partial class BytecodeVirtualMachine
                         break;
 
                     case OpCode._SetupFinally:
-                        var handler = new ExceptionHandler(-1, instructionArg) { StackDepth = Stack.Count };
+                        var handler = new ExceptionHandler(ExceptionHandler.NoExcepts, instructionArg) { StackDepth = Stack.Count };
                         states.ExceptionHandlers.Push(handler);
                         break;
 
                     case OpCode._SetupExcept:
                         states.ExceptionHandlers.Peek().ExceptOffset = instructionArg;
+                        break;
+
+                    case OpCode._ClearExcept:
+                        states.ExceptionHandlers.Peek().ExceptOffset = ExceptionHandler.NoExcepts;
                         break;
 
                     case OpCode._EnterFinally:
@@ -1016,7 +1021,7 @@ internal static partial class BytecodeVirtualMachine
                 currentHandler.PyException = e.PyException;
 
                 currentHandler.HitExcept = true;
-                if (currentHandler.ExceptOffset is not -1)
+                if (currentHandler.ExceptOffset is not ExceptionHandler.NoExcepts)
                 {
                     currentHandler.State = ExceptionHandler.State_Except;
                     nextIndex = currentHandler.ExceptOffset;

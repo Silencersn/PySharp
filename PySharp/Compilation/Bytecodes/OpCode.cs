@@ -139,6 +139,7 @@ internal enum OpCode : byte
     _PopException,
     _PopExceptionIfTrue,
     _PopExceptionAndJumpIfNull,
+    _ClearExcept,
 
     _UnaryOp,
     UnaryNot,

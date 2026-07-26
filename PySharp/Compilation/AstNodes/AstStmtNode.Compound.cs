@@ -64,7 +64,15 @@ public sealed class AsyncForNode : AstStmtNode
     public ImmutableArray<AstStmtNode> OrElse { get; }
 }
 
-public sealed class TryNode : AstStmtNode
+internal interface ITryNode
+{
+    public ImmutableArray<AstStmtNode> Body { get; }
+    public ImmutableArray<ExceptHandlerNode> Exceptors { get; }
+    public ImmutableArray<AstStmtNode> OrElse { get; }
+    public ImmutableArray<AstStmtNode> FinalBody { get; }
+}
+
+public sealed class TryNode : AstStmtNode, ITryNode
 {
     internal TryNode(ImmutableArray<AstStmtNode> body, ImmutableArray<ExceptHandlerNode> exceptors, ImmutableArray<AstStmtNode> orElse, ImmutableArray<AstStmtNode> finalBody)
     {
@@ -80,7 +88,7 @@ public sealed class TryNode : AstStmtNode
     public ImmutableArray<AstStmtNode> FinalBody { get; }
 }
 
-public sealed class TryStarNode : AstStmtNode
+public sealed class TryStarNode : AstStmtNode, ITryNode
 {
     internal TryStarNode(ImmutableArray<AstStmtNode> body, ImmutableArray<ExceptHandlerNode> exceptors, ImmutableArray<AstStmtNode> orElse, ImmutableArray<AstStmtNode> finalBody)
     {

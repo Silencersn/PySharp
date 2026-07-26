@@ -507,6 +507,16 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestTryExceptElse()
+    {
+        // Regression test: exceptions raised in the else block of
+        // try-except-else should NOT be caught by the except clause
+        // of the same try statement (CPython behavior).
+        var module = RunModule("test_try_except_else.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestByteArrayIter()
     {
         var module = RunModule("test_bytearray_iter.py");
