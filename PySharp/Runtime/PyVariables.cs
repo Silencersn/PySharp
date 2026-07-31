@@ -57,10 +57,10 @@ internal sealed partial class PyVariables
 
     [MemberNotNullWhen(true, nameof(_localsTable))]
     internal bool HasLocals => _localsTable is not null;
-    internal Memory<PyObject?> LocalsPlusMemroy => _memory;
-    internal Span<PyObject?> LocalsSpan => LocalsPlusMemroy.Span[.._localsTable!.Count];
-    internal Span<PyObject?> LocalsSpanUnsafe => LocalsPlusMemroy.Span;
-    internal Span<PyObject> OperandStackSpan => LocalsPlusMemroy.Span[_localsTable!.Count..]!;
+    internal Memory<PyObject?> LocalsPlusMemory => _memory;
+    internal Span<PyObject?> LocalsSpan => LocalsPlusMemory.Span[.._localsTable!.Count];
+    internal Span<PyObject?> LocalsSpanUnsafe => LocalsPlusMemory.Span;
+    internal Span<PyObject> OperandStackSpan => LocalsPlusMemory.Span[_localsTable!.Count..]!;
 
     internal PyGlobals Globals => _globals;
     internal IDictionary<string, PyObject> GlobalsDict => Globals.Dict;
@@ -162,7 +162,7 @@ internal sealed partial class PyVariables
         var variables = new PyVariables(_globals.Clone(), _localsTable);
         LocalsSpan.CopyTo(variables.LocalsSpan);
         if (_locals is not null)
-            variables._locals = new LocalDictionary(_localsTable, variables.LocalsPlusMemroy, new Dictionary<string, PyObject?>(_locals));
+            variables._locals = new LocalDictionary(_localsTable, variables.LocalsPlusMemory, new Dictionary<string, PyObject?>(_locals));
         return variables;
     }
 

@@ -26,7 +26,7 @@ public sealed class PyExceptionObject : PyObject
     public PyExceptionObject? Context { get; internal set; }
     internal string? CauseReason { get; set; }
     public IReadOnlyList<PyObject> Args { get; }
-    public TrackbackInfo? Traceback { get; internal set; }
+    public TracebackInfo? Traceback { get; internal set; }
 
     [MemberNotNullWhen(true, nameof(AsGroup))]
     internal bool IsGroup => AsGroup is not null;

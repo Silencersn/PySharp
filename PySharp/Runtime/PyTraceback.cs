@@ -6,12 +6,12 @@ using System.Diagnostics;
 
 namespace PySharp.Runtime;
 
-public sealed class TrackbackInfo
+public sealed class TracebackInfo
 {
     public IReadOnlyList<(CodeMetaInfo? Info, string? CallerName)> Frames { get; }
     public string? ThreadInfo { get; }
 
-    public TrackbackInfo(IReadOnlyList<(CodeMetaInfo? Info, string? CallerName)> frames, string? threadInfo = null)
+    public TracebackInfo(IReadOnlyList<(CodeMetaInfo? Info, string? CallerName)> frames, string? threadInfo = null)
     {
         Frames = frames;
         ThreadInfo = threadInfo;
@@ -131,7 +131,7 @@ internal static class PyTraceback
         return new PyTracebackObject(null, null);
     }
 
-    public static TrackbackInfo GetTracebackInfo(PyCallContext context, ICodeMetaInfoProvider? compiler = null)
+    public static TracebackInfo GetTracebackInfo(PyCallContext context, ICodeMetaInfoProvider? compiler = null)
     {
         List<(CodeMetaInfo? Info, string? CallerName)> list = new(context.FrameState.CurrentFrameCount);
         string? threadInfo = null;
@@ -154,6 +154,6 @@ internal static class PyTraceback
             }
         }
 
-        return new TrackbackInfo([.. list], threadInfo);
+        return new TracebackInfo([.. list], threadInfo);
     }
 }
