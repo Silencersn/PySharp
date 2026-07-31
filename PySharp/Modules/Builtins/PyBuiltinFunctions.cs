@@ -1,4 +1,4 @@
-using PySharp.Compilation.Bytecodes;
+using PySharp.Compilation;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Environments;
@@ -230,7 +230,7 @@ public static partial class PyBuiltinFunctions
         {
             var newFrame = frame.CreateExecEvalFrame(FrameType.Eval, globalsDict, localsDict);
             using var withFrame = context.WithFrame(ref newFrame);
-            var codeObj = Compiler.CompileEval(context, ((PyStrObject)source).Value, filename: "<string>", name: "<module>", onlyAsName: true);
+            var codeObj = Compiler.InternalCompileEval(context, ((PyStrObject)source).Value, filename: "<string>", name: "<module>", onlyAsName: true);
             context.CurrentInternalFrame.CodeObject = codeObj;
             return PyCore.Eval(context);
         }
@@ -291,7 +291,7 @@ public static partial class PyBuiltinFunctions
         {
             var newFrame = frame.CreateExecEvalFrame(FrameType.Exec, globalsDict, localsDict);
             using var withFrame = context.WithFrame(ref newFrame);
-            var codeObj = Compiler.CompileExec(context, ((PyStrObject)source).Value, filename: "<string>", name: "<module>", onlyAsName: true);
+            var codeObj = Compiler.InternalCompileExec(context, ((PyStrObject)source).Value, filename: "<string>", name: "<module>", onlyAsName: true);
             context.CurrentInternalFrame.CodeObject = codeObj;
             return PyCore.Eval(context);
         }
@@ -965,9 +965,9 @@ public static partial class PyBuiltinFunctions
 
         var codeObject = modeStr switch
         {
-            "exec" => Compiler.CompileExec(context, sourceStr, filenameStr, name: "<module>", onlyAsName: true),
-            "eval" => Compiler.CompileEval(context, sourceStr, filenameStr, name: "<module>", onlyAsName: true),
-            "single" => Compiler.CompileSingle(context, sourceStr, filenameStr, name: "<module>", appendNewLine: false, onlyAsName: true),
+            "exec" => Compiler.InternalCompileExec(context, sourceStr, filenameStr, name: "<module>", onlyAsName: true),
+            "eval" => Compiler.InternalCompileEval(context, sourceStr, filenameStr, name: "<module>", onlyAsName: true),
+            "single" => Compiler.InternalCompileSingle(context, sourceStr, filenameStr, name: "<module>", appendNewLine: false, onlyAsName: true),
             _ => null
         };
 

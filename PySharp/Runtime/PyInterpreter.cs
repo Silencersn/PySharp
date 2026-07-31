@@ -1,5 +1,5 @@
+using PySharp.Compilation;
 using PySharp.Compilation.AstNodes;
-using PySharp.Compilation.Bytecodes;
 using PySharp.Compilation.Tokenization;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
@@ -35,7 +35,7 @@ public sealed class PyInterpreter : IDisposable
 
     internal static void InternalExecute(PyCallContext context, string code, string sourceName)
     {
-        var codeObj = Compiler.CompileExec(context, code, sourceName, name: "<module>");
+        var codeObj = Compiler.InternalCompileExec(context, code, sourceName, name: "<module>");
         context.CurrentInternalFrame.CodeObject = codeObj;
         _ = PyCore.Eval(context).PyUnwrap(context);
     }
@@ -184,13 +184,13 @@ public sealed class PyInterpreter : IDisposable
 
     internal static PyModuleObject RunCodeWithContext(PyCallContext context, string code, string moduleName, string sourceName, bool isMain)
     {
-        var codeObj = Compiler.CompileExec(context, code, sourceName, moduleName);
+        var codeObj = Compiler.InternalCompileExec(context, code, sourceName, moduleName);
         return InternalExecuteNewModule(context, codeObj, isMain);
     }
 
     internal static void RunCodeWithContext(PyCallContext context, string code, PyModuleObject module, string sourceName, bool isMain)
     {
-        var codeObj = Compiler.CompileExec(context, code, sourceName, module.Name);
+        var codeObj = Compiler.InternalCompileExec(context, code, sourceName, module.Name);
         InternalExecuteToModule(context, codeObj, module, isMain);
     }
 
@@ -226,7 +226,7 @@ public sealed class PyInterpreter : IDisposable
 
                     try
                     {
-                        codeObj = Compiler.CompileSingle(context, builder.ToString(), "<stdin>", name: "<module>", string.IsNullOrWhiteSpace(line));
+                        codeObj = Compiler.InternalCompileSingle(context, builder.ToString(), "<stdin>", name: "<module>", string.IsNullOrWhiteSpace(line));
                         break;
                     }
                     catch (PyRuntimeException e)

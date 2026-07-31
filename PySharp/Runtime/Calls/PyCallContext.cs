@@ -12,26 +12,28 @@ public sealed partial class PyCallContext : IDisposable
     internal static PyCallContext PyObjectComparison { get; } = new("[PyObject Comparison]");
 
     private readonly string _prompt;
-    private readonly PyInterpreter _interpreter;
+    private readonly PyEnvironment _environment;
+    private readonly PyInterpreter? _interpreter;
     private PyCallContextFrameState? _state;
     private UnsafeImmutableArrayBuilderPool? _builderPool;
 
-    internal PyEnvironment PyEnvironment => _interpreter.PyEnvironment;
-    internal PyInterpreter Interpreter => _interpreter;
+    internal PyEnvironment PyEnvironment => _environment;
+    internal PyInterpreter? Interpreter => _interpreter;
     internal PyCallContextFrameState FrameState => _state ?? throw new InvalidOperationException("Context is not initialized or is disposed.");
-    internal PyObjectComparer Comparer => field ??= new PyObjectComparer(this);
+    public PyObjectComparer Comparer => field ??= new PyObjectComparer(this);
     internal UnsafeImmutableArrayBuilderPool BuilderPool => _builderPool ??= new();
 
-    private PyCallContext(string prompt)
+    private PyCallContext(string prompt) : this(prompt, PyEnvironment.CreateNull())
     {
-        _prompt = prompt;
-        _interpreter = null!;
-        _state = null!;
     }
-    private PyCallContext(string prompt, PyInterpreter interpreter)
+    private PyCallContext(string prompt, PyInterpreter interpreter) : this(prompt, interpreter.PyEnvironment)
+    {
+        _interpreter = interpreter;
+    }
+    private PyCallContext(string prompt, PyEnvironment environment)
     {
         _prompt = prompt;
-        _interpreter = interpreter;
+        _environment = environment;
     }
 
     internal TextReader In => PyEnvironment.In;
@@ -78,6 +80,15 @@ public sealed partial class PyCallContext : IDisposable
         throw SystemExit(string.Empty);
     }
 
+    internal static PyCallContext CreateFromEnvironment(PyEnvironment? environment = null)
+    {
+        environment ??= PyEnvironment.CreateNull();
+        return new PyCallContext("[From Environment]", environment)
+        {
+            _state = new PyCallContextFrameState(default /* TODO */)
+        };
+    }
+
     internal static PyCallContext CreateInterpreterMainContext(PyInterpreter interpreter)
     {
         var context = new PyCallContext("[Interpreter Main Context]", interpreter);
@@ -88,6 +99,9 @@ public sealed partial class PyCallContext : IDisposable
 
     internal static PyCallContext FromCreatingThread(PyCallContext context)
     {
+        if (context._interpreter is null)
+            throw new NotSupportedException("TODO");
+
         var frame = context.CurrentInternalFrame.CreateThreadRootFrame();
         var threadContext = new PyCallContext("[From Creating Thread]", context._interpreter);
         threadContext.InitState(ref frame);

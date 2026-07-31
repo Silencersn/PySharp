@@ -1,4 +1,4 @@
-using PySharp.Compilation.Bytecodes;
+using PySharp.Compilation;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Environments;
@@ -123,7 +123,7 @@ public abstract class PyFrozenModuleObject : PyModuleObject
 
     public override void OnImport(PyCallContext context, PyEnvironment environment)
     {
-        CodeObject ??= Compiler.CompileExec(context, Code, $"{Name}.py", Name);
+        CodeObject ??= Compiler.InternalCompileExec(context, Code, $"{Name}.py", Name);
         PyInterpreter.InternalExecuteToModule(context, CodeObject, this, isMain: false);
     }
 }

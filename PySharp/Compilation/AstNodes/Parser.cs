@@ -102,9 +102,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
     internal Parser(PyCallContext context, CodeSource codeSource, TokenSequence tokens, bool enableNameMangling = true)
     {
         _context = context;
-        // LiteralParser.LiteralEval:
-        // context may be PyCallContext.NonContextDependency whose PyEnvironment is null
-        _optimizationLevel = _context.Interpreter?.PyEnvironment.OptimizationLevel ?? 0;
+        _optimizationLevel = _context.PyEnvironment.OptimizationLevel;
         _tokenSequence = tokens;
         _codeSource = codeSource;
         _enableNameMangling = enableNameMangling;
