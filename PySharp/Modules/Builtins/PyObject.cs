@@ -11,16 +11,11 @@ namespace PySharp.Modules.Builtins;
 
 public partial class PyObject
 {
-    private static ConditionalWeakTable<PyObject, IDictionary<string, PyObject>> GlobalDictManager { get; } = [];
-    private static ConditionalWeakTable<PyObject, object> GlobalIdManager { get; } = [];
-
-    private static long _pyNextId = 0;
-
     internal PyTypeObject? _pyType;
 
     public PyTypeObject PyType => _pyType ?? DefaultPyType;
     public virtual PyTypeObject DefaultPyType => PyObjectType.Shared;
-    public long PyId => (long)GlobalIdManager.GetOrAdd(this, static _ => Interlocked.Increment(ref _pyNextId));
+    public long PyId => PyAttachedPropertiesManager.Shared.GetId(this);
 
     internal virtual IDictionary<string, PyObject> PyAttributes
     {
@@ -29,14 +24,14 @@ public partial class PyObject
             if (IsImmutable)
                 return FrozenDictionary<string, PyObject>.Empty;
 
-            return GlobalDictManager.GetOrAdd(this, static _ => new ConcurrentDictionary<string, PyObject>());
+            return PyAttachedPropertiesManager.Shared.GetDict(this);
         }
         set
         {
             if (IsImmutable)
                 throw new NotSupportedException();
 
-            GlobalDictManager.AddOrUpdate(this, value);
+            PyAttachedPropertiesManager.Shared.SetDict(this, value);
         }
     }
 
