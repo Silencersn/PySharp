@@ -31,7 +31,7 @@ partial class InternalPyTypeObjectGenerator
         // Delegate fields for methods without SlotsMember
         foreach (var method in directMethods)
         {
-            var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name == "PySpecialMethodAttribute");
+            var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name == PySharpTypes.PySpecialMethodAttributeName);
             var delegateType = attributeData.GetConstructorArgument<INamedTypeSymbol>(1);
             if (delegateType is null) continue;
             builder.AppendLine($"internal {delegateType.Name}? {method.Name};");
@@ -49,7 +49,7 @@ partial class InternalPyTypeObjectGenerator
 
             foreach (var method in group)
             {
-                var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name == "PySpecialMethodAttribute");
+                var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name == PySharpTypes.PySpecialMethodAttributeName);
                 var delegateType = attributeData.GetConstructorArgument<INamedTypeSymbol>(1);
                 if (delegateType is null) continue;
                 builder.AppendLine($"internal {delegateType.Name}? {method.Name};");
@@ -65,7 +65,7 @@ partial class InternalPyTypeObjectGenerator
             var fieldName = group.Key;
             foreach (var method in group)
             {
-                var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name == "PySpecialMethodAttribute");
+                var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name == PySharpTypes.PySpecialMethodAttributeName);
                 var delegateType = attributeData.GetConstructorArgument<INamedTypeSymbol>(1);
                 if (delegateType is null) continue;
                 builder.AppendLine($"internal {delegateType.Name}? {method.Name} => {fieldName}?.{method.Name};");
@@ -115,7 +115,7 @@ partial class InternalPyTypeObjectGenerator
         // TrySetSlot: direct fields
         foreach (var method in directMethods)
         {
-            var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name == "PySpecialMethodAttribute");
+            var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name == PySharpTypes.PySpecialMethodAttributeName);
             var specialName = attributeData.GetConstructorArgument<string>(0);
             var delegateType = attributeData.GetConstructorArgument<INamedTypeSymbol>(1);
             if (specialName is null || delegateType is null) continue;
@@ -130,7 +130,7 @@ partial class InternalPyTypeObjectGenerator
             var fieldName = group.Key;
             foreach (var method in group)
             {
-                var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name == "PySpecialMethodAttribute");
+                var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name == PySharpTypes.PySpecialMethodAttributeName);
                 var specialName = attributeData.GetConstructorArgument<string>(0);
                 var delegateType = attributeData.GetConstructorArgument<INamedTypeSymbol>(1);
                 if (specialName is null || delegateType is null) continue;

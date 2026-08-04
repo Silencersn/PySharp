@@ -1,7 +1,10 @@
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
+using PySharp.SourceGeneration.Diagnostics;
 using PySharp.SourceGeneration.Utility;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Text;
 
 namespace PySharp.SourceGeneration;
@@ -21,63 +24,101 @@ public class PyModuleIncludeGenerator : IIncrementalGenerator
                     var className = typeSymbol.Name;
                     var ns = typeSymbol.ContainingNamespace.ToDisplayString();
 
-                    var results = new List<ModuleIncludeAttrInfo>();
+                    var results = new List<DiagnosticOr<ModuleIncludeAttrInfo>>();
                     foreach (var attr in generatorContext.Attributes)
                     {
-                        var info = ExtractIncludeInfo(attr);
-                        if (info is not null)
-                            results.Add(info);
+                        var result = ExtractIncludeInfo(attr);
+                        if (result is not null)
+                            results.Add(result);
                     }
                     return new ClassIncludes(className, ns, results);
                 });
 
-        context.RegisterSourceOutput(provider, static (spc, classIncludes) =>
+        context.RegisterSourceOutput(provider, static (context, classIncludes) =>
         {
-            if (classIncludes.Infos.Count is 0)
+            var validInfos = new List<ModuleIncludeAttrInfo>();
+            foreach (var include in classIncludes.Infos)
+            {
+                if (include.HasDiagnostic)
+                    context.ReportAll(include.Diagnostics);
+                else
+                    validInfos.Add(include.Value);
+            }
+
+            if (validInfos.Count is 0)
                 return;
 
-            GenerateSource(spc, classIncludes.Namespace, classIncludes.ClassName, classIncludes.Infos);
+            GenerateSource(context, classIncludes.Namespace, classIncludes.ClassName, validInfos);
         });
     }
 
-    private static ModuleIncludeAttrInfo? ExtractIncludeInfo(AttributeData attr)
+    private static DiagnosticOr<ModuleIncludeAttrInfo>? ExtractIncludeInfo(AttributeData attr)
     {
-        var schemeOrdinal = attr.GetConstructorArgument(0, -1);
+        var schemeArgs = attr.ConstructorArguments;
+        Debug.Assert(schemeArgs.Length > 0);
+        if (schemeArgs[0].Kind == TypedConstantKind.Error || schemeArgs[0].Value is null)
+            return null; // Undecodable constant: skip silently.
+
+        var schemeOrdinal = (int)schemeArgs[0].Value!;
         if (schemeOrdinal < 0 || schemeOrdinal > 2)
-            return null;
+            return DiagnosticOr<ModuleIncludeAttrInfo>.From(DiagnosticInfo.InvalidEnumValue(attr, "scheme", schemeOrdinal, "PyModuleIncludeScheme"));
 
         switch (schemeOrdinal)
         {
             case 0: // StaticMembers(Type sourceType)
                 {
-                    var sourceType = attr.GetConstructorArgument<ITypeSymbol>(1);
-                    if (sourceType is null)
-                        return null;
+                    if (!attr.TryGetTypeArgument(1, "sourceType", out var sourceType, out var sourceTypeError))
+                        return sourceTypeError?.ToDiagnosticOr<ModuleIncludeAttrInfo>();
+
                     var sourceTypeFullName = sourceType.ToDisplayString();
                     var members = GetExportableStaticMembers(sourceType);
-                    return new ModuleIncludeAttrInfo(sourceTypeFullName, null, members);
+                    return DiagnosticOr<ModuleIncludeAttrInfo>.From(new ModuleIncludeAttrInfo(sourceTypeFullName, null, members));
                 }
 
             case 1: // TypeSingleton(Type sourceType)
                 {
-                    var sourceType = attr.GetConstructorArgument<ITypeSymbol>(1);
-                    if (sourceType is null)
-                        return null;
+                    if (!attr.TryGetTypeArgument(1, "sourceType", out var sourceType, out var sourceTypeError))
+                        return sourceTypeError?.ToDiagnosticOr<ModuleIncludeAttrInfo>();
+
                     var sourceTypeFullName = sourceType.ToDisplayString();
-                    return new ModuleIncludeAttrInfo(sourceTypeFullName, null,
-                        [new MemberInfo("Shared", sourceTypeFullName, true)]);
+                    return DiagnosticOr<ModuleIncludeAttrInfo>.From(new ModuleIncludeAttrInfo(sourceTypeFullName, null,
+                        [new MemberInfo("Shared", sourceTypeFullName, true)]));
                 }
 
             case 2: // ExplicitMember(string name, Type sourceType, string memberName)
                 {
-                    var name = attr.GetConstructorArgument<string>(1);
-                    var sourceType = attr.GetConstructorArgument<ITypeSymbol>(2);
-                    var memberName = attr.GetConstructorArgument<string>(3);
-                    if (sourceType is null || name is null || memberName is null)
-                        return null;
-                    var sourceTypeFullName = sourceType.ToDisplayString();
-                    return new ModuleIncludeAttrInfo(sourceTypeFullName, name,
-                        [new MemberInfo(memberName, sourceTypeFullName, false)]);
+                    var errors = ImmutableArray.CreateBuilder<DiagnosticInfo>();
+                    if (!attr.TryGetRequiredStringArgument(1, "name", out var name, out var nameError))
+                    {
+                        if (nameError is not null)
+                            errors.Add(nameError);
+                        else
+                            return null; // Undecodable: skip silently.
+                    }
+
+                    if (!attr.TryGetTypeArgument(2, "sourceType", out var sourceType, out var sourceTypeError))
+                    {
+                        if (sourceTypeError is not null)
+                            errors.Add(sourceTypeError);
+                        else
+                            return null; // Undecodable: skip silently.
+                    }
+
+                    if (!attr.TryGetRequiredStringArgument(3, "memberName", out var memberName, out var memberNameError))
+                    {
+                        if (memberNameError is not null)
+                            errors.Add(memberNameError);
+                        else
+                            return null; // Undecodable: skip silently.
+                    }
+
+                    if (errors.Count > 0)
+                        return DiagnosticOr<ModuleIncludeAttrInfo>.From(errors);
+
+                    // Only reached when all three arguments decoded successfully.
+                    var sourceTypeFullName = sourceType!.ToDisplayString();
+                    return DiagnosticOr<ModuleIncludeAttrInfo>.From(new ModuleIncludeAttrInfo(sourceTypeFullName, name!,
+                        [new MemberInfo(memberName!, sourceTypeFullName, false)]));
                 }
 
             default:
@@ -236,7 +277,7 @@ public class PyModuleIncludeGenerator : IIncrementalGenerator
 
     private sealed class ClassIncludes
     {
-        public ClassIncludes(string className, string @namespace, List<ModuleIncludeAttrInfo> infos)
+        public ClassIncludes(string className, string @namespace, List<DiagnosticOr<ModuleIncludeAttrInfo>> infos)
         {
             ClassName = className;
             Namespace = @namespace;
@@ -245,6 +286,6 @@ public class PyModuleIncludeGenerator : IIncrementalGenerator
 
         public string ClassName { get; }
         public string Namespace { get; }
-        public List<ModuleIncludeAttrInfo> Infos { get; }
+        public List<DiagnosticOr<ModuleIncludeAttrInfo>> Infos { get; }
     }
 }

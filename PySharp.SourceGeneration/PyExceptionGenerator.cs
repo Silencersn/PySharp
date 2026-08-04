@@ -1,9 +1,13 @@
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
+using PySharp.SourceGeneration.Diagnostics;
 using PySharp.SourceGeneration.Utility;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Xml.Linq;
 
 namespace PySharp.SourceGeneration;
 
@@ -27,41 +31,55 @@ public class PyExceptionGenerator : IIncrementalGenerator
 
                     // Extract Bases array from the attribute
                     var baseTypes = new List<ITypeSymbol>();
-                    bool foundBases = false;
 
-                    foreach (var pair in attribute.NamedArguments)
+                    if (attribute.TryGetNamedArgument("Bases", out var value))
                     {
-                        if (pair.Key != "Bases")
-                            continue;
-
-                        foundBases = true;
-
-                        if (pair.Value.Kind != TypedConstantKind.Array)
-                            continue;
-
-                        foreach (var element in pair.Value.Values)
+                        var errors = ImmutableArray.CreateBuilder<DiagnosticInfo>();
+                        Debug.Assert(value.Kind is TypedConstantKind.Array);
+                        if (value.IsNull)
                         {
-                            if (element.Kind == TypedConstantKind.Type && element.Value is ITypeSymbol baseType)
-                                baseTypes.Add(baseType);
+                            errors.Add(DiagnosticInfo.ArgumentNull(attribute, "Bases"));
+                            return DiagnosticOr<PyExceptionInfo>.From(errors);
                         }
+
+                        for (int index = 0; index < value.Values.Length; index++)
+                        {
+                            var element = value.Values[index];
+                            Debug.Assert(element.Kind is TypedConstantKind.Type);
+
+                            if (element.Value is null)
+                            {
+                                errors.Add(DiagnosticInfo.ArgumentNull(attribute, $"Bases[{index}]"));
+                                continue;
+                            }
+
+                            baseTypes.Add((ITypeSymbol)element.Value);
+                        }
+
+                        if (errors.Count > 0)
+                            return DiagnosticOr<PyExceptionInfo>.From(errors);
                     }
 
-                    // Default to PyExceptionObjectType if not specified or empty
-                    if (!foundBases || baseTypes.Count is 0)
+                    if (baseTypes.Count is 0)
                     {
                         var compilation = generatorContext.SemanticModel.Compilation;
                         var defaultBase = compilation.GetTypeByMetadataName("PySharp.Modules.Builtins.PyExceptionObjectType");
-                        if (defaultBase is not null)
-                            baseTypes.Add(defaultBase);
+                        DebugHelper.AssertNotNull(defaultBase);
+                        baseTypes.Add(defaultBase);
                     }
 
-                    return new PyExceptionInfo(@namespace, typeSymbol.Name, baseTypes);
+                    return DiagnosticOr<PyExceptionInfo>.From(new PyExceptionInfo(@namespace, typeSymbol.Name, baseTypes));
                 });
 
-        context.RegisterSourceOutput(provider, (spc, info) =>
+        context.RegisterSourceOutput(provider, (context, value) =>
         {
-            if (info.BaseTypes.Count is 0)
+            if (value.HasDiagnostic)
+            {
+                context.ReportAll(value.Diagnostics);
                 return;
+            }
+
+            var info = value.Value;
 
             var builder = new IndentedStringBuilder();
             builder
@@ -81,13 +99,13 @@ public class PyExceptionGenerator : IIncrementalGenerator
                     .ExitBlock()
                 .ExitBlock();
 
-            spc.AddSource($"{info.TypeName}.Exception.g.cs", SourceText.From(builder.ToString(), Encoding.UTF8));
+            context.AddSource($"{info.TypeName}.Exception.g.cs", SourceText.From(builder.ToString(), Encoding.UTF8));
         });
     }
 
     public class PyExceptionInfo
     {
-        public PyExceptionInfo(string @namespace, string typeName, List<ITypeSymbol> baseTypes)
+        internal PyExceptionInfo(string @namespace, string typeName, List<ITypeSymbol> baseTypes)
         {
             Namespace = @namespace;
             TypeName = typeName;

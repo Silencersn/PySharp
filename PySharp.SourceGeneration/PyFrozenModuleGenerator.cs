@@ -1,5 +1,6 @@
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
+using PySharp.SourceGeneration.Diagnostics;
 using PySharp.SourceGeneration.Utility;
 using System;
 using System.Collections.Immutable;
@@ -32,39 +33,66 @@ public class PyFrozenModuleGenerator : IIncrementalGenerator
                     var ns = typeSymbol.ContainingNamespace.IsGlobalNamespace
                         ? string.Empty
                         : typeSymbol.ContainingNamespace.ToDisplayString();
-                    var moduleName = generatorContext.Attributes[0].GetConstructorArgument<string>(0);
-                    var pythonFilePath = generatorContext.Attributes[0].GetConstructorArgument<string>(1);
+                    var attribute = generatorContext.Attributes[0];
 
-                    if (moduleName is null || pythonFilePath is null)
-                        return default;
+                    // Both required arguments must be decodable; an explicitly null value becomes a
+                    // diagnostic, an undecodable constant is a silent skip (null).
+                    var errors = ImmutableArray.CreateBuilder<DiagnosticInfo>();
+                    if (!attribute.TryGetRequiredStringArgument(0, "moduleName", out var moduleName, out var moduleNameError))
+                    {
+                        if (moduleNameError is not null)
+                            errors.Add(moduleNameError);
+                        else
+                            return null; // Undecodable: skip silently.
+                    }
 
-                    return new FrozenModuleInfo(className, ns, moduleName, pythonFilePath);
+                    if (!attribute.TryGetRequiredStringArgument(1, "pythonFilePath", out var pythonFilePath, out var pythonFilePathError))
+                    {
+                        if (pythonFilePathError is not null)
+                            errors.Add(pythonFilePathError);
+                        else
+                            return null; // Undecodable: skip silently.
+                    }
+                    
+                    if (errors.Count > 0)
+                        return DiagnosticOr<FrozenModuleInfo>.From(errors);
+
+                    // Only reached when both arguments decoded successfully, so the values are non-null.
+                    return DiagnosticOr<FrozenModuleInfo>.From(new FrozenModuleInfo(className, ns, moduleName!, pythonFilePath!));
                 })
-            .Where(static info => info is not null)!;
+            .WhereNotNull();
 
         // Pipeline B: collect all AdditionalFiles that end with .py
         var pyFiles = context.AdditionalTextsProvider
             .Where(static at => at.Path.EndsWith(".py", StringComparison.OrdinalIgnoreCase))
-            .Select(static (at, ct) => new PyFileInfo(at.Path, at.GetText(ct)?.ToString() ?? ""))
+            .Select(static (at, ct) => (at, at.GetText(ct)?.ToString()))
+            .Where(static tuple => tuple.Item2 is not null)
+            .Select(static (tuple, ct) => new PyFileInfo(tuple.at.Path, tuple.Item2!))
             .Collect();
 
         // Combine pipelines: for each frozen module, find the matching .py AdditionalFile
         // by matching the relative path suffix against the full AdditionalText path.
         var combined = frozenModules.Collect().Combine(pyFiles);
 
-        context.RegisterSourceOutput(combined, static (spc, tuple) =>
+        context.RegisterSourceOutput(combined, static (context, tuple) =>
         {
             var (modules, files) = tuple;
-            if (modules.Length == 0)
+            if (modules.Length is 0)
                 return;
 
             foreach (var module in modules)
             {
-                if (module is null)
+                // Report any argument errors and skip generating the broken module.
+                if (module.HasDiagnostic)
+                {
+                    context.ReportAll(module.Diagnostics);
                     continue;
+                }
+
+                var info = module.Value;
 
                 // Normalize the expected relative path (e.g. "Lib/this.py")
-                var expectedSuffix = NormalizePath(module.PythonFilePath);
+                var expectedSuffix = NormalizePath(info.PythonFilePath);
 
                 // Match by checking if the AdditionalFile's full path ends with the
                 // expected relative path (case-insensitive, normalized slashes).
@@ -79,20 +107,16 @@ public class PyFrozenModuleGenerator : IIncrementalGenerator
 
                 if (match is null)
                 {
-                    spc.ReportDiagnostic(Diagnostic.Create(
-                        new DiagnosticDescriptor(
-                            "PYFZ001",
-                            "Python file not found",
-                            $"The Python file '{module.PythonFilePath}' specified by [PyFrozenModule] on '{module.ClassName}' was not found as an AdditionalFile. " +
-                            $"Available .py additional files: [{string.Join("; ", files.Select(f => f.FullPath))}]",
-                            "PySharp.SourceGeneration",
-                            DiagnosticSeverity.Warning,
-                            isEnabledByDefault: true),
-                        Location.None));
+                    context.ReportDiagnostic(Diagnostic.Create(
+                        PyGeneratorDiagnostics.PyFileNotFound,
+                        Location.None,
+                        info.PythonFilePath,
+                        info.ClassName,
+                        string.Join("; ", files.Select(f => f.FullPath))));
                     continue;
                 }
 
-                GenerateSource(spc, module, match.Content);
+                GenerateSource(context, info, match.Content);
             }
         });
     }

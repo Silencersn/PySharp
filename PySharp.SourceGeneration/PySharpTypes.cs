@@ -15,6 +15,7 @@ internal static class PySharpTypes
     public const string PyFrozenModuleAttribute = $"{AttributesNamespace}.{nameof(PyFrozenModuleAttribute)}";
     public const string PyExceptionAttribute = $"{AttributesNamespace}.{nameof(PyExceptionAttribute)}";
     public const string PyObjectType = $"{BuiltinsNamespace}.PyObject";
+    public const string PySpecialMethodAttributeName = "PySpecialMethodAttribute";
     public const string PyObjectName = $"PySharp.Modules.IPyObjectName";
     public const string PyTypeObjectOfT = $"{BuiltinsNamespace}.PyTypeObject`1";
 }
