@@ -735,10 +735,48 @@ partial class Emitter
 
     private void EmitAugAssign(AugAssignNode node)
     {
-        LoadExpr(node.Target);
-        LoadExpr(node.Value);
-        Builder.Emit(OpCode._AugAssignOp, (int)node.Op);
-        StoreExpr(node.Target);
+        // CPython 3.14 semantics: the target's sub-expressions (container/key for
+        // a[b] += c, object for o.attr += c) are evaluated exactly ONCE. The
+        // evaluated values are kept on the stack via Copy/Swap and reused by the
+        // store, instead of re-emitting the target (which duplicated side effects
+        // and could target a different object than the one read).
+        switch (node.Target)
+        {
+            case NameNode:
+                LoadExpr(node.Target);
+                LoadExpr(node.Value);
+                Builder.Emit(OpCode._AugAssignOp, (int)node.Op);
+                StoreExpr(node.Target);
+                break;
+
+            case SubscriptNode subscript:
+                // Stack: [..., container, key]
+                LoadExpr(subscript.Value);
+                LoadExpr(subscript.Slice);
+                Builder.Emit(OpCode.Copy, 2); // [container, key, container]
+                Builder.Emit(OpCode.Copy, 2); // [container, key, container, key]
+                Builder.Emit(OpCode.BinarySubscr); // [container, key, container[key]]
+                LoadExpr(node.Value);
+                Builder.Emit(OpCode._AugAssignOp, (int)node.Op); // [container, key, result]
+                Builder.Emit(OpCode.Swap, 3); // [result, key, container]
+                Builder.Emit(OpCode.Swap, 2); // [result, container, key]
+                Builder.Emit(OpCode.StoreSubscr);
+                break;
+
+            case AttributeNode attribute:
+                // Stack: [..., obj]
+                LoadExpr(attribute.Value);
+                Builder.Emit(OpCode.Copy, 1); // [obj, obj]
+                Builder.Emit(OpCode.LoadAttr, attribute.Identifier); // [obj, obj.attr]
+                LoadExpr(node.Value);
+                Builder.Emit(OpCode._AugAssignOp, (int)node.Op); // [obj, result]
+                Builder.Emit(OpCode.Swap, 2); // [result, obj]
+                Builder.Emit(OpCode.StoreAttr, attribute.Identifier);
+                break;
+
+            default:
+                throw new UnreachableException();
+        }
     }
 
     private void EmitDelete(DeleteNode node)

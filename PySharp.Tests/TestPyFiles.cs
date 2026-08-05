@@ -101,6 +101,15 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestAugAssignEvalOnce()
+    {
+        // Regression: a[b] += c / o.attr += c must evaluate the target's
+        // sub-expressions exactly once (CPython 3.14 semantics).
+        var module = RunModule("test_augassign_eval_once.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestProperty()
     {
         var module = RunModule("test_property.py");
