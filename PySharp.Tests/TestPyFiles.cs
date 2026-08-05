@@ -110,6 +110,15 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestTypeErrorMessages()
+    {
+        // Regression: type() argument error messages must use the
+        // "type.__new__()" prefix and match CPython 3.14 wording.
+        var module = RunModule("test_type_error_messages.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestProperty()
     {
         var module = RunModule("test_property.py");

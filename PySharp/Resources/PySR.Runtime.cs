@@ -47,9 +47,9 @@ partial class PySR
     public const string Runtime_Type_SetImmutable = "cannot set '{0}' attribute of immutable type '{1}'";
 
     public const string Runtime_Type_New_WrongArgCount = "type() takes 1 or 3 arguments";
-    public const string Runtime_Type_New_Arg1MustBeStr = "type() argument 1 must be str, not {0}";
-    public const string Runtime_Type_New_Arg2MustBeStr = "type() argument 2 must be tuple, not {0}";
-    public const string Runtime_Type_New_Arg3MustBeStr = "type() argument 3 must be dict, not {0}";
+    public const string Runtime_Type_New_Arg1MustBeStr = "type.__new__() argument 1 must be str, not {0}";
+    public const string Runtime_Type_New_Arg2MustBeTuple = "type.__new__() argument 2 must be tuple, not {0}";
+    public const string Runtime_Type_New_Arg3MustBeDict = "type.__new__() argument 3 must be dict, not {0}";
 
     public const string Runtime_Object_SpecialMethodReturnsWrongType = "{0} returned non-{1} (type {2})";
     public const string Runtime_Object_Unhashable = "unhashable type: '{0}'";

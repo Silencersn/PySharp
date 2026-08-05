@@ -91,10 +91,10 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
             return PyResult.TypeError(PySR.Runtime_Type_New_Arg1MustBeStr, nameObj.PyType.FullName);
 
         if (basesObj is not PyTupleObject basesTuple)
-            return PyResult.TypeError(PySR.Runtime_Type_New_Arg2MustBeStr, basesObj.PyType.FullName);
+            return PyResult.TypeError(PySR.Runtime_Type_New_Arg2MustBeTuple, basesObj.PyType.FullName);
 
         if (dictObj is not PyDictObject dict)
-            return PyResult.TypeError(PySR.Runtime_Type_New_Arg3MustBeStr, dictObj.PyType.FullName);
+            return PyResult.TypeError(PySR.Runtime_Type_New_Arg3MustBeDict, dictObj.PyType.FullName);
 
         var bases = new List<PyTypeObject>();
         foreach (var baseObj in basesTuple)
