@@ -34,6 +34,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\PySharp.Analyzer\PySharp.Analyzer.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <None Include="..\PySharp.Analyzer\bin\$(Configuration)\netstandard2.0\PySharp.Analyzer.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
   </ItemGroup>
 
   <ItemGroup>
