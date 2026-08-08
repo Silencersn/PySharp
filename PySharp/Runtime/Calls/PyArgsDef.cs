@@ -1,5 +1,7 @@
 using PySharp.Compilation.AstNodes;
 using PySharp.Modules.Builtins;
+using PySharp.Utility;
+using System.Buffers;
 using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -21,29 +23,79 @@ internal enum PyArgsDefParametersType
 
 public sealed class PyArgsDef
 {
+    public static PyArgsDef Empty { get; } = new([], [], [], [], [], null, null);
+
     private PyArgsDef(string[] posonlyArgs, string[] args, string[] kwonlyArgs, PyObject?[] kwDefaults, PyObject[] defaults, string? varArg, string? kwArg)
     {
         PosonlyArgs = posonlyArgs;
         Args = args;
-        KwonlyArgsWithDefaults = kwonlyArgs.Zip(kwDefaults).ToDictionary();
+        KwonlyArgs = kwonlyArgs;
+        KwDefaults = kwDefaults;
         Defaults = defaults;
         VarArg = varArg;
         KwArg = kwArg;
 
         ParametersType = PyArgsDefParametersType.Unknown;
-        if (PosonlyArgs.Length is 0 && Args.Length is 0 && KwonlyArgsWithDefaults.Count is 0 && VarArg is null && KwArg is null)
+        if (PosonlyArgs.Length is 0 && Args.Length is 0 && KwonlyArgs.Length is 0 && VarArg is null && KwArg is null)
             ParametersType = PyArgsDefParametersType.NoAnyArgs;
-        else if (PosonlyArgs.Length is 0 && KwonlyArgsWithDefaults.Count is 0 && VarArg is null && KwArg is null)
+        else if (PosonlyArgs.Length is 0 && KwonlyArgs.Length is 0 && VarArg is null && KwArg is null)
             ParametersType = PyArgsDefParametersType.OnlyArgs;
     }
 
     internal PyArgsDefParametersType ParametersType { get; }
     internal string[] PosonlyArgs { get; }
     internal string[] Args { get; }
-    internal Dictionary<string, PyObject?> KwonlyArgsWithDefaults { get; }
+    internal string[] KwonlyArgs { get; }
+    internal PyObject?[] KwDefaults { get; }
     internal PyObject[] Defaults { get; }
     internal string? VarArg { get; }
     internal string? KwArg { get; }
+    internal int BufferLength => PosonlyArgs.Length + Args.Length + KwonlyArgs.Length;
+
+    internal ref struct Buffer : IDisposable
+    {
+        private InlinePyObjectArray _inlineArray;
+        private PyObject[]? _poolArray;
+
+        public Buffer(PyObject[]? poolArray = null)
+        {
+            _poolArray = poolArray;
+        }
+
+        internal Span<PyObject> Span
+        {
+            get
+            {
+                if (_poolArray is not null)
+                    return _poolArray;
+                ref var ptr = ref Unsafe.As<InlinePyObjectArray, PyObject>(ref _inlineArray);
+                return MemoryMarshal.CreateSpan(ref ptr, InlinePyObjectArray.Length);
+            }
+        }
+
+        void IDisposable.Dispose()
+        {
+            Span.Clear();
+            if (_poolArray is not null)
+                ArrayPool<PyObject>.Shared.Return(_poolArray);
+            _poolArray = null;
+        }
+
+        public static implicit operator Span<PyObject>(Buffer buffer)
+        {
+            return buffer.Span;
+        }
+    }
+
+    internal Buffer CreateBuffer()
+    {
+        if (BufferLength <= InlinePyObjectArray.Length)
+            return new Buffer();
+
+        var array = ArrayPool<PyObject>.Shared.Rent(BufferLength);
+        Array.Clear(array);
+        return new Buffer(array);
+    }
 
     internal static PyArgsDef FromDef(params ReadOnlySpan<string> parameters)
     {
@@ -199,6 +251,9 @@ public sealed class PyArgsDef
 
     internal bool TryParse(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, Span<PyObject> buffer, out PyArguments result)
     {
+        Debug.Assert(buffer.Length >= BufferLength);
+        buffer = buffer[..BufferLength];
+
         if (ParametersType is PyArgsDefParametersType.NoAnyArgs)
             return TryParse_NoAnyArgs(args, kwargs, out result);
 
@@ -214,9 +269,8 @@ public sealed class PyArgsDef
         return TryParseGeneral(args, kwargs, buffer, out result);
     }
 
-    private bool TryParseArgsPart(IReadOnlyList<PyObject> args, Span<PyObject> buffer, out Span<PyObject> resultArgs, [NotNullWhen(true)] out PyObject[]? resultExtraArgs)
+    private bool TryParseArgsPart(IReadOnlyList<PyObject> args, Span<PyObject> resultArgs, [NotNullWhen(true)] out PyObject[]? resultExtraArgs)
     {
-        resultArgs = null;
         resultExtraArgs = null;
 
         var defaultsCountForPosonly = int.Max(0, Defaults.Length - Args.Length);
@@ -224,14 +278,8 @@ public sealed class PyArgsDef
         if (args.Count < leastPosonlyArgsCount)
             return false;
 
-        var totalArgsCount = PosonlyArgs.Length + Args.Length;
-        if (args.Count > totalArgsCount && VarArg is null)
+        if (args.Count > resultArgs.Length && VarArg is null)
             return false;
-
-        if (totalArgsCount > buffer.Length)
-            resultArgs = new PyObject[totalArgsCount];
-        else
-            resultArgs = buffer[..totalArgsCount];
 
         for (int i = 0; i < PosonlyArgs.Length; i++)
         {
@@ -251,8 +299,8 @@ public sealed class PyArgsDef
             resultArgs[i] = args[i];
 
         resultExtraArgs = [];
-        if (VarArg is not null && args.Count > totalArgsCount)
-            resultExtraArgs = [.. args.Skip(totalArgsCount)];
+        if (VarArg is not null && args.Count > resultArgs.Length)
+            resultExtraArgs = [.. args.Skip(resultArgs.Length)];
 
         return true;
     }
@@ -261,29 +309,43 @@ public sealed class PyArgsDef
     {
         result = default;
 
-        if (!TryParseArgsPart(args, buffer, out var resultArgs, out var resultExtraArgs))
+        var totalArgsCount = PosonlyArgs.Length + Args.Length;
+        var resultArgs = buffer[..totalArgsCount];
+
+        if (!TryParseArgsPart(args, resultArgs, out var resultExtraArgs))
             return false;
 
-        Dictionary<string, PyObject?>? resultKwargs = KwonlyArgsWithDefaults.Count > 0 ?
-            new Dictionary<string, PyObject?>(KwonlyArgsWithDefaults) : null;
+        var resultKwargs = buffer[totalArgsCount..];
+        KwDefaults.CopyTo(resultKwargs!);
 
         Dictionary<string, PyObject>? resultExtraKwargs = null;
 
         int index;
         foreach (var pair in kwargs)
         {
-            ref PyObject? valueRef = ref Unsafe.NullRef<PyObject?>();
-            if (resultKwargs is not null)
-                valueRef = ref CollectionsMarshal.GetValueRefOrNullRef(resultKwargs, pair.Key);
-
-            if (!Unsafe.IsNullRef(ref valueRef))
-                valueRef = pair.Value;
+            index = KwonlyArgs.IndexOf(pair.Key);
+            
+            if (index is not -1)
+            {
+                // no duplication, guaranteed by the compiler
+                resultKwargs[index] = pair.Value;
+            }
             else if ((index = Args.IndexOf(pair.Key)) is not -1)
-                resultArgs[PosonlyArgs.Length + index] = pair.Value;
+            {
+                var offset = PosonlyArgs.Length + index;
+                ref var value = ref resultArgs[offset];
+                if (value is not null && offset < args.Count)
+                    return false;
+                value = pair.Value;
+            }
             else if (KwArg is not null)
+            {
                 (resultExtraKwargs ??= [])[pair.Key] = pair.Value;
+            }
             else
+            {
                 return false;
+            }
         }
 
         foreach (var arg in resultArgs[^Args.Length..])
@@ -292,19 +354,13 @@ public sealed class PyArgsDef
                 return false;
         }
 
-        if (resultKwargs is not null)
+        foreach (var value in resultKwargs)
         {
-            foreach (var value in resultKwargs.Values)
-            {
-                if (value is null)
-                    return false;
-            }
+            if (value is null)
+                return false;
         }
 
-        result = new PyArguments(
-            resultArgs,
-            (IReadOnlyDictionary<string, PyObject>)resultKwargs! ?? FrozenDictionary<string, PyObject>.Empty,
-            resultExtraArgs,
+        result = new PyArguments(this, buffer, resultExtraArgs,
             (IReadOnlyDictionary<string, PyObject>)resultExtraKwargs! ?? FrozenDictionary<string, PyObject>.Empty);
         return true;
     }
@@ -313,10 +369,13 @@ public sealed class PyArgsDef
     {
         result = default;
 
-        if (KwonlyArgsWithDefaults.Count > 0 && KwonlyArgsWithDefaults.Values.Any(static value => value is null))
+        if (KwonlyArgs.Length > 0 && KwDefaults.Any(static value => value is null))
             return false;
 
-        if (!TryParseArgsPart(args, buffer, out var resultArgs, out var resultExtraArgs))
+        var totalArgsCount = PosonlyArgs.Length + Args.Length;
+        var resultArgs = buffer[..totalArgsCount];
+
+        if (!TryParseArgsPart(args, resultArgs, out var resultExtraArgs))
             return false;
 
         foreach (var arg in resultArgs[^Args.Length..])
@@ -325,29 +384,24 @@ public sealed class PyArgsDef
                 return false;
         }
 
-        result = new PyArguments(resultArgs, KwonlyArgsWithDefaults!,
-            resultExtraArgs, FrozenDictionary<string, PyObject>.Empty);
+        KwDefaults.CopyTo(buffer[resultArgs.Length..]!);
+
+        result = new PyArguments(this, buffer, resultExtraArgs, FrozenDictionary<string, PyObject>.Empty);
         return true;
     }
-
 
     private bool TryParse_NoAnyArgs(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, out PyArguments result)
     {
         Debug.Assert(ParametersType is PyArgsDefParametersType.NoAnyArgs);
 
-        if (args.Count is 0 && kwargs.Count is 0)
-        {
-            result = PyArguments.Empty;
-            return true;
-        }
-
-        result = default;
-        return false;
+        result = PyArguments.Empty;
+        return args.Count is 0 && kwargs.Count is 0;
     }
 
     private bool TryParse_OnlyArgs(IReadOnlyList<PyObject> args, Span<PyObject> buffer, out PyArguments result)
     {
         Debug.Assert(ParametersType is PyArgsDefParametersType.OnlyArgs);
+        Debug.Assert(Args.Length == BufferLength);
 
         result = default;
         var argsCount = args.Count;
@@ -358,41 +412,16 @@ public sealed class PyArgsDef
         if (argsCount > Args.Length)
             return false;
 
-        if (Args.Length <= buffer.Length)
+        for (int i = 0; i < argsCount; i++)
+            buffer[i] = args[i];
+
+        if (argsCount < Args.Length)
         {
-            Span<PyObject> span = buffer[..Args.Length];
-
-            for (int i = 0; i < argsCount; i++)
-                span[i] = args[i];
-
-            if (argsCount < Args.Length)
-            {
-                var needDefaultsCount = Args.Length - argsCount;
-                Defaults.AsSpan()[^needDefaultsCount..].CopyTo(span[^needDefaultsCount..]);
-            }
-
-            result = new PyArguments(span, FrozenDictionary<string, PyObject>.Empty, [], FrozenDictionary<string, PyObject>.Empty);
-            return true;
+            var needDefaultsCount = Args.Length - argsCount;
+            Defaults.AsSpan()[^needDefaultsCount..].CopyTo(buffer[^needDefaultsCount..]);
         }
-        else
-        {
-            PyObject[] resultArgs;
-            if (argsCount == Args.Length)
-            {
-                resultArgs = [.. args];
-            }
-            else
-            {
-                resultArgs = new PyObject[Args.Length];
-                for (int i = 0; i < argsCount; i++)
-                    resultArgs[i] = args[i];
 
-                var needDefaultsCount = Args.Length - argsCount;
-                Defaults.AsSpan()[^needDefaultsCount..].CopyTo(resultArgs.AsSpan()[^needDefaultsCount..]);
-            }
-
-            result = new PyArguments(resultArgs, FrozenDictionary<string, PyObject>.Empty, [], FrozenDictionary<string, PyObject>.Empty);
-            return true;
-        }
+        result = new PyArguments(this, buffer, [], FrozenDictionary<string, PyObject>.Empty);
+        return true;
     }
 }

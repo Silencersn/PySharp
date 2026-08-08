@@ -386,7 +386,7 @@ internal static partial class BytecodeVirtualMachine
                                 break;
                             }
 
-                            InlinePyObjectArray buffer = default;
+                            using var buffer = func._def.CreateBuffer();
                             if (!func._def.TryParse(callArgs, callKwargs, buffer, out var arguments))
                                 throw context.TypeError(null /* TODO */);
 

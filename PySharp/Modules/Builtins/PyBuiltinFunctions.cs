@@ -127,15 +127,15 @@ public static partial class PyBuiltinFunctions
     [PyFunctionParameters("*objects", "sep=' '", "end='\\n'", "file=None", "flush=False")]
     private static PyResult PrintImpl(PyCallContext context, PyArguments arguments)
     {
-        var sepObj = arguments.Kwargs["sep"];
+        var sepObj = arguments["sep"];
         if (!Utils.TryGetValue(sepObj, (PyStrObject str) => str.Value, " ", out var sep))
             return PyResult.TypeError(PySR.Runtime_Builtin_Print_WrongArgType, "sep", sepObj.PyType.FullName);
 
-        var endObj = arguments.Kwargs["end"];
+        var endObj = arguments["end"];
         if (!Utils.TryGetValue(endObj, (PyStrObject str) => str.Value, "\n", out var end))
             return PyResult.TypeError(PySR.Runtime_Builtin_Print_WrongArgType, "end", endObj.PyType.FullName);
 
-        var result = PySpecialMethods.Bool(context, arguments.Kwargs["flush"]);
+        var result = PySpecialMethods.Bool(context, arguments["flush"]);
         if (result.IsError)
             return result;
 

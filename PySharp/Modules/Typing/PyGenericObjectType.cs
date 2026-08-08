@@ -20,20 +20,22 @@ internal sealed partial class PyGenericObjectType : PyTypeObject<PyGenericObject
     /// Matches CPython's <c>Generic.__class_getitem__</c>.
     /// </summary>
     [PyClassMethod(PySpecialNames.ClassGetItem)]
-    [PyFunctionParameters("cls", "*args")]
+    [PyFunctionParameters("*args")]
     private static PyResult ClassGetItem(PyCallContext context, PyTypeObject cls, PyArguments arguments)
     {
-        // arguments are the user-supplied args (not including cls)
-        // For Box[int], cls=Box, arguments=(int,)
-        if (arguments.Args.Length is 0)
-            return PyResult.TypeError($"{PySpecialNames.ClassGetItem} requires at least 1 argument");
+        // arguments are the user-supplied args (not including cls).
+        // Subscript dispatch (TypeGetItem) packs multi-arg subscripts (Foo[int, str])
+        // into a single tuple key, so a single tuple arg means "use as-is".
+        // Direct calls (Generic.__class_getitem__(int, str)) arrive as multiple args.
+
+        if (arguments.ExtraArgs.Count is 0)
+            return PyResult.TypeError($"{PySpecialNames.ClassGetItem} missing required argument");
 
         PyTupleObject argsTuple;
-
-        if (arguments.Args.Length is 1)
-            argsTuple = arguments[0] is PyTupleObject t ? t : PyTupleObject.CreateTuple(arguments[0]);
+        if (arguments.ExtraArgs.Count > 1)
+            argsTuple = PyTupleObject.CreateTuple(arguments.ExtraArgs);
         else
-            argsTuple = PyTupleObject.CreateTuple(arguments.Args);
+            argsTuple = arguments.ExtraArgs[0] is PyTupleObject t ? t : PyTupleObject.CreateTuple(arguments.ExtraArgs[0]);
 
         return new PyGenericAliasObject(cls, argsTuple);
     }
@@ -49,7 +51,7 @@ internal sealed partial class PyGenericObjectType : PyTypeObject<PyGenericObject
     /// validation is skipped — acceptable until TypeVar support is added.
     /// </summary>
     [PyClassMethod(PySpecialNames.InitSubclass)]
-    [PyFunctionParameters("cls", "*args")]
+    [PyFunctionParameters("**kwargs")]
     private static PyResult InitSubclass(PyCallContext context, PyTypeObject cls, PyArguments arguments)
     {
         // Minimal: no TypeVar objects exist yet, so __parameters__ is not set.

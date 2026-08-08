@@ -1284,28 +1284,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             }
         }
 
-        var emptyArgs = Array.Empty<PyObject>();
-        var emptyKwargs = new Dictionary<string, PyObject>();
-        var fmtArgs = new PyArguments(emptyArgs, emptyKwargs, emptyArgs, kwargs);
-        return Format(context, self, fmtArgs);
-    }
-
-    [PyMethod(PySpecialNames.Format)]
-    [AIGenerated]
-    [PyFunctionParameters("format_spec", "/")]
-    private static PyResult DunderFormat(PyCallContext context, PyStrObject self, PyArguments arguments)
-    {
-        var formatSpec = arguments[0];
-        if (formatSpec is PyNoneObject || (formatSpec is PyStrObject fmtStr && fmtStr.PyLength is 0))
-            return self;
-
-        if (formatSpec is not PyStrObject specStr)
-            return PyResult.TypeError("format_spec must be str or None");
-
-        if (specStr.PyLength is 0)
-            return self;
-
-        return PySpecialMethods.Format(context, self, specStr);
+        return Format(context, self, new PyArguments(PyArgsDef.Empty /* TODO: empty do not have **kwargs */, default, [], kwargs));
     }
 
     [PyMethod("encode")]

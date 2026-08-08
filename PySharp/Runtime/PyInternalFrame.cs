@@ -143,14 +143,8 @@ internal partial struct PyInternalFrame
     internal readonly void InitArgs(PyArgsDef def, PyCodeObject code, PyArguments arguments, ReadOnlySpan<PyCellObject> closure)
     {
         var localsSpan = Variables.LocalsSpan;
-        arguments.Args.CopyTo(localsSpan!);
+        arguments.ArgsAndKwargs.CopyTo(localsSpan!);
         ReadOnlySpan<PyObject>.CastUp(closure).CopyTo(localsSpan[^closure.Length..]!);
-
-        if (arguments.Kwargs is not null)
-        {
-            foreach (var kwarg in arguments.Kwargs)
-                Variables.StoreLocal(kwarg.Key, kwarg.Value);
-        }
 
         var index = code.ArgCount + code.KwOnlyArgCount;
         if (def.VarArg is not null)

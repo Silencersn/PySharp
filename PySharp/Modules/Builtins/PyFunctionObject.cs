@@ -31,7 +31,7 @@ public sealed class PyFunctionObject : PyObjectManagedDict, IPyObjectName
 
     internal PyResult InternalCall(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        InlinePyObjectArray buffer = default;
+        using var buffer = _def.CreateBuffer();
         if (!_def.TryParse(args, kwargs, buffer, out var arguments))
             return PyResult.TypeError(null /* TODO */);
 

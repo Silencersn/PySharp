@@ -5,20 +5,24 @@ namespace PySharp.Runtime.Calls;
 
 public readonly ref struct PyArguments
 {
-    public static PyArguments Empty => new([], FrozenDictionary<string, PyObject>.Empty, [], FrozenDictionary<string, PyObject>.Empty);
+    public static PyArguments Empty => new(PyArgsDef.Empty, [], [], FrozenDictionary<string, PyObject>.Empty);
 
     private readonly PyObject[] _extraArgs;
+    private readonly PyArgsDef _argsDef;
+    private readonly ReadOnlySpan<PyObject> _argsAndKwargs;
+
+    internal readonly ReadOnlySpan<PyObject> ArgsAndKwargs => _argsAndKwargs;
 
     public readonly ReadOnlySpan<PyObject> Args;
-    public IReadOnlyDictionary<string, PyObject> Kwargs { get; }
     public readonly IReadOnlyList<PyObject> ExtraArgs => _extraArgs;
     public IReadOnlyDictionary<string, PyObject> ExtraKwargs { get; }
 
-    internal PyArguments(ReadOnlySpan<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, PyObject[] extraArgs, IReadOnlyDictionary<string, PyObject> extraKwargs)
+    internal PyArguments(PyArgsDef argsDef, ReadOnlySpan<PyObject> argsAndKwargs, PyObject[] extraArgs, IReadOnlyDictionary<string, PyObject> extraKwargs)
     {
-        Args = args;
+        _argsDef = argsDef;
+        _argsAndKwargs = argsAndKwargs;
+        Args = argsAndKwargs[..(argsDef.PosonlyArgs.Length + argsDef.Args.Length)];
         _extraArgs = extraArgs;
-        Kwargs = kwargs;
         ExtraKwargs = extraKwargs;
     }
 
@@ -37,10 +41,11 @@ public readonly ref struct PyArguments
     {
         get
         {
-            if (Kwargs.TryGetValue(key, out var value))
-                return value;
+            var index = _argsDef.KwonlyArgs.IndexOf(key);
+            if (index is not -1)
+                return _argsAndKwargs[Args.Length + index];
 
-            if (ExtraKwargs.TryGetValue(key, out value))
+            if (ExtraKwargs.TryGetValue(key, out var value))
                 return value;
 
             throw new KeyNotFoundException(key);
