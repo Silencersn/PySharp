@@ -37,6 +37,7 @@ public sealed class PyInterpreter : IDisposable
     {
         var codeObj = Compiler.InternalCompileExec(context, code, sourceName, name: "<module>");
         context.CurrentInternalFrame.CodeObject = codeObj;
+        context.CurrentInternalFrame.InstructionIndex = 0;
         _ = PyCore.Eval(context).PyUnwrap(context);
     }
 
