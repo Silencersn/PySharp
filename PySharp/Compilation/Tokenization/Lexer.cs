@@ -234,7 +234,16 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                     var info = CurrentFStringInfo;
                     var indexOfChar = FindNextSpecialChar(content, info, _offset, out var c);
                     if (indexOfChar is -1)
-                        throw SyntaxError(PySR.InvalidSyntax_Tokenize_Unterminated_TripleFStringLiteral, Lineno);
+                    {
+                        var message = info.IsTemplate
+                            ? info.IsTriple
+                                ? PySR.InvalidSyntax_Tokenize_Unterminated_TripleTStringLiteral
+                                : PySR.InvalidSyntax_Tokenize_Unterminated_TStringLiteral
+                            : info.IsTriple
+                                ? PySR.InvalidSyntax_Tokenize_Unterminated_TripleFStringLiteral
+                                : PySR.InvalidSyntax_Tokenize_Unterminated_FStringLiteral;
+                        throw SyntaxError(message, Lineno);
+                    }
 
                     if (c == info.WrapperChar)
                     {

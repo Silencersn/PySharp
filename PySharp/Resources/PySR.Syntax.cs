@@ -8,7 +8,10 @@ partial class PySR
 
     public const string InvalidSyntax_Tokenize_Unterminated_StringLiteral = "unterminated string literal (detected at line {0})";
     public const string InvalidSyntax_Tokenize_Unterminated_TripleStringLiteral = "unterminated triple-quoted string literal (detected at line {0})";
+    public const string InvalidSyntax_Tokenize_Unterminated_FStringLiteral = "unterminated f-string literal (detected at line {0})";
     public const string InvalidSyntax_Tokenize_Unterminated_TripleFStringLiteral = "unterminated triple-quoted f-string literal (detected at line {0})";
+    public const string InvalidSyntax_Tokenize_Unterminated_TStringLiteral = "unterminated t-string literal (detected at line {0})";
+    public const string InvalidSyntax_Tokenize_Unterminated_TripleTStringLiteral = "unterminated triple-quoted t-string literal (detected at line {0})";
     public const string InvalidSyntax_Tokenize_FStringSingleRightBrace = "f-string: single '}' is not allowed";
 
     public const string InvalidSyntax_Tokenize_UnindentNotMatch = "unindent does not match any outer indentation level";
