@@ -1432,7 +1432,27 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     {
         if (other is not PyStrObject strObj)
             return PyNotImplementedObject.NotImplemented;
-        return PyBoolObject.FromBoolean(self.Value.CompareTo(strObj.Value) < 0);
+        // Ordinal (code point) comparison, matching CPython's unicode_compare.
+        // string.CompareTo would use culture rules ('a' < 'B' incorrectly).
+        return PyBoolObject.FromBoolean(string.CompareOrdinal(self.Value, strObj.Value) < 0);
+    }
+    protected override PyResult Le(PyCallContext context, PyStrObject self, PyObject other)
+    {
+        if (other is not PyStrObject strObj)
+            return PyNotImplementedObject.NotImplemented;
+        return PyBoolObject.FromBoolean(string.CompareOrdinal(self.Value, strObj.Value) <= 0);
+    }
+    protected override PyResult Gt(PyCallContext context, PyStrObject self, PyObject other)
+    {
+        if (other is not PyStrObject strObj)
+            return PyNotImplementedObject.NotImplemented;
+        return PyBoolObject.FromBoolean(string.CompareOrdinal(self.Value, strObj.Value) > 0);
+    }
+    protected override PyResult Ge(PyCallContext context, PyStrObject self, PyObject other)
+    {
+        if (other is not PyStrObject strObj)
+            return PyNotImplementedObject.NotImplemented;
+        return PyBoolObject.FromBoolean(string.CompareOrdinal(self.Value, strObj.Value) >= 0);
     }
     protected override PyResult Mul(PyCallContext context, PyStrObject self, PyObject other)
     {

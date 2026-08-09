@@ -852,4 +852,13 @@ public sealed class TestPyFiles
         var module = RunModule("test_round_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestStrCompareRegression()
+    {
+        // Regression: str comparison must use ordinal (code point) ordering
+        // ('a' < 'B' is False), and <= / >= must not raise TypeError.
+        var module = RunModule("test_str_compare_regression.py");
+        Assert.IsNotNull(module);
+    }
 }
