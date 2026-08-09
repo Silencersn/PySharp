@@ -201,6 +201,59 @@ internal static class BigIntegerHelper
 
         return str;
     }
+
+    /// <summary>Formats a non-negative BigInteger in base 2/8/16 WITHOUT the
+    /// "0b"/"0o"/"0x" prefix (used by int.__format__).</summary>
+    public static string ToStringDigits(BigInteger value, int numBase)
+    {
+        Debug.Assert(numBase is 2 or 8 or 16);
+        Debug.Assert(value >= 0);
+
+        var charCount = GetMaxCharCount(value, numBase);
+        char[]? arrayToReturn = null;
+        Span<char> chars = charCount <= 512
+            ? stackalloc char[charCount]
+            : PoolHelper.Rent(charCount, out arrayToReturn);
+
+        int charsWritten;
+        if (numBase is 16)
+        {
+            // "x" is exact (no leading zero padding); .NET's "b" format pads,
+            // so binary digits are generated manually below.
+            var ok = value.TryFormat(chars, out charsWritten, "x");
+            Debug.Assert(ok);
+        }
+        else
+        {
+            charsWritten = ToDigitsInBase(chars, value, numBase);
+        }
+
+        var str = chars[..charsWritten].ToString();
+        PoolHelper.ReturnIfNonNull(arrayToReturn);
+        return str;
+    }
+
+    private static int ToDigitsInBase(Span<char> chars, BigInteger value, int numBase)
+    {
+        if (value.IsZero)
+        {
+            chars[0] = '0';
+            return 1;
+        }
+
+        var digits = new List<char>();
+        while (value > 0)
+        {
+            value = BigInteger.DivRem(value, numBase, out var rem);
+            digits.Add((char)('0' + (int)rem));
+        }
+
+        int index = 0;
+        for (int i = digits.Count - 1; i >= 0; i--)
+            chars[index++] = digits[i];
+        return index;
+    }
+
     private static int GetMaxCharCount(BigInteger value, int numBase)
     {
         Debug.Assert(numBase is 2 or 8 or 16);
@@ -218,6 +271,16 @@ internal static class BigIntegerHelper
     private static void ToBinOrHexString(ref Span<char> chars, BigInteger value, out int charsWritten, char binOrHex)
     {
         Debug.Assert(binOrHex is 'b' or 'x');
+
+        if (value == 0)
+        {
+            // Keep the single digit: "0x0" / "0b0" (mirrors ToOctString).
+            chars[0] = '0';
+            chars[1] = binOrHex;
+            chars[2] = '0';
+            charsWritten = 3;
+            return;
+        }
 
         var offset = value < 0 ? 3 : 2; // prefix
         var formatted = BigInteger.Abs(value).TryFormat(chars[offset..], out charsWritten, [binOrHex]);

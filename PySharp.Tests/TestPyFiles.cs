@@ -861,4 +861,13 @@ public sealed class TestPyFiles
         var module = RunModule("test_str_compare_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestIntHexBinFormatRegression()
+    {
+        // Regression: hex(0)/bin(0) must keep the digit ('0x0'/'0b0'), and
+        // int format()/f-string with b/o/x must not double the prefix.
+        var module = RunModule("test_int_hexbin_format_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

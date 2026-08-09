@@ -337,7 +337,7 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
                 numBase = 2;
                 if (spec.AlternateForm)
                     basePrefix = char.IsUpper(formatType) ? "0B" : "0b";
-                text = BigIntegerHelper.ToString(BigInteger.Abs(val), numBase);
+                text = BigIntegerHelper.ToStringDigits(BigInteger.Abs(val), numBase);
                 if (spec.WidthGrouping is not null)
                     text = ApplyGrouping(text, spec.WidthGrouping.Value, 4);
                 break;
@@ -345,13 +345,13 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
                 numBase = 8;
                 if (spec.AlternateForm)
                     basePrefix = char.IsUpper(formatType) ? "0O" : "0o";
-                text = BigIntegerHelper.ToString(BigInteger.Abs(val), numBase);
+                text = BigIntegerHelper.ToStringDigits(BigInteger.Abs(val), numBase);
                 break;
             case 'x':
                 numBase = 16;
                 if (spec.AlternateForm)
                     basePrefix = char.IsUpper(formatType) ? "0X" : "0x";
-                text = BigIntegerHelper.ToString(BigInteger.Abs(val), numBase);
+                text = BigIntegerHelper.ToStringDigits(BigInteger.Abs(val), numBase);
                 if (char.IsUpper(formatType))
                     text = text.ToUpperInvariant();
                 if (spec.WidthGrouping is not null)
