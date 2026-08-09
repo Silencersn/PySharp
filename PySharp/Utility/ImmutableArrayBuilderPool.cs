@@ -1,9 +1,69 @@
+using PySharp.Compilation.AstNodes;
 using System.Buffers;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace PySharp.Utility;
+
+internal readonly ref struct ImmutableArrayBuilderOf<T>
+{
+    public static ImmutableArrayBuilderOf<T> Null => default;
+
+    internal readonly ImmutableArray<T>.Builder _builderOfT;
+    internal readonly ImmutableArray<object>.Builder _builder;
+
+    internal bool IsNull => _builder is null && _builderOfT is null;
+
+    public ImmutableArrayBuilderOf(ImmutableArray<object>.Builder builder)
+    {
+        _builderOfT = null!;
+        _builder = builder;
+    }
+    public ImmutableArrayBuilderOf(ImmutableArray<T>.Builder builderOfT) : this()
+    {
+        _builderOfT = builderOfT;
+        _builder = null!;
+    }
+
+    public readonly void Add(T value)
+    {
+        if (typeof(T).IsValueType)
+            _builderOfT.Add(value);
+        else
+            _builder.Add(value!);
+    }
+
+    public readonly void AddRange(ImmutableArrayBuilderOf<T> otherBuilder)
+    {
+        if (typeof(T).IsValueType)
+            _builderOfT.AddRange(otherBuilder._builderOfT);
+        else
+            _builder.AddRange(otherBuilder._builder);
+    }
+
+    public readonly void Insert(int index, T value)
+    {
+        if (typeof(T).IsValueType)
+            _builderOfT.Insert(index, value);
+        else
+            _builder.Insert(index, value!);
+    }
+
+    public readonly ImmutableArray<T> ToImmutable()
+    {
+        if (typeof(T).IsValueType)
+            return _builderOfT.DrainToImmutable();
+
+        if (_builder.Count is 0)
+            return [];
+
+        ref readonly var ptr = ref _builder.ItemRef(0);
+        var span = MemoryMarshal.CreateReadOnlySpan(in ptr, _builder.Count);
+        var spanOfT = Unsafe.As<ReadOnlySpan<object>, ReadOnlySpan<T>>(ref span);
+        return ImmutableArray.Create(spanOfT);
+    }
+}
 
 /// <summary>
 /// A pool for <see cref="ImmutableArray{T}.Builder"/> that reuses builder instances to reduce allocations.
@@ -13,44 +73,36 @@ namespace PySharp.Utility;
 /// However, builders created from elsewhere (not obtained via <see cref="Rent{T}"/>) must NEVER be
 /// passed to <see cref="Return{T}"/> or <see cref="ToImmutableThenReturn{T}"/>.
 /// </summary>
-internal sealed class UnsafeImmutableArrayBuilderPool : IDisposable
+internal sealed class ImmutableArrayBuilderPool : IDisposable
 {
     private const int MaxBuilderCapacity = 32;
 
     private ObjectPool<ImmutableArray<object>.Builder> _pool = new(capacity: 16, ImmutableArray.CreateBuilder<object>);
 
-    internal ImmutableArray<T>.Builder Rent<T>()
+    internal ImmutableArrayBuilderOf<T> Rent<T>()
     {
         if (typeof(T).IsValueType)
-            return ImmutableArray.CreateBuilder<T>();
+            return new(ImmutableArray.CreateBuilder<T>());
 
-        var builder = _pool.Rent();
-        return Unsafe.As<ImmutableArray<object>.Builder, ImmutableArray<T>.Builder>(ref builder);
+        return new(_pool.Rent());
     }
 
-    internal ImmutableArray<T> ToImmutableThenReturn<T>(ImmutableArray<T>.Builder builderOfT)
+    internal ImmutableArray<T> ToImmutableThenReturn<T>(ImmutableArrayBuilderOf<T> builderOfT)
     {
-        if (typeof(T).IsValueType)
-            return builderOfT.DrainToImmutable();
-
         var result = builderOfT.ToImmutable();
         Return(builderOfT);
         return result;
     }
 
-    internal void Return<T>(ImmutableArray<T>.Builder builderOfT)
+    internal void Return<T>(ImmutableArrayBuilderOf<T> builderOfT)
     {
         if (typeof(T).IsValueType)
             return;
 
-        Debug.Assert(builderOfT is ImmutableArray<object>.Builder);
-
-        var builder = Unsafe.As<ImmutableArray<T>.Builder, ImmutableArray<object>.Builder>(ref builderOfT);
+        var builder = builderOfT._builder;
         builder.Clear();
-
         if (builder.Capacity > MaxBuilderCapacity)
             return;
-
         _pool.Return(builder);
     }
 

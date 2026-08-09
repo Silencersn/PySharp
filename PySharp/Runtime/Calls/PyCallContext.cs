@@ -15,13 +15,13 @@ public sealed partial class PyCallContext : IDisposable
     private readonly PyEnvironment _environment;
     private readonly PyInterpreter? _interpreter;
     private PyCallContextFrameState? _state;
-    private UnsafeImmutableArrayBuilderPool? _builderPool;
+    private ImmutableArrayBuilderPool? _builderPool;
 
     internal PyEnvironment PyEnvironment => _environment;
     internal PyInterpreter? Interpreter => _interpreter;
     internal PyCallContextFrameState FrameState => _state ?? throw new InvalidOperationException("Context is not initialized or is disposed.");
     public PyObjectComparer Comparer => field ??= new PyObjectComparer(this);
-    internal UnsafeImmutableArrayBuilderPool BuilderPool => _builderPool ??= new();
+    internal ImmutableArrayBuilderPool BuilderPool => _builderPool ??= new();
 
     private PyCallContext(string prompt) : this(prompt, PyEnvironment.CreateNull())
     {

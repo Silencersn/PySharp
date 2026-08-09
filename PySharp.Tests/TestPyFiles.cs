@@ -406,6 +406,16 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestCallArgsRegression()
+    {
+        // Covers call-args paths introduced by b440261 (Span/ArrayPool argument parsing)
+        // that the rest of the suite does not exercise: >8-param buffer (ArrayPool),
+        // kwonly with/without kwargs, posonly, duplicate positional/kwarg conflict, etc.
+        var module = RunModule("test_call_args_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestIterationExtended()
     {
         var module = RunModule("test_iteration_extended.py");

@@ -1,6 +1,7 @@
 using PySharp.Compilation.Primitives;
 using PySharp.Compilation.Tokenization;
 using PySharp.Runtime;
+using PySharp.Utility;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -218,7 +219,7 @@ partial class Parser
     private string ParseDottedName()
     {
         var result = ParseSomethingList(ParseNonMangledIdentifier, StopPredicates.UntilNonName, out _, separator: TokenType.Dot);
-        if (result.Builder is not null)
+        if (!result.Builder.IsNull)
             return string.Join('.', result.MakeArray());
         return MangleIdentifier(result.First);
     }
@@ -502,7 +503,7 @@ partial class Parser
     }
 
     [GrammarSyntaxRule("simple_stmts")]
-    private ImmutableArray<AstStmtNode>.Builder ParseSimpleStmts()
+    private ImmutableArrayBuilderOf<AstStmtNode> ParseSimpleStmts()
     {
         var result = ParseSomethingList(ParseSimpleStmt, StopPredicates.UntilNewLine, out _, separator: TokenType.Semicolon);
         EnsureTokenTypeThenMove(TokenType.NewLine);
@@ -510,12 +511,14 @@ partial class Parser
     }
 
     [GrammarSyntaxRule("statement")]
-    private (AstStmtNode? Compound, ImmutableArray<AstStmtNode>.Builder? Simples) ParseStatement()
+    private AstStmtNode? ParseStatement(out ImmutableArrayBuilderOf<AstStmtNode> simples)
     {
+        simples = ImmutableArrayBuilderOf<AstStmtNode>.Null;
         if (TryParseCompoundStmt(out var compoundStmt))
-            return (compoundStmt, null);
+            return compoundStmt;
 
-        return (null, ParseSimpleStmts());
+        simples = ParseSimpleStmts();
+        return null;
     }
 
     [GrammarSyntaxRule("statements")]
@@ -524,14 +527,14 @@ partial class Parser
         var stmts = _context.BuilderPool.Rent<AstStmtNode>();
         while (CurrentTokenType is not (TokenType.Dedent or TokenType.EndMarker))
         {
-            var (compound, simples) = ParseStatement();
+            var compound = ParseStatement(out var simples);
             if (compound is not null)
             {
                 stmts.Add(compound);
             }
             else
             {
-                Debug.Assert(simples is not null);
+                Debug.Assert(!simples.IsNull);
                 stmts.AddRange(simples);
                 _context.BuilderPool.Return(simples);
             }
@@ -823,7 +826,7 @@ partial class Parser
 
             if (IsCurrentKeyword("as"))
             {
-                if (exprs.Builder is not null)
+                if (!exprs.Builder.IsNull)
                     throw SyntaxError(PySR.InvalidSyntax_TryStmt_MultipleExceptionTypesUsingAs);
 
                 if (endsWithComma is not null)

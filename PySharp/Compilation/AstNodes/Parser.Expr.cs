@@ -4,6 +4,7 @@ using PySharp.Compilation.Tokenization;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using PySharp.Utility;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -795,7 +796,7 @@ partial class Parser
         var result = ParseSomethingList(ParseSliceOrStarredExpression, StopPredicates.UntilRightSquareBracket, out var endsWithComma);
 
         // return directly if it is single slice without comma
-        if (result.Builder is null && endsWithComma is null && result.First is not StarredNode)
+        if (result.Builder.IsNull && endsWithComma is null && result.First is not StarredNode)
             return result.First;
 
         // single StarredNode is allowed
@@ -1286,7 +1287,7 @@ partial class Parser
 
     private static T UnwrapOrPackSomething<T>(ParseSomethingListResult<T> result, Token? endsWithComma, Func<ImmutableArray<T>, T> packer) where T : AstNode
     {
-        if (result.Builder is null)
+        if (result.Builder.IsNull)
             return result.First;
 
         return PackSomething(result.MakeArray(), endsWithComma, packer);
@@ -1459,13 +1460,13 @@ partial class Parser
     private ref struct ParseSomethingListResult<T>
     {
         internal readonly T First;
-        internal readonly ImmutableArray<T>.Builder? Builder;
+        internal readonly ImmutableArrayBuilderOf<T> Builder;
         private readonly PyCallContext _context;
         private bool _returned;
 
-        internal readonly ImmutableArray<T>.Builder GetBuilder(int capacity = 2)
+        internal readonly ImmutableArrayBuilderOf<T> GetBuilder(int capacity = 2)
         {
-            if (Builder is not null)
+            if (!Builder.IsNull)
                 return Builder;
             var builder = _context.BuilderPool.Rent<T>();
             builder.Add(First);
@@ -1476,12 +1477,12 @@ partial class Parser
             Debug.Assert(!_returned);
             _returned = true;
 
-            if (Builder is not null)
+            if (!Builder.IsNull)
                 return _context.BuilderPool.ToImmutableThenReturn(Builder);
 
             return [First];
         }
-        internal ParseSomethingListResult(T first, ImmutableArray<T>.Builder? builder, PyCallContext context)
+        internal ParseSomethingListResult(T first, ImmutableArrayBuilderOf<T> builder, PyCallContext context)
         {
             First = first;
             Builder = builder;
@@ -1494,7 +1495,7 @@ partial class Parser
         endsWithComma = null;
 
         var first = parse();
-        ImmutableArray<T>.Builder? builder = null;
+        ImmutableArrayBuilderOf<T> builder = default;
         while (CurrentTokenType == separator)
         {
             MoveNextToken();
@@ -1503,7 +1504,7 @@ partial class Parser
                 endsWithComma = CurrentToken;
                 break;
             }
-            if (builder is null)
+            if (builder.IsNull)
             {
                 builder = _context.BuilderPool.Rent<T>();
                 builder.Add(first);
@@ -1636,7 +1637,7 @@ partial class Parser
         }
 
         var result = ParseSomethingList(parseItem, StopPredicates.Until(closeToken), out var endsWithComma);
-        if (!allowSingleItemWithoutComma && result.Builder is null && endsWithComma is null)
+        if (!allowSingleItemWithoutComma && result.Builder.IsNull && endsWithComma is null)
             throw SyntaxError();
 
         EnsureTokenTypeThenMove(closeToken);

@@ -82,7 +82,7 @@ partial class Parser
             return PackSomething([pattern], endsWithComma, Ast.MatchSequence);
 
         var result = ParseMaybeSequencePattern(predicate, out endsWithComma);
-        if (result.Builder is null)
+        if (result.Builder.IsNull)
             return PackSomething([pattern, result.First], endsWithComma, Ast.MatchSequence);
         result.Builder.Insert(0, pattern);
         return PackSomething(result.MakeArray(), endsWithComma, Ast.MatchSequence);
