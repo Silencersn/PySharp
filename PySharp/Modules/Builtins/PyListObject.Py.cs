@@ -188,7 +188,10 @@ partial class PyListObject
     {
         if (item is PySliceObject slice)
         {
-            var (start, stop, step, sliceLength) = slice.Indices(_list.Count);
+            var indicesResult = slice.Indices(context, _list.Count, out var indices);
+            if (indicesResult.IsError)
+                return indicesResult;
+            var (start, stop, step, sliceLength) = indices;
             var resultList = new List<PyObject>(sliceLength);
             for (int i = 0, idx = start; i < sliceLength; i++, idx += step)
                 resultList.Add(_list[idx]);
@@ -207,7 +210,10 @@ partial class PyListObject
     {
         if (key is PySliceObject slice)
         {
-            var (start, stop, step, sliceLength) = slice.Indices(_list.Count);
+            var indicesResult = slice.Indices(context, _list.Count, out var indices);
+            if (indicesResult.IsError)
+                return indicesResult;
+            var (start, stop, step, sliceLength) = indices;
             var iterableResult = PyUtils.IterableToList(context, value);
             if (iterableResult.IsError)
                 return iterableResult;
@@ -247,7 +253,10 @@ partial class PyListObject
     {
         if (key is PySliceObject slice)
         {
-            var (start, stop, step, sliceLength) = slice.Indices(_list.Count);
+            var indicesResult = slice.Indices(context, _list.Count, out var indices);
+            if (indicesResult.IsError)
+                return indicesResult;
+            var (start, stop, step, sliceLength) = indices;
             if (step is 1)
             {
                 int lower = int.Min(start, stop);

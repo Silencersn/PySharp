@@ -99,7 +99,10 @@ public sealed partial class PyRangeObjectType : PyTypeObject<PyRangeObject>
     {
         if (item is PySliceObject slice)
         {
-            var (sStart, sStop, sStep, sLength) = slice.Indices(self.RangeLen);
+            var indicesResult = slice.Indices(context, self.RangeLen, out var indices);
+            if (indicesResult.IsError)
+                return indicesResult;
+            var (sStart, sStop, sStep, sLength) = indices;
             if (sLength.IsZero)
                 return PyRangeObject.CreateRange(self.Start, self.Start, self.Step);
 

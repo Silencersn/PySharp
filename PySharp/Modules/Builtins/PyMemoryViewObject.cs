@@ -188,7 +188,10 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
             if (self.NumberDimensions is 0)
                 return PyResult.TypeError("0-dim memory has no length");
 
-            var (start, _, step, length) = slice.Indices((int)self.Shape[0]);
+            var indicesResult = slice.Indices(context, (int)self.Shape[0], out var indices);
+            if (indicesResult.IsError)
+                return indicesResult;
+            var (start, _, step, length) = indices;
             if (length is 0)
             {
                 return new PyMemoryViewObject(new PyBuffer(

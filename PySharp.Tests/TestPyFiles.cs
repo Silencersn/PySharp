@@ -890,4 +890,13 @@ public sealed class TestPyFiles
         var module = RunModule("test_hash_subclass_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestSliceStepZeroRegression()
+    {
+        // Regression: slice with step=0 must raise a catchable ValueError
+        // ("slice step cannot be zero"), not leak a bare .NET exception.
+        var module = RunModule("test_slice_step_zero_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

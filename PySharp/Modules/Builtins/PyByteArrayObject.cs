@@ -180,7 +180,10 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
     {
         if (item is PySliceObject slice)
         {
-            var (start, _, step, length) = slice.Indices(self.Length);
+            var indicesResult = slice.Indices(context, self.Length, out var indices);
+            if (indicesResult.IsError)
+                return indicesResult;
+            var (start, _, step, length) = indices;
             return self.Slice(start, step, length);
         }
 
@@ -199,7 +202,10 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
     {
         if (key is PySliceObject slice)
         {
-            var (start, stop, step, sliceLength) = slice.Indices(self.Length);
+            var indicesResult = slice.Indices(context, self.Length, out var indices);
+            if (indicesResult.IsError)
+                return indicesResult;
+            var (start, stop, step, sliceLength) = indices;
             var valuesResult = TryGetByteList(context, value, out var values);
             if (valuesResult.IsError)
                 return valuesResult;

@@ -24,8 +24,9 @@ public class PySliceObject : PyObject
     }
 
     [AIGenerated]
-    public (int start, int stop, int step, int sliceLength) Indices(int length)
+    public PyResult Indices(PyCallContext context, int length, out (int start, int stop, int step, int sliceLength) indices)
     {
+        indices = default;
         int step = Step is PyNoneObject ? 1 : ((PyIntObject)Step).Int32Value;
         int start, stop;
 
@@ -45,7 +46,9 @@ public class PySliceObject : PyObject
         }
         else
         {
-            throw new ArgumentException("slice step cannot be zero");
+            // CPython: ValueError("slice step cannot be zero"); returned as an
+            // error result (no-throw Try pattern) so callers propagate it.
+            return PyResult.ValueError("slice step cannot be zero");
         }
 
         int sliceLength = 0;
@@ -54,12 +57,14 @@ public class PySliceObject : PyObject
         else if (step < 0 && start > stop)
             sliceLength = (stop - start + step + 1) / step;
 
-        return (start, stop, step, sliceLength);
+        indices = (start, stop, step, sliceLength);
+        return default;
     }
 
     // BigInteger variant for sequences whose length may exceed int (e.g. range)
-    public (BigInteger start, BigInteger stop, BigInteger step, BigInteger sliceLength) Indices(BigInteger length)
+    public PyResult Indices(PyCallContext context, BigInteger length, out (BigInteger start, BigInteger stop, BigInteger step, BigInteger sliceLength) indices)
     {
+        indices = default;
         var step = Step is PyNoneObject ? BigInteger.One : ((PyIntObject)Step).Value;
         BigInteger start, stop;
 
@@ -79,7 +84,9 @@ public class PySliceObject : PyObject
         }
         else
         {
-            throw new ArgumentException("slice step cannot be zero");
+            // CPython: ValueError("slice step cannot be zero"); returned as an
+            // error result (no-throw Try pattern) so callers propagate it.
+            return PyResult.ValueError("slice step cannot be zero");
         }
 
         BigInteger sliceLength = 0;
@@ -88,7 +95,8 @@ public class PySliceObject : PyObject
         else if (step < 0 && start > stop)
             sliceLength = (stop - start + step + 1) / step;
 
-        return (start, stop, step, sliceLength);
+        indices = (start, stop, step, sliceLength);
+        return default;
     }
 }
 

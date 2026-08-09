@@ -130,7 +130,10 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
     {
         if (item is PySliceObject slice)
         {
-            var (start, _, step, length) = slice.Indices(self.Length);
+            var indicesResult = slice.Indices(context, self.Length, out var indices);
+            if (indicesResult.IsError)
+                return indicesResult;
+            var (start, _, step, length) = indices;
             if (length is 0)
                 return PyBytesObject.Empty;
 

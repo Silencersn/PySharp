@@ -10,7 +10,10 @@ partial class PyTupleObject
     {
         if (item is PySliceObject slice)
         {
-            var (start, stop, step, sliceLength) = slice.Indices(_array.Length);
+            var indicesResult = slice.Indices(context, _array.Length, out var indices);
+            if (indicesResult.IsError)
+                return indicesResult;
+            var (start, stop, step, sliceLength) = indices;
             if (sliceLength is 0)
                 return Empty;
 

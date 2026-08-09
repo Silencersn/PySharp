@@ -1390,7 +1390,10 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     {
         if (item is PySliceObject slice)
         {
-            var (start, _, step, length) = slice.Indices(self.PyLength);
+            var indicesResult = slice.Indices(context, self.PyLength, out var indices);
+            if (indicesResult.IsError)
+                return indicesResult;
+            var (start, _, step, length) = indices;
             if (length is 0)
                 return PyStrObject.Empty;
 
