@@ -179,7 +179,10 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
 
     protected override PyResult Float(PyCallContext context, PyIntObject self)
     {
-        return PyFloatObject.FromDouble((double)self.Value);
+        var d = (double)self.Value;
+        if (double.IsInfinity(d))
+            return PyResult.OverflowError("int too large to convert to float");
+        return PyFloatObject.FromDouble(d);
     }
 
     protected override PyResult Neg(PyCallContext context, PyIntObject self)

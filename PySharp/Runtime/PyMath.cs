@@ -24,9 +24,31 @@ internal static class PyMath
                 return PyResult.TypeError(PySR.Runtime_Operator_UnsupportedBetween, "@", "int", "int");
 
             case PyOperatorTypes.TrueDiv:
-                if (right.Value.IsZero)
-                    return PyResult.ZeroDivisionError();
-                return PyFloatObject.FromDouble((double)left.Value / (double)right.Value);
+                {
+                    if (right.Value.IsZero)
+                        return PyResult.ZeroDivisionError();
+                    var (tdQ, tdR) = BigInteger.DivRem(left.Value, right.Value);
+                    if (tdR.IsZero)
+                    {
+                        // exact quotient: avoid inf/inf -> NaN and detect float overflow
+                        var dq = (double)tdQ;
+                        if (double.IsInfinity(dq))
+                            return PyResult.OverflowError("integer division result too large for a float");
+                        return PyFloatObject.FromDouble(dq);
+                    }
+                    // exact overflow check: |left/right| >= 2^1024  <=>  |left| >= |right| << 1024
+                    if (BigInteger.Abs(left.Value) >= BigInteger.Abs(right.Value) << 1024)
+                        return PyResult.OverflowError("integer division result too large for a float");
+                    // result = q + r/right (0 < |r| < |right|) without intermediate (double) overflow
+                    var dQ = (double)tdQ;
+                    if (double.IsInfinity(dQ))
+                        dQ = dQ > 0 ? double.MaxValue : -double.MaxValue;   // q near 2^1024: still finite in CPython
+                    var scaledR = BigInteger.Abs(tdR) * (BigInteger.One << 53) / BigInteger.Abs(right.Value);
+                    var frac = (double)scaledR / 9007199254740992.0;         // 2^53: r/right as a 53-bit fraction
+                    if ((tdR < 0) != (right.Value < 0))
+                        frac = -frac;
+                    return PyFloatObject.FromDouble(dQ + frac);
+                }
 
             case PyOperatorTypes.FloorDiv:
                 if (right.Value.IsZero)

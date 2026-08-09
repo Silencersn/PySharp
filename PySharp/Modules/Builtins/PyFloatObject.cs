@@ -32,6 +32,59 @@ public class PyFloatObject : PyObject
     {
         return new PyFloatObject(value);
     }
+
+    // Exact comparison of a double with a BigInteger (CPython-style precise
+    // comparison, no (double)BigInteger precision loss / silent inf).
+    // Returns <0 if f < i, 0 if f == i, >0 if f > i; null when f is NaN
+    // (unordered: all comparisons are false, matching CPython).
+    internal static int? CompareDoubleWithInt(double f, BigInteger i)
+    {
+        if (double.IsNaN(f))
+            return null;
+        if (double.IsPositiveInfinity(f))
+            return 1;
+        if (double.IsNegativeInfinity(f))
+            return -1;
+        if (f is 0)
+            return -i.Sign;
+
+        long bits = BitConverter.DoubleToInt64Bits(f);
+        bool neg = bits < 0;
+        int expField = (int)((bits >> 52) & 0x7FF);
+        long mant = bits & 0xFFFFFFFFFFFFFL;
+
+        BigInteger m;
+        int e;
+        if (expField is 0)
+        {
+            m = mant;               // subnormal: mant * 2^-1074
+            e = -1074;
+        }
+        else
+        {
+            m = (BigInteger.One << 52) | mant;   // normal: (2^52 + mant) * 2^(expField-1023-52)
+            e = expField - 1023 - 52;
+        }
+        if (neg)
+            m = -m;
+
+        // now f == m * 2^e exactly
+        if (i.Sign != m.Sign)
+            return m.Sign.CompareTo(i.Sign);
+
+        BigInteger a, b;
+        if (e >= 0)
+        {
+            a = m << e;   // f as integer
+            b = i;
+        }
+        else
+        {
+            a = m;         // f = m * 2^e, compare m vs i * 2^(-e)
+            b = i << -e;
+        }
+        return a.CompareTo(b);
+    }
 }
 
 [PyType("float")]
@@ -125,12 +178,22 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
     }
     protected override PyResult FloorDiv(PyCallContext context, PyFloatObject self, PyObject other)
     {
-        return other switch
+        if (other is PyIntObject intObj)
         {
-            PyIntObject intObj => intObj.Value.IsZero ? PyResult.ZeroDivisionError() : PyFloatObject.FromDouble(double.Floor(self.Value / (double)intObj.Value)),
-            PyFloatObject floatObj => floatObj.Value is 0 ? PyResult.ZeroDivisionError() : PyFloatObject.FromDouble(double.Floor(self.Value / floatObj.Value)),
-            _ => base.FloorDiv(context, self, other),
-        };
+            if (intObj.Value.IsZero)
+                return PyResult.ZeroDivisionError();
+            var dv = (double)intObj.Value;
+            if (double.IsInfinity(dv))
+                return PyResult.OverflowError("int too large to convert to float");
+            return PyFloatObject.FromDouble(double.Floor(self.Value / dv));
+        }
+        if (other is PyFloatObject floatObj)
+        {
+            if (floatObj.Value is 0)
+                return PyResult.ZeroDivisionError();
+            return PyFloatObject.FromDouble(double.Floor(self.Value / floatObj.Value));
+        }
+        return base.FloorDiv(context, self, other);
     }
     protected override PyResult DivMod(PyCallContext context, PyFloatObject self, PyObject other)
     {
@@ -196,12 +259,16 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
         if (self.Value is 0)
             return PyResult.ZeroDivisionError();
 
-        return other switch
+        if (other is PyIntObject intObj)
         {
-            PyIntObject intObj => PyFloatObject.FromDouble(double.Floor((double)intObj.Value / self.Value)),
-            PyFloatObject floatObj => PyFloatObject.FromDouble(double.Floor(floatObj.Value / self.Value)),
-            _ => base.RFloorDiv(context, self, other),
-        };
+            var dv = (double)intObj.Value;
+            if (double.IsInfinity(dv))
+                return PyResult.OverflowError("int too large to convert to float");
+            return PyFloatObject.FromDouble(double.Floor(dv / self.Value));
+        }
+        if (other is PyFloatObject floatObj)
+            return PyFloatObject.FromDouble(double.Floor(floatObj.Value / self.Value));
+        return base.RFloorDiv(context, self, other);
     }
     protected override PyResult RDivMod(PyCallContext context, PyFloatObject self, PyObject other)
     {
@@ -238,48 +305,43 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
     }
     protected override PyResult Lt(PyCallContext context, PyFloatObject self, PyObject other)
     {
-        return other switch
-        {
-            PyIntObject intObj => PyBoolObject.FromBoolean(self.Value < (double)intObj.Value),
-            PyFloatObject floatObj => PyBoolObject.FromBoolean(self.Value < floatObj.Value),
-            _ => base.Lt(context, self, other),
-        };
+        if (other is PyIntObject intObj)
+            return PyBoolObject.FromBoolean(PyFloatObject.CompareDoubleWithInt(self.Value, intObj.Value) < 0);
+        if (other is PyFloatObject floatObj)
+            return PyBoolObject.FromBoolean(self.Value < floatObj.Value);
+        return base.Lt(context, self, other);
     }
     protected override PyResult Gt(PyCallContext context, PyFloatObject self, PyObject other)
     {
-        return other switch
-        {
-            PyIntObject intObj => PyBoolObject.FromBoolean(self.Value > (double)intObj.Value),
-            PyFloatObject floatObj => PyBoolObject.FromBoolean(self.Value > floatObj.Value),
-            _ => base.Gt(context, self, other),
-        };
+        if (other is PyIntObject intObj)
+            return PyBoolObject.FromBoolean(PyFloatObject.CompareDoubleWithInt(self.Value, intObj.Value) > 0);
+        if (other is PyFloatObject floatObj)
+            return PyBoolObject.FromBoolean(self.Value > floatObj.Value);
+        return base.Gt(context, self, other);
     }
     protected override PyResult Le(PyCallContext context, PyFloatObject self, PyObject other)
     {
-        return other switch
-        {
-            PyIntObject intObj => PyBoolObject.FromBoolean(self.Value <= (double)intObj.Value),
-            PyFloatObject floatObj => PyBoolObject.FromBoolean(self.Value <= floatObj.Value),
-            _ => base.Le(context, self, other),
-        };
+        if (other is PyIntObject intObj)
+            return PyBoolObject.FromBoolean(PyFloatObject.CompareDoubleWithInt(self.Value, intObj.Value) <= 0);
+        if (other is PyFloatObject floatObj)
+            return PyBoolObject.FromBoolean(self.Value <= floatObj.Value);
+        return base.Le(context, self, other);
     }
     protected override PyResult Ge(PyCallContext context, PyFloatObject self, PyObject other)
     {
-        return other switch
-        {
-            PyIntObject intObj => PyBoolObject.FromBoolean(self.Value >= (double)intObj.Value),
-            PyFloatObject floatObj => PyBoolObject.FromBoolean(self.Value >= floatObj.Value),
-            _ => base.Ge(context, self, other),
-        };
+        if (other is PyIntObject intObj)
+            return PyBoolObject.FromBoolean(PyFloatObject.CompareDoubleWithInt(self.Value, intObj.Value) >= 0);
+        if (other is PyFloatObject floatObj)
+            return PyBoolObject.FromBoolean(self.Value >= floatObj.Value);
+        return base.Ge(context, self, other);
     }
     protected override PyResult Eq(PyCallContext context, PyFloatObject self, PyObject other)
     {
-        return other switch
-        {
-            PyIntObject intObj => PyBoolObject.FromBoolean(self.Value == (double)intObj.Value),
-            PyFloatObject floatObj => PyBoolObject.FromBoolean(self.Value == floatObj.Value),
-            _ => base.Eq(context, self, other),
-        };
+        if (other is PyIntObject intObj)
+            return PyBoolObject.FromBoolean(PyFloatObject.CompareDoubleWithInt(self.Value, intObj.Value) is 0);
+        if (other is PyFloatObject floatObj)
+            return PyBoolObject.FromBoolean(self.Value == floatObj.Value);
+        return base.Eq(context, self, other);
     }
 
     [PyMethod("conjugate")]
