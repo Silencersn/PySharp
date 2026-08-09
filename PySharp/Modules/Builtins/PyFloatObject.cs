@@ -209,10 +209,29 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
     {
         return other switch
         {
-            PyIntObject intObj => intObj.Value.IsZero ? PyResult.ZeroDivisionError() : PyFloatObject.FromDouble(self.Value % (double)intObj.Value),
-            PyFloatObject floatObj => floatObj.Value is 0 ? PyResult.ZeroDivisionError() : PyFloatObject.FromDouble(self.Value % floatObj.Value),
+            PyIntObject intObj => intObj.Value.IsZero ? PyResult.ZeroDivisionError() : PyFloatObject.FromDouble(FloatMod(self.Value, (double)intObj.Value)),
+            PyFloatObject floatObj => floatObj.Value is 0 ? PyResult.ZeroDivisionError() : PyFloatObject.FromDouble(FloatMod(self.Value, floatObj.Value)),
             _ => base.Mod(context, self, other),
         };
+    }
+
+    // Python modulo semantics for floats: the result has the sign of the
+    // divisor. C# '%' is a remainder (sign follows the dividend); CPython's
+    // float_rem (Objects/floatobject.c) fixes that with fmod + a correction,
+    // and a zero remainder keeps the divisor's sign (e.g. 4.0 % -2.0 == -0.0).
+    private static double FloatMod(double left, double right)
+    {
+        var mod = left % right;
+        if (mod is not 0)
+        {
+            if ((right < 0) != (mod < 0))
+                mod += right;
+        }
+        else
+        {
+            mod = Math.CopySign(0.0, right);
+        }
+        return mod;
     }
     protected override PyResult Pow(PyCallContext context, PyFloatObject self, PyObject other, PyObject modulo)
     {
@@ -287,8 +306,8 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
 
         return other switch
         {
-            PyIntObject intObj => PyFloatObject.FromDouble((double)intObj.Value % self.Value),
-            PyFloatObject floatObj => PyFloatObject.FromDouble(floatObj.Value % self.Value),
+            PyIntObject intObj => PyFloatObject.FromDouble(FloatMod((double)intObj.Value, self.Value)),
+            PyFloatObject floatObj => PyFloatObject.FromDouble(FloatMod(floatObj.Value, self.Value)),
             _ => base.RMod(context, self, other),
         };
     }
@@ -781,33 +800,89 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
 
         var nd = result.Value;
 
-        if (nd.Value < 0)
-        {
-            if (!nd.IsInt32)
-                return PyFloatObject.Zero;   // round(x, huge negative) -> 0.0
-            var digits = nd.Int32Value;
-            var factor = Math.Pow(10, -digits);
-            var value = Math.Round(self.Value / factor) * factor;
-            if (value.Equals(self.Value))
-                return self;
-            return PyFloatObject.FromDouble(value);
-        }
-        else if (!nd.IsInt32)
-        {
-            return self;   // round(x, huge positive ndigits) -> x
-        }
-        else if (nd.Int32Value > 15)
-        {
+        // NaN and infinities round to themselves (CPython float___round___impl).
+        if (!double.IsFinite(self.Value))
             return self;
+
+        // CPython boundaries: NDIGITS_MAX = (53 + 1021) * 0.30103 ~= 323,
+        // NDIGITS_MIN = -(1024) * 0.30103 ~= -308.
+        if (nd.Value > 323)
+            return self;   // round(x, huge positive ndigits) -> x
+        if (nd.Value < -308)
+            return PyFloatObject.FromDouble(Math.CopySign(0.0, self.Value));   // -> +-0.0
+
+        var value = RoundDecimalExact(self.Value, (int)nd.Value);
+        if (value.Equals(self.Value))
+            return self;
+        return PyFloatObject.FromDouble(value);
+    }
+
+    // Rounds a finite double to ndigits decimal places using exact decimal
+    // arithmetic, mirroring CPython's float_round/_Py_dg_dtoa path. Unlike
+    // Math.Round (which recognises binary midpoints like 2.675), this yields
+    // CPython-identical results: round(2.675, 2) == 2.67.
+    private static double RoundDecimalExact(double x, int ndigits)
+    {
+        var bits = BitConverter.DoubleToInt64Bits(x);
+        var negative = bits < 0;
+        if (negative)
+            bits &= ~(1L << 63);
+        var expBits = (int)((bits >> 52) & 0x7FF);
+        var fracBits = bits & 0xFFFFFFFFFFFFFL;
+
+        BigInteger mantissa;
+        int e2;
+        if (expBits is 0)
+        {
+            mantissa = fracBits;
+            e2 = -1074;
         }
         else
         {
-            var digits = nd.Int32Value;
-            var value = Math.Round(self.Value, digits);
-            if (value.Equals(self.Value))
-                return self;
-            return PyFloatObject.FromDouble(value);
+            mantissa = fracBits | 0x10000000000000L;
+            e2 = expBits - 1023 - 52;
         }
+
+        BigInteger r;
+        double d;
+        if (ndigits >= 0)
+        {
+            // R = round(mantissa * 10^ndigits * 2^e2)
+            var num = mantissa * BigInteger.Pow(10, ndigits);
+            r = e2 >= 0 ? num << e2 : DivRoundHalfEven(num, BigInteger.One << (-e2));
+            d = (double)r / Math.Pow(10, ndigits);
+        }
+        else
+        {
+            // R = round(mantissa * 2^e2 / 10^|ndigits|)
+            var n = -ndigits;
+            var five = BigInteger.Pow(5, n);
+            var k = e2 - n;
+            BigInteger num, den;
+            if (k >= 0)
+            {
+                num = mantissa << k;
+                den = five;
+            }
+            else
+            {
+                num = mantissa;
+                den = five << (-k);
+            }
+            r = DivRoundHalfEven(num, den);
+            d = (double)r * Math.Pow(10, n);
+        }
+        return negative ? -d : d;
+    }
+
+    // BigInteger division rounded half-to-even (banker's rounding).
+    private static BigInteger DivRoundHalfEven(BigInteger num, BigInteger den)
+    {
+        var q = BigInteger.DivRem(num, den, out var rem);
+        var twice = rem << 1;
+        if (twice > den || (twice == den && !q.IsEven))
+            q += BigInteger.One;
+        return q;
     }
 
     protected override PyResult Trunc(PyCallContext context, PyFloatObject self)

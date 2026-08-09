@@ -824,4 +824,32 @@ public sealed class TestPyFiles
         var module = RunModule("test_int_overflow_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestFloatModRegression()
+    {
+        // Regression: float % must use Python modulo semantics (sign follows
+        // the divisor): -7.0 % 3 == 2.0, not -1.0 (C# remainder semantics).
+        var module = RunModule("test_float_mod_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestPowNegModRegression()
+    {
+        // Regression: pow(base, -exp, mod) must compute the modular inverse
+        // and return an int (CPython 3.8+): pow(2, -1, 5) == 3, and raise
+        // ValueError when base is not invertible for the modulus.
+        var module = RunModule("test_pow_neg_mod_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestRoundRegression()
+    {
+        // Regression: round(float, ndigits) must match CPython's decimal-based
+        // rounding: round(2.675, 2) == 2.67, not 2.68.
+        var module = RunModule("test_round_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

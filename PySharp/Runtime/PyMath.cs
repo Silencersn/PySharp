@@ -83,13 +83,37 @@ internal static class PyMath
                     if (modulo is not PyIntObject moduloObj)
                         return PyNotImplementedObject.NotImplemented;
 
-                    if (moduloObj.Value.IsZero)
+                    var modulus = moduloObj.Value;
+                    if (modulus.IsZero)
                         return PyResult.ValueError(PySR.Runtime_Number_PowWithZeroModulo);
 
-                    if (right.Value >= 0)
-                        return PyIntObject.FromInteger(BigInteger.ModPow(left.Value, right.Value, moduloObj.Value));
+                    // CPython long_pow: a negative modulus is applied at the very
+                    // end (result -= |mod|); all computation uses |mod|.
+                    var negativeOutput = modulus.Sign < 0;
+                    if (negativeOutput)
+                        modulus = BigInteger.Abs(modulus);
 
-                    return PyFloatObject.FromDouble(Math.Pow((double)left.Value, (double)right.Value) % (double)moduloObj.Value);
+                    if (modulus.IsOne)
+                        return PyIntObject.Zero;   // pow(x, y, 1) == 0
+
+                    BigInteger result;
+                    if (right.Value < 0)
+                    {
+                        // pow(base, -exp, mod): compute the modular inverse of base
+                        // (CPython 3.8+); base must be coprime with mod or ValueError.
+                        var inv = TryModInverse(left.Value, modulus);
+                        if (inv is null)
+                            return PyResult.ValueError("base is not invertible for the given modulus");
+                        result = BigInteger.ModPow(inv.Value, -right.Value, modulus);
+                    }
+                    else
+                    {
+                        result = BigInteger.ModPow(left.Value, right.Value, modulus);
+                    }
+
+                    if (negativeOutput && !result.IsZero)
+                        result -= modulus;
+                    return PyIntObject.FromInteger(result);
                 }
 
             case PyOperatorTypes.LShift:
@@ -138,4 +162,28 @@ internal static class PyMath
         }
     }
 
+    // Extended Euclidean modular inverse of a modulo m (m > 0), or null when
+    // a and m are not coprime (mirrors CPython's long_invmod).
+    private static BigInteger? TryModInverse(BigInteger a, BigInteger m)
+    {
+        if (m.IsOne)
+            return BigInteger.Zero;
+
+        a %= m;
+        if (a.Sign < 0)
+            a += m;
+
+        if (BigInteger.GreatestCommonDivisor(a, m) != BigInteger.One)
+            return null;
+
+        var m0 = m;
+        BigInteger y = 0, x = 1;
+        while (a > 1)
+        {
+            var q = a / m;
+            (a, m) = (m, a % m);
+            (y, x) = (x - q * y, y);
+        }
+        return x.Sign < 0 ? x + m0 : x;
+    }
 }

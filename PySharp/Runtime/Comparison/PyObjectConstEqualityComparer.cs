@@ -28,6 +28,13 @@ internal sealed class PyObjectConstEqualityComparer : IEqualityComparer<PyObject
         if (!ReferenceEquals(x.PyType, y.PyType))
             return false;
 
+        // Float constants must be distinguished by their exact bit pattern so
+        // that 0.0 and -0.0 (and distinct NaNs) never share a pooled object:
+        // value equality would collapse them into one constant and the second
+        // occurrence would incorrectly reuse the first one's sign.
+        if (x is PyFloatObject fx && y is PyFloatObject fy)
+            return BitConverter.DoubleToInt64Bits(fx.Value) == BitConverter.DoubleToInt64Bits(fy.Value);
+
         return PyObjectComparer.Default.Equals(x, y);
     }
 
@@ -37,7 +44,7 @@ internal sealed class PyObjectConstEqualityComparer : IEqualityComparer<PyObject
         {
             PyStrObject s => s.Value.GetHashCode(),
             PyIntObject i => i.Value.GetHashCode(),
-            PyFloatObject f => f.Value.GetHashCode(),
+            PyFloatObject f => BitConverter.DoubleToInt64Bits(f.Value).GetHashCode(),
             PyComplexObject c => c.Value.GetHashCode(),
             PyBytesObject b => GetBytesHash(b.AsSpan()),
             PyTupleObject t => GetTupleHash(t),
