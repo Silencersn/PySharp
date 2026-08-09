@@ -803,4 +803,15 @@ public sealed class TestPyFiles
         var module = RunModule("test_class_closure.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestPercentFormatRegression()
+    {
+        // Regression (issue #14): '%c' % lone surrogates must return the
+        // surrogate (not leak .NET ArgumentOutOfRangeException), huge ints
+        // must raise OverflowError, and 'str % x' must not be constant-folded
+        // (so the module compiles without a compile-time crash).
+        var module = RunModule("test_percent_format_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

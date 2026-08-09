@@ -91,3 +91,20 @@ k = f"\"" f" {1}" '123'
 assert i == ""
 assert j == "1  12134"
 assert k == "\" 1123"
+
+
+# ===== Regression: unterminated f-string error message (issue #28) =====
+# A single-quote f-string must report "unterminated f-string literal", not
+# "unterminated triple-quoted f-string literal".
+
+def unterminated_fstring_msg(src):
+    try:
+        compile(src, "<t>", "exec")
+    except SyntaxError as e:
+        return str(e)
+    raise AssertionError("expected SyntaxError for unterminated f-string")
+
+
+assert "unterminated f-string literal" in unterminated_fstring_msg("f'abc")
+assert "triple-quoted" not in unterminated_fstring_msg("f'abc")
+assert "unterminated triple-quoted f-string literal" in unterminated_fstring_msg("f'''abc")

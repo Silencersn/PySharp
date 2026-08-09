@@ -1826,10 +1826,12 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                             var indexResult = PySpecialMethods.Index(context, value);
                             if (indexResult.IsError)
                                 return indexResult;
-                            int codePoint = (int)indexResult.Value.Value;
+                            var codePoint = indexResult.Value.Value;   // BigInteger: range check before narrowing
                             if (codePoint < 0 || codePoint > 0x10FFFF)
                                 return PyResult.OverflowError("%c arg not in range(0x110000)");
-                            formatted = char.ConvertFromUtf32(codePoint);
+                            int cp = (int)codePoint;
+                            // CPython allows lone surrogates (e.g. '%c' % 0xD800 -> '\ud800'); .NET string can store them
+                            formatted = cp <= 0xFFFF ? ((char)cp).ToString() : char.ConvertFromUtf32(cp);
                         }
                         break;
                     }

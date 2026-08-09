@@ -1,3 +1,5 @@
+using PySharp.Compilation.Primitives;
+using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using System.Diagnostics.CodeAnalysis;
@@ -32,6 +34,14 @@ partial class Reducer
         var right = FoldExpr(node.Right, out var rightChanged);
         if (left is ConstantNode constantLeft && right is ConstantNode constantRight)
         {
+            // CPython never folds 'str % x' (str.__mod__ may raise / is not folded); keep it for runtime
+            if (node.Operator is OperatorType.Mod && constantLeft.Value is PyStrObject)
+            {
+                if (leftChanged || rightChanged)
+                    return Ast.BinOp(node.Operator, left, right);
+                return node;
+            }
+
             var result = PyCore.EvalOperator(PyCallContext.NonContextDependency, node.Operator, constantLeft.Value, constantRight.Value);
             if (result.IsSuccessful)
                 return Ast.Constant(result.Value);
