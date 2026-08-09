@@ -604,9 +604,14 @@ public static partial class PyBuiltinFunctions
         var result = PySpecialMethods.Index(context, arguments[0]);
         if (result.IsError)
             return result;
-        if (!Rune.TryCreate(result.Value.Int32Value, out var rune))
+        var value = result.Value.Value;
+        if (value < 0 || value > 0x10FFFF)
             return PyResult.ValueError(PySR.Runtime_Builtin_Chr_OutOfRange);
-        return PyStrObject.FromRune(rune);
+        int cp = (int)value;
+        // CPython allows lone surrogates: chr(0xD800) -> '\ud800' (len 1)
+        return cp <= 0xFFFF
+            ? PyStrObject.FromString(((char)cp).ToString())
+            : PyStrObject.FromRune(new Rune(cp));
     }
 
     [PyFunctionParameters("c", "/")]

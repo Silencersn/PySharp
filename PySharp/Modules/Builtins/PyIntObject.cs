@@ -36,7 +36,8 @@ public class PyIntObject : PyObject
 
     public override PyTypeObject DefaultPyType => PyIntObjectType.Shared;
 
-    public BigInteger Value { get; internal set; }
+    public BigInteger Value { get; }
+    public bool IsInt32 => Value >= int.MinValue && Value <= int.MaxValue;
     public int Int32Value => (int)Value;
 
     internal PyIntObject(BigInteger value)

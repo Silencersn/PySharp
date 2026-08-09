@@ -21,7 +21,7 @@ public class PyFloatObject : PyObject
     public static PyFloatObject Tau { get; } = FromDouble(double.Tau);
 
 
-    public double Value { get; set; }
+    public double Value { get; }
     public override PyTypeObject DefaultPyType => PyFloatObjectType.Shared;
 
     private PyFloatObject(double value)
@@ -717,22 +717,30 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
         if (result.IsError)
             return result;
 
-        var digits = result.Value.Int32Value;
+        var nd = result.Value;
 
-        if (digits < 0)
+        if (nd.Value < 0)
         {
+            if (!nd.IsInt32)
+                return PyFloatObject.Zero;   // round(x, huge negative) -> 0.0
+            var digits = nd.Int32Value;
             var factor = Math.Pow(10, -digits);
             var value = Math.Round(self.Value / factor) * factor;
             if (value.Equals(self.Value))
                 return self;
             return PyFloatObject.FromDouble(value);
         }
-        else if (digits > 15)
+        else if (!nd.IsInt32)
+        {
+            return self;   // round(x, huge positive ndigits) -> x
+        }
+        else if (nd.Int32Value > 15)
         {
             return self;
         }
         else
         {
+            var digits = nd.Int32Value;
             var value = Math.Round(self.Value, digits);
             if (value.Equals(self.Value))
                 return self;

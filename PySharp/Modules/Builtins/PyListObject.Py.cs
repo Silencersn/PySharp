@@ -198,7 +198,8 @@ partial class PyListObject
         var indexResult = PySpecialMethods.Index(context, item);
         if (indexResult.IsError)
             return indexResult;
-
+        if (!indexResult.Value.IsInt32)
+            return PyResult.IndexError(PySR.Runtime_List_IndexOutOfRange);
         return Utils.GetListItem(_list, indexResult.Value.Int32Value, PySR.Runtime_List_IndexOutOfRange);
     }
 

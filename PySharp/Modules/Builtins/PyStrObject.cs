@@ -1408,6 +1408,8 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         var result = PySpecialMethods.Index(context, item);
         if (result.IsError)
             return result;
+        if (!result.Value.IsInt32)
+            return PyResult.IndexError(PySR.Runtime_String_IndexOutOfRange);
         var index = result.Value.Int32Value;
         index = Utils.MapIndex(index, self.PyLength);
         if (index < 0 || index >= self.PyLength)
@@ -1437,7 +1439,12 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         var result = PySpecialMethods.Index(context, other);
         if (result.IsError)
             return result;
-        return PyStrObject.FromString(string.Concat(Enumerable.Repeat(self.Value, result.Value.Int32Value)));
+        var count = result.Value;
+        if (count.Value < 0)
+            return PyStrObject.Empty;   // CPython: 'x' * -1 == ''
+        if (!count.IsInt32)
+            return PyResult.OverflowError("cannot fit 'int' into an index-sized integer");
+        return PyStrObject.FromString(string.Concat(Enumerable.Repeat(self.Value, count.Int32Value)));
     }
     protected override PyResult RMul(PyCallContext context, PyStrObject self, PyObject other)
     {

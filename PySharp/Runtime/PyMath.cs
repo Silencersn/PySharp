@@ -71,9 +71,17 @@ internal static class PyMath
                 }
 
             case PyOperatorTypes.LShift:
+                if (right.Value < 0)
+                    return PyResult.ValueError("negative shift count");
+                if (!right.IsInt32)
+                    return PyResult.OverflowError("too many digits in integer");
                 return PyIntObject.FromInteger(left.Value << right.Int32Value);
 
             case PyOperatorTypes.RShift:
+                if (right.Value < 0)
+                    return PyResult.ValueError("negative shift count");
+                if (!right.IsInt32)
+                    return PyResult.OverflowError("too many digits in integer");
                 return PyIntObject.FromInteger(left.Value >> right.Int32Value);
 
             case PyOperatorTypes.BitAnd:

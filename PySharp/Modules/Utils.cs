@@ -2,6 +2,7 @@ using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
 using System.Text;
 
 namespace PySharp.Modules;
@@ -65,6 +66,13 @@ internal static class Utils
     }
 
     public static int MapIndex(int index, int count)
+    {
+        if (index < 0)
+            return index + count;
+        return index;
+    }
+
+    public static BigInteger MapIndex(BigInteger index, BigInteger count)
     {
         if (index < 0)
             return index + count;

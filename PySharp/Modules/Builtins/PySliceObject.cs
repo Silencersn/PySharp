@@ -1,6 +1,7 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
+using System.Numerics;
 
 namespace PySharp.Modules.Builtins;
 
@@ -48,6 +49,40 @@ public class PySliceObject : PyObject
         }
 
         int sliceLength = 0;
+        if (step > 0 && start < stop)
+            sliceLength = (stop - start + step - 1) / step;
+        else if (step < 0 && start > stop)
+            sliceLength = (stop - start + step + 1) / step;
+
+        return (start, stop, step, sliceLength);
+    }
+
+    // BigInteger variant for sequences whose length may exceed int (e.g. range)
+    public (BigInteger start, BigInteger stop, BigInteger step, BigInteger sliceLength) Indices(BigInteger length)
+    {
+        var step = Step is PyNoneObject ? BigInteger.One : ((PyIntObject)Step).Value;
+        BigInteger start, stop;
+
+        if (step > 0)
+        {
+            start = Start is PyNoneObject ? BigInteger.Zero : Utils.MapIndex(((PyIntObject)Start).Value, length);
+            stop = Stop is PyNoneObject ? length : Utils.MapIndex(((PyIntObject)Stop).Value, length);
+            start = BigInteger.Clamp(start, BigInteger.Zero, length);
+            stop = BigInteger.Clamp(stop, BigInteger.Zero, length);
+        }
+        else if (step < 0)
+        {
+            start = Start is PyNoneObject ? length - 1 : Utils.MapIndex(((PyIntObject)Start).Value, length);
+            stop = Stop is PyNoneObject ? BigInteger.MinusOne : Utils.MapIndex(((PyIntObject)Stop).Value, length);
+            start = BigInteger.Clamp(start, BigInteger.MinusOne, length - 1);
+            stop = BigInteger.Clamp(stop, BigInteger.MinusOne, length - 1);
+        }
+        else
+        {
+            throw new ArgumentException("slice step cannot be zero");
+        }
+
+        BigInteger sliceLength = 0;
         if (step > 0 && start < stop)
             sliceLength = (stop - start + step - 1) / step;
         else if (step < 0 && start > stop)
