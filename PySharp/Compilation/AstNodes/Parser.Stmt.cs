@@ -721,7 +721,7 @@ partial class Parser
                 _ => $"'{keyword}' statement"
             };
             var lineno = _tokenSequence[pos].GetStart(_codeSource).Line;
-            throw _context.IndentationError(PySR.InvalidSyntax_Indentation_ExpectedForBlock, statementName, lineno);
+            throw _context.IndentationError(this, PySR.InvalidSyntax_Indentation_ExpectedForBlock, statementName, lineno);
         }
         MoveNextToken();
 

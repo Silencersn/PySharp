@@ -470,7 +470,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         }
 
         if (indentationLevel != _indentationLevels.Peek())
-            throw _context.IndentationError(PySR.InvalidSyntax_Tokenize_UnindentNotMatch);
+            throw _context.IndentationError(this, PySR.InvalidSyntax_Tokenize_UnindentNotMatch);
     }
 
     private ref struct ValueGroup
