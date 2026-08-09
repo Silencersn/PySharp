@@ -249,6 +249,8 @@ public sealed class PyInterpreter : IDisposable
                     }
                 }
 
+                context.CurrentInternalFrame.CodeObject = codeObj;
+                context.CurrentInternalFrame.InstructionIndex = 0;
                 _ = PyCore.Eval(context).PyUnwrap(context);
                 Debug.Assert(context.FrameState.CurrentFrameCount is 1);
             });
