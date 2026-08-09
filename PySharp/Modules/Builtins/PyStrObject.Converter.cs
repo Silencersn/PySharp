@@ -31,6 +31,7 @@ public static class PyStrConverter
         SurrogatesNotAllowed,
         IllegalUnicodeCharacter,
         InvalidEscapeSequence,
+        InvalidOctalEscapeSequence,
 
         WrongFormat,
     }
@@ -101,13 +102,18 @@ public static class PyStrConverter
                                 num *= 8;
                                 num += text[++i] - '0';
 
-                                if (char.IsBetween(text[i - 1], '0', '3') && (i + 1 < textLength) && char.IsBetween(text[i + 1], '0', '7'))
+                                if ((i + 1 < textLength) && char.IsBetween(text[i + 1], '0', '7'))
                                 {
                                     num *= 8;
                                     num += text[++i] - '0';
                                 }
                             }
-                            Debug.Assert(num >= byte.MinValue && num <= byte.MaxValue);
+                            if (num > 0xFF)
+                            {
+                                // CPython: octal escape > 0o377 keeps its value but emits a SyntaxWarning
+                                info.Error = ConvertError.InvalidOctalEscapeSequence;
+                                info.Char = (char)num;
+                            }
                             charToWrite = (char)num;
                             break;
 
@@ -153,14 +159,9 @@ public static class PyStrConverter
                                 IncreaseUntilNonHexDight(ref info, uSeq4);
                                 return false;
                             }
+                            // CPython allows lone surrogates in string literals (e.g. '\ud800', len 1);
+                            // only encode('utf-8') etc. raises UnicodeEncodeError at runtime.
                             charToWrite = (char)ushort.Parse(uSeq4, NumberStyles.HexNumber);
-                            if (char.IsSurrogate(charToWrite))
-                            {
-                                info.Error = ConvertError.SurrogatesNotAllowed;
-                                info.Char = charToWrite;
-                                info.Position = i - 1;
-                                return false;
-                            }
                             i += 4;
                             break;
 
@@ -185,15 +186,19 @@ public static class PyStrConverter
                             }
                             var value = uint.Parse(uSeq8, NumberStyles.HexNumber);
 
-                            if (!Rune.TryCreate(value, out var rune))
+                            if (value is >= 0xD800 and <= 0xDFFF)
+                            {
+                                // CPython allows lone surrogates via \U escape (e.g. '\U0000d800', len 1)
+                                charToWrite = (char)value;
+                            }
+                            else if (!Rune.TryCreate(value, out var rune))
                             {
                                 info.Error = ConvertError.IllegalUnicodeCharacter;
                                 info.Position = i - 1;
                                 info.Length = 10;
                                 return false;
                             }
-
-                            if (rune.Utf16SequenceLength is 2)
+                            else if (rune.Utf16SequenceLength is 2)
                             {
                                 hasSecond = true;
                                 rune.EncodeToUtf16(cache);
@@ -203,15 +208,8 @@ public static class PyStrConverter
                             else
                             {
                                 Debug.Assert(rune.Utf16SequenceLength is 1);
+                                // Rune values are never surrogates, so no surrogate check is needed here
                                 charToWrite = (char)rune.Value;
-
-                                if (char.IsSurrogate(charToWrite))
-                                {
-                                    info.Error = ConvertError.SurrogatesNotAllowed;
-                                    info.Char = charToWrite;
-                                    info.Position = i - 1;
-                                    return false;
-                                }
                             }
                             i += 8;
                             break;
