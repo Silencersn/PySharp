@@ -4,6 +4,7 @@
   </Folder>
   <Project Path="PySharp.Analyzer.Internal/PySharp.Analyzer.Internal.csproj" />
   <Project Path="PySharp.Analyzer/PySharp.Analyzer.csproj" />
+  <Project Path="PySharp.Console/PySharp.Console.csproj" />
   <Project Path="PySharp.SourceGeneration.Internal/PySharp.SourceGeneration.Internal.csproj" />
   <Project Path="PySharp.SourceGeneration/PySharp.SourceGeneration.csproj" />
   <Project Path="PySharp.Tests/PySharp.Tests.csproj" />
