@@ -159,7 +159,16 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
 
     protected override PyResult Hash(PyCallContext context, PyIntObject self)
     {
-        return self;
+        // CPython long_hash: small ints hash to themselves (return self without
+        // allocating), huge ints are reduced modulo 2**61-1 and stay consistent
+        // with float hashes. hash(-1) == -2 (error sentinel).
+        var hash = PyHash.HashLong(self.Value);
+        // hash() must return the built-in int type, never an int subclass
+        // instance: hash(MyInt(9)) has type int, and hash(True) has type int
+        // too. Only the exact built-in int can be returned as-is.
+        return hash == self.Value && self.PyType == PyIntObjectType.Shared
+            ? self
+            : PyIntObject.FromInteger(hash);
     }
 
     protected override PyResult Repr(PyCallContext context, PyIntObject self)

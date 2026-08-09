@@ -107,7 +107,9 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
 
     protected override PyResult Hash(PyCallContext context, PyFloatObject self)
     {
-        return PyIntObject.FromInteger(self.Value.GetHashCode());
+        // CPython _Py_HashDouble: hash(1.0) == hash(1) == 1, hash(-1.0) == -2,
+        // inf -> +/-314159, NaN -> object identity hash.
+        return PyIntObject.FromInteger(PyHash.HashDouble(self.Value, self));
     }
 
     protected override PyResult Bool(PyCallContext context, PyFloatObject self)

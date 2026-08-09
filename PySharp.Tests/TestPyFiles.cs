@@ -870,4 +870,24 @@ public sealed class TestPyFiles
         var module = RunModule("test_int_hexbin_format_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestHashIntFloatRegression()
+    {
+        // Regression: hash invariant (equal values -> equal hashes) must hold
+        // for int/float: hash(1.0) == hash(1), so {1:'a'}[1.0] works and
+        // {1, 1.0} deduplicates.
+        var module = RunModule("test_hash_int_float_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestHashSubclassRegression()
+    {
+        // Regression: hash() must return the built-in int, never an int
+        // subclass instance (hash(MyInt(9)) had type MyInt, CPython returns
+        // int). Also covers hash(True) is int.
+        var module = RunModule("test_hash_subclass_regression.py");
+        Assert.IsNotNull(module);
+    }
 }
