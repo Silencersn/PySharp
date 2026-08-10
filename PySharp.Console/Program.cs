@@ -10,11 +10,24 @@ internal static class Program
 
     private static int Main(string[] args)
     {
-        if (args.Length == 0)
+        if (args.Length is 0)
         {
             // No arguments: enter the interactive REPL.
             PyInterpreter.RunRepl();
             return 0;
+        }
+
+        // "--" terminates option parsing: everything after it is treated as
+        // the script and its arguments (matches CPython).
+        if (args[0] is "--")
+        {
+            // "pysharp --" with no script: enter the interactive REPL.
+            if (args.Length is 1)
+            {
+                PyInterpreter.RunRepl();
+                return 0;
+            }
+            return RunScript(args[1], args[2..]);
         }
 
         switch (args[0])
@@ -35,12 +48,9 @@ internal static class Program
                     Error("argument -c: expected one argument");
                     return 2;
                 }
-                if (args.Length > 2)
-                {
-                    Error($"unexpected argument '{args[2]}' after -c: extra arguments are not passed through to sys.argv");
-                    return 2;
-                }
-                return RunCode(args[1]);
+                // Extra arguments after the code are passed through to sys.argv
+                // (matches CPython: sys.argv == ['-c', ...]).
+                return RunCode(args[1], args[2..]);
 
             default:
                 if (args[0].StartsWith('-'))
@@ -48,16 +58,13 @@ internal static class Program
                     Error($"unknown option: {args[0]}");
                     return 2;
                 }
-                if (args.Length > 1)
-                {
-                    Error($"unexpected argument '{args[1]}' after script: extra arguments are not passed through to sys.argv");
-                    return 2;
-                }
-                return RunScript(args[0]);
+                // Extra arguments after the script are passed through to sys.argv
+                // (matches CPython: sys.argv == ['script.py', ...]).
+                return RunScript(args[0], args[1..]);
         }
     }
 
-    private static int RunScript(string path)
+    private static int RunScript(string path, string[] scriptArgs)
     {
         if (!File.Exists(path))
         {
@@ -67,7 +74,7 @@ internal static class Program
 
         try
         {
-            PyInterpreter.RunFile(path);
+            PyInterpreter.RunFile(path, scriptArgs);
             return 0;
         }
         catch (PyRuntimeException e)
@@ -76,11 +83,11 @@ internal static class Program
         }
     }
 
-    private static int RunCode(string code)
+    private static int RunCode(string code, string[] extraArgs)
     {
         try
         {
-            PyInterpreter.RunCode(code);
+            PyInterpreter.RunCode(code, args: extraArgs);
             return 0;
         }
         catch (PyRuntimeException e)
@@ -95,9 +102,7 @@ internal static class Program
 
         // SystemExit terminates normally; its argument carries the exit code.
         if (PySystemExitObjectType.Shared.IsInstance(exception))
-        {
             return GetSystemExitCode(exception);
-        }
 
         System.Console.Error.WriteLine($"{AnsiColorRed}{e.Message}{AnsiClearColor}");
         return 1;
@@ -105,7 +110,7 @@ internal static class Program
 
     private static int GetSystemExitCode(PyExceptionObject exception)
     {
-        if (exception.Args.Count == 0)
+        if (exception.Args.Count is 0)
             return 0;
 
         return exception.Args[0] switch
@@ -126,12 +131,16 @@ internal static class Program
     {
         System.Console.WriteLine(
             """
-            Usage: pysharp [options] [script]
+            Usage: pysharp [options] [script] [arg ...]
 
             Options:
               -h, --help     show this help message and exit
               -V, --version  print PySharp version and exit
               -c <code>      run the given code as a Python program
+              --             stop parsing options; remaining arguments are
+                             treated as the script and its arguments
+
+            Arguments after a script or -c <code> are passed through to sys.argv.
             """);
     }
 
