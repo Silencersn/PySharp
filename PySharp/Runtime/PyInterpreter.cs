@@ -36,6 +36,11 @@ public sealed class PyInterpreter : IDisposable
     internal static void InternalExecute(PyCallContext context, string code, string sourceName)
     {
         var codeObj = Compiler.InternalCompileExec(context, code, sourceName, name: "<module>");
+        InternalExecute(context, codeObj);
+    }
+
+    internal static void InternalExecute(PyCallContext context, PyCodeObject codeObj)
+    {
         context.CurrentInternalFrame.CodeObject = codeObj;
         context.CurrentInternalFrame.InstructionIndex = 0;
         _ = PyCore.Eval(context).PyUnwrap(context);
@@ -92,6 +97,16 @@ public sealed class PyInterpreter : IDisposable
         PyTryCatch(_mainContext, () =>
         {
             InternalExecute(_mainContext, code, sourceName);
+        }, alwaysThrow: true);
+    }
+
+    public void Execute(PyCodeObject codeObj)
+    {
+        ArgumentNullException.ThrowIfNull(codeObj);
+
+        PyTryCatch(_mainContext, () =>
+        {
+            InternalExecute(_mainContext, codeObj);
         }, alwaysThrow: true);
     }
 

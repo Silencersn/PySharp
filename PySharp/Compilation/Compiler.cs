@@ -43,7 +43,7 @@ public static class Compiler
         return InternalCompileBytecode(context, code, filename, name, Parser.ParseInteractive, appendNewLine, onlyAsName);
     }
 
-    public static PyCodeObject? Compile(string code, CompileMode mode, PyCallContext? context, string? filename = null)
+    public static PyResult<PyCodeObject> Compile(string code, CompileMode mode, PyCallContext? context, string? filename = null)
     {
         const string Name = "<module>";
 
@@ -59,9 +59,9 @@ public static class Compiler
                 _ => throw new NotSupportedException()
             };
         }
-        catch (PyRuntimeException)
+        catch (PyRuntimeException e)
         {
-            return null;
+            return PyResult<PyCodeObject>.FromException(e.PyException);
         }
     }
 }
