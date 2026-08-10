@@ -62,28 +62,21 @@ public sealed class PyArgsDef
             _poolArray = poolArray;
         }
 
-        internal Span<PyObject> Span
-        {
-            get
-            {
-                if (_poolArray is not null)
-                    return _poolArray;
-                ref var ptr = ref Unsafe.As<InlinePyObjectArray, PyObject>(ref _inlineArray);
-                return MemoryMarshal.CreateSpan(ref ptr, InlinePyObjectArray.Length);
-            }
-        }
-
         void IDisposable.Dispose()
         {
-            Span.Clear();
             if (_poolArray is not null)
-                ArrayPool<PyObject>.Shared.Return(_poolArray);
+                ArrayPool<PyObject>.Shared.Return(_poolArray, clearArray: true);
             _poolArray = null;
         }
 
-        public static implicit operator Span<PyObject>(Buffer buffer)
+        internal static Span<PyObject> AsSpan(ref readonly Buffer buffer)
         {
-            return buffer.Span;
+            if (buffer._poolArray is not null)
+                return buffer._poolArray;
+
+            ref readonly var aptr = ref buffer._inlineArray;
+            ref var ptr = ref Unsafe.As<InlinePyObjectArray, PyObject>(ref Unsafe.AsRef(in aptr));
+            return MemoryMarshal.CreateSpan(ref ptr, InlinePyObjectArray.Length);
         }
     }
 
@@ -249,10 +242,11 @@ public sealed class PyArgsDef
             );
     }
 
-    internal bool TryParse(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, Span<PyObject> buffer, out PyArguments result)
+    internal bool TryParse(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, in Buffer buffer, out PyArguments result)
     {
-        Debug.Assert(buffer.Length >= BufferLength);
-        buffer = buffer[..BufferLength];
+        var span = Buffer.AsSpan(in buffer);
+        Debug.Assert(span.Length >= BufferLength);
+        span = span[..BufferLength];
 
         if (ParametersType is PyArgsDefParametersType.NoAnyArgs)
             return TryParse_NoAnyArgs(args, kwargs, out result);
@@ -260,13 +254,13 @@ public sealed class PyArgsDef
         if (ParametersType is PyArgsDefParametersType.OnlyArgs)
         {
             if (kwargs.Count is 0)
-                return TryParse_OnlyArgs(args, buffer, out result);
+                return TryParse_OnlyArgs(args, span, out result);
         }
 
         if (kwargs.Count is 0)
-            return TryParseGeneral(args, buffer, out result);
+            return TryParseGeneral(args, span, out result);
 
-        return TryParseGeneral(args, kwargs, buffer, out result);
+        return TryParseGeneral(args, kwargs, span, out result);
     }
 
     private bool TryParseArgsPart(IReadOnlyList<PyObject> args, Span<PyObject> resultArgs, [NotNullWhen(true)] out PyObject[]? resultExtraArgs)
