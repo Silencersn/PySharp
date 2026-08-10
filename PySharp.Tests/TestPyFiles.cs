@@ -919,4 +919,15 @@ public sealed class TestPyFiles
         var module = RunModule("test_percent_format_prefix_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestFloatFormatRegression()
+    {
+        // Regression: format()/f-string float 'g'/'G'/'n' must match CPython:
+        // lowercase e, zero -> '0' (not '0.0'), 'n' == 'g' under the C locale,
+        // ','/'_' grouping only on the integer part of fixed-point form,
+        // '_'/' ,' rejected with 'n', and 'e'/'E' exponent uses >= 2 digits.
+        var module = RunModule("test_float_format_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

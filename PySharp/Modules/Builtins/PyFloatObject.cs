@@ -683,24 +683,38 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
                     text = absValue.ToString($"E{precision}", CultureInfo.InvariantCulture);
                     if (formatType is 'e')
                         text = text.ToLowerInvariant();
+                    // .NET 'e' pads the exponent to 3 digits (e+003); CPython
+                    // format() uses at least 2 (e+03).
+                    text = FixExponentWidth(text);
                     break;
                 case 'g':
                 case 'n':
-                    string fmt = formatType is 'n' ? $"N{precision}" : $"G{precision}";
-                    text = absValue.ToString(fmt, CultureInfo.InvariantCulture);
-
-                    if (formatType is 'g' or 'G')
                     {
-                        if (!spec.AlternateForm && text.Contains('.'))
-                            text = text.TrimEnd('0').TrimEnd('.');
+                        // CPython: 'n' equals 'g' under the C locale; the
+                        // ','/'_' grouping option is rejected with 'n'.
+                        char? grouping = spec.WidthGrouping ?? spec.PrecisionGrouping;
+                        if (grouping is not null && formatType is 'n')
+                            return PyResult.ValueError($"Cannot specify '{grouping}' with 'n'.");
 
-                        if (text is "0")
-                            text = "0.0";
+                        // Precision 0 means 1 significant digit; .NET 'g0' is
+                        // the shortest round-trip form, so normalize to 1.
+                        int gPrec = precision is 0 ? 1 : precision;
+                        // Lowercase 'g' makes .NET emit a lowercase 'e'
+                        // (CPython 'g'/'n' style); 'G' keeps uppercase 'E'.
+                        string fmt = formatType is 'G' ? $"G{gPrec}" : $"g{gPrec}";
+                        text = absValue.ToString(fmt, CultureInfo.InvariantCulture);
+
+                        if (spec.AlternateForm)
+                            // CPython '#' keeps trailing zeros up to the
+                            // significant digits and forces a decimal point.
+                            text = AddGTrailingZeros(text, gPrec);
+
+                        // Grouping applies only to the integer part of a
+                        // fixed-point representation (no 'e'/'E').
+                        if (grouping is not null && !text.Contains('e') && !text.Contains('E'))
+                            text = ApplyGrouping(text, grouping.Value);
+                        break;
                     }
-
-                    if (spec.WidthGrouping is '_')
-                        text = text.Replace(',', '_');
-                    break;
                 case '%':
                     text = (absValue * 100).ToString($"F{precision}", CultureInfo.InvariantCulture);
                     if (spec.WidthGrouping is not null)
@@ -739,7 +753,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
         if (spec.Width is not null)
         {
             var width = spec.Width.Value;
-            var fill = spec.Fill ?? (spec.SignAwareZeroPadding && spec.Align is null ? '0' : ' ');
+            var fill = spec.Fill ?? (spec.SignAwareZeroPadding ? '0' : ' ');
             var align = spec.Align ?? (spec.SignAwareZeroPadding ? '=' : '>');
             text = ApplyWidth(prefix, text, width, fill, align);
         }
@@ -752,9 +766,100 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
 
         static string ApplyGrouping(string value, char grouping)
         {
-            if (grouping is not ',')
-                return value.Replace(',', '_');
-            return value;
+            // CPython: grouping applies only to the integer part of a
+            // fixed-point representation; scientific form is left unchanged.
+            int eIdx = value.IndexOf('e');
+            if (eIdx < 0)
+                eIdx = value.IndexOf('E');
+            int dotIdx = value.IndexOf('.');
+            int intEnd = dotIdx >= 0 ? dotIdx : (eIdx >= 0 ? eIdx : value.Length);
+            if (intEnd <= 3)
+                return value;
+
+            var sb = new System.Text.StringBuilder();
+            int first = intEnd % 3;
+            if (first is 0)
+                first = 3;
+            sb.Append(value, 0, first);
+            for (int i = first; i < intEnd; i += 3)
+            {
+                sb.Append(grouping);
+                sb.Append(value, i, 3);
+            }
+            sb.Append(value, intEnd, value.Length - intEnd);
+            return sb.ToString();
+        }
+
+        static string FixExponentWidth(string s)
+        {
+            // .NET 'e'/'E' pads the exponent to 3 digits (e+003); CPython
+            // format() uses at least 2 (e+03). Drop the leading zero of a
+            // 3-digit exponent below 100, keeping 3 digits for exponents >= 100.
+            int marker = s.IndexOf('e');
+            if (marker < 0)
+                marker = s.IndexOf('E');
+            if (marker < 0)
+                return s;
+            int signPos = marker + 1;
+            if (signPos + 3 < s.Length &&
+                (s[signPos] is '+' or '-') &&
+                s[signPos + 1] is '0' &&
+                char.IsAsciiDigit(s[signPos + 2]) &&
+                char.IsAsciiDigit(s[signPos + 3]))
+                return s[..(signPos + 1)] + s[(signPos + 2)..];
+            return s;
+        }
+
+        static string AddGTrailingZeros(string s, int sigPrec)
+        {
+            // CPython '#' keeps the decimal point and pads trailing zeros so
+            // the mantissa shows exactly 'sigPrec' significant digits.
+            int signLen = s.Length > 0 && (s[0] is '+' or '-' or ' ') ? 1 : 0;
+            string sign = s[..signLen];
+            string body = s[signLen..];
+            int eIdx = body.IndexOf('e');
+            if (eIdx < 0)
+                eIdx = body.IndexOf('E');
+            string mantissa = eIdx < 0 ? body : body[..eIdx];
+            string exponent = eIdx < 0 ? string.Empty : body[eIdx..];
+
+            int zeros = sigPrec - CountSignificantDigits(mantissa);
+            if (zeros > 0)
+            {
+                if (mantissa.Contains('.'))
+                    mantissa += new string('0', zeros);
+                else
+                    mantissa += "." + new string('0', zeros);
+            }
+            else if (!mantissa.Contains('.'))
+            {
+                mantissa += ".";
+            }
+            return sign + mantissa + exponent;
+        }
+
+        static int CountSignificantDigits(string mantissa)
+        {
+            // Count digits after the first non-zero digit; an all-zero
+            // mantissa ("0", "0.000") counts as 1 significant digit.
+            int count = 0;
+            bool started = false;
+            foreach (char c in mantissa)
+            {
+                if (char.IsAsciiDigit(c))
+                {
+                    if (c is not '0')
+                    {
+                        started = true;
+                        count++;
+                    }
+                    else if (started)
+                    {
+                        count++;
+                    }
+                }
+            }
+            return started ? count : 1;
         }
 
         static string ApplyWidth(string prefix, string body, int width, char fill, char align)
