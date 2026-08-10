@@ -148,7 +148,7 @@ public sealed class PyInterpreter : IDisposable
         }
     }
 
-    public static PyModuleObject RunFile(string filename)
+    public static PyModuleObject RunFile(string filename, IEnumerable<string>? args = null)
     {
         ArgumentNullException.ThrowIfNull(filename);
 
@@ -159,25 +159,30 @@ public sealed class PyInterpreter : IDisposable
         var fullPath = Path.GetFullPath(filename);
         var scriptDirectory = Path.GetDirectoryName(fullPath)!;
 
-        using var environment = PyEnvironment
+        var builder = PyEnvironment
             .CreateBuilder(host)
             .AddPath(scriptDirectory)
             .AddArg(filename)
-            .Build();
+            .AddArgs(args);
+
+        using var environment = builder.Build();
 
         using var interpreter = Create(environment);
         return RunCodeWithContext(interpreter.MainContext, code, moduleName, fullPath, isMain: true);
     }
 
-    public static PyModuleObject? RunCode(string code, string? moduleName = null, string? sourceName = null)
+    public static PyModuleObject? RunCode(string code, string? moduleName = null, string? sourceName = null, IEnumerable<string>? args = null)
     {
         ArgumentNullException.ThrowIfNull(code);
         moduleName ??= "<module>";
         sourceName ??= "<string>";
 
-        using var environment = PyEnvironment
+        var builder = PyEnvironment
             .CreateBuilder(PyEnvironmentHost.CreateConsole())
-            .Build();
+            .AddArg("-c")
+            .AddArgs(args);
+
+        using var environment = builder.Build();
 
         using var interpreter = Create(environment);
         return RunCodeWithContext(interpreter.MainContext, code, moduleName, sourceName, isMain: true);

@@ -76,6 +76,16 @@ public interface IPyEnvironmentBuilder
     IPyEnvironmentBuilder SetInteractive(bool isInteractive);
     IPyEnvironmentBuilder AddPath(string path);
     IPyEnvironmentBuilder AddArg(string arg);
+    IPyEnvironmentBuilder AddArgs(IEnumerable<string>? args)
+    {
+        if (args is null)
+            return this;
+
+        foreach (var arg in args)
+            AddArg(arg);
+
+        return this;
+    }
     IPyEnvironmentInitializationBuilder Initialization { get; }
     PyEnvironment Build();
 }

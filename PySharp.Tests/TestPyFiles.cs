@@ -203,6 +203,13 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestSysArgv()
+    {
+        var module = PyInterpreter.RunFile(Path.Combine(PyFilesPath, "test_sys_argv.py"), ["alpha", "beta"]);
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestStringLiteral()
     {
         var module = RunModule("test_string_literal.py");

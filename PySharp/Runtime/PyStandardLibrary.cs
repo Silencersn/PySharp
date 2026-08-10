@@ -4,6 +4,7 @@ using PySharp.Modules.Operator;
 using PySharp.Modules.Queue;
 using PySharp.Modules.Random;
 using PySharp.Modules.Site;
+using PySharp.Modules.Sys;
 using PySharp.Modules.This;
 using PySharp.Modules.Threading;
 using PySharp.Modules.Time;
@@ -29,6 +30,7 @@ internal static class PyStandardLibrary
             "threading" => new PyThreadingModuleObject(),
             "queue" => new PyQueueModuleObject(),
             "typing" => new PyTypingModuleObject(),
+            "sys" => new PySysModuleObject(),
 
             _ => null
         };
