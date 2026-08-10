@@ -899,4 +899,24 @@ public sealed class TestPyFiles
         var module = RunModule("test_slice_step_zero_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestPercentFormatFloatRegression()
+    {
+        // Regression: old-style %e/%E must use a 2-digit exponent (not .NET's
+        // fixed 3), %g must output a lowercase 'e' (not uppercase 'E'), and
+        // %#g must keep trailing zeros / force a decimal point.
+        var module = RunModule("test_percent_format_float_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestPercentFormatPrefixRegression()
+    {
+        // Regression: old-style %#o/%#x/%#X must put the sign before the
+        // 0o/0x/0X prefix ('-0x10', not '0x10'), give zero a prefix too
+        // ('0x0'), and zero-pad after the prefix ('-0x00010').
+        var module = RunModule("test_percent_format_prefix_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

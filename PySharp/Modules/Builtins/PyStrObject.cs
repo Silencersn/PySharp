@@ -1474,6 +1474,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         return Mul(context, self, other);
     }
 
+    [AIGenerated]
     protected override PyResult Mod(PyCallContext context, PyStrObject self, PyObject other)
     {
         // Implement Python's % string formatting (old-style %-formatting)
@@ -1676,16 +1677,17 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                         if (indexResult.IsError)
                             return indexResult;
                         var octVal = indexResult.Value.Value;
-                        string absOct = octVal == 0 ? "0" : BigIntegerToBase(octVal < 0 ? -octVal : octVal, 8, false);
+                        bool isNeg = octVal.Sign < 0;
+                        var absVal = isNeg ? -octVal : octVal;
+                        string digits = absVal == 0 ? "0" : BigIntegerToBase(absVal, 8, false);
                         // Apply precision (minimum number of digits)
-                        if (precision >= 0 && absOct.Length < precision)
-                            absOct = new string('0', precision - absOct.Length) + absOct;
-                        string prefix = string.Empty;
-                        if (octVal.Sign < 0)
-                            prefix = "-";
-                        else if (flagAlternate && octVal != 0)
-                            prefix = "0o";
-                        formatted = prefix + absOct;
+                        if (precision >= 0 && digits.Length < precision)
+                            digits = new string('0', precision - digits.Length) + digits;
+                        // CPython '%#o' adds the 0o prefix for ALL values
+                        // (including 0 and negatives), with the sign first.
+                        string sign = isNeg ? "-" : string.Empty;
+                        string prefix = flagAlternate ? "0o" : string.Empty;
+                        formatted = sign + prefix + digits;
                         break;
                     }
                 case 'x':
@@ -1694,26 +1696,17 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                         if (indexResult.IsError)
                             return indexResult;
                         var hexBigInt = indexResult.Value.Value;
-                        string hex;
-                        if (hexBigInt == 0)
-                            hex = "0";
-                        else if (hexBigInt.Sign < 0)
-                            hex = "-" + BigIntegerToBase(-hexBigInt, 16, false);
-                        else
-                            hex = BigIntegerToBase(hexBigInt, 16, false);
-                        // Apply precision
-                        if (precision >= 0)
-                        {
-                            int signLen = hexBigInt.Sign < 0 ? 1 : 0;
-                            string digits = hex[signLen..];
-                            if (digits.Length < precision)
-                                digits = new string('0', precision - digits.Length) + digits;
-                            hex = (hexBigInt.Sign < 0 ? "-" : string.Empty) + digits;
-                        }
-                        if (flagAlternate && hexBigInt != 0)
-                            formatted = "0x" + (hexBigInt.Sign < 0 ? hex[1..] : hex);
-                        else
-                            formatted = hex;
+                        bool isNeg = hexBigInt.Sign < 0;
+                        var absVal = isNeg ? -hexBigInt : hexBigInt;
+                        string digits = absVal == 0 ? "0" : BigIntegerToBase(absVal, 16, false);
+                        // Apply precision (minimum number of digits)
+                        if (precision >= 0 && digits.Length < precision)
+                            digits = new string('0', precision - digits.Length) + digits;
+                        // CPython '%#x' adds the 0x prefix for ALL values
+                        // (including 0 and negatives), with the sign first.
+                        string sign = isNeg ? "-" : string.Empty;
+                        string prefix = flagAlternate ? "0x" : string.Empty;
+                        formatted = sign + prefix + digits;
                         break;
                     }
                 case 'X':
@@ -1722,26 +1715,17 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                         if (indexResult.IsError)
                             return indexResult;
                         var hexBigInt = indexResult.Value.Value;
-                        string hex;
-                        if (hexBigInt == 0)
-                            hex = "0";
-                        else if (hexBigInt.Sign < 0)
-                            hex = "-" + BigIntegerToBase(-hexBigInt, 16, true);
-                        else
-                            hex = BigIntegerToBase(hexBigInt, 16, true);
-                        // Apply precision
-                        if (precision >= 0)
-                        {
-                            int signLen = hexBigInt.Sign < 0 ? 1 : 0;
-                            string digits = hex[signLen..];
-                            if (digits.Length < precision)
-                                digits = new string('0', precision - digits.Length) + digits;
-                            hex = (hexBigInt.Sign < 0 ? "-" : string.Empty) + digits;
-                        }
-                        if (flagAlternate && hexBigInt != 0)
-                            formatted = "0X" + (hexBigInt.Sign < 0 ? hex[1..] : hex);
-                        else
-                            formatted = hex;
+                        bool isNeg = hexBigInt.Sign < 0;
+                        var absVal = isNeg ? -hexBigInt : hexBigInt;
+                        string digits = absVal == 0 ? "0" : BigIntegerToBase(absVal, 16, true);
+                        // Apply precision (minimum number of digits)
+                        if (precision >= 0 && digits.Length < precision)
+                            digits = new string('0', precision - digits.Length) + digits;
+                        // CPython '%#X' adds the 0X prefix for ALL values
+                        // (including 0 and negatives), with the sign first.
+                        string sign = isNeg ? "-" : string.Empty;
+                        string prefix = flagAlternate ? "0X" : string.Empty;
+                        formatted = sign + prefix + digits;
                         break;
                     }
                 case 'e':
@@ -1756,10 +1740,14 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                         formatted = d.ToString(fmt, CultureInfo.InvariantCulture);
                         if (double.IsNaN(d) || double.IsInfinity(d))
                         {
-                            formatted = d.ToString("G", CultureInfo.InvariantCulture);
+                            // CPython: '%e' -> 'inf'/'nan', '%E' -> 'INF'/'NAN'
+                            formatted = FormatNonFinite(d, fmtType is 'E');
                         }
                         else
                         {
+                            // .NET 'e' pads the exponent to 3 digits (e+000);
+                            // CPython %e uses at least 2 (e+00).
+                            formatted = FixExponentWidth(formatted);
                             if (flagAlternate && precision is 0)
                             {
                                 // Force decimal point: remove trailing digits and keep the dot
@@ -1772,11 +1760,15 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                                     formatted = formatted.Insert(eIndex < 0 ? formatted.Length : eIndex, ".");
                                 }
                             }
-                            if (d >= 0 && flagSign)
-                                formatted = "+" + formatted;
-                            else if (d >= 0 && flagSpace)
-                                formatted = " " + formatted;
                         }
+                        // '+'/' ' flags also apply to nan/inf ('+inf', '+nan');
+                        // NaN has no sign (its sign bit may be set) and -0.0
+                        // counts as negative, so no flag is added for -0.0.
+                        bool showFlag = double.IsNaN(d) || !double.IsNegative(d);
+                        if (showFlag && flagSign)
+                            formatted = "+" + formatted;
+                        else if (showFlag && flagSpace)
+                            formatted = " " + formatted;
                         break;
                     }
                 case 'f':
@@ -1791,7 +1783,8 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                         formatted = d.ToString(fmt, CultureInfo.InvariantCulture);
                         if (double.IsNaN(d) || double.IsInfinity(d))
                         {
-                            formatted = d.ToString("G", CultureInfo.InvariantCulture);
+                            // CPython: '%f' -> 'inf'/'nan', '%F' -> 'INF'/'NAN'
+                            formatted = FormatNonFinite(d, fmtType is 'F');
                         }
                         else
                         {
@@ -1801,11 +1794,13 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                                 if (!formatted.Contains('.'))
                                     formatted += ".";
                             }
-                            if (d >= 0 && flagSign)
-                                formatted = "+" + formatted;
-                            else if (d >= 0 && flagSpace)
-                                formatted = " " + formatted;
                         }
+                        // '+'/' ' flags also apply to nan/inf; -0.0 counts as negative.
+                        bool showFlag = double.IsNaN(d) || !double.IsNegative(d);
+                        if (showFlag && flagSign)
+                            formatted = "+" + formatted;
+                        else if (showFlag && flagSpace)
+                            formatted = " " + formatted;
                         break;
                     }
                 case 'g':
@@ -1816,33 +1811,30 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                             return floatResult;
                         double d = floatResult.Value.Value;
                         int prec = precision >= 0 ? precision : 6;
-                        string fmt = fmtType is 'g' ? $"G{prec}" : $"G{prec}";
+                        // CPython %g treats precision 0 as 1 significant digit;
+                        // .NET 'g0' is the shortest round-trip form, so use 1.
+                        int gPrec = prec is 0 ? 1 : prec;
+                        // Lowercase 'g' makes .NET emit a lowercase 'e'.
+                        string fmt = fmtType is 'g' ? $"g{gPrec}" : $"G{gPrec}";
                         formatted = d.ToString(fmt, CultureInfo.InvariantCulture);
                         if (double.IsNaN(d) || double.IsInfinity(d))
                         {
-                            formatted = d.ToString("G", CultureInfo.InvariantCulture);
+                            // CPython: '%g' -> 'inf'/'nan', '%G' -> 'INF'/'NAN'
+                            formatted = FormatNonFinite(d, fmtType is 'G');
                         }
                         else
                         {
                             if (flagAlternate)
-                            {
-                                // Force decimal point for # flag
-                                if (!formatted.Contains('.'))
-                                {
-                                    int eIndex = formatted.IndexOf('e');
-                                    if (eIndex < 0)
-                                        eIndex = formatted.IndexOf('E');
-                                    if (eIndex >= 0)
-                                        formatted = formatted.Insert(eIndex, ".");
-                                    else
-                                        formatted += ".";
-                                }
-                            }
-                            if (d >= 0 && flagSign)
-                                formatted = "+" + formatted;
-                            else if (d >= 0 && flagSpace)
-                                formatted = " " + formatted;
+                                // CPython %#g keeps trailing zeros up to the
+                                // significant digits and forces a decimal point.
+                                formatted = AddGTrailingZeros(formatted, gPrec);
                         }
+                        // '+'/' ' flags also apply to nan/inf; -0.0 counts as negative.
+                        bool showFlag = double.IsNaN(d) || !double.IsNegative(d);
+                        if (showFlag && flagSign)
+                            formatted = "+" + formatted;
+                        else if (showFlag && flagSpace)
+                            formatted = " " + formatted;
                         break;
                     }
                 case 'c':
@@ -1882,10 +1874,26 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 {
                     formatted = formatted.PadRight(width, padChar);
                 }
-                else if (flagZeroPad && formatted.Length > 0 && (formatted[0] is '+' or '-' or ' '))
+                else if (flagZeroPad && formatted.Length > 0)
                 {
-                    string sign = formatted[..1];
-                    formatted = sign + formatted[1..].PadLeft(width - 1, padChar);
+                    // Zero-padding: zeros go after any sign and any
+                    // '0x'/'0o'/'0X' alternate prefix ('%#08x' % -16 -> '-0x00010').
+                    int padCount = width;
+                    string head = string.Empty;
+                    string tail = formatted;
+                    if (tail[0] is '+' or '-' or ' ')
+                    {
+                        head = tail[..1];
+                        tail = tail[1..];
+                        padCount--;
+                    }
+                    if (tail.Length >= 2 && tail[0] is '0' && tail[1] is 'x' or 'o' or 'X')
+                    {
+                        head += tail[..2];
+                        tail = tail[2..];
+                        padCount -= 2;
+                    }
+                    formatted = head + tail.PadLeft(padCount, padChar);
                 }
                 else
                 {
@@ -1926,6 +1934,90 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         var chars = sb.ToString().ToCharArray();
         Array.Reverse(chars);
         return new string(chars);
+    }
+
+    private static string FormatNonFinite(double d, bool upper)
+    {
+        // CPython old-style %: non-finite values print as 'inf'/'nan'
+        // (%e/%f/%g) or 'INF'/'NAN' (%E/%F/%G), with a leading '-'
+        // for negative infinity.
+        if (double.IsNaN(d))
+            return upper ? "NAN" : "nan";
+        if (d < 0)
+            return upper ? "-INF" : "-inf";
+        return upper ? "INF" : "inf";
+    }
+
+    private static string FixExponentWidth(string s)
+    {
+        // .NET 'e'/'E' format pads the exponent to 3 digits (e+000);
+        // CPython %e/%E uses at least 2 (e+00). Drop the leading zero of
+        // a 3-digit exponent below 100, keeping 3 digits for exponents >= 100.
+        int marker = s.IndexOf('e');
+        if (marker < 0)
+            marker = s.IndexOf('E');
+        if (marker < 0)
+            return s;
+        int signPos = marker + 1;
+        if (signPos + 3 < s.Length &&
+            (s[signPos] is '+' or '-') &&
+            s[signPos + 1] is '0' &&
+            char.IsAsciiDigit(s[signPos + 2]) &&
+            char.IsAsciiDigit(s[signPos + 3]))
+            return s[..(signPos + 1)] + s[(signPos + 2)..];
+        return s;
+    }
+
+    private static string AddGTrailingZeros(string s, int sigPrec)
+    {
+        // CPython %#g keeps the decimal point and pads trailing zeros so the
+        // mantissa shows exactly 'sigPrec' significant digits.
+        int signLen = s.Length > 0 && (s[0] is '+' or '-' or ' ') ? 1 : 0;
+        string sign = s[..signLen];
+        string body = s[signLen..];
+        int eIdx = body.IndexOf('e');
+        if (eIdx < 0)
+            eIdx = body.IndexOf('E');
+        string mantissa = eIdx < 0 ? body : body[..eIdx];
+        string exponent = eIdx < 0 ? string.Empty : body[eIdx..];
+
+        int zeros = sigPrec - CountSignificantDigits(mantissa);
+        if (zeros > 0)
+        {
+            if (mantissa.Contains('.'))
+                mantissa += new string('0', zeros);
+            else
+                mantissa += "." + new string('0', zeros);
+        }
+        else if (!mantissa.Contains('.'))
+        {
+            mantissa += ".";
+        }
+        return sign + mantissa + exponent;
+    }
+
+    private static int CountSignificantDigits(string mantissa)
+    {
+        // Count digits after the first non-zero digit; an all-zero mantissa
+        // ("0", "0.000") counts as 1 significant digit.
+        int count = 0;
+        bool started = false;
+        foreach (char c in mantissa)
+        {
+            if (char.IsAsciiDigit(c))
+            {
+                if (c is not '0')
+                {
+                    started = true;
+                    count++;
+                }
+                else if (started)
+                {
+                    count++;
+                }
+            }
+        }
+        return started ? count : 1;
     }
 
     protected override PyResult Contains(PyCallContext context, PyStrObject self, PyObject item)
