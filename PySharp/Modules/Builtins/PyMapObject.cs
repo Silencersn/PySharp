@@ -29,7 +29,7 @@ public sealed partial class PyMapObjectType : PyTypeObject<PyMapObject>
     private static PyResult NewImpl(PyCallContext context, PyArguments arguments)
     {
         var function = arguments[0];
-        var result = PySpecialMethods.Bool(context, arguments["strict"]);
+        var result = PySpecialMethods.Bool(context, arguments.GetKwargByIndex(0));
         if (result.IsError)
             return result;
 

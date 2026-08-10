@@ -148,7 +148,7 @@ internal partial struct PyInternalFrame
 
         var index = code.ArgCount + code.KwOnlyArgCount;
         if (def.VarArg is not null)
-            localsSpan[index++] = PyTupleObject.CreateTuple(arguments.ExtraArgs);
+            localsSpan[index++] = arguments.InternalExtraArgs.Length is 0 ? PyTupleObject.Empty : PyTupleObject.CreateProxy(arguments.InternalExtraArgs);
         if (def.KwArg is not null)
             localsSpan[index] = PyDictObject.CreateDict(arguments.ExtraKwargs.Select(static kvp => KeyValuePair.Create((PyObject)PyStrObject.FromString(kvp.Key), kvp.Value)));
     }

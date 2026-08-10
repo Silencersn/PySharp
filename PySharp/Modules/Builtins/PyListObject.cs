@@ -362,7 +362,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
     [PyFunctionParameters("*", "key=None", "reverse=False")]
     private static PyResult Sort(PyCallContext context, PyListObject self, PyArguments arguments)
     {
-        return self.PySort(context, arguments["key"], arguments["reverse"]);
+        return self.PySort(context, arguments.GetKwargByIndex(0), arguments.GetKwargByIndex(1));
     }
 
     [PyMethod("reverse")]

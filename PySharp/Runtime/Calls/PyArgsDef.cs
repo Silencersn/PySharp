@@ -312,7 +312,7 @@ public sealed class PyArgsDef
         var resultKwargs = buffer[totalArgsCount..];
         KwDefaults.CopyTo(resultKwargs!);
 
-        Dictionary<string, PyObject>? resultExtraKwargs = null;
+        List<KeyValuePair<string, PyObject>>? resultExtraKwargs = null;
 
         int index;
         foreach (var pair in kwargs)
@@ -334,7 +334,7 @@ public sealed class PyArgsDef
             }
             else if (KwArg is not null)
             {
-                (resultExtraKwargs ??= [])[pair.Key] = pair.Value;
+                (resultExtraKwargs ??= []).Add(KeyValuePair.Create(pair.Key, pair.Value));
             }
             else
             {
@@ -354,8 +354,7 @@ public sealed class PyArgsDef
                 return false;
         }
 
-        result = new PyArguments(this, buffer, resultExtraArgs,
-            (IReadOnlyDictionary<string, PyObject>)resultExtraKwargs! ?? FrozenDictionary<string, PyObject>.Empty);
+        result = new PyArguments(this, buffer, resultExtraArgs, resultExtraKwargs);
         return true;
     }
 
@@ -380,7 +379,7 @@ public sealed class PyArgsDef
 
         KwDefaults.CopyTo(buffer[resultArgs.Length..]!);
 
-        result = new PyArguments(this, buffer, resultExtraArgs, FrozenDictionary<string, PyObject>.Empty);
+        result = new PyArguments(this, buffer, resultExtraArgs, null);
         return true;
     }
 
@@ -415,7 +414,7 @@ public sealed class PyArgsDef
             Defaults.AsSpan()[^needDefaultsCount..].CopyTo(buffer[^needDefaultsCount..]);
         }
 
-        result = new PyArguments(this, buffer, [], FrozenDictionary<string, PyObject>.Empty);
+        result = new PyArguments(this, buffer, null, null);
         return true;
     }
 }

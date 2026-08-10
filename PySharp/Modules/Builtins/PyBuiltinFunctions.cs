@@ -127,15 +127,15 @@ public static partial class PyBuiltinFunctions
     [PyFunctionParameters("*objects", "sep=' '", "end='\\n'", "file=None", "flush=False")]
     private static PyResult PrintImpl(PyCallContext context, PyArguments arguments)
     {
-        var sepObj = arguments["sep"];
+        var sepObj = arguments.GetKwargByIndex(0);
         if (!Utils.TryGetValue(sepObj, (PyStrObject str) => str.Value, " ", out var sep))
             return PyResult.TypeError(PySR.Runtime_Builtin_Print_WrongArgType, "sep", sepObj.PyType.FullName);
 
-        var endObj = arguments["end"];
+        var endObj = arguments.GetKwargByIndex(1);
         if (!Utils.TryGetValue(endObj, (PyStrObject str) => str.Value, "\n", out var end))
             return PyResult.TypeError(PySR.Runtime_Builtin_Print_WrongArgType, "end", endObj.PyType.FullName);
 
-        var result = PySpecialMethods.Bool(context, arguments["flush"]);
+        var result = PySpecialMethods.Bool(context, arguments.GetKwargByIndex(2));
         if (result.IsError)
             return result;
 
@@ -260,7 +260,7 @@ public static partial class PyBuiltinFunctions
         if (localsDict is null && locals is not PyNoneObject)
             return PyResult.TypeError(PySR.Runtime_Builtin_ExecEval_Locals);
 
-        var closure = arguments["closure"];
+        var closure = arguments.GetKwargByIndex(0);
         if (closure is not PyNoneObject && source is not PyCodeObject)
             return PyResult.TypeError(PySR.Runtime_Builtin_Exec_ClosureForNonCodeObj);
 
@@ -370,7 +370,7 @@ public static partial class PyBuiltinFunctions
     private static PyResult MaxImpl_1(PyCallContext context, PyArguments arguments)
     {
         var iterable = arguments[0];
-        if (arguments["key"] is not PyNoneObject)
+        if (arguments.GetKwargByIndex(0) is not PyNoneObject)
             return PyResult.PySharpException("max() with key not implemented");
 
         var elements = PyUtils.IterableToList(context, iterable);
@@ -403,14 +403,14 @@ public static partial class PyBuiltinFunctions
     private static PyResult MaxImpl_2(PyCallContext context, PyArguments arguments)
     {
         var iterable = arguments[0];
-        if (arguments["key"] is not PyNoneObject)
+        if (arguments.GetKwargByIndex(1) is not PyNoneObject)
             return PyResult.PySharpException("Not Implemented");
 
         var elements = PyUtils.IterableToList(context, iterable);
         if (elements.IsError)
             return elements;
 
-        PyObject result = arguments["default"];
+        PyObject result = arguments.GetKwargByIndex(0);
         foreach (var element in elements.Value)
         {
             var gt = PyOperators.Gt(context, element, result);
@@ -428,7 +428,7 @@ public static partial class PyBuiltinFunctions
     [PyFunctionParameters("arg1", "arg2", "/", "*args", "key=None")]
     private static PyResult MaxImpl_3(PyCallContext context, PyArguments arguments)
     {
-        if (arguments["key"] is not PyNoneObject)
+        if (arguments.GetKwargByIndex(0) is not PyNoneObject)
             return PyResult.PySharpException("Not Implemented");
         PyObject result = arguments[0];
         foreach (var element in arguments.ExtraArgs.Prepend(arguments[1]))
@@ -449,7 +449,7 @@ public static partial class PyBuiltinFunctions
     private static PyResult MinImpl_1(PyCallContext context, PyArguments arguments)
     {
         var iterable = arguments[0];
-        if (arguments["key"] is not PyNoneObject)
+        if (arguments.GetKwargByIndex(0) is not PyNoneObject)
             return PyResult.PySharpException("Not Implemented");
 
         var elements = PyUtils.IterableToList(context, iterable);
@@ -482,14 +482,14 @@ public static partial class PyBuiltinFunctions
     private static PyResult MinImpl_2(PyCallContext context, PyArguments arguments)
     {
         var iterable = arguments[0];
-        if (arguments["key"] is not PyNoneObject)
+        if (arguments.GetKwargByIndex(1) is not PyNoneObject)
             return PyResult.PySharpException("Not Implemented");
 
         var elements = PyUtils.IterableToList(context, iterable);
         if (elements.IsError)
             return elements;
 
-        PyObject result = arguments["default"];
+        PyObject result = arguments.GetKwargByIndex(0);
         foreach (var element in elements.Value)
         {
             var lt = PyOperators.Lt(context, element, result);
@@ -507,7 +507,7 @@ public static partial class PyBuiltinFunctions
     [PyFunctionParameters("arg1", "arg2", "/", "*args", "key=None")]
     private static PyResult MinImpl_3(PyCallContext context, PyArguments arguments)
     {
-        if (arguments["key"] is not PyNoneObject)
+        if (arguments.GetKwargByIndex(0) is not PyNoneObject)
             return PyResult.PySharpException("Not Implemented");
         PyObject result = arguments[0];
         foreach (var element in arguments.ExtraArgs.Prepend(arguments[1]))
@@ -989,7 +989,7 @@ public static partial class PyBuiltinFunctions
         if (list.IsError)
             return list;
 
-        var result = list.Value.PySort(context, arguments["key"], arguments["reverse"]);
+        var result = list.Value.PySort(context, arguments.GetKwargByIndex(0), arguments.GetKwargByIndex(1));
         if (result.IsError)
             return result;
 

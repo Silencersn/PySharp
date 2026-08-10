@@ -758,7 +758,6 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     {
         var formatStr = self.Value;
         var extraArgs = arguments.ExtraArgs;
-        var extraKwargs = arguments.ExtraKwargs;
         int argIndex = 0;
         var sb = new StringBuilder();
 
@@ -815,7 +814,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                     {
                         // {name} or {name:spec}
                         string key = name.ToString();
-                        if (!extraKwargs.TryGetValue(key, out value))
+                        if (!arguments.TryGetExtraKwarg(key, out value))
                             return PyResult.KeyError(key);
                     }
 
@@ -1243,48 +1242,6 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             }
         }
         return PyBoolObject.True;
-    }
-
-    [PyMethod("format_map")]
-    [AIGenerated]
-    [PyFunctionParameters("mapping", "/")]
-    private static PyResult FormatMap(PyCallContext context, PyStrObject self, PyArguments arguments)
-    {
-        var mapping = arguments[0];
-        var kwargs = new Dictionary<string, PyObject>();
-
-        if (mapping is PyDictObject dict)
-        {
-            foreach (var (keyObj, val) in dict)
-            {
-                if (keyObj is PyStrObject keyStr)
-                    kwargs[keyStr.Value] = val;
-            }
-        }
-        else if (mapping is PyObject mapObj)
-        {
-            // Try to iterate mapping keys and use __getitem__
-            var keysIter = PySpecialMethods.Iter(context, mapping);
-            if (keysIter.IsError)
-                return PyResult.TypeError("format_map argument must be a mapping, not " + mapping.PyType.Name);
-
-            var iter = keysIter.Value;
-            while (true)
-            {
-                var nextResult = PySpecialMethods.Next(context, iter);
-                if (nextResult.IsStopIteration)
-                    break;
-                if (nextResult.IsError)
-                    return nextResult;
-                var key = nextResult.Value;
-                var getResult = PySpecialMethods.GetItem(context, mapObj, key);
-                if (getResult.IsError)
-                    return getResult;
-                kwargs[key.ToString()] = getResult.Value;
-            }
-        }
-
-        return Format(context, self, new PyArguments(PyArgsDef.Empty /* TODO: empty do not have **kwargs */, default, [], kwargs));
     }
 
     [PyMethod("encode")]

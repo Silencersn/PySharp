@@ -29,7 +29,7 @@ public sealed partial class PyZipObjectType : PyTypeObject<PyZipObject>
     [PyFunctionParameters("*iterables", "strict=False")]
     private static PyResult NewImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = PySpecialMethods.Bool(context, arguments["strict"]);
+        var result = PySpecialMethods.Bool(context, arguments.GetKwargByIndex(0));
         if (result.IsError)
             return result;
 
