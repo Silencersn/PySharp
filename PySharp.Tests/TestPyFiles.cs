@@ -937,4 +937,17 @@ public sealed class TestPyFiles
         var module = RunModule("test_float_format_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestFStringPrefixNameRegression()
+    {
+        // Regression: single-letter f/t function names (f, t, F, T) must not
+        // be mistaken for f-string/t-string prefixes when called with a
+        // string argument: f('a') / t('a') / F('a') / T('a') must compile and
+        // run (also inside comprehensions), while real f-string/t-string
+        // literals keep working. Currently failing (red) until the lexer
+        // validates the prefix character set.
+        var module = RunModule("test_fstring_prefix_name_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

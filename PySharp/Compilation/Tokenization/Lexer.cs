@@ -585,7 +585,12 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
 
         group = default;
 
+        Debug.Assert(indexOfWrapper is -1 or 1 or 2);
+
         if (indexOfWrapper is -1)
+            return false;
+
+        else if (indexOfWrapper is 2 && span[1] is not ('b' or 'B' or 'f' or 'F' or 't' or 'T' or 'r' or 'R' or 'u' or 'U'))
             return false;
 
         var prefix = span[..indexOfWrapper];
