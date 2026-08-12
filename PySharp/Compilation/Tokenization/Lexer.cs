@@ -590,23 +590,37 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         if (indexOfWrapper is -1)
             return false;
 
-        else if (indexOfWrapper is 2 && span[1] is not ('b' or 'B' or 'f' or 'F' or 't' or 'T' or 'r' or 'R' or 'u' or 'U'))
-            return false;
+        var isTString = span[0] is 't' or 'T';
+        var isFirstFOrT = isTString || span[0] is 'f' or 'F';
 
-        var prefix = span[..indexOfWrapper];
-        var isFString = prefix.ContainsAny('f', 'F');
-        var isTString = prefix.ContainsAny('t', 'T');
-
-        if (isFString || isTString)
+        if (indexOfWrapper is 1)
         {
-            group.Index = _offset;
-            group.Length = prefix.Length + 1 /* len of wrapper */;
-            AppendToken(isTString ? TokenType.TStringStart : TokenType.FStringStart, group.Length);
-            EnterFString(new FStringInfo(isTString, span[indexOfWrapper], isTriple: false, parenLevelWhenEntering: _parenLevel));
-            return true;
+            if (!isFirstFOrT)
+                return false;
+        }
+        else
+        {
+            char other = span[1];
+            if (!isFirstFOrT)
+            {
+                if (other is not ('f' or 'F' or 't' or 'T'))
+                    return false;
+
+                isTString = other is 't' or 'T';
+                other = span[0];
+            }
+
+            if (other is not ('r' or 'R'))
+                return false;
         }
 
-        return false;
+        var prefix = span[..indexOfWrapper];
+
+        group.Index = _offset;
+        group.Length = prefix.Length + 1 /* len of wrapper */;
+        AppendToken(isTString ? TokenType.TStringStart : TokenType.FStringStart, group.Length);
+        EnterFString(new FStringInfo(isTString, span[indexOfWrapper], isTriple: false, parenLevelWhenEntering: _parenLevel));
+        return true;
     }
 
     private void TokenizeFallback(ReadOnlySpan<char> content, out ValueGroup group)

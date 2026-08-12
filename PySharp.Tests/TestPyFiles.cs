@@ -945,9 +945,20 @@ public sealed class TestPyFiles
         // be mistaken for f-string/t-string prefixes when called with a
         // string argument: f('a') / t('a') / F('a') / T('a') must compile and
         // run (also inside comprehensions), while real f-string/t-string
-        // literals keep working. Currently failing (red) until the lexer
-        // validates the prefix character set.
+        // literals keep working. The lexer now validates the prefix so these
+        // lex as ordinary names.
         var module = RunModule("test_fstring_prefix_name_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestFStringPrefixComboRegression()
+    {
+        // Regression: incompatible 2-letter string-prefix combinations
+        // (fB, tb, fu, ...) must not be silently accepted as f/t-strings;
+        // valid f/t prefixes may only combine with r/R (all 16 case
+        // variants), and unrelated bytes prefixes keep working.
+        var module = RunModule("test_fstring_prefix_combo_regression.py");
         Assert.IsNotNull(module);
     }
 }

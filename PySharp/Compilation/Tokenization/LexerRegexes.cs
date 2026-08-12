@@ -6,8 +6,8 @@ public static partial class LexerRegexes
 {
     // some currently unused regexes are commented here to reduce code generated
 
-    [GeneratedRegex(LexerRegexPatterns.Whitespace)]
-    public static partial Regex Whitespace { get; }
+    //[GeneratedRegex(LexerRegexPatterns.Whitespace)]
+    //public static partial Regex Whitespace { get; }
 
     //[GeneratedRegex(LexerRegexPatterns.Comment)]
     //public static partial Regex Comment { get; }
