@@ -961,4 +961,43 @@ public sealed class TestPyFiles
         var module = RunModule("test_fstring_prefix_combo_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestStrStripEmptyCharsRegression()
+    {
+        // Regression: str.strip/lstrip/rstrip with an empty 'chars' argument
+        // must strip nothing (empty chars set), not all whitespace like .NET
+        // Trim(char[]) with an empty array.
+        var module = RunModule("test_str_strip_empty_chars_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestStrReplaceEmptyOldRegression()
+    {
+        // Regression: str.replace('', new, count) must follow CPython's
+        // interleave semantics and must not leak a raw .NET exception for the
+        // default count (previously crashed the interpreter).
+        var module = RunModule("test_str_replace_empty_old_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestStrStartsWithNegativeEndRegression()
+    {
+        // Regression: str.startswith/endswith must map a negative 'end' to
+        // len+end (like slicing) before comparing.
+        var module = RunModule("test_str_startswith_negative_end_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestStrEncodeErrorHandlersRegression()
+    {
+        // Regression: str.encode error handlers xmlcharrefreplace /
+        // backslashreplace / namereplace must produce the CPython escape
+        // sequences (not b'?'), and 'utf-16-le' must be a known encoding.
+        var module = RunModule("test_str_encode_error_handlers_regression.py");
+        Assert.IsNotNull(module);
+    }
 }
