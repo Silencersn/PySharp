@@ -688,7 +688,7 @@ public static partial class PyBuiltinFunctions
             // convert to PyResult to keep error-return consistency within this method
             try
             {
-                name = PyEnvironment.ResolveRelativeModuleName(context, packageObj, moduleName, hasPath, name, (int)levelObj.Value);
+                name = PyEnvironment.ResolveRelativeModuleName(context, packageObj, moduleName, hasPath, name, levelObj.Int32Value);
             }
             catch (PyRuntimeException ex)
             {

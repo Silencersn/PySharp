@@ -75,7 +75,7 @@ internal static class PyMath
                 if (modulo is PyNoneObject)
                 {
                     if (right.Value >= 0)
-                        return PyIntObject.FromInteger(BigInteger.Pow(left.Value, (int)right.Value));
+                        return PyIntObject.FromInteger(BigInteger.Pow(left.Value, right.Int32Value));
                     return PyFloatObject.FromDouble(Math.Pow((double)left.Value, (double)right.Value));
                 }
                 else

@@ -38,7 +38,7 @@ public class PyIntObject : PyObject
 
     public BigInteger Value { get; }
     public bool IsInt32 => Value >= int.MinValue && Value <= int.MaxValue;
-    public int Int32Value => (int)Value;
+    public int Int32Value => IsInt32 ? (int)Value : throw new PyRuntimeException(PyOverflowErrorObjectType.Shared.Create());
 
     internal PyIntObject(BigInteger value)
     {

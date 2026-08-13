@@ -386,7 +386,7 @@ internal static partial class BytecodeVirtualMachine
             callerGlobals.TryGetValue(PySpecialNames.Package, out var packageObj);
             var moduleName = ((PyStrObject)callerGlobals[PySpecialNames.Name]).Value;
             var hasPath = callerGlobals.ContainsKey(PySpecialNames.Path);
-            name = PyEnvironment.ResolveRelativeModuleName(context, packageObj, moduleName, hasPath, name, (int)level.Value);
+            name = PyEnvironment.ResolveRelativeModuleName(context, packageObj, moduleName, hasPath, name, level.Int32Value);
         }
 
         if (!context.PyEnvironment.TryLoadModule(context, name, out var rootModule, out var module))
