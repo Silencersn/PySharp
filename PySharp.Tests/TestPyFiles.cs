@@ -1000,4 +1000,14 @@ public sealed class TestPyFiles
         var module = RunModule("test_str_encode_error_handlers_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestBytesLiteralEscapeRegression()
+    {
+        // Regression: bytes literal escapes must follow CPython's
+        // _PyBytes_DecodeEscape2 semantics: octal > 0o377 truncates to the
+        // low 8 bits, and \u/\U are kept literally (not decoded like str).
+        var module = RunModule("test_bytes_literal_escape_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

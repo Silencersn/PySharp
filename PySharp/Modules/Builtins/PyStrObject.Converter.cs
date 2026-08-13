@@ -1,16 +1,14 @@
-using PySharp.Runtime;
-using PySharp.Runtime.Calls;
-using PySharp.Runtime.PyAttributes;
+using PySharp.Utility;
 using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace PySharp.Modules.Builtins;
 
-public static class PyStrConverter
+internal static class PyStrConverter
 {
     public struct ConvertErrorInfo
     {
@@ -36,12 +34,16 @@ public static class PyStrConverter
         WrongFormat,
     }
 
-    public static bool TryFromTextToString(ReadOnlySpan<char> text, Span<char> destination, out int charsWritten, out ConvertErrorInfo info)
+    private delegate bool InternalTryFromTo<T>(ReadOnlySpan<char> text, Span<T> destination, out int itemsWritten, out ConvertErrorInfo info) where T : unmanaged;
+
+    private static bool InternalTryFromTextToStringOrBytes<T>(ReadOnlySpan<char> text, Span<T> destination, out int itemsWritten, out ConvertErrorInfo info) where T : unmanaged
     {
+        Debug.Assert(typeof(T) == typeof(char) || typeof(T) == typeof(byte));
+
         info = default;
         var textLength = text.Length;
         var destLength = destination.Length;
-        charsWritten = 0;
+        itemsWritten = 0;
         Span<char> cache = stackalloc char[2];
 
         for (int i = 0; i < textLength; i++)
@@ -141,6 +143,9 @@ public static class PyStrConverter
                             break;
 
                         case 'u':
+                            if (typeof(T) == typeof(byte))
+                                goto default;
+
                             if (i + 4 >= textLength)
                             {
                                 info.Error = ConvertError.LowerUSequence;
@@ -166,6 +171,9 @@ public static class PyStrConverter
                             break;
 
                         case 'U':
+                            if (typeof(T) == typeof(byte))
+                                goto default;
+
                             if (i + 8 >= textLength)
                             {
                                 info.Error = ConvertError.UpperUSequence;
@@ -226,30 +234,35 @@ public static class PyStrConverter
                             break;
                     }
 
-                    if (charsWritten >= destination.Length)
+                    if (!TryWrite(destination, ref itemsWritten, ref info, charToWrite))
                     {
                         info.Error = ConvertError.DestinationNotEnough;
                         return false;
                     }
-                    destination[charsWritten++] = charToWrite;
-                    if (hasSecond)
+                    if (hasSecond && !TryWrite(destination, ref itemsWritten, ref info, charToWrite2))
                     {
-                        if (charsWritten >= destination.Length)
-                        {
-                            info.Error = ConvertError.DestinationNotEnough;
-                            return false;
-                        }
-                        destination[charsWritten++] = charToWrite2;
+                        info.Error = ConvertError.DestinationNotEnough;
+                        return false;
                     }
                     break;
 
                 default:
-                    if (charsWritten >= destination.Length)
+                    // A bare non-ASCII character cannot be represented in a bytes
+                    // literal (CPython would UTF-8-encode it; PySharp keeps the
+                    // existing error behavior for that case).
+                    if (typeof(T) == typeof(byte) && text[i] > 0xFF)
+                    {
+                        info.Error = ConvertError.IllegalUnicodeCharacter;
+                        info.Position = i;
+                        info.Length = 1;
+                        return false;
+                    }
+
+                    if (!TryWrite(destination, ref itemsWritten, ref info, text[i]))
                     {
                         info.Error = ConvertError.DestinationNotEnough;
                         return false;
                     }
-                    destination[charsWritten++] = text[i];
                     break;
             }
         }
@@ -276,32 +289,28 @@ public static class PyStrConverter
                     break;
             }
         }
-    }
 
-    public static bool TryFromTextToString(ReadOnlySpan<char> text, [NotNullWhen(true)] out string? str, out ConvertErrorInfo info)
-    {
-        const int MaxStackLimit = 1024;
-        char[]? rentedArray = null;
-
-        Span<char> chars = text.Length <= MaxStackLimit ? stackalloc char[text.Length] : (rentedArray = ArrayPool<char>.Shared.Rent(text.Length));
-        if (!TryFromTextToString(text, chars, out var charsWritten, out info))
+        static bool TryWrite(Span<T> destination, ref int written, ref ConvertErrorInfo info, char value)
         {
-            Debug.Assert(info.Error is not ConvertError.DestinationNotEnough);
-            str = null;
-            if (rentedArray is not null)
-                ArrayPool<char>.Shared.Return(rentedArray);
-            return false;
-        }
+            if (written >= destination.Length)
+            {
+                info.Error = ConvertError.DestinationNotEnough;
+                return false;
+            }
 
-        str = chars[..charsWritten].ToString();
-        if (rentedArray is not null)
-            ArrayPool<char>.Shared.Return(rentedArray);
-        return true;
+            if (typeof(T) == typeof(char))
+                destination.Cast<T, char>()[written++] = value;
+            else
+                destination.Cast<T, byte>()[written++] = (byte)value;
+            return true;
+        }
     }
 
-    public static bool TryFromLiteralToString(ReadOnlySpan<char> literal, Span<char> destination, out int charsWritten, out ConvertErrorInfo info)
+    private static bool InternalTryFromLiteralToStringOrBytes<T>(ReadOnlySpan<char> literal, Span<T> destination, out int itemsWritten, out ConvertErrorInfo info) where T : unmanaged
     {
-        charsWritten = 0;
+        Debug.Assert(typeof(T) == typeof(char) || typeof(T) == typeof(byte));
+
+        itemsWritten = 0;
         info = default;
         info.Error = ConvertError.WrongFormat;
 
@@ -371,32 +380,89 @@ public static class PyStrConverter
                 return false;
             }
 
-            text.CopyTo(destination);
-            charsWritten = text.Length;
+            if (typeof(T) == typeof(char))
+            {
+                text.CopyTo(destination.Cast<T, char>());
+            }
+            else if (typeof(T) == typeof(byte))
+            {
+                for (int i = 0; i < text.Length; i++)
+                {
+                    var c = text[i];
+                    if (c > 0xFF)
+                    {
+                        info.Error = ConvertError.IllegalUnicodeCharacter;
+                        info.Position = startIndex + 1 + i;
+                        info.Length = 1;
+                        return false;
+                    }
+                    destination[itemsWritten++] = Unsafe.As<char, T>(ref c);
+                }
+            }
+            else
+            {
+                throw new UnreachableException();
+            }
+
+            itemsWritten = text.Length;
             return true;
         }
 
-        return TryFromTextToString(text, destination, out charsWritten, out info);
+        return InternalTryFromTextToStringOrBytes(text, destination, out itemsWritten, out info);
+    }
+
+    private static bool InternalTryToStringOrBytes<T>(InternalTryFromTo<T> tryFromTo, ReadOnlySpan<char> text, [NotNullWhen(true)] out object? obj, out ConvertErrorInfo info) where T : unmanaged
+    {
+        Debug.Assert(typeof(T) == typeof(char) || typeof(T) == typeof(byte));
+
+        const int MaxStackLimit = 1024;
+        T[]? rentedArray = null;
+
+        Span<T> span = text.Length <= MaxStackLimit ? stackalloc T[text.Length] : (rentedArray = ArrayPool<T>.Shared.Rent(text.Length));
+        if (!tryFromTo(text, span, out var itemsWritten, out info))
+        {
+            Debug.Assert(info.Error is not ConvertError.DestinationNotEnough);
+            obj = null;
+            if (rentedArray is not null)
+                ArrayPool<T>.Shared.Return(rentedArray);
+            return false;
+        }
+
+        span = span[..itemsWritten];
+        if (typeof(T) == typeof(char))
+            obj = span.ToString();
+        else
+            obj = span.ToArray();
+
+        if (rentedArray is not null)
+            ArrayPool<T>.Shared.Return(rentedArray);
+        return true;
+    }
+
+    public static bool TryFromTextToString(ReadOnlySpan<char> text, [NotNullWhen(true)] out string? str, out ConvertErrorInfo info)
+    {
+        str = null;
+        if (!InternalTryToStringOrBytes<char>(InternalTryFromTextToStringOrBytes, text, out var obj, out info))
+            return false;
+        str = (string)obj;
+        return true;
     }
 
     public static bool TryFromLiteralToString(ReadOnlySpan<char> literal, [NotNullWhen(true)] out string? str, out ConvertErrorInfo info)
     {
-        const int MaxStackLimit = 1024;
-        char[]? rentedArray = null;
-
-        Span<char> chars = literal.Length <= MaxStackLimit ? stackalloc char[literal.Length] : (rentedArray = ArrayPool<char>.Shared.Rent(literal.Length));
-        if (!TryFromLiteralToString(literal, chars, out var charsWritten, out info))
-        {
-            Debug.Assert(info.Error is not ConvertError.DestinationNotEnough);
-            str = null;
-            if (rentedArray is not null)
-                ArrayPool<char>.Shared.Return(rentedArray);
+        str = null;
+        if (!InternalTryToStringOrBytes<char>(InternalTryFromLiteralToStringOrBytes, literal, out var obj, out info))
             return false;
-        }
+        str = (string)obj;
+        return true;
+    }
 
-        str = chars[..charsWritten].ToString();
-        if (rentedArray is not null)
-            ArrayPool<char>.Shared.Return(rentedArray);
+    public static bool TryFromLiteralToBytes(ReadOnlySpan<char> literal, [NotNullWhen(true)] out byte[]? bytes, out ConvertErrorInfo info)
+    {
+        bytes = null;
+        if (!InternalTryToStringOrBytes<byte>(InternalTryFromLiteralToStringOrBytes, literal, out var obj, out info))
+            return false;
+        bytes = (byte[])obj;
         return true;
     }
 

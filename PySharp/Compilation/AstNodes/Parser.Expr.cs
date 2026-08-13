@@ -610,18 +610,47 @@ partial class Parser
 
     private PyBytesObject FromLiteralToBytes(ReadOnlySpan<char> literal)
     {
-        var text = FromLiteralToString(literal, noWrapper: false);
+        // Bytes literals use CPython's _PyBytes_DecodeEscape2 semantics, which
+        // differ from str escapes: octal > 0o377 truncates to the low 8 bits,
+        // and \u/\U are kept literally (not decoded as Unicode).
+        bool successful = PyStrConverter.TryFromLiteralToBytes(literal, out var bytes, out var info);
 
-        var bytes = new byte[text.Length];
-        for (int i = 0; i < text.Length; i++)
+        if (successful)
         {
-            var ch = text[i];
-            if (ch > byte.MaxValue)
-                throw SyntaxError();
-            bytes[i] = (byte)ch;
-        }
+            if (info.Error is PyStrConverter.ConvertError.InvalidEscapeSequence)
+            {
+                if (!_context.TryWarn<PySyntaxWarningObjectType>(
+                    PySR.Format(PySR.InvalidSyntax_Warning_InvalidEscapeSequence, info.Char)))
+                    throw _context.PySharpException("Not Implemented");
+            }
+            else if (info.Error is PyStrConverter.ConvertError.InvalidOctalEscapeSequence)
+            {
+                if (!_context.TryWarn<PySyntaxWarningObjectType>(
+                    PySR.Format(PySR.InvalidSyntax_Warning_InvalidOctalEscapeSequence, Convert.ToString((ushort)info.Char, 8))))
+                    throw _context.PySharpException("Not Implemented");
+            }
 
-        return PyBytesObject.MoveBytes(bytes);
+            Debug.Assert(bytes is not null);
+            return PyBytesObject.MoveBytes(bytes);
+        }
+        else
+        {
+            // correctness is ensured by the lexer
+            Debug.Assert(info.Error is not (
+                PyStrConverter.ConvertError.EndsWithEscape or
+                PyStrConverter.ConvertError.DestinationNotEnough or
+                PyStrConverter.ConvertError.WrongFormat or
+                PyStrConverter.ConvertError.InvalidEscapeSequence));
+
+            var start = info.Position;
+            var end = info.Position + info.Length - 1;
+            throw info.Error switch
+            {
+                PyStrConverter.ConvertError.LowerXSequence => SyntaxError(PySR.InvalidSyntax_UnicodeError_TruncatedLowerXSequence, start, end),
+                PyStrConverter.ConvertError.IllegalUnicodeCharacter => SyntaxError(PySR.InvalidSyntax_UnicodeError_IllegalCharacter, start, end),
+                _ => new UnreachableException(),
+            };
+        }
     }
 
     string FromLiteralToString(ReadOnlySpan<char> literal, bool noWrapper)
