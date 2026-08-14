@@ -390,7 +390,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
     [PyProperty("imag")]
     private static PyResult Get_Imag(PyCallContext context, PyFloatObject self)
     {
-        return PyFloatObject.FromDouble(0.0);
+        return PyFloatObject.Zero;
     }
 
     [PyMethod("as_integer_ratio")]

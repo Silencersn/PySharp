@@ -607,7 +607,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         end = ClampRuneEnd(end, self.PyLength);
 
         if (start >= end)
-            return PyIntObject.FromInteger(0);
+            return PyIntObject.Zero;
         var sliced = self.SubstringByRuneRange(start, end);
 
         if (string.IsNullOrEmpty(subStr.Value))
