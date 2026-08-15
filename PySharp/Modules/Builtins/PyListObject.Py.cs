@@ -65,7 +65,9 @@ partial class PyListObject
     {
         start = Utils.MapIndex(start, _list.Count);
         end = Utils.MapIndex(end, _list.Count);
-        for (int i = start; i < end; i++)
+        // Clamp the search range to valid indices (CPython clamps an
+        // out-of-range negative start to 0); matching PyTupleObject.PyIndex.
+        for (int i = int.Max(0, start); i < int.Min(end, _list.Count); i++)
         {
             if (context.Comparer.Equals(_list[i], item))
                 return i;

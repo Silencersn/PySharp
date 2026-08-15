@@ -111,6 +111,12 @@ internal static class PyMath
                         result = BigInteger.ModPow(left.Value, right.Value, modulus);
                     }
 
+                    // Normalize to [0, modulus): .NET ModPow returns C# remainder
+                    // semantics for a negative base (sign follows the base's power),
+                    // e.g. ModPow(-2, 3, 5) == -3, while CPython returns 2.
+                    if (result.Sign < 0)
+                        result += modulus;
+
                     if (negativeOutput && !result.IsZero)
                         result -= modulus;
                     return PyIntObject.FromInteger(result);

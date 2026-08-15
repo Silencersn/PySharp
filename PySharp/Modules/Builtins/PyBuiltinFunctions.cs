@@ -216,8 +216,10 @@ public static partial class PyBuiltinFunctions
     [PyFunctionParameters()]
     private static PyResult InputImpl_1(PyCallContext context, PyArguments arguments)
     {
-        var str = PyStrObject.FromString(context.In.ReadLine() ?? string.Empty);
-        return str;
+        var line = context.In.ReadLine();
+        if (line is null)
+            return PyResult.EOFError("EOF when reading a line");
+        return PyStrObject.FromString(line);
     }
     [PyFunctionParameters("prompt", "/")]
     private static PyResult InputImpl_2(PyCallContext context, PyArguments arguments)
@@ -227,8 +229,10 @@ public static partial class PyBuiltinFunctions
             return result;
 
         context.Out.Write(result.Value.Value);
-        var str = PyStrObject.FromString(context.In.ReadLine() ?? string.Empty);
-        return str;
+        var line = context.In.ReadLine();
+        if (line is null)
+            return PyResult.EOFError("EOF when reading a line");
+        return PyStrObject.FromString(line);
     }
     [PyFunctionParameters("source", "/", "globals=None", "locals=None")]
     private static PyResult EvalImpl(PyCallContext context, PyArguments arguments)
@@ -706,7 +710,9 @@ public static partial class PyBuiltinFunctions
     {
         var result = PyListObject.CreateList(context.CurrentInternalFrame.Variables
             .EnumerateLocals()
-            .Select(static pair => PyStrObject.FromString(pair.Key)));
+            .Select(static pair => pair.Key)
+            .Order()
+            .Select(PyStrObject.FromString));
         return result;
     }
     [PyFunctionParameters("object", "/")]
@@ -1109,7 +1115,7 @@ public static partial class PyBuiltinFunctions
         };
 
         if (codeObject is null)
-            return PyResult.TypeError(PySR.Runtime_Builtin_Compile_WrongMode);
+            return PyResult.ValueError(PySR.Runtime_Builtin_Compile_WrongMode);
 
         return codeObject;
     }
@@ -1179,14 +1185,17 @@ public static partial class PyBuiltinFunctions
         if (!mode.All(ValidModeChars.Contains) || mode.Distinct().Count() != mode.Length)
             return PyResult.ValueError(PySR.Runtime_Builtin_Open_InvalidMode, mode);
 
-        bool reading = mode.Contains('r');
-        bool writing = mode.Contains('w');
-        bool appending = mode.Contains('a');
-        bool creating = mode.Contains('x');
+        Span<bool> span = stackalloc bool[4];
+        bool reading = span[0] = mode.Contains('r');
+        bool writing = span[1] = mode.Contains('w');
+        bool appending = span[2] = mode.Contains('a');
+        bool creating = span[3] = mode.Contains('x');
         bool updating = mode.Contains('+');
         bool binary = mode.Contains('b');
 
-        if (new[] { creating, reading, writing, appending }.Count(v => v) > 1)
+        // CPython requires exactly one of create/read/write/append in the mode;
+        // both zero (e.g. '', 'b', 't', '+') and multiple (e.g. 'rw') are invalid.
+        if (span.Count(true) is 0 or > 1)
             return PyResult.ValueError(PySR.Runtime_Builtin_Open_ConflictingMode);
 
         // Determine file mode

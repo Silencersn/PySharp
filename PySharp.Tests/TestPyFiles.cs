@@ -154,6 +154,15 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestDirSortingRegression()
+    {
+        // Regression: dir() without arguments must return names in sorted
+        // order (CPython semantics), not insertion order.
+        var module = RunModule("test_dir_sorting_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestClosure()
     {
         var module = RunModule("test_closure.py");
@@ -693,9 +702,54 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestOpenModeRegression()
+    {
+        // Regression: open() must reject modes with none of r/w/a/x
+        // (''/'b'/'t'/'+'/'b+') with ValueError instead of silently opening.
+        var module = RunModule("test_open_mode_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestCompileModeRegression()
+    {
+        // Regression: compile() with an invalid mode must raise ValueError
+        // (matching CPython), not TypeError.
+        var module = RunModule("test_compile_mode_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestInputEofRegression()
+    {
+        // Regression: input() at EOF must raise EOFError ("EOF when reading a
+        // line"), not return ''. An empty stdin simulates EOF.
+        var originalIn = Console.In;
+        try
+        {
+            Console.SetIn(new StringReader(""));
+            var module = RunModule("test_input_eof_regression.py");
+            Assert.IsNotNull(module);
+        }
+        finally
+        {
+            Console.SetIn(originalIn);
+        }
+    }
+
+    [TestMethod]
     public void TestListBugs()
     {
         var module = RunModule("test_list_bugs.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestListIndexStartRegression()
+    {
+        // Regression: list.index(x, start) must clamp an out-of-range negative
+        // start to 0 (CPython), not leak a bare .NET ArgumentOutOfRangeException.
+        var module = RunModule("test_list_index_start_regression.py");
         Assert.IsNotNull(module);
     }
 
@@ -856,6 +910,15 @@ public sealed class TestPyFiles
         // and return an int (CPython 3.8+): pow(2, -1, 5) == 3, and raise
         // ValueError when base is not invertible for the modulus.
         var module = RunModule("test_pow_neg_mod_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestPowNegBaseModRegression()
+    {
+        // Regression: pow() with a negative base and a modulus must return
+        // the normalized modulo result (CPython): pow(-2, 3, 5) == 2, not -3.
+        var module = RunModule("test_pow_neg_base_mod_regression.py");
         Assert.IsNotNull(module);
     }
 
