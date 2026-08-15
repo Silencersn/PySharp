@@ -65,7 +65,7 @@ public sealed partial class PyBuiltinFunctionOrMethodObjectType : PyTypeObject<P
         if (self.IsMethod)
         {
             if (self.Self is not null)
-                return PyStrObject.FromString($"<built-in method {self.Name} of {self.SelfType.Name} object at 0x{self.Self.PyId:X16}>");
+                return PyStrObject.FromString($"<built-in method {self.Name} of {self.SelfType?.Name ?? self.Self.PyType.Name /* TODO */} object at 0x{self.Self.PyId:X16}>");
 
             return PyStrObject.FromString($"<method '{self.Name}' of '{self.SelfType.Name}' objects>");
         }
