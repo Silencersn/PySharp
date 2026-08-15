@@ -720,6 +720,16 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestExecEvalBuiltinsRegression()
+    {
+        // Regression: exec()/eval() with an explicit globals dict must inject
+        // the interpreter's builtins when __builtins__ is missing (CPython),
+        // instead of raising NameError for builtin names.
+        var module = RunModule("test_exec_eval_builtins_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestInputEofRegression()
     {
         // Regression: input() at EOF must raise EOFError ("EOF when reading a

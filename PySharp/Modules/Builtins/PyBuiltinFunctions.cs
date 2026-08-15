@@ -261,7 +261,7 @@ public static partial class PyBuiltinFunctions
 
         if (source is PyCodeObject code)
         {
-            var newFrame = frame.CreateExecEvalFrame(FrameType.Eval, globalsDict, localsDict, code);
+            var newFrame = frame.CreateExecEvalFrame(context, FrameType.Eval, globalsDict, localsDict, code);
             using var withFrame = context.WithFrame(ref newFrame);
             return PyCore.Eval(context);
         }
@@ -270,7 +270,7 @@ public static partial class PyBuiltinFunctions
 
         try
         {
-            var newFrame = frame.CreateExecEvalFrame(FrameType.Eval, globalsDict, localsDict);
+            var newFrame = frame.CreateExecEvalFrame(context, FrameType.Eval, globalsDict, localsDict);
             using var withFrame = context.WithFrame(ref newFrame);
             var codeObj = Compiler.InternalCompileEval(context, ((PyStrObject)source).Value, filename: "<string>", name: "<module>", onlyAsName: true);
             context.CurrentInternalFrame.CodeObject = codeObj;
@@ -321,7 +321,7 @@ public static partial class PyBuiltinFunctions
                 return PyResult.TypeError(PySR.Runtime_Builtin_Exec_WrongClosure, code.FreeVars.Length);
 
             Debug.Assert(code.Bytecode is not null);
-            var newFrame = frame.CreateExecEvalFrame(FrameType.Exec, globalsDict, localsDict, code, closureTuple);
+            var newFrame = frame.CreateExecEvalFrame(context, FrameType.Exec, globalsDict, localsDict, code, closureTuple);
             using var withFrame = context.WithFrame(ref newFrame);
             return PyCore.Eval(context);
         }
@@ -331,7 +331,7 @@ public static partial class PyBuiltinFunctions
 
         try
         {
-            var newFrame = frame.CreateExecEvalFrame(FrameType.Exec, globalsDict, localsDict);
+            var newFrame = frame.CreateExecEvalFrame(context, FrameType.Exec, globalsDict, localsDict);
             using var withFrame = context.WithFrame(ref newFrame);
             var codeObj = Compiler.InternalCompileExec(context, ((PyStrObject)source).Value, filename: "<string>", name: "<module>", onlyAsName: true);
             context.CurrentInternalFrame.CodeObject = codeObj;

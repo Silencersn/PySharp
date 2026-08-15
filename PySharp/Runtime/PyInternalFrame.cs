@@ -107,9 +107,20 @@ internal partial struct PyInternalFrame
         return new PyInternalFrame(Variables);
     }
 
-    internal readonly PyInternalFrame CreateExecEvalFrame(FrameType frameType, PyDictObject? globals, PyDictObject? locals, PyCodeObject? code = null, PyTupleObject? closure = null)
+    internal readonly PyInternalFrame CreateExecEvalFrame(PyCallContext context, FrameType frameType, PyDictObject? globals, PyDictObject? locals, PyCodeObject? code = null, PyTupleObject? closure = null)
     {
         Debug.Assert(frameType is FrameType.Exec or FrameType.Eval);
+
+        // Mirror CPython: builtins are resolved from globals["__builtins__"] at
+        // frame creation (_PyDict_LoadBuiltinsFromGlobals); when the key is
+        // missing the interpreter's builtins are injected (_PyEval_EnsureBuiltins).
+        // A user-provided __builtins__ value is never overwritten.
+        if (globals is not null)
+        {
+            var builtinsKey = PySpecialNames.Interned.Builtins;
+            if (!globals.ContainsKey(builtinsKey))
+                globals[builtinsKey] = context.PyEnvironment.LoadBuiltinModule(context, "builtins");
+        }
 
         PyGlobals pyGlobals = globals is null ?
             Variables.Globals :
