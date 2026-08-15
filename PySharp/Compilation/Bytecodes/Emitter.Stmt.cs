@@ -68,7 +68,7 @@ partial class Emitter
     private void EmitTypeAlias(TypeAliasNode n)
     {
         var currentBuilder = Builder;
-        Builder = BytecodeBuilder.Create(_source);
+        Builder = new BytecodeBuilder(_source);
 
         LoadExpr(n.Value);
         Builder.Emit(OpCode.ReturnValue);
@@ -745,7 +745,7 @@ partial class Emitter
             case NameNode:
                 LoadExpr(node.Target);
                 LoadExpr(node.Value);
-                Builder.Emit(OpCode._AugAssignOp, (int)node.Op);
+                Builder.Emit(OpCode._AugAssignOp, node.Op);
                 StoreExpr(node.Target);
                 break;
 
@@ -757,7 +757,7 @@ partial class Emitter
                 Builder.Emit(OpCode.Copy, 2); // [container, key, container, key]
                 Builder.Emit(OpCode.BinarySubscr); // [container, key, container[key]]
                 LoadExpr(node.Value);
-                Builder.Emit(OpCode._AugAssignOp, (int)node.Op); // [container, key, result]
+                Builder.Emit(OpCode._AugAssignOp, node.Op); // [container, key, result]
                 Builder.Emit(OpCode.Swap, 3); // [result, key, container]
                 Builder.Emit(OpCode.Swap, 2); // [result, container, key]
                 Builder.Emit(OpCode.StoreSubscr);
@@ -769,7 +769,7 @@ partial class Emitter
                 Builder.Emit(OpCode.Copy, 1); // [obj, obj]
                 Builder.Emit(OpCode.LoadAttr, attribute.Identifier); // [obj, obj.attr]
                 LoadExpr(node.Value);
-                Builder.Emit(OpCode._AugAssignOp, (int)node.Op); // [obj, result]
+                Builder.Emit(OpCode._AugAssignOp, node.Op); // [obj, result]
                 Builder.Emit(OpCode.Swap, 2); // [result, obj]
                 Builder.Emit(OpCode.StoreAttr, attribute.Identifier);
                 break;
@@ -940,9 +940,9 @@ partial class Emitter
 
             // []
             LoadExpr(item.ContextExpr); // -> [manager]
-            Builder.Emit(OpCode.LoadSpecial, (int)LoadSpecialMethods.Enter); // -> [manager, enter]
+            Builder.Emit(OpCode.LoadSpecial, LoadSpecialMethods.Enter); // -> [manager, enter]
             Builder.Emit(OpCode.Swap, 2); // [enter, manager]
-            Builder.Emit(OpCode.LoadSpecial, (int)LoadSpecialMethods.Exit); // -> [enter, manager, exit]
+            Builder.Emit(OpCode.LoadSpecial, LoadSpecialMethods.Exit); // -> [enter, manager, exit]
             Builder.Emit(OpCode.Swap, 3); // -> [exit, manager, enter]
             Builder.Emit(OpCode.Copy, 2); // -> [exit, manager, enter, manager]
             Builder.Emit(OpCode.Call, 1); // -> [exit, manager, value]
@@ -1005,9 +1005,9 @@ partial class Emitter
 
             // []
             LoadExpr(item.ContextExpr); // -> [manager]
-            Builder.Emit(OpCode.LoadSpecial, (int)LoadSpecialMethods.AEnter); // -> [manager, aenter]
+            Builder.Emit(OpCode.LoadSpecial, LoadSpecialMethods.AEnter); // -> [manager, aenter]
             Builder.Emit(OpCode.Swap, 2); // [aenter, manager]
-            Builder.Emit(OpCode.LoadSpecial, (int)LoadSpecialMethods.AExit); // -> [aenter, manager, aexit]
+            Builder.Emit(OpCode.LoadSpecial, LoadSpecialMethods.AExit); // -> [aenter, manager, aexit]
             Builder.Emit(OpCode.Swap, 3); // -> [aexit, manager, aenter]
             Builder.Emit(OpCode.Copy, 2); // -> [aexit, manager, aenter, manager]
             Builder.Emit(OpCode.Call, 1); // -> [aexit, manager, coroutine]
@@ -1141,7 +1141,7 @@ partial class Emitter
                 case MatchValueNode node:
                     Builder.Emit(OpCode.Copy, 1);
                     LoadExpr(node.Value);
-                    Builder.Emit(OpCode.CompareOp, (int)CmpopType.Eq);
+                    Builder.Emit(OpCode.CompareOp, CmpopType.Eq);
                     Builder.Emit(OpCode.ToBool);
                     Builder.PopJumpIfFalse(matchFailLabel);
                     break;
@@ -1203,7 +1203,7 @@ partial class Emitter
                         var (index, starred) = node.Patterns.Index().FirstOrDefault(static item => item.Item is MatchStarNode);
                         var hasStar = starred is not null;
                         Builder.Emit(OpCode.LoadConst, PyIntObject.FromInteger(node.Patterns.Length + (hasStar ? -1 : 0)));
-                        Builder.Emit(OpCode.CompareOp, (int)(hasStar ? CmpopType.GtE : CmpopType.Eq));
+                        Builder.Emit(OpCode.CompareOp, (hasStar ? CmpopType.GtE : CmpopType.Eq));
                         Builder.PopJumpIfFalse(matchFailLabel);
 
                         // unpack subject

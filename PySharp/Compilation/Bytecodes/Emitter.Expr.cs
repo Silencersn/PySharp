@@ -266,7 +266,7 @@ partial class Emitter
     {
         LoadExpr(node.Left);
         LoadExpr(node.Right);
-        Builder.Emit(OpCode.BinaryOp, (int)node.Operator);
+        Builder.Emit(OpCode.BinaryOp, node.Operator);
     }
 
     private void EmitUnaryOp(UnaryOpNode node)
@@ -279,7 +279,7 @@ partial class Emitter
         }
         else
         {
-            Builder.Emit(OpCode._UnaryOp, (int)node.Op);
+            Builder.Emit(OpCode._UnaryOp, node.Op);
         }
     }
 
@@ -336,7 +336,7 @@ partial class Emitter
             else if (op is CmpopType.In or CmpopType.NotIn)
                 Builder.Emit(OpCode.ContainsOp, op is CmpopType.In ? 0 : 1);
             else
-                Builder.Emit(OpCode.CompareOp, (int)op);
+                Builder.Emit(OpCode.CompareOp, op);
         }
     }
 

@@ -4,29 +4,11 @@ using PySharp.Runtime.Comparison;
 using System.Buffers.Binary;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace PySharp.Compilation.Bytecodes;
 
-internal abstract class BytecodeBuilder
-{
-    internal abstract Bytecode ToBytecode();
-    internal abstract void PushMetaInfo(ValueCodeMetaInfo info);
-    internal abstract void PopMetaInfo();
-    public abstract void Emit(OpCode opCode);
-    public abstract void Emit(OpCode opCode, int arg);
-    public abstract void Emit(OpCode opCode, Label label);
-    public abstract void Emit(OpCode opCode, PyObject pyObject);
-    public abstract void Emit(OpCode opCode, string name);
-    public abstract Label DefineLabel();
-    public abstract void MarkLabel(Label label);
-
-    public static BytecodeBuilder Create(CodeSource source)
-    {
-        return new DefaultBytecodeBuilder(source);
-    }
-}
-
-internal sealed class DefaultBytecodeBuilder : BytecodeBuilder
+internal sealed class BytecodeBuilder
 {
     private readonly ImmutableArray<Instruction>.Builder _instructions = ImmutableArray.CreateBuilder<Instruction>();
     private readonly List<int> _labelOffsets = [];
@@ -37,13 +19,13 @@ internal sealed class DefaultBytecodeBuilder : BytecodeBuilder
     private readonly CodeSource _source;
     private Instruction _lastInstruction;
 
-    internal DefaultBytecodeBuilder(CodeSource source)
+    internal BytecodeBuilder(CodeSource source)
     {
         _source = source;
         _lineTableBuilder = new LineTableBuilder(_source);
     }
 
-    internal override Bytecode ToBytecode()
+    internal Bytecode ToBytecode()
     {
         Complete();
 
@@ -61,13 +43,14 @@ internal sealed class DefaultBytecodeBuilder : BytecodeBuilder
 
         return new Bytecode(_instructions.MoveToImmutable(), _lineTableBuilder.ToLineTable(), [.. _consts.Keys], [.. _names.Keys]);
     }
-    internal override void PushMetaInfo(ValueCodeMetaInfo info)
+
+    internal void PushMetaInfo(ValueCodeMetaInfo info)
     {
         _metaInfoStack.Push(info);
         _lineTableBuilder.Write(_instructions.Count, info);
     }
 
-    internal override void PopMetaInfo()
+    internal void PopMetaInfo()
     {
         _metaInfoStack.Pop();
         _lineTableBuilder.Write(_instructions.Count, _metaInfoStack.TryPeek(out var info) ? info : ValueCodeMetaInfo.Empty);
@@ -131,7 +114,7 @@ internal sealed class DefaultBytecodeBuilder : BytecodeBuilder
         _lastInstruction = instruction;
     }
 
-    public override void Emit(OpCode opCode)
+    public void Emit(OpCode opCode)
     {
         if (opCode is OpCode.ToBool)
         {
@@ -142,14 +125,28 @@ internal sealed class DefaultBytecodeBuilder : BytecodeBuilder
         InternalEmit(opCode, arg: default);
     }
 
-    public override void Emit(OpCode opCode, int arg)
+    public void Emit(OpCode opCode, int arg)
     {
         Debug.Assert(arg >= 0, "Negative arg is used for label.");
 
         InternalEmit(opCode, arg);
     }
 
-    public override void Emit(OpCode opCode, Label label)
+    public void Emit<T>(OpCode opCode, T arg) where T : unmanaged, Enum
+    {
+        Debug.Assert(Unsafe.SizeOf<T>() <= sizeof(int));
+
+        int value = Unsafe.SizeOf<T>() switch
+        {
+            sizeof(byte) => Unsafe.As<T, byte>(ref arg),
+            sizeof(short) => Unsafe.As<T, ushort>(ref arg),
+            sizeof(int) => Unsafe.As<T, int>(ref arg),
+            _ => throw new UnreachableException()
+        };
+        InternalEmit(opCode, value);
+    }
+
+    public void Emit(OpCode opCode, Label label)
     {
         Debug.Assert(label.Id > 0);
 
@@ -170,28 +167,28 @@ internal sealed class DefaultBytecodeBuilder : BytecodeBuilder
             InternalEmit(OpCode.__LabelFlag, bytes[i]);
     }
 
-    public override void Emit(OpCode opCode, PyObject pyObject)
+    public void Emit(OpCode opCode, PyObject pyObject)
     {
         if (!_consts.TryGetValue(pyObject, out var index))
             _consts[pyObject] = index = _consts.Count;
         InternalEmit(opCode, index);
     }
 
-    public override void Emit(OpCode opCode, string name)
+    public void Emit(OpCode opCode, string name)
     {
         if (!_names.TryGetValue(name, out var index))
             _names[name] = index = _names.Count;
         InternalEmit(opCode, index);
     }
 
-    public override Label DefineLabel()
+    public Label DefineLabel()
     {
         var label = new Label(_labelOffsets.Count + 1);
         _labelOffsets.Add(-1);
         return label;
     }
 
-    public override void MarkLabel(Label label)
+    public void MarkLabel(Label label)
     {
         Debug.Assert(label.Id > 0);
         Debug.Assert(_labelOffsets[label.Id - 1] < 0);

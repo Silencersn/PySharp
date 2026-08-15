@@ -23,7 +23,7 @@ internal sealed partial class Emitter
 
     internal Emitter(PyCallContext context, SemanticModel model, CodeSource source)
     {
-        Builder = BytecodeBuilder.Create(source);
+        Builder = new BytecodeBuilder(source);
         _context = context;
         _model = model;
         _source = source;
@@ -150,7 +150,7 @@ internal sealed partial class Emitter
             _emitter = emitter;
             _savedBuilder = emitter.Builder;
             _savedScope = emitter.VariableScope;
-            emitter.Builder = BytecodeBuilder.Create(emitter._source);
+            emitter.Builder = new BytecodeBuilder(emitter._source);
             emitter.VariableScope = scope;
             if (scope is FunctionVariableScope or AsyncFunctionVariableScope)
             {
