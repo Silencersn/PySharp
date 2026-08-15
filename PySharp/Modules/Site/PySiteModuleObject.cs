@@ -19,5 +19,6 @@ public class PySiteModuleObject : PyModuleObject
         var builtins = environment.LoadBuiltinModule(context, "builtins");
         builtins.AppendAttribute(PySiteFunctions.Exit);
         builtins.AppendAttribute(PySiteFunctions.Quit);
+        builtins.AppendAttribute(PySiteFunctions.Help);
     }
 }

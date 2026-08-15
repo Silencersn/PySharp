@@ -22,7 +22,7 @@ public static partial class PyBuiltinFunctions
     // B
     public static readonly PyBuiltinFunctionOrMethodObject Bin = PyBuiltinFunctionOrMethodObject.CreateFunction("bin", BinImpl);
     // bool -> PyBoolObjectType
-    // TODO: breakpoint()
+    public static readonly PyBuiltinFunctionOrMethodObject Breakpoint = PyBuiltinFunctionOrMethodObject.CreateFunction("breakpoint", BreakpointImpl);
     // bytearray -> PyByteArrayObjectType
     // bytes -> PyBytesObjectType
 
@@ -879,6 +879,15 @@ public static partial class PyBuiltinFunctions
 
         var value = BigIntegerHelper.ToString(result.Value.Value, 2);
         return PyStrObject.FromString(value);
+    }
+
+    [PyFunctionParameters("*args", "**kws")]
+    private static PyResult BreakpointImpl(PyCallContext context, PyArguments arguments)
+    {
+        // CPython: breakpoint(*args, **kws) calls sys.breakpointhook(*args, **kws),
+        // which by default invokes pdb.set_trace(). PySharp has no debugger
+        // integration yet, so this is a no-op placeholder.
+        return PyNoneObject.None;
     }
 
     [PyFunctionParameters("integer", "/")]
