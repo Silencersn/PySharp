@@ -7,7 +7,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Modules.Builtins;
 
-public sealed class PyExceptionObject : PyObject
+public sealed class PyExceptionObject : PyObjectManagedDict
 {
     public override PyTypeObject DefaultPyType => PyBaseExceptionObjectType.Shared;
 

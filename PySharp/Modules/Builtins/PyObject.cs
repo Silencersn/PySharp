@@ -141,6 +141,10 @@ public partial class PyObjectManagedDict : PyObject
 {
     internal IDictionary<string, PyObject>? _pyAttributes;
 
+    // Objects with a real per-instance dict are mutable (CPython: these types
+    // have a non-zero tp_dictoffset, so instances expose a __dict__).
+    internal override bool IsImmutable => false;
+
     internal override IDictionary<string, PyObject> PyAttributes
     {
         get => _pyAttributes ??= new ConcurrentDictionary<string, PyObject>();

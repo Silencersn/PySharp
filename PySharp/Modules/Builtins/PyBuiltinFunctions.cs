@@ -1159,7 +1159,12 @@ public static partial class PyBuiltinFunctions
     private static PyResult VarsImpl_2(PyCallContext context, PyArguments arguments)
     {
         var obj = arguments[0];
-        return PyDictObject.CreateProxy(new DictAdapter(obj.PyAttributes!));
+        // vars(obj) is obj.__dict__ (CPython); a missing __dict__ raises
+        // AttributeError, which vars() converts to TypeError.
+        var dict = PyOperators.GetAttr(context, obj, PySpecialNames.Dict);
+        if (dict.IsAttributeError)
+            return PyResult.TypeError(PySR.Runtime_Builtin_Vars_WithoutDict);
+        return dict;
     }
 
     [PyFunctionParameters("file", "mode='r'")]

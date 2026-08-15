@@ -261,6 +261,16 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestVarsDictRegression()
+    {
+        // Regression: vars(obj) must raise TypeError for objects without a
+        // __dict__ (CPython), and obj.__dict__ must raise AttributeError,
+        // instead of both returning {}.
+        var module = RunModule("test_vars_dict_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestInt()
     {
         var module = RunModule("test_int.py");

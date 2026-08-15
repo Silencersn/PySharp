@@ -5,7 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Modules.Builtins;
 
-public class PyBuiltinFunctionOrMethodObject : PyObjectManagedDict, IPyObjectName
+public class PyBuiltinFunctionOrMethodObject : PyObject, IPyObjectName
 {
     public string Name { get; }
     [MemberNotNullWhen(true, nameof(SelfType))]
@@ -21,7 +21,6 @@ public class PyBuiltinFunctionOrMethodObject : PyObjectManagedDict, IPyObjectNam
         Name = name;
         IsMethod = false;
         PyDelegate = uncompoundedDelegate;
-        PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
     }
     private PyBuiltinFunctionOrMethodObject(string name, PyObject self, PyTypeObject type, PyUncompoundedDelegate uncompoundedDelegate)
     {
@@ -30,8 +29,6 @@ public class PyBuiltinFunctionOrMethodObject : PyObjectManagedDict, IPyObjectNam
         Name = name;
         IsMethod = true;
         PyDelegate = uncompoundedDelegate;
-        PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
-        PyAttributes.Add(PySpecialNames.Self, Self);
     }
 
     internal static PyBuiltinFunctionOrMethodObject CreateFunction(string name, params PyFunction[] funcs)
@@ -59,6 +56,21 @@ public class PyBuiltinFunctionOrMethodObject : PyObjectManagedDict, IPyObjectNam
 [PyType("builtin_function_or_method")]
 public sealed partial class PyBuiltinFunctionOrMethodObjectType : PyTypeObject<PyBuiltinFunctionOrMethodObject>
 {
+    // Builtin functions/methods have no instance __dict__; their attributes are
+    // exposed as type-level descriptors (matching CPython).
+    [PyProperty(PySpecialNames.Name)]
+    private static PyResult Get_Name(PyCallContext context, PyBuiltinFunctionOrMethodObject self)
+    {
+        return PyStrObject.FromString(self.Name);
+    }
+
+    [PyProperty(PySpecialNames.Self)]
+    private static PyResult Get_Self(PyCallContext context, PyBuiltinFunctionOrMethodObject self)
+    {
+        if (self.Self is null)
+            return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.FullName, PySpecialNames.Self);
+        return self.Self;
+    }
 
     protected override PyResult Repr(PyCallContext context, PyBuiltinFunctionOrMethodObject self)
     {

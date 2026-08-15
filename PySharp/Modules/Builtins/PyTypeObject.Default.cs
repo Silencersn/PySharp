@@ -38,8 +38,10 @@ partial class PyTypeObject
 
         if (name is PySpecialNames.Dict)
         {
-            if (self is PyObjectManagedDict managed)
-                return PyDictObject.CreateProxy(new DictAdapter(managed.PyAttributes!));
+            // Objects without a genuine instance dict (built-in values, builtin
+            // functions, methods, code, ...) have no __dict__ (CPython).
+            if (self.IsImmutable)
+                return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.FullName, name);
             return PyDictObject.CreateProxy(new DictAdapter(self.PyAttributes!));
         }
 
@@ -128,11 +130,7 @@ partial class PyTypeObject
             return metaType;
 
         if (name is PySpecialNames.Dict)
-        {
-            if (self is PyObjectManagedDict managed)
-                return PyDictObject.CreateProxy(new DictAdapter(managed.PyAttributes!));
             return PyDictObject.CreateProxy(new DictAdapter(self.PyAttributes!));
-        }
 
         if (TryLookupAttrInMro(metaType, name, out var metaAttr))
         {
