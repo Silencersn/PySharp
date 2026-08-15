@@ -678,6 +678,14 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestBuiltinMaxMinPrint()
+    {
+        // Regression: max()/min() key parameter, default semantics, print() file/flush
+        var module = RunModule("test_builtin_maxmin_print.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestOpen()
     {
         var module = RunModule("test_open.py");

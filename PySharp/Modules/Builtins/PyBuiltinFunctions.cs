@@ -1,6 +1,7 @@
 using PySharp.Compilation;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.Calls.Extensions;
 using PySharp.Runtime.Environments;
 using PySharp.Runtime.PyAttributes;
 using PySharp.Utility;
@@ -57,7 +58,7 @@ public static partial class PyBuiltinFunctions
     // H
     public static readonly PyBuiltinFunctionOrMethodObject HasAttr = PyBuiltinFunctionOrMethodObject.CreateFunction("hasattr", HasAttrImpl);
     public static readonly PyBuiltinFunctionOrMethodObject Hash = PyBuiltinFunctionOrMethodObject.CreateFunction("hash", HashImpl);
-    // TODO: help()
+    // help -> injected by site module (PySiteFunctions.Help)
     public static readonly PyBuiltinFunctionOrMethodObject Hex = PyBuiltinFunctionOrMethodObject.CreateFunction("hex", HexImpl);
 
     // I
@@ -135,23 +136,60 @@ public static partial class PyBuiltinFunctions
         if (!Utils.TryGetValue(endObj, (PyStrObject str) => str.Value, "\n", out var end))
             return PyResult.TypeError(PySR.Runtime_Builtin_Print_WrongArgType, "end", endObj.PyType.FullName);
 
-        var result = PySpecialMethods.Bool(context, arguments.GetKwargByIndex(2));
-        if (result.IsError)
-            return result;
+        var fileObj = arguments.GetKwargByIndex(2);
 
-        for (int i = 0; i < arguments.ExtraArgs.Count; i++)
+        var flushResult = PySpecialMethods.Bool(context, arguments.GetKwargByIndex(3));
+        if (flushResult.IsError)
+            return flushResult;
+
+        if (fileObj is PyNoneObject)
         {
-            if (i is not 0)
-                context.Out.Write(sep);
+            for (int i = 0; i < arguments.ExtraArgs.Count; i++)
+            {
+                if (i is not 0)
+                    context.Out.Write(sep);
 
-            var strResult = PySpecialMethods.Str(context, arguments.ExtraArgs[i]);
-            if (strResult.IsError)
-                return strResult;
-            context.Out.Write(strResult.Value.Value);
+                var strResult = PySpecialMethods.Str(context, arguments.ExtraArgs[i]);
+                if (strResult.IsError)
+                    return strResult;
+                context.Out.Write(strResult.Value.Value);
+            }
+            context.Out.Write(end);
+            if (flushResult.Value.BoolValue)
+                context.Out.Flush();
         }
-        context.Out.Write(end);
-        if (result.Value.BoolValue)
-            context.Out.Flush();
+        else
+        {
+            PyResult WriteToFile(string text) => fileObj.CallMethod(context, "write", [PyStrObject.FromString(text)]);
+
+            for (int i = 0; i < arguments.ExtraArgs.Count; i++)
+            {
+                if (i is not 0)
+                {
+                    var sepResult = WriteToFile(sep);
+                    if (sepResult.IsError)
+                        return sepResult;
+                }
+
+                var strResult = PySpecialMethods.Str(context, arguments.ExtraArgs[i]);
+                if (strResult.IsError)
+                    return strResult;
+                var writeResult = WriteToFile(strResult.Value.Value);
+                if (writeResult.IsError)
+                    return writeResult;
+            }
+
+            var endResult = WriteToFile(end);
+            if (endResult.IsError)
+                return endResult;
+
+            if (flushResult.Value.BoolValue)
+            {
+                var flushCall = fileObj.CallMethod(context, "flush");
+                if (flushCall.IsError)
+                    return flushCall;
+            }
+        }
 
         return PyNoneObject.None;
     }
@@ -366,33 +404,50 @@ public static partial class PyBuiltinFunctions
         return PyBoolObject.False;
     }
 
+    private static PyResult GetMaxMinKey(PyCallContext context, PyObject keySelector, PyObject item)
+    {
+        if (keySelector is PyNoneObject)
+            return item;
+        return keySelector.Call(context, [item]);
+    }
+
     [PyFunctionParameters("iterable", "/", "*", "key=None")]
     private static PyResult MaxImpl_1(PyCallContext context, PyArguments arguments)
     {
         var iterable = arguments[0];
-        if (arguments.GetKwargByIndex(0) is not PyNoneObject)
-            return PyResult.PySharpException("max() with key not implemented");
+        var keySelector = arguments.GetKwargByIndex(0);
 
         var elements = PyUtils.IterableToList(context, iterable);
         if (elements.IsError)
             return elements;
 
         PyObject? result = null;
+        PyObject? resultKey = null;
         foreach (var element in elements.Value)
         {
+            var keyResult = GetMaxMinKey(context, keySelector, element);
+            if (keyResult.IsError)
+                return keyResult;
+            var key = keyResult.Value;
+
             if (result is null)
             {
                 result = element;
+                resultKey = key;
                 continue;
             }
-            var gt = PyOperators.Gt(context, element, result);
+
+            var gt = PyOperators.Gt(context, key, resultKey!);
             if (gt.IsError)
                 return gt;
             var bResult = PySpecialMethods.Bool(context, gt.Value);
             if (bResult.IsError)
                 return bResult;
             if (bResult.Value.BoolValue)
+            {
                 result = element;
+                resultKey = key;
+            }
         }
         if (result is null)
             return PyResult.ValueError(PySR.Runtime_Builtin_Max_EmptyIterable);
@@ -403,44 +458,73 @@ public static partial class PyBuiltinFunctions
     private static PyResult MaxImpl_2(PyCallContext context, PyArguments arguments)
     {
         var iterable = arguments[0];
-        if (arguments.GetKwargByIndex(1) is not PyNoneObject)
-            return PyResult.PySharpException("Not Implemented");
+        var defaultObj = arguments.GetKwargByIndex(0);
+        var keySelector = arguments.GetKwargByIndex(1);
 
         var elements = PyUtils.IterableToList(context, iterable);
         if (elements.IsError)
             return elements;
 
-        PyObject result = arguments.GetKwargByIndex(0);
+        PyObject? result = null;
+        PyObject? resultKey = null;
         foreach (var element in elements.Value)
         {
-            var gt = PyOperators.Gt(context, element, result);
+            var keyResult = GetMaxMinKey(context, keySelector, element);
+            if (keyResult.IsError)
+                return keyResult;
+            var key = keyResult.Value;
+
+            if (result is null)
+            {
+                result = element;
+                resultKey = key;
+                continue;
+            }
+
+            var gt = PyOperators.Gt(context, key, resultKey!);
             if (gt.IsError)
                 return gt;
             var bResult = PySpecialMethods.Bool(context, gt.Value);
             if (bResult.IsError)
                 return bResult;
             if (bResult.Value.BoolValue)
+            {
                 result = element;
+                resultKey = key;
+            }
         }
-        return result;
+        // default is not compared against elements; returned only for an empty iterable
+        return result ?? defaultObj;
     }
 
     [PyFunctionParameters("arg1", "arg2", "/", "*args", "key=None")]
     private static PyResult MaxImpl_3(PyCallContext context, PyArguments arguments)
     {
-        if (arguments.GetKwargByIndex(0) is not PyNoneObject)
-            return PyResult.PySharpException("Not Implemented");
+        var keySelector = arguments.GetKwargByIndex(0);
+
         PyObject result = arguments[0];
+        var resultKey = GetMaxMinKey(context, keySelector, result);
+        if (resultKey.IsError)
+            return resultKey;
+
         foreach (var element in arguments.ExtraArgs.Prepend(arguments[1]))
         {
-            var gt = PyOperators.Gt(context, element, result);
+            var keyResult = GetMaxMinKey(context, keySelector, element);
+            if (keyResult.IsError)
+                return keyResult;
+            var key = keyResult.Value;
+
+            var gt = PyOperators.Gt(context, key, resultKey.Value);
             if (gt.IsError)
                 return gt;
             var bResult = PySpecialMethods.Bool(context, gt.Value);
             if (bResult.IsError)
                 return bResult;
             if (bResult.Value.BoolValue)
+            {
                 result = element;
+                resultKey = keyResult;
+            }
         }
         return result;
     }
@@ -449,29 +533,39 @@ public static partial class PyBuiltinFunctions
     private static PyResult MinImpl_1(PyCallContext context, PyArguments arguments)
     {
         var iterable = arguments[0];
-        if (arguments.GetKwargByIndex(0) is not PyNoneObject)
-            return PyResult.PySharpException("Not Implemented");
+        var keySelector = arguments.GetKwargByIndex(0);
 
         var elements = PyUtils.IterableToList(context, iterable);
         if (elements.IsError)
             return elements;
 
         PyObject? result = null;
+        PyObject? resultKey = null;
         foreach (var element in elements.Value)
         {
+            var keyResult = GetMaxMinKey(context, keySelector, element);
+            if (keyResult.IsError)
+                return keyResult;
+            var key = keyResult.Value;
+
             if (result is null)
             {
                 result = element;
+                resultKey = key;
                 continue;
             }
-            var lt = PyOperators.Lt(context, element, result);
+
+            var lt = PyOperators.Lt(context, key, resultKey!);
             if (lt.IsError)
                 return lt;
             var bResult = PySpecialMethods.Bool(context, lt.Value);
             if (bResult.IsError)
                 return bResult;
             if (bResult.Value.BoolValue)
+            {
                 result = element;
+                resultKey = key;
+            }
         }
         if (result is null)
             return PyResult.ValueError(PySR.Runtime_Builtin_Min_EmptyIterable);
@@ -482,44 +576,73 @@ public static partial class PyBuiltinFunctions
     private static PyResult MinImpl_2(PyCallContext context, PyArguments arguments)
     {
         var iterable = arguments[0];
-        if (arguments.GetKwargByIndex(1) is not PyNoneObject)
-            return PyResult.PySharpException("Not Implemented");
+        var defaultObj = arguments.GetKwargByIndex(0);
+        var keySelector = arguments.GetKwargByIndex(1);
 
         var elements = PyUtils.IterableToList(context, iterable);
         if (elements.IsError)
             return elements;
 
-        PyObject result = arguments.GetKwargByIndex(0);
+        PyObject? result = null;
+        PyObject? resultKey = null;
         foreach (var element in elements.Value)
         {
-            var lt = PyOperators.Lt(context, element, result);
+            var keyResult = GetMaxMinKey(context, keySelector, element);
+            if (keyResult.IsError)
+                return keyResult;
+            var key = keyResult.Value;
+
+            if (result is null)
+            {
+                result = element;
+                resultKey = key;
+                continue;
+            }
+
+            var lt = PyOperators.Lt(context, key, resultKey!);
             if (lt.IsError)
                 return lt;
             var bResult = PySpecialMethods.Bool(context, lt.Value);
             if (bResult.IsError)
                 return bResult;
             if (bResult.Value.BoolValue)
+            {
                 result = element;
+                resultKey = key;
+            }
         }
-        return result;
+        // default is not compared against elements; returned only for an empty iterable
+        return result ?? defaultObj;
     }
 
     [PyFunctionParameters("arg1", "arg2", "/", "*args", "key=None")]
     private static PyResult MinImpl_3(PyCallContext context, PyArguments arguments)
     {
-        if (arguments.GetKwargByIndex(0) is not PyNoneObject)
-            return PyResult.PySharpException("Not Implemented");
+        var keySelector = arguments.GetKwargByIndex(0);
+
         PyObject result = arguments[0];
+        var resultKey = GetMaxMinKey(context, keySelector, result);
+        if (resultKey.IsError)
+            return resultKey;
+
         foreach (var element in arguments.ExtraArgs.Prepend(arguments[1]))
         {
-            var lt = PyOperators.Lt(context, element, result);
+            var keyResult = GetMaxMinKey(context, keySelector, element);
+            if (keyResult.IsError)
+                return keyResult;
+            var key = keyResult.Value;
+
+            var lt = PyOperators.Lt(context, key, resultKey.Value);
             if (lt.IsError)
                 return lt;
             var bResult = PySpecialMethods.Bool(context, lt.Value);
             if (bResult.IsError)
                 return bResult;
             if (bResult.Value.BoolValue)
+            {
                 result = element;
+                resultKey = keyResult;
+            }
         }
         return result;
     }
