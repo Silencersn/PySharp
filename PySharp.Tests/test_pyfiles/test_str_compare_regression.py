@@ -33,7 +33,8 @@ assert ('abc' > 'ab') is True
 # Code point order beyond ASCII (accented chars, non-BMP, lone surrogates)
 assert ('é' > 'e') is True
 assert ('😀' > '中') is True
-assert (chr(0xD800) < chr(0xDC00)) is True
+# Lone surrogates via literal (chr() rejects the surrogate range, see #42)
+assert ('\ud800' < '\udc00') is True
 
 # sorted uses the same ordering
 assert sorted(['B', 'a', 'A', 'b']) == ['A', 'B', 'a', 'b']

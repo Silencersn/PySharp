@@ -271,6 +271,16 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestChrSurrogateRegression()
+    {
+        // Regression: chr() must explicitly reject surrogate code points
+        // (U+D800-U+DFFF) with PySharpException instead of silently returning
+        // the wrong U+FFFD replacement character.
+        var module = RunModule("test_chr_surrogate_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestInt()
     {
         var module = RunModule("test_int.py");
