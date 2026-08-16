@@ -80,6 +80,7 @@ partial class PySR
     public const string Runtime_Number_Int_InvalidLiteral = "invalid literal for int() with base {0}: '{1}'";
     public const string Runtime_Number_Float_WrongArg = "float() argument must be a string or a real number, not '{0}'";
     public const string Runtime_Number_PowWithZeroModulo = "pow() 3rd argument cannot be 0";
+    public const string Runtime_Number_PowThirdArgNotInteger = "pow() 3rd argument not allowed unless all arguments are integers";
     public const string Runtime_Number_DivisionByZero = "division by zero";
 
     public const string Runtime_Sequence_NegativeLen = "__len__() should return >= 0";

@@ -238,7 +238,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
     protected override PyResult Pow(PyCallContext context, PyFloatObject self, PyObject other, PyObject modulo)
     {
         if (modulo is not PyNoneObject)
-            return PyNotImplementedObject.NotImplemented;
+            return PyResult.TypeError(PySR.Runtime_Number_PowThirdArgNotInteger);
         return other switch
         {
             PyIntObject intObj => PyFloatObject.FromDouble(double.Pow(self.Value, (double)intObj.Value)),
@@ -316,7 +316,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
     protected override PyResult RPow(PyCallContext context, PyFloatObject self, PyObject other, PyObject modulo)
     {
         if (modulo is not PyNoneObject)
-            return PyNotImplementedObject.NotImplemented;
+            return PyResult.TypeError(PySR.Runtime_Number_PowThirdArgNotInteger);
         return other switch
         {
             PyIntObject intObj => PyFloatObject.FromDouble(double.Pow((double)intObj.Value, self.Value)),

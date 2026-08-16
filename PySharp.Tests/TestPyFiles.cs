@@ -1009,6 +1009,16 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestPowThirdArgRegression()
+    {
+        // Regression: pow(x, y, mod) with a non-integer modulus must raise a
+        // catchable TypeError (matching CPython) instead of terminating the
+        // process via Debug.Assert in Debug builds.
+        var module = RunModule("test_pow_third_arg_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestHashIntFloatRegression()
     {
         // Regression: hash invariant (equal values -> equal hashes) must hold

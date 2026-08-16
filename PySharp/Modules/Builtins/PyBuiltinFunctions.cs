@@ -197,16 +197,10 @@ public static partial class PyBuiltinFunctions
     [PyFunctionParameters("base", "exp", "mod=None")]
     private static PyResult PowImpl(PyCallContext context, PyArguments arguments)
     {
-        var baseObj = arguments[0];
-        var expObj = arguments[1];
-        var modObj = arguments[2];
-
-        var result = PyOperators.Pow(context, baseObj, expObj, modObj);
-        if (result.IsError)
-            return result;
-
-        Debug.Assert(!result.IsNotImplemented);
-        return result;
+        // Mirror CPython's builtin_pow_impl: no validation here.  The operator
+        // machinery converts a non-integer modulus (which would otherwise
+        // surface as NotImplemented) into a catchable TypeError.
+        return PyOperators.Pow(context, arguments[0], arguments[1], arguments[2]);
     }
     [PyFunctionParameters("a", "b", "/")]
     private static PyResult DivModImpl(PyCallContext context, PyArguments arguments)

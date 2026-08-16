@@ -237,7 +237,14 @@ public static class PyOperators
     private static PyResult InPlaceOperator(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo = null)
     {
         if (left.PyType is PyIntObjectType && right.PyType is PyIntObjectType)
+        {
+            // Front-load the modulus validation for the ternary pow form so
+            // NotImplemented can never escape this fast path (matches the
+            // non-integer-modulus rejection inside CalculatePyIntObject).
+            if (op is PyOperatorTypes.Pow && modulo is not PyNoneObject && modulo is not PyIntObject)
+                return PyResult.TypeError(PySR.Runtime_Number_PowThirdArgNotInteger);
             return PyMath.CalculatePyIntObject(op, (PyIntObject)left, (PyIntObject)right, modulo);
+        }
 
         var slots = left.PyType.Slots;
         if (op is not PyOperatorTypes.Pow)
@@ -283,7 +290,14 @@ public static class PyOperators
     private static PyResult ReflectiveOperator(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo = null)
     {
         if (left.PyType is PyIntObjectType && right.PyType is PyIntObjectType)
+        {
+            // Front-load the modulus validation for the ternary pow form so
+            // NotImplemented can never escape this fast path (matches the
+            // non-integer-modulus rejection inside CalculatePyIntObject).
+            if (op is PyOperatorTypes.Pow && modulo is not PyNoneObject && modulo is not PyIntObject)
+                return PyResult.TypeError(PySR.Runtime_Number_PowThirdArgNotInteger);
             return PyMath.CalculatePyIntObject(op, (PyIntObject)left, (PyIntObject)right, modulo);
+        }
 
         if (!context.Comparer.Equals(left.PyType, right.PyType) && right.PyType.IsSubclassOf(left.PyType))
             return EvalRightFirstReflectiveOperator(context, op, left, right, modulo);
