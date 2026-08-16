@@ -170,8 +170,7 @@ public sealed class Bytecode
                 case OpCode._CheckExcToRaise:
                 case OpCode.MakeCell:
                 case OpCode._MakeCellFast:
-                case OpCode._ListToTuple:
-                case OpCode._ListToSet:
+                case OpCode.CallIntrinsic1:
                 case OpCode._EnterInlineFrame:
                 case OpCode._ExitInlineFrame:
                 case OpCode.ConvertValue:
@@ -187,7 +186,6 @@ public sealed class Bytecode
                 case OpCode._UnaryOp:
                 case OpCode.UnaryNot:
                 case OpCode.SetupAnnotations:
-                case OpCode._MakeTypeVar:
                 case OpCode._MakeTypeAlias:
                 case OpCode.__BytecodeEnd:
                     break;
@@ -246,8 +244,6 @@ public sealed class Bytecode
                 case OpCode.BinarySubscr:
                 case OpCode.FormatWithSpec:
                 case OpCode.ImportName:
-                case OpCode._ImportAllFrom:
-                case OpCode._CallPrintIfNotNone:
                 case OpCode._SetFunctionTypeParams:
                 case OpCode.PopJumpIfFalse:
                 case OpCode.PopJumpIfTrue:

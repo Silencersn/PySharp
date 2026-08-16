@@ -89,7 +89,9 @@ partial class Emitter
     private void EmitExpr(ExprNode node)
     {
         LoadExpr(node.Value);
-        Builder.Emit(IsInteractive && VariableScope is RootVariableScope ? OpCode._CallPrintIfNotNone : OpCode.PopTop);
+        if (IsInteractive && VariableScope is RootVariableScope)
+            Builder.Emit(OpCode.CallIntrinsic1, IntrinsicFunctionType.Print);
+        Builder.Emit(OpCode.PopTop);
     }
 
     private void EmitAssign(AssignNode node)
@@ -137,7 +139,7 @@ partial class Emitter
         foreach (var tp in typeParams)
         {
             Builder.Emit(OpCode.LoadConst, PyStrObject.FromString(tp.Name));
-            Builder.Emit(OpCode._MakeTypeVar);
+            Builder.Emit(OpCode.CallIntrinsic1, IntrinsicFunctionType.TypeVar);
             StoreName(tp.Name);
         }
     }
@@ -534,7 +536,7 @@ partial class Emitter
         foreach (var tp in typeParams)
         {
             Builder.Emit(OpCode.LoadConst, PyStrObject.FromString(tp.Name));
-            Builder.Emit(OpCode._MakeTypeVar);
+            Builder.Emit(OpCode.CallIntrinsic1, IntrinsicFunctionType.TypeVar);
             Builder.Emit(OpCode.MakeCell, tp.Name);
             Builder.Emit(OpCode.StoreDeref, tp.Name);
         }
@@ -831,7 +833,8 @@ partial class Emitter
 
         if (node.IsImportStar())
         {
-            Builder.Emit(OpCode._ImportAllFrom);
+            Builder.Emit(OpCode.CallIntrinsic1, IntrinsicFunctionType.ImportStar);
+            Builder.Emit(OpCode.PopTop);
             return;
         }
 

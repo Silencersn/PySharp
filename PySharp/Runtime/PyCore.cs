@@ -112,7 +112,7 @@ internal static class PyCore
         return obj;
     }
 
-    public static void ImportAllFrom(PyCallContext context, ref PyInternalFrame frame, PyModuleObject module)
+    public static PyNoneObject ImportAllFrom(PyCallContext context, ref PyInternalFrame frame, PyModuleObject module)
     {
         // if module has __all__, import only those names
         // item in __all__ must be str
@@ -139,6 +139,7 @@ internal static class PyCore
                     frame.Variables.StoreName(kvp.Key, kvp.Value).PyUnwrap(context);
             }
         }
+        return PyNoneObject.None;
     }
 
     public static void Raise(PyCallContext context, ref BytecodeVirtualMachineStates states, PyObject? excObj, PyObject? causeObj)

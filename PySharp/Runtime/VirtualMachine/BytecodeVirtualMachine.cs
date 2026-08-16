@@ -575,15 +575,28 @@ internal static partial class BytecodeVirtualMachine
                         }
                         break;
 
-                    case OpCode._ListToTuple:
+                    case OpCode.CallIntrinsic1:
                         {
-                            Stack[-1] = PyTupleObject.CreateTuple((IEnumerable<PyObject>)(PyListObject)Stack[-1]);
-                        }
-                        break;
+                            value = Stack[-1];
+                            Stack[-1] = (IntrinsicFunctionType)instructionArg switch
+                            {
+                                IntrinsicFunctionType.ListToTuple
+                                    => PyTupleObject.CreateTuple(((PyListObject)value).InternalList),
 
-                    case OpCode._ListToSet:
-                        {
-                            Stack[-1] = PySetObject.CreateSet((PyListObject)Stack[-1]);
+                                IntrinsicFunctionType._ListToSet
+                                    => PySetObject.CreateSet((PyListObject)value),
+
+                                IntrinsicFunctionType.Print
+                                    => value is PyNoneObject ? PyNoneObject.None : PyBuiltinFunctions.Print.Call(context, [value]).PyUnwrap(context),
+
+                                IntrinsicFunctionType.ImportStar
+                                    => PyCore.ImportAllFrom(context, ref frame, (PyModuleObject)value),
+
+                                IntrinsicFunctionType.TypeVar
+                                    => new PyTypeVarObject(((PyStrObject)value).Value),
+
+                                _ => throw new UnreachableException(),
+                            };
                         }
                         break;
 
@@ -764,10 +777,6 @@ internal static partial class BytecodeVirtualMachine
                         Stack.Push(value);
                         break;
 
-                    case OpCode._ImportAllFrom:
-                        PyCore.ImportAllFrom(context, ref frame, (PyModuleObject)Stack.Pop());
-                        break;
-
                     case OpCode.BuildSlice:
                         InternalBuildSlice(ref Stack, instructionArg);
                         break;
@@ -885,12 +894,6 @@ internal static partial class BytecodeVirtualMachine
                         }
                         break;
 
-                    case OpCode._CallPrintIfNotNone:
-                        value = Stack.Pop();
-                        if (value is not PyNoneObject)
-                            _ = PyBuiltinFunctions.Print.Call(context, [value]).PyUnwrap(context);
-                        break;
-
                     case OpCode.MatchSequence:
                         boolValue = PyCore.IsSequenceForMatch(Stack[-1]);
                         Stack.Push(PyBoolObject.FromBoolean(boolValue));
@@ -912,13 +915,6 @@ internal static partial class BytecodeVirtualMachine
 
                     case OpCode.MatchClass:
                         InternalMatchClass(context, ref Stack, instructionArg);
-                        break;
-
-                    case OpCode._MakeTypeVar:
-                        {
-                            var typeVarName = (PyStrObject)Stack.Pop();
-                            Stack.Push(new PyTypeVarObject(typeVarName.Value));
-                        }
                         break;
 
                     case OpCode._MakeTypeAlias:

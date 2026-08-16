@@ -414,7 +414,7 @@ partial class Emitter
         if (ctx is ExprContextType.Load)
         {
             if (unpackWhenLoad)
-                Builder.Emit(OpCode._ListToTuple);
+                Builder.Emit(OpCode.CallIntrinsic1, IntrinsicFunctionType.ListToTuple);
             else
                 Builder.Emit(OpCode.BuildTuple, node.Elts.Length);
         }
@@ -425,7 +425,7 @@ partial class Emitter
         InternalEmitElts(node.Elts, ExprContextType.Load, out var unpackWhenLoad);
 
         if (unpackWhenLoad)
-            Builder.Emit(OpCode._ListToSet);
+            Builder.Emit(OpCode.CallIntrinsic1, IntrinsicFunctionType._ListToSet);
         else
             Builder.Emit(OpCode.BuildSet, node.Elts.Length);
     }

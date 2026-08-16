@@ -91,8 +91,7 @@ internal enum OpCode : byte
     BuildMap,
     BuildSlice,
 
-    _ListToTuple,
-    _ListToSet,
+    CallIntrinsic1,
 
     _EnterInlineFrame,
     _ExitInlineFrame,
@@ -123,15 +122,12 @@ internal enum OpCode : byte
 
     SetupAnnotations,
 
-    _MakeTypeVar,
     _MakeTypeAlias,
     _SetFunctionTypeParams,
 
     ImportName,
     ImportFrom,
-    _ImportAllFrom,
 
-    // PySharp only
     _SetupFinally,
     _SetupExcept,
     _EnterFinally,
@@ -143,8 +139,6 @@ internal enum OpCode : byte
 
     _UnaryOp,
     UnaryNot,
-
-    _CallPrintIfNotNone,
 
     ExtendedArg,
 
