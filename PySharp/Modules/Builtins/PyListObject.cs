@@ -145,7 +145,12 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
 
     protected override PyResult Contains(PyCallContext context, PyListObject self, PyObject item)
     {
-        return PyBoolObject.FromBoolean(self.Contains(item));
+        foreach (var element in self.InternalList)
+        {
+            if (context.Comparer.Equals(element, item))
+                return PyBoolObject.True;
+        }
+        return PyBoolObject.False;
     }
 
     protected override PyResult Repr(PyCallContext context, PyListObject self)

@@ -101,7 +101,12 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
 
     protected override PyResult Contains(PyCallContext context, PyTupleObject self, PyObject item)
     {
-        return PyBoolObject.FromBoolean(self.Contains(item));
+        foreach (var element in self.InternalArray)
+        {
+            if (context.Comparer.Equals(element, item))
+                return PyBoolObject.True;
+        }
+        return PyBoolObject.False;
     }
 
     protected override PyResult Bool(PyCallContext context, PyTupleObject self)

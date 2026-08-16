@@ -163,6 +163,16 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestContainsValueEqualityRegression()
+    {
+        // Regression: list/tuple `in` must use Python value equality
+        // (element == item, CPython semantics) instead of reference
+        // equality, so equal-but-distinct elements are found.
+        var module = RunModule("test_contains_value_equality_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestClosure()
     {
         var module = RunModule("test_closure.py");
