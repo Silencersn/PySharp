@@ -15,7 +15,7 @@ internal sealed partial class PyVariables
     private PyObject?[]? _localsPlus;
     private readonly FrozenDictionary<string, int>? _localsTable;
 
-    private readonly PyDictObject _globals;
+    private PyDictObject _globals;
     private IDictionary<string, PyObject?>? _locals;
 
     private PyVariables(PyDictObject globals)
@@ -67,6 +67,13 @@ internal sealed partial class PyVariables
     internal FrozenDictionary<string, int> LocalsTable => _localsTable ?? throw new InvalidOperationException();
     internal IDictionary<string, PyObject?> Locals => _locals ?? throw new NotSupportedException();
 
+    internal void MergeThenReplaceGlobals(PyDictObject globals)
+    {
+        foreach (var pair in _globals)
+            globals[pair.Key] = pair.Value;
+        _globals = globals;
+    }
+
     // do not call Dispose if the frame is exposed to the outside
     public void Dispose(PyCallContext context)
     {
@@ -89,7 +96,7 @@ internal sealed partial class PyVariables
 
     internal static PyVariables CreateGlobal()
     {
-        return new PyVariables(new PyDictObject());
+        return new PyVariables([]);
     }
     internal static PyVariables CreateExecEval(PyDictObject globals, IDictionary<string, PyObject?>? locals)
     {

@@ -138,7 +138,7 @@ public sealed partial class PyObjectType : PyTypeObject<PyObject>
 
 public partial class PyObjectManagedDict : PyObject
 {
-    internal IDictionary<string, PyObject>? _pyAttributes;
+    private protected IDictionary<string, PyObject>? _pyAttributes;
 
     // Objects with a real per-instance dict are mutable (CPython: these types
     // have a non-zero tp_dictoffset, so instances expose a __dict__).

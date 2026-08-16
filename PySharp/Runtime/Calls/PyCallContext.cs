@@ -13,22 +13,16 @@ public sealed partial class PyCallContext : IDisposable
 
     private readonly string _prompt;
     private readonly PyEnvironment _environment;
-    private readonly PyInterpreter? _interpreter;
     private PyCallContextFrameState? _state;
     private ImmutableArrayBuilderPool? _builderPool;
 
     internal PyEnvironment PyEnvironment => _environment;
-    internal PyInterpreter? Interpreter => _interpreter;
     internal PyCallContextFrameState FrameState => _state ?? throw new InvalidOperationException("Context is not initialized or is disposed.");
     public PyObjectComparer Comparer => field ??= new PyObjectComparer(this);
     internal ImmutableArrayBuilderPool BuilderPool => _builderPool ??= new();
 
     private PyCallContext(string prompt) : this(prompt, PyEnvironment.CreateNull())
     {
-    }
-    private PyCallContext(string prompt, PyInterpreter interpreter) : this(prompt, interpreter.PyEnvironment)
-    {
-        _interpreter = interpreter;
     }
     private PyCallContext(string prompt, PyEnvironment environment)
     {
@@ -89,9 +83,9 @@ public sealed partial class PyCallContext : IDisposable
         };
     }
 
-    internal static PyCallContext CreateInterpreterMainContext(PyInterpreter interpreter)
+    internal static PyCallContext CreateInterpreterRootContext(PyEnvironment environment)
     {
-        var context = new PyCallContext("[Interpreter Main Context]", interpreter);
+        var context = new PyCallContext("[Interpreter Root Context]", environment);
         var frame = PyInternalFrame.CreateModuleFrame(context, isRoot: true, PySpecialNames.Main);
         context.InitState(ref frame);
         return context;
@@ -99,11 +93,8 @@ public sealed partial class PyCallContext : IDisposable
 
     internal static PyCallContext FromCreatingThread(PyCallContext context)
     {
-        if (context._interpreter is null)
-            throw new NotSupportedException("TODO");
-
         var frame = context.CurrentInternalFrame.CreateThreadRootFrame();
-        var threadContext = new PyCallContext("[From Creating Thread]", context._interpreter);
+        var threadContext = new PyCallContext("[From Creating Thread]", context._environment);
         threadContext.InitState(ref frame);
         return threadContext;
     }
