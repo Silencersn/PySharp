@@ -1,6 +1,6 @@
 """
 Regression: format()/f-string float 'g'/'G'/'n' (and 'e'/'E' exponent width)
-must match CPython (issue #26).
+must match CPython.
 
 CPython 3.14 reference:
     format(1e16, 'g')    == '1e+16'      (lowercase e)

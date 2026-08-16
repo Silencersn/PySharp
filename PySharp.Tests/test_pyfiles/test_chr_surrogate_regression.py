@@ -1,5 +1,5 @@
 """
-Regression test for issue #42: chr() must not silently return U+FFFD for a
+Regression test: chr() must not silently return U+FFFD for a
 surrogate code point (U+D800-U+DFFF).
 
 CPython 3.14 reference:
@@ -9,7 +9,7 @@ CPython 3.14 reference:
     chr(0xE000)   -> '\ue000'   (above the surrogate range -> normal)
     chr(0x10FFFF) -> '\U0010ffff'
 
-PySharp decision (mitigation for #42):
+PySharp decision (mitigation):
     PySharp cannot yet keep lone surrogates intact through the whole str
     pipeline (ord/repr/ascii iterate with EnumerateRunes, which replaces
     unpaired surrogates with U+FFFD). Instead of silently returning the wrong

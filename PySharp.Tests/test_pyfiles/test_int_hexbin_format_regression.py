@@ -1,6 +1,6 @@
 """
 Regression: hex(0)/bin(0) must keep the digit, and int format()/f-string
-with b/o/x must not double the prefix (issue #12).
+with b/o/x must not double the prefix.
 
 CPython 3.14 reference:
     hex(0) == '0x0', bin(0) == '0b0', oct(0) == '0o0'

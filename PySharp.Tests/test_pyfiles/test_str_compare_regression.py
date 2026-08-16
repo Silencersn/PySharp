@@ -1,6 +1,6 @@
 """
 Regression: str comparison must use ordinal (code point) ordering and
-support <= / >= (issue #11).
+support <= / >=.
 
 CPython 3.14 reference:
     'a' < 'B'  -> False   ('a' = 97 > 'B' = 66)
@@ -33,7 +33,7 @@ assert ('abc' > 'ab') is True
 # Code point order beyond ASCII (accented chars, non-BMP, lone surrogates)
 assert ('é' > 'e') is True
 assert ('😀' > '中') is True
-# Lone surrogates via literal (chr() rejects the surrogate range, see #42)
+# Lone surrogates via literal (chr() rejects the surrogate range)
 assert ('\ud800' < '\udc00') is True
 
 # sorted uses the same ordering

@@ -1,6 +1,6 @@
 """
 Regression: int and float hashes must be consistent for equal values, so
-dict/set mixed-key operations work (issue #13).
+dict/set mixed-key operations work.
 
 CPython 3.14 reference:
     hash(1) == hash(1.0) == 1

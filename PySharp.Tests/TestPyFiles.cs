@@ -980,6 +980,35 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestBinHexNegRegression()
+    {
+        // Regression: bin()/hex() on negative integers whose bit length is a
+        // multiple of 8 (e.g. -128/-255/-32768) must not trip the buffer
+        // Debug.Assert and must match CPython's output.
+        var module = RunModule("test_bin_hex_neg_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestIntHexLeadingZeroRegression()
+    {
+        // Regression: format()/f-string int 'x'/'X' must not retain .NET's
+        // sign-bit leading '0' for MSB-set values.
+        var module = RunModule("test_int_hex_leading_zero_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestOctBitshiftRegression()
+    {
+        // Regression: oct() / format(v,'b'|'o') must match CPython for all
+        // sizes including multi-byte boundaries (ToOctString/ToDigitsInBase
+        // rewritten to O(n) bit extraction instead of O(n^2) division).
+        var module = RunModule("test_oct_bitshift_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestHashIntFloatRegression()
     {
         // Regression: hash invariant (equal values -> equal hashes) must hold

@@ -1,6 +1,5 @@
 """
-Regression: old-style %e/%E/%g/%G float formatting must match CPython
-(issue #15).
+Regression: old-style %e/%E/%g/%G float formatting must match CPython.
 
 CPython 3.14 reference:
     '%e' % 1.0          == '1.000000e+00'   (exponent 2 digits, not 3)

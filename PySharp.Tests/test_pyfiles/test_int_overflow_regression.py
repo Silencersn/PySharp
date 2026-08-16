@@ -8,7 +8,7 @@ exceptions (ValueError / OverflowError / IndexError); PySharp used to leak
 bare .NET exceptions that bypass try/except.
 """
 
-# ===== #6 integer shift =====
+# ===== integer shift =====
 assert 1 << 10 == 1024
 
 try:
@@ -23,7 +23,7 @@ try:
 except OverflowError:
     pass
 
-# ===== #7 str * n =====
+# ===== str * n =====
 assert 'a' * 3 == 'aaa'
 assert 'a' * -1 == ''             # negative repeat -> empty string
 
@@ -33,12 +33,12 @@ try:
 except OverflowError:
     pass
 
-# ===== #9 range slicing =====
+# ===== range slicing =====
 r = range(0, 10**20)[::1]         # must not crash
 assert r[0] == 0
 assert r[-1] == 10**20 - 1
 
-# ===== #18 huge index =====
+# ===== huge index =====
 try:
     [1, 2, 3][10**400]            # -> IndexError
     assert False
@@ -57,10 +57,10 @@ try:
 except IndexError:
     pass
 
-# ===== #27 round with huge ndigits =====
+# ===== round with huge ndigits =====
 assert round(1.5, 10**100) == 1.5
 
-# ===== #10 chr with huge arg =====
+# ===== chr with huge arg =====
 assert chr(65) == 'A'
 assert len(chr(0x10FFFF)) == 1
 

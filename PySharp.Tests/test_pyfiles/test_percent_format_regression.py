@@ -1,5 +1,5 @@
 """
-Regression test for issue #14: '%c' % surrogate code points leaked a bare
+Regression test: '%c' % surrogate code points leaked a bare
 .NET ArgumentOutOfRangeException and crashed constant folding at compile time.
 
 CPython 3.14 semantics (verified):
@@ -14,8 +14,8 @@ CPython 3.14 semantics (verified):
 
 assert '%c' % 65 == 'A'
 assert '%c' % 0xD7FF == '\ud7ff'        # non-surrogate, below range
-assert '%c' % 0xD800 == '\ud800'        # lone surrogate (issue #14)
-assert '%c' % 0xDFFF == '\udfff'        # lone surrogate (issue #14)
+assert '%c' % 0xD800 == '\ud800'        # lone surrogate
+assert '%c' % 0xDFFF == '\udfff'        # lone surrogate
 assert '%c' % 0xE000 == '\ue000'        # non-surrogate, above range
 assert '%c' % 0x10FFFF == '\U0010ffff'
 assert '%c' % 0x1F600 == '\U0001f600'

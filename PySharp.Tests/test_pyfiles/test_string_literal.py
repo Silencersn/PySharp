@@ -89,7 +89,7 @@ except SyntaxError:
     pass
 
 
-# ===== Regression: octal escapes \ooo greedily read 3 digits (issue #21) =====
+# ===== Regression: octal escapes \ooo greedily read 3 digits =====
 # CPython keeps values > 0o377 (e.g. '\777' -> U+01FF) and only emits a
 # SyntaxWarning; PySharp used to read only 2 digits for a leading 4-7 digit.
 
@@ -102,7 +102,7 @@ assert '\778' == '?8'           # reads 2 digits, then literal '8'
 assert '\7779' == '\u01ff9'     # reads 3 digits, then literal '9'
 
 
-# ===== Regression: \u / \U lone surrogates allowed (issue #22) =====
+# ===== Regression: \u / \U lone surrogates allowed =====
 # CPython allows lone surrogates in string literals; only encode('utf-8')
 # raises UnicodeEncodeError at runtime. PySharp used to reject them at
 # compile time with UnicodeEncodeError / SyntaxError.

@@ -188,11 +188,11 @@ internal static class BigIntegerHelper
 
         int charsWritten;
         if (numBase is 2)
-            ToBinString(ref chars, value, out charsWritten);
+            ToPowerOfTwoString(chars, value, out charsWritten, 'b', 1);
         else if (numBase is 8)
-            ToOctString(chars, value, out charsWritten);
+            ToPowerOfTwoString(chars, value, out charsWritten, 'o', 3);
         else if (numBase is 16)
-            ToHexString(ref chars, value, out charsWritten);
+            ToPowerOfTwoString(chars, value, out charsWritten, 'x', 4);
         else
             throw new UnreachableException();
         var str = chars[..charsWritten].ToString();
@@ -209,24 +209,13 @@ internal static class BigIntegerHelper
         Debug.Assert(numBase is 2 or 8 or 16);
         Debug.Assert(value >= 0);
 
-        var charCount = GetMaxCharCount(value, numBase);
+        var charCount = GetMaxDigitsCount(value, numBase);
         char[]? arrayToReturn = null;
         Span<char> chars = charCount <= 512
             ? stackalloc char[charCount]
             : PoolHelper.Rent(charCount, out arrayToReturn);
 
-        int charsWritten;
-        if (numBase is 16)
-        {
-            // "x" is exact (no leading zero padding); .NET's "b" format pads,
-            // so binary digits are generated manually below.
-            var ok = value.TryFormat(chars, out charsWritten, "x");
-            Debug.Assert(ok);
-        }
-        else
-        {
-            charsWritten = ToDigitsInBase(chars, value, numBase);
-        }
+        int charsWritten = ToDigitsInBase(chars, value, numBase);
 
         var str = chars[..charsWritten].ToString();
         PoolHelper.ReturnIfNonNull(arrayToReturn);
@@ -241,85 +230,111 @@ internal static class BigIntegerHelper
             return 1;
         }
 
-        var digits = new List<char>();
-        while (value > 0)
+        Debug.Assert(numBase is 2 or 8 or 16);
+        var shift = numBase switch
         {
-            value = BigInteger.DivRem(value, numBase, out var rem);
-            digits.Add((char)('0' + (int)rem));
-        }
+            2 => 1,
+            8 => 3,
+            16 => 4,
+            _ => throw new UnreachableException()
+        };
 
-        int index = 0;
-        for (int i = digits.Count - 1; i >= 0; i--)
-            chars[index++] = digits[i];
+        var byteCount = value.GetByteCount(isUnsigned: true);
+        byte[]? arrayToReturn = null;
+        Span<byte> bytes = byteCount <= 1024
+            ? stackalloc byte[byteCount]
+            : PoolHelper.Rent(byteCount, out arrayToReturn);
+
+        var written = value.TryWriteBytes(bytes, out var bytesWritten, isUnsigned: true, isBigEndian: true);
+        Debug.Assert(written);
+        Debug.Assert(bytesWritten == byteCount);
+
+        int index = ToPowerOfTwoDigits(chars, bytes[..bytesWritten], shift);
+
+        PoolHelper.ReturnIfNonNull(arrayToReturn);
         return index;
     }
 
-    private static int GetMaxCharCount(BigInteger value, int numBase)
+    /// <summary>Writes the minimal digits of a positive magnitude (big-endian
+    /// bytes with no leading zero byte) in a power-of-two base (2/8/16) to
+    /// <paramref name="chars"/> by extracting bits (O(n)), avoiding the O(n^2)
+    /// repeated BigInteger division. Returns the number of digits written.</summary>
+    private static int ToPowerOfTwoDigits(Span<char> chars, ReadOnlySpan<byte> bytes, int shift)
+    {
+        Debug.Assert(shift is 1 or 3 or 4);
+        var mask = (1 << shift) - 1;
+
+        int index = 0;
+        bool firstGroup = true;
+        int offset = 0;
+        int groupBytes = bytes.Length % 3;
+        if (groupBytes is 0)
+            groupBytes = 3;
+
+        // Process the magnitude 3 bytes (24 bits) at a time. The leading group
+        // may be 1-2 bytes; its leading zero digits are skipped so the result
+        // is minimal, while later groups always emit every digit.
+        while (offset < bytes.Length)
+        {
+            int gb = firstGroup ? groupBytes : 3;
+            int groupBits = gb * 8;
+            uint group = 0;
+            for (int i = 0; i < gb; i++)
+                group = (group << 8) | bytes[offset + i];
+            offset += gb;
+
+            // The top digit of a group is narrower than `shift` bits when the
+            // group's bit count is not a multiple of `shift`.
+            int topBits = groupBits % shift;
+            if (topBits is 0)
+                topBits = shift;
+            int remaining = groupBits;
+
+            while (remaining > 0)
+            {
+                int take = remaining == groupBits ? topBits : shift;
+                int digit = (int)((group >> (remaining - take)) & mask);
+                remaining -= take;
+                if (firstGroup && index is 0 && digit is 0)
+                    continue; // strip leading zeros of the very first digit
+                chars[index++] = digit < 10 ? (char)('0' + digit) : (char)('a' + digit - 10);
+            }
+            firstGroup = false;
+        }
+
+        return index;
+    }
+
+    private static int GetMaxDigitsCount(BigInteger value, int numBase)
     {
         Debug.Assert(numBase is 2 or 8 or 16);
 
         var byteCount = BigInteger.Abs(value).GetByteCount(isUnsigned: true);
-        return numBase switch
+        var digits = numBase switch
         {
             2 => byteCount * 8,
             8 => (byteCount * 8 + 2) / 3,
             16 => byteCount * 2,
             _ => throw new UnreachableException()
-        } + 1 /* sign */ + 2 /* prefix */;
+        };
+        // A single digit is always needed (value 0 formats as "0").
+        return Math.Max(1, digits);
     }
 
-    private static void ToBinOrHexString(ref Span<char> chars, BigInteger value, out int charsWritten, char binOrHex)
+    private static int GetMaxCharCount(BigInteger value, int numBase)
     {
-        Debug.Assert(binOrHex is 'b' or 'x');
+        return GetMaxDigitsCount(value, numBase) + 1 /* sign */ + 2 /* prefix */;
+    }
+
+    private static void ToPowerOfTwoString(Span<char> chars, BigInteger value, out int charsWritten, char prefixChar, int shift)
+    {
+        Debug.Assert(prefixChar is 'b' or 'o' or 'x');
 
         if (value == 0)
         {
-            // Keep the single digit: "0x0" / "0b0" (mirrors ToOctString).
+            // Keep the single digit: "0x0" / "0b0" / "0o0".
             chars[0] = '0';
-            chars[1] = binOrHex;
-            chars[2] = '0';
-            charsWritten = 3;
-            return;
-        }
-
-        var offset = value < 0 ? 3 : 2; // prefix
-        var formatted = BigInteger.Abs(value).TryFormat(chars[offset..], out charsWritten, [binOrHex]);
-        Debug.Assert(formatted);
-
-        if (chars[offset] is '0')
-        {
-            // the first char may be a '0' to prevent being considered negative
-            chars = chars[1..];
-            charsWritten--;
-        }
-
-        if (value < 0)
-        {
-            chars[0] = '-';
-            chars[1] = '0';
-            chars[2] = binOrHex;
-        }
-        else
-        {
-            chars[0] = '0';
-            chars[1] = binOrHex;
-        }
-        charsWritten += offset;
-    }
-
-    private static void ToBinString(ref Span<char> chars, BigInteger value, out int charsWritten)
-    {
-        ToBinOrHexString(ref chars, value, out charsWritten, 'b');
-    }
-
-    private static void ToOctString(Span<char> chars, BigInteger value, out int charsWritten)
-    {
-        // TODO: temp fix
-
-        if (value == 0)
-        {
-            chars[0] = '0';
-            chars[1] = 'o';
+            chars[1] = prefixChar;
             chars[2] = '0';
             charsWritten = 3;
             return;
@@ -328,116 +343,32 @@ internal static class BigIntegerHelper
         bool isNegative = value < 0;
         BigInteger absValue = isNegative ? -value : value;
 
-        List<char> digits = new List<char>();
-        while (absValue > 0)
-        {
-            BigInteger remainder = absValue % 8;
-            absValue /= 8;
-            digits.Add((char)('0' + (int)remainder));
-        }
-
         int index = 0;
         if (isNegative)
         {
             chars[index++] = '-';
             chars[index++] = '0';
-            chars[index++] = 'o';
+            chars[index++] = prefixChar;
         }
         else
         {
             chars[index++] = '0';
-            chars[index++] = 'o';
+            chars[index++] = prefixChar;
         }
 
-        for (int i = digits.Count - 1; i >= 0; i--)
-            chars[index++] = digits[i];
+        var byteCount = absValue.GetByteCount(isUnsigned: true);
+        byte[]? arrayToReturn = null;
+        Span<byte> bytes = byteCount <= 1024
+            ? stackalloc byte[byteCount]
+            : PoolHelper.Rent(byteCount, out arrayToReturn);
 
+        var written = absValue.TryWriteBytes(bytes, out var bytesWritten, isUnsigned: true, isBigEndian: true);
+        Debug.Assert(written);
+        Debug.Assert(bytesWritten == byteCount);
+
+        index += ToPowerOfTwoDigits(chars[index..], bytes[..bytesWritten], shift);
+
+        PoolHelper.ReturnIfNonNull(arrayToReturn);
         charsWritten = index;
-
-
-
-        // THIS IS WRONG
-
-        //bool isNegative = value < 0;
-        //value = BigInteger.Abs(value);
-
-        //var count = value.GetByteCount(true);
-
-        //// bytesLength should be 1 + 3*n (the 1 is padding, the 3 is the value to convert)
-        //var bytesLength = count;
-        //var offset = 1;
-        //if (bytesLength % 3 is not 0)
-        //    offset += 3 - bytesLength % 3;
-        //bytesLength += offset;
-
-
-        //byte[]? arrayToReturn = null;
-        //Span<byte> bytes = bytesLength <= 1024
-        //    ? stackalloc byte[bytesLength]
-        //    : PoolHelper.Rent(bytesLength, out arrayToReturn);
-
-        //var written = value.TryWriteBytes(bytes[offset..], out var bytesWritten, isUnsigned: true, isBigEndian: true);
-        //Debug.Assert(written);
-        //Debug.Assert(count == bytesWritten);
-
-        //if (isNegative)
-        //{
-        //    chars[0] = '-';
-        //    chars[1] = '0';
-        //    chars[2] = 'o';
-        //    charsWritten = 3;
-        //}
-        //else
-        //{
-        //    chars[0] = '0';
-        //    chars[1] = 'o';
-        //    charsWritten = 2;
-        //}
-
-        //for (int i = 1; i < bytes.Length; i += 3)
-        //{
-        //    Debug.Assert(i + 3 <= bytes.Length);
-
-        //    // the first byte is for padding
-        //    // it should be zero to avoid affecting re-interpretation
-        //    var batch = bytes.Slice(i - 1, 4);
-        //    batch[0] = 0;
-        //    uint batchValue = BinaryPrimitives.ReadUInt32BigEndian(batch);
-
-        //    if (i is 1)
-        //    {
-        //        // HERE IS WRONG
-
-        //        // ignore leading zero if it is first batch
-        //        int startIndex = charsWritten;
-        //        do
-        //        {
-        //            char c = (char)('0' + (batchValue & 0b111));
-        //            if (c is not '0' || charsWritten != startIndex)
-        //                chars[charsWritten++] = c;
-        //            batchValue >>= 3;
-        //        } while (batchValue is not 0);
-        //        chars[startIndex..charsWritten].Reverse();
-        //    }
-        //    else
-        //    {
-        //        var index = charsWritten + 8;
-        //        for (int j = 0; j < 8; j++)
-        //        {
-        //            char c = (char)('0' + (batchValue & 0b111));
-        //            chars[--index] = c;
-        //            batchValue >>= 3;
-        //        }
-        //        charsWritten += 8;
-        //    }
-        //    Console.WriteLine("TEST:" + chars.ToString());
-        //}
-
-        //PoolHelper.ReturnIfNonNull(arrayToReturn);
-    }
-
-    private static void ToHexString(ref Span<char> chars, BigInteger value, out int charsWritten)
-    {
-        ToBinOrHexString(ref chars, value, out charsWritten, 'x');
     }
 }

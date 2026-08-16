@@ -93,7 +93,7 @@ assert j == "1  12134"
 assert k == "\" 1123"
 
 
-# ===== Regression: unterminated f-string error message (issue #28) =====
+# ===== Regression: unterminated f-string error message =====
 # A single-quote f-string must report "unterminated f-string literal", not
 # "unterminated triple-quoted f-string literal".
 

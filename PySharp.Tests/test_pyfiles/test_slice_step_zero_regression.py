@@ -1,6 +1,6 @@
 """
 Regression: slice with step=0 must raise a catchable ValueError, not leak a
-bare .NET exception (issue #19).
+bare .NET exception.
 
 CPython 3.14 reference:
     [1,2,3][slice(1,2,0)]  -> ValueError: slice step cannot be zero

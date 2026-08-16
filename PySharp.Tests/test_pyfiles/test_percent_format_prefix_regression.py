@@ -1,6 +1,5 @@
 """
-Regression: old-style %#o/%#x/%#X prefix handling must match CPython
-(issue #20).
+Regression: old-style %#o/%#x/%#X prefix handling must match CPython.
 
 CPython 3.14 reference:
     '%#o' % -8      == '-0o10'   (sign then prefix)

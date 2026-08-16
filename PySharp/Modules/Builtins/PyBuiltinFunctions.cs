@@ -736,7 +736,7 @@ public static partial class PyBuiltinFunctions
         var value = result.Value.Value;
         if (value < 0 || value > 0x10FFFF)
             return PyResult.ValueError(PySR.Runtime_Builtin_Chr_OutOfRange);
-        // Mitigation for #42: the str pipeline (ord/repr/ascii) cannot keep
+        // Mitigation: the str pipeline (ord/repr/ascii) cannot keep
         // lone surrogates intact, so reject the surrogate range explicitly
         // instead of silently producing the wrong U+FFFD replacement character.
         if (value >= 0xD800 && value <= 0xDFFF)
