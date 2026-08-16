@@ -4,6 +4,7 @@ using PySharp.Compilation.Tokenization;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Environments;
+using PySharp.Utility;
 using System.Diagnostics;
 using System.Text;
 
@@ -23,7 +24,7 @@ public sealed class PyInterpreter : IDisposable
         _environment = environment;
         _mainModule = new PyModuleObject(PySpecialNames.Main);
         _mainContext = PyCallContext.CreateInterpreterMainContext(this);
-        _mainModule._pyAttributes = _mainContext.CurrentInternalFrame.Variables.Globals.Dict;
+        _mainModule._pyAttributes = new StringKeyDict(_mainContext.CurrentInternalFrame.Variables.Globals);
     }
 
     public static PyInterpreter Create(PyEnvironment environment)
@@ -55,13 +56,14 @@ public sealed class PyInterpreter : IDisposable
     internal static void InternalExecuteToModule(PyCallContext context, PyCodeObject code, PyModuleObject module, bool isMain)
     {
         // module will be reloaded
-        var dict = context.CurrentInternalFrame.Variables.Globals.Dict;
+        var dict = context.CurrentInternalFrame.Variables.Globals;
         if (module._pyAttributes is not null)
         {
             foreach (var pair in module._pyAttributes)
-                dict[pair.Key] = pair.Value;
+                dict[PyStrObject.FromString(pair.Key)] = pair.Value;
         }
-        module._pyAttributes = context.CurrentInternalFrame.Variables.Globals.Dict;
+        var attrs = new StringKeyDict(context.CurrentInternalFrame.Variables.Globals);
+        module._pyAttributes = attrs;
         module.PyAttributes[PySpecialNames.Name] = isMain ? PySpecialNames.Interned.Main : PyStrObject.FromString(module.Name);
 
         // Set __package__ correctly for the module
@@ -84,7 +86,7 @@ public sealed class PyInterpreter : IDisposable
 
         context.CurrentInternalFrame.CodeObject = code;
         _ = PyCore.Eval(context).PyUnwrap(context);
-        Debug.Assert(ReferenceEquals(module.PyAttributes, context.CurrentInternalFrame.Variables.Globals.Dict));
+        Debug.Assert(ReferenceEquals(module.PyAttributes, attrs));
         if (isMain)
             module.PyAttributes[PySpecialNames.Name] = PyStrObject.FromString(module.Name);
     }

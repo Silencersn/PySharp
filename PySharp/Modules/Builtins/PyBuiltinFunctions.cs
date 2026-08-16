@@ -763,7 +763,7 @@ public static partial class PyBuiltinFunctions
     [PyFunctionParameters()]
     private static PyResult GlobalsImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = context.CurrentInternalFrame.Variables.Globals.PyDict;
+        var result = context.CurrentInternalFrame.Variables.Globals;
         return result;
     }
 
@@ -787,12 +787,12 @@ public static partial class PyBuiltinFunctions
             if (globalsArg is PyNoneObject)
             {
                 // Use the current frame's globals
-                var globals = context.CurrentInternalFrame.Variables.Globals.Dict;
-                globals.TryGetValue(PySpecialNames.Package, out packageObj);
-                if (!globals.TryGetValue(PySpecialNames.Name, out var nameObj) || nameObj is not PyStrObject nameStr)
+                var globals = context.CurrentInternalFrame.Variables.Globals;
+                globals.TryGetValue(PySpecialNames.Interned.Package, out packageObj);
+                if (!globals.TryGetValue(PySpecialNames.Interned.Name, out var nameObj) || nameObj is not PyStrObject nameStr)
                     return PyResult.TypeError(PySR.Runtime_Builtin_Import_NameMustBeString);
                 moduleName = nameStr.Value;
-                hasPath = globals.ContainsKey(PySpecialNames.Path);
+                hasPath = globals.ContainsKey(PySpecialNames.Interned.Path);
             }
             else if (globalsArg is PyDictObject globalsDict)
             {

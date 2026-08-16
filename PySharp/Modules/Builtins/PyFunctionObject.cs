@@ -9,7 +9,7 @@ public sealed class PyFunctionObject : PyObjectManagedDict, IPyObjectName
     internal readonly PyArgsDef _def;
     internal readonly PyCellObject[]? _closure;
     internal PyObject? _pyClosure;
-    internal PyGlobals _globals;
+    internal PyDictObject _globals;
     private readonly PyCodeObject _code;
 
     public string Name => _code.Name;
@@ -18,7 +18,7 @@ public sealed class PyFunctionObject : PyObjectManagedDict, IPyObjectName
 
     public override PyTypeObject DefaultPyType => PyFunctionObjectType.Shared;
 
-    internal PyFunctionObject(PyCellObject[]? closure, PyGlobals globals, PyCodeObject code, PyArgsDef def)
+    internal PyFunctionObject(PyCellObject[]? closure, PyDictObject globals, PyCodeObject code, PyArgsDef def)
     {
         _closure = closure;
         _globals = globals;
@@ -78,7 +78,7 @@ public sealed partial class PyFunctionObjectType : PyTypeObject<PyFunctionObject
     [PyProperty(PySpecialNames.Globals)]
     private static PyResult Get_Globals(PyCallContext context, PyFunctionObject self)
     {
-        return self._globals.PyDict;
+        return self._globals;
     }
 
     [PyProperty(PySpecialNames.Code)]

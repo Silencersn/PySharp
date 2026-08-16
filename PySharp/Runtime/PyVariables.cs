@@ -1,5 +1,6 @@
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
+using PySharp.Utility;
 using System.Buffers;
 using System.Collections.Frozen;
 using System.Diagnostics;
@@ -14,15 +15,15 @@ internal sealed partial class PyVariables
     private PyObject?[]? _localsPlus;
     private readonly FrozenDictionary<string, int>? _localsTable;
 
-    private readonly PyGlobals _globals;
+    private readonly PyDictObject _globals;
     private IDictionary<string, PyObject?>? _locals;
 
-    private PyVariables(PyGlobals globals)
+    private PyVariables(PyDictObject globals)
     {
         _globals = globals;
         _localsTable = null;
     }
-    private PyVariables(PyGlobals globals, PyCallContext context, PyCodeObject codeObject)
+    private PyVariables(PyDictObject globals, PyCallContext context, PyCodeObject codeObject)
     {
         // must be common function (non generator)
         Debug.Assert(codeObject.Flags is CodeObjectFlags.Function);
@@ -39,7 +40,7 @@ internal sealed partial class PyVariables
 
         _canDispose = true;
     }
-    private PyVariables(PyGlobals globals, FrozenDictionary<string, int> localsTable)
+    private PyVariables(PyDictObject globals, FrozenDictionary<string, int> localsTable)
     {
         _globals = globals;
         _localsTable = localsTable;
@@ -47,7 +48,7 @@ internal sealed partial class PyVariables
         _memory = _localsPlus;
         _canDispose = true;
     }
-    private PyVariables(PyGlobals globals, IDictionary<string, PyObject?>? locals)
+    private PyVariables(PyDictObject globals, IDictionary<string, PyObject?>? locals)
     {
         _localsTable = locals is null ? null : FrozenDictionary<string, int>.Empty;
 
@@ -62,8 +63,7 @@ internal sealed partial class PyVariables
     internal Span<PyObject?> LocalsSpanUnsafe => LocalsPlusMemory.Span;
     internal Span<PyObject> OperandStackSpan => LocalsPlusMemory.Span[_localsTable!.Count..]!;
 
-    internal PyGlobals Globals => _globals;
-    internal IDictionary<string, PyObject> GlobalsDict => Globals.Dict;
+    internal PyDictObject Globals => _globals;
     internal FrozenDictionary<string, int> LocalsTable => _localsTable ?? throw new InvalidOperationException();
     internal IDictionary<string, PyObject?> Locals => _locals ?? throw new NotSupportedException();
 
@@ -89,18 +89,17 @@ internal sealed partial class PyVariables
 
     internal static PyVariables CreateGlobal()
     {
-        var dict = new Dictionary<string, PyObject>(StringComparer.Ordinal);
-        return new PyVariables(new PyGlobals(dict));
+        return new PyVariables(new PyDictObject());
     }
-    internal static PyVariables CreateExecEval(PyGlobals globals, IDictionary<string, PyObject?>? locals)
+    internal static PyVariables CreateExecEval(PyDictObject globals, IDictionary<string, PyObject?>? locals)
     {
         return new PyVariables(globals, locals);
     }
-    internal static PyVariables CreateUsingStackMemoryAllocator(PyGlobals globals, PyCallContext context, PyCodeObject codeObject)
+    internal static PyVariables CreateUsingStackMemoryAllocator(PyDictObject globals, PyCallContext context, PyCodeObject codeObject)
     {
         return new PyVariables(globals, context, codeObject);
     }
-    internal static PyVariables CreateUsingArrayPool(PyGlobals globals, FrozenDictionary<string, int> localsTable)
+    internal static PyVariables CreateUsingArrayPool(PyDictObject globals, FrozenDictionary<string, int> localsTable)
     {
         return new PyVariables(globals, localsTable);
     }
@@ -157,9 +156,9 @@ internal sealed partial class PyVariables
     internal PyVariables CreateInline()
     {
         if (!HasLocals)
-            return new PyVariables(_globals.Clone());
+            return new PyVariables([.. _globals]);
 
-        var variables = new PyVariables(_globals.Clone(), _localsTable);
+        var variables = new PyVariables([.. _globals], _localsTable);
         LocalsSpan.CopyTo(variables.LocalsSpan);
         if (_locals is not null)
             variables._locals = new LocalDictionary(_localsTable, variables.LocalsPlusMemory, new Dictionary<string, PyObject?>(_locals));
@@ -186,7 +185,7 @@ internal sealed partial class PyVariables
     private bool TryLoadFromBuiltins(string name, [NotNullWhen(true)] out PyObject? value)
     {
         value = null;
-        if (!GlobalsDict.TryGetValue(PySpecialNames.Builtins, out var builtins))
+        if (!Globals.TryGetValue(PySpecialNames.Interned.Builtins, out var builtins))
             return false;
 
         return builtins.PyAttributes.TryGetValue(name, out value);
@@ -195,7 +194,7 @@ internal sealed partial class PyVariables
     internal IEnumerable<KeyValuePair<string, PyObject>> EnumerateLocals()
     {
         if (!HasLocals)
-            return GlobalsDict;
+            return new StringKeyDict(Globals);
 
         if (_locals is not null)
         {
@@ -254,7 +253,7 @@ internal sealed partial class PyVariables
 
     public PyResult LoadGlobal(string name)
     {
-        if (GlobalsDict.TryGetValue(name, out var value))
+        if (Globals.TryGetValue(PyStrObject.FromString(name), out var value))
             return value;
 
         if (TryLoadFromBuiltins(name, out value))
@@ -307,7 +306,7 @@ internal sealed partial class PyVariables
 
     public PyResult StoreGlobal(string name, PyObject value)
     {
-        GlobalsDict[name] = value;
+        Globals[PyStrObject.FromString(name)] = value;
         return PyNoneObject.None;
     }
 
@@ -344,7 +343,7 @@ internal sealed partial class PyVariables
 
     public PyResult DeleteGlobal(string name)
     {
-        if (GlobalsDict.Remove(name))
+        if (Globals.Remove(PyStrObject.FromString(name)))
             return PyNoneObject.None;
 
         return PyResult.NameError(PySR.Runtime_Variable_NameNotDefined, name);

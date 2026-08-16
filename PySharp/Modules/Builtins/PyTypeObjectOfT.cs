@@ -123,7 +123,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
         var type = layoutTypeOwnerResult.Value.CreateUserDefinedTypeWithSameLayout(typeName, typeQualName, bases);
         type._pyType = cls;
 
-        if (context.CurrentInternalFrame.Variables.GlobalsDict.TryGetValue(PySpecialNames.Name, out var module))
+        if (context.CurrentInternalFrame.Variables.Globals.TryGetValue(PySpecialNames.Interned.Name, out var module))
             type.ModuleAsObject = module;
         else
             type.ModuleAsObject = PyStrObject.FromString("builtins");

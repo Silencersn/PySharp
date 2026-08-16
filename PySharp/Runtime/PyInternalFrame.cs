@@ -66,8 +66,8 @@ internal partial struct PyInternalFrame
     {
         var frame = new PyInternalFrame(isRoot);
         var builtins = context.PyEnvironment.LoadBuiltinModule(context, "builtins");
-        frame.Variables.Globals.Dict[PySpecialNames.Builtins] = builtins;
-        frame.Variables.Globals.Dict[PySpecialNames.Name] = PyStrObject.FromString(moduleQualifiedName);
+        frame.Variables.Globals[PySpecialNames.Interned.Builtins] = builtins;
+        frame.Variables.Globals[PySpecialNames.Interned.Name] = PyStrObject.FromString(moduleQualifiedName);
 
         // TODO: add flag to control whether adding site
         _ = context.PyEnvironment.LoadBuiltinModule(context, "site");
@@ -75,7 +75,7 @@ internal partial struct PyInternalFrame
         return frame;
     }
     internal static PyInternalFrame CreateFuncCallFrame(PyCallContext context, PyObject caller,
-        FrameType frameType, PyGlobals globals,
+        FrameType frameType, PyDictObject globals,
         PyCodeObject code)
     {
         Debug.Assert(frameType is FrameType.Function);
@@ -122,9 +122,7 @@ internal partial struct PyInternalFrame
                 globals[builtinsKey] = context.PyEnvironment.LoadBuiltinModule(context, "builtins");
         }
 
-        PyGlobals pyGlobals = globals is null ?
-            Variables.Globals :
-            new(new StringKeyDict(globals));
+        var pyGlobals = globals ?? Variables.Globals;
 
         IDictionary<string, PyObject?>? localsDictionary = (locals is null ?
             null :

@@ -316,9 +316,9 @@ internal static partial class BytecodeVirtualMachine
         }
         else if (frame.FrameType is FrameType.MainRoot or FrameType.Module)
         {
-            var globals = frame.Variables.Globals.Dict;
-            if (!globals.ContainsKey(PySpecialNames.Annotations))
-                globals[PySpecialNames.Annotations] = new PyDictObject();
+            var globals = frame.Variables.Globals;
+            if (!globals.ContainsKey(PySpecialNames.Interned.Annotations))
+                globals[PySpecialNames.Interned.Annotations] = new PyDictObject();
         }
     }
 
@@ -382,10 +382,10 @@ internal static partial class BytecodeVirtualMachine
         if (level.Value > 0)
         {
             // Relative import: resolve the name relative to the caller's package
-            var callerGlobals = context.CurrentInternalFrame.Variables.Globals.Dict;
-            callerGlobals.TryGetValue(PySpecialNames.Package, out var packageObj);
-            var moduleName = ((PyStrObject)callerGlobals[PySpecialNames.Name]).Value;
-            var hasPath = callerGlobals.ContainsKey(PySpecialNames.Path);
+            var callerGlobals = context.CurrentInternalFrame.Variables.Globals;
+            callerGlobals.TryGetValue(PySpecialNames.Interned.Package, out var packageObj);
+            var moduleName = ((PyStrObject)callerGlobals[PySpecialNames.Interned.Name]).Value;
+            var hasPath = callerGlobals.ContainsKey(PySpecialNames.Interned.Path);
             name = PyEnvironment.ResolveRelativeModuleName(context, packageObj, moduleName, hasPath, name, level.Int32Value);
         }
 
