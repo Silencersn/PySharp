@@ -564,9 +564,9 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
             if (text[pos] is '.')
             {
                 if (hasDot)
-                return false;
-            hasDot = true;
-            pos++;
+                    return false;
+                hasDot = true;
+                pos++;
                 continue;
             }
             if ((text[pos] >= '0' && text[pos] <= '9') || (text[pos] >= 'a' && text[pos] <= 'f'))

@@ -4,7 +4,6 @@ using PySharp.Modules.Builtins;
 using PySharp.Modules.String.TemplateLib;
 using PySharp.Modules.Typing;
 using PySharp.Runtime.Calls;
-using PySharp.Utility;
 using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;

@@ -1,4 +1,3 @@
-using Microsoft.CodeAnalysis;
 using PySharp.SourceGeneration.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 

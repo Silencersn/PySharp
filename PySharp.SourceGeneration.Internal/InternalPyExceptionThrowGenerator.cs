@@ -3,8 +3,6 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 using PySharp.SourceGeneration.Diagnostics;
 using PySharp.SourceGeneration.Utility;
-using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Linq;
 using System.Text;
 

@@ -2,13 +2,11 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 using PySharp.SourceGeneration.Diagnostics;
 using PySharp.SourceGeneration.Utility;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading;
-using static PySharp.SourceGeneration.PyTypeGenerator;
 
 namespace PySharp.SourceGeneration;
 

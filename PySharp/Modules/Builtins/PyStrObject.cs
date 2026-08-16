@@ -3,7 +3,6 @@ using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
 using System.Buffers;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Numerics;
 using System.Text;
@@ -410,7 +409,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 {
                     int idx = remaining.LastIndexOf(sepStr.Value);
                     if (idx < 0)
-                            break;
+                        break;
                     resultList.Add(remaining[(idx + sepStr.Value.Length)..]);
                     remaining = remaining[..idx];
                     count++;

@@ -53,7 +53,7 @@ public class PyFrozenModuleGenerator : IIncrementalGenerator
                         else
                             return null; // Undecodable: skip silently.
                     }
-                    
+
                     if (errors.Count > 0)
                         return DiagnosticOr<FrozenModuleInfo>.From(errors);
 

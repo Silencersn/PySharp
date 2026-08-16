@@ -3,7 +3,6 @@ using PySharp.SourceGeneration.Diagnostics;
 using PySharp.SourceGeneration.Utility;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 
 namespace PySharp.SourceGeneration.Internal;

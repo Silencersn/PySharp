@@ -1,5 +1,3 @@
-using Microsoft.CodeAnalysis;
-
 namespace PySharp.SourceGeneration.Diagnostics;
 
 /// <summary>

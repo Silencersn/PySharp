@@ -626,7 +626,7 @@ partial class Parser
             else if (info.Error is PyStrConverter.ConvertError.InvalidOctalEscapeSequence)
             {
                 if (!_context.TryWarn<PySyntaxWarningObjectType>(
-                    PySR.Format(PySR.InvalidSyntax_Warning_InvalidOctalEscapeSequence, Convert.ToString((ushort)info.Char, 8))))
+                    PySR.Format(PySR.InvalidSyntax_Warning_InvalidOctalEscapeSequence, Convert.ToString(info.Char, 8))))
                     throw _context.PySharpException("Not Implemented");
             }
 
@@ -674,7 +674,7 @@ partial class Parser
             else if (info.Error is PyStrConverter.ConvertError.InvalidOctalEscapeSequence)
             {
                 if (!_context.TryWarn<PySyntaxWarningObjectType>(
-                    PySR.Format(PySR.InvalidSyntax_Warning_InvalidOctalEscapeSequence, Convert.ToString((ushort)info.Char, 8))))
+                    PySR.Format(PySR.InvalidSyntax_Warning_InvalidOctalEscapeSequence, Convert.ToString(info.Char, 8))))
                     throw _context.PySharpException("Not Implemented");
             }
 

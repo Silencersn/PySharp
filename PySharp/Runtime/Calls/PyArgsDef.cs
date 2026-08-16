@@ -2,7 +2,6 @@ using PySharp.Compilation.AstNodes;
 using PySharp.Modules.Builtins;
 using PySharp.Utility;
 using System.Buffers;
-using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
@@ -318,7 +317,7 @@ public sealed class PyArgsDef
         foreach (var pair in kwargs)
         {
             index = KwonlyArgs.IndexOf(pair.Key);
-            
+
             if (index is not -1)
             {
                 // no duplication, guaranteed by the compiler

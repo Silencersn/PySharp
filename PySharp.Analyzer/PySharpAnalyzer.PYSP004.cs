@@ -228,7 +228,7 @@ partial class PySharpAnalyzer
             int i => i,
             long l => l,
             uint u => u,
-            ulong ul when ul <= (ulong)long.MaxValue => (long)ul,
+            ulong ul when ul <= long.MaxValue => (long)ul,
             _ => null
         };
     }
