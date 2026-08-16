@@ -12,26 +12,22 @@ namespace PySharp.Modules.Builtins;
 
 public class PyModuleObject : PyObjectManagedDict, IPyObjectName
 {
-    private readonly PyDictObject _dict;
-
     public string Name { get; }
     public virtual string? Origin => null;
     public override PyTypeObject DefaultPyType => PyModuleObjectType.Shared;
 
     internal sealed override IDictionary<string, PyObject> PyAttributes
     {
-        get => _pyAttributes ??= new StringKeyDict(_dict);
+        get => _pyAttributes ??= new PyDictObject();
         set => throw new NotSupportedException();
     }
 
-    internal PyDictObject PyAttributesDict => _dict;
+    internal PyDictObject PyAttributesDict => (PyDictObject)_pyAttributes!;
 
     public PyModuleObject(string name)
     {
         ArgumentNullException.ThrowIfNull(name);
         Name = name;
-
-        _dict = [];
 
         PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
         // Default __package__: parent package name (empty for top-level modules)
@@ -39,7 +35,6 @@ public class PyModuleObject : PyObjectManagedDict, IPyObjectName
         PyAttributes.Add(PySpecialNames.Package, lastDot >= 0 ? PyStrObject.FromString(name[..lastDot]) : PyStrObject.Empty);
         ApplyIncludes();
 
-        Debug.Assert(_dict is not null);
         Debug.Assert(_pyAttributes is not null);
     }
 

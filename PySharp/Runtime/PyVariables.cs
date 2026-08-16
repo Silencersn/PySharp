@@ -201,7 +201,7 @@ internal sealed partial class PyVariables
     internal IEnumerable<KeyValuePair<string, PyObject>> EnumerateLocals()
     {
         if (!HasLocals)
-            return new StringKeyDict(Globals);
+            return Globals;
 
         if (_locals is not null)
         {

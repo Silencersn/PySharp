@@ -59,8 +59,8 @@ public sealed class UtilityTests
     [TestMethod]
     public void StringKeyDict_Basic()
     {
-        var inner = new Dictionary<PyObject, PyObject>();
-        IDictionary<string, PyObject> dict = new StringKeyDict(inner);
+        PyDictObject pyDict = [];
+        IDictionary<string, PyObject> dict = pyDict;
         dict.Add("k", PyIntObject.FromInteger(42));
         Assert.IsTrue(dict.ContainsKey("k"));
         Assert.IsTrue(dict.TryGetValue("k", out var v));
@@ -72,8 +72,8 @@ public sealed class UtilityTests
     [TestMethod]
     public void StringKeyDict_Count()
     {
-        var inner = new Dictionary<PyObject, PyObject>();
-        IDictionary<string, PyObject> dict = new StringKeyDict(inner);
+        PyDictObject pyDict = [];
+        IDictionary<string, PyObject> dict = pyDict;
         Assert.IsTrue(dict.Count == 0);
         dict.Add("a", PyNoneObject.None);
         Assert.IsTrue(dict.Count == 1);
