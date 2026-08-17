@@ -2,6 +2,7 @@ using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Comparison;
 using PySharp.Runtime.PyAttributes;
+using PySharp.Utility;
 using System.Collections;
 using System.Diagnostics.CodeAnalysis;
 
@@ -50,6 +51,13 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr, IDictionar
     public static PyDictObject CreateProxy(IDictionary<PyObject, PyObject> dict)
     {
         return new PyDictObject(dict, true);
+    }
+    internal static PyDictObject FromStringKeyDict(IDictionary<string, PyObject> stringKeyDict)
+    {
+        if (stringKeyDict is PyDictObject dict)
+            return dict;
+
+        return CreateProxy(new DictAdapter(stringKeyDict!));
     }
 
     PyResult<PyStrObject> IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<PyObject> ids)

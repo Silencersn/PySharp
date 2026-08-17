@@ -83,7 +83,7 @@ public sealed partial class PyModuleObjectType : PyTypeObject<PyModuleObject>
     [PyProperty(PySpecialNames.Dict)]
     private static PyResult Get_Dict(PyCallContext context, PyModuleObject self)
     {
-        return PyDictObject.CreateProxy(new DictAdapter(self.PyAttributes!));
+        return PyDictObject.FromStringKeyDict(self.PyAttributes);
     }
 
     [PyProperty(PySpecialNames.Annotations)]

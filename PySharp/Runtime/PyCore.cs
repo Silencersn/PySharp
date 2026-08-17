@@ -94,7 +94,7 @@ internal static class PyCore
 
         var nameStr = PyStrObject.FromString(codeObject.Name);
         var basesTuple = PyTupleObject.CreateTuple(bases);
-        var nsObj = PyDictObject.CreateProxy(new DictAdapter(ns));
+        var nsObj = PyDictObject.FromStringKeyDict(ns!);
         var args = PyTupleObject.CreateTuple([nameStr, basesTuple, nsObj]);
 
         var newFunc = metaClass.Slots.New ?? throw context.TypeError(null);
