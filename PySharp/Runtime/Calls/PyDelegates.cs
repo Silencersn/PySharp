@@ -1,6 +1,7 @@
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.PyAttributes;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
 namespace PySharp.Runtime.Calls;
@@ -27,6 +28,18 @@ public delegate PyResult PyClsArgsKwargsFunction(PyCallContext context, PyTypeOb
 // Buffer protocol delegates
 public delegate PyResult PyBufferFunction(PyCallContext context, PyObject self, int flags);
 public delegate PyResult PyReleaseBufferFunction(PyCallContext context, PyObject self, PyObject buffer);
+
+public readonly struct PyDelegateDefinition<T> where T : Delegate
+{
+    public readonly T Delegate;
+    public readonly string[] Parameters;
+
+    public PyDelegateDefinition(T @delegate, string[] parameters)
+    {
+        Delegate = @delegate;
+        Parameters = parameters;
+    }
+}
 
 public static class PyDelegateConverter
 {
@@ -226,6 +239,42 @@ public static class PyDelegateConverter
                     Debug.Assert(argsDef is not null);
                     cache[i] = PyArgsDef.FromDef(argsDef.Parameters);
                 }
+                defs = cache;
+            }
+        }
+    }
+    public static PyUncompoundedDelegate CreateOverloadDispatcher(params PyDelegateDefinition<PyFunction>[] functions)
+    {
+        PyArgsDef[]? defs = null;
+
+        return (context, args, kwargs) =>
+        {
+            EnsureDefCache();
+            Debug.Assert(defs is not null);
+
+            for (int i = 0; i < defs.Length; i++)
+            {
+                using var buffer = defs[i].CreateBuffer();
+                if (defs[i].TryParse(args, kwargs, buffer, out var result))
+                    return functions[i].Delegate.Invoke(context, result);
+            }
+
+            return PyResult.TypeError(null);
+        };
+
+        void EnsureDefCache()
+        {
+            if (defs is not null)
+                return;
+
+            lock (functions)
+            {
+                if (defs is not null)
+                    return;
+
+                var cache = new PyArgsDef[functions.Length];
+                for (int i = 0; i < cache.Length; i++)
+                    cache[i] = PyArgsDef.FromDef(functions[i].Parameters);
                 defs = cache;
             }
         }

@@ -1,6 +1,7 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
+using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Modules.Builtins;
@@ -30,8 +31,14 @@ public class PyBuiltinFunctionOrMethodObject : PyObject, IPyObjectName
         IsMethod = true;
         PyDelegate = uncompoundedDelegate;
     }
+    
 
     internal static PyBuiltinFunctionOrMethodObject CreateFunction(string name, params PyFunction[] funcs)
+    {
+        return CreateFunction(name, PyDelegateConverter.CreateOverloadDispatcher(funcs));
+    }
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public static PyBuiltinFunctionOrMethodObject CreateFunction(string name, params PyDelegateDefinition<PyFunction>[] funcs)
     {
         return CreateFunction(name, PyDelegateConverter.CreateOverloadDispatcher(funcs));
     }

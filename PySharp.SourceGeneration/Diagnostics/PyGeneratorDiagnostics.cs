@@ -69,4 +69,52 @@ internal static class PyGeneratorDiagnostics
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
         description: "The .py file referenced by the [PyFrozenModule] attribute is not listed as an AdditionalFile, so the frozen module cannot be generated.");
+
+    /// <summary>
+    /// PYARG006 — A method referenced by [PyExport] was not found on the containing type.
+    /// </summary>
+    internal static readonly DiagnosticDescriptor ExportMethodNotFound = new(
+        id: "PYARG006",
+        title: "Referenced method not found",
+        messageFormat: "Method '{0}' referenced by [PyExport] on '{1}' was not found on type '{2}'.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "A nameof(...) method referenced by the [PyExport] attribute does not exist on the containing type, so the exported member cannot be generated.");
+
+    /// <summary>
+    /// PYARG007 — A method referenced by [PyExport] is missing [PyFunctionParameters].
+    /// </summary>
+    internal static readonly DiagnosticDescriptor ExportMethodMissingParameters = new(
+        id: "PYARG007",
+        title: "Method is missing [PyFunctionParameters]",
+        messageFormat: "Method '{0}' referenced by [PyExport] on '{1}' must be annotated with [PyFunctionParameters].",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "The [PyExport] generator reads parameter definitions from the [PyFunctionParameters] attribute; without it the exported member cannot be generated.");
+
+    /// <summary>
+    /// PYARG008 — A method referenced by [PyExport] has a signature incompatible with PyFunction.
+    /// </summary>
+    internal static readonly DiagnosticDescriptor ExportMethodSignatureIncompatible = new(
+        id: "PYARG008",
+        title: "Method signature is not compatible with PyFunction",
+        messageFormat: "Method '{0}' referenced by [PyExport] on '{1}' must have the signature 'PyResult(PyCallContext, PyArguments)'.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "A method referenced by the [PyExport] attribute must be convertible to the PyFunction delegate, i.e. return PyResult and take (PyCallContext, PyArguments).");
+
+    /// <summary>
+    /// PYARG009 — The name argument of [PyExport] is null or empty.
+    /// </summary>
+    internal static readonly DiagnosticDescriptor ExportNameNullOrEmpty = new(
+        id: "PYARG009",
+        title: "Exported name is null or empty",
+        messageFormat: "The 'name' argument of [PyExport] on '{0}' cannot be null or empty.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "The exported member needs a non-empty Python-facing name to be registered.");
 }

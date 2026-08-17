@@ -12,6 +12,8 @@ internal static class PySharpTypes
     public const string PyPropertyAttribute = $"{AttributesNamespace}.{nameof(PyPropertyAttribute)}";
     public const string PyTypeConstructorAttribute = $"{AttributesNamespace}.{nameof(PyTypeConstructorAttribute)}";
     public const string PyModuleIncludeAttribute = $"{AttributesNamespace}.{nameof(PyModuleIncludeAttribute)}";
+    public const string PyExportAttribute = $"{AttributesNamespace}.{nameof(PyExportAttribute)}";
+    public const string PyFunctionParametersAttribute = $"{AttributesNamespace}.{nameof(PyFunctionParametersAttribute)}";
     public const string PyFrozenModuleAttribute = $"{AttributesNamespace}.{nameof(PyFrozenModuleAttribute)}";
     public const string PyExceptionAttribute = $"{AttributesNamespace}.{nameof(PyExceptionAttribute)}";
     public const string PyObjectType = $"{BuiltinsNamespace}.PyObject";

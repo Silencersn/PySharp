@@ -76,6 +76,17 @@ internal sealed record class DiagnosticInfo
             ResolveLocation(attribute, syntaxReference));
     }
 
+    /// <summary>
+    /// Creates a diagnostic with an arbitrary descriptor and message arguments (used by the
+    /// PyExportGenerator for PYARG006-009).
+    /// </summary>
+    public static DiagnosticInfo For(AttributeData attribute, DiagnosticDescriptor descriptor, params string[] messageArgs)
+    {
+        var syntaxReference = attribute.ApplicationSyntaxReference;
+        var location = syntaxReference?.SyntaxTree.GetLocation(syntaxReference.Span) ?? Location.None;
+        return new DiagnosticInfo(descriptor, messageArgs, location);
+    }
+
     public Diagnostic ToDiagnostic()
     {
         return Diagnostic.Create(Descriptor, Location, messageArgs: MessageArgs);
