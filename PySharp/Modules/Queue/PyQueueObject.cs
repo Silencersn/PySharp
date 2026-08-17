@@ -31,7 +31,8 @@ public sealed partial class PyQueueObject : PyObject
 [PyType("Queue", Module = "queue")]
 public sealed partial class PyQueueObjectType : PyTypeObject<PyQueueObject>
 {
-    private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
+    [PyExport(PySpecialNames.New, nameof(NewImpl))]
+    private static partial PyBuiltinFunctionOrMethodObject _new { get; }
 
     [PyFunctionParameters("maxsize=0")]
     private static PyResult NewImpl(PyCallContext context, PyArguments arguments)

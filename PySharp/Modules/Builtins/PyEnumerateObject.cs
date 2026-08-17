@@ -21,7 +21,8 @@ public sealed class PyEnumerateObject : PyObject
 [PyType("enumerate")]
 public sealed partial class PyEnumerateObjectType : PyTypeObject<PyEnumerateObject>
 {
-    private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
+    [PyExport(PySpecialNames.New, nameof(NewImpl))]
+    private static partial PyBuiltinFunctionOrMethodObject _new { get; }
 
     [PyFunctionParameters("iterable", "start=0")]
     private static PyResult NewImpl(PyCallContext context, PyArguments arguments)

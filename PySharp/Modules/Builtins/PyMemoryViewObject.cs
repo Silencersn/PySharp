@@ -91,8 +91,8 @@ public sealed class PyMemoryViewObject : PyObject
 [PyType("memoryview")]
 public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewObject>
 {
-    private static readonly PyBuiltinFunctionOrMethodObject _new =
-        PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
+    [PyExport(PySpecialNames.New, nameof(NewImpl))]
+    private static partial PyBuiltinFunctionOrMethodObject _new { get; }
 
     // --- Constructor: memoryview(object) ---
 

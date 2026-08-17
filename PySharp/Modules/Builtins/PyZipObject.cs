@@ -24,7 +24,8 @@ public class PyZipObject : PyObject
 public sealed partial class PyZipObjectType : PyTypeObject<PyZipObject>
 {
 
-    private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
+    [PyExport(PySpecialNames.New, nameof(NewImpl))]
+    private static partial PyBuiltinFunctionOrMethodObject _new { get; }
 
     [PyFunctionParameters("*iterables", "strict=False")]
     private static PyResult NewImpl(PyCallContext context, PyArguments arguments)

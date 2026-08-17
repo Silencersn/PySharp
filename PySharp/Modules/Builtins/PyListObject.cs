@@ -111,7 +111,8 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr, IList<PyOb
 [PyType("list")]
 public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
 {
-    private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
+    [PyExport(PySpecialNames.New, nameof(NewImpl))]
+    private static partial PyBuiltinFunctionOrMethodObject _new { get; }
 
     [PyFunctionParameters("iterable=()", "/")]
     private static PyResult NewImpl(PyCallContext context, PyArguments arguments)

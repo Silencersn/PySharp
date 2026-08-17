@@ -26,7 +26,8 @@ public partial class PyThreadObject : PyObject
 [PyType("Thread", Module = "threading")]
 public sealed partial class PyThreadObjectType : PyTypeObject<PyThreadObject>
 {
-    private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
+    [PyExport(PySpecialNames.New, nameof(NewImpl))]
+    private static partial PyBuiltinFunctionOrMethodObject _new { get; }
 
     [PyFunctionParameters("group=None", "target=None", "name=None", "args=()", "kwargs={}", "*", "daemon=None", "context=None")]
     private static PyResult NewImpl(PyCallContext context, PyArguments arguments)

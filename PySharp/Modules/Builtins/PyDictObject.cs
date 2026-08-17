@@ -116,7 +116,8 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr, IDictionar
 [PyType("dict")]
 public sealed partial class PyDictObjectType : PyTypeObject<PyDictObject>
 {
-    private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl_1, NewImpl_2);
+    [PyExport(PySpecialNames.New, nameof(NewImpl_1), nameof(NewImpl_2))]
+    private static partial PyBuiltinFunctionOrMethodObject _new { get; }
 
     [PyFunctionParameters("**kwargs")]
     private static PyResult NewImpl_1(PyCallContext context, PyArguments arguments)

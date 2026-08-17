@@ -137,7 +137,8 @@ public partial class PySetObject : PyObject, IPyObjectRecursiveRepr, ISet<PyObje
 [PyType("set")]
 public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
 {
-    private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl_1, NewImpl_2);
+    [PyExport(PySpecialNames.New, nameof(NewImpl_1), nameof(NewImpl_2))]
+    private static partial PyBuiltinFunctionOrMethodObject _new { get; }
 
     [PyFunctionParameters()]
     private static PyResult NewImpl_1(PyCallContext context, PyArguments arguments)

@@ -103,7 +103,8 @@ public class PySliceObject : PyObject
 [PyType("slice")]
 public sealed partial class PySliceObjectType : PyTypeObject<PySliceObject>
 {
-    private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl_1, NewImpl_2);
+    [PyExport(PySpecialNames.New, nameof(NewImpl_1), nameof(NewImpl_2))]
+    private static partial PyBuiltinFunctionOrMethodObject _new { get; }
 
     [PyFunctionParameters("stop", "/")]
     private static PyResult NewImpl_1(PyCallContext context, PyArguments arguments)

@@ -123,7 +123,8 @@ public sealed class PyByteArrayObject : PyObject
 [PyType("bytearray")]
 public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObject>
 {
-    private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
+    [PyExport(PySpecialNames.New, nameof(NewImpl))]
+    private static partial PyBuiltinFunctionOrMethodObject _new { get; }
 
     [PyFunctionParameters("source=b''")]
     private static PyResult NewImpl(PyCallContext context, PyArguments arguments)

@@ -106,7 +106,8 @@ public class PyExportGenerator : IIncrementalGenerator
             property.Name,
             property.Type.ToDisplayString(),
             exportedName,
-            methods.ToImmutable()));
+            methods.ToImmutable(),
+            GetAccessibilityKeyword(property.DeclaredAccessibility)));
     }
 
     private static bool IsPyFunctionCompatible(IMethodSymbol method)
@@ -176,7 +177,7 @@ public class PyExportGenerator : IIncrementalGenerator
             builder.Dedent();
             builder.AppendLine(");");
             builder.AppendLine();
-            builder.AppendLine($"public static partial {export.PropertyType} {export.PropertyName} => {fieldName};");
+            builder.AppendLine($"{export.Accessibility} static partial {export.PropertyType} {export.PropertyName} => {fieldName};");
             builder.AppendLine();
         }
 
@@ -194,9 +195,22 @@ public class PyExportGenerator : IIncrementalGenerator
         return SymbolDisplay.FormatLiteral(value, quote: true);
     }
 
+    private static string GetAccessibilityKeyword(Accessibility accessibility)
+    {
+        return accessibility switch
+        {
+            Accessibility.Private => "private",
+            Accessibility.Protected => "protected",
+            Accessibility.Internal => "internal",
+            Accessibility.ProtectedOrInternal => "protected internal",
+            Accessibility.ProtectedAndInternal => "private protected",
+            _ => "public"
+        };
+    }
+
     private sealed record ExportInfo
     {
-        public ExportInfo(string @namespace, string typeName, string propertyName, string propertyType, string exportedName, ImmutableArray<ExportMethodInfo> methods)
+        public ExportInfo(string @namespace, string typeName, string propertyName, string propertyType, string exportedName, ImmutableArray<ExportMethodInfo> methods, string accessibility)
         {
             Namespace = @namespace;
             TypeName = typeName;
@@ -204,6 +218,7 @@ public class PyExportGenerator : IIncrementalGenerator
             PropertyType = propertyType;
             ExportedName = exportedName;
             Methods = methods;
+            Accessibility = accessibility;
         }
 
         public string Namespace { get; }
@@ -212,6 +227,7 @@ public class PyExportGenerator : IIncrementalGenerator
         public string PropertyType { get; }
         public string ExportedName { get; }
         public ImmutableArray<ExportMethodInfo> Methods { get; }
+        public string Accessibility { get; }
     }
 
     private sealed record ExportMethodInfo

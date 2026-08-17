@@ -27,7 +27,8 @@ public sealed class PyPropertyObject : PyObject
 public sealed partial class PyPropertyObjectType : PyTypeObject<PyPropertyObject>
 {
 
-    private static readonly PyBuiltinFunctionOrMethodObject _new = PyBuiltinFunctionOrMethodObject.CreateFunction(PySpecialNames.New, NewImpl);
+    [PyExport(PySpecialNames.New, nameof(NewImpl))]
+    private static partial PyBuiltinFunctionOrMethodObject _new { get; }
 
     [PyMethod("getter")]
     [PyFunctionParameters("fget")]
