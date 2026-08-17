@@ -74,7 +74,7 @@ public static class PyDelegateConverter
         };
     }
 
-    public static PyUncompoundedDelegate ToUncompounded<TObject>(this PyMethod<TObject> method) where TObject : PyObject
+    public static PyUncompoundedDelegate ToUncompounded<TObject>(this PyDelegateDefinition<PyMethod<TObject>> method) where TObject : PyObject
     {
         PyArgsDef? def = null;
 
@@ -83,12 +83,12 @@ public static class PyDelegateConverter
             if (args.Count is 0 || args[0] is not TObject selfOfT)
                 return PyResult.TypeError(null);
 
-            def ??= PyArgsDef.FromDef(method.Method.GetCustomAttribute<PyFunctionParametersAttribute>()!.Parameters);
+            def ??= PyArgsDef.FromDef(method.Parameters);
 
             args = [.. args.Skip(1)];
             using var buffer = def.CreateBuffer();
             if (def.TryParse(args, kwargs, buffer, out var result))
-                return method.Invoke(context, selfOfT, result);
+                return method.Delegate.Invoke(context, selfOfT, result);
 
             return PyResult.TypeError(null);
         };
@@ -159,50 +159,6 @@ public static class PyDelegateConverter
         }
     }
 
-    public static PyUncompoundedDelegate CreateOverloadDispatcher<TObject>(params PyMethod<TObject>[] methods) where TObject : PyObject
-    {
-        PyArgsDef[]? defs = null;
-
-        return (context, args, kwargs) =>
-        {
-            if (args.Count is 0 || args[0] is not TObject selfOfT)
-                return PyResult.TypeError(null);
-
-            EnsureDefCache();
-            Debug.Assert(defs is not null);
-
-            args = [.. args.Skip(1)];
-            for (int i = 0; i < defs.Length; i++)
-            {
-                using var buffer = defs[i].CreateBuffer();
-                if (defs[i].TryParse(args, kwargs, buffer, out var result))
-                    return methods[i].Invoke(context, selfOfT, result);
-            }
-
-            return PyResult.TypeError(null);
-        };
-
-        void EnsureDefCache()
-        {
-            if (defs is not null)
-                return;
-
-            lock (methods)
-            {
-                if (defs is not null)
-                    return;
-
-                var cache = new PyArgsDef[methods.Length];
-                for (int i = 0; i < cache.Length; i++)
-                {
-                    var argsDef = methods[i].Method.GetCustomAttribute<PyFunctionParametersAttribute>();
-                    Debug.Assert(argsDef is not null);
-                    cache[i] = PyArgsDef.FromDef(argsDef.Parameters);
-                }
-                defs = cache;
-            }
-        }
-    }
     public static PyUncompoundedDelegate CreateOverloadDispatcher(params PyFunction[] functions)
     {
         PyArgsDef[]? defs = null;
@@ -275,6 +231,46 @@ public static class PyDelegateConverter
                 var cache = new PyArgsDef[functions.Length];
                 for (int i = 0; i < cache.Length; i++)
                     cache[i] = PyArgsDef.FromDef(functions[i].Parameters);
+                defs = cache;
+            }
+        }
+    }
+    public static PyUncompoundedDelegate CreateOverloadDispatcher<TObject>(params PyDelegateDefinition<PyMethod<TObject>>[] methods) where TObject : PyObject
+    {
+        PyArgsDef[]? defs = null;
+
+        return (context, args, kwargs) =>
+        {
+            if (args.Count is 0 || args[0] is not TObject selfOfT)
+                return PyResult.TypeError(null);
+
+            EnsureDefCache();
+            Debug.Assert(defs is not null);
+
+            args = [.. args.Skip(1)];
+            for (int i = 0; i < defs.Length; i++)
+            {
+                using var buffer = defs[i].CreateBuffer();
+                if (defs[i].TryParse(args, kwargs, buffer, out var result))
+                    return methods[i].Delegate.Invoke(context, selfOfT, result);
+            }
+
+            return PyResult.TypeError(null);
+        };
+
+        void EnsureDefCache()
+        {
+            if (defs is not null)
+                return;
+
+            lock (methods)
+            {
+                if (defs is not null)
+                    return;
+
+                var cache = new PyArgsDef[methods.Length];
+                for (int i = 0; i < cache.Length; i++)
+                    cache[i] = PyArgsDef.FromDef(methods[i].Parameters);
                 defs = cache;
             }
         }

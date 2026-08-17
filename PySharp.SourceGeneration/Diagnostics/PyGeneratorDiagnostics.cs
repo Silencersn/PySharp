@@ -117,4 +117,29 @@ internal static class PyGeneratorDiagnostics
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description: "The exported member needs a non-empty Python-facing name to be registered.");
+
+    /// <summary>
+    /// PYARG010 — A [PyMethod] method is missing [PyFunctionParameters], so no non-reflective
+    /// method descriptor can be generated.
+    /// </summary>
+    internal static readonly DiagnosticDescriptor TypeMethodMissingParameters = new(
+        id: "PYARG010",
+        title: "Method is missing [PyFunctionParameters]",
+        messageFormat: "Method '{0}' on type '{1}' must be annotated with [PyFunctionParameters] to generate a method descriptor without runtime reflection.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "The PyType generator reads parameter definitions from the [PyFunctionParameters] attribute; without it the method descriptor cannot be generated without runtime reflection.");
+
+    /// <summary>
+    /// PYARG011 — The PyTypeObject&lt;T&gt; type argument could not be resolved.
+    /// </summary>
+    internal static readonly DiagnosticDescriptor TypeTypeArgNotFound = new(
+        id: "PYARG011",
+        title: "PyTypeObject<T> type argument could not be resolved",
+        messageFormat: "Could not resolve the PyTypeObject<T> type argument for type '{0}'; method descriptors will not be generated.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        description: "The type must derive from PyTypeObject<T> so the PyMethod<T> delegate type argument can be determined.");
 }

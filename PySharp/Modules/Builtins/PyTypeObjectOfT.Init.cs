@@ -15,18 +15,19 @@ partial class PyTypeObject<TObject>
     }
 
     [EditorBrowsable(EditorBrowsableState.Never)]
-    protected void AppendMethodDescriptor(string name, PyMethod<TObject> method)
+    protected void AppendMethodDescriptor(string name, PyDelegateDefinition<PyMethod<TObject>> method)
     {
         var uncompoundedDelegate = method.ToUncompounded();
         PyAttributes.Add(name, new PyMethodDescriptorObject(name, this, uncompoundedDelegate));
     }
 
     [EditorBrowsable(EditorBrowsableState.Never)]
-    protected void AppendMethodDescriptor(string name, params PyMethod<TObject>[] methods)
+    protected void AppendMethodDescriptor(string name, params PyDelegateDefinition<PyMethod<TObject>>[] methods)
     {
         var uncompoundedDelegate = methods.Length is 1 ? methods[0].ToUncompounded() : PyDelegateConverter.CreateOverloadDispatcher(methods);
         PyAttributes.Add(name, new PyMethodDescriptorObject(name, this, uncompoundedDelegate));
     }
+
 
     [EditorBrowsable(EditorBrowsableState.Never)]
     protected void AppendClassMethod(string name, PyClassMethod classMethod)

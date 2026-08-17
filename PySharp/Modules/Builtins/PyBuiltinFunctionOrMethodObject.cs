@@ -46,10 +46,6 @@ public class PyBuiltinFunctionOrMethodObject : PyObject, IPyObjectName
     {
         return new PyBuiltinFunctionOrMethodObject(name, uncompoundedDelegate);
     }
-    internal static PyBuiltinFunctionOrMethodObject CreateBoundMethodFromBound(string name, PyObject self, PyTypeObject type, params PyFunction[] funcs)
-    {
-        return CreateBoundMethodFromBound(name, self, type, PyDelegateConverter.CreateOverloadDispatcher(funcs));
-    }
     internal static PyBuiltinFunctionOrMethodObject CreateBoundMethodFromUnbound(string name, PyObject self, PyTypeObject type, PyUncompoundedDelegate uncompoundedDelegate)
     {
         return CreateBoundMethodFromBound(name, self, type, (context, args, kwargs) => uncompoundedDelegate(context, [self, .. args], kwargs));
