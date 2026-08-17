@@ -5,26 +5,44 @@ using PySharp.Runtime.PyAttributes;
 
 namespace PySharp.Modules.Operator;
 
-public static class PyOperatorFunctions
+public static partial class PyOperatorFunctions
 {
-    public static readonly PyBuiltinFunctionOrMethodObject Add = PyBuiltinFunctionOrMethodObject.CreateFunction("add", AddImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Sub = PyBuiltinFunctionOrMethodObject.CreateFunction("sub", SubImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Mul = PyBuiltinFunctionOrMethodObject.CreateFunction("mul", MulImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject TrueDiv = PyBuiltinFunctionOrMethodObject.CreateFunction("truediv", TrueDivImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject FloorDiv = PyBuiltinFunctionOrMethodObject.CreateFunction("floordiv", FloorDivImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Mod = PyBuiltinFunctionOrMethodObject.CreateFunction("mod", ModImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Pow = PyBuiltinFunctionOrMethodObject.CreateFunction("pow", PowImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject LShift = PyBuiltinFunctionOrMethodObject.CreateFunction("lshift", LShiftImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject RShift = PyBuiltinFunctionOrMethodObject.CreateFunction("rshift", RShiftImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject And = PyBuiltinFunctionOrMethodObject.CreateFunction("and_", AndImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Xor = PyBuiltinFunctionOrMethodObject.CreateFunction("xor", XorImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Or = PyBuiltinFunctionOrMethodObject.CreateFunction("or_", OrImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Lt = PyBuiltinFunctionOrMethodObject.CreateFunction("lt", LtImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Le = PyBuiltinFunctionOrMethodObject.CreateFunction("le", LeImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Eq = PyBuiltinFunctionOrMethodObject.CreateFunction("eq", EqImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Ne = PyBuiltinFunctionOrMethodObject.CreateFunction("ne", NeImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Gt = PyBuiltinFunctionOrMethodObject.CreateFunction("gt", GtImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Ge = PyBuiltinFunctionOrMethodObject.CreateFunction("ge", GeImpl);
+    [PyExport("add", nameof(AddImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Add { get; }
+    [PyExport("sub", nameof(SubImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Sub { get; }
+    [PyExport("mul", nameof(MulImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Mul { get; }
+    [PyExport("truediv", nameof(TrueDivImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject TrueDiv { get; }
+    [PyExport("floordiv", nameof(FloorDivImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject FloorDiv { get; }
+    [PyExport("mod", nameof(ModImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Mod { get; }
+    [PyExport("pow", nameof(PowImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Pow { get; }
+    [PyExport("lshift", nameof(LShiftImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject LShift { get; }
+    [PyExport("rshift", nameof(RShiftImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject RShift { get; }
+    [PyExport("and_", nameof(AndImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject And { get; }
+    [PyExport("xor", nameof(XorImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Xor { get; }
+    [PyExport("or_", nameof(OrImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Or { get; }
+    [PyExport("lt", nameof(LtImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Lt { get; }
+    [PyExport("le", nameof(LeImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Le { get; }
+    [PyExport("eq", nameof(EqImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Eq { get; }
+    [PyExport("ne", nameof(NeImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Ne { get; }
+    [PyExport("gt", nameof(GtImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Gt { get; }
+    [PyExport("ge", nameof(GeImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Ge { get; }
 
     [PyFunctionParameters("a", "b", "/")]
     private static PyResult AddImpl(PyCallContext context, PyArguments arguments)

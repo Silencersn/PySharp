@@ -5,11 +5,13 @@ using PySharp.Runtime.PyAttributes;
 
 namespace PySharp.Modules.Site;
 
-public static class PySiteFunctions
+public static partial class PySiteFunctions
 {
-    public static readonly PyBuiltinFunctionOrMethodObject Exit = PyBuiltinFunctionOrMethodObject.CreateFunction("exit", ExitImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Quit = Exit;
-    public static readonly PyBuiltinFunctionOrMethodObject Help = PyBuiltinFunctionOrMethodObject.CreateFunction("help", HelpImpl_1, HelpImpl_2);
+    [PyExport("exit", nameof(ExitImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Exit { get; }
+    public static PyBuiltinFunctionOrMethodObject Quit => Exit;
+    [PyExport("help", nameof(HelpImpl_1), nameof(HelpImpl_2))]
+    public static partial PyBuiltinFunctionOrMethodObject Help { get; }
 
     [PyFunctionParameters("code=None")]
     private static PyResult ExitImpl(PyCallContext context, PyArguments arguments)

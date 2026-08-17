@@ -4,9 +4,10 @@ using PySharp.Runtime.PyAttributes;
 
 namespace PySharp.Modules.Time;
 
-public static class PyTimeFunctions
+public static partial class PyTimeFunctions
 {
-    public static readonly PyBuiltinFunctionOrMethodObject Time = PyBuiltinFunctionOrMethodObject.CreateFunction("time", TimeImpl);
+    [PyExport("time", nameof(TimeImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Time { get; }
 
     [PyFunctionParameters()]
     private static PyResult TimeImpl(PyCallContext context, PyArguments arguments)

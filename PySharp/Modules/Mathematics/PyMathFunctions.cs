@@ -6,37 +6,66 @@ using System.Numerics;
 
 namespace PySharp.Modules.Mathematics;
 
-internal static class PyMathFunctions
+internal static partial class PyMathFunctions
 {
-    public static readonly PyBuiltinFunctionOrMethodObject Sqrt = PyBuiltinFunctionOrMethodObject.CreateFunction("sqrt", SqrtImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Acos = PyBuiltinFunctionOrMethodObject.CreateFunction("acos", AcosImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Asin = PyBuiltinFunctionOrMethodObject.CreateFunction("asin", AsinImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Atan = PyBuiltinFunctionOrMethodObject.CreateFunction("atan", AtanImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Cos = PyBuiltinFunctionOrMethodObject.CreateFunction("cos", CosImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Sin = PyBuiltinFunctionOrMethodObject.CreateFunction("sin", SinImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Tan = PyBuiltinFunctionOrMethodObject.CreateFunction("tan", TanImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Exp = PyBuiltinFunctionOrMethodObject.CreateFunction("exp", ExpImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Acosh = PyBuiltinFunctionOrMethodObject.CreateFunction("acosh", AcoshImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Asinh = PyBuiltinFunctionOrMethodObject.CreateFunction("asinh", AsinhImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Atanh = PyBuiltinFunctionOrMethodObject.CreateFunction("atanh", AtanhImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Cosh = PyBuiltinFunctionOrMethodObject.CreateFunction("cosh", CoshImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Sinh = PyBuiltinFunctionOrMethodObject.CreateFunction("sinh", SinhImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Tanh = PyBuiltinFunctionOrMethodObject.CreateFunction("tanh", TanhImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Fabs = PyBuiltinFunctionOrMethodObject.CreateFunction("fabs", FabsImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Ceil = PyBuiltinFunctionOrMethodObject.CreateFunction("ceil", CeilImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Floor = PyBuiltinFunctionOrMethodObject.CreateFunction("floor", FloorImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Trunc = PyBuiltinFunctionOrMethodObject.CreateFunction("trunc", TruncImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Remainder = PyBuiltinFunctionOrMethodObject.CreateFunction("remainder", RemainderImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Atan2 = PyBuiltinFunctionOrMethodObject.CreateFunction("atan2", Atan2Impl);
-    public static readonly PyBuiltinFunctionOrMethodObject Copysign = PyBuiltinFunctionOrMethodObject.CreateFunction("copysign", CopysignImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Fmod = PyBuiltinFunctionOrMethodObject.CreateFunction("fmod", FmodImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Pow = PyBuiltinFunctionOrMethodObject.CreateFunction("pow", PowImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Gcd = PyBuiltinFunctionOrMethodObject.CreateFunction("gcd", GcdImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Lcm = PyBuiltinFunctionOrMethodObject.CreateFunction("lcm", LcmImpl);
-    public static readonly PyBuiltinFunctionOrMethodObject Log = PyBuiltinFunctionOrMethodObject.CreateFunction("log", LogImpl_1, LogImpl_2);
-    public static readonly PyBuiltinFunctionOrMethodObject Log2 = PyBuiltinFunctionOrMethodObject.CreateFunction("log2", Log2Impl);
-    public static readonly PyBuiltinFunctionOrMethodObject Log10 = PyBuiltinFunctionOrMethodObject.CreateFunction("log10", Log10Impl);
-    public static readonly PyBuiltinFunctionOrMethodObject Log1p = PyBuiltinFunctionOrMethodObject.CreateFunction("log1p", Log1pImpl);
+    [PyExport("sqrt", nameof(SqrtImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Sqrt { get; }
+    [PyExport("acos", nameof(AcosImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Acos { get; }
+    [PyExport("asin", nameof(AsinImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Asin { get; }
+    [PyExport("atan", nameof(AtanImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Atan { get; }
+    [PyExport("cos", nameof(CosImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Cos { get; }
+    [PyExport("sin", nameof(SinImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Sin { get; }
+    [PyExport("tan", nameof(TanImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Tan { get; }
+    [PyExport("exp", nameof(ExpImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Exp { get; }
+    [PyExport("acosh", nameof(AcoshImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Acosh { get; }
+    [PyExport("asinh", nameof(AsinhImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Asinh { get; }
+    [PyExport("atanh", nameof(AtanhImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Atanh { get; }
+    [PyExport("cosh", nameof(CoshImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Cosh { get; }
+    [PyExport("sinh", nameof(SinhImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Sinh { get; }
+    [PyExport("tanh", nameof(TanhImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Tanh { get; }
+    [PyExport("fabs", nameof(FabsImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Fabs { get; }
+    [PyExport("ceil", nameof(CeilImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Ceil { get; }
+    [PyExport("floor", nameof(FloorImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Floor { get; }
+    [PyExport("trunc", nameof(TruncImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Trunc { get; }
+    [PyExport("remainder", nameof(RemainderImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Remainder { get; }
+    [PyExport("atan2", nameof(Atan2Impl))]
+    public static partial PyBuiltinFunctionOrMethodObject Atan2 { get; }
+    [PyExport("copysign", nameof(CopysignImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Copysign { get; }
+    [PyExport("fmod", nameof(FmodImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Fmod { get; }
+    [PyExport("pow", nameof(PowImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Pow { get; }
+    [PyExport("gcd", nameof(GcdImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Gcd { get; }
+    [PyExport("lcm", nameof(LcmImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Lcm { get; }
+    [PyExport("log", nameof(LogImpl_1), nameof(LogImpl_2))]
+    public static partial PyBuiltinFunctionOrMethodObject Log { get; }
+    [PyExport("log2", nameof(Log2Impl))]
+    public static partial PyBuiltinFunctionOrMethodObject Log2 { get; }
+    [PyExport("log10", nameof(Log10Impl))]
+    public static partial PyBuiltinFunctionOrMethodObject Log10 { get; }
+    [PyExport("log1p", nameof(Log1pImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject Log1p { get; }
 
     private static PyResult<PyFloatObject> Math1Impl(PyCallContext context, PyObject arg, Func<double, double> func, bool canOverflow, string? errMsg)
     {
