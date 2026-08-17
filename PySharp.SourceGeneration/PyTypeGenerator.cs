@@ -254,13 +254,19 @@ public class PyTypeGenerator : IIncrementalGenerator
                                     .Select(info => $"new PyDelegateDefinition<PyMethod<{pyType.TypeArgName}>>({info.Name}, [{string.Join(", ", info.Parameters.Select(FormatLiteral))}])"));
                                 builder.AppendLine($"AppendMethodDescriptor({impls.Key}, {defs});");
                             })
-                            .ForEach(classMethods.GroupBy(static info => info.PyNameLiteral), static (builder, impls) =>
+                            .ForEach(classMethods.GroupBy(static info => info.PyNameLiteral), (builder, impls) =>
                             {
-                                builder.AppendLine($"AppendClassMethod({impls.Key}, {string.Join(", ", impls.OrderBy(static info => info.Order).Select(static info => info.Name))});");
+                                var defs = string.Join(", ", impls
+                                    .OrderBy(static info => info.Order)
+                                    .Select(info => $"new PyDelegateDefinition<PyMethod<PyTypeObject>>({info.Name}, [{string.Join(", ", info.Parameters.Select(FormatLiteral))}])"));
+                                builder.AppendLine($"AppendClassMethod({impls.Key}, {defs});");
                             })
-                            .ForEach(staticMethods.GroupBy(static info => info.PyNameLiteral), static (builder, impls) =>
+                            .ForEach(staticMethods.GroupBy(static info => info.PyNameLiteral), (builder, impls) =>
                             {
-                                builder.AppendLine($"AppendStaticMethod({impls.Key}, {string.Join(", ", impls.OrderBy(static info => info.Order).Select(static info => info.Name))});");
+                                var defs = string.Join(", ", impls
+                                    .OrderBy(static info => info.Order)
+                                    .Select(info => $"new PyDelegateDefinition<PyFunction>({info.Name}, [{string.Join(", ", info.Parameters.Select(FormatLiteral))}])"));
+                                builder.AppendLine($"AppendStaticMethod({impls.Key}, {defs});");
                             })
                         .ExitBlock())
 

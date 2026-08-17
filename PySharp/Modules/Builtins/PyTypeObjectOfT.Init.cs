@@ -28,9 +28,8 @@ partial class PyTypeObject<TObject>
         PyAttributes.Add(name, new PyMethodDescriptorObject(name, this, uncompoundedDelegate));
     }
 
-
     [EditorBrowsable(EditorBrowsableState.Never)]
-    protected void AppendClassMethod(string name, PyClassMethod classMethod)
+    protected void AppendClassMethod(string name, PyDelegateDefinition<PyMethod<PyTypeObject>> classMethod)
     {
         var uncompoundedDelegate = classMethod.ToUncompounded();
         var func = PyBuiltinFunctionOrMethodObject.CreateFunction(name, classMethod.ToUncompounded());
@@ -38,7 +37,7 @@ partial class PyTypeObject<TObject>
     }
 
     [EditorBrowsable(EditorBrowsableState.Never)]
-    protected void AppendClassMethod(string name, params PyClassMethod[] classMethods)
+    protected void AppendClassMethod(string name, params PyDelegateDefinition<PyMethod<PyTypeObject>>[] classMethods)
     {
         var uncompoundedDelegate = classMethods.Length is 1 ? classMethods[0].ToUncompounded() : PyDelegateConverter.CreateOverloadDispatcher(classMethods);
         var func = PyBuiltinFunctionOrMethodObject.CreateFunction(name, uncompoundedDelegate);
@@ -46,16 +45,17 @@ partial class PyTypeObject<TObject>
     }
 
     [EditorBrowsable(EditorBrowsableState.Never)]
-    protected void AppendStaticMethod(string name, PyFunction staticMethod)
+    protected void AppendStaticMethod(string name, PyDelegateDefinition<PyFunction> staticMethod)
     {
-        var func = PyBuiltinFunctionOrMethodObject.CreateFunction(name, staticMethod);
+        var func = PyBuiltinFunctionOrMethodObject.CreateFunction(name, staticMethod.ToUncompounded());
         PyAttributes.Add(name, new PyStaticMethodObject(func));
     }
 
     [EditorBrowsable(EditorBrowsableState.Never)]
-    protected void AppendStaticMethod(string name, params PyFunction[] staticMethods)
+    protected void AppendStaticMethod(string name, params PyDelegateDefinition<PyFunction>[] staticMethods)
     {
-        var func = PyBuiltinFunctionOrMethodObject.CreateFunction(name, staticMethods);
+        var uncompoundedDelegate = staticMethods.Length is 1 ? staticMethods[0].ToUncompounded() : PyDelegateConverter.CreateOverloadDispatcher(staticMethods);
+        var func = PyBuiltinFunctionOrMethodObject.CreateFunction(name, uncompoundedDelegate);
         PyAttributes.Add(name, new PyStaticMethodObject(func));
     }
 
