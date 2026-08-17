@@ -39,7 +39,7 @@ partial class PyDictObject : IDictionary<string, PyObject>, IReadOnlyDictionary<
     int IReadOnlyCollection<KeyValuePair<string, PyObject>>.Count => _dict.Count(static pair => pair.Key is PyStrObject);
 
     ICollection<PyObject> IDictionary<string, PyObject>.Values => [.. _dict.Where(static pair => pair.Key is PyStrObject).Select(static pair => pair.Value)];
-    
+
     IEnumerable<PyObject> IReadOnlyDictionary<string, PyObject>.Values => [.. _dict.Where(static pair => pair.Key is PyStrObject).Select(static pair => pair.Value)];
 
     void IDictionary<string, PyObject>.Add(string key, PyObject value)

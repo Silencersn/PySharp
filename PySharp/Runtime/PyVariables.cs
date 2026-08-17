@@ -1,6 +1,5 @@
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
-using PySharp.Utility;
 using System.Buffers;
 using System.Collections.Frozen;
 using System.Diagnostics;

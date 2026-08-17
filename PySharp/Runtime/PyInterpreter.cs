@@ -4,7 +4,6 @@ using PySharp.Compilation.Tokenization;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Environments;
-using PySharp.Utility;
 using System.Diagnostics;
 using System.Text;
 

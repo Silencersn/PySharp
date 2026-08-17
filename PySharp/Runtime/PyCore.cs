@@ -3,7 +3,6 @@ using PySharp.Modules;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.VirtualMachine;
-using PySharp.Utility;
 using System.Diagnostics;
 
 namespace PySharp.Runtime;

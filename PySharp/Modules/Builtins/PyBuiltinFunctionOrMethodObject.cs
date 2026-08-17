@@ -31,7 +31,7 @@ public class PyBuiltinFunctionOrMethodObject : PyObject, IPyObjectName
         IsMethod = true;
         PyDelegate = uncompoundedDelegate;
     }
-    
+
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static PyBuiltinFunctionOrMethodObject CreateFunction(string name, params PyDelegateDefinition<PyFunction>[] funcs)
     {
