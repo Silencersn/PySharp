@@ -6,31 +6,6 @@ namespace PySharp.Modules.Builtins;
 partial class PyTupleObject
 {
     [AIGenerated]
-    public PyResult PyGetItem(PyCallContext context, PyObject item)
-    {
-        if (item is PySliceObject slice)
-        {
-            var indicesResult = slice.Indices(context, _array.Length, out var indices);
-            if (indicesResult.IsError)
-                return indicesResult;
-            var (start, stop, step, sliceLength) = indices;
-            if (sliceLength is 0)
-                return Empty;
-
-            var result = new PyObject[sliceLength];
-            for (int i = 0, idx = start; i < sliceLength; i++, idx += step)
-                result[i] = _array[idx];
-            return new PyTupleObject(result);
-        }
-
-        var indexResult = PySpecialMethods.Index(context, item);
-        if (indexResult.IsError)
-            return indexResult;
-
-        return PyUtils.GetListItem(_array, indexResult.Value.Int32Value, PySR.Runtime_Tuple_IndexOutOfRange);
-    }
-
-    [AIGenerated]
     public PyResult PyAdd(PyObject other)
     {
         if (other is not PyTupleObject otherTuple)

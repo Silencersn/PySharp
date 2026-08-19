@@ -96,7 +96,7 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
     [AIGenerated]
     protected override PyResult GetItem(PyCallContext context, PyTupleObject self, PyObject item)
     {
-        return self.PyGetItem(context, item);
+        return PyUtils.GetSequenceItem(context, self.AsSpan(), item, PyTupleObject.CreateTuple, PySR.Runtime_Tuple_IndexOutOfRange);
     }
 
     protected override PyResult Contains(PyCallContext context, PyTupleObject self, PyObject item)

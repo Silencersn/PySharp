@@ -137,7 +137,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
 
     protected override PyResult GetItem(PyCallContext context, PyListObject self, PyObject item)
     {
-        return self.PyGetItem(context, item);
+        return PyUtils.GetSequenceItem(context, self.AsSpan(), item, PyListObject.CreateList, PySR.Runtime_List_IndexOutOfRange);
     }
 
     protected override PyResult SetItem(PyCallContext context, PyListObject self, PyObject key, PyObject value)

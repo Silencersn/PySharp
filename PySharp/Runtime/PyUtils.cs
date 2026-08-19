@@ -199,21 +199,31 @@ internal static class PyUtils
         return index >= count || index < -count;
     }
 
-    public static PyResult GetListItem(IReadOnlyList<PyObject> items, int index, string? msgIfOutOfRange)
+    public static PyResult GetSequenceItem(PyCallContext context, ReadOnlySpan<PyObject> items, PyObject item, Func<List<PyObject>, PyObject> factory, string outOfRangeErrMsg)
     {
-        if (IsIndexOutOfRange(index, items.Count))
-            return PyResult.IndexError(msgIfOutOfRange);
+        if (item is PySliceObject slice)
+        {
+            var indicesResult = slice.Indices(context, items.Length, out var indices);
+            if (indicesResult.IsError)
+                return indicesResult;
+            var (start, _, step, sliceLength) = indices;
+            var resultList = new List<PyObject>(sliceLength);
+            for (int i = 0, idx = start; i < sliceLength; i++, idx += step)
+                resultList.Add(items[idx]);
+            return factory(resultList);
+        }
 
-        return items[MapIndex(index, items.Count)];
-    }
+        var indexResult = PySpecialMethods.Index(context, item);
+        if (indexResult.IsError)
+            return indexResult;
+        if (!indexResult.Value.IsInt32)
+            return PyResult.IndexError("cannot fit 'int' into an index-sized integer");
 
-    public static bool TrySetListItem(IList<PyObject> items, int index, PyObject item)
-    {
-        if (IsIndexOutOfRange(index, items.Count))
-            return false;
+        var index = indexResult.Value.Int32Value;
+        if (IsIndexOutOfRange(index, items.Length))
+            return PyResult.IndexError(outOfRangeErrMsg);
 
-        items[MapIndex(index, items.Count)] = item;
-        return true;
+        return items[MapIndex(index, items.Length)];
     }
 
     public static PyResult<PyBoolObject> Contains(PyCallContext context, ReadOnlySpan<PyObject> items, PyObject item)

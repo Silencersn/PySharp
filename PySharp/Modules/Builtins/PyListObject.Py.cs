@@ -176,28 +176,6 @@ partial class PyListObject
         return this;
     }
 
-    internal PyResult PyGetItem(PyCallContext context, PyObject item)
-    {
-        if (item is PySliceObject slice)
-        {
-            var indicesResult = slice.Indices(context, _list.Count, out var indices);
-            if (indicesResult.IsError)
-                return indicesResult;
-            var (start, stop, step, sliceLength) = indices;
-            var resultList = new List<PyObject>(sliceLength);
-            for (int i = 0, idx = start; i < sliceLength; i++, idx += step)
-                resultList.Add(_list[idx]);
-            return new PyListObject(resultList);
-        }
-
-        var indexResult = PySpecialMethods.Index(context, item);
-        if (indexResult.IsError)
-            return indexResult;
-        if (!indexResult.Value.IsInt32)
-            return PyResult.IndexError(PySR.Runtime_List_IndexOutOfRange);
-        return PyUtils.GetListItem(_list, indexResult.Value.Int32Value, PySR.Runtime_List_IndexOutOfRange);
-    }
-
     internal PyResult PySetItem(PyCallContext context, PyObject key, PyObject value)
     {
         if (key is PySliceObject slice)
@@ -235,9 +213,11 @@ partial class PyListObject
         if (indexResult.IsError)
             return indexResult;
 
-        if (!PyUtils.TrySetListItem(_list, indexResult.Value.Int32Value, value))
+        int index;
+        if (!indexResult.Value.IsInt32 || PyUtils.IsIndexOutOfRange(index = indexResult.Value.Int32Value, _list.Count))
             return PyResult.IndexError(PySR.Runtime_List_IndexOutOfRange);
 
+        _list[index] = value;
         return PyNoneObject.None;
     }
 
