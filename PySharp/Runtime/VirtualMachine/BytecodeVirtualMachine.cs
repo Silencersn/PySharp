@@ -581,7 +581,7 @@ internal static partial class BytecodeVirtualMachine
                             Stack[-1] = (IntrinsicFunctionType)instructionArg switch
                             {
                                 IntrinsicFunctionType.ListToTuple
-                                    => PyTupleObject.CreateTuple(((PyListObject)value).InternalList),
+                                    => PyTupleObject.CreateTuple(((PyListObject)value).AsSpan()),
 
                                 IntrinsicFunctionType._ListToSet
                                     => PySetObject.CreateSet((PyListObject)value),

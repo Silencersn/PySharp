@@ -99,4 +99,10 @@ assert [1, 3] > [1, 2, 4]
 assert [1, 2] <= [1, 2]
 assert [1, 2] >= [1, 2]
 
+class A:
+    def __gt__(self, other):
+        return 1
+
+assert ([A()] > [A()]) == 1
+
 print("test_list passed")

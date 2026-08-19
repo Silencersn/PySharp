@@ -13,7 +13,7 @@ internal static partial class BytecodeVirtualMachine
         var postCount = instructionArg & ushort.MaxValue;
         var preCount = (instructionArg >> 16) & ushort.MaxValue;
         var list = PyUtils.IterableToList(context, stack.Pop()).PyUnwrap(context);
-        var span = CollectionsMarshal.AsSpan(list.InternalList);
+        var span = list.AsSpan();
         if (span.Length < preCount + postCount)
             throw context.ValueError(PySR.Runtime_Assignment_NotEnoughToUnpackStarred, preCount + postCount, span.Length);
         stack.PushReversedRange(span[^postCount..]);
@@ -363,7 +363,7 @@ internal static partial class BytecodeVirtualMachine
     private static void InternalUnpackSequence(PyCallContext context, ref ValueOperandStack stack, int instructionArg)
     {
         var list = PyUtils.IterableToList(context, stack.Pop()).PyUnwrap(context);
-        var span = CollectionsMarshal.AsSpan(list.InternalList);
+        var span = list.AsSpan();
         if (span.Length > instructionArg)
             throw context.ValueError(PySR.Runtime_Assignment_TooManyToUnpack, instructionArg, span.Length);
         else if (span.Length < instructionArg)

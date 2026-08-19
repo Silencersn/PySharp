@@ -1,6 +1,7 @@
 using PySharp.Compilation.CodeAnalysis;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
+using System.Runtime.CompilerServices;
 
 namespace PySharp.Runtime;
 
@@ -33,4 +34,20 @@ public class PyRuntimeException : Exception
     public PyExceptionObject PyException => _exception;
 
     internal ICodeMetaInfoProvider? Compiler => _compiler;
+}
+
+internal class PySharpNotSupportedException : NotSupportedException
+{
+    public PySharpNotSupportedException()
+    {
+    }
+
+    public PySharpNotSupportedException(string? message) : base(message)
+    {
+    }
+
+    public static PySharpNotSupportedException ContextNeeded([CallerMemberName] string? memberName = null)
+    {
+        return new PySharpNotSupportedException($"Context is needed for {memberName}");
+    }
 }

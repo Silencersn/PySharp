@@ -3,6 +3,7 @@ using PySharp.Runtime.Calls;
 using PySharp.Runtime.Comparison;
 using PySharp.Runtime.PyAttributes;
 using System.Collections;
+using System.Runtime.InteropServices;
 
 namespace PySharp.Modules.Builtins;
 
@@ -42,9 +43,14 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr, IList<PyOb
         return new PyListObject([.. objects]);
     }
 
-    public static PyListObject CreateProxy(List<PyObject> list)
+    internal static PyListObject CreateProxy(List<PyObject> list)
     {
         return new PyListObject(list);
+    }
+
+    internal Span<PyObject> AsSpan()
+    {
+        return CollectionsMarshal.AsSpan(_list);
     }
 
     PyResult<PyStrObject> IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<PyObject> ids)
@@ -59,12 +65,12 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr, IList<PyOb
 
     IEnumerator<PyObject> IEnumerable<PyObject>.GetEnumerator()
     {
-        return GetEnumerator();
+        return _list.GetEnumerator();
     }
 
     IEnumerator IEnumerable.GetEnumerator()
     {
-        return ((IEnumerable)_list).GetEnumerator();
+        return GetEnumerator();
     }
 
     public void Add(PyObject item)
@@ -77,9 +83,9 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr, IList<PyOb
         _list.Clear();
     }
 
-    public bool Contains(PyObject item)
+    bool ICollection<PyObject>.Contains(PyObject item)
     {
-        return _list.Contains(item);
+        throw PySharpNotSupportedException.ContextNeeded();
     }
 
     public void CopyTo(PyObject[] array, int arrayIndex)
@@ -87,14 +93,14 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr, IList<PyOb
         _list.CopyTo(array, arrayIndex);
     }
 
-    public bool Remove(PyObject item)
+    bool ICollection<PyObject>.Remove(PyObject item)
     {
-        return _list.Remove(item);
+        throw PySharpNotSupportedException.ContextNeeded();
     }
 
-    public int IndexOf(PyObject item)
+    int IList<PyObject>.IndexOf(PyObject item)
     {
-        return _list.IndexOf(item);
+        throw PySharpNotSupportedException.ContextNeeded();
     }
 
     public void Insert(int index, PyObject item)
@@ -102,9 +108,9 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr, IList<PyOb
         _list.Insert(index, item);
     }
 
-    public void RemoveAt(int index)
+    void IList<PyObject>.RemoveAt(int index)
     {
-        _list.RemoveAt(index);
+        throw PySharpNotSupportedException.ContextNeeded();
     }
 }
 
@@ -146,7 +152,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
 
     protected override PyResult Contains(PyCallContext context, PyListObject self, PyObject item)
     {
-        foreach (var element in self.InternalList)
+        foreach (var element in self.AsSpan())
         {
             var eq = PyComparer.Eq(context, element, item);
             if (eq.IsError)
@@ -182,35 +188,35 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
     {
         if (other is not PyListObject otherList)
             return PyNotImplementedObject.NotImplemented;
-        return PyBoolObject.FromBoolean(self.SequenceEqual(otherList, context.Comparer));
+        return PyCollectionComparer.Eq(context, self.AsSpan(), otherList.AsSpan());
     }
 
     protected override PyResult Lt(PyCallContext context, PyListObject self, PyObject other)
     {
         if (other is not PyListObject otherList)
             return PyNotImplementedObject.NotImplemented;
-        return PyBoolObject.FromBoolean(self.InternalList.SequenceCompare(otherList.InternalList, context.Comparer) < 0);
+        return PyCollectionComparer.Lt(context, self.AsSpan(), otherList.AsSpan());
     }
 
     protected override PyResult Le(PyCallContext context, PyListObject self, PyObject other)
     {
         if (other is not PyListObject otherList)
             return PyNotImplementedObject.NotImplemented;
-        return PyBoolObject.FromBoolean(self.InternalList.SequenceCompare(otherList.InternalList, context.Comparer) <= 0);
+        return PyCollectionComparer.Le(context, self.AsSpan(), otherList.AsSpan());
     }
 
     protected override PyResult Gt(PyCallContext context, PyListObject self, PyObject other)
     {
         if (other is not PyListObject otherList)
             return PyNotImplementedObject.NotImplemented;
-        return PyBoolObject.FromBoolean(self.InternalList.SequenceCompare(otherList.InternalList, context.Comparer) > 0);
+        return PyCollectionComparer.Gt(context, self.AsSpan(), otherList.AsSpan());
     }
 
     protected override PyResult Ge(PyCallContext context, PyListObject self, PyObject other)
     {
         if (other is not PyListObject otherList)
             return PyNotImplementedObject.NotImplemented;
-        return PyBoolObject.FromBoolean(self.InternalList.SequenceCompare(otherList.InternalList, context.Comparer) >= 0);
+        return PyCollectionComparer.Ge(context, self.AsSpan(), otherList.AsSpan());
     }
 
     protected override PyResult Add(PyCallContext context, PyListObject self, PyObject other)
@@ -300,7 +306,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
     [PyFunctionParameters()]
     private static PyResult Clear(PyCallContext context, PyListObject self, PyArguments arguments)
     {
-        self.PyClear();
+        self.Clear();
         return PyNoneObject.None;
     }
 

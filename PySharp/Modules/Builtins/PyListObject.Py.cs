@@ -5,17 +5,17 @@ namespace PySharp.Modules.Builtins;
 
 partial class PyListObject
 {
-    public void PyAppend(PyObject item)
+    internal void PyAppend(PyObject item)
     {
         _list.Add(item);
     }
 
-    public void PyExtend(IEnumerable<PyObject> items)
+    internal void PyExtend(IEnumerable<PyObject> items)
     {
         _list.AddRange(items);
     }
 
-    public PyResult PyExtend(PyCallContext context, PyObject iterable)
+    internal PyResult PyExtend(PyCallContext context, PyObject iterable)
     {
         var list = PyUtils.IterableToList(context, iterable);
         if (list.IsError)
@@ -25,7 +25,7 @@ partial class PyListObject
         return PyNoneObject.None;
     }
 
-    public void PyInsert(int index, PyObject item)
+    internal void PyInsert(int index, PyObject item)
     {
         if (index < 0)
             index = int.Max(0, index + _list.Count);
@@ -35,7 +35,7 @@ partial class PyListObject
         _list.Insert(index, item);
     }
 
-    public bool PyRemove(PyCallContext context, PyObject item)
+    internal bool PyRemove(PyCallContext context, PyObject item)
     {
         for (int i = 0; i < _list.Count; i++)
         {
@@ -48,7 +48,7 @@ partial class PyListObject
         return false;
     }
 
-    public PyObject PyPop(int index = -1)
+    internal PyObject PyPop(int index = -1)
     {
         index = Utils.MapIndex(index, _list.Count);
         var item = _list[index];
@@ -56,12 +56,7 @@ partial class PyListObject
         return item;
     }
 
-    public void PyClear()
-    {
-        _list.Clear();
-    }
-
-    public int PyIndex(PyCallContext context, PyObject item, int start, int end)
+    internal int PyIndex(PyCallContext context, PyObject item, int start, int end)
     {
         start = Utils.MapIndex(start, _list.Count);
         end = Utils.MapIndex(end, _list.Count);
@@ -75,17 +70,12 @@ partial class PyListObject
         return -1;
     }
 
-    public int PyIndex(PyCallContext context, PyObject item, int start)
+    internal int PyIndex(PyCallContext context, PyObject item, int start = 0)
     {
         return PyIndex(context, item, start, _list.Count);
     }
 
-    public int PyIndex(PyCallContext context, PyObject item)
-    {
-        return PyIndex(context, item, 0);
-    }
-
-    public int PyCount(PyCallContext context, PyObject item)
+    internal int PyCount(PyCallContext context, PyObject item)
     {
         return _list.Count(listItem => context.Comparer.Equals(listItem, item));
     }
@@ -114,7 +104,7 @@ partial class PyListObject
         return PyNoneObject.None;
     }
 
-    public void PySort(PyCallContext context, Func<PyObject, PyObject>? key = null, bool reverse = false)
+    internal void PySort(PyCallContext context, Func<PyObject, PyObject>? key = null, bool reverse = false)
     {
         IEnumerable<PyObject> sortedItems;
 
@@ -136,17 +126,17 @@ partial class PyListObject
         _list.AddRange(items);
     }
 
-    public void PyReverse()
+    internal void PyReverse()
     {
         _list.Reverse();
     }
 
-    public PyListObject PyCopy()
+    internal PyListObject PyCopy()
     {
         return CreateList(_list);
     }
 
-    public PyResult PyAdd(PyObject other)
+    internal PyResult PyAdd(PyObject other)
     {
         if (other is not PyListObject otherList)
             return PyNotImplementedObject.NotImplemented;
@@ -157,7 +147,7 @@ partial class PyListObject
         return new PyListObject(newList);
     }
 
-    public PyListObject PyMul(int n)
+    internal PyListObject PyMul(int n)
     {
         if (n <= 0)
             return new PyListObject();
@@ -168,7 +158,7 @@ partial class PyListObject
         return new PyListObject(newList);
     }
 
-    public PyListObject PyIMul(int n)
+    internal PyListObject PyIMul(int n)
     {
         if (n <= 0)
         {
@@ -186,7 +176,7 @@ partial class PyListObject
         return this;
     }
 
-    public PyResult PyGetItem(PyCallContext context, PyObject item)
+    internal PyResult PyGetItem(PyCallContext context, PyObject item)
     {
         if (item is PySliceObject slice)
         {
@@ -208,7 +198,7 @@ partial class PyListObject
         return Utils.GetListItem(_list, indexResult.Value.Int32Value, PySR.Runtime_List_IndexOutOfRange);
     }
 
-    public PyResult PySetItem(PyCallContext context, PyObject key, PyObject value)
+    internal PyResult PySetItem(PyCallContext context, PyObject key, PyObject value)
     {
         if (key is PySliceObject slice)
         {
@@ -251,7 +241,7 @@ partial class PyListObject
         return PyNoneObject.None;
     }
 
-    public PyResult PyDelItem(PyCallContext context, PyObject key)
+    internal PyResult PyDelItem(PyCallContext context, PyObject key)
     {
         if (key is PySliceObject slice)
         {

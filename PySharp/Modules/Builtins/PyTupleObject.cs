@@ -131,40 +131,40 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
     protected override PyResult Eq(PyCallContext context, PyTupleObject self, PyObject other)
     {
         if (other is not PyTupleObject otherTuple)
-            return base.Eq(context, self, other);
-        return PyBoolObject.FromBoolean(self.SequenceEqual(otherTuple, context.Comparer));
+            return PyNotImplementedObject.NotImplemented;
+        return PyCollectionComparer.Eq(context, self.AsSpan(), otherTuple.AsSpan());
     }
 
     [AIGenerated]
     protected override PyResult Lt(PyCallContext context, PyTupleObject self, PyObject other)
     {
         if (other is not PyTupleObject otherTuple)
-            return base.Lt(context, self, other);
-        return PyBoolObject.FromBoolean(self.SequenceCompare(otherTuple, context.Comparer) < 0);
+            return PyNotImplementedObject.NotImplemented;
+        return PyCollectionComparer.Lt(context, self.AsSpan(), otherTuple.AsSpan());
     }
 
     [AIGenerated]
     protected override PyResult Le(PyCallContext context, PyTupleObject self, PyObject other)
     {
         if (other is not PyTupleObject otherTuple)
-            return base.Le(context, self, other);
-        return PyBoolObject.FromBoolean(self.SequenceCompare(otherTuple, context.Comparer) <= 0);
+            return PyNotImplementedObject.NotImplemented;
+        return PyCollectionComparer.Le(context, self.AsSpan(), otherTuple.AsSpan());
     }
 
     [AIGenerated]
     protected override PyResult Gt(PyCallContext context, PyTupleObject self, PyObject other)
     {
         if (other is not PyTupleObject otherTuple)
-            return base.Gt(context, self, other);
-        return PyBoolObject.FromBoolean(self.SequenceCompare(otherTuple, context.Comparer) > 0);
+            return PyNotImplementedObject.NotImplemented;
+        return PyCollectionComparer.Gt(context, self.AsSpan(), otherTuple.AsSpan());
     }
 
     [AIGenerated]
     protected override PyResult Ge(PyCallContext context, PyTupleObject self, PyObject other)
     {
         if (other is not PyTupleObject otherTuple)
-            return base.Ge(context, self, other);
-        return PyBoolObject.FromBoolean(self.SequenceCompare(otherTuple, context.Comparer) >= 0);
+            return PyNotImplementedObject.NotImplemented;
+        return PyCollectionComparer.Ge(context, self.AsSpan(), otherTuple.AsSpan());
     }
 
     [AIGenerated]
