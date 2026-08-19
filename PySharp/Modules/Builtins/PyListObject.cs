@@ -148,7 +148,11 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
     {
         foreach (var element in self.InternalList)
         {
-            if (context.Comparer.Equals(element, item))
+            var eq = PyComparer.Eq(context, element, item);
+            if (eq.IsError)
+                return eq.ExceptionResult;
+
+            if (eq.Value.BoolValue)
                 return PyBoolObject.True;
         }
         return PyBoolObject.False;

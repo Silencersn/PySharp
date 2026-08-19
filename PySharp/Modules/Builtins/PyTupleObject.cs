@@ -103,7 +103,11 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
     {
         foreach (var element in self.InternalArray)
         {
-            if (context.Comparer.Equals(element, item))
+            var eq = PyComparer.Eq(context, element, item);
+            if (eq.IsError)
+                return eq.ExceptionResult;
+
+            if (eq.Value.BoolValue)
                 return PyBoolObject.True;
         }
         return PyBoolObject.False;

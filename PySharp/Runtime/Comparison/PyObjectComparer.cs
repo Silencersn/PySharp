@@ -42,21 +42,6 @@ public sealed class PyObjectComparer :
         return ltBool.Value.BoolValue ? -1 : 1;
     }
 
-    private static PyResult<PyBoolObject> Equals(PyCallContext context, PyObject? x, PyObject? y)
-    {
-        if (x is null)
-            return PyBoolObject.FromBoolean(y is null);
-
-        if (y is null)
-            return PyBoolObject.False;
-
-        var eq = PyOperators.Eq(context, x, y);
-        if (eq.IsError)
-            return eq.ExceptionResult;
-
-        return PySpecialMethods.Bool(context, eq.Value);
-    }
-
     private static PyResult<PyIntObject> GetHashCode(PyCallContext context, [DisallowNull] PyObject obj)
     {
         return PySpecialMethods.Hash(context, obj);
@@ -64,7 +49,7 @@ public sealed class PyObjectComparer :
 
     public bool Equals(PyObject? x, PyObject? y)
     {
-        return Equals(Context, x, y).PyUnwrap(Context).BoolValue;
+        return PyComparer.Eq(Context, x, y).PyUnwrap(Context).BoolValue;
     }
 
     public int GetHashCode([DisallowNull] PyObject obj)
@@ -74,7 +59,7 @@ public sealed class PyObjectComparer :
 
     public bool Equals((PyCallContext Context, PyObject Object) alternate, PyObject other)
     {
-        return Equals(alternate.Context, alternate.Object, other).PyUnwrap(alternate.Context).BoolValue;
+        return PyComparer.Eq(alternate.Context, alternate.Object, other).PyUnwrap(alternate.Context).BoolValue;
     }
 
     public int GetHashCode((PyCallContext Context, PyObject Object) alternate)

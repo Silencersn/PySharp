@@ -1,5 +1,6 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.Comparison;
 using PySharp.Runtime.PyAttributes;
 using PySharp.Utility;
 using System.Diagnostics;
@@ -146,7 +147,11 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
         Debug.Assert(obj is PyIntObject);
         var value = ((PyIntObject)obj).Value;
 
-        if (!context.Comparer.Equals(cls, this) && value > -PyIntObject.NegativePoolSize && value < PyIntObject.PositivesPoolSize)
+        var eq = PyComparer.Eq(context, cls, this);
+        if (eq.IsError)
+            return eq.ExceptionResult;
+
+        if (!eq.Value.BoolValue && value > -PyIntObject.NegativePoolSize && value < PyIntObject.PositivesPoolSize)
             obj = PyIntObject.FromIntegerNoCache(value);
 
         obj._pyType = cls;

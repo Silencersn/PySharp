@@ -1,5 +1,6 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.Comparison;
 using PySharp.Runtime.PyAttributes;
 using System.Diagnostics;
 
@@ -117,7 +118,11 @@ public sealed partial class PySuperObjectType : PyTypeObject<PySuperObject>
         var iter = startType.MRO.GetEnumerator();
         while (iter.MoveNext())
         {
-            if (context.Comparer.Equals(iter.Current, self._type))
+            var eq = PyComparer.Eq(context, iter.Current, self._type);
+            if (eq.IsError)
+                return eq.ExceptionResult;
+
+            if (eq.Value.BoolValue)
                 break;
         }
         while (iter.MoveNext())
