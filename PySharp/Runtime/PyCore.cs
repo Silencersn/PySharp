@@ -1,5 +1,4 @@
 using PySharp.Compilation.Primitives;
-using PySharp.Modules;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.VirtualMachine;
@@ -327,7 +326,7 @@ internal static class PyCore
 
         if (PyObject.TryLookupAttrInMro(type, name, out var attr))
         {
-            if (Utils.IsDataDescriptor(attr))
+            if (PyUtils.IsDataDescriptor(attr))
             {
                 var getFunc = attr.PyType.Slots.Get;
                 if (getFunc is not null)

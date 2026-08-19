@@ -172,11 +172,11 @@ public static partial class PyBuiltinFunctions
     private static PyResult PrintImpl(PyCallContext context, PyArguments arguments)
     {
         var sepObj = arguments.GetKwargByIndex(0);
-        if (!Utils.TryGetValue(sepObj, (PyStrObject str) => str.Value, " ", out var sep))
+        if (!PyUtils.TryGetValue(sepObj, (PyStrObject str) => str.Value, " ", out var sep))
             return PyResult.TypeError(PySR.Runtime_Builtin_Print_WrongArgType, "sep", sepObj.PyType.FullName);
 
         var endObj = arguments.GetKwargByIndex(1);
-        if (!Utils.TryGetValue(endObj, (PyStrObject str) => str.Value, "\n", out var end))
+        if (!PyUtils.TryGetValue(endObj, (PyStrObject str) => str.Value, "\n", out var end))
             return PyResult.TypeError(PySR.Runtime_Builtin_Print_WrongArgType, "end", endObj.PyType.FullName);
 
         var fileObj = arguments.GetKwargByIndex(2);
@@ -411,7 +411,7 @@ public static partial class PyBuiltinFunctions
     private static PyResult AllImpl(PyCallContext context, PyArguments arguments)
     {
         var iterable = arguments[0];
-        if (!Utils.TryEnumerateIterable(context, iterable, out var elements, out var err))
+        if (!PyUtils.TryEnumerateIterable(context, iterable, out var elements, out var err))
             return err.Value;
         foreach (var element in elements)
         {
@@ -430,7 +430,7 @@ public static partial class PyBuiltinFunctions
     private static PyResult AnyImpl(PyCallContext context, PyArguments arguments)
     {
         var iterable = arguments[0];
-        if (!Utils.TryEnumerateIterable(context, iterable, out var elements, out var err))
+        if (!PyUtils.TryEnumerateIterable(context, iterable, out var elements, out var err))
             return err.Value;
         foreach (var element in elements)
         {

@@ -32,15 +32,15 @@ public class PySliceObject : PyObject
 
         if (step > 0)
         {
-            start = Start is PyNoneObject ? 0 : Utils.MapIndex(((PyIntObject)Start).Int32Value, length);
-            stop = Stop is PyNoneObject ? length : Utils.MapIndex(((PyIntObject)Stop).Int32Value, length);
+            start = Start is PyNoneObject ? 0 : PyUtils.MapIndex(((PyIntObject)Start).Int32Value, length);
+            stop = Stop is PyNoneObject ? length : PyUtils.MapIndex(((PyIntObject)Stop).Int32Value, length);
             start = Math.Clamp(start, 0, length);
             stop = Math.Clamp(stop, 0, length);
         }
         else if (step < 0)
         {
-            start = Start is PyNoneObject ? length - 1 : Utils.MapIndex(((PyIntObject)Start).Int32Value, length);
-            stop = Stop is PyNoneObject ? -1 : Utils.MapIndex(((PyIntObject)Stop).Int32Value, length);
+            start = Start is PyNoneObject ? length - 1 : PyUtils.MapIndex(((PyIntObject)Start).Int32Value, length);
+            stop = Stop is PyNoneObject ? -1 : PyUtils.MapIndex(((PyIntObject)Stop).Int32Value, length);
             start = Math.Clamp(start, -1, length - 1);
             stop = Math.Clamp(stop, -1, length - 1);
         }
@@ -70,15 +70,15 @@ public class PySliceObject : PyObject
 
         if (step > 0)
         {
-            start = Start is PyNoneObject ? BigInteger.Zero : Utils.MapIndex(((PyIntObject)Start).Value, length);
-            stop = Stop is PyNoneObject ? length : Utils.MapIndex(((PyIntObject)Stop).Value, length);
+            start = Start is PyNoneObject ? BigInteger.Zero : PyUtils.MapIndex(((PyIntObject)Start).Value, length);
+            stop = Stop is PyNoneObject ? length : PyUtils.MapIndex(((PyIntObject)Stop).Value, length);
             start = BigInteger.Clamp(start, BigInteger.Zero, length);
             stop = BigInteger.Clamp(stop, BigInteger.Zero, length);
         }
         else if (step < 0)
         {
-            start = Start is PyNoneObject ? length - 1 : Utils.MapIndex(((PyIntObject)Start).Value, length);
-            stop = Stop is PyNoneObject ? BigInteger.MinusOne : Utils.MapIndex(((PyIntObject)Stop).Value, length);
+            start = Start is PyNoneObject ? length - 1 : PyUtils.MapIndex(((PyIntObject)Start).Value, length);
+            stop = Stop is PyNoneObject ? BigInteger.MinusOne : PyUtils.MapIndex(((PyIntObject)Stop).Value, length);
             start = BigInteger.Clamp(start, BigInteger.MinusOne, length - 1);
             stop = BigInteger.Clamp(stop, BigInteger.MinusOne, length - 1);
         }

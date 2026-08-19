@@ -192,7 +192,7 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
         if (indexResult.IsError)
             return indexResult;
 
-        var index = Utils.MapIndex(indexResult.Value.Int32Value, self.Length);
+        var index = PyUtils.MapIndex(indexResult.Value.Int32Value, self.Length);
         if (index < 0 || index >= self.Length)
             return PyResult.IndexError(PySR.Runtime_IndexOutOfRange);
 
@@ -226,7 +226,7 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
         if (indexResult.IsError)
             return indexResult;
 
-        var mappedIndex = Utils.MapIndex(indexResult.Value.Int32Value, self.Length);
+        var mappedIndex = PyUtils.MapIndex(indexResult.Value.Int32Value, self.Length);
         var byteResult = TryGetByteValue(context, value, out var b);
         if (byteResult.IsError)
             return byteResult;

@@ -433,7 +433,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
     private static int ClampRuneStart(int start, int length)
     {
-        start = Utils.MapIndex(start, length);
+        start = PyUtils.MapIndex(start, length);
         return start < 0 ? 0 : start > length ? length : start;
     }
     private static int ClampRuneEnd(int end, int length)
@@ -1680,7 +1680,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         if (!result.Value.IsInt32)
             return PyResult.IndexError(PySR.Runtime_String_IndexOutOfRange);
         var index = result.Value.Int32Value;
-        index = Utils.MapIndex(index, self.PyLength);
+        index = PyUtils.MapIndex(index, self.PyLength);
         if (index < 0 || index >= self.PyLength)
             return PyResult.IndexError(PySR.Runtime_String_IndexOutOfRange);
         return PyStrObject.FromRune(self.PyCharAt(index));

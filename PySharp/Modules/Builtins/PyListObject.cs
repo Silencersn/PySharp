@@ -55,7 +55,7 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr, IList<PyOb
 
     PyResult<PyStrObject> IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<PyObject> ids)
     {
-        return Utils.CollectionRecursiveRepr(context, this, _list, "[", "]", ids);
+        return PyUtils.CollectionRecursiveRepr(context, this, _list, "[", "]", ids);
     }
 
     public List<PyObject>.Enumerator GetEnumerator()
@@ -152,16 +152,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
 
     protected override PyResult Contains(PyCallContext context, PyListObject self, PyObject item)
     {
-        foreach (var element in self.AsSpan())
-        {
-            var eq = PyComparer.Eq(context, element, item);
-            if (eq.IsError)
-                return eq.ExceptionResult;
-
-            if (eq.Value.BoolValue)
-                return PyBoolObject.True;
-        }
-        return PyBoolObject.False;
+        return PyUtils.Contains(context, self.AsSpan(), item);
     }
 
     protected override PyResult Repr(PyCallContext context, PyListObject self)
@@ -297,7 +288,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
         var result = PySpecialMethods.Index(context, arguments[0]);
         if (result.IsError)
             return result;
-        if (Utils.IsIndexOutOfRange(result.Value.Int32Value, self.Count))
+        if (PyUtils.IsIndexOutOfRange(result.Value.Int32Value, self.Count))
             return PyResult.IndexError(PySR.Runtime_List_PopIndexOutOfRange);
         return self.PyPop(result.Value.Int32Value);
     }

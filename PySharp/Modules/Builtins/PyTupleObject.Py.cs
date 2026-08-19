@@ -27,7 +27,7 @@ partial class PyTupleObject
         if (indexResult.IsError)
             return indexResult;
 
-        return Utils.GetListItem(_array, indexResult.Value.Int32Value, PySR.Runtime_Tuple_IndexOutOfRange);
+        return PyUtils.GetListItem(_array, indexResult.Value.Int32Value, PySR.Runtime_Tuple_IndexOutOfRange);
     }
 
     [AIGenerated]
@@ -65,8 +65,8 @@ partial class PyTupleObject
     [AIGenerated]
     public int PyIndex(PyCallContext context, PyObject item, int start, int end)
     {
-        start = Utils.MapIndex(start, Count);
-        end = Utils.MapIndex(end, Count);
+        start = PyUtils.MapIndex(start, Count);
+        end = PyUtils.MapIndex(end, Count);
 
         for (int i = int.Max(0, start); i < int.Min(end, Count); i++)
         {

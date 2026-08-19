@@ -149,7 +149,7 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
         if (indexResult.IsError)
             return indexResult;
 
-        var index = Utils.MapIndex(indexResult.Value.Int32Value, self.Length);
+        var index = PyUtils.MapIndex(indexResult.Value.Int32Value, self.Length);
         if (index < 0 || index >= self.Length)
             return PyResult.IndexError(PySR.Runtime_IndexOutOfRange);
 

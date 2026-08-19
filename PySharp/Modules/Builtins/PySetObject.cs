@@ -30,7 +30,7 @@ public partial class PySetObject : PyObject, IPyObjectRecursiveRepr, ISet<PyObje
         if (_set.Count is 0)
             return PyStrObject.FromString("set()");
 
-        return Utils.CollectionRecursiveRepr(context, this, _set, "{", "}", ids);
+        return PyUtils.CollectionRecursiveRepr(context, this, _set, "{", "}", ids);
     }
 
     public static PySetObject CreateSet(params IEnumerable<PyObject> items)

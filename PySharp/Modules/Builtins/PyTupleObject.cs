@@ -51,7 +51,7 @@ public partial class PyTupleObject : PyObject, IPyObjectRecursiveRepr, IReadOnly
 
     PyResult<PyStrObject> IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<PyObject> ids)
     {
-        return Utils.CollectionRecursiveRepr(context, this, _array, "(", ")", ids, forceTrailingComma: true);
+        return PyUtils.CollectionRecursiveRepr(context, this, _array, "(", ")", ids, forceTrailingComma: true);
     }
 
     public IEnumerator<PyObject> GetEnumerator()
@@ -101,16 +101,7 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
 
     protected override PyResult Contains(PyCallContext context, PyTupleObject self, PyObject item)
     {
-        foreach (var element in self.InternalArray)
-        {
-            var eq = PyComparer.Eq(context, element, item);
-            if (eq.IsError)
-                return eq.ExceptionResult;
-
-            if (eq.Value.BoolValue)
-                return PyBoolObject.True;
-        }
-        return PyBoolObject.False;
+        return PyUtils.Contains(context, self.AsSpan(), item);
     }
 
     protected override PyResult Bool(PyCallContext context, PyTupleObject self)

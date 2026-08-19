@@ -46,7 +46,7 @@ partial class PyTypeObject
 
         if (TryLookupAttrInMro(type, name, out var attr))
         {
-            if (Utils.IsDataDescriptor(attr))
+            if (PyUtils.IsDataDescriptor(attr))
             {
                 var getFunc = attr.PyType.Slots.Get;
                 if (getFunc is not null)
@@ -133,7 +133,7 @@ partial class PyTypeObject
 
         if (TryLookupAttrInMro(metaType, name, out var metaAttr))
         {
-            if (Utils.IsDataDescriptor(metaAttr))
+            if (PyUtils.IsDataDescriptor(metaAttr))
             {
                 var getFunc = metaAttr.PyType.Slots.Get;
                 if (getFunc is not null)

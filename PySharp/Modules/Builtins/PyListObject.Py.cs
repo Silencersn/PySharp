@@ -50,7 +50,7 @@ partial class PyListObject
 
     internal PyObject PyPop(int index = -1)
     {
-        index = Utils.MapIndex(index, _list.Count);
+        index = PyUtils.MapIndex(index, _list.Count);
         var item = _list[index];
         _list.RemoveAt(index);
         return item;
@@ -58,8 +58,8 @@ partial class PyListObject
 
     internal int PyIndex(PyCallContext context, PyObject item, int start, int end)
     {
-        start = Utils.MapIndex(start, _list.Count);
-        end = Utils.MapIndex(end, _list.Count);
+        start = PyUtils.MapIndex(start, _list.Count);
+        end = PyUtils.MapIndex(end, _list.Count);
         // Clamp the search range to valid indices (CPython clamps an
         // out-of-range negative start to 0); matching PyTupleObject.PyIndex.
         for (int i = int.Max(0, start); i < int.Min(end, _list.Count); i++)
@@ -195,7 +195,7 @@ partial class PyListObject
             return indexResult;
         if (!indexResult.Value.IsInt32)
             return PyResult.IndexError(PySR.Runtime_List_IndexOutOfRange);
-        return Utils.GetListItem(_list, indexResult.Value.Int32Value, PySR.Runtime_List_IndexOutOfRange);
+        return PyUtils.GetListItem(_list, indexResult.Value.Int32Value, PySR.Runtime_List_IndexOutOfRange);
     }
 
     internal PyResult PySetItem(PyCallContext context, PyObject key, PyObject value)
@@ -235,7 +235,7 @@ partial class PyListObject
         if (indexResult.IsError)
             return indexResult;
 
-        if (!Utils.TrySetListItem(_list, indexResult.Value.Int32Value, value))
+        if (!PyUtils.TrySetListItem(_list, indexResult.Value.Int32Value, value))
             return PyResult.IndexError(PySR.Runtime_List_IndexOutOfRange);
 
         return PyNoneObject.None;
@@ -275,10 +275,10 @@ partial class PyListObject
             return indexResult;
 
         int index = indexResult.Value.Int32Value;
-        if (Utils.IsIndexOutOfRange(index, _list.Count))
+        if (PyUtils.IsIndexOutOfRange(index, _list.Count))
             return PyResult.IndexError(PySR.Runtime_List_IndexOutOfRange);
 
-        _list.RemoveAt(Utils.MapIndex(index, _list.Count));
+        _list.RemoveAt(PyUtils.MapIndex(index, _list.Count));
         return PyNoneObject.None;
     }
 }

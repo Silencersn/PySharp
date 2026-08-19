@@ -28,7 +28,7 @@ public partial class PyFrozenSetObject : PyObject, IPyObjectRecursiveRepr, IRead
         if (_set.Count is 0)
             return PyStrObject.FromString("frozenset()");
 
-        return Utils.CollectionRecursiveRepr(context, this, _set, "frozenset({", "})", ids);
+        return PyUtils.CollectionRecursiveRepr(context, this, _set, "frozenset({", "})", ids);
     }
 
     public static PyFrozenSetObject CreateFrozenSet(params IEnumerable<PyObject> items)

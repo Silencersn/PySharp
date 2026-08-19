@@ -37,7 +37,7 @@ public sealed partial class PyMapObjectType : PyTypeObject<PyMapObject>
         List<IEnumerator<PyResult>> iters = [];
         foreach (var arg in arguments.ExtraArgs)
         {
-            if (!Utils.TryEnumerateIterable(context, arg, out var iter, out var err))
+            if (!PyUtils.TryEnumerateIterable(context, arg, out var iter, out var err))
                 return err.Value;
             iters.Add(iter.GetEnumerator());
         }

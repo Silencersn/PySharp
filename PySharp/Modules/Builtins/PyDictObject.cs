@@ -62,7 +62,7 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr, IDictionar
 
     PyResult<PyStrObject> IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<PyObject> ids)
     {
-        return Utils.DictionaryRecursiveRepr(context, this, _dict, "{", "}", ids);
+        return PyUtils.DictionaryRecursiveRepr(context, this, _dict, "{", "}", ids);
     }
 
     public IEnumerator<KeyValuePair<PyObject, PyObject>> GetEnumerator()
