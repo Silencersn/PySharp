@@ -5,6 +5,7 @@ using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Utility;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Compilation.AstNodes;
@@ -152,7 +153,8 @@ internal static class LiteralParser
                 if (keys.Count != values.Count)
                     return false;
 
-                value = PyDictObject.CreateDict(keys.Zip(values).Select(static tuple => KeyValuePair.Create(tuple.First, tuple.Second)));
+                value = PyDictObject.CreateDict(PyCallContext.NonContextDependency, keys.Zip(values).Select(static tuple => KeyValuePair.Create(tuple.First, tuple.Second))).Value;
+                Debug.Assert(value is not null);
                 return true;
 
             default:

@@ -113,7 +113,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
             return layoutTypeOwnerResult;
 
         var typeQualName = typeName;
-        if (dict.TryGetValue(PySpecialNames.Interned.QualName, out var qualNameObj) &&
+        if (dict.TryGetValue(PySpecialNames.QualName, out var qualNameObj) &&
             qualNameObj is PyStrObject { Value: var qualNameStr })
             typeQualName = qualNameStr;
         else if (kwargs.TryGetValue(PySpecialNames.QualName, out qualNameObj) &&
@@ -123,18 +123,21 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
         var type = layoutTypeOwnerResult.Value.CreateUserDefinedTypeWithSameLayout(typeName, typeQualName, bases);
         type._pyType = cls;
 
-        if (context.CurrentInternalFrame.Variables.Globals.TryGetValue(PySpecialNames.Interned.Name, out var module))
+        if (context.CurrentInternalFrame.Variables.Globals.TryGetValue(PySpecialNames.Name, out var module))
             type.ModuleAsObject = module;
         else
             type.ModuleAsObject = PyStrObject.FromString("builtins");
 
-        foreach (var (attrObj, value) in dict)
+        foreach (var entry in dict.Entries)
         {
-            if (attrObj is not PyStrObject { Value: var attr })
+            if (entry.Key is not PyStrObject { Value: var attr })
                 // TODO: RuntimeWarning: non-string key in the __dict__ of class xxx
                 continue;
 
+            var value = entry.Value;
+
             if (value is null)
+                // TODO: can be null?
                 continue;
 
             if (attr is PySpecialNames.Class && value is PyCellObject cell)
@@ -159,7 +162,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
         // NOTE: The injected implementation uses string-based type param tracking (from emitter).
         // It does NOT validate arg count against __type_params__ because that would require
         // TypeVar runtime objects. This is acceptable for the initial simplified scope.
-        if (dict.ContainsKey(PySpecialNames.Interned.TypeParams))
+        if (dict.ContainsKey(PySpecialNames.TypeParams))
         {
             // Check the full MRO, not just the type's own dict, to respect inherited __class_getitem__
             // (e.g. a parent class that defines a custom __class_getitem__).

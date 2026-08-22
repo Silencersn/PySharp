@@ -65,8 +65,8 @@ internal partial struct PyInternalFrame
     {
         var frame = new PyInternalFrame(isRoot);
         var builtins = context.PyEnvironment.LoadBuiltinModule(context, "builtins");
-        frame.Variables.Globals[PySpecialNames.Interned.Builtins] = builtins;
-        frame.Variables.Globals[PySpecialNames.Interned.Name] = PyStrObject.FromString(moduleQualifiedName);
+        frame.Variables.Globals[PySpecialNames.Builtins] = builtins;
+        frame.Variables.Globals[PySpecialNames.Name] = PyStrObject.FromString(moduleQualifiedName);
 
         // TODO: add flag to control whether adding site
         _ = context.PyEnvironment.LoadBuiltinModule(context, "site");
@@ -116,7 +116,7 @@ internal partial struct PyInternalFrame
         // A user-provided __builtins__ value is never overwritten.
         if (globals is not null)
         {
-            var builtinsKey = PySpecialNames.Interned.Builtins;
+            var builtinsKey = PySpecialNames.Builtins;
             if (!globals.ContainsKey(builtinsKey))
                 globals[builtinsKey] = context.PyEnvironment.LoadBuiltinModule(context, "builtins");
         }
@@ -156,6 +156,7 @@ internal partial struct PyInternalFrame
         if (def.VarArg is not null)
             localsSpan[index++] = arguments.InternalExtraArgs.Length is 0 ? PyTupleObject.Empty : PyTupleObject.CreateProxy(arguments.InternalExtraArgs);
         if (def.KwArg is not null)
-            localsSpan[index] = PyDictObject.CreateDict(arguments.ExtraKwargs.Select(static kvp => KeyValuePair.Create((PyObject)PyStrObject.FromString(kvp.Key), kvp.Value)));
+            // TODO: perf
+            localsSpan[index] = PyDictObject.CreateDict(PyCallContext.NotImplemented, arguments.ExtraKwargs.Select(static kvp => KeyValuePair.Create((PyObject)PyStrObject.FromString(kvp.Key), kvp.Value))).Value!;
     }
 }

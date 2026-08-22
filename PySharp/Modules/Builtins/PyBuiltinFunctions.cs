@@ -798,7 +798,7 @@ public static partial class PyBuiltinFunctions
     [PyFunctionParameters()]
     private static PyResult LocalsImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = PyDictObject.CreateDict(context.CurrentInternalFrame.Variables
+        var result = PyDictObject.CreateDict(context, context.CurrentInternalFrame.Variables
             .EnumerateLocals()
             .Select(static pair => KeyValuePair.Create((PyObject)PyStrObject.FromString(pair.Key), pair.Value)));
         return result;
@@ -832,23 +832,20 @@ public static partial class PyBuiltinFunctions
             {
                 // Use the current frame's globals
                 var globals = context.CurrentInternalFrame.Variables.Globals;
-                globals.TryGetValue(PySpecialNames.Interned.Package, out packageObj);
-                if (!globals.TryGetValue(PySpecialNames.Interned.Name, out var nameObj) || nameObj is not PyStrObject nameStr)
+                globals.TryGetValue(PySpecialNames.Package, out packageObj);
+                if (!globals.TryGetValue(PySpecialNames.Name, out var nameObj) || nameObj is not PyStrObject nameStr)
                     return PyResult.TypeError(PySR.Runtime_Builtin_Import_NameMustBeString);
                 moduleName = nameStr.Value;
-                hasPath = globals.ContainsKey(PySpecialNames.Interned.Path);
+                hasPath = globals.ContainsKey(PySpecialNames.Path);
             }
             else if (globalsArg is PyDictObject globalsDict)
             {
                 // Extract values from the provided PyDictObject
-                var nameKey = PyStrObject.FromString(PySpecialNames.Name);
-                var packageKey = PyStrObject.FromString(PySpecialNames.Package);
-                var pathKey = PyStrObject.FromString(PySpecialNames.Path);
-                globalsDict.TryGetValue(packageKey, out packageObj);
-                if (!globalsDict.TryGetValue(nameKey, out var nameObj) || nameObj is not PyStrObject nameStr)
+                globalsDict.TryGetValue(PySpecialNames.Package, out packageObj);
+                if (!globalsDict.TryGetValue(PySpecialNames.Name, out var nameObj) || nameObj is not PyStrObject nameStr)
                     return PyResult.TypeError(PySR.Runtime_Builtin_Import_NameMustBeString);
                 moduleName = nameStr.Value;
-                hasPath = globalsDict.ContainsKey(pathKey);
+                hasPath = globalsDict.ContainsKey(PySpecialNames.Path);
             }
             else
             {

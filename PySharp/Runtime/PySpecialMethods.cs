@@ -71,9 +71,9 @@ public static class PySpecialMethods
         if (func is null)
             return PyResult.TypeError(PySR.Runtime_Object_Unhashable, obj.PyType.FullName);
         var hash = ValidateResultOf<PyIntObject>(func(context, obj), MessageCreator);
-        if (hash.IsError || hash.Value.Value != -1)
+        if (hash.IsError)
             return hash;
-        return PyIntObject.FromInteger(-2);
+        return PyIntObject.FromInteger(PyHash.HashLong(hash.Value.Value));
 
         static string MessageCreator(PyObject o)
         {

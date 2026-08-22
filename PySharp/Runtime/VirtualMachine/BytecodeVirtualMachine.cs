@@ -351,7 +351,7 @@ internal static partial class BytecodeVirtualMachine
                             var pyargs = (PyListObject)Stack.Pop();
                             states.CacheKwargs.Clear();
 
-                            foreach (var pair in dict)
+                            foreach (var pair in dict.Entries)
                             {
                                 if (pair.Key is not PyStrObject str)
                                     throw context.TypeError(PySR.Runtime_Keyword_KeywordsMustBeStrings);
@@ -543,7 +543,7 @@ internal static partial class BytecodeVirtualMachine
                         states.CachePairs.Clear();
                         for (int i = 0; i < instructionArg; i++)
                             states.CachePairs.Add(KeyValuePair.Create(states.CacheArgs[i * 2], states.CacheArgs[i * 2 + 1]));
-                        Stack.Push(PyDictObject.CreateDict(states.CachePairs));
+                        Stack.Push(PyDictObject.CreateDict(context, states.CachePairs).PyUnwrap(context));
                         break;
 
                     case OpCode._EnterInlineFrame:

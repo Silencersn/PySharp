@@ -75,7 +75,7 @@ internal static class PyUtils
         if (keysList.IsError)
             return keysList.ExceptionResult;
 
-        PyDictObject dict = PyDictObject.CreateDict();
+        var dict = new PyDictObject();
 
         foreach (var key in keysList.Value)
         {
@@ -83,7 +83,9 @@ internal static class PyUtils
             if (value.IsError)
                 return value.ExceptionResult;
 
-            dict.PySetItem(key, value.Value);
+            var result = dict.SetItem(context, key, value.Value);
+            if (result.IsError)
+                return result.ExceptionResult;
         }
 
         return dict;
@@ -95,7 +97,7 @@ internal static class PyUtils
         if (pairs.IsError)
             return pairs.ExceptionResult;
 
-        var dict = PyDictObject.CreateDict();
+        var dict = new PyDictObject();
 
         for (int i = 0; i < pairs.Value.Count; i++)
         {
@@ -109,7 +111,9 @@ internal static class PyUtils
 
             var key = pairList.Value[0];
             var value = pairList.Value[1];
-            dict.PySetItem(key, value);
+            var result = dict.SetItem(context, key, value);
+            if (result.IsError)
+                return result.ExceptionResult;
         }
 
         return dict;
@@ -118,7 +122,7 @@ internal static class PyUtils
     public static PyResult<PyDictObject> ToDict(PyCallContext context, PyObject iterableOrMapping)
     {
         if (iterableOrMapping is PyDictObject dict)
-            return PyDictObject.CreateDict(dict);
+            return new PyDictObject(dict);
 
         var keysMethod = PyOperators.GetAttr(context, iterableOrMapping, "keys");
         if (keysMethod.IsSuccessful)

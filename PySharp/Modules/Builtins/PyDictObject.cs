@@ -1,344 +1,448 @@
+using PySharp.Compilation.CodeAnalysis;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Comparison;
 using PySharp.Runtime.PyAttributes;
-using PySharp.Utility;
-using System.Collections;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Text;
 
 namespace PySharp.Modules.Builtins;
 
-public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr, IDictionary<PyObject, PyObject>
+public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
 {
-    private readonly IDictionary<PyObject, PyObject> _dict;
-
-    public override PyTypeObject DefaultPyType => PyDictObjectType.Shared;
-
-    public ICollection<PyObject> Keys => _dict.Keys;
-
-    public ICollection<PyObject> Values => _dict.Values;
-
-    public int Count => _dict.Count;
-
-    public bool IsReadOnly => _dict.IsReadOnly;
-
-    public PyObject this[PyObject key]
-    {
-        get => _dict[key];
-        set => _dict[key] = value;
-    }
+    private int _count;
+    private int[] _buckets;
+    private Entry[] _entries;
 
     public PyDictObject()
     {
-        _dict = new OrderedDictionary<PyObject, PyObject>(PyObjectComparer.Default);
+        _count = 0;
+        _buckets = [];
+        _entries = [];
     }
-    public PyDictObject(IEnumerable<KeyValuePair<PyObject, PyObject>> dict) : this()
+    public PyDictObject(PyDictObject dict)
     {
-        PyUpdate(dict);
-    }
-    private PyDictObject(IDictionary<PyObject, PyObject> dict, bool isProxy)
-    {
-        if (isProxy)
-            _dict = dict;
-        else
-            _dict = new OrderedDictionary<PyObject, PyObject>(dict, PyObjectComparer.Default);
+        _count = dict.Count;
+        _buckets = [..dict._buckets];
+        _entries = [.. dict._entries];
     }
 
-    public static PyDictObject CreateDict(params IEnumerable<KeyValuePair<PyObject, PyObject>> dict)
-    {
-        return new PyDictObject(dict);
-    }
-    public static PyDictObject CreateProxy(IDictionary<PyObject, PyObject> dict)
-    {
-        return new PyDictObject(dict, true);
-    }
-    internal static PyDictObject FromStringKeyDict(IDictionary<string, PyObject> stringKeyDict)
-    {
-        if (stringKeyDict is PyDictObject dict)
-            return dict;
+    public override PyTypeObject DefaultPyType => PyDictObjectType.Shared;
 
-        return CreateProxy(new DictAdapter(stringKeyDict!));
+    internal ReadOnlySpan<Entry> Entries => _entries.AsSpan()[.._count];
+
+    public int Count => _count;
+
+    internal PyObject this[string key]{
+        get => TryGetValue(key, out var value) ? value : throw new KeyNotFoundException();
+        set => SetItem(key, value);
     }
 
-    PyResult<PyStrObject> IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<PyObject> ids)
+    public static PyResult<PyDictObject> CreateDict(PyCallContext context, params IEnumerable<KeyValuePair<PyObject, PyObject>> pairs)
     {
-        return PyUtils.DictionaryRecursiveRepr(context, this, _dict, "{", "}", ids);
+        var dict = new PyDictObject();
+        foreach (var pair in pairs)
+        {
+            var result = dict.SetItem(context, pair.Key, pair.Value);
+            if (result.IsError)
+                return result.ExceptionResult;
+        }
+        return dict;
+    }
+    public static PyDictObject CreateDict()
+    {
+        return new PyDictObject();
+    }
+    public static PyDictObject FromStringKeyDict(IDictionary<string, PyObject> dict)
+    {
+        if (dict is PyDictObject dictObj)
+            return dictObj;
+
+        // TODO: it should be a proxy
+        var newDict = new PyDictObject();
+        foreach (var pair in dict)
+            newDict[pair.Key] = pair.Value;
+        return newDict;
     }
 
-    public IEnumerator<KeyValuePair<PyObject, PyObject>> GetEnumerator()
+    public PyResult GetItem(string key)
     {
-        return _dict.GetEnumerator();
+        if (TryGetValue(key, out var value))
+            return value;
+        return PyResult.KeyError(PyStrObject.FromString(key));
     }
 
-    IEnumerator IEnumerable.GetEnumerator()
+    public bool TryGetValue(string key, [NotNullWhen(true)] out PyObject? value)
     {
-        return GetEnumerator();
+        value = null;
+        if (_buckets.Length is 0)
+            return false;
+
+        var hashCode = (uint)PyStrObject.GetHashCode(key);
+        var index = GetBucket(hashCode);
+        if (index is 0)
+            return false;
+
+        ref var entry = ref _entries[index - 1];
+        while (true)
+        {
+            if (entry.HashCode == hashCode && 
+                entry.Key is PyStrObject { Value: var entryKey } &&
+                string.Equals(entryKey, key, StringComparison.Ordinal))
+            {
+                value = entry.Value;
+                return true;
+            }
+
+            if (entry.Next is -1)
+                return false;
+
+            entry = ref _entries[entry.Next];
+        }
     }
 
-    public void Add(PyObject key, PyObject value)
+    public bool ContainsKey(string key)
     {
-        _dict.Add(key, value);
+        return TryGetValue(key, out _);
     }
 
-    public bool ContainsKey(PyObject key)
+    public PyResult GetItem(PyCallContext context, PyObject key)
     {
-        return _dict.ContainsKey(key);
+        if (_count is 0)
+            return PyResult.KeyError(key);
+
+        var hash = PySpecialMethods.Hash(context, key);
+        if (hash.IsError)
+            return hash;
+
+        var hashCode = (uint)hash.Value.Int32Value;
+        var index = GetBucket(hashCode);
+        if (index is 0)
+            return PyResult.KeyError(key);
+
+        ref var entry = ref _entries[index - 1];
+        while (true)
+        {
+            if (entry.HashCode == hashCode)
+            {
+                var eq = PyComparer.Eq(context, entry.Key, key);
+                if (eq.IsError)
+                    return eq;
+
+                if (eq.Value.BoolValue)
+                    return entry.Value;
+            }
+
+            if (entry.Next is -1)
+                return PyResult.KeyError(key);
+
+            entry = ref _entries[entry.Next];
+        }
     }
 
-    public bool Remove(PyObject key)
+    public void SetItem(string key, PyObject value)
     {
-        return _dict.Remove(key);
+        if (_count == _entries.Length)
+            EnsureCapacity(_count + 1);
+
+        var hashCode = (uint)PyStrObject.GetHashCode(key);
+        var index = GetBucket(hashCode);
+
+        if (index is not 0)
+        {
+            ref var entry = ref _entries[index - 1];
+            while (true)
+            {
+                if (entry.HashCode == hashCode &&
+                    entry.Key is PyStrObject { Value: var entryKey } &&
+                    string.Equals(entryKey, key, StringComparison.Ordinal))
+                {
+                    entry.Value = value;
+                    return;
+                }
+
+                if (entry.Next is -1)
+                    break;
+
+                entry = ref _entries[entry.Next];
+            }
+        }
+
+        {
+            ref var entry = ref _entries[_count];
+            entry.HashCode = hashCode;
+            entry.Key = PyStrObject.FromString(key);
+            entry.Value = value;
+            PushEntryIntoBucket(ref entry, _count);
+            _count++;
+            return;
+        }
     }
 
-    public bool TryGetValue(PyObject key, [NotNullWhen(true)] out PyObject? value)
+    internal PyResult InternalSetItem(PyCallContext context, PyObject key, PyObject? value)
     {
-        return _dict.TryGetValue(key, out value);
+        var hash = PySpecialMethods.Hash(context, key);
+        if (hash.IsError)
+            return hash;
+
+        if (_count == _entries.Length)
+            EnsureCapacity(_count + 1);
+
+        var hashCode = (uint)hash.Value.Int32Value;
+        var index = GetBucket(hashCode) - 1;
+
+        if (index is not -1)
+        {
+            while (true)
+            {
+                ref var entry = ref _entries[index];
+
+                if (entry.HashCode == hashCode)
+                {
+                    var eq = PyComparer.Eq(context, entry.Key, key);
+                    if (eq.IsError)
+                        return eq;
+
+                    if (eq.Value.BoolValue)
+                    {
+                        // set
+                        if (value is not null)
+                        {
+                            entry.Value = value;
+                            return PyNoneObject.None;
+                        }
+
+                        // del
+                        value = entry.Value;
+
+                        for (int i = index + 1; i < _count; i++)
+                            _entries[i - 1] = _entries[i];
+
+                        _count--;
+
+                        // TODO: perf
+                        _buckets.AsSpan().Clear();
+                        for (int i = 0; i < _count; i++)
+                            PushEntryIntoBucket(ref _entries[i], i);
+                        return value;
+                    }
+
+                }
+
+                if (entry.Next is -1)
+                    break;
+
+                index = entry.Next;
+            }
+        }
+
+        if (value is null)
+            return PyResult.KeyError(key);
+
+        {
+            ref var entry = ref _entries[_count];
+            entry.HashCode = hashCode;
+            entry.Key = key;
+            entry.Value = value;
+            PushEntryIntoBucket(ref entry, _count);
+            _count++;
+            return PyNoneObject.None;
+        }
     }
 
-    public void Add(KeyValuePair<PyObject, PyObject> item)
+    public PyResult SetItem(PyCallContext context, PyObject key, PyObject value)
     {
-        _dict.Add(item);
+        return InternalSetItem(context, key, value);
     }
 
-    public void Clear()
+    public PyResult DelItem(PyCallContext context, PyObject key)
     {
-        _dict.Clear();
+        var result = InternalSetItem(context, key, value: null);
+        if (result.IsError)
+            return result;
+        return PyNoneObject.None;
     }
 
-    public bool Contains(KeyValuePair<PyObject, PyObject> item)
+    internal PyResult Pop(PyCallContext context, PyObject key)
     {
-        return _dict.Contains(item);
+        return InternalSetItem(context, key, value: null);
     }
 
-    public void CopyTo(KeyValuePair<PyObject, PyObject>[] array, int arrayIndex)
+    internal PyResult PopItem()
     {
-        _dict.CopyTo(array, arrayIndex);
+        if (_count is 0)
+            return PyResult.KeyError(PySR.Runtime_Dictionary_PopEmptyDict);
+
+        ref var entry = ref _entries[--_count];
+        var tuple = PyTupleObject.CreateTuple(entry.Key, entry.Value);
+        entry = default;
+
+        // TODO: perf
+        _buckets.AsSpan().Clear();
+        for (int i = 0; i < _count; i++)
+            PushEntryIntoBucket(ref _entries[i], i);
+
+        return tuple;
     }
 
-    public bool Remove(KeyValuePair<PyObject, PyObject> item)
+    internal PyResult Update(PyCallContext context, PyObject iterableOrMapping)
     {
-        return _dict.Remove(item);
-    }
-}
-
-[PyType("dict")]
-public sealed partial class PyDictObjectType : PyTypeObject<PyDictObject>
-{
-    [PyExport(PySpecialNames.New, nameof(NewImpl_1), nameof(NewImpl_2))]
-    private static partial PyBuiltinFunctionOrMethodObject _new { get; }
-
-    [PyFunctionParameters("**kwargs")]
-    private static PyResult NewImpl_1(PyCallContext context, PyArguments arguments)
-    {
-        return PyDictObject.CreateDict(arguments.ExtraKwargs
-            .Select(pair => KeyValuePair.Create<PyObject, PyObject>(PyStrObject.FromString(pair.Key), pair.Value)));
-    }
-
-    [PyFunctionParameters("iterable_or_mapping", "/", "**kwargs")]
-    private static PyResult NewImpl_2(PyCallContext context, PyArguments arguments)
-    {
-        var dict = PyUtils.ToDict(context, arguments[0]);
+        // TODO: perf
+        var dict = PyUtils.ToDict(context, iterableOrMapping);
         if (dict.IsError)
             return dict;
 
-        foreach (var kwarg in arguments.ExtraKwargs)
-            dict.Value.PySetItem(PyStrObject.FromString(kwarg.Key), kwarg.Value);
-
-        return dict;
-    }
-
-    protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
-    {
-        var obj = _new.Call(context, args, kwargs);
-        if (obj.IsError)
-            return obj;
-        obj.Value._pyType = cls;
-        return obj;
-    }
-
-    protected override PyResult GetItem(PyCallContext context, PyDictObject self, PyObject item)
-    {
-        if (self.TryGetValue(item, out PyObject? value))
-            return value;
-
-        var missing = self.PyType.Slots.Missing;
-        if (missing is null)
-            return PyResult.KeyError(item);
-
-        return missing(context, self, item);
-    }
-
-    protected override PyResult SetItem(PyCallContext context, PyDictObject self, PyObject key, PyObject value)
-    {
-        self.PySetItem(key, value);
-        return PyNoneObject.None;
-    }
-
-    protected override PyResult DelItem(PyCallContext context, PyDictObject self, PyObject key)
-    {
-        if (self.Remove(key))
-            return PyNoneObject.None;
-        return PyResult.KeyError(key);
-    }
-
-    protected override PyResult Contains(PyCallContext context, PyDictObject self, PyObject item)
-    {
-        return PyBoolObject.FromBoolean(self.ContainsKey(item));
-    }
-
-    protected override PyResult Repr(PyCallContext context, PyDictObject self)
-    {
-        return IPyObjectRecursiveRepr.RecursiveRepr(context, self);
-    }
-
-    protected override PyResult Bool(PyCallContext context, PyDictObject self)
-    {
-        return PyBoolObject.FromBoolean(self.Count > 0);
-    }
-
-    protected override PyResult Len(PyCallContext context, PyDictObject self)
-    {
-        return PyIntObject.FromInteger(self.Count);
-    }
-
-    [PyMethod("items")]
-    [PyFunctionParameters()]
-    private static PyResult Items(PyCallContext context, PyDictObject self, PyArguments arguments)
-    {
-        return self.PyItems();
-    }
-
-    [AIGenerated]
-    [PyMethod("keys")]
-    [PyFunctionParameters()]
-    private static PyResult Keys(PyCallContext context, PyDictObject self, PyArguments arguments)
-    {
-        return self.PyKeys();
-    }
-
-    [AIGenerated]
-    [PyMethod("values")]
-    [PyFunctionParameters()]
-    private static PyResult Values(PyCallContext context, PyDictObject self, PyArguments arguments)
-    {
-        return self.PyValues();
-    }
-
-    [PyMethod("clear")]
-    [PyFunctionParameters()]
-    private static PyResult Clear(PyCallContext context, PyDictObject self, PyArguments arguments)
-    {
-        self.PyClear();
-        return PyNoneObject.None;
-    }
-
-    [PyMethod("get")]
-    [PyFunctionParameters("key", "default=None", "/")]
-    private static PyResult Get(PyCallContext context, PyDictObject self, PyArguments arguments)
-    {
-        if (self.PyTryGet(arguments[0], out var value))
-            return value;
-        return arguments[1];
-    }
-
-    [PyMethod("setdefault")]
-    [PyFunctionParameters("key", "default=None", "/")]
-    private static PyResult SetDefault(PyCallContext context, PyDictObject self, PyArguments arguments)
-    {
-        return self.PySetDefault(arguments[0], arguments[1]);
-    }
-
-    [PyMethod("pop", Order = 1)]
-    [PyFunctionParameters("key", "/")]
-    private static PyResult Pop_1(PyCallContext context, PyDictObject self, PyArguments arguments)
-    {
-        var key = arguments[0];
-        if (self.PyTryPop(key, out var value))
-            return value;
-        return PyResult.KeyError(key);
-    }
-
-    [PyMethod("pop", Order = 2)]
-    [PyFunctionParameters("key", "default", "/")]
-    private static PyResult Pop_2(PyCallContext context, PyDictObject self, PyArguments arguments)
-    {
-        if (self.PyTryPop(arguments[0], out var value))
-            return value;
-        return arguments[1];
-    }
-
-    [PyMethod("popitem")]
-    [PyFunctionParameters()]
-    private static PyResult PopItem(PyCallContext context, PyDictObject self, PyArguments arguments)
-    {
-        if (self.PyTryPopItem(out var key, out var value))
-            return PyTupleObject.CreateTuple(key, value);
-        return PyResult.KeyError(PySR.Runtime_Dictionary_PopEmptyDict);
-    }
-
-    [PyMethod("copy")]
-    [PyFunctionParameters()]
-    private static PyResult Copy(PyCallContext context, PyDictObject self, PyArguments arguments)
-    {
-        return self.PyCopy();
-    }
-
-    [PyMethod("update")]
-    [PyFunctionParameters("iterable_or_mapping=None", "**kwargs")]
-    private static PyResult UpdateImpl(PyCallContext context, PyDictObject self, PyArguments arguments)
-    {
-        if (arguments[0] is not PyNoneObject)
+        var entries = dict.Value.Entries;
+        for (int i = 0; i < entries.Length; i++)
         {
-            var result = self.PyUpdate(context, arguments[0]);
+            var entry = entries[i];
+            var result = SetItem(context, entry.Key, entry.Value);
             if (result.IsError)
                 return result;
         }
 
-        foreach (var pair in arguments.ExtraKwargs)
-            self.PySetItem(PyStrObject.FromString(pair.Key), pair.Value);
-
         return PyNoneObject.None;
     }
 
-    [PyClassMethod("fromkeys")]
-    [PyFunctionParameters("iterable", "value=None", "/")]
-    private static PyResult FromKeysImpl(PyCallContext context, PyTypeObject cls, PyArguments arguments)
+    public void Clear()
     {
-        return PyDictObject.PyFromKeys(context, cls, arguments[0], arguments[1]);
+        Array.Clear(_entries);
+        Array.Clear(_buckets);
+        _count = 0;
     }
 
     [AIGenerated]
-    protected override PyResult Iter(PyCallContext context, PyDictObject self)
+    public static PyResult PyFromKeys(PyCallContext context, PyTypeObject cls, PyObject iterable, PyObject? value = null)
     {
-        return new PyDictKeyIteratorObject(self);
-    }
+        var result = cls.Call(context);
+        if (result.IsError)
+            return result;
 
-    [AIGenerated]
-    protected override PyResult Eq(PyCallContext context, PyDictObject self, PyObject other)
-    {
-        if (other is not PyDictObject otherDict)
-            return base.Eq(context, self, other);
+        if (result.Value is not PyDictObject dict)
+            return PyResult.TypeError($"'{cls.FullName}' is not a dict type");
 
-        if (self.Count != otherDict.Count)
-            return PyBoolObject.False;
+        var val = value ?? PyNoneObject.None;
+        var iterResult = PySpecialMethods.Iter(context, iterable);
+        if (iterResult.IsError)
+            return iterResult;
 
-        foreach (var (key, value) in self)
+        var iterator = iterResult.Value;
+        while (true)
         {
-            if (!otherDict.TryGetValue(key, out var otherValue))
-                return PyBoolObject.False;
-
-            var eqResult = PyOperators.Eq(context, value, otherValue);
-            if (eqResult.IsError)
-                return eqResult;
-
-            var eq = PySpecialMethods.Bool(context, eqResult.Value);
-            if (eq.IsError)
-                return eq;
-
-            if (!eq.Value.BoolValue)
-                return PyBoolObject.False;
+            var next = PySpecialMethods.Next(context, iterator);
+            if (next.IsError)
+            {
+                if (next.IsStopIteration)
+                    break;
+                return next;
+            }
+            var setResult = dict.SetItem(context, next.Value, val);
+            if (setResult.IsError)
+                return setResult;
         }
 
-        return PyBoolObject.True;
+        return dict;
+    }
+
+    private void EnsureCapacity(int capacity)
+    {
+        Resize(Helper.GetPrime(capacity));
+    }
+
+    private void Resize(int newSize)
+    {
+        Debug.Assert(newSize >= _count);
+
+        var newBuckets = new int[newSize];
+        var newEntries = new Entry[newSize];
+
+        _entries.AsSpan()[.._count].CopyTo(newEntries);
+
+        _buckets = newBuckets;
+
+        for (int i = 0; i < _count; i++)
+            PushEntryIntoBucket(ref newEntries[i], i);
+
+        _entries = newEntries;
+    }
+
+    private void PushEntryIntoBucket(ref Entry entry, int entryIndex)
+    {
+        ref var bucket = ref GetBucket(entry.HashCode);
+        entry.Next = bucket - 1;
+        bucket = entryIndex + 1;
+    }
+
+    private ref int GetBucket(uint hashCode)
+    {
+        int[] buckets = _buckets;
+        Debug.Assert(buckets.Length > 0);
+        return ref buckets[hashCode % buckets.Length];
+    }
+
+    PyResult<PyStrObject> IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<PyObject> ids)
+    {
+        // TODO: perf
+        return PyUtils.DictionaryRecursiveRepr(context, this, Entries.ToArray().Select(static entry => KeyValuePair.Create(entry.Key, entry.Value)), "{", "}", ids);
+    }
+
+    private static class Helper
+    {
+        private const int HashPrime = 101;
+
+        private static ReadOnlySpan<int> Primes =>
+            [
+                3, 7, 11, 17, 23, 29, 37, 47, 59, 71, 89, 107, 131, 163, 197, 239, 293, 353, 431, 521, 631, 761, 919,
+            1103, 1327, 1597, 1931, 2333, 2801, 3371, 4049, 4861, 5839, 7013, 8419, 10103, 12143, 14591,
+            17519, 21023, 25229, 30293, 36353, 43627, 52361, 62851, 75431, 90523, 108631, 130363, 156437,
+            187751, 225307, 270371, 324449, 389357, 467237, 560689, 672827, 807403, 968897, 1162687, 1395263,
+            1674319, 2009191, 2411033, 2893249, 3471899, 4166287, 4999559, 5999471, 7199369
+            ];
+
+        private static bool IsPrime(int candidate)
+        {
+            if ((candidate & 1) is 0)
+                return candidate is 2;
+
+            int limit = (int)Math.Sqrt(candidate);
+            for (int divisor = 3; divisor <= limit; divisor += 2)
+            {
+                if ((candidate % divisor) is 0)
+                    return false;
+            }
+
+            return true;
+        }
+
+        public static int GetPrime(int min)
+        {
+            foreach (int prime in Primes)
+            {
+                if (prime >= min)
+                    return prime;
+            }
+
+            // Outside of our predefined table. Compute the hard way.
+            for (int i = (min | 1); i < int.MaxValue; i += 2)
+            {
+                if (IsPrime(i) && ((i - 1) % HashPrime is not 0))
+                    return i;
+            }
+            return min;
+        }
+    }
+
+    internal struct Entry
+    {
+        public int Next;
+
+        public uint HashCode;
+
+        public PyObject Key;
+
+        public PyObject Value;
     }
 }

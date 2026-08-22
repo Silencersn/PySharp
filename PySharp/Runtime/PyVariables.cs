@@ -68,8 +68,11 @@ internal sealed partial class PyVariables
 
     internal void MergeThenReplaceGlobals(PyDictObject globals)
     {
-        foreach (var pair in _globals)
-            globals[pair.Key] = pair.Value;
+        foreach (var pair in _globals.Entries)
+        {
+            Debug.Assert(pair.Key is PyStrObject);
+            globals[((PyStrObject)pair.Key).Value] = pair.Value;
+        }
         _globals = globals;
     }
 
@@ -162,9 +165,9 @@ internal sealed partial class PyVariables
     internal PyVariables CreateInline()
     {
         if (!HasLocals)
-            return new PyVariables([.. _globals]);
+            return new PyVariables(new PyDictObject(_globals));
 
-        var variables = new PyVariables([.. _globals], _localsTable);
+        var variables = new PyVariables(new PyDictObject(_globals), _localsTable);
         LocalsSpan.CopyTo(variables.LocalsSpan);
         if (_locals is not null)
             variables._locals = new LocalDictionary(_localsTable, variables.LocalsPlusMemory, new Dictionary<string, PyObject?>(_locals));
@@ -191,7 +194,7 @@ internal sealed partial class PyVariables
     private bool TryLoadFromBuiltins(string name, [NotNullWhen(true)] out PyObject? value)
     {
         value = null;
-        if (!Globals.TryGetValue(PySpecialNames.Interned.Builtins, out var builtins))
+        if (!Globals.TryGetValue(PySpecialNames.Builtins, out var builtins))
             return false;
 
         return builtins.PyAttributes.TryGetValue(name, out value);
@@ -259,7 +262,7 @@ internal sealed partial class PyVariables
 
     public PyResult LoadGlobal(string name)
     {
-        if (Globals.TryGetValue(PyStrObject.FromString(name), out var value))
+        if (Globals.TryGetValue(name, out var value))
             return value;
 
         if (TryLoadFromBuiltins(name, out value))
@@ -312,7 +315,7 @@ internal sealed partial class PyVariables
 
     public PyResult StoreGlobal(string name, PyObject value)
     {
-        Globals[PyStrObject.FromString(name)] = value;
+        Globals[name] = value;
         return PyNoneObject.None;
     }
 
@@ -349,7 +352,8 @@ internal sealed partial class PyVariables
 
     public PyResult DeleteGlobal(string name)
     {
-        if (Globals.Remove(PyStrObject.FromString(name)))
+        // TODO
+        if (!Globals.DelItem(PyCallContext.NotImplemented, PyStrObject.FromString(name)).IsKeyError)
             return PyNoneObject.None;
 
         return PyResult.NameError(PySR.Runtime_Variable_NameNotDefined, name);

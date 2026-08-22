@@ -28,6 +28,9 @@ public readonly partial struct PyResult
     [MemberNotNullWhen(true, nameof(Exception))]
     public bool IsAttributeError => _exception is not null && PyAttributeErrorObjectType.Shared.IsInstance(_exception);
 
+    [MemberNotNullWhen(true, nameof(Exception))]
+    public bool IsKeyError => _exception is not null && PyKeyErrorObjectType.Shared.IsInstance(_exception);
+
     // default(PyResult) is regarded as PyResult.FromValue(PyNoneObject.None)
     public PyObject? Value => _value ?? (IsError ? null : PyNoneObject.None);
     public PyExceptionObject? Exception => _exception;

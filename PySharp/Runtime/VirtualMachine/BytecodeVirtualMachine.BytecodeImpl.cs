@@ -205,14 +205,14 @@ internal static partial class BytecodeVirtualMachine
         var value = stack.Pop();
         var key = stack.Pop();
         var dict = (PyDictObject)stack[-instructionArg];
-        dict[key] = value;
+        _ = dict.SetItem(context, key, value).PyUnwrap(context);
     }
 
     private static void InternalDictUpdate(PyCallContext context, ref ValueOperandStack stack, int instructionArg)
     {
         var map = stack.Pop();
         var dict = (PyDictObject)stack[-instructionArg];
-        _ = dict.PyUpdate(context, map).PyUnwrap(context);
+        _ = dict.Update(context, map).PyUnwrap(context);
     }
 
     private static void InternalDictMerge(PyCallContext context, ref ValueOperandStack stack, int instructionArg)
@@ -317,8 +317,8 @@ internal static partial class BytecodeVirtualMachine
         else if (frame.FrameType is FrameType.MainRoot or FrameType.Module)
         {
             var globals = frame.Variables.Globals;
-            if (!globals.ContainsKey(PySpecialNames.Interned.Annotations))
-                globals[PySpecialNames.Interned.Annotations] = new PyDictObject();
+            if (!globals.GetItem(PySpecialNames.Annotations).IsSuccessful)
+                globals.SetItem(PySpecialNames.Annotations, new PyDictObject());
         }
     }
 
@@ -383,9 +383,9 @@ internal static partial class BytecodeVirtualMachine
         {
             // Relative import: resolve the name relative to the caller's package
             var callerGlobals = context.CurrentInternalFrame.Variables.Globals;
-            callerGlobals.TryGetValue(PySpecialNames.Interned.Package, out var packageObj);
-            var moduleName = ((PyStrObject)callerGlobals[PySpecialNames.Interned.Name]).Value;
-            var hasPath = callerGlobals.ContainsKey(PySpecialNames.Interned.Path);
+            callerGlobals.TryGetValue(PySpecialNames.Package, out var packageObj);
+            var moduleName = ((PyStrObject)callerGlobals.GetItem(PySpecialNames.Name).PyUnwrap(context)).Value;
+            var hasPath = callerGlobals.TryGetValue(PySpecialNames.Path, out _);
             name = PyEnvironment.ResolveRelativeModuleName(context, packageObj, moduleName, hasPath, name, level.Int32Value);
         }
 

@@ -127,6 +127,19 @@ public partial class PyStrObject : PyObject
             return rune;
         return default;
     }
+
+    public static int GetHashCode(string s)
+    {
+        var hashCode = s.GetHashCode();
+        if (hashCode is -1)
+            return -2;
+        return hashCode;
+    }
+
+    public override int GetHashCode()
+    {
+        return GetHashCode(Value);
+    }
 }
 
 [PyType("str")]
@@ -1638,7 +1651,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
     protected override PyResult Hash(PyCallContext context, PyStrObject self)
     {
-        return PyIntObject.FromInteger(self.Value.GetHashCode());
+        return PyIntObject.FromInteger(self.GetHashCode());
     }
     protected override PyResult Bool(PyCallContext context, PyStrObject self)
     {
@@ -1791,8 +1804,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 string key = formatStr[(i + 1)..closeParen];
                 i = closeParen + 1;
 
-                var keyObj = PyStrObject.FromString(key);
-                if (!dict.TryGetValue(keyObj, out value))
+                if (!dict.TryGetValue(key, out value))
                     return PyResult.KeyError(key);
             }
             else

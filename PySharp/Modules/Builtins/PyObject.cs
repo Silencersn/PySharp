@@ -146,7 +146,7 @@ public partial class PyObjectManagedDict : PyObject
 
     internal override IDictionary<string, PyObject> PyAttributes
     {
-        get => _pyAttributes ??= new ConcurrentDictionary<string, PyObject>();
+        get => _pyAttributes ??= new PyDictObject();
         set => _pyAttributes = value;
     }
 }

@@ -37,7 +37,7 @@ public sealed partial class PyThreadObjectType : PyTypeObject<PyThreadObject>
         if (arguments[4] is not PyDictObject kwargs)
             return PyResult.TypeError(null);
         Dictionary<string, PyObject> dict = [];
-        foreach (var pair in kwargs)
+        foreach (var pair in kwargs.Entries)
         {
             if (pair.Key is not PyStrObject str)
                 return PyResult.TypeError(null);
