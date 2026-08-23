@@ -97,7 +97,7 @@ internal sealed class PyFrameLocalsProxyObject : PyObject, IPyVariablesLocalsDic
         return _extraLocals?.ContainsKey(key) ?? false;
     }
 
-    public IEnumerator<KeyValuePair<string, PyObject?>> GetEnumerator()
+    IEnumerator<KeyValuePair<string, PyObject?>> IPyVariablesLocalsDict.GetEnumerator()
     {
         foreach (var pair in _localsTable)
             yield return KeyValuePair.Create(pair.Key, LocalsPlusSpan[pair.Value]);
@@ -106,7 +106,11 @@ internal sealed class PyFrameLocalsProxyObject : PyObject, IPyVariablesLocalsDic
             yield break;
 
         foreach (var pair in _extraLocals)
-            yield return pair!;
+        {
+            if (pair.Key is not PyStrObject { Value: var str })
+                continue;
+            yield return KeyValuePair.Create(str, pair.Value)!;
+        }
     }
 
     public bool Remove(string key)

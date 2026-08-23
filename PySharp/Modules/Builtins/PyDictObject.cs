@@ -401,6 +401,12 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
         return PyUtils.DictionaryRecursiveRepr(context, this, Entries.ToArray().Select(static entry => KeyValuePair.Create(entry.Key, entry.Value)), "{", "}", ids);
     }
 
+    public IEnumerator<KeyValuePair<PyObject, PyObject>> GetEnumerator()
+    {
+        foreach (var entry in Entries.ToArray())
+            yield return KeyValuePair.Create(entry.Key, entry.Value);
+    }
+
     private static class Helper
     {
         private const int HashPrime = 101;

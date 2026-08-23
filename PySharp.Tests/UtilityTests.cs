@@ -54,31 +54,6 @@ public sealed class UtilityTests
         Assert.IsTrue(set.Count() == 0);
     }
 
-    // ===== StringKeyDict =====
-
-    [TestMethod]
-    public void StringKeyDict_Basic()
-    {
-        PyDictObject pyDict = [];
-        IDictionary<string, PyObject> dict = pyDict;
-        dict.Add("k", PyIntObject.FromInteger(42));
-        Assert.IsTrue(dict.ContainsKey("k"));
-        Assert.IsTrue(dict.TryGetValue("k", out var v));
-        Assert.IsTrue(((PyIntObject)v!).Value == 42);
-        dict["k"] = PyIntObject.FromInteger(100);
-        Assert.IsTrue(((PyIntObject)dict["k"]).Value == 100);
-    }
-
-    [TestMethod]
-    public void StringKeyDict_Count()
-    {
-        PyDictObject pyDict = [];
-        IDictionary<string, PyObject> dict = pyDict;
-        Assert.IsTrue(dict.Count == 0);
-        dict.Add("a", PyNoneObject.None);
-        Assert.IsTrue(dict.Count == 1);
-    }
-
     // ===== PyObjectComparer =====
 
     [TestMethod]

@@ -103,7 +103,7 @@ public sealed class PyInterpreter : IDisposable
 
         var module = new PyModuleObject(moduleName);
         foreach (var pair in _mainModule.PyAttributesDict)
-            module.PyAttributesDict[pair.Key] = pair.Value;
+            module.PyAttributesDict.SetItem(PyCallContext.NotImplemented, pair.Key, pair.Value);
         return module;
     }
 

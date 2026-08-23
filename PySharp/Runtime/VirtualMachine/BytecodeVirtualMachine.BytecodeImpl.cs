@@ -222,8 +222,14 @@ internal static partial class BytecodeVirtualMachine
         var dict = (PyDictObject)stack[-instructionArg];
         foreach (var pair in dictToMerge)
         {
-            if (!dict.TryAdd(pair.Key, pair.Value))
+            var contains = dict.GetItem(context, pair.Key);
+            if (contains.IsSuccessful)
                 throw context.TypeError(PySR.Runtime_Arguments_MultipleKeywords, pair.Key);
+
+            if (!contains.IsKeyError)
+                _ = contains.PyUnwrap(context);
+
+            _ = dict.SetItem(context, pair.Key, pair.Value).PyUnwrap(context);
         }
     }
 
