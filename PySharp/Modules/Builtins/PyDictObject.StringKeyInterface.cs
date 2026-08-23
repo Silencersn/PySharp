@@ -5,7 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Modules.Builtins;
 
-partial class PyDictObject : IPyVariablesLocalsDict, IDictionary<string, PyObject>
+partial class PyDictObject : IPyVariablesLocalsDict, IPyAttributesObject, IDictionary<string, PyObject>
 {
     private IEnumerable<string> GetStringKeys()
     {
@@ -35,6 +35,13 @@ partial class PyDictObject : IPyVariablesLocalsDict, IDictionary<string, PyObjec
     ICollection<PyObject> IDictionary<string, PyObject>.Values => [.. Entries.ToArray().Where(static pair => pair.Key is PyStrObject).Select(static pair => pair.Value)];
 
     bool ICollection<KeyValuePair<string, PyObject>>.IsReadOnly => throw new NotImplementedException();
+
+    PyObject IPyAttributesObject.Self => this;
+
+    PyObject IPyAttributesObject.this[string key]
+    {
+        set => SetItem(key, value);
+    }
 
     void IDictionary<string, PyObject>.Add(string key, PyObject value)
     {
@@ -100,5 +107,27 @@ partial class PyDictObject : IPyVariablesLocalsDict, IDictionary<string, PyObjec
             if (entry.Key is PyStrObject { Value: var str })
                 yield return KeyValuePair.Create(str, entry.Value)!;
         }
+    }
+
+    void IPyAttributesObject.Add(string key, PyObject value)
+    {
+        if (ContainsKey(key))
+            throw new ArgumentException(null, nameof(key));
+        SetItem(key, value);
+    }
+
+    IEnumerator<KeyValuePair<string, PyObject>> IPyAttributesObject.GetEnumerator()
+    {
+        foreach (var entry in Entries.ToArray())
+        {
+            if (entry.Key is PyStrObject { Value: var str })
+                yield return KeyValuePair.Create(str, entry.Value)!;
+        }
+    }
+
+    bool IPyAttributesObject.Remove(string key)
+    {
+        // TODO
+        return DelItem(PyCallContext.NotImplemented, PyStrObject.FromString(key)).IsSuccessful;
     }
 }

@@ -41,7 +41,7 @@ partial class PyTypeObject
             // functions, methods, code, ...) have no __dict__ (CPython).
             if (self.IsImmutable)
                 return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.FullName, name);
-            return PyDictObject.FromStringKeyDict(self.PyAttributes);
+            return self.PyAttributes.Self;
         }
 
         if (TryLookupAttrInMro(type, name, out var attr))
@@ -129,7 +129,7 @@ partial class PyTypeObject
             return metaType;
 
         if (name is PySpecialNames.Dict)
-            return PyDictObject.FromStringKeyDict(self.PyAttributes);
+            return self.PyAttributes.Self;
 
         if (TryLookupAttrInMro(metaType, name, out var metaAttr))
         {

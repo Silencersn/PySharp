@@ -13,7 +13,7 @@ internal interface IPyVariablesLocalsDict
     PyObject this[string key] { get; set; }
     bool TryGetValue(string key, [MaybeNullWhen(false)] out PyObject? value);
     bool Remove(string key);
-    bool ContainsKey(string annotations);
+    bool ContainsKey(string key);
     IEnumerator<KeyValuePair<string, PyObject?>> GetEnumerator();
 }
 

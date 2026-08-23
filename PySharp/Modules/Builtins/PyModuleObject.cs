@@ -14,7 +14,7 @@ public class PyModuleObject : PyObjectManagedDict, IPyObjectName
     public virtual string? Origin => null;
     public override PyTypeObject DefaultPyType => PyModuleObjectType.Shared;
 
-    internal sealed override IDictionary<string, PyObject> PyAttributes
+    internal sealed override IPyAttributesObject PyAttributes
     {
         get => _pyAttributes ??= new PyDictObject();
         set => throw new NotSupportedException();

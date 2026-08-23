@@ -754,9 +754,13 @@ public static partial class PyBuiltinFunctions
     {
         List<string> attrs = [];
         var obj = arguments[0];
-        attrs.AddRange(obj.PyAttributes.Keys);
+        foreach (var pair in obj.PyAttributes)
+            attrs.Add(pair.Key);
         foreach (var type in obj.PyType.MRO)
-            attrs.AddRange(type.PyAttributes.Keys);
+        {
+            foreach (var pair in type.PyAttributes)
+                attrs.Add(pair.Key);
+        }
         var result = PyListObject.CreateList(attrs.Distinct().Order().Select(PyStrObject.FromString));
         return result;
     }

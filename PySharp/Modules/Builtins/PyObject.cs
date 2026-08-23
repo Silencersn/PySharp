@@ -16,12 +16,12 @@ public partial class PyObject
     public virtual PyTypeObject DefaultPyType => PyObjectType.Shared;
     public long PyId => PyAttachedPropertiesManager.Shared.GetId(this);
 
-    internal virtual IDictionary<string, PyObject> PyAttributes
+    internal virtual IPyAttributesObject PyAttributes
     {
         get
         {
             if (IsImmutable)
-                return FrozenDictionary<string, PyObject>.Empty;
+                return IPyAttributesObject.FrozenEmpty;
 
             return PyAttachedPropertiesManager.Shared.GetDict(this);
         }
@@ -138,13 +138,13 @@ public sealed partial class PyObjectType : PyTypeObject<PyObject>
 
 public partial class PyObjectManagedDict : PyObject
 {
-    private protected IDictionary<string, PyObject>? _pyAttributes;
+    private protected IPyAttributesObject? _pyAttributes;
 
     // Objects with a real per-instance dict are mutable (CPython: these types
     // have a non-zero tp_dictoffset, so instances expose a __dict__).
     internal override bool IsImmutable => false;
 
-    internal override IDictionary<string, PyObject> PyAttributes
+    internal override IPyAttributesObject PyAttributes
     {
         get => _pyAttributes ??= new PyDictObject();
         set => _pyAttributes = value;

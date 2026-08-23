@@ -1,3 +1,4 @@
+using PySharp.Modules;
 using PySharp.Modules.Builtins;
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
@@ -34,7 +35,7 @@ internal sealed class PyAttachedPropertiesManager
         }
     }
 
-    internal IDictionary<string, PyObject> GetDict(PyObject obj)
+    internal IPyAttributesObject GetDict(PyObject obj)
     {
         var properties = GetProperties(obj);
         if (properties.Dict is not null)
@@ -49,7 +50,7 @@ internal sealed class PyAttachedPropertiesManager
         }
     }
 
-    internal void SetDict(PyObject obj, IDictionary<string, PyObject> dict)
+    internal void SetDict(PyObject obj, IPyAttributesObject dict)
     {
         var properties = GetProperties(obj);
         lock (properties)
@@ -59,6 +60,6 @@ internal sealed class PyAttachedPropertiesManager
     private sealed class PyAttachedProperties
     {
         public long Id;
-        public IDictionary<string, PyObject>? Dict;
+        public IPyAttributesObject? Dict;
     }
 }
