@@ -53,7 +53,6 @@ internal interface IPyAttributesObject
 {
     public static IPyAttributesObject FrozenEmpty { get; } = new PyFrozenAttributesObject();
 
-    void Add(string key, PyObject value);
     bool TryGetValue(string key, [NotNullWhen(true)] out PyObject? value);
     PyObject this[string key] { set; }
     bool ContainsKey(string key);
@@ -66,11 +65,6 @@ internal interface IPyAttributesObject
         PyObject IPyAttributesObject.this[string key] { set => throw new KeyNotFoundException(); }
 
         PyObject IPyAttributesObject.Self => this;
-
-        void IPyAttributesObject.Add(string key, PyObject value)
-        {
-            throw new NotSupportedException();
-        }
 
         bool IPyAttributesObject.ContainsKey(string key)
         {

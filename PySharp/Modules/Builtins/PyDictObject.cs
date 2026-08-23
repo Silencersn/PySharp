@@ -68,17 +68,6 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
         }
         return newDict;
     }
-    internal static PyDictObject FromStringKeyDict(IDictionary<string, PyObject> dict)
-    {
-        if (dict is PyDictObject dictObj)
-            return dictObj;
-
-        // TODO: it should be a proxy
-        var newDict = new PyDictObject();
-        foreach (var pair in dict)
-            newDict[pair.Key] = pair.Value;
-        return newDict;
-    }
 
     public PyResult GetItem(string key)
     {
@@ -155,7 +144,7 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
         }
     }
 
-    public void SetItem(string key, PyObject value)
+    public PyObject? InternalSetItem(string key, PyObject? value)
     {
         if (_count == _entries.Length)
             EnsureCapacity(_count + 1);
@@ -172,8 +161,26 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
                     entry.Key is PyStrObject { Value: var entryKey } &&
                     string.Equals(entryKey, key, StringComparison.Ordinal))
                 {
-                    entry.Value = value;
-                    return;
+                    // set
+                    if (value is not null)
+                    {
+                        entry.Value = value;
+                        return null;
+                    }
+
+                    value = entry.Value;
+
+                    for (int i = index + 1; i < _count; i++)
+                        _entries[i - 1] = _entries[i];
+
+                    _count--;
+
+                    // TODO: perf
+                    _buckets.AsSpan().Clear();
+                    for (int i = 0; i < _count; i++)
+                        PushEntryIntoBucket(ref _entries[i], i);
+
+                    return value;
                 }
 
                 if (entry.Next is -1)
@@ -183,6 +190,9 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
             }
         }
 
+        if (value is null)
+            return null;
+
         {
             ref var entry = ref _entries[_count];
             entry.HashCode = hashCode;
@@ -190,8 +200,18 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
             entry.Value = value;
             PushEntryIntoBucket(ref entry, _count);
             _count++;
-            return;
+            return null;
         }
+    }
+
+    public void SetItem(string key, PyObject value)
+    {
+        _ = InternalSetItem(key, value);
+    }
+
+    public bool DelItem(string key)
+    {
+        return InternalSetItem(key, value: null) is not null;
     }
 
     internal PyResult InternalSetItem(PyCallContext context, PyObject key, PyObject? value)

@@ -1,5 +1,7 @@
 using PySharp.Compilation.AstNodes;
 using PySharp.Compilation.Bytecodes;
+using PySharp.Runtime;
+using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
 using System.Collections.Frozen;
 using System.Collections.Immutable;
@@ -94,18 +96,6 @@ public sealed class PyCodeObject : PyObjectManagedDict
         VarNames = scope.VarNames;
         CellVars = scope.CellVars;
         FreeVars = scope.FreeVars;
-
-        PyAttributes.Add("co_name", PyStrObject.FromString(Name));
-        PyAttributes.Add("co_filename", PyStrObject.FromString(Filename));
-        PyAttributes.Add("co_qualname", PyStrObject.FromString(QualName));
-        PyAttributes.Add("co_argcount", PyIntObject.FromInteger(ArgCount));
-        PyAttributes.Add("co_posonlyargcount", PyIntObject.FromInteger(PosOnlyArgCount));
-        PyAttributes.Add("co_kwonlyargcount", PyIntObject.FromInteger(KwOnlyArgCount));
-        PyAttributes.Add("co_nlocals", PyIntObject.FromInteger(NLocals));
-        PyAttributes.Add("co_varnames", PyTupleObject.CreateTuple(VarNames.Select(PyStrObject.FromString)));
-        PyAttributes.Add("co_cellvars", PyTupleObject.CreateTuple(CellVars.Select(PyStrObject.FromString)));
-        PyAttributes.Add("co_freevars", PyTupleObject.CreateTuple(FreeVars.Select(PyStrObject.FromString)));
-        PyAttributes.Add("co_stacksize", PyIntObject.FromInteger(bytecode.StackSize));
     }
 
     internal PyCodeObject(string filename, ClassVariableScope scope, Bytecode bytecode)
@@ -125,18 +115,6 @@ public sealed class PyCodeObject : PyObjectManagedDict
         VarNames = [];
         CellVars = [];
         FreeVars = scope.FreeVars;
-
-        PyAttributes.Add("co_name", PyStrObject.FromString(Name));
-        PyAttributes.Add("co_filename", PyStrObject.FromString(Filename));
-        PyAttributes.Add("co_qualname", PyStrObject.FromString(QualName));
-        PyAttributes.Add("co_argcount", PyIntObject.Zero);
-        PyAttributes.Add("co_posonlyargcount", PyIntObject.Zero);
-        PyAttributes.Add("co_kwonlyargcount", PyIntObject.Zero);
-        PyAttributes.Add("co_nlocals", PyIntObject.Zero);
-        PyAttributes.Add("co_varnames", PyTupleObject.Empty);
-        PyAttributes.Add("co_cellvars", PyTupleObject.Empty);
-        PyAttributes.Add("co_freevars", PyTupleObject.CreateTuple(FreeVars.Select(PyStrObject.FromString)));
-        PyAttributes.Add("co_stacksize", PyIntObject.FromInteger(bytecode.StackSize));
     }
 
     internal PyCodeObject(string filename, GenericParamVariableScope scope, Bytecode bytecode)
@@ -159,18 +137,6 @@ public sealed class PyCodeObject : PyObjectManagedDict
         KwOnlyArgCount = 0;
         DefaultsCount = 0;
         KwDefaultsCount = 0;
-
-        PyAttributes.Add("co_name", PyStrObject.FromString(Name));
-        PyAttributes.Add("co_filename", PyStrObject.FromString(Filename));
-        PyAttributes.Add("co_qualname", PyStrObject.FromString(QualName));
-        PyAttributes.Add("co_argcount", PyIntObject.FromInteger(ArgCount));
-        PyAttributes.Add("co_posonlyargcount", PyIntObject.Zero);
-        PyAttributes.Add("co_kwonlyargcount", PyIntObject.Zero);
-        PyAttributes.Add("co_nlocals", PyIntObject.FromInteger(NLocals));
-        PyAttributes.Add("co_varnames", PyTupleObject.CreateTuple(VarNames.Select(PyStrObject.FromString)));
-        PyAttributes.Add("co_cellvars", PyTupleObject.CreateTuple(CellVars.Select(PyStrObject.FromString)));
-        PyAttributes.Add("co_freevars", PyTupleObject.CreateTuple(FreeVars.Select(PyStrObject.FromString)));
-        PyAttributes.Add("co_stacksize", PyIntObject.FromInteger(bytecode.StackSize));
     }
 
     internal PyCodeObject(string name, string filename, Bytecode bytecode, CodeObjectFlags flags)
@@ -186,20 +152,54 @@ public sealed class PyCodeObject : PyObjectManagedDict
         VarNames = [];
         CellVars = [];
         FreeVars = [];
-
-        PyAttributes.Add("co_name", PyStrObject.FromString(Name));
-        PyAttributes.Add("co_filename", PyStrObject.FromString(Filename));
-        PyAttributes.Add("co_qualname", PyStrObject.FromString(QualName));
-        PyAttributes.Add("co_argcount", PyIntObject.Zero);
-        PyAttributes.Add("co_posonlyargcount", PyIntObject.Zero);
-        PyAttributes.Add("co_kwonlyargcount", PyIntObject.Zero);
-        PyAttributes.Add("co_nlocals", PyIntObject.Zero);
-        PyAttributes.Add("co_varnames", PyTupleObject.Empty);
-        PyAttributes.Add("co_cellvars", PyTupleObject.Empty);
-        PyAttributes.Add("co_freevars", PyTupleObject.Empty);
-        PyAttributes.Add("co_stacksize", PyIntObject.FromInteger(bytecode.StackSize));
     }
+
+    internal PyStrObject CoName => field ??= PyStrObject.FromString(Name);
+    internal PyStrObject CoFilename => field ??= PyStrObject.FromString(Filename);
+    internal PyStrObject CoQualName => field ??= PyStrObject.FromString(QualName);
+    internal PyIntObject CoArgCount => field ??= PyIntObject.FromInteger(ArgCount);
+    internal PyIntObject CoPosOnlyArgCount => field ??= PyIntObject.FromInteger(PosOnlyArgCount);
+    internal PyIntObject CoKwOnlyArgCount => field ??= PyIntObject.FromInteger(KwOnlyArgCount);
+    internal PyIntObject CoNLocals => field ??= PyIntObject.FromInteger(NLocals);
+    internal PyTupleObject CoVarnames => field ??= PyTupleObject.CreateTuple(VarNames.Select(PyStrObject.FromString));
+    internal PyTupleObject CoCellvars => field ??= PyTupleObject.CreateTuple(CellVars.Select(PyStrObject.FromString));
+    internal PyTupleObject CoFreevars => field ??= PyTupleObject.CreateTuple(FreeVars.Select(PyStrObject.FromString));
+    internal PyIntObject CoStacksize => field ??= PyIntObject.FromInteger(Bytecode.StackSize);
 }
 
 [PyType("code")]
-public sealed partial class PyCodeObjectType : PyTypeObject<PyCodeObject>;
+public sealed partial class PyCodeObjectType : PyTypeObject<PyCodeObject>
+{
+    [PyProperty("co_name")]
+    private static PyResult Get_CoName(PyCallContext context, PyCodeObject self) => self.CoName;
+
+    [PyProperty("co_filename")]
+    private static PyResult Get_CoFilename(PyCallContext context, PyCodeObject self) => self.CoFilename;
+
+    [PyProperty("co_qualname")]
+    private static PyResult Get_CoQualName(PyCallContext context, PyCodeObject self) => self.CoQualName;
+
+    [PyProperty("co_argcount")]
+    private static PyResult Get_CoArgCount(PyCallContext context, PyCodeObject self) => self.CoArgCount;
+
+    [PyProperty("co_posonlyargcount")]
+    private static PyResult Get_CoPosOnlyArgCount(PyCallContext context, PyCodeObject self) => self.CoPosOnlyArgCount;
+
+    [PyProperty("co_kwonlyargcount")]
+    private static PyResult Get_CoKwOnlyArgCount(PyCallContext context, PyCodeObject self) => self.CoKwOnlyArgCount;
+
+    [PyProperty("co_nlocals")]
+    private static PyResult Get_CoNLocals(PyCallContext context, PyCodeObject self) => self.CoNLocals;
+
+    [PyProperty("co_varnames")]
+    private static PyResult Get_CoVarnames(PyCallContext context, PyCodeObject self) => self.CoVarnames;
+
+    [PyProperty("co_cellvars")]
+    private static PyResult Get_CoCellvars(PyCallContext context, PyCodeObject self) => self.CoCellvars;
+
+    [PyProperty("co_freevars")]
+    private static PyResult Get_CoFreevars(PyCallContext context, PyCodeObject self) => self.CoFreevars;
+
+    [PyProperty("co_stacksize")]
+    private static PyResult Get_CoStacksize(PyCallContext context, PyCodeObject self) => self.CoStacksize;
+}

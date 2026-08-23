@@ -20,40 +20,21 @@ partial class PyDictObject : IPyVariablesLocalsDict, IPyAttributesObject
         set => SetItem(key, value);
     }
 
-    bool IPyVariablesLocalsDict.Remove(string key)
-    {
-        // TODO
-        return DelItem(PyCallContext.NotImplemented, PyStrObject.FromString(key)).IsSuccessful;
-    }
+    bool IPyVariablesLocalsDict.Remove(string key) => DelItem(key);
 
-    IEnumerator<KeyValuePair<string, PyObject?>> IPyVariablesLocalsDict.GetEnumerator()
+    private IEnumerable<KeyValuePair<string, PyObject>> EnumerateStringKeyPair()
     {
-        foreach (var entry in Entries.ToArray())
+        for (int i = 0; i < _count; i++)
         {
+            var entry = _entries[i];
             if (entry.Key is PyStrObject { Value: var str })
                 yield return KeyValuePair.Create(str, entry.Value)!;
         }
     }
 
-    void IPyAttributesObject.Add(string key, PyObject value)
-    {
-        if (ContainsKey(key))
-            throw new ArgumentException(null, nameof(key));
-        SetItem(key, value);
-    }
+    IEnumerator<KeyValuePair<string, PyObject?>> IPyVariablesLocalsDict.GetEnumerator() => EnumerateStringKeyPair().GetEnumerator()!;
 
-    IEnumerator<KeyValuePair<string, PyObject>> IPyAttributesObject.GetEnumerator()
-    {
-        foreach (var entry in Entries.ToArray())
-        {
-            if (entry.Key is PyStrObject { Value: var str })
-                yield return KeyValuePair.Create(str, entry.Value)!;
-        }
-    }
+    IEnumerator<KeyValuePair<string, PyObject>> IPyAttributesObject.GetEnumerator() => EnumerateStringKeyPair().GetEnumerator();
 
-    bool IPyAttributesObject.Remove(string key)
-    {
-        // TODO
-        return DelItem(PyCallContext.NotImplemented, PyStrObject.FromString(key)).IsSuccessful;
-    }
+    bool IPyAttributesObject.Remove(string key) => DelItem(key);
 }

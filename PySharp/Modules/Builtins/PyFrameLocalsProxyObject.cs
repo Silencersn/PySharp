@@ -64,31 +64,6 @@ internal sealed class PyFrameLocalsProxyObject : PyObject, IPyVariablesLocalsDic
         }
     }
 
-    public int Count => _localsTable.Count + _extraLocals?.Count ?? 0;
-
-    public void Add(string key, PyObject? value)
-    {
-        if (_localsTable.TryGetValue(key, out var index))
-        {
-            if (LocalsPlusSpan[index] is not null)
-                throw new ArgumentException($"An item with the same key has already been added. Key: {key}");
-            LocalsPlusSpan[index] = value;
-        }
-        else
-        {
-            ArgumentNullException.ThrowIfNull(value);
-            _extraLocals ??= new();
-            // TODO
-            _extraLocals.SetItem(key, value);
-        }
-    }
-
-    public void Clear()
-    {
-        LocalsPlusSpan.Clear();
-        _extraLocals?.Clear();
-    }
-
     public bool ContainsKey(string key)
     {
         if (_localsTable.ContainsKey(key))

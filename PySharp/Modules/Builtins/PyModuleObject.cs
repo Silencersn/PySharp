@@ -13,13 +13,6 @@ public class PyModuleObject : PyObjectManagedDict, IPyObjectName
     public string Name { get; }
     public virtual string? Origin => null;
     public override PyTypeObject DefaultPyType => PyModuleObjectType.Shared;
-
-    internal sealed override IPyAttributesObject PyAttributes
-    {
-        get => _pyAttributes ??= new PyDictObject();
-        set => throw new NotSupportedException();
-    }
-
     internal PyDictObject PyAttributesDict => (PyDictObject)_pyAttributes!;
 
     public PyModuleObject(string name)
@@ -27,10 +20,12 @@ public class PyModuleObject : PyObjectManagedDict, IPyObjectName
         ArgumentNullException.ThrowIfNull(name);
         Name = name;
 
-        PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
+        _pyAttributes = new PyDictObject();
+
+        PyAttributes[PySpecialNames.Name] = PyStrObject.FromString(Name);
         // Default __package__: parent package name (empty for top-level modules)
         var lastDot = name.LastIndexOf('.');
-        PyAttributes.Add(PySpecialNames.Package, lastDot >= 0 ? PyStrObject.FromString(name[..lastDot]) : PyStrObject.Empty);
+        PyAttributes[PySpecialNames.Package] = lastDot >= 0 ? PyStrObject.FromString(name[..lastDot]) : PyStrObject.Empty;
         ApplyIncludes();
 
         Debug.Assert(_pyAttributes is not null);
@@ -60,7 +55,7 @@ public class PyModuleObject : PyObjectManagedDict, IPyObjectName
     internal static PyModuleObject CreatePackage(string name, IReadOnlyList<string> paths)
     {
         var package = new PyModuleObject(name);
-        package.PyAttributes.Add(PySpecialNames.Path, PyListObject.CreateList(paths.Select(PyStrObject.FromString)));
+        package.PyAttributes[PySpecialNames.Path] = PyListObject.CreateList(paths.Select(PyStrObject.FromString));
         // For packages, __package__ should be the same as __name__
         package.PyAttributes[PySpecialNames.Package] = PyStrObject.FromString(name);
         return package;

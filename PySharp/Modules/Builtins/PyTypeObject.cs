@@ -47,7 +47,7 @@ public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
         QualName = DefaultQualName;
         _mro = [this, .. CreateMROWithoutSelf(Bases)];
         Slots = PyTypeSlots.Create(MRO.Skip(1));
-        PyAttributes.Add(PySpecialNames.Doc, PyNoneObject.None);
+        PyAttributes[PySpecialNames.Doc] = PyNoneObject.None;
     }
 
     internal PyTypeObject(string qualName, IReadOnlyList<PyTypeObject> bases)
@@ -58,7 +58,7 @@ public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
         QualName = qualName;
         _mro = [this, .. CreateMROWithoutSelf(bases)];
         Slots = PyTypeSlots.Create(MRO.Skip(1));
-        PyAttributes.Add(PySpecialNames.Doc, PyNoneObject.None);
+        PyAttributes[PySpecialNames.Doc] = PyNoneObject.None;
     }
 
     public bool IsInstance(PyObject obj)

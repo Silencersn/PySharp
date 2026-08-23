@@ -15,6 +15,7 @@ public sealed class PyFunctionObject : PyObjectManagedDict, IPyObjectName
     public string Name => _code.Name;
     internal ReadOnlySpan<PyCellObject> Closure => _closure;
     internal PyCodeObject Code => _code;
+    internal PyStrObject PyName => field ??= PyStrObject.FromString(Name);
 
     public override PyTypeObject DefaultPyType => PyFunctionObjectType.Shared;
 
@@ -24,8 +25,6 @@ public sealed class PyFunctionObject : PyObjectManagedDict, IPyObjectName
         _globals = globals;
         _code = code;
         _def = def;
-
-        PyAttributes.Add(PySpecialNames.Name, PyStrObject.FromString(Name));
     }
 
     internal PyResult InternalCall(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
@@ -79,6 +78,12 @@ public sealed partial class PyFunctionObjectType : PyTypeObject<PyFunctionObject
     private static PyResult Get_Globals(PyCallContext context, PyFunctionObject self)
     {
         return self._globals;
+    }
+
+    [PyProperty(PySpecialNames.Name)]
+    private static PyResult Get_Name(PyCallContext context, PyFunctionObject self)
+    {
+        return self.PyName;
     }
 
     [PyProperty(PySpecialNames.Code)]
