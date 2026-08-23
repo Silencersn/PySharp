@@ -124,7 +124,7 @@ internal partial struct PyInternalFrame
 
         var pyGlobals = globals ?? Variables.Globals;
 
-        IPyStringKeyDict? localsDictionary = locals;
+        IPyVariablesLocalsDict? localsDictionary = locals;
 
         if (closure is not null)
         {

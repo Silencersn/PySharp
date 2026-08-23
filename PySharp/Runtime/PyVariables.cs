@@ -8,6 +8,15 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Runtime;
 
+internal interface IPyVariablesLocalsDict
+{
+    PyObject this[string key] { get; set; }
+    bool TryGetValue(string key, [MaybeNullWhen(false)] out PyObject? value);
+    bool Remove(string key);
+    bool ContainsKey(string annotations);
+    IEnumerator<KeyValuePair<string, PyObject?>> GetEnumerator();
+}
+
 internal sealed class PyVariables
 {
     private bool _canDispose;
@@ -16,7 +25,7 @@ internal sealed class PyVariables
     private readonly FrozenDictionary<string, int>? _localsTable;
 
     private PyDictObject _globals;
-    private IPyStringKeyDict? _locals;
+    private IPyVariablesLocalsDict? _locals;
 
     private PyVariables(PyDictObject globals)
     {
@@ -48,7 +57,7 @@ internal sealed class PyVariables
         _memory = _localsPlus;
         _canDispose = true;
     }
-    private PyVariables(PyDictObject globals, IPyStringKeyDict? locals)
+    private PyVariables(PyDictObject globals, IPyVariablesLocalsDict? locals)
     {
         _localsTable = locals is null ? null : FrozenDictionary<string, int>.Empty;
 
@@ -65,7 +74,7 @@ internal sealed class PyVariables
 
     internal PyDictObject Globals => _globals;
     internal FrozenDictionary<string, int> LocalsTable => _localsTable ?? throw new InvalidOperationException();
-    internal IPyStringKeyDict Locals => _locals ?? throw new NotSupportedException();
+    internal IPyVariablesLocalsDict Locals => _locals ?? throw new NotSupportedException();
 
     internal void MergeThenReplaceGlobals(PyDictObject globals)
     {
@@ -99,9 +108,9 @@ internal sealed class PyVariables
 
     internal static PyVariables CreateGlobal()
     {
-        return new PyVariables([]);
+        return new PyVariables(new());
     }
-    internal static PyVariables CreateExecEval(PyDictObject globals, IPyStringKeyDict? locals)
+    internal static PyVariables CreateExecEval(PyDictObject globals, IPyVariablesLocalsDict? locals)
     {
         return new PyVariables(globals, locals);
     }
@@ -198,33 +207,73 @@ internal sealed class PyVariables
         return builtins.PyAttributes.TryGetValue(name, out value);
     }
 
-    internal IEnumerable<KeyValuePair<string, PyObject>> EnumerateLocals()
+    internal List<PyObject> GetDir()
+    {
+        if (!HasLocals)
+            return [.. Globals.Entries.ToArray().Select(static entry => entry.Key)];
+
+        if (_locals is not null)
+        {
+            if (_locals is PyDictObject dict)
+            {
+                return [.. dict.Entries.ToArray().Select(static entry => entry.Key)];
+            }
+            else if (_locals is PyFrameLocalsProxyObject proxy)
+            {
+                List<PyObject> list = [];
+                foreach (var pair in _localsTable)
+                {
+                    if (LocalsSpanUnsafe[pair.Value] is not null)
+                        list.Add(PyStrObject.FromString(pair.Key));
+                }
+                if (proxy.ExtraLocals is not null)
+                {
+                    foreach (var entry in proxy.ExtraLocals.Entries)
+                        list.Add(entry.Key);
+                }
+                return list;
+            }
+            else
+            {
+                throw new UnreachableException();
+            }
+        }
+
+        {
+            List<PyObject> list = [];
+            foreach (var pair in _localsTable)
+            {
+                if (LocalsSpanUnsafe[pair.Value] is not null)
+                    list.Add(PyStrObject.FromString(pair.Key));
+            }
+            return list;
+        }
+    }
+
+    internal PyDictObject GetLocals()
     {
         if (!HasLocals)
             return Globals;
 
         if (_locals is not null)
-        {
-            return _locals
-                .Select(static pair =>
-                {
-                    if (pair.Value is not PyCellObject cell)
-                        return pair;
+            // snapshot
+            // TODO: cell
+            return PyDictObject.CreateDict(_locals);
 
-                    return KeyValuePair.Create(pair.Key, cell.Value!);
-                })
-                .Where(static pair => pair.Value is not null)!;
-        }
-
-        return _localsTable
+        var pairs = _localsTable
             .Select(pair =>
             {
                 var value = LocalsSpan[pair.Value];
                 if (value is PyCellObject cell)
                     value = cell.Value;
-                return KeyValuePair.Create(pair.Key, value);
+                return KeyValuePair.Create(pair.Key, value!);
             })
             .Where(static pair => pair.Value is not null)!;
+
+        var dict = new PyDictObject();
+        foreach (var pair in pairs)
+            dict[pair.Key] = pair.Value;
+        return dict;
     }
 
     public PyResult LoadLocal(string name)

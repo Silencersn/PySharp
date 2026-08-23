@@ -47,5 +47,3 @@ public interface IPyObjectRecursiveRepr
         return true;
     }
 }
-
-internal interface IPyStringKeyDict : IDictionary<string, PyObject>;

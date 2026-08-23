@@ -745,11 +745,8 @@ public static partial class PyBuiltinFunctions
     [PyFunctionParameters()]
     private static PyResult DirImpl_1(PyCallContext context, PyArguments arguments)
     {
-        var result = PyListObject.CreateList(context.CurrentInternalFrame.Variables
-            .EnumerateLocals()
-            .Select(static pair => pair.Key)
-            .Order()
-            .Select(PyStrObject.FromString));
+        var result = PyListObject.CreateProxy(context.CurrentInternalFrame.Variables.GetDir());
+        result.PySort(context);
         return result;
     }
     [PyFunctionParameters("object", "/")]
@@ -798,10 +795,7 @@ public static partial class PyBuiltinFunctions
     [PyFunctionParameters()]
     private static PyResult LocalsImpl(PyCallContext context, PyArguments arguments)
     {
-        var result = PyDictObject.CreateDict(context, context.CurrentInternalFrame.Variables
-            .EnumerateLocals()
-            .Select(static pair => KeyValuePair.Create((PyObject)PyStrObject.FromString(pair.Key), pair.Value)));
-        return result;
+        return context.CurrentInternalFrame.Variables.GetLocals();
     }
 
     [PyFunctionParameters()]
