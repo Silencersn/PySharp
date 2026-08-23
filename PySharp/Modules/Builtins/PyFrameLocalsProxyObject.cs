@@ -143,7 +143,7 @@ internal sealed class PyFrameLocalsProxyObject : PyObject, IPyVariablesLocalsDic
 
     PyResult<PyStrObject> IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<PyObject> ids)
     {
-        return PyUtils.DictionaryRecursiveRepr(context, this, EnumeratePairs().Select(static entry => KeyValuePair.Create(entry.Key, entry.Value)), "{", "}", ids);
+        return PyUtils.DictionaryRecursiveRepr(context, this, EnumeratePairs(), "{", "}", ids);
     }
 }
 

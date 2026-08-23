@@ -163,13 +163,14 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
             EnsureCapacity(_count + 1);
 
         var hashCode = (uint)PyStrObject.GetHashCode(key);
-        var index = GetBucket(hashCode);
+        var index = GetBucket(hashCode) - 1;
 
-        if (index is not 0)
+        if (index is not -1)
         {
-            ref var entry = ref _entries[index - 1];
             while (true)
             {
+                ref var entry = ref _entries[index];
+
                 if (entry.HashCode == hashCode &&
                     entry.Key is PyStrObject { Value: var entryKey } &&
                     string.Equals(entryKey, key, StringComparison.Ordinal))
@@ -199,7 +200,7 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
                 if (entry.Next is -1)
                     break;
 
-                entry = ref _entries[entry.Next];
+                index = entry.Next;
             }
         }
 

@@ -62,7 +62,7 @@ internal interface IPyAttributesObject
 
     private sealed class PyFrozenAttributesObject : PyObject, IPyAttributesObject
     {
-        PyObject IPyAttributesObject.this[string key] { set => throw new KeyNotFoundException(); }
+        PyObject IPyAttributesObject.this[string key] { set => throw new NotSupportedException(); }
 
         PyObject IPyAttributesObject.Self => this;
 

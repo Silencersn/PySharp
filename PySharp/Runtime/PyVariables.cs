@@ -428,8 +428,7 @@ internal sealed class PyVariables
 
     public PyResult DeleteGlobal(string name)
     {
-        // TODO
-        if (!Globals.DelItem(PyCallContext.NotImplemented, PyStrObject.FromString(name)).IsKeyError)
+        if (Globals.DelItem(name))
             return PyNoneObject.None;
 
         return PyResult.NameError(PySR.Runtime_Variable_NameNotDefined, name);
