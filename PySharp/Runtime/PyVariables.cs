@@ -7,7 +7,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Runtime;
 
-internal sealed partial class PyVariables
+internal sealed class PyVariables
 {
     private bool _canDispose;
     private Memory<PyObject?> _memory;
@@ -167,7 +167,7 @@ internal sealed partial class PyVariables
         var variables = new PyVariables(new PyDictObject(_globals), _localsTable);
         LocalsSpan.CopyTo(variables.LocalsSpan);
         if (_locals is not null)
-            variables._locals = new LocalDictionary(_localsTable, variables.LocalsPlusMemory, new Dictionary<string, PyObject?>(_locals));
+            variables._locals = new PyFrameLocalsProxyObject(_localsTable, variables.LocalsPlusMemory, PyDictObject.CreateDict(_locals!));
         return variables;
     }
 

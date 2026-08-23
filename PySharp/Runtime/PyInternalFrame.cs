@@ -129,7 +129,7 @@ internal partial struct PyInternalFrame
         {
             Debug.Assert(code is not null);
             var localsTable = code.FreeVars.Index().ToFrozenDictionary(static tuple => tuple.Item, static tuple => tuple.Index);
-            localsDictionary = new PyVariables.LocalDictionary(localsTable, closure.InternalArray);
+            localsDictionary = new PyFrameLocalsProxyObject(localsTable, closure.InternalArray);
         }
 
         var variables = PyVariables.CreateExecEval(pyGlobals, localsDictionary);
