@@ -4,7 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Modules.Builtins;
 
-partial class PyDictObject : IDictionary<string, PyObject>, IReadOnlyDictionary<string, PyObject>
+partial class PyDictObject : IPyStringKeyDict
 {
     private IEnumerable<string> GetStringKeys()
     {
@@ -22,18 +22,11 @@ partial class PyDictObject : IDictionary<string, PyObject>, IReadOnlyDictionary<
         set => SetItem(key, value);
     }
 
-    PyObject IReadOnlyDictionary<string, PyObject>.this[string key] => ((IDictionary<string, PyObject>)this)[key];
-
     ICollection<string> IDictionary<string, PyObject>.Keys => [.. GetStringKeys()];
 
-    IEnumerable<string> IReadOnlyDictionary<string, PyObject>.Keys => ((IDictionary<string, PyObject>)this).Keys;
-
     int ICollection<KeyValuePair<string, PyObject>>.Count => Entries.ToArray().Count(static pair => pair.Key is PyStrObject);
-    int IReadOnlyCollection<KeyValuePair<string, PyObject>>.Count => Entries.ToArray().Count(static pair => pair.Key is PyStrObject);
 
     ICollection<PyObject> IDictionary<string, PyObject>.Values => [.. Entries.ToArray().Where(static pair => pair.Key is PyStrObject).Select(static pair => pair.Value)];
-
-    IEnumerable<PyObject> IReadOnlyDictionary<string, PyObject>.Values => [.. Entries.ToArray().Where(static pair => pair.Key is PyStrObject).Select(static pair => pair.Value)];
 
     bool ICollection<KeyValuePair<string, PyObject>>.IsReadOnly => throw new NotImplementedException();
 

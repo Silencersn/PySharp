@@ -10,7 +10,7 @@ using System.Text;
 namespace PySharp.Modules.Builtins;
 
 // TODO: temp impl
-internal sealed class PyFrameLocalsProxyObject : PyObject, IDictionary<string, PyObject?>
+internal sealed class PyFrameLocalsProxyObject : PyObject, IPyStringKeyDict
 {
     private readonly FrozenDictionary<string, int> _localsTable;
     private readonly Memory<PyObject?> _localsPlusMemory;
@@ -32,14 +32,21 @@ internal sealed class PyFrameLocalsProxyObject : PyObject, IDictionary<string, P
     {
     }
 
-    public PyObject? this[string key]
+    public PyObject this[string key]
     {
         get
         {
             if (_localsTable.TryGetValue(key, out var index))
-                return LocalsPlusSpan[index];
+                return LocalsPlusSpan[index]!;
 
-            return _extraLocals?.GetValueOrDefault(key);
+            if (_extraLocals is null)
+                return null!;
+
+            var ret = _extraLocals.GetItem(key);
+            if (ret.IsSuccessful)
+                return ret.Value;
+
+            return null!;
         }
         set
         {
@@ -57,11 +64,11 @@ internal sealed class PyFrameLocalsProxyObject : PyObject, IDictionary<string, P
 
     public ICollection<string> Keys => ExtraLocalsAsInterface is null ? _localsTable.Keys : [.. _localsTable.Keys, .. ExtraLocalsAsInterface.Keys];
 
-    public ICollection<PyObject?> Values => ExtraLocalsAsInterface is null ? [.. LocalsPlusSpan] : [.. LocalsPlusSpan, .. ExtraLocalsAsInterface.Values];
+    public ICollection<PyObject> Values => ExtraLocalsAsInterface is null ? [.. LocalsPlusSpan!] : [.. LocalsPlusSpan!, .. ExtraLocalsAsInterface.Values];
 
     public int Count => _localsTable.Count + _extraLocals?.Count ?? 0;
 
-    bool ICollection<KeyValuePair<string, PyObject?>>.IsReadOnly => false;
+    bool ICollection<KeyValuePair<string, PyObject>>.IsReadOnly => false;
 
     public void Add(string key, PyObject? value)
     {
@@ -80,7 +87,7 @@ internal sealed class PyFrameLocalsProxyObject : PyObject, IDictionary<string, P
         }
     }
 
-    void ICollection<KeyValuePair<string, PyObject?>>.Add(KeyValuePair<string, PyObject?> item)
+    void ICollection<KeyValuePair<string, PyObject>>.Add(KeyValuePair<string, PyObject> item)
     {
         Add(item.Key, item.Value);
     }
@@ -91,7 +98,7 @@ internal sealed class PyFrameLocalsProxyObject : PyObject, IDictionary<string, P
         _extraLocals?.Clear();
     }
 
-    bool ICollection<KeyValuePair<string, PyObject?>>.Contains(KeyValuePair<string, PyObject?> item)
+    bool ICollection<KeyValuePair<string, PyObject>>.Contains(KeyValuePair<string, PyObject> item)
     {
         if (_localsTable.TryGetValue(item.Key, out var index))
             return PyObjectComparer.Default.Equals(LocalsPlusSpan[index], item.Value);
@@ -110,12 +117,12 @@ internal sealed class PyFrameLocalsProxyObject : PyObject, IDictionary<string, P
         return _extraLocals?.ContainsKey(key) ?? false;
     }
 
-    void ICollection<KeyValuePair<string, PyObject?>>.CopyTo(KeyValuePair<string, PyObject?>[] array, int arrayIndex)
+    void ICollection<KeyValuePair<string, PyObject>>.CopyTo(KeyValuePair<string, PyObject>[] array, int arrayIndex)
     {
         ArgumentOutOfRangeException.ThrowIfGreaterThan(arrayIndex + Count, array.Length);
 
         foreach (var pair in _localsTable)
-            array[arrayIndex++] = KeyValuePair.Create(pair.Key, LocalsPlusSpan[pair.Value]);
+            array[arrayIndex++] = KeyValuePair.Create(pair.Key, LocalsPlusSpan[pair.Value])!;
 
         if (_extraLocals is null)
             return;
@@ -124,10 +131,14 @@ internal sealed class PyFrameLocalsProxyObject : PyObject, IDictionary<string, P
             array[arrayIndex++] = pair!;
     }
 
-    public IEnumerator<KeyValuePair<string, PyObject?>> GetEnumerator()
+    public IEnumerator<KeyValuePair<string, PyObject>> GetEnumerator()
     {
         foreach (var pair in _localsTable)
-            yield return KeyValuePair.Create(pair.Key, LocalsPlusSpan[pair.Value]);
+        {
+            var value = LocalsPlusSpan[pair.Value];
+            if (value is not null)
+                yield return KeyValuePair.Create(pair.Key, value);
+        }
 
         if (_extraLocals is null)
             yield break;
@@ -150,7 +161,7 @@ internal sealed class PyFrameLocalsProxyObject : PyObject, IDictionary<string, P
         return ExtraLocalsAsInterface?.Remove(key) ?? false;
     }
 
-    bool ICollection<KeyValuePair<string, PyObject?>>.Remove(KeyValuePair<string, PyObject?> item)
+    bool ICollection<KeyValuePair<string, PyObject>>.Remove(KeyValuePair<string, PyObject> item)
     {
         if (_localsTable.TryGetValue(item.Key, out var index))
         {
@@ -164,15 +175,15 @@ internal sealed class PyFrameLocalsProxyObject : PyObject, IDictionary<string, P
             return true;
         }
 
-        return (_extraLocals as ICollection<KeyValuePair<string, PyObject?>>)?.Remove(item) ?? false;
+        return (_extraLocals as ICollection<KeyValuePair<string, PyObject?>>)?.Remove(item!) ?? false;
     }
-
-    public bool TryGetValue(string key, [MaybeNullWhen(false)] out PyObject? value)
+    
+    public bool TryGetValue(string key, [NotNullWhen(true)] out PyObject? value)
     {
         if (_localsTable.TryGetValue(key, out var index))
         {
             value = LocalsPlusSpan[index];
-            return true;
+            return value is not null;
         }
 
         if (_extraLocals is null)

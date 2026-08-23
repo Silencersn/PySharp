@@ -56,14 +56,14 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
     {
         return new PyDictObject();
     }
-    public static PyDictObject CreateDict(IDictionary<string, PyObject> dict)
+    internal static PyDictObject CreateDict(IPyStringKeyDict dict)
     {
         var newDict = new PyDictObject();
         foreach (var pair in dict)
             newDict[pair.Key] = pair.Value;
         return newDict;
     }
-    public static PyDictObject FromStringKeyDict(IDictionary<string, PyObject> dict)
+    internal static PyDictObject FromStringKeyDict(IDictionary<string, PyObject> dict)
     {
         if (dict is PyDictObject dictObj)
             return dictObj;

@@ -1,3 +1,4 @@
+using PySharp.Modules;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
 using System.Buffers;
@@ -15,7 +16,7 @@ internal sealed class PyVariables
     private readonly FrozenDictionary<string, int>? _localsTable;
 
     private PyDictObject _globals;
-    private IDictionary<string, PyObject?>? _locals;
+    private IPyStringKeyDict? _locals;
 
     private PyVariables(PyDictObject globals)
     {
@@ -47,7 +48,7 @@ internal sealed class PyVariables
         _memory = _localsPlus;
         _canDispose = true;
     }
-    private PyVariables(PyDictObject globals, IDictionary<string, PyObject?>? locals)
+    private PyVariables(PyDictObject globals, IPyStringKeyDict? locals)
     {
         _localsTable = locals is null ? null : FrozenDictionary<string, int>.Empty;
 
@@ -64,7 +65,7 @@ internal sealed class PyVariables
 
     internal PyDictObject Globals => _globals;
     internal FrozenDictionary<string, int> LocalsTable => _localsTable ?? throw new InvalidOperationException();
-    internal IDictionary<string, PyObject?> Locals => _locals ?? throw new NotSupportedException();
+    internal IPyStringKeyDict Locals => _locals ?? throw new NotSupportedException();
 
     internal void MergeThenReplaceGlobals(PyDictObject globals)
     {
@@ -100,7 +101,7 @@ internal sealed class PyVariables
     {
         return new PyVariables([]);
     }
-    internal static PyVariables CreateExecEval(PyDictObject globals, IDictionary<string, PyObject?>? locals)
+    internal static PyVariables CreateExecEval(PyDictObject globals, IPyStringKeyDict? locals)
     {
         return new PyVariables(globals, locals);
     }
@@ -167,7 +168,7 @@ internal sealed class PyVariables
         var variables = new PyVariables(new PyDictObject(_globals), _localsTable);
         LocalsSpan.CopyTo(variables.LocalsSpan);
         if (_locals is not null)
-            variables._locals = new PyFrameLocalsProxyObject(_localsTable, variables.LocalsPlusMemory, PyDictObject.CreateDict(_locals!));
+            variables._locals = new PyFrameLocalsProxyObject(_localsTable, variables.LocalsPlusMemory, PyDictObject.CreateDict(_locals));
         return variables;
     }
 
@@ -210,7 +211,7 @@ internal sealed class PyVariables
                     if (pair.Value is not PyCellObject cell)
                         return pair;
 
-                    return KeyValuePair.Create(pair.Key, cell.Value);
+                    return KeyValuePair.Create(pair.Key, cell.Value!);
                 })
                 .Where(static pair => pair.Value is not null)!;
         }

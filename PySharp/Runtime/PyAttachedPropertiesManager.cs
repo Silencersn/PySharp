@@ -45,7 +45,7 @@ internal sealed class PyAttachedPropertiesManager
             if (properties.Dict is not null)
                 return properties.Dict;
 
-            return properties.Dict = new ConcurrentDictionary<string, PyObject>();
+            return properties.Dict = new PyDictObject();
         }
     }
 

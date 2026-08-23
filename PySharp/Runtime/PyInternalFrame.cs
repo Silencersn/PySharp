@@ -1,3 +1,4 @@
+using PySharp.Modules;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
 using System.Collections.Frozen;
@@ -123,7 +124,7 @@ internal partial struct PyInternalFrame
 
         var pyGlobals = globals ?? Variables.Globals;
 
-        IDictionary<string, PyObject?>? localsDictionary = locals!;
+        IPyStringKeyDict? localsDictionary = locals;
 
         if (closure is not null)
         {
