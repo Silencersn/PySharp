@@ -1,8 +1,5 @@
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace PySharp.Runtime.Comparison;
 

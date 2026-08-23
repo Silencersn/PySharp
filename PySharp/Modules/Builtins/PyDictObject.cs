@@ -1,13 +1,8 @@
-using PySharp.Compilation.CodeAnalysis;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Comparison;
-using PySharp.Runtime.PyAttributes;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Text;
 
 namespace PySharp.Modules.Builtins;
 
@@ -26,7 +21,7 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
     public PyDictObject(PyDictObject dict)
     {
         _count = dict.Count;
-        _buckets = [..dict._buckets];
+        _buckets = [.. dict._buckets];
         _entries = [.. dict._entries];
     }
 
@@ -103,7 +98,7 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
         ref var entry = ref _entries[index - 1];
         while (true)
         {
-            if (entry.HashCode == hashCode && 
+            if (entry.HashCode == hashCode &&
                 entry.Key is PyStrObject { Value: var entryKey } &&
                 string.Equals(entryKey, key, StringComparison.Ordinal))
             {

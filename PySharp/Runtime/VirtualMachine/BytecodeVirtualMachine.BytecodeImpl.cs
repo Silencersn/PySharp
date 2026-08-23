@@ -2,7 +2,6 @@ using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Environments;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 
 namespace PySharp.Runtime.VirtualMachine;
 

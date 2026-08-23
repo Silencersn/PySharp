@@ -99,7 +99,7 @@ public sealed partial class PyFunctionObjectType : PyTypeObject<PyFunctionObject
         self._pyName = null;
         return PyNoneObject.None;
     }
-    
+
 
     [PyProperty(PySpecialNames.Code)]
     private static PyResult Get_Code(PyCallContext context, PyFunctionObject self)
