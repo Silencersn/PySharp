@@ -115,10 +115,7 @@ internal sealed partial class PyVariables
     internal PyVariables CreateForBuildingClass(PyCodeObject codeObject, PyTupleObject? closure)
     {
         if (!HasLocals)
-        {
-            return new PyVariables(_globals,
-                new LocalDictionary(FrozenDictionary<string, int>.Empty, Memory<PyObject?>.Empty));
-        }
+            return new PyVariables(_globals, new PyDictObject()!);
 
         // Use the constructor that rents localsPlus and sets _localsTable
         // (free vars). _localsTable is used by TryLoadFromLocals → LoadDeref.
@@ -155,7 +152,7 @@ internal sealed partial class PyVariables
 
         // Use a plain dict for _locals so that only StoreName'd entries appear
         // in the class namespace — free vars in _localsTable are NOT exposed.
-        vars._locals = new Dictionary<string, PyObject?>();
+        vars._locals = new PyDictObject()!;
         return vars;
     }
     internal PyVariables CreatePlaceholder()

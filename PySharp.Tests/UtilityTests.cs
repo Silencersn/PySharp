@@ -79,27 +79,6 @@ public sealed class UtilityTests
         Assert.IsTrue(dict.Count == 1);
     }
 
-    // ===== DictAdapter =====
-
-    [TestMethod]
-    public void DictAdapter_StringKey()
-    {
-        var orig = new Dictionary<string, PyObject?>();
-        IDictionary<PyObject, PyObject> adapter = new DictAdapter(orig);
-        adapter.Add(PyStrObject.FromString("k"), PyIntObject.FromInteger(42));
-        Assert.IsTrue(adapter.ContainsKey(PyStrObject.FromString("k")));
-    }
-
-    [TestMethod]
-    public void DictAdapter_ExtraKey()
-    {
-        var orig = new Dictionary<string, PyObject?>();
-        IDictionary<PyObject, PyObject> adapter = new DictAdapter(orig);
-        var ik = PyIntObject.FromInteger(99);
-        adapter[ik] = PyStrObject.FromString("v");
-        Assert.IsTrue(((PyStrObject)adapter[ik]).Value == "v");
-    }
-
     // ===== PyObjectComparer =====
 
     [TestMethod]
