@@ -799,7 +799,7 @@ public static partial class PyBuiltinFunctions
     [PyFunctionParameters()]
     private static PyResult LocalsImpl(PyCallContext context, PyArguments arguments)
     {
-        return context.CurrentInternalFrame.Variables.GetLocals();
+        return context.CurrentInternalFrame.Variables.GetLocals(context);
     }
 
     [PyFunctionParameters()]

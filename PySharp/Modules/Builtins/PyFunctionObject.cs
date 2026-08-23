@@ -11,16 +11,19 @@ public sealed class PyFunctionObject : PyObjectManagedDict, IPyObjectName
     internal PyObject? _pyClosure;
     internal PyDictObject _globals;
     private readonly PyCodeObject _code;
+    internal PyStrObject? _pyName;
 
-    public string Name => _code.Name;
+
+    public string Name { get; internal set; }
     internal ReadOnlySpan<PyCellObject> Closure => _closure;
     internal PyCodeObject Code => _code;
-    internal PyStrObject PyName => field ??= PyStrObject.FromString(Name);
+    internal PyStrObject PyName => _pyName ??= PyStrObject.FromString(Name);
 
     public override PyTypeObject DefaultPyType => PyFunctionObjectType.Shared;
 
     internal PyFunctionObject(PyCellObject[]? closure, PyDictObject globals, PyCodeObject code, PyArgsDef def)
     {
+        Name = code.Name;
         _closure = closure;
         _globals = globals;
         _code = code;
@@ -85,6 +88,18 @@ public sealed partial class PyFunctionObjectType : PyTypeObject<PyFunctionObject
     {
         return self.PyName;
     }
+
+    [PyProperty(PySpecialNames.Name, Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_Name(PyCallContext context, PyFunctionObject self, PyObject value)
+    {
+        if (value is not PyStrObject { Value: var name })
+            return PyResult.TypeError("__name__ must be set to a string object");
+
+        self.Name = name;
+        self._pyName = null;
+        return PyNoneObject.None;
+    }
+    
 
     [PyProperty(PySpecialNames.Code)]
     private static PyResult Get_Code(PyCallContext context, PyFunctionObject self)

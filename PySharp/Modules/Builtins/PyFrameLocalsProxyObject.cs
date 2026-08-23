@@ -1,4 +1,5 @@
 using PySharp.Runtime;
+using PySharp.Runtime.Calls;
 using PySharp.Runtime.Comparison;
 using PySharp.Runtime.PyAttributes;
 using System;
@@ -10,9 +11,7 @@ using System.Text;
 
 namespace PySharp.Modules.Builtins;
 
-// TODO: temp impl
-// TODO: cell
-internal sealed class PyFrameLocalsProxyObject : PyObject, IPyVariablesLocalsDict
+internal sealed class PyFrameLocalsProxyObject : PyObject, IPyVariablesLocalsDict, IPyObjectRecursiveRepr
 {
     private readonly FrozenDictionary<string, int> _localsTable;
     private readonly Memory<PyObject?> _localsPlusMemory;
@@ -20,7 +19,6 @@ internal sealed class PyFrameLocalsProxyObject : PyObject, IPyVariablesLocalsDic
     private PyDictObject? _extraLocals;
 
     internal PyDictObject? ExtraLocals => _extraLocals;
-    internal IPyVariablesLocalsDict? ExtraLocalsAsInterface => _extraLocals;
 
     public override PyTypeObject DefaultPyType => PyFrameLocalsProxyObjectType.Shared;
 
@@ -34,21 +32,21 @@ internal sealed class PyFrameLocalsProxyObject : PyObject, IPyVariablesLocalsDic
     {
     }
 
-    public PyObject this[string key]
+    PyObject? IPyVariablesLocalsDict.this[string key]
     {
         get
         {
             if (_localsTable.TryGetValue(key, out var index))
-                return LocalsPlusSpan[index]!;
+                return LocalsPlusSpan[index];
 
             if (_extraLocals is null)
-                return null!;
+                return null;
 
             var ret = _extraLocals.GetItem(key);
             if (ret.IsSuccessful)
                 return ret.Value;
 
-            return null!;
+            return null;
         }
         set
         {
@@ -58,13 +56,12 @@ internal sealed class PyFrameLocalsProxyObject : PyObject, IPyVariablesLocalsDic
                 return;
             }
 
-            ArgumentNullException.ThrowIfNull(value);
             _extraLocals ??= new();
-            _extraLocals[key] = value;
+            _extraLocals.InternalSetItem(key, value);
         }
     }
 
-    public bool ContainsKey(string key)
+    bool IPyVariablesLocalsDict.ContainsKey(string key)
     {
         if (_localsTable.ContainsKey(key))
             return true;
@@ -88,7 +85,32 @@ internal sealed class PyFrameLocalsProxyObject : PyObject, IPyVariablesLocalsDic
         }
     }
 
-    public bool Remove(string key)
+    internal IEnumerable<KeyValuePair<PyObject, PyObject>> EnumeratePairs()
+    {
+        foreach (var pair in _localsTable)
+        {
+            var value = LocalsPlusSpan[pair.Value];
+            if (value is null)
+                continue;
+
+            if (value is PyCellObject cell)
+            {
+                value = cell.Value;
+                if (value is null)
+                    continue;
+            }
+
+            yield return KeyValuePair.Create<PyObject, PyObject>(PyStrObject.FromString(pair.Key), value);
+        }
+
+        if (_extraLocals is null)
+            yield break;
+
+        foreach (var pair in _extraLocals)
+            yield return KeyValuePair.Create(pair.Key, pair.Value);
+    }
+
+    bool IPyVariablesLocalsDict.Remove(string key)
     {
         if (_localsTable.TryGetValue(key, out var index))
         {
@@ -99,10 +121,10 @@ internal sealed class PyFrameLocalsProxyObject : PyObject, IPyVariablesLocalsDic
             return true;
         }
 
-        return ExtraLocalsAsInterface?.Remove(key) ?? false;
+        return _extraLocals?.DelItem(key) ?? false;
     }
 
-    public bool TryGetValue(string key, [MaybeNullWhen(false)] out PyObject? value)
+    bool IPyVariablesLocalsDict.TryGetValue(string key, [MaybeNullWhen(false)] out PyObject? value)
     {
         if (_localsTable.TryGetValue(key, out var index))
         {
@@ -118,7 +140,18 @@ internal sealed class PyFrameLocalsProxyObject : PyObject, IPyVariablesLocalsDic
 
         return _extraLocals.TryGetValue(key, out value);
     }
+
+    PyResult<PyStrObject> IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<PyObject> ids)
+    {
+        return PyUtils.DictionaryRecursiveRepr(context, this, EnumeratePairs().Select(static entry => KeyValuePair.Create(entry.Key, entry.Value)), "{", "}", ids);
+    }
 }
 
 [PyType("FrameLocalsProxy")]
-internal sealed partial class PyFrameLocalsProxyObjectType : PyTypeObject<PyFrameLocalsProxyObject>;
+internal sealed partial class PyFrameLocalsProxyObjectType : PyTypeObject<PyFrameLocalsProxyObject>
+{
+    protected override PyResult Repr(PyCallContext context, PyFrameLocalsProxyObject self)
+    {
+        return IPyObjectRecursiveRepr.RecursiveRepr(context, self);
+    }
+}

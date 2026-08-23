@@ -10,7 +10,7 @@ namespace PySharp.Runtime;
 
 internal interface IPyVariablesLocalsDict
 {
-    PyObject this[string key] { get; set; }
+    PyObject? this[string key] { get; set; }
     bool TryGetValue(string key, [MaybeNullWhen(false)] out PyObject? value);
     bool Remove(string key);
     bool ContainsKey(string key);
@@ -250,17 +250,45 @@ internal sealed class PyVariables
         }
     }
 
-    internal PyDictObject GetLocals()
+    internal PyDictObject GetLocals(PyCallContext context)
     {
         if (!HasLocals)
             return Globals;
 
         if (_locals is not null)
+        {
             // snapshot
-            // TODO: cell
-            return PyDictObject.CreateDict(_locals);
+            var dict = new PyDictObject();
+            if (_locals is PyDictObject dictObj)
+            {
+                foreach (var entry in dictObj.Entries)
+                {
+                    if (entry.Value is PyCellObject cell)
+                    {
+                        if (cell.Value is not null)
+                            dict.SetItem(context, entry.Key, cell.Value);
+                    }
+                    else
+                    {
+                        dict.SetItem(context, entry.Key, entry.Value);
+                    }
+                }
+            }
+            else if (_locals is PyFrameLocalsProxyObject proxyObj)
+            {
+                foreach (var pair in proxyObj.EnumeratePairs())
+                    dict.SetItem(context, pair.Key, pair.Value);
+            }
+            else
+            {
+                throw new UnreachableException();
+            }
 
-        var pairs = _localsTable
+            return dict;
+        }
+
+        {
+            var pairs = _localsTable
             .Select(pair =>
             {
                 var value = LocalsSpan[pair.Value];
@@ -270,10 +298,11 @@ internal sealed class PyVariables
             })
             .Where(static pair => pair.Value is not null)!;
 
-        var dict = new PyDictObject();
-        foreach (var pair in pairs)
-            dict[pair.Key] = pair.Value;
-        return dict;
+            var dict = new PyDictObject();
+            foreach (var pair in pairs)
+                dict[pair.Key] = pair.Value;
+            return dict;
+        }
     }
 
     public PyResult LoadLocal(string name)

@@ -157,7 +157,6 @@ internal partial struct PyInternalFrame
         if (def.VarArg is not null)
             localsSpan[index++] = arguments.InternalExtraArgs.Length is 0 ? PyTupleObject.Empty : PyTupleObject.CreateProxy(arguments.InternalExtraArgs);
         if (def.KwArg is not null)
-            // TODO: perf
-            localsSpan[index] = PyDictObject.CreateDict(PyCallContext.NotImplemented, arguments.ExtraKwargs.Select(static kvp => KeyValuePair.Create((PyObject)PyStrObject.FromString(kvp.Key), kvp.Value))).Value!;
+            localsSpan[index] = PyDictObject.CreateDict(arguments.ExtraKwargs);
     }
 }

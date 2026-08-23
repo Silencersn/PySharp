@@ -7,10 +7,10 @@ namespace PySharp.Modules.Builtins;
 
 partial class PyDictObject : IPyVariablesLocalsDict, IPyAttributesObject
 {
-    PyObject IPyVariablesLocalsDict.this[string key]
+    PyObject? IPyVariablesLocalsDict.this[string key]
     {
         get => GetItem(key).PyUnwrap(PyCallContext.CSharpRuntime);
-        set => SetItem(key, value);
+        set => InternalSetItem(key, value);
     }
 
     PyObject IPyAttributesObject.Self => this;

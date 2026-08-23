@@ -36,7 +36,8 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
 
     public int Count => _count;
 
-    internal PyObject this[string key]{
+    internal PyObject this[string key]
+    {
         get => TryGetValue(key, out var value) ? value : throw new KeyNotFoundException();
         set => SetItem(key, value);
     }
@@ -57,6 +58,18 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
         return new PyDictObject();
     }
     internal static PyDictObject CreateDict(IPyVariablesLocalsDict dict)
+    {
+        var newDict = new PyDictObject();
+        foreach (var pair in dict)
+        {
+            if (pair.Value is null)
+                continue;
+
+            newDict[pair.Key] = pair.Value;
+        }
+        return newDict;
+    }
+    internal static PyDictObject CreateDict(IEnumerable<KeyValuePair<string, PyObject>> dict)
     {
         var newDict = new PyDictObject();
         foreach (var pair in dict)
@@ -144,7 +157,7 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
         }
     }
 
-    public PyObject? InternalSetItem(string key, PyObject? value)
+    internal PyObject? InternalSetItem(string key, PyObject? value)
     {
         if (_count == _entries.Length)
             EnsureCapacity(_count + 1);
