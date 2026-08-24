@@ -5,7 +5,6 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Modules.Builtins;
 
-[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.NonPublicMethods)]
 partial class PyTypeObject<TObject>
 {
     [EditorBrowsable(EditorBrowsableState.Never)]

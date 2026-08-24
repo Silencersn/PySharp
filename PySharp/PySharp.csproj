@@ -9,15 +9,12 @@
     <Copyright>Copyright © 2025-2026 Silencersn. All rights reserved.</Copyright>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU' Or '$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <IsTrimmable>True</IsTrimmable>
     <IsAotCompatible>True</IsAotCompatible>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <IsTrimmable>True</IsTrimmable>
-    <IsAotCompatible>True</IsAotCompatible>
-  </PropertyGroup>
+    <EnableTrimAnalyzer>True</EnableTrimAnalyzer>
+    <EnableAotAnalyzer>True</EnableAotAnalyzer>
+</PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\PySharp.SourceGeneration\PySharp.SourceGeneration.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
