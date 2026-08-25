@@ -35,8 +35,9 @@ partial class PyCallContext
         return DispatchWarning(filename, lineno, warningType, strResult.Value.Value, NormalizeModule(filename), line);
     }
 
-    // Resolves the filter action and dispatches: "error" raises, "ignore" suppresses, and
-    // "default" writes the warning once per (module, text, category, lineno) site.
+    // Resolves the filter action and dispatches: "error" raises, "ignore" suppresses,
+    // "always"/"all" always write, and "default"/"module"/"once" write after deduplicating
+    // by their respective scope.
     private PyResult DispatchWarning(string filename, int lineno, PyTypeObject<PyExceptionObject> warningType, string text, string module, string? sourceLine)
     {
         var state = PyEnvironment.Warnings;
@@ -47,11 +48,14 @@ partial class PyCallContext
                 return PyResult.RaiseException(warningType, PyStrObject.FromString(text));
             case WarningAction.Ignore:
                 return default;
+            case WarningAction.Always:   // covers All, which is an alias with the same value
+                WriteWarning(filename, lineno, warningType, text, sourceLine);
+                return default;
             default:
-                if (state.ShouldSuppress(module, text, warningType, lineno))
+                if (state.ShouldSuppress(action, module, text, warningType, lineno))
                     return default;
                 WriteWarning(filename, lineno, warningType, text, sourceLine);
-                state.MarkWarned(module, text, warningType, lineno);
+                state.MarkWarned(action, module, text, warningType, lineno);
                 return default;
         }
     }

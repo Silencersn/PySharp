@@ -273,4 +273,78 @@ public sealed class WarningTests
             env.Dispose();
         }
     }
+
+    [TestMethod]
+    public void Warn_AlwaysAction_ShowsRepeatedly()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            context.PyEnvironment.Warnings.AddFilter(PyUserWarningObjectType.Shared, WarningAction.Always);
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7);
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7);
+            Assert.AreEqual("mod.py:7: UserWarning: boom\nmod.py:7: UserWarning: boom\n", host.Stderr.ToString());
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void Warn_AllAction_ShowsRepeatedly()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            context.PyEnvironment.Warnings.AddFilter(PyUserWarningObjectType.Shared, WarningAction.All);
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7);
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7);
+            Assert.AreEqual("mod.py:7: UserWarning: boom\nmod.py:7: UserWarning: boom\n", host.Stderr.ToString());
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void Warn_ModuleAction_DedupsPerModule()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            context.PyEnvironment.Warnings.AddFilter(PyUserWarningObjectType.Shared, WarningAction.Module);
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7);
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 9);
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod2.py", 7);
+            Assert.AreEqual("mod.py:7: UserWarning: boom\nmod2.py:7: UserWarning: boom\n", host.Stderr.ToString());
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void Warn_OnceAction_DedupsGlobally()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            context.PyEnvironment.Warnings.AddFilter(PyUserWarningObjectType.Shared, WarningAction.Once);
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7);
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod2.py", 7);
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod3.py", 9);
+            Assert.AreEqual("mod.py:7: UserWarning: boom\n", host.Stderr.ToString());
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
 }
