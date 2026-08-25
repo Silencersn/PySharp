@@ -6,12 +6,12 @@ namespace PySharp.Runtime.Calls;
 
 partial class PyCallContext
 {
-    public PyResult Warn(PyObject message, PyExceptionType? warningType = null, int stacklevel = 1)
+    public PyResult Warn(PyObject message, PyTypeObject<PyExceptionObject>? warningType = null, int stacklevel = 1)
     {
         var typeResult = ResolveWarningType(message, warningType);
         if (typeResult.IsError)
             return typeResult.ExceptionResult;
-        warningType = (PyExceptionType)typeResult.Value;
+        warningType = (PyTypeObject<PyExceptionObject>)typeResult.Value;
 
         var strResult = PySpecialMethods.Str(this, message);
         if (strResult.IsError)
@@ -21,12 +21,12 @@ partial class PyCallContext
         return DispatchWarning(filename, lineno, warningType, strResult.Value.Value, module, sourceLine);
     }
 
-    public PyResult WarnExplicit(PyObject message, PyExceptionType? warningType, string filename, int lineno, string? line = null)
+    public PyResult WarnExplicit(PyObject message, PyTypeObject<PyExceptionObject>? warningType, string filename, int lineno, string? line = null)
     {
         var typeResult = ResolveWarningType(message, warningType);
         if (typeResult.IsError)
             return typeResult.ExceptionResult;
-        warningType = (PyExceptionType)typeResult.Value;
+        warningType = (PyTypeObject<PyExceptionObject>)typeResult.Value;
 
         var strResult = PySpecialMethods.Str(this, message);
         if (strResult.IsError)
@@ -37,7 +37,7 @@ partial class PyCallContext
 
     // Resolves the filter action and dispatches: "error" raises, "ignore" suppresses, and
     // "default" writes the warning once per (module, text, category, lineno) site.
-    private PyResult DispatchWarning(string filename, int lineno, PyExceptionType warningType, string text, string module, string? sourceLine)
+    private PyResult DispatchWarning(string filename, int lineno, PyTypeObject<PyExceptionObject> warningType, string text, string module, string? sourceLine)
     {
         var state = PyEnvironment.Warnings;
         var action = state.ResolveAction(warningType);
@@ -67,12 +67,12 @@ partial class PyCallContext
         return filename;
     }
 
-    private PyResult ResolveWarningType(PyObject message, PyExceptionType? warningType)
+    private PyResult ResolveWarningType(PyObject message, PyTypeObject<PyExceptionObject>? warningType)
     {
         // When the message is already a Warning instance, CPython derives the category
         // from its concrete type.
         if (warningType is null && PyWarningObjectType.Shared.IsInstance(message))
-            warningType = message.PyType as PyExceptionType;
+            warningType = message.PyType as PyTypeObject<PyExceptionObject>;
 
         warningType ??= PyUserWarningObjectType.Shared;
 
@@ -126,7 +126,7 @@ partial class PyCallContext
 
     // Writes the standard warning format "filename:lineno: Category: message", followed by the
     // source line (when available) indented by two spaces.
-    private void WriteWarning(string filename, int lineno, PyExceptionType warningType, string text, string? sourceLine)
+    private void WriteWarning(string filename, int lineno, PyTypeObject<PyExceptionObject> warningType, string text, string? sourceLine)
     {
         var error = PyEnvironment.Error;
         error.WriteLine($"{filename}:{lineno}: {warningType.Name}: {text}");

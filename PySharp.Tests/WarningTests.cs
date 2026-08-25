@@ -227,4 +227,50 @@ public sealed class WarningTests
             env.Dispose();
         }
     }
+
+    [TestMethod]
+    public void Warn_UserDefinedWarning_DerivesCategory()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            PyInterpreter.RunCodeWithContext(
+                context,
+                "class MyWarning(UserWarning):\n    pass\nw = MyWarning('boom')",
+                module, "<test>", isMain: true);
+
+            context.Warn(module.PyAttributesDict["w"]);
+            Assert.AreEqual("<test>:0: MyWarning: boom\n", host.Stderr.ToString());
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void Warn_UserDefinedWarningFilter_Matches()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            PyInterpreter.RunCodeWithContext(
+                context,
+                "class MyWarning(UserWarning):\n    pass\nw = MyWarning('boom')",
+                module, "<test>", isMain: true);
+
+            var w = module.PyAttributesDict["w"];
+            context.PyEnvironment.Warnings.AddFilter((PyTypeObject<PyExceptionObject>)w.PyType, WarningAction.Ignore);
+            context.Warn(w);
+            Assert.AreEqual(string.Empty, host.Stderr.ToString());
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
 }
