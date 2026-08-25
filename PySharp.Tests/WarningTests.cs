@@ -117,4 +117,114 @@ public sealed class WarningTests
             env.Dispose();
         }
     }
+
+    [TestMethod]
+    public void WarnExplicit_DefaultAction_DeduplicatesSameSite()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7);
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7);
+            Assert.AreEqual("mod.py:7: UserWarning: boom\n", host.Stderr.ToString());
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void Warn_IgnoreAction_SuppressesOutput()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            context.PyEnvironment.Warnings.AddFilter(PyUserWarningObjectType.Shared, WarningAction.Ignore);
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7);
+            Assert.AreEqual(string.Empty, host.Stderr.ToString());
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void Warn_ErrorAction_RaisesCategoryException()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            context.PyEnvironment.Warnings.AddFilter(PyUserWarningObjectType.Shared, WarningAction.Error);
+            var result = context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7);
+            Assert.IsTrue(result.IsError);
+            Assert.IsTrue(PyUserWarningObjectType.Shared.IsInstance(result.Exception!));
+            Assert.AreEqual(string.Empty, host.Stderr.ToString());
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void Warn_DefaultActionError_MakesAllWarningsError()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            context.PyEnvironment.Warnings.SetDefaultAction(WarningAction.Error);
+            var result = context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7);
+            Assert.IsTrue(result.IsError);
+            Assert.IsTrue(PyUserWarningObjectType.Shared.IsInstance(result.Exception!));
+            Assert.AreEqual(string.Empty, host.Stderr.ToString());
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void Warn_FilterVersionInvalidation_ForgetsPreviousWarnings()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7);
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7);
+            Assert.AreEqual("mod.py:7: UserWarning: boom\n", host.Stderr.ToString());
+
+            context.PyEnvironment.Warnings.ClearFilters();
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7);
+            Assert.AreEqual("mod.py:7: UserWarning: boom\nmod.py:7: UserWarning: boom\n", host.Stderr.ToString());
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void Warn_BaseCategoryFilter_MatchesSubclass()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            context.PyEnvironment.Warnings.AddFilter(PyWarningObjectType.Shared, WarningAction.Ignore);
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7);
+            Assert.AreEqual(string.Empty, host.Stderr.ToString());
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
 }

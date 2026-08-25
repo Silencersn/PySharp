@@ -17,9 +17,8 @@ partial class PyCallContext
         if (strResult.IsError)
             return strResult.ExceptionResult;
 
-        var (filename, lineno, sourceLine) = ResolveWarningLocation(stacklevel);
-        WriteWarning(filename, lineno, warningType, strResult.Value.Value, sourceLine);
-        return default;
+        var (filename, lineno, sourceLine, module) = ResolveWarningLocation(stacklevel);
+        return DispatchWarning(filename, lineno, warningType, strResult.Value.Value, module, sourceLine);
     }
 
     public PyResult WarnExplicit(PyObject message, PyExceptionType? warningType, string filename, int lineno, string? line = null)
@@ -33,8 +32,39 @@ partial class PyCallContext
         if (strResult.IsError)
             return strResult.ExceptionResult;
 
-        WriteWarning(filename, lineno, warningType, strResult.Value.Value, line);
-        return default;
+        return DispatchWarning(filename, lineno, warningType, strResult.Value.Value, NormalizeModule(filename), line);
+    }
+
+    // Resolves the filter action and dispatches: "error" raises, "ignore" suppresses, and
+    // "default" writes the warning once per (module, text, category, lineno) site.
+    private PyResult DispatchWarning(string filename, int lineno, PyExceptionType warningType, string text, string module, string? sourceLine)
+    {
+        var state = PyEnvironment.Warnings;
+        var action = state.ResolveAction(warningType);
+        switch (action)
+        {
+            case WarningAction.Error:
+                return PyResult.RaiseException(warningType, PyStrObject.FromString(text));
+            case WarningAction.Ignore:
+                return default;
+            default:
+                if (state.ShouldSuppress(module, text, warningType, lineno))
+                    return default;
+                WriteWarning(filename, lineno, warningType, text, sourceLine);
+                state.MarkWarned(module, text, warningType, lineno);
+                return default;
+        }
+    }
+
+    // Derives the registry module name from a filename the same way CPython's normalize_module
+    // does: an empty name maps to "<unknown>", and a trailing ".py" is stripped.
+    private static string NormalizeModule(string filename)
+    {
+        if (filename.Length is 0)
+            return "<unknown>";
+        if (filename.Length >= 3 && filename.EndsWith(".py", StringComparison.Ordinal))
+            return filename[..^3];
+        return filename;
     }
 
     private PyResult ResolveWarningType(PyObject message, PyExceptionType? warningType)
@@ -52,11 +82,11 @@ partial class PyCallContext
         return warningType;
     }
 
-    private (string Filename, int Lineno, string? SourceLine) ResolveWarningLocation(int stacklevel)
+    private (string Filename, int Lineno, string? SourceLine, string Module) ResolveWarningLocation(int stacklevel)
     {
         var frameState = _state;
         if (frameState is null || frameState.CurrentFrameCount is 0)
-            return ("<sys>", 0, null);
+            return ("<sys>", 0, null, "<sys>");
 
         // Comprehension frames are inline, so they are skipped when walking the logical stack.
         int idx = frameState.CurrentFrameCount - 1;
@@ -75,12 +105,23 @@ partial class PyCallContext
         ref var frame = ref frameState.GetFrame(idx);
         var code = frame.CodeObject;
         if (code is null)
-            return ("<sys>", 0, null);
+            return ("<sys>", 0, null, "<sys>");
 
         var info = code.Bytecode.LineTable.Read(frame.InstructionIndex);
         int lineno = info is not null ? info.Start.Line : 0;
         string? sourceLine = info is not null ? info.FirstLine.ToString() : null;
-        return (code.Filename, lineno, sourceLine);
+        string module = ResolveModuleName(ref frame);
+        return (code.Filename, lineno, sourceLine, module);
+    }
+
+    // Reads the module name from the target frame's globals, falling back to a normalized form
+    // of the code object's filename for frames that do not expose a module name.
+    private static string ResolveModuleName(ref PyInternalFrame frame)
+    {
+        if (frame.Variables?.Globals is { } globals &&
+            globals.TryGetValue(PySpecialNames.Name, out var name) && name is PyStrObject nameStr)
+            return nameStr.Value;
+        return NormalizeModule(frame.CodeObject?.Filename ?? "<sys>");
     }
 
     // Writes the standard warning format "filename:lineno: Category: message", followed by the
@@ -111,8 +152,7 @@ partial class PyCallContext
         string filename = info?.Source?.Name ?? "<unknown>";
         int lineno = info is null ? 0 : info.Start.Line;
         string? sourceLine = info is null ? null : info.FirstLine.ToString().Trim();
-        WriteWarning(filename, lineno, PySyntaxWarningObjectType.Shared, message, sourceLine);
-        return default;
+        return WarnExplicit(PyStrObject.FromString(message), PySyntaxWarningObjectType.Shared, filename, lineno, sourceLine);
     }
 }
 
