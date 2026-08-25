@@ -347,4 +347,84 @@ public sealed class WarningTests
             env.Dispose();
         }
     }
+
+    [TestMethod]
+    public void WarningsModule_Warn_EmitsUserWarning()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            PyInterpreter.RunCodeWithContext(
+                context,
+                "import warnings\nwarnings.warn(\"boom\")",
+                module, "<test>", isMain: true);
+            Assert.AreEqual("<test>:2: UserWarning: boom\n  warnings.warn(\"boom\")\n", host.Stderr.ToString());
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_Warn_Category()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            PyInterpreter.RunCodeWithContext(
+                context,
+                "import warnings\nwarnings.warn(\"boom\", DeprecationWarning)",
+                module, "<test>", isMain: true);
+            Assert.AreEqual("<test>:2: DeprecationWarning: boom\n  warnings.warn(\"boom\", DeprecationWarning)\n", host.Stderr.ToString());
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_Warn_InvalidCategory_RaisesTypeError()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            Assert.ThrowsExactly<PyRuntimeException>(() =>
+                PyInterpreter.RunCodeWithContext(
+                    context,
+                    "import warnings\nwarnings.warn(\"boom\", int)",
+                    module, "<test>", isMain: true));
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_Warn_InvalidStacklevel_RaisesTypeError()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            Assert.ThrowsExactly<PyRuntimeException>(() =>
+                PyInterpreter.RunCodeWithContext(
+                    context,
+                    "import warnings\nwarnings.warn(\"boom\", stacklevel=\"bad\")",
+                    module, "<test>", isMain: true));
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
 }

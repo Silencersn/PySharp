@@ -9,6 +9,7 @@ using PySharp.Modules.This;
 using PySharp.Modules.Threading;
 using PySharp.Modules.Time;
 using PySharp.Modules.Typing;
+using PySharp.Modules.Warnings;
 using PySharp.Runtime.Calls;
 
 
@@ -31,6 +32,7 @@ internal static class PyStandardLibrary
             "queue" => new PyQueueModuleObject(),
             "typing" => new PyTypingModuleObject(),
             "sys" => new PySysModuleObject(),
+            "warnings" => new PyWarningsModuleObject(),
 
             _ => null
         };
