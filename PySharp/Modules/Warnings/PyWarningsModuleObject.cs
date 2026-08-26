@@ -5,6 +5,7 @@ using PySharp.Runtime.PyAttributes;
 namespace PySharp.Modules.Warnings;
 
 [PyModuleInclude(PyModuleIncludeScheme.StaticMembers, typeof(PyWarningsFunctions))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyWarningMessageObjectType))]
 public partial class PyWarningsModuleObject : PyModuleObject
 {
     public override string? Origin => "built-in";
@@ -17,6 +18,7 @@ public partial class PyWarningsModuleObject : PyModuleObject
             PyStrObject.FromString("simplefilter"),
             PyStrObject.FromString("filterwarnings"),
             PyStrObject.FromString("resetwarnings"),
-            PyStrObject.FromString("catch_warnings")));
+            PyStrObject.FromString("catch_warnings"),
+            PyStrObject.FromString("WarningMessage")));
     }
 }

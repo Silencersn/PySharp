@@ -1,5 +1,6 @@
 using PySharp.Compilation.CodeAnalysis;
 using PySharp.Modules.Builtins;
+using PySharp.Modules.Warnings;
 using PySharp.Runtime;
 
 namespace PySharp.Runtime.Calls;
@@ -17,8 +18,9 @@ partial class PyCallContext
         if (strResult.IsError)
             return strResult.ExceptionResult;
 
+        var warning = CreateWarningInstance(message, warningType);
         var (filename, lineno, sourceLine, module) = ResolveWarningLocation(stacklevel);
-        return DispatchWarning(filename, lineno, warningType, strResult.Value.Value, module, sourceLine);
+        return DispatchWarning(filename, lineno, warningType, warning, strResult.Value.Value, module, sourceLine);
     }
 
     public PyResult WarnExplicit(PyObject message, PyTypeObject<PyExceptionObject>? warningType, string filename, int lineno, string? line = null)
@@ -32,32 +34,68 @@ partial class PyCallContext
         if (strResult.IsError)
             return strResult.ExceptionResult;
 
-        return DispatchWarning(filename, lineno, warningType, strResult.Value.Value, NormalizeModule(filename), line);
+        var warning = CreateWarningInstance(message, warningType);
+        return DispatchWarning(filename, lineno, warningType, warning, strResult.Value.Value, NormalizeModule(filename), line);
     }
 
     // Resolves the filter action and dispatches: "error" raises, "ignore" suppresses,
     // "always"/"all" always write, and "default"/"module"/"once" write after deduplicating
     // by their respective scope.
-    private PyResult DispatchWarning(string filename, int lineno, PyTypeObject<PyExceptionObject> warningType, string text, string module, string? sourceLine)
+    private PyResult DispatchWarning(
+        string filename,
+        int lineno,
+        PyTypeObject<PyExceptionObject> warningType,
+        PyExceptionObject warning,
+        string text,
+        string module,
+        string? sourceLine)
     {
         var state = PyEnvironment.Warnings;
         var action = state.ResolveAction(warningType, text, module, lineno);
         switch (action)
         {
             case WarningAction.Error:
-                return PyResult.RaiseException(warningType, PyStrObject.FromString(text));
+                return PyResult.FromException(warning);
             case WarningAction.Ignore:
                 return default;
             case WarningAction.Always:   // covers All, which is an alias with the same value
-                WriteWarning(filename, lineno, warningType, text, sourceLine);
+                PublishWarning(filename, lineno, warningType, warning, text, sourceLine);
                 return default;
             default:
                 if (state.ShouldSuppress(action, module, text, warningType, lineno))
                     return default;
-                WriteWarning(filename, lineno, warningType, text, sourceLine);
+                PublishWarning(filename, lineno, warningType, warning, text, sourceLine);
                 state.MarkWarned(action, module, text, warningType, lineno);
                 return default;
         }
+    }
+
+    private void PublishWarning(
+        string filename,
+        int lineno,
+        PyTypeObject<PyExceptionObject> warningType,
+        PyObject message,
+        string text,
+        string? sourceLine)
+    {
+        var recordSink = PyEnvironment.Warnings.RecordSink;
+        if (recordSink is not null)
+        {
+            recordSink.Add(new PyWarningMessageObject(message, warningType, filename, lineno, sourceLine));
+            return;
+        }
+
+        WriteWarning(filename, lineno, warningType, text, sourceLine);
+    }
+
+    private static PyExceptionObject CreateWarningInstance(
+        PyObject message,
+        PyTypeObject<PyExceptionObject> warningType)
+    {
+        if (message is PyExceptionObject warning && PyWarningObjectType.Shared.IsInstance(message))
+            return warning;
+
+        return ((PyExceptionType)warningType).Create(message);
     }
 
     // Derives the registry module name from a filename the same way CPython's normalize_module

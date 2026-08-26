@@ -111,8 +111,7 @@ public static partial class PyWarningsFunctions
     [PyFunctionParameters("record=False", "module=None", "action=None", "category=None", "lineno=0", "append=False")]
     private static PyResult CatchWarningsImpl(PyCallContext context, PyArguments arguments)
     {
-        if (AsBool(context, arguments[0]))
-            return PyResult.PySharpException("NotImplemented");
+        var record = AsBool(context, arguments[0]);
         if (arguments[1] is not PyNoneObject)
             return PyResult.PySharpException("NotImplemented");
 
@@ -138,7 +137,8 @@ public static partial class PyWarningsFunctions
             action,
             category,
             linenoObj.Int32Value,
-            AsBool(context, arguments[5]));
+            AsBool(context, arguments[5]),
+            record ? PyListObject.CreateList() : null);
     }
 
     // Clears the warning filter list entirely, so no filters are active.

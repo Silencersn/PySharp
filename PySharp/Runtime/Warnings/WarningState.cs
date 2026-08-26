@@ -32,6 +32,7 @@ internal sealed class WarningStateSnapshot
     internal required HashSet<(string Module, string Text, PyTypeObject<PyExceptionObject> Category, int Lineno)> WarnedDefault { get; init; }
     internal required HashSet<(string Module, string Text, PyTypeObject<PyExceptionObject> Category)> WarnedModule { get; init; }
     internal required HashSet<(string Text, PyTypeObject<PyExceptionObject> Category)> WarnedOnce { get; init; }
+    internal required PyListObject? RecordSink { get; init; }
 }
 
 // Per-interpreter warning policy: a filter list, a default action, and a version counter
@@ -48,6 +49,7 @@ internal sealed class WarningState
     internal WarningAction DefaultAction { get; private set; } = WarningAction.Default;
 
     internal IReadOnlyList<WarningFilter> Filters => _filters;
+    internal PyListObject? RecordSink { get; private set; }
 
     internal WarningStateSnapshot Capture()
     {
@@ -59,6 +61,7 @@ internal sealed class WarningState
             WarnedDefault = [.. _warnedDefault],
             WarnedModule = [.. _warnedModule],
             WarnedOnce = [.. _warnedOnce],
+            RecordSink = RecordSink,
         };
     }
 
@@ -74,10 +77,14 @@ internal sealed class WarningState
         _warnedModule.UnionWith(snapshot.WarnedModule);
         _warnedOnce.Clear();
         _warnedOnce.UnionWith(snapshot.WarnedOnce);
+        RecordSink = snapshot.RecordSink;
 
         _filtersVersion++;
         _observedVersion = _filtersVersion;
     }
+
+    internal void SetRecordSink(PyListObject? recordSink)
+        => RecordSink = recordSink;
 
     // Adds a filter that matches only by category (any module/message/lineno).
     internal void AddFilter(PyTypeObject<PyExceptionObject> category, WarningAction action)

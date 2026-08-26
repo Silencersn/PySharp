@@ -11,18 +11,21 @@ public sealed class PyCatchWarningsObject : PyObject
     private readonly PyTypeObject<PyExceptionObject> _category;
     private readonly int _lineno;
     private readonly bool _append;
+    private readonly PyListObject? _recordList;
     private WarningStateSnapshot? _snapshot;
 
     internal PyCatchWarningsObject(
         WarningAction? action,
         PyTypeObject<PyExceptionObject> category,
         int lineno,
-        bool append)
+        bool append,
+        PyListObject? recordList)
     {
         _action = action;
         _category = category;
         _lineno = lineno;
         _append = append;
+        _recordList = recordList;
     }
 
     public override PyTypeObject DefaultPyType => PyCatchWarningsObjectType.Shared;
@@ -34,10 +37,11 @@ public sealed class PyCatchWarningsObject : PyObject
 
         var state = context.PyEnvironment.Warnings;
         _snapshot = state.Capture();
+        state.SetRecordSink(_recordList);
         if (_action is not null)
             state.AddFilter(new WarningFilter(_action.Value, _category, null, null, _lineno), _append);
 
-        return PyNoneObject.None;
+        return _recordList is null ? PyNoneObject.None : _recordList;
     }
 
     internal PyResult Exit(PyCallContext context)

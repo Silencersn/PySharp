@@ -1,4 +1,5 @@
 using PySharp.Modules.Builtins;
+using PySharp.Modules.Warnings;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Calls.Extensions;
@@ -520,6 +521,80 @@ public sealed class WarningTests
                 "import warnings\ntry:\n    with warnings.catch_warnings(action=\"ignore\"):\n        raise ValueError(\"boom\")\nexcept ValueError:\n    pass\nwarnings.warn(\"after\")",
                 module, "<test>", isMain: true);
             Assert.AreEqual("<test>:7: UserWarning: after\n  warnings.warn(\"after\")\n", host.Stderr.ToString());
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_CatchWarnings_Record_ReturnsWarningMessage()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            PyInterpreter.RunCodeWithContext(
+                context,
+                "import warnings\nwith warnings.catch_warnings(record=True) as records:\n    warnings.warn(\"boom\")\nitem = records[0]\nmessage = item.message\ncategory = item.category\nfilename = item.filename\nlineno = item.lineno\nfile = item.file\nline = item.line",
+                module, "<test>", isMain: true);
+
+            Assert.AreEqual(string.Empty, host.Stderr.ToString());
+            var message = (PyExceptionObject)module.PyAttributesDict["message"];
+            Assert.AreSame(PyUserWarningObjectType.Shared, message.PyType);
+            Assert.AreEqual("boom", ((PyStrObject)message.Args[0]).Value);
+            Assert.AreSame(PyUserWarningObjectType.Shared, module.PyAttributesDict["category"]);
+            Assert.AreEqual("<test>", ((PyStrObject)module.PyAttributesDict["filename"]).Value);
+            Assert.AreEqual(3, ((PyIntObject)module.PyAttributesDict["lineno"]).Int32Value);
+            Assert.AreSame(PyNoneObject.None, module.PyAttributesDict["file"]);
+            Assert.AreEqual("    warnings.warn(\"boom\")", ((PyStrObject)module.PyAttributesDict["line"]).Value);
+            Assert.AreSame(PyWarningMessageObjectType.Shared, module.PyAttributesDict["item"].PyType);
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_CatchWarnings_Record_RespectsDefaultDeduplication()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            PyInterpreter.RunCodeWithContext(
+                context,
+                "import warnings\nwith warnings.catch_warnings(record=True) as records:\n    warnings.warn(\"same\"); warnings.warn(\"same\")\ncount = len(records)",
+                module, "<test>", isMain: true);
+
+            Assert.AreEqual(string.Empty, host.Stderr.ToString());
+            Assert.AreEqual(1, ((PyIntObject)module.PyAttributesDict["count"]).Int32Value);
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_CatchWarnings_Record_NestedSinksAreRestored()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            PyInterpreter.RunCodeWithContext(
+                context,
+                "import warnings\nwith warnings.catch_warnings(record=True) as outer:\n    warnings.warn(\"outer before\")\n    with warnings.catch_warnings(record=True) as inner:\n        warnings.warn(\"inner\")\n    warnings.warn(\"outer after\")\nouter_count = len(outer)",
+                module, "<test>", isMain: true);
+
+            Assert.AreEqual(string.Empty, host.Stderr.ToString());
+            Assert.AreEqual(2, ((PyIntObject)module.PyAttributesDict["outer_count"]).Int32Value);
         }
         finally
         {
