@@ -41,7 +41,7 @@ partial class PyCallContext
     private PyResult DispatchWarning(string filename, int lineno, PyTypeObject<PyExceptionObject> warningType, string text, string module, string? sourceLine)
     {
         var state = PyEnvironment.Warnings;
-        var action = state.ResolveAction(warningType);
+        var action = state.ResolveAction(warningType, text, module, lineno);
         switch (action)
         {
             case WarningAction.Error:

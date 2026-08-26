@@ -427,4 +427,261 @@ public sealed class WarningTests
             env.Dispose();
         }
     }
+
+    [TestMethod]
+    public void WarningsModule_SimpleFilter_Ignore_Suppresses()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            PyInterpreter.RunCodeWithContext(
+                context,
+                "import warnings\nwarnings.simplefilter(\"ignore\")\nwarnings.warn(\"boom\")",
+                module, "<test>", isMain: true);
+            Assert.AreEqual(string.Empty, host.Stderr.ToString());
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_SimpleFilter_Error_Raises()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            Assert.ThrowsExactly<PyRuntimeException>(() =>
+                PyInterpreter.RunCodeWithContext(
+                    context,
+                    "import warnings\nwarnings.simplefilter(\"error\")\nwarnings.warn(\"boom\")",
+                    module, "<test>", isMain: true));
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_FilterWarnings_MessageRegex()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            PyInterpreter.RunCodeWithContext(
+                context,
+                "import warnings\nwarnings.filterwarnings(\"ignore\", message=\"boom\")\nwarnings.warn(\"boom\")\nwarnings.warn(\"other\")",
+                module, "<test>", isMain: true);
+            Assert.AreEqual("<test>:4: UserWarning: other\n  warnings.warn(\"other\")\n", host.Stderr.ToString());
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_FilterWarnings_MessageRegex_IgnoreCase()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            PyInterpreter.RunCodeWithContext(
+                context,
+                "import warnings\nwarnings.filterwarnings(\"ignore\", message=\"BOOM\")\nwarnings.warn(\"boom\")",
+                module, "<test>", isMain: true);
+            Assert.AreEqual(string.Empty, host.Stderr.ToString());
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_FilterWarnings_ModuleRegex()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            context.PyEnvironment.Warnings.AddFilter(
+                new WarningFilter(WarningAction.Ignore, PyUserWarningObjectType.Shared, null, "test", 0));
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "test.py", 7);
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "other.py", 7);
+            Assert.AreEqual("other.py:7: UserWarning: boom\n", host.Stderr.ToString());
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_FilterWarnings_Lineno()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            context.PyEnvironment.Warnings.AddFilter(
+                new WarningFilter(WarningAction.Ignore, PyUserWarningObjectType.Shared, null, null, 7));
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7);
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 9);
+            Assert.AreEqual("mod.py:9: UserWarning: boom\n", host.Stderr.ToString());
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_FilterWarnings_Append_KeepsPrecedence()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            context.PyEnvironment.Warnings.AddFilter(PyUserWarningObjectType.Shared, WarningAction.Ignore);
+            context.PyEnvironment.Warnings.AddFilter(
+                new WarningFilter(WarningAction.Always, PyUserWarningObjectType.Shared, null, null, 0), append: true);
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7);
+            Assert.AreEqual(string.Empty, host.Stderr.ToString());
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_ResetWarnings_ClearsFilters()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            PyInterpreter.RunCodeWithContext(
+                context,
+                "import warnings\nwarnings.filterwarnings(\"ignore\")\nwarnings.resetwarnings()\nwarnings.warn(\"boom\")",
+                module, "<test>", isMain: true);
+            Assert.AreEqual("<test>:4: UserWarning: boom\n  warnings.warn(\"boom\")\n", host.Stderr.ToString());
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_FilterWarnings_InvalidAction_RaisesValueError()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            Assert.ThrowsExactly<PyRuntimeException>(() =>
+                PyInterpreter.RunCodeWithContext(
+                    context,
+                    "import warnings\nwarnings.filterwarnings(\"bogus\")",
+                    module, "<test>", isMain: true));
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_FilterWarnings_NonStringMessage_RaisesTypeError()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            Assert.ThrowsExactly<PyRuntimeException>(() =>
+                PyInterpreter.RunCodeWithContext(
+                    context,
+                    "import warnings\nwarnings.filterwarnings(\"ignore\", message=123)",
+                    module, "<test>", isMain: true));
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_FilterWarnings_NegativeLineno_RaisesValueError()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            Assert.ThrowsExactly<PyRuntimeException>(() =>
+                PyInterpreter.RunCodeWithContext(
+                    context,
+                    "import warnings\nwarnings.filterwarnings(\"ignore\", lineno=-1)",
+                    module, "<test>", isMain: true));
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_FilterWarnings_NonIntLineno_RaisesTypeError()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            Assert.ThrowsExactly<PyRuntimeException>(() =>
+                PyInterpreter.RunCodeWithContext(
+                    context,
+                    "import warnings\nwarnings.filterwarnings(\"ignore\", lineno=\"x\")",
+                    module, "<test>", isMain: true));
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_FilterWarnings_InvalidCategory_RaisesTypeError()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            Assert.ThrowsExactly<PyRuntimeException>(() =>
+                PyInterpreter.RunCodeWithContext(
+                    context,
+                    "import warnings\nwarnings.filterwarnings(\"ignore\", category=int)",
+                    module, "<test>", isMain: true));
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
 }
