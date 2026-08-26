@@ -25,6 +25,15 @@ internal readonly record struct WarningFilter(
     string? ModulePattern,
     int Lineno);
 
+internal sealed class WarningStateSnapshot
+{
+    internal required List<WarningFilter> Filters { get; init; }
+    internal required WarningAction DefaultAction { get; init; }
+    internal required HashSet<(string Module, string Text, PyTypeObject<PyExceptionObject> Category, int Lineno)> WarnedDefault { get; init; }
+    internal required HashSet<(string Module, string Text, PyTypeObject<PyExceptionObject> Category)> WarnedModule { get; init; }
+    internal required HashSet<(string Text, PyTypeObject<PyExceptionObject> Category)> WarnedOnce { get; init; }
+}
+
 // Per-interpreter warning policy: a filter list, a default action, and a version counter
 // that invalidates accumulated deduplication entries when the policy changes.
 internal sealed class WarningState
@@ -39,6 +48,36 @@ internal sealed class WarningState
     internal WarningAction DefaultAction { get; private set; } = WarningAction.Default;
 
     internal IReadOnlyList<WarningFilter> Filters => _filters;
+
+    internal WarningStateSnapshot Capture()
+    {
+        SyncVersion();
+        return new WarningStateSnapshot
+        {
+            Filters = [.. _filters],
+            DefaultAction = DefaultAction,
+            WarnedDefault = [.. _warnedDefault],
+            WarnedModule = [.. _warnedModule],
+            WarnedOnce = [.. _warnedOnce],
+        };
+    }
+
+    internal void Restore(WarningStateSnapshot snapshot)
+    {
+        _filters.Clear();
+        _filters.AddRange(snapshot.Filters);
+        DefaultAction = snapshot.DefaultAction;
+
+        _warnedDefault.Clear();
+        _warnedDefault.UnionWith(snapshot.WarnedDefault);
+        _warnedModule.Clear();
+        _warnedModule.UnionWith(snapshot.WarnedModule);
+        _warnedOnce.Clear();
+        _warnedOnce.UnionWith(snapshot.WarnedOnce);
+
+        _filtersVersion++;
+        _observedVersion = _filtersVersion;
+    }
 
     // Adds a filter that matches only by category (any module/message/lineno).
     internal void AddFilter(PyTypeObject<PyExceptionObject> category, WarningAction action)

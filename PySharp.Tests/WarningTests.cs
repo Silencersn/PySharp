@@ -469,6 +469,66 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    public void WarningsModule_CatchWarnings_RestoresFilter()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            PyInterpreter.RunCodeWithContext(
+                context,
+                "import warnings\nwith warnings.catch_warnings(action=\"ignore\"):\n    warnings.warn(\"inside\")\nwarnings.warn(\"outside\")",
+                module, "<test>", isMain: true);
+            Assert.AreEqual("<test>:4: UserWarning: outside\n  warnings.warn(\"outside\")\n", host.Stderr.ToString());
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_CatchWarnings_NestedContextsRestoreOuterState()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            PyInterpreter.RunCodeWithContext(
+                context,
+                "import warnings\nwith warnings.catch_warnings(action=\"ignore\"):\n    with warnings.catch_warnings(action=\"always\"):\n        warnings.warn(\"inner\")\n    warnings.warn(\"outer\")\nwarnings.warn(\"after\")",
+                module, "<test>", isMain: true);
+            Assert.AreEqual("<test>:4: UserWarning: inner\n          warnings.warn(\"inner\")\n<test>:6: UserWarning: after\n  warnings.warn(\"after\")\n", host.Stderr.ToString());
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_CatchWarnings_RestoresAfterException()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            PyInterpreter.RunCodeWithContext(
+                context,
+                "import warnings\ntry:\n    with warnings.catch_warnings(action=\"ignore\"):\n        raise ValueError(\"boom\")\nexcept ValueError:\n    pass\nwarnings.warn(\"after\")",
+                module, "<test>", isMain: true);
+            Assert.AreEqual("<test>:7: UserWarning: after\n  warnings.warn(\"after\")\n", host.Stderr.ToString());
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
     public void WarningsModule_FilterWarnings_MessageRegex()
     {
         var (host, env, context) = CreateContext();

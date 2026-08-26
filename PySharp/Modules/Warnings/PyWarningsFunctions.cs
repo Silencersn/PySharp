@@ -105,6 +105,42 @@ public static partial class PyWarningsFunctions
     [PyExport("resetwarnings", nameof(ResetWarningsImpl))]
     public static partial PyBuiltinFunctionOrMethodObject ResetWarnings { get; }
 
+    [PyExport("catch_warnings", nameof(CatchWarningsImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject CatchWarnings { get; }
+
+    [PyFunctionParameters("record=False", "module=None", "action=None", "category=None", "lineno=0", "append=False")]
+    private static PyResult CatchWarningsImpl(PyCallContext context, PyArguments arguments)
+    {
+        if (AsBool(context, arguments[0]))
+            return PyResult.PySharpException("NotImplemented");
+        if (arguments[1] is not PyNoneObject)
+            return PyResult.PySharpException("NotImplemented");
+
+        WarningAction? action = null;
+        if (arguments[2] is not PyNoneObject)
+        {
+            if (arguments[2] is not PyStrObject actionObj)
+                return PyResult.TypeError("action must be a string");
+            if (!TryParseAction(actionObj.Value, out var parsedAction))
+                return PyResult.ValueError($"invalid action: '{actionObj.Value}'");
+            action = parsedAction;
+        }
+
+        var category = ResolveCategory(arguments[3]);
+        if (category is null)
+            return PyResult.TypeError($"category must be a Warning subclass, not '{arguments[3].PyType.Name}'");
+        if (arguments[4] is not PyIntObject linenoObj)
+            return PyResult.TypeError("lineno must be an int");
+        if (linenoObj.Int32Value < 0)
+            return PyResult.ValueError("lineno must be an int >= 0");
+
+        return new PyCatchWarningsObject(
+            action,
+            category,
+            linenoObj.Int32Value,
+            AsBool(context, arguments[5]));
+    }
+
     // Clears the warning filter list entirely, so no filters are active.
     [PyFunctionParameters()]
     private static PyResult ResetWarningsImpl(PyCallContext context, PyArguments arguments)
@@ -113,7 +149,7 @@ public static partial class PyWarningsFunctions
         return default;
     }
 
-    private static bool TryParseAction(string action, out WarningAction result)
+    internal static bool TryParseAction(string action, out WarningAction result)
     {
         switch (action)
         {
@@ -128,7 +164,7 @@ public static partial class PyWarningsFunctions
         }
     }
 
-    private static PyTypeObject<PyExceptionObject>? ResolveCategory(PyObject categoryObj)
+    internal static PyTypeObject<PyExceptionObject>? ResolveCategory(PyObject categoryObj)
     {
         if (categoryObj is PyNoneObject)
             return PyWarningObjectType.Shared;
@@ -152,7 +188,7 @@ public static partial class PyWarningsFunctions
         }
     }
 
-    private static bool AsBool(PyCallContext context, PyObject value)
+    internal static bool AsBool(PyCallContext context, PyObject value)
     {
         if (value is PyBoolObject boolObject)
             return boolObject.BoolValue;

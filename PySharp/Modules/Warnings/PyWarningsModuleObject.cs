@@ -16,6 +16,7 @@ public partial class PyWarningsModuleObject : PyModuleObject
             PyStrObject.FromString("warn"),
             PyStrObject.FromString("simplefilter"),
             PyStrObject.FromString("filterwarnings"),
-            PyStrObject.FromString("resetwarnings")));
+            PyStrObject.FromString("resetwarnings"),
+            PyStrObject.FromString("catch_warnings")));
     }
 }
