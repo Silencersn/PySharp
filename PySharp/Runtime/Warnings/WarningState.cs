@@ -16,9 +16,8 @@ internal enum WarningAction
     Once,
 }
 
-// A filter mirrors CPython's 5-tuple (action, message_pattern, category, module_pattern, lineno).
-// The message/module patterns are compiled lazily with .NET Regex; a null pattern matches anything,
-// and a lineno of 0 matches any line. Order matters: the first matching entry wins.
+// CPython filter tuple: action, message regex, category, module regex, lineno.
+// Null patterns match anything; line 0 matches any line; first match wins.
 internal readonly record struct WarningFilter(
     WarningAction Action,
     PyTypeObject<PyExceptionObject> Category,
@@ -34,8 +33,7 @@ internal sealed class WarningStateSnapshot
     internal required PyListObject? RecordSink { get; init; }
 }
 
-// Per-interpreter warning policy: a filter list, a default action, and a version counter
-// that invalidates accumulated deduplication entries when the policy changes.
+// Per-interpreter warning policy and deduplication state.
 internal sealed class WarningState
 {
     private readonly List<WarningFilter> _filters = [];
@@ -43,7 +41,6 @@ internal sealed class WarningState
     private int _filtersVersion;
     private int _observedVersion;
 
-    // Mirrors CPython's default warning filters installed at interpreter startup.
     public WarningState()
     {
         _filters.AddRange(CreateDefaultFilters());
@@ -194,13 +191,10 @@ internal sealed class WarningState
             category);
     }
 
-    // Adds a filter that matches only by category (any module/message/lineno).
     internal void AddFilter(PyTypeObject<PyExceptionObject> category, WarningAction action)
         => AddFilter(new WarningFilter(action, category, null, null, 0));
 
-    // Mirrors CPython's _add_filter: when append is false an equal filter is removed first and the
-    // new entry is inserted at the front (highest precedence); when append is true it is only added
-    // if not already present.
+    // Insert at the front unless append=True, in which case add only if absent.
     internal void AddFilter(WarningFilter filter, bool append = false)
     {
         if (append)
@@ -229,9 +223,7 @@ internal sealed class WarningState
         _filtersVersion++;
     }
 
-    // Resolves the action for a warning: the first filter whose category is a supertype of the
-    // given category and whose message/module/lineno constraints are satisfied wins, otherwise the
-    // default action is used.
+    // Return the first matching filter action, or the default action.
     internal WarningAction ResolveAction(PyTypeObject<PyExceptionObject> category, string text, string module, int lineno)
     {
         foreach (var filter in _filters)
@@ -260,15 +252,14 @@ internal sealed class WarningState
         return true;
     }
 
-    // Python's re.Pattern.match() is anchored at the start, so require the match to begin at index 0.
+    // Match from the start to mirror Python's regex semantics.
     private static bool MatchAtStart(string pattern, string input, RegexOptions options)
     {
         var match = new Regex(pattern, options).Match(input);
         return match.Success && match.Index is 0;
     }
 
-    // When the filter policy changes, previously recorded warnings are forgotten so that a
-    // changed policy is re-evaluated on the next emission.
+    // Reset dedup state when the filter policy changes.
     private void SyncVersion()
     {
         if (_observedVersion != _filtersVersion)

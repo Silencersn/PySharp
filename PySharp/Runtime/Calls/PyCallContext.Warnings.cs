@@ -42,9 +42,7 @@ partial class PyCallContext
         return DispatchWarning(filename, lineno, warningType, warning, strResult.Value.Value, module ?? NormalizeModule(filename), registry, line, source);
     }
 
-    // Resolves the filter action and dispatches: "error" raises, "ignore" suppresses,
-    // "always"/"all" always write, and "default"/"module"/"once" write after deduplicating
-    // by their respective scope.
+    // Resolve the action and emit or suppress the warning per filter semantics.
     private PyResult DispatchWarning(
         string filename,
         int lineno,
@@ -118,8 +116,7 @@ partial class PyCallContext
         return ((PyExceptionType)warningType).Create(message);
     }
 
-    // Derives the registry module name from a filename the same way CPython's normalize_module
-    // does: an empty name maps to "<unknown>", and a trailing ".py" is stripped.
+    // Match CPython's filename normalization for warning module names.
     private static string NormalizeModule(string filename)
     {
         if (filename.Length is 0)
@@ -131,8 +128,7 @@ partial class PyCallContext
 
     private PyResult ResolveWarningType(PyObject message, PyTypeObject<PyExceptionObject>? warningType)
     {
-        // When the message is already a Warning instance, CPython derives the category
-        // from its concrete type (overriding any category passed explicitly).
+        // Warning instances retain their own category, matching CPython.
         if (PyWarningObjectType.Shared.IsInstance(message))
             warningType = message.PyType as PyTypeObject<PyExceptionObject>;
 
@@ -150,7 +146,7 @@ partial class PyCallContext
         if (frameState is null || frameState.CurrentFrameCount is 0)
             return ("<sys>", 0, null, "<sys>", null);
 
-        // Comprehension frames are inline, so they are skipped when walking the logical stack.
+        // Skip comprehension frames when walking the logical call stack.
         int idx = frameState.CurrentFrameCount - 1;
         while (idx > 0 && frameState.GetFrame(idx).FrameType is FrameType.Comprehension)
             idx--;
@@ -176,8 +172,7 @@ partial class PyCallContext
         return (code.Filename, lineno, sourceLine, module, frame.Variables?.Globals);
     }
 
-    // Mirrors CPython's globals.setdefault("__warningregistry__", {}): a module keeps one
-    // registry dict per frame globals, so repeated warnings at the same site are deduplicated.
+    // CPython keeps one warning registry per module globals dict.
     private static PyDictObject? GetOrCreateWarningRegistry(PyDictObject globals)
     {
         if (globals.TryGetValue("__warningregistry__", out var existing) && existing is PyDictObject existingRegistry)
@@ -187,8 +182,7 @@ partial class PyCallContext
         return registry;
     }
 
-    // Reads the module name from the target frame's globals, falling back to a normalized form
-    // of the code object's filename for frames that do not expose a module name.
+    // Use the frame's module name when available, otherwise fall back to the filename.
     private static string ResolveModuleName(ref PyInternalFrame frame)
     {
         if (frame.Variables?.Globals is { } globals &&
@@ -197,8 +191,7 @@ partial class PyCallContext
         return NormalizeModule(frame.CodeObject?.Filename ?? "<sys>");
     }
 
-    // Writes the standard warning format "filename:lineno: Category: message", followed by the
-    // source line (when available) indented by two spaces.
+    // Emit the standard warning line, plus the source line when available.
     private void WriteWarning(string filename, int lineno, PyTypeObject<PyExceptionObject> warningType, string text, string? sourceLine)
     {
         var error = PyEnvironment.Error;

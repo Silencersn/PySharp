@@ -13,7 +13,6 @@ public partial class PyWarningsModuleObject : PyModuleObject
 
     public PyWarningsModuleObject() : base("warnings")
     {
-        // Mirror the public surface exposed by this module in __all__, ordered like CPython's.
         AppendAttribute(PySpecialNames.All, PyListObject.CreateList(
             PyStrObject.FromString("warn"),
             PyStrObject.FromString("warn_explicit"),

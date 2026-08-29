@@ -14,9 +14,6 @@ public static partial class PyWarningsFunctions
     [PyExport("warn_explicit", nameof(WarnExplicitImpl))]
     public static partial PyBuiltinFunctionOrMethodObject WarnExplicit { get; }
 
-    // Emits a warning through the core warning machinery. The message is any object (its str()
-    // is used), the category defaults to UserWarning when None, and stacklevel attributes the
-    // warning to the caller's frame (1 = the line that invoked warnings.warn).
     [PyFunctionParameters("message", "category=None", "stacklevel=1")]
     private static PyResult WarnImpl(PyCallContext context, PyArguments arguments)
     {
@@ -93,9 +90,6 @@ public static partial class PyWarningsFunctions
     [PyExport("filterwarnings", nameof(FilterWarningsImpl))]
     public static partial PyBuiltinFunctionOrMethodObject FilterWarnings { get; }
 
-    // Inserts a full filter entry (action + message/module regex + category + lineno) into the
-    // warning filter list, mirroring CPython's warnings.filterwarnings. An empty message/module
-    // matches anything; message is matched case-insensitively and module case-sensitively.
     [PyFunctionParameters("action", "message=''", "category=None", "module=''", "lineno=0", "append=False")]
     private static PyResult FilterWarningsImpl(PyCallContext context, PyArguments arguments)
     {
@@ -134,7 +128,6 @@ public static partial class PyWarningsFunctions
     [PyExport("simplefilter", nameof(SimpleFilterImpl))]
     public static partial PyBuiltinFunctionOrMethodObject SimpleFilter { get; }
 
-    // Adds a filter that matches any module/message, so only the category and lineno apply.
     [PyFunctionParameters("action", "category=None", "lineno=0", "append=False")]
     private static PyResult SimpleFilterImpl(PyCallContext context, PyArguments arguments)
     {
@@ -197,7 +190,6 @@ public static partial class PyWarningsFunctions
             record ? PyListObject.CreateList() : null);
     }
 
-    // Clears the warning filter list entirely, so no filters are active.
     [PyFunctionParameters()]
     private static PyResult ResetWarningsImpl(PyCallContext context, PyArguments arguments)
     {
