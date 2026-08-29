@@ -9,7 +9,7 @@ namespace PySharp.Analyzer;
 public partial class PySharpAnalyzer : DiagnosticAnalyzer
 {
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-        ImmutableArray.Create(PYSP001, PYSP002, PYSP003, PYSP004);
+        ImmutableArray.Create(PYSP001, PYSP002, PYSP003, PYSP004, PYSP005);
 
     public override void Initialize(AnalysisContext context)
     {
@@ -24,5 +24,7 @@ public partial class PySharpAnalyzer : DiagnosticAnalyzer
             SyntaxKind.InvocationExpression);
         context.RegisterSyntaxNodeAction(AnalyzeFactoryToConstant,
             SyntaxKind.InvocationExpression);
+        context.RegisterSyntaxNodeAction(AnalyzeExceptionResultReturn,
+            SyntaxKind.ReturnStatement);
     }
 }

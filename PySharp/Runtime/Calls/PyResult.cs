@@ -1,4 +1,5 @@
 using PySharp.Modules.Builtins;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Runtime.Calls;
@@ -34,7 +35,19 @@ public readonly partial struct PyResult
     // default(PyResult) is regarded as PyResult.FromValue(PyNoneObject.None)
     public PyObject? Value => _value ?? (IsError ? null : PyNoneObject.None);
     public PyExceptionObject? Exception => _exception;
-    public PyExceptionResult ExceptionResult => new(_exception);
+
+    /// <summary>
+    /// Extracts the exception part as a bridge result so the error can be implicitly
+    /// converted to the enclosing method's return type when it differs from the source.
+    /// </summary>
+    public PyExceptionResult ExceptionResult
+    {
+        get
+        {
+            Debug.Assert(IsError);
+            return new(_exception);
+        }
+    }
 
     private PyResult(PyObject value)
     {

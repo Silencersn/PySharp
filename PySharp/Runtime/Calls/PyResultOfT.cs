@@ -1,4 +1,5 @@
 using PySharp.Modules.Builtins;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using static PySharp.Runtime.Calls.PyResult;
 
@@ -28,7 +29,19 @@ public readonly partial struct PyResult<TObject> where TObject : PyObject
 
     public TObject? Value => _value;
     public PyExceptionObject? Exception => _exception;
-    public PyExceptionResult ExceptionResult => new(_exception);
+
+    /// <summary>
+    /// Extracts the exception part as a bridge result so the error can be implicitly
+    /// converted to any target PyResult / PyResult&lt;T&gt; type when it differs from the source.
+    /// </summary>
+    public PyExceptionResult ExceptionResult
+    {
+        get
+        {
+            Debug.Assert(IsError);
+            return new(_exception);
+        }
+    }
 
     private PyResult(TObject value)
     {
