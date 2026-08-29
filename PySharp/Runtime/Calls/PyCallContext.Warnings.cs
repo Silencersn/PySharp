@@ -19,11 +19,15 @@ partial class PyCallContext
             return strResult.ExceptionResult;
 
         var warning = CreateWarningInstance(message, warningType);
-        var (filename, lineno, sourceLine, module) = ResolveWarningLocation(stacklevel);
-        return DispatchWarning(filename, lineno, warningType, warning, strResult.Value.Value, module, sourceLine);
+        var (filename, lineno, sourceLine, module, globals) = ResolveWarningLocation(stacklevel);
+        var registry = globals is null ? null : GetOrCreateWarningRegistry(globals);
+        return DispatchWarning(filename, lineno, warningType, warning, strResult.Value.Value, module, registry, sourceLine, null);
     }
 
     public PyResult WarnExplicit(PyObject message, PyTypeObject<PyExceptionObject>? warningType, string filename, int lineno, string? line = null)
+        => WarnExplicit(message, warningType, filename, lineno, null, null, null, line);
+
+    public PyResult WarnExplicit(PyObject message, PyTypeObject<PyExceptionObject>? warningType, string filename, int lineno, string? module, PyDictObject? registry, PyObject? source, string? line = null)
     {
         var typeResult = ResolveWarningType(message, warningType);
         if (typeResult.IsError)
@@ -35,7 +39,7 @@ partial class PyCallContext
             return strResult.ExceptionResult;
 
         var warning = CreateWarningInstance(message, warningType);
-        return DispatchWarning(filename, lineno, warningType, warning, strResult.Value.Value, NormalizeModule(filename), line);
+        return DispatchWarning(filename, lineno, warningType, warning, strResult.Value.Value, module ?? NormalizeModule(filename), registry, line, source);
     }
 
     // Resolves the filter action and dispatches: "error" raises, "ignore" suppresses,
@@ -48,9 +52,19 @@ partial class PyCallContext
         PyExceptionObject warning,
         string text,
         string module,
-        string? sourceLine)
+        PyDictObject? registry,
+        string? sourceLine,
+        PyObject? source)
     {
         var state = PyEnvironment.Warnings;
+
+        if (registry is not null)
+        {
+            var registryResult = state.PrepareRegistry(registry);
+            if (registryResult.IsError)
+                return registryResult;
+        }
+
         var action = state.ResolveAction(warningType, text, module, lineno);
         switch (action)
         {
@@ -59,13 +73,18 @@ partial class PyCallContext
             case WarningAction.Ignore:
                 return default;
             case WarningAction.Always:   // covers All, which is an alias with the same value
-                PublishWarning(filename, lineno, warningType, warning, text, sourceLine);
+                PublishWarning(filename, lineno, warningType, warning, text, sourceLine, source);
                 return default;
             default:
-                if (state.ShouldSuppress(action, module, text, warningType, lineno))
+                var suppressResult = state.ShouldSuppress(this, action, text, warningType, lineno, registry);
+                if (suppressResult.IsError)
+                    return suppressResult.ExceptionResult;
+                if (((PyBoolObject)suppressResult.Value).BoolValue)
                     return default;
-                PublishWarning(filename, lineno, warningType, warning, text, sourceLine);
-                state.MarkWarned(action, module, text, warningType, lineno);
+                PublishWarning(filename, lineno, warningType, warning, text, sourceLine, source);
+                var markResult = state.MarkWarned(this, action, text, warningType, lineno, registry);
+                if (markResult.IsError)
+                    return markResult;
                 return default;
         }
     }
@@ -76,12 +95,13 @@ partial class PyCallContext
         PyTypeObject<PyExceptionObject> warningType,
         PyObject message,
         string text,
-        string? sourceLine)
+        string? sourceLine,
+        PyObject? source)
     {
         var recordSink = PyEnvironment.Warnings.RecordSink;
         if (recordSink is not null)
         {
-            recordSink.Add(new PyWarningMessageObject(message, warningType, filename, lineno, sourceLine));
+            recordSink.Add(new PyWarningMessageObject(message, warningType, filename, lineno, sourceLine, source));
             return;
         }
 
@@ -124,11 +144,11 @@ partial class PyCallContext
         return warningType;
     }
 
-    private (string Filename, int Lineno, string? SourceLine, string Module) ResolveWarningLocation(int stacklevel)
+    private (string Filename, int Lineno, string? SourceLine, string Module, PyDictObject? Globals) ResolveWarningLocation(int stacklevel)
     {
         var frameState = _state;
         if (frameState is null || frameState.CurrentFrameCount is 0)
-            return ("<sys>", 0, null, "<sys>");
+            return ("<sys>", 0, null, "<sys>", null);
 
         // Comprehension frames are inline, so they are skipped when walking the logical stack.
         int idx = frameState.CurrentFrameCount - 1;
@@ -147,13 +167,24 @@ partial class PyCallContext
         ref var frame = ref frameState.GetFrame(idx);
         var code = frame.CodeObject;
         if (code is null)
-            return ("<sys>", 0, null, "<sys>");
+            return ("<sys>", 0, null, "<sys>", null);
 
         var info = code.Bytecode.LineTable.Read(frame.InstructionIndex);
         int lineno = info is not null ? info.Start.Line : 0;
         string? sourceLine = info is not null ? info.FirstLine.ToString() : null;
         string module = ResolveModuleName(ref frame);
-        return (code.Filename, lineno, sourceLine, module);
+        return (code.Filename, lineno, sourceLine, module, frame.Variables?.Globals);
+    }
+
+    // Mirrors CPython's globals.setdefault("__warningregistry__", {}): a module keeps one
+    // registry dict per frame globals, so repeated warnings at the same site are deduplicated.
+    private static PyDictObject? GetOrCreateWarningRegistry(PyDictObject globals)
+    {
+        if (globals.TryGetValue("__warningregistry__", out var existing) && existing is PyDictObject existingRegistry)
+            return existingRegistry;
+        var registry = new PyDictObject();
+        globals.SetItem("__warningregistry__", registry);
+        return registry;
     }
 
     // Reads the module name from the target frame's globals, falling back to a normalized form

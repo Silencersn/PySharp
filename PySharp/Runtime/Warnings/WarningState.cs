@@ -1,4 +1,5 @@
 using PySharp.Modules.Builtins;
+using PySharp.Runtime.Calls;
 using System.Text.RegularExpressions;
 
 namespace PySharp.Runtime;
@@ -29,9 +30,7 @@ internal sealed class WarningStateSnapshot
 {
     internal required List<WarningFilter> Filters { get; init; }
     internal required WarningAction DefaultAction { get; init; }
-    internal required HashSet<(string Module, string Text, PyTypeObject<PyExceptionObject> Category, int Lineno)> WarnedDefault { get; init; }
-    internal required HashSet<(string Module, string Text, PyTypeObject<PyExceptionObject> Category)> WarnedModule { get; init; }
-    internal required HashSet<(string Text, PyTypeObject<PyExceptionObject> Category)> WarnedOnce { get; init; }
+    internal required PyDictObject WarnedOnce { get; init; }
     internal required PyListObject? RecordSink { get; init; }
 }
 
@@ -40,9 +39,7 @@ internal sealed class WarningStateSnapshot
 internal sealed class WarningState
 {
     private readonly List<WarningFilter> _filters = [];
-    private readonly HashSet<(string Module, string Text, PyTypeObject<PyExceptionObject> Category, int Lineno)> _warnedDefault = [];
-    private readonly HashSet<(string Module, string Text, PyTypeObject<PyExceptionObject> Category)> _warnedModule = [];
-    private readonly HashSet<(string Text, PyTypeObject<PyExceptionObject> Category)> _warnedOnce = [];
+    private PyDictObject _warnedOnce = new();
     private int _filtersVersion;
     private int _observedVersion;
 
@@ -50,6 +47,7 @@ internal sealed class WarningState
 
     internal IReadOnlyList<WarningFilter> Filters => _filters;
     internal PyListObject? RecordSink { get; private set; }
+    internal int FiltersVersion => _filtersVersion;
 
     internal WarningStateSnapshot Capture()
     {
@@ -58,9 +56,7 @@ internal sealed class WarningState
         {
             Filters = [.. _filters],
             DefaultAction = DefaultAction,
-            WarnedDefault = [.. _warnedDefault],
-            WarnedModule = [.. _warnedModule],
-            WarnedOnce = [.. _warnedOnce],
+            WarnedOnce = new PyDictObject(_warnedOnce),
             RecordSink = RecordSink,
         };
     }
@@ -71,12 +67,7 @@ internal sealed class WarningState
         _filters.AddRange(snapshot.Filters);
         DefaultAction = snapshot.DefaultAction;
 
-        _warnedDefault.Clear();
-        _warnedDefault.UnionWith(snapshot.WarnedDefault);
-        _warnedModule.Clear();
-        _warnedModule.UnionWith(snapshot.WarnedModule);
-        _warnedOnce.Clear();
-        _warnedOnce.UnionWith(snapshot.WarnedOnce);
+        _warnedOnce = new PyDictObject(snapshot.WarnedOnce);
         RecordSink = snapshot.RecordSink;
 
         _filtersVersion++;
@@ -85,6 +76,108 @@ internal sealed class WarningState
 
     internal void SetRecordSink(PyListObject? recordSink)
         => RecordSink = recordSink;
+
+    internal PyResult PrepareRegistry(PyDictObject registry)
+    {
+        var versionResult = registry.GetItem("version");
+        if (versionResult.IsError && !versionResult.IsKeyError)
+            return versionResult.ExceptionResult;
+
+        if (versionResult.IsError
+            || versionResult.Value is not PyIntObject version
+            || version.Int32Value != FiltersVersion)
+        {
+            registry.Clear();
+            registry.SetItem("version", PyIntObject.FromInteger(FiltersVersion));
+        }
+
+        return PyNoneObject.None;
+    }
+
+    internal PyResult ShouldSuppress(
+        PyCallContext context,
+        WarningAction action,
+        string text,
+        PyTypeObject<PyExceptionObject> category,
+        int lineno,
+        PyDictObject? registry)
+    {
+        SyncVersion();
+        if (action is WarningAction.Always)
+            return PyBoolObject.False;
+        if (action is WarningAction.Once)
+        {
+            var dictionary = registry ?? _warnedOnce;
+            var onceKey = CreateOnceKey(text, category);
+            var onceResult = dictionary.GetItem(context, onceKey);
+            if (onceResult.IsKeyError)
+                return PyBoolObject.False;
+            if (onceResult.IsError)
+                return onceResult.ExceptionResult;
+            var onceBoolResult = PySpecialMethods.Bool(context, onceResult.Value);
+            if (onceBoolResult.IsError)
+                return onceBoolResult.ExceptionResult;
+            return onceBoolResult.Value;
+        }
+        if (registry is null)
+            return PyBoolObject.False;
+
+        var key = CreateRegistryKey(text, category, action is WarningAction.Module ? 0 : lineno);
+        var result = registry.GetItem(context, key);
+        if (result.IsKeyError)
+            return PyBoolObject.False;
+        if (result.IsError)
+            return result.ExceptionResult;
+        var boolResult = PySpecialMethods.Bool(context, result.Value);
+        if (boolResult.IsError)
+            return boolResult.ExceptionResult;
+        return boolResult.Value;
+    }
+
+    internal PyResult MarkWarned(
+        PyCallContext context,
+        WarningAction action,
+        string text,
+        PyTypeObject<PyExceptionObject> category,
+        int lineno,
+        PyDictObject? registry)
+    {
+        SyncVersion();
+        if (action is WarningAction.Once)
+        {
+            var onceKey = CreateOnceKey(text, category);
+            return (registry ?? _warnedOnce).SetItem(context, onceKey, PyBoolObject.True);
+        }
+        if (action is WarningAction.Always)
+            return PyNoneObject.None;
+        if (registry is null)
+            return PyNoneObject.None;
+
+        return registry.SetItem(
+            context,
+            CreateRegistryKey(text, category, action is WarningAction.Module ? 0 : lineno),
+            PyBoolObject.True);
+    }
+
+    private static PyTupleObject CreateRegistryKey(
+        string text,
+        PyTypeObject<PyExceptionObject> category,
+        int lineno)
+    {
+        return PyTupleObject.CreateTuple(
+            PyStrObject.FromString(text),
+            category,
+            PyIntObject.FromInteger(lineno));
+    }
+
+    private static PyTupleObject CreateOnceKey(
+        string text,
+        PyTypeObject<PyExceptionObject> category)
+    {
+        return PyTupleObject.CreateTuple(
+            PyStrObject.FromString(text),
+            category);
+    }
 
     // Adds a filter that matches only by category (any module/message/lineno).
     internal void AddFilter(PyTypeObject<PyExceptionObject> category, WarningAction action)
@@ -159,45 +252,12 @@ internal sealed class WarningState
         return match.Success && match.Index is 0;
     }
 
-    // Returns true when this warning was already emitted under the current filter version
-    // and should therefore be suppressed. The deduplication key depends on the action:
-    // "default" once per site, "module" once per module, "once" globally.
-    internal bool ShouldSuppress(WarningAction action, string module, string text, PyTypeObject<PyExceptionObject> category, int lineno)
-    {
-        SyncVersion();
-        return action switch
-        {
-            WarningAction.Module => _warnedModule.Contains((module, text, category)),
-            WarningAction.Once => _warnedOnce.Contains((text, category)),
-            _ => _warnedDefault.Contains((module, text, category, lineno)),
-        };
-    }
-
-    internal void MarkWarned(WarningAction action, string module, string text, PyTypeObject<PyExceptionObject> category, int lineno)
-    {
-        SyncVersion();
-        switch (action)
-        {
-            case WarningAction.Module:
-                _warnedModule.Add((module, text, category));
-                break;
-            case WarningAction.Once:
-                _warnedOnce.Add((text, category));
-                break;
-            default:
-                _warnedDefault.Add((module, text, category, lineno));
-                break;
-        }
-    }
-
     // When the filter policy changes, previously recorded warnings are forgotten so that a
     // changed policy is re-evaluated on the next emission.
     private void SyncVersion()
     {
         if (_observedVersion != _filtersVersion)
         {
-            _warnedDefault.Clear();
-            _warnedModule.Clear();
             _warnedOnce.Clear();
             _observedVersion = _filtersVersion;
         }

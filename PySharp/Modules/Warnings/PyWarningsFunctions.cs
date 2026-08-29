@@ -11,6 +11,9 @@ public static partial class PyWarningsFunctions
     [PyExport("warn", nameof(WarnImpl))]
     public static partial PyBuiltinFunctionOrMethodObject Warn { get; }
 
+    [PyExport("warn_explicit", nameof(WarnExplicitImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject WarnExplicit { get; }
+
     // Emits a warning through the core warning machinery. The message is any object (its str()
     // is used), the category defaults to UserWarning when None, and stacklevel attributes the
     // warning to the caller's frame (1 = the line that invoked warnings.warn).
@@ -32,6 +35,37 @@ public static partial class PyWarningsFunctions
             return PyResult.TypeError($"'{arguments[2].PyType.Name}' object cannot be interpreted as an integer");
 
         return context.Warn(message, category, stacklevelObj.Int32Value);
+    }
+
+    [PyFunctionParameters("message", "category", "filename", "lineno", "module=None", "registry=None", "module_globals=None", "source=None")]
+    private static PyResult WarnExplicitImpl(PyCallContext context, PyArguments arguments)
+    {
+        if (arguments[2] is not PyStrObject filenameObj)
+            return PyResult.TypeError("filename must be a string");
+        if (arguments[3] is not PyIntObject linenoObj)
+            return PyResult.TypeError("lineno must be an int");
+        if (arguments[4] is not (PyNoneObject or PyStrObject))
+            return PyResult.TypeError("module must be a string or None");
+        if (arguments[5] is not (PyNoneObject or PyDictObject))
+            return PyResult.TypeError("registry must be a dict or None");
+        if (arguments[6] is not (PyNoneObject or PyDictObject))
+            return PyResult.TypeError($"module_globals must be a dict, not '{arguments[6].PyType.Name}'");
+
+        if (arguments[1] is not PyTypeObject<PyExceptionObject> category || !category.IsSubclassOf(PyWarningObjectType.Shared))
+            return PyResult.TypeError($"category must be a Warning subclass, not '{arguments[1].PyType.Name}'");
+
+        string? module = arguments[4] is PyStrObject moduleObj ? moduleObj.Value : null;
+        var registry = arguments[5] as PyDictObject;
+        // module_globals is validated above but otherwise unused, mirroring CPython where it is only
+        // used to prime the linecache for formatting (no behavioral effect on dedup/emission).
+        return context.WarnExplicit(
+            arguments[0],
+            category,
+            filenameObj.Value,
+            linenoObj.Int32Value,
+            module,
+            registry,
+            arguments[7]);
     }
 
     [PyExport("filterwarnings", nameof(FilterWarningsImpl))]

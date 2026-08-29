@@ -13,13 +13,15 @@ public sealed class PyWarningMessageObject : PyObject
     internal PyIntObject Lineno { get; }
     internal PyObject File { get; }
     internal PyObject Line { get; }
+    internal PyObject Source { get; }
 
     internal PyWarningMessageObject(
         PyObject message,
         PyTypeObject<PyExceptionObject> category,
         string filename,
         int lineno,
-        string? line)
+        string? line,
+        PyObject? source = null)
     {
         Message = message;
         Category = category;
@@ -27,6 +29,7 @@ public sealed class PyWarningMessageObject : PyObject
         Lineno = PyIntObject.FromInteger(lineno);
         File = PyNoneObject.None;
         Line = line is null ? PyNoneObject.None : PyStrObject.FromString(line);
+        Source = source ?? PyNoneObject.None;
     }
 
     public override PyTypeObject DefaultPyType => PyWarningMessageObjectType.Shared;
@@ -52,4 +55,7 @@ public sealed partial class PyWarningMessageObjectType : PyTypeObject<PyWarningM
 
     [PyProperty("line")]
     private static PyResult GetLine(PyCallContext context, PyWarningMessageObject self) => self.Line;
+
+    [PyProperty("source")]
+    private static PyResult GetSource(PyCallContext context, PyWarningMessageObject self) => self.Source;
 }

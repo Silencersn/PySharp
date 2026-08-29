@@ -125,8 +125,9 @@ public sealed class WarningTests
         var (host, env, context) = CreateContext();
         try
         {
-            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7);
-            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7);
+            var registry = new PyDictObject();
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7, null, registry, null, null);
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7, null, registry, null, null);
             Assert.AreEqual("mod.py:7: UserWarning: boom\n", host.Stderr.ToString());
         }
         finally
@@ -197,12 +198,13 @@ public sealed class WarningTests
         var (host, env, context) = CreateContext();
         try
         {
-            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7);
-            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7);
+            var registry = new PyDictObject();
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7, null, registry, null, null);
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7, null, registry, null, null);
             Assert.AreEqual("mod.py:7: UserWarning: boom\n", host.Stderr.ToString());
 
             context.PyEnvironment.Warnings.ClearFilters();
-            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7);
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7, null, registry, null, null);
             Assert.AreEqual("mod.py:7: UserWarning: boom\nmod.py:7: UserWarning: boom\n", host.Stderr.ToString());
         }
         finally
@@ -318,9 +320,11 @@ public sealed class WarningTests
         try
         {
             context.PyEnvironment.Warnings.AddFilter(PyUserWarningObjectType.Shared, WarningAction.Module);
-            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7);
-            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 9);
-            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod2.py", 7);
+            var modRegistry = new PyDictObject();
+            var mod2Registry = new PyDictObject();
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7, "mod.py", modRegistry, null, null);
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 9, "mod.py", modRegistry, null, null);
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod2.py", 7, "mod2.py", mod2Registry, null, null);
             Assert.AreEqual("mod.py:7: UserWarning: boom\nmod2.py:7: UserWarning: boom\n", host.Stderr.ToString());
         }
         finally
@@ -341,6 +345,45 @@ public sealed class WarningTests
             context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod2.py", 7);
             context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod3.py", 9);
             Assert.AreEqual("mod.py:7: UserWarning: boom\n", host.Stderr.ToString());
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void Warn_OnceAction_DedupsWithinRegistry()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            context.PyEnvironment.Warnings.AddFilter(PyUserWarningObjectType.Shared, WarningAction.Once);
+            var registry = new PyDictObject();
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7, "mod.py", registry, null, null);
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "other.py", 9, "other.py", registry, null, null);
+            Assert.AreEqual("mod.py:7: UserWarning: boom\n", host.Stderr.ToString());
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void Warn_OnceAction_RegistryIsolation()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            context.PyEnvironment.Warnings.AddFilter(PyUserWarningObjectType.Shared, WarningAction.Once);
+            var r1 = new PyDictObject();
+            var r2 = new PyDictObject();
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "mod.py", 7, "mod.py", r1, null, null);
+            context.WarnExplicit(PyStrObject.FromString("boom"), PyUserWarningObjectType.Shared, "other.py", 9, "other.py", r2, null, null);
+            Assert.AreEqual("mod.py:7: UserWarning: boom\nother.py:9: UserWarning: boom\n", host.Stderr.ToString());
         }
         finally
         {
@@ -595,6 +638,123 @@ public sealed class WarningTests
 
             Assert.AreEqual(string.Empty, host.Stderr.ToString());
             Assert.AreEqual(2, ((PyIntObject)module.PyAttributesDict["outer_count"]).Int32Value);
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_WarnExplicit_UsesExplicitModuleAndRegistry()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            PyInterpreter.RunCodeWithContext(
+                context,
+                "import warnings\nr = {}\nwith warnings.catch_warnings(record=True) as records:\n    warnings.warn_explicit(\"boom\", UserWarning, \"source.py\", 7, module=\"pkg.mod\", registry=r, source=\"obj\")\n    warnings.warn_explicit(\"boom\", UserWarning, \"other.py\", 7, module=\"pkg.mod\", registry=r)\nitem = records[0]\ncount = len(records)\nmessage = item.message\nfilename = item.filename\nlineno = item.lineno\nsource = item.source",
+                module, "<test>", isMain: true);
+
+            Assert.AreEqual(string.Empty, host.Stderr.ToString());
+            Assert.AreEqual(1, ((PyIntObject)module.PyAttributesDict["count"]).Int32Value);
+            Assert.AreEqual("source.py", ((PyStrObject)module.PyAttributesDict["filename"]).Value);
+            Assert.AreEqual(7, ((PyIntObject)module.PyAttributesDict["lineno"]).Int32Value);
+            Assert.AreEqual("obj", ((PyStrObject)module.PyAttributesDict["source"]).Value);
+            Assert.AreSame(PyUserWarningObjectType.Shared, ((PyExceptionObject)module.PyAttributesDict["message"]).PyType);
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_WarnExplicit_SeparateRegistriesDoNotSuppress()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            PyInterpreter.RunCodeWithContext(
+                context,
+                "import warnings\nr1 = {}\nr2 = {}\nwith warnings.catch_warnings(record=True) as records:\n    warnings.warn_explicit(\"boom\", UserWarning, \"source.py\", 7, registry=r1)\n    warnings.warn_explicit(\"boom\", UserWarning, \"source.py\", 7, registry=r2)\ncount = len(records)",
+                module, "<test>", isMain: true);
+
+            Assert.AreEqual(string.Empty, host.Stderr.ToString());
+            Assert.AreEqual(2, ((PyIntObject)module.PyAttributesDict["count"]).Int32Value);
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_WarnExplicit_UsesPythonRegistryContents()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            PyInterpreter.RunCodeWithContext(
+                context,
+                "import warnings\nr = {'version': 0, ('boom', UserWarning, 7): True}\nwith warnings.catch_warnings(record=True) as records:\n    warnings.warn_explicit('boom', UserWarning, 'source.py', 7, registry=r)\nr.clear()\nwith warnings.catch_warnings(record=True) as records2:\n    warnings.warn_explicit('boom', UserWarning, 'source.py', 7, registry=r)\nfirst = len(records)\nsecond = len(records2)\nversion = r['version']\nkey = r[('boom', UserWarning, 7)]",
+                module, "<test>", isMain: true);
+
+            Assert.AreEqual(string.Empty, host.Stderr.ToString());
+            Assert.AreEqual(0, ((PyIntObject)module.PyAttributesDict["first"]).Int32Value);
+            Assert.AreEqual(1, ((PyIntObject)module.PyAttributesDict["second"]).Int32Value);
+            Assert.AreEqual(1, ((PyIntObject)module.PyAttributesDict["version"]).Int32Value);
+            Assert.IsTrue(((PyBoolObject)module.PyAttributesDict["key"]).BoolValue);
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_WarnExplicit_NullRegistryDoesNotDeduplicate()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            PyInterpreter.RunCodeWithContext(
+                context,
+                "import warnings\nwith warnings.catch_warnings(record=True) as records:\n    warnings.warn_explicit('boom', UserWarning, 'source.py', 7, registry=None)\n    warnings.warn_explicit('boom', UserWarning, 'source.py', 7, registry=None)\ncount = len(records)",
+                module, "<test>", isMain: true);
+
+            Assert.AreEqual(string.Empty, host.Stderr.ToString());
+            Assert.AreEqual(2, ((PyIntObject)module.PyAttributesDict["count"]).Int32Value);
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_WarnExplicit_NullRegistryDoesNotCreateTransientState()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            PyInterpreter.RunCodeWithContext(
+                context,
+                "import warnings\nwith warnings.catch_warnings(record=True) as records:\n    warnings.warn_explicit('boom', UserWarning, 'source.py', 7, registry=None)\n    warnings.warn_explicit('boom', UserWarning, 'source.py', 7, registry=None)\ncount = len(records)",
+                module, "<test>", isMain: true);
+
+            Assert.AreEqual(string.Empty, host.Stderr.ToString());
+            Assert.AreEqual(2, ((PyIntObject)module.PyAttributesDict["count"]).Int32Value);
         }
         finally
         {

@@ -15,6 +15,7 @@ public partial class PyWarningsModuleObject : PyModuleObject
         // Mirror the public surface exposed by this module in __all__.
         AppendAttribute(PySpecialNames.All, PyListObject.CreateList(
             PyStrObject.FromString("warn"),
+            PyStrObject.FromString("warn_explicit"),
             PyStrObject.FromString("simplefilter"),
             PyStrObject.FromString("filterwarnings"),
             PyStrObject.FromString("resetwarnings"),
