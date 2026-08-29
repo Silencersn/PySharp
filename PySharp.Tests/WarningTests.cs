@@ -581,6 +581,140 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    public void WarningsModule_Deprecated_FunctionWarnsOnCall()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            PyInterpreter.RunCodeWithContext(
+                context,
+                "import warnings\nfrom warnings import deprecated\n@deprecated(\"use new\")\ndef f(): pass\nwith warnings.catch_warnings(record=True) as records:\n    f()\ncount = len(records)\ncat = records[0].category\nmsg = f.__deprecated__",
+                module, "<test>", isMain: true);
+
+            Assert.AreEqual(string.Empty, host.Stderr.ToString());
+            Assert.AreEqual(1, ((PyIntObject)module.PyAttributesDict["count"]).Int32Value);
+            Assert.AreSame(PyDeprecationWarningObjectType.Shared, module.PyAttributesDict["cat"]);
+            Assert.AreEqual("use new", ((PyStrObject)module.PyAttributesDict["msg"]).Value);
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_Deprecated_ClassWarnsOnInstantiation()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            PyInterpreter.RunCodeWithContext(
+                context,
+                "import warnings\nfrom warnings import deprecated\n@deprecated(\"use B\")\nclass A: pass\nwith warnings.catch_warnings(record=True) as records:\n    A()\ncount = len(records)\nmsg = A.__deprecated__",
+                module, "<test>", isMain: true);
+
+            Assert.AreEqual(string.Empty, host.Stderr.ToString());
+            Assert.AreEqual(1, ((PyIntObject)module.PyAttributesDict["count"]).Int32Value);
+            Assert.AreEqual("use B", ((PyStrObject)module.PyAttributesDict["msg"]).Value);
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_Deprecated_ClassWarnsOnSubclass()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            PyInterpreter.RunCodeWithContext(
+                context,
+                "import warnings\nfrom warnings import deprecated\n@deprecated(\"use B\")\nclass A: pass\nwith warnings.catch_warnings(record=True) as records:\n    class B(A): pass\ncount = len(records)",
+                module, "<test>", isMain: true);
+
+            Assert.AreEqual(string.Empty, host.Stderr.ToString());
+            Assert.AreEqual(1, ((PyIntObject)module.PyAttributesDict["count"]).Int32Value);
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_Deprecated_CategoryNone_NoWarning()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            PyInterpreter.RunCodeWithContext(
+                context,
+                "import warnings\nfrom warnings import deprecated\n@deprecated(\"use B\", category=None)\ndef f(): pass\nwith warnings.catch_warnings(record=True) as records:\n    f()\ncount = len(records)\nmsg = f.__deprecated__",
+                module, "<test>", isMain: true);
+
+            Assert.AreEqual(string.Empty, host.Stderr.ToString());
+            Assert.AreEqual(0, ((PyIntObject)module.PyAttributesDict["count"]).Int32Value);
+            Assert.AreEqual("use B", ((PyStrObject)module.PyAttributesDict["msg"]).Value);
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_Deprecated_CustomCategory()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            PyInterpreter.RunCodeWithContext(
+                context,
+                "import warnings\nfrom warnings import deprecated\n@deprecated(\"use B\", category=UserWarning)\ndef f(): pass\nwith warnings.catch_warnings(record=True) as records:\n    f()\ncat = records[0].category",
+                module, "<test>", isMain: true);
+
+            Assert.AreEqual(string.Empty, host.Stderr.ToString());
+            Assert.AreSame(PyUserWarningObjectType.Shared, module.PyAttributesDict["cat"]);
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_Deprecated_InvalidMessage_RaisesTypeError()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            Assert.ThrowsExactly<PyRuntimeException>(() =>
+                PyInterpreter.RunCodeWithContext(
+                    context,
+                    "from warnings import deprecated\ndeprecated(123)",
+                    module, "<test>", isMain: true));
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
     public void WarningsModule_Warn_InvalidCategory_RaisesTypeError()
     {
         var (host, env, context) = CreateContext();

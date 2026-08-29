@@ -6,6 +6,7 @@ namespace PySharp.Modules.Warnings;
 
 [PyModuleInclude(PyModuleIncludeScheme.StaticMembers, typeof(PyWarningsFunctions))]
 [PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyWarningMessageObjectType))]
+[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyDeprecatedObjectType))]
 public partial class PyWarningsModuleObject : PyModuleObject
 {
     public override string? Origin => "built-in";
@@ -19,6 +20,7 @@ public partial class PyWarningsModuleObject : PyModuleObject
             PyStrObject.FromString("filterwarnings"),
             PyStrObject.FromString("simplefilter"),
             PyStrObject.FromString("resetwarnings"),
-            PyStrObject.FromString("catch_warnings")));
+            PyStrObject.FromString("catch_warnings"),
+            PyStrObject.FromString("deprecated")));
     }
 }
