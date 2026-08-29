@@ -421,9 +421,71 @@ public sealed class WarningTests
             var module = new PyModuleObject("<test>");
             PyInterpreter.RunCodeWithContext(
                 context,
-                "import warnings\nwarnings.warn(\"boom\", DeprecationWarning)",
+                "import warnings\nwarnings.warn(\"boom\", UserWarning)",
                 module, "<test>", isMain: true);
-            Assert.AreEqual("<test>:2: DeprecationWarning: boom\n  warnings.warn(\"boom\", DeprecationWarning)\n", host.Stderr.ToString());
+            Assert.AreEqual("<test>:2: UserWarning: boom\n  warnings.warn(\"boom\", UserWarning)\n", host.Stderr.ToString());
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_DefaultFilter_SuppressesDeprecationWarningOutsideMain()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            PyInterpreter.RunCodeWithContext(
+                context,
+                "import warnings\nwarnings.warn(\"boom\", DeprecationWarning)",
+                module, "<test>", isMain: false);
+            Assert.AreEqual(string.Empty, host.Stderr.ToString());
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_DefaultFilter_ShowsDeprecationWarningInMain()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("__main__");
+            PyInterpreter.RunCodeWithContext(
+                context,
+                "import warnings\nwarnings.warn(\"boom\", DeprecationWarning)",
+                module, "<main>", isMain: true);
+            Assert.AreEqual("<main>:2: DeprecationWarning: boom\n  warnings.warn(\"boom\", DeprecationWarning)\n", host.Stderr.ToString());
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_ResetWarnings_ClearsDefaultFilters()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            PyInterpreter.RunCodeWithContext(
+                context,
+                "import warnings\nwarnings.warn(\"before\", DeprecationWarning)\nwarnings.resetwarnings()\nwarnings.warn(\"after\", DeprecationWarning)",
+                module, "<test>", isMain: false);
+            // resetwarnings() clears the default filters too, so DeprecationWarning becomes visible
+            // again after the reset, mirroring CPython.
+            Assert.AreEqual("<test>:4: DeprecationWarning: after\n  warnings.warn(\"after\", DeprecationWarning)\n", host.Stderr.ToString());
         }
         finally
         {

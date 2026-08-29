@@ -43,6 +43,21 @@ internal sealed class WarningState
     private int _filtersVersion;
     private int _observedVersion;
 
+    // Mirrors CPython's default warning filters installed at interpreter startup.
+    public WarningState()
+    {
+        _filters.AddRange(CreateDefaultFilters());
+    }
+
+    private static IEnumerable<WarningFilter> CreateDefaultFilters()
+    {
+        yield return new(WarningAction.Default, PyDeprecationWarningObjectType.Shared, null, "__main__", 0);
+        yield return new(WarningAction.Ignore, PyDeprecationWarningObjectType.Shared, null, null, 0);
+        yield return new(WarningAction.Ignore, PyPendingDeprecationWarningObjectType.Shared, null, null, 0);
+        yield return new(WarningAction.Ignore, PyImportWarningObjectType.Shared, null, null, 0);
+        yield return new(WarningAction.Ignore, PyResourceWarningObjectType.Shared, null, null, 0);
+    }
+
     internal WarningAction DefaultAction { get; private set; } = WarningAction.Default;
 
     internal IReadOnlyList<WarningFilter> Filters => _filters;
