@@ -32,7 +32,7 @@ public sealed class PyDeprecatedObject : PyObject
         if (Category is null)
         {
             var setDep = PyOperators.SetAttr(context, arg, "__deprecated__", PyStrObject.FromString(Message));
-            return setDep.IsError ? setDep.ExceptionResult : arg;
+            return setDep.IsError ? setDep : arg;
         }
 
         if (arg is PyTypeObject typeArg)
@@ -49,12 +49,12 @@ public sealed class PyDeprecatedObject : PyObject
 
         var setWrapperDep = PyOperators.SetAttr(context, wrapper, "__deprecated__", dep);
         if (setWrapperDep.IsError)
-            return setWrapperDep.ExceptionResult;
+            return setWrapperDep;
         if (original is PyObjectManagedDict)
         {
             var setOriginalDep = PyOperators.SetAttr(context, original, "__deprecated__", dep);
             if (setOriginalDep.IsError)
-                return setOriginalDep.ExceptionResult;
+                return setOriginalDep;
         }
         return wrapper;
     }
@@ -84,7 +84,7 @@ public sealed class PyDeprecatedObject : PyObject
         // to a callable that receives (cls, *args) without a staticmethod indirection.
         var setNew = PyOperators.SetAttr(context, cls, "__new__", newWrapper);
         if (setNew.IsError)
-            return setNew.ExceptionResult;
+            return setNew;
 
         // Wrap __init_subclass__ so creating a subclass warns.
         var originalInitSubclass = PyOperators.GetAttr(context, cls, "__init_subclass__");
@@ -94,17 +94,17 @@ public sealed class PyDeprecatedObject : PyObject
             if (warnResult.IsError)
                 return warnResult;
             if (originalInitSubclass.IsError)
-                return originalInitSubclass.ExceptionResult;
+                return originalInitSubclass;
             // The classmethod descriptor binds cls, so only pass the keyword args through.
             return originalInitSubclass.Value.Call(ctx, [], callKwargs);
         });
         var setInit = PyOperators.SetAttr(context, cls, "__init_subclass__", new PyClassMethodObject(initSubclassWrapper));
         if (setInit.IsError)
-            return setInit.ExceptionResult;
+            return setInit;
 
         var setDep = PyOperators.SetAttr(context, cls, "__deprecated__", message);
         if (setDep.IsError)
-            return setDep.ExceptionResult;
+            return setDep;
 
         return cls;
     }

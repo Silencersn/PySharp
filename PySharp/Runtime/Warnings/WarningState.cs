@@ -93,7 +93,7 @@ internal sealed class WarningState
     {
         var versionResult = registry.GetItem("version");
         if (versionResult.IsError && !versionResult.IsKeyError)
-            return versionResult.ExceptionResult;
+            return versionResult;
 
         if (versionResult.IsError
             || versionResult.Value is not PyIntObject version
@@ -125,10 +125,10 @@ internal sealed class WarningState
             if (onceResult.IsKeyError)
                 return PyBoolObject.False;
             if (onceResult.IsError)
-                return onceResult.ExceptionResult;
+                return onceResult;
             var onceBoolResult = PySpecialMethods.Bool(context, onceResult.Value);
             if (onceBoolResult.IsError)
-                return onceBoolResult.ExceptionResult;
+                return onceBoolResult;
             return onceBoolResult.Value;
         }
         if (registry is null)
@@ -139,10 +139,10 @@ internal sealed class WarningState
         if (result.IsKeyError)
             return PyBoolObject.False;
         if (result.IsError)
-            return result.ExceptionResult;
+            return result;
         var boolResult = PySpecialMethods.Bool(context, result.Value);
         if (boolResult.IsError)
-            return boolResult.ExceptionResult;
+            return boolResult;
         return boolResult.Value;
     }
 

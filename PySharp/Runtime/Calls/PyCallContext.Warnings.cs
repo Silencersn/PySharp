@@ -11,12 +11,12 @@ partial class PyCallContext
     {
         var typeResult = ResolveWarningType(message, warningType);
         if (typeResult.IsError)
-            return typeResult.ExceptionResult;
+            return typeResult;
         warningType = (PyTypeObject<PyExceptionObject>)typeResult.Value;
 
         var strResult = PySpecialMethods.Str(this, message);
         if (strResult.IsError)
-            return strResult.ExceptionResult;
+            return strResult;
 
         var warning = CreateWarningInstance(message, warningType);
         var (filename, lineno, sourceLine, module, globals) = ResolveWarningLocation(stacklevel);
@@ -31,12 +31,12 @@ partial class PyCallContext
     {
         var typeResult = ResolveWarningType(message, warningType);
         if (typeResult.IsError)
-            return typeResult.ExceptionResult;
+            return typeResult;
         warningType = (PyTypeObject<PyExceptionObject>)typeResult.Value;
 
         var strResult = PySpecialMethods.Str(this, message);
         if (strResult.IsError)
-            return strResult.ExceptionResult;
+            return strResult;
 
         var warning = CreateWarningInstance(message, warningType);
         return DispatchWarning(filename, lineno, warningType, warning, strResult.Value.Value, module ?? NormalizeModule(filename), registry, line, source);
@@ -76,7 +76,7 @@ partial class PyCallContext
             default:
                 var suppressResult = state.ShouldSuppress(this, action, text, warningType, lineno, registry);
                 if (suppressResult.IsError)
-                    return suppressResult.ExceptionResult;
+                    return suppressResult;
                 if (((PyBoolObject)suppressResult.Value).BoolValue)
                     return default;
                 PublishWarning(filename, lineno, warningType, warning, text, sourceLine, source);
