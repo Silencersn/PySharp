@@ -132,8 +132,8 @@ partial class PyCallContext
     private PyResult ResolveWarningType(PyObject message, PyTypeObject<PyExceptionObject>? warningType)
     {
         // When the message is already a Warning instance, CPython derives the category
-        // from its concrete type.
-        if (warningType is null && PyWarningObjectType.Shared.IsInstance(message))
+        // from its concrete type (overriding any category passed explicitly).
+        if (PyWarningObjectType.Shared.IsInstance(message))
             warningType = message.PyType as PyTypeObject<PyExceptionObject>;
 
         warningType ??= PyUserWarningObjectType.Shared;

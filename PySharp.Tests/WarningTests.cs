@@ -495,6 +495,92 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    public void WarningsModule_WarnExplicit_WarningMessageOverridesCategory()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            PyInterpreter.RunCodeWithContext(
+                context,
+                "import warnings\nwith warnings.catch_warnings(record=True) as records:\n    warnings.warn_explicit(UserWarning(\"boom\"), DeprecationWarning, \"f.py\", 1)\ncategory = records[0].category",
+                module, "<test>", isMain: true);
+
+            Assert.AreEqual(string.Empty, host.Stderr.ToString());
+            Assert.AreSame(PyUserWarningObjectType.Shared, module.PyAttributesDict["category"]);
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_WarnExplicit_LinenoIndexProtocol()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            PyInterpreter.RunCodeWithContext(
+                context,
+                "import warnings\nclass Indexable:\n    def __index__(self): return 7\nwith warnings.catch_warnings(record=True) as records:\n    warnings.warn_explicit(\"m\", UserWarning, \"f.py\", Indexable())\nlineno = records[0].lineno",
+                module, "<test>", isMain: true);
+
+            Assert.AreEqual(string.Empty, host.Stderr.ToString());
+            Assert.AreEqual(7, ((PyIntObject)module.PyAttributesDict["lineno"]).Int32Value);
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_Warn_StacklevelIndexProtocol()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            PyInterpreter.RunCodeWithContext(
+                context,
+                "import warnings\nclass Indexable:\n    def __index__(self): return 1\nwith warnings.catch_warnings(record=True) as records:\n    warnings.warn(\"boom\", stacklevel=Indexable())\ncount = len(records)",
+                module, "<test>", isMain: true);
+
+            Assert.AreEqual(string.Empty, host.Stderr.ToString());
+            Assert.AreEqual(1, ((PyIntObject)module.PyAttributesDict["count"]).Int32Value);
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarningsModule_WarnExplicit_NonWarningCategory_RaisesTypeError()
+    {
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var module = new PyModuleObject("<test>");
+            Assert.ThrowsExactly<PyRuntimeException>(() =>
+                PyInterpreter.RunCodeWithContext(
+                    context,
+                    "import warnings\nwarnings.warn_explicit(\"m\", int, \"f.py\", 1)",
+                    module, "<test>", isMain: true));
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
     public void WarningsModule_Warn_InvalidCategory_RaisesTypeError()
     {
         var (host, env, context) = CreateContext();

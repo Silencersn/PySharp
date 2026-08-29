@@ -24,17 +24,22 @@ public static partial class PyWarningsFunctions
         var categoryObj = arguments[1];
 
         PyTypeObject<PyExceptionObject>? category = null;
-        if (categoryObj is not PyNoneObject)
+        // A Warning instance determines its own category, so the explicit category is only
+        // validated when the message is not already a Warning instance (mirroring CPython).
+        if (categoryObj is not PyNoneObject && !PyWarningObjectType.Shared.IsInstance(message))
         {
             category = categoryObj as PyTypeObject<PyExceptionObject>;
             if (category is null)
                 return PyResult.TypeError($"category must be a Warning subclass, not '{categoryObj.PyType.Name}'");
         }
 
-        if (arguments[2] is not PyIntObject stacklevelObj)
-            return PyResult.TypeError($"'{arguments[2].PyType.Name}' object cannot be interpreted as an integer");
+        var stacklevelResult = PySpecialMethods.Index(context, arguments[2]);
+        if (stacklevelResult.IsError)
+            return stacklevelResult.ExceptionResult;
+        if (!stacklevelResult.Value.IsInt32)
+            return PyResult.OverflowError("stacklevel is too large");
 
-        return context.Warn(message, category, stacklevelObj.Int32Value);
+        return context.Warn(message, category, stacklevelResult.Value.Int32Value);
     }
 
     [PyFunctionParameters("message", "category", "filename", "lineno", "module=None", "registry=None", "module_globals=None", "source=None")]
@@ -42,8 +47,28 @@ public static partial class PyWarningsFunctions
     {
         if (arguments[2] is not PyStrObject filenameObj)
             return PyResult.TypeError("filename must be a string");
-        if (arguments[3] is not PyIntObject linenoObj)
-            return PyResult.TypeError("lineno must be an int");
+
+        var message = arguments[0];
+        // A Warning instance determines its own category, so the explicit category is only
+        // validated when the message is not already a Warning instance (mirroring CPython).
+        PyTypeObject<PyExceptionObject>? category;
+        if (PyWarningObjectType.Shared.IsInstance(message))
+        {
+            category = message.PyType as PyTypeObject<PyExceptionObject>;
+        }
+        else
+        {
+            if (arguments[1] is not PyTypeObject<PyExceptionObject> cat || !cat.IsSubclassOf(PyWarningObjectType.Shared))
+                return PyResult.TypeError($"category must be a Warning subclass, not '{arguments[1].PyType.Name}'");
+            category = cat;
+        }
+
+        var linenoResult = PySpecialMethods.Index(context, arguments[3]);
+        if (linenoResult.IsError)
+            return linenoResult.ExceptionResult;
+        if (!linenoResult.Value.IsInt32)
+            return PyResult.OverflowError("lineno is too large");
+
         if (arguments[4] is not (PyNoneObject or PyStrObject))
             return PyResult.TypeError("module must be a string or None");
         if (arguments[5] is not (PyNoneObject or PyDictObject))
@@ -51,18 +76,15 @@ public static partial class PyWarningsFunctions
         if (arguments[6] is not (PyNoneObject or PyDictObject))
             return PyResult.TypeError($"module_globals must be a dict, not '{arguments[6].PyType.Name}'");
 
-        if (arguments[1] is not PyTypeObject<PyExceptionObject> category || !category.IsSubclassOf(PyWarningObjectType.Shared))
-            return PyResult.TypeError($"category must be a Warning subclass, not '{arguments[1].PyType.Name}'");
-
         string? module = arguments[4] is PyStrObject moduleObj ? moduleObj.Value : null;
         var registry = arguments[5] as PyDictObject;
         // module_globals is validated above but otherwise unused, mirroring CPython where it is only
         // used to prime the linecache for formatting (no behavioral effect on dedup/emission).
         return context.WarnExplicit(
-            arguments[0],
+            message,
             category,
             filenameObj.Value,
-            linenoObj.Int32Value,
+            linenoResult.Value.Int32Value,
             module,
             registry,
             arguments[7]);
