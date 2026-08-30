@@ -118,6 +118,13 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestDataclass()
+    {
+        var module = RunModule("test_dataclass.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestFString()
     {
         var module = RunModule("test_fstring.py");

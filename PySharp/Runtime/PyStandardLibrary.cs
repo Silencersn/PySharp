@@ -1,4 +1,5 @@
 using PySharp.Modules.Builtins;
+using PySharp.Modules.Dataclasses;
 using PySharp.Modules.Mathematics;
 using PySharp.Modules.Operator;
 using PySharp.Modules.Queue;
@@ -28,6 +29,7 @@ internal static class PyStandardLibrary
             "time" => new PyTimeModuleObject(),
             "random" => new PyRandomModuleObject(),
             "this" => new PyThisModuleObject(),
+            "dataclasses" => new PyDataclassesModuleObject(),
             "threading" => new PyThreadingModuleObject(),
             "queue" => new PyQueueModuleObject(),
             "typing" => new PyTypingModuleObject(),
