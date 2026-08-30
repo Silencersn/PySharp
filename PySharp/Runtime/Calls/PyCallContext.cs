@@ -30,9 +30,9 @@ public sealed partial class PyCallContext : IDisposable
         _environment = environment;
     }
 
-    internal TextReader In => PyEnvironment.In;
-    internal TextWriter Out => PyEnvironment.Out;
-    internal TextWriter Error => PyEnvironment.Error;
+    internal StreamReader In => PyEnvironment.In;
+    internal StreamWriter Out => PyEnvironment.Out;
+    internal StreamWriter Error => PyEnvironment.Error;
     internal ref PyInternalFrame CurrentInternalFrame => ref FrameState.CurrentInternalFrame;
     internal bool IsInteractive => PyEnvironment.IsInteractive;
 

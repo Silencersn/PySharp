@@ -13,20 +13,20 @@ public sealed class StdIoTests
 {
     private sealed class StdioHost : PyEnvironmentHost
     {
-        private readonly TextReader _in;
-        private readonly TextWriter _out;
-        private readonly TextWriter _err;
+        private readonly Stream _in;
+        private readonly Stream _out;
+        private readonly Stream _err;
 
-        public StdioHost(TextReader input, TextWriter output, TextWriter error)
+        public StdioHost(Stream input, Stream output, Stream error)
         {
             _in = input;
             _out = output;
             _err = error;
         }
 
-        public override TextReader AllocateStdIn() => _in;
-        public override TextWriter AllocateStdOut() => _out;
-        public override TextWriter AllocateStdErr() => _err;
+        public override Stream AllocateStdIn() => _in;
+        public override Stream AllocateStdOut() => _out;
+        public override Stream AllocateStdErr() => _err;
         public override IVirtualFileSystem FileSystem { get; } = MemoryFileSystem.CreateBuilder().Build();
     }
 
@@ -135,7 +135,7 @@ public sealed class StdIoTests
     [TestMethod]
     public void SysModule_OnImport_ExposesStandardStreams()
     {
-        var host = new StdioHost(new StringReader(""), new StringWriter(), new StringWriter());
+        var host = new StdioHost(new MemoryStream(), new MemoryStream(), new MemoryStream());
         var env = new PyEnvironment(host);
         var context = PyCallContext.CreateInterpreterRootContext(env);
         try

@@ -11,10 +11,10 @@ public sealed class WarningTests
 {
     private sealed class StderrCaptureHost : PyEnvironmentHost
     {
-        public StringWriter Stderr { get; } = new() { NewLine = "\n" };
-        public override TextReader AllocateStdIn() => TextReader.Null;
-        public override TextWriter AllocateStdOut() => TextWriter.Null;
-        public override TextWriter AllocateStdErr() => Stderr;
+        public MemoryStream Stderr { get; } = new();
+        public override Stream AllocateStdIn() => Stream.Null;
+        public override Stream AllocateStdOut() => Stream.Null;
+        public override Stream AllocateStdErr() => Stderr;
         public override IVirtualFileSystem FileSystem { get; } = MemoryFileSystem.CreateBuilder().Build();
     }
 
@@ -26,6 +26,12 @@ public sealed class WarningTests
         return (host, env, context);
     }
 
+    private static string GetStderr(StderrCaptureHost host, PyEnvironment env)
+    {
+        env.Error.Flush();
+        return System.Text.Encoding.UTF8.GetString(host.Stderr.ToArray()).Replace("\r\n", "\n");
+    }
+
     [TestMethod]
     public void WarnExplicit_FormatsStandardWarning()
     {
@@ -33,7 +39,7 @@ public sealed class WarningTests
         try
         {
             context.WarnExplicit(PyStrObject.FromString("hello"), PyUserWarningObjectType.Shared, "test.py", 42);
-            Assert.AreEqual("test.py:42: UserWarning: hello\n", host.Stderr.ToString());
+            Assert.AreEqual("test.py:42: UserWarning: hello\n", GetStderr(host, env));
         }
         finally
         {
@@ -49,7 +55,7 @@ public sealed class WarningTests
         try
         {
             context.Warn(PyStrObject.FromString("boom"));
-            Assert.AreEqual("<sys>:0: UserWarning: boom\n", host.Stderr.ToString());
+            Assert.AreEqual("<sys>:0: UserWarning: boom\n", GetStderr(host, env));
         }
         finally
         {
@@ -66,7 +72,7 @@ public sealed class WarningTests
         {
             var instance = PyUserWarningObjectType.Shared.Create(PyStrObject.FromString("boom"));
             context.Warn(instance);
-            Assert.AreEqual("<sys>:0: UserWarning: boom\n", host.Stderr.ToString());
+            Assert.AreEqual("<sys>:0: UserWarning: boom\n", GetStderr(host, env));
         }
         finally
         {
@@ -82,7 +88,7 @@ public sealed class WarningTests
         try
         {
             context.Warn(PyUserWarningObjectType.Shared, "boom", "mod.py", 7);
-            Assert.AreEqual("mod.py:7: UserWarning: boom\n", host.Stderr.ToString());
+            Assert.AreEqual("mod.py:7: UserWarning: boom\n", GetStderr(host, env));
         }
         finally
         {

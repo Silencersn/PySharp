@@ -6,9 +6,12 @@ namespace PySharp.Runtime.Environments;
 
 public sealed partial class PyEnvironment : IDisposable
 {
-    private readonly TextReader _in;
-    private readonly TextWriter _out;
-    private readonly TextWriter _error;
+    private readonly Stream _inStream;
+    private readonly Stream _outStream;
+    private readonly Stream _errorStream;
+    private readonly StreamReader _in;
+    private readonly StreamWriter _out;
+    private readonly StreamWriter _error;
     private readonly bool _isInteractive;
     private readonly List<string> _paths;
     private readonly List<string> _args;
@@ -26,9 +29,12 @@ public sealed partial class PyEnvironment : IDisposable
         int optimizationLevel = 0)
     {
         Host = host;
-        _in = host.AllocateStdIn();
-        _out = host.AllocateStdOut();
-        _error = host.AllocateStdErr();
+        _inStream = host.AllocateStdIn();
+        _outStream = host.AllocateStdOut();
+        _errorStream = host.AllocateStdErr();
+        _in = new StreamReader(_inStream);
+        _out = new StreamWriter(_outStream);
+        _error = new StreamWriter(_errorStream);
         _isInteractive = isInteractive;
         _paths = paths is null ? [] : [.. paths];
         _args = args is null ? [] : [.. args];
@@ -38,9 +44,12 @@ public sealed partial class PyEnvironment : IDisposable
 
     public PyEnvironmentHost Host { get; }
 
-    internal TextReader In => _in;
-    internal TextWriter Out => _out;
-    internal TextWriter Error => _error;
+    internal StreamReader In => _in;
+    internal StreamWriter Out => _out;
+    internal StreamWriter Error => _error;
+    internal Stream InStream => _inStream;
+    internal Stream OutStream => _outStream;
+    internal Stream ErrorStream => _errorStream;
     internal Dictionary<string, PyModuleObject?> Modules { get; } = [];
     internal ConcurrentSet<Thread> Threads { get; } = [];
     internal List<string> Paths => _paths;

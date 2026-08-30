@@ -5,24 +5,24 @@ namespace PySharp.Runtime.Environments;
 
 internal sealed class PyEnvironmentHostBuilder : IPyEnvironmentHostBuilder
 {
-    private TextReader _in = TextReader.Null;
-    private TextWriter _out = TextWriter.Null;
-    private TextWriter _error = TextWriter.Null;
+    private Stream _in = Stream.Null;
+    private Stream _out = Stream.Null;
+    private Stream _error = Stream.Null;
     private IVirtualFileSystem? _fileSystem;
 
-    public IPyEnvironmentHostBuilder UseIn(TextReader reader)
+    public IPyEnvironmentHostBuilder UseIn(Stream reader)
     {
         _in = reader;
         return this;
     }
 
-    public IPyEnvironmentHostBuilder UseOut(TextWriter writer)
+    public IPyEnvironmentHostBuilder UseOut(Stream writer)
     {
         _out = writer;
         return this;
     }
 
-    public IPyEnvironmentHostBuilder UseError(TextWriter writer)
+    public IPyEnvironmentHostBuilder UseError(Stream writer)
     {
         _error = writer;
         return this;
@@ -44,23 +44,23 @@ internal sealed class PyEnvironmentHostBuilder : IPyEnvironmentHostBuilder
     }
 
     private sealed class ConfigurablePyEnvironmentHost(
-        TextReader cin,
-        TextWriter cout,
-        TextWriter cerr,
+        Stream cin,
+        Stream cout,
+        Stream cerr,
         IVirtualFileSystem fileSystem) : PyEnvironmentHost
     {
-        public override TextReader AllocateStdIn() => cin;
-        public override TextWriter AllocateStdOut() => cout;
-        public override TextWriter AllocateStdErr() => cerr;
+        public override Stream AllocateStdIn() => cin;
+        public override Stream AllocateStdOut() => cout;
+        public override Stream AllocateStdErr() => cerr;
         public override IVirtualFileSystem FileSystem => fileSystem;
     }
 }
 
 public interface IPyEnvironmentHostBuilder
 {
-    IPyEnvironmentHostBuilder UseIn(TextReader reader);
-    IPyEnvironmentHostBuilder UseOut(TextWriter writer);
-    IPyEnvironmentHostBuilder UseError(TextWriter writer);
+    IPyEnvironmentHostBuilder UseIn(Stream reader);
+    IPyEnvironmentHostBuilder UseOut(Stream writer);
+    IPyEnvironmentHostBuilder UseError(Stream writer);
     IPyEnvironmentHostBuilder UseFileSystem(IVirtualFileSystem fileSystem);
     PyEnvironmentHost Build();
 }

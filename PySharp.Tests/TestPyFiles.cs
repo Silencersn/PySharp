@@ -20,20 +20,20 @@ public sealed class TestPyFiles
 
     private sealed class StdioHost : PyEnvironmentHost
     {
-        private readonly TextReader _in;
-        private readonly TextWriter _out;
-        private readonly TextWriter _err;
+        private readonly Stream _in;
+        private readonly Stream _out;
+        private readonly Stream _err;
 
-        public StdioHost(TextReader input, TextWriter output, TextWriter error)
+        public StdioHost(Stream input, Stream output, Stream error)
         {
             _in = input;
             _out = output;
             _err = error;
         }
 
-        public override TextReader AllocateStdIn() => _in;
-        public override TextWriter AllocateStdOut() => _out;
-        public override TextWriter AllocateStdErr() => _err;
+        public override Stream AllocateStdIn() => _in;
+        public override Stream AllocateStdOut() => _out;
+        public override Stream AllocateStdErr() => _err;
         public override IVirtualFileSystem FileSystem { get; } = MemoryFileSystem.CreateBuilder().Build();
     }
 
@@ -844,17 +844,9 @@ public sealed class TestPyFiles
     {
         // Regression: input() at EOF must raise EOFError ("EOF when reading a
         // line"), not return ''. An empty stdin simulates EOF.
-        var originalIn = Console.In;
-        try
-        {
-            Console.SetIn(new StringReader(""));
-            var module = RunModule("test_input_eof_regression.py");
-            Assert.IsNotNull(module);
-        }
-        finally
-        {
-            Console.SetIn(originalIn);
-        }
+        var host = new StdioHost(new MemoryStream(), new MemoryStream(), new MemoryStream());
+        var module = RunModuleWithHost("test_input_eof_regression.py", host);
+        Assert.IsNotNull(module);
     }
 
     [TestMethod]
@@ -862,7 +854,7 @@ public sealed class TestPyFiles
     {
         // Regression: sys.stdin.readline() at EOF returns '' (not StopIteration);
         // sys.stdout.write() returns the number of characters.
-        var host = new StdioHost(new StringReader(""), new StringWriter(), new StringWriter());
+        var host = new StdioHost(new MemoryStream(), new MemoryStream(), new MemoryStream());
         var module = RunModuleWithHost("test_stdio_eof_regression.py", host);
         Assert.IsNotNull(module);
     }

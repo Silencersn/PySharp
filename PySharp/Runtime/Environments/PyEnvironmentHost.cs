@@ -6,9 +6,9 @@ namespace PySharp.Runtime.Environments;
 
 public abstract class PyEnvironmentHost
 {
-    public abstract TextReader AllocateStdIn();
-    public abstract TextWriter AllocateStdOut();
-    public abstract TextWriter AllocateStdErr();
+    public abstract Stream AllocateStdIn();
+    public abstract Stream AllocateStdOut();
+    public abstract Stream AllocateStdErr();
 
     public abstract IVirtualFileSystem FileSystem { get; }
 
@@ -34,33 +34,33 @@ public abstract class PyEnvironmentHost
 
     private sealed class NullPyEnvironmentHost : PyEnvironmentHost
     {
-        public override TextReader AllocateStdIn() => TextReader.Null;
-        public override TextWriter AllocateStdOut() => TextWriter.Null;
-        public override TextWriter AllocateStdErr() => TextWriter.Null;
+        public override Stream AllocateStdIn() => Stream.Null;
+        public override Stream AllocateStdOut() => Stream.Null;
+        public override Stream AllocateStdErr() => Stream.Null;
         public override IVirtualFileSystem FileSystem { get; } = MemoryFileSystem.CreateBuilder().Build();
     }
 
     private sealed class ConsolePyEnvironmentHost : PyEnvironmentHost
     {
-        public override TextReader AllocateStdIn() => Console.In;
-        public override TextWriter AllocateStdOut() => Console.Out;
-        public override TextWriter AllocateStdErr() => Console.Error;
+        public override Stream AllocateStdIn() => Console.OpenStandardInput();
+        public override Stream AllocateStdOut() => Console.OpenStandardOutput();
+        public override Stream AllocateStdErr() => Console.OpenStandardError();
         public override IVirtualFileSystem FileSystem { get; } = MemoryFileSystem.CreateBuilder().Build();
     }
 
     private sealed class PhysicalConsolePyEnvironmentHost : PyEnvironmentHost
     {
-        public override TextReader AllocateStdIn() => Console.In;
-        public override TextWriter AllocateStdOut() => Console.Out;
-        public override TextWriter AllocateStdErr() => Console.Error;
+        public override Stream AllocateStdIn() => Console.OpenStandardInput();
+        public override Stream AllocateStdOut() => Console.OpenStandardOutput();
+        public override Stream AllocateStdErr() => Console.OpenStandardError();
         public override IVirtualFileSystem FileSystem { get; } = PhysicalFileSystem.Shared;
     }
 
     private sealed class ReplPyEnvironmentHost : PyEnvironmentHost
     {
-        public override TextReader AllocateStdIn() => Console.In;
-        public override TextWriter AllocateStdOut() => Console.Out;
-        public override TextWriter AllocateStdErr() => Console.Error;
+        public override Stream AllocateStdIn() => Console.OpenStandardInput();
+        public override Stream AllocateStdOut() => Console.OpenStandardOutput();
+        public override Stream AllocateStdErr() => Console.OpenStandardError();
         public override IVirtualFileSystem FileSystem { get; } = MemoryFileSystem.CreateBuilder().Build();
     }
 }
