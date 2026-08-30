@@ -140,6 +140,20 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestWarningsModuleActions()
+    {
+        var module = RunModule("test_warnings_module_actions.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestWarningsModuleCustom()
+    {
+        var module = RunModule("test_warnings_module_custom.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestProperty()
     {
         var module = RunModule("test_property.py");
