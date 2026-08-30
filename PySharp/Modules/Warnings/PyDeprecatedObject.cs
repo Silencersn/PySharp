@@ -1,7 +1,6 @@
 using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
-using PySharp.Runtime.Calls.Extensions;
 using PySharp.Runtime.PyAttributes;
 
 namespace PySharp.Modules.Warnings;
@@ -67,7 +66,7 @@ public sealed class PyDeprecatedObject : PyObject
         var originalNew = PyOperators.GetAttr(context, cls, "__new__");
         var newWrapper = PyBuiltinFunctionOrMethodObject.CreateFunction("__new__", (ctx, callArgs, callKwargs) =>
         {
-            if (callArgs.Count > 0 && ReferenceEquals(callArgs[0], (PyObject)cls))
+            if (callArgs.Count > 0 && ReferenceEquals(callArgs[0], cls))
             {
                 var warnResult = ctx.Warn(message, Category, Stacklevel + 1);
                 if (warnResult.IsError)

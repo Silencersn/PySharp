@@ -1,7 +1,6 @@
 using PySharp.Compilation.CodeAnalysis;
 using PySharp.Modules.Builtins;
 using PySharp.Modules.Warnings;
-using PySharp.Runtime;
 
 namespace PySharp.Runtime.Calls;
 
