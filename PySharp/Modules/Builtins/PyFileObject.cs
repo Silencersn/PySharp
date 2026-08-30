@@ -202,7 +202,7 @@ public sealed class PyFileObject : PyObject
                     break;
             }
             return charsRead is 0
-                ? (PyResult)PyResult.StopIteration()
+                ? (PyResult)PyStrObject.Empty
                 : (PyResult)PyStrObject.FromString(lineBuilder.ToString());
         }
         else
@@ -218,7 +218,7 @@ public sealed class PyFileObject : PyObject
                     break;
             }
             return total is 0
-                ? (PyResult)PyResult.StopIteration()
+                ? (PyResult)PyBytesObject.FromBytes([])
                 : (PyResult)PyBytesObject.FromBytes(ms.ToArray());
         }
     }
@@ -255,7 +255,15 @@ public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
 
     protected override PyResult Next(PyCallContext context, PyFileObject self)
     {
-        return self.ReadLine();
+        var result = self.ReadLine();
+        if (result.IsError)
+            return result;
+        // readline() returns ''/b'' at EOF; iteration must raise StopIteration.
+        if (result.Value is PyStrObject str && str.Value.Length is 0)
+            return PyResult.StopIteration();
+        if (result.Value is PyBytesObject bytes && bytes.AsSpan().Length is 0)
+            return PyResult.StopIteration();
+        return result;
     }
 
     [PyMethod("read")]

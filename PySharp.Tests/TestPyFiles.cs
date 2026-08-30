@@ -1,5 +1,9 @@
 using PySharp.Modules.Builtins;
 using PySharp.Runtime;
+using PySharp.Runtime.Calls;
+using PySharp.Runtime.Environments;
+using PySharp.Runtime.IO;
+using PySharp.Runtime.IO.Memory;
 
 namespace PySharp.Tests;
 
@@ -12,6 +16,40 @@ public sealed class TestPyFiles
     {
         filename = Path.Combine(PyFilesPath, filename);
         return PyInterpreter.RunFile(filename);
+    }
+
+    private sealed class StdioHost : PyEnvironmentHost
+    {
+        private readonly TextReader _in;
+        private readonly TextWriter _out;
+        private readonly TextWriter _err;
+
+        public StdioHost(TextReader input, TextWriter output, TextWriter error)
+        {
+            _in = input;
+            _out = output;
+            _err = error;
+        }
+
+        public override TextReader AllocateStdIn() => _in;
+        public override TextWriter AllocateStdOut() => _out;
+        public override TextWriter AllocateStdErr() => _err;
+        public override IVirtualFileSystem FileSystem { get; } = MemoryFileSystem.CreateBuilder().Build();
+    }
+
+    private static PyModuleObject RunModuleWithHost(string filename, StdioHost host)
+    {
+        var path = Path.Combine(PyFilesPath, filename);
+        var code = File.ReadAllText(path);
+        var moduleName = Path.GetFileNameWithoutExtension(filename);
+        var fullPath = Path.GetFullPath(path);
+
+        using var environment = PyEnvironment.CreateBuilder(host)
+            .AddPath(Path.GetDirectoryName(fullPath)!)
+            .AddArg(fullPath)
+            .Build();
+        using var context = PyCallContext.CreateInterpreterRootContext(environment);
+        return PyInterpreter.RunCodeWithContext(context, code, moduleName, fullPath, isMain: true);
     }
 
     [TestMethod]
@@ -810,6 +848,25 @@ public sealed class TestPyFiles
         {
             Console.SetIn(originalIn);
         }
+    }
+
+    [TestMethod]
+    public void TestStdinStdoutEofRegression()
+    {
+        // Regression: sys.stdin.readline() at EOF returns '' (not StopIteration);
+        // sys.stdout.write() returns the number of characters.
+        var host = new StdioHost(new StringReader(""), new StringWriter(), new StringWriter());
+        var module = RunModuleWithHost("test_stdio_eof_regression.py", host);
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestReadlineEofRegression()
+    {
+        // Regression: open().readline() at EOF returns ''/b'' (not StopIteration),
+        // while iteration raises StopIteration.
+        var module = RunModule("test_readline_eof_regression.py");
+        Assert.IsNotNull(module);
     }
 
     [TestMethod]
