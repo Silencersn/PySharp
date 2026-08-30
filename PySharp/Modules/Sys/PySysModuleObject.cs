@@ -19,5 +19,10 @@ public class PySysModuleObject : PyModuleObject
             ? PyListObject.CreateList(environment.Args.Select(PyStrObject.FromString))
             : PyListObject.CreateList(PyStrObject.Empty);
         AppendAttribute("argv", args);
+
+        // Wrap the environment's standard streams.
+        AppendAttribute("stdin", PyStdIoObject.CreateInput(environment.In, "<stdin>"));
+        AppendAttribute("stdout", PyStdIoObject.CreateOutput(environment.Out, "<stdout>"));
+        AppendAttribute("stderr", PyStdIoObject.CreateOutput(environment.Error, "<stderr>"));
     }
 }
