@@ -1,6 +1,7 @@
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.IO;
 using PySharp.Utility;
+using System.Text;
 
 namespace PySharp.Runtime.Environments;
 
@@ -26,15 +27,17 @@ public sealed partial class PyEnvironment : IDisposable
         bool isInteractive = false,
         IEnumerable<string>? paths = null,
         IEnumerable<string>? args = null,
-        int optimizationLevel = 0)
+        int optimizationLevel = 0,
+        Encoding? stdioEncoding = null)
     {
         Host = host;
         _inStream = host.AllocateStdIn();
         _outStream = host.AllocateStdOut();
         _errorStream = host.AllocateStdErr();
-        _in = new StreamReader(_inStream);
-        _out = new StreamWriter(_outStream);
-        _error = new StreamWriter(_errorStream);
+        var encoding = stdioEncoding ?? Host.DefaultEncoding;
+        _in = new StreamReader(_inStream, encoding);
+        _out = new StreamWriter(_outStream, encoding);
+        _error = new StreamWriter(_errorStream, encoding);
         _isInteractive = isInteractive;
         _paths = paths is null ? [] : [.. paths];
         _args = args is null ? [] : [.. args];

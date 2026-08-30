@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace PySharp.Runtime.Environments;
 
 internal sealed class PyEnvironmentBuilder :
@@ -8,6 +10,8 @@ internal sealed class PyEnvironmentBuilder :
     private bool _isInteractive;
     private readonly List<string> _paths = [];
     private readonly List<string> _args = [];
+
+    private Encoding? _stdioEncoding;
 
     private bool _syncExit;
     private bool _importSite;
@@ -39,11 +43,17 @@ internal sealed class PyEnvironmentBuilder :
         return this;
     }
 
+    public IPyEnvironmentBuilder UseStdioEncoding(Encoding encoding)
+    {
+        _stdioEncoding = encoding;
+        return this;
+    }
+
     public PyEnvironment Build()
     {
         var host = _host ?? PyEnvironmentHost.CreateNull();
 
-        var environment = new PyEnvironment(host, _isInteractive, _paths, _args);
+        var environment = new PyEnvironment(host, _isInteractive, _paths, _args, stdioEncoding: _stdioEncoding);
 
         var options = new PyEnvironmentOptions()
         {
@@ -76,6 +86,7 @@ public interface IPyEnvironmentBuilder
     IPyEnvironmentBuilder SetInteractive(bool isInteractive);
     IPyEnvironmentBuilder AddPath(string path);
     IPyEnvironmentBuilder AddArg(string arg);
+    IPyEnvironmentBuilder UseStdioEncoding(Encoding encoding);
     IPyEnvironmentBuilder AddArgs(IEnumerable<string>? args)
     {
         if (args is null)

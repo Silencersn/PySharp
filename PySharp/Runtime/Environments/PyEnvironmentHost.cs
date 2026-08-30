@@ -1,11 +1,18 @@
 using PySharp.Runtime.IO;
 using PySharp.Runtime.IO.Memory;
 using PySharp.Runtime.IO.Physical;
+using System.Text;
 
 namespace PySharp.Runtime.Environments;
 
 public abstract class PyEnvironmentHost
 {
+    // Moved from PyFileObject.Utf8NoBom, cached so that it is not recreated on each access.
+    internal static readonly Encoding Utf8NoBom = new UTF8Encoding(false);
+
+    // Default encoding used for stdio wrappers; subclasses may override it.
+    public virtual Encoding DefaultEncoding => Utf8NoBom;
+
     public abstract Stream AllocateStdIn();
     public abstract Stream AllocateStdOut();
     public abstract Stream AllocateStdErr();

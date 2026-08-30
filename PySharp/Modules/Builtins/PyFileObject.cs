@@ -1,4 +1,5 @@
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.Environments;
 using PySharp.Runtime.PyAttributes;
 using System.Diagnostics;
 using System.Text;
@@ -11,8 +12,6 @@ namespace PySharp.Modules.Builtins;
 /// </summary>
 public sealed class PyFileObject : PyObject
 {
-    private static readonly Encoding Utf8NoBom = new UTF8Encoding(false);
-
     private readonly Stream _stream;
     private readonly bool _isTextMode;
     internal readonly bool _isReadable;
@@ -38,9 +37,9 @@ public sealed class PyFileObject : PyObject
         _isSeekable = isSeekable;
 
         if (isTextMode && isReadable)
-            _reader = new StreamReader(stream, Utf8NoBom);
+            _reader = new StreamReader(stream, PyEnvironmentHost.Utf8NoBom);
         if (isTextMode && isWritable)
-            _writer = new StreamWriter(stream, Utf8NoBom);
+            _writer = new StreamWriter(stream, PyEnvironmentHost.Utf8NoBom);
     }
 
     public override PyTypeObject DefaultPyType => PyFileObjectType.Shared;
