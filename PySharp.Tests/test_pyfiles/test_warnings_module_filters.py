@@ -33,6 +33,28 @@ with warnings.catch_warnings(record=True) as outer:
     warnings.warn("after")
 assert [str(item.message) for item in outer] == ["inner", "after"], outer
 
+# module regex filter
+with warnings.catch_warnings(record=True) as records:
+    warnings.filterwarnings("ignore", module="test")
+    warnings.warn_explicit("boom", UserWarning, "test.py", 7)
+    warnings.warn_explicit("boom", UserWarning, "other.py", 7)
+assert [str(item.message) for item in records] == ["boom"], records
+assert records[0].filename == "other.py", records
+
+# lineno filter
+with warnings.catch_warnings(record=True) as records:
+    warnings.filterwarnings("ignore", lineno=7)
+    warnings.warn_explicit("boom", UserWarning, "mod.py", 7)
+    warnings.warn_explicit("boom", UserWarning, "mod.py", 9)
+assert [item.lineno for item in records] == [9], records
+
+# append=True keeps the earlier filter precedence
+with warnings.catch_warnings(record=True) as records:
+    warnings.filterwarnings("ignore")
+    warnings.filterwarnings("always", append=True)
+    warnings.warn("boom")
+assert len(records) == 0, records
+
 # message regex filter
 with warnings.catch_warnings(record=True) as records:
     warnings.filterwarnings("ignore", message="boom")
