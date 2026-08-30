@@ -38,6 +38,9 @@ public sealed class PyWarningMessageObject : PyObject
 [PyType("warnings.WarningMessage")]
 public sealed partial class PyWarningMessageObjectType : PyTypeObject<PyWarningMessageObject>
 {
+    protected override PyResult Str(PyCallContext context, PyWarningMessageObject self)
+        => PySpecialMethods.Str(context, self.Message);
+
     [PyProperty("message")]
     private static PyResult GetMessage(PyCallContext context, PyWarningMessageObject self) => self.Message;
 

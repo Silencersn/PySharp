@@ -393,6 +393,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_basic.py.
     public void WarningsModule_Warn_EmitsUserWarning()
     {
         var (host, env, context) = CreateContext();
@@ -413,6 +414,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_basic.py.
     public void WarningsModule_Warn_Category()
     {
         var (host, env, context) = CreateContext();
@@ -433,6 +435,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_basic.py.
     public void WarningsModule_DefaultFilter_SuppressesDeprecationWarningOutsideMain()
     {
         var (host, env, context) = CreateContext();
@@ -453,6 +456,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_basic.py.
     public void WarningsModule_DefaultFilter_ShowsDeprecationWarningInMain()
     {
         var (host, env, context) = CreateContext();
@@ -473,6 +477,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_basic.py.
     public void WarningsModule_ResetWarnings_ClearsDefaultFilters()
     {
         var (host, env, context) = CreateContext();
@@ -495,6 +500,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_basic.py.
     public void WarningsModule_WarnExplicit_WarningMessageOverridesCategory()
     {
         var (host, env, context) = CreateContext();
@@ -517,6 +523,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_basic.py.
     public void WarningsModule_WarnExplicit_LinenoIndexProtocol()
     {
         var (host, env, context) = CreateContext();
@@ -539,6 +546,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_basic.py.
     public void WarningsModule_Warn_StacklevelIndexProtocol()
     {
         var (host, env, context) = CreateContext();
@@ -561,6 +569,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_basic.py.
     public void WarningsModule_WarnExplicit_NonWarningCategory_RaisesTypeError()
     {
         var (host, env, context) = CreateContext();
@@ -581,6 +590,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_basic.py.
     public void WarningsModule_Deprecated_FunctionWarnsOnCall()
     {
         var (host, env, context) = CreateContext();
@@ -605,6 +615,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_basic.py.
     public void WarningsModule_Deprecated_ClassWarnsOnInstantiation()
     {
         var (host, env, context) = CreateContext();
@@ -628,6 +639,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_basic.py.
     public void WarningsModule_Deprecated_ClassWarnsOnSubclass()
     {
         var (host, env, context) = CreateContext();
@@ -755,6 +767,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_filters.py.
     public void WarningsModule_SimpleFilter_Ignore_Suppresses()
     {
         var (host, env, context) = CreateContext();
@@ -775,6 +788,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_filters.py.
     public void WarningsModule_SimpleFilter_Error_Raises()
     {
         var (host, env, context) = CreateContext();
@@ -795,6 +809,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_filters.py.
     public void WarningsModule_CatchWarnings_RestoresFilter()
     {
         var (host, env, context) = CreateContext();
@@ -815,6 +830,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_filters.py.
     public void WarningsModule_CatchWarnings_NestedContextsRestoreOuterState()
     {
         var (host, env, context) = CreateContext();
@@ -835,6 +851,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_filters.py.
     public void WarningsModule_CatchWarnings_RestoresAfterException()
     {
         var (host, env, context) = CreateContext();
@@ -855,6 +872,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_registry.py.
     public void WarningsModule_CatchWarnings_Record_ReturnsWarningMessage()
     {
         var (host, env, context) = CreateContext();
@@ -885,6 +903,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_registry.py.
     public void WarningsModule_CatchWarnings_Record_RespectsDefaultDeduplication()
     {
         var (host, env, context) = CreateContext();
@@ -907,6 +926,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_registry.py.
     public void WarningsModule_CatchWarnings_Record_NestedSinksAreRestored()
     {
         var (host, env, context) = CreateContext();
@@ -929,6 +949,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_registry.py.
     public void WarningsModule_WarnExplicit_UsesExplicitModuleAndRegistry()
     {
         var (host, env, context) = CreateContext();
@@ -955,6 +976,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_registry.py.
     public void WarningsModule_WarnExplicit_SeparateRegistriesDoNotSuppress()
     {
         var (host, env, context) = CreateContext();
@@ -977,6 +999,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_registry.py.
     public void WarningsModule_WarnExplicit_UsesPythonRegistryContents()
     {
         var (host, env, context) = CreateContext();
@@ -1002,6 +1025,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_registry.py.
     public void WarningsModule_WarnExplicit_NullRegistryDoesNotDeduplicate()
     {
         var (host, env, context) = CreateContext();
@@ -1024,6 +1048,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_registry.py.
     public void WarningsModule_WarnExplicit_NullRegistryDoesNotCreateTransientState()
     {
         var (host, env, context) = CreateContext();
@@ -1046,6 +1071,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_filters.py.
     public void WarningsModule_FilterWarnings_MessageRegex()
     {
         var (host, env, context) = CreateContext();
@@ -1066,6 +1092,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_filters.py.
     public void WarningsModule_FilterWarnings_MessageRegex_IgnoreCase()
     {
         var (host, env, context) = CreateContext();
@@ -1143,6 +1170,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_filters.py.
     public void WarningsModule_ResetWarnings_ClearsFilters()
     {
         var (host, env, context) = CreateContext();
@@ -1163,6 +1191,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_filters.py.
     public void WarningsModule_FilterWarnings_InvalidAction_RaisesValueError()
     {
         var (host, env, context) = CreateContext();
@@ -1183,6 +1212,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_filters.py.
     public void WarningsModule_FilterWarnings_NonStringMessage_RaisesTypeError()
     {
         var (host, env, context) = CreateContext();
@@ -1203,6 +1233,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_filters.py.
     public void WarningsModule_FilterWarnings_NegativeLineno_RaisesValueError()
     {
         var (host, env, context) = CreateContext();
@@ -1223,6 +1254,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_filters.py.
     public void WarningsModule_FilterWarnings_NonIntLineno_RaisesTypeError()
     {
         var (host, env, context) = CreateContext();
@@ -1243,6 +1275,7 @@ public sealed class WarningTests
     }
 
     [TestMethod]
+    // Migration note: mirrored by test_pyfiles/test_warnings_module_filters.py.
     public void WarningsModule_FilterWarnings_InvalidCategory_RaisesTypeError()
     {
         var (host, env, context) = CreateContext();

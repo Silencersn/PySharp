@@ -37,7 +37,10 @@ public sealed class PyCatchWarningsObject : PyObject
 
         var state = context.PyEnvironment.Warnings;
         _snapshot = state.Capture();
-        state.SetRecordSink(_recordList);
+        if (_recordList is not null)
+            state.SetRecordSink(_recordList);
+        else if (state.RecordSink is null)
+            state.SetRecordSink(null);
         if (_action is not null)
             state.AddFilter(new WarningFilter(_action.Value, _category, null, null, _lineno), _append);
 

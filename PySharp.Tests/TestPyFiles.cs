@@ -119,6 +119,27 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestWarningsModuleBasic()
+    {
+        var module = RunModule("test_warnings_module_basic.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestWarningsModuleFilters()
+    {
+        var module = RunModule("test_warnings_module_filters.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestWarningsModuleRegistry()
+    {
+        var module = RunModule("test_warnings_module_registry.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestProperty()
     {
         var module = RunModule("test_property.py");
