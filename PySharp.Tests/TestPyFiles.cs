@@ -44,7 +44,8 @@ public sealed class TestPyFiles
         var moduleName = Path.GetFileNameWithoutExtension(filename);
         var fullPath = Path.GetFullPath(path);
 
-        using var environment = PyEnvironment.CreateBuilder(host)
+        using var environment = host
+            .CreateEnvironmentBuilder()
             .AddPath(Path.GetDirectoryName(fullPath)!)
             .AddArg(fullPath)
             .Build();

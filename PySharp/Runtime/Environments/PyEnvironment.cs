@@ -96,13 +96,6 @@ public sealed partial class PyEnvironment : IDisposable
         OnExit();
     }
 
-    public static IPyEnvironmentBuilder CreateBuilder(PyEnvironmentHost host)
-    {
-        ArgumentNullException.ThrowIfNull(host);
-
-        return new PyEnvironmentBuilder(host);
-    }
-
     public static PyEnvironment CreateNull()
     {
         return new PyEnvironment(PyEnvironmentHost.CreateNull(), isInteractive: true);

@@ -13,6 +13,11 @@ public abstract class PyEnvironmentHost
     // Default encoding used for stdio wrappers; subclasses may override it.
     public virtual Encoding DefaultEncoding => Utf8NoBom;
 
+    public virtual IPyEnvironmentBuilder CreateEnvironmentBuilder()
+    {
+        return new PyEnvironmentBuilder(this);
+    }
+
     public abstract Stream AllocateStdIn();
     public abstract Stream AllocateStdOut();
     public abstract Stream AllocateStdErr();
@@ -47,27 +52,33 @@ public abstract class PyEnvironmentHost
         public override IVirtualFileSystem FileSystem { get; } = MemoryFileSystem.CreateBuilder().Build();
     }
 
-    private sealed class ConsolePyEnvironmentHost : PyEnvironmentHost
+    private abstract class ConsolePyEnvironmentHostBase : PyEnvironmentHost
     {
         public override Stream AllocateStdIn() => Console.OpenStandardInput();
         public override Stream AllocateStdOut() => Console.OpenStandardOutput();
         public override Stream AllocateStdErr() => Console.OpenStandardError();
+
+        public override IPyEnvironmentBuilder CreateEnvironmentBuilder()
+        {
+            return base.CreateEnvironmentBuilder()
+                .UseStdInEncoding(Console.InputEncoding)
+                .UseStdOutEncoding(Console.OutputEncoding)
+                .UseStdErrEncoding(Console.OutputEncoding);
+        }
+    }
+
+    private sealed class ConsolePyEnvironmentHost : ConsolePyEnvironmentHostBase
+    {
         public override IVirtualFileSystem FileSystem { get; } = MemoryFileSystem.CreateBuilder().Build();
     }
 
-    private sealed class PhysicalConsolePyEnvironmentHost : PyEnvironmentHost
+    private sealed class PhysicalConsolePyEnvironmentHost : ConsolePyEnvironmentHostBase
     {
-        public override Stream AllocateStdIn() => Console.OpenStandardInput();
-        public override Stream AllocateStdOut() => Console.OpenStandardOutput();
-        public override Stream AllocateStdErr() => Console.OpenStandardError();
         public override IVirtualFileSystem FileSystem { get; } = PhysicalFileSystem.Shared;
     }
 
-    private sealed class ReplPyEnvironmentHost : PyEnvironmentHost
+    private sealed class ReplPyEnvironmentHost : ConsolePyEnvironmentHostBase
     {
-        public override Stream AllocateStdIn() => Console.OpenStandardInput();
-        public override Stream AllocateStdOut() => Console.OpenStandardOutput();
-        public override Stream AllocateStdErr() => Console.OpenStandardError();
         public override IVirtualFileSystem FileSystem { get; } = MemoryFileSystem.CreateBuilder().Build();
     }
 }
