@@ -192,6 +192,17 @@ public sealed class PyInterpreter : IDisposable
         return RunCodeWithContext(context, code, moduleName, sourceName, isMain: true);
     }
 
+    public static PyModuleObject? RunCode(PyEnvironment environment, string code, string? moduleName = null, string? sourceName = null)
+    {
+        ArgumentNullException.ThrowIfNull(environment);
+        ArgumentNullException.ThrowIfNull(code);
+        moduleName ??= "<module>";
+        sourceName ??= "<string>";
+
+        using var context = PyCallContext.CreateInterpreterRootContext(environment);
+        return RunCodeWithContext(context, code, moduleName, sourceName, isMain: true);
+    }
+
     internal static PyModuleObject RunCodeWithContext(PyCallContext context, string code, string moduleName, string sourceName, bool isMain)
     {
         var module = new PyModuleObject(moduleName);
@@ -205,18 +216,18 @@ public sealed class PyInterpreter : IDisposable
         InternalExecuteToModule(context, codeObj, module, isMain);
     }
 
-    public static void RunRepl()
+    public static void RunRepl(PyEnvironment? environment = null)
     {
-        using var environment = PyEnvironmentHost
+        var runEnv = environment ?? PyEnvironmentHost
             .CreateRepl()
             .CreateEnvironmentBuilder()
             .SetInteractive(true)
             .Initialization.SyncExit()
             .Build();
 
-        environment.Out.WriteLine($"{nameof(PySharp)} (v{typeof(PyInterpreter).Assembly.GetName().Version}) on {Environment.OSVersion}");
+        runEnv.Out.WriteLine($"{nameof(PySharp)} (v{typeof(PyInterpreter).Assembly.GetName().Version}) on {Environment.OSVersion}");
 
-        using var interpreter = Create(environment);
+        using var interpreter = Create(runEnv);
         var context = interpreter._mainContext;
         var builder = new StringBuilder();
 
@@ -231,8 +242,8 @@ public sealed class PyInterpreter : IDisposable
 
                 while (true)
                 {
-                    environment.Out.Write(isFirstLine ? ">>> " : "... ");
-                    var line = environment.In.ReadLine() ?? throw new EndOfStreamException();
+                    runEnv.Out.Write(isFirstLine ? ">>> " : "... ");
+                    var line = runEnv.In.ReadLine() ?? throw new EndOfStreamException();
                     builder.AppendLine(line);
                     isFirstLine = false;
 

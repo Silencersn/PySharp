@@ -1,5 +1,6 @@
 using PySharp.Modules.Builtins;
 using PySharp.Runtime;
+using PySharp.Runtime.Environments;
 
 namespace PySharp.Console;
 
@@ -13,7 +14,7 @@ internal static class Program
         if (args.Length is 0)
         {
             // No arguments: enter the interactive REPL.
-            PyInterpreter.RunRepl();
+            RunRepl();
             return 0;
         }
 
@@ -24,7 +25,7 @@ internal static class Program
             // "pysharp --" with no script: enter the interactive REPL.
             if (args.Length is 1)
             {
-                PyInterpreter.RunRepl();
+                RunRepl();
                 return 0;
             }
             return RunScript(args[1], args[2..]);
@@ -74,8 +75,26 @@ internal static class Program
 
         try
         {
-            PyInterpreter.RunFile(path, scriptArgs);
-            return 0;
+            var code = File.ReadAllText(path);
+            var fullPath = Path.GetFullPath(path);
+            var scriptDirectory = Path.GetDirectoryName(fullPath)!;
+
+            var env = BuildEnvironment(
+                args: scriptArgs,
+                arg0: path,
+                paths: [scriptDirectory]);
+
+            try
+            {
+                PyInterpreter.RunCode(env, code,
+                    moduleName: Path.GetFileNameWithoutExtension(path),
+                    sourceName: fullPath);
+                return 0;
+            }
+            finally
+            {
+                env.Dispose();
+            }
         }
         catch (PyRuntimeException e)
         {
@@ -87,12 +106,62 @@ internal static class Program
     {
         try
         {
-            PyInterpreter.RunCode(code, args: extraArgs);
-            return 0;
+            var env = BuildEnvironment(args: extraArgs, arg0: "-c");
+            try
+            {
+                PyInterpreter.RunCode(env, code, sourceName: "-c");
+                return 0;
+            }
+            finally
+            {
+                env.Dispose();
+            }
         }
         catch (PyRuntimeException e)
         {
             return HandlePyError(e);
+        }
+    }
+
+    private static PyEnvironment BuildEnvironment(
+        IEnumerable<string>? args = null,
+        string? arg0 = null,
+        IEnumerable<string>? paths = null,
+        bool interactive = false,
+        bool syncExit = false)
+    {
+        var builder = PyEnvironmentHost.CreateConsole(usingPhysicalFileSystem: true)
+            .CreateEnvironmentBuilder();
+
+        if (arg0 is not null)
+            builder.AddArg(arg0);
+        if (args is not null)
+            builder.AddArgs(args);
+        if (paths is not null)
+        {
+            foreach (var p in paths)
+                builder.AddPath(p);
+        }
+
+        if (interactive)
+            builder.SetInteractive(true);
+
+        if (syncExit)
+            builder.Initialization.SyncExit();
+
+        return builder.Build();
+    }
+
+    private static void RunRepl()
+    {
+        var env = BuildEnvironment(interactive: true, syncExit: true);
+        try
+        {
+            PyInterpreter.RunRepl(env);
+        }
+        finally
+        {
+            env.Dispose();
         }
     }
 
