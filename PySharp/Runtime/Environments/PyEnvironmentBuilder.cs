@@ -15,6 +15,8 @@ internal sealed class PyEnvironmentBuilder :
     private Encoding? _stdoutEncoding;
     private Encoding? _stderrEncoding;
 
+    private int _optimizationLevel;
+
     private bool _syncExit;
     private bool _importSite;
 
@@ -71,6 +73,12 @@ internal sealed class PyEnvironmentBuilder :
         return this;
     }
 
+    public IPyEnvironmentBuilder SetOptimizationLevel(int level)
+    {
+        _optimizationLevel = level;
+        return this;
+    }
+
     public PyEnvironment Build()
     {
         var host = _host ?? PyEnvironmentHost.CreateNull();
@@ -78,6 +86,7 @@ internal sealed class PyEnvironmentBuilder :
         var options = new PyEnvironmentOptions()
         {
             NotImplyImportSite = !_importSite,
+            OptimizationLevel = _optimizationLevel,
         };
 
         var environment = new PyEnvironment(host, _isInteractive, _paths, _args,
@@ -116,6 +125,7 @@ public interface IPyEnvironmentBuilder
     IPyEnvironmentBuilder UseStdOutEncoding(Encoding encoding);
     IPyEnvironmentBuilder UseStdErrEncoding(Encoding encoding);
     IPyEnvironmentBuilder UseStdioEncoding(Encoding encoding);
+    IPyEnvironmentBuilder SetOptimizationLevel(int level);
     IPyEnvironmentBuilder AddArgs(IEnumerable<string>? args)
     {
         if (args is null)

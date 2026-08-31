@@ -34,7 +34,7 @@ internal sealed partial class Emitter
 
     private BytecodeBuilder Builder { get; set; }
     private SemanticModel Model => _model;
-    private int OptimizationLevel => _context.PyEnvironment.OptimizationLevel;
+    private int OptimizationLevel => _context.PyEnvironment.Options.OptimizationLevel;
     private VariableScope VariableScope { get; set; }
     private Stack<(Label LoopBegin, Label LoopEnd)> Loops { get; } = [];
     private Stack<int> ForDepth { get; } = [];

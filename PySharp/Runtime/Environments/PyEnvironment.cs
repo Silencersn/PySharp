@@ -27,7 +27,6 @@ public sealed partial class PyEnvironment : IDisposable
         bool isInteractive = false,
         IEnumerable<string>? paths = null,
         IEnumerable<string>? args = null,
-        int optimizationLevel = 0,
         Encoding? stdinEncoding = null,
         Encoding? stdoutEncoding = null,
         Encoding? stderrEncoding = null,
@@ -43,7 +42,6 @@ public sealed partial class PyEnvironment : IDisposable
         _isInteractive = isInteractive;
         _paths = paths is null ? [] : [.. paths];
         _args = args is null ? [] : [.. args];
-        OptimizationLevel = optimizationLevel;
         Options = options ?? PyEnvironmentOptions.Default;
         ModuleProviders = [BuiltinModuleProvider.Shared, PathProvider.Shared];
     }
@@ -66,7 +64,6 @@ public sealed partial class PyEnvironment : IDisposable
     internal event PyExitEventHandler? Exit;
     internal bool IsInteractive => _isInteractive;
     internal IVirtualFileSystem FileSystem => Host.FileSystem;
-    internal int OptimizationLevel { get; }
 
     public PyStrObject.InternPool InternPool { get; } = new();
 
