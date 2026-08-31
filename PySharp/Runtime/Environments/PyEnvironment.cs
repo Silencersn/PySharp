@@ -28,16 +28,17 @@ public sealed partial class PyEnvironment : IDisposable
         IEnumerable<string>? paths = null,
         IEnumerable<string>? args = null,
         int optimizationLevel = 0,
-        Encoding? stdioEncoding = null)
+        Encoding? stdinEncoding = null,
+        Encoding? stdoutEncoding = null,
+        Encoding? stderrEncoding = null)
     {
         Host = host;
         _inStream = host.AllocateStdIn();
         _outStream = host.AllocateStdOut();
         _errorStream = host.AllocateStdErr();
-        var encoding = stdioEncoding ?? Host.DefaultEncoding;
-        _in = new StreamReader(_inStream, encoding);
-        _out = new StreamWriter(_outStream, encoding);
-        _error = new StreamWriter(_errorStream, encoding);
+        _in = new StreamReader(_inStream, stdinEncoding ?? Host.DefaultEncoding);
+        _out = new StreamWriter(_outStream, stdoutEncoding ?? Host.DefaultEncoding);
+        _error = new StreamWriter(_errorStream, stderrEncoding ?? Host.DefaultEncoding);
         _isInteractive = isInteractive;
         _paths = paths is null ? [] : [.. paths];
         _args = args is null ? [] : [.. args];

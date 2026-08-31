@@ -11,7 +11,9 @@ internal sealed class PyEnvironmentBuilder :
     private readonly List<string> _paths = [];
     private readonly List<string> _args = [];
 
-    private Encoding? _stdioEncoding;
+    private Encoding? _stdinEncoding;
+    private Encoding? _stdoutEncoding;
+    private Encoding? _stderrEncoding;
 
     private bool _syncExit;
     private bool _importSite;
@@ -43,9 +45,29 @@ internal sealed class PyEnvironmentBuilder :
         return this;
     }
 
+    public IPyEnvironmentBuilder UseStdInEncoding(Encoding encoding)
+    {
+        _stdinEncoding = encoding;
+        return this;
+    }
+
+    public IPyEnvironmentBuilder UseStdOutEncoding(Encoding encoding)
+    {
+        _stdoutEncoding = encoding;
+        return this;
+    }
+
+    public IPyEnvironmentBuilder UseStdErrEncoding(Encoding encoding)
+    {
+        _stderrEncoding = encoding;
+        return this;
+    }
+
     public IPyEnvironmentBuilder UseStdioEncoding(Encoding encoding)
     {
-        _stdioEncoding = encoding;
+        _stdinEncoding = encoding;
+        _stdoutEncoding = encoding;
+        _stderrEncoding = encoding;
         return this;
     }
 
@@ -53,7 +75,10 @@ internal sealed class PyEnvironmentBuilder :
     {
         var host = _host ?? PyEnvironmentHost.CreateNull();
 
-        var environment = new PyEnvironment(host, _isInteractive, _paths, _args, stdioEncoding: _stdioEncoding);
+        var environment = new PyEnvironment(host, _isInteractive, _paths, _args,
+            stdinEncoding: _stdinEncoding,
+            stdoutEncoding: _stdoutEncoding,
+            stderrEncoding: _stderrEncoding);
 
         var options = new PyEnvironmentOptions()
         {
@@ -86,6 +111,9 @@ public interface IPyEnvironmentBuilder
     IPyEnvironmentBuilder SetInteractive(bool isInteractive);
     IPyEnvironmentBuilder AddPath(string path);
     IPyEnvironmentBuilder AddArg(string arg);
+    IPyEnvironmentBuilder UseStdInEncoding(Encoding encoding);
+    IPyEnvironmentBuilder UseStdOutEncoding(Encoding encoding);
+    IPyEnvironmentBuilder UseStdErrEncoding(Encoding encoding);
     IPyEnvironmentBuilder UseStdioEncoding(Encoding encoding);
     IPyEnvironmentBuilder AddArgs(IEnumerable<string>? args)
     {
