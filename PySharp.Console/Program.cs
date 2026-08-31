@@ -11,27 +11,51 @@ internal static class Program
 
     private static int Main(string[] args)
     {
-        if (args.Length is 0)
+        var builder = PyEnvironmentHost.CreateConsole(usingPhysicalFileSystem: true)
+            .CreateEnvironmentBuilder();
+
+        int index = 0;
+        int optimizationLevel = 0;
+        while (index < args.Length)
         {
-            // No arguments: enter the interactive REPL.
-            RunRepl();
-            return 0;
+            switch (args[index])
+            {
+                case "-O":
+                    optimizationLevel++;
+                    index++;
+                    continue;
+                case "-OO":
+                    optimizationLevel += 2;
+                    index++;
+                    continue;
+                case "-S":
+                    builder.NotImplyImportSite();
+                    index++;
+                    continue;
+            }
+            break;
         }
+
+        if (optimizationLevel is not 0)
+            builder.SetOptimizationLevel(optimizationLevel);
+
+        var remaining = args[index..];
+
+        // No arguments (or only global flags): enter the interactive REPL.
+        if (remaining.Length is 0)
+            return RunRepl(builder);
 
         // "--" terminates option parsing: everything after it is treated as
         // the script and its arguments (matches CPython).
-        if (args[0] is "--")
+        if (remaining[0] is "--")
         {
             // "pysharp --" with no script: enter the interactive REPL.
-            if (args.Length is 1)
-            {
-                RunRepl();
-                return 0;
-            }
-            return RunScript(args[1], args[2..]);
+            if (remaining.Length is 1)
+                return RunRepl(builder);
+            return RunScript(builder, remaining[1], remaining[2..]);
         }
 
-        switch (args[0])
+        switch (remaining[0])
         {
             case "-h":
             case "--help":
@@ -44,28 +68,28 @@ internal static class Program
                 return 0;
 
             case "-c":
-                if (args.Length < 2)
+                if (remaining.Length < 2)
                 {
                     Error("argument -c: expected one argument");
                     return 2;
                 }
                 // Extra arguments after the code are passed through to sys.argv
                 // (matches CPython: sys.argv == ['-c', ...]).
-                return RunCode(args[1], args[2..]);
+                return RunCode(builder, remaining[1], remaining[2..]);
 
             default:
-                if (args[0].StartsWith('-'))
+                if (remaining[0].StartsWith('-'))
                 {
-                    Error($"unknown option: {args[0]}");
+                    Error($"unknown option: {remaining[0]}");
                     return 2;
                 }
                 // Extra arguments after the script are passed through to sys.argv
                 // (matches CPython: sys.argv == ['script.py', ...]).
-                return RunScript(args[0], args[1..]);
+                return RunScript(builder, remaining[0], remaining[1..]);
         }
     }
 
-    private static int RunScript(string path, string[] scriptArgs)
+    private static int RunScript(IPyEnvironmentBuilder builder, string path, string[] scriptArgs)
     {
         if (!File.Exists(path))
         {
@@ -79,11 +103,12 @@ internal static class Program
             var fullPath = Path.GetFullPath(path);
             var scriptDirectory = Path.GetDirectoryName(fullPath)!;
 
-            var env = BuildEnvironment(
-                args: scriptArgs,
-                arg0: path,
-                paths: [scriptDirectory]);
+            builder
+                .AddPath(scriptDirectory)
+                .AddArg(path)
+                .AddArgs(scriptArgs);
 
+            var env = builder.Build();
             try
             {
                 PyInterpreter.RunCode(env, code,
@@ -102,11 +127,15 @@ internal static class Program
         }
     }
 
-    private static int RunCode(string code, string[] extraArgs)
+    private static int RunCode(IPyEnvironmentBuilder builder, string code, string[] extraArgs)
     {
         try
         {
-            var env = BuildEnvironment(args: extraArgs, arg0: "-c");
+            builder
+                .AddArg("-c")
+                .AddArgs(extraArgs);
+
+            var env = builder.Build();
             try
             {
                 PyInterpreter.RunCode(env, code, sourceName: "-c");
@@ -123,37 +152,14 @@ internal static class Program
         }
     }
 
-    private static PyEnvironment BuildEnvironment(
-        IEnumerable<string>? args = null,
-        string? arg0 = null,
-        IEnumerable<string>? paths = null,
-        bool interactive = false)
+    private static int RunRepl(IPyEnvironmentBuilder builder)
     {
-        var builder = PyEnvironmentHost.CreateConsole(usingPhysicalFileSystem: true)
-            .CreateEnvironmentBuilder();
-
-        if (arg0 is not null)
-            builder.AddArg(arg0);
-        if (args is not null)
-            builder.AddArgs(args);
-        if (paths is not null)
-        {
-            foreach (var p in paths)
-                builder.AddPath(p);
-        }
-
-        if (interactive)
-            builder.SetInteractive(true);
-
-        return builder.Build();
-    }
-
-    private static void RunRepl()
-    {
-        var env = BuildEnvironment(interactive: true);
+        builder.SetInteractive(true);
+        var env = builder.Build();
         try
         {
             PyInterpreter.RunRepl(env);
+            return 0;
         }
         finally
         {
