@@ -30,7 +30,8 @@ public sealed partial class PyEnvironment : IDisposable
         int optimizationLevel = 0,
         Encoding? stdinEncoding = null,
         Encoding? stdoutEncoding = null,
-        Encoding? stderrEncoding = null)
+        Encoding? stderrEncoding = null,
+        PyEnvironmentOptions? options = null)
     {
         Host = host;
         _inStream = host.AllocateStdIn();
@@ -43,6 +44,7 @@ public sealed partial class PyEnvironment : IDisposable
         _paths = paths is null ? [] : [.. paths];
         _args = args is null ? [] : [.. args];
         OptimizationLevel = optimizationLevel;
+        Options = options ?? PyEnvironmentOptions.Default;
         ModuleProviders = [BuiltinModuleProvider.Shared, PathProvider.Shared];
     }
 
@@ -54,6 +56,7 @@ public sealed partial class PyEnvironment : IDisposable
     internal Stream InStream => _inStream;
     internal Stream OutStream => _outStream;
     internal Stream ErrorStream => _errorStream;
+    internal PyEnvironmentOptions Options { get; }
     internal Dictionary<string, PyModuleObject?> Modules { get; } = [];
     internal ConcurrentSet<Thread> Threads { get; } = [];
     internal List<string> Paths => _paths;

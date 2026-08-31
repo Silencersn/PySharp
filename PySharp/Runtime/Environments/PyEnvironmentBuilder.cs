@@ -75,15 +75,16 @@ internal sealed class PyEnvironmentBuilder :
     {
         var host = _host ?? PyEnvironmentHost.CreateNull();
 
-        var environment = new PyEnvironment(host, _isInteractive, _paths, _args,
-            stdinEncoding: _stdinEncoding,
-            stdoutEncoding: _stdoutEncoding,
-            stderrEncoding: _stderrEncoding);
-
         var options = new PyEnvironmentOptions()
         {
             NotImplyImportSite = !_importSite,
         };
+
+        var environment = new PyEnvironment(host, _isInteractive, _paths, _args,
+            stdinEncoding: _stdinEncoding,
+            stdoutEncoding: _stdoutEncoding,
+            stderrEncoding: _stderrEncoding,
+            options: options);
 
         if (_syncExit)
             environment.Exit += static args => Environment.Exit(args.ExitCode);

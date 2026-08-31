@@ -68,8 +68,8 @@ internal partial struct PyInternalFrame
         frame.Variables.Globals[PySpecialNames.Builtins] = builtins;
         frame.Variables.Globals[PySpecialNames.Name] = PyStrObject.FromString(moduleQualifiedName);
 
-        // TODO: add flag to control whether adding site
-        _ = context.PyEnvironment.LoadBuiltinModule(context, "site");
+        if (!context.PyEnvironment.Options.NotImplyImportSite)
+            _ = context.PyEnvironment.LoadBuiltinModule(context, "site");
 
         return frame;
     }
