@@ -39,6 +39,8 @@ public sealed partial class PyEnvironment : IDisposable
         _in = new StreamReader(_inStream, stdinEncoding ?? Host.DefaultEncoding);
         _out = new StreamWriter(_outStream, stdoutEncoding ?? Host.DefaultEncoding);
         _error = new StreamWriter(_errorStream, stderrEncoding ?? Host.DefaultEncoding);
+        _out.AutoFlush = true;
+        _error.AutoFlush = true;
         _isInteractive = isInteractive;
         _paths = paths is null ? [] : [.. paths];
         _args = args is null ? [] : [.. args];
