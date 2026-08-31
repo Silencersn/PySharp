@@ -13,6 +13,8 @@ public abstract class PyEnvironmentHost
     // Default encoding used for stdio wrappers; subclasses may override it.
     public virtual Encoding DefaultEncoding => Utf8NoBom;
 
+    public virtual bool SupportsColorOutput => true;
+
     public virtual IPyEnvironmentBuilder CreateEnvironmentBuilder()
     {
         return new PyEnvironmentBuilder(this);

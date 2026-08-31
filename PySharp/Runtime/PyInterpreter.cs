@@ -132,9 +132,16 @@ public sealed class PyInterpreter : IDisposable
 
                         const string ANSIColorRed = "\e[31m";
                         const string ANSIClearColor = "\e[0m";
-                        context.Error.Write(ANSIColorRed);
-                        context.Error.WriteLine(exc.ToMessage(context));
-                        context.Error.Write(ANSIClearColor);
+                        if (context.PyEnvironment.Host.SupportsColorOutput)
+                        {
+                            context.Error.Write(ANSIColorRed);
+                            context.Error.WriteLine(exc.ToMessage(context));
+                            context.Error.Write(ANSIClearColor);
+                        }
+                        else
+                        {
+                            context.Error.WriteLine(exc.ToMessage(context));
+                        }
                     }
 
                     if (alwaysThrow)

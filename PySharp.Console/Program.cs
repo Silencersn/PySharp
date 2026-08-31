@@ -9,10 +9,11 @@ internal static class Program
     private const string AnsiColorRed = "\e[31m";
     private const string AnsiClearColor = "\e[0m";
 
+    private static PyEnvironmentHost Host { get; } = PyEnvironmentHost.CreateConsole(usingPhysicalFileSystem: true);
+
     private static int Main(string[] args)
     {
-        var builder = PyEnvironmentHost.CreateConsole(usingPhysicalFileSystem: true)
-            .CreateEnvironmentBuilder();
+        var builder = Host.CreateEnvironmentBuilder();
 
         int index = 0;
         int optimizationLevel = 0;
@@ -175,7 +176,11 @@ internal static class Program
         if (PySystemExitObjectType.Shared.IsInstance(exception))
             return GetSystemExitCode(exception);
 
-        System.Console.Error.WriteLine($"{AnsiColorRed}{e.Message}{AnsiClearColor}");
+        var message = e.Message;
+        if (Host.SupportsColorOutput)
+            System.Console.Error.WriteLine($"{AnsiColorRed}{message}{AnsiClearColor}");
+        else
+            System.Console.Error.WriteLine(message);
         return 1;
     }
 
