@@ -127,8 +127,7 @@ internal static class Program
         IEnumerable<string>? args = null,
         string? arg0 = null,
         IEnumerable<string>? paths = null,
-        bool interactive = false,
-        bool syncExit = false)
+        bool interactive = false)
     {
         var builder = PyEnvironmentHost.CreateConsole(usingPhysicalFileSystem: true)
             .CreateEnvironmentBuilder();
@@ -146,15 +145,12 @@ internal static class Program
         if (interactive)
             builder.SetInteractive(true);
 
-        if (syncExit)
-            builder.Initialization.SyncExit();
-
         return builder.Build();
     }
 
     private static void RunRepl()
     {
-        var env = BuildEnvironment(interactive: true, syncExit: true);
+        var env = BuildEnvironment(interactive: true);
         try
         {
             PyInterpreter.RunRepl(env);

@@ -2,9 +2,7 @@ using System.Text;
 
 namespace PySharp.Runtime.Environments;
 
-internal sealed class PyEnvironmentBuilder :
-    IPyEnvironmentBuilder,
-    IPyEnvironmentInitializationBuilder
+internal sealed class PyEnvironmentBuilder : IPyEnvironmentBuilder
 {
     private readonly PyEnvironmentHost _host;
     private bool _isInteractive;
@@ -17,17 +15,13 @@ internal sealed class PyEnvironmentBuilder :
 
     private int _optimizationLevel;
 
-    private bool _syncExit;
     private bool _importSite;
 
     internal PyEnvironmentBuilder(PyEnvironmentHost host)
     {
-        _syncExit = false;
         _importSite = true;
         _host = host;
     }
-
-    public IPyEnvironmentInitializationBuilder Initialization => this;
 
     public IPyEnvironmentBuilder SetInteractive(bool isInteractive)
     {
@@ -95,19 +89,10 @@ internal sealed class PyEnvironmentBuilder :
             stderrEncoding: _stderrEncoding,
             options: options);
 
-        if (_syncExit)
-            environment.Exit += static args => Environment.Exit(args.ExitCode);
-
         return environment;
     }
 
-    IPyEnvironmentInitializationBuilder IPyEnvironmentInitializationBuilder.SyncExit()
-    {
-        _syncExit = true;
-        return this;
-    }
-
-    IPyEnvironmentInitializationBuilder IPyEnvironmentInitializationBuilder.NotImplyImportSite()
+    public IPyEnvironmentBuilder NotImplyImportSite()
     {
         _importSite = false;
         return this;
@@ -136,12 +121,6 @@ public interface IPyEnvironmentBuilder
 
         return this;
     }
-    IPyEnvironmentInitializationBuilder Initialization { get; }
+    IPyEnvironmentBuilder NotImplyImportSite();
     PyEnvironment Build();
-}
-
-public interface IPyEnvironmentInitializationBuilder : IPyEnvironmentBuilder
-{
-    IPyEnvironmentInitializationBuilder SyncExit();
-    IPyEnvironmentInitializationBuilder NotImplyImportSite();
 }

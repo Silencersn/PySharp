@@ -222,7 +222,6 @@ public sealed class PyInterpreter : IDisposable
             .CreateRepl()
             .CreateEnvironmentBuilder()
             .SetInteractive(true)
-            .Initialization.SyncExit()
             .Build();
 
         runEnv.Out.WriteLine($"{nameof(PySharp)} (v{typeof(PyInterpreter).Assembly.GetName().Version}) on {Environment.OSVersion}");

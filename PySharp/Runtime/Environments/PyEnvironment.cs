@@ -61,16 +61,17 @@ public sealed partial class PyEnvironment : IDisposable
     internal List<string> Args => _args;
     internal List<PyModuleProvider> ModuleProviders { get; }
     internal int ExitCode { get; set; }
-    internal event PyExitEventHandler? Exit;
     internal bool IsInteractive => _isInteractive;
     internal IVirtualFileSystem FileSystem => Host.FileSystem;
 
     public PyStrObject.InternPool InternPool { get; } = new();
 
-    internal void OnExit()
+    public void Dispose()
     {
-        var args = new PyExitEventArgs(ExitCode, null /* TODO: how to process this arg? */);
-        Exit?.Invoke(args);
+        if (_disposed)
+            return;
+
+        _disposed = true;
 
         foreach (var thread in Threads)
             // this Interrupt calling may be failed
@@ -87,15 +88,6 @@ public sealed partial class PyEnvironment : IDisposable
         _error.Dispose();
     }
 
-    public void Dispose()
-    {
-        if (_disposed)
-            return;
-
-        _disposed = true;
-        OnExit();
-    }
-
     public static PyEnvironment CreateNull()
     {
         return new PyEnvironment(PyEnvironmentHost.CreateNull(), isInteractive: true);
@@ -106,17 +98,3 @@ public sealed partial class PyEnvironment : IDisposable
         return new PyEnvironment(PyEnvironmentHost.CreateConsole());
     }
 }
-
-public sealed class PyExitEventArgs : EventArgs
-{
-    public int ExitCode { get; }
-    public PyExceptionObject? Exception { get; }
-
-    internal PyExitEventArgs(int exitCode, PyExceptionObject? exception = null)
-    {
-        ExitCode = exitCode;
-        Exception = exception;
-    }
-}
-
-public delegate void PyExitEventHandler(PyExitEventArgs args);
