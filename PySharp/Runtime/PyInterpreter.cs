@@ -280,7 +280,8 @@ public sealed class PyInterpreter : IDisposable
         var context = interpreter._mainContext;
         var builder = new StringBuilder();
 
-        while (true)
+        var endOfInput = false;
+        while (!endOfInput)
         {
             PyTryCatch(context, () =>
             {
@@ -292,7 +293,13 @@ public sealed class PyInterpreter : IDisposable
                 while (true)
                 {
                     runEnv.Out.Write(isFirstLine ? ">>> " : "... ");
-                    var line = runEnv.In.ReadLine() ?? throw new EndOfStreamException();
+                    var line = runEnv.In.ReadLine();
+                    if (line is null)
+                    {
+                        // Matches CPython: EOF terminates the interactive session.
+                        endOfInput = true;
+                        return;
+                    }
                     builder.AppendLine(line);
                     isFirstLine = false;
 
