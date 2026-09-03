@@ -14,6 +14,8 @@ public sealed partial class PyEnvironment : IDisposable
     private readonly StreamWriter _out;
     private readonly StreamWriter _error;
     private readonly bool _isInteractive;
+    private readonly bool _supportsColorOut;
+    private readonly bool _supportsColorError;
     private readonly List<string> _paths;
     private readonly List<string> _args;
     private bool _disposed;
@@ -30,7 +32,9 @@ public sealed partial class PyEnvironment : IDisposable
         Encoding? stdinEncoding = null,
         Encoding? stdoutEncoding = null,
         Encoding? stderrEncoding = null,
-        PyEnvironmentOptions? options = null)
+        PyEnvironmentOptions? options = null,
+        bool? supportsColorOut = null,
+        bool? supportsColorError = null)
     {
         Host = host;
         _inStream = host.AllocateStdIn();
@@ -42,6 +46,8 @@ public sealed partial class PyEnvironment : IDisposable
         _out.AutoFlush = true;
         _error.AutoFlush = true;
         _isInteractive = isInteractive;
+        _supportsColorOut = supportsColorOut ?? Host.SupportsColorOutput;
+        _supportsColorError = supportsColorError ?? Host.SupportsColorOutput;
         _paths = paths is null ? [] : [.. paths];
         _args = args is null ? [] : [.. args];
         Options = options ?? PyEnvironmentOptions.Default;
@@ -49,6 +55,9 @@ public sealed partial class PyEnvironment : IDisposable
     }
 
     public PyEnvironmentHost Host { get; }
+
+    public bool OutSupportsColor => _supportsColorOut;
+    public bool ErrorSupportsColor => _supportsColorError;
 
     internal StreamReader In => _in;
     internal StreamWriter Out => _out;

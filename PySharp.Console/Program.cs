@@ -98,58 +98,52 @@ internal static class Program
             return 2;
         }
 
+        var code = File.ReadAllText(path);
+        var fullPath = Path.GetFullPath(path);
+        var scriptDirectory = Path.GetDirectoryName(fullPath)!;
+
+        builder
+            .AddPath(scriptDirectory)
+            .AddArg(path)
+            .AddArgs(scriptArgs);
+
+        var env = builder.Build();
         try
         {
-            var code = File.ReadAllText(path);
-            var fullPath = Path.GetFullPath(path);
-            var scriptDirectory = Path.GetDirectoryName(fullPath)!;
-
-            builder
-                .AddPath(scriptDirectory)
-                .AddArg(path)
-                .AddArgs(scriptArgs);
-
-            var env = builder.Build();
-            try
-            {
-                PyInterpreter.RunCode(env, code,
-                    moduleName: Path.GetFileNameWithoutExtension(path),
-                    sourceName: fullPath);
-                return 0;
-            }
-            finally
-            {
-                env.Dispose();
-            }
+            PyInterpreter.RunCode(env, code,
+                moduleName: Path.GetFileNameWithoutExtension(path),
+                sourceName: fullPath);
+            return 0;
         }
         catch (PyRuntimeException e)
         {
-            return HandlePyError(e);
+            return HandlePyError(e, env);
+        }
+        finally
+        {
+            env.Dispose();
         }
     }
 
     private static int RunCode(IPyEnvironmentBuilder builder, string code, string[] extraArgs)
     {
+        builder
+            .AddArg("-c")
+            .AddArgs(extraArgs);
+
+        var env = builder.Build();
         try
         {
-            builder
-                .AddArg("-c")
-                .AddArgs(extraArgs);
-
-            var env = builder.Build();
-            try
-            {
-                PyInterpreter.RunCode(env, code, sourceName: "-c");
-                return 0;
-            }
-            finally
-            {
-                env.Dispose();
-            }
+            PyInterpreter.RunCode(env, code, sourceName: "-c");
+            return 0;
         }
         catch (PyRuntimeException e)
         {
-            return HandlePyError(e);
+            return HandlePyError(e, env);
+        }
+        finally
+        {
+            env.Dispose();
         }
     }
 
@@ -168,7 +162,7 @@ internal static class Program
         }
     }
 
-    private static int HandlePyError(PyRuntimeException e)
+    private static int HandlePyError(PyRuntimeException e, PyEnvironment env)
     {
         var exception = e.PyException;
 
@@ -177,7 +171,7 @@ internal static class Program
             return GetSystemExitCode(exception);
 
         var message = e.Message;
-        if (Host.SupportsColorOutput)
+        if (env.ErrorSupportsColor)
             System.Console.Error.WriteLine($"{AnsiColorRed}{message}{AnsiClearColor}");
         else
             System.Console.Error.WriteLine(message);

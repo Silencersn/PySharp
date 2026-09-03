@@ -13,6 +13,9 @@ internal sealed class PyEnvironmentBuilder : IPyEnvironmentBuilder
     private Encoding? _stdoutEncoding;
     private Encoding? _stderrEncoding;
 
+    private bool? _supportsColorOut;
+    private bool? _supportsColorError;
+
     private int _optimizationLevel;
 
     private bool _importSite;
@@ -67,6 +70,18 @@ internal sealed class PyEnvironmentBuilder : IPyEnvironmentBuilder
         return this;
     }
 
+    public IPyEnvironmentBuilder UseStdOutColorSupport(bool enabled)
+    {
+        _supportsColorOut = enabled;
+        return this;
+    }
+
+    public IPyEnvironmentBuilder UseStdErrColorSupport(bool enabled)
+    {
+        _supportsColorError = enabled;
+        return this;
+    }
+
     public IPyEnvironmentBuilder SetOptimizationLevel(int level)
     {
         _optimizationLevel = level;
@@ -87,7 +102,9 @@ internal sealed class PyEnvironmentBuilder : IPyEnvironmentBuilder
             stdinEncoding: _stdinEncoding,
             stdoutEncoding: _stdoutEncoding,
             stderrEncoding: _stderrEncoding,
-            options: options);
+            options: options,
+            supportsColorOut: _supportsColorOut,
+            supportsColorError: _supportsColorError);
 
         return environment;
     }
@@ -110,6 +127,8 @@ public interface IPyEnvironmentBuilder
     IPyEnvironmentBuilder UseStdOutEncoding(Encoding encoding);
     IPyEnvironmentBuilder UseStdErrEncoding(Encoding encoding);
     IPyEnvironmentBuilder UseStdioEncoding(Encoding encoding);
+    IPyEnvironmentBuilder UseStdOutColorSupport(bool enabled);
+    IPyEnvironmentBuilder UseStdErrColorSupport(bool enabled);
     IPyEnvironmentBuilder SetOptimizationLevel(int level);
     IPyEnvironmentBuilder AddArgs(IEnumerable<string>? args)
     {
