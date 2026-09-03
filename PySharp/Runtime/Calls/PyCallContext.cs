@@ -1,3 +1,4 @@
+using PySharp.Modules.Builtins;
 using PySharp.Runtime.Comparison;
 using PySharp.Runtime.Environments;
 using PySharp.Utility;
@@ -70,8 +71,7 @@ public sealed partial class PyCallContext : IDisposable
 
     internal void Exit(int exitCode)
     {
-        PyEnvironment.ExitCode = exitCode;
-        throw SystemExit(string.Empty);
+        throw ThrowableException(PySystemExitObjectType.Shared, PyIntObject.FromInteger(exitCode));
     }
 
     internal static PyCallContext CreateFromEnvironment(PyEnvironment? environment = null)

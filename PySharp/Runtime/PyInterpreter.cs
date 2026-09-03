@@ -124,6 +124,7 @@ public sealed class PyInterpreter : IDisposable
 
                     if (PySystemExitObjectType.Shared.IsInstance(exc))
                     {
+                        context.PyEnvironment.ExitCode = ParseSystemExitCode(context, exc);
                     }
                     else
                     {
@@ -157,6 +158,48 @@ public sealed class PyInterpreter : IDisposable
             // If no PyRuntimeException was found in the exception chain,
             // re-throw the original exception (non-Python errors).
             throw;
+        }
+    }
+
+    internal static int ParseSystemExitCode(PyCallContext context, PyExceptionObject exc)
+    {
+        var args = exc.Args;
+
+        // CPython: code is args[0] for a single arg, the whole args tuple for
+        // multiple args, and None when there are no args.
+        if (args.Count is 0)
+            return 0;
+        if (args.Count > 1)
+        {
+            // CPython writes the whole args tuple to stderr and exits with status 1.
+            // If the conversion fails (e.g. __str__ returns non-str), the output is
+            // silently ignored (PyErr_Clear) and it still exits with status 1.
+            var tupleStr = PySpecialMethods.Str(context, PyTupleObject.CreateTuple(args));
+            if (!tupleStr.IsError)
+                context.Error.WriteLine(tupleStr.Value.Value);
+            return 1;
+        }
+
+        var code = args[0];
+        switch (code)
+        {
+            case PyNoneObject:
+                return 0;
+            case PyIntObject i:
+                // CPython parses the code as a long long, then truncates to int
+                // (32-bit two's complement). Values outside the signed 64-bit range
+                // overflow PyLong_AsLongLong and yield exit code -1.
+                if (i.Value >= long.MinValue && i.Value <= long.MaxValue)
+                    return unchecked((int)(long)i.Value);
+                return -1;
+            default:
+                // Non-int/non-None code (e.g. a string): print it and exit with status 1.
+                // If the conversion fails (e.g. __str__ returns non-str), the output is
+                // silently ignored (PyErr_Clear) and it still exits with status 1.
+                var strResult = PySpecialMethods.Str(context, code);
+                if (!strResult.IsError)
+                    context.Error.WriteLine(strResult.Value.Value);
+                return 1;
         }
     }
 

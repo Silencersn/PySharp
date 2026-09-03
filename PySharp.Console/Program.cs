@@ -1,14 +1,11 @@
-using PySharp.Modules.Builtins;
 using PySharp.Runtime;
+using PySharp.Runtime.Calls;
 using PySharp.Runtime.Environments;
 
 namespace PySharp.Console;
 
 internal static class Program
 {
-    private const string AnsiColorRed = "\e[31m";
-    private const string AnsiClearColor = "\e[0m";
-
     private static PyEnvironmentHost Host { get; } = PyEnvironmentHost.CreateConsole(usingPhysicalFileSystem: true);
 
     private static int Main(string[] args)
@@ -107,22 +104,16 @@ internal static class Program
             .AddArg(path)
             .AddArgs(scriptArgs);
 
-        var env = builder.Build();
-        try
+        using var env = builder.Build();
+        using var context = PyCallContext.CreateInterpreterRootContext(env);
+        PyInterpreter.PyTryCatch(context, () =>
         {
-            PyInterpreter.RunCode(env, code,
-                moduleName: Path.GetFileNameWithoutExtension(path),
-                sourceName: fullPath);
-            return 0;
-        }
-        catch (PyRuntimeException e)
-        {
-            return HandlePyError(e, env);
-        }
-        finally
-        {
-            env.Dispose();
-        }
+            PyInterpreter.RunCodeWithContext(context, code,
+                Path.GetFileNameWithoutExtension(path),
+                fullPath,
+                isMain: true);
+        });
+        return env.ExitCode;
     }
 
     private static int RunCode(IPyEnvironmentBuilder builder, string code, string[] extraArgs)
@@ -131,64 +122,21 @@ internal static class Program
             .AddArg("-c")
             .AddArgs(extraArgs);
 
-        var env = builder.Build();
-        try
+        using var env = builder.Build();
+        using var context = PyCallContext.CreateInterpreterRootContext(env);
+        PyInterpreter.PyTryCatch(context, () =>
         {
-            PyInterpreter.RunCode(env, code, sourceName: "-c");
-            return 0;
-        }
-        catch (PyRuntimeException e)
-        {
-            return HandlePyError(e, env);
-        }
-        finally
-        {
-            env.Dispose();
-        }
+            PyInterpreter.RunCodeWithContext(context, code, "<module>", "-c", isMain: true);
+        });
+        return env.ExitCode;
     }
 
     private static int RunRepl(IPyEnvironmentBuilder builder)
     {
         builder.SetInteractive(true);
-        var env = builder.Build();
-        try
-        {
-            PyInterpreter.RunRepl(env);
-            return 0;
-        }
-        finally
-        {
-            env.Dispose();
-        }
-    }
-
-    private static int HandlePyError(PyRuntimeException e, PyEnvironment env)
-    {
-        var exception = e.PyException;
-
-        // SystemExit terminates normally; its argument carries the exit code.
-        if (PySystemExitObjectType.Shared.IsInstance(exception))
-            return GetSystemExitCode(exception);
-
-        var message = e.Message;
-        if (env.ErrorSupportsColor)
-            System.Console.Error.WriteLine($"{AnsiColorRed}{message}{AnsiClearColor}");
-        else
-            System.Console.Error.WriteLine(message);
-        return 1;
-    }
-
-    private static int GetSystemExitCode(PyExceptionObject exception)
-    {
-        if (exception.Args.Count is 0)
-            return 0;
-
-        return exception.Args[0] switch
-        {
-            PyIntObject i when i.IsInt32 => i.Int32Value,
-            PyIntObject => 1,
-            _ => 0,
-        };
+        using var env = builder.Build();
+        PyInterpreter.RunRepl(env);
+        return 0;
     }
 
     private static void PrintVersion()
