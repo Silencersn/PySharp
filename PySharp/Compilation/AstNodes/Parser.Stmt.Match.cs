@@ -180,6 +180,8 @@ partial class Parser
     private AstPatternNode ParseOrPattern()
     {
         var result = ParseSomethingList(ParseClosedPattern, StopPredicates.UntilColon, out var endsWithComma, TokenType.Pipe);
+        if (result.Builder.IsNull && endsWithComma is not null)
+            throw SyntaxError();
         return UnwrapOrPackSomething(result, endsWithComma, Ast.MatchOr);
     }
 

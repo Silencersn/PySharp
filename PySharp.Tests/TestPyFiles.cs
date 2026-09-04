@@ -1252,4 +1252,14 @@ public sealed class TestPyFiles
         var module = RunModule("test_bytes_literal_escape_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestTrailingCommaSingletonRegression()
+    {
+        // Regression: `expr,` (one element + trailing comma) in every
+        // star_expressions position must build a 1-tuple, not degenerate
+        // into the bare element. Fails until the parser fix lands.
+        var module = RunModule("test_trailing_comma_singleton_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

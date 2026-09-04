@@ -1322,7 +1322,7 @@ partial class Parser
 
     private static T UnwrapOrPackSomething<T>(ParseSomethingListResult<T> result, Token? endsWithComma, Func<ImmutableArray<T>, T> packer) where T : AstNode
     {
-        if (result.Builder.IsNull)
+        if (result.Builder.IsNull && endsWithComma is null)
             return result.First;
 
         return PackSomething(result.MakeArray(), endsWithComma, packer);
