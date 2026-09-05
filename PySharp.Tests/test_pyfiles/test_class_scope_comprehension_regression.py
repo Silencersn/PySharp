@@ -32,11 +32,12 @@ assert C1.ys == [2, 3]
 
 
 # red case 2: listcomp element expression must raise NameError, not read
-# the class variable
+# the class variable (uses a class-only name: a module-level `xs` would be
+# visible here through the global scope, like CPython)
 class C2:
-    xs = [1, 2]
+    cs = [1, 2]
     try:
-        ys = [xs[i] for i in range(2)]
+        ys = [cs[i] for i in range(2)]
         leaked = True
     except NameError:
         leaked = False
@@ -46,9 +47,9 @@ assert not C2.leaked
 
 # red case 3: dictcomp value expression must raise NameError as well
 class C3:
-    xs = [1, 2]
+    cs = [1, 2]
     try:
-        ys = {x: len(xs) for x in xs}
+        ys = {x: len(cs) for x in cs}
         leaked = True
     except NameError:
         leaked = False
@@ -93,7 +94,7 @@ assert G3.ys == [3]
 # module-level comprehension sees globals normally
 gxs = [10, 20]
 gys = [v for v in gxs if v > len(gxs)]
-assert gys == [20]
+assert gys == [10, 20]
 
 
 # method default values are evaluated in the class body (legal)

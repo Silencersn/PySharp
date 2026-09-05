@@ -93,6 +93,18 @@ partial class Emitter
             else
                 AsName();
         }
+        else if (VariableScope is ComprehensionVariableScope comprehensionScope)
+        {
+            // inlined comprehension body inside a class body: the class scope is
+            // invisible to the body. Targets are name-based inline-frame locals;
+            // other names skip the class scope (global / enclosing-function cell).
+            if (comprehensionScope.Variables.TryGetValue(name, out var type) && type is PyVariableType.Local)
+                AsName();
+            else if (type is PyVariableType.Closure)
+                AsDeref();
+            else
+                AsGlobal();
+        }
         else if (VariableScope is CallableVariableScope callableVariableScope)
         {
             if (!callableVariableScope.LocalsTable.TryGetValue(name, out var nameIndex))
@@ -463,8 +475,12 @@ partial class Emitter
         }
     }
 
-    private void InternalEmitGenerators(ImmutableArray<AstComprehensionNode> generators, Action emitElt, bool isGeneratorExp = false)
+    private void InternalEmitGenerators(ImmutableArray<AstComprehensionNode> generators, Action emitElt, bool isGeneratorExp = false, ComprehensionVariableScope? inlineCompScope = null)
     {
+        // the comprehension body resolves names in its own scope inside a
+        // class body, and in the enclosing scope everywhere else
+        var bodyScope = inlineCompScope ?? VariableScope;
+
         EmitGenerator(0);
 
         void EmitGenerator(int i)
@@ -499,18 +515,21 @@ partial class Emitter
                 LoadExpr(generator.Iter);
                 Builder.Emit(OpCode.GetIter);
             }
-            Builder.MarkLabel(forIterLabel);
-            Builder.Emit(OpCode.ForIter, endForLabel);
-            StoreExpr(generator.Target);
-
-            foreach (var test in generator.Ifs)
+            using (new EmitterVariableScopeSwitch(this, bodyScope))
             {
-                LoadExpr(test);
-                Builder.Emit(OpCode.ToBool);
-                Builder.PopJumpIfFalse(forIterLabel);
-            }
+                Builder.MarkLabel(forIterLabel);
+                Builder.Emit(OpCode.ForIter, endForLabel);
+                StoreExpr(generator.Target);
 
-            EmitGenerator(i + 1);
+                foreach (var test in generator.Ifs)
+                {
+                    LoadExpr(test);
+                    Builder.Emit(OpCode.ToBool);
+                    Builder.PopJumpIfFalse(forIterLabel);
+                }
+
+                EmitGenerator(i + 1);
+            }
 
             Builder.Jump(forIterLabel);
 
@@ -537,33 +556,36 @@ partial class Emitter
                 LoadExpr(generator.Iter);
                 Builder.Emit(OpCode.GetAIter);
             }
-            Builder.MarkLabel(forIterLabel);
-            Builder.Emit(OpCode.GetANext);
-            Builder.Emit(OpCode._SetupFinally, cleanupLabel);
-            Builder.Emit(OpCode._SetupExcept, exceptLabel);
-            Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
-
-            var sendLabel = Builder.DefineLabel();
-            var afterAwaitLabel = Builder.DefineLabel();
-            Builder.MarkLabel(sendLabel);
-            Builder.Emit(OpCode.Send, afterAwaitLabel);
-            Builder.Emit(OpCode.YieldValue);
-            Builder.Jump(sendLabel);
-
-            Builder.MarkLabel(afterAwaitLabel);
-            Builder.Emit(OpCode.Swap, 2);
-            Builder.Emit(OpCode.PopTop);
-            StoreExpr(generator.Target);
-
-            foreach (var test in generator.Ifs)
+            using (new EmitterVariableScopeSwitch(this, bodyScope))
             {
-                LoadExpr(test);
-                Builder.Emit(OpCode.ToBool);
-                Builder.PopJumpIfFalse(forIterLabel);
-            }
+                Builder.MarkLabel(forIterLabel);
+                Builder.Emit(OpCode.GetANext);
+                Builder.Emit(OpCode._SetupFinally, cleanupLabel);
+                Builder.Emit(OpCode._SetupExcept, exceptLabel);
+                Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
 
-            EmitGenerator(i + 1);
-            Builder.Jump(cleanupLabel);
+                var sendLabel = Builder.DefineLabel();
+                var afterAwaitLabel = Builder.DefineLabel();
+                Builder.MarkLabel(sendLabel);
+                Builder.Emit(OpCode.Send, afterAwaitLabel);
+                Builder.Emit(OpCode.YieldValue);
+                Builder.Jump(sendLabel);
+
+                Builder.MarkLabel(afterAwaitLabel);
+                Builder.Emit(OpCode.Swap, 2);
+                Builder.Emit(OpCode.PopTop);
+                StoreExpr(generator.Target);
+
+                foreach (var test in generator.Ifs)
+                {
+                    LoadExpr(test);
+                    Builder.Emit(OpCode.ToBool);
+                    Builder.PopJumpIfFalse(forIterLabel);
+                }
+
+                EmitGenerator(i + 1);
+                Builder.Jump(cleanupLabel);
+            }
 
             Builder.MarkLabel(exceptLabel);
             Builder.Emit(OpCode.LoadConst, PyStopAsyncIterationObjectType.Shared);
@@ -597,7 +619,7 @@ partial class Emitter
         {
             LoadExpr(node.Elt);
             Builder.Emit(OpCode.ListAppend, node.Generators.Length + 1);
-        });
+        }, inlineCompScope: Model.GetVariableScope<ComprehensionVariableScope>(node));
 
         Builder.Emit(OpCode._ExitInlineFrame);
     }
@@ -611,7 +633,7 @@ partial class Emitter
         {
             LoadExpr(node.Elt);
             Builder.Emit(OpCode.SetAdd, node.Generators.Length + 1);
-        });
+        }, inlineCompScope: Model.GetVariableScope<ComprehensionVariableScope>(node));
 
         Builder.Emit(OpCode._ExitInlineFrame);
     }
@@ -626,7 +648,7 @@ partial class Emitter
             LoadExpr(node.Key);
             LoadExpr(node.Value);
             Builder.Emit(OpCode.MapAdd, node.Generators.Length + 1);
-        });
+        }, inlineCompScope: Model.GetVariableScope<ComprehensionVariableScope>(node));
 
         Builder.Emit(OpCode._ExitInlineFrame);
     }

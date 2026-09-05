@@ -294,3 +294,22 @@ internal sealed class GeneratorExpVariableScope : CallableVariableScope
         IsGenerator = true;
     }
 }
+
+/// <summary>
+/// Scope for the body of an inlined comprehension (list/set/dict comp) directly
+/// inside a class body. The class scope is invisible to nested scopes, so free
+/// names resolve as if the class block were skipped (CPython symtable rule);
+/// only the outermost iterable is evaluated in the class scope. Locals are the
+/// comprehension targets, resolved name-based inside the inline frame instead
+/// of via fast-local slots (the body shares the enclosing code object).
+/// </summary>
+internal sealed class ComprehensionVariableScope : VariableScope
+{
+    public override AstExprNode Owner { get; }
+    public override string Name => "<comprehension>";
+
+    public ComprehensionVariableScope(AstExprNode owner, VariableScope parent) : base(parent)
+    {
+        Owner = owner;
+    }
+}

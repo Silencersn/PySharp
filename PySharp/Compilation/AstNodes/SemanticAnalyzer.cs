@@ -373,6 +373,21 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
         _currentScopeStats = _scopeStatsStack.Pop();
     }
 
+    // Like PushScope, but keeps the comprehension stats so that nested
+    // comprehensions and walrus checks keep working across the body scope.
+    private void PushComprehensionScope(VariableScope scope)
+    {
+        _scopeStatsStack.Push(_currentScopeStats);
+        _currentScopeStats = new ScopeStats(scope);
+    }
+
+    private void PopComprehensionScope()
+    {
+        Debug.Assert(_currentScopeStats.LoopDepth is 0);
+
+        _currentScopeStats = _scopeStatsStack.Pop();
+    }
+
     private void VisitNullableNode(AstNode? node)
     {
         if (node is not null)

@@ -132,29 +132,85 @@ partial class SemanticAnalyzer
     private void VisitListComp(ListCompNode node)
     {
         _currentNestedComprehensionStats.PushComprehension(node);
-        _currentNestedComprehensionStats.CurrentComprehensionStats.VisitingPart = ComprehensionStatsVisitingPart.Element;
-        VisitNode(node.Elt);
-        VisitNodes(node.Generators);
+        VisitInlineComprehension(node, node.Generators, () => VisitNode(node.Elt));
         _currentNestedComprehensionStats.PopComprehension();
     }
 
     private void VisitSetComp(SetCompNode node)
     {
         _currentNestedComprehensionStats.PushComprehension(node);
-        _currentNestedComprehensionStats.CurrentComprehensionStats.VisitingPart = ComprehensionStatsVisitingPart.Element;
-        VisitNode(node.Elt);
-        VisitNodes(node.Generators);
+        VisitInlineComprehension(node, node.Generators, () => VisitNode(node.Elt));
         _currentNestedComprehensionStats.PopComprehension();
     }
 
     private void VisitDictComp(DictCompNode node)
     {
         _currentNestedComprehensionStats.PushComprehension(node);
-        _currentNestedComprehensionStats.CurrentComprehensionStats.VisitingPart = ComprehensionStatsVisitingPart.Element;
-        VisitNode(node.Key);
-        VisitNode(node.Value);
-        VisitNodes(node.Generators);
+        VisitInlineComprehension(node, node.Generators, () =>
+        {
+            VisitNode(node.Key);
+            VisitNode(node.Value);
+        });
         _currentNestedComprehensionStats.PopComprehension();
+    }
+
+    // The comprehension body is a nested scope that skips the class block:
+    // class scopes are invisible to nested scopes, and only the outermost
+    // iterable is evaluated in the enclosing class scope (CPython symtable
+    // rule). In any other scope the inlined form is kept and body names
+    // simply merge into the enclosing scope.
+    private void VisitInlineComprehension(AstExprNode node, ImmutableArray<AstComprehensionNode> generators, Action visitElement)
+    {
+        if (_currentScopeStats.Scope is not ClassVariableScope classScope)
+        {
+            _currentNestedComprehensionStats.CurrentComprehensionStats.VisitingPart = ComprehensionStatsVisitingPart.Element;
+            visitElement();
+            VisitNodes(generators);
+            return;
+        }
+
+        var comprehensionScope = new ComprehensionVariableScope(node, classScope);
+        PushComprehensionScope(comprehensionScope);
+        try
+        {
+            _currentNestedComprehensionStats.CurrentComprehensionStats.VisitingPart = ComprehensionStatsVisitingPart.Element;
+            visitElement();
+
+            for (int i = 0; i < generators.Length; i++)
+            {
+                var generator = generators[i];
+                _nodesToRoot.Push(generator);
+
+                if (generator.IsAsync)
+                    throw SyntaxError(PySR.InvalidSyntax_Semantic_AsyncCompOutsideAsyncFunc);
+
+                _currentNestedComprehensionStats.CurrentComprehensionStats.VisitingPart = ComprehensionStatsVisitingPart.GeneratorTarget;
+                VisitNode(generator.Target);
+
+                _currentNestedComprehensionStats.CurrentComprehensionStats.VisitingPart = ComprehensionStatsVisitingPart.GeneratorIter;
+                if (i is 0)
+                {
+                    // the outermost iterable is evaluated in the class scope
+                    PopComprehensionScope();
+                    VisitNode(generator.Iter);
+                    PushComprehensionScope(comprehensionScope);
+                }
+                else
+                {
+                    VisitNode(generator.Iter);
+                }
+
+                _currentNestedComprehensionStats.CurrentComprehensionStats.VisitingPart = ComprehensionStatsVisitingPart.GeneratorIfs;
+                VisitNodes(generator.Ifs);
+
+                _currentNestedComprehensionStats.CurrentComprehensionStats.VisitingPart = ComprehensionStatsVisitingPart.None;
+                _nodesToRoot.Pop();
+            }
+        }
+        finally
+        {
+            PopComprehensionScope();
+        }
     }
 
     private void VisitGeneratorExp(GeneratorExpNode node)
@@ -249,7 +305,8 @@ partial class SemanticAnalyzer
 
     private void VisitNamedExpr(NamedExprNode node)
     {
-        if (_currentScopeStats.Scope is ClassVariableScope && _currentNestedComprehensionStats.IsWithinComprehension)
+        if ((_currentScopeStats.Scope is ClassVariableScope && _currentNestedComprehensionStats.IsWithinComprehension)
+            || _currentScopeStats.Scope is ComprehensionVariableScope)
             throw SyntaxError(PySR.InvalidSyntax_Semantic_NamedExprInComprehensionInClass);
 
         CheckNamedExprIfWithinComprehension(node.Target.Id);

@@ -168,4 +168,27 @@ internal sealed partial class Emitter
             _emitter.VariableScope = _savedScope;
         }
     }
+
+    /// <summary>
+    /// Temporarily switches VariableScope (only), e.g. while emitting an
+    /// inlined comprehension body; the builder and code object stay the
+    /// enclosing ones. Stack-only like <see cref="EmitterSubScope"/>.
+    /// </summary>
+    internal readonly ref struct EmitterVariableScopeSwitch
+    {
+        private readonly Emitter _emitter;
+        private readonly VariableScope _savedScope;
+
+        public EmitterVariableScopeSwitch(Emitter emitter, VariableScope scope)
+        {
+            _emitter = emitter;
+            _savedScope = emitter.VariableScope;
+            emitter.VariableScope = scope;
+        }
+
+        public void Dispose()
+        {
+            _emitter.VariableScope = _savedScope;
+        }
+    }
 }

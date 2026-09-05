@@ -25,6 +25,7 @@ internal static partial class BytecodeVirtualMachine
         public int StackDepth;
         public PyObject? ReturnValue;
         public bool HitExcept;
+        public int FrameIndex;
 
         public ExceptionHandler(int exceptOffset, int finallyOffset)
         {
@@ -38,6 +39,7 @@ internal static partial class BytecodeVirtualMachine
     internal static PyResult Eval(PyCallContext context, ref BytecodeVirtualMachineStates states)
     {
         ref var frame = ref context.CurrentInternalFrame;
+        var entryFrameCount = context.FrameState.CurrentFrameCount;
         var callDepth = 0;
         PyResult evalResult = default;
         bool needCheckEvalResult = false;
@@ -830,7 +832,11 @@ internal static partial class BytecodeVirtualMachine
                         break;
 
                     case OpCode._SetupFinally:
-                        var handler = new ExceptionHandler(ExceptionHandler.NoExcepts, instructionArg) { StackDepth = Stack.Count };
+                        var handler = new ExceptionHandler(ExceptionHandler.NoExcepts, instructionArg)
+                        {
+                            StackDepth = Stack.Count,
+                            FrameIndex = context.FrameState.CurrentFrameCount - 1
+                        };
                         states.ExceptionHandlers.Push(handler);
                         break;
 
@@ -994,6 +1000,19 @@ internal static partial class BytecodeVirtualMachine
                 goto eval_end;
             }
 
+            // The handler may live in an enclosing frame (e.g. try-except around
+            // an inlined comprehension). Inline frames are never explicitly exited
+            // when an exception unwinds, so pop them down to the registering frame.
+            while (frame.FrameType is FrameType.Comprehension &&
+                context.FrameState.CurrentFrameCount - 1 > currentHandler.FrameIndex)
+            {
+                context.FrameState.ExitInternalFrame(context, dispose: true);
+                frame = ref context.CurrentInternalFrame;
+            }
+
+            currentIndex = ref frame.InstructionIndex;
+            locals = frame.Variables.HasLocals ? frame.Variables.LocalsSpan : [];
+
             if (currentHandler.State is ExceptionHandler.State_Except)
             {
                 // raise exception during except body
@@ -1089,6 +1108,15 @@ internal static partial class BytecodeVirtualMachine
             frame = ref context.CurrentInternalFrame;
             states = context.FrameState.PopStates();
             goto eval_begin;
+        }
+        else if (states.RunToEnd)
+        {
+            // Pop comprehension frames this invocation pushed but never exited
+            // (e.g. an exception inside an inlined comprehension escaped the
+            // code object), so the caller sees the frame stack as it left it.
+            while (context.FrameState.CurrentFrameCount > entryFrameCount &&
+                context.CurrentInternalFrame.FrameType is FrameType.Comprehension)
+                context.FrameState.ExitInternalFrame(context, dispose: true);
         }
 
         return evalResult;
