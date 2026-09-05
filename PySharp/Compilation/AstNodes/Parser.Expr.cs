@@ -207,6 +207,10 @@ partial class Parser
             ? PySR.InvalidSyntax_FString_ReplacementField_ExpectingRightBrace
             : PySR.InvalidSyntax_FString_ReplacementField_ExpectingRightBraceOrSpecs);
 
+        // A debug '=' without conversion and format spec defaults to !r (PEP 701).
+        if (conversion is -1 && debugSpec is not null && format_spec is null)
+            conversion = 'r';
+
         var formatted = Ast.FormattedValue(value, conversion, format_spec).With(metaInfo.WithPreviousEnd());
         if (debugSpec is null)
             return formatted;
@@ -392,6 +396,10 @@ partial class Parser
         EnsureTokenTypeThenMove(TokenType.RightBrace, format_spec is null
             ? PySR.InvalidSyntax_TString_ReplacementField_ExpectingRightBrace
             : PySR.InvalidSyntax_TString_ReplacementField_ExpectingRightBraceOrSpecs);
+
+        // A debug '=' without conversion and format spec defaults to !r (PEP 701).
+        if (conversion is -1 && debugSpec is not null && format_spec is null)
+            conversion = 'r';
 
         var interpolation = Ast.Interpolation(value, str, conversion, format_spec).With(metaInfo.WithPreviousEnd());
         return (debugSpec, interpolation);
