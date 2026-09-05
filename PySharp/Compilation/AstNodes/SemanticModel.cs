@@ -263,6 +263,13 @@ internal sealed class AsyncFunctionVariableScope : CallableVariableScope
     public override string Name => Owner.Name;
     public bool IsAsyncGenerator { get; internal set; }
 
+    /// <summary>
+    /// The first 'return' with a value in the body, null when there is none.
+    /// Kept until the scope pops because a yield after it still turns the
+    /// function into an async generator.
+    /// </summary>
+    public ReturnNode? ReturnWithValue { get; internal set; }
+
     public AsyncFunctionVariableScope(AsyncFunctionDefNode owner, VariableScope parent) : base(parent)
     {
         Owner = owner;

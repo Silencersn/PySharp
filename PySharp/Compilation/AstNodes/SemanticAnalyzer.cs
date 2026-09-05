@@ -57,6 +57,18 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
         return _context.SyntaxError(this, message, args);
     }
 
+    private PyRuntimeException SyntaxErrorAt(AstNode node, string message, params ReadOnlySpan<object?> args)
+    {
+        var metaInfo = CodeMetaInfo.FromSpan(_source, node.MetaInfo.Range, node.MetaInfo.CrucialRange);
+        return _context.SyntaxError(new FixedMetaInfoProvider(metaInfo), message, args);
+    }
+
+    // Locates a deferred error at a node that is no longer on _nodesToRoot.
+    private sealed class FixedMetaInfoProvider(CodeMetaInfo metaInfo) : ICodeMetaInfoProvider
+    {
+        public CodeMetaInfo? MetaInfo => metaInfo;
+    }
+
     private sealed class ScopeStats
     {
         public int LoopDepth;
@@ -367,6 +379,9 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
     private void PopScope()
     {
         Debug.Assert(_currentScopeStats.LoopDepth is 0);
+
+        if (_currentScopeStats.Scope is AsyncFunctionVariableScope { IsAsyncGenerator: true, ReturnWithValue: not null } asyncScope)
+            throw SyntaxErrorAt(asyncScope.ReturnWithValue, PySR.InvalidSyntax_Semantic_ReturnWithValueInAsyncGenerator);
 
         if (_currentScopeStats.Scope is not GeneratorExpVariableScope)
             _currentNestedComprehensionStats = _nestedComprehensionStatsStack.Pop();

@@ -101,6 +101,10 @@ partial class SemanticAnalyzer
             throw SyntaxError(PySR.InvalidSyntax_Semantic_ReturnOutsideFunction);
         if (_currentScopeStats.FinallyDepth > 0)
             CheckControlStmtNotInFinallyUntil(static n => false, PySR.InvalidSyntax_Semantic_ReturnInFinally);
+        if (node.Value is not null && _currentScopeStats.Scope is AsyncFunctionVariableScope asyncScope)
+            // checked when the scope pops: a yield later in the body still
+            // makes the function an async generator
+            asyncScope.ReturnWithValue ??= node;
         VisitNullableNode(node.Value);
     }
 
@@ -231,6 +235,9 @@ partial class SemanticAnalyzer
 
     private void VisitAsyncFor(AsyncForNode node)
     {
+        if (_currentScopeStats.Scope is not AsyncFunctionVariableScope)
+            throw SyntaxError(PySR.InvalidSyntax_Semantic_AsyncForOutsideAsyncFunc);
+
         _currentScopeStats.LoopDepth++;
         VisitNode(node.Target);
         VisitNode(node.Iter);
@@ -256,6 +263,9 @@ partial class SemanticAnalyzer
 
     private void VisitAsyncWith(AsyncWithNode node)
     {
+        if (_currentScopeStats.Scope is not AsyncFunctionVariableScope)
+            throw SyntaxError(PySR.InvalidSyntax_Semantic_AsyncWithOutsideAsyncFunc);
+
         VisitNodes(node.Items);
         VisitNodes(node.Body);
     }
