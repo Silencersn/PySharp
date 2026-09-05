@@ -1262,4 +1262,516 @@ public sealed class TestPyFiles
         var module = RunModule("test_trailing_comma_singleton_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestMatchMappingNoRestRegression()
+    {
+        // Regression: a successfully matched mapping pattern without
+        // `**rest` must not leave the keys tuple on the operand stack
+        // (loop form used: the residue used to clobber the loop's
+        // iterator slot -> TypeError). Fails until the fix lands.
+        var module = RunModule("test_match_mapping_no_rest_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestStarredPositionRegression()
+    {
+        // Regression: a bare starred expression (`*a`) in an illegal
+        // position must raise SyntaxError instead of being silently
+        // accepted with the star stripped. Fails until the fix lands.
+        var module = RunModule("test_starred_position_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestSyntaxWarningOnceRegression()
+    {
+        // Regression: the same SyntaxWarning (same file/line/message) must
+        // be printed to stderr exactly once, like CPython's default warning
+        // filter; a module-level lexer warning used to be printed 4 times.
+        // Fails until the fix lands.
+        var path = Path.Combine(PyFilesPath, "test_syntax_warning_once_regression.py");
+        var fullPath = Path.GetFullPath(path);
+        var stderr = new MemoryStream();
+        var host = new StdioHost(new MemoryStream(), new MemoryStream(), stderr);
+        using var environment = host
+            .CreateEnvironmentBuilder()
+            .AddPath(Path.GetDirectoryName(fullPath)!)
+            .AddArg(fullPath)
+            .Build();
+        using var context = PyCallContext.CreateInterpreterRootContext(environment);
+        var code = File.ReadAllText(path);
+        var module = PyInterpreter.RunCodeWithContext(
+            context, code, Path.GetFileNameWithoutExtension(path), fullPath, isMain: true);
+        Assert.IsNotNull(module);
+
+        environment.Error.Flush();
+        var text = System.Text.Encoding.UTF8.GetString(stderr.ToArray()).Replace("\r\n", "\n");
+        var count = text.Split("is an invalid octal escape sequence").Length - 1;
+        Assert.AreEqual(1, count, $"expected exactly one SyntaxWarning, got {count}:\n{text}");
+    }
+
+    [TestMethod]
+    public void TestFstringDebugReprRegression()
+    {
+        // Regression: an f-string debug specifier `{expr=}` without an
+        // explicit conversion and without a format spec must default to
+        // repr() (CPython _get_interpolation_conversion), not str().
+        // Fails until the fix lands.
+        var module = RunModule("test_fstring_debug_repr_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestIntLiteralMaxDigitsRegression()
+    {
+        // Regression: a decimal integer literal over 4300 digits must be
+        // rejected with SyntaxError (CVE-2020-10735 compile-time guard).
+        // Fails until the fix lands.
+        var module = RunModule("test_int_literal_max_digits_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestIsLiteralWarningRegression()
+    {
+        // Regression: `is`/`is not` with a constant literal operand must
+        // emit a SyntaxWarning (Did you mean "=="? / "!="?), like CPython's
+        // codegen_check_compare; True/False/None singletons must not warn.
+        // Fails until the fix lands.
+        var path = Path.Combine(PyFilesPath, "test_is_literal_warning_regression.py");
+        var fullPath = Path.GetFullPath(path);
+        var stderr = new MemoryStream();
+        var host = new StdioHost(new MemoryStream(), new MemoryStream(), stderr);
+        using var environment = host
+            .CreateEnvironmentBuilder()
+            .AddPath(Path.GetDirectoryName(fullPath)!)
+            .AddArg(fullPath)
+            .Build();
+        using var context = PyCallContext.CreateInterpreterRootContext(environment);
+        var code = File.ReadAllText(path);
+        var module = PyInterpreter.RunCodeWithContext(
+            context, code, Path.GetFileNameWithoutExtension(path), fullPath, isMain: true);
+        Assert.IsNotNull(module);
+
+        environment.Error.Flush();
+        var text = System.Text.Encoding.UTF8.GetString(stderr.ToArray()).Replace("\r\n", "\n");
+        var eqCount = text.Split("Did you mean \"==\"?").Length - 1;
+        var neCount = text.Split("Did you mean \"!=\"?").Length - 1;
+        Assert.AreEqual(6, eqCount, $"expected 6 'is' literal warnings, got {eqCount}:\n{text}");
+        Assert.AreEqual(1, neCount, $"expected 1 'is not' literal warning, got {neCount}:\n{text}");
+    }
+
+    [TestMethod]
+    public void TestIntStrConversionLimitRegression()
+    {
+        // Regression: runtime int(str) / str(int) decimal conversions over
+        // 4300 digits must raise ValueError (CVE-2020-10735 runtime guard).
+        // Fails until the fix lands.
+        var module = RunModule("test_int_str_conversion_limit_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestNestedCallCompileTimeRegression()
+    {
+        // Regression: compiling nested calls must stay roughly linear, not
+        // exponential (~24s for 22 levels on the reference machine, CPython
+        // instant). The threshold is far above any linear parse and far
+        // below the exponential blowup, so it only fails while the bug
+        // exists. Timing assertions are environment-sensitive by nature.
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var module = RunModule("test_nested_call_compile_time_regression.py");
+        sw.Stop();
+        Assert.IsNotNull(module);
+        Assert.IsTrue(sw.Elapsed < TimeSpan.FromSeconds(8),
+            $"compiling 22 nested calls took {sw.Elapsed.TotalSeconds:F1}s (exponential parser blowup)");
+    }
+
+    [TestMethod]
+    public void TestNestedParenthesesNoCrashRegression()
+    {
+        // Regression: deeply nested parentheses must never crash the parser
+        // with a StackOverflowException (~156 levels crashes today, and a
+        // stack overflow is uncatchable). CPython rejects above MAXLEVEL=200
+        // with "too many nested parentheses" and accepts up to 200. The
+        // crash would kill this test host, so the sources are compiled in a
+        // PySharp.Console child process and only its output is inspected.
+        // Fails until the fix lands.
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "PySharp.slnx")))
+            dir = dir.Parent;
+        Assert.IsNotNull(dir, "repo root (PySharp.slnx) not found above the test output");
+        string? consoleExe = null;
+        foreach (var cfg in new[] { "Debug", "Release" })
+        {
+            var candidate = Path.Combine(dir.FullName, "PySharp.Console", "bin", cfg, "net10.0", "PySharp.Console.exe");
+            if (File.Exists(candidate))
+            {
+                consoleExe = candidate;
+                break;
+            }
+        }
+        if (consoleExe is null)
+            Assert.Inconclusive("PySharp.Console build output not found; build PySharp.Console first");
+
+        (int ExitCode, string Output) RunChild(int depth)
+        {
+            var src = Path.Combine(Path.GetTempPath(), $"pynest_{depth}_{Guid.NewGuid():N}.py");
+            File.WriteAllText(src, "x = " + new string('(', depth) + "1" + new string(')', depth) + "\n");
+            try
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo(consoleExe!, $"\"{src}\"")
+                {
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                };
+                using var process = System.Diagnostics.Process.Start(psi)!;
+                // Async reads: a crashed child may linger in Windows Error
+                // Reporting with its pipes open, so the bounded exit wait
+                // must come before the results are collected.
+                var outTask = process.StandardOutput.ReadToEndAsync();
+                var errTask = process.StandardError.ReadToEndAsync();
+                if (!process.WaitForExit(60_000))
+                {
+                    process.Kill();
+                }
+                var output = outTask.Result + errTask.Result;
+                return (process.HasExited ? process.ExitCode : -1, output);
+            }
+            finally
+            {
+                File.Delete(src);
+            }
+        }
+
+        // 180 levels: below CPython's limit, must compile and run normally
+        var (shallowCode, shallowOut) = RunChild(180);
+        Assert.DoesNotContain("Stack overflow", shallowOut,
+            $"stack overflow crash at 180 nested parentheses:\n{shallowOut}");
+        Assert.AreEqual(0, shallowCode,
+            $"180 nested parentheses must compile and run (CPython allows up to 200):\n{shallowOut}");
+
+        // 250 levels: above CPython's MAXLEVEL=200, must be rejected
+        // gracefully with SyntaxError
+        var (deepCode, deepOut) = RunChild(250);
+        Assert.DoesNotContain("Stack overflow", deepOut,
+            $"stack overflow crash at 250 nested parentheses:\n{deepOut}");
+        Assert.Contains("too many nested parentheses", deepOut,
+            $"250 nested parentheses must raise SyntaxError (CPython MAXLEVEL=200):\n{deepOut}");
+    }
+
+    [TestMethod]
+    public void TestMaxIndentRegression()
+    {
+        // Regression: more than 100 levels of indentation must be rejected
+        // with IndentationError (CPython MAXINDENT=100). Fails until the
+        // fix lands.
+        var module = RunModule("test_max_indent_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestAsyncContextValidationRegression()
+    {
+        // Regression: `async for`/`async with` in a sync function and
+        // `return <value>` in an async generator must be rejected with
+        // SyntaxError (CPython symtable/codegen context checks). Fails
+        // until the fix lands.
+        var module = RunModule("test_async_context_validation_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestClassScopeComprehensionRegression()
+    {
+        // Regression: comprehension bodies in a class scope must skip the
+        // class scope when resolving names (only the outermost iterable is
+        // evaluated in the class scope, CPython symtable rule). Fails until
+        // the fix lands.
+        var module = RunModule("test_class_scope_comprehension_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestBytesLiteralAsciiRegression()
+    {
+        // Regression: a bytes literal with any non-ASCII character must be
+        // rejected with "bytes can only contain ASCII literal characters"
+        // (no Latin-1 silent acceptance, no unicodeescape error path).
+        // Fails until the fix lands.
+        var module = RunModule("test_bytes_literal_ascii_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestFormFeedIndentRegression()
+    {
+        // Regression: a form feed inside indentation must reset the column
+        // counter to zero (CPython lexer.c:529), not count as indent
+        // whitespace. Fails until the fix lands.
+        var module = RunModule("test_form_feed_indent_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestSourceNullBytesRegression()
+    {
+        // Regression: a NUL byte anywhere in the source (string/bytes
+        // literals, comments included) must be rejected with SyntaxError
+        // like CPython's contains_null_bytes check. Fails until the fix
+        // lands.
+        var module = RunModule("test_source_null_bytes_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestTabErrorRegression()
+    {
+        // Regression: tab/space mixed indentation errors must raise the
+        // TabError subclass (CPython picks the type from the message), not
+        // the plain parent IndentationError. Fails until the fix lands.
+        var module = RunModule("test_tab_error_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestLongBinOpChainNoCrashRegression()
+    {
+        // Regression: a flat left-associated binary operator chain (3000+
+        // terms) must not overflow the semantic analyzer's recursion
+        // (SemanticAnalyzer.VisitExpr, uncatchable StackOverflowException;
+        // CPython compiles the same source in sub-second). The crash would
+        // kill this test host, so the sources are compiled in a
+        // PySharp.Console child process. Both documented fix directions
+        // must pass: iterative traversal (child prints the result) or a
+        // recursion guard (child fails with a graceful Python error).
+        // Fails until the fix lands.
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "PySharp.slnx")))
+            dir = dir.Parent;
+        Assert.IsNotNull(dir, "repo root (PySharp.slnx) not found above the test output");
+        string? consoleExe = null;
+        foreach (var cfg in new[] { "Debug", "Release" })
+        {
+            var candidate = Path.Combine(dir.FullName, "PySharp.Console", "bin", cfg, "net10.0", "PySharp.Console.exe");
+            if (File.Exists(candidate))
+            {
+                consoleExe = candidate;
+                break;
+            }
+        }
+        if (consoleExe is null)
+            Assert.Inconclusive("PySharp.Console build output not found; build PySharp.Console first");
+
+        (int ExitCode, string Output) RunChild(string source)
+        {
+            var src = Path.Combine(Path.GetTempPath(), $"binchain_{Guid.NewGuid():N}.py");
+            File.WriteAllText(src, source);
+            try
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo(consoleExe!, $"\"{src}\"")
+                {
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                };
+                using var process = System.Diagnostics.Process.Start(psi)!;
+                // Async reads: a crashed child may linger in Windows Error
+                // Reporting with its pipes open, so the bounded exit wait
+                // must come before the results are collected.
+                var outTask = process.StandardOutput.ReadToEndAsync();
+                var errTask = process.StandardError.ReadToEndAsync();
+                if (!process.WaitForExit(60_000))
+                {
+                    process.Kill();
+                }
+                var output = outTask.Result + errTask.Result;
+                return (process.HasExited ? process.ExitCode : -1, output);
+            }
+            finally
+            {
+                File.Delete(src);
+            }
+        }
+
+        static string PlusChain(int terms) =>
+            "print(" + string.Join("+", System.Linq.Enumerable.Repeat("1", terms)) + ")\n";
+
+        // red case: 5000-term chain crashes the semantic analyzer today
+        var (crashCode, crashOut) = RunChild(PlusChain(5000));
+        Assert.DoesNotContain("Stack overflow", crashOut,
+            $"stack overflow crash on a 5000-term + chain:\n{crashOut}");
+        Assert.IsTrue(
+            crashOut.Contains("5000") || crashOut.Contains("Traceback"),
+            $"5000-term + chain must either evaluate (iterative fix) or fail " +
+            $"gracefully (recursion guard), got exit {crashCode}:\n{crashOut}");
+
+        // guards: shapes that already work must stay working
+        var (okCode, okOut) = RunChild(PlusChain(2000));
+        Assert.DoesNotContain("Stack overflow", okOut, okOut);
+        Assert.AreEqual(0, okCode, $"2000-term + chain must compile and run:\n{okOut}");
+        Assert.Contains("2000", okOut, okOut);
+
+        var (orCode, orOut) = RunChild(
+            "print(" + string.Join(" or ", System.Linq.Enumerable.Repeat("0", 4999)) + " or 9)\n");
+        Assert.DoesNotContain("Stack overflow", orOut, orOut);
+        Assert.AreEqual(0, orCode, $"5000-term or chain must compile and run:\n{orOut}");
+        Assert.Contains("9", orOut, orOut);
+    }
+
+    [TestMethod]
+    public void TestEncodingDeclarationRegression()
+    {
+        // Regression: PEP 263 source encoding declarations must be
+        // honored. Today the source is always read as UTF-8 with a
+        // replacement fallback, so invalid UTF-8 is silently replaced with
+        // U+FFFD, latin-1/gbk declarations are ignored, and unknown codec
+        // names are not validated (CPython rejects all of these). These
+        // are byte-level file behaviors, so the sources are written to
+        // temp files and compiled in a PySharp.Console child process.
+        // Fails until the fix lands.
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "PySharp.slnx")))
+            dir = dir.Parent;
+        Assert.IsNotNull(dir, "repo root (PySharp.slnx) not found above the test output");
+        string? consoleExe = null;
+        foreach (var cfg in new[] { "Debug", "Release" })
+        {
+            var candidate = Path.Combine(dir.FullName, "PySharp.Console", "bin", cfg, "net10.0", "PySharp.Console.exe");
+            if (File.Exists(candidate))
+            {
+                consoleExe = candidate;
+                break;
+            }
+        }
+        if (consoleExe is null)
+            Assert.Inconclusive("PySharp.Console build output not found; build PySharp.Console first");
+
+        (int ExitCode, string StdOut, string StdErr) RunChildBytes(byte[] content)
+        {
+            var src = Path.Combine(Path.GetTempPath(), $"encdecl_{Guid.NewGuid():N}.py");
+            File.WriteAllBytes(src, content);
+            try
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo(consoleExe!, $"\"{src}\"")
+                {
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    StandardOutputEncoding = System.Text.Encoding.UTF8,
+                    StandardErrorEncoding = System.Text.Encoding.UTF8,
+                };
+                using var process = System.Diagnostics.Process.Start(psi)!;
+                var outTask = process.StandardOutput.ReadToEndAsync();
+                var errTask = process.StandardError.ReadToEndAsync();
+                if (!process.WaitForExit(60_000))
+                {
+                    process.Kill();
+                }
+                return (process.HasExited ? process.ExitCode : -1,
+                    outTask.Result.Replace("\r\n", "\n"), errTask.Result);
+            }
+            finally
+            {
+                File.Delete(src);
+            }
+        }
+
+        static byte[] Concat(params byte[][] parts) =>
+            parts.SelectMany(p => p).ToArray();
+        static byte[] Ascii(string s) => System.Text.Encoding.ASCII.GetBytes(s);
+
+        // red case 1: invalid UTF-8 without a declaration must be rejected
+        // (today: silently replaced with U+FFFD and executed)
+        var (c1Code, c1Out, c1Err) = RunChildBytes(Concat(
+            Ascii("s = '"), new byte[] { 0xE4 }, Ascii("'\nprint(len(s))\n")));
+        Assert.AreNotEqual(0, c1Code,
+            $"invalid UTF-8 without declaration must be rejected:\n{c1Out}{c1Err}");
+        Assert.Contains("Non-UTF-8", c1Err, c1Err);
+
+        // red case 2: latin-1 declaration must decode 0xE4 to U+00E4
+        var (c2Code, c2Out, _) = RunChildBytes(Concat(
+            Ascii("# -*- coding: latin-1 -*-\ns = '"), new byte[] { 0xE4 },
+            Ascii("'\nprint(repr(s))\n")));
+        Assert.AreEqual(0, c2Code, c2Out);
+        Assert.Contains("\u00e4", c2Out, c2Out);
+        Assert.DoesNotContain("\uFFFD", c2Out, c2Out);
+
+        // red case 3: gbk declaration must decode C4 E3 to U+4F60 (你)
+        var (c3Code, c3Out, _) = RunChildBytes(Concat(
+            Ascii("# -*- coding: gbk -*-\ns = '"), new byte[] { 0xC4, 0xE3 },
+            Ascii("'\nprint(repr(s), len(s))\n")));
+        Assert.AreEqual(0, c3Code, c3Out);
+        Assert.Contains("\u4f60", c3Out, c3Out);
+        Assert.DoesNotContain("\uFFFD", c3Out, c3Out);
+
+        // red case 4: unknown codec names must be rejected
+        var (c4Code, c4Out, c4Err) = RunChildBytes(Concat(
+            Ascii("# -*- coding: bogus-codec-xyz -*-\nprint(\"ascii ok\")\n")));
+        Assert.AreNotEqual(0, c4Code,
+            $"unknown codec name must be rejected:\n{c4Out}{c4Err}");
+        Assert.Contains("encoding problem", c4Err, c4Err);
+
+        // guard: a utf-8 declaration with utf-8 content keeps working
+        var (gCode, gOut, _) = RunChildBytes(Concat(
+            Ascii("# -*- coding: utf-8 -*-\ns = \"h\u00e9llo\"\nprint(repr(s))\n")));
+        Assert.AreEqual(0, gCode, gOut);
+        Assert.Contains("\u00e9", gOut, gOut);
+        Assert.DoesNotContain("\uFFFD", gOut, gOut);
+    }
+
+    [TestMethod]
+    public void TestBareStarKwargsRegression()
+    {
+        // Regression: a bare `*` in a parameter list must be followed by at
+        // least one named keyword-only parameter (CPython: "named arguments
+        // must follow bare *"). Fails until the fix lands.
+        var module = RunModule("test_bare_star_kwargs_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestModuleAttrMessageRegression()
+    {
+        // Regression: a module attribute miss must produce a clean message
+        // ("module 'sys' has no attribute 'x'"), not leak the attribute
+        // name's PyStrObject debug dump into the user-visible text. Fails
+        // until the fix lands.
+        var module = RunModule("test_module_attr_message_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestNumberTokenEndValidationRegression()
+    {
+        // Regression: the lexer must validate the end of a number token
+        // like CPython's verify_end_of_number: `0or` (0o prefix committed,
+        // no digits) is a SyntaxError, and a complete number directly
+        // followed by a keyword (1or/0.0or/0jor/0b0or) must emit a
+        // SyntaxWarning instead of passing silently. The warnings are
+        // asserted on the captured stderr. Fails until the fix lands.
+        var path = Path.Combine(PyFilesPath, "test_number_token_end_regression.py");
+        var fullPath = Path.GetFullPath(path);
+        var stderr = new MemoryStream();
+        var host = new StdioHost(new MemoryStream(), new MemoryStream(), stderr);
+        using var environment = host
+            .CreateEnvironmentBuilder()
+            .AddPath(Path.GetDirectoryName(fullPath)!)
+            .AddArg(fullPath)
+            .Build();
+        using var context = PyCallContext.CreateInterpreterRootContext(environment);
+        var code = File.ReadAllText(path);
+        var module = PyInterpreter.RunCodeWithContext(
+            context, code, Path.GetFileNameWithoutExtension(path), fullPath, isMain: true);
+        Assert.IsNotNull(module);
+
+        environment.Error.Flush();
+        var text = System.Text.Encoding.UTF8.GetString(stderr.ToArray()).Replace("\r\n", "\n");
+        Assert.Contains("SyntaxWarning", text, text);
+        Assert.Contains("invalid octal literal", text, text);
+        Assert.Contains("invalid decimal literal", text, text);
+    }
 }
