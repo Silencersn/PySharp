@@ -436,6 +436,15 @@ partial class SemanticAnalyzer
 
     private void VisitStarred(StarredNode node)
     {
+        // _nodesToRoot enumerates top-first, so index 1 is the starred node's direct parent.
+        var parent = _nodesToRoot.ElementAtOrDefault(1);
+        if (parent is not (ListNode or TupleNode or SetNode or CallNode))
+        {
+            throw SyntaxError(node.Ctx is ExprContextType.Store
+                ? PySR.InvalidSyntax_StarredExpression_TargetMustBeInListOrTuple
+                : PySR.InvalidSyntax_StarredExpression_CannotUseHere);
+        }
+
         VisitNode(node.Value);
     }
 

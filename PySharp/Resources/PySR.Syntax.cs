@@ -74,6 +74,7 @@ partial class PySR
 
     public const string InvalidSyntax_StarredExpression_Invalid = "Invalid star expression";
     public const string InvalidSyntax_StarredExpression_CannotUseHere = "can't use starred expression here";
+    public const string InvalidSyntax_StarredExpression_TargetMustBeInListOrTuple = "starred assignment target must be in a list or tuple";
 
     public const string InvalidSyntax_InvalidTarget = "cannot assign to {0}";
 
