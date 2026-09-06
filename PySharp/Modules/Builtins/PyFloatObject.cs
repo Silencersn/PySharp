@@ -1,6 +1,7 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
+using System.Diagnostics;
 using System.Globalization;
 using System.Numerics;
 
@@ -90,6 +91,23 @@ public class PyFloatObject : PyObject
 [PyType("float")]
 public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
 {
+    [PyExport(PySpecialNames.New, nameof(NewImpl_1))]
+    private static partial PyBuiltinFunctionOrMethodObject _new { get; }
+
+    [PyFunctionParameters("number=0.0", "/")]
+    private static PyResult NewImpl_1(PyCallContext context, PyArguments arguments)
+    {
+        if (arguments[0] is PyStrObject str)
+        {
+            if (!TryParseFloatString(str.Value, out var value))
+                return PyResult.ValueError(PySR.Runtime_Number_Float_InvalidLiteral, str.Value);
+
+            return PyFloatObject.FromDouble(value);
+        }
+
+        return PySpecialMethods.Float(context, arguments[0]);
+    }
+
     protected override PyResult Repr(PyCallContext context, PyFloatObject self)
     {
         var val = self.Value;
@@ -1018,18 +1036,23 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        if (!PyArgsValidator.ValidateSinglePositionalArg(args, kwargs, out var err))
-            return err.Value;
+        // CPython's float_new takes at most one positional argument and no
+        // keywords; an unmatched dispatcher call would only give a bare
+        // TypeError, so produce the specific messages here.
+        if (args.Count > 1)
+            return PyResult.TypeError(PySR.Runtime_Arguments_OverflowArgs, 1, args.Count);
+        if (!PyArgsValidator.ValidateEmptyKwargs(kwargs, out var kwErr))
+            return kwErr.Value;
 
-        // TODO: this is temp fix
-        if (args[0] is PyStrObject { Value: var str })
-        {
-            if (!TryParseFloatString(str, out var value))
-                return PyResult.TypeError(null);
+        var result = _new.Call(context, args, kwargs);
+        if (result.IsError)
+            return result;
 
-            return PyFloatObject.FromDouble(value);
-        }
-
-        return PySpecialMethods.Float(context, args[0]);
+        // CPython float_new: a subclass call produces a subclass instance
+        var obj = result.Value;
+        Debug.Assert(obj is PyFloatObject);
+        if (obj.PyType != cls)
+            obj._pyType = cls;
+        return obj;
     }
 }

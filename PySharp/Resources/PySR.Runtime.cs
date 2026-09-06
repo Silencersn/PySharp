@@ -86,6 +86,7 @@ partial class PySR
     public const string Runtime_Number_Int_MaxDigitsNotInt32 = "Python int too large to convert to C int";
     public const string Runtime_Number_Int_MaxDigitsInvalid = "maxdigits must be >= {0} or 0 for unlimited";
     public const string Runtime_Number_Float_WrongArg = "float() argument must be a string or a real number, not '{0}'";
+    public const string Runtime_Number_Float_InvalidLiteral = "could not convert string to float: '{0}'";
     public const string Runtime_Number_PowWithZeroModulo = "pow() 3rd argument cannot be 0";
     public const string Runtime_Number_PowThirdArgNotInteger = "pow() 3rd argument not allowed unless all arguments are integers";
     public const string Runtime_Number_DivisionByZero = "division by zero";

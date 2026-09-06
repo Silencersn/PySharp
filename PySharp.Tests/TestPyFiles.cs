@@ -1498,6 +1498,17 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestFloatNoArgsRegression()
+    {
+        // Regression: float() with no arguments must return 0.0 (CPython
+        // float_new), not TypeError; invalid strings must raise ValueError
+        // with the CPython message, and float subclasses must construct
+        // subclass instances. Fails until the fix lands.
+        var module = RunModule("test_float_noargs_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestAsyncContextValidationRegression()
     {
         // Regression: `async for`/`async with` in a sync function and
