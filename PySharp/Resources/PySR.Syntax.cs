@@ -16,6 +16,7 @@ partial class PySR
 
     public const string InvalidSyntax_Tokenize_UnindentNotMatch = "unindent does not match any outer indentation level";
     public const string InvalidSyntax_Tokenize_InconsistentTabsAndSpaces = "inconsistent use of tabs and spaces in indentation";
+    public const string InvalidSyntax_Tokenize_SourceNullBytes = "source code cannot contain null bytes";
 
     #endregion Lexer
 

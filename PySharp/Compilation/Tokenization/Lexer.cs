@@ -106,6 +106,15 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
 
     internal void InternalStart()
     {
+        // reject null bytes before tokenization, wherever they occur
+        // (CPython checks each line as it is read in)
+        var nullIndex = _codeSource.Code.Text.IndexOf('\0');
+        if (nullIndex is not -1)
+        {
+            _offset = nullIndex;
+            throw SyntaxError(PySR.InvalidSyntax_Tokenize_SourceNullBytes);
+        }
+
         AppendToken(TokenType.Encoding, length: 0);
         _needIndentation = true;
     }
