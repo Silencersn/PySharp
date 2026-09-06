@@ -15,7 +15,7 @@ public sealed partial class PyBaseExceptionGroupObjectType : PyExceptionType
         PyTypeObject type = Shared;
         if (info.Exceptions.All(static exc => PyExceptionObjectType.Shared.IsInstance(exc)))
             type = PyExceptionGroupObjectType.Shared;
-        return new PyExceptionObject(type, [PyStrObject.FromString(message), .. excs], info);
+        return PyExceptionObject.UnsafeCreate(type, [PyStrObject.FromString(message), .. excs], info);
     }
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
@@ -68,12 +68,16 @@ public sealed partial class PyBaseExceptionGroupObjectType : PyExceptionType
             return err.Value;
 
         var info = new ExceptionGroupInfo(self.AsGroup.Message, [.. excs]);
-        var result = new PyExceptionObject(self.PyType, [PyStrObject.FromString(info.Message), PyListObject.CreateList(info.Exceptions)], info)
-        {
-            Traceback = self.Traceback,
-            Cause = self.Cause,
-            Context = self.Context,
-        };
+        var excResult = PyExceptionObject.Create(context, self.PyType, 
+            [PyStrObject.FromString(info.Message),
+            PyListObject.CreateList(info.Exceptions)], info);
+        if (excResult.IsError)
+            return excResult;
+
+        var result = excResult.Value;
+        result.Traceback = self.Traceback;
+        result.Cause = self.Cause;
+        result.Context = self.Context;
 
         Debug.Assert(result.IsGroup);
         if (result.AsGroup.Exceptions.All(PyExceptionObjectType.Shared.IsInstance))

@@ -101,17 +101,7 @@ internal static class PyCore
             return obj;
 
         if (metaClass != PyTypeObjectType.Shared)
-        {
-            var initFunc = metaClass.Slots.Init;
-            if (initFunc is not null)
-            {
-                // same slot_tp_init rule as instantiation: __init__ must
-                // return None when called through the type machinery
-                var initResult = initFunc(context, obj, args, kwargs).PyUnwrap(context);
-                if (initResult is not PyNoneObject)
-                    throw context.TypeError(PySR.Runtime_Type_InitShouldReturnNone, initResult.PyType.FullName);
-            }
-        }
+            _ = PyTypeObjectType.CallInit(context, metaClass, obj, args, kwargs).PyUnwrap(context);
 
         return obj;
     }
@@ -178,7 +168,7 @@ internal static class PyCore
                 return excObj;
 
             else if (pyObj is PyTypeObject typeObj && typeObj.IsSubclassOf(PyBaseExceptionObjectType.Shared))
-                return new PyExceptionObject(typeObj, []);
+                return PyExceptionObject.Create(context, typeObj, []).PyUnwrap(context);
 
             else
                 throw context.TypeError(PySR.Runtime_RaiseStmt_RaiseNonException);

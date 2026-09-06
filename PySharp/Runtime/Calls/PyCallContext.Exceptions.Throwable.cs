@@ -12,7 +12,8 @@ partial class PyCallContext
 
     private PyRuntimeException ThrowableException(PyTypeObject<PyExceptionObject> exceptionType, PyObject? arg)
     {
-        return new PyRuntimeException(this, new(exceptionType, arg is null ? [] : [arg]));
+        var result = PyExceptionObject.Create(this, exceptionType, arg is null ? [] : [arg]);
+        return new PyRuntimeException(this, result.Value ?? result.Exception!);
     }
 
     internal PyRuntimeException SyntaxError(ICodeMetaInfoProvider compiler, string format, params ReadOnlySpan<object?> args)

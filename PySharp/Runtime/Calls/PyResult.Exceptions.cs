@@ -24,7 +24,7 @@ partial struct PyResult
     }
     internal static PyExceptionResult RaiseException(PyTypeObject<PyExceptionObject> exceptionType, PyObject? arg)
     {
-        return new(new(exceptionType, arg is null ? [] : [arg]));
+        return new(PyExceptionObject.UnsafeCreate(exceptionType, arg is null ? [] : [arg]));
     }
 
     public static PyExceptionResult KeyError(PyObject? arg)

@@ -2,6 +2,7 @@ using PySharp.Compilation.CodeAnalysis;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Utility;
+using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
@@ -19,12 +20,25 @@ public sealed class PyExceptionObject : PyObjectManagedDict
         _pyType = exceptionType;
         Args = [.. args];
         AsGroup = asGroup;
+    }
 
-        // CPython StopIteration initializes the value member from args[0]
-        // (or None) at construction; setting value never touches args and
-        // deleting it reads None, without falling back to args
-        if (exceptionType.IsSubclassOf(PyStopIterationObjectType.Shared))
-            StopIterationValue = Args.Count > 0 ? Args[0] : PyNoneObject.None;
+    internal static PyResult<PyExceptionObject> Create(PyCallContext context, PyTypeObject exceptionType, IEnumerable<PyObject> args, ExceptionGroupInfo? asGroup = null)
+    {
+        var exc = new PyExceptionObject(exceptionType, args, asGroup);
+        var initResult = PyTypeObjectType.CallInit(context, exceptionType, exc,
+            exc.Args, FrozenDictionary<string, PyObject>.Empty);
+        if (initResult.IsError)
+            return initResult.ExceptionResult;
+        return exc;
+    }
+
+    internal static PyExceptionObject UnsafeCreate(PyTypeObject exceptionType, IEnumerable<PyObject> args, ExceptionGroupInfo? asGroup = null)
+    {
+        var exc = new PyExceptionObject(exceptionType, args, asGroup);
+        var initResult = PyTypeObjectType.CallInit(PyCallContext.NonContextDependency, exceptionType, exc,
+            exc.Args, FrozenDictionary<string, PyObject>.Empty);
+        Debug.Assert(initResult.IsSuccessful);
+        return exc;
     }
 
     public bool SuppressContext { get; internal set; }
@@ -33,8 +47,7 @@ public sealed class PyExceptionObject : PyObjectManagedDict
     internal string? CauseReason { get; set; }
     public IReadOnlyList<PyObject> Args { get; }
     public TracebackInfo? Traceback { get; internal set; }
-    // TODO: DO NOT define .value here
-    internal PyObject? StopIterationValue { get; set; }
+    internal PyObject? ExtraValue { get; set; }
 
     [MemberNotNullWhen(true, nameof(AsGroup))]
     internal bool IsGroup => AsGroup is not null;

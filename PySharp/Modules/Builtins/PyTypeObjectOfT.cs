@@ -1,3 +1,4 @@
+using PySharp.Compilation.CodeAnalysis;
 using PySharp.Modules.CSharp;
 using PySharp.Modules.Typing;
 using PySharp.Runtime;
@@ -50,6 +51,23 @@ public abstract partial class PyTypeObject<TObject> : PyTypeObject where TObject
 [PyType("type")]
 public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
 {
+    internal static PyResult<PyNoneObject> CallInit(PyCallContext context, PyTypeObject type, PyObject obj, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        var initFunc = type.Slots.Init;
+        if (initFunc is not null)
+        {
+            var initResult = initFunc(context, obj, args, kwargs);
+            if (initResult.IsError)
+                return initResult.ExceptionResult;
+            // CPython's slot_tp_init: __init__ must return None when
+            // called through instantiation (a direct __init__() call
+            // is exempt)
+            if (initResult.Value is not PyNoneObject)
+                return PyResult.TypeError(PySR.Runtime_Type_InitShouldReturnNone, initResult.Value.PyType.FullName);
+        }
+        return PyNoneObject.None;
+    }
+
     protected override PyResult Call(PyCallContext context, PyTypeObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var newFunc = self.Slots.New;
@@ -63,18 +81,9 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
         var pyObject = result.Value;
         if (self.IsInstance(pyObject))
         {
-            var initFunc = self.Slots.Init;
-            if (initFunc is not null)
-            {
-                var initResult = initFunc(context, pyObject, args, kwargs);
-                if (initResult.IsError)
-                    return initResult;
-                // CPython's slot_tp_init: __init__ must return None when
-                // called through instantiation (a direct __init__() call
-                // is exempt)
-                if (initResult.Value is not PyNoneObject)
-                    return PyResult.TypeError(PySR.Runtime_Type_InitShouldReturnNone, initResult.Value.PyType.FullName);
-            }
+            var initResult = CallInit(context, self, pyObject, args, kwargs);
+            if (initResult.IsError)
+                return initResult;
         }
 
         return pyObject;

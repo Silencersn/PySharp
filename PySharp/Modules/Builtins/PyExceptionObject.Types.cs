@@ -7,19 +7,9 @@ namespace PySharp.Modules.Builtins;
 
 public abstract class PyExceptionType : PyTypeObject<PyExceptionObject>
 {
-    public PyExceptionObject Create()
+    internal PyExceptionObject Create(PyObject? pyObject = null)
     {
-        return new PyExceptionObject(this, []);
-    }
-
-    public PyExceptionObject Create(PyObject? pyObject)
-    {
-        return new PyExceptionObject(this, pyObject is null ? [] : [pyObject]);
-    }
-
-    public PyExceptionObject Create(params IEnumerable<PyObject> pyObjects)
-    {
-        return new PyExceptionObject(this, [.. pyObjects]);
+        return PyExceptionObject.UnsafeCreate(this, pyObject is null ? [] : [pyObject]);
     }
 }
 
@@ -33,7 +23,6 @@ public interface IPyException<TSelf> where TSelf : PyExceptionType, IPyException
 [PyException("BaseException", Bases = [typeof(PyObjectType)])]
 public sealed partial class PyBaseExceptionObjectType : PyExceptionType
 {
-
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (kwargs.Count is not 0)
@@ -131,23 +120,32 @@ public sealed partial class PyTypeErrorObjectType : PyExceptionType;
 [PyException("StopIteration")]
 public sealed partial class PyStopIterationObjectType : PyExceptionType
 {
+    protected override PyResult Init(PyCallContext context, PyExceptionObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        if (!PyArgsValidator.ValidateEmptyKwargs(kwargs, out var err))
+            return err.Value;
+
+        self.ExtraValue = args.Count > 0 ? args[0] : PyNoneObject.None;
+        return PyNoneObject.None;
+    }
+
     [PyProperty("value")]
     private static PyResult Get_Value(PyCallContext context, PyExceptionObject self)
     {
-        return self.StopIterationValue ?? PyNoneObject.None;
+        return self.ExtraValue ?? PyNoneObject.None;
     }
 
     [PyProperty("value", Type = PyPropertyMethodType.Setter)]
     private static PyResult Set_Value(PyCallContext context, PyExceptionObject self, PyObject value)
     {
-        self.StopIterationValue = value;
+        self.ExtraValue = value;
         return PyNoneObject.None;
     }
 
     [PyProperty("value", Type = PyPropertyMethodType.Deleter)]
     private static PyResult Delete_Value(PyCallContext context, PyExceptionObject self)
     {
-        self.StopIterationValue = null;
+        self.ExtraValue = null;
         return PyNoneObject.None;
     }
 }
