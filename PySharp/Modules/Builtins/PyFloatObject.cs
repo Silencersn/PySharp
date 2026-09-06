@@ -748,6 +748,12 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
         if (formatSpec is not PyStrObject str)
             return PyResult.TypeError(PySR.Runtime_Object_FormatArg2NonString, formatSpec.PyType.FullName);
 
+        // CPython _PyFloat_FormatAdvancedWriter: a zero-length spec makes
+        // __format__ equivalent to str(obj) - the shortest-repr rendering,
+        // not the 'g' default-precision path below
+        if (str.Value.Length is 0)
+            return PySpecialMethods.Str(context, self);
+
         if (!PyFormatSpec.TryParse(str.Value, out var spec))
             return PyResult.ValueError(PySR.Runtime_Object_FormatSpecInvalid, str.Value, self.PyType.FullName);
 

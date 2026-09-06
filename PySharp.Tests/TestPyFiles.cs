@@ -1991,4 +1991,16 @@ public sealed class TestPyFiles
             "stderr must not start with a UTF-8 BOM: " + Convert.ToHexString(errBytes[..Math.Min(8, errBytes.Length)]));
         Assert.Contains("err-line", System.Text.Encoding.UTF8.GetString(errBytes));
     }
+
+    [TestMethod]
+    public void TestFormatEmptySpecRegression()
+    {
+        // Regression: a zero-length format spec must make __format__
+        // equivalent to str(obj). bool inherited int's Format slot and
+        // rendered '1'/'0' in f-strings and format(); float rendered the
+        // 'g' default-precision form instead of str(float)'s shortest
+        // repr. Fails until the fix lands.
+        var module = RunModule("test_format_empty_spec_regression.py");
+        Assert.IsNotNull(module);
+    }
 }
