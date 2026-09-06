@@ -79,7 +79,26 @@ partial class SemanticAnalyzer
 
     private void VisitBinOp(BinOpNode node)
     {
-        VisitNode(node.Left);
+        if (node.Left is not BinOpNode)
+        {
+            VisitNode(node.Left);
+            VisitNode(node.Right);
+            return;
+        }
+
+        var currentNode = node;
+        while (currentNode.Left is BinOpNode leftBinOpNode)
+        {
+            PreVisitNode(leftBinOpNode);
+            currentNode = leftBinOpNode;
+        }
+        VisitNode(currentNode.Left);
+        while (!ReferenceEquals(currentNode, node))
+        {
+            VisitNode(currentNode.Right);
+            PostVisitNode(currentNode);
+            currentNode = (BinOpNode)_nodesToRoot.Peek();
+        }
         VisitNode(node.Right);
     }
 

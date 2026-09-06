@@ -2,6 +2,7 @@ using PySharp.Compilation.AstNodes;
 using PySharp.Compilation.Bytecodes.Extensions;
 using PySharp.Compilation.Primitives;
 using PySharp.Modules.Builtins;
+using PySharp.Utility;
 using System.Collections.Immutable;
 using System.Diagnostics;
 
@@ -276,7 +277,38 @@ partial class Emitter
 
     private void EmitBinOp(BinOpNode node)
     {
-        LoadExpr(node.Left);
+        if (node.Left is not BinOpNode)
+        {
+            LoadExpr(node.Left);
+            LoadExpr(node.Right);
+            Builder.Emit(OpCode.BinaryOp, node.Operator);
+            return;
+        }
+
+        var currentNode = node;
+        var count = 0;
+        while (currentNode.Left is BinOpNode leftBinOpNode)
+        {
+            count++;
+            currentNode = leftBinOpNode;
+            Builder.PushMetaInfo(currentNode.MetaInfo);
+        }
+
+        using var array = PoolHelper.Rent<BinOpNode>(count);
+        var buffer = array.Span;
+
+        currentNode = node;
+        while (currentNode.Left is BinOpNode leftBinOpNode)
+            buffer[--count] = currentNode = leftBinOpNode;
+
+        LoadExpr(currentNode.Left);
+        foreach (var leftBinOpNode in buffer)
+        {
+            LoadExpr(leftBinOpNode.Right);
+            Builder.Emit(OpCode.BinaryOp, leftBinOpNode.Operator);
+            Builder.PopMetaInfo();
+        }
+
         LoadExpr(node.Right);
         Builder.Emit(OpCode.BinaryOp, node.Operator);
     }

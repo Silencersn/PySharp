@@ -7,6 +7,7 @@ using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Xml.Linq;
 
 namespace PySharp.Compilation.AstNodes;
 
@@ -426,8 +427,7 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
 
     private void VisitNode(AstNode node)
     {
-        _nodesToRoot.Push(node);
-
+        PreVisitNode(node);
         switch (node)
         {
             case AstModNode mod: VisitMod(mod); break;
@@ -435,7 +435,15 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
             case AstExprNode expr: VisitExpr(expr); break;
             default: VisitMisc(node); break;
         }
+        PostVisitNode(node);
+    }
 
+    private void PreVisitNode(AstNode node)
+    {
+        _nodesToRoot.Push(node);
+    }
+    private void PostVisitNode(AstNode node)
+    {
         var poppedNode = _nodesToRoot.Pop();
         Debug.Assert(ReferenceEquals(poppedNode, node));
     }
@@ -719,5 +727,24 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
     private void VisitInteractive(InteractiveNode node)
     {
         VisitNodes(node.Body);
+    }
+
+    private readonly ref struct NodeScope : IDisposable
+    {
+        private readonly SemanticAnalyzer _analyzer;
+        private readonly AstNode _node;
+
+        internal NodeScope(SemanticAnalyzer analyzer, AstNode node)
+        {
+            _analyzer = analyzer;
+            _node = node;
+            _analyzer._nodesToRoot.Push(node);
+        }
+
+        void IDisposable.Dispose()
+        {
+            var poppedNode = _analyzer._nodesToRoot.Pop();
+            Debug.Assert(ReferenceEquals(poppedNode, _node));
+        }
     }
 }
