@@ -75,6 +75,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
     private int _stringStartOffset;
 
     private int _parenLevel;
+    private readonly Stack<(char Bracket, int Offset)> _bracketStack;
 
     CodeMetaInfo? ICodeMetaInfoProvider.MetaInfo => CodeMetaInfo.FromPosition(_codeSource, new(Lineno, 0));
     private int Lineno => _codeSource.Code.OffsetToPosition(_offset).Line;
@@ -89,6 +90,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         _indentationLevels = [];
         _indentationLevels.Push((Col: 0, AltCol: 0));
         _parenLevel = 0;
+        _bracketStack = [];
         _fstringStack = [];
         CurrentState = LexerState.Default;
     }
@@ -135,6 +137,14 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
 
         if (CurrentState is LexerState.TokenizingTripleString)
             throw SyntaxError(PySR.InvalidSyntax_Tokenize_Unterminated_TripleStringLiteral, Lineno);
+
+        // the innermost unclosed opener wins, exactly like CPython reading
+        // parenstack[level-1] on EOF
+        if (_bracketStack.Count > 0)
+        {
+            var (bracket, offset) = _bracketStack.Peek();
+            throw BracketError(offset, PySR.InvalidSyntax_ParenNeverClosed, bracket);
+        }
 
         Debug.Assert(_tokens.Count > 0);
 
@@ -288,6 +298,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                             // increment _parenLevel here
                             // while other operators including RightBrace
                             // should be processed by TokenizePseudoToken
+                            _bracketStack.Push(('{', indexOfChar));
                             _parenLevel++;
                         }
                     }
@@ -300,6 +311,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                             AppendToken(TokenType.RightBrace, length: 1);
                             _offset = indexOfChar + 1;
                             CurrentFStringInfo.FormatSpec.Pop();
+                            _bracketStack.Pop();
                             _parenLevel--;
                             break;
                         }
@@ -593,15 +605,45 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             AppendToken(TokenType.Operator, group.Length);
             if (group.Value is "(" or "[" or "{")
             {
+                _bracketStack.Push((group.Value[0], _offset));
                 _parenLevel++;
             }
             else if (group.Value is ")" or "]" or "}")
             {
-                _parenLevel--;
-                if (_parenLevel < 0)
+                if (_bracketStack.Count is 0)
                     throw SyntaxError($"unmatched '{group.Value}'");
+
+                var (opening, openingOffset) = _bracketStack.Pop();
+                _parenLevel--;
+                ThrowIfBracketMismatch(opening, openingOffset, group.Value[0]);
             }
         }
+    }
+
+    // Mirrors CPython's parenstack bookkeeping (Parser/lexer/lexer.c): a
+    // closing bracket must pair with the innermost opener, and an opener
+    // still on the stack at EOF is reported at its own position
+    private void ThrowIfBracketMismatch(char opening, int openingOffset, char closing)
+    {
+        if ((opening is '(' && closing is ')') ||
+            (opening is '[' && closing is ']') ||
+            (opening is '{' && closing is '}'))
+            return;
+
+        var openingLine = _codeSource.Code.OffsetToPosition(openingOffset).Line;
+        if (openingLine != Lineno)
+            throw BracketError(_offset, PySR.InvalidSyntax_ParenMismatchOnLine, closing, opening, openingLine);
+
+        throw BracketError(_offset, PySR.InvalidSyntax_ParenMismatch, closing, opening);
+    }
+
+    private PyRuntimeException BracketError(int offset, string message, params ReadOnlySpan<object?> args)
+    {
+        var info = CodeMetaInfo.FromPosition(
+            _codeSource,
+            _codeSource.Code.OffsetToPosition(offset),
+            _codeSource.Code.OffsetToPosition(offset + 1));
+        return _context.SyntaxError(new PositionMetaInfo(info), message, args);
     }
 
     private void TokenizeContStr(ref ValueGroup group)
@@ -852,7 +894,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             // the exact literal position keeps several offending literals on
             // one line distinct in the per-position warning dedup
             var info = CodeMetaInfo.FromPosition(_codeSource, _codeSource.Code.OffsetToPosition(_offset));
-            _ = _context.WarnSyntax(message, new NumberMetaInfo(info)).PyUnwrap(_context);
+            _ = _context.WarnSyntax(message, new PositionMetaInfo(info)).PyUnwrap(_context);
             return;
         }
 
@@ -919,7 +961,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                (rest.Length == keyword.Length || !IsAsciiIdentifierChar(rest[keyword.Length]));
     }
 
-    private readonly struct NumberMetaInfo(CodeMetaInfo info) : ICodeMetaInfoProvider
+    private readonly struct PositionMetaInfo(CodeMetaInfo info) : ICodeMetaInfoProvider
     {
         public CodeMetaInfo? MetaInfo => info;
     }

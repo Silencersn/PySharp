@@ -1873,6 +1873,18 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestBracketNeverClosedRegression()
+    {
+        // Regression: the lexer must report an opener still on its bracket
+        // stack at EOF (CPython "'X' was never closed", innermost opener),
+        // plus mismatched closes, instead of leaking to the parser where
+        // the input died with misleading messages. Fails until the fix
+        // lands.
+        var module = RunModule("test_bracket_never_closed_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestEmptyNeedleTailmatchRegression()
     {
         // Regression: an empty prefix/suffix must match at every valid

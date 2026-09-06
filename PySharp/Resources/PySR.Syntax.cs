@@ -101,6 +101,9 @@ partial class PySR
     public const string InvalidSyntax_ForStmt_ExpectedIn = "'in' expected after for-loop variables";
 
     public const string InvalidSyntax_RightParenNeverClosed = "'(' was never closed";
+    public const string InvalidSyntax_ParenNeverClosed = "'{0}' was never closed";
+    public const string InvalidSyntax_ParenMismatch = "closing parenthesis '{0}' does not match opening parenthesis '{1}'";
+    public const string InvalidSyntax_ParenMismatchOnLine = "closing parenthesis '{0}' does not match opening parenthesis '{1}' on line {2}";
 
     public const string InvalidSyntax_Arguments_ExpressionContainsAssignment = "expression cannot contain assignment, perhaps you meant \"==\"?";
     public const string InvalidSyntax_Arguments_PosArgFollowsKeyword = "positional argument follows keyword argument";
