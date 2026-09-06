@@ -1920,4 +1920,64 @@ public sealed class TestPyFiles
         var module = RunModule("test_float_repr_scientific_regression.py");
         Assert.IsNotNull(module);
     }
+
+    // console host with captured streams; the encoding handover is injected
+    // deterministically instead of reading the runner's Console.OutputEncoding
+    private sealed class RedirectedConsoleHost : PyEnvironmentHost.ConsolePyEnvironmentHostBase
+    {
+        private readonly Stream _stdin;
+        private readonly Stream _stdout;
+        private readonly Stream _stderr;
+
+        public RedirectedConsoleHost(Stream stdin, Stream stdout, Stream stderr)
+        {
+            _stdin = stdin;
+            _stdout = stdout;
+            _stderr = stderr;
+        }
+
+        public override IVirtualFileSystem FileSystem { get; } = MemoryFileSystem.CreateBuilder().Build();
+
+        internal override System.Text.Encoding StdOutEncoding => System.Text.Encoding.UTF8;
+        internal override System.Text.Encoding StdErrEncoding => System.Text.Encoding.UTF8;
+
+        public override Stream AllocateStdIn() => _stdin;
+        public override Stream AllocateStdOut() => _stdout;
+        public override Stream AllocateStdErr() => _stderr;
+    }
+
+    [TestMethod]
+    public void TestStdioNoBomRegression()
+    {
+        // Regression: the console hosts hand Console.OutputEncoding - possibly
+        // the BOM-emitting UTF8Encoding singleton - to the stdio writers,
+        // which prepended EF BB BF to every redirected run; CPython writes
+        // no preamble. The redirected console host injects Encoding.UTF8 as
+        // a deterministic stand-in and inherits the real builder path.
+        var stdout = new MemoryStream();
+        var stderr = new MemoryStream();
+        var host = new RedirectedConsoleHost(new MemoryStream(), stdout, stderr);
+        var filename = "test_stdio_no_bom_regression.py";
+        var path = Path.Combine(PyFilesPath, filename);
+        var code = File.ReadAllText(path);
+
+        using (var environment = host.CreateEnvironmentBuilder()
+                   .AddPath(Path.GetDirectoryName(Path.GetFullPath(path))!)
+                   .AddArg(Path.GetFullPath(path))
+                   .Build())
+        using (var context = PyCallContext.CreateInterpreterRootContext(environment))
+        {
+            PyInterpreter.RunCodeWithContext(context, code, filename, Path.GetFullPath(path), isMain: true);
+        }
+
+        var outBytes = stdout.ToArray();
+        Assert.IsFalse(outBytes.AsSpan().StartsWith(stackalloc byte[] { 0xEF, 0xBB, 0xBF }),
+            "stdout must not start with a UTF-8 BOM: " + Convert.ToHexString(outBytes[..Math.Min(8, outBytes.Length)]));
+        Assert.Contains("hello", System.Text.Encoding.UTF8.GetString(outBytes));
+
+        var errBytes = stderr.ToArray();
+        Assert.IsFalse(errBytes.AsSpan().StartsWith(stackalloc byte[] { 0xEF, 0xBB, 0xBF }),
+            "stderr must not start with a UTF-8 BOM: " + Convert.ToHexString(errBytes[..Math.Min(8, errBytes.Length)]));
+        Assert.Contains("err-line", System.Text.Encoding.UTF8.GetString(errBytes));
+    }
 }

@@ -54,8 +54,13 @@ public abstract class PyEnvironmentHost
         public override IVirtualFileSystem FileSystem { get; } = MemoryFileSystem.CreateBuilder().Build();
     }
 
-    private abstract class ConsolePyEnvironmentHostBase : PyEnvironmentHost
+    internal abstract class ConsolePyEnvironmentHostBase : PyEnvironmentHost
     {
+        // stdio encoding handover seam; tests override these to inject a
+        // deterministic stand-in for Console.OutputEncoding
+        internal virtual Encoding StdOutEncoding => Console.OutputEncoding;
+        internal virtual Encoding StdErrEncoding => Console.OutputEncoding;
+
         public override Stream AllocateStdIn() => Console.OpenStandardInput();
         public override Stream AllocateStdOut() => Console.OpenStandardOutput();
         public override Stream AllocateStdErr() => Console.OpenStandardError();
@@ -64,9 +69,17 @@ public abstract class PyEnvironmentHost
         {
             return base.CreateEnvironmentBuilder()
                 .UseStdInEncoding(Console.InputEncoding)
-                .UseStdOutEncoding(Console.OutputEncoding)
-                .UseStdErrEncoding(Console.OutputEncoding);
+                .UseStdOutEncoding(WithoutBom(StdOutEncoding))
+                .UseStdErrEncoding(WithoutBom(StdErrEncoding));
         }
+
+        // Console.OutputEncoding may hand over the BOM-emitting UTF8
+        // singleton; CPython never writes a preamble to stdout/stderr.
+        // Non-UTF-8 console code pages pass through unchanged.
+        internal static Encoding WithoutBom(Encoding encoding) =>
+            encoding.GetPreamble() is [0xEF, 0xBB, 0xBF]
+                ? Utf8NoBom
+                : encoding;
     }
 
     private sealed class ConsolePyEnvironmentHost : ConsolePyEnvironmentHostBase
