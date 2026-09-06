@@ -789,11 +789,27 @@ public static partial class PyBuiltinFunctions
     [PyFunctionParameters("c", "/")]
     private static PyResult OrdImpl(PyCallContext context, PyArguments arguments)
     {
-        if (arguments[0] is not PyStrObject strObj)
-            return PyResult.TypeError(PySR.Runtime_Builtin_Ord_ExpectedString, arguments[0].PyType.Name);
-        if (strObj.PyLength is not 1)
-            return PyResult.TypeError(PySR.Runtime_Builtin_Ord_ExpectedACharacter, strObj.PyLength);
-        return PyIntObject.FromInteger(strObj.PyCharAt(0).Value);
+        // CPython builtin_ord accepts one-character strings and one-byte
+        // bytes/bytearray objects; all three share the wrong-length message
+        // and only other types get the type-name message
+        var arg = arguments[0];
+        switch (arg)
+        {
+            case PyBytesObject bytes:
+                if (bytes.Length is 1)
+                    return PyIntObject.FromInteger(bytes[0]);
+                return PyResult.TypeError(PySR.Runtime_Builtin_Ord_ExpectedACharacter, bytes.Length);
+            case PyByteArrayObject byteArray:
+                if (byteArray.Length is 1)
+                    return PyIntObject.FromInteger(byteArray[0]);
+                return PyResult.TypeError(PySR.Runtime_Builtin_Ord_ExpectedACharacter, byteArray.Length);
+            case PyStrObject strObj:
+                if (strObj.PyLength is not 1)
+                    return PyResult.TypeError(PySR.Runtime_Builtin_Ord_ExpectedACharacter, strObj.PyLength);
+                return PyIntObject.FromInteger(strObj.PyCharAt(0).Value);
+            default:
+                return PyResult.TypeError(PySR.Runtime_Builtin_Ord_ExpectedString, arg.PyType.Name);
+        }
     }
 
     [PyFunctionParameters()]

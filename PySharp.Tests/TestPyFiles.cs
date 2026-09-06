@@ -1965,6 +1965,18 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestOrdBytesRegression()
+    {
+        // Regression: ord() must accept one-byte bytes and bytearray objects
+        // like CPython (returning the byte value), share the wrong-length
+        // message across all three accepted types, keep the type-name
+        // message for other types, and accept bytes subclasses. Fails until
+        // the fix lands.
+        var module = RunModule("test_ord_bytes_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestSuperZeroArgsRegression()
     {
         // Regression: zero-argument super() must follow CPython
