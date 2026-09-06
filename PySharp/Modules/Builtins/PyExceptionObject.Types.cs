@@ -109,7 +109,45 @@ public sealed partial class PyArithmeticErrorObjectType : PyExceptionType;
 #region Concrete Exceptions
 
 [PyException("SystemExit", Bases = [typeof(PyBaseExceptionObjectType)])]
-public sealed partial class PySystemExitObjectType : PyExceptionType;
+public sealed partial class PySystemExitObjectType : PyExceptionType
+{
+    protected override PyResult Init(PyCallContext context, PyExceptionObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        if (!PyArgsValidator.ValidateEmptyKwargs(kwargs, out var err))
+            return err.Value;
+
+        // CPython SystemExit_init: code is args[0] for a single argument,
+        // the whole args tuple for multiple arguments, None for none;
+        // assignment and deletion never fall back to args
+        self.ExtraValue = args.Count switch
+        {
+            0 => PyNoneObject.None,
+            1 => args[0],
+            _ => PyTupleObject.CreateTuple(args),
+        };
+        return PyNoneObject.None;
+    }
+
+    [PyProperty("code")]
+    private static PyResult Get_Code(PyCallContext context, PyExceptionObject self)
+    {
+        return self.ExtraValue ?? PyNoneObject.None;
+    }
+
+    [PyProperty("code", Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_Code(PyCallContext context, PyExceptionObject self, PyObject value)
+    {
+        self.ExtraValue = value;
+        return PyNoneObject.None;
+    }
+
+    [PyProperty("code", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Code(PyCallContext context, PyExceptionObject self)
+    {
+        self.ExtraValue = null;
+        return PyNoneObject.None;
+    }
+}
 
 [PyException("GeneratorExit", Bases = [typeof(PyBaseExceptionObjectType)])]
 public sealed partial class PyGeneratorExitObjectType : PyExceptionType;

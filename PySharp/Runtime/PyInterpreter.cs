@@ -163,24 +163,12 @@ public sealed class PyInterpreter : IDisposable
 
     internal static int ParseSystemExitCode(PyCallContext context, PyExceptionObject exc)
     {
-        var args = exc.Args;
-
-        // CPython: code is args[0] for a single arg, the whole args tuple for
-        // multiple args, and None when there are no args.
-        if (args.Count is 0)
-            return 0;
-        if (args.Count > 1)
-        {
-            // CPython writes the whole args tuple to stderr and exits with status 1.
-            // If the conversion fails (e.g. __str__ returns non-str), the output is
-            // silently ignored (PyErr_Clear) and it still exits with status 1.
-            var tupleStr = PySpecialMethods.Str(context, PyTupleObject.CreateTuple(args));
-            if (!tupleStr.IsError)
-                context.Error.WriteLine(tupleStr.Value.Value);
-            return 1;
-        }
-
-        var code = args[0];
+        // CPython reads the exit status from the code attribute (pythonrun.c
+        // _Py_HandleSystemExitAndKeyboardInterrupt), so a handler that
+        // rewrote or deleted code wins over the constructor-filled args.
+        // SystemExit_init fills code with args[0], the whole args tuple for
+        // multiple arguments, or None.
+        var code = exc.ExtraValue ?? PyNoneObject.None;
         switch (code)
         {
             case PyNoneObject:
@@ -193,9 +181,10 @@ public sealed class PyInterpreter : IDisposable
                     return unchecked((int)(long)i.Value);
                 return -1;
             default:
-                // Non-int/non-None code (e.g. a string): print it and exit with status 1.
-                // If the conversion fails (e.g. __str__ returns non-str), the output is
-                // silently ignored (PyErr_Clear) and it still exits with status 1.
+                // Non-int/non-None code (e.g. a string or a multi-argument tuple): print
+                // it and exit with status 1. If the conversion fails (e.g. __str__ returns
+                // non-str), the output is silently ignored (PyErr_Clear) and it still
+                // exits with status 1.
                 var strResult = PySpecialMethods.Str(context, code);
                 if (!strResult.IsError)
                     context.Error.WriteLine(strResult.Value.Value);

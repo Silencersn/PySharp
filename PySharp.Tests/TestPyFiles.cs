@@ -1910,6 +1910,61 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestSystemExitCodeRegression()
+    {
+        // Regression: SystemExit must expose the code attribute like CPython
+        // - args[0] for one argument, the whole args tuple for multiple, None
+        // for none; settable without touching args, deletable (reads None),
+        // and absent on unrelated exception types. Fails until the fix lands.
+        var module = RunModule("test_systemexit_code_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestSystemExitCodeExitCodeIntegration()
+    {
+        // pythonrun.c _Py_HandleSystemExitAndKeyboardInterrupt reads the exit
+        // status from the code attribute, so a handler that rewrites or
+        // deletes code controls the process exit code.
+        Assert.AreEqual(0, RunExitCode("""
+            try:
+                raise SystemExit(2)
+            except SystemExit as e:
+                e.code = 0
+                raise
+            """), "reassigned code=0 must exit 0");
+
+        Assert.AreEqual(0, RunExitCode("""
+            try:
+                raise SystemExit(2)
+            except SystemExit as e:
+                del e.code
+                raise
+            """), "deleted code must exit 0");
+
+        Assert.AreEqual(2, RunExitCode("raise SystemExit(2)"), "int code must exit with its value");
+        Assert.AreEqual(1, RunExitCode("raise SystemExit(1, 2)"), "multi-arg code must exit 1");
+        Assert.AreEqual(0, RunExitCode("raise SystemExit()"), "no code must exit 0");
+    }
+
+    private static int RunExitCode(string code)
+    {
+        var host = new StdioHost(new MemoryStream(), new MemoryStream(), new MemoryStream());
+        using var environment = host.CreateEnvironmentBuilder().Build();
+        using var interpreter = PyInterpreter.Create(environment);
+        try
+        {
+            interpreter.Execute(code, "<systemexit>");
+        }
+        catch (PyRuntimeException)
+        {
+            // the uncaught SystemExit controls the exit code through
+            // PyTryCatch before rethrowing
+        }
+        return environment.ExitCode;
+    }
+
+    [TestMethod]
     public void TestSuperZeroArgsRegression()
     {
         // Regression: zero-argument super() must follow CPython
