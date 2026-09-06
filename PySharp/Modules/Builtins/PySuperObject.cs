@@ -2,7 +2,6 @@ using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Comparison;
 using PySharp.Runtime.PyAttributes;
-using System.Diagnostics;
 
 namespace PySharp.Modules.Builtins;
 
@@ -70,13 +69,27 @@ public sealed partial class PySuperObjectType : PyTypeObject<PySuperObject>
     [PyFunctionParameters()]
     private static PyResult NewImpl_1(PyCallContext context, PyArguments arguments)
     {
-        var variables = context.CurrentInternalFrame.Variables;
+        var frame = context.CurrentInternalFrame;
+        var variables = frame.Variables;
+        var code = frame.CodeObject;
 
-        if (variables.LocalsSpan.Length is 0)
+        // CPython super_init_without_args: the zero-argument form is filled
+        // from the calling frame. LocalsSpan[0] is the first locals-plus
+        // entry, not the first parameter, so the decision must come from
+        // the argument count (module/class/eval frames have no code object
+        // or no positional parameters).
+        if (code is null || !variables.HasLocals || code.ArgCount is 0)
             return PyResult.RuntimeError(PySR.Runtime_Super_NoArgs);
 
         var objectOrType = variables.LocalsSpan[0];
-        Debug.Assert(objectOrType is not null);
+
+        // a captured first parameter is MakeCell'd in place (CPython
+        // CO_FAST_CELL kind); super() sees through the cell
+        if (objectOrType is PyCellObject firstCell && code.CellVars.Contains(code.VarNames[0]))
+            objectOrType = firstCell.Value;
+
+        if (objectOrType is null)
+            return PyResult.RuntimeError(PySR.Runtime_Super_Arg0Deleted);
 
         var cellResult = variables.LoadLocal(PySpecialNames.Class);
         if (cellResult.IsError || cellResult.Value is not PyCellObject cell)

@@ -72,6 +72,7 @@ partial class PySR
 
     public const string Runtime_Super_ObjNotMatchType = "super(type, obj): obj must be an instance or subtype of type";
     public const string Runtime_Super_NoArgs = "super(): no arguments";
+    public const string Runtime_Super_Arg0Deleted = "super(): arg[0] deleted";
     public const string Runtime_Super_ClassCellNotFound = "super(): __class__ cell not found";
     public const string Runtime_Super_ClassCellEmpty = "super(): empty __class__ cell";
     public const string Runtime_Super_ClassNonType = "super(): __class__ is not a type ({0})";

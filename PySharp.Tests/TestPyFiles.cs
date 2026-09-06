@@ -1886,4 +1886,16 @@ public sealed class TestPyFiles
         var module = RunModule("test_stopiteration_value_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestSuperZeroArgsRegression()
+    {
+        // Regression: zero-argument super() must follow CPython
+        // super_init_without_args - a catchable RuntimeError when the
+        // calling frame has no positional parameters (module, plain
+        // function, zero-parameter method) or arg[0] was deleted, never a
+        // Debug.Assert on slot 0. Fails until the fix lands.
+        var module = RunModule("test_super_zero_args_regression.py");
+        Assert.IsNotNull(module);
+    }
 }
