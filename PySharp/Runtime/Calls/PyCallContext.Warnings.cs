@@ -217,6 +217,14 @@ partial class PyCallContext
         string filename = info?.Source?.Name ?? "<unknown>";
         int lineno = info is null ? 0 : info.Start.Line;
         string? sourceLine = info is null ? null : info.FirstLine.ToString().Trim();
+
+        // Speculative parses re-convert the same literal token; CPython
+        // converts each literal exactly once, so a repeated warning at the
+        // same source position is a re-parse artifact. Independent literals
+        // never share a position.
+        if (info is not null && !info.Source.WarnedSyntax.Add((info.Start.Line, info.Start.Offset, message)))
+            return default;
+
         return WarnExplicit(PyStrObject.FromString(message), PySyntaxWarningObjectType.Shared, filename, lineno, sourceLine);
     }
 }

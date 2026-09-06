@@ -1287,10 +1287,14 @@ public sealed class TestPyFiles
     [TestMethod]
     public void TestSyntaxWarningOnceRegression()
     {
-        // Regression: the same SyntaxWarning (same file/line/message) must
-        // be printed to stderr exactly once, like CPython's default warning
-        // filter; a module-level lexer warning used to be printed 4 times.
-        // Fails until the fix lands.
+        // Regression: speculative parses (statement, generator-expression
+        // and group tries) must not multiply a parse-time SyntaxWarning;
+        // CPython prints one warning per literal. Independent literals on
+        // one line keep separate warnings, and a literal warns about its
+        // first invalid escape, not the last. The module triggers five
+        // legitimate warnings: one call argument, one single-element
+        // tuple, two same-line literals, and the first escape of a
+        // two-escape literal. Fails until the fix lands.
         var path = Path.Combine(PyFilesPath, "test_syntax_warning_once_regression.py");
         var fullPath = Path.GetFullPath(path);
         var stderr = new MemoryStream();
@@ -1309,7 +1313,9 @@ public sealed class TestPyFiles
         environment.Error.Flush();
         var text = System.Text.Encoding.UTF8.GetString(stderr.ToArray()).Replace("\r\n", "\n");
         var count = text.Split("is an invalid octal escape sequence").Length - 1;
-        Assert.AreEqual(1, count, $"expected exactly one SyntaxWarning, got {count}:\n{text}");
+        Assert.AreEqual(5, count, $"expected exactly five SyntaxWarnings, got {count}:\n{text}");
+        Assert.AreEqual(0, text.Split("\"\\777\" is an invalid octal escape sequence").Length - 1,
+            "the last invalid escape must not be warned instead of the first:\n" + text);
     }
 
     [TestMethod]

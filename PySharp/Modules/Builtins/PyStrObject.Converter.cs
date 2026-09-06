@@ -114,8 +114,11 @@ internal static class PyStrConverter
                             if (num > 0xFF)
                             {
                                 // CPython: octal escape > 0o377 keeps its value but emits a SyntaxWarning
-                                info.Error = ConvertError.InvalidOctalEscapeSequence;
-                                info.Char = (char)num;
+                                if (info.Error is ConvertError.None)
+                                {
+                                    info.Error = ConvertError.InvalidOctalEscapeSequence;
+                                    info.Char = (char)num;
+                                }
                             }
                             charToWrite = (char)num;
                             break;
@@ -227,8 +230,12 @@ internal static class PyStrConverter
                         //    throw new NotSupportedException();
 
                         default:
-                            info.Error = ConvertError.InvalidEscapeSequence;
-                            info.Char = text[i];
+                            // CPython warns about the first invalid escape only
+                            if (info.Error is ConvertError.None)
+                            {
+                                info.Error = ConvertError.InvalidEscapeSequence;
+                                info.Char = text[i];
+                            }
                             charToWrite = '\\';
                             hasSecond = true;
                             charToWrite2 = text[i];
