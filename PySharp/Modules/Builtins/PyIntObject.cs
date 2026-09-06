@@ -104,7 +104,10 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
     {
         if (arguments[0] is PyStrObject str)
         {
-            if (!BigIntegerHelper.TryParse(str.Value, 10, out var integer))
+            var parseStatus = BigIntegerHelper.TryParse(str.Value, 10, out var integer, out var digitCount);
+            if (parseStatus is BigIntegerHelper.IntParseStatus.OverLimit)
+                return PyResult.ValueError(PySR.Runtime_Number_Int_ExceedsMaxStrDigits, PyIntStrDigitsLimit.MaxStrDigits, digitCount);
+            if (parseStatus is BigIntegerHelper.IntParseStatus.Invalid)
                 return PyResult.ValueError(PySR.Runtime_Number_Int_InvalidLiteral, 10, str.Value);
 
             return PyIntObject.FromInteger(integer);
@@ -127,7 +130,10 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
 
         if (arguments[0] is PyStrObject str)
         {
-            if (!BigIntegerHelper.TryParse(str.Value, numBase.Int32Value, out var result))
+            var parseStatus = BigIntegerHelper.TryParse(str.Value, numBase.Int32Value, out var result, out var digitCount);
+            if (parseStatus is BigIntegerHelper.IntParseStatus.OverLimit)
+                return PyResult.ValueError(PySR.Runtime_Number_Int_ExceedsMaxStrDigits, PyIntStrDigitsLimit.MaxStrDigits, digitCount);
+            if (parseStatus is BigIntegerHelper.IntParseStatus.Invalid)
                 return PyResult.ValueError(PySR.Runtime_Number_Int_InvalidLiteral, numBase.Value, str.Value);
 
             return PyIntObject.FromInteger(result);
@@ -179,7 +185,9 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
 
     protected override PyResult Repr(PyCallContext context, PyIntObject self)
     {
-        return PyStrObject.FromString(self.Value.ToString());
+        if (!PyIntStrDigitsLimit.TryToDecimalString(self.Value, out var text))
+            return PyResult.ValueError(PySR.Runtime_Number_Int_ExceedsMaxStrDigitsResult, PyIntStrDigitsLimit.MaxStrDigits);
+        return PyStrObject.FromString(text);
     }
 
     protected override PyResult Bool(PyCallContext context, PyIntObject self)
@@ -374,7 +382,9 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
                 break;
             case 'd':
             case 'n':
-                text = BigInteger.Abs(val).ToString();
+                if (!PyIntStrDigitsLimit.TryToDecimalString(BigInteger.Abs(val), out var decText))
+                    return PyResult.ValueError(PySR.Runtime_Number_Int_ExceedsMaxStrDigitsResult, PyIntStrDigitsLimit.MaxStrDigits);
+                text = decText;
                 if (spec.WidthGrouping is not null)
                     text = ApplyGrouping(text, spec.WidthGrouping.Value, 3);
                 break;

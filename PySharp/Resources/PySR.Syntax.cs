@@ -101,6 +101,8 @@ partial class PySR
     public const string InvalidSyntax_TypeParam_BoundForTypeVarTuple = "cannot use bound with TypeVarTuple";
     public const string InvalidSyntax_TypeParam_BoundForParamSpec = "cannot use bound with ParamSpec";
 
+    public const string InvalidSyntax_Literal_IntMaxStrDigits = "Exceeds the limit ({0} digits) for integer string conversion: value has {1} digits; use sys.set_int_max_str_digits() to increase the limit - Consider hexadecimal for huge integer literals to avoid decimal conversion limits.";
+
     public const string InvalidSyntax_Pattern_InvalidPatternTarget = "cannot use {0} as pattern target";
     public const string InvalidSyntax_Pattern_UnderscoreAsTarget = "cannot use '_' as a target";
     public const string InvalidSyntax_Pattern_RealNumberRequired = "real number required in complex literal";

@@ -29,10 +29,13 @@ internal static class LiteralParser
 
         if (char.IsAsciiDigit(literal[0]) || literal[0] is '.' or '-' or '+')
         {
-            if (BigIntegerHelper.TryParse(literal, 0, out var resultInt))
+            var parseStatus = BigIntegerHelper.TryParse(literal, 0, out var resultInt);
+            if (parseStatus is BigIntegerHelper.IntParseStatus.Success)
                 return PyIntObject.FromInteger(resultInt);
 
-            if (double.TryParse(literal, out var resultDouble))
+            // An over-limit decimal falls through to the general parse path,
+            // which reports it as a syntax error like the compiler does.
+            if (parseStatus is BigIntegerHelper.IntParseStatus.Invalid && double.TryParse(literal, out var resultDouble))
                 return PyFloatObject.FromDouble(resultDouble);
         }
 

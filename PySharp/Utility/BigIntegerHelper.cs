@@ -6,15 +6,28 @@ namespace PySharp.Utility;
 
 internal static class BigIntegerHelper
 {
-    public static bool TryParse(ReadOnlySpan<char> s, int numBase, out BigInteger result)
+    public enum IntParseStatus
+    {
+        Success,
+        Invalid,
+        OverLimit
+    }
+
+    public static IntParseStatus TryParse(ReadOnlySpan<char> s, int numBase, out BigInteger result)
+    {
+        return TryParse(s, numBase, out result, out _);
+    }
+
+    public static IntParseStatus TryParse(ReadOnlySpan<char> s, int numBase, out BigInteger result, out int digitCount)
     {
         Debug.Assert(numBase is 0 or (>= 2 and <= 36));
 
         result = default;
+        digitCount = 0;
 
         s = s.Trim();
         if (s.IsEmpty)
-            return false;
+            return IntParseStatus.Invalid;
 
         bool negative = false;
         if (s[0] is '+' or '-')
@@ -23,10 +36,10 @@ internal static class BigIntegerHelper
             s = s[1..];
         }
         if (s.IsEmpty)
-            return false;
+            return IntParseStatus.Invalid;
 
         if (!TryConvertCharToInt(s[0], out _))
-            return false;
+            return IntParseStatus.Invalid;
 
         if (numBase is 0)
         {
@@ -43,7 +56,7 @@ internal static class BigIntegerHelper
             {
                 s = s[2..];
                 if (!ValidateAfterRemovingPrefix(s))
-                    return false;
+                    return IntParseStatus.Invalid;
             }
         }
         else if (numBase is 16)
@@ -52,7 +65,7 @@ internal static class BigIntegerHelper
             {
                 s = s[2..];
                 if (!ValidateAfterRemovingPrefix(s))
-                    return false;
+                    return IntParseStatus.Invalid;
             }
         }
         else if (numBase is 2)
@@ -61,7 +74,7 @@ internal static class BigIntegerHelper
             {
                 s = s[2..];
                 if (!ValidateAfterRemovingPrefix(s))
-                    return false;
+                    return IntParseStatus.Invalid;
             }
         }
         else if (numBase is 8)
@@ -70,7 +83,7 @@ internal static class BigIntegerHelper
             {
                 s = s[2..];
                 if (!ValidateAfterRemovingPrefix(s))
-                    return false;
+                    return IntParseStatus.Invalid;
             }
         }
 
@@ -78,25 +91,45 @@ internal static class BigIntegerHelper
         if (containsUnderline)
         {
             if (s[^1] is '_')
-                return false;
+                return IntParseStatus.Invalid;
 
             if (s.Contains("__", StringComparison.Ordinal))
-                return false;
+                return IntParseStatus.Invalid;
         }
+
+        digitCount = 0;
+        var allValid = true;
+        foreach (var c in s)
+        {
+            if (c is '_')
+                continue;
+            if (!TryConvertCharToInt(c, out var v) || v >= numBase)
+            {
+                allValid = false;
+                break;
+            }
+            digitCount++;
+        }
+
+        // Decimal (non-power-of-two) conversions over the configured digit
+        // limit are rejected before the quadratic parse; a run containing
+        // invalid characters keeps the plain invalid-literal error.
+        if (allValid && (numBase & (numBase - 1)) is not 0 && PyIntStrDigitsLimit.IsOverLimit(digitCount))
+            return IntParseStatus.OverLimit;
 
         if (numBase is 10 && !containsUnderline)
         {
             if (!TryParseBase10(s, out result))
-                return false;
+                return IntParseStatus.Invalid;
         }
         else
         {
             if (!TryParseBaseN(s, numBase, out result))
-                return false;
+                return IntParseStatus.Invalid;
         }
 
         result = negative ? -result : result;
-        return true;
+        return IntParseStatus.Success;
 
         static bool ValidateAfterRemovingPrefix(ReadOnlySpan<char> s)
         {

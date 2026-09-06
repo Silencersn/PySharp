@@ -1,10 +1,12 @@
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Environments;
+using PySharp.Runtime.PyAttributes;
 
 namespace PySharp.Modules.Sys;
 
-public class PySysModuleObject : PyModuleObject
+[PyModuleInclude(PyModuleIncludeScheme.StaticMembers, typeof(PySysFunctions))]
+public partial class PySysModuleObject : PyModuleObject
 {
     public override string? Origin => "built-in";
 

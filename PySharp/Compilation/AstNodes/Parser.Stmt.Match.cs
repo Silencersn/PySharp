@@ -332,7 +332,10 @@ partial class Parser
             return Ast.Constant(complex).With(metaInfo);
         }
 
-        if (BigIntegerHelper.TryParse(value, 0, out var integer))
+        var parseStatus = BigIntegerHelper.TryParse(value, 0, out var integer, out var digitCount);
+        if (parseStatus is BigIntegerHelper.IntParseStatus.OverLimit)
+            throw SyntaxError(PySR.InvalidSyntax_Literal_IntMaxStrDigits, PyIntStrDigitsLimit.MaxStrDigits, digitCount);
+        if (parseStatus is BigIntegerHelper.IntParseStatus.Success)
             return Ast.Constant(integer).With(metaInfo);
 
         if (value.Contains('_'))

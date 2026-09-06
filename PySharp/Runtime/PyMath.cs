@@ -1,5 +1,7 @@
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
+using PySharp.Resources;
+using PySharp.Utility;
 using System.Diagnostics;
 using System.Numerics;
 
@@ -125,16 +127,32 @@ internal static class PyMath
             case PyOperatorTypes.LShift:
                 if (right.Value < 0)
                     return PyResult.ValueError("negative shift count");
-                if (!right.IsInt32)
+                if (left.Value.IsZero)
+                    return PyIntObject.Zero;
+                if (right.Value > long.MaxValue)
                     return PyResult.OverflowError("too many digits in integer");
-                return PyIntObject.FromInteger(left.Value << right.Int32Value);
+                try
+                {
+                    return PyIntObject.FromInteger(ShiftLeftByInt64(left.Value, (long)right.Value));
+                }
+                catch (Exception e) when (e is OverflowException or OutOfMemoryException)
+                {
+                    // The result cannot be represented at all; with the digit
+                    // limit active any decimal conversion of it would report
+                    // that limit, without it there is only out of memory.
+                    if (PyIntStrDigitsLimit.MaxStrDigits > 0)
+                        return PyResult.ValueError(PySR.Runtime_Number_Int_ExceedsMaxStrDigitsResult, PyIntStrDigitsLimit.MaxStrDigits);
+                    return PyResult.MemoryError(null);
+                }
 
             case PyOperatorTypes.RShift:
                 if (right.Value < 0)
                     return PyResult.ValueError("negative shift count");
-                if (!right.IsInt32)
-                    return PyResult.OverflowError("too many digits in integer");
-                return PyIntObject.FromInteger(left.Value >> right.Int32Value);
+                if (left.Value.IsZero)
+                    return PyIntObject.Zero;
+                if (right.Value > long.MaxValue)
+                    return left.Value < 0 ? PyIntObject.MinusOne : PyIntObject.Zero;
+                return PyIntObject.FromInteger(ShiftRightByInt64(left.Value, (long)right.Value));
 
             case PyOperatorTypes.BitAnd:
                 return PyIntObject.FromInteger(left.Value & right.Value);
@@ -166,6 +184,33 @@ internal static class PyMath
             default:
                 throw new UnreachableException();
         }
+    }
+
+    // BigInteger shifts take an int count; split counts beyond int.MaxValue
+    // into chunks (CPython takes the shift amount as int64).
+    private static BigInteger ShiftLeftByInt64(BigInteger value, long count)
+    {
+        while (count > int.MaxValue)
+        {
+            value <<= int.MaxValue;
+            count -= int.MaxValue;
+        }
+        return value << (int)count;
+    }
+
+    private static BigInteger ShiftRightByInt64(BigInteger value, long count)
+    {
+        // A shift reaching past the magnitude saturates: 0 for non-negative
+        // values, -1 for negative ones (floor semantics).
+        if (count >= BigInteger.Abs(value).GetBitLength())
+            return value < 0 ? -1 : 0;
+
+        while (count > int.MaxValue)
+        {
+            value >>= int.MaxValue;
+            count -= int.MaxValue;
+        }
+        return value >> (int)count;
     }
 
     // Extended Euclidean modular inverse of a modulo m (m > 0), or null when
