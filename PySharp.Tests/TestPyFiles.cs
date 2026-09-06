@@ -1983,6 +1983,18 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestEncodeErrorsLazyRegression()
+    {
+        // Regression: encode() must resolve the errors handler name lazily
+        // at the first actual encoding error like CPython - a successful
+        // encoding never consults the name, and an unknown name raises
+        // LookupError (not ValueError) with the CPython message. Fails
+        // until the fix lands.
+        var module = RunModule("test_encode_errors_lazy_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestSuperZeroArgsRegression()
     {
         // Regression: zero-argument super() must follow CPython

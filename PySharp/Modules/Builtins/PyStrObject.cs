@@ -1306,10 +1306,19 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         else if (arguments[1] is not PyNoneObject)
             return PyResult.TypeError("errors must be str");
 
+        Encoding enc;
         try
         {
-            var enc = GetEncoding(encoding);
-            byte[] bytes;
+            enc = GetEncoding(encoding);
+        }
+        catch (ArgumentException)
+        {
+            return PyResult.ValueError($"unknown encoding: {encoding}");
+        }
+
+        byte[] bytes;
+        try
+        {
             if (errors is "strict")
             {
                 bytes = enc.GetBytes(self.Value);
@@ -1342,14 +1351,22 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             }
             else
             {
-                return PyResult.ValueError($"unknown error handler: '{errors}'");
+                // CPython resolves the errors handler lazily at the first
+                // actual encoding error (unicode_encode_call_errorhandler);
+                // until one happens the name is never consulted, so encode
+                // with a throwing fallback and only then raise LookupError
+                var encoder = enc.GetEncoder();
+                encoder.Fallback = new EncoderExceptionFallback();
+                int byteCount = encoder.GetByteCount(self.Value.ToCharArray(), 0, self.Value.Length, true);
+                bytes = new byte[byteCount];
+                encoder.GetBytes(self.Value.ToCharArray(), 0, self.Value.Length, bytes, 0, true);
             }
-            return PyBytesObject.MoveBytes(bytes);
         }
-        catch (ArgumentException)
+        catch (EncoderFallbackException)
         {
-            return PyResult.ValueError($"unknown encoding: {encoding}");
+            return PyResult.LookupError(PySR.Runtime_Codec_UnknownErrorHandlerName, errors);
         }
+        return PyBytesObject.MoveBytes(bytes);
     }
 
     /// <summary>
