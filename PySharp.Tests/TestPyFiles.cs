@@ -1774,4 +1774,15 @@ public sealed class TestPyFiles
         Assert.Contains("invalid octal literal", text, text);
         Assert.Contains("invalid decimal literal", text, text);
     }
+
+    [TestMethod]
+    public void TestEmptyNeedleTailmatchRegression()
+    {
+        // Regression: an empty prefix/suffix must match at every valid
+        // startswith/endswith window position (CPython tailmatch), including
+        // "".endswith(""); a start past the length stays False. Fails until
+        // the fix lands.
+        var module = RunModule("test_empty_needle_tailmatch_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

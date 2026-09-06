@@ -232,9 +232,17 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 start = startObj.Int32Value;
             if (arguments[2] is PyIntObject endObj)
                 end = endObj.Int32Value;
-            start = ClampRuneStart(start, self.PyLength);
+            // CPython adjust_indices wraps a negative start but keeps a
+            // positive start as-is even above the length; tailmatch then
+            // fails the window check, so an empty needle is False only
+            // past the end of the string
+            if (start < 0)
+                start = ClampRuneStart(start, self.PyLength);
             end = ClampRuneEnd(end, self.PyLength);
-            if (start >= end)
+            // the window must at least fit the needle, so a length-0
+            // needle matches at every valid position, including
+            // zero-width windows and the empty string
+            if (end - start < prefixStr.PyLength)
                 return PyBoolObject.False;
             var sliced = self.SubstringByRuneRange(start, end);
             return PyBoolObject.FromBoolean(sliced.StartsWith(prefixStr.Value));
@@ -254,9 +262,17 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 start = startObj.Int32Value;
             if (arguments[2] is PyIntObject endObj)
                 end = endObj.Int32Value;
-            start = ClampRuneStart(start, self.PyLength);
+            // CPython adjust_indices wraps a negative start but keeps a
+            // positive start as-is even above the length; tailmatch then
+            // fails the window check, so an empty needle is False only
+            // past the end of the string
+            if (start < 0)
+                start = ClampRuneStart(start, self.PyLength);
             end = ClampRuneEnd(end, self.PyLength);
-            if (start >= end)
+            // the window must at least fit the needle, so a length-0
+            // needle matches at every valid position, including
+            // zero-width windows and the empty string
+            if (end - start < suffixStr.PyLength)
                 return PyBoolObject.False;
             var sliced = self.SubstringByRuneRange(start, end);
             return PyBoolObject.FromBoolean(sliced.EndsWith(suffixStr.Value));
