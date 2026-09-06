@@ -1267,6 +1267,10 @@ partial class Emitter
                         }
 
                         var matchedLabel = Builder.DefineLabel();
+                        if (node.Rest is null)
+                            // [subject, keys] -> [subject]; without a rest
+                            // capture the keys tuple has no consumer
+                            Builder.Emit(OpCode.PopTop);
                         Builder.Jump(matchedLabel);
 
                         Builder.MarkLabel(popKeysAndValuesLabel);
