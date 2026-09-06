@@ -111,7 +111,10 @@ public sealed partial class PyModuleObjectType : PyTypeObject<PyModuleObject>
 
     protected override PyResult GetAttr(PyCallContext context, PyModuleObject self, PyObject item)
     {
-        return PyResult.AttributeError($"module '{self.Name}' has no attribute '{item}'");
+        if (item is not PyStrObject str)
+            return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, item.PyType.FullName);
+
+        return PyResult.AttributeError(PySR.Runtime_Module_AttributeNotFound, self.Name, str.Value);
     }
 }
 
