@@ -1909,4 +1909,15 @@ public sealed class TestPyFiles
         var module = RunModule("test_super_zero_args_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestFloatReprScientificRegression()
+    {
+        // Regression: float repr/str must render CPython's shortest
+        // round-trip digits with lowercase 'e', two-digit exponents, and
+        // the exact CPython scientific-notation thresholds (1e16 goes
+        // scientific, 1e-05 goes scientific). Fails until the fix lands.
+        var module = RunModule("test_float_repr_scientific_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

@@ -116,11 +116,91 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
         if (double.IsInfinity(val))
             return PyStrObject.FromString(val > 0 ? "inf" : "-inf");
 
-        // Use "G" format for shortest representation, add ".0" for integer-valued floats
-        string text = val.ToString("G", CultureInfo.InvariantCulture);
-        if (!text.Contains('.') && !text.Contains('e') && !text.Contains('E'))
-            text += ".0";
-        return PyStrObject.FromString(text);
+        return PyStrObject.FromString(FormatShortestRepr(val));
+    }
+
+    // CPython repr renders the shortest round-trip digit string (dtoa mode 0)
+    // with format_float_short presentation: scientific notation iff the
+    // decimal point sits at position <= -4 or > 16, exponent at least two
+    // digits, integral values keep a trailing ".0", always lowercase 'e'.
+    // .NET "G" yields the identical shortest digits, so only the
+    // presentation is rebuilt here.
+    internal static string FormatShortestRepr(double val)
+    {
+        if (val is 0.0)
+            return double.IsNegative(val) ? "-0.0" : "0.0";
+
+        var text = val.ToString("G", CultureInfo.InvariantCulture);
+        var negative = text[0] is '-';
+        if (negative)
+            text = text[1..];
+
+        string digits;
+        int decpt;
+        var eIndex = text.IndexOfAny(['e', 'E']);
+        if (eIndex >= 0)
+        {
+            digits = text[..eIndex].Replace(".", string.Empty);
+            decpt = int.Parse(text[(eIndex + 1)..], CultureInfo.InvariantCulture) + 1;
+        }
+        else
+        {
+            var point = text.IndexOf('.');
+            if (point >= 0)
+            {
+                digits = text.Remove(point, 1);
+                decpt = point;
+            }
+            else
+            {
+                digits = text;
+                decpt = text.Length;
+            }
+        }
+
+        // a fixed-form "0.0001" carries leading zeros with no significance
+        var firstSignificant = 0;
+        while (firstSignificant < digits.Length - 1 && digits[firstSignificant] is '0')
+            firstSignificant++;
+        if (firstSignificant > 0)
+        {
+            digits = digits[firstSignificant..];
+            decpt -= firstSignificant;
+        }
+
+        var sb = new System.Text.StringBuilder();
+        if (negative)
+            sb.Append('-');
+
+        if (decpt <= -4 || decpt > 16)
+        {
+            var last = digits.Length - 1;
+            while (last > 0 && digits[last] is '0')
+                last--;
+
+            sb.Append(digits[0]);
+            if (last > 0)
+                sb.Append('.').Append(digits, 1, last);
+
+            var exp = decpt - 1;
+            sb.Append('e')
+                .Append(exp < 0 ? '-' : '+')
+                .AppendFormat(CultureInfo.InvariantCulture, "{0:D2}", Math.Abs(exp));
+        }
+        else if (decpt <= 0)
+        {
+            sb.Append("0.").Append('0', -decpt).Append(digits);
+        }
+        else if (decpt >= digits.Length)
+        {
+            sb.Append(digits).Append('0', decpt - digits.Length).Append(".0");
+        }
+        else
+        {
+            sb.Append(digits, 0, decpt).Append('.').Append(digits, decpt, digits.Length - decpt);
+        }
+
+        return sb.ToString();
     }
 
     protected override PyResult Hash(PyCallContext context, PyFloatObject self)
