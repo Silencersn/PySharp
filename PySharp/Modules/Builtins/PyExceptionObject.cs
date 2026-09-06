@@ -19,6 +19,12 @@ public sealed class PyExceptionObject : PyObjectManagedDict
         _pyType = exceptionType;
         Args = [.. args];
         AsGroup = asGroup;
+
+        // CPython StopIteration initializes the value member from args[0]
+        // (or None) at construction; setting value never touches args and
+        // deleting it reads None, without falling back to args
+        if (exceptionType.IsSubclassOf(PyStopIterationObjectType.Shared))
+            StopIterationValue = Args.Count > 0 ? Args[0] : PyNoneObject.None;
     }
 
     public bool SuppressContext { get; internal set; }
@@ -27,6 +33,8 @@ public sealed class PyExceptionObject : PyObjectManagedDict
     internal string? CauseReason { get; set; }
     public IReadOnlyList<PyObject> Args { get; }
     public TracebackInfo? Traceback { get; internal set; }
+    // TODO: DO NOT define .value here
+    internal PyObject? StopIterationValue { get; set; }
 
     [MemberNotNullWhen(true, nameof(AsGroup))]
     internal bool IsGroup => AsGroup is not null;

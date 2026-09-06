@@ -1842,4 +1842,16 @@ public sealed class TestPyFiles
         var module = RunModule("test_int_round_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestStopIterationValueRegression()
+    {
+        // Regression: StopIteration must expose the value attribute like
+        // CPython - a member initialized from args[0] (or None) at
+        // construction, settable without touching args, deletable (reads
+        // None afterwards, without falling back to args). Fails until the
+        // fix lands.
+        var module = RunModule("test_stopiteration_value_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

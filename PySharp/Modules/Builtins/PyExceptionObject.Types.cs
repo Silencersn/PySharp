@@ -129,7 +129,28 @@ public sealed partial class PyGeneratorExitObjectType : PyExceptionType;
 public sealed partial class PyTypeErrorObjectType : PyExceptionType;
 
 [PyException("StopIteration")]
-public sealed partial class PyStopIterationObjectType : PyExceptionType;
+public sealed partial class PyStopIterationObjectType : PyExceptionType
+{
+    [PyProperty("value")]
+    private static PyResult Get_Value(PyCallContext context, PyExceptionObject self)
+    {
+        return self.StopIterationValue ?? PyNoneObject.None;
+    }
+
+    [PyProperty("value", Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_Value(PyCallContext context, PyExceptionObject self, PyObject value)
+    {
+        self.StopIterationValue = value;
+        return PyNoneObject.None;
+    }
+
+    [PyProperty("value", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Value(PyCallContext context, PyExceptionObject self)
+    {
+        self.StopIterationValue = null;
+        return PyNoneObject.None;
+    }
+}
 
 [PyException("AttributeError")]
 public sealed partial class PyAttributeErrorObjectType : PyExceptionType;
