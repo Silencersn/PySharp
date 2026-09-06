@@ -475,6 +475,11 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         }
         else if (col > topCol)
         {
+            // the count includes the baseline level, so at most
+            // MaxIndent - 1 nesting levels are allowed
+            if (_indentationLevels.Count >= MaxIndent)
+                throw _context.IndentationError(this, PySR.InvalidSyntax_Tokenize_TooManyIndentLevels);
+
             // a deeper level must also advance the tab-insensitive column
             if (altcol <= topAltCol)
                 throw _context.TabError(this, PySR.InvalidSyntax_Tokenize_InconsistentTabsAndSpaces);
@@ -506,6 +511,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
     }
 
     private const int TabSize = 8;
+    private const int MaxIndent = 100;
 
     // Returns the physical whitespace length and, for logical line
     // starts, the column pair used for indentation comparison:
