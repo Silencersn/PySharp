@@ -213,11 +213,14 @@ partial class PyListObject
         if (indexResult.IsError)
             return indexResult;
 
-        int index;
-        if (!indexResult.Value.IsInt32 || PyUtils.IsIndexOutOfRange(index = indexResult.Value.Int32Value, _list.Count))
-            return PyResult.IndexError(PySR.Runtime_List_IndexOutOfRange);
+        if (!indexResult.Value.IsInt32)
+            return PyResult.IndexError(PySR.Runtime_Index_CannotFitInt);
 
-        _list[index] = value;
+        int index = indexResult.Value.Int32Value;
+        if (PyUtils.IsIndexOutOfRange(index, _list.Count))
+            return PyResult.IndexError(PySR.Runtime_List_AssignmentIndexOutOfRange);
+
+        _list[PyUtils.MapIndex(index, _list.Count)] = value;
         return PyNoneObject.None;
     }
 
@@ -254,9 +257,12 @@ partial class PyListObject
         if (indexResult.IsError)
             return indexResult;
 
+        if (!indexResult.Value.IsInt32)
+            return PyResult.IndexError(PySR.Runtime_Index_CannotFitInt);
+
         int index = indexResult.Value.Int32Value;
         if (PyUtils.IsIndexOutOfRange(index, _list.Count))
-            return PyResult.IndexError(PySR.Runtime_List_IndexOutOfRange);
+            return PyResult.IndexError(PySR.Runtime_List_AssignmentIndexOutOfRange);
 
         _list.RemoveAt(PyUtils.MapIndex(index, _list.Count));
         return PyNoneObject.None;

@@ -221,7 +221,7 @@ internal static class PyUtils
         if (indexResult.IsError)
             return indexResult;
         if (!indexResult.Value.IsInt32)
-            return PyResult.IndexError("cannot fit 'int' into an index-sized integer");
+            return PyResult.IndexError(PySR.Runtime_Index_CannotFitInt);
 
         var index = indexResult.Value.Int32Value;
         if (IsIndexOutOfRange(index, items.Length))

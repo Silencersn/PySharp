@@ -1520,6 +1520,17 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestListNegSetItemRegression()
+    {
+        // Regression: negative-index item assignment must map the index
+        // (CPython list_ass_subscript) instead of crashing on a raw .NET
+        // negative index; out-of-range assignment reports the assignment
+        // message. Fails until the fix lands.
+        var module = RunModule("test_list_neg_setitem_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestInitReturnCheckRegression()
     {
         // Regression: __init__ must return None when called through
