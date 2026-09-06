@@ -288,6 +288,10 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
         var result = PySpecialMethods.Index(context, arguments[0]);
         if (result.IsError)
             return result;
+        // CPython's list_pop_impl special-cases the empty list before any
+        // index handling, so even an explicit index reports this message
+        if (self.Count is 0)
+            return PyResult.IndexError(PySR.Runtime_List_PopFromEmpty);
         if (PyUtils.IsIndexOutOfRange(result.Value.Int32Value, self.Count))
             return PyResult.IndexError(PySR.Runtime_List_PopIndexOutOfRange);
         return self.PyPop(result.Value.Int32Value);

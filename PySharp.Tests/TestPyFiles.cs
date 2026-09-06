@@ -1509,6 +1509,17 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestListPopEmptyRegression()
+    {
+        // Regression: pop() on an empty list must raise
+        // IndexError: pop from empty list (CPython list_pop_impl), for any
+        // index; a non-empty list keeps "pop index out of range". Fails
+        // until the fix lands.
+        var module = RunModule("test_list_pop_empty_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestAsyncContextValidationRegression()
     {
         // Regression: `async for`/`async with` in a sync function and
