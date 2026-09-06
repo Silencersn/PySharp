@@ -752,18 +752,30 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
 
             case >= '0' and <= '9':
                 if (IsStrictMatchFromCurrent(content, LexerRegexes.StartsWithNumber, out group))
+                {
                     AppendToken(TokenType.Number, group.Length);
+                    VerifyEndOfNumber(content, group);
+                }
                 else
+                {
                     throw SyntaxError();
+                }
                 break;
 
             case '.':
                 if (IsStrictMatchFromCurrent(content, LexerRegexes.StartsWithNumber, out group))
+                {
                     AppendToken(TokenType.Number, group.Length);
+                    VerifyEndOfNumber(content, group);
+                }
                 else if (IsStrictMatchFromCurrent(content, LexerRegexes.StartsWithFunny, out group))
+                {
                     TokenizeFunny(group);
+                }
                 else
+                {
                     throw SyntaxError();
+                }
                 break;
 
             case '\r':
@@ -804,5 +816,111 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                     TokenizeFallback(content, out group);
                 break;
         }
+    }
+
+    // Mirrors CPython's verify_end_of_number (Parser/lexer/lexer.c): a
+    // committed 0o/0x/0b prefix that matched no digits is an error (the
+    // regex alternation would otherwise fall back to a bare decimal "0"),
+    // and a number directly followed by an identifier character is either
+    // warned about (keyword continuation) or rejected.
+    private void VerifyEndOfNumber(ReadOnlySpan<char> content, ValueGroup group)
+    {
+        if (group.Length is 1 && content[_offset] is '0' && _offset + 1 < content.Length)
+        {
+            switch (content[_offset + 1])
+            {
+                case 'o' or 'O':
+                    throw SyntaxError(PrefixedLiteralMessage(content, PySR.InvalidSyntax_Tokenize_InvalidDigitInOctalLiteral, PySR.InvalidSyntax_Tokenize_InvalidOctalLiteral));
+                case 'b' or 'B':
+                    throw SyntaxError(PrefixedLiteralMessage(content, PySR.InvalidSyntax_Tokenize_InvalidDigitInBinaryLiteral, PySR.InvalidSyntax_Tokenize_InvalidBinaryLiteral));
+                case 'x' or 'X':
+                    throw SyntaxError(PySR.InvalidSyntax_Tokenize_InvalidHexadecimalLiteral);
+            }
+        }
+
+        var end = _offset + group.Length;
+        if (end >= content.Length)
+            return;
+
+        var c = content[end];
+        if (!IsAsciiIdentifierChar(c))
+            return;
+
+        var message = InvalidLiteralMessage(group.Value);
+        if (IsKeywordContinuation(content[end..]))
+        {
+            // the exact literal position keeps several offending literals on
+            // one line distinct in the per-position warning dedup
+            var info = CodeMetaInfo.FromPosition(_codeSource, _codeSource.Code.OffsetToPosition(_offset));
+            _ = _context.WarnSyntax(message, new NumberMetaInfo(info)).PyUnwrap(_context);
+            return;
+        }
+
+        throw SyntaxError(message);
+    }
+
+    // a digit right after a failed 0o/0b prefix is out of range for the
+    // base (8/9 octal, 2-9 binary), which CPython reports per digit
+    private string PrefixedLiteralMessage(ReadOnlySpan<char> content, string digitFormat, string plainMessage)
+    {
+        var index = _offset + 2;
+        return index < content.Length && char.IsAsciiDigit(content[index])
+            ? PySR.Format(digitFormat, content[index])
+            : plainMessage;
+    }
+
+    private static string InvalidLiteralMessage(ReadOnlySpan<char> value)
+    {
+        if (value.Length >= 2 && value[0] is '0')
+        {
+            if (value[1] is 'x' or 'X')
+                return PySR.InvalidSyntax_Tokenize_InvalidHexadecimalLiteral;
+            if (value[1] is 'o' or 'O')
+                return PySR.InvalidSyntax_Tokenize_InvalidOctalLiteral;
+            if (value[1] is 'b' or 'B')
+                return PySR.InvalidSyntax_Tokenize_InvalidBinaryLiteral;
+        }
+
+        return value[^1] is 'j' or 'J'
+            ? PySR.InvalidSyntax_Tokenize_InvalidImaginaryLiteral
+            : PySR.InvalidSyntax_Tokenize_InvalidDecimalLiteral;
+    }
+
+    // CPython rejects only ASCII identifier chars here (verify_end_of_number
+    // guards with c < 128); wider chars are left to the parser
+    private static bool IsAsciiIdentifierChar(char c)
+        => char.IsAsciiLetterOrDigit(c) || c is '_';
+
+    // and/else/for/or/not must be followed by a non-identifier char, while
+    // if/in/is are matched on the single following char only (CPython's
+    // lookahead asymmetry in verify_end_of_number)
+    private static bool IsKeywordContinuation(ReadOnlySpan<char> rest)
+    {
+        switch (rest[0])
+        {
+            case 'a':
+                return Matches(rest, "and");
+            case 'e':
+                return Matches(rest, "else");
+            case 'f':
+                return Matches(rest, "for");
+            case 'i':
+                return rest.Length >= 2 && rest[1] is 'f' or 'n' or 's';
+            case 'n':
+                return Matches(rest, "not");
+            case 'o':
+                return Matches(rest, "or");
+            default:
+                return false;
+        }
+
+        static bool Matches(ReadOnlySpan<char> rest, ReadOnlySpan<char> keyword)
+            => rest.StartsWith(keyword) &&
+               (rest.Length == keyword.Length || !IsAsciiIdentifierChar(rest[keyword.Length]));
+    }
+
+    private readonly struct NumberMetaInfo(CodeMetaInfo info) : ICodeMetaInfoProvider
+    {
+        public CodeMetaInfo? MetaInfo => info;
     }
 }

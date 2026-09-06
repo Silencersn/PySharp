@@ -14,6 +14,14 @@ partial class PySR
     public const string InvalidSyntax_Tokenize_Unterminated_TripleTStringLiteral = "unterminated triple-quoted t-string literal (detected at line {0})";
     public const string InvalidSyntax_Tokenize_FStringSingleRightBrace = "f-string: single '}' is not allowed";
 
+    public const string InvalidSyntax_Tokenize_InvalidOctalLiteral = "invalid octal literal";
+    public const string InvalidSyntax_Tokenize_InvalidBinaryLiteral = "invalid binary literal";
+    public const string InvalidSyntax_Tokenize_InvalidHexadecimalLiteral = "invalid hexadecimal literal";
+    public const string InvalidSyntax_Tokenize_InvalidDecimalLiteral = "invalid decimal literal";
+    public const string InvalidSyntax_Tokenize_InvalidImaginaryLiteral = "invalid imaginary literal";
+    public const string InvalidSyntax_Tokenize_InvalidDigitInOctalLiteral = "invalid digit '{0}' in octal literal";
+    public const string InvalidSyntax_Tokenize_InvalidDigitInBinaryLiteral = "invalid digit '{0}' in binary literal";
+
     public const string InvalidSyntax_Tokenize_UnindentNotMatch = "unindent does not match any outer indentation level";
     public const string InvalidSyntax_Tokenize_InconsistentTabsAndSpaces = "inconsistent use of tabs and spaces in indentation";
     public const string InvalidSyntax_Tokenize_SourceNullBytes = "source code cannot contain null bytes";
