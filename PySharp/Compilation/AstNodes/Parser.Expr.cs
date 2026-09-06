@@ -1431,7 +1431,7 @@ partial class Parser
                         // cannot be its only successor.
                         bareStar = true;
                     else
-                        varArg = ParseParamStarAnnotation();
+                        varArg = ParseParamStarAnnotation(isLambda);
 
                     state = StateKwonly;
                     needDefault = false;
@@ -1877,7 +1877,7 @@ partial class Parser
     }
 
     [GrammarSyntaxRule("param_star_annotation")]
-    private AstArgNode ParseParamStarAnnotation()
+    private AstArgNode ParseParamStarAnnotation(bool isLambda)
     {
         var metaInfo = CreateAstMetaInfo();
         var arg = ParseIdentifier();
@@ -1886,7 +1886,7 @@ partial class Parser
 
         AstExprNode? TryParseStarAnnotation()
         {
-            if (CurrentTokenType is not TokenType.Colon)
+            if (isLambda || CurrentTokenType is not TokenType.Colon)
                 return null;
 
             return ParseStarAnnotation();

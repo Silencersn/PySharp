@@ -1531,6 +1531,17 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestLambdaStarRegression()
+    {
+        // Regression: a lambda's *args parameter must not swallow the
+        // body colon as a star annotation (ParseParamStarAnnotation);
+        // 'lambda *a: a' failed with a bare SyntaxError. Fails until
+        // the fix lands.
+        var module = RunModule("test_lambda_star_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestInitReturnCheckRegression()
     {
         // Regression: __init__ must return None when called through
