@@ -271,7 +271,13 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
     {
         if (other is not PyIntObject intObj)
             return base.DivMod(context, self, other);
+        if (intObj.Value.IsZero)
+            return PyResult.ZeroDivisionError();
         var (q, r) = BigInteger.DivRem(self.Value, intObj.Value);
+        // .NET DivRem truncates toward zero; Python floors the quotient and
+        // gives the remainder the divisor's sign (CPython l_divmod)
+        if (!r.IsZero && r.Sign != intObj.Value.Sign)
+            (q, r) = (q - 1, r + intObj.Value);
         return PyTupleObject.CreateTuple(PyIntObject.FromInteger(q), PyIntObject.FromInteger(r));
     }
     protected override PyResult Pow(PyCallContext context, PyIntObject self, PyObject other, PyObject modulo)

@@ -56,9 +56,12 @@ internal static class PyMath
                 if (right.Value.IsZero)
                     return PyResult.ZeroDivisionError();
                 var (q, r) = BigInteger.DivRem(left.Value, right.Value);
-                if (r.IsZero || BigInteger.IsPositive(q))
-                    return PyIntObject.FromInteger(q);
-                return PyIntObject.FromInteger(q - 1);
+                // same sign correction as Mod below: a non-zero remainder
+                // with the divisor's opposite sign means the truncated
+                // quotient is one above the floored one (-1 // 2**32 == -1)
+                if (!r.IsZero && left.Value.Sign != right.Value.Sign)
+                    q -= 1;
+                return PyIntObject.FromInteger(q);
 
             case PyOperatorTypes.Mod:
                 if (right.Value.IsZero)

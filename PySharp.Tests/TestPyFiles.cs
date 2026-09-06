@@ -1486,6 +1486,18 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestIntDivmodRegression()
+    {
+        // Regression: integer divmod() must use floor semantics (CPython
+        // l_divmod) and raise ZeroDivisionError on a zero divisor, not
+        // .NET's truncated DivRem and a native DivideByZeroException;
+        // the // shortcut path must floor to -1 for |a| < |b| with
+        // opposite signs. Fails until the fix lands.
+        var module = RunModule("test_int_divmod_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestAsyncContextValidationRegression()
     {
         // Regression: `async for`/`async with` in a sync function and
