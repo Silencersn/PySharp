@@ -62,6 +62,7 @@ partial class PySR
     public const string InvalidSyntax_UnicodeError_TruncatedLowerUSequence = "(unicode error) 'unicodeescape' codec can't decode bytes in position {0}-{1}: truncated \\uXXXX escape";
     public const string InvalidSyntax_UnicodeError_TruncatedUpperUSequence = "(unicode error) 'unicodeescape' codec can't decode bytes in position {0}-{1}: truncated \\UXXXXXXXX escape";
     public const string InvalidSyntax_UnicodeError_IllegalCharacter = "(unicode error) 'unicodeescape' codec can't decode bytes in position {0}-{1}: illegal Unicode character";
+    public const string InvalidSyntax_BytesLiteral_NonAsciiCharacters = "bytes can only contain ASCII literal characters";
 
     public const string InvalidSyntax_Indentation_Unexpected = "unexpected indent";
     public const string InvalidSyntax_Indentation_ExpectedForBlock = "expected an indented block after {0} on line {1}";

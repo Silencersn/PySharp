@@ -655,7 +655,7 @@ partial class Parser
             throw info.Error switch
             {
                 PyStrConverter.ConvertError.LowerXSequence => SyntaxError(PySR.InvalidSyntax_UnicodeError_TruncatedLowerXSequence, start, end),
-                PyStrConverter.ConvertError.IllegalUnicodeCharacter => SyntaxError(PySR.InvalidSyntax_UnicodeError_IllegalCharacter, start, end),
+                PyStrConverter.ConvertError.NonAsciiInBytesLiteral => SyntaxError(PySR.InvalidSyntax_BytesLiteral_NonAsciiCharacters),
                 _ => new UnreachableException(),
             };
         }

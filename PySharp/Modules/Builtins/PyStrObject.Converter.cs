@@ -28,6 +28,7 @@ internal static class PyStrConverter
         UpperUSequence,
         SurrogatesNotAllowed,
         IllegalUnicodeCharacter,
+        NonAsciiInBytesLiteral,
         InvalidEscapeSequence,
         InvalidOctalEscapeSequence,
 
@@ -247,12 +248,12 @@ internal static class PyStrConverter
                     break;
 
                 default:
-                    // A bare non-ASCII character cannot be represented in a bytes
-                    // literal (CPython would UTF-8-encode it; PySharp keeps the
-                    // existing error behavior for that case).
-                    if (typeof(T) == typeof(byte) && text[i] > 0xFF)
+                    // A bare non-ASCII character is not allowed in a bytes
+                    // literal; CPython rejects anything above 0x7F before
+                    // escape decoding (Parser/string_parser.c parsestr).
+                    if (typeof(T) == typeof(byte) && text[i] > 0x7F)
                     {
-                        info.Error = ConvertError.IllegalUnicodeCharacter;
+                        info.Error = ConvertError.NonAsciiInBytesLiteral;
                         info.Position = i;
                         info.Length = 1;
                         return false;
@@ -389,9 +390,9 @@ internal static class PyStrConverter
                 for (int i = 0; i < text.Length; i++)
                 {
                     var c = text[i];
-                    if (c > 0xFF)
+                    if (c > 0x7F)
                     {
-                        info.Error = ConvertError.IllegalUnicodeCharacter;
+                        info.Error = ConvertError.NonAsciiInBytesLiteral;
                         info.Position = startIndex + 1 + i;
                         info.Length = 1;
                         return false;
