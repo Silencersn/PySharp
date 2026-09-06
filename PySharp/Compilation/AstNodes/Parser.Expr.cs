@@ -1386,6 +1386,7 @@ partial class Parser
 
         var state = StateMaybePosonlyArgsOrArgs;
         var needDefault = false;
+        var bareStar = false;
         var stopToken = isLambda ? TokenType.Colon : TokenType.RightParen;
 
         ParseParameter();
@@ -1396,6 +1397,8 @@ partial class Parser
                 break;
             ParseParameter();
         }
+        if (bareStar && kwonlyArgs.Count is 0)
+            throw SyntaxError(PySR.InvalidSyntax_Parameters_NoNamedArgsAfterStar);
         return Ast.Arguments(posonlyArgs, args, varArg, kwonlyArgs, kwArg, kwDefaults, defaults);
 
         void ParseParameter()
@@ -1423,7 +1426,11 @@ partial class Parser
                         throw SyntaxError(PySR.InvalidSyntax_Parameters_MultipleStars);
 
                     MoveNextToken();
-                    if (CurrentTokenType is not TokenType.Comma)
+                    if (CurrentTokenType is TokenType.Comma || CurrentTokenType == stopToken)
+                        // A bare '*' separator; '**kwargs' or a trailing comma
+                        // cannot be its only successor.
+                        bareStar = true;
+                    else
                         varArg = ParseParamStarAnnotation();
 
                     state = StateKwonly;

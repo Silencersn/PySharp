@@ -68,6 +68,7 @@ partial class PySR
     public const string InvalidSyntax_Parameters_MultipleSlashes = "/ may appear only once";
     public const string InvalidSyntax_Parameters_SlashAfterStar = "/ must be ahead of *";
     public const string InvalidSyntax_Parameters_MultipleStars = "* may appear only once";
+    public const string InvalidSyntax_Parameters_NoNamedArgsAfterStar = "named arguments must follow bare *";
     public const string InvalidSyntax_Parameters_VarKwArgWithDefault = "var-keyword argument cannot have default value";
     public const string InvalidSyntax_Parameters_ParameterWithoutDefault = "parameter without a default follows parameter with a default";
     public const string InvalidSyntax_Parameters_ExpectedDefault = "expected default value expression";
