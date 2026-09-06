@@ -1,3 +1,4 @@
+using PySharp.Compilation;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Environments;
@@ -109,10 +110,10 @@ internal static class Program
             return 2;
         }
 
-        string code;
+        byte[] sourceBytes;
         try
         {
-            code = File.ReadAllText(path);
+            sourceBytes = File.ReadAllBytes(path);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
             or SecurityException or ArgumentException or NotSupportedException)
@@ -140,6 +141,7 @@ internal static class Program
         using var context = PyCallContext.CreateInterpreterRootContext(env);
         PyInterpreter.PyTryCatch(context, () =>
         {
+            var code = PySourceDecoder.Decode(context, sourceBytes, fullPath);
             PyInterpreter.RunCodeWithContext(context, code,
                 Path.GetFileNameWithoutExtension(path),
                 fullPath,

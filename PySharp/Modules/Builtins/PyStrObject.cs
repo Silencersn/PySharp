@@ -1,6 +1,7 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
+using PySharp.Utility;
 using System.Buffers;
 using System.Diagnostics;
 using System.Globalization;
@@ -1377,6 +1378,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     /// </summary>
     private static Encoding GetEncoding(string name)
     {
+        CodePagesEncoding.EnsureRegistered();
         return NormalizeEncodingName(name) switch
         {
             "utf16le" => Encoding.Unicode,

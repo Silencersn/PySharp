@@ -23,6 +23,17 @@ public interface IVirtualFileSystem
         return reader.ReadToEnd();
     }
 
+    public byte[] ReadAllBytes(string path)
+    {
+        var fileInfo = GetFile(path);
+        if (!fileInfo.Exists)
+            throw new FileNotFoundException();
+        using var stream = fileInfo.Open(FileMode.Open, FileAccess.Read, FileShare.None);
+        using var buffer = new MemoryStream();
+        stream.CopyTo(buffer);
+        return buffer.ToArray();
+    }
+
     void WriteAllText(string path, ReadOnlySpan<char> contents, Encoding? encoding = null)
     {
         var fileInfo = GetFile(path);

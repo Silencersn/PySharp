@@ -1811,8 +1811,10 @@ public sealed class TestPyFiles
         Assert.Contains("encoding problem", c4Err, c4Err);
 
         // guard: a utf-8 declaration with utf-8 content keeps working
+        // (é is written as its UTF-8 bytes: Ascii() alone would mangle it
+        // to '?' before the child ever runs)
         var (gCode, gOut, _) = RunChildBytes(Concat(
-            Ascii("# -*- coding: utf-8 -*-\ns = \"h\u00e9llo\"\nprint(repr(s))\n")));
+            Ascii("# -*- coding: utf-8 -*-\ns = \"h"), new byte[] { 0xC3, 0xA9 }, Ascii("llo\"\nprint(repr(s))\n")));
         Assert.AreEqual(0, gCode, gOut);
         Assert.Contains("\u00e9", gOut, gOut);
         Assert.DoesNotContain("\uFFFD", gOut, gOut);

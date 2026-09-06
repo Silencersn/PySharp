@@ -196,7 +196,7 @@ public sealed class PyInterpreter : IDisposable
     {
         ArgumentNullException.ThrowIfNull(filename);
 
-        var code = File.ReadAllText(filename);
+        var sourceBytes = File.ReadAllBytes(filename);
         var moduleName = Path.GetFileNameWithoutExtension(filename);
         var host = PyEnvironmentHost.CreateConsole(usingPhysicalFileSystem: true);
 
@@ -211,6 +211,7 @@ public sealed class PyInterpreter : IDisposable
 
         using var environment = builder.Build();
         using var context = PyCallContext.CreateInterpreterRootContext(environment);
+        var code = PySourceDecoder.Decode(context, sourceBytes, fullPath);
         return RunCodeWithContext(context, code, moduleName, fullPath, isMain: true);
     }
 

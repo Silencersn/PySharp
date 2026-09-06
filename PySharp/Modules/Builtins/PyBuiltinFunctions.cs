@@ -279,7 +279,16 @@ public static partial class PyBuiltinFunctions
             return PyResult.TypeError(PySR.Runtime_Builtin_ExecEval_Arg1WrongType, "eval");
 
         if (source is PyBytesObject bytesSource)
-            source = PyStrObject.FromString(Encoding.UTF8.GetString(bytesSource.AsSpan()));
+        {
+            try
+            {
+                source = PyStrObject.FromString(PySourceDecoder.Decode(context, bytesSource.AsSpan(), filename: null));
+            }
+            catch (PyRuntimeException e)
+            {
+                return PyResult.FromException(e.PyException);
+            }
+        }
 
         if (source is PyCodeObject { FreeVars.Length: > 0 })
             return PyResult.TypeError(PySR.Runtime_Builtin_Eval_PassCodeObjWithFreeVars);
@@ -327,7 +336,16 @@ public static partial class PyBuiltinFunctions
             return PyResult.TypeError(PySR.Runtime_Builtin_ExecEval_Arg1WrongType, "exec");
 
         if (source is PyBytesObject bytesSource)
-            source = PyStrObject.FromString(Encoding.UTF8.GetString(bytesSource.AsSpan()));
+        {
+            try
+            {
+                source = PyStrObject.FromString(PySourceDecoder.Decode(context, bytesSource.AsSpan(), filename: null));
+            }
+            catch (PyRuntimeException e)
+            {
+                return PyResult.FromException(e.PyException);
+            }
+        }
 
         var globals = arguments[1];
         var globalsDict = globals as PyDictObject;
@@ -1140,12 +1158,25 @@ public static partial class PyBuiltinFunctions
     {
         string sourceStr;
         if (arguments[0] is PyStrObject source)
+        {
             sourceStr = source.Value;
+        }
         else if (arguments[0] is PyBytesObject sourceBytes)
-            sourceStr = Encoding.UTF8.GetString(sourceBytes.AsSpan());
+        {
+            try
+            {
+                sourceStr = PySourceDecoder.Decode(context, sourceBytes.AsSpan(), filename: null);
+            }
+            catch (PyRuntimeException e)
+            {
+                return PyResult.FromException(e.PyException);
+            }
+        }
         else
+        {
             // TODO: ast
             return PyResult.TypeError(PySR.Runtime_Builtin_Compile_Arg1WrongType);
+        }
 
         string filenameStr;
         if (arguments[1] is PyStrObject filename)

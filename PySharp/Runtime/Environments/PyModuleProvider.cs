@@ -1,3 +1,4 @@
+using PySharp.Compilation;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
 using System.Collections.Frozen;
@@ -73,7 +74,7 @@ internal sealed class PathProvider : PyModuleProvider
                 var initFilename = pathHelper.Combine(dir, "__init__.py");
                 if (fileSystem.ExistsFile(initFilename))
                 {
-                    var initCode = fileSystem.ReadAllText(initFilename);
+                    var initCode = PySourceDecoder.Decode(context, fileSystem.ReadAllBytes(initFilename), initFilename);
                     PyInterpreter.RunCodeWithContext(context, initCode, package, initFilename, isMain: false);
                 }
                 module = package;
@@ -84,8 +85,9 @@ internal sealed class PathProvider : PyModuleProvider
             if (!fileSystem.ExistsFile(filename))
                 continue;
 
-            var code = fileSystem.ReadAllText(filename);
-            module = PyInterpreter.RunCodeWithContext(context, code, fullName, fileSystem.GetFullPath(filename), isMain: false);
+            var fullPath = fileSystem.GetFullPath(filename);
+            var code = PySourceDecoder.Decode(context, fileSystem.ReadAllBytes(filename), fullPath);
+            module = PyInterpreter.RunCodeWithContext(context, code, fullName, fullPath, isMain: false);
             module.OnImport(context, context.PyEnvironment);
             return true;
         }

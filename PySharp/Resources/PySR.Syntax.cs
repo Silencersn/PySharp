@@ -27,6 +27,11 @@ partial class PySR
     public const string InvalidSyntax_Tokenize_SourceNullBytes = "source code cannot contain null bytes";
     public const string InvalidSyntax_Tokenize_TooManyIndentLevels = "too many levels of indentation";
 
+    public const string InvalidSyntax_Tokenize_NonUtf8Code = "Non-UTF-8 code starting with '\\x{0:x2}'{1} on line {2}, but no encoding declared; see https://peps.python.org/pep-0263/ for details";
+    public const string InvalidSyntax_Tokenize_EncodingProblem = "encoding problem: {0}";
+    public const string InvalidSyntax_Tokenize_EncodingProblemWithBom = "encoding problem: {0} with BOM";
+    public const string InvalidSyntax_Tokenize_SourceUnicodeError = "(unicode error) '{0}' codec can't decode byte 0x{1:x2} in position {2}: {3}";
+
     #endregion Lexer
 
 
