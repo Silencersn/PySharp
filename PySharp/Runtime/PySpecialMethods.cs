@@ -139,7 +139,17 @@ public static class PySpecialMethods
     {
         var iterFunc = obj.PyType.Slots.Iter;
         if (iterFunc is not null)
-            return iterFunc(context, obj);
+        {
+            var iterResult = iterFunc(context, obj);
+            if (iterResult.IsError)
+                return iterResult;
+            // CPython's PyObject_GetIter rejects a __iter__ result that
+            // lacks __next__ ("iter() returned non-iterator of type '...'",
+            // named after the returned value, not the iterable)
+            if (iterResult.Value.PyType.Slots.Next is null)
+                return PyResult.TypeError(PySR.Runtime_Sequence_IterReturnsNonIterator, iterResult.Value.PyType.FullName);
+            return iterResult;
+        }
 
         var getItemFunc = obj.PyType.Slots.GetItem;
         if (getItemFunc is not null)
@@ -170,7 +180,9 @@ public static class PySpecialMethods
     {
         var func = obj.PyType.Slots.Next;
         if (func is null)
-            return PyResult.TypeError(PySR.Runtime_Sequence_IterReturnsNonIterator, obj.PyType.FullName);
+            // CPython's builtin_next rejects the argument itself, without
+            // involving iter() ("'int' object is not an iterator")
+            return PyResult.TypeError(PySR.Runtime_Sequence_ObjectNotIterator, obj.PyType.FullName);
 
         return func(context, obj);
     }

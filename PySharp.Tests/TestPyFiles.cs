@@ -1474,6 +1474,18 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestNextNonIteratorRegression()
+    {
+        // Regression: next(x) on a non-iterator must raise
+        // TypeError: '<type>' object is not an iterator (CPython
+        // builtin_next), not "iter() returned non-iterator of type '...'";
+        // __iter__ results lacking __next__ must still be rejected with
+        // the iter() message. Fails until the fix lands.
+        var module = RunModule("test_next_non_iterator_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestAsyncContextValidationRegression()
     {
         // Regression: `async for`/`async with` in a sync function and

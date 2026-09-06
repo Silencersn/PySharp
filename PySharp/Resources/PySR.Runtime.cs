@@ -93,6 +93,7 @@ partial class PySR
     public const string Runtime_Sequence_NoLen = "object of type '{0}' has no len()";
     public const string Runtime_Sequence_NonIterable = "'{0}' object is not iterable";
     public const string Runtime_Sequence_IterReturnsNonIterator = "iter() returned non-iterator of type '{0}'";
+    public const string Runtime_Sequence_ObjectNotIterator = "'{0}' object is not an iterator";
     public const string Runtime_Sequence_NonSubscriptable = "'{0}' object is not subscriptable";
     public const string Runtime_Sequence_SliceStep_AssignWrongSize = "attempt to assign sequence of size {1} to extended slice of size {0}";
 
