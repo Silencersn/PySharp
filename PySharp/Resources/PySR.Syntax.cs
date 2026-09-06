@@ -26,6 +26,8 @@ partial class PySR
 
     public const string InvalidSyntax_Warning_InvalidEscapeSequence = @"""\{0}"" is an invalid escape sequence. Such sequences will not work in the future. Did you mean ""\\{0}""? A raw string is also an option.";
     public const string InvalidSyntax_Warning_InvalidOctalEscapeSequence = @"""\{0}"" is an invalid octal escape sequence. Such sequences will not work in the future. Did you mean ""\\{0}""? A raw string is also an option.";
+    public const string InvalidSyntax_Warning_IsWithLiteral = @"""is"" with '{0}' literal. Did you mean ""==""?";
+    public const string InvalidSyntax_Warning_IsNotWithLiteral = @"""is not"" with '{0}' literal. Did you mean ""!=""?";
     public const string InvalidSyntax_FString_ReplacementField_BeforeEqual = "f-string: valid expression required before '='";
     public const string InvalidSyntax_FString_ReplacementField_BeforeExclamation = "f-string: valid expression required before '!'";
     public const string InvalidSyntax_FString_ReplacementField_BeforeColon = "f-string: valid expression required before ':'";

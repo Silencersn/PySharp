@@ -1,4 +1,5 @@
 using PySharp.Compilation.Primitives;
+using PySharp.Modules.Builtins;
 using System.Collections.Immutable;
 using System.Diagnostics;
 
@@ -89,8 +90,56 @@ partial class SemanticAnalyzer
 
     private void VisitCompare(CompareNode node)
     {
+        WarnIdentityLiteralComparison(node);
         VisitNode(node.Left);
         VisitNodes(node.Comparators);
+    }
+
+    // CPython: codegen_check_compare — an identity check with a constant
+    // literal operand (except the named singletons) warns about the value
+    // comparison operators
+    private void WarnIdentityLiteralComparison(CompareNode node)
+    {
+        var left = node.Left;
+        bool leftIsArg = IsIdentityCheckArg(left);
+
+        for (int i = 0; i < node.Ops.Length; i++)
+        {
+            var op = node.Ops[i];
+            var right = node.Comparators[i];
+            bool rightIsArg = IsIdentityCheckArg(right);
+
+            if (op is CmpopType.Is or CmpopType.IsNot && (!rightIsArg || !leftIsArg))
+            {
+                var literal = leftIsArg ? right : left;
+                var message = op is CmpopType.Is
+                    ? PySR.Format(PySR.InvalidSyntax_Warning_IsWithLiteral, GetLiteralTypeName(literal))
+                    : PySR.Format(PySR.InvalidSyntax_Warning_IsNotWithLiteral, GetLiteralTypeName(literal));
+                _ = _context.WarnSyntax(message, this).PyUnwrap(_context);
+                // CPython returns on the first warning, so a comparison warns
+                // at most once even with several offending operands
+                return;
+            }
+
+            left = right;
+            leftIsArg = rightIsArg;
+        }
+    }
+
+    // CPython: check_is_arg — false when the operand is a constant literal
+    // (constant tuples included) other than None/True/False/Ellipsis
+    private static bool IsIdentityCheckArg(AstExprNode node)
+    {
+        if (node is TupleNode tuple)
+            return tuple.Elts.Any(static elt => elt is not ConstantNode);
+        if (node is not ConstantNode constant)
+            return true;
+        return constant.Value is PyNoneObject or PyBoolObject or PyEllipsisObject;
+    }
+
+    private static string GetLiteralTypeName(AstExprNode node)
+    {
+        return node is TupleNode ? "tuple" : ((ConstantNode)node).Value.PyType.Name;
     }
 
     private void VisitAttribute(AttributeNode node)
