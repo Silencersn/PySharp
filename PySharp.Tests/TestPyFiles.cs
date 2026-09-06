@@ -1797,4 +1797,15 @@ public sealed class TestPyFiles
         var module = RunModule("test_empty_needle_tailmatch_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestIntNewBoolSingletonRegression()
+    {
+        // Regression: int(True)/int(False) must convert through the small-int
+        // pool instead of retagging the process-wide bool singletons (type
+        // and repr of True/False stayed corrupted afterwards). Fails until
+        // the fix lands.
+        var module = RunModule("test_int_new_bool_singleton_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

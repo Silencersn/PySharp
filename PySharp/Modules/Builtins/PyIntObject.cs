@@ -153,14 +153,17 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
         Debug.Assert(obj is PyIntObject);
         var value = ((PyIntObject)obj).Value;
 
-        var eq = PyComparer.Eq(context, cls, this);
-        if (eq.IsError)
-            return eq.ExceptionResult;
-
-        if (!eq.Value.BoolValue && value > -PyIntObject.NegativePoolSize && value < PyIntObject.PositivesPoolSize)
-            obj = PyIntObject.FromIntegerNoCache(value);
-
-        obj._pyType = cls;
+        // bool singletons are shared process-wide: a subclass instance must
+        // be converted, never retagged. exact ints return as-is (CPython
+        // long_new); a subclass type needs a fresh object since pooled ints
+        // cannot be retagged either.
+        if (obj.PyType != cls)
+        {
+            obj = ReferenceEquals(cls, this)
+                ? PyIntObject.FromInteger(value)
+                : PyIntObject.FromIntegerNoCache(value);
+            obj._pyType = cls;
+        }
         return obj;
     }
 
