@@ -1520,6 +1520,16 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestInitReturnCheckRegression()
+    {
+        // Regression: __init__ must return None when called through
+        // instantiation (CPython slot_tp_init), also via a metaclass; a
+        // direct __init__() call stays exempt. Fails until the fix lands.
+        var module = RunModule("test_init_return_check_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestAsyncContextValidationRegression()
     {
         // Regression: `async for`/`async with` in a sync function and

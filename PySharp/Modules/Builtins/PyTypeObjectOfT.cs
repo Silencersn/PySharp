@@ -69,6 +69,11 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
                 var initResult = initFunc(context, pyObject, args, kwargs);
                 if (initResult.IsError)
                     return initResult;
+                // CPython's slot_tp_init: __init__ must return None when
+                // called through instantiation (a direct __init__() call
+                // is exempt)
+                if (initResult.Value is not PyNoneObject)
+                    return PyResult.TypeError(PySR.Runtime_Type_InitShouldReturnNone, initResult.Value.PyType.FullName);
             }
         }
 

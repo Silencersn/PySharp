@@ -104,7 +104,13 @@ internal static class PyCore
         {
             var initFunc = metaClass.Slots.Init;
             if (initFunc is not null)
-                _ = initFunc(context, obj, args, kwargs).PyUnwrap(context);
+            {
+                // same slot_tp_init rule as instantiation: __init__ must
+                // return None when called through the type machinery
+                var initResult = initFunc(context, obj, args, kwargs).PyUnwrap(context);
+                if (initResult is not PyNoneObject)
+                    throw context.TypeError(PySR.Runtime_Type_InitShouldReturnNone, initResult.PyType.FullName);
+            }
         }
 
         return obj;

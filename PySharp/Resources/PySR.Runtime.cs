@@ -41,6 +41,7 @@ partial class PySR
     public const string Runtime_Type_MethodReceiveSelfWithWrongType = "'{0}' requires a '{1}' object but received a '{2}'";
     public const string Runtime_Type_AttributeNotFound = "type object '{0}' has no attribute '{1}'";
     public const string Runtime_Type_CannotCreateInstance = "cannot create '{0}' instances";
+    public const string Runtime_Type_InitShouldReturnNone = "__init__() should return None, not '{0}'";
     public const string Runtime_Type_NewClsNonType = "{0}.__new__(X): X is not a type object ({1})";
     public const string Runtime_Type_NewClsNotSubtype = "{0}.__new__({1}): {1} is not a subtype of {0}";
     public const string Runtime_Type_NewClsNotSafe = "{0}.__new__({1}) is not safe, use {1}.__new__()";
