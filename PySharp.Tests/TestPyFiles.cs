@@ -1820,4 +1820,15 @@ public sealed class TestPyFiles
         var module = RunModule("test_int_new_bool_singleton_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestIntRoundRegression()
+    {
+        // Regression: round() on int must work in every ndigits form like
+        // CPython long_round (round(2) == 2, round(True) == 1 as a pooled
+        // exact int) and the slot-missing fallback must carry a real
+        // message, never an empty TypeError. Fails until the fix lands.
+        var module = RunModule("test_int_round_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

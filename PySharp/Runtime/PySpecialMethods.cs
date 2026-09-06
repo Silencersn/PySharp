@@ -353,7 +353,7 @@ public static class PySpecialMethods
         if (func is not null)
             return func(context, obj, ndigits);
 
-        return PyResult.TypeError(null);
+        return PyResult.TypeError(PySR.Runtime_Object_SpecialMethodNotDefined, obj.PyType.FullName, PySpecialNames.Round);
     }
 
     public static PyResult Trunc(PyCallContext context, PyObject obj)
@@ -362,7 +362,7 @@ public static class PySpecialMethods
         if (func is not null)
             return func(context, obj);
 
-        return PyResult.TypeError(null);
+        return PyResult.TypeError(PySR.Runtime_Object_SpecialMethodNotDefined, obj.PyType.FullName, PySpecialNames.Trunc);
     }
 
     public static PyResult Floor(PyCallContext context, PyObject obj)
@@ -371,7 +371,7 @@ public static class PySpecialMethods
         if (func is not null)
             return func(context, obj);
 
-        return PyResult.TypeError(null);
+        return PyResult.TypeError(PySR.Runtime_Object_SpecialMethodNotDefined, obj.PyType.FullName, PySpecialNames.Floor);
     }
 
     public static PyResult Ceil(PyCallContext context, PyObject obj)
@@ -380,7 +380,7 @@ public static class PySpecialMethods
         if (func is not null)
             return func(context, obj);
 
-        return PyResult.TypeError(null);
+        return PyResult.TypeError(PySR.Runtime_Object_SpecialMethodNotDefined, obj.PyType.FullName, PySpecialNames.Ceil);
     }
 
     public static PyResult<PyIntObject> Int(PyCallContext context, PyObject obj)

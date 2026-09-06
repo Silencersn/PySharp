@@ -203,6 +203,24 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
         return self;
     }
 
+    protected override PyResult Round(PyCallContext context, PyIntObject self, PyObject ndigits)
+    {
+        if (ndigits is not PyNoneObject)
+        {
+            // ndigits must be indexable; rounding an int to any digit count
+            // is the identity (CPython long_round)
+            var index = PySpecialMethods.Index(context, ndigits);
+            if (index.IsError)
+                return index;
+        }
+
+        // long.__round__ follows __int__: exact ints return themselves, a
+        // subclass instance (bool) converts to a pooled exact int
+        return self.PyType == PyIntObjectType.Shared
+            ? self
+            : PyIntObject.FromInteger(self.Value);
+    }
+
     protected override PyResult Float(PyCallContext context, PyIntObject self)
     {
         var d = (double)self.Value;

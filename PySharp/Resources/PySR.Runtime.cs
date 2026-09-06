@@ -60,6 +60,7 @@ partial class PySR
     public const string Runtime_Object_FormatSpecInvalid = "Invalid format specifier '{0}' for object of type '{1}'";
     public const string Runtime_Object_AttributeMustBeString = "attribute name must be string, not '{0}'";
     public const string Runtime_Object_AttributeNotFound = "'{0}' object has no attribute '{1}'";
+    public const string Runtime_Object_SpecialMethodNotDefined = "type {0} doesn't define {1} method";
     public const string Runtime_Object_NewTakesExactlyOneArg = "object.__new__() takes exactly one argument (the type to instantiate)";
 
     public const string Runtime_Module_AttributeNotFound = "module '{0}' has no attribute '{1}'";
