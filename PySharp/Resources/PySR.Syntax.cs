@@ -15,6 +15,7 @@ partial class PySR
     public const string InvalidSyntax_Tokenize_FStringSingleRightBrace = "f-string: single '}' is not allowed";
 
     public const string InvalidSyntax_Tokenize_UnindentNotMatch = "unindent does not match any outer indentation level";
+    public const string InvalidSyntax_Tokenize_InconsistentTabsAndSpaces = "inconsistent use of tabs and spaces in indentation";
 
     #endregion Lexer
 

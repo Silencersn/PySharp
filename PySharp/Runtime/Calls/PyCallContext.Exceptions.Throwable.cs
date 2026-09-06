@@ -27,6 +27,12 @@ partial class PyCallContext
         return new PyRuntimeException(this, exc, compiler);
     }
 
+    internal PyRuntimeException TabError(ICodeMetaInfoProvider compiler, string format, params ReadOnlySpan<object?> args)
+    {
+        var exc = PyTabErrorObjectType.Shared.Create(PyStrObject.FromString(PySR.Format(format, args)));
+        return new PyRuntimeException(this, exc, compiler);
+    }
+
     internal PyRuntimeException PySharpException(string? format, params ReadOnlySpan<object?> args)
     {
         return ThrowableException(Modules.CSharp.PySharpException.Shared, format, args);

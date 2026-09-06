@@ -68,7 +68,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
     private readonly List<Token> _tokens;
     private int _offset;
     private bool _explicitLineJoining;
-    private readonly Stack<int> _indentationLevels;
+    private readonly Stack<(int Col, int AltCol)> _indentationLevels;
 
     private bool _needIndentation;
 
@@ -87,7 +87,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         _offset = 0;
         _explicitLineJoining = false;
         _indentationLevels = [];
-        _indentationLevels.Push(0);
+        _indentationLevels.Push((Col: 0, AltCol: 0));
         _parenLevel = 0;
         _fstringStack = [];
         CurrentState = LexerState.Default;
@@ -440,7 +440,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         TokenizeMultiLineString(content, _wrapper is '"' ? LexerRegexes.Double3 : LexerRegexes.Single3, true);
     }
 
-    private void EnsureIndentation(ReadOnlySpan<char> content, int indentationLevel)
+    private void EnsureIndentation(ReadOnlySpan<char> content, int whitespaceLength, int col, int altcol)
     {
         if (!_needIndentation)
             return;
@@ -453,24 +453,40 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             return;
         }
 
-        if (_parenLevel is not 0 || IsIgnored(content, indentationLevel))
+        if (_parenLevel is not 0 || IsIgnored(content, whitespaceLength))
             return;
 
-        if (indentationLevel > _indentationLevels.Peek())
-        {
-            _indentationLevels.Push(indentationLevel);
-            AppendToken(TokenType.Indent, indentationLevel);
-            return;
-        }
+        var (topCol, topAltCol) = _indentationLevels.Peek();
 
-        while (_indentationLevels.Peek() > indentationLevel)
+        if (col == topCol)
         {
-            _ = _indentationLevels.Pop();
-            AppendToken(TokenType.Dedent, length: 0);
+            // same width reached with a different mix of tabs and spaces
+            if (altcol != topAltCol)
+                throw _context.TabError(this, PySR.InvalidSyntax_Tokenize_InconsistentTabsAndSpaces);
         }
+        else if (col > topCol)
+        {
+            // a deeper level must also advance the tab-insensitive column
+            if (altcol <= topAltCol)
+                throw _context.TabError(this, PySR.InvalidSyntax_Tokenize_InconsistentTabsAndSpaces);
 
-        if (indentationLevel != _indentationLevels.Peek())
-            throw _context.IndentationError(this, PySR.InvalidSyntax_Tokenize_UnindentNotMatch);
+            _indentationLevels.Push((col, altcol));
+            AppendToken(TokenType.Indent, whitespaceLength);
+        }
+        else
+        {
+            while (_indentationLevels.Peek().Col > col)
+            {
+                _ = _indentationLevels.Pop();
+                AppendToken(TokenType.Dedent, length: 0);
+            }
+
+            if (col != _indentationLevels.Peek().Col)
+                throw _context.IndentationError(this, PySR.InvalidSyntax_Tokenize_UnindentNotMatch);
+
+            if (altcol != _indentationLevels.Peek().AltCol)
+                throw _context.TabError(this, PySR.InvalidSyntax_Tokenize_InconsistentTabsAndSpaces);
+        }
     }
 
     private ref struct ValueGroup
@@ -480,15 +496,40 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         public int Length;
     }
 
-    private int GetWhitespaceCount(ReadOnlySpan<char> content)
+    private const int TabSize = 8;
+
+    // Returns the physical whitespace length and, for logical line
+    // starts, the column pair used for indentation comparison:
+    // a space advances both columns, a tab rounds col up to the next
+    // multiple of TabSize while advancing altcol by one, and a form
+    // feed resets both to zero.
+    private int GetIndentation(ReadOnlySpan<char> content, out int col, out int altcol)
     {
+        col = 0;
+        altcol = 0;
         var span = content[_offset..];
         for (int i = 0; i < span.Length; i++)
         {
-            if (span[i] is ' ' or '\t' or '\f')
-                continue;
+            switch (span[i])
+            {
+                case ' ':
+                    col++;
+                    altcol++;
+                    break;
 
-            return i;
+                case '\t':
+                    col = (col / TabSize + 1) * TabSize;
+                    altcol++;
+                    break;
+
+                case '\f':
+                    col = 0;
+                    altcol = 0;
+                    break;
+
+                default:
+                    return i;
+            }
         }
         return span.Length;
     }
@@ -640,9 +681,9 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
 
     private void TokenizeToken(ReadOnlySpan<char> content, out ValueGroup group)
     {
-        var indentationLevel = GetWhitespaceCount(content);
-        EnsureIndentation(content, indentationLevel);
-        _offset += indentationLevel;
+        var whitespaceLength = GetIndentation(content, out var col, out var altcol);
+        EnsureIndentation(content, whitespaceLength, col, altcol);
+        _offset += whitespaceLength;
 
         if (_offset >= content.Length)
         {
