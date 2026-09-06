@@ -127,7 +127,7 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
         if (hash.IsError)
             return hash;
 
-        var hashCode = (uint)hash.Value.Int32Value;
+        var hashCode = (uint)hash.Value.UncheckedInt32Value;
         var index = GetBucket(hashCode);
         if (index is 0)
             return PyResult.KeyError(key);
@@ -232,7 +232,7 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
         if (_count == _entries.Length)
             EnsureCapacity(_count + 1);
 
-        var hashCode = (uint)hash.Value.Int32Value;
+        var hashCode = (uint)hash.Value.UncheckedInt32Value;
         var index = GetBucket(hashCode) - 1;
 
         if (index is not -1)

@@ -40,6 +40,8 @@ public class PyIntObject : PyObject
     public BigInteger Value { get; }
     public bool IsInt32 => Value >= int.MinValue && Value <= int.MaxValue;
     public int Int32Value => IsInt32 ? (int)Value : throw new PyRuntimeException(PyOverflowErrorObjectType.Shared.Create());
+    // Low 32 bits as a two's-complement int; never throws.
+    public int UncheckedInt32Value => unchecked((int)(long)(Value & uint.MaxValue));
 
     internal PyIntObject(BigInteger value)
     {

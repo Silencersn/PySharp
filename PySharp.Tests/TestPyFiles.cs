@@ -1542,6 +1542,17 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestDictBigHashRegression()
+    {
+        // Regression: a dict key's hash feeds only the probe, so the
+        // full-precision hash must not go through the throwing Int32Value
+        // conversion; out-of-int32-range hashes used to raise a bare
+        // OverflowError on every key operation. Fails until the fix lands.
+        var module = RunModule("test_dict_big_hash_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestInitReturnCheckRegression()
     {
         // Regression: __init__ must return None when called through
