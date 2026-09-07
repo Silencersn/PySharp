@@ -74,8 +74,8 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
 
     private int _stringStartOffset;
 
-    private int _parenLevel;
     private readonly Stack<(char Bracket, int Offset)> _bracketStack;
+    private int ParenLevel => _bracketStack.Count;
 
     CodeMetaInfo? ICodeMetaInfoProvider.MetaInfo => CodeMetaInfo.FromPosition(_codeSource, new(Lineno, 0));
     private int Lineno => _codeSource.Code.OffsetToPosition(_offset).Line;
@@ -89,7 +89,6 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         _explicitLineJoining = false;
         _indentationLevels = [];
         _indentationLevels.Push((Col: 0, AltCol: 0));
-        _parenLevel = 0;
         _bracketStack = [];
         _fstringStack = [];
         CurrentState = LexerState.Default;
@@ -140,11 +139,8 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
 
         // the innermost unclosed opener wins, exactly like CPython reading
         // parenstack[level-1] on EOF
-        if (_bracketStack.Count > 0)
-        {
-            var (bracket, offset) = _bracketStack.Peek();
-            throw BracketError(offset, PySR.InvalidSyntax_ParenNeverClosed, bracket);
-        }
+        if (_bracketStack.TryPeek(out var tuple))
+            throw BracketError(tuple.Offset, PySR.InvalidSyntax_ParenNeverClosed, tuple.Bracket);
 
         Debug.Assert(_tokens.Count > 0);
 
@@ -200,23 +196,23 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                     }
 
                     var lastToken = _tokens[^1];
-                    if (CurrentFStringInfo.ParenLevelWhenEntering == _parenLevel)
+                    if (CurrentFStringInfo.ParenLevelWhenEntering == ParenLevel)
                     {
                         if (lastToken.Type is TokenType.RightBrace)
                             CurrentState = LexerState.FStringMiddle;
                     }
                     else
                     {
-                        if (lastToken.Type is TokenType.Colon && _parenLevel == CurrentFStringInfo.ParenLevelWhenEntering + 1)
+                        if (lastToken.Type is TokenType.Colon && ParenLevel == CurrentFStringInfo.ParenLevelWhenEntering + 1)
                         {
                             // TODO: too deep
 
                             CurrentState = LexerState.FStringMiddle;
-                            CurrentFStringInfo.FormatSpec.Push(_parenLevel);
+                            CurrentFStringInfo.FormatSpec.Push(ParenLevel);
                         }
                         else if (lastToken.Type is TokenType.RightBrace &&
                             CurrentFStringInfo.FormatSpec.Count > 0 &&
-                            CurrentFStringInfo.FormatSpec.Peek() == _parenLevel)
+                            CurrentFStringInfo.FormatSpec.Peek() == ParenLevel)
                         {
                             CurrentState = LexerState.FStringMiddle;
                         }
@@ -291,15 +287,16 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                         }
                         else
                         {
+                            ThrowIfTooManyNestedParentheses();
+
                             AppendToken(TokenType.LeftBrace, length: 1);
                             _offset = indexOfChar + 1;
                             CurrentState = LexerState.FStringDefault;
 
-                            // increment _parenLevel here
-                            // while other operators including RightBrace
-                            // should be processed by TokenizePseudoToken
+                            // the replacement-field brace bypasses TokenizeFunny,
+                            // so it is pushed here while other operators including
+                            // RightBrace are processed by TokenizePseudoToken
                             _bracketStack.Push(('{', indexOfChar));
-                            _parenLevel++;
                         }
                     }
                     else if (c is '}')
@@ -312,7 +309,6 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                             _offset = indexOfChar + 1;
                             CurrentFStringInfo.FormatSpec.Pop();
                             _bracketStack.Pop();
-                            _parenLevel--;
                             break;
                         }
                         else
@@ -396,8 +392,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
     private void AppendNewLineToken(int length)
     {
         bool isNewLine = false;
-        Debug.Assert(_parenLevel >= 0);
-        if (_parenLevel is 0)
+        if (ParenLevel is 0)
         {
             for (int i = _tokens.Count - 1; i >= 0; i--)
             {
@@ -474,7 +469,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             return;
         }
 
-        if (_parenLevel is not 0 || IsIgnored(content, whitespaceLength))
+        if (ParenLevel is not 0 || IsIgnored(content, whitespaceLength))
             return;
 
         var (topCol, topAltCol) = _indentationLevels.Peek();
@@ -524,6 +519,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
 
     private const int TabSize = 8;
     private const int MaxIndent = 100;
+    private const int MaxParenLevel = 100;
 
     // Returns the physical whitespace length and, for logical line
     // starts, the column pair used for indentation comparison:
@@ -584,7 +580,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             if (isFString || isTString)
             {
                 AppendToken(isTString ? TokenType.TStringStart : TokenType.FStringStart, group.Length);
-                EnterFString(new FStringInfo(isTString, _wrapper, isTriple: true, parenLevelWhenEntering: _parenLevel));
+                EnterFString(new FStringInfo(isTString, _wrapper, isTriple: true, parenLevelWhenEntering: ParenLevel));
                 return;
             }
 
@@ -605,19 +601,27 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             AppendToken(TokenType.Operator, group.Length);
             if (group.Value is "(" or "[" or "{")
             {
+                ThrowIfTooManyNestedParentheses();
                 _bracketStack.Push((group.Value[0], _offset));
-                _parenLevel++;
             }
             else if (group.Value is ")" or "]" or "}")
             {
-                if (_bracketStack.Count is 0)
+                if (ParenLevel is 0)
                     throw SyntaxError($"unmatched '{group.Value}'");
 
                 var (opening, openingOffset) = _bracketStack.Pop();
-                _parenLevel--;
                 ThrowIfBracketMismatch(opening, openingOffset, group.Value[0]);
             }
         }
+    }
+
+    // Mirrors CPython's MAXLEVEL check (Parser/lexer/lexer.c): all bracket
+    // types share one counter, and the opener that would exceed the limit
+    // is rejected before it is pushed
+    private void ThrowIfTooManyNestedParentheses()
+    {
+        if (ParenLevel >= MaxParenLevel)
+            throw SyntaxError(PySR.InvalidSyntax_Tokenize_TooManyNestedParentheses);
     }
 
     // Mirrors CPython's parenstack bookkeeping (Parser/lexer/lexer.c): a
@@ -656,7 +660,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         {
             group.Length = prefix.Length + 1 /* len of wrapper */;
             AppendToken(isTString ? TokenType.TStringStart : TokenType.FStringStart, group.Length);
-            EnterFString(new FStringInfo(isTString, _wrapper, isTriple: false, parenLevelWhenEntering: _parenLevel));
+            EnterFString(new FStringInfo(isTString, _wrapper, isTriple: false, parenLevelWhenEntering: ParenLevel));
             return;
         }
 
@@ -717,7 +721,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         group.Index = _offset;
         group.Length = prefix.Length + 1 /* len of wrapper */;
         AppendToken(isTString ? TokenType.TStringStart : TokenType.FStringStart, group.Length);
-        EnterFString(new FStringInfo(isTString, span[indexOfWrapper], isTriple: false, parenLevelWhenEntering: _parenLevel));
+        EnterFString(new FStringInfo(isTString, span[indexOfWrapper], isTriple: false, parenLevelWhenEntering: ParenLevel));
         return true;
     }
 

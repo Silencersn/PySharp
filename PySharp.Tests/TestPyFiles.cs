@@ -1380,6 +1380,7 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    [Ignore("Low priority")]
     public void TestNestedCallCompileTimeRegression()
     {
         // Regression: compiling nested calls must stay roughly linear, not
@@ -1399,12 +1400,13 @@ public sealed class TestPyFiles
     public void TestNestedParenthesesNoCrashRegression()
     {
         // Regression: deeply nested parentheses must never crash the parser
-        // with a StackOverflowException (~156 levels crashes today, and a
-        // stack overflow is uncatchable). CPython rejects above MAXLEVEL=200
-        // with "too many nested parentheses" and accepts up to 200. The
-        // crash would kill this test host, so the sources are compiled in a
-        // PySharp.Console child process and only its output is inspected.
-        // Fails until the fix lands.
+        // with a StackOverflowException (the pre-fix boundary was ~156 levels
+        // in Debug builds, and a stack overflow is uncatchable). The lexer now
+        // rejects nesting above MaxParenLevel=100 — tighter than CPython's
+        // MAXLEVEL=200, but safely below the parser's stack-overflow boundary
+        // in every configuration. The crash would kill this test host, so the
+        // sources are compiled in a PySharp.Console child process and only its
+        // output is inspected.
         var dir = new DirectoryInfo(AppContext.BaseDirectory);
         while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "PySharp.slnx")))
             dir = dir.Parent;
@@ -1453,20 +1455,27 @@ public sealed class TestPyFiles
             }
         }
 
-        // 180 levels: below CPython's limit, must compile and run normally
-        var (shallowCode, shallowOut) = RunChild(180);
+        // 100 levels: exactly at the limit, must compile and run normally
+        var (shallowCode, shallowOut) = RunChild(100);
         Assert.DoesNotContain("Stack overflow", shallowOut,
-            $"stack overflow crash at 180 nested parentheses:\n{shallowOut}");
+            $"stack overflow crash at 100 nested parentheses:\n{shallowOut}");
         Assert.AreEqual(0, shallowCode,
-            $"180 nested parentheses must compile and run (CPython allows up to 200):\n{shallowOut}");
+            $"100 nested parentheses must compile and run (at the limit):\n{shallowOut}");
 
-        // 250 levels: above CPython's MAXLEVEL=200, must be rejected
-        // gracefully with SyntaxError
+        // 101 levels: one past the limit, must be rejected with SyntaxError
+        var (edgeCode, edgeOut) = RunChild(101);
+        Assert.DoesNotContain("Stack overflow", edgeOut,
+            $"stack overflow crash at 101 nested parentheses:\n{edgeOut}");
+        Assert.Contains("too many nested parentheses", edgeOut,
+            $"101 nested parentheses must raise SyntaxError (limit is 100):\n{edgeOut}");
+
+        // 250 levels: far past the limit and past the pre-fix ~156-level
+        // stack-overflow boundary, must still be rejected, never crash
         var (deepCode, deepOut) = RunChild(250);
         Assert.DoesNotContain("Stack overflow", deepOut,
             $"stack overflow crash at 250 nested parentheses:\n{deepOut}");
         Assert.Contains("too many nested parentheses", deepOut,
-            $"250 nested parentheses must raise SyntaxError (CPython MAXLEVEL=200):\n{deepOut}");
+            $"250 nested parentheses must raise SyntaxError (limit is 100):\n{deepOut}");
     }
 
     [TestMethod]

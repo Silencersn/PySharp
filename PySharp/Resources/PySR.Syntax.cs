@@ -31,6 +31,7 @@ partial class PySR
     public const string InvalidSyntax_Tokenize_EncodingProblem = "encoding problem: {0}";
     public const string InvalidSyntax_Tokenize_EncodingProblemWithBom = "encoding problem: {0} with BOM";
     public const string InvalidSyntax_Tokenize_SourceUnicodeError = "(unicode error) '{0}' codec can't decode byte 0x{1:x2} in position {2}: {3}";
+    public const string InvalidSyntax_Tokenize_TooManyNestedParentheses = "too many nested parentheses";
 
     #endregion Lexer
 
