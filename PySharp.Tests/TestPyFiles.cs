@@ -2089,6 +2089,19 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestFileIoErrorRegression()
+    {
+        // Regression: file IO must follow CPython - reopening the same path
+        // with a live handle is legal (CRT _SH_DENYNO) and share violations
+        // surface as catchable PermissionError, seek() validates whence as
+        // a ValueError, r+ close/with-exit flushes once without
+        // ObjectDisposedException, "x" grants write access, and opening a
+        // directory raises PermissionError. Fails until the fixes land.
+        var module = RunModule("test_file_io_error_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestSuperZeroArgsRegression()
     {
         // Regression: zero-argument super() must follow CPython

@@ -1323,6 +1323,15 @@ public static partial class PyBuiltinFunctions
         var fs = context.PyEnvironment.FileSystem;
         var fileInfo = fs.GetFile(path);
 
+        // CPython os_open rejects a directory target before any mode
+        // handling: PermissionError on Windows, IsADirectoryError on POSIX
+        if (fs.ExistsDirectory(path))
+        {
+            return OperatingSystem.IsWindows()
+                ? PyResult.RaiseException(PyPermissionErrorObjectType.Shared, PySR.Runtime_Os_PermissionDeniedErrno, path)
+                : PyResult.RaiseException(PyIsADirectoryErrorObjectType.Shared, PySR.Runtime_Os_IsADirectoryErrno, path);
+        }
+
         // Check existence for read-only or read-update without write/append/create
         bool pureRead = reading && !writing && !appending && !creating;
         if (pureRead && !fileInfo.Exists)
@@ -1341,7 +1350,10 @@ public static partial class PyBuiltinFunctions
         Stream stream;
         try
         {
-            stream = fileInfo.Open(fileMode, fileAccess, FileShare.None);
+            // CPython opens through the CRT with _SH_DENYNO: concurrent
+            // handles to the same file are legal, so other openers may
+            // read and write while this handle exists
+            stream = fileInfo.Open(fileMode, fileAccess, FileShare.ReadWrite);
         }
         catch (Exception ex) when (ex is FileNotFoundException || ex is DirectoryNotFoundException)
         {
@@ -1350,7 +1362,13 @@ public static partial class PyBuiltinFunctions
         }
         catch (UnauthorizedAccessException)
         {
-            return PyResult.RaiseException(PyPermissionErrorObjectType.Shared, path);
+            return PyResult.RaiseException(PyPermissionErrorObjectType.Shared, PySR.Runtime_Os_PermissionDeniedErrno, path);
+        }
+        catch (IOException)
+        {
+            // a share violation (lock held by another process) must surface
+            // as a catchable PermissionError, never a raw .NET exception
+            return PyResult.RaiseException(PyPermissionErrorObjectType.Shared, PySR.Runtime_Os_PermissionDeniedErrno, path);
         }
 
         // For a+ mode, seek to end after opening
@@ -1359,6 +1377,6 @@ public static partial class PyBuiltinFunctions
 
         return new PyFileObject(stream, mode, path,
             isTextMode: !binary, isReadable: reading || updating,
-            isWritable: writing || appending || updating, isSeekable);
+            isWritable: writing || appending || creating || updating, isSeekable);
     }
 }

@@ -36,10 +36,13 @@ public sealed class PyFileObject : PyObject
         _isWritable = isWritable;
         _isSeekable = isSeekable;
 
+        // leaveOpen: this object alone owns the stream lifetime, so
+        // disposing the reader must not close it under the writer
+        // (r+ builds both wrappers over the one stream)
         if (isTextMode && isReadable)
-            _reader = new StreamReader(stream, PyEnvironmentHost.Utf8NoBom);
+            _reader = new StreamReader(stream, PyEnvironmentHost.Utf8NoBom, detectEncodingFromByteOrderMarks: false, bufferSize: -1, leaveOpen: true);
         if (isTextMode && isWritable)
-            _writer = new StreamWriter(stream, PyEnvironmentHost.Utf8NoBom);
+            _writer = new StreamWriter(stream, PyEnvironmentHost.Utf8NoBom, bufferSize: 1024, leaveOpen: true);
     }
 
     public override PyTypeObject DefaultPyType => PyFileObjectType.Shared;
@@ -135,12 +138,36 @@ public sealed class PyFileObject : PyObject
         if (_closed)
             return PyNoneObject.None;
         _closed = true;
-        _reader?.Dispose();
-        _reader = null;
-        _writer?.Dispose();
-        _writer = null;
-        _stream.Dispose();
+        try
+        {
+            // flush pending writer output while the stream can still take
+            // it, then dispose the stream once (single owner)
+            _writer?.Flush();
+            _stream.Dispose();
+        }
+        catch (IOException ex)
+        {
+            return OSErrorFromIo(ex, _name);
+        }
+        finally
+        {
+            _reader = null;
+            _writer = null;
+        }
         return PyNoneObject.None;
+    }
+
+    // CPython reports OS-level file errors as OSError subclasses in the
+    // "[Errno N] strerror: 'path'" format; raw System.IO exceptions must
+    // never escape the interpreter
+    internal static PyResult OSErrorFromIo(Exception exception, string path)
+    {
+        return exception switch
+        {
+            FileNotFoundException or DirectoryNotFoundException =>
+                PyResult.RaiseException(PyFileNotFoundErrorObjectType.Shared, PySR.Runtime_Os_FileNotFoundErrno, path),
+            _ => PyResult.RaiseException(PyPermissionErrorObjectType.Shared, PySR.Runtime_Os_PermissionDeniedErrno, path),
+        };
     }
 
     internal PyResult Flush()
@@ -148,8 +175,15 @@ public sealed class PyFileObject : PyObject
         var check = CheckClosed();
         if (check.IsError)
             return check;
-        _writer?.Flush();
-        _stream.Flush();
+        try
+        {
+            _writer?.Flush();
+            _stream.Flush();
+        }
+        catch (IOException ex)
+        {
+            return OSErrorFromIo(ex, _name);
+        }
         return PyNoneObject.None;
     }
 
@@ -160,11 +194,20 @@ public sealed class PyFileObject : PyObject
             return check;
         if (!_isSeekable)
             return PyResult.ValueError(PySR.Runtime_File_NotSeekable);
-        // Discard StreamReader's internal buffer after seek to avoid stale data
-        _reader?.DiscardBufferedData();
-        _writer?.Flush();
-        var newPos = _stream.Seek(offset, (SeekOrigin)whence);
-        return PyIntObject.FromInteger(newPos);
+        if (whence is not 0 and not 1 and not 2)
+            return PyResult.ValueError(PySR.Runtime_File_InvalidWhence, whence);
+        try
+        {
+            // Discard StreamReader's internal buffer after seek to avoid stale data
+            _reader?.DiscardBufferedData();
+            _writer?.Flush();
+            var newPos = _stream.Seek(offset, (SeekOrigin)whence);
+            return PyIntObject.FromInteger(newPos);
+        }
+        catch (IOException ex)
+        {
+            return OSErrorFromIo(ex, _name);
+        }
     }
 
     internal PyResult Tell()
