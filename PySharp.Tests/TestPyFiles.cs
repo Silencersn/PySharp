@@ -2113,6 +2113,19 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestStrCenterIsPrintableRegression()
+    {
+        // Regression: center must give the odd remainder column to the
+        // left when both margin and width are odd (unicode_center_impl:
+        // left = marg//2 + (marg & width & 1)), and isprintable must
+        // reject the "Other"/"Separator" categories (Cc/Cf/Cs/Co/Cn and
+        // Zs/Zl/Zp) with only the ASCII space printable. Fails until the
+        // fixes land.
+        var module = RunModule("test_str_center_isprintable_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestSuperZeroArgsRegression()
     {
         // Regression: zero-argument super() must follow CPython

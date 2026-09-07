@@ -622,8 +622,11 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         if (width <= self.PyLength)
             return self;
 
-        int padLeft = (width - self.PyLength) / 2;
-        int padRight = width - self.PyLength - padLeft;
+        int marg = width - self.PyLength;
+        // CPython unicode_center_impl: when both marg and width are odd the
+        // odd remainder column goes to the left (marg & width & 1)
+        int padLeft = marg / 2 + (marg & width & 1);
+        int padRight = marg - padLeft;
 
         var sb = new StringBuilder(self.Value.Length + padLeft + padRight);
         sb.Append(fillchar[0], padLeft);
@@ -1581,29 +1584,23 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters]
     private static PyResult IsPrintable(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
+        // Py_UNICODE_ISPRINTABLE: characters in the Unicode "Other" and
+        // "Separator" categories are non-printable; the ASCII space (U+0020)
+        // is the only exception
         foreach (var rune in self.Value.EnumerateRunes())
         {
+            if (rune.Value is ' ')
+                continue;
             var cat = Rune.GetUnicodeCategory(rune);
             if (cat is System.Globalization.UnicodeCategory.Control
+                or System.Globalization.UnicodeCategory.Format
                 or System.Globalization.UnicodeCategory.Surrogate
                 or System.Globalization.UnicodeCategory.PrivateUse
-                or System.Globalization.UnicodeCategory.Format
+                or System.Globalization.UnicodeCategory.OtherNotAssigned
+                or System.Globalization.UnicodeCategory.SpaceSeparator
                 or System.Globalization.UnicodeCategory.LineSeparator
                 or System.Globalization.UnicodeCategory.ParagraphSeparator)
-            {
-                // Allow certain common whitespace that Python considers printable
-                // Python considers tab (\t), newline (\n), carriage return (\r),
-                // and their Unicode equivalents as printable.
-                if (rune.Value is '\t' or '\n' or '\r'
-                    || rune.Value is 0x0b or 0x0c /* \v, \f */)
-                    continue;
-
-                if (cat is not System.Globalization.UnicodeCategory.Control)
-                    return PyBoolObject.False;
-                // For control chars other than tab/newline/CR: not printable
-                if (rune.Value < 0x10000) // BMP control chars
-                    return PyBoolObject.False;
-            }
+                return PyBoolObject.False;
         }
         return PyBoolObject.True;
     }

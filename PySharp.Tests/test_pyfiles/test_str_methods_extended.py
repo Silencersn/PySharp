@@ -103,8 +103,8 @@ assert 'h'.isidentifier() is True
 assert 'hello'.isprintable() is True
 assert ''.isprintable() is True
 assert 'hello world'.isprintable() is True
-assert 'hello\nworld'.isprintable() is True     # Python considers \n printable
-assert 'hello\tworld'.isprintable() is True     # \t is printable
+assert 'hello\nworld'.isprintable() is False    # \n is Other/Cc, non-printable
+assert 'hello\tworld'.isprintable() is False    # \t is Other/Cc, non-printable
 assert '\x00'.isprintable() is False
 assert '\x1b'.isprintable() is False
 
