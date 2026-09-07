@@ -23,70 +23,149 @@ public class PySliceObject : PyObject
         Step = step;
     }
 
+    // _PyEval_SliceIndex: the boundary must support __index__; failures of
+    // the protocol itself (e.g. a non-int result) propagate unchanged while
+    // other objects get the slice-specific TypeError
+    private static PyResult<PyIntObject> SliceIndex(PyCallContext context, PyObject boundary)
+    {
+        if (boundary is PyIntObject intObj)
+            return intObj;
+        if (boundary.PyType.Slots.Index is null)
+            return PyResult.TypeError(PySR.Runtime_Slice_IndicesMustBeInt);
+        return PySpecialMethods.Index(context, boundary);
+    }
+
     [AIGenerated]
     public PyResult Indices(PyCallContext context, int length, out (int start, int stop, int step, int sliceLength) indices)
     {
         indices = default;
-        int step = Step is PyNoneObject ? 1 : ((PyIntObject)Step).Int32Value;
-        int start, stop;
 
-        if (step > 0)
+        // PySlice_Unpack order: step first (zero rejected before the bounds
+        // are touched), then start, then stop. None is special-cased before
+        // conversion; out-of-range values saturate like
+        // PyNumber_AsSsize_t(v, NULL) ahead of the length clamp.
+        int step;
+        if (Step is PyNoneObject)
         {
-            start = Start is PyNoneObject ? 0 : PyUtils.MapIndex(((PyIntObject)Start).Int32Value, length);
-            stop = Stop is PyNoneObject ? length : PyUtils.MapIndex(((PyIntObject)Stop).Int32Value, length);
-            start = Math.Clamp(start, 0, length);
-            stop = Math.Clamp(stop, 0, length);
-        }
-        else if (step < 0)
-        {
-            start = Start is PyNoneObject ? length - 1 : PyUtils.MapIndex(((PyIntObject)Start).Int32Value, length);
-            stop = Stop is PyNoneObject ? -1 : PyUtils.MapIndex(((PyIntObject)Stop).Int32Value, length);
-            start = Math.Clamp(start, -1, length - 1);
-            stop = Math.Clamp(stop, -1, length - 1);
+            step = 1;
         }
         else
         {
-            // CPython: ValueError("slice step cannot be zero"); returned as an
-            // error result (no-throw Try pattern) so callers propagate it.
-            return PyResult.ValueError("slice step cannot be zero");
+            var stepResult = SliceIndex(context, Step);
+            if (stepResult.IsError)
+                return stepResult;
+            var value = stepResult.Value.Value;
+            step = value > int.MaxValue ? int.MaxValue : value < int.MinValue ? int.MinValue : (int)value;
+            if (step is 0)
+                return PyResult.ValueError("slice step cannot be zero");
+        }
+
+        int start;
+        if (Start is PyNoneObject)
+        {
+            start = step > 0 ? 0 : length - 1;
+        }
+        else
+        {
+            var startResult = SliceIndex(context, Start);
+            if (startResult.IsError)
+                return startResult;
+            var value = startResult.Value.Value;
+            start = PyUtils.MapIndex(value > int.MaxValue ? int.MaxValue : value < int.MinValue ? int.MinValue : (int)value, length);
+        }
+
+        int stop;
+        if (Stop is PyNoneObject)
+        {
+            stop = step > 0 ? length : -1;
+        }
+        else
+        {
+            var stopResult = SliceIndex(context, Stop);
+            if (stopResult.IsError)
+                return stopResult;
+            var value = stopResult.Value.Value;
+            stop = PyUtils.MapIndex(value > int.MaxValue ? int.MaxValue : value < int.MinValue ? int.MinValue : (int)value, length);
+        }
+
+        if (step > 0)
+        {
+            start = Math.Clamp(start, 0, length);
+            stop = Math.Clamp(stop, 0, length);
+        }
+        else
+        {
+            start = Math.Clamp(start, -1, length - 1);
+            stop = Math.Clamp(stop, -1, length - 1);
         }
 
         int sliceLength = 0;
+        // 64-bit intermediate: a saturated step can overflow the 32-bit sum
         if (step > 0 && start < stop)
-            sliceLength = (stop - start + step - 1) / step;
+            sliceLength = (int)(((long)stop - start + step - 1) / step);
         else if (step < 0 && start > stop)
-            sliceLength = (stop - start + step + 1) / step;
+            sliceLength = (int)(((long)stop - start + step + 1) / step);
 
         indices = (start, stop, step, sliceLength);
         return default;
     }
 
-    // BigInteger variant for sequences whose length may exceed int (e.g. range)
+    // BigInteger variant for sequences whose length may exceed int (e.g. range);
+    // boundaries keep full precision because the length clamp handles any magnitude
     public PyResult Indices(PyCallContext context, BigInteger length, out (BigInteger start, BigInteger stop, BigInteger step, BigInteger sliceLength) indices)
     {
         indices = default;
-        var step = Step is PyNoneObject ? BigInteger.One : ((PyIntObject)Step).Value;
-        BigInteger start, stop;
 
-        if (step > 0)
+        BigInteger step;
+        if (Step is PyNoneObject)
         {
-            start = Start is PyNoneObject ? BigInteger.Zero : PyUtils.MapIndex(((PyIntObject)Start).Value, length);
-            stop = Stop is PyNoneObject ? length : PyUtils.MapIndex(((PyIntObject)Stop).Value, length);
-            start = BigInteger.Clamp(start, BigInteger.Zero, length);
-            stop = BigInteger.Clamp(stop, BigInteger.Zero, length);
-        }
-        else if (step < 0)
-        {
-            start = Start is PyNoneObject ? length - 1 : PyUtils.MapIndex(((PyIntObject)Start).Value, length);
-            stop = Stop is PyNoneObject ? BigInteger.MinusOne : PyUtils.MapIndex(((PyIntObject)Stop).Value, length);
-            start = BigInteger.Clamp(start, BigInteger.MinusOne, length - 1);
-            stop = BigInteger.Clamp(stop, BigInteger.MinusOne, length - 1);
+            step = BigInteger.One;
         }
         else
         {
-            // CPython: ValueError("slice step cannot be zero"); returned as an
-            // error result (no-throw Try pattern) so callers propagate it.
-            return PyResult.ValueError("slice step cannot be zero");
+            var stepResult = SliceIndex(context, Step);
+            if (stepResult.IsError)
+                return stepResult;
+            step = stepResult.Value.Value;
+            if (step.IsZero)
+                return PyResult.ValueError("slice step cannot be zero");
+        }
+
+        BigInteger start;
+        if (Start is PyNoneObject)
+        {
+            start = step > 0 ? BigInteger.Zero : length - 1;
+        }
+        else
+        {
+            var startResult = SliceIndex(context, Start);
+            if (startResult.IsError)
+                return startResult;
+            start = PyUtils.MapIndex(startResult.Value.Value, length);
+        }
+
+        BigInteger stop;
+        if (Stop is PyNoneObject)
+        {
+            stop = step > 0 ? length : BigInteger.MinusOne;
+        }
+        else
+        {
+            var stopResult = SliceIndex(context, Stop);
+            if (stopResult.IsError)
+                return stopResult;
+            stop = PyUtils.MapIndex(stopResult.Value.Value, length);
+        }
+
+        if (step > 0)
+        {
+            start = BigInteger.Clamp(start, BigInteger.Zero, length);
+            stop = BigInteger.Clamp(stop, BigInteger.Zero, length);
+        }
+        else
+        {
+            start = BigInteger.Clamp(start, BigInteger.MinusOne, length - 1);
+            stop = BigInteger.Clamp(stop, BigInteger.MinusOne, length - 1);
         }
 
         BigInteger sliceLength = 0;

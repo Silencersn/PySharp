@@ -107,6 +107,7 @@ partial class PySR
     public const string Runtime_Sequence_ObjectNotIterator = "'{0}' object is not an iterator";
     public const string Runtime_Sequence_NonSubscriptable = "'{0}' object is not subscriptable";
     public const string Runtime_Sequence_SliceStep_AssignWrongSize = "attempt to assign sequence of size {1} to extended slice of size {0}";
+    public const string Runtime_Slice_IndicesMustBeInt = "slice indices must be integers or None or have an __index__ method";
 
     public const string Runtime_List_ItemNotFound = "list.{0}(x): x not in list";
     public const string Runtime_List_PopIndexOutOfRange = "pop index out of range";

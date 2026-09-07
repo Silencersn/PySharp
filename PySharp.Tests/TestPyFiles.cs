@@ -2113,6 +2113,19 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestSliceIndexRegression()
+    {
+        // Regression: slice bounds must go through __index__ like
+        // PySlice_Unpack/_PyEval_SliceIndex - custom __index__ objects work
+        // in every position, non-index objects raise the catchable slice
+        // TypeError, zero step is rejected before the bounds unpack, huge
+        // ints saturate, and the 32-bit length arithmetic must not overflow
+        // on a saturated step. Fails until the fix lands.
+        var module = RunModule("test_slice_index_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestStrCenterIsPrintableRegression()
     {
         // Regression: center must give the odd remainder column to the
