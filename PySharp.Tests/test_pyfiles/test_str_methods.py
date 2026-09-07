@@ -61,9 +61,15 @@ assert '{1} {0}'.format('a', 'b') == 'b a'
 assert '{name} is {age}'.format(name='Alice', age=20) == 'Alice is 20'
 assert '{}'.format(42) == '42'
 
-# partition
+# partition: a missing separator raises like CPython, only rpartition
+# falls back to the whole string
 assert 'hello'.partition('l') == ('he', 'l', 'lo')
-assert 'hello'.partition('x') == ('hello', '', '')
+try:
+    'hello'.partition('x')
+except ValueError:
+    pass
+else:
+    raise AssertionError("partition('x') must raise")
 assert 'hello'.partition('o') == ('hell', 'o', '')
 assert 'hello'.partition('h') == ('', 'h', 'ello')
 

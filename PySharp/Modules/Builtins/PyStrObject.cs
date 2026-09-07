@@ -485,8 +485,15 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 start = startObj.Int32Value;
             if (arguments[2] is PyIntObject endObj)
                 end = endObj.Int32Value;
-            start = ClampRuneStart(start, self.PyLength);
+            // CPython ADJUST_INDICES: like startswith above, start clamps
+            // only at 0 so an above-length start keeps end - start negative
+            if (start < 0)
+                start = ClampRuneStart(start, self.PyLength);
             end = ClampRuneEnd(end, self.PyLength);
+            // stringlib/find.h: an empty needle is found at the window
+            // start whenever the window is valid (end - start >= 0)
+            if (subStr.Value.Length is 0)
+                return end - start < 0 ? PyIntObject.MinusOne : PyIntObject.FromInteger(start);
             if (start >= end)
                 return PyIntObject.MinusOne;
             var sliced = self.SubstringByRuneRange(start, end);
@@ -512,8 +519,14 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 start = startObj.Int32Value;
             if (arguments[2] is PyIntObject endObj)
                 end = endObj.Int32Value;
-            start = ClampRuneStart(start, self.PyLength);
+            // CPython ADJUST_INDICES: start clamps only at 0
+            if (start < 0)
+                start = ClampRuneStart(start, self.PyLength);
             end = ClampRuneEnd(end, self.PyLength);
+            // stringlib/find.h: an empty needle is reported at the window
+            // end whenever the window is valid (end - start >= 0)
+            if (subStr.Value.Length is 0)
+                return end - start < 0 ? PyIntObject.MinusOne : PyIntObject.FromInteger(end);
             if (start >= end)
                 return PyIntObject.MinusOne;
             var sliced = self.SubstringByRuneRange(start, end);
@@ -632,15 +645,20 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             start = startObj.Int32Value;
         if (arguments[2] is PyIntObject endObj)
             end = endObj.Int32Value;
-        start = ClampRuneStart(start, self.PyLength);
+        // CPython ADJUST_INDICES: start clamps only at 0
+        if (start < 0)
+            start = ClampRuneStart(start, self.PyLength);
         end = ClampRuneEnd(end, self.PyLength);
+
+        // stringlib/count.h: an empty needle counts the insertion positions,
+        // (end - start) + 1 for a valid window; a negative window (start
+        // above the clamped end) misses before the needle is even considered
+        if (subStr.Value.Length is 0)
+            return end - start < 0 ? PyIntObject.Zero : PyIntObject.FromInteger(end - start + 1);
 
         if (start >= end)
             return PyIntObject.Zero;
         var sliced = self.SubstringByRuneRange(start, end);
-
-        if (string.IsNullOrEmpty(subStr.Value))
-            return PyIntObject.FromInteger(PyStrObject.CharIndexToRuneIndex(sliced, sliced.Length) + 1);
 
         int count = 0;
         int index = 0;
@@ -1212,14 +1230,10 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             return PyResult.ValueError("empty separator");
 
         int idx = self.Value.IndexOf(sepStr.Value, StringComparison.Ordinal);
+        // CPython stringlib/partition.h: a missing separator raises instead
+        // of returning the whole string (that fallback belongs to rpartition)
         if (idx < 0)
-        {
-            return PyTupleObject.CreateTuple(
-                self,
-                PyStrObject.Empty,
-                PyStrObject.Empty
-            );
-        }
+            return PyResult.ValueError("substring not found");
 
         return PyTupleObject.CreateTuple(
             PyStrObject.FromString(self.Value[..idx]),
@@ -1305,8 +1319,10 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         if (arguments[0] is PyIntObject tabsizeObj)
         {
             tabsize = tabsizeObj.Int32Value;
+            // CPython unicode_expandtabs: a negative tabsize means 0
+            // (tab deletion), it is accepted rather than rejected
             if (tabsize < 0)
-                return PyResult.ValueError("tabsize must be non-negative");
+                tabsize = 0;
         }
         else if (arguments[0] is not PyNoneObject)
         {

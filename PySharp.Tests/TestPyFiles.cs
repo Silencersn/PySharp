@@ -2032,8 +2032,7 @@ public sealed class TestPyFiles
 
     [TestMethod]
     public void TestReplDisplayHookRegression()
-    {
-        // Regression: interactive top-level expression statements must echo
+    {        // Regression: interactive top-level expression statements must echo
         // through the displayhook semantics (CPython CALL_INTRINSIC_1 /
         // INTRINSIC_PRINT -> print_expr): repr(value) written to stdout -
         // so strings keep their quotes and __repr__ wins over __str__ -
@@ -2074,6 +2073,19 @@ public sealed class TestPyFiles
         Assert.IsTrue(builtins.PyAttributes.TryGetValue("_", out var underscore), "builtins._ must be bound");
         var underscoreStr = Assert.IsInstanceOfType<PyStrObject>(underscore);
         Assert.AreEqual("C", underscoreStr.Value);
+    }
+
+    [TestMethod]
+    public void TestStrFindCountRegression()
+    {
+        // Regression: the str search family must follow CPython's
+        // ADJUST_INDICES (start clamps only at 0, so an above-range start
+        // keeps the window negative) - partition raises on a missing
+        // separator, an empty needle counts/finds at the zero-width window,
+        // and expandtabs treats a negative tabsize as 0. Fails until the
+        // fixes land.
+        var module = RunModule("test_str_find_count_regression.py");
+        Assert.IsNotNull(module);
     }
 
     [TestMethod]
