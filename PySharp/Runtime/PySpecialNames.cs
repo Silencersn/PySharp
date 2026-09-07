@@ -58,6 +58,9 @@ public static partial class PySpecialNames
     // functions
     public const string Import = "__import__";
 
+    // sys.displayhook REPL binding
+    public const string Underscore = "_";
+
     internal static partial IEnumerable<string> EnumerateNonGeneratedNames();
     internal static partial IEnumerable<string> EnumerateGeneratedNames();
 

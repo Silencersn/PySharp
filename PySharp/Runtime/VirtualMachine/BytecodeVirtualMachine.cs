@@ -589,7 +589,7 @@ internal static partial class BytecodeVirtualMachine
                                     => PySetObject.CreateSet((PyListObject)value),
 
                                 IntrinsicFunctionType.Print
-                                    => value is PyNoneObject ? PyNoneObject.None : PyBuiltinFunctions.Print.Call(context, [value]).PyUnwrap(context),
+                                    => PyCore.DisplayHook(context, value),
 
                                 IntrinsicFunctionType.ImportStar
                                     => PyCore.ImportAllFrom(context, ref frame, (PyModuleObject)value),

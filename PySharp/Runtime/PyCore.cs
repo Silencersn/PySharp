@@ -136,6 +136,26 @@ internal static class PyCore
         return PyNoneObject.None;
     }
 
+    // interactive expression statements echo through this intrinsic
+    // (CPython CALL_INTRINSIC_1 / INTRINSIC_PRINT -> print_expr): write
+    // repr(value) to stdout unless it is None, and bind builtins._ to the
+    // value
+    public static PyObject DisplayHook(PyCallContext context, PyObject value)
+    {
+        var builtins = (PyModuleObject)context.PyEnvironment.LoadBuiltinModule(context, "builtins");
+
+        if (value is not PyNoneObject)
+        {
+            var reprResult = PySpecialMethods.Repr(context, value);
+            if (reprResult.IsError)
+                return reprResult.Exception!;
+            context.Out.WriteLine(reprResult.Value.Value);
+        }
+
+        builtins.PyAttributes[PySpecialNames.Underscore] = value;
+        return PyNoneObject.None;
+    }
+
     public static void Raise(PyCallContext context, ref BytecodeVirtualMachineStates states, PyObject? excObj, PyObject? causeObj)
     {
         var exc = ToException(context, excObj)

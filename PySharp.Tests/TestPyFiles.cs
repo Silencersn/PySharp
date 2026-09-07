@@ -1,6 +1,8 @@
+using PySharp.Compilation;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.Calls.Extensions;
 using PySharp.Runtime.Environments;
 using PySharp.Runtime.IO;
 using PySharp.Runtime.IO.Memory;
@@ -2026,6 +2028,52 @@ public sealed class TestPyFiles
         // until the fix lands.
         var module = RunModule("test_encode_errors_lazy_regression.py");
         Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestReplDisplayHookRegression()
+    {
+        // Regression: interactive top-level expression statements must echo
+        // through the displayhook semantics (CPython CALL_INTRINSIC_1 /
+        // INTRINSIC_PRINT -> print_expr): repr(value) written to stdout -
+        // so strings keep their quotes and __repr__ wins over __str__ -
+        // None stays silent, and builtins._ is bound to the value. Fails
+        // until the fix lands (the old path called print(), losing repr).
+        var stdout = new MemoryStream();
+        var host = new StdioHost(new MemoryStream(), stdout, new MemoryStream());
+        using var environment = host.CreateEnvironmentBuilder().Build();
+        using var context = PyCallContext.CreateInterpreterRootContext(environment);
+
+        void ExecuteSingle(string code)
+        {
+            var codeObj = Compiler.InternalCompileSingle(context, code, "<stdin>", name: "<module>", appendNewLine: true);
+            PyInterpreter.InternalExecute(context, codeObj);
+        }
+
+        ExecuteSingle("'hi'");
+        ExecuteSingle("ascii('\\n')");
+        ExecuteSingle("None");
+        ExecuteSingle("1 + 1");
+        ExecuteSingle("exec(\"class C:\\n    def __str__(self): return 'STR'\\n    def __repr__(self): return 'REPR'\\n\")");
+        ExecuteSingle("C()");
+        // resolves builtins._ inside the REPL itself and rebinds it to the
+        // class name string, so the final binding is checkable as a str
+        ExecuteSingle("type(_).__name__");
+
+        var output = System.Text.Encoding.UTF8.GetString(stdout.ToArray());
+        Assert.Contains("'hi'", output);
+        Assert.DoesNotContain("hi\n", output);
+        Assert.Contains("\"'\\\\n'\"", output);
+        Assert.Contains("2", output);
+        Assert.DoesNotContain("STR", output);
+        Assert.Contains("REPR", output);
+        Assert.Contains("'C'", output);
+
+        // builtins._ holds the last echoed value
+        var builtins = context.PyEnvironment.LoadBuiltinModule(context, "builtins");
+        Assert.IsTrue(builtins.PyAttributes.TryGetValue("_", out var underscore), "builtins._ must be bound");
+        var underscoreStr = Assert.IsInstanceOfType<PyStrObject>(underscore);
+        Assert.AreEqual("C", underscoreStr.Value);
     }
 
     [TestMethod]
