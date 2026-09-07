@@ -59,6 +59,13 @@ partial class PySR
     public const string Runtime_Object_FormatArg2NonString = "format() argument 2 must be str, not {0}";
     public const string Runtime_Object_FormatUnsupported = "unsupported format string passed to {0}.__format__";
     public const string Runtime_Object_FormatSpecInvalid = "Invalid format specifier '{0}' for object of type '{1}'";
+    public const string Runtime_Object_FormatUnknownCode = "Unknown format code '{0}' for object of type '{1}'";
+    public const string Runtime_Object_FormatGroupingType = "Cannot specify '{0}' with '{1}'.";
+    public const string Runtime_Object_FormatSignNotAllowed = "Sign not allowed in string format specifier";
+    public const string Runtime_Object_FormatSpaceNotAllowed = "Space not allowed in string format specifier";
+    public const string Runtime_Object_FormatZNegCoercionNotAllowed = "Negative zero coercion (z) not allowed in string format specifier";
+    public const string Runtime_Object_FormatAlternateNotAllowed = "Alternate form (#) not allowed in string format specifier";
+    public const string Runtime_Object_FormatAlignNotAllowed = "'=' alignment not allowed in string format specifier";
     public const string Runtime_Object_AttributeMustBeString = "attribute name must be string, not '{0}'";
     public const string Runtime_Object_AttributeNotFound = "'{0}' object has no attribute '{1}'";
     public const string Runtime_Object_SpecialMethodNotDefined = "type {0} doesn't define {1} method";

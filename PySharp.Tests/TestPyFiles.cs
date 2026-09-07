@@ -1479,6 +1479,17 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestFormatSpecStrRegression()
+    {
+        // Regression: format specs on str values and the str.format field
+        // grammar (conversions, nested specs, [index]/.attr access) were
+        // unimplemented - see the module docstring for the full symptom
+        // list. Fails until the fix lands.
+        var module = RunModule("test_format_spec_str_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestMaxIndentRegression()
     {
         // Regression: more than 100 levels of indentation must be rejected

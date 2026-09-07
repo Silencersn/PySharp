@@ -797,106 +797,408 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         return PyStrObject.FromString(self.Value.PadLeft(width, '0'));
     }
 
+    [AIGenerated]
+    protected override PyResult Format(PyCallContext context, PyStrObject self, PyObject formatSpec)
+    {
+        if (formatSpec is not PyStrObject specStr)
+            return PyResult.TypeError(PySR.Runtime_Object_FormatArg2NonString, formatSpec.PyType.FullName);
+
+        // CPython _PyUnicode_FormatAdvancedWriter: a zero-length spec makes
+        // __format__ equivalent to str(obj)
+        if (specStr.Value.Length is 0)
+            return PySpecialMethods.Str(context, self);
+
+        if (!PyFormatSpec.TryParse(specStr.Value, out var spec))
+            return FormatSpecParseError(specStr.Value, self.PyType.FullName);
+
+        // CPython validates in this order: the parse-level grouping check,
+        // the presentation-type dispatch, then format_string_internal's
+        // flag checks (',c' -> Cannot specify, '+d' -> Unknown format code,
+        // '+5' -> Sign not allowed)
+        if (spec.WidthGrouping is not null && !IsGroupingCompatibleType(spec.WidthGrouping.Value, spec.Type ?? 's'))
+            return PyResult.ValueError(PySR.Runtime_Object_FormatGroupingType, spec.WidthGrouping.Value, spec.Type ?? 's');
+
+        if (spec.Type is not (null or 's'))
+            return PyResult.ValueError(PySR.Runtime_Object_FormatUnknownCode, spec.Type, self.PyType.FullName);
+
+        if (spec.Sign is not null)
+        {
+            if (spec.Sign is ' ')
+                return PyResult.ValueError(PySR.Runtime_Object_FormatSpaceNotAllowed);
+
+            return PyResult.ValueError(PySR.Runtime_Object_FormatSignNotAllowed);
+        }
+
+        if (spec.CoercePositiveZero)
+            return PyResult.ValueError(PySR.Runtime_Object_FormatZNegCoercionNotAllowed);
+
+        if (spec.AlternateForm)
+            return PyResult.ValueError(PySR.Runtime_Object_FormatAlternateNotAllowed);
+
+        if (spec.Align is '=')
+            return PyResult.ValueError(PySR.Runtime_Object_FormatAlignNotAllowed);
+
+        var text = self.Value;
+        var length = self.PyLength;
+        if (spec.Precision is int precision && precision < length)
+        {
+            text = self.SubstringByRuneRange(0, precision);
+            length = precision;
+        }
+
+        if (spec.Width is int width && width > length)
+        {
+            // CPython zero padding only replaces the default fill for
+            // strings; the default alignment stays '<'
+            var fill = spec.Fill ?? (spec.SignAwareZeroPadding ? '0' : ' ');
+            var align = spec.Align ?? '<';
+            var padding = width - length;
+            text = align switch
+            {
+                '<' => text + new string(fill, padding),
+                '^' => new string(fill, padding / 2) + text + new string(fill, padding - padding / 2),
+                _ => new string(fill, padding) + text,
+            };
+        }
+
+        return PyStrObject.FromString(text);
+    }
+
+    private static bool IsGroupingCompatibleType(char grouping, char type) => type switch
+    {
+        'd' or 'e' or 'f' or 'g' or 'E' or 'G' or '%' or 'F' => true,
+        'b' or 'o' or 'x' or 'X' => grouping is '_',
+        _ => false,
+    };
+
+    // CPython's parser treats one leftover character after the grammar
+    // prefix as the presentation type ("Unknown format code"); any other
+    // parse failure is a malformed spec
+    private static PyResult FormatSpecParseError(string spec, string typeName)
+    {
+        if (PyFormatSpec.TryParse(spec.AsSpan()[..^1], out var prefix) && prefix.Type is null)
+        {
+            var trailing = spec[^1];
+
+            // a digit can only be the type when it directly follows a
+            // grouping separator; otherwise the grammar would have
+            // consumed it as part of the width
+            var followsGrouping = prefix.WidthGrouping is not null || prefix.PrecisionGrouping is not null;
+            if (!char.IsAsciiDigit(trailing) || followsGrouping)
+            {
+                if (prefix.WidthGrouping is char grouping && !IsGroupingCompatibleType(grouping, trailing))
+                    return PyResult.ValueError(PySR.Runtime_Object_FormatGroupingType, grouping, trailing);
+
+                return PyResult.ValueError(PySR.Runtime_Object_FormatUnknownCode, trailing, typeName);
+            }
+        }
+
+        return PyResult.ValueError(PySR.Runtime_Object_FormatSpecInvalid, spec, typeName);
+    }
+
     [PyMethod("format")]
     [AIGenerated]
     [PyFunctionParameters("*args", "**kwargs")]
     private static PyResult Format(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        var formatStr = self.Value;
-        var extraArgs = arguments.ExtraArgs;
-        int argIndex = 0;
+        var autoNumber = 0;
+        return ExpandFormatMarkup(context, self.Value, arguments, recursionDepth: 2, ref autoNumber);
+    }
+
+    // Mirrors CPython do_string_format (Objects/stringlib/unicode_format.h):
+    // doubled braces escape, {field[!conv][:spec]} markup, one level of
+    // spec nesting below the current one
+    private static PyResult ExpandFormatMarkup(PyCallContext context, ReadOnlySpan<char> format, PyArguments arguments, int recursionDepth, ref int autoNumber)
+    {
+        if (recursionDepth <= 0)
+            return PyResult.ValueError("Max string recursion exceeded");
+
         var sb = new StringBuilder();
-
-        for (int i = 0; i < formatStr.Length; i++)
+        var i = 0;
+        while (i < format.Length)
         {
-            if (formatStr[i] is '{')
+            var c = format[i];
+            if (c is not ('{' or '}'))
             {
-                if (i + 1 < formatStr.Length && formatStr[i + 1] is '{')
-                {
-                    sb.Append('{');
-                    i++;
-                    continue;
-                }
-
-                int end = formatStr.IndexOf('}', i + 1);
-                if (end < 0)
-                    return PyResult.ValueError("unmatched '{' in format spec");
-
-                var fieldStr = formatStr.AsSpan(i + 1, end - i - 1);
-                PyObject? value = null;
-
-                if (fieldStr.IsEmpty)
-                {
-                    // {} - positional
-                    if (argIndex >= extraArgs.Count)
-                        return PyResult.IndexError("tuple index out of range");
-                    value = extraArgs[argIndex++];
-                }
-                else
-                {
-                    int colonIndex = fieldStr.IndexOf(':');
-                    ReadOnlySpan<char> name;
-                    ReadOnlySpan<char> fmtSpec = default;
-                    if (colonIndex >= 0)
-                    {
-                        name = fieldStr[..colonIndex];
-                        fmtSpec = fieldStr[(colonIndex + 1)..];
-                    }
-                    else
-                    {
-                        name = fieldStr;
-                    }
-
-                    if (name.Length > 0 && (char.IsDigit(name[0]) || (name.Length > 1 && name[0] is '-' && char.IsDigit(name[1]))))
-                    {
-                        // {0} or {0:spec}
-                        if (!int.TryParse(name, out int idx))
-                            return PyResult.ValueError("invalid format specifier");
-                        if (idx >= extraArgs.Count)
-                            return PyResult.IndexError("tuple index out of range");
-                        value = extraArgs[idx];
-                    }
-                    else
-                    {
-                        // {name} or {name:spec}
-                        string key = name.ToString();
-                        if (!arguments.TryGetExtraKwarg(key, out value))
-                            return PyResult.KeyError(key);
-                    }
-
-                    if (!fmtSpec.IsEmpty)
-                    {
-                        var formatResult = PySpecialMethods.Format(context, value, PyStrObject.FromString(fmtSpec.ToString()));
-                        if (formatResult.IsError)
-                            return formatResult;
-                        value = formatResult.Value;
-                    }
-                }
-
-                var strResult = PySpecialMethods.Str(context, value);
-                if (strResult.IsError)
-                    return strResult;
-                sb.Append(strResult.Value.Value);
-
-                i = end;
+                sb.Append(c);
+                i++;
+                continue;
             }
-            else if (formatStr[i] is '}')
+
+            if (i + 1 < format.Length && format[i + 1] == c)
             {
-                if (i + 1 < formatStr.Length && formatStr[i + 1] is '}')
-                {
-                    sb.Append('}');
-                    i++;
-                    continue;
-                }
+                sb.Append(c);
+                i += 2;
+                continue;
+            }
+
+            if (c is '}')
                 return PyResult.ValueError("Single '}' encountered in format string");
-            }
-            else
-            {
-                sb.Append(formatStr[i]);
-            }
+
+            if (i + 1 == format.Length)
+                return PyResult.ValueError("Single '{' encountered in format string");
+
+            if (!TryParseMarkupField(format[(i + 1)..], out var field, out var fieldLength, out var error))
+                return PyResult.ValueError(error);
+
+            var rendered = RenderMarkupField(context, field, arguments, recursionDepth, ref autoNumber);
+            if (rendered.IsError)
+                return rendered;
+
+            sb.Append(((PyStrObject)rendered.Value).Value);
+            i += 1 + fieldLength;
         }
 
         return PyStrObject.FromString(sb.ToString());
+    }
+
+    private ref struct MarkupField
+    {
+        public ReadOnlySpan<char> Name;
+        public char? Conversion;
+        public ReadOnlySpan<char> Spec;
+        public bool SpecNeedsExpanding;
+    }
+
+    // Mirrors CPython parse_field: the name runs to the first unbracketed
+    // '!' or ':' (a '[' swallows up to its ']'), one conversion char may
+    // follow '!', and the spec balances nested braces
+    private static bool TryParseMarkupField(ReadOnlySpan<char> s, out MarkupField field, out int length, out string error)
+    {
+        field = default;
+        length = 0;
+
+        var i = 0;
+        char c = '\0';
+        while (i < s.Length)
+        {
+            c = s[i++];
+            if (c is '{')
+            {
+                error = "unexpected '{' in field name";
+                return false;
+            }
+
+            if (c is '[')
+            {
+                while (i < s.Length && s[i] is not ']')
+                    i++;
+                continue;
+            }
+
+            if (c is '}' or ':' or '!')
+                break;
+        }
+
+        field.Name = s[..Math.Max(0, i - 1)];
+
+        if (c is '!' or ':')
+        {
+            if (c is '!')
+            {
+                if (i >= s.Length)
+                {
+                    error = "end of string while looking for conversion specifier";
+                    return false;
+                }
+
+                field.Conversion = s[i++];
+
+                if (i < s.Length)
+                {
+                    c = s[i++];
+                    if (c is '}')
+                    {
+                        length = i;
+                        error = string.Empty;
+                        return true;
+                    }
+
+                    if (c is not ':')
+                    {
+                        error = "expected ':' after conversion specifier";
+                        return false;
+                    }
+                }
+
+                // hitting the end right after the conversion falls through
+                // to the spec scan, which reports the unmatched brace
+            }
+
+            var specStart = i;
+            var depth = 1;
+            while (i < s.Length)
+            {
+                c = s[i++];
+                if (c is '{')
+                {
+                    depth++;
+                    field.SpecNeedsExpanding = true;
+                }
+                else if (c is '}')
+                {
+                    depth--;
+                    if (depth is 0)
+                    {
+                        field.Spec = s[specStart..(i - 1)];
+                        length = i;
+                        error = string.Empty;
+                        return true;
+                    }
+                }
+            }
+
+            error = "unmatched '{' in format spec";
+            return false;
+        }
+
+        if (c is '}')
+        {
+            length = i;
+            error = string.Empty;
+            return true;
+        }
+
+        error = "expected '}' before end of string";
+        return false;
+    }
+
+    private static PyResult RenderMarkupField(PyCallContext context, MarkupField field, PyArguments arguments, int recursionDepth, ref int autoNumber)
+    {
+        var name = field.Name;
+        var i = 0;
+        while (i < name.Length && name[i] is not ('.' or '['))
+            i++;
+
+        var first = name[..i];
+        PyObject? value;
+        if (first.IsEmpty)
+        {
+            var args = arguments.ExtraArgs;
+            if (autoNumber >= args.Count)
+                return PyResult.IndexError("tuple index out of range");
+            value = args[autoNumber++];
+        }
+        else if (IsAllAsciiDigits(first))
+        {
+            if (!int.TryParse(first, out var index))
+                return PyResult.ValueError("Too many decimal digits in format string");
+
+            var args = arguments.ExtraArgs;
+            if (index >= args.Count)
+                return PyResult.IndexError("tuple index out of range");
+            value = args[index];
+        }
+        else if (!arguments.TryGetExtraKwarg(first.ToString(), out value))
+        {
+            return PyResult.KeyError(first.ToString());
+        }
+
+        // '.'attribute and '[item]' accesses, left to right
+        while (i < name.Length)
+        {
+            if (name[i] is '.')
+            {
+                i++;
+                var start = i;
+                while (i < name.Length && name[i] is not ('.' or '['))
+                    i++;
+
+                var attr = name[start..i];
+                if (attr.IsEmpty)
+                    return PyResult.ValueError("Empty attribute in format string");
+
+                var attrResult = PyOperators.GetAttr(context, value, PyStrObject.FromString(attr.ToString()));
+                if (attrResult.IsError)
+                    return attrResult;
+                value = attrResult.Value;
+            }
+            else if (name[i] is '[')
+            {
+                i++;
+                var start = i;
+                while (i < name.Length && name[i] is not ']')
+                    i++;
+
+                if (i >= name.Length)
+                    return PyResult.ValueError("Missing ']' in format string");
+
+                var key = name[start..i];
+                i++; // skip ']'
+
+                var itemResult = PySpecialMethods.GetItem(
+                    context,
+                    value,
+                    IsAllAsciiDigits(key)
+                        ? PyIntObject.FromInteger(int.Parse(key))
+                        : PyStrObject.FromString(key.ToString()));
+                if (itemResult.IsError)
+                    return itemResult;
+                value = itemResult.Value;
+            }
+            else
+            {
+                return PyResult.ValueError("Only '.' or '[' may follow ']' in format field specifier");
+            }
+        }
+
+        if (field.Conversion is char conversion)
+        {
+            switch (conversion)
+            {
+                case 's':
+                {
+                    var str = PySpecialMethods.Str(context, value);
+                    if (str.IsError)
+                        return str;
+                    value = str.Value;
+                    break;
+                }
+                case 'r':
+                {
+                    var repr = PySpecialMethods.Repr(context, value);
+                    if (repr.IsError)
+                        return repr;
+                    value = repr.Value;
+                    break;
+                }
+                case 'a':
+                {
+                    var ascii = PySpecialMethods.Repr(context, value);
+                    if (ascii.IsError)
+                        return ascii;
+                    value = PyStrObject.FromString(PyBuiltinFunctions.EscapeNonAscii(ascii.Value.Value));
+                    break;
+                }
+                default:
+                    return PyResult.ValueError($"Unknown conversion specifier {conversion}");
+            }
+        }
+
+        if (field.SpecNeedsExpanding)
+        {
+            var expanded = ExpandFormatMarkup(context, field.Spec, arguments, recursionDepth - 1, ref autoNumber);
+            if (expanded.IsError)
+                return expanded;
+
+            return PySpecialMethods.Format(context, value, expanded.Value);
+        }
+
+        return PySpecialMethods.Format(context, value, field.Spec.IsEmpty ? PyStrObject.Empty : PyStrObject.FromString(field.Spec.ToString()));
+    }
+
+    private static bool IsAllAsciiDigits(ReadOnlySpan<char> s)
+    {
+        if (s.IsEmpty)
+            return false;
+
+        foreach (var c in s)
+        {
+            if (!char.IsAsciiDigit(c))
+                return false;
+        }
+
+        return true;
     }
 
     [PyMethod("partition")]

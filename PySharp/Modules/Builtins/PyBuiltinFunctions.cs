@@ -1119,13 +1119,18 @@ public static partial class PyBuiltinFunctions
         if (result.IsError)
             return result;
 
-        var repr = result.Value.Value;
-        if (repr.EnumerateRunes().All(static rune => rune.IsAscii))
-            return result.Value;
+        return PyStrObject.FromString(EscapeNonAscii(result.Value.Value));
+    }
+
+    // CPython PyObject_ASCII: repr with non-ASCII runes escaped
+    internal static string EscapeNonAscii(string value)
+    {
+        if (value.EnumerateRunes().All(static rune => rune.IsAscii))
+            return value;
 
         var builder = new StringBuilder();
 
-        foreach (var rune in repr.EnumerateRunes())
+        foreach (var rune in value.EnumerateRunes())
         {
             var ch = rune.Value;
             if (rune.IsAscii)
@@ -1138,7 +1143,7 @@ public static partial class PyBuiltinFunctions
                 builder.AppendFormat("\\U{0:x8}", ch);
         }
 
-        return PyStrObject.FromString(builder.ToString());
+        return builder.ToString();
     }
 
     [PyFunctionParameters("value", "format_spec=''", "/")]
