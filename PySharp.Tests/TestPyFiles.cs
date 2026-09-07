@@ -2102,6 +2102,17 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestFloatFloorDivInfRegression()
+    {
+        // Regression: float floor-division and divmod must derive their
+        // results from the _float_div_mod fmod algorithm like CPython -
+        // infinite operands yield nan and a zero quotient takes the true
+        // quotient's sign (-2 // inf == -1.0). Fails until the fix lands.
+        var module = RunModule("test_float_floordiv_inf_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestSuperZeroArgsRegression()
     {
         // Regression: zero-argument super() must follow CPython

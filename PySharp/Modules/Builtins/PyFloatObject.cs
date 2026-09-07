@@ -285,25 +285,40 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
             var dv = (double)intObj.Value;
             if (double.IsInfinity(dv))
                 return PyResult.OverflowError("int too large to convert to float");
-            return PyFloatObject.FromDouble(double.Floor(self.Value / dv));
+            FloatDivMod(self.Value, dv, out var floorDiv, out _);
+            return PyFloatObject.FromDouble(floorDiv);
         }
         if (other is PyFloatObject floatObj)
         {
             if (floatObj.Value is 0)
                 return PyResult.ZeroDivisionError();
-            return PyFloatObject.FromDouble(double.Floor(self.Value / floatObj.Value));
+            FloatDivMod(self.Value, floatObj.Value, out var floorDiv, out _);
+            return PyFloatObject.FromDouble(floorDiv);
         }
         return base.FloorDiv(context, self, other);
     }
     protected override PyResult DivMod(PyCallContext context, PyFloatObject self, PyObject other)
     {
-        var q = FloorDiv(context, self, other);
-        if (q.IsError || q.IsNotImplemented)
-            return q;
-        var r = Mod(context, self, other);
-        if (r.IsError || r.IsNotImplemented)
-            return r;
-        return PyTupleObject.CreateTuple(q.Value, r.Value);
+        // CPython derives both halves from one _float_div_mod pass;
+        // composing separate floor-div and mod calls can disagree
+        switch (other)
+        {
+            case PyIntObject intObj:
+                if (intObj.Value.IsZero)
+                    return PyResult.ZeroDivisionError();
+                var dv = (double)intObj.Value;
+                if (double.IsInfinity(dv))
+                    return PyResult.OverflowError("int too large to convert to float");
+                FloatDivMod(self.Value, dv, out var q, out var m);
+                return PyTupleObject.CreateTuple(PyFloatObject.FromDouble(q), PyFloatObject.FromDouble(m));
+            case PyFloatObject floatObj:
+                if (floatObj.Value is 0)
+                    return PyResult.ZeroDivisionError();
+                FloatDivMod(self.Value, floatObj.Value, out var qf, out var mf);
+                return PyTupleObject.CreateTuple(PyFloatObject.FromDouble(qf), PyFloatObject.FromDouble(mf));
+            default:
+                return base.DivMod(context, self, other);
+        }
     }
     protected override PyResult Mod(PyCallContext context, PyFloatObject self, PyObject other)
     {
@@ -332,6 +347,39 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
             mod = Math.CopySign(0.0, right);
         }
         return mod;
+    }
+
+    // CPython _float_div_mod (floatobject.c): the quotient derives from the
+    // fmod remainder rather than Floor(a/b), so infinite operands yield nan
+    // (inf // 2) and a zero quotient takes the sign of the true quotient
+    // (-2 // inf == -1.0, not -0.0)
+    private static void FloatDivMod(double vx, double wx, out double floorDiv, out double mod)
+    {
+        mod = vx % wx;
+        var div = (vx - mod) / wx;
+        if (mod is not 0)
+        {
+            // a nan remainder (infinite input) compares false and skips the fix
+            if ((wx < 0) != (mod < 0))
+            {
+                mod += wx;
+                div -= 1.0;
+            }
+        }
+        else
+        {
+            mod = Math.CopySign(0.0, wx);
+        }
+        if (div is not 0)
+        {
+            floorDiv = double.Floor(div);
+            if (div - floorDiv > 0.5)
+                floorDiv += 1.0;
+        }
+        else
+        {
+            floorDiv = Math.CopySign(0.0, vx / wx);
+        }
     }
     protected override PyResult Pow(PyCallContext context, PyFloatObject self, PyObject other, PyObject modulo)
     {
@@ -383,21 +431,35 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
             var dv = (double)intObj.Value;
             if (double.IsInfinity(dv))
                 return PyResult.OverflowError("int too large to convert to float");
-            return PyFloatObject.FromDouble(double.Floor(dv / self.Value));
+            FloatDivMod(dv, self.Value, out var floorDiv, out _);
+            return PyFloatObject.FromDouble(floorDiv);
         }
         if (other is PyFloatObject floatObj)
-            return PyFloatObject.FromDouble(double.Floor(floatObj.Value / self.Value));
+        {
+            FloatDivMod(floatObj.Value, self.Value, out var floorDiv, out _);
+            return PyFloatObject.FromDouble(floorDiv);
+        }
         return base.RFloorDiv(context, self, other);
     }
     protected override PyResult RDivMod(PyCallContext context, PyFloatObject self, PyObject other)
     {
-        var q = RFloorDiv(context, self, other);
-        if (q.IsError || q.IsNotImplemented)
-            return q;
-        var r = RMod(context, self, other);
-        if (r.IsError || r.IsNotImplemented)
-            return r;
-        return PyTupleObject.CreateTuple(q.Value, r.Value);
+        if (self.Value is 0)
+            return PyResult.ZeroDivisionError();
+
+        switch (other)
+        {
+            case PyIntObject intObj:
+                var dv = (double)intObj.Value;
+                if (double.IsInfinity(dv))
+                    return PyResult.OverflowError("int too large to convert to float");
+                FloatDivMod(dv, self.Value, out var q, out var m);
+                return PyTupleObject.CreateTuple(PyFloatObject.FromDouble(q), PyFloatObject.FromDouble(m));
+            case PyFloatObject floatObj:
+                FloatDivMod(floatObj.Value, self.Value, out var qf, out var mf);
+                return PyTupleObject.CreateTuple(PyFloatObject.FromDouble(qf), PyFloatObject.FromDouble(mf));
+            default:
+                return base.RDivMod(context, self, other);
+        }
     }
     protected override PyResult RMod(PyCallContext context, PyFloatObject self, PyObject other)
     {
