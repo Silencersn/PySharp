@@ -313,6 +313,29 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
         return PyResult.TypeError(PySR.Runtime_Object_Unhashable, self.PyType.FullName);
     }
 
+    // bytearray_contains mirrors bytes_contains: a bytes-like operand is
+    // searched as a subsequence, an index operand is byte membership with
+    // the legacy 0..255 validation
+    protected override PyResult Contains(PyCallContext context, PyByteArrayObject self, PyObject item)
+    {
+        if (TryGetSpan(item, out var sub))
+            return PyBoolObject.FromBoolean(self.AsSpan().IndexOf(sub) >= 0);
+
+        if (item is PyIntObject || item.PyType.Slots.Index is not null)
+        {
+            var indexResult = PySpecialMethods.Index(context, item);
+            if (indexResult.IsError)
+                return indexResult;
+
+            var value = indexResult.Value.Value;
+            if (value < 0 || value > 255)
+                return PyResult.ValueError(PySR.Runtime_Bytes_ByteOutOfRange);
+            return PyBoolObject.FromBoolean(self.AsSpan().Contains((byte)value));
+        }
+
+        return PyResult.TypeError(PySR.Runtime_Bytes_BytesLikeRequired, item.PyType.FullName);
+    }
+
     [PyMethod("append")]
     [PyFunctionParameters("item", "/")]
     private static PyResult Append(PyCallContext context, PyByteArrayObject self, PyArguments arguments)
@@ -338,22 +361,7 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
     }
 
     private static bool TryGetSpan(PyObject source, out ReadOnlySpan<byte> span)
-    {
-        if (source is PyByteArrayObject byteArray)
-        {
-            span = byteArray.AsSpan();
-            return true;
-        }
-
-        if (source is PyBytesObject bytes)
-        {
-            span = bytes.AsSpan();
-            return true;
-        }
-
-        span = default;
-        return false;
-    }
+        => PyBytesObjectType.TryGetBytesLikeSpan(source, out span);
 
     private static PyResult TryGetByteValue(PyCallContext context, PyObject item, out byte value)
     {
@@ -364,7 +372,7 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
 
         var intValue = indexResult.Value.Value;
         if (intValue < byte.MinValue || intValue > byte.MaxValue)
-            return PyResult.ValueError(PySR.Runtime_Bytes_OutOfRange);
+            return PyResult.ValueError(PySR.Runtime_Bytes_ByteOutOfRange);
 
         value = (byte)intValue;
         return PyNoneObject.None;

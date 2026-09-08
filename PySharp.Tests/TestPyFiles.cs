@@ -2113,6 +2113,19 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestBytesContainsAddRegression()
+    {
+        // Regression: bytes/bytearray __contains__ must treat bytes-like
+        // operands (bytes, bytearray, memoryview) as subsequences in both
+        // cross directions, treat index operands as byte membership with
+        // the 0..255 validation, and reject the rest with the buffer
+        // TypeError; bytes.__add__ accepts bytes-like operands and stays
+        // bytes. Fails until the fixes land.
+        var module = RunModule("test_bytes_contains_add_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestSliceIndexRegression()
     {
         // Regression: slice bounds must go through __index__ like

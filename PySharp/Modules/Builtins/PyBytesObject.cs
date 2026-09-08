@@ -163,13 +163,15 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
 
     protected override PyResult Add(PyCallContext context, PyBytesObject self, PyObject other)
     {
-        if (other is not PyBytesObject otherBytes)
+        // bytes_concat accepts any bytes-like operand; the concat TypeError
+        // is reserved for fully unrelated types
+        if (!TryGetBytesLikeSpan(other, out var otherSpan))
             return PyResult.TypeError(PySR.Runtime_Bytes_CannotConcat, other.PyType.FullName);
 
-        var combinedBytes = new byte[self.Length + otherBytes.Length];
+        var combinedBytes = new byte[self.Length + otherSpan.Length];
         var dstSpan = combinedBytes.AsSpan();
         self.AsSpan().CopyTo(dstSpan);
-        otherBytes.AsSpan().CopyTo(dstSpan[self.Length..]);
+        otherSpan.CopyTo(dstSpan[self.Length..]);
         return PyBytesObject.MoveBytes(combinedBytes);
     }
 
@@ -239,28 +241,48 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
         return PyBoolObject.FromBoolean(self.Length < otherBytes.Length);
     }
 
+    // Buffer-protocol types accepted wherever CPython takes a bytes-like
+    // operand: bytes, bytearray, memoryview
+    internal static bool TryGetBytesLikeSpan(PyObject source, out ReadOnlySpan<byte> span)
+    {
+        switch (source)
+        {
+            case PyBytesObject bytes:
+                span = bytes.AsSpan();
+                return true;
+            case PyByteArrayObject byteArray:
+                span = byteArray.AsSpan();
+                return true;
+            case PyMemoryViewObject view:
+                span = view.DataSpan;
+                return true;
+            default:
+                span = default;
+                return false;
+        }
+    }
+
     protected override PyResult Contains(PyCallContext context, PyBytesObject self, PyObject item)
     {
-        // TODO: simple impl
-        if (item is not PyBytesObject otherBytes)
-            return PyResult.TypeError(null);
+        // bytes_contains: a bytes-like operand is searched as a subsequence;
+        // an index operand is byte membership with the legacy 0..255
+        // validation; anything else is rejected with the buffer error
+        if (TryGetBytesLikeSpan(item, out var sub))
+            return PyBoolObject.FromBoolean(self.AsSpan().IndexOf(sub) >= 0);
 
-        var source = self.AsSpan();
-        var sub = otherBytes.AsSpan();
-
-        if (sub.IsEmpty)
-            return PyBoolObject.True;
-
-        if (sub.Length > source.Length)
-            return PyBoolObject.False;
-
-        for (int i = 0; i <= source.Length - sub.Length; i++)
+        if (item is PyIntObject || item.PyType.Slots.Index is not null)
         {
-            if (source.Slice(i, sub.Length).SequenceEqual(sub))
-                return PyBoolObject.True;
+            var indexResult = PySpecialMethods.Index(context, item);
+            if (indexResult.IsError)
+                return indexResult;
+
+            var value = indexResult.Value.Value;
+            if (value < 0 || value > 255)
+                return PyResult.ValueError(PySR.Runtime_Bytes_ByteOutOfRange);
+            return PyBoolObject.FromBoolean(self.AsSpan().Contains((byte)value));
         }
 
-        return PyBoolObject.False;
+        return PyResult.TypeError(PySR.Runtime_Bytes_BytesLikeRequired, item.PyType.FullName);
     }
 
     [PyMethod("decode")]
