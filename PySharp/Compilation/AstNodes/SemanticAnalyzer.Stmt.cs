@@ -81,6 +81,8 @@ partial class SemanticAnalyzer
 
     private void VisitBreak(BreakNode node)
     {
+        // CPython reports the except* violation before "outside loop"
+        CheckControlStmtNotInExceptStarUntil(static n => n is ForNode or WhileNode or AsyncForNode);
         if (_currentScopeStats.LoopDepth is 0)
             throw SyntaxError(PySR.InvalidSyntax_Semantic_BreakOutsideLoop);
         if (_currentScopeStats.FinallyDepth > 0)
@@ -89,6 +91,7 @@ partial class SemanticAnalyzer
 
     private void VisitContinue(ContinueNode node)
     {
+        CheckControlStmtNotInExceptStarUntil(static n => n is ForNode or WhileNode or AsyncForNode);
         if (_currentScopeStats.LoopDepth is 0)
             throw SyntaxError(PySR.InvalidSyntax_Semantic_ContinueOutsideLoop);
         if (_currentScopeStats.FinallyDepth > 0)
@@ -99,6 +102,7 @@ partial class SemanticAnalyzer
     {
         if (_currentScopeStats.Scope is not (FunctionVariableScope or AsyncFunctionVariableScope))
             throw SyntaxError(PySR.InvalidSyntax_Semantic_ReturnOutsideFunction);
+        CheckControlStmtNotInExceptStarUntil(static n => false);
         if (_currentScopeStats.FinallyDepth > 0)
             CheckControlStmtNotInFinallyUntil(static n => false, PySR.InvalidSyntax_Semantic_ReturnInFinally);
         if (node.Value is not null && _currentScopeStats.Scope is AsyncFunctionVariableScope asyncScope)

@@ -57,6 +57,16 @@ public sealed partial class PyBaseExceptionGroupObjectType : PyExceptionType
         return PyStrObject.FromString($"{self.AsGroup.Message} ({count} sub-exceptions)");
     }
 
+    [PyProperty("message")]
+    private static PyResult Get_Message(PyCallContext context, PyExceptionObject self)
+        // TODO: AsGroup
+        => PyStrObject.FromString(self.AsGroup!.Message);
+
+    [PyProperty("exceptions")]
+    private static PyResult Get_Exceptions(PyCallContext context, PyExceptionObject self)
+        // TODO: AsGroup
+        => PyTupleObject.CreateTuple([.. self.AsGroup!.Exceptions]);
+
     [PyMethod("derive")]
     [PyFunctionParameters("excs", "/")]
     private static PyResult Derive(PyCallContext context, PyExceptionObject self, PyArguments arguments)

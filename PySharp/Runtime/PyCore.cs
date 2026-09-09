@@ -2,6 +2,7 @@ using PySharp.Compilation.Primitives;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.VirtualMachine;
+using System.Collections.Generic;
 using System.Diagnostics;
 
 namespace PySharp.Runtime;
@@ -158,8 +159,24 @@ internal static class PyCore
 
     public static void Raise(PyCallContext context, ref BytecodeVirtualMachineStates states, PyObject? excObj, PyObject? causeObj)
     {
-        var exc = ToException(context, excObj)
-            ?? throw new PyRuntimeException(context, states.CurrentException);
+        PyExceptionObject exc;
+        if (excObj is null)
+        {
+            // bare raise re-raises the current exception as-is; inside an
+            // except* handler the stack top is the matched subgroup (a null
+            // entry is a fully-consumed rest, not a re-raisable exception)
+            if (states.Exceptions.Count is 0 || states.Exceptions.Peek() is null)
+                throw context.RuntimeError(PySR.Runtime_RaiseStmt_NoActiveException);
+            exc = states.CurrentException;
+        }
+        else
+        {
+            // an explicit raise starts a fresh traceback head (CPython
+            // replaces it too); PrepReraiseStar exploits that reference
+            // change to tell an explicit re-raise from a bare one
+            exc = ToException(context, excObj)!;
+            exc.WithTraceback(context, overwriteExisting: true);
+        }
 
         if (causeObj is not null)
         {
@@ -174,7 +191,7 @@ internal static class PyCore
             }
         }
 
-        if (states.Exceptions.TryPeek(out var pre))
+        if (states.Exceptions.TryPeek(out var pre) && !ReferenceEquals(pre, exc))
             exc.Context = pre;
 
         throw new PyRuntimeException(context, exc);
@@ -232,6 +249,99 @@ internal static class PyCore
             throw context.TypeError(PySR.Runtime_TryStmt_ExpectedExceptionOrNone, tuple[1].PyType.FullName);
 
         return (rest, match);
+    }
+
+    // Port of _PyExc_PrepReraiseStar (Objects/exceptions.c): settles the
+    // exception a try-except* statement leaves behind. orig is the caught
+    // exception, excs the per-handler raises (the unmatched rest appended
+    // as None). Reraised items (metadata identical to orig - a bare raise
+    // never mutates them) are projected back onto orig's own tree keeping
+    // its message; everything else becomes a sibling in a fresh group.
+    public static PyExceptionObject? PrepReraiseStar(PyCallContext context, PyExceptionObject orig, IReadOnlyList<PyExceptionObject?> excs)
+    {
+        var items = excs.Where(static e => e is not null).Cast<PyExceptionObject>().ToList();
+        if (items.Count is 0)
+            return null;
+
+        if (!orig.IsGroup)
+            // a naked exception was caught and wrapped; only one except*
+            // clause could have executed, so at most one item remains
+            return items[0];
+        List<PyExceptionObject> raised = [];
+        List<PyExceptionObject> reraised = [];
+        foreach (var item in items)
+        {
+            if (IsSameExceptionMetadata(item, orig))
+                reraised.Add(item);
+            else
+                raised.Add(item);
+        }
+
+        var reraisedGroup = reraised.Count > 0 ? ExceptionGroupProjection(context, orig, reraised) : null;
+
+        if (raised.Count is 0)
+            return reraisedGroup;
+
+        if (reraisedGroup is not null)
+            raised.Add(reraisedGroup);
+
+        return raised.Count is 1 ? raised[0] : PyBaseExceptionGroupObjectType.CreateExceptionGroup(string.Empty, raised);
+    }
+
+    private static bool IsSameExceptionMetadata(PyExceptionObject first, PyExceptionObject second)
+    {
+        return ReferenceEquals(first.Traceback, second.Traceback)
+            && ReferenceEquals(first.Cause, second.Cause)
+            && ReferenceEquals(first.Context, second.Context);
+    }
+
+    // Port of exception_group_projection: the sub-group of eg whose leaves
+    // appear (by identity) in any of keep, rebuilt along eg's own nesting.
+    private static PyExceptionObject? ExceptionGroupProjection(PyCallContext context, PyExceptionObject eg, List<PyExceptionObject> keep)
+    {
+        var leafIds = new HashSet<PyExceptionObject>(ReferenceEqualityComparer.Instance);
+        foreach (var item in keep)
+            CollectGroupLeaves(item, leafIds);
+
+        return ProjectGroup(context, eg, leafIds);
+    }
+
+    private static void CollectGroupLeaves(PyExceptionObject exc, HashSet<PyExceptionObject> leafIds)
+    {
+        if (exc.IsGroup)
+        {
+            foreach (var sub in exc.AsGroup!.Exceptions)
+                CollectGroupLeaves((PyExceptionObject)sub, leafIds);
+        }
+        else
+        {
+            leafIds.Add(exc);
+        }
+    }
+
+    private static PyExceptionObject? ProjectGroup(PyCallContext context, PyExceptionObject eg, HashSet<PyExceptionObject> leafIds)
+    {
+        if (!eg.IsGroup)
+            return leafIds.Contains(eg) ? eg : null;
+
+        List<PyExceptionObject> match = [];
+        foreach (var sub in eg.AsGroup!.Exceptions)
+        {
+            var projected = ProjectGroup(context, (PyExceptionObject)sub, leafIds);
+            if (projected is not null)
+                match.Add(projected);
+        }
+
+        if (match.Count is 0)
+            return null;
+
+        // derive keeps the group's own message and metadata, like the
+        // split machinery the handler entry used
+        var derived = eg.CallMethod(context, "derive", [PyListObject.CreateList(match)]).PyUnwrap(context);
+        if (derived is not PyExceptionObject result || !result.IsGroup || !PyBaseExceptionGroupObjectType.Shared.IsInstance(result))
+            throw context.TypeError(PySR.Runtime_ExceptionGroup_DeriveReturnNonGroup);
+
+        return result;
     }
 
     public static PyResult EvalOperator(PyCallContext context, OperatorType op, PyObject left, PyObject right)

@@ -257,16 +257,33 @@ internal static partial class BytecodeVirtualMachine
 
     private static void InternalCheckEgMatch(PyCallContext context, ref ValueOperandStack stack, ref BytecodeVirtualMachineStates states, int instructionArg)
     {
-        var exc = states.CurrentException;
-        if (!exc.IsGroup)
-            exc = PyBaseExceptionGroupObjectType.CreateExceptionGroup(string.Empty, [exc]);
-
+        // operand stack: [..., exc, type] -> [..., rest, match]; the rest
+        // stays on the stack for later handlers and the end-of-statement
+        // settlement, the match becomes the bare-raise source
         var type = stack.Pop();
-        var (rest, match) = PyCore.SplitExceptionGroup(context, exc, type);
-        states.Exceptions.Pop();
-        states.ExceptionHandlers.Peek().PyException = rest;
-        states.Exceptions.Push(rest! /* null if rest is None, OpCode._PopExceptionAndJumpIfNull should handle that */);
+        var exc = (PyExceptionObject)stack.Pop();
+
+        PyExceptionObject group = exc.IsGroup ? exc : PyBaseExceptionGroupObjectType.CreateExceptionGroup(string.Empty, [exc]);
+        var (rest, match) = PyCore.SplitExceptionGroup(context, group, type);
+
+        // a non-group original only travels wrapped while matching: with no
+        // match in this handler the next handler (or the settlement) must
+        // see the bare original again
+        if (match is PyNoneObject && !exc.IsGroup)
+            rest = exc;
+
+        if (rest is null)
+            stack.Push(PyNoneObject.None);
+        else
+            stack.Push(rest);
         stack.Push(match);
+
+        states.Exceptions.Pop();
+        // the rest sentinel feeds the next handler's CheckEgMatch; the
+        // settlement consumes the last one (_StarReraise / Lclean pop)
+        states.Exceptions.Push(rest!);
+        if (match is PyExceptionObject matched)
+            states.Exceptions.Push(matched);
     }
 
     private static void InternalBuildSlice(ref ValueOperandStack stack, int instructionArg)

@@ -143,6 +143,7 @@ partial class PySR
     public const string InvalidSyntax_Semantic_BreakInFinally = "'break' in a 'finally' block";
     public const string InvalidSyntax_Semantic_ContinueInFinally = "'continue' in a 'finally' block";
     public const string InvalidSyntax_Semantic_ReturnInFinally = "'return' in a 'finally' block";
+    public const string InvalidSyntax_Semantic_ControlFlowInExceptStar = "'break', 'continue' and 'return' cannot appear in an except* block";
     public const string InvalidSyntax_Semantic_YieldOutsideFunction = "'yield' outside function";
     public const string InvalidSyntax_Semantic_YieldInsideComprehension = "'yield' inside {0}";
     public const string InvalidSyntax_Semantic_YieldFromOutsideFunction = "'yield from' outside function";

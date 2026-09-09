@@ -234,30 +234,81 @@ partial class Emitter
     }
     private void InternalEmitTryStarExceptors(ImmutableArray<ExceptHandlerNode> exceptors, ReadOnlySpan<Label> exceptorLabels, Label finallyBlockLabel)
     {
+        // dataflow like CPython codegen_try_star_except: the original group
+        // and a result list stay on the operand stack across all handlers;
+        // each body is wrapped in an inner catcher whose escape is appended
+        // to the list before the chain continues, and one settlement pass
+        // decides what the statement leaves to propagate
+        var settleLabel = Builder.DefineLabel();
+        var cleanLabel = Builder.DefineLabel();
+        Span<Label> appendLabels = stackalloc Label[exceptors.Length];
+        for (int i = 0; i < exceptors.Length; i++)
+            appendLabels[i] = Builder.DefineLabel();
+
+        // chain entry (catch dispatch target): capture the original and
+        // start the result list; the working copy of the original sits on
+        // top so the first handler's CheckEgMatch can consume it
+        Builder.MarkLabel(exceptorLabels[0]);
+        Builder.Emit(OpCode._LoadExc);
+        Builder.Emit(OpCode.BuildList, 0);
+        Builder.Emit(OpCode.Copy, 2);
+
         for (int i = 0; i < exceptors.Length; i++)
         {
-            Builder.MarkLabel(exceptorLabels[i]);
-
+            if (i > 0)
+                Builder.MarkLabel(exceptorLabels[i]);
             var exceptor = exceptors[i];
             Debug.Assert(exceptor.Type is not null);
+            var nextLabel = i < exceptors.Length - 1 ? exceptorLabels[i + 1] : settleLabel;
+
+            // [..., orig, res, rest] + type -> [..., orig, res, rest', match]
             LoadExpr(exceptor.Type);
             Builder.Emit(OpCode.CheckEgMatch);
-            var nextLabel = i < exceptors.Length - 1 ? exceptorLabels[i + 1] : finallyBlockLabel;
-            Builder.Emit(OpCode._CheckMatch, nextLabel); // if match None, jump to next except or finally
+            var skipLabel = Builder.DefineLabel();
+            Builder.Emit(OpCode._CheckMatch, skipLabel);
 
             if (exceptor.Name is not null)
                 StoreName(exceptor.Name);
             else
                 Builder.Emit(OpCode.PopTop);
 
+            // inner catcher: an escape from the body is appended to the
+            // result list, then the chain continues with the next handler
+            Builder.Emit(OpCode._SetupFinally, appendLabels[i]);
             EmitStmts(exceptor.Body);
-
             if (exceptor.Name is not null)
                 DeleteName(exceptor.Name);
+            Builder.Emit(OpCode._PopMatchException);
+            Builder.Emit(OpCode._ExitFinally);
+            Builder.Jump(nextLabel);
 
-            Builder.Emit(OpCode._PopExceptionAndJumpIfNull, finallyBlockLabel); // pop exc and jump to finally if rest is None
-            Builder.Jump(nextLabel); // jump to next except or finally
+            Builder.MarkLabel(appendLabels[i]);
+            Builder.Emit(OpCode._LoadExc);
+            // the still-pending rest sits between the list and TOS here
+            Builder.Emit(OpCode.ListAppend, 2);
+            // drop the escaped exception and the handler's match; both were
+            // pushed onto the exception stack (dispatch and CheckEgMatch)
+            Builder.Emit(OpCode._PopException);
+            Builder.Emit(OpCode._PopException);
+            Builder.Emit(OpCode._ExitFinally);
+            Builder.Jump(nextLabel);
+
+            Builder.MarkLabel(skipLabel);
         }
+
+        // settlement: fold the final rest in and compute what propagates
+        Builder.MarkLabel(settleLabel);
+        Builder.Emit(OpCode.ListAppend, 1);
+        Builder.Emit(OpCode._PrepReraiseStar);
+        Builder.Emit(OpCode.Copy, 1);
+        Builder.Emit(OpCode.PopJumpIfNone, cleanLabel);
+        Builder.Emit(OpCode._StarReraise);
+        Builder.Jump(finallyBlockLabel);
+
+        Builder.MarkLabel(cleanLabel);
+        Builder.Emit(OpCode._PopException);
+        Builder.Emit(OpCode.PopTop);
+        Builder.Jump(finallyBlockLabel);
     }
 
     private void InternalEmitTry(ITryNode node)

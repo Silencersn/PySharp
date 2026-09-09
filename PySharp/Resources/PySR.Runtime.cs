@@ -18,6 +18,7 @@ partial class PySR
     public const string Runtime_WithStmt_MissingExit = "'{0}' object does not support the context manager protocol (missed __exit__ method)";
 
     public const string Runtime_RaiseStmt_RaiseNonException = "exceptions must derive from BaseException";
+    public const string Runtime_RaiseStmt_NoActiveException = "No active exception to reraise";
     public const string Runtime_RaiseStmt_Cause = "The above exception was the direct cause of the following exception:";
 
     public const string Runtime_Import_ModuleNotFound = "No module named '{0}'";

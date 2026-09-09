@@ -366,6 +366,27 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
         }
     }
 
+    // PEP 654: break/continue/return cannot cross an except* handler
+    // boundary. A handler belongs to except* iff its parent (the next
+    // ancestor) is a TryStarNode.
+    internal void CheckControlStmtNotInExceptStarUntil(Func<AstNode, bool> stopPredicate)
+    {
+        ExceptHandlerNode? previousHandler = null;
+        foreach (var node in _nodesToRoot)
+        {
+            if (node == _currentScopeStats.Scope.Owner)
+                return;
+
+            if (previousHandler is not null && node is TryStarNode)
+                throw SyntaxError(PySR.InvalidSyntax_Semantic_ControlFlowInExceptStar);
+
+            if (stopPredicate(node))
+                return;
+
+            previousHandler = node as ExceptHandlerNode;
+        }
+    }
+
     private void PushScope(VariableScope nextScope)
     {
         _scopeStatsStack.Push(_currentScopeStats);

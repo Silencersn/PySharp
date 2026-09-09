@@ -183,6 +183,7 @@ public sealed class Bytecode
                 case OpCode._PopException:
                 case OpCode._PopExceptionIfTrue:
                 case OpCode._PopExceptionAndJumpIfNull:
+                case OpCode._PopMatchException:
                 case OpCode._UnaryOp:
                 case OpCode.UnaryNot:
                 case OpCode.SetupAnnotations:
@@ -228,6 +229,8 @@ public sealed class Bytecode
                 case OpCode._StoreDerefFast:
                 case OpCode._StoreNameIncludedNonInlineFrame:
                 case OpCode._StoreDerefIncludedNonInlineFrame:
+                case OpCode._PrepReraiseStar:
+                case OpCode._StarReraise:
                 case OpCode.DeleteAttr:
                 case OpCode.PopIter:
                 case OpCode.BinaryOp:

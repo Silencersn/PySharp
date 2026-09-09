@@ -2126,6 +2126,51 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestExceptStarReraiseRegression()
+    {
+        // Regression: except* unwinding must follow PEP 654 - a bare raise
+        // re-raises the matched subgroup (flattened together with the
+        // unmatched rest when one exists), an exception escaping a handler
+        // recombines with the rest instead of dropping it, a non-group
+        // original propagates unwrapped when no handler matched, and a
+        // bare raise without a live exception is a catchable RuntimeError.
+        // Fails until the fixes land.
+        var module = RunModule("test_except_star_reraise_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestExceptStarControlFlowSyntaxRegression()
+    {
+        // Regression: break/continue/return cannot cross an except* handler
+        // boundary (compile-time SyntaxError); a loop inside the block and
+        // a nested def are legal, and return-outside-function outranks the
+        // except* error. Fails until the fix lands.
+        foreach (var snippet in new[]
+        {
+            "def f():\n    try:\n        pass\n    except* ValueError:\n        return 1\n",
+            "def f():\n    while True:\n        try:\n            pass\n        except* ValueError:\n            break\n",
+            "def f():\n    while True:\n        try:\n            pass\n        except* ValueError:\n            continue\n",
+            "try:\n    pass\nexcept* ValueError:\n    break\n",
+            "try:\n    pass\nexcept* ValueError:\n    continue\n",
+        })
+        {
+            var ex = Assert.ThrowsExactly<PyRuntimeException>(() => PyInterpreter.RunCode(snippet));
+            StringAssert.Contains(ex.Message, "'break', 'continue' and 'return' cannot appear in an except* block");
+        }
+
+        // a loop inside the block owns its break/continue; a nested def
+        // owns its return, and the function returns from outside the block
+        PyInterpreter.RunCode("def f():\n    try:\n        pass\n    except* ValueError:\n        for i in range(3):\n            break\n    return 'ok'\n");
+        PyInterpreter.RunCode("def f():\n    try:\n        pass\n    except* ValueError:\n        def inner():\n            return 1\n        inner()\n    return 'ok'\n");
+
+        // at module level the return-outside-function error wins
+        var ex2 = Assert.ThrowsExactly<PyRuntimeException>(() =>
+            PyInterpreter.RunCode("try:\n    pass\nexcept* ValueError:\n    return 1\n"));
+        StringAssert.Contains(ex2.Message, "'return' outside function");
+    }
+
+    [TestMethod]
     public void TestSliceIndexRegression()
     {
         // Regression: slice bounds must go through __index__ like

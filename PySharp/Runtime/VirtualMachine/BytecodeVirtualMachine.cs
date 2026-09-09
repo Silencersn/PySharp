@@ -900,6 +900,41 @@ internal static partial class BytecodeVirtualMachine
                         }
                         break;
 
+                    // except* handler epilogue: drop the matched subgroup the
+                    // handler was entered with; the rest stays for the next
+                    // handler or the finally re-raise
+                    case OpCode._PopMatchException:
+                        states.Exceptions.Pop();
+                        break;
+
+                    // end of a try-except* statement: [..., orig, res] ->
+                    // [result]; the res list holds the per-handler raises
+                    // plus the final rest (None entries allowed)
+                    case OpCode._PrepReraiseStar:
+                        {
+                            var res = Stack.Pop();
+                            var orig = Stack.Pop();
+                            var excs = (PyListObject)res;
+                            var items = new List<PyExceptionObject?>(excs.Count);
+                            foreach (var item in excs)
+                                items.Add(item is PyNoneObject ? null : (PyExceptionObject)item);
+                            var prepared = PyCore.PrepReraiseStar(context, (PyExceptionObject)orig, items);
+                            if (prepared is null)
+                                Stack.Push(PyNoneObject.None);
+                            else
+                                Stack.Push(prepared);
+                        }
+                        break;
+
+                    // re-raise the settlement result through the statement's
+                    // own handler record so the finally block unwinds it
+                    case OpCode._StarReraise:
+                        {
+                            var raisedResult = Stack.Pop();
+                            states.ExceptionHandlers.Peek().PyException = (PyExceptionObject)raisedResult;
+                        }
+                        break;
+
                     case OpCode.MatchSequence:
                         boolValue = PyCore.IsSequenceForMatch(Stack[-1]);
                         Stack.Push(PyBoolObject.FromBoolean(boolValue));
