@@ -2108,17 +2108,45 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     {
         // Implement Python's % string formatting (old-style %-formatting)
         var formatStr = self.Value;
-        IReadOnlyList<PyObject>? args = null;
-        PyDictObject? dict = null;
 
+        // PyUnicode_Format: a tuple is an argument list; any other object
+        // with __getitem__ (except str) is a mapping candidate, and the
+        // rest is a single value consumed by exactly one conversion
+        IReadOnlyList<PyObject>? listArgs;
+        PyObject singleArg;
+        PyObject? mapping;
         if (other is PyTupleObject tuple)
-            args = tuple;
-        else if (other is PyDictObject dictObj)
-            dict = dictObj;
+        {
+            listArgs = tuple;
+            singleArg = null!;
+            mapping = null;
+        }
         else
-            args = [other];
+        {
+            listArgs = null;
+            singleArg = other;
+            mapping = other is PyStrObject || other.PyType.Slots.GetItem is null ? null : other;
+        }
 
-        int argIndex = 0;
+        // getnextarg: the single-value mode starts at -2 and yields its
+        // value exactly once before reporting missing arguments
+        int argIndex = listArgs is not null ? 0 : -2;
+
+        PyResult<PyObject> NextArg()
+        {
+            if (listArgs is not null)
+            {
+                if (argIndex < listArgs.Count)
+                    return listArgs[argIndex++];
+            }
+            else if (argIndex < -1)
+            {
+                argIndex++;
+                return singleArg;
+            }
+            return PyResult.TypeError("not enough arguments for format string");
+        }
+
         var sb = new StringBuilder();
 
         for (int i = 0; i < formatStr.Length; i++)
@@ -2139,31 +2167,45 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 continue;
             }
 
-            PyObject? value;
-
             // Handle dict-based: %(name)format
             if (formatStr[i] is '(')
             {
-                if (dict is null)
+                if (mapping is null)
                     return PyResult.TypeError("format requires a mapping");
 
-                int closeParen = formatStr.IndexOf(')', i + 1);
+                // CPython skips balanced parentheses inside the key
+                int keyStart = i + 1;
+                int depth = 1;
+                int closeParen = -1;
+                for (int j = keyStart; j < formatStr.Length; j++)
+                {
+                    if (formatStr[j] is '(')
+                    {
+                        depth++;
+                    }
+                    else if (formatStr[j] is ')')
+                    {
+                        depth--;
+                        if (depth is 0)
+                        {
+                            closeParen = j;
+                            break;
+                        }
+                    }
+                }
                 if (closeParen < 0)
-                    return PyResult.ValueError("missing ')' in format spec");
+                    return PyResult.ValueError("incomplete format key");
 
-                string key = formatStr[(i + 1)..closeParen];
+                string key = formatStr[keyStart..closeParen];
                 i = closeParen + 1;
 
-                if (!dict.TryGetValue(key, out value))
-                    return PyResult.KeyError(key);
-            }
-            else
-            {
-                if (args is null)
-                    return PyResult.TypeError("format requires a mapping");
-                if (argIndex >= args.Count)
-                    return PyResult.TypeError("not enough arguments for format string");
-                value = args[argIndex++];
+                var itemResult = PySpecialMethods.GetItem(context, mapping, PyStrObject.FromString(key));
+                if (itemResult.IsError)
+                    return itemResult;
+                // the mapping value becomes the single-value argument source
+                singleArg = itemResult.Value;
+                listArgs = null;
+                argIndex = -2;
             }
 
             // Parse flags
@@ -2190,12 +2232,19 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             int width = -1;
             if (i < formatStr.Length && formatStr[i] is '*')
             {
-                if (args is null || argIndex >= args.Count)
-                    return PyResult.TypeError("not enough arguments for format string");
-                if (args[argIndex] is not PyIntObject widthObj)
+                // the width comes from the argument tuple before the value
+                var widthResult = NextArg();
+                if (widthResult.IsError)
+                    return widthResult;
+                if (widthResult.Value is not PyIntObject widthObj)
                     return PyResult.TypeError("* wants int");
                 width = widthObj.Int32Value;
-                argIndex++;
+                // CPython: a negative width flips to left alignment
+                if (width < 0)
+                {
+                    flagLeftAlign = true;
+                    width = -width;
+                }
                 i++;
             }
             else
@@ -2214,12 +2263,15 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 i++;
                 if (i < formatStr.Length && formatStr[i] is '*')
                 {
-                    if (args is null || argIndex >= args.Count)
-                        return PyResult.TypeError("not enough arguments for format string");
-                    if (args[argIndex] is not PyIntObject precObj)
+                    var precResult = NextArg();
+                    if (precResult.IsError)
+                        return precResult;
+                    if (precResult.Value is not PyIntObject precObj)
                         return PyResult.TypeError("* wants int");
                     precision = precObj.Int32Value;
-                    argIndex++;
+                    // CPython: a negative dynamic precision clamps to zero
+                    if (precision < 0)
+                        precision = 0;
                     i++;
                 }
                 else
@@ -2242,6 +2294,14 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             if (i >= formatStr.Length)
                 return PyResult.ValueError("incomplete format");
             char fmtType = formatStr[i];
+
+            // the value itself is taken only after the whole spec (including
+            // any '*' width/precision) has consumed its arguments, matching
+            // the CPython ordering
+            var valueResult = NextArg();
+            if (valueResult.IsError)
+                return valueResult;
+            PyObject value = valueResult.Value;
 
             // Format the value
             string formatted;
@@ -2281,10 +2341,22 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 case 'i':
                 case 'u':
                     {
-                        var indexResult = PySpecialMethods.Index(context, value);
-                        if (indexResult.IsError)
-                            return indexResult;
-                        var intVal = indexResult.Value.Value;
+                        PyIntObject intObj;
+                        if (value is PyIntObject directInt)
+                        {
+                            intObj = directInt;
+                        }
+                        else
+                        {
+                            // PyNumber_Long: any number converts (__int__ or
+                            // __index__, a float truncating toward zero);
+                            // other types get the %-type specific TypeError
+                            var intResult = PySpecialMethods.Int(context, value);
+                            if (intResult.IsError)
+                                return PyResult.TypeError(PySR.Runtime_Str_PctFormatRealNumberRequired, fmtType, value.PyType.FullName);
+                            intObj = intResult.Value;
+                        }
+                        var intVal = intObj.Value;
                         string intStr;
                         if (precision >= 0)
                             intStr = BigInteger.Abs(intVal).ToString($"D{precision}");
@@ -2303,7 +2375,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                     {
                         var indexResult = PySpecialMethods.Index(context, value);
                         if (indexResult.IsError)
-                            return indexResult;
+                            return PyResult.TypeError(PySR.Runtime_Str_PctFormatIntegerRequired, fmtType, value.PyType.FullName);
                         var octVal = indexResult.Value.Value;
                         bool isNeg = octVal.Sign < 0;
                         var absVal = isNeg ? -octVal : octVal;
@@ -2322,7 +2394,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                     {
                         var indexResult = PySpecialMethods.Index(context, value);
                         if (indexResult.IsError)
-                            return indexResult;
+                            return PyResult.TypeError(PySR.Runtime_Str_PctFormatIntegerRequired, fmtType, value.PyType.FullName);
                         var hexBigInt = indexResult.Value.Value;
                         bool isNeg = hexBigInt.Sign < 0;
                         var absVal = isNeg ? -hexBigInt : hexBigInt;
@@ -2341,7 +2413,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                     {
                         var indexResult = PySpecialMethods.Index(context, value);
                         if (indexResult.IsError)
-                            return indexResult;
+                            return PyResult.TypeError(PySR.Runtime_Str_PctFormatIntegerRequired, fmtType, value.PyType.FullName);
                         var hexBigInt = indexResult.Value.Value;
                         bool isNeg = hexBigInt.Sign < 0;
                         var absVal = isNeg ? -hexBigInt : hexBigInt;
@@ -2532,9 +2604,17 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             sb.Append(formatted);
         }
 
-        // Check for unused arguments
-        if (args is not null && argIndex < args.Count)
+        // Check for unused arguments: leftover tuple entries, or an
+        // unconsumed single value that is not a mapping candidate
+        if (listArgs is not null)
+        {
+            if (argIndex < listArgs.Count)
+                return PyResult.TypeError("not all arguments converted during string formatting");
+        }
+        else if (mapping is null && argIndex < -1)
+        {
             return PyResult.TypeError("not all arguments converted during string formatting");
+        }
 
         return PyStrObject.FromString(sb.ToString());
     }

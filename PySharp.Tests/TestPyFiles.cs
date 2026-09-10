@@ -2126,6 +2126,20 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestStrPercentFormatRegression()
+    {
+        // Regression: str % formatting must take '*' width/precision from
+        // the argument tuple before the value itself, drive the mapping
+        // lookup from %(name) keys in the format string (a dict without
+        // keys formats as a single value), accept any number for %d/%i/%u
+        // with floats truncating toward zero, and require __index__ for
+        // %x/%X/%o with the conversion-specific TypeErrors.
+        // Fails until the fixes land.
+        var module = RunModule("test_str_percent_format_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestFileSeekRegression()
     {
         // Regression: file.seek()/tell() must validate their arguments like
