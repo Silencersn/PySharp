@@ -1940,6 +1940,18 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestIntRoundNdigitsRegression()
+    {
+        // Regression: round(int, ndigits) with a negative ndigits must
+        // round to the nearest multiple of 10 ** -ndigits with ties going
+        // to the even multiple (1250 -> 1200, -1350 -> -1400), ndigits must
+        // go through __index__, and bool/int-subclass instances convert to
+        // exact ints. Fails until the fix lands.
+        var module = RunModule("test_int_round_ndigits_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestStopIterationValueRegression()
     {
         // Regression: StopIteration must expose the value attribute like

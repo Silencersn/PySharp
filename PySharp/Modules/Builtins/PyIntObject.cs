@@ -209,11 +209,30 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
     {
         if (ndigits is not PyNoneObject)
         {
-            // ndigits must be indexable; rounding an int to any digit count
-            // is the identity (CPython long_round)
+            // ndigits must support __index__ (CPython long_round)
             var index = PySpecialMethods.Index(context, ndigits);
             if (index.IsError)
                 return index;
+            var count = index.Value.Value;
+            if (count.Sign < 0)
+            {
+                // round to the nearest multiple of 10 ** -ndigits with
+                // divmod_near (ties to even); the power itself always fits
+                // an int exponent in any real allocation
+                if (count < int.MinValue)
+                    return PyResult.OverflowError(PySR.Runtime_Number_Int_MaxDigitsNotInt32);
+                var amount = BigInteger.Pow(10, (int)-count);
+                var q = BigInteger.DivRem(self.Value, amount, out var rem);
+                if (rem.Sign < 0)
+                {
+                    rem += amount;
+                    q -= BigInteger.One;
+                }
+                var twice = rem << 1;
+                if (twice > amount || (twice == amount && !q.IsEven))
+                    q += BigInteger.One;
+                return PyIntObject.FromInteger(q * amount);
+            }
         }
 
         // long.__round__ follows __int__: exact ints return themselves, a
