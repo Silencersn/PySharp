@@ -47,4 +47,32 @@ assert f"{123.456}" == '123.456'
 assert format(1.5, '.3g') == '1.5'
 assert f"{1.5:8.2f}" == '    1.50'
 
+# issue-124 original repro: integral floats keep the .0 in f-string
+# implicit conversion (no conversion and empty spec both route to str)
+assert f'{1.0}' == '1.0'
+assert f'{2.0}' == '2.0'
+assert f'{-1.0}' == '-1.0'
+assert f'{10.0}' == '10.0'
+assert f'{1e2}' == '100.0'
+assert f'{4.5}' == '4.5'
+assert f'{-0.0}' == '-0.0'
+assert str(1.0) == '1.0'
+assert '{}'.format(1.0) == '1.0'
+assert f'{1.0!s}' == '1.0'
+x = 3.0
+assert f'{x}' == '3.0'
+assert f'{x!s}' == '3.0'
+assert f'{x:}' == '3.0'
+
+# issue-168 original repro: comparison/membership bools render as
+# True/False, including through a variable
+assert f'{1 < 2}' == 'True'
+assert f'{2 > 1}' == 'True'
+assert f'{1 in [1]}' == 'True'
+assert f'{1 < 2 < 3}' == 'True'
+y = 1 < 2
+assert f'{y}' == 'True'
+assert f'{y!s}' == 'True'
+assert f'{1 < 2!s}' == 'True'
+
 print("test_format_empty_spec_regression passed")
