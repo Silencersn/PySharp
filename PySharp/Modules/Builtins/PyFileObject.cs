@@ -1,19 +1,20 @@
+using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Environments;
 using PySharp.Runtime.PyAttributes;
 using System.Diagnostics;
 using System.Text;
-
 namespace PySharp.Modules.Builtins;
 
 /// <summary>
 /// Python file object returned by open().
 /// Wraps a .NET Stream and provides text/binary file I/O.
 /// </summary>
+[AIGenerated]
 public sealed class PyFileObject : PyObject
 {
     private readonly Stream _stream;
-    private readonly bool _isTextMode;
+    internal readonly bool _isTextMode;
     internal readonly bool _isReadable;
     internal readonly bool _isWritable;
     internal readonly bool _isSeekable;
@@ -187,15 +188,39 @@ public sealed class PyFileObject : PyObject
         return PyNoneObject.None;
     }
 
-    internal PyResult Seek(long offset, int whence = 0)
+    internal PyResult Seek(long offset, int whence)
     {
-        var check = CheckClosed();
-        if (check.IsError)
-            return check;
+        // BufferedReader validates the whence value before the closed check;
+        // the text layer (TextIOWrapper) checks closed first
+        if (!_isTextMode && whence is not 0 and not 1 and not 2)
+            return PyResult.ValueError(PySR.Runtime_File_WhenceUnsupported, whence);
+        if (_closed)
+        {
+            return PyResult.ValueError(_isTextMode
+                ? PySR.Runtime_File_Closed
+                : PySR.Runtime_File_SeekClosed);
+        }
         if (!_isSeekable)
             return PyResult.ValueError(PySR.Runtime_File_NotSeekable);
-        if (whence is not 0 and not 1 and not 2)
-            return PyResult.ValueError(PySR.Runtime_File_InvalidWhence, whence);
+        if (_isTextMode)
+        {
+            if (whence is not 0 and not 1 and not 2)
+                return PyResult.ValueError(PySR.Runtime_File_InvalidWhence, whence);
+            // only SEEK_SET can reach a negative position; the cur/end
+            // relative forms reject nonzero offsets before this point in
+            // CPython and stay supported here
+            if (whence is 0 && offset < 0)
+                return PyResult.ValueError(PySR.Runtime_File_NegativeSeekPosition, offset);
+        }
+        else
+        {
+            // compute the lseek target like the OS so a position before the
+            // start of the file surfaces as OSError EINVAL, not a raw .NET
+            // error; -offset wraps harmlessly for long.MinValue
+            long target = whence is 1 ? _stream.Position : whence is 2 ? _stream.Length : 0;
+            if (offset < 0 && target < -offset)
+                return PyResult.RaiseException(PyOSErrorObjectType.Shared, PySR.Runtime_Os_InvalidArgumentErrno);
+        }
         try
         {
             // Discard StreamReader's internal buffer after seek to avoid stale data
@@ -212,9 +237,12 @@ public sealed class PyFileObject : PyObject
 
     internal PyResult Tell()
     {
-        var check = CheckClosed();
-        if (check.IsError)
-            return check;
+        if (_closed)
+        {
+            return PyResult.ValueError(_isTextMode
+                ? PySR.Runtime_File_Closed
+                : PySR.Runtime_File_ClosedNoPeriod);
+        }
         if (!_isSeekable)
             return PyResult.ValueError(PySR.Runtime_File_NotSeekable);
         return PyIntObject.FromInteger(_stream.Position);
@@ -266,6 +294,7 @@ public sealed class PyFileObject : PyObject
     }
 }
 
+[AIGenerated]
 [PyType("_io.FileObject")]
 public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
 {
@@ -343,15 +372,46 @@ public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
     [PyFunctionParameters("offset", "whence=0")]
     private static PyResult Seek(PyCallContext context, PyFileObject self, PyArguments arguments)
     {
-        var offset = arguments[0];
-        var whence = arguments[1];
-        if (offset is not PyIntObject offsetInt)
-            return PyResult.TypeError(PySR.Runtime_File_SeekArg1NotInt, offset.PyType.FullName);
-        var offsetVal = (long)offsetInt.Int32Value;
-        int whenceVal = 0;
-        if (whence is PyIntObject wInt)
-            whenceVal = wInt.Int32Value;
-        return self.Seek(offsetVal, whenceVal);
+        // PyNumber_AsOff_t / clinic int: both arguments go through __index__
+        var offsetInt = IndexOrError(context, arguments[0], out var offsetError);
+        if (offsetInt is null)
+            return offsetError;
+        var whenceInt = IndexOrError(context, arguments[1], out var whenceError);
+        if (whenceInt is null)
+            return whenceError;
+
+        // off_t is a 64-bit C type; the text layer surfaces the failed
+        // conversion from the OS (EINVAL) while buffered raises ValueError
+        var bigOffset = offsetInt.Value;
+        if (bigOffset > long.MaxValue || bigOffset < long.MinValue)
+        {
+            return self._isTextMode
+                ? PyResult.RaiseException(PyOSErrorObjectType.Shared, PySR.Runtime_Os_InvalidArgumentErrno)
+                : PyResult.ValueError(PySR.Runtime_File_CannotFitOffset);
+        }
+        return self.Seek((long)bigOffset, whenceInt.Int32Value);
+    }
+
+    private static PyIntObject? IndexOrError(PyCallContext context, PyObject obj, out PyResult error)
+    {
+        if (obj is PyIntObject intObj)
+        {
+            error = default;
+            return intObj;
+        }
+        if (obj.PyType.Slots.Index is null)
+        {
+            error = PyResult.TypeError(PySR.Runtime_Number_Int_CannotInterpretedAsInt, obj.PyType.FullName);
+            return null;
+        }
+        var indexResult = PySpecialMethods.Index(context, obj);
+        if (indexResult.IsError)
+        {
+            error = indexResult;
+            return null;
+        }
+        error = default;
+        return indexResult.Value;
     }
 
     [PyMethod("tell")]

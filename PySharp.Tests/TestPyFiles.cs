@@ -2126,6 +2126,19 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestFileSeekRegression()
+    {
+        // Regression: file.seek()/tell() must validate their arguments like
+        // the CPython io stack - unknown whence values raise ValueError with
+        // a per-layer message, offsets go through __index__ and the off_t
+        // range, negative targets raise OSError EINVAL instead of leaking a
+        // raw .NET exception, and the closed-file messages match the layer.
+        // Fails until the fix lands.
+        var module = RunModule("test_file_seek_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestExceptStarReraiseRegression()
     {
         // Regression: except* unwinding must follow PEP 654 - a bare raise

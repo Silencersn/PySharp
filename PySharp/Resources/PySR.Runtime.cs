@@ -174,16 +174,21 @@ partial class PySR
     public const string Runtime_Builtin_Open_ConflictingMode = "must have exactly one of create/read/write/append mode";
 
     public const string Runtime_File_Closed = "I/O operation on closed file.";
+    public const string Runtime_File_ClosedNoPeriod = "I/O operation on closed file";
+    public const string Runtime_File_SeekClosed = "seek of closed file";
     public const string Runtime_File_NotReadable = "not readable";
     public const string Runtime_File_NotWritable = "not writable";
     public const string Runtime_File_NotSeekable = "file not seekable";
     public const string Runtime_File_WriteNeedStr = "write() argument must be str, not {0}";
     public const string Runtime_File_WriteNeedBytes = "a bytes-like object is required, not '{0}'";
-    public const string Runtime_File_SeekArg1NotInt = "seek() argument 1 must be int, not {0}";
     public const string Runtime_File_InvalidWhence = "invalid whence ({0}, should be 0, 1 or 2)";
+    public const string Runtime_File_WhenceUnsupported = "whence value {0} unsupported";
+    public const string Runtime_File_NegativeSeekPosition = "negative seek position {0}";
+    public const string Runtime_File_CannotFitOffset = "cannot fit 'int' into an offset-sized integer";
     public const string Runtime_Os_FileNotFoundErrno = "[Errno 2] No such file or directory: '{0}'";
     public const string Runtime_Os_PermissionDeniedErrno = "[Errno 13] Permission denied: '{0}'";
     public const string Runtime_Os_IsADirectoryErrno = "[Errno 21] Is a directory: '{0}'";
+    public const string Runtime_Os_InvalidArgumentErrno = "[Errno 22] Invalid argument";
 
     public const string Runtime_Descriptor_GetNoneNoneInvalid = "__get__(None, None) is invalid";
     public const string Runtime_Descriptor_ReceiveObjectOfWrongType = "descriptor '{0}' requires a '{1}' object but received a '{2}'";
