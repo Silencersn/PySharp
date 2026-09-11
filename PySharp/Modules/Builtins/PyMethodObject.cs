@@ -41,7 +41,7 @@ public sealed partial class PyMethodObjectType : PyTypeObject<PyMethodObject>
         else
             funcName = "?";
 
-        // Try to get repr of target
+        // Try to get the repr of target
         var targetRepr = PySpecialMethods.Repr(context, self._target);
         string targetStr;
         if (targetRepr.IsSuccessful)
@@ -50,6 +50,36 @@ public sealed partial class PyMethodObjectType : PyTypeObject<PyMethodObject>
             targetStr = "?";
 
         return PyStrObject.FromString($"<bound method {funcName} of {targetStr}>");
+    }
+
+    // method_richcompare: only ==/!= are supported, both sides must be
+    // bound methods, and __func__/__self__ compare by identity
+    protected override PyResult Eq(PyCallContext context, PyMethodObject self, PyObject other)
+    {
+        if (other is not PyMethodObject otherMethod)
+            return PyNotImplementedObject.NotImplemented;
+        return PyBoolObject.FromBoolean(
+            ReferenceEquals(self._functionObj, otherMethod._functionObj) &&
+            ReferenceEquals(self._target, otherMethod._target));
+    }
+
+    protected override PyResult Ne(PyCallContext context, PyMethodObject self, PyObject other)
+    {
+        if (other is not PyMethodObject otherMethod)
+            return PyNotImplementedObject.NotImplemented;
+        return PyBoolObject.FromBoolean(
+            !ReferenceEquals(self._functionObj, otherMethod._functionObj) ||
+            !ReferenceEquals(self._target, otherMethod._target));
+    }
+
+    protected override PyResult Hash(PyCallContext context, PyMethodObject self)
+    {
+        // method_hash: identity hash of __self__ (PyObject_GenericHash
+        // bypasses a custom __hash__) combined with the hash of __func__
+        var funcHash = PySpecialMethods.Hash(context, self._functionObj);
+        if (funcHash.IsError)
+            return funcHash;
+        return PyIntObject.FromInteger(self._target.GetHashCode() ^ ((PyIntObject)funcHash.Value).Int32Value);
     }
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)

@@ -1940,6 +1940,18 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestBoundMethodEqRegression()
+    {
+        // Regression: bound method objects must compare equal when both
+        // __func__ and __self__ are identical (identity comparison, so a
+        // custom __eq__ on the instance does not leak in), carry a
+        // consistent hash for `in`/set/remove usage, and reject ordering
+        // comparisons. Fails until the fix lands.
+        var module = RunModule("test_bound_method_eq_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestIntRoundNdigitsRegression()
     {
         // Regression: round(int, ndigits) with a negative ndigits must
