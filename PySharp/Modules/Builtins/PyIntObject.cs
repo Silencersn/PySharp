@@ -242,6 +242,30 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
             : PyIntObject.FromInteger(self.Value);
     }
 
+    // int.__floor__/__ceil__/__trunc__ are the identity: exact ints return
+    // themselves, a subclass instance (bool) converts to a pooled exact int
+    private static PyResult IntIdentity(PyCallContext context, PyIntObject self)
+    {
+        return self.PyType == PyIntObjectType.Shared
+            ? self
+            : PyIntObject.FromInteger(self.Value);
+    }
+
+    protected override PyResult Ceil(PyCallContext context, PyIntObject self)
+    {
+        return IntIdentity(context, self);
+    }
+
+    protected override PyResult Floor(PyCallContext context, PyIntObject self)
+    {
+        return IntIdentity(context, self);
+    }
+
+    protected override PyResult Trunc(PyCallContext context, PyIntObject self)
+    {
+        return IntIdentity(context, self);
+    }
+
     protected override PyResult Float(PyCallContext context, PyIntObject self)
     {
         var d = (double)self.Value;

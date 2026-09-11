@@ -559,6 +559,20 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestMathFloorCeilTruncRegression()
+    {
+        // Regression: math.floor/ceil/trunc must return int like CPython
+        // 3.14 - exact floats convert straight to int with the inf/nan
+        // conversion errors, non-float objects try the protocol method
+        // first (floor/ceil fall back to a float/index conversion, trunc
+        // reports the missing method), and int defines all three as its
+        // identity with bool converting to a pooled exact int.
+        // Fails until the fix lands.
+        var module = RunModule("test_math_floor_ceil_trunc_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestTime()
     {
         var module = RunModule("test_time.py");

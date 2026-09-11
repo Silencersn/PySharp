@@ -220,19 +220,57 @@ internal static partial class PyMathFunctions
     [PyFunctionParameters("x", "/")]
     private static PyResult CeilImpl(PyCallContext context, PyArguments arguments)
     {
-        return PySpecialMethods.Ceil(context, arguments[0]);
+        return RoundToInt(context, arguments[0], isCeil: true);
     }
 
     [PyFunctionParameters("x", "/")]
     private static PyResult FloorImpl(PyCallContext context, PyArguments arguments)
     {
-        return PySpecialMethods.Floor(context, arguments[0]);
+        return RoundToInt(context, arguments[0], isCeil: false);
+    }
+
+    // math_ceil/math_floor: an exact float skips the __ceil__/__floor__
+    // protocol and converts straight to int; other objects try the
+    // protocol method first, then fall back to PyFloat_AsDouble
+    // (__float__ or __index__) before flooring
+    private static PyResult RoundToInt(PyCallContext context, PyObject arg, bool isCeil)
+    {
+        if (arg.PyType == PyFloatObjectType.Shared)
+        {
+            var d = ((PyFloatObject)arg).Value;
+            return PyFloatObjectType.ToRoundInt(isCeil ? Math.Ceiling(d) : Math.Floor(d));
+        }
+
+        var slot = isCeil ? arg.PyType.Slots.Ceil : arg.PyType.Slots.Floor;
+        if (slot is not null)
+            return slot(context, arg);
+
+        var xResult = PySpecialMethods.Float(context, arg);
+        if (xResult.IsError)
+        {
+            // PyFloat_AsDouble accepts index-able ints as well
+            if (arg.PyType.Slots.Index is not null)
+            {
+                var indexResult = PySpecialMethods.Index(context, arg);
+                if (indexResult.IsError)
+                    return indexResult;
+                return indexResult.Value;
+            }
+            return PyResult.TypeError(PySR.Runtime_Math_MustBeReal, arg.PyType.FullName);
+        }
+        var x = xResult.Value.Value;
+        return PyFloatObjectType.ToRoundInt(isCeil ? Math.Ceiling(x) : Math.Floor(x));
     }
 
     [PyFunctionParameters("x", "/")]
     private static PyResult TruncImpl(PyCallContext context, PyArguments arguments)
     {
-        return PySpecialMethods.Trunc(context, arguments[0]);
+        var arg = arguments[0];
+        // math_trunc: an exact float converts via nb_int; other objects
+        // must define __trunc__ (no float conversion fallback)
+        if (arg.PyType == PyFloatObjectType.Shared)
+            return PyFloatObjectType.ToRoundInt(Math.Truncate(((PyFloatObject)arg).Value));
+        return PySpecialMethods.Trunc(context, arg);
     }
 
     [PyFunctionParameters("x", "y", "/")]

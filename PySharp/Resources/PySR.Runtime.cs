@@ -187,6 +187,9 @@ partial class PySR
     public const string Runtime_File_CannotFitOffset = "cannot fit 'int' into an offset-sized integer";
     public const string Runtime_Str_PctFormatRealNumberRequired = "%{0} format: a real number is required, not {1}";
     public const string Runtime_Str_PctFormatIntegerRequired = "%{0} format: an integer is required, not {1}";
+    public const string Runtime_Float_CannotConvertInfinityToInteger = "cannot convert float infinity to integer";
+    public const string Runtime_Float_CannotConvertNaNToInteger = "cannot convert float NaN to integer";
+    public const string Runtime_Math_MustBeReal = "must be real number, not {0}";
     public const string Runtime_Os_FileNotFoundErrno = "[Errno 2] No such file or directory: '{0}'";
     public const string Runtime_Os_PermissionDeniedErrno = "[Errno 13] Permission denied: '{0}'";
     public const string Runtime_Os_IsADirectoryErrno = "[Errno 21] Is a directory: '{0}'";

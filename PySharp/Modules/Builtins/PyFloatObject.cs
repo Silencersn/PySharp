@@ -1160,28 +1160,30 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
         return q;
     }
 
+    // float.__floor__/__ceil__/__trunc__ all return the exact int (CPython
+    // PyLong_FromDouble); non-finite values report the conversion errors
+    internal static PyResult ToRoundInt(double value)
+    {
+        if (double.IsInfinity(value))
+            return PyResult.OverflowError(PySR.Runtime_Float_CannotConvertInfinityToInteger);
+        if (double.IsNaN(value))
+            return PyResult.ValueError(PySR.Runtime_Float_CannotConvertNaNToInteger);
+        return PyIntObject.FromInteger((BigInteger)value);
+    }
+
     protected override PyResult Trunc(PyCallContext context, PyFloatObject self)
     {
-        var value = Math.Truncate(self.Value);
-        if (value.Equals(self.Value))
-            return self;
-        return PyFloatObject.FromDouble(value);
+        return ToRoundInt(Math.Truncate(self.Value));
     }
 
     protected override PyResult Floor(PyCallContext context, PyFloatObject self)
     {
-        var value = Math.Floor(self.Value);
-        if (value.Equals(self.Value))
-            return self;
-        return PyFloatObject.FromDouble(value);
+        return ToRoundInt(Math.Floor(self.Value));
     }
 
     protected override PyResult Ceil(PyCallContext context, PyFloatObject self)
     {
-        var value = Math.Ceiling(self.Value);
-        if (value.Equals(self.Value))
-            return self;
-        return PyFloatObject.FromDouble(value);
+        return ToRoundInt(Math.Ceiling(self.Value));
     }
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
