@@ -1940,6 +1940,17 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestAbsRegression()
+    {
+        // Regression: float abs must clear the sign bit (abs(-0.0) is
+        // +0.0 and math.copysign sees a positive result), and int.__abs__
+        // must convert bool instances to pooled exact ints. Fails until
+        // the fix lands.
+        var module = RunModule("test_abs_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBoundMethodEqRegression()
     {
         // Regression: bound method objects must compare equal when both

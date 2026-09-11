@@ -237,7 +237,9 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
 
     protected override PyResult Abs(PyCallContext context, PyFloatObject self)
     {
-        return self.Value >= 0 ? self : Neg(context, self);
+        // float_abs clears the sign bit: abs(-0.0) is +0.0, never a
+        // negation round-trip that would keep the zero's sign
+        return PyFloatObject.FromDouble(double.Abs(self.Value));
     }
 
     protected override PyResult Add(PyCallContext context, PyFloatObject self, PyObject other)

@@ -262,7 +262,11 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
 
     protected override PyResult Abs(PyCallContext context, PyIntObject self)
     {
-        return self.Value >= 0 ? self : PyIntObject.FromInteger(-self.Value);
+        // long_abs: exact ints return themselves, a subclass instance
+        // (bool) converts to a pooled exact int
+        return self.Value.Sign >= 0
+            ? (self.PyType == PyIntObjectType.Shared ? self : PyIntObject.FromInteger(self.Value))
+            : PyIntObject.FromInteger(-self.Value);
     }
 
     protected override PyResult Invert(PyCallContext context, PyIntObject self)
