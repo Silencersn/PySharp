@@ -2015,6 +2015,19 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestTruthinessLenRegression()
+    {
+        // Regression: truthiness must honor __len__ when __bool__ is absent
+        // (bool/not/if/while/and-or were always truthy for __len__-only
+        // types, including bytes, bytearray, range and memoryview);
+        // exceptions from __len__ must propagate and invalid __len__ or
+        // __bool__ returns must raise with CPython's messages. Fails until
+        // the fix lands.
+        var module = RunModule("test_truthiness_len_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestIntRoundNdigitsRegression()
     {
         // Regression: round(int, ndigits) with a negative ndigits must

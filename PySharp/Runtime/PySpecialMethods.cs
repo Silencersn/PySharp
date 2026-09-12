@@ -62,7 +62,7 @@ public static class PySpecialMethods
 
         static string MessageCreator(PyObject o)
         {
-            return PySR.Format(PySR.Runtime_Object_SpecialMethodReturnsWrongType, PySpecialNames.Bool, "bool", o.PyType.FullName);
+            return PySR.Format(PySR.Runtime_Object_BoolShouldReturnBool, o.PyType.FullName);
         }
     }
 
@@ -139,7 +139,7 @@ public static class PySpecialMethods
 
         static string MessageCreator(PyObject o)
         {
-            return PySR.Format(PySR.Runtime_Object_SpecialMethodReturnsWrongType, PySpecialNames.Len, "int", o.PyType.FullName);
+            return PySR.Format(PySR.Runtime_Number_Int_CannotInterpretedAsInt, o.PyType.FullName);
         }
     }
 

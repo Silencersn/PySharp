@@ -15,6 +15,15 @@ partial class PyTypeObject
     }
     internal static PyResult DefaultBool(PyCallContext context, PyObject self)
     {
+        // CPython PyObject_IsTrue: without __bool__, a type defining __len__
+        // uses its length; plain objects default to true.
+        if (self.PyType.Slots.Len is not null)
+        {
+            var len = PySpecialMethods.Len(context, self);
+            if (len.IsError)
+                return len;
+            return PyBoolObject.FromBoolean(len.Value.Value != 0);
+        }
         return PyBoolObject.True;
     }
     internal static PyResult DefaultHash(PyCallContext context, PyObject self)

@@ -54,6 +54,7 @@ partial class PySR
     public const string Runtime_Type_New_Arg3MustBeDict = "type.__new__() argument 3 must be dict, not {0}";
 
     public const string Runtime_Object_SpecialMethodReturnsWrongType = "{0} returned non-{1} (type {2})";
+    public const string Runtime_Object_BoolShouldReturnBool = "__bool__ should return bool, returned {0}";
     public const string Runtime_Object_Unhashable = "unhashable type: '{0}'";
     public const string Runtime_Object_NonCallable = "'{0}' object is not callable";
     public const string Runtime_Object_FormatReturnsNonString = "__format__ must return a str, not {0}";
