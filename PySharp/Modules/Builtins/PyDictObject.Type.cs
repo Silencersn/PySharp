@@ -205,6 +205,11 @@ public sealed partial class PyDictObjectType : PyTypeObject<PyDictObject>
         return PyDictItemIteratorObject.Keys(PyDictItemsObject.Keys(self));
     }
 
+    protected override PyResult Reversed(PyCallContext context, PyDictObject self)
+    {
+        return PyDictItemIteratorObject.ReversedKeys(PyDictItemsObject.Keys(self));
+    }
+
     [AIGenerated]
     protected override PyResult Eq(PyCallContext context, PyDictObject self, PyObject other)
     {

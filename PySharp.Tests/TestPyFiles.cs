@@ -2028,6 +2028,18 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestDictReversedRegression()
+    {
+        // Regression: reversed() must support dicts and their views with
+        // dedicated reverse iterators (dict_reverse*iterator type names),
+        // instead of falling through to len/getitem and raising KeyError.
+        // Mutation during iteration must still raise RuntimeError. Fails
+        // until the fix lands.
+        var module = RunModule("test_dict_reversed_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestIntRoundNdigitsRegression()
     {
         // Regression: round(int, ndigits) with a negative ndigits must
