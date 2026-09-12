@@ -219,7 +219,7 @@ public sealed class PyFileObject : PyObject
             // error; -offset wraps harmlessly for long.MinValue
             long target = whence is 1 ? _stream.Position : whence is 2 ? _stream.Length : 0;
             if (offset < 0 && target < -offset)
-                return PyResult.RaiseException(PyOSErrorObjectType.Shared, PySR.Runtime_Os_InvalidArgumentErrno);
+                return PyResult.OSError(PySR.Runtime_Os_InvalidArgumentErrno);
         }
         try
         {
@@ -386,7 +386,7 @@ public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
         if (bigOffset > long.MaxValue || bigOffset < long.MinValue)
         {
             return self._isTextMode
-                ? PyResult.RaiseException(PyOSErrorObjectType.Shared, PySR.Runtime_Os_InvalidArgumentErrno)
+                ? PyResult.OSError(PySR.Runtime_Os_InvalidArgumentErrno)
                 : PyResult.ValueError(PySR.Runtime_File_CannotFitOffset);
         }
         return self.Seek((long)bigOffset, whenceInt.Int32Value);

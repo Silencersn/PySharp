@@ -559,6 +559,20 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestPropertyRegression()
+    {
+        // Regression: assigning to or deleting a property without the
+        // matching accessor must raise AttributeError naming the property
+        // and the owner type (never a None-callable TypeError),
+        // property.__doc__ must inherit the getter's docstring when no
+        // explicit doc is given, getter/setter/deleter must return copies,
+        // and __name__/fget/fset/fdel must be exposed. Fails until the
+        // fixes land.
+        var module = RunModule("test_property_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestMathFloorCeilTruncRegression()
     {
         // Regression: math.floor/ceil/trunc must return int like CPython
