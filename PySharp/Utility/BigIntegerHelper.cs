@@ -99,10 +99,13 @@ internal static class BigIntegerHelper
 
         digitCount = 0;
         var allValid = true;
+        var hasNonAscii = false;
         foreach (var c in s)
         {
             if (c is '_')
                 continue;
+            if (c > 127)
+                hasNonAscii = true;
             if (!TryConvertCharToInt(c, out var v) || v >= numBase)
             {
                 allValid = false;
@@ -117,7 +120,10 @@ internal static class BigIntegerHelper
         if (allValid && (numBase & (numBase - 1)) is not 0 && PyIntStrDigitsLimit.IsOverLimit(digitCount))
             return IntParseStatus.OverLimit;
 
-        if (numBase is 10 && !containsUnderline)
+        // BigInteger.TryParse only handles ASCII; runs with Unicode decimal
+        // digits take the manual per-digit path (same as CPython, whose
+        // transformed string re-enters the generic parser)
+        if (numBase is 10 && !containsUnderline && !hasNonAscii)
         {
             if (!TryParseBase10(s, out result))
                 return IntParseStatus.Invalid;
@@ -180,8 +186,10 @@ internal static class BigIntegerHelper
     {
         if (c >= CharToNumberLookup.Length)
         {
-            value = 0;
-            return false;
+            // CPython int() accepts any Unicode decimal digit (Nd) the same
+            // way it accepts ASCII ones (PyUnicode_TransformDecimalAndSpaceToASCII)
+            value = CharUnicodeInfo.GetDecimalDigitValue(c);
+            return value >= 0;
         }
 
         value = CharToNumberLookup[c];

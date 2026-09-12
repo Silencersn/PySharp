@@ -2088,6 +2088,17 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestIntUnicodeDigitsRegression()
+    {
+        // Regression: int() must accept any Unicode decimal digit (Nd) like
+        // CPython, in base 10 and every other base, keeping CPython's exact
+        // error messages (which quote the original string) and the digit-count
+        // limit semantics. Fails until the fix lands.
+        var module = RunModule("test_int_unicode_digits_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestIntRoundNdigitsRegression()
     {
         // Regression: round(int, ndigits) with a negative ndigits must
