@@ -192,7 +192,21 @@ public sealed partial class PyStopIterationObjectType : PyExceptionType
 public sealed partial class PyAttributeErrorObjectType : PyExceptionType;
 
 [PyException("KeyError", Bases = [typeof(PyLookupErrorObjectType)])]
-public sealed partial class PyKeyErrorObjectType : PyExceptionType;
+public sealed partial class PyKeyErrorObjectType : PyExceptionType
+{
+    // CPython's KeyError_str applies repr() to a lone argument so quotes and
+    // type information survive; every other arity keeps BaseException's form.
+    protected override PyResult Str(PyCallContext context, PyExceptionObject self)
+    {
+        if (self.Args.Count is 1)
+            return PySpecialMethods.Repr(context, self.Args[0]);
+
+        if (self.Args.Count is 0)
+            return PyStrObject.Empty;
+
+        return PySpecialMethods.Str(context, PyTupleObject.CreateTuple(self.Args));
+    }
+}
 
 [PyException("IndexError", Bases = [typeof(PyLookupErrorObjectType)])]
 public sealed partial class PyIndexErrorObjectType : PyExceptionType;

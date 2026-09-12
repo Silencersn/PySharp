@@ -1991,6 +1991,18 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestKeyErrorStrRegression()
+    {
+        // Regression: str(KeyError) must apply repr() to a single argument
+        // (keeping quotes and type information) while no-arg and multi-arg
+        // instances keep BaseException's form; subclasses inherit the
+        // behavior unless they define their own __str__. Fails until the
+        // fix lands.
+        var module = RunModule("test_key_error_str_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestIntRoundNdigitsRegression()
     {
         // Regression: round(int, ndigits) with a negative ndigits must
