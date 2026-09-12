@@ -1,6 +1,7 @@
 using PySharp.Modules.Builtins;
 using PySharp.Modules.Typing;
 using PySharp.Runtime.Calls;
+using System.Numerics;
 
 namespace PySharp.Runtime;
 
@@ -73,7 +74,14 @@ public static class PySpecialMethods
         var hash = ValidateResultOf<PyIntObject>(func(context, obj), MessageCreator);
         if (hash.IsError)
             return hash;
-        return PyIntObject.FromInteger(PyHash.HashLong(hash.Value.Value));
+
+        // CPython slot_tp_hash: results within Py_hash_t (int64) range are
+        // preserved exactly (hash(x) == x.__hash__() stays stable); only
+        // wider values fall back to long hashing. -1 is the error sentinel.
+        var value = hash.Value.Value;
+        if (value >= long.MinValue && value <= long.MaxValue)
+            return PyIntObject.FromInteger(value == BigInteger.MinusOne ? -2 : value);
+        return PyIntObject.FromInteger(PyHash.HashLong(value));
 
         static string MessageCreator(PyObject o)
         {

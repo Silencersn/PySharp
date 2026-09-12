@@ -2003,6 +2003,18 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestFrozenSetHashRegression()
+    {
+        // Regression: the frozenset hash must be order-independent so that
+        // equal frozensets hash equal, reproducing CPython's frozenset_hash
+        // values for int-only sets; hash() must also preserve user __hash__
+        // results within the Py_hash_t range exactly (with -1 mapped to -2).
+        // Fails until the fix lands.
+        var module = RunModule("test_frozenset_hash_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestIntRoundNdigitsRegression()
     {
         // Regression: round(int, ndigits) with a negative ndigits must

@@ -4,6 +4,16 @@ using System.Runtime.CompilerServices;
 
 namespace PySharp.Runtime;
 
+/// <summary>
+/// Pure numeric hash algorithms ported from CPython: <see cref="HashLong"/>
+/// is long_hash (the int type's hash) and <see cref="HashDouble"/> is
+/// _Py_HashDouble (the float type's hash). They only answer "what does this
+/// value hash to" and are consumed directly by the int/float hash slots.
+/// They are not a protocol normalization step: PySpecialMethods.Hash adapts
+/// __hash__ results itself (int64-range values are kept verbatim) and only
+/// falls back to <see cref="HashLong"/> for wider values, like CPython's
+/// slot_tp_hash.
+/// </summary>
 internal static class PyHash
 {
     // CPython constants (pyhash.h / longobject.c): _PyHASH_MODULUS = 2**61 - 1,
@@ -15,7 +25,9 @@ internal static class PyHash
 
     /// <summary>CPython long_hash: reduce an integer modulo 2**61 - 1 so that
     /// hash(1) == 1, hash(-1) == -2 (error sentinel), and huge ints are bounded
-    /// and consistent with HashDouble for integral floats.</summary>
+    /// and consistent with HashDouble for integral floats. This is the int
+    /// type's hash (PyIntObject.Hash); the slot dispatcher uses it only as the
+    /// out-of-int64 fallback.</summary>
     public static BigInteger HashLong(BigInteger value)
     {
         // Fast path: compact values (single 30-bit digit) hash to themselves,
@@ -54,9 +66,10 @@ internal static class PyHash
         return result;
     }
 
-    /// <summary>CPython _Py_HashDouble: hash of a float. Matches HashLong for
-    /// integral values (1.0 -> 1, -1.0 -> -2) via modular reduction; inf ->
-    /// +/-314159; NaN -> object identity hash of the float instance.</summary>
+    /// <summary>CPython _Py_HashDouble: hash of a float (the float type's
+    /// hash, PyFloatObject.Hash). Matches HashLong for integral values
+    /// (1.0 -> 1, -1.0 -> -2) via modular reduction; inf -> +/-314159;
+    /// NaN -> object identity hash of the float instance.</summary>
     public static BigInteger HashDouble(double value, PyFloatObject instance)
     {
         if (!double.IsFinite(value))

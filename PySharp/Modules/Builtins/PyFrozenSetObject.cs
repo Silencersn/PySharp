@@ -156,15 +156,36 @@ public sealed partial class PyFrozenSetObjectType : PyTypeObject<PyFrozenSetObje
 
     protected override PyResult Hash(PyCallContext context, PyFrozenSetObject self)
     {
-        int hash = 0;
+        // CPython frozenset_hash (Objects/setobject.c): xor of every element's
+        // hash spread through _shuffle_bits, then folded with the element
+        // count and a final mix, so the result is independent of order.
+        // CPython xors whole hash-table slots and cancels null/dummy parity
+        // afterwards; iterating active entries only reaches the same value.
+        ulong hash = 0;
         foreach (var item in self)
         {
             var itemHash = PySpecialMethods.Hash(context, item);
             if (itemHash.IsError)
                 return itemHash;
-            hash ^= unchecked(itemHash.Value.Value.GetHashCode() + (int)0x9e3779b9 + (hash << 6) + (hash >> 2));
+            hash ^= ShuffleBits(unchecked((ulong)(long)itemHash.Value.Value));
         }
-        return PyIntObject.FromInteger(hash);
+
+        // Factor in the number of active entries.
+        hash ^= (ulong)(long)(self.Count + 1) * 1927868237UL;
+        // Disperse patterns arising in nested frozensets.
+        hash ^= (hash >> 11) ^ (hash >> 25);
+        hash = hash * 69069UL + 907133923UL;
+
+        // -1 is reserved as an error code.
+        if (hash is ulong.MaxValue)
+            hash = 590923713UL;
+
+        return PyIntObject.FromInteger(unchecked((long)hash));
+    }
+
+    private static ulong ShuffleBits(ulong h)
+    {
+        return ((h ^ 89869747UL) ^ (h << 16)) * 3644798167UL;
     }
 
     protected override PyResult Sub(PyCallContext context, PyFrozenSetObject self, PyObject other)
