@@ -2076,6 +2076,18 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestExceptionAttrSetterRegression()
+    {
+        // Regression: BaseException __cause__/__context__/__suppress_context__
+        // must be writable like CPython: an exception assigned to __cause__
+        // also suppresses the implicit context, None only clears, non-exception
+        // values and deletes raise CPython's exact TypeErrors. Fails until the
+        // fix lands.
+        var module = RunModule("test_exception_attr_setter_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestIntRoundNdigitsRegression()
     {
         // Regression: round(int, ndigits) with a negative ndigits must

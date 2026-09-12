@@ -70,10 +70,57 @@ public sealed partial class PyBaseExceptionObjectType : PyExceptionType
         return (PyObject?)self.Cause ?? PyNoneObject.None;
     }
 
+    [PyProperty(PySpecialNames.Cause, Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_Cause(PyCallContext context, PyExceptionObject self, PyObject value)
+    {
+        if (value is PyNoneObject)
+        {
+            self.Cause = null;
+            return PyNoneObject.None;
+        }
+
+        if (!PyBaseExceptionObjectType.Shared.IsInstance(value))
+            return PyResult.TypeError(PySR.Runtime_BaseException_CauseMustDerive);
+
+        // CPython BaseException_cause_set routes through PyException_SetCause,
+        // which marks the implicit context suppressed; assigning None does not
+        self.Cause = (PyExceptionObject)value;
+        self.SuppressContext = true;
+        return PyNoneObject.None;
+    }
+
+    [PyProperty(PySpecialNames.Cause, Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Cause(PyCallContext context, PyExceptionObject self)
+    {
+        return PyResult.TypeError(PySR.Runtime_BaseException_CauseMayNotBeDeleted);
+    }
+
     [PyProperty(PySpecialNames.Context)]
     private static PyResult Get_Context(PyCallContext context, PyExceptionObject self)
     {
         return (PyObject?)self.Context ?? PyNoneObject.None;
+    }
+
+    [PyProperty(PySpecialNames.Context, Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_Context(PyCallContext context, PyExceptionObject self, PyObject value)
+    {
+        if (value is PyNoneObject)
+        {
+            self.Context = null;
+            return PyNoneObject.None;
+        }
+
+        if (!PyBaseExceptionObjectType.Shared.IsInstance(value))
+            return PyResult.TypeError(PySR.Runtime_BaseException_ContextMustDerive);
+
+        self.Context = (PyExceptionObject)value;
+        return PyNoneObject.None;
+    }
+
+    [PyProperty(PySpecialNames.Context, Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Context(PyCallContext context, PyExceptionObject self)
+    {
+        return PyResult.TypeError(PySR.Runtime_BaseException_ContextMayNotBeDeleted);
     }
 
     [PyProperty(PySpecialNames.Traceback)]
@@ -86,6 +133,22 @@ public sealed partial class PyBaseExceptionObjectType : PyExceptionType
     private static PyResult Get_SuppressContext(PyCallContext context, PyExceptionObject self)
     {
         return PyBoolObject.FromBoolean(self.SuppressContext);
+    }
+
+    [PyProperty(PySpecialNames.SuppressContext, Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_SuppressContext(PyCallContext context, PyExceptionObject self, PyObject value)
+    {
+        if (value is not PyBoolObject flag)
+            return PyResult.TypeError(PySR.Runtime_BaseException_SuppressMustBeBool);
+
+        self.SuppressContext = flag.BoolValue;
+        return PyNoneObject.None;
+    }
+
+    [PyProperty(PySpecialNames.SuppressContext, Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_SuppressContext(PyCallContext context, PyExceptionObject self)
+    {
+        return PyResult.TypeError(PySR.Runtime_BaseException_SuppressMayNotBeDeleted);
     }
 
     [PyProperty("args")]

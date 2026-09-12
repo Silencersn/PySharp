@@ -22,6 +22,13 @@ partial class PySR
     public const string Runtime_RaiseStmt_NoActiveException = "No active exception to reraise";
     public const string Runtime_RaiseStmt_Cause = "The above exception was the direct cause of the following exception:";
 
+    public const string Runtime_BaseException_CauseMustDerive = "exception cause must be None or derive from BaseException";
+    public const string Runtime_BaseException_ContextMustDerive = "exception context must be None or derive from BaseException";
+    public const string Runtime_BaseException_SuppressMustBeBool = "attribute value type must be bool";
+    public const string Runtime_BaseException_CauseMayNotBeDeleted = "__cause__ may not be deleted";
+    public const string Runtime_BaseException_ContextMayNotBeDeleted = "__context__ may not be deleted";
+    public const string Runtime_BaseException_SuppressMayNotBeDeleted = "can't delete numeric/char attribute";
+
     public const string Runtime_Import_ModuleNotFound = "No module named '{0}'";
     public const string Runtime_Import_RelativeNoKnownParentPackage = "attempted relative import with no known parent package";
     public const string Runtime_Import_RelativeBeyondTopLevel = "attempted relative import beyond top-level package";
