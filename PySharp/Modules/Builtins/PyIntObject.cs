@@ -426,11 +426,29 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
         if (str.Value.Length is 0)
             return PySpecialMethods.Str(context, self);
 
-        if (!PyFormatSpec.TryParse(str.Value, out var spec))
-            return PyResult.ValueError(PySR.Runtime_Object_FormatSpecInvalid, str.Value, self.PyType.FullName);
+        if (!PyFormatSpec.TryParse(str.Value, out var spec, out var bothSeparators))
+            return PyFormatSpec.ParseError(str.Value, self.PyType.FullName);
+
+        var formatType = spec.Type ?? 'd';
+
+        // CPython checks grouping compatibility after the parse, before the
+        // presentation-type dispatch (",x" -> Cannot specify); an omitted
+        // type is judged like 'g'
+        var groupingError = PyFormatSpec.ValidateGrouping(spec, bothSeparators, spec.Type ?? 'g');
+        if (groupingError.IsError)
+            return groupingError;
+
+        // CPython long_format: the z (negative zero coercion) option is
+        // rejected outright for integers, whatever the presentation type.
+        if (spec.CoercePositiveZero)
+            return PyResult.ValueError(PySR.Runtime_Object_FormatZNegCoercionNotAllowedInt);
+
+        // CPython: precision is only meaningful for the float-style codes;
+        // the integer presentations reject it.
+        if (spec.Precision is not null && IsIntegerPresentationType(formatType))
+            return PyResult.ValueError(PySR.Runtime_Object_FormatPrecisionNotAllowedInt);
 
         var val = self.Value;
-        var formatType = spec.Type ?? 'd';
 
         string text;
         int numBase;
@@ -482,7 +500,7 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
                 // fallback to float format
                 return PySpecialMethods.Format(context, PyFloatObject.FromDouble((double)val), formatSpec);
             default:
-                return PyResult.ValueError(PySR.Runtime_Object_FormatUnsupported, self.PyType.FullName);
+                return PyResult.ValueError(PySR.Runtime_Object_FormatUnknownCode, formatType, self.PyType.FullName);
         }
 
         var prefix = string.Empty;
@@ -506,6 +524,11 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
         }
 
         return PyStrObject.FromString(text);
+
+        // CPython: precision is rejected for the base/decimal presentations
+        // and accepted (delegated to float) for 'e'/'f'/'g'/'%'
+        static bool IsIntegerPresentationType(char type) =>
+            char.ToLowerInvariant(type) is 'b' or 'c' or 'd' or 'n' or 'o' or 'x';
 
         static string ApplyGrouping(string value, char grouping, int groupSize)
         {

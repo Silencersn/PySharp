@@ -818,12 +818,30 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
         if (str.Value.Length is 0)
             return PySpecialMethods.Str(context, self);
 
-        if (!PyFormatSpec.TryParse(str.Value, out var spec))
-            return PyResult.ValueError(PySR.Runtime_Object_FormatSpecInvalid, str.Value, self.PyType.FullName);
+        if (!PyFormatSpec.TryParse(str.Value, out var spec, out var bothSeparators))
+            return PyFormatSpec.ParseError(str.Value, self.PyType.FullName);
 
         double val = self.Value;
-        var formatType = spec.Type ?? 'g';
-        int precision = spec.Precision ?? 6;
+
+        // CPython format_float_internal: an omitted type behaves like repr
+        // (shortest round-trip with a guaranteed decimal point) when no
+        // precision is given, else like 'g' keeping the add-dot-0 behavior
+        bool emptyType = spec.Type is null;
+        char formatType;
+        if (emptyType)
+            formatType = spec.Precision is null ? 'r' : 'g';
+        else
+        {
+            formatType = spec.Type ?? 'g';
+        }
+        int precision = spec.Precision ?? (emptyType ? 0 : 6);
+
+        // CPython checks grouping compatibility after the parse, before the
+        // presentation-type dispatch (",b" -> Cannot specify); an omitted
+        // type is judged like 'g'
+        var groupingError = PyFormatSpec.ValidateGrouping(spec, bothSeparators, spec.Type ?? 'g');
+        if (groupingError.IsError)
+            return groupingError;
 
         if (spec.CoercePositiveZero && val is 0.0 && double.IsNegative(val))
             val = 0.0;
@@ -889,8 +907,61 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
                         text = ApplyGrouping(text, spec.WidthGrouping.Value);
                     text += "%";
                     break;
+                case 'r':
+                    // Omitted type: repr rendering; grouping and width still
+                    // apply below (scientific repr is left ungrouped). The
+                    // sign is stripped here and re-added by the common
+                    // prefix logic.
+                    text = FormatShortestRepr(val);
+                    if (text.StartsWith('-'))
+                        text = text[1..];
+                    if (spec.WidthGrouping is not null)
+                        text = ApplyGrouping(text, spec.WidthGrouping.Value);
+                    break;
                 default:
-                    return PyResult.ValueError(PySR.Runtime_Object_FormatUnsupported, self.PyType.FullName);
+                    return PyResult.ValueError(PySR.Runtime_Object_FormatUnknownCode, formatType, self.PyType.FullName);
+            }
+
+            // CPython's ADD_DOT_0 behavior for an omitted type with an
+            // explicit precision: the exponent threshold is one stricter
+            // than plain 'g' (decpt > precision - 1) and integer fixed-point
+            // results gain a ".0" suffix.
+            if (emptyType && spec.Precision is not null && !text.Contains('e') && !text.Contains('E'))
+            {
+                // decpt is CPython's decimal-point position: the integer
+                // digit count, negative for values below 0.1
+                int decpt;
+                int dot = text.IndexOf('.');
+                if (dot < 0)
+                {
+                    decpt = text.Length;
+                }
+                else if (text[0] is '0')
+                {
+                    int i = dot + 1;
+                    while (i < text.Length && text[i] is '0')
+                        i++;
+                    decpt = -(i - dot - 1);
+                }
+                else
+                {
+                    decpt = dot;
+                }
+
+                if (decpt >= precision)
+                {
+                    text = FixExponentWidth(absValue.ToString($"E{precision - 1}", CultureInfo.InvariantCulture).ToLowerInvariant());
+                    // CPython 'g' strips trailing mantissa zeros
+                    int eIdx = text.IndexOf('e');
+                    var mantissa = text[..eIdx];
+                    if (mantissa.Contains('.'))
+                        mantissa = mantissa.TrimEnd('0').TrimEnd('.');
+                    text = mantissa + text[eIdx..];
+                }
+                else if (dot < 0)
+                {
+                    text += ".0";
+                }
             }
 
             if (spec.AlternateForm && !text.Contains('.'))

@@ -1,7 +1,67 @@
+using PySharp.Runtime.Calls;
+
 namespace PySharp.Runtime;
 
 internal readonly struct PyFormatSpec
 {
+    /// <summary>
+    /// CPython's parser treats one leftover character after the grammar
+    /// prefix as the presentation type ("Unknown format code"); any other
+    /// parse failure is a malformed spec. A grouping separator followed by
+    /// an incompatible trailing type reports the grouping error instead.
+    /// </summary>
+    internal static PyResult ParseError(string spec, string typeName)
+    {
+        if (TryParse(spec.AsSpan()[..^1], out var prefix, out var prefixBoth) && prefix.Type is null)
+        {
+            var trailing = spec[^1];
+
+            // a digit can only be the type when it directly follows a
+            // grouping separator; otherwise the grammar would have
+            // consumed it as part of the width
+            var followsGrouping = prefix.WidthGrouping is not null || prefix.PrecisionGrouping is not null;
+            if (!char.IsAsciiDigit(trailing) || followsGrouping)
+            {
+                if (prefixBoth || trailing is ',' or '_')
+                    return PyResult.ValueError(PySR.Runtime_Object_FormatGroupingBoth);
+
+                if (prefix.WidthGrouping is char grouping && !IsGroupingCompatibleType(grouping, trailing))
+                    return PyResult.ValueError(PySR.Runtime_Object_FormatGroupingType, grouping, trailing);
+
+                return PyResult.ValueError(PySR.Runtime_Object_FormatUnknownCode, trailing, typeName);
+            }
+        }
+
+        return PyResult.ValueError(PySR.Runtime_Object_FormatSpecInvalid, spec, typeName);
+    }
+
+    internal static bool IsGroupingCompatibleType(char grouping, char type) => type switch
+    {
+        'd' or 'e' or 'f' or 'g' or 'E' or 'G' or '%' or 'F' => true,
+        'b' or 'o' or 'x' or 'X' => grouping is '_',
+        _ => false,
+    };
+
+    /// <summary>
+    /// CPython's post-parse grouping checks, shared by str/int/float: two
+    /// separators at the same position (width or precision) cannot both be
+    /// given (the parser flags that), and a width grouping must be
+    /// compatible with the presentation type (an omitted type is judged
+    /// like 'g'). A width grouping and a precision grouping may coexist.
+    /// Returns a failed result only when invalid.
+    /// </summary>
+    internal static PyResult ValidateGrouping(PyFormatSpec spec, bool bothSeparators, char effectiveType)
+    {
+        if (bothSeparators)
+            return PyResult.ValueError(PySR.Runtime_Object_FormatGroupingBoth);
+
+        if (spec.WidthGrouping is not null && !IsGroupingCompatibleType(spec.WidthGrouping.Value, effectiveType))
+            return PyResult.ValueError(PySR.Runtime_Object_FormatGroupingType, spec.WidthGrouping.Value, effectiveType);
+
+        return default;
+    }
+
+
     public char? Fill { get; }
     public char? Align { get; }
     public char? Sign { get; }
@@ -35,10 +95,16 @@ internal readonly struct PyFormatSpec
 
     public static bool TryParse(ReadOnlySpan<char> format, out PyFormatSpec formatSpec)
     {
+        return TryParse(format, out formatSpec, out _);
+    }
+
+    public static bool TryParse(ReadOnlySpan<char> format, out PyFormatSpec formatSpec, out bool bothSeparators)
+    {
         formatSpec = default;
+        bothSeparators = false;
 
         PyFormatSpecData data = default;
-        if (!PyFormatSpecData.TryParse(format, ref data))
+        if (!PyFormatSpecData.TryParse(format, ref data, out bothSeparators))
             return false;
 
         int width = -1;
@@ -70,11 +136,12 @@ internal readonly struct PyFormatSpec
 
         public char? Type;
 
-        public static bool TryParse(ReadOnlySpan<char> format, ref PyFormatSpecData formatSpecData)
+        public static bool TryParse(ReadOnlySpan<char> format, ref PyFormatSpecData formatSpecData, out bool bothSeparators)
         {
             formatSpecData = default;
+            bothSeparators = false;
             ParseOptions(ref format, ref formatSpecData);
-            ParseWidthAndPrecision(ref format, ref formatSpecData);
+            ParseWidthAndPrecision(ref format, ref formatSpecData, ref bothSeparators);
             ParseType(ref format, ref formatSpecData.Type);
             return format.Length is 0;
         }
@@ -126,24 +193,24 @@ internal readonly struct PyFormatSpec
             }
         }
 
-        private static void ParseWidthAndPrecision(ref ReadOnlySpan<char> format, ref PyFormatSpecData formatSpecData)
+        private static void ParseWidthAndPrecision(ref ReadOnlySpan<char> format, ref PyFormatSpecData formatSpecData, ref bool bothSeparators)
         {
-            ParseWidthWithGrouping(ref format, ref formatSpecData.Width, ref formatSpecData.WidthGrouping);
-            ParsePrecisionWithGrouping(ref format, ref formatSpecData.Precision, ref formatSpecData.PrecisionGrouping);
+            ParseWidthWithGrouping(ref format, ref formatSpecData.Width, ref formatSpecData.WidthGrouping, ref bothSeparators);
+            ParsePrecisionWithGrouping(ref format, ref formatSpecData.Precision, ref formatSpecData.PrecisionGrouping, ref bothSeparators);
         }
-        private static void ParseWidthWithGrouping(ref ReadOnlySpan<char> format, ref ReadOnlySpan<char> width, ref char? grouping)
+        private static void ParseWidthWithGrouping(ref ReadOnlySpan<char> format, ref ReadOnlySpan<char> width, ref char? grouping, ref bool bothSeparators)
         {
             ParseWidthOrPrecision(ref format, ref width);
-            ParseGrouping(ref format, ref grouping);
+            ParseGrouping(ref format, ref grouping, ref bothSeparators);
         }
-        private static void ParsePrecisionWithGrouping(ref ReadOnlySpan<char> format, ref ReadOnlySpan<char> precision, ref char? grouping)
+        private static void ParsePrecisionWithGrouping(ref ReadOnlySpan<char> format, ref ReadOnlySpan<char> precision, ref char? grouping, ref bool bothSeparators)
         {
             if (format.Length > 0 && format[0] is '.')
             {
                 format = format[1..];
                 precision = default;
                 ParseWidthOrPrecision(ref format, ref precision);
-                ParseGrouping(ref format, ref grouping);
+                ParseGrouping(ref format, ref grouping, ref bothSeparators);
             }
         }
         private static void ParseWidthOrPrecision(ref ReadOnlySpan<char> format, ref ReadOnlySpan<char> widthOrPrecision)
@@ -164,12 +231,21 @@ internal readonly struct PyFormatSpec
                 format = format[length..];
             }
         }
-        private static void ParseGrouping(ref ReadOnlySpan<char> format, ref char? grouping)
+        private static void ParseGrouping(ref ReadOnlySpan<char> format, ref char? grouping, ref bool bothSeparators)
         {
             if (format.Length > 0 && IsGrouping(format[0]))
             {
                 grouping = format[0];
                 format = format[1..];
+
+                // CPython reads one more separator: '_' after anything, or
+                // a ',' after '_', raises the both-separators error (',,'
+                // keeps parsing)
+                if (format.Length > 0 && IsGrouping(format[0]) && (format[0] is '_' || grouping is '_'))
+                {
+                    bothSeparators = true;
+                    format = format[1..];
+                }
             }
         }
         private static void ParseType(ref ReadOnlySpan<char> format, ref char? type)

@@ -2040,6 +2040,21 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestFormatSpecValidationRegression()
+    {
+        // Regression: format() must reject invalid presentation types and
+        // flag/type combinations with CPython's messages: the z option is
+        // refused for integers and clamps float negative zero, an omitted
+        // float type renders like repr (or 'g'-with-add-dot-0 when a
+        // precision is given), integer presentations reject a precision,
+        // unknown single-character types report "Unknown format code", and
+        // doubled grouping separators report "Cannot specify both". Fails
+        // until the fix lands.
+        var module = RunModule("test_format_spec_validation_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestIntRoundNdigitsRegression()
     {
         // Regression: round(int, ndigits) with a negative ndigits must

@@ -829,15 +829,16 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         if (specStr.Value.Length is 0)
             return PySpecialMethods.Str(context, self);
 
-        if (!PyFormatSpec.TryParse(specStr.Value, out var spec))
-            return FormatSpecParseError(specStr.Value, self.PyType.FullName);
+        if (!PyFormatSpec.TryParse(specStr.Value, out var spec, out var bothSeparators))
+            return PyFormatSpec.ParseError(specStr.Value, self.PyType.FullName);
 
         // CPython validates in this order: the parse-level grouping check,
         // the presentation-type dispatch, then format_string_internal's
         // flag checks (',c' -> Cannot specify, '+d' -> Unknown format code,
         // '+5' -> Sign not allowed)
-        if (spec.WidthGrouping is not null && !IsGroupingCompatibleType(spec.WidthGrouping.Value, spec.Type ?? 's'))
-            return PyResult.ValueError(PySR.Runtime_Object_FormatGroupingType, spec.WidthGrouping.Value, spec.Type ?? 's');
+        var groupingError = PyFormatSpec.ValidateGrouping(spec, bothSeparators, spec.Type ?? 's');
+        if (groupingError.IsError)
+            return groupingError;
 
         if (spec.Type is not (null or 's'))
             return PyResult.ValueError(PySR.Runtime_Object_FormatUnknownCode, spec.Type, self.PyType.FullName);
@@ -883,38 +884,6 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         }
 
         return PyStrObject.FromString(text);
-    }
-
-    private static bool IsGroupingCompatibleType(char grouping, char type) => type switch
-    {
-        'd' or 'e' or 'f' or 'g' or 'E' or 'G' or '%' or 'F' => true,
-        'b' or 'o' or 'x' or 'X' => grouping is '_',
-        _ => false,
-    };
-
-    // CPython's parser treats one leftover character after the grammar
-    // prefix as the presentation type ("Unknown format code"); any other
-    // parse failure is a malformed spec
-    private static PyResult FormatSpecParseError(string spec, string typeName)
-    {
-        if (PyFormatSpec.TryParse(spec.AsSpan()[..^1], out var prefix) && prefix.Type is null)
-        {
-            var trailing = spec[^1];
-
-            // a digit can only be the type when it directly follows a
-            // grouping separator; otherwise the grammar would have
-            // consumed it as part of the width
-            var followsGrouping = prefix.WidthGrouping is not null || prefix.PrecisionGrouping is not null;
-            if (!char.IsAsciiDigit(trailing) || followsGrouping)
-            {
-                if (prefix.WidthGrouping is char grouping && !IsGroupingCompatibleType(grouping, trailing))
-                    return PyResult.ValueError(PySR.Runtime_Object_FormatGroupingType, grouping, trailing);
-
-                return PyResult.ValueError(PySR.Runtime_Object_FormatUnknownCode, trailing, typeName);
-            }
-        }
-
-        return PyResult.ValueError(PySR.Runtime_Object_FormatSpecInvalid, spec, typeName);
     }
 
     [PyMethod("format")]

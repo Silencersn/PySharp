@@ -177,7 +177,8 @@ partial class PyTypeObject
         if (str.Value.Length is 0)
             return PySpecialMethods.Str(context, self);
 
-        return PyResult.ValueError(PySR.Runtime_Object_FormatUnsupported, self.PyType.FullName);
+        // CPython object.__format__ rejects a non-empty spec with TypeError
+        return PyResult.TypeError(PySR.Runtime_Object_FormatUnsupported, self.PyType.FullName);
 
     }
 
