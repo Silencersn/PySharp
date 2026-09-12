@@ -65,10 +65,12 @@ public sealed partial class PyZipObjectType : PyTypeObject<PyZipObject>
         if (self._end)
             return PyResult.StopIteration();
 
+        // CPython zip_next: with no iterables the iterator is exhausted
+        // immediately, it never yields the empty tuple
         if (self._iterables.Length is 0)
         {
             self._end = true;
-            return PyTupleObject.CreateTuple();
+            return PyResult.StopIteration();
         }
 
         var list = new List<PyObject>();

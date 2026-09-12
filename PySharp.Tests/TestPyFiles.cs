@@ -2055,6 +2055,16 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestZipNoArgsRegression()
+    {
+        // Regression: zip() with no arguments must be an exhausted
+        // iterator (list(zip()) == [], next raises StopIteration), never
+        // yielding the empty tuple once. Fails until the fix lands.
+        var module = RunModule("test_zip_no_args_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestIntRoundNdigitsRegression()
     {
         // Regression: round(int, ndigits) with a negative ndigits must
