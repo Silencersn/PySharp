@@ -2110,6 +2110,17 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestBytesIntConstructorRegression()
+    {
+        // Regression: bytes(n) with an index-able source (int, bool, any
+        // __index__) must zero-fill n bytes like CPython, with CPython's
+        // exact error handling for negative counts, ssize_t overflow and
+        // replaced top-level TypeErrors. Fails until the fix lands.
+        var module = RunModule("test_bytes_int_constructor_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestIntRoundNdigitsRegression()
     {
         // Regression: round(int, ndigits) with a negative ndigits must

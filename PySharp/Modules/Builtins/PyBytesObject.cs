@@ -60,7 +60,43 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
         if (source is PyStrObject)
             return PyResult.TypeError(PySR.Runtime_Bytes_StrWithoutEncoding);
 
-        var listResult = PyUtils.IterableToList(context, source);
+        // CPython bytes(n): an indexable source zero-fills n bytes
+        // (PyNumber_Index); the iterable protocol is only the fallback
+        if (source.PyType.Slots.Index is not null)
+        {
+            var indexResult = PySpecialMethods.Index(context, source);
+            if (indexResult.IsError)
+            {
+                // CPython replaces a failed top-level conversion with its
+                // own message; item-level errors later on are untouched
+                if (PyTypeErrorObjectType.Shared.IsInstance(indexResult.Exception))
+                    return PyResult.TypeError(PySR.Runtime_Bytes_CannotConvert, source.PyType.FullName);
+
+                return indexResult;
+            }
+
+            var count = indexResult.Value.Value;
+            if (count < 0)
+                return PyResult.ValueError(PySR.Runtime_Bytes_NegativeCount);
+            if (count > long.MaxValue)
+                return PyResult.OverflowError(PySR.Runtime_Bytes_IndexOverflow, source.PyType.Name);
+            if (count > int.MaxValue)
+                return PyResult.MemoryError(null);
+
+            return PyBytesObject.MoveBytes(new byte[(int)count]);
+        }
+
+        var iterResult = PySpecialMethods.Iter(context, source);
+        if (iterResult.IsError)
+        {
+            // CPython replaces a failed GetIter with its own message
+            if (PyTypeErrorObjectType.Shared.IsInstance(iterResult.Exception))
+                return PyResult.TypeError(PySR.Runtime_Bytes_CannotConvert, source.PyType.FullName);
+
+            return iterResult;
+        }
+
+        var listResult = PyUtils.IteratorToList(context, iterResult.Value);
         if (listResult.IsError)
             return listResult;
 
