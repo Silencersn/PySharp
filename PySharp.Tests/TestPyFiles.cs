@@ -2099,6 +2099,17 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestErrorMessageSemanticsRegression()
+    {
+        // Regression: error messages aligned with CPython: super attribute
+        // misses, subscript assignment/deletion on types without the slots,
+        // and deleting through a data descriptor without __delete__. Fails
+        // until the fix lands.
+        var module = RunModule("test_error_message_semantics_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestIntRoundNdigitsRegression()
     {
         // Regression: round(int, ndigits) with a negative ndigits must

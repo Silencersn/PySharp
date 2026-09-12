@@ -149,7 +149,7 @@ public sealed partial class PySuperObjectType : PyTypeObject<PySuperObject>
                 return attr;
             }
         }
-        return PyResult.AttributeError(str.Value);
+        return PyResult.AttributeError(PySR.Runtime_Super_HasNoAttribute, str.Value);
     }
 
     protected override PyResult Get(PyCallContext context, PySuperObject self, PyObject instance, PyObject owner)

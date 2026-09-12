@@ -116,6 +116,11 @@ partial class PyTypeObject
             var func = attr.PyType.Slots.Delete;
             if (func is not null)
                 return func(context, attr, self);
+
+            // a data descriptor without __delete__ cannot be deleted; the
+            // error points at the missing hook, not at the attribute
+            if (PyUtils.IsDataDescriptor(attr))
+                return PyResult.AttributeError(PySR.Runtime_Attribute_NoDelete);
         }
 
         var removed = self.PyAttributes.Remove(name);

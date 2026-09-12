@@ -257,7 +257,7 @@ public static class PySpecialMethods
     {
         var func = obj.PyType.Slots.SetItem;
         if (func is null)
-            return PyResult.TypeError(PySR.Runtime_Sequence_NonSubscriptable, obj.PyType.FullName);
+            return PyResult.TypeError(PySR.Runtime_Sequence_ItemAssignmentNotSupported, obj.PyType.FullName);
 
         return func(context, obj, key, value);
     }
@@ -266,7 +266,7 @@ public static class PySpecialMethods
     {
         var func = obj.PyType.Slots.DelItem;
         if (func is null)
-            return PyResult.TypeError(PySR.Runtime_Sequence_NonSubscriptable, obj.PyType.FullName);
+            return PyResult.TypeError(PySR.Runtime_Sequence_ItemDeletionNotSupported, obj.PyType.FullName);
 
         return func(context, obj, key);
     }

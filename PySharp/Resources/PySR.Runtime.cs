@@ -83,6 +83,11 @@ partial class PySR
     public const string Runtime_Object_AttributeNotFound = "'{0}' object has no attribute '{1}'";
     public const string Runtime_Object_SpecialMethodNotDefined = "type {0} doesn't define {1} method";
     public const string Runtime_Object_NewTakesExactlyOneArg = "object.__new__() takes exactly one argument (the type to instantiate)";
+    public const string Runtime_Attribute_NoDelete = "__delete__";
+    public const string Runtime_Super_HasNoAttribute = "'super' object has no attribute '{0}'";
+
+    public const string Runtime_Sequence_ItemAssignmentNotSupported = "'{0}' object does not support item assignment";
+    public const string Runtime_Sequence_ItemDeletionNotSupported = "'{0}' object doesn't support item deletion";
 
     public const string Runtime_Module_AttributeNotFound = "module '{0}' has no attribute '{1}'";
 
