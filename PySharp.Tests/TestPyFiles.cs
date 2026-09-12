@@ -2065,6 +2065,17 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestRaiseFromSuppressRegression()
+    {
+        // Regression: `raise X from Y` must set __suppress_context__ = True
+        // for an exception cause as well as None (only `from None` did);
+        // the implicit-context path stays False and a plain re-raise keeps
+        // the exception untouched. Fails until the fix lands.
+        var module = RunModule("test_raise_from_suppress_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestIntRoundNdigitsRegression()
     {
         // Regression: round(int, ndigits) with a negative ndigits must

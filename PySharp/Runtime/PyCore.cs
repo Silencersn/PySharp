@@ -174,19 +174,23 @@ internal static class PyCore
             // an explicit raise starts a fresh traceback head (CPython
             // replaces it too); PrepReraiseStar exploits that reference
             // change to tell an explicit re-raise from a bare one
-            exc = ToException(context, excObj)!;
+            exc = ToException(context, excObj, isCause: false)!;
             exc.WithTraceback(context, overwriteExisting: true);
         }
 
         if (causeObj is not null)
         {
+            // CPython: an explicit cause (an exception or None) always
+            // suppresses the implicit context in the traceback chain
+            exc.SuppressContext = true;
+
             if (causeObj is PyNoneObject)
             {
-                exc.SuppressContext = true;
+                exc.Cause = null;
             }
             else
             {
-                exc.Cause = ToException(context, causeObj);
+                exc.Cause = ToException(context, causeObj, isCause: true);
                 exc.CauseReason = PySR.Runtime_RaiseStmt_Cause;
             }
         }
@@ -196,19 +200,26 @@ internal static class PyCore
 
         throw new PyRuntimeException(context, exc);
 
-        static PyExceptionObject? ToException(PyCallContext context, PyObject? pyObj)
+        static PyExceptionObject? ToException(PyCallContext context, PyObject? pyObj, bool isCause)
         {
             if (pyObj is null)
                 return null;
 
             if (pyObj is PyExceptionObject excObj)
+            {
                 return excObj;
-
+            }
             else if (pyObj is PyTypeObject typeObj && typeObj.IsSubclassOf(PyBaseExceptionObjectType.Shared))
+            {
                 return PyExceptionObject.Create(context, typeObj, []).PyUnwrap(context);
-
+            }
             else
-                throw context.TypeError(PySR.Runtime_RaiseStmt_RaiseNonException);
+            {
+                var message = isCause
+                    ? PySR.Runtime_RaiseStmt_CauseNonException
+                    : PySR.Runtime_RaiseStmt_RaiseNonException;
+                throw context.TypeError(message);
+            }
         }
     }
 
