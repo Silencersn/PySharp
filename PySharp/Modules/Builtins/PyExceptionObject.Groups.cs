@@ -254,7 +254,7 @@ public sealed partial class PyBaseExceptionGroupObjectType : PyExceptionType
         {
             if (excs[i] is not PyExceptionObject)
             {
-                err = PyResult.ValueError(PySR.Runtime_ExceptionGroup_NewGroup_ExcsItemNonExc, i + 1);
+                err = PyResult.ValueError(PySR.Runtime_ExceptionGroup_NewGroup_ExcsItemNonExc, i);
                 return false;
             }
         }

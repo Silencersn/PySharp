@@ -1,3 +1,4 @@
+using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
 using System.Diagnostics;
@@ -32,6 +33,24 @@ public sealed class PyDictItemsObject : PyObject
 [PyType("dict_items")]
 public sealed partial class PyDictItemsObjectType : PyTypeObject<PyDictItemsObject>
 {
+    protected override PyResult Repr(PyCallContext context, PyDictItemsObject self)
+    {
+        return ReprView(context, self, "dict_items");
+    }
+
+    internal static PyResult ReprView(PyCallContext context, PyDictItemsObject self, string label)
+    {
+        var listResult = PyUtils.IterableToList(context, self);
+        if (listResult.IsError)
+            return listResult;
+
+        var repr = PySpecialMethods.Repr(context, listResult.Value);
+        if (repr.IsError)
+            return repr;
+
+        return PyStrObject.FromString($"{label}({repr.Value.Value})");
+    }
+
     protected override PyResult Iter(PyCallContext context, PyDictItemsObject self)
     {
         return PyDictItemIteratorObject.Items(self);
@@ -143,6 +162,11 @@ public sealed partial class PyDictItemIteratorObjectType : PyTypeObject<PyDictIt
 [PyType("dict_keys")]
 public sealed partial class PyDictKeysObjectType : PyTypeObject<PyDictItemsObject>
 {
+    protected override PyResult Repr(PyCallContext context, PyDictItemsObject self)
+    {
+        return PyDictItemsObjectType.ReprView(context, self, "dict_keys");
+    }
+
     protected override PyResult Iter(PyCallContext context, PyDictItemsObject self)
     {
         return PyDictItemIteratorObject.Keys(self);
@@ -170,6 +194,11 @@ public sealed partial class PyDictKeyIteratorObjectType : PyTypeObject<PyDictIte
 [PyType("dict_values")]
 public sealed partial class PyDictValuesObjectType : PyTypeObject<PyDictItemsObject>
 {
+    protected override PyResult Repr(PyCallContext context, PyDictItemsObject self)
+    {
+        return PyDictItemsObjectType.ReprView(context, self, "dict_values");
+    }
+
     protected override PyResult Iter(PyCallContext context, PyDictItemsObject self)
     {
         return PyDictItemIteratorObject.Values(self);

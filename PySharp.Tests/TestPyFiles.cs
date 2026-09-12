@@ -2121,6 +2121,17 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestGroupViewTypeRegression()
+    {
+        // Regression: ExceptionGroup reports non-exception items with their
+        // 0-based index, dict view objects repr as content strings
+        // (dict_keys([...]) etc.), and duplicate bases are rejected by
+        // type() and class statements. Fails until the fix lands.
+        var module = RunModule("test_group_view_type_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestIntRoundNdigitsRegression()
     {
         // Regression: round(int, ndigits) with a negative ndigits must

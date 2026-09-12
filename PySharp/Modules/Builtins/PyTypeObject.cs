@@ -82,8 +82,12 @@ public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
     internal static PyResult<PyTypeObject> ValidateBasesAndResolveLayoutTypeOwner(IEnumerable<PyTypeObject> bases)
     {
         var layoutTypeOwner = PyObjectType.Shared;
+        var seenBases = new HashSet<PyTypeObject>();
         foreach (var baseType in bases)
         {
+            if (!seenBases.Add(baseType))
+                return PyResult.TypeError(PySR.Runtime_Inheritance_DuplicateBase, baseType.Name);
+
             if (baseType.IsSealed)
                 return PyResult.TypeError(PySR.Runtime_Inheritance_UnacceptableBaseType, baseType.Name);
 
