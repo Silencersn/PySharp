@@ -1668,6 +1668,12 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         {
             return PyResult.LookupError(PySR.Runtime_Codec_UnknownErrorHandlerName, errors);
         }
+        if (BareUtfCodecEmitsBom(encoding))
+        {
+            var preamble = enc.GetPreamble();
+            if (preamble.Length > 0)
+                bytes = [.. preamble, .. bytes];
+        }
         return PyBytesObject.MoveBytes(bytes);
     }
 
@@ -1677,18 +1683,28 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     /// so 'utf-16-le' / 'utf-16be' / 'utf_16_le' all denote the same codec;
     /// .NET's Encoding.GetEncoding does not know the dashed 'utf-16-le' form.
     /// </summary>
-    private static Encoding GetEncoding(string name)
+    internal static Encoding GetEncoding(string name)
     {
         CodePagesEncoding.EnsureRegistered();
         return NormalizeEncodingName(name) switch
         {
             "utf16le" => Encoding.Unicode,
             "utf16be" => Encoding.BigEndianUnicode,
+            "utf32le" => Encoding.UTF32,
+            "utf32be" => new UTF32Encoding(bigEndian: true, byteOrderMark: false),
             _ => System.Text.Encoding.GetEncoding(name),
         };
     }
 
-    private static string NormalizeEncodingName(string name)
+    /// <summary>
+    /// CPython's bare 'utf-16' / 'utf-32' codecs emit a native-order BOM
+    /// before the encoded data, even for the empty string; the explicit
+    /// -le/-be variants emit no BOM.
+    /// </summary>
+    internal static bool BareUtfCodecEmitsBom(string name)
+        => NormalizeEncodingName(name) is "utf16" or "utf32";
+
+    internal static string NormalizeEncodingName(string name)
     {
         var sb = new StringBuilder(name.Length);
         foreach (var c in name)

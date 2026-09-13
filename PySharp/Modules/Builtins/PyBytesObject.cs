@@ -334,8 +334,36 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
 
         try
         {
-            var enc = System.Text.Encoding.GetEncoding(encoding);
-            string result = enc.GetString(self.AsSpan());
+            var enc = PyStrObjectType.GetEncoding(encoding);
+            var data = self.AsSpan();
+
+            // CPython's bare utf-16/utf-32 codecs treat a leading BOM as the
+            // byte order mark: it selects the decode order and is dropped;
+            // with no BOM the native (little-endian) order applies. The
+            // explicit -le/-be variants leave a BOM in the decoded text.
+            int bomLength = 0;
+            bool bigEndian = false;
+            switch (PyStrObjectType.NormalizeEncodingName(encoding))
+            {
+                case "utf16":
+                    if (data.StartsWith((ReadOnlySpan<byte>)[0xFE, 0xFF]))
+                        (bomLength, bigEndian) = (2, true);
+                    else if (data.StartsWith((ReadOnlySpan<byte>)[0xFF, 0xFE]))
+                        bomLength = 2;
+                    if (bigEndian)
+                        enc = Encoding.BigEndianUnicode;
+                    break;
+                case "utf32":
+                    if (data.StartsWith((ReadOnlySpan<byte>)[0x00, 0x00, 0xFE, 0xFF]))
+                        (bomLength, bigEndian) = (4, true);
+                    else if (data.StartsWith((ReadOnlySpan<byte>)[0xFF, 0xFE, 0x00, 0x00]))
+                        bomLength = 4;
+                    if (bigEndian)
+                        enc = new UTF32Encoding(bigEndian: true, byteOrderMark: false);
+                    break;
+            }
+
+            string result = enc.GetString(bomLength > 0 ? data[bomLength..] : data);
             return PyStrObject.FromString(result);
         }
         catch (ArgumentException)

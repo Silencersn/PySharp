@@ -1299,6 +1299,16 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestStrUtf16Utf32BomRegression()
+    {
+        // Regression: bare 'utf-16' / 'utf-32' must emit a BOM on encode and
+        // consume a leading BOM (selecting the byte order) on decode; the
+        // explicit -le/-be variants stay BOM-free on both sides.
+        var module = RunModule("test_str_utf16_utf32_bom_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBytesLiteralEscapeRegression()
     {
         // Regression: bytes literal escapes must follow CPython's
