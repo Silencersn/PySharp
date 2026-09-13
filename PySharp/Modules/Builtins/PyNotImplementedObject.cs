@@ -29,9 +29,8 @@ public sealed partial class PyNotImplementedObjectType : PyTypeObject<PyNotImple
 
     protected override PyResult Bool(PyCallContext context, PyNotImplementedObject self)
     {
-        var warnResult = context.Warn<PyDeprecationWarningObjectType>("NotImplemented should not be used in a boolean context");
-        if (warnResult.IsError)
-            return warnResult;
-        return base.Bool(context, self);
+        // CPython 3.12+ hard error (formerly a DeprecationWarning):
+        // NotImplemented must never reach a boolean context.
+        return PyResult.TypeError("NotImplemented should not be used in a boolean context");
     }
 }

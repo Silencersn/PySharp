@@ -1409,6 +1409,15 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestNotImplementedBoolRegression()
+    {
+        // Regression: NotImplemented in a boolean context must raise
+        // CPython's TypeError; as a plain value it stays legal.
+        var module = RunModule("test_notimplemented_bool_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBytesLiteralEscapeRegression()
     {
         // Regression: bytes literal escapes must follow CPython's
