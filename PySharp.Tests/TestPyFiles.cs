@@ -1378,6 +1378,17 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestReflectedArithmeticSameTypeRegression()
+    {
+        // Regression: identical operand types share one binary slot — only
+        // the forward variant runs and __radd__ etc. never fire; comparisons
+        // keep the reflected direction; arithmetic TypeErrors use CPython's
+        // "unsupported operand type(s)" wording.
+        var module = RunModule("test_reflected_arithmetic_same_type_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBytesLiteralEscapeRegression()
     {
         // Regression: bytes literal escapes must follow CPython's

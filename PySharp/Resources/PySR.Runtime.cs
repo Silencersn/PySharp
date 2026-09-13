@@ -159,6 +159,7 @@ partial class PySR
     public const string Runtime_Operator_UnsupportedForAbs = "bad operand type for abs(): '{0}'";
     public const string Runtime_Operator_UnsupportedForUnary = "bad operand type for unary {0}: '{1}'";
     public const string Runtime_Operator_UnsupportedBetween = "'{0}' not supported between instances of '{1}' and '{2}'";
+    public const string Runtime_Operator_UnsupportedOperand = "unsupported operand type(s) for {0}: '{1}' and '{2}'";
 
     public const string Runtime_Builtin_Print_WrongArgType = "{0} must be None or a string, not {1}";
     public const string Runtime_Builtin_Max_EmptyIterable = "max() iterable argument is empty";

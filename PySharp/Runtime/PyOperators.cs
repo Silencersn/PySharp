@@ -59,6 +59,19 @@ public static class PyOperators
     }
 
 
+    private static bool IsComparisonOp(PyOperatorTypes op)
+    {
+        return op is PyOperatorTypes.Lt or PyOperatorTypes.LtE or PyOperatorTypes.Eq
+            or PyOperatorTypes.NotEq or PyOperatorTypes.Gt or PyOperatorTypes.GtE;
+    }
+
+    private static string OperatorTypeErrorName(PyOperatorTypes op)
+    {
+        return IsComparisonOp(op)
+            ? PySR.Runtime_Operator_UnsupportedBetween
+            : PySR.Runtime_Operator_UnsupportedOperand;
+    }
+
     private static PyResult EvalReflectiveOperator(PyCallContext context, PyObject self, PyObject other, PyBinaryFunction? selfFunc, PyBinaryFunction? otherFunc)
     {
         if (selfFunc is not null)
@@ -97,7 +110,7 @@ public static class PyOperators
         return PyNotImplementedObject.NotImplemented;
     }
 
-    private static PyResult EvalLeftFirstReflectiveOperator(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo)
+    private static PyResult EvalLeftFirstReflectiveOperator(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo, bool allowReflected)
     {
         PyResult result;
         var leftType = left.PyType;
@@ -105,44 +118,44 @@ public static class PyOperators
         switch (op)
         {
             case PyOperatorTypes.Add:
-                result = EvalReflectiveOperator(context, left, right, leftType.Slots.Add, rightType.Slots.RAdd);
+                result = EvalReflectiveOperator(context, left, right, leftType.Slots.Add, allowReflected ? rightType.Slots.RAdd : null);
                 break;
             case PyOperatorTypes.Sub:
-                result = EvalReflectiveOperator(context, left, right, leftType.Slots.Sub, rightType.Slots.RSub);
+                result = EvalReflectiveOperator(context, left, right, leftType.Slots.Sub, allowReflected ? rightType.Slots.RSub : null);
                 break;
             case PyOperatorTypes.Mult:
-                result = EvalReflectiveOperator(context, left, right, leftType.Slots.Mul, rightType.Slots.RMul);
+                result = EvalReflectiveOperator(context, left, right, leftType.Slots.Mul, allowReflected ? rightType.Slots.RMul : null);
                 break;
             case PyOperatorTypes.MatMult:
-                result = EvalReflectiveOperator(context, left, right, leftType.Slots.MatMul, rightType.Slots.RMatMul);
+                result = EvalReflectiveOperator(context, left, right, leftType.Slots.MatMul, allowReflected ? rightType.Slots.RMatMul : null);
                 break;
             case PyOperatorTypes.TrueDiv:
-                result = EvalReflectiveOperator(context, left, right, leftType.Slots.TrueDiv, rightType.Slots.RTrueDiv);
+                result = EvalReflectiveOperator(context, left, right, leftType.Slots.TrueDiv, allowReflected ? rightType.Slots.RTrueDiv : null);
                 break;
             case PyOperatorTypes.FloorDiv:
-                result = EvalReflectiveOperator(context, left, right, leftType.Slots.FloorDiv, rightType.Slots.RFloorDiv);
+                result = EvalReflectiveOperator(context, left, right, leftType.Slots.FloorDiv, allowReflected ? rightType.Slots.RFloorDiv : null);
                 break;
             case PyOperatorTypes.Mod:
-                result = EvalReflectiveOperator(context, left, right, leftType.Slots.Mod, rightType.Slots.RMod);
+                result = EvalReflectiveOperator(context, left, right, leftType.Slots.Mod, allowReflected ? rightType.Slots.RMod : null);
                 break;
             case PyOperatorTypes.Pow:
                 Debug.Assert(modulo is not null);
-                result = EvalReflectiveOperator(context, left, right, modulo, leftType.Slots.Pow, rightType.Slots.RPow);
+                result = EvalReflectiveOperator(context, left, right, modulo, leftType.Slots.Pow, allowReflected ? rightType.Slots.RPow : null);
                 break;
             case PyOperatorTypes.LShift:
-                result = EvalReflectiveOperator(context, left, right, leftType.Slots.LShift, rightType.Slots.RLShift);
+                result = EvalReflectiveOperator(context, left, right, leftType.Slots.LShift, allowReflected ? rightType.Slots.RLShift : null);
                 break;
             case PyOperatorTypes.RShift:
-                result = EvalReflectiveOperator(context, left, right, leftType.Slots.RShift, rightType.Slots.RRShift);
+                result = EvalReflectiveOperator(context, left, right, leftType.Slots.RShift, allowReflected ? rightType.Slots.RRShift : null);
                 break;
             case PyOperatorTypes.BitAnd:
-                result = EvalReflectiveOperator(context, left, right, leftType.Slots.And, rightType.Slots.RAnd);
+                result = EvalReflectiveOperator(context, left, right, leftType.Slots.And, allowReflected ? rightType.Slots.RAnd : null);
                 break;
             case PyOperatorTypes.BitXor:
-                result = EvalReflectiveOperator(context, left, right, leftType.Slots.Xor, rightType.Slots.RXor);
+                result = EvalReflectiveOperator(context, left, right, leftType.Slots.Xor, allowReflected ? rightType.Slots.RXor : null);
                 break;
             case PyOperatorTypes.BitOr:
-                result = EvalReflectiveOperator(context, left, right, leftType.Slots.Or, rightType.Slots.ROr);
+                result = EvalReflectiveOperator(context, left, right, leftType.Slots.Or, allowReflected ? rightType.Slots.ROr : null);
                 break;
             case PyOperatorTypes.Lt:
                 result = EvalReflectiveOperator(context, left, right, leftType.Slots.Lt, rightType.Slots.Gt);
@@ -161,7 +174,7 @@ public static class PyOperators
         }
 
         if (result.IsNotImplemented)
-            return PyResult.TypeError(PySR.Runtime_Operator_UnsupportedBetween, OperatorToString(op), left.PyType.FullName, right.PyType.FullName);
+            return PyResult.TypeError(OperatorTypeErrorName(op), OperatorToString(op), left.PyType.FullName, right.PyType.FullName);
 
         return result;
     }
@@ -230,7 +243,7 @@ public static class PyOperators
         }
 
         if (result.IsNotImplemented)
-            return PyResult.TypeError(PySR.Runtime_Operator_UnsupportedBetween, OperatorToString(op), left.PyType.FullName, right.PyType.FullName);
+            return PyResult.TypeError(OperatorTypeErrorName(op), OperatorToString(op), left.PyType.FullName, right.PyType.FullName);
 
         return result;
     }
@@ -306,7 +319,13 @@ public static class PyOperators
 
         if (!eq.Value.BoolValue && right.PyType.IsSubclassOf(left.PyType))
             return EvalRightFirstReflectiveOperator(context, op, left, right, modulo);
-        return EvalLeftFirstReflectiveOperator(context, op, left, right, modulo);
+
+        // CPython binary_op1: identical operand types resolve to a single
+        // shared slot, so for arithmetic ops only the forward variant is
+        // tried and the reflected method never runs; comparisons keep both
+        // directions.
+        var allowReflected = !eq.Value.BoolValue || IsComparisonOp(op);
+        return EvalLeftFirstReflectiveOperator(context, op, left, right, modulo, allowReflected);
     }
 
     public static PyResult Add(PyCallContext context, PyObject left, PyObject right)
