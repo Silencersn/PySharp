@@ -68,7 +68,7 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
         IsGeneratorRunning = true;
         using var withFrame = context.WithFrame(ref _frame, dispose: false);
         _vmStates.SetYieldReceivedValue(value);
-        var result = BytecodeVirtualMachine.Eval(context, ref _vmStates);
+        var result = ResumeEval(context);
         _frame.InstructionIndex = context.CurrentInternalFrame.InstructionIndex;
         if (result.IsError)
             return ConvertStopIteration(result);
@@ -89,7 +89,7 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
 
         _vmStates.ExceptionToRaise = PyGeneratorExitObjectType.Shared.Create();
         using var withFrame = context.WithFrame(ref _frame, dispose: false);
-        var result = BytecodeVirtualMachine.Eval(context, ref _vmStates);
+        var result = ResumeEval(context);
         _frame.InstructionIndex = context.CurrentInternalFrame.InstructionIndex;
 
         if (result.IsError)
@@ -148,7 +148,7 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
 
         _vmStates.ExceptionToRaise = exc;
         using var withFrame = context.WithFrame(ref _frame, dispose: false);
-        var result = BytecodeVirtualMachine.Eval(context, ref _vmStates);
+        var result = ResumeEval(context);
         _frame.InstructionIndex = context.CurrentInternalFrame.InstructionIndex;
         if (result.IsError)
             return ConvertStopIteration(result);
@@ -159,6 +159,23 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
 
         // yield or await value
         return result;
+    }
+
+    // Generator resume shares the caller's context: restore the handled
+    // exception observed on entry when the generator suspends or exits, so
+    // its handler state never leaks onto the caller's chain (a bare raise
+    // after resuming must see the caller's active exception, not a dead one).
+    private PyResult ResumeEval(PyCallContext context)
+    {
+        var savedHandledException = context.HandledException;
+        try
+        {
+            return BytecodeVirtualMachine.Eval(context, ref _vmStates);
+        }
+        finally
+        {
+            context.HandledException = savedHandledException;
+        }
     }
 }
 

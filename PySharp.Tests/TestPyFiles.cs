@@ -1462,6 +1462,18 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestBareRaiseDynamicScopeRegression()
+    {
+        // Regression: bare raise reads the call chain's handled exception
+        // (CPython thread exc_info) — helpers called from except bodies,
+        // __exit__ during a with-body exception, and finally pass-through all
+        // reraise the active exception, and the state is restored once the
+        // handler completes so later bare raises see no active exception.
+        var module = RunModule("test_bare_raise_dynamic_scope_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestFrozenSetConstructorBaseTypeRegression()
     {
         // Regression: frozenset() must return an exact frozenset unchanged

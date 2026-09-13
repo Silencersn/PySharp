@@ -17,6 +17,14 @@ public sealed partial class PyCallContext : IDisposable
     private PyCallContextFrameState? _state;
     private ImmutableArrayBuilderPool? _builderPool;
 
+    // Dynamic-scope handled exception (CPython tstate->exc_info->exc_value,
+    // read by bare raise): set while an exception is being handled by this
+    // call chain — inside an except body, while passing through a finally, or
+    // while a with statement dispatches __exit__. Frames save the previous
+    // value when a handler is entered and restore it on exit, so callees
+    // observe the caller's active exception without owning it.
+    internal PyExceptionObject? HandledException { get; set; }
+
     internal PyEnvironment PyEnvironment => _environment;
     internal PyCallContextFrameState FrameState => _state ?? throw new InvalidOperationException("Context is not initialized or is disposed.");
     public PyObjectComparer Comparer => field ??= new PyObjectComparer(this);

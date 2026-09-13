@@ -26,6 +26,9 @@ internal static partial class BytecodeVirtualMachine
         public PyObject? ReturnValue;
         public bool HitExcept;
         public int FrameIndex;
+        // HandledException value observed when this handler was first entered;
+        // _PopException restores it so bare raise does not see a dead handler.
+        public PyExceptionObject? SavedHandledException;
 
         public ExceptionHandler(int exceptOffset, int finallyOffset)
         {
@@ -399,7 +402,10 @@ internal static partial class BytecodeVirtualMachine
                             frame = ref context.CurrentInternalFrame;
                             states.OperandStackSize = Stack.Count;
                             context.FrameState.PushStates(ref states);
-                            states = new BytecodeVirtualMachineStates(context, usingLocalsPlusAsOperandStack: true);
+                            states = new BytecodeVirtualMachineStates(context, usingLocalsPlusAsOperandStack: true)
+                            {
+                                SavedHandledException = context.HandledException,
+                            };
                             goto eval_begin;
                         }
 
@@ -883,6 +889,7 @@ internal static partial class BytecodeVirtualMachine
                     case OpCode._PopException:
                         states.Exceptions.Pop();
                         states.ExceptionHandlers.Peek().PyException = null;
+                        context.HandledException = states.ExceptionHandlers.Peek().SavedHandledException;
                         break;
 
                     case OpCode._PopExceptionIfTrue:
@@ -1068,6 +1075,7 @@ internal static partial class BytecodeVirtualMachine
             {
                 Debug.Assert(currentHandler.State is ExceptionHandler.State_Init);
                 currentHandler.PyException = e.PyException;
+                currentHandler.SavedHandledException = context.HandledException;
 
                 currentHandler.HitExcept = true;
                 if (currentHandler.ExceptOffset is not ExceptionHandler.NoExcepts)
@@ -1089,6 +1097,7 @@ internal static partial class BytecodeVirtualMachine
             e.PyException.WithTraceback(context, overwriteExisting: false);
 
             states.Exceptions.Push(e.PyException);
+            context.HandledException = e.PyException;
 
             instructionArg = 0;
             currentIndex = nextIndex;
@@ -1141,6 +1150,9 @@ internal static partial class BytecodeVirtualMachine
 
             context.FrameState.ExitInternalFrame(context, dispose: true);
             frame = ref context.CurrentInternalFrame;
+            // Leaving an inline frame restores the handled exception it was
+            // entered with, so its handler state never leaks onto the caller.
+            context.HandledException = states.SavedHandledException;
             states = context.FrameState.PopStates();
             goto eval_begin;
         }

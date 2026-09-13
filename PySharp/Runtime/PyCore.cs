@@ -13,7 +13,15 @@ internal static class PyCore
     {
         Debug.Assert(context.CurrentInternalFrame.CodeObject is not null);
         var vmStates = new BytecodeVirtualMachineStates(context, usingLocalsPlusAsOperandStack);
-        return BytecodeVirtualMachine.Eval(context, ref vmStates);
+        var savedHandledException = context.HandledException;
+        try
+        {
+            return BytecodeVirtualMachine.Eval(context, ref vmStates);
+        }
+        finally
+        {
+            context.HandledException = savedHandledException;
+        }
     }
 
     public static PyCellObject[]? GetFreeVars(ref PyInternalFrame frame, PyCodeObject code)
@@ -164,10 +172,14 @@ internal static class PyCore
         {
             // bare raise re-raises the current exception as-is; inside an
             // except* handler the stack top is the matched subgroup (a null
-            // entry is a fully-consumed rest, not a re-raisable exception)
+            // entry is a fully-consumed rest, not a re-raisable exception).
+            // When this frame has no active exception, fall back to the
+            // call chain's handled exception (CPython reads the thread's
+            // exc_info, which callees observe dynamically).
             if (states.Exceptions.Count is 0 || states.Exceptions.Peek() is null)
-                throw context.RuntimeError(PySR.Runtime_RaiseStmt_NoActiveException);
-            exc = states.CurrentException;
+                exc = context.HandledException ?? throw context.RuntimeError(PySR.Runtime_RaiseStmt_NoActiveException);
+            else
+                exc = states.CurrentException;
         }
         else
         {
