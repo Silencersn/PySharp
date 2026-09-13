@@ -97,11 +97,12 @@ partial class Emitter
         else if (VariableScope is ComprehensionVariableScope comprehensionScope)
         {
             // inlined comprehension body inside a class body: the class scope is
-            // invisible to the body. Targets are name-based inline-frame locals;
-            // other names skip the class scope (global / enclosing-function cell).
+            // invisible to the body. Targets are name-based inline-frame locals
+            // (captured targets live in cells owned by the inline frame); other
+            // names skip the class scope (global / enclosing-function cell).
             if (comprehensionScope.Variables.TryGetValue(name, out var type) && type is PyVariableType.Local)
                 AsName();
-            else if (type is PyVariableType.Closure)
+            else if (type is PyVariableType.CapturedLocal or PyVariableType.Closure)
                 AsDeref();
             else
                 AsGlobal();
@@ -647,6 +648,7 @@ partial class Emitter
         Builder.Emit(OpCode.BuildList, 0);
         Builder.Emit(OpCode._EnterInlineFrame);
 
+        EmitInlineComprehensionCells(node);
         InternalEmitGenerators(node.Generators, () =>
         {
             LoadExpr(node.Elt);
@@ -661,6 +663,7 @@ partial class Emitter
         Builder.Emit(OpCode.BuildSet, 0);
         Builder.Emit(OpCode._EnterInlineFrame);
 
+        EmitInlineComprehensionCells(node);
         InternalEmitGenerators(node.Generators, () =>
         {
             LoadExpr(node.Elt);
@@ -675,6 +678,7 @@ partial class Emitter
         Builder.Emit(OpCode.BuildMap, 0);
         Builder.Emit(OpCode._EnterInlineFrame);
 
+        EmitInlineComprehensionCells(node);
         InternalEmitGenerators(node.Generators, () =>
         {
             LoadExpr(node.Key);
@@ -683,6 +687,19 @@ partial class Emitter
         }, inlineCompScope: Model.GetVariableScope<ComprehensionVariableScope>(node));
 
         Builder.Emit(OpCode._ExitInlineFrame);
+    }
+
+    // Comprehension targets captured by nested functions (class-body inline
+    // scope only): create the owning cells in the inline frame before the
+    // loop runs (CPython: the comprehension function's cellvars).
+    private void EmitInlineComprehensionCells(AstExprNode node)
+    {
+        var scope = Model.GetVariableScope<ComprehensionVariableScope>(node);
+        if (scope is null)
+            return;
+
+        foreach (var cell in scope.CellVars)
+            Builder.Emit(OpCode.MakeCell, cell);
     }
 
     private void EmitYield(YieldNode node)
@@ -725,6 +742,9 @@ partial class Emitter
         PyCodeObject codeObj;
         using (var sub = new EmitterSubScope(this, scope))
         {
+            foreach (var cell in scope.CellVars)
+                Builder.Emit(OpCode._MakeCellFast, scope.LocalsTable[cell]);
+
             Builder.Emit(OpCode.ReturnGenerator);
             Builder.Emit(OpCode.PopTop);
 
@@ -805,6 +825,9 @@ partial class Emitter
         PyCodeObject codeObj;
         using (var sub = new EmitterSubScope(this, scope))
         {
+            foreach (var cell in scope.CellVars)
+                Builder.Emit(OpCode._MakeCellFast, scope.LocalsTable[cell]);
+
             if (scope.IsGenerator)
             {
                 Builder.Emit(OpCode.ReturnGenerator);

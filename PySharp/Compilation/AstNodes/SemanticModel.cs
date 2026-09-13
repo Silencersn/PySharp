@@ -309,14 +309,29 @@ internal sealed class GeneratorExpVariableScope : CallableVariableScope
 /// only the outermost iterable is evaluated in the class scope. Locals are the
 /// comprehension targets, resolved name-based inside the inline frame instead
 /// of via fast-local slots (the body shares the enclosing code object).
+/// A target captured by a nested function is promoted to CapturedLocal and
+/// gets a cell in the inline frame (CPython: the comprehension function owns
+/// the cellvar), so the nested function receives it in its closure.
 /// </summary>
 internal sealed class ComprehensionVariableScope : VariableScope
 {
     public override AstExprNode Owner { get; }
     public override string Name => "<comprehension>";
 
+    public Dictionary<string, HashSet<IScopeWithFreeVars>> ScopesRequiringFree = [];
+    public ImmutableArray<string> CellVars { get; internal set; } = [];
+
     public ComprehensionVariableScope(AstExprNode owner, VariableScope parent) : base(parent)
     {
         Owner = owner;
+    }
+
+    internal void CaptureVariable(string name)
+    {
+        var type = Variables[name];
+        if (type is not PyVariableType.Local)
+            return;
+
+        Variables[name] = PyVariableType.CapturedLocal;
     }
 }

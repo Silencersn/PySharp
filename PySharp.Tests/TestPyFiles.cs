@@ -1451,6 +1451,17 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestComprehensionClosureCaptureRegression()
+    {
+        // Regression: closures capturing comprehension loop variables need a
+        // cell owned by the comprehension scope — the lambda/genexpr prologues
+        // create CellVars, and class-body inline comprehensions participate in
+        // capture analysis instead of leaking the name to the module globals.
+        var module = RunModule("test_comprehension_closure_capture_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestFrozenSetConstructorBaseTypeRegression()
     {
         // Regression: frozenset() must return an exact frozenset unchanged

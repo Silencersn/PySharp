@@ -152,6 +152,18 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
                         break;
                     }
 
+                    // Comprehension targets inside a class body: the inline
+                    // comprehension scope owns them, so a nested function's
+                    // reference is a closure over that scope (CPython treats
+                    // the comprehension as a function owning the cellvar).
+                    if (parent is ComprehensionVariableScope comprehensionScope &&
+                        comprehensionScope.Variables.TryGetValue(name, out var typeOfCompVariable) &&
+                        typeOfCompVariable is not (PyVariableType.Global or PyVariableType.Closure))
+                    {
+                        scope.Variables[name] = PyVariableType.Closure;
+                        break;
+                    }
+
                     if (name is PySpecialNames.Class && parent is ClassVariableScope)
                     {
                         scope.Variables[name] = PyVariableType.Closure;
@@ -202,6 +214,17 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
                     if (!callableScope.ScopesRequiringFree.TryGetValue(name, out var scopes))
                         continue;
 
+                    foreach (var s in scopes)
+                        s.TempFrees.Add(name);
+                }
+            }
+
+            // Comprehension targets captured by nested functions: distribute
+            // the captured names to the referencing scopes' TempFrees.
+            if (scope is ComprehensionVariableScope comprehensionScope)
+            {
+                foreach (var (name, scopes) in comprehensionScope.ScopesRequiringFree)
+                {
                     foreach (var s in scopes)
                         s.TempFrees.Add(name);
                 }
@@ -299,6 +322,14 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
             if (scope is ClassVariableScope classScope)
             {
                 classScope.FreeVars = [.. classScope.TempFrees.Distinct()];
+                return;
+            }
+
+            if (scope is ComprehensionVariableScope comprehensionScope)
+            {
+                comprehensionScope.CellVars = [.. comprehensionScope.Variables
+                    .Where(pair => pair.Value is PyVariableType.CapturedLocal)
+                    .Select(pair => pair.Key)];
                 return;
             }
 
@@ -683,6 +714,21 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
                             scopes.UnionWith(scopesRequiringFree);
                         else
                             callableVariableScope.ScopesRequiringFree[name] = scopesRequiringFree;
+                        break;
+                    }
+
+                    // A comprehension target captured by a nested function: the
+                    // inline comprehension scope owns the cell (CapturedLocal)
+                    // and the referencing scopes read it through their closure.
+                    if (parent is ComprehensionVariableScope compScope &&
+                        compScope.Variables.TryGetValue(name, out var typeOfCompVariable) &&
+                        typeOfCompVariable is not (PyVariableType.Global or PyVariableType.Closure))
+                    {
+                        compScope.CaptureVariable(name);
+                        if (compScope.ScopesRequiringFree.TryGetValue(name, out var scopes))
+                            scopes.UnionWith(scopesRequiringFree);
+                        else
+                            compScope.ScopesRequiringFree[name] = scopesRequiringFree;
                         break;
                     }
 
