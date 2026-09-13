@@ -112,11 +112,7 @@ public sealed partial class PyFrozenSetObjectType : PyTypeObject<PyFrozenSetObje
     [PyFunctionParameters("iterable", "/")]
     private static PyResult NewImpl_2(PyCallContext context, PyArguments arguments)
     {
-        var iterable = arguments[0];
-        if (iterable is PyFrozenSetObject frozenSet)
-            return frozenSet;
-
-        var setResult = PyUtils.IterableToSet(context, iterable);
+        var setResult = PyUtils.IterableToSet(context, arguments[0]);
         if (setResult.IsError)
             return setResult;
 
@@ -125,6 +121,17 @@ public sealed partial class PyFrozenSetObjectType : PyTypeObject<PyFrozenSetObje
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
+        // CPython make_new_set: frozenset() of an exact frozenset returns the
+        // instance itself, but only when constructing the exact base type —
+        // any other type (subclasses included) copies the elements into a
+        // fresh object of that type.
+        if (args.Count is 1 &&
+            kwargs.Count is 0 &&
+            args[0] is PyFrozenSetObject frozenSet &&
+            ReferenceEquals(frozenSet.PyType, PyFrozenSetObjectType.Shared) &&
+            ReferenceEquals(cls, PyFrozenSetObjectType.Shared))
+            return frozenSet;
+
         var obj = _new.Call(context, args, kwargs);
         if (obj.IsError)
             return obj;

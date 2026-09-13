@@ -1440,6 +1440,17 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestFrozenSetConstructorBaseTypeRegression()
+    {
+        // Regression: frozenset() must return an exact frozenset unchanged
+        // but copy subclass instances into the base type (CPython
+        // make_new_set); constructing a subclass must never retype the
+        // original object in place.
+        var module = RunModule("test_frozenset_constructor_base_type_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestNumericUnderscoreLiteralRegression()
     {
         // Regression: PEP 515 underscore separators must work in every
