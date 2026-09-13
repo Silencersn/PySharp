@@ -3,6 +3,7 @@ using PySharp.Runtime.Calls;
 using PySharp.Runtime.Environments;
 using PySharp.Runtime.PyAttributes;
 using System.Diagnostics;
+using System.Numerics;
 using System.Text;
 namespace PySharp.Modules.Builtins;
 
@@ -429,6 +430,44 @@ public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
         if (sizeObj is PyIntObject intObj)
             return self.ReadLine(intObj.Int32Value);
         return self.ReadLine();
+    }
+
+    [PyMethod("readlines")]
+    [PyFunctionParameters("hint=-1")]
+    private static PyResult ReadLines(PyCallContext context, PyFileObject self, PyArguments arguments)
+    {
+        // CPython _IOBase.readlines: keep readline() until EOF, stopping
+        // once the accumulated size EXCEEDS a positive hint (the crossing
+        // line is kept); text mode counts characters, binary mode bytes.
+        BigInteger hint = -1;
+        if (arguments[0] is PyIntObject hintObj)
+            hint = hintObj.Value;
+
+        var lines = new List<PyObject>();
+        long length = 0;
+        while (true)
+        {
+            var lineResult = self.ReadLine();
+            if (lineResult.IsError)
+                return lineResult;
+
+            var line = lineResult.Value;
+            var lineLength = line switch
+            {
+                PyStrObject s => s.Value.Length,
+                PyBytesObject b => b.Length,
+                _ => 0,
+            };
+            if (lineLength is 0)
+                break;
+
+            lines.Add(line);
+            length += lineLength;
+            if (hint > 0 && length > hint)
+                break;
+        }
+
+        return PyListObject.CreateList(lines);
     }
 
     [PyMethod("readable")]

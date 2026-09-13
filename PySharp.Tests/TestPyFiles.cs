@@ -1399,6 +1399,16 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestFileReadlinesRegression()
+    {
+        // Regression: file objects must expose readlines() with CPython's
+        // hint semantics (stop after the total size EXCEEDS a positive
+        // hint), including binary mode and closed-file ValueError.
+        var module = RunModule("test_file_readlines_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBytesLiteralEscapeRegression()
     {
         // Regression: bytes literal escapes must follow CPython's
