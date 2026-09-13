@@ -86,6 +86,47 @@ public sealed partial class PyRangeObjectType : PyTypeObject<PyRangeObject>
         return PyIntObject.FromInteger(self.RangeLen);
     }
 
+    protected override PyResult Contains(PyCallContext context, PyRangeObject self, PyObject item)
+    {
+        // CPython range_contains: int (and bool) operands take the O(1)
+        // arithmetic test — x is a member iff (x - start) is a multiple of
+        // step and the index lands inside [0, len).
+        if (item is PyIntObject intObj)
+        {
+            var offset = intObj.Value - self.Start;
+            var (index, remainder) = BigInteger.DivRem(offset, self.Step);
+            return PyBoolObject.FromBoolean(remainder.IsZero && index.Sign >= 0 && index < self.RangeLen);
+        }
+
+        // Non-int operands keep the generic element-enumeration semantics
+        // (there is no base Contains implementation to fall back to).
+        var iter = PySpecialMethods.Iter(context, self);
+        if (iter.IsError)
+            return iter;
+
+        var element = PySpecialMethods.Next(context, iter.Value);
+        while (!element.IsStopIteration)
+        {
+            if (element.IsError)
+                return element;
+
+            var eq = PyOperators.Eq(context, element.Value, item);
+            if (eq.IsError)
+                return eq;
+
+            var b = PySpecialMethods.Bool(context, eq.Value);
+            if (b.IsError)
+                return b;
+
+            if (b.Value.BoolValue)
+                return PyBoolObject.True;
+
+            element = PySpecialMethods.Next(context, iter.Value);
+        }
+
+        return PyBoolObject.False;
+    }
+
     protected override PyResult Reversed(PyCallContext context, PyRangeObject self)
     {
         // reversed(range(start, stop, step)) = range(start + (len-1)*step, start - step, -step)

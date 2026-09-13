@@ -1358,6 +1358,16 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestRangeContainsRegression()
+    {
+        // Regression: `x in range` must take CPython's O(1) arithmetic test
+        // for int/bool operands (huge ranges used to hang); non-int operands
+        // keep enumerating.
+        var module = RunModule("test_range_contains_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBytesLiteralEscapeRegression()
     {
         // Regression: bytes literal escapes must follow CPython's
