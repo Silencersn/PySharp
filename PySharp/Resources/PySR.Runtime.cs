@@ -206,6 +206,10 @@ partial class PySR
     public const string Runtime_File_CannotFitOffset = "cannot fit 'int' into an offset-sized integer";
     public const string Runtime_Str_PctFormatRealNumberRequired = "%{0} format: a real number is required, not {1}";
     public const string Runtime_Str_PctFormatIntegerRequired = "%{0} format: an integer is required, not {1}";
+    public const string Runtime_Str_StartswithTupleItemMustBeStr = "tuple for startswith must only contain str, not {0}";
+    public const string Runtime_Str_EndswithTupleItemMustBeStr = "tuple for endswith must only contain str, not {0}";
+    public const string Runtime_Str_StartswithFirstArgMustBeStr = "startswith first arg must be str or a tuple of str, not {0}";
+    public const string Runtime_Str_EndswithFirstArgMustBeStr = "endswith first arg must be str or a tuple of str, not {0}";
     public const string Runtime_Float_CannotConvertInfinityToInteger = "cannot convert float infinity to integer";
     public const string Runtime_Float_CannotConvertNaNToInteger = "cannot convert float NaN to integer";
     public const string Runtime_Math_MustBeReal = "must be real number, not {0}";

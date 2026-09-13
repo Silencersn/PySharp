@@ -226,29 +226,26 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters("prefix", "/", "start=0", "end=2147483647")]
     private static PyResult StartsWith(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (arguments[0] is PyStrObject prefixStr)
+        var sub = arguments[0];
+
+        if (sub is PyTupleObject prefixTuple)
         {
-            int start = 0, end = int.MaxValue;
-            if (arguments[1] is PyIntObject startObj)
-                start = startObj.Int32Value;
-            if (arguments[2] is PyIntObject endObj)
-                end = endObj.Int32Value;
-            // CPython adjust_indices wraps a negative start but keeps a
-            // positive start as-is even above the length; tailmatch then
-            // fails the window check, so an empty needle is False only
-            // past the end of the string
-            if (start < 0)
-                start = ClampRuneStart(start, self.PyLength);
-            end = ClampRuneEnd(end, self.PyLength);
-            // the window must at least fit the needle, so a length-0
-            // needle matches at every valid position, including
-            // zero-width windows and the empty string
-            if (end - start < prefixStr.PyLength)
-                return PyBoolObject.False;
-            var sliced = self.SubstringByRuneRange(start, end);
-            return PyBoolObject.FromBoolean(sliced.StartsWith(prefixStr.Value));
+            foreach (var item in prefixTuple)
+            {
+                if (item is not PyStrObject itemStr)
+                    return PyResult.TypeError(PySR.Runtime_Str_StartswithTupleItemMustBeStr, item.PyType.Name);
+
+                if (TailMatch(self, itemStr, arguments[1], arguments[2], startswith: true))
+                    return PyBoolObject.True;
+            }
+            // nothing matched
+            return PyBoolObject.False;
         }
-        return PyResult.TypeError($"startswith first arg must be str");
+
+        if (sub is not PyStrObject prefixStr)
+            return PyResult.TypeError(PySR.Runtime_Str_StartswithFirstArgMustBeStr, sub.PyType.Name);
+
+        return PyBoolObject.FromBoolean(TailMatch(self, prefixStr, arguments[1], arguments[2], startswith: true));
     }
 
     [PyMethod("endswith")]
@@ -256,29 +253,49 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters("suffix", "/", "start=0", "end=2147483647")]
     private static PyResult EndsWith(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (arguments[0] is PyStrObject suffixStr)
+        var sub = arguments[0];
+
+        if (sub is PyTupleObject suffixTuple)
         {
-            int start = 0, end = int.MaxValue;
-            if (arguments[1] is PyIntObject startObj)
-                start = startObj.Int32Value;
-            if (arguments[2] is PyIntObject endObj)
-                end = endObj.Int32Value;
-            // CPython adjust_indices wraps a negative start but keeps a
-            // positive start as-is even above the length; tailmatch then
-            // fails the window check, so an empty needle is False only
-            // past the end of the string
-            if (start < 0)
-                start = ClampRuneStart(start, self.PyLength);
-            end = ClampRuneEnd(end, self.PyLength);
-            // the window must at least fit the needle, so a length-0
-            // needle matches at every valid position, including
-            // zero-width windows and the empty string
-            if (end - start < suffixStr.PyLength)
-                return PyBoolObject.False;
-            var sliced = self.SubstringByRuneRange(start, end);
-            return PyBoolObject.FromBoolean(sliced.EndsWith(suffixStr.Value));
+            foreach (var item in suffixTuple)
+            {
+                if (item is not PyStrObject itemStr)
+                    return PyResult.TypeError(PySR.Runtime_Str_EndswithTupleItemMustBeStr, item.PyType.Name);
+
+                if (TailMatch(self, itemStr, arguments[1], arguments[2], startswith: false))
+                    return PyBoolObject.True;
+            }
+            // nothing matched
+            return PyBoolObject.False;
         }
-        return PyResult.TypeError($"endswith first arg must be str");
+
+        if (sub is not PyStrObject suffixStr)
+            return PyResult.TypeError(PySR.Runtime_Str_EndswithFirstArgMustBeStr, sub.PyType.Name);
+
+        return PyBoolObject.FromBoolean(TailMatch(self, suffixStr, arguments[1], arguments[2], startswith: false));
+    }
+
+    private static bool TailMatch(PyStrObject self, PyStrObject needle, PyObject startArg, PyObject endArg, bool startswith)
+    {
+        int start = 0, end = int.MaxValue;
+        if (startArg is PyIntObject startObj)
+            start = startObj.Int32Value;
+        if (endArg is PyIntObject endObj)
+            end = endObj.Int32Value;
+        // CPython adjust_indices wraps a negative start but keeps a
+        // positive start as-is even above the length; tailmatch then
+        // fails the window check, so an empty needle is False only
+        // past the end of the string
+        if (start < 0)
+            start = ClampRuneStart(start, self.PyLength);
+        end = ClampRuneEnd(end, self.PyLength);
+        // the window must at least fit the needle, so a length-0
+        // needle matches at every valid position, including
+        // zero-width windows and the empty string
+        if (end - start < needle.PyLength)
+            return false;
+        var sliced = self.SubstringByRuneRange(start, end);
+        return startswith ? sliced.StartsWith(needle.Value) : sliced.EndsWith(needle.Value);
     }
 
     [PyMethod("replace")]

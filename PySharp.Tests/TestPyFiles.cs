@@ -415,6 +415,18 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestStrTailmatchTupleRegression()
+    {
+        // Regression: str.startswith/endswith must accept a tuple of
+        // prefixes/suffixes (any match wins) and reject non-str items and
+        // non-str non-tuple first args with CPython's exact messages,
+        // while the str-path window semantics stay untouched. Fails until
+        // the fix lands.
+        var module = RunModule("test_str_tailmatch_tuple_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestNamedExpr()
     {
         var module = RunModule("test_named_expr.py");
