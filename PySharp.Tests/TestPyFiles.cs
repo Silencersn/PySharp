@@ -1328,6 +1328,16 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestIntFloatConversionRoundingRegression()
+    {
+        // Regression: BigInteger -> double conversion must round to nearest,
+        // ties to even (guard + sticky bits); the plain (double) cast
+        // truncated and landed 1 ulp low (e.g. float(10**30)).
+        var module = RunModule("test_int_float_conversion_rounding_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBytesLiteralEscapeRegression()
     {
         // Regression: bytes literal escapes must follow CPython's

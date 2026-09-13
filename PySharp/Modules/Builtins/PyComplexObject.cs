@@ -3,6 +3,8 @@ using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
 using System.Numerics;
 
+using PySharp.Utility;
+
 namespace PySharp.Modules.Builtins;
 
 // TODO: AI Generated, need review
@@ -86,7 +88,7 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
         if (other is PyComplexObject c)
             return PyComplexObject.FromComplex(self.Value + c.Value);
         if (other is PyIntObject i)
-            return PyComplexObject.FromComplex(self.Value + new Complex((double)i.Value, 0));
+            return PyComplexObject.FromComplex(self.Value + new Complex(i.Value.ToDoubleRounded(), 0));
         if (other is PyFloatObject f)
             return PyComplexObject.FromComplex(self.Value + new Complex(f.Value, 0));
         return base.Add(context, self, other);
@@ -96,7 +98,7 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
         if (other is PyComplexObject c)
             return PyComplexObject.FromComplex(self.Value - c.Value);
         if (other is PyIntObject i)
-            return PyComplexObject.FromComplex(self.Value - new Complex((double)i.Value, 0));
+            return PyComplexObject.FromComplex(self.Value - new Complex(i.Value.ToDoubleRounded(), 0));
         if (other is PyFloatObject f)
             return PyComplexObject.FromComplex(self.Value - new Complex(f.Value, 0));
         return base.Sub(context, self, other);
@@ -106,7 +108,7 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
         if (other is PyComplexObject c)
             return PyComplexObject.FromComplex(self.Value * c.Value);
         if (other is PyIntObject i)
-            return PyComplexObject.FromComplex(self.Value * new Complex((double)i.Value, 0));
+            return PyComplexObject.FromComplex(self.Value * new Complex(i.Value.ToDoubleRounded(), 0));
         if (other is PyFloatObject f)
             return PyComplexObject.FromComplex(self.Value * new Complex(f.Value, 0));
         return base.Mul(context, self, other);
@@ -121,7 +123,7 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
         }
         if (other is PyIntObject i)
         {
-            double v = (double)i.Value;
+            double v = i.Value.ToDoubleRounded();
             if (v is 0)
                 return PyResult.ZeroDivisionError();
             return PyComplexObject.FromComplex(self.Value / new Complex(v, 0));
@@ -139,7 +141,7 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
         if (other is PyComplexObject c)
             return PyBoolObject.FromBoolean(self.Value == c.Value);
         if (other is PyIntObject i)
-            return PyBoolObject.FromBoolean(self.Value == new Complex((double)i.Value, 0));
+            return PyBoolObject.FromBoolean(self.Value == new Complex(i.Value.ToDoubleRounded(), 0));
         if (other is PyFloatObject f)
             return PyBoolObject.FromBoolean(self.Value == new Complex(f.Value, 0));
         return base.Eq(context, self, other);
@@ -160,7 +162,7 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
             }
             else if (args[0] is PyIntObject i)
             {
-                real = (double)i.Value;
+                real = i.Value.ToDoubleRounded();
             }
             else
             {
@@ -168,13 +170,13 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
                 if (result.IsError)
                     return result;
 
-                real = (double)result.Value.Value;
+                real = result.Value.Value.ToDoubleRounded();
             }
         }
         if (args.Count > 1)
         {
             if (args[1] is PyIntObject i)
-                imag = (double)i.Value;
+                imag = i.Value.ToDoubleRounded();
             else if (args[1] is PyFloatObject f)
                 imag = f.Value;
             else

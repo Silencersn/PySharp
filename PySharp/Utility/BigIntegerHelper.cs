@@ -412,4 +412,40 @@ internal static class BigIntegerHelper
         PoolHelper.ReturnIfNonNull(arrayToReturn);
         charsWritten = index;
     }
+
+    /// <summary>
+    /// Converts a BigInteger to double with round-half-to-even semantics
+    /// (CPython's PyLong_AsDouble). The plain (double) cast truncates the
+    /// bits below the 53-bit mantissa and lands 1 ulp low at rounding
+    /// boundaries such as float(10**30).
+    /// </summary>
+    public static double ToDoubleRounded(this BigInteger value)
+    {
+        if (value.IsZero)
+            return 0.0;
+
+        bool negative = value.Sign < 0;
+        var abs = BigInteger.Abs(value);
+        int bitLength = (int)abs.GetBitLength();
+        if (bitLength <= 53)
+            return negative ? -(double)abs : (double)abs;
+
+        // value = top * 2^shift where top holds 54 bits: 53 mantissa bits
+        // plus the guard bit; every bit shifted out folds into sticky.
+        int shift = bitLength - 54;
+        var top = (long)(abs >> shift);
+        var mantissa = top >> 1;
+        bool guard = (top & 1) is not 0;
+        bool sticky = !(abs & ((BigInteger.One << shift) - 1)).IsZero;
+        if (guard && (sticky || (mantissa & 1) is not 0))
+            mantissa++;
+        if (mantissa is 1L << 53)
+        {
+            mantissa >>= 1;
+            shift++;
+        }
+
+        double result = Math.ScaleB(mantissa, shift + 1);
+        return negative ? -result : result;
+    }
 }

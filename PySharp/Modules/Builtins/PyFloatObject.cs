@@ -5,6 +5,8 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Numerics;
 
+using PySharp.Utility;
+
 namespace PySharp.Modules.Builtins;
 
 public class PyFloatObject : PyObject
@@ -246,7 +248,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
     {
         return other switch
         {
-            PyIntObject intObj => PyFloatObject.FromDouble(self.Value + (double)intObj.Value),
+            PyIntObject intObj => PyFloatObject.FromDouble(self.Value + intObj.Value.ToDoubleRounded()),
             PyFloatObject floatObj => PyFloatObject.FromDouble(self.Value + floatObj.Value),
             _ => base.Add(context, self, other),
         };
@@ -255,7 +257,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
     {
         return other switch
         {
-            PyIntObject intObj => PyFloatObject.FromDouble(self.Value - (double)intObj.Value),
+            PyIntObject intObj => PyFloatObject.FromDouble(self.Value - intObj.Value.ToDoubleRounded()),
             PyFloatObject floatObj => PyFloatObject.FromDouble(self.Value - floatObj.Value),
             _ => base.Sub(context, self, other),
         };
@@ -264,7 +266,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
     {
         return other switch
         {
-            PyIntObject intObj => PyFloatObject.FromDouble(self.Value * (double)intObj.Value),
+            PyIntObject intObj => PyFloatObject.FromDouble(self.Value * intObj.Value.ToDoubleRounded()),
             PyFloatObject floatObj => PyFloatObject.FromDouble(self.Value * floatObj.Value),
             _ => base.Mul(context, self, other),
         };
@@ -273,7 +275,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
     {
         return other switch
         {
-            PyIntObject intObj => intObj.Value.IsZero ? PyResult.ZeroDivisionError() : PyFloatObject.FromDouble(self.Value / (double)intObj.Value),
+            PyIntObject intObj => intObj.Value.IsZero ? PyResult.ZeroDivisionError() : PyFloatObject.FromDouble(self.Value / intObj.Value.ToDoubleRounded()),
             PyFloatObject floatObj => floatObj.Value is 0 ? PyResult.ZeroDivisionError() : PyFloatObject.FromDouble(self.Value / floatObj.Value),
             _ => base.TrueDiv(context, self, other),
         };
@@ -284,7 +286,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
         {
             if (intObj.Value.IsZero)
                 return PyResult.ZeroDivisionError();
-            var dv = (double)intObj.Value;
+            var dv = intObj.Value.ToDoubleRounded();
             if (double.IsInfinity(dv))
                 return PyResult.OverflowError("int too large to convert to float");
             FloatDivMod(self.Value, dv, out var floorDiv, out _);
@@ -308,7 +310,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
             case PyIntObject intObj:
                 if (intObj.Value.IsZero)
                     return PyResult.ZeroDivisionError();
-                var dv = (double)intObj.Value;
+                var dv = intObj.Value.ToDoubleRounded();
                 if (double.IsInfinity(dv))
                     return PyResult.OverflowError("int too large to convert to float");
                 FloatDivMod(self.Value, dv, out var q, out var m);
@@ -326,7 +328,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
     {
         return other switch
         {
-            PyIntObject intObj => intObj.Value.IsZero ? PyResult.ZeroDivisionError() : PyFloatObject.FromDouble(FloatMod(self.Value, (double)intObj.Value)),
+            PyIntObject intObj => intObj.Value.IsZero ? PyResult.ZeroDivisionError() : PyFloatObject.FromDouble(FloatMod(self.Value, intObj.Value.ToDoubleRounded())),
             PyFloatObject floatObj => floatObj.Value is 0 ? PyResult.ZeroDivisionError() : PyFloatObject.FromDouble(FloatMod(self.Value, floatObj.Value)),
             _ => base.Mod(context, self, other),
         };
@@ -389,7 +391,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
             return PyResult.TypeError(PySR.Runtime_Number_PowThirdArgNotInteger);
         return other switch
         {
-            PyIntObject intObj => Pow(self.Value, (double)intObj.Value),
+            PyIntObject intObj => Pow(self.Value, intObj.Value.ToDoubleRounded()),
             PyFloatObject floatObj => Pow(self.Value, floatObj.Value),
             _ => base.Pow(context, self, other, modulo),
         };
@@ -411,7 +413,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
     {
         return other switch
         {
-            PyIntObject intObj => PyFloatObject.FromDouble((double)intObj.Value - self.Value),
+            PyIntObject intObj => PyFloatObject.FromDouble(intObj.Value.ToDoubleRounded() - self.Value),
             PyFloatObject floatObj => PyFloatObject.FromDouble(floatObj.Value - self.Value),
             _ => base.RSub(context, self, other),
         };
@@ -427,7 +429,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
 
         return other switch
         {
-            PyIntObject intObj => PyFloatObject.FromDouble((double)intObj.Value / self.Value),
+            PyIntObject intObj => PyFloatObject.FromDouble(intObj.Value.ToDoubleRounded() / self.Value),
             PyFloatObject floatObj => PyFloatObject.FromDouble(floatObj.Value / self.Value),
             _ => base.RTrueDiv(context, self, other),
         };
@@ -439,7 +441,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
 
         if (other is PyIntObject intObj)
         {
-            var dv = (double)intObj.Value;
+            var dv = intObj.Value.ToDoubleRounded();
             if (double.IsInfinity(dv))
                 return PyResult.OverflowError("int too large to convert to float");
             FloatDivMod(dv, self.Value, out var floorDiv, out _);
@@ -460,7 +462,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
         switch (other)
         {
             case PyIntObject intObj:
-                var dv = (double)intObj.Value;
+                var dv = intObj.Value.ToDoubleRounded();
                 if (double.IsInfinity(dv))
                     return PyResult.OverflowError("int too large to convert to float");
                 FloatDivMod(dv, self.Value, out var q, out var m);
@@ -479,7 +481,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
 
         return other switch
         {
-            PyIntObject intObj => PyFloatObject.FromDouble(FloatMod((double)intObj.Value, self.Value)),
+            PyIntObject intObj => PyFloatObject.FromDouble(FloatMod(intObj.Value.ToDoubleRounded(), self.Value)),
             PyFloatObject floatObj => PyFloatObject.FromDouble(FloatMod(floatObj.Value, self.Value)),
             _ => base.RMod(context, self, other),
         };
@@ -490,7 +492,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
             return PyResult.TypeError(PySR.Runtime_Number_PowThirdArgNotInteger);
         return other switch
         {
-            PyIntObject intObj => Pow((double)intObj.Value, self.Value),
+            PyIntObject intObj => Pow(intObj.Value.ToDoubleRounded(), self.Value),
             PyFloatObject floatObj => Pow(floatObj.Value, self.Value),
             _ => base.RPow(context, self, other, modulo),
         };
