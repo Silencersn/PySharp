@@ -402,6 +402,19 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestIterCallableSentinelRegression()
+    {
+        // Regression: iter(callable, sentinel) must return a callable
+        // iterator that calls the callable with no args until the result
+        // equals the sentinel (sentinel as the left == operand), swallows
+        // StopIteration as a clean exhaustion, propagates other errors,
+        // and stops calling the callable once exhausted. Fails until the
+        // fix lands.
+        var module = RunModule("test_iter_callable_sentinel_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestNamedExpr()
     {
         var module = RunModule("test_named_expr.py");

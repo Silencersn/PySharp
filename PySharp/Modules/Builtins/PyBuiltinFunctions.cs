@@ -92,7 +92,7 @@ public static partial class PyBuiltinFunctions
     public static partial PyBuiltinFunctionOrMethodObject IsInstance { get; }
     [PyExport("issubclass", nameof(IsSubclassImpl))]
     public static partial PyBuiltinFunctionOrMethodObject IsSubclass { get; }
-    [PyExport("iter", nameof(IterImpl))]
+    [PyExport("iter", nameof(IterImpl_1), nameof(IterImpl_2))]
     public static partial PyBuiltinFunctionOrMethodObject Iter { get; }
 
     // L
@@ -1029,9 +1029,18 @@ public static partial class PyBuiltinFunctions
     }
 
     [PyFunctionParameters("object", "/")]
-    private static PyResult IterImpl(PyCallContext context, PyArguments arguments)
+    private static PyResult IterImpl_1(PyCallContext context, PyArguments arguments)
     {
         return PySpecialMethods.Iter(context, arguments[0]);
+    }
+
+    [PyFunctionParameters("callable", "sentinel", "/")]
+    private static PyResult IterImpl_2(PyCallContext context, PyArguments arguments)
+    {
+        if (arguments[0].PyType.Slots.Call is null)
+            return PyResult.TypeError(PySR.Runtime_Builtin_Iter_CallableRequired);
+
+        return PyCallIteratorObjectType.New(arguments[0], arguments[1]);
     }
 
     [PyFunctionParameters("object", "/")]

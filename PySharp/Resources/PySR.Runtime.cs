@@ -164,6 +164,7 @@ partial class PySR
     public const string Runtime_Builtin_Chr_OutOfRange = "chr() arg not in range(0x110000)";
     public const string Runtime_Builtin_Ord_ExpectedString = "ord() expected string of length 1, but {0} found";
     public const string Runtime_Builtin_Ord_ExpectedACharacter = "ord() expected a character, but string of length {0} found";
+    public const string Runtime_Builtin_Iter_CallableRequired = "iter(v, w): v must be callable";
     public const string Runtime_Codec_UnknownErrorHandlerName = "unknown error handler name '{0}'";
     public const string Runtime_Builtin_Import_NameMustBeString = "module name must be a string";
     public const string Runtime_Builtin_Import_GlobalsMustBeDict = "globals must be a dict";
