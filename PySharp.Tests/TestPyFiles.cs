@@ -1338,6 +1338,16 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestFloatIntNanInfRegression()
+    {
+        // Regression: int(nan/inf) must raise catchable ValueError /
+        // OverflowError (not a .NET crash), and round(nan/inf) the same
+        // instead of a bare TypeError.
+        var module = RunModule("test_float_int_nan_inf_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBytesLiteralEscapeRegression()
     {
         // Regression: bytes literal escapes must follow CPython's

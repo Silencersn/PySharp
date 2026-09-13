@@ -219,6 +219,12 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
 
     protected override PyResult Int(PyCallContext context, PyFloatObject self)
     {
+        // CPython float_to_long: NaN -> ValueError, infinity -> OverflowError;
+        // .NET's BigInteger(double) ctor would hard-crash on both.
+        if (double.IsNaN(self.Value))
+            return PyResult.ValueError(PySR.Runtime_Float_CannotConvertNaNToInteger);
+        if (double.IsInfinity(self.Value))
+            return PyResult.OverflowError(PySR.Runtime_Float_CannotConvertInfinityToInteger);
         return new PyIntObject((BigInteger)self.Value);
     }
 
@@ -1145,8 +1151,12 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
     {
         if (ndigits is PyNoneObject)
         {
-            if (!double.IsFinite(self.Value))
-                return PyResult.TypeError(null);
+            // CPython float___round___impl: NaN -> ValueError, infinity ->
+            // OverflowError (a bare TypeError carried no message before).
+            if (double.IsNaN(self.Value))
+                return PyResult.ValueError(PySR.Runtime_Float_CannotConvertNaNToInteger);
+            if (double.IsInfinity(self.Value))
+                return PyResult.OverflowError(PySR.Runtime_Float_CannotConvertInfinityToInteger);
 
             return PyIntObject.FromInteger((BigInteger)Math.Round(self.Value));
         }
