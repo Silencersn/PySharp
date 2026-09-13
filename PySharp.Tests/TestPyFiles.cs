@@ -1318,6 +1318,16 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestPep479GeneratorStopIterationRegression()
+    {
+        // Regression: PEP 479 — a StopIteration escaping a generator frame
+        // must become RuntimeError (with __cause__), not normal exhaustion;
+        // coroutines and async generators use their own messages.
+        var module = RunModule("test_pep479_generator_stopiteration_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBytesLiteralEscapeRegression()
     {
         // Regression: bytes literal escapes must follow CPython's

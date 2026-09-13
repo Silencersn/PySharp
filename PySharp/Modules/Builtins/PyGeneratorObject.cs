@@ -2,6 +2,7 @@ using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
 using PySharp.Runtime.VirtualMachine;
+using System.Diagnostics;
 
 namespace PySharp.Modules.Builtins;
 
@@ -30,11 +31,33 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
     private BytecodeVirtualMachineStates _vmStates;
 
     private bool IsCoroutine => _pyType is PyCoroutineObjectType;
+    private bool IsAsyncGenerator => _pyType is PyAsyncGeneratorObjectType;
 
     internal PyBytecodeGeneratorObject(PyTypeObject type, string name, PyInternalFrame frame, BytecodeVirtualMachineStates states) : base(type, name)
     {
         _frame = frame;
         _vmStates = states;
+    }
+
+    /// <summary>
+    /// PEP 479: a StopIteration escaping the generator frame (raised by the
+    /// body or left uncaught after a throw) must not be mistaken for normal
+    /// exhaustion; replace it with RuntimeError and link the original
+    /// StopIteration as __cause__.
+    /// </summary>
+    private PyResult ConvertStopIteration(PyResult result)
+    {
+        Debug.Assert(result.IsError);
+
+        if (!result.IsStopIteration)
+            return result;
+
+        var message = IsCoroutine ? PySR.Runtime_Async_CoroutineRaisedStopIteration
+            : IsAsyncGenerator ? PySR.Runtime_AsyncGen_RaisedStopIteration
+            : PySR.Runtime_Generator_RaisedStopIteration;
+        var error = PyResult.RuntimeError(message);
+        error.Exception!.Cause = result.Exception;
+        return error;
     }
 
     private PyResult Send(PyCallContext context, PyObject value)
@@ -48,7 +71,7 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
         var result = BytecodeVirtualMachine.Eval(context, ref _vmStates);
         _frame.InstructionIndex = context.CurrentInternalFrame.InstructionIndex;
         if (result.IsError)
-            return result;
+            return ConvertStopIteration(result);
 
         if (_vmStates.RunToEnd)
             return PyResult.StopIteration(result.Value);
@@ -74,7 +97,7 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
             if (PyGeneratorExitObjectType.Shared.IsInstance(result.Exception))
                 return PyNoneObject.None;
 
-            return result;
+            return ConvertStopIteration(result);
         }
 
         if (!_vmStates.RunToEnd)
@@ -128,7 +151,7 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
         var result = BytecodeVirtualMachine.Eval(context, ref _vmStates);
         _frame.InstructionIndex = context.CurrentInternalFrame.InstructionIndex;
         if (result.IsError)
-            return result;
+            return ConvertStopIteration(result);
 
         if (_vmStates.RunToEnd)
             // return value

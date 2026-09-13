@@ -238,6 +238,7 @@ partial class PySR
 
     public const string Runtime_Generator_SendNonNoneAtFirst = "can't send non-None value to a just-started generator";
     public const string Runtime_Generator_IgnoredGeneratorExit = "generator ignored GeneratorExit";
+    public const string Runtime_Generator_RaisedStopIteration = "generator raised StopIteration";
 
     public const string Runtime_Arguments_OverflowArgs = "takes {0} positional arguments but {1} was given";
     public const string Runtime_Arguments_MissingArg = "missing 1 required positional argument";
@@ -250,6 +251,8 @@ partial class PySR
     public const string Runtime_Async_NonAwaitable = "'{0}' object can't be awaited";
     public const string Runtime_Async_SendNonNoneAtFirst = "can't send non-None value to a just-started coroutine";
     public const string Runtime_Async_IgnoredGeneratorExit = "coroutine ignored GeneratorExit";
+    public const string Runtime_Async_CoroutineRaisedStopIteration = "coroutine raised StopIteration";
+    public const string Runtime_AsyncGen_RaisedStopIteration = "async generator raised StopIteration";
 
     public const string Runtime_Builtin_Aiter_NotAsyncIterable = "'{0}' object is not an async iterable";
     public const string Runtime_Builtin_ANext_NotAsyncIterator = "'{0}' object is not an async iterator";
