@@ -1008,12 +1008,16 @@ public static partial class PyBuiltinFunctions
     [PyFunctionParameters("object", "/")]
     private static PyResult CallableImpl(PyCallContext context, PyArguments arguments)
     {
-        var attr = PyOperators.GetAttr(context, arguments[0], PySpecialNames.Interned.Call);
-        if (attr.IsSuccessful)
+        // CPython builtin_callable probes __call__ on the *type* (tp_call /
+        // _PyObject_LookupAttr(type)), so instance-level __getattr__ /
+        // __getattribute__ hooks never fire and cannot fake a True result.
+        // The slot covers native callables; the MRO lookup covers class-dict
+        // members the slot wiring may miss (e.g. a property as __call__).
+        var obj = arguments[0];
+        if (obj.PyType.Slots.Call is not null ||
+            PyObject.TryLookupAttrInMro(obj.PyType, PySpecialNames.Interned.Call.Value, out _))
             return PyBoolObject.True;
-        if (attr.IsAttributeError)
-            return PyBoolObject.False;
-        return attr;
+        return PyBoolObject.False;
     }
 
     [PyFunctionParameters("object", "/")]

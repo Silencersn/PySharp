@@ -1368,6 +1368,16 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestCallableTypeLevelLookupRegression()
+    {
+        // Regression: callable() probes __call__ on the type (tp_call
+        // semantics) — instance __getattr__/__getattribute__ hooks must not
+        // fire and cannot fake a True result.
+        var module = RunModule("test_callable_type_level_lookup_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBytesLiteralEscapeRegression()
     {
         // Regression: bytes literal escapes must follow CPython's
