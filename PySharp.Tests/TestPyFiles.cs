@@ -1440,6 +1440,17 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestComplexReflectedArithmeticRegression()
+    {
+        // Regression: int/float/bool on the left of + - * / ** must dispatch
+        // the complex reflected slots (CPython's order-agnostic slots), and
+        // forward complex ** must follow complex_pow (c_powi squaring,
+        // c_pow log/exp form, EDOM/ERANGE error mapping).
+        var module = RunModule("test_complex_reflected_arithmetic_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestFrozenSetConstructorBaseTypeRegression()
     {
         // Regression: frozenset() must return an exact frozenset unchanged

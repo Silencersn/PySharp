@@ -150,7 +150,7 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
     protected override PyResult Mul(PyCallContext context, PyComplexObject self, PyObject other)
     {
         if (other is PyComplexObject c)
-            return PyComplexObject.FromComplex(self.Value * c.Value);
+            return PyComplexObject.FromComplex(ComplexProduct(self.Value, c.Value));
         if (other is PyIntObject i)
             return PyComplexObject.FromComplex(self.Value * new Complex(i.Value.ToDoubleRounded(), 0));
         if (other is PyFloatObject f)
@@ -163,22 +163,305 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
         {
             if (c.Value == System.Numerics.Complex.Zero)
                 return PyResult.ZeroDivisionError();
-            return PyComplexObject.FromComplex(self.Value / c.Value);
+            return PyComplexObject.FromComplex(ComplexQuot(self.Value, c.Value));
         }
         if (other is PyIntObject i)
         {
             double v = i.Value.ToDoubleRounded();
             if (v is 0)
                 return PyResult.ZeroDivisionError();
-            return PyComplexObject.FromComplex(self.Value / new Complex(v, 0));
+            return PyComplexObject.FromComplex(ComplexCrQuot(self.Value, v));
         }
         if (other is PyFloatObject f)
         {
             if (f.Value is 0)
                 return PyResult.ZeroDivisionError();
-            return PyComplexObject.FromComplex(self.Value / new Complex(f.Value, 0));
+            return PyComplexObject.FromComplex(ComplexCrQuot(self.Value, f.Value));
         }
         return base.TrueDiv(context, self, other);
+    }
+    protected override PyResult Pow(PyCallContext context, PyComplexObject self, PyObject other, PyObject modulo)
+    {
+        // CPython complex_pow: the exponent converts first (a non-number
+        // yields NotImplemented), then a non-None modulo is rejected.
+        if (!TryToRealComplex(other, out var exponent))
+            return base.Pow(context, self, other, modulo);
+        if (modulo is not PyNoneObject)
+            return PyResult.ValueError(PySR.Runtime_Complex_Modulo);
+        return ComplexPower(self.Value, exponent);
+    }
+    protected override PyResult RAdd(PyCallContext context, PyComplexObject self, PyObject other)
+    {
+        // Addition is commutative, so the reflected form reuses Add.
+        return Add(context, self, other);
+    }
+    protected override PyResult RSub(PyCallContext context, PyComplexObject self, PyObject other)
+    {
+        // CPython complex_rsub computes other - self.
+        if (!TryToRealComplex(other, out var value))
+            return base.RSub(context, self, other);
+        return PyComplexObject.FromComplex(value - self.Value);
+    }
+    protected override PyResult RMul(PyCallContext context, PyComplexObject self, PyObject other)
+    {
+        // Multiplication is commutative, so the reflected form reuses Mul.
+        return Mul(context, self, other);
+    }
+    protected override PyResult RTrueDiv(PyCallContext context, PyComplexObject self, PyObject other)
+    {
+        // CPython complex_rdiv computes other / self: the zero check applies
+        // to the complex denominator, after the other operand converts.
+        if (!TryToRealComplex(other, out var numerator))
+            return base.RTrueDiv(context, self, other);
+        if (self.Value == System.Numerics.Complex.Zero)
+            return PyResult.ZeroDivisionError();
+        if (other is PyComplexObject)
+            return PyComplexObject.FromComplex(ComplexQuot(numerator, self.Value));
+        return PyComplexObject.FromComplex(ComplexRcQuot(numerator.Real, self.Value));
+    }
+    protected override PyResult RPow(PyCallContext context, PyComplexObject self, PyObject other, PyObject modulo)
+    {
+        // CPython complex_rpow delegates to complex_pow(other, self): the
+        // complex operand supplies the exponent.
+        if (!TryToRealComplex(other, out var baseValue))
+            return base.RPow(context, self, other, modulo);
+        if (modulo is not PyNoneObject)
+            return PyResult.ValueError(PySR.Runtime_Complex_Modulo);
+        return ComplexPower(baseValue, self.Value);
+    }
+
+    // CPython TO_COMPLEX/real_to_double: a complex operand passes through
+    // with both parts, a float or int (index-able) value contributes its
+    // value as the real part; anything else fails the conversion.
+    private static bool TryToRealComplex(PyObject operand, out System.Numerics.Complex value)
+    {
+        switch (operand)
+        {
+            case PyComplexObject complex:
+                value = complex.Value;
+                return true;
+            case PyFloatObject floatObject:
+                value = new Complex(floatObject.Value, 0);
+                return true;
+            case PyIntObject intObject:
+                value = new Complex(intObject.Value.ToDoubleRounded(), 0);
+                return true;
+            default:
+                value = default;
+                return false;
+        }
+    }
+
+    private static PyResult ComplexPower(System.Numerics.Complex baseValue, System.Numerics.Complex exponent)
+    {
+        // CPython complex_pow: an exponent that is a small exact integer
+        // switches to repeated squaring (bit-exact products); anything else
+        // uses the c_pow log/exp form.
+        if (exponent.Imaginary is 0.0 && exponent.Real == double.Floor(exponent.Real) && double.Abs(exponent.Real) <= 100.0)
+        {
+            var n = (long)exponent.Real;
+            var positive = ComplexPowu(baseValue, n > 0 ? n : -n);
+            if (n <= 0)
+            {
+                // CPython c_powi divides one by the positive power; an
+                // underflowed (zero) denominator is the EDOM case.
+                if (positive == System.Numerics.Complex.Zero)
+                    return PyResult.ZeroDivisionError(PySR.Runtime_Complex_ZeroToNegativeOrComplexPower);
+                positive = ComplexQuot(System.Numerics.Complex.One, positive);
+            }
+            return FinitePowerResult(positive);
+        }
+
+        if (baseValue.Real is 0.0 && baseValue.Imaginary is 0.0 &&
+            (exponent.Imaginary is not 0.0 || exponent.Real < 0))
+            return PyResult.ZeroDivisionError(PySR.Runtime_Complex_ZeroToNegativeOrComplexPower);
+
+        return FinitePowerResult(ComplexPow(baseValue, exponent));
+    }
+
+    private static PyResult FinitePowerResult(Complex value)
+    {
+        // _Py_ADJUST_ERANGE2 only flags overflow (an infinite component);
+        // underflow is silently accepted.
+        if (double.IsInfinity(value.Real) || double.IsInfinity(value.Imaginary))
+            return PyResult.OverflowError(PySR.Runtime_Complex_ExponentiationOverflow);
+        return PyComplexObject.FromComplex(value);
+    }
+
+    private static System.Numerics.Complex ComplexPowu(System.Numerics.Complex x, long n)
+    {
+        // CPython c_powu: binary exponentiation with c_prod products.
+        var r = System.Numerics.Complex.One;
+        var p = x;
+        long mask = 1;
+        while (mask > 0 && n >= mask)
+        {
+            if ((n & mask) is not 0)
+                r = ComplexProduct(r, p);
+            mask <<= 1;
+            p = ComplexProduct(p, p);
+        }
+        return r;
+    }
+
+    private static System.Numerics.Complex ComplexProduct(System.Numerics.Complex z, System.Numerics.Complex w)
+    {
+        // CPython _Py_c_prod: naive products first, then the C11 Annex
+        // G.5.1 recovery that re-derives infinities when both parts came
+        // out NaN (the .NET Complex product lacks that recovery).
+        double a = z.Real, b = z.Imaginary, c = w.Real, d = w.Imaginary;
+        double ac = a * c, bd = b * d, ad = a * d, bc = b * c;
+        var r = new Complex(ac - bd, ad + bc);
+        if (double.IsNaN(r.Real) && double.IsNaN(r.Imaginary))
+        {
+            var recalc = false;
+            if (double.IsInfinity(a) || double.IsInfinity(b))
+            {
+                // Box the infinity and zero out a NaN in the other factor.
+                a = double.CopySign(double.IsInfinity(a) ? 1.0 : 0.0, a);
+                b = double.CopySign(double.IsInfinity(b) ? 1.0 : 0.0, b);
+                if (double.IsNaN(c))
+                    c = double.CopySign(0.0, c);
+                if (double.IsNaN(d))
+                    d = double.CopySign(0.0, d);
+                recalc = true;
+            }
+            if (double.IsInfinity(c) || double.IsInfinity(d))
+            {
+                c = double.CopySign(double.IsInfinity(c) ? 1.0 : 0.0, c);
+                d = double.CopySign(double.IsInfinity(d) ? 1.0 : 0.0, d);
+                if (double.IsNaN(a))
+                    a = double.CopySign(0.0, a);
+                if (double.IsNaN(b))
+                    b = double.CopySign(0.0, b);
+                recalc = true;
+            }
+            if (!recalc && (double.IsInfinity(ac) || double.IsInfinity(bd) || double.IsInfinity(ad) || double.IsInfinity(bc)))
+            {
+                // Recover infinities from overflow by changing NaNs to 0.
+                if (double.IsNaN(a))
+                    a = double.CopySign(0.0, a);
+                if (double.IsNaN(b))
+                    b = double.CopySign(0.0, b);
+                if (double.IsNaN(c))
+                    c = double.CopySign(0.0, c);
+                if (double.IsNaN(d))
+                    d = double.CopySign(0.0, d);
+                recalc = true;
+            }
+            if (recalc)
+                r = new(double.PositiveInfinity * (a * c - b * d), double.PositiveInfinity * (a * d + b * c));
+        }
+        return r;
+    }
+
+    // CPython _Py_c_quot: Smith's algorithm; NaN results recover their
+    // infinities per C11 Annex G.5.2. Callers reject a zero denominator
+    // first (the EDOM case).
+    private static System.Numerics.Complex ComplexQuot(System.Numerics.Complex a, System.Numerics.Complex b)
+    {
+        double ar = a.Real, ai = a.Imaginary, br = b.Real, bi = b.Imaginary;
+        double absBr = br < 0 ? -br : br;
+        double absBi = bi < 0 ? -bi : bi;
+        double real, imag;
+        if (absBr >= absBi)
+        {
+            var ratio = bi / br;
+            var denom = br + bi * ratio;
+            real = (ar + ai * ratio) / denom;
+            imag = (ai - ar * ratio) / denom;
+        }
+        else if (absBi >= absBr)
+        {
+            var ratio = br / bi;
+            var denom = br * ratio + bi;
+            real = (ar * ratio + ai) / denom;
+            imag = (ai * ratio - ar) / denom;
+        }
+        else
+        {
+            // At least one of the denominator parts is a NaN.
+            real = imag = double.NaN;
+        }
+        if (double.IsNaN(real) && double.IsNaN(imag))
+        {
+            if ((double.IsInfinity(ar) || double.IsInfinity(ai)) && double.IsFinite(br) && double.IsFinite(bi))
+            {
+                var x = double.CopySign(double.IsInfinity(ar) ? 1.0 : 0.0, ar);
+                var y = double.CopySign(double.IsInfinity(ai) ? 1.0 : 0.0, ai);
+                real = double.PositiveInfinity * (x * br + y * bi);
+                imag = double.PositiveInfinity * (y * br - x * bi);
+            }
+            else if ((double.IsInfinity(absBr) || double.IsInfinity(absBi)) && double.IsFinite(ar) && double.IsFinite(ai))
+            {
+                var x = double.CopySign(double.IsInfinity(br) ? 1.0 : 0.0, br);
+                var y = double.CopySign(double.IsInfinity(bi) ? 1.0 : 0.0, bi);
+                real = 0.0 * (ar * x + ai * y);
+                imag = 0.0 * (ai * x - ar * y);
+            }
+        }
+        return new System.Numerics.Complex(real, imag);
+    }
+
+    // CPython _Py_cr_quot: a complex numerator over a real denominator is
+    // component-wise; a zero denominator is the caller's EDOM case.
+    private static System.Numerics.Complex ComplexCrQuot(System.Numerics.Complex a, double b)
+    {
+        return new(a.Real / b, a.Imaginary / b);
+    }
+
+    // CPython _Py_rc_quot: a real numerator over a complex denominator; the
+    // negated imaginary term keeps CPython's signed-zero behavior.
+    private static System.Numerics.Complex ComplexRcQuot(double a, System.Numerics.Complex b)
+    {
+        double br = b.Real, bi = b.Imaginary;
+        double absBr = br < 0 ? -br : br;
+        double absBi = bi < 0 ? -bi : bi;
+        double real, imag;
+        if (absBr >= absBi)
+        {
+            var ratio = bi / br;
+            var denom = br + bi * ratio;
+            real = a / denom;
+            imag = (-a * ratio) / denom;
+        }
+        else if (absBi >= absBr)
+        {
+            var ratio = br / bi;
+            var denom = br * ratio + bi;
+            real = (a * ratio) / denom;
+            imag = -a / denom;
+        }
+        else
+        {
+            real = imag = double.NaN;
+        }
+        if (double.IsNaN(real) && double.IsNaN(imag) && double.IsFinite(a) &&
+            (double.IsInfinity(absBr) || double.IsInfinity(absBi)))
+        {
+            var x = double.CopySign(double.IsInfinity(br) ? 1.0 : 0.0, br);
+            var y = double.CopySign(double.IsInfinity(bi) ? 1.0 : 0.0, bi);
+            real = 0.0 * (a * x);
+            imag = 0.0 * (-a * y);
+        }
+        return new System.Numerics.Complex(real, imag);
+    }
+
+    private static System.Numerics.Complex ComplexPow(System.Numerics.Complex baseValue, System.Numerics.Complex exponent)
+    {
+        // CPython _Py_c_pow: exp(b log a) in the exact operation order of
+        // complexobject.c (the zero-exponent and zero-base cases never
+        // reach here: complex_pow routes them elsewhere).
+        var vabs = double.Hypot(baseValue.Real, baseValue.Imaginary);
+        var len = double.Pow(vabs, exponent.Real);
+        var at = double.Atan2(baseValue.Imaginary, baseValue.Real);
+        var phase = at * exponent.Real;
+        if (exponent.Imaginary is not 0.0)
+        {
+            len *= double.Exp(-at * exponent.Imaginary);
+            phase += exponent.Imaginary * double.Log(vabs);
+        }
+        return new Complex(len * double.Cos(phase), len * double.Sin(phase));
     }
     protected override PyResult Eq(PyCallContext context, PyComplexObject self, PyObject other)
     {

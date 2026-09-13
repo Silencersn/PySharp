@@ -126,6 +126,9 @@ partial class PySR
     public const string Runtime_Complex_GivenByNameAndPosition = "argument for complex() given by name ('{0}') and position ({1})";
     public const string Runtime_Complex_UnexpectedKeyword = "complex() got an unexpected keyword argument '{0}'";
     public const string Runtime_Complex_AbsoluteValueTooLarge = "absolute value too large";
+    public const string Runtime_Complex_Modulo = "complex modulo";
+    public const string Runtime_Complex_ExponentiationOverflow = "complex exponentiation";
+    public const string Runtime_Complex_ZeroToNegativeOrComplexPower = "zero to a negative or complex power";
     public const string Runtime_Str_Format_ManualToAutoFieldNumber = "cannot switch from manual field specification to automatic field numbering";
     public const string Runtime_Str_Format_AutoToManualFieldSpecification = "cannot switch from automatic field numbering to manual field specification";
 

@@ -31,9 +31,16 @@ internal sealed class PyObjectConstEqualityComparer : IEqualityComparer<PyObject
         // Float constants must be distinguished by their exact bit pattern so
         // that 0.0 and -0.0 (and distinct NaNs) never share a pooled object:
         // value equality would collapse them into one constant and the second
-        // occurrence would incorrectly reuse the first one's sign.
+        // occurrence would incorrectly reuse the first one's sign. Complex
+        // constants carry the same signed-zero distinction per component.
         if (x is PyFloatObject fx && y is PyFloatObject fy)
             return BitConverter.DoubleToInt64Bits(fx.Value) == BitConverter.DoubleToInt64Bits(fy.Value);
+
+        if (x is PyComplexObject cx && y is PyComplexObject cy)
+        {
+            return BitConverter.DoubleToInt64Bits(cx.Real) == BitConverter.DoubleToInt64Bits(cy.Real)
+                && BitConverter.DoubleToInt64Bits(cx.Imag) == BitConverter.DoubleToInt64Bits(cy.Imag);
+        }
 
         return PyObjectComparer.Default.Equals(x, y);
     }
@@ -45,7 +52,7 @@ internal sealed class PyObjectConstEqualityComparer : IEqualityComparer<PyObject
             PyStrObject s => s.Value.GetHashCode(),
             PyIntObject i => i.Value.GetHashCode(),
             PyFloatObject f => BitConverter.DoubleToInt64Bits(f.Value).GetHashCode(),
-            PyComplexObject c => c.Value.GetHashCode(),
+            PyComplexObject c => (BitConverter.DoubleToInt64Bits(c.Real), BitConverter.DoubleToInt64Bits(c.Imag)).GetHashCode(),
             PyBytesObject b => GetBytesHash(b.AsSpan()),
             PyTupleObject t => GetTupleHash(t),
             PyNoneObject or PyEllipsisObject or PyCodeObject or PyTypeObject
