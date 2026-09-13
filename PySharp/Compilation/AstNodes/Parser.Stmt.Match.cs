@@ -326,6 +326,12 @@ partial class Parser
         var value = CurrentTokenStringAsSpan;
         MoveNextToken();
 
+        // PEP 515: the number tokenizer only groups underscores between
+        // digits (or right after a base prefix), so the remaining spelling
+        // is valid for every numeric path once they are gone.
+        if (value.Contains('_'))
+            value = SharedBuilder.Clear().Append(value).Replace("_", string.Empty).ToString();
+
         if (value.EndsWith('j'))
         {
             var complex = PyComplexObject.FromString(value);
@@ -338,13 +344,6 @@ partial class Parser
         if (parseStatus is BigIntegerHelper.IntParseStatus.Success)
             return Ast.Constant(integer).With(metaInfo);
 
-        if (value.Contains('_'))
-        {
-            value = SharedBuilder
-                .Clear()
-                .Replace("_", string.Empty)
-                .ToString();
-        }
         return Ast.Constant(double.Parse(value)).With(metaInfo);
     }
 

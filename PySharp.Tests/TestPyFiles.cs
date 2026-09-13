@@ -1440,6 +1440,17 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestNumericUnderscoreLiteralRegression()
+    {
+        // Regression: PEP 515 underscore separators must work in every
+        // numeric literal form (float mantissa/fraction/exponent, complex,
+        // prefixed ints) instead of handing an empty string to double.Parse,
+        // and invalid placements keep the tokenize-time SyntaxError.
+        var module = RunModule("test_numeric_underscore_literal_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestNotImplementedBoolRegression()
     {
         // Regression: NotImplemented in a boolean context must raise
