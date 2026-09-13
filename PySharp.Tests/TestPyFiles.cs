@@ -1348,6 +1348,16 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestStrFormatNumberingModeRegression()
+    {
+        // Regression: mixing automatic '{}' and manual '{N}' numbering in
+        // str.format must raise CPython's ValueError; the mode is shared
+        // with nested format specs and kwargs are exempt.
+        var module = RunModule("test_str_format_numbering_mode_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBytesLiteralEscapeRegression()
     {
         // Regression: bytes literal escapes must follow CPython's

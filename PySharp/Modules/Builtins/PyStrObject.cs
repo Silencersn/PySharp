@@ -909,13 +909,16 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     private static PyResult Format(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
         var autoNumber = 0;
-        return ExpandFormatMarkup(context, self.Value, arguments, recursionDepth: 2, ref autoNumber);
+        // -1 = no numbered field seen yet, 0 = manual, 1 = automatic; shared
+        // with nested format-spec expansions like CPython.
+        var numberMode = -1;
+        return ExpandFormatMarkup(context, self.Value, arguments, recursionDepth: 2, ref autoNumber, ref numberMode);
     }
 
     // Mirrors CPython do_string_format (Objects/stringlib/unicode_format.h):
     // doubled braces escape, {field[!conv][:spec]} markup, one level of
     // spec nesting below the current one
-    private static PyResult ExpandFormatMarkup(PyCallContext context, ReadOnlySpan<char> format, PyArguments arguments, int recursionDepth, ref int autoNumber)
+    private static PyResult ExpandFormatMarkup(PyCallContext context, ReadOnlySpan<char> format, PyArguments arguments, int recursionDepth, ref int autoNumber, ref int numberMode)
     {
         if (recursionDepth <= 0)
             return PyResult.ValueError("Max string recursion exceeded");
@@ -948,7 +951,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             if (!TryParseMarkupField(format[(i + 1)..], out var field, out var fieldLength, out var error))
                 return PyResult.ValueError(error);
 
-            var rendered = RenderMarkupField(context, field, arguments, recursionDepth, ref autoNumber);
+            var rendered = RenderMarkupField(context, field, arguments, recursionDepth, ref autoNumber, ref numberMode);
             if (rendered.IsError)
                 return rendered;
 
@@ -1070,7 +1073,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         return false;
     }
 
-    private static PyResult RenderMarkupField(PyCallContext context, MarkupField field, PyArguments arguments, int recursionDepth, ref int autoNumber)
+    private static PyResult RenderMarkupField(PyCallContext context, MarkupField field, PyArguments arguments, int recursionDepth, ref int autoNumber, ref int numberMode)
     {
         var name = field.Name;
         var i = 0;
@@ -1081,6 +1084,12 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         PyObject? value;
         if (first.IsEmpty)
         {
+            // Bare {} takes the next positional argument; CPython forbids
+            // switching to automatic once a manual numeric field was used.
+            if (numberMode is 0)
+                return PyResult.ValueError(PySR.Runtime_Str_Format_ManualToAutoFieldNumber);
+            numberMode = 1;
+
             var args = arguments.ExtraArgs;
             if (autoNumber >= args.Count)
                 return PyResult.IndexError("tuple index out of range");
@@ -1088,6 +1097,12 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         }
         else if (IsAllAsciiDigits(first))
         {
+            // Numeric names are manual fields and lock out automatic ones;
+            // keyword names do not participate in the mode check.
+            if (numberMode is 1)
+                return PyResult.ValueError(PySR.Runtime_Str_Format_AutoToManualFieldSpecification);
+            numberMode = 0;
+
             if (!int.TryParse(first, out var index))
                 return PyResult.ValueError("Too many decimal digits in format string");
 
@@ -1184,7 +1199,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
         if (field.SpecNeedsExpanding)
         {
-            var expanded = ExpandFormatMarkup(context, field.Spec, arguments, recursionDepth - 1, ref autoNumber);
+            var expanded = ExpandFormatMarkup(context, field.Spec, arguments, recursionDepth - 1, ref autoNumber, ref numberMode);
             if (expanded.IsError)
                 return expanded;
 
