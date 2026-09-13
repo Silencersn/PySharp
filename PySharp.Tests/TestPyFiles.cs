@@ -1309,6 +1309,15 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestPowZeroNegativeExponentRegression()
+    {
+        // Regression: 0/0.0 (including -0.0) to a negative power must raise
+        // ZeroDivisionError on every ** path, not return inf.
+        var module = RunModule("test_pow_zero_negative_exponent_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBytesLiteralEscapeRegression()
     {
         // Regression: bytes literal escapes must follow CPython's

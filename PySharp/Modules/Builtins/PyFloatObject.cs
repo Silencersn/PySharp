@@ -389,10 +389,19 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
             return PyResult.TypeError(PySR.Runtime_Number_PowThirdArgNotInteger);
         return other switch
         {
-            PyIntObject intObj => PyFloatObject.FromDouble(double.Pow(self.Value, (double)intObj.Value)),
-            PyFloatObject floatObj => PyFloatObject.FromDouble(double.Pow(self.Value, floatObj.Value)),
+            PyIntObject intObj => Pow(self.Value, (double)intObj.Value),
+            PyFloatObject floatObj => Pow(self.Value, floatObj.Value),
             _ => base.Pow(context, self, other, modulo),
         };
+    }
+    // CPython float_pow: 0.0 (including -0.0) to a negative power raises
+    // ZeroDivisionError instead of returning inf (-0.0 < 0 is false, so
+    // 0.0 ** -0.0 keeps returning 1.0).
+    private static PyResult Pow(double baseValue, double exponent)
+    {
+        if (baseValue is 0.0 && exponent < 0)
+            return PyResult.ZeroDivisionError(PySR.Runtime_Number_ZeroToNegativePower);
+        return PyFloatObject.FromDouble(double.Pow(baseValue, exponent));
     }
     protected override PyResult RAdd(PyCallContext context, PyFloatObject self, PyObject other)
     {
@@ -481,8 +490,8 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
             return PyResult.TypeError(PySR.Runtime_Number_PowThirdArgNotInteger);
         return other switch
         {
-            PyIntObject intObj => PyFloatObject.FromDouble(double.Pow((double)intObj.Value, self.Value)),
-            PyFloatObject floatObj => PyFloatObject.FromDouble(double.Pow(floatObj.Value, self.Value)),
+            PyIntObject intObj => Pow((double)intObj.Value, self.Value),
+            PyFloatObject floatObj => Pow(floatObj.Value, self.Value),
             _ => base.RPow(context, self, other, modulo),
         };
     }

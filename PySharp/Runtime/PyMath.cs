@@ -81,6 +81,10 @@ internal static class PyMath
                 {
                     if (right.Value >= 0)
                         return PyIntObject.FromInteger(BigInteger.Pow(left.Value, right.Int32Value));
+                    // CPython long_pow converts a negative exponent to float,
+                    // where 0.0 ** negative raises instead of returning inf.
+                    if (left.Value.IsZero)
+                        return PyResult.ZeroDivisionError(PySR.Runtime_Number_ZeroToNegativePower);
                     return PyFloatObject.FromDouble(Math.Pow((double)left.Value, (double)right.Value));
                 }
                 else

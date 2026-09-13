@@ -118,6 +118,7 @@ partial class PySR
     public const string Runtime_Number_PowWithZeroModulo = "pow() 3rd argument cannot be 0";
     public const string Runtime_Number_PowThirdArgNotInteger = "pow() 3rd argument not allowed unless all arguments are integers";
     public const string Runtime_Number_DivisionByZero = "division by zero";
+    public const string Runtime_Number_ZeroToNegativePower = "zero to a negative power";
 
     public const string Runtime_Sequence_NegativeLen = "__len__() should return >= 0";
     public const string Runtime_Sequence_NoLen = "object of type '{0}' has no len()";
