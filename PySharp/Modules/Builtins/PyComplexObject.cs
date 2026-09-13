@@ -54,8 +54,52 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
 
     protected override PyResult Repr(PyCallContext context, PyComplexObject self)
     {
-        string s = $"({self.Value.Real}{(self.Value.Imaginary < 0 ? "-" : "+")}{Math.Abs(self.Value.Imaginary)}j)";
-        return PyStrObject.FromString(s);
+        // CPython complex_repr: a +0.0 real part drops the parens and the real
+        // part; inside the parens the imaginary part carries an explicit sign.
+        string lead, realPart, imagPart, tail;
+        if (self.Value.Real is 0.0 && !double.IsNegative(self.Value.Real))
+        {
+            lead = string.Empty;
+            realPart = string.Empty;
+            imagPart = FormatPart(self.Value.Imaginary, withSign: false);
+            tail = string.Empty;
+        }
+        else
+        {
+            lead = "(";
+            realPart = FormatPart(self.Value.Real, withSign: false);
+            imagPart = FormatPart(self.Value.Imaginary, withSign: true);
+            tail = ")";
+        }
+        return PyStrObject.FromString($"{lead}{realPart}{imagPart}j{tail}");
+    }
+
+    // CPython formats the parts with PyOS_double_to_string('r', 0): float repr
+    // digits without the trailing ".0"; Py_DTSF_SIGN prepends '+' to
+    // non-negative values ("+3", "+inf", "+nan"), the value's own sign wins.
+    private static string FormatPart(double value, bool withSign)
+    {
+        if (double.IsNaN(value))
+            return withSign ? "+nan" : "nan";
+        if (double.IsInfinity(value))
+            return value < 0 ? "-inf" : withSign ? "+inf" : "inf";
+
+        var text = PyFloatObjectType.FormatShortestRepr(value);
+        if (text.EndsWith(".0", StringComparison.Ordinal))
+            text = text[..^2];
+        if (withSign && !text.StartsWith('-'))
+            text = $"+{text}";
+        return text;
+    }
+
+    protected override PyResult Abs(PyCallContext context, PyComplexObject self)
+    {
+        // CPython complex_abs: hypot as a float; OverflowError when it
+        // overflows for finite components.
+        var result = double.Hypot(self.Value.Real, self.Value.Imaginary);
+        if (double.IsInfinity(result) && double.IsFinite(self.Value.Real) && double.IsFinite(self.Value.Imaginary))
+            return PyResult.OverflowError(PySR.Runtime_Complex_AbsoluteValueTooLarge);
+        return PyFloatObject.FromDouble(result);
     }
 
     protected override PyResult Hash(PyCallContext context, PyComplexObject self)
@@ -148,42 +192,135 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
     }
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        double real = 0, imag = 0;
-        if (args.Count > 0)
-        {
-            if (args[0] is PyComplexObject c)
-            {
-                real = c.Real;
-                imag = c.Imag;
-            }
-            else if (args[0] is PyFloatObject f)
-            {
-                real = f.Value;
-            }
-            else if (args[0] is PyIntObject i)
-            {
-                real = i.Value.ToDoubleRounded();
-            }
-            else
-            {
-                var result = PySpecialMethods.Index(context, args[0]);
-                if (result.IsError)
-                    return result;
+        // CPython actual_complex_new: with no keywords and at most one
+        // positional argument the constructor converts a single value;
+        // otherwise the 'real'/'imag' parameters are bound and combined
+        // (complex_new_impl).
+        // CPython's clinic parser rejects a total argument count above the
+        // positional capacity before any keyword binding.
+        if (args.Count + kwargs.Count > 2)
+            return PyResult.TypeError(PySR.Runtime_Complex_TakesAtMostTwoArgs, args.Count + kwargs.Count);
 
-                real = result.Value.Value.ToDoubleRounded();
+        if (kwargs.Count is 0 && args.Count <= 1)
+            return CreateFromSingleValue(context, cls, args);
+
+        PyObject? realArg = args.Count > 0 ? args[0] : null;
+        PyObject? imagArg = args.Count > 1 ? args[1] : null;
+        foreach (var (name, value) in kwargs)
+        {
+            switch (name)
+            {
+                case "real" when realArg is null:
+                    realArg = value;
+                    break;
+                case "imag" when imagArg is null:
+                    imagArg = value;
+                    break;
+                case "real" or "imag":
+                    return PyResult.TypeError(PySR.Runtime_Complex_GivenByNameAndPosition, name, name is "real" ? 1 : 2);
+                default:
+                    return PyResult.TypeError(PySR.Runtime_Complex_UnexpectedKeyword, name);
             }
         }
-        if (args.Count > 1)
+
+        var realResult = ToComponent(context, realArg, PySR.Runtime_Complex_RealMustBeRealNumber);
+        if (realResult.IsError)
+            return realResult;
+
+        PyResult<PyComplexObject> imagResult;
+        if (imagArg is null)
+            imagResult = PyComplexObject.FromRealImag(0, 0);
+        else
+            imagResult = ToComponent(context, imagArg, PySR.Runtime_Complex_ImagMustBeRealNumber);
+        if (imagResult.IsError)
+            return imagResult;
+
+        // CPython keeps deprecated combining arithmetic for complex parts
+        // (real=2j stays accepted for now), so warn instead of rejecting.
+        if (realArg is PyComplexObject)
         {
-            if (args[1] is PyIntObject i)
-                imag = i.Value.ToDoubleRounded();
-            else if (args[1] is PyFloatObject f)
-                imag = f.Value;
-            else
-                return PyResult.TypeError(null);
+            var warnResult = context.Warn(PyDeprecationWarningObjectType.Shared, PySR.Format(PySR.Runtime_Complex_RealMustBeRealNumber, "complex"));
+            if (warnResult.IsError)
+                return warnResult;
         }
+        if (imagArg is PyComplexObject)
+        {
+            var warnResult = context.Warn(PyDeprecationWarningObjectType.Shared, PySR.Format(PySR.Runtime_Complex_ImagMustBeRealNumber, "complex"));
+            if (warnResult.IsError)
+                return warnResult;
+        }
+
+        var cr = realResult.Value.Value;
+        var ci = imagResult.Value.Value;
+        var real = cr.Real;
+        var imag = ci.Real;
+        if (imagArg is null)
+        {
+            // No imag argument: CPython takes the imaginary part from the
+            // real component (ci.real = cr.imag).
+            imag = cr.Imaginary;
+        }
+        else
+        {
+            if (imagArg is PyComplexObject)
+                real -= ci.Imaginary;
+            // Add the real component's imaginary part last so a -0.0
+            // imaginary argument keeps its sign (0.0 + -0.0 is +0.0).
+            if (realArg is PyComplexObject)
+                imag += cr.Imaginary;
+        }
+
         var obj = PyComplexObject.FromRealImag(real, imag);
         obj._pyType = cls;
         return obj;
+    }
+
+    private static PyResult CreateFromSingleValue(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args)
+    {
+        if (args.Count is 0)
+            return CreateOfType(cls, 0, 0);
+
+        // An exact complex with the exact type is returned unchanged.
+        if (args[0] is PyComplexObject exact &&
+            ReferenceEquals(exact.PyType, PyComplexObjectType.Shared) &&
+            ReferenceEquals(cls, PyComplexObjectType.Shared))
+            return exact;
+
+        var result = ToComponent(context, args[0], PySR.Runtime_Complex_ArgMustBeStringOrNumber);
+        if (result.IsError)
+            return result;
+
+        var value = result.Value.Value;
+        return CreateOfType(cls, value.Real, value.Imaginary);
+    }
+
+    private static PyResult CreateOfType(PyTypeObject cls, double real, double imag)
+    {
+        var obj = PyComplexObject.FromRealImag(real, imag);
+        obj._pyType = cls;
+        return obj;
+    }
+
+    // One constructor component: a complex value passes through with both
+    // parts; anything float- or index-able contributes its value as the real
+    // part, mirroring CPython's nb_float/nb_index acceptance.
+    private static PyResult<PyComplexObject> ToComponent(PyCallContext context, PyObject? arg, string errorMessage)
+    {
+        switch (arg)
+        {
+            case null:
+                return PyComplexObject.FromRealImag(0, 0);
+            case PyComplexObject complex:
+                return complex;
+            case PyFloatObject floatObject:
+                return PyComplexObject.FromRealImag(floatObject.Value, 0);
+            case PyIntObject intObject:
+                return PyComplexObject.FromRealImag(intObject.Value.ToDoubleRounded(), 0);
+        }
+
+        var index = PySpecialMethods.Index(context, arg);
+        if (index.IsError)
+            return PyResult.TypeError(errorMessage, arg.PyType.Name);
+        return PyComplexObject.FromRealImag(index.Value.Value.ToDoubleRounded(), 0);
     }
 }

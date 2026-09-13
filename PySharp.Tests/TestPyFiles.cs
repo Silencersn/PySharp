@@ -1409,6 +1409,37 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestComplexAbsRegression()
+    {
+        // Regression: abs() of a complex value must return hypot(real, imag)
+        // as a float (CPython complex_abs), with OverflowError when the
+        // hypot overflows for finite components.
+        var module = RunModule("test_complex_abs_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestComplexKeywordConstructorRegression()
+    {
+        // Regression: complex() must bind 'real'/'imag' keyword arguments
+        // (CPython complex_new_impl) instead of silently ignoring them, with
+        // CPython's conflict/count/type-error messages and arithmetic
+        // combining of complex component values.
+        var module = RunModule("test_complex_keyword_constructor_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestComplexReprPureImaginaryRegression()
+    {
+        // Regression: complex str/repr must follow CPython complex_repr — a
+        // +0.0 real part drops the parens, a -0.0 real part keeps them, and
+        // the imaginary part keeps its sign including -0.0.
+        var module = RunModule("test_complex_repr_pure_imaginary_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestNotImplementedBoolRegression()
     {
         // Regression: NotImplemented in a boolean context must raise

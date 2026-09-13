@@ -119,6 +119,13 @@ partial class PySR
     public const string Runtime_Number_PowThirdArgNotInteger = "pow() 3rd argument not allowed unless all arguments are integers";
     public const string Runtime_Number_DivisionByZero = "division by zero";
     public const string Runtime_Number_ZeroToNegativePower = "zero to a negative power";
+    public const string Runtime_Complex_ArgMustBeStringOrNumber = "complex() argument must be a string or a number, not {0}";
+    public const string Runtime_Complex_RealMustBeRealNumber = "complex() argument 'real' must be a real number, not {0}";
+    public const string Runtime_Complex_ImagMustBeRealNumber = "complex() argument 'imag' must be a real number, not {0}";
+    public const string Runtime_Complex_TakesAtMostTwoArgs = "complex() takes at most 2 arguments ({0} given)";
+    public const string Runtime_Complex_GivenByNameAndPosition = "argument for complex() given by name ('{0}') and position ({1})";
+    public const string Runtime_Complex_UnexpectedKeyword = "complex() got an unexpected keyword argument '{0}'";
+    public const string Runtime_Complex_AbsoluteValueTooLarge = "absolute value too large";
     public const string Runtime_Str_Format_ManualToAutoFieldNumber = "cannot switch from manual field specification to automatic field numbering";
     public const string Runtime_Str_Format_AutoToManualFieldSpecification = "cannot switch from automatic field numbering to manual field specification";
 
