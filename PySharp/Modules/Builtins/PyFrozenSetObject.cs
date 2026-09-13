@@ -25,6 +25,15 @@ public partial class PyFrozenSetObject : PyObject, IPyObjectRecursiveRepr, IRead
 
     PyResult<PyStrObject> IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<PyObject> ids)
     {
+        // CPython frozenset_repr shares set_repr's subclass rule: the type
+        // name wraps the plain {…} content (not frozenset({…})).
+        if (PyType is not PyFrozenSetObjectType)
+        {
+            return _set.Count is 0
+                ? PyStrObject.FromString($"{PyType.FullName}()")
+                : PyUtils.CollectionRecursiveRepr(context, this, _set, $"{PyType.FullName}({{", "})", ids);
+        }
+
         if (_set.Count is 0)
             return PyStrObject.FromString("frozenset()");
 

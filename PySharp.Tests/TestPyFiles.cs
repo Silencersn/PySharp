@@ -1389,6 +1389,16 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestSetSubclassReprRegression()
+    {
+        // Regression: set/frozenset subclass instances render TypeName({…})
+        // (or TypeName() when empty) like CPython; dict/list/tuple
+        // subclasses keep the bare builtin form.
+        var module = RunModule("test_set_subclass_repr_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBytesLiteralEscapeRegression()
     {
         // Regression: bytes literal escapes must follow CPython's

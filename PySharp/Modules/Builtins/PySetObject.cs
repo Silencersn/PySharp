@@ -27,6 +27,16 @@ public partial class PySetObject : PyObject, IPyObjectRecursiveRepr, ISet<PyObje
 
     PyResult<PyStrObject> IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<PyObject> ids)
     {
+        // CPython set_repr: subclass instances always render TypeName(…),
+        // with TypeName() when empty, to stay distinguishable from the
+        // builtin {…} form.
+        if (PyType is not PySetObjectType)
+        {
+            return _set.Count is 0
+                ? PyStrObject.FromString($"{PyType.FullName}()")
+                : PyUtils.CollectionRecursiveRepr(context, this, _set, $"{PyType.FullName}({{", "})", ids);
+        }
+
         if (_set.Count is 0)
             return PyStrObject.FromString("set()");
 
