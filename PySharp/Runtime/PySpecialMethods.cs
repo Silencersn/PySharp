@@ -129,10 +129,18 @@ public static class PySpecialMethods
             if (result.IsError)
                 return result;
 
-            if (result.Value.Value >= 0)
-                return result;
-
-            return PyResult.ValueError(PySR.Runtime_Sequence_NegativeLen);
+            // CPython slot_sq_length normalizes through _PyNumber_Index
+            // first, so a bool result is reported as an exact int; the
+            // sign check then precedes the Py_ssize_t conversion, so any
+            // negative result is the >= 0 ValueError and only a positive
+            // result beyond ssize_t raises OverflowError
+            if (result.Value is PyBoolObject boolLen)
+                return PyIntObject.FromInteger(boolLen.BoolValue ? 1 : 0);
+            if (result.Value.Value < 0)
+                return PyResult.ValueError(PySR.Runtime_Sequence_NegativeLen);
+            if (result.Value.Value > long.MaxValue)
+                return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt);
+            return result;
         }
 
         return PyResult.TypeError(PySR.Runtime_Sequence_NoLen, obj.PyType.FullName);

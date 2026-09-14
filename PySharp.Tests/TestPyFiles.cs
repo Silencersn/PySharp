@@ -2992,4 +2992,17 @@ public sealed class TestPyFiles
         var module = RunModule("test_search_bounds_saturation_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestLenBoundsRegression()
+    {
+        // Regression: len() bounds the __len__ result like CPython's
+        // slot_sq_length — any negative result is the >= 0 ValueError
+        // and a positive result beyond the index range raises
+        // OverflowError "cannot fit 'int' into an index-sized integer"
+        // instead of being returned verbatim; a bool result is
+        // normalized to an exact int.
+        var module = RunModule("test_len_bounds_regression.py");
+        Assert.IsNotNull(module);
+    }
 }
