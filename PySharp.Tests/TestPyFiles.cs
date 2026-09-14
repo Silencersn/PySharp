@@ -3030,4 +3030,16 @@ public sealed class TestPyFiles
         var module = RunModule("test_str_search_slice_index_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestSplitlinesKeependsTruthRegression()
+    {
+        // Regression: str.splitlines' keepends argument is a plain
+        // truth test on the raw argument (CPython PyObject_IsTrue) —
+        // int 1/2, floats and any other truthy object keep the line
+        // endings; previously only bool was accepted so int truthy
+        // values silently dropped the line endings.
+        var module = RunModule("test_splitlines_keepends_truth_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

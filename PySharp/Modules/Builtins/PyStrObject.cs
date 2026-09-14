@@ -1281,9 +1281,13 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters("keepends=False", "/")]
     private static PyResult SplitLines(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        bool keepends = false;
-        if (arguments[0] is PyBoolObject keependsBool)
-            keepends = keependsBool.BoolValue;
+        // CPython keepends is a plain truth test on the raw argument
+        // (PyObject_IsTrue): int 1/2, 1.5 and any other truthy object
+        // keep the line endings
+        var keependsResult = PySpecialMethods.Bool(context, arguments[0]);
+        if (keependsResult.IsError)
+            return keependsResult;
+        bool keepends = keependsResult.Value.BoolValue;
 
         var lines = new List<PyObject>();
         int start = 0;
