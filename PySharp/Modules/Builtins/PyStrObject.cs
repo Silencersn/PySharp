@@ -2020,10 +2020,6 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     {
         return PyIntObject.FromInteger(self.GetHashCode());
     }
-    protected override PyResult Bool(PyCallContext context, PyStrObject self)
-    {
-        return PyBoolObject.FromBoolean(self.Value.Length > 0);
-    }
     protected override PyResult Len(PyCallContext context, PyStrObject self)
     {
         return PyIntObject.FromInteger(self.PyLength);

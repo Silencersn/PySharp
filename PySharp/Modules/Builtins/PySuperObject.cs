@@ -163,9 +163,4 @@ public sealed partial class PySuperObjectType : PyTypeObject<PySuperObject>
     {
         return PyStrObject.FromString($"<super: {self._type.Name}, {self._object.PyType.Name}>");
     }
-
-    protected override PyResult Bool(PyCallContext context, PySuperObject self)
-    {
-        return PyBoolObject.True;
-    }
 }

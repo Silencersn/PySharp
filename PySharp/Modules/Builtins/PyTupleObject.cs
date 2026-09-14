@@ -104,11 +104,6 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
         return PyUtils.Contains(context, self.AsSpan(), item);
     }
 
-    protected override PyResult Bool(PyCallContext context, PyTupleObject self)
-    {
-        return PyBoolObject.FromBoolean(self.Count > 0);
-    }
-
     protected override PyResult Repr(PyCallContext context, PyTupleObject self)
     {
         return IPyObjectRecursiveRepr.RecursiveRepr(context, self);

@@ -79,7 +79,7 @@ partial class PyTypeObject<TObject>
     [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult Bool(PyCallContext context, TObject self)
     {
-        return DefaultBool(context, self);
+        throw new NotImplementedException($"{PySpecialNames.Bool} does not have default implementation");
     }
 
     [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]

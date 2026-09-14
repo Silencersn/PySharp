@@ -176,11 +176,6 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
         return IPyObjectRecursiveRepr.RecursiveRepr(context, self);
     }
 
-    protected override PyResult Bool(PyCallContext context, PySetObject self)
-    {
-        return PyBoolObject.FromBoolean(self.Count > 0);
-    }
-
     protected override PyResult Contains(PyCallContext context, PySetObject self, PyObject item)
     {
         return PyBoolObject.FromBoolean(self.Contains(item));

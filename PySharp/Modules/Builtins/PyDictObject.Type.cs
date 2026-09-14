@@ -80,11 +80,6 @@ public sealed partial class PyDictObjectType : PyTypeObject<PyDictObject>
         return IPyObjectRecursiveRepr.RecursiveRepr(context, self);
     }
 
-    protected override PyResult Bool(PyCallContext context, PyDictObject self)
-    {
-        return PyBoolObject.FromBoolean(self.Count > 0);
-    }
-
     protected override PyResult Len(PyCallContext context, PyDictObject self)
     {
         return PyIntObject.FromInteger(self.Count);

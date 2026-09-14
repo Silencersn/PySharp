@@ -160,11 +160,6 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
         return IPyObjectRecursiveRepr.RecursiveRepr(context, self);
     }
 
-    protected override PyResult Bool(PyCallContext context, PyListObject self)
-    {
-        return PyBoolObject.FromBoolean(self.Count > 0);
-    }
-
     protected override PyResult Iter(PyCallContext context, PyListObject self)
     {
         return new PyListIteratorObject(self);

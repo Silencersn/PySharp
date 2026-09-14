@@ -2259,6 +2259,19 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestBoolSlotVisibilityRegression()
+    {
+        // Regression: types without a real bool slot (object, str, list,
+        // dict, set, tuple, frozenset, bytes, bytearray, memoryview, super,
+        // type) must not expose __bool__ at all — their truthiness comes
+        // from the dispatch-layer __len__ fallback (CPython PyObject_IsTrue).
+        // Types with a real slot (int, float, bool, complex, NoneType,
+        // NotImplementedType, range) keep __bool__.
+        var module = RunModule("test_bool_slot_visibility_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestDictReversedRegression()
     {
         // Regression: reversed() must support dicts and their views with

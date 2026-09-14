@@ -5,7 +5,7 @@ Tests for method descriptors (bound/unbound methods)
 # Test bound method behavior (instance methods)
 lst = [1, 2, 3]
 assert lst.__repr__() == '[1, 2, 3]'
-assert lst.__bool__() is True
+assert lst.__len__() is 3
 assert lst.__str__() == '[1, 2, 3]'
 
 lst2 = lst.copy()

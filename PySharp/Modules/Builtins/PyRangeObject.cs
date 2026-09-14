@@ -81,6 +81,13 @@ public sealed partial class PyRangeObjectType : PyTypeObject<PyRangeObject>
         return new PyLongRangeIteratorObject(self.Start, self.Step, self.RangeLen);
     }
 
+    // CPython range exposes an explicit __bool__ (unlike list/str, whose
+    // truthiness comes from the dispatch-layer __len__ fallback).
+    protected override PyResult Bool(PyCallContext context, PyRangeObject self)
+    {
+        return PyBoolObject.FromBoolean(self.RangeLen > 0);
+    }
+
     protected override PyResult Len(PyCallContext context, PyRangeObject self)
     {
         return PyIntObject.FromInteger(self.RangeLen);

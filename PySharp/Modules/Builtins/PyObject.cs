@@ -95,7 +95,6 @@ public sealed partial class PyObjectType : PyTypeObject<PyObject>
 
         FillSlot(PySpecialNames.Repr, ref Slots.Repr, DefaultRepr);
         FillSlot(PySpecialNames.Str, ref Slots.Str, DefaultStr);
-        FillSlot(PySpecialNames.Bool, ref Slots.Number.Bool, DefaultBool);
         FillSlot(PySpecialNames.Hash, ref Slots.Hash, DefaultHash);
         FillSlot(PySpecialNames.Eq, ref Slots.Eq, DefaultEq);
         FillSlot(PySpecialNames.Ne, ref Slots.Ne, DefaultNe);
