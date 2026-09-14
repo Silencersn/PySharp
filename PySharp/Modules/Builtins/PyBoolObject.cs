@@ -47,4 +47,42 @@ public sealed partial class PyBoolObjectType : PyTypeObject<PyBoolObject>
     {
         return self;
     }
+
+    // CPython boolobject.c: bitwise ops keep bool only when both operands
+    // are bool; otherwise they fall through to the int slots (int), so the
+    // int slot's body is inlined for the non-bool case (base.And would be
+    // the generic NotImplemented fallback, not int's implementation).
+    protected override PyResult And(PyCallContext context, PyBoolObject self, PyObject other)
+    {
+        if (other is PyBoolObject otherBool)
+            return PyBoolObject.FromBoolean(self.BoolValue & otherBool.BoolValue);
+        if (other is PyIntObject intObj)
+            return PyMath.CalculatePyIntObject(PyOperatorTypes.BitAnd, self, intObj);
+        return base.And(context, self, other);
+    }
+
+    protected override PyResult Xor(PyCallContext context, PyBoolObject self, PyObject other)
+    {
+        if (other is PyBoolObject otherBool)
+            return PyBoolObject.FromBoolean(self.BoolValue ^ otherBool.BoolValue);
+        if (other is PyIntObject intObj)
+            return PyMath.CalculatePyIntObject(PyOperatorTypes.BitXor, self, intObj);
+        return base.Xor(context, self, other);
+    }
+
+    protected override PyResult Or(PyCallContext context, PyBoolObject self, PyObject other)
+    {
+        if (other is PyBoolObject otherBool)
+            return PyBoolObject.FromBoolean(self.BoolValue | otherBool.BoolValue);
+        if (other is PyIntObject intObj)
+            return PyMath.CalculatePyIntObject(PyOperatorTypes.BitOr, self, intObj);
+        return base.Or(context, self, other);
+    }
+
+    // CPython bool has no nb_positive of its own: the inherited int slot
+    // returns its exact receiver, which for bool upgrades to int 1/0.
+    protected override PyResult Pos(PyCallContext context, PyBoolObject self)
+    {
+        return PyIntObject.FromInteger(self.Value);
+    }
 }

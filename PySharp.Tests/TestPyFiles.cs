@@ -1608,6 +1608,17 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestBoolNumericSlotsRegression()
+    {
+        // Regression: bool's numeric slots follow the CPython boolobject.c
+        // specialization — bitwise and/or/xor keep bool when both operands
+        // are bool (int otherwise), while unary + (like -, ~, abs) upgrades
+        // to int; the old behavior was exactly inverted.
+        var module = RunModule("test_bool_numeric_slots_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBareRaiseDynamicScopeRegression()
     {
         // Regression: bare raise reads the call chain's handled exception
