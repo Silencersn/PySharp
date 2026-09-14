@@ -202,7 +202,18 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
         // bytes_concat accepts any bytes-like operand; the concat TypeError
         // is reserved for fully unrelated types
         if (!TryGetBytesLikeSpan(other, out var otherSpan))
-            return PyResult.TypeError(PySR.Runtime_Bytes_CannotConcat, other.PyType.FullName);
+        {
+        // The reflected __radd__ of the right operand gets the first chance
+        // (CPython's bytes has no nb_add); the concat TypeError is the last
+        // resort when it declines or does not exist.
+        if (other.PyType.Slots.RAdd is not null)
+        {
+            var reflected = other.PyType.Slots.RAdd(context, other, self);
+            if (!reflected.IsNotImplemented)
+                return reflected;
+        }
+        return PyResult.TypeError(PySR.Runtime_Bytes_CannotConcat, other.PyType.FullName);
+        }
 
         var combinedBytes = new byte[self.Length + otherSpan.Length];
         var dstSpan = combinedBytes.AsSpan();

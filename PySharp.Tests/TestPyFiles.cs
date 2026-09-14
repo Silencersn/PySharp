@@ -1631,6 +1631,17 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestConcatReflectedRaddRegression()
+    {
+        // Regression: str/bytes/tuple `+` give the right operand's __radd__
+        // the first chance (CPython has no nb_add for them — the reflected
+        // slot runs before the sq_concat fallback); the concat TypeError is
+        // the last resort with unchanged messages.
+        var module = RunModule("test_concat_reflected_radd_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBareRaiseDynamicScopeRegression()
     {
         // Regression: bare raise reads the call chain's handled exception

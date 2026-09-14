@@ -162,7 +162,7 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
     [AIGenerated]
     protected override PyResult Add(PyCallContext context, PyTupleObject self, PyObject other)
     {
-        return self.PyAdd(other);
+        return self.PyAdd(context, other);
     }
 
     [AIGenerated]

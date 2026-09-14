@@ -2065,6 +2065,15 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     {
         if (other is PyStrObject strObj)
             return PyStrObject.FromString(self.Value + strObj.Value);
+        // CPython's str has no nb_add: the right operand's reflected
+        // __radd__ runs first, and the concat TypeError is the last resort
+        // (the sq_concat fallback) when it declines or does not exist.
+        if (other.PyType.Slots.RAdd is not null)
+        {
+            var reflected = other.PyType.Slots.RAdd(context, other, self);
+            if (!reflected.IsNotImplemented)
+                return reflected;
+        }
         return PyResult.TypeError(PySR.Runtime_String_AddNonStr, other.PyType.FullName);
     }
     protected override PyResult Eq(PyCallContext context, PyStrObject self, PyObject other)
