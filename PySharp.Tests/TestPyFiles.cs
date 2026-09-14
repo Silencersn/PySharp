@@ -1584,6 +1584,18 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestFromImportErrorRegression()
+    {
+        // Regression: a from-import of a name missing from a package raises
+        // ImportError ("cannot import name '<name>' from '<package>'") like
+        // CPython import_from, instead of letting the underlying
+        // AttributeError escape so `except ImportError` could not catch it;
+        // plain attribute access on the module stays AttributeError.
+        var module = RunModule("test_from_import_error_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBareRaiseDynamicScopeRegression()
     {
         // Regression: bare raise reads the call chain's handled exception

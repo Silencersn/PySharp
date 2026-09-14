@@ -808,7 +808,7 @@ internal static partial class BytecodeVirtualMachine
                         break;
 
                     case OpCode.ImportFrom:
-                        value = PyOperators.GetAttr(context, Stack[-1], names[instructionArg]).PyUnwrap(context);
+                        value = InternalImportFrom(context, Stack[-1], names[instructionArg]);
                         Stack.Push(value);
                         break;
 

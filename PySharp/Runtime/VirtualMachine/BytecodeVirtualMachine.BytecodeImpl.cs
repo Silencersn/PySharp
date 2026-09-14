@@ -451,4 +451,28 @@ internal static partial class BytecodeVirtualMachine
             stack.Push(rootModule);
         }
     }
+
+    // CPython import_from (ceval.c): a missing from-import name surfaces as
+    // ImportError ("cannot import name ..."), never the underlying
+    // AttributeError; other attribute errors propagate unchanged.
+    private static PyObject InternalImportFrom(PyCallContext context, PyObject module, string name)
+    {
+        var attrResult = PyOperators.GetAttr(context, module, name);
+        if (!attrResult.IsError)
+            return attrResult.Value;
+
+        if (!PyAttributeErrorObjectType.Shared.IsInstance(attrResult.Exception))
+            throw new PyRuntimeException(context, attrResult.Exception);
+
+        string moduleName;
+        if (module is PyModuleObject moduleObject)
+            moduleName = moduleObject.Name;
+        else
+        {
+            var nameResult = PyOperators.GetAttr(context, module, PySpecialNames.Name);
+            moduleName = !nameResult.IsError && nameResult.Value is PyStrObject nameStr ? nameStr.Value : "<unknown>";
+        }
+
+        throw context.ImportError(PySR.Runtime_Import_CannotImportName, name, moduleName);
+    }
 }
