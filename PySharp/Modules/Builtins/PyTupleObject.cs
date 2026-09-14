@@ -66,7 +66,7 @@ public partial class PyTupleObject : PyObject, IPyObjectRecursiveRepr, IReadOnly
 
     public ReadOnlySpan<PyObject> AsSpan()
     {
-        return _array.AsSpan();
+        return new ReadOnlySpan<PyObject>(_array);
     }
 }
 

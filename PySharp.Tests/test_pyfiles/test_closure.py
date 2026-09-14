@@ -1,4 +1,4 @@
-﻿"""
+"""
 Closure and scope tests (nonlocal, global, nested functions)
 """
 
@@ -98,3 +98,12 @@ def wrapper():
 i1, i2 = wrapper()
 assert i1() == 2
 assert i2() == 3
+
+
+def outer():
+    x = 10
+    def inner():
+        return x
+    return inner
+f = outer()
+print(f.__closure__[0])
