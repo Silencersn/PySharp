@@ -31,6 +31,15 @@ public sealed partial class PyBaseExceptionObjectType : PyExceptionType
         return new PyExceptionObject(cls, [.. args]);
     }
 
+    // CPython BaseException_init accepts the constructor arguments (already
+    // consumed by __new__ here); giving BaseException its own __init__ slot
+    // keeps exception instances from falling under object's excess-argument
+    // check on direct object.__init__ calls
+    protected override PyResult Init(PyCallContext context, PyExceptionObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        return PyNoneObject.None;
+    }
+
     protected override PyResult Repr(PyCallContext context, PyExceptionObject self)
     {
         var builder = new StringBuilder();

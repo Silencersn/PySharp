@@ -89,6 +89,18 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
         return pyObject;
     }
 
+    // CPython type_init: accepts the 1- or 3-argument forms so cooperative
+    // metaclass __init__ chains do not hit object's excess-argument check
+    protected override PyResult Init(PyCallContext context, PyTypeObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        if (kwargs.Count is not 0 && args.Count is 1)
+            return PyResult.TypeError(PySR.Runtime_Type_InitTakesNoKeywordArguments);
+        if (args.Count is not 1 and not 3)
+            return PyResult.TypeError(PySR.Runtime_Type_InitTakes1Or3Arguments);
+
+        return PyNoneObject.None;
+    }
+
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (args.Count is 1 && kwargs.Count is 0)
@@ -165,7 +177,8 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
                 type.PyAttributes[attr] = new PyClassMethodObject(value);
             else
                 type.PyAttributes[attr] = value;
-            type.Slots.TrySetSlot(attr, value);
+            if (!IsObjectDefaultSlotValue(attr, value))
+                type.Slots.TrySetSlot(attr, value);
         }
 
 

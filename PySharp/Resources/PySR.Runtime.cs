@@ -57,6 +57,8 @@ partial class PySR
     public const string Runtime_Type_NewClsNotSafe = "{0}.__new__({1}) is not safe, use {1}.__new__()";
     public const string Runtime_Type_SetImmutable = "cannot set '{0}' attribute of immutable type '{1}'";
 
+    public const string Runtime_Type_InitTakesNoKeywordArguments = "type.__init__() takes no keyword arguments";
+    public const string Runtime_Type_InitTakes1Or3Arguments = "type.__init__() takes 1 or 3 arguments";
     public const string Runtime_Type_New_WrongArgCount = "type() takes 1 or 3 arguments";
     public const string Runtime_Type_New_Arg1MustBeStr = "type.__new__() argument 1 must be str, not {0}";
     public const string Runtime_Type_New_Arg2MustBeTuple = "type.__new__() argument 2 must be tuple, not {0}";
@@ -84,6 +86,9 @@ partial class PySR
     public const string Runtime_Object_AttributeNotFound = "'{0}' object has no attribute '{1}'";
     public const string Runtime_Object_SpecialMethodNotDefined = "type {0} doesn't define {1} method";
     public const string Runtime_Object_NewTakesExactlyOneArg = "object.__new__() takes exactly one argument (the type to instantiate)";
+    public const string Runtime_Object_TakesNoArguments = "{0}() takes no arguments";
+    public const string Runtime_Object_InitTakesExactlyOneArg = "object.__init__() takes exactly one argument (the instance to initialize)";
+    public const string Runtime_Object_TypeInitTakesExactlyOneArg = "{0}.__init__() takes exactly one argument (the instance to initialize)";
     public const string Runtime_Attribute_NoDelete = "__delete__";
     public const string Runtime_Super_HasNoAttribute = "'super' object has no attribute '{0}'";
 

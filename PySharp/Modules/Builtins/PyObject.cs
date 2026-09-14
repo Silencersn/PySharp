@@ -123,8 +123,17 @@ public sealed partial class PyObjectType : PyTypeObject<PyObject>
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        if (ReferenceEquals(cls, this) && (args.Count is not 0 || kwargs.Count is not 0))
-            return PyResult.TypeError(PySR.Runtime_Object_NewTakesExactlyOneArg);
+        // CPython object_new: excess arguments are an error unless a custom
+        // __init__ (with the default __new__) is there to receive them;
+        // inherited slot delegates are shared by reference, so reference
+        // equality detects the defaults
+        if (args.Count is not 0 || kwargs.Count is not 0)
+        {
+            if (!ReferenceEquals(cls.Slots.New, Slots.New))
+                return PyResult.TypeError(PySR.Runtime_Object_NewTakesExactlyOneArg);
+            if (ReferenceEquals(cls.Slots.Init, Slots.Init))
+                return PyResult.TypeError(PySR.Runtime_Object_TakesNoArguments, cls.Name);
+        }
 
         if (cls.LayoutType == typeof(PyObjectManagedDict))
             return new PyObjectManagedDict { _pyType = cls };

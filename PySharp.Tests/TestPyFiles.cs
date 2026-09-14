@@ -1520,6 +1520,21 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestObjectNewExcessArgsRegression()
+    {
+        // Regression: excess constructor arguments on classes using the
+        // object-default __new__/__init__ raise TypeError like CPython
+        // object_new/object_init ("<Cls>() takes no arguments"), covering
+        // subclasses (the old check only matched exact object); custom
+        // __init__/__new__, object.__init__ direct calls, cooperative
+        // super().__init__ chains, the exception family, type.__init__'s
+        // 1/3-argument forms, and re-assigning the inherited defaults all
+        // follow the CPython rules.
+        var module = RunModule("test_object_new_excess_args_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBareRaiseDynamicScopeRegression()
     {
         // Regression: bare raise reads the call chain's handled exception

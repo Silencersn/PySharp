@@ -97,10 +97,23 @@ partial class PyTypeObject
 
         // When setting an attribute on a type object (e.g. cls.__init__ = func),
         // also update the corresponding slot so that Call/New etc. pick it up.
-        if (self is PyTypeObject typeObj)
+        if (self is PyTypeObject typeObj && !IsObjectDefaultSlotValue(name, value))
             typeObj.Slots.TrySetSlot(name, value);
 
         return PyNoneObject.None;
+    }
+
+    // CPython fixup_slot_dispatchers: assigning the inherited object default
+    // (__new__ / __init__) is a no-op for slot wiring — the slot keeps
+    // inheriting object's delegate, so the excess-argument checks in
+    // object.__new__/__init__ still see the defaults
+    internal static bool IsObjectDefaultSlotValue(string name, PyObject value)
+    {
+        if (name is not (PySpecialNames.New or PySpecialNames.Init))
+            return false;
+
+        return TryLookupAttrInMro(PyObjectType.Shared, name, out var defaultValue)
+            && ReferenceEquals(value, defaultValue);
     }
 
     internal static PyResult DefaultDelAttr(PyCallContext context, PyObject self, PyObject item)
@@ -189,6 +202,18 @@ partial class PyTypeObject
 
     internal static PyResult DefaultInit(PyCallContext context, PyObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
+        // CPython object_init: mirror of object_new — excess arguments are
+        // an error unless a custom __new__ (which defines the signature)
+        // consumed them
+        if (args.Count is not 0 || kwargs.Count is not 0)
+        {
+            var type = self.PyType;
+            if (!ReferenceEquals(type.Slots.Init, PyObjectType.Shared.Slots.Init))
+                return PyResult.TypeError(PySR.Runtime_Object_InitTakesExactlyOneArg);
+            if (ReferenceEquals(type.Slots.New, PyObjectType.Shared.Slots.New))
+                return PyResult.TypeError(PySR.Runtime_Object_TypeInitTakesExactlyOneArg, type.Name);
+        }
+
         return PyNoneObject.None;
     }
     internal static PyResult DefaultBinaryOperator(PyCallContext context, PyObject self, PyObject other)
