@@ -2335,10 +2335,9 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                     var precStr = string.Empty;
                     while (i < formatStr.Length && char.IsDigit(formatStr[i]))
                         precStr += formatStr[i++];
-                    if (precStr.Length > 0)
-                        precision = int.Parse(precStr);
-                    else
-                        return PyResult.ValueError("format requires a precision");
+                    // CPython sets the precision to 0 as soon as the dot
+                    // is consumed, so an empty precision field is valid
+                    precision = precStr.Length > 0 ? int.Parse(precStr) : 0;
                 }
             }
 

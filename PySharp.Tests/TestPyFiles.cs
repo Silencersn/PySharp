@@ -3068,4 +3068,15 @@ public sealed class TestPyFiles
         var module = RunModule("test_generator_close_state_throw3_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestPercentEmptyPrecisionRegression()
+    {
+        // Regression: %-formatting treats an empty precision field as
+        // precision 0 (CPython sets the precision as soon as the dot is
+        // consumed) instead of raising "format requires a precision";
+        // a dot at the end of the spec stays an incomplete format.
+        var module = RunModule("test_percent_empty_precision_regression.py");
+        Assert.IsNotNull(module);
+    }
 }
