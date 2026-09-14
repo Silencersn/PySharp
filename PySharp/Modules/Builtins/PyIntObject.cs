@@ -115,6 +115,13 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
             return PyIntObject.FromInteger(integer);
         }
 
+        if (arguments[0] is PyBytesObject bytes)
+            return FromBytesLiteral(context, bytes.AsSpan(), 10);
+        if (arguments[0] is PyByteArrayObject byteArray)
+            return FromBytesLiteral(context, byteArray.AsSpan(), 10);
+        if (arguments[0] is PyMemoryViewObject memoryView)
+            return FromBytesLiteral(context, memoryView.DataSpan, 10);
+
         var result = PySpecialMethods.Int(context, arguments[0]);
         if (result.IsError)
             return result;
@@ -141,8 +148,34 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
             return PyIntObject.FromInteger(result);
         }
 
+        if (arguments[0] is PyBytesObject bytes)
+            return FromBytesLiteral(context, bytes.AsSpan(), numBase.Int32Value);
+        if (arguments[0] is PyByteArrayObject byteArray)
+            return FromBytesLiteral(context, byteArray.AsSpan(), numBase.Int32Value);
+        if (arguments[0] is PyMemoryViewObject memoryView)
+            return FromBytesLiteral(context, memoryView.DataSpan, numBase.Int32Value);
+
         return PyResult.TypeError(PySR.Runtime_Number_Int_ConvertNonStr);
 
+    }
+
+    // CPython PyNumber_Long: bytes-like arguments are parsed as their ASCII
+    // characters, and the invalid-literal error quotes the bytes repr.
+    private static PyResult FromBytesLiteral(PyCallContext context, ReadOnlySpan<byte> data, int baseValue)
+    {
+        var text = string.Create(data.Length, data, (span, bytes) =>
+        {
+            for (int i = 0; i < bytes.Length; i++)
+                span[i] = (char)bytes[i];
+        });
+
+        var parseStatus = BigIntegerHelper.TryParse(text, baseValue, out var result, out var digitCount);
+        if (parseStatus is BigIntegerHelper.IntParseStatus.OverLimit)
+            return PyResult.ValueError(PySR.Runtime_Number_Int_ExceedsMaxStrDigits, PyIntStrDigitsLimit.MaxStrDigits, digitCount);
+        if (parseStatus is BigIntegerHelper.IntParseStatus.Invalid)
+            return PyResult.ValueError(PySR.Runtime_Number_Int_InvalidLiteralBytes, baseValue, PyByteArrayObjectType.FormatBytesLiteral(data));
+
+        return PyIntObject.FromInteger(result);
     }
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)

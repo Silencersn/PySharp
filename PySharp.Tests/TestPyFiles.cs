@@ -1619,6 +1619,18 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestIntBytesRegression()
+    {
+        // Regression: int() accepts bytes-like arguments (bytes, bytearray,
+        // memoryview), parsing their ASCII characters with the given base
+        // like CPython PyNumber_Long; invalid literals raise ValueError
+        // quoting the bytes repr instead of the contradictory TypeError
+        // that claimed bytes-like objects were accepted.
+        var module = RunModule("test_int_bytes_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBareRaiseDynamicScopeRegression()
     {
         // Regression: bare raise reads the call chain's handled exception

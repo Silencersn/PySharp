@@ -441,7 +441,7 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
         return PyNoneObject.None;
     }
 
-    private static string FormatBytesLiteral(ReadOnlySpan<byte> span)
+    internal static string FormatBytesLiteral(ReadOnlySpan<byte> span)
     {
         var containsSingle = span.Contains((byte)'\'');
         var containsDouble = span.Contains((byte)'\"');
