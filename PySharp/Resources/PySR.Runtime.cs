@@ -11,7 +11,7 @@ partial class PySR
 
     public const string Runtime_MatchStmt_CallNonClass = "called match pattern must be a class";
     public const string Runtime_MatchStmt_MatchArgsIsNonTuple = "{0}.__match_args__ must be a tuple (got {1})";
-    public const string Runtime_MatchStmt_MatchArgsLengthNotEnough = "{0}() accepts {1} positional sub-patterns ({2} given)";
+    public const string Runtime_MatchStmt_MatchArgsLengthNotEnough = "{0}() accepts {1} positional sub-pattern{2} ({3} given)";
     public const string Runtime_MatchStmt_MatchArgsEltMustBeString = "__match_args__ elements must be strings (got {0})";
 
     public const string Runtime_WithStmt_MissingEnter = "'{0}' object does not support the context manager protocol (missed __enter__ method)";

@@ -1596,6 +1596,18 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestMatchMissingMatchArgsRegression()
+    {
+        // Regression: a class pattern with positional sub-patterns against a
+        // class without __match_args__ raises the CPython arity TypeError
+        // ("<Name>() accepts 0 positional sub-patterns (N given)") instead of
+        // leaking the attribute lookup error as AttributeError; the plural
+        // marker follows CPython (omitted when the allowed count is 1).
+        var module = RunModule("test_match_missing_match_args_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBareRaiseDynamicScopeRegression()
     {
         // Regression: bare raise reads the call chain's handled exception

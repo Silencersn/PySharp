@@ -39,18 +39,28 @@ internal static partial class BytecodeVirtualMachine
         if (IsSpecialType(cls))
         {
             if (instructionArg > 1)
-                throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsLengthNotEnough, cls.FullName, 1, instructionArg);
+                throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsLengthNotEnough, cls.FullName, 1, "", instructionArg);
             else if (instructionArg is 1)
                 values[0] = subject;
         }
         else if (instructionArg > 0)
         {
-            var matchArgs = PyOperators.GetAttr(context, cls, PySpecialNames.Interned.MatchArgs).PyUnwrap(context);
+            // CPython: a missing __match_args__ counts as an empty tuple,
+            // turning the failure into an arity TypeError instead of leaking
+            // the attribute lookup error; other lookup errors propagate.
+            var matchArgsResult = PyOperators.GetAttr(context, cls, PySpecialNames.Interned.MatchArgs);
+            PyObject matchArgs;
+            if (!matchArgsResult.IsError)
+                matchArgs = matchArgsResult.Value;
+            else if (matchArgsResult.IsAttributeError)
+                matchArgs = PyTupleObject.Empty;
+            else
+                throw new PyRuntimeException(context, matchArgsResult.Exception);
 
             if (matchArgs is not PyTupleObject tuple)
                 throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsIsNonTuple, cls.FullName, matchArgs.PyType.FullName);
             if (instructionArg > tuple.Count)
-                throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsLengthNotEnough, cls.FullName, tuple.Count, instructionArg);
+                throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsLengthNotEnough, cls.FullName, tuple.Count, tuple.Count == 1 ? "" : "s", instructionArg);
 
             for (int i = 0; i < instructionArg; i++)
             {
