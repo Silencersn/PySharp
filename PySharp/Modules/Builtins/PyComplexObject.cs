@@ -104,8 +104,7 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
 
     protected override PyResult Hash(PyCallContext context, PyComplexObject self)
     {
-        int hash = HashCode.Combine(self.Value.Real, self.Value.Imaginary);
-        return PyIntObject.FromInteger(hash);
+        return PyIntObject.FromInteger(PyHash.HashComplex(self.Value.Real, self.Value.Imaginary, self));
     }
 
     protected override PyResult Bool(PyCallContext context, PyComplexObject self)

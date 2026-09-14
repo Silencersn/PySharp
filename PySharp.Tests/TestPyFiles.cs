@@ -1535,6 +1535,17 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestComplexHashRegression()
+    {
+        // Regression: complex hashes agree with int/float hashes for equal
+        // values (CPython complex_hash: the parts' double hashes combined
+        // with _PyHASH_IMAG, a zero imaginary part keeps the real hash), so
+        // cross-type dict/set lookups no longer silently miss.
+        var module = RunModule("test_complex_hash_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBareRaiseDynamicScopeRegression()
     {
         // Regression: bare raise reads the call chain's handled exception

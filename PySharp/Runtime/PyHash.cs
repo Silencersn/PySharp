@@ -70,7 +70,7 @@ internal static class PyHash
     /// hash, PyFloatObject.Hash). Matches HashLong for integral values
     /// (1.0 -> 1, -1.0 -> -2) via modular reduction; inf -> +/-314159;
     /// NaN -> object identity hash of the float instance.</summary>
-    public static BigInteger HashDouble(double value, PyFloatObject instance)
+    public static BigInteger HashDouble(double value, PyObject instance)
     {
         if (!double.IsFinite(value))
         {
@@ -120,6 +120,23 @@ internal static class PyHash
         x = ((x << e) & Modulus) | (x >> (Bits - e));
 
         long result = sign * (long)x;
+        if (result is -1)
+            result = -2;
+        return result;
+    }
+
+    private const ulong ImagMultiplier = 1000003;
+
+    /// <summary>CPython complex_hash: the parts' double hashes combined as
+    /// hashreal + _PyHASH_IMAG * hashimag in 64-bit wraparound; a zero
+    /// imaginary part leaves the real part's hash, so values that compare
+    /// equal across int/float/complex hash identically. A combined -1 is
+    /// mapped to -2 (the error sentinel).</summary>
+    public static BigInteger HashComplex(double real, double imag, PyObject instance)
+    {
+        ulong hashreal = (ulong)(long)HashDouble(real, instance);
+        ulong hashimag = (ulong)(long)HashDouble(imag, instance);
+        long result = (long)(hashreal + ImagMultiplier * hashimag);
         if (result is -1)
             result = -2;
         return result;
