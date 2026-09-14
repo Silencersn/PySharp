@@ -1654,6 +1654,17 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestFloatPowOverflowRegression()
+    {
+        // Regression: float `**` (and pow()) overflowing the double range
+        // raises OverflowError with the errno args tuple like CPython
+        // float_pow's ERANGE handling, instead of silently returning
+        // +/-inf; underflow and non-finite operands stay non-errors.
+        var module = RunModule("test_float_pow_overflow_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBareRaiseDynamicScopeRegression()
     {
         // Regression: bare raise reads the call chain's handled exception

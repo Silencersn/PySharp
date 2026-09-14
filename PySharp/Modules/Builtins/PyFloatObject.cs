@@ -409,7 +409,23 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
     {
         if (baseValue is 0.0 && exponent < 0)
             return PyResult.ZeroDivisionError(PySR.Runtime_Number_ZeroToNegativePower);
-        return PyFloatObject.FromDouble(double.Pow(baseValue, exponent));
+        var result = double.Pow(baseValue, exponent);
+        // CPython float_pow runs the platform pow only with finite
+        // operands (the special cases above handle the rest), so an
+        // infinite result is an ERANGE overflow reported through
+        // PyErr_SetFromErrno; underflow stays silent.
+        if (double.IsInfinity(result) && double.IsFinite(baseValue) && double.IsFinite(exponent))
+            return ErrnoOverflow();
+        return PyFloatObject.FromDouble(result);
+    }
+
+    // PyErr_SetFromErrno(OverflowError): args (ERANGE, strerror(ERANGE)).
+    private static PyResult ErrnoOverflow()
+    {
+        var exception = PyExceptionObject.UnsafeCreate(
+            PyOverflowErrorObjectType.Shared,
+            [PyIntObject.FromInteger(34), PyStrObject.FromString("Result too large")]);
+        return PyResult.FromException(exception);
     }
     protected override PyResult RAdd(PyCallContext context, PyFloatObject self, PyObject other)
     {
