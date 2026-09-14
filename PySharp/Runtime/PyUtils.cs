@@ -198,6 +198,14 @@ internal static class PyUtils
         return index;
     }
 
+    // Search-method bounds only feed a wrap-by-len or >len comparison
+    // after conversion, so saturating oversized magnitudes matches
+    // CPython's Py_ssize_t conversion for any int size
+    public static int SaturateIndex(BigInteger index)
+    {
+        return index > int.MaxValue ? int.MaxValue : index < int.MinValue ? int.MinValue : (int)index;
+    }
+
     public static bool IsIndexOutOfRange(int index, int count)
     {
         return index >= count || index < -count;

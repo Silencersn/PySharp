@@ -323,7 +323,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
         var result = PySpecialMethods.Index(context, arguments[1]);
         if (result.IsError)
             return result;
-        var index = self.PyIndex(context, arguments[0], result.Value.Int32Value);
+        var index = self.PyIndex(context, arguments[0], PyUtils.SaturateIndex(result.Value.Value));
         if (index is -1)
         {
             var reprResult = PySpecialMethods.Repr(context, arguments[0]);
@@ -345,7 +345,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
         var endResult = PySpecialMethods.Index(context, arguments[2]);
         if (endResult.IsError)
             return endResult;
-        var index = self.PyIndex(context, arguments[0], startResult.Value.Int32Value, endResult.Value.Int32Value);
+        var index = self.PyIndex(context, arguments[0], PyUtils.SaturateIndex(startResult.Value.Value), PyUtils.SaturateIndex(endResult.Value.Value));
         if (index is -1)
         {
             var reprResult = PySpecialMethods.Repr(context, arguments[0]);

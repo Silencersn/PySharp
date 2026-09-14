@@ -2980,4 +2980,16 @@ public sealed class TestPyFiles
         var module = RunModule("test_format_empty_spec_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestSearchBoundsSaturationRegression()
+    {
+        // Regression: str/list/tuple search-method start/end bounds
+        // saturate oversized magnitudes into [0, len] like CPython's
+        // Py_ssize_t conversion instead of raising an empty-message
+        // OverflowError; a huge negative end clamps to 0 so the search
+        // fails with the normal not-found ValueError.
+        var module = RunModule("test_search_bounds_saturation_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

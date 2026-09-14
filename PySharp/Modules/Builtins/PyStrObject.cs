@@ -279,9 +279,9 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     {
         int start = 0, end = int.MaxValue;
         if (startArg is PyIntObject startObj)
-            start = startObj.Int32Value;
+            start = PyUtils.SaturateIndex(startObj.Value);
         if (endArg is PyIntObject endObj)
-            end = endObj.Int32Value;
+            end = PyUtils.SaturateIndex(endObj.Value);
         // CPython adjust_indices wraps a negative start but keeps a
         // positive start as-is even above the length; tailmatch then
         // fails the window check, so an empty needle is False only
@@ -499,9 +499,9 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         {
             int start = 0, end = int.MaxValue;
             if (arguments[1] is PyIntObject startObj)
-                start = startObj.Int32Value;
+                start = PyUtils.SaturateIndex(startObj.Value);
             if (arguments[2] is PyIntObject endObj)
-                end = endObj.Int32Value;
+                end = PyUtils.SaturateIndex(endObj.Value);
             // CPython ADJUST_INDICES: like startswith above, start clamps
             // only at 0 so an above-length start keeps end - start negative
             if (start < 0)
@@ -533,9 +533,9 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         {
             int start = 0, end = int.MaxValue;
             if (arguments[1] is PyIntObject startObj)
-                start = startObj.Int32Value;
+                start = PyUtils.SaturateIndex(startObj.Value);
             if (arguments[2] is PyIntObject endObj)
-                end = endObj.Int32Value;
+                end = PyUtils.SaturateIndex(endObj.Value);
             // CPython ADJUST_INDICES: start clamps only at 0
             if (start < 0)
                 start = ClampRuneStart(start, self.PyLength);
@@ -662,9 +662,9 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
         int start = 0, end = int.MaxValue;
         if (arguments[1] is PyIntObject startObj)
-            start = startObj.Int32Value;
+            start = PyUtils.SaturateIndex(startObj.Value);
         if (arguments[2] is PyIntObject endObj)
-            end = endObj.Int32Value;
+            end = PyUtils.SaturateIndex(endObj.Value);
         // CPython ADJUST_INDICES: start clamps only at 0
         if (start < 0)
             start = ClampRuneStart(start, self.PyLength);

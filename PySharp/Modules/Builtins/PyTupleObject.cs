@@ -200,7 +200,7 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
         if (startResult.IsError)
             return startResult;
 
-        var index = self.PyIndex(context, arguments[0], startResult.Value.Int32Value);
+        var index = self.PyIndex(context, arguments[0], PyUtils.SaturateIndex(startResult.Value.Value));
         if (index is -1)
             return PyResult.ValueError(PySR.Runtime_Tuple_ItemNotFound, "index");
         return PyIntObject.FromInteger(index);
@@ -218,7 +218,7 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
         if (endResult.IsError)
             return endResult;
 
-        var index = self.PyIndex(context, arguments[0], startResult.Value.Int32Value, endResult.Value.Int32Value);
+        var index = self.PyIndex(context, arguments[0], PyUtils.SaturateIndex(startResult.Value.Value), PyUtils.SaturateIndex(endResult.Value.Value));
         if (index is -1)
             return PyResult.ValueError(PySR.Runtime_Tuple_ItemNotFound, "index");
         return PyIntObject.FromInteger(index);

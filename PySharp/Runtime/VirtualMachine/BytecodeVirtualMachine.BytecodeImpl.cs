@@ -39,7 +39,7 @@ internal static partial class BytecodeVirtualMachine
         if (IsSpecialType(cls))
         {
             if (instructionArg > 1)
-                throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsLengthNotEnough, cls.FullName, 1, "", instructionArg);
+                throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsLengthNotEnough, cls.FullName, 1, string.Empty, instructionArg);
             else if (instructionArg is 1)
                 values[0] = subject;
         }
@@ -60,7 +60,7 @@ internal static partial class BytecodeVirtualMachine
             if (matchArgs is not PyTupleObject tuple)
                 throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsIsNonTuple, cls.FullName, matchArgs.PyType.FullName);
             if (instructionArg > tuple.Count)
-                throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsLengthNotEnough, cls.FullName, tuple.Count, tuple.Count == 1 ? "" : "s", instructionArg);
+                throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsLengthNotEnough, cls.FullName, tuple.Count, tuple.Count is 1 ? string.Empty : "s", instructionArg);
 
             for (int i = 0; i < instructionArg; i++)
             {
@@ -476,7 +476,9 @@ internal static partial class BytecodeVirtualMachine
 
         string moduleName;
         if (module is PyModuleObject moduleObject)
+        {
             moduleName = moduleObject.Name;
+        }
         else
         {
             var nameResult = PyOperators.GetAttr(context, module, PySpecialNames.Name);
