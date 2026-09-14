@@ -228,6 +228,11 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     {
         var sub = arguments[0];
 
+        if (!TrySliceIndex(context, arguments[1], 0, out int start, out var startError))
+            return startError!;
+        if (!TrySliceIndex(context, arguments[2], int.MaxValue, out int end, out var endError))
+            return endError!;
+
         if (sub is PyTupleObject prefixTuple)
         {
             foreach (var item in prefixTuple)
@@ -235,7 +240,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 if (item is not PyStrObject itemStr)
                     return PyResult.TypeError(PySR.Runtime_Str_StartswithTupleItemMustBeStr, item.PyType.Name);
 
-                if (TailMatch(self, itemStr, arguments[1], arguments[2], startswith: true))
+                if (TailMatch(self, itemStr, start, end, startswith: true))
                     return PyBoolObject.True;
             }
             // nothing matched
@@ -245,7 +250,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         if (sub is not PyStrObject prefixStr)
             return PyResult.TypeError(PySR.Runtime_Str_StartswithFirstArgMustBeStr, sub.PyType.Name);
 
-        return PyBoolObject.FromBoolean(TailMatch(self, prefixStr, arguments[1], arguments[2], startswith: true));
+        return PyBoolObject.FromBoolean(TailMatch(self, prefixStr, start, end, startswith: true));
     }
 
     [PyMethod("endswith")]
@@ -255,6 +260,11 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     {
         var sub = arguments[0];
 
+        if (!TrySliceIndex(context, arguments[1], 0, out int start, out var startError))
+            return startError!;
+        if (!TrySliceIndex(context, arguments[2], int.MaxValue, out int end, out var endError))
+            return endError!;
+
         if (sub is PyTupleObject suffixTuple)
         {
             foreach (var item in suffixTuple)
@@ -262,7 +272,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 if (item is not PyStrObject itemStr)
                     return PyResult.TypeError(PySR.Runtime_Str_EndswithTupleItemMustBeStr, item.PyType.Name);
 
-                if (TailMatch(self, itemStr, arguments[1], arguments[2], startswith: false))
+                if (TailMatch(self, itemStr, start, end, startswith: false))
                     return PyBoolObject.True;
             }
             // nothing matched
@@ -272,16 +282,11 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         if (sub is not PyStrObject suffixStr)
             return PyResult.TypeError(PySR.Runtime_Str_EndswithFirstArgMustBeStr, sub.PyType.Name);
 
-        return PyBoolObject.FromBoolean(TailMatch(self, suffixStr, arguments[1], arguments[2], startswith: false));
+        return PyBoolObject.FromBoolean(TailMatch(self, suffixStr, start, end, startswith: false));
     }
 
-    private static bool TailMatch(PyStrObject self, PyStrObject needle, PyObject startArg, PyObject endArg, bool startswith)
+    private static bool TailMatch(PyStrObject self, PyStrObject needle, int start, int end, bool startswith)
     {
-        int start = 0, end = int.MaxValue;
-        if (startArg is PyIntObject startObj)
-            start = PyUtils.SaturateIndex(startObj.Value);
-        if (endArg is PyIntObject endObj)
-            end = PyUtils.SaturateIndex(endObj.Value);
         // CPython adjust_indices wraps a negative start but keeps a
         // positive start as-is even above the length; tailmatch then
         // fails the window check, so an empty needle is False only
@@ -490,6 +495,34 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         return end < 0 ? 0 : end > length ? length : end;
     }
 
+    // CPython _PyEval_SliceIndex: None keeps the method default,
+    // anything with __index__ converts through Py_ssize_t (saturating,
+    // see SaturateIndex), and everything else raises the slice-indices
+    // TypeError regardless of the object's actual type
+    private static bool TrySliceIndex(PyCallContext context, PyObject arg, int defaultValue, out int value, out PyResult error)
+    {
+        if (arg is PyNoneObject)
+        {
+            value = defaultValue;
+            error = default!;
+            return true;
+        }
+
+        var indexResult = PySpecialMethods.Index(context, arg);
+        if (indexResult.IsError)
+        {
+            value = default;
+            error = PyTypeErrorObjectType.Shared.IsInstance(indexResult.Exception)
+                ? PyResult.TypeError(PySR.Runtime_Slice_IndicesMustBeInt)
+                : indexResult;
+            return false;
+        }
+
+        value = PyUtils.SaturateIndex(indexResult.Value.Value);
+        error = default!;
+        return true;
+    }
+
     [PyMethod("find")]
     [AIGenerated]
     [PyFunctionParameters("sub", "/", "start=0", "end=2147483647")]
@@ -497,11 +530,10 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     {
         if (arguments[0] is PyStrObject subStr)
         {
-            int start = 0, end = int.MaxValue;
-            if (arguments[1] is PyIntObject startObj)
-                start = PyUtils.SaturateIndex(startObj.Value);
-            if (arguments[2] is PyIntObject endObj)
-                end = PyUtils.SaturateIndex(endObj.Value);
+            if (!TrySliceIndex(context, arguments[1], 0, out int start, out var startError))
+                return startError!;
+            if (!TrySliceIndex(context, arguments[2], int.MaxValue, out int end, out var endError))
+                return endError!;
             // CPython ADJUST_INDICES: like startswith above, start clamps
             // only at 0 so an above-length start keeps end - start negative
             if (start < 0)
@@ -531,11 +563,10 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     {
         if (arguments[0] is PyStrObject subStr)
         {
-            int start = 0, end = int.MaxValue;
-            if (arguments[1] is PyIntObject startObj)
-                start = PyUtils.SaturateIndex(startObj.Value);
-            if (arguments[2] is PyIntObject endObj)
-                end = PyUtils.SaturateIndex(endObj.Value);
+            if (!TrySliceIndex(context, arguments[1], 0, out int start, out var startError))
+                return startError!;
+            if (!TrySliceIndex(context, arguments[2], int.MaxValue, out int end, out var endError))
+                return endError!;
             // CPython ADJUST_INDICES: start clamps only at 0
             if (start < 0)
                 start = ClampRuneStart(start, self.PyLength);
@@ -660,11 +691,10 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         if (arguments[0] is not PyStrObject subStr)
             return PyResult.TypeError("count arg must be str");
 
-        int start = 0, end = int.MaxValue;
-        if (arguments[1] is PyIntObject startObj)
-            start = PyUtils.SaturateIndex(startObj.Value);
-        if (arguments[2] is PyIntObject endObj)
-            end = PyUtils.SaturateIndex(endObj.Value);
+        if (!TrySliceIndex(context, arguments[1], 0, out int start, out var startError))
+            return startError!;
+        if (!TrySliceIndex(context, arguments[2], int.MaxValue, out int end, out var endError))
+            return endError!;
         // CPython ADJUST_INDICES: start clamps only at 0
         if (start < 0)
             start = ClampRuneStart(start, self.PyLength);

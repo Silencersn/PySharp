@@ -3017,4 +3017,17 @@ public sealed class TestPyFiles
         var module = RunModule("test_int_format_zero_flag_align_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestStrSearchSliceIndexRegression()
+    {
+        // Regression: str search-method start/end bounds go through
+        // CPython's _PyEval_SliceIndex — None keeps the default, objects
+        // with __index__ convert (saturating for huge magnitudes), and
+        // everything else raises the slice-indices TypeError instead of
+        // being silently ignored; covers find/rfind/index/rindex/count/
+        // startswith/endswith.
+        var module = RunModule("test_str_search_slice_index_regression.py");
+        Assert.IsNotNull(module);
+    }
 }
