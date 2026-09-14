@@ -128,7 +128,11 @@ partial class SemanticAnalyzer
     {
         var currentScope = _currentScopeStats.Scope;
         if (currentScope.IsRoot)
+        {
+            if (currentScope is RootVariableScope rootScope)
+                rootScope.DeclaredGlobals.UnionWith(node.Names);
             return;
+        }
 
         foreach (var name in node.Names)
         {

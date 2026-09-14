@@ -1508,6 +1508,18 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestEvalExecCallerLocalsRegression()
+    {
+        // Regression: eval/exec with default globals/locals use the calling
+        // frame's namespaces (CPython fromframe) — function locals were
+        // invisible to eval (wrong global value or NameError) and exec/walrus
+        // writes leaked into module globals; explicit `global` declarations
+        // in exec'd code still target the real globals.
+        var module = RunModule("test_eval_exec_caller_locals_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBareRaiseDynamicScopeRegression()
     {
         // Regression: bare raise reads the call chain's handled exception

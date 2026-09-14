@@ -70,12 +70,12 @@ partial class Emitter
 
     private void EmitName(string name, ExprContextType ctx)
     {
-        if (VariableScope is RootVariableScope)
+        if (VariableScope is RootVariableScope rootScope)
         {
-            if (OnlyAsName)
-                AsName();
-            else
+            if (!OnlyAsName || rootScope.DeclaredGlobals.Contains(name))
                 AsGlobal();
+            else
+                AsName();
         }
         else if (VariableScope is GenericParamVariableScope genericParamScope)
         {

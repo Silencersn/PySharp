@@ -75,6 +75,10 @@ internal sealed class PyVariables
     internal FrozenDictionary<string, int> LocalsTable => _localsTable ?? throw new InvalidOperationException();
     internal IPyVariablesLocalsDict Locals => _locals ?? throw new NotSupportedException();
 
+    // live locals mapping (class namespace, caller-supplied dict); null for
+    // fast-locals frames, whose locals only exist as a GetLocals() snapshot
+    internal IPyVariablesLocalsDict? LocalsMapping => _locals;
+
     internal void MergeThenReplaceGlobals(PyDictObject globals)
     {
         foreach (var pair in _globals.Entries)
@@ -176,7 +180,11 @@ internal sealed class PyVariables
         var variables = new PyVariables(new PyDictObject(_globals), _localsTable);
         LocalsSpan.CopyTo(variables.LocalsSpan);
         if (_locals is not null)
-            variables._locals = new PyFrameLocalsProxyObject(_localsTable, variables.LocalsPlusMemory, PyDictObject.CreateDict(_locals));
+            // the parent mapping only backs lookups (e.g. the comprehension's
+            // outermost iterable evaluated in the enclosing namespace); the
+            // proxy's own enumeration stays the comprehension's names, like
+            // CPython's separate comprehension function sees as its locals
+            variables._locals = new PyFrameLocalsProxyObject(_localsTable, variables.LocalsPlusMemory, _locals);
         return variables;
     }
 

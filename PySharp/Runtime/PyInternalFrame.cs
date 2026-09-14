@@ -125,6 +125,24 @@ internal partial struct PyInternalFrame
 
         IPyVariablesLocalsDict? localsDictionary = locals;
 
+        // CPython builtin_eval/exec_impl: when globals is omitted, locals
+        // also defaults to the calling frame's locals (fromframe), not to
+        // the (also defaulted) globals — a snapshot for optimized frames,
+        // the live mapping for unoptimized ones (class namespace); locals
+        // defaults to globals only when globals was passed explicitly.
+        if (locals is null && globals is null)
+        {
+            // an inline comprehension frame runs its fast-local ops against
+            // the owner function's span (PEP 709 inlining), so its live
+            // locals are the owner's; class-parented comprehension frames
+            // own their names (CPython compiles those as real functions)
+            ref var owner = ref context.FrameState.FindOuterNonInlineFrame();
+            if (owner.FrameType is FrameType.Function && owner.Variables.HasLocals)
+                localsDictionary = owner.Variables.GetLocals(context);
+            else if (Variables.HasLocals)
+                localsDictionary = Variables.LocalsMapping as PyDictObject ?? Variables.GetLocals(context);
+        }
+
         if (closure is not null)
         {
             Debug.Assert(code is not null);

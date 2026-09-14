@@ -147,6 +147,12 @@ internal sealed class RootVariableScope : VariableScope
     public override AstModNode Owner { get; }
     public override string? Name => null;
 
+    // names with an explicit `global` declaration: a no-op for module code,
+    // but eval/exec-compiled names resolve through the locals mapping where
+    // these must still target the real globals (CPython emits STORE_GLOBAL
+    // for them even at module scope)
+    public HashSet<string> DeclaredGlobals { get; } = [];
+
     public RootVariableScope(AstModNode owner) : base(null)
     {
         Owner = owner;
