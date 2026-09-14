@@ -1485,6 +1485,17 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestExceptAsImplicitCleanupRegression()
+    {
+        // Regression: the implicit except-as cleanup is `name = None;
+        // del name` and runs on every handler exit (normal, escape, return,
+        // except* both paths) — a plain del raised an uncatchable NameError
+        // after an explicit del in the body, and escapes leaked the binding.
+        var module = RunModule("test_except_as_implicit_cleanup_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBareRaiseDynamicScopeRegression()
     {
         // Regression: bare raise reads the call chain's handled exception

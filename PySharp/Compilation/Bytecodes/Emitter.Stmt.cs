@@ -192,6 +192,16 @@ partial class Emitter
         Builder.Emit(OpCode.RaiseVarArgs, 2);
     }
 
+    // CPython's implicit except-as cleanup: `name = None; del name`. The
+    // None store first makes the delete idempotent when the handler body
+    // itself deleted the name (codegen.c: "in case body contains 'del name'")
+    private void EmitExceptNameCleanup(string name)
+    {
+        Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
+        StoreName(name);
+        DeleteName(name);
+    }
+
     private void InternalEmitTryExceptors(ImmutableArray<ExceptHandlerNode> exceptors, ReadOnlySpan<Label> exceptorLabels, Label finallyBlockLabel)
     {
         for (int i = 0; i < exceptors.Length; i++)
@@ -223,13 +233,36 @@ partial class Emitter
                 StoreName(exceptor.Name);
             }
 
-            EmitStmts(exceptor.Body);
+            if (exceptor.Name is null)
+            {
+                EmitStmts(exceptor.Body);
 
-            if (exceptor.Name is not null)
-                DeleteName(exceptor.Name);
+                Builder.Emit(OpCode._PopException);
+                Builder.Jump(finallyBlockLabel); // jump to finally
+            }
+            else
+            {
+                // CPython wraps the handler body in a cleanup handler so the
+                // implicit name deletion runs on every exit: normal
+                // completion, an escaping exception, and return.
+                var nameCleanupLabel = Builder.DefineLabel();
+                Builder.Emit(OpCode._SetupFinally, nameCleanupLabel);
 
-            Builder.Emit(OpCode._PopException);
-            Builder.Jump(finallyBlockLabel); // jump to finally
+                EmitStmts(exceptor.Body);
+                EmitExceptNameCleanup(exceptor.Name);
+
+                Builder.Emit(OpCode._ExitFinally);
+                Builder.Emit(OpCode._PopException);
+                Builder.Jump(finallyBlockLabel); // jump to finally
+
+                // the body raised or returned: run the cleanup, then let
+                // _ExitFinally rethrow / resume the pending unwinding, which
+                // lands on the try record exactly as an unwrapped escape would
+                Builder.MarkLabel(nameCleanupLabel);
+                Builder.Emit(OpCode._EnterFinally);
+                EmitExceptNameCleanup(exceptor.Name);
+                Builder.Emit(OpCode._ExitFinally);
+            }
         }
     }
     private void InternalEmitTryStarExceptors(ImmutableArray<ExceptHandlerNode> exceptors, ReadOnlySpan<Label> exceptorLabels, Label finallyBlockLabel)
@@ -277,12 +310,14 @@ partial class Emitter
             Builder.Emit(OpCode._SetupFinally, appendLabels[i]);
             EmitStmts(exceptor.Body);
             if (exceptor.Name is not null)
-                DeleteName(exceptor.Name);
+                EmitExceptNameCleanup(exceptor.Name);
             Builder.Emit(OpCode._PopMatchException);
             Builder.Emit(OpCode._ExitFinally);
             Builder.Jump(nextLabel);
 
             Builder.MarkLabel(appendLabels[i]);
+            if (exceptor.Name is not null)
+                EmitExceptNameCleanup(exceptor.Name);
             Builder.Emit(OpCode._LoadExc);
             // the still-pending rest sits between the list and TOS here
             Builder.Emit(OpCode.ListAppend, 2);
