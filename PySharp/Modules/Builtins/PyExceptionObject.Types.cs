@@ -26,17 +26,23 @@ public sealed partial class PyBaseExceptionObjectType : PyExceptionType
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (kwargs.Count is not 0)
-            return PyResult.TypeError(null);
+            return PyResult.TypeError(PySR.Runtime_Exception_TakesNoKeywordArguments, cls.Name);
 
         return new PyExceptionObject(cls, [.. args]);
     }
 
-    // CPython BaseException_init accepts the constructor arguments (already
-    // consumed by __new__ here); giving BaseException its own __init__ slot
-    // keeps exception instances from falling under object's excess-argument
-    // check on direct object.__init__ calls
+    // CPython BaseException_init rejects keywords and re-binds the args
+    // tuple: when __new__ is overridden but __init__ is not, type_call
+    // still calls the inherited __init__ with the original instantiation
+    // arguments, so a custom __new__ does not lose e.args. This own slot
+    // also keeps exception instances from falling under object's
+    // excess-argument check on direct object.__init__ calls.
     protected override PyResult Init(PyCallContext context, PyExceptionObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
+        if (kwargs.Count is not 0)
+            return PyResult.TypeError(PySR.Runtime_Exception_TakesNoKeywordArguments, self.PyType.Name);
+
+        self.Args = [.. args];
         return PyNoneObject.None;
     }
 

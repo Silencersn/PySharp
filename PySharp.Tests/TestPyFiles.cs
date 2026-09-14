@@ -1642,6 +1642,18 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestExceptionCustomNewArgsRegression()
+    {
+        // Regression: an exception subclass overriding __new__ but not
+        // __init__ still records the original instantiation arguments in
+        // e.args — the inherited BaseException.__init__ re-binds the args
+        // tuple (CPython BaseException_init), and rejects keywords with
+        // "<Cls>() takes no keyword arguments".
+        var module = RunModule("test_exception_custom_new_args_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBareRaiseDynamicScopeRegression()
     {
         // Regression: bare raise reads the call chain's handled exception

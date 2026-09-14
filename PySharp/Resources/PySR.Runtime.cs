@@ -58,6 +58,7 @@ partial class PySR
     public const string Runtime_Type_SetImmutable = "cannot set '{0}' attribute of immutable type '{1}'";
 
     public const string Runtime_Type_InitTakesNoKeywordArguments = "type.__init__() takes no keyword arguments";
+    public const string Runtime_Exception_TakesNoKeywordArguments = "{0}() takes no keyword arguments";
     public const string Runtime_Type_InitTakes1Or3Arguments = "type.__init__() takes 1 or 3 arguments";
     public const string Runtime_Type_New_WrongArgCount = "type() takes 1 or 3 arguments";
     public const string Runtime_Type_New_Arg1MustBeStr = "type.__new__() argument 1 must be str, not {0}";

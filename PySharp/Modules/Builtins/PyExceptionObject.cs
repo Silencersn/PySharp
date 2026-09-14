@@ -45,7 +45,10 @@ public sealed class PyExceptionObject : PyObjectManagedDict
     public PyExceptionObject? Cause { get; internal set; }
     public PyExceptionObject? Context { get; internal set; }
     internal string? CauseReason { get; set; }
-    public IReadOnlyList<PyObject> Args { get; }
+    // Rebindable per CPython BaseException_init: when __new__ is overridden
+    // but __init__ is not, the inherited __init__ re-binds e.args to the
+    // original instantiation arguments.
+    public IReadOnlyList<PyObject> Args { get; internal set; }
     public TracebackInfo? Traceback { get; internal set; }
     internal PyObject? ExtraValue { get; set; }
 
