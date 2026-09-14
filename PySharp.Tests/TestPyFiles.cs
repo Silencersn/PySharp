@@ -1558,6 +1558,19 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestRangeSliceEqHashRegression()
+    {
+        // Regression: range and slice compare by their parameters (CPython
+        // range_equals: empty ranges equal, single-element ranges ignore the
+        // step; slice_richcompare: (start, stop, step) part-wise) and hash
+        // consistently with that equality (range_hash's
+        // (length, start, step) tuple, slice_hash's parts tuple), making
+        // equal instances usable as dict keys and set elements.
+        var module = RunModule("test_range_slice_eq_hash_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBareRaiseDynamicScopeRegression()
     {
         // Regression: bare raise reads the call chain's handled exception

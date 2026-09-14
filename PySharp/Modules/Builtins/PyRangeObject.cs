@@ -73,6 +73,40 @@ public sealed partial class PyRangeObjectType : PyTypeObject<PyRangeObject>
         return PyStrObject.FromString($"range({self.Start}, {self.Stop}, {self.Step})");
     }
 
+    // CPython range_equals: lengths first, then an empty range equals any
+    // empty range, then start, then a single-element range ignores the step
+    // (it cannot affect the value), then step.
+    internal static bool RangeEquals(PyRangeObject left, PyRangeObject right)
+    {
+        if (ReferenceEquals(left, right))
+            return true;
+        if (left.RangeLen != right.RangeLen)
+            return false;
+        if (left.RangeLen.IsZero)
+            return true;
+        if (left.Start != right.Start)
+            return false;
+        return left.RangeLen.IsOne || left.Step == right.Step;
+    }
+
+    protected override PyResult Eq(PyCallContext context, PyRangeObject self, PyObject other)
+    {
+        if (other is not PyRangeObject otherRange)
+            return PyNotImplementedObject.NotImplemented;
+        return PyBoolObject.FromBoolean(RangeEquals(self, otherRange));
+    }
+
+    protected override PyResult Hash(PyCallContext context, PyRangeObject self)
+    {
+        // CPython range_hash: hashes (length, start, step) as a tuple, with
+        // None substituting the parts that cannot differ when the length is
+        // 0 (everything) or 1 (the step).
+        PyObject start = self.RangeLen.IsZero ? PyNoneObject.None : PyIntObject.FromInteger(self.Start);
+        PyObject step = self.RangeLen.IsZero || self.RangeLen.IsOne ? PyNoneObject.None : PyIntObject.FromInteger(self.Step);
+        var tuple = PyTupleObject.CreateTuple(PyIntObject.FromInteger(self.RangeLen), start, step);
+        return PySpecialMethods.Hash(context, tuple);
+    }
+
     protected override PyResult Iter(PyCallContext context, PyRangeObject self)
     {
         if (!self._isLong)

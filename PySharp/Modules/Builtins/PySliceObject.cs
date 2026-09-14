@@ -206,6 +206,40 @@ public sealed partial class PySliceObjectType : PyTypeObject<PySliceObject>
         return obj;
     }
 
+    protected override PyResult Eq(PyCallContext context, PySliceObject self, PyObject other)
+    {
+        if (other is not PySliceObject otherSlice)
+            return PyNotImplementedObject.NotImplemented;
+
+        // CPython slice_richcompare: the parts are compared as the tuple
+        // (start, stop, step) with each part's own equality.
+        if (ReferenceEquals(self, otherSlice))
+            return PyBoolObject.True;
+
+        foreach (var (left, right) in new[] { (self.Start, otherSlice.Start), (self.Stop, otherSlice.Stop), (self.Step, otherSlice.Step) })
+        {
+            var eq = PyOperators.Eq(context, left, right);
+            if (eq.IsError)
+                return eq;
+
+            var b = PySpecialMethods.Bool(context, eq.Value);
+            if (b.IsError)
+                return b;
+
+            if (!b.Value.BoolValue)
+                return PyBoolObject.False;
+        }
+
+        return PyBoolObject.True;
+    }
+
+    protected override PyResult Hash(PyCallContext context, PySliceObject self)
+    {
+        // CPython slice_hash: the tuple hash of (start, stop, step).
+        var tuple = PyTupleObject.CreateTuple(self.Start, self.Stop, self.Step);
+        return PySpecialMethods.Hash(context, tuple);
+    }
+
     [PyProperty("start")]
     private static PyResult Get_Start(PyCallContext context, PySliceObject self)
     {
