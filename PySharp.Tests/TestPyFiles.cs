@@ -1571,6 +1571,19 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestWarningsCustomCategoryRegression()
+    {
+        // Regression: warnings.warn with a user-defined Warning subclass
+        // records the warning like a built-in category (the instance is
+        // created by calling the category, not by casting the type object
+        // to the built-in PyExceptionType — the old hard cast crashed the
+        // process with a .NET InvalidCastException); non-Warning categories
+        // raise TypeError and the error filter raises the custom category.
+        var module = RunModule("test_warnings_custom_category_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBareRaiseDynamicScopeRegression()
     {
         // Regression: bare raise reads the call chain's handled exception

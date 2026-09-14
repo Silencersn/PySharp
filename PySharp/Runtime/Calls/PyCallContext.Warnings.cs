@@ -17,10 +17,12 @@ partial class PyCallContext
         if (strResult.IsError)
             return strResult;
 
-        var warning = CreateWarningInstance(message, warningType);
+        var warningResult = CreateWarningInstance(this, message, warningType);
+        if (warningResult.IsError)
+            return warningResult;
         var (filename, lineno, sourceLine, module, globals) = ResolveWarningLocation(stacklevel);
         var registry = globals is null ? null : GetOrCreateWarningRegistry(globals);
-        return DispatchWarning(filename, lineno, warningType, warning, strResult.Value.Value, module, registry, sourceLine, null);
+        return DispatchWarning(filename, lineno, warningType, warningResult.Value, strResult.Value.Value, module, registry, sourceLine, null);
     }
 
     public PyResult WarnExplicit(PyObject message, PyTypeObject<PyExceptionObject>? warningType, string filename, int lineno, string? line = null)
@@ -37,8 +39,10 @@ partial class PyCallContext
         if (strResult.IsError)
             return strResult;
 
-        var warning = CreateWarningInstance(message, warningType);
-        return DispatchWarning(filename, lineno, warningType, warning, strResult.Value.Value, module ?? NormalizeModule(filename), registry, line, source);
+        var warningResult = CreateWarningInstance(this, message, warningType);
+        if (warningResult.IsError)
+            return warningResult;
+        return DispatchWarning(filename, lineno, warningType, warningResult.Value, strResult.Value.Value, module ?? NormalizeModule(filename), registry, line, source);
     }
 
     // Resolve the action and emit or suppress the warning per filter semantics.
@@ -105,14 +109,18 @@ partial class PyCallContext
         WriteWarning(filename, lineno, warningType, text, sourceLine);
     }
 
-    private static PyExceptionObject CreateWarningInstance(
+    // CPython creates the warning instance by calling the category with the
+    // message, so any Warning subclass works — including user-defined ones
+    // whose type objects are not built-in PyExceptionType instances.
+    private static PyResult<PyExceptionObject> CreateWarningInstance(
+        PyCallContext context,
         PyObject message,
         PyTypeObject<PyExceptionObject> warningType)
     {
         if (message is PyExceptionObject warning && PyWarningObjectType.Shared.IsInstance(message))
             return warning;
 
-        return ((PyExceptionType)warningType).Create(message);
+        return PyExceptionObject.Create(context, warningType, [message]);
     }
 
     // Match CPython's filename normalization for warning module names.
