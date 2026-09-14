@@ -130,6 +130,7 @@ internal enum OpCode : byte
 
     _SetupFinally,
     _SetupExcept,
+    _ExcludeWithResult,
     _EnterFinally,
     _ExitFinally,
     _PopException,

@@ -155,6 +155,7 @@ public sealed class Bytecode
                 case OpCode.DeleteFast:
                 case OpCode.DeleteDeref:
                 case OpCode._DeleteDerefFast:
+                case OpCode._ExcludeWithResult:
                 case OpCode.LoadAttr:
                 case OpCode.GetIter:
                 case OpCode.Swap:

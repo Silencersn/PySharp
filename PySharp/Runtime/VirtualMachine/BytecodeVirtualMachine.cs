@@ -877,6 +877,15 @@ internal static partial class BytecodeVirtualMachine
                         states.ExceptionHandlers.Peek().ExceptOffset = instructionArg;
                         break;
 
+                    // CPython's SETUP_WITH restores the stack to before the
+                    // __enter__ result: the with-item's handler region must
+                    // not count that value (still on TOS here) as its base
+                    // depth, or an unwind leaves a stray item above the
+                    // [exit, manager] pair the handler code consumes
+                    case OpCode._ExcludeWithResult:
+                        states.ExceptionHandlers.Peek().StackDepth -= instructionArg;
+                        break;
+
                     case OpCode._ClearExcept:
                         states.ExceptionHandlers.Peek().ExceptOffset = ExceptionHandler.NoExcepts;
                         break;

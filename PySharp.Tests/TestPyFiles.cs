@@ -1496,6 +1496,18 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestWithMultiEnterCleanupRegression()
+    {
+        // Regression: a with-item's handler region restores the stack to
+        // before the __enter__ result (CPython SETUP_WITH semantics) — a
+        // later manager's __enter__ failing, body operand temporaries, or an
+        // as-target unpack failure used to leave strays that made the
+        // handler call the manager object (TypeError) and skip __exit__.
+        var module = RunModule("test_with_multi_enter_cleanup_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBareRaiseDynamicScopeRegression()
     {
         // Regression: bare raise reads the call chain's handled exception

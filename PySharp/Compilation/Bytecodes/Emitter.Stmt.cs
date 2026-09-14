@@ -1038,6 +1038,9 @@ partial class Emitter
 
             Builder.Emit(OpCode._SetupFinally, finallyLabel);
             Builder.Emit(OpCode._SetupExcept, exceptLabel);
+            // CPython SETUP_WITH restores the stack to before the __enter__
+            // result; the region's base depth must exclude that value
+            Builder.Emit(OpCode._ExcludeWithResult, 1);
 
             if (item.OptionalVars is not null)
                 StoreExpr(item.OptionalVars);
@@ -1119,6 +1122,9 @@ partial class Emitter
 
             Builder.Emit(OpCode._SetupFinally, finallyLabel);
             Builder.Emit(OpCode._SetupExcept, exceptLabel);
+            // CPython SETUP_WITH restores the stack to before the __aenter__
+            // result; the region's base depth must exclude that value
+            Builder.Emit(OpCode._ExcludeWithResult, 1);
 
             if (item.OptionalVars is not null)
                 StoreExpr(item.OptionalVars);
