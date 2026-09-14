@@ -257,6 +257,9 @@ partial class PySR
     public const string Runtime_ExceptionGroup_NewGroup_MsgNonStr = "{0}.__new__() argument 1 must be str, not {1}";
 
     public const string Runtime_Generator_SendNonNoneAtFirst = "can't send non-None value to a just-started generator";
+    public const string Runtime_Generator_ThrowSignatureDeprecated = "the (type, exc, tb) signature of throw() is deprecated, use the single-arg signature instead.";
+    public const string Runtime_Generator_ThrowThirdArgTraceback = "throw() third argument must be a traceback object";
+    public const string Runtime_Exception_InstanceSeparateValue = "instance exception may not have a separate value";
     public const string Runtime_Generator_IgnoredGeneratorExit = "generator ignored GeneratorExit";
     public const string Runtime_Generator_RaisedStopIteration = "generator raised StopIteration";
     public const string Runtime_Generator_AlreadyExecuting = "generator already executing";

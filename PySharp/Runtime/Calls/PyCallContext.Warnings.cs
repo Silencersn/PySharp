@@ -199,12 +199,14 @@ partial class PyCallContext
     }
 
     // Emit the standard warning line, plus the source line when available.
+    // CPython strips the source line's own indentation and re-indents by
+    // two spaces.
     private void WriteWarning(string filename, int lineno, PyTypeObject<PyExceptionObject> warningType, string text, string? sourceLine)
     {
         var error = PyEnvironment.Error;
         error.WriteLine($"{filename}:{lineno}: {warningType.Name}: {text}");
-        if (!string.IsNullOrEmpty(sourceLine))
-            error.WriteLine($"  {sourceLine}");
+        if (!string.IsNullOrWhiteSpace(sourceLine))
+            error.WriteLine($"  {sourceLine.Trim()}");
     }
 
     public PyResult Warn(PyExceptionType warningType, string message)

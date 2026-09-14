@@ -3055,4 +3055,17 @@ public sealed class TestPyFiles
         var module = RunModule("test_complex_unary_pow_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestGeneratorCloseStateThrow3Regression()
+    {
+        // Regression: a closed/exhausted generator stops iteration on
+        // send (including non-None values) — the just-started TypeError
+        // only applies to a never-started generator; and the deprecated
+        // throw(type, value, tb) form warns with DeprecationWarning and
+        // normalizes its arguments like CPython gen_throw instead of
+        // being rejected.
+        var module = RunModule("test_generator_close_state_throw3_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

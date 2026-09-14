@@ -22,6 +22,84 @@ public abstract class PyGeneratorObject : PyObject, IPyObjectName
     internal abstract PyResult PySend(PyCallContext context, PyObject pyObject);
     internal abstract PyResult PyThrow(PyCallContext context, PyObject pyObject);
     internal abstract PyResult PyClose(PyCallContext context);
+
+    // CPython gen_throw's deprecated (type, value, tb) form: warns, then
+    // normalizes — an exception-class type instantiates with the value
+    // (no value or None → no-arg construction; an exception instance
+    // value wins as-is), an exception-instance type rejects a separate
+    // value, and the traceback argument must be None or a traceback.
+    internal PyResult PyThrow(PyCallContext context, PyObject typeArg, PyObject valueArg, PyObject tbArg)
+    {
+        var warnResult = context.Warn(PyDeprecationWarningObjectType.Shared, PySR.Runtime_Generator_ThrowSignatureDeprecated);
+        if (warnResult.IsError)
+            return warnResult;
+
+        if (tbArg is not PyNoneObject && tbArg is not PyTracebackObject)
+            return PyResult.TypeError(PySR.Runtime_Generator_ThrowThirdArgTraceback);
+
+        var resolved = ResolveThrow(context, typeArg, valueArg is PyNoneObject ? null : valueArg, out var exc);
+        if (resolved.IsError)
+            return resolved;
+
+        return PyThrow(context, exc);
+    }
+
+    internal static PyResult ResolveThrow(PyCallContext context, PyObject typeArg, PyObject? valueArg, out PyExceptionObject exc)
+    {
+        if (typeArg is PyTypeObject type)
+        {
+            if (!type.IsSubclassOf(PyBaseExceptionObjectType.Shared))
+                return ThrowArgTypeError(typeArg, out exc);
+
+            if (valueArg is null)
+            {
+                var createdResult = type.Call(context);
+                if (createdResult.IsError)
+                {
+                    exc = default!;
+                    return createdResult;
+                }
+                exc = (PyExceptionObject)createdResult.Value;
+                return default;
+            }
+
+            // an exception instance value is used as-is, any other
+            // value instantiates the class with that value
+            if (valueArg is PyExceptionObject instance)
+            {
+                exc = instance;
+                return default;
+            }
+
+            var wrappedResult = type.Call(context, [valueArg]);
+            if (wrappedResult.IsError)
+            {
+                exc = default!;
+                return wrappedResult;
+            }
+            exc = (PyExceptionObject)wrappedResult.Value;
+            return default;
+        }
+
+        if (typeArg is PyExceptionObject)
+        {
+            if (valueArg is not null)
+            {
+                exc = default!;
+                return PyResult.TypeError(PySR.Runtime_Exception_InstanceSeparateValue);
+            }
+            exc = (PyExceptionObject)typeArg;
+            return default;
+        }
+
+        return ThrowArgTypeError(typeArg, out exc);
+    }
+
+    private static PyResult ThrowArgTypeError(PyObject typeArg, out PyExceptionObject exc)
+    {
+        exc = default!;
+        return PyResult.TypeError(PySR.Runtime_Exception_NonException, typeArg.PyType.FullName);
+    }
 }
 
 public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
@@ -151,6 +229,12 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
 
     internal override PyResult PySend(PyCallContext context, PyObject pyObject)
     {
+        // CPython gen_send_ex2: a closed/exhausted generator stops
+        // iteration immediately; only a never-started generator
+        // rejects a non-None send value
+        if (_vmStates.RunToEnd)
+            return PyResult.StopIteration();
+
         if (!IsGeneratorRunning && pyObject is not PyNoneObject)
         {
             return PyResult.TypeError(IsCoroutine ?
@@ -162,21 +246,15 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
 
     internal override PyResult PyThrow(PyCallContext context, PyObject pyObject)
     {
-        if (pyObject is PyTypeObject type)
-        {
-            if (!type.IsSubclassOf(PyBaseExceptionObjectType.Shared))
-                return PyResult.TypeError(PySR.Runtime_Exception_NonException, pyObject.PyType.FullName);
+        var resolved = ResolveThrow(context, pyObject, null, out var singleExc);
+        if (resolved.IsError)
+            return resolved;
 
-            var excResult = type.Call(context);
-            if (excResult.IsError)
-                return excResult;
+        return ThrowResolved(context, singleExc);
+    }
 
-            pyObject = excResult.Value;
-        }
-
-        if (pyObject is not PyExceptionObject exc)
-            return PyResult.TypeError(PySR.Runtime_Exception_NonException, pyObject.PyType.FullName);
-
+    private PyResult ThrowResolved(PyCallContext context, PyExceptionObject exc)
+    {
         if (_vmStates.RunToEnd)
             return PyResult.FromException(exc);
 
@@ -252,11 +330,25 @@ public sealed partial class PyGeneratorObjectType : PyTypeObject<PyGeneratorObje
         return self.PySend(context, arguments[0]);
     }
 
-    [PyMethod("throw")]
-    [PyFunctionParameters("value")]
+    [PyMethod("throw", Order = 1)]
+    [PyFunctionParameters("value", "/")]
     private static PyResult Throw(PyCallContext context, PyGeneratorObject self, PyArguments arguments)
     {
         return self.PyThrow(context, arguments[0]);
+    }
+
+    [PyMethod("throw", Order = 2)]
+    [PyFunctionParameters("type", "value", "/")]
+    private static PyResult Throw2(PyCallContext context, PyGeneratorObject self, PyArguments arguments)
+    {
+        return self.PyThrow(context, arguments[0], arguments[1], PyNoneObject.None);
+    }
+
+    [PyMethod("throw", Order = 3)]
+    [PyFunctionParameters("type", "value", "tb", "/")]
+    private static PyResult Throw3(PyCallContext context, PyGeneratorObject self, PyArguments arguments)
+    {
+        return self.PyThrow(context, arguments[0], arguments[1], arguments[2]);
     }
 
     [PyMethod("close")]
