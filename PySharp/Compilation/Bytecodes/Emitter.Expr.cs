@@ -780,6 +780,10 @@ partial class Emitter
         var name = node.Target.Id;
         if (VariableScope is CallableVariableScope scope && (scope.CellVars.Contains(name) || scope.FreeVars.Contains(name)))
             Builder.Emit(OpCode._StoreDerefIncludedNonInlineFrame, name);
+        else if (VariableScope is CallableVariableScope { } callable && !callable.LocalsTable.ContainsKey(name))
+            // A genexp target promoted out of the genexp scope with no owning
+            // cell: it resolves globally (module scope or a global declaration).
+            Builder.Emit(OpCode.StoreGlobal, name);
         else
             Builder.Emit(OpCode._StoreNameIncludedNonInlineFrame, name);
     }

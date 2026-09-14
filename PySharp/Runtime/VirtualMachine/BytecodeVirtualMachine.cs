@@ -73,11 +73,25 @@ internal static partial class BytecodeVirtualMachine
         }
         Stack.SetSize(states.OperandStackSize);
         Span<PyObject?> locals = [];
-        if (frame.Variables.HasLocals)
+        if (frame.FrameType is FrameType.Comprehension)
+        {
+            // Inline frames execute fast-local ops against the enclosing
+            // non-inline frame's span (they share its slot table); their own
+            // copied span only serves name-based access through Variables.
+            // Without a call inside the comprehension this rebinding never
+            // happens and `locals` keeps pointing at the owner's span.
+            ref var localsFrame = ref context.FrameState.FindOuterNonInlineFrame();
+            if (localsFrame.Variables.HasLocals)
+                locals = localsFrame.Variables.LocalsSpan;
+        }
+        else if (frame.Variables.HasLocals)
+        {
             locals = frame.Variables.LocalsSpan;
+        }
 
         // cache, clear before using
         PyObject value, left, right;
+        PyObject? cellValue;
         bool boolValue;
         PyResult result;
         PyObject? returnValue = null, intermediateValue = null;
@@ -163,16 +177,24 @@ internal static partial class BytecodeVirtualMachine
 
                     case OpCode.LoadFast:
                         value = locals[instructionArg]
-                            ?? throw context.UnboundLocalError(PySR.Runtime_Variable_UnboundLocalError, $"[{instructionArg /* TODO: name */}]");
+                            ?? throw context.UnboundLocalError(PySR.Runtime_Variable_UnboundLocalError, frame.CodeObject!.SlotNameOf(instructionArg));
                         Stack.Push(value);
                         break;
 
                     case OpCode._LoadDerefFast:
                         value = locals[instructionArg]
-                            ?? throw context.UnboundLocalError(PySR.Runtime_Variable_UnboundLocalError, $"[{instructionArg /* TODO: name */}]");
-                        value = ((PyCellObject)value).Value
-                            ?? throw context.NameError(PySR.Runtime_Variable_UnboundLocalOrFreeError, $"[{instructionArg /* TODO: name */}]");
-                        Stack.Push(value);
+                            ?? throw context.UnboundLocalError(PySR.Runtime_Variable_UnboundLocalError, frame.CodeObject!.SlotNameOf(instructionArg));
+                        cellValue = ((PyCellObject)value).Value;
+                        if (cellValue is null)
+                        {
+                            // CPython: an empty cell raises UnboundLocalError for a
+                            // cellvar owned by this frame, NameError for a free variable.
+                            var cellName = frame.CodeObject!.SlotNameOf(instructionArg);
+                            throw frame.CodeObject!.CellVars.Contains(cellName)
+                                ? context.UnboundLocalError(PySR.Runtime_Variable_UnboundLocalError, cellName)
+                                : context.NameError(PySR.Runtime_Variable_UnboundFreeError, cellName);
+                        }
+                        Stack.Push(cellValue);
                         break;
 
                     case OpCode.LoadDeref:
@@ -196,7 +218,7 @@ internal static partial class BytecodeVirtualMachine
 
                     case OpCode._StoreDerefFast:
                         value = locals[instructionArg]
-                            ?? throw context.UnboundLocalError(PySR.Runtime_Variable_UnboundLocalError, $"[{instructionArg /* TODO: name */}]");
+                            ?? throw context.UnboundLocalError(PySR.Runtime_Variable_UnboundLocalError, frame.CodeObject!.SlotNameOf(instructionArg));
                         ((PyCellObject)value).Value = Stack.Pop();
                         break;
 
@@ -235,13 +257,13 @@ internal static partial class BytecodeVirtualMachine
 
                     case OpCode.DeleteFast:
                         if (locals[instructionArg] is null)
-                            throw context.UnboundLocalError(PySR.Runtime_Variable_UnboundLocalError, $"[{instructionArg /* TODO: name */}]");
+                            throw context.UnboundLocalError(PySR.Runtime_Variable_UnboundLocalError, frame.CodeObject!.SlotNameOf(instructionArg));
                         locals[instructionArg] = null;
                         break;
 
                     case OpCode._DeleteDerefFast:
                         value = locals[instructionArg]
-                            ?? throw context.UnboundLocalError(PySR.Runtime_Variable_UnboundLocalError, $"[{instructionArg /* TODO: name */}]");
+                            ?? throw context.UnboundLocalError(PySR.Runtime_Variable_UnboundLocalError, frame.CodeObject!.SlotNameOf(instructionArg));
                         ((PyCellObject)value).Value = null;
                         break;
 
@@ -567,6 +589,11 @@ internal static partial class BytecodeVirtualMachine
                         context.FrameState.ExitInternalFrame(context, dispose: true);
                         frame = ref context.CurrentInternalFrame;
                         currentIndex = ref frame.InstructionIndex;
+                        // The inline frame's copied span is disposed back to the
+                        // pool above; rebind to the enclosing frame's live span
+                        // (a call inside the comprehension rebound `locals` to
+                        // the copy when it returned through eval_begin).
+                        locals = frame.Variables.HasLocals ? frame.Variables.LocalsSpan : [];
                         break;
 
                     case OpCode.ListAppend:

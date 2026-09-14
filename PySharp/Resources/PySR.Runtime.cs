@@ -294,5 +294,6 @@ partial class PySR
 
     public const string Runtime_Variable_UnboundLocalError = "cannot access local variable '{0}' where it is not associated with a value";
     public const string Runtime_Variable_UnboundLocalOrFreeError = "cannot access local or free variable '{0}' where it is not associated with a value";
+    public const string Runtime_Variable_UnboundFreeError = "cannot access free variable '{0}' where it is not associated with a value in enclosing scope";
     public const string Runtime_Variable_NameNotDefined = "name '{0}' is not defined";
 }

@@ -164,6 +164,19 @@ public sealed class PyCodeObject : PyObjectManagedDict
     internal PyTupleObject CoCellvars => field ??= PyTupleObject.CreateTuple(CellVars.Select(PyStrObject.FromString));
     internal PyTupleObject CoFreevars => field ??= PyTupleObject.CreateTuple(FreeVars.Select(PyStrObject.FromString));
     internal PyIntObject CoStacksize => field ??= PyIntObject.FromInteger(Bytecode.StackSize);
+
+    // Source name for a fast-local slot index, for diagnostics only
+    // (exception paths); the linear scan keeps error reporting free of
+    // caches on the hot object.
+    internal string SlotNameOf(int index)
+    {
+        foreach (var (name, slotIndex) in LocalsTable)
+        {
+            if (slotIndex == index)
+                return name;
+        }
+        return $"[{index}]";
+    }
 }
 
 [PyType("code")]

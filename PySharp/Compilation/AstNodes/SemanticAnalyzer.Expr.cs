@@ -379,8 +379,42 @@ partial class SemanticAnalyzer
 
         CheckNamedExprIfWithinComprehension(node.Target.Id);
 
-        VisitNode(node.Target);
+        // PEP 572: a genexp target binds in the nearest enclosing
+        // non-comprehension scope (an enclosing function local via a
+        // shared cell, or the global scope), never in the genexp itself.
+        if (_currentScopeStats.Scope is GeneratorExpVariableScope generatorExpScope)
+            BindNamedExprTargetInEnclosingScope(generatorExpScope, node.Target.Id);
+        else
+            VisitNode(node.Target);
+
         VisitNode(node.Value);
+    }
+
+    private void BindNamedExprTargetInEnclosingScope(GeneratorExpVariableScope scope, string name)
+    {
+        var parent = scope.Parent;
+        while (parent is GeneratorExpVariableScope or ComprehensionVariableScope)
+            parent = parent.Parent;
+
+        switch (parent)
+        {
+            case ClassVariableScope:
+                throw SyntaxError(PySR.InvalidSyntax_Semantic_NamedExprInComprehensionInClass);
+
+            case CallableVariableScope callableScope:
+                callableScope.AppendVariable(name, ExprContextType.Store);
+                if (callableScope.Variables[name] is PyVariableType.Global)
+                    break; // global-declared in the owner: the genexp stores the global
+
+                // Reference the owner's cell as a free variable; the closure
+                // pass promotes the owner's local to a captured cell.
+                scope.Variables[name] = PyVariableType.Closure;
+                break;
+
+            default:
+                // module scope: the genexp stores the global
+                break;
+        }
     }
 
     private void CheckNamedExprIfWithinComprehension(string name)

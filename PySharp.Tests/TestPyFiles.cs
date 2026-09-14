@@ -1462,6 +1462,29 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestGenexpWalrusPromotionRegression()
+    {
+        // Regression: PEP 572 walrus targets inside a genexp bind in the
+        // nearest enclosing non-comprehension scope (function local through a
+        // shared cell, or the global scope), matching CPython's
+        // symtable_extend_namedexpr_scope; empty-cell reads distinguish
+        // cellvar (UnboundLocalError) from freevar (NameError) wording.
+        var module = RunModule("test_genexp_walrus_promotion_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestComprehensionCallInlineFrameRegression()
+    {
+        // Regression: a call made inside an inlined comprehension frame must
+        // not rebind the enclosing frame's locals to the disposed inline span
+        // (_ExitInlineFrame now rebinds), and unbound fast-local/cell errors
+        // report the source variable name instead of a slot index.
+        var module = RunModule("test_comprehension_call_inline_frame_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBareRaiseDynamicScopeRegression()
     {
         // Regression: bare raise reads the call chain's handled exception
