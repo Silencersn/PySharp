@@ -203,8 +203,11 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                     }
                     else
                     {
-                        if (lastToken.Type is TokenType.Colon && ParenLevel == CurrentFStringInfo.ParenLevelWhenEntering + 1)
+                        if (lastToken.Type is TokenType.Colon or TokenType.ColonEqual && ParenLevel == CurrentFStringInfo.ParenLevelWhenEntering + 1)
                         {
+                            // A bare colon (fused ':=' included) at the replacement
+                            // field's top level ends the expression; the spec's first
+                            // literal character is the '=' of the fused token.
                             // TODO: too deep
 
                             CurrentState = LexerState.FStringMiddle;

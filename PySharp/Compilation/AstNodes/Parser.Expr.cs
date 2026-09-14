@@ -187,18 +187,22 @@ partial class Parser
         }
         else
         {
-            if (!IsCurrentTypeTokenAnyOf(TokenType.Exclamation, TokenType.Colon, TokenType.RightBrace))
+            // A fused ':=' is not a walrus here: a bare colon at the field's
+            // top level ends the expression and opens the spec whose first
+            // literal character is that '=' (PEP 572 requires parentheses
+            // for a walrus inside an f-string).
+            if (!IsCurrentTypeTokenAnyOf(TokenType.Exclamation, TokenType.Colon, TokenType.ColonEqual, TokenType.RightBrace))
                 throw SyntaxError(PySR.InvalidSyntax_FString_ReplacementField_ExpectingEqual);
         }
 
         var conversion = -1;
         if (CurrentTokenType is TokenType.Exclamation)
             conversion = ParseFStringConversion();
-        else if (!IsCurrentTypeTokenAnyOf(TokenType.Colon, TokenType.RightBrace))
+        else if (!IsCurrentTypeTokenAnyOf(TokenType.Colon, TokenType.ColonEqual, TokenType.RightBrace))
             throw SyntaxError(PySR.InvalidSyntax_FString_ReplacementField_ExpectingExclamation);
 
         var format_spec = null as JoinedStrNode;
-        if (CurrentTokenType is TokenType.Colon)
+        if (CurrentTokenType is TokenType.Colon or TokenType.ColonEqual)
             format_spec = ParseFStringFullFormatSpec(isRaw);
         else if (!IsCurrentTypeTokenAnyOf(TokenType.RightBrace))
             throw SyntaxError(PySR.InvalidSyntax_FString_ReplacementField_ExpectingColon);
@@ -238,12 +242,20 @@ partial class Parser
     [GrammarSyntaxRule("fstring_full_format_spec")]
     private JoinedStrNode ParseFStringFullFormatSpec(bool isRaw)
     {
-        EnsureTokenTypeThenMove(TokenType.Colon);
+        // A fused ':=' ends the expression and opens the spec; its '=' is
+        // the spec's first literal character.
+        var leadingEqual = CurrentTokenType is TokenType.ColonEqual;
+        if (leadingEqual)
+            MoveNextToken();
+        else
+            EnsureTokenTypeThenMove(TokenType.Colon);
 
         var metaInfo = CreateAstMetaInfo();
 
         // ConstantNode(string) or FormattedValueNode or JoinedStrNode
         List<AstExprNode> formatSpecs = [];
+        if (leadingEqual)
+            formatSpecs.Add(Ast.Constant("=").With(metaInfo));
         while (CurrentTokenType is not TokenType.RightBrace)
         {
             var formatSpec = ParseFStringFormatSpec(isRaw);
@@ -377,18 +389,22 @@ partial class Parser
         }
         else
         {
-            if (!IsCurrentTypeTokenAnyOf(TokenType.Exclamation, TokenType.Colon, TokenType.RightBrace))
+            // A fused ':=' is not a walrus here: a bare colon at the field's
+            // top level ends the expression and opens the spec whose first
+            // literal character is that '=' (PEP 572 requires parentheses
+            // for a walrus inside a t-string).
+            if (!IsCurrentTypeTokenAnyOf(TokenType.Exclamation, TokenType.Colon, TokenType.ColonEqual, TokenType.RightBrace))
                 throw SyntaxError(PySR.InvalidSyntax_TString_ReplacementField_ExpectingEqual);
         }
 
         var conversion = -1;
         if (CurrentTokenType is TokenType.Exclamation)
             conversion = ParseTStringConversion();
-        else if (!IsCurrentTypeTokenAnyOf(TokenType.Colon, TokenType.RightBrace))
+        else if (!IsCurrentTypeTokenAnyOf(TokenType.Colon, TokenType.ColonEqual, TokenType.RightBrace))
             throw SyntaxError(PySR.InvalidSyntax_TString_ReplacementField_ExpectingExclamation);
 
         var format_spec = null as JoinedStrNode;
-        if (CurrentTokenType is TokenType.Colon)
+        if (CurrentTokenType is TokenType.Colon or TokenType.ColonEqual)
             format_spec = ParseTStringFullFormatSpec(isRaw);
         else if (!IsCurrentTypeTokenAnyOf(TokenType.RightBrace))
             throw SyntaxError(PySR.InvalidSyntax_TString_ReplacementField_ExpectingColon);
@@ -426,12 +442,20 @@ partial class Parser
     [GrammarSyntaxRule("tstring_full_format_spec")]
     private JoinedStrNode ParseTStringFullFormatSpec(bool isRaw)
     {
-        EnsureTokenTypeThenMove(TokenType.Colon);
+        // A fused ':=' ends the expression and opens the spec; its '=' is
+        // the spec's first literal character.
+        var leadingEqual = CurrentTokenType is TokenType.ColonEqual;
+        if (leadingEqual)
+            MoveNextToken();
+        else
+            EnsureTokenTypeThenMove(TokenType.Colon);
 
         var metaInfo = CreateAstMetaInfo();
 
         // ConstantNode(string) or FormattedValueNode or JoinedStrNode
         List<AstExprNode> formatSpecs = [];
+        if (leadingEqual)
+            formatSpecs.Add(Ast.Constant("=").With(metaInfo));
         while (CurrentTokenType is not TokenType.RightBrace)
         {
             var formatSpec = ParseTStringFormatSpec(isRaw);

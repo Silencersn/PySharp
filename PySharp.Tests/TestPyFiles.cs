@@ -1546,6 +1546,18 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestFStringColonEqualSpecRegression()
+    {
+        // Regression: a bare ':' inside an f-string/t-string replacement field
+        // ends the expression and starts the format spec, even when lexed as
+        // the fused ':=' token (PEP 572 requires parentheses for a walrus),
+        // so f"{-5:=8}" == format(-5, "=8"); debug '=' forms and parenthesized
+        // walrus expressions are unaffected.
+        var module = RunModule("test_fstring_colonequal_spec_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBareRaiseDynamicScopeRegression()
     {
         // Regression: bare raise reads the call chain's handled exception
