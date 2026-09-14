@@ -259,6 +259,9 @@ partial class PySR
     public const string Runtime_Generator_SendNonNoneAtFirst = "can't send non-None value to a just-started generator";
     public const string Runtime_Generator_IgnoredGeneratorExit = "generator ignored GeneratorExit";
     public const string Runtime_Generator_RaisedStopIteration = "generator raised StopIteration";
+    public const string Runtime_Generator_AlreadyExecuting = "generator already executing";
+    public const string Runtime_Generator_CoroutineAlreadyExecuting = "coroutine already executing";
+    public const string Runtime_Generator_AsyncAlreadyExecuting = "async generator already executing";
 
     public const string Runtime_Arguments_OverflowArgs = "takes {0} positional arguments but {1} was given";
     public const string Runtime_Arguments_MissingArg = "missing 1 required positional argument";

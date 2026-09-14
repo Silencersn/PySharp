@@ -27,6 +27,10 @@ public abstract class PyGeneratorObject : PyObject, IPyObjectName
 public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
 {
     private bool IsGeneratorRunning;
+    // CPython gen_send_ex2's gi_running: set while the frame is being
+    // evaluated; a re-entrant resume raises ValueError instead of
+    // corrupting the frame (the old unguarded path crashed the process).
+    private bool IsExecuting;
     private PyInternalFrame _frame;
     private BytecodeVirtualMachineStates _vmStates;
 
@@ -60,23 +64,42 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
         return error;
     }
 
+    private PyResult AlreadyExecutingError()
+    {
+        var message = IsCoroutine ? PySR.Runtime_Generator_CoroutineAlreadyExecuting
+            : IsAsyncGenerator ? PySR.Runtime_Generator_AsyncAlreadyExecuting
+            : PySR.Runtime_Generator_AlreadyExecuting;
+        return PyResult.ValueError(message);
+    }
+
     private PyResult Send(PyCallContext context, PyObject value)
     {
         if (_vmStates.RunToEnd)
             return PyResult.StopIteration();
 
+        if (IsExecuting)
+            return AlreadyExecutingError();
+
         IsGeneratorRunning = true;
-        using var withFrame = context.WithFrame(ref _frame, dispose: false);
-        _vmStates.SetYieldReceivedValue(value);
-        var result = ResumeEval(context);
-        _frame.InstructionIndex = context.CurrentInternalFrame.InstructionIndex;
-        if (result.IsError)
-            return ConvertStopIteration(result);
+        IsExecuting = true;
+        try
+        {
+            using var withFrame = context.WithFrame(ref _frame, dispose: false);
+            _vmStates.SetYieldReceivedValue(value);
+            var result = ResumeEval(context);
+            _frame.InstructionIndex = context.CurrentInternalFrame.InstructionIndex;
+            if (result.IsError)
+                return ConvertStopIteration(result);
 
-        if (_vmStates.RunToEnd)
-            return PyResult.StopIteration(result.Value);
+            if (_vmStates.RunToEnd)
+                return PyResult.StopIteration(result.Value);
 
-        return result;
+            return result;
+        }
+        finally
+        {
+            IsExecuting = false;
+        }
     }
 
     internal override PyResult PyClose(PyCallContext context)
@@ -87,27 +110,38 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
         if (_vmStates.RunToEnd)
             return PyNoneObject.None;
 
+        if (IsExecuting)
+            return AlreadyExecutingError();
+
         _vmStates.ExceptionToRaise = PyGeneratorExitObjectType.Shared.Create();
-        using var withFrame = context.WithFrame(ref _frame, dispose: false);
-        var result = ResumeEval(context);
-        _frame.InstructionIndex = context.CurrentInternalFrame.InstructionIndex;
-
-        if (result.IsError)
+        IsExecuting = true;
+        try
         {
-            if (PyGeneratorExitObjectType.Shared.IsInstance(result.Exception))
-                return PyNoneObject.None;
+            using var withFrame = context.WithFrame(ref _frame, dispose: false);
+            var result = ResumeEval(context);
+            _frame.InstructionIndex = context.CurrentInternalFrame.InstructionIndex;
 
-            return ConvertStopIteration(result);
+            if (result.IsError)
+            {
+                if (PyGeneratorExitObjectType.Shared.IsInstance(result.Exception))
+                    return PyNoneObject.None;
+
+                return ConvertStopIteration(result);
+            }
+
+            if (!_vmStates.RunToEnd)
+            {
+                // still yield or await value
+                return PyResult.RuntimeError(IsCoroutine ?
+                    PySR.Runtime_Async_IgnoredGeneratorExit : PySR.Runtime_Generator_IgnoredGeneratorExit);
+            }
+
+            return result;
         }
-
-        if (!_vmStates.RunToEnd)
+        finally
         {
-            // still yield or await value
-            return PyResult.RuntimeError(IsCoroutine ?
-                PySR.Runtime_Async_IgnoredGeneratorExit : PySR.Runtime_Generator_IgnoredGeneratorExit);
+            IsExecuting = false;
         }
-
-        return result;
     }
 
     internal override PyResult PyNext(PyCallContext context)
@@ -146,19 +180,30 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
         if (_vmStates.RunToEnd)
             return PyResult.FromException(exc);
 
+        if (IsExecuting)
+            return AlreadyExecutingError();
+
         _vmStates.ExceptionToRaise = exc;
-        using var withFrame = context.WithFrame(ref _frame, dispose: false);
-        var result = ResumeEval(context);
-        _frame.InstructionIndex = context.CurrentInternalFrame.InstructionIndex;
-        if (result.IsError)
-            return ConvertStopIteration(result);
+        IsExecuting = true;
+        try
+        {
+            using var withFrame = context.WithFrame(ref _frame, dispose: false);
+            var result = ResumeEval(context);
+            _frame.InstructionIndex = context.CurrentInternalFrame.InstructionIndex;
+            if (result.IsError)
+                return ConvertStopIteration(result);
 
-        if (_vmStates.RunToEnd)
-            // return value
-            return PyResult.StopIteration(result.Value);
+            if (_vmStates.RunToEnd)
+                // return value
+                return PyResult.StopIteration(result.Value);
 
-        // yield or await value
-        return result;
+            // yield or await value
+            return result;
+        }
+        finally
+        {
+            IsExecuting = false;
+        }
     }
 
     // Generator resume shares the caller's context: restore the handled

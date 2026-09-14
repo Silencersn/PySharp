@@ -1665,6 +1665,18 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestGeneratorReentrancyRegression()
+    {
+        // Regression: consuming a generator while it is already executing
+        // raises the catchable ValueError "generator already executing"
+        // (CPython gi_running guard) on the next/send, throw and close
+        // resume paths, instead of recursing into the evaluator until a
+        // .NET IndexOutOfRangeException terminates the process.
+        var module = RunModule("test_generator_reentrancy_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBareRaiseDynamicScopeRegression()
     {
         // Regression: bare raise reads the call chain's handled exception
