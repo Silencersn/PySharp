@@ -126,6 +126,18 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
         return PyFloatObject.FromDouble(self.Value.Real);
     }
 
+    protected override PyResult Neg(PyCallContext context, PyComplexObject self)
+    {
+        return PyComplexObject.FromComplex(-self.Value);
+    }
+
+    protected override PyResult Pos(PyCallContext context, PyComplexObject self)
+    {
+        // CPython complex_pos: an exact instance returns itself, a
+        // subclass instance converts to an exact complex copy
+        return self.PyType == PyComplexObjectType.Shared ? self : PyComplexObject.FromComplex(self.Value);
+    }
+
     protected override PyResult Add(PyCallContext context, PyComplexObject self, PyObject other)
     {
         if (other is PyComplexObject c)

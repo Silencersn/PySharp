@@ -3042,4 +3042,17 @@ public sealed class TestPyFiles
         var module = RunModule("test_splitlines_keepends_truth_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestComplexUnaryPowRegression()
+    {
+        // Regression: complex supports the unary -/+ slots (both
+        // components negate; an exact +z returns itself) and the **
+        // slot for complex-left operands — integer exponents,
+        // fractional exponents via the polar principal branch, the
+        // zero-exponent identity and the zero-base negative/complex
+        // exponent ZeroDivisionError.
+        var module = RunModule("test_complex_unary_pow_regression.py");
+        Assert.IsNotNull(module);
+    }
 }
