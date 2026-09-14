@@ -547,7 +547,9 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
         if (spec.Width is not null)
         {
             var width = spec.Width.Value;
-            var fill = spec.Fill ?? (spec.SignAwareZeroPadding && spec.Align is null ? '0' : ' ');
+            // the '0' flag supplies fill '0' even with an explicit align;
+            // it defaults the align to '=' only when none was parsed
+            var fill = spec.Fill ?? (spec.SignAwareZeroPadding ? '0' : ' ');
             var align = spec.Align ?? (spec.SignAwareZeroPadding ? '=' : '>');
             text = ApplyWidth(fullPrefix, text, width, fill, align);
         }

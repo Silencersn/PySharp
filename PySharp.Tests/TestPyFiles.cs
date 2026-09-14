@@ -3005,4 +3005,16 @@ public sealed class TestPyFiles
         var module = RunModule("test_len_bounds_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestIntFormatZeroFlagAlignRegression()
+    {
+        // Regression: the '0' format-spec flag supplies fill '0' even
+        // when an explicit alignment is present ("<04" ≡ "0<4"), and
+        // only defaults the alignment to '=' when none was parsed;
+        // previously the flag was ignored whenever an align existed,
+        // silently falling back to space padding.
+        var module = RunModule("test_int_format_zero_flag_align_regression.py");
+        Assert.IsNotNull(module);
+    }
 }
