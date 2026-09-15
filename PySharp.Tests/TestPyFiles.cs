@@ -3168,4 +3168,17 @@ public sealed class TestPyFiles
         var module = RunModule("test_bigint_float_overflow_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestNegBaseFractionalPowRegression()
+    {
+        // Regression: float_pow's negative-base rule — a finite negative
+        // base with a non-integral exponent evaluates the complex
+        // principal value via complex_pow instead of returning float nan;
+        // the integral/zero/inf/NaN special cases keep float results, and
+        // int/int true division rounds the quotient half-to-even like
+        // CPython's long_true_divide so fractional exponents stay exact.
+        var module = RunModule("test_neg_base_fractional_pow_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

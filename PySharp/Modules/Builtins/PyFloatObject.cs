@@ -407,6 +407,12 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
     {
         if (baseValue is 0.0 && exponent < 0)
             return PyResult.ZeroDivisionError(PySR.Runtime_Number_ZeroToNegativePower);
+        // CPython float_pow: a finite negative base with a non-integral
+        // exponent returns NotImplemented and complex_pow evaluates the
+        // principal value instead; the infinite/NaN special cases above
+        // the negative-base check keep their float results.
+        if (baseValue < 0 && double.IsFinite(baseValue) && double.IsFinite(exponent) && exponent != double.Floor(exponent))
+            return PyComplexObject.FromComplex(ComplexPowPrincipal(baseValue, exponent));
         var result = double.Pow(baseValue, exponent);
         // CPython float_pow runs the platform pow only with finite
         // operands (the special cases above handle the rest), so an
@@ -415,6 +421,16 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
         if (double.IsInfinity(result) && double.IsFinite(baseValue) && double.IsFinite(exponent))
             return ErrnoOverflow();
         return PyFloatObject.FromDouble(result);
+    }
+
+    // CPython c_pow (complexobject.c) for a negative real base and a
+    // real exponent: the base's argument is +pi, and the exponent's
+    // imaginary part is zero so no log adjustment applies.
+    private static System.Numerics.Complex ComplexPowPrincipal(double baseValue, double exponent)
+    {
+        double len = Math.Pow(double.Hypot(baseValue, 0), exponent);
+        double phase = Math.Atan2(0, baseValue) * exponent;
+        return new(len * Math.Cos(phase), len * Math.Sin(phase));
     }
 
     // PyErr_SetFromErrno(OverflowError): args (ERANGE, strerror(ERANGE)).

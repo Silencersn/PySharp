@@ -32,8 +32,10 @@ internal static class PyMath
                     var (tdQ, tdR) = BigInteger.DivRem(left.Value, right.Value);
                     if (tdR.IsZero)
                     {
-                        // exact quotient: avoid inf/inf -> NaN and detect float overflow
-                        var dq = (double)tdQ;
+                        // exact quotient: the plain (double) cast truncates
+                        // instead of rounding like CPython's long->float,
+                        // and an infinite result is an overflow
+                        var dq = tdQ.ToDoubleRounded();
                         if (double.IsInfinity(dq))
                             return PyResult.OverflowError("integer division result too large for a float");
                         return PyFloatObject.FromDouble(dq);
@@ -41,15 +43,37 @@ internal static class PyMath
                     // exact overflow check: |left/right| >= 2^1024  <=>  |left| >= |right| << 1024
                     if (BigInteger.Abs(left.Value) >= BigInteger.Abs(right.Value) << 1024)
                         return PyResult.OverflowError("integer division result too large for a float");
-                    // result = q + r/right (0 < |r| < |right|) without intermediate (double) overflow
-                    var dQ = (double)tdQ;
-                    if (double.IsInfinity(dQ))
-                        dQ = dQ > 0 ? double.MaxValue : -double.MaxValue;   // q near 2^1024: still finite in CPython
-                    var scaledR = BigInteger.Abs(tdR) * (BigInteger.One << 53) / BigInteger.Abs(right.Value);
-                    var frac = (double)scaledR / 9007199254740992.0;         // 2^53: r/right as a 53-bit fraction
-                    if ((tdR < 0) != (right.Value < 0))
-                        frac = -frac;
-                    return PyFloatObject.FromDouble(dQ + frac);
+                    // CPython long_true_divide: the quotient is rounded to
+                    // double precision from 54+ significant bits — scale
+                    // the dividend (or the divisor, keeping the quotient
+                    // value) so it carries guard bits, then round-half-to-
+                    // even using the low quotient bits and the remainder
+                    // as the sticky bit.
+                    var tdA = BigInteger.Abs(left.Value);
+                    var tdB = BigInteger.Abs(right.Value);
+                    int shift = 55 - (int)tdA.GetBitLength() + (int)tdB.GetBitLength();
+                    var (tdQ2, tdRem) = shift >= 0
+                        ? BigInteger.DivRem(tdA << shift, tdB)
+                        : BigInteger.DivRem(tdA, tdB << -shift);
+                    int qLen = (int)tdQ2.GetBitLength();
+                    int lowBits = qLen - 53;
+                    var mantissa = (long)(tdQ2 >> lowBits);
+                    bool guard = ((tdQ2 >> (lowBits - 1)) & BigInteger.One).IsOne;
+                    bool sticky = !tdRem.IsZero || !((tdQ2 & ((BigInteger.One << (lowBits - 1)) - BigInteger.One))).IsZero;
+                    if (guard && (sticky || (mantissa & 1) is not 0))
+                        mantissa++;
+                    int exp2 = (qLen - 53) - shift;
+                    if (mantissa is 1L << 53)
+                    {
+                        mantissa >>= 1;
+                        exp2++;
+                    }
+                    if (exp2 > 1023)
+                        return PyResult.OverflowError("integer division result too large for a float");
+                    var tdResult = Math.ScaleB((double)mantissa, exp2);
+                    if ((left.Value.Sign < 0) != (right.Value.Sign < 0))
+                        tdResult = -tdResult;
+                    return PyFloatObject.FromDouble(tdResult);
                 }
 
             case PyOperatorTypes.FloorDiv:
