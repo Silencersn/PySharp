@@ -237,6 +237,9 @@ partial class PySR
     public const string Runtime_Str_EndswithFirstArgMustBeStr = "endswith first arg must be str or a tuple of str, not {0}";
     public const string Runtime_Float_CannotConvertInfinityToInteger = "cannot convert float infinity to integer";
     public const string Runtime_Float_CannotConvertNaNToInteger = "cannot convert float NaN to integer";
+    public const string Runtime_Float_InvalidHexFloat = "invalid hexadecimal floating-point string";
+    public const string Runtime_Float_HexValueTooLarge = "hexadecimal value too large to represent as a float";
+    public const string Runtime_Float_FromHexBadArgumentType = "bad argument type for built-in operation";
     public const string Runtime_Math_MustBeReal = "must be real number, not {0}";
     public const string Runtime_Property_NoSetter = "property '{0}' of '{1}' object has no setter";
     public const string Runtime_Property_NoDeleter = "property '{0}' of '{1}' object has no deleter";

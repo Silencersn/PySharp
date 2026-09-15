@@ -693,10 +693,12 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
     private static PyResult FromHex(PyCallContext context, PyTypeObject cls, PyArguments arguments)
     {
         if (arguments[0] is not PyStrObject strObj)
-            return PyResult.TypeError("fromhex arg must be str");
+            return PyResult.TypeError(PySR.Runtime_Float_FromHexBadArgumentType);
 
-        if (!TryParseHexFloat(strObj.Value, out double result))
-            return PyResult.ValueError("invalid hexadecimal floating-point string");
+        if (!TryParseHexFloat(strObj.Value, out var result, out var overflow))
+            return PyResult.ValueError(PySR.Runtime_Float_InvalidHexFloat);
+        if (overflow)
+            return PyResult.OverflowError(PySR.Runtime_Float_HexValueTooLarge);
 
         return PyFloatObject.FromDouble(result);
     }
@@ -732,124 +734,199 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
             CultureInfo.InvariantCulture, out result);
     }
 
-    private static bool TryParseHexFloat(string text, out double result)
+    // CPython float_fromhex (floatobject.c), transcribed: a [sign]
+    // ['0x'] hex integer ['.' fraction] [(p|P) decimal-exponent] literal
+    // where the prefix, fraction, exponent and surrounding whitespace
+    // are all optional. Infinities and nans (accepted before the sign
+    // in CPython) are not handled here. The value is rounded to double
+    // precision half-to-even from the hex coefficient, with the p
+    // exponent shifting by powers of two.
+    private static bool TryParseHexFloat(string text, out double result, out bool overflow)
     {
         result = 0;
-        if (string.IsNullOrWhiteSpace(text))
-            return false;
+        overflow = false;
+        int i = 0;
+        int end = text.Length;
 
-        text = text.Trim().ToLowerInvariant();
-        int pos = 0;
+        while (i < end && IsPySpace(text[i]))
+            i++;
 
-        // Parse optional sign
-        bool negative = false;
-        if (pos < text.Length && text[pos] is '-')
+        bool negate = false;
+        if (i < end && text[i] is '-')
         {
-            negative = true;
-            pos++;
+            negate = true;
+            i++;
         }
-        else if (pos < text.Length && text[pos] is '+')
+        else if (i < end && text[i] is '+')
         {
-            pos++;
+            i++;
         }
 
-        // Expect "0x" prefix
-        if (pos + 1 >= text.Length || text[pos] is not '0' || text[pos + 1] is not 'x')
-            return false;
-        pos += 2;
-
-        if (pos >= text.Length)
-            return false;
-
-        // Parse hex digits
-        var intPart = new System.Text.StringBuilder();
-        var fracPart = new System.Text.StringBuilder();
-        bool hasDot = false;
-
-        while (pos < text.Length && text[pos] is not 'p')
+        // ['0x']: '0' followed by x/X starts the prefix, otherwise the
+        // '0' is the first coefficient digit
+        int sStore;
+        if (i < end && text[i] is '0')
         {
-            if (text[pos] is '.')
-            {
-                if (hasDot)
-                    return false;
-                hasDot = true;
-                pos++;
-                continue;
-            }
-            if ((text[pos] >= '0' && text[pos] <= '9') || (text[pos] >= 'a' && text[pos] <= 'f'))
-            {
-                if (hasDot)
-                    fracPart.Append(text[pos]);
-                else
-                    intPart.Append(text[pos]);
-                pos++;
-            }
+            i++;
+            if (i < end && text[i] is 'x' or 'X')
+                i++;
             else
-            {
+                i--;
+        }
+        int coeffStart = i;
+
+        while (i < end && HexDigitValue(text[i]) >= 0)
+            i++;
+        sStore = i;
+        int coeffEnd;
+        if (i < end && text[i] is '.')
+        {
+            i++;
+            while (i < end && HexDigitValue(text[i]) >= 0)
+                i++;
+            coeffEnd = i - 1;
+        }
+        else
+        {
+            coeffEnd = i;
+        }
+
+        int ndigits = coeffEnd - coeffStart;
+        int fdigits = coeffEnd - sStore;
+        if (ndigits <= 0)
+            return false;
+
+        long exp;
+        if (i < end && text[i] is 'p' or 'P')
+        {
+            i++;
+            int expStart = i;
+            if (i < end && text[i] is '-' or '+')
+                i++;
+            if (i >= end || text[i] < '0' || text[i] > '9')
                 return false;
+            i++;
+            while (i < end && text[i] >= '0' && text[i] <= '9')
+                i++;
+            // strtol clamps out-of-range exponents to LONG_MAX/LONG_MIN
+            if (!long.TryParse(text[expStart..i], System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture, out exp))
+                exp = text[expStart] is '-' ? long.MinValue : long.MaxValue;
+        }
+        else
+        {
+            exp = 0;
+        }
+
+        while (i < end && IsPySpace(text[i]))
+            i++;
+        if (i != end)
+            return false;
+
+        // CPython's HEX_DIGIT(j): the (ndigits-1-j)th coefficient digit
+        // in reading order — the jth least significant, skipping the point
+        long HexDigit(int j) => HexDigitValue(text[j < fdigits ? coeffEnd - j : coeffEnd - 1 - j]);
+
+        // discard leading zeros and catch extreme overflow / underflow
+        while (ndigits > 0 && HexDigit(ndigits - 1) is 0)
+            ndigits--;
+        if (ndigits is 0 || exp < long.MinValue / 2)
+        {
+            result = negate ? -0.0 : 0.0;
+            return true;
+        }
+        if (exp > long.MaxValue / 2)
+        {
+            overflow = true;
+            return true;
+        }
+
+        // adjust the exponent for the fractional part
+        exp -= 4L * fdigits;
+
+        // top_exp = 1 more than the exponent of the most significant bit
+        long topExp = exp + 4L * (ndigits - 1);
+        for (var digit = HexDigit(ndigits - 1); digit is not 0; digit /= 2)
+            topExp++;
+
+        // catch almost all nonextreme overflow and underflow here
+        if (topExp < -1021 - 53)    // DBL_MIN_EXP - DBL_MANT_DIG
+        {
+            result = negate ? -0.0 : 0.0;
+            return true;
+        }
+        if (topExp > 1024)          // DBL_MAX_EXP
+        {
+            overflow = true;
+            return true;
+        }
+
+        // lsb = exponent of the least significant bit of the rounded value
+        long lsb = Math.Max(topExp, -1021L) - 53;
+
+        double x = 0.0;
+        if (exp >= lsb)
+        {
+            // no rounding required
+            for (int k = ndigits - 1; k >= 0; k--)
+                x = 16.0 * x + HexDigit(k);
+            result = negate ? -Math.ScaleB(x, (int)exp) : Math.ScaleB(x, (int)exp);
+            return true;
+        }
+
+        // key_digit indexes the hex digit holding the first bit to round
+        long halfEps = 1L << (int)((lsb - exp - 1) % 4);
+        long keyDigit = (lsb - exp - 1) / 4;
+        for (int k = ndigits - 1; k > keyDigit; k--)
+            x = 16.0 * x + HexDigit(k);
+        var key = HexDigit((int)keyDigit);
+        x = 16.0 * x + (key & (16 - 2 * halfEps));
+
+        // round-half-even: round up if the half-eps bit is set and any
+        // bit below it (in this digit, the next one at half_eps == 8, or
+        // any lower digit) is set
+        if ((key & halfEps) is not 0)
+        {
+            bool roundUp = (key & (3 * halfEps - 1)) is not 0
+                || (halfEps is 8 && keyDigit + 1 < ndigits && (HexDigit((int)keyDigit + 1) & 1) is not 0);
+            if (!roundUp)
+            {
+                for (int k = (int)keyDigit - 1; k >= 0; k--)
+                {
+                    if (HexDigit(k) is not 0)
+                    {
+                        roundUp = true;
+                        break;
+                    }
+                }
+            }
+            if (roundUp)
+            {
+                x += 2 * halfEps;
+                if (topExp is 1024 && x == Math.ScaleB(2.0 * halfEps, 53))
+                {
+                    // pre-rounded value below 2**DBL_MAX_EXP rounds up to it
+                    overflow = true;
+                    return true;
+                }
             }
         }
-
-        if (intPart.Length is 0 && fracPart.Length is 0)
-            return false;
-
-        // Parse exponent
-        if (pos >= text.Length || text[pos] is not 'p')
-            return false;
-        pos++;
-
-        if (pos >= text.Length)
-            return false;
-
-        bool expNegative = false;
-        if (text[pos] is '-')
-        {
-            expNegative = true;
-            pos++;
-        }
-        else if (text[pos] is '+')
-        {
-            pos++;
-        }
-
-        if (pos >= text.Length || text[pos] < '0' || text[pos] > '9')
-            return false;
-
-        int exponent = 0;
-        while (pos < text.Length && text[pos] >= '0' && text[pos] <= '9')
-        {
-            exponent = exponent * 10 + (text[pos] - '0');
-            pos++;
-        }
-
-        if (expNegative)
-            exponent = -exponent;
-
-        // Build the value
-        string hexStr = (intPart.Length > 0 ? "0x" + intPart.ToString() : "0x0") +
-                        (fracPart.Length > 0 ? "." + fracPart.ToString() : string.Empty);
-
-        // Parse as hex float: value = hex_digits * 2^exponent
-        // Convert to integer mantissa first
-        string fullHex = intPart.ToString() + fracPart.ToString();
-        if (fullHex.Length is 0)
-            fullHex = "0";
-
-        if (!long.TryParse(fullHex, System.Globalization.NumberStyles.HexNumber, null, out long mantissa))
-            return false;
-
-        int power = exponent - fracPart.Length * 4; // each hex digit = 4 bits
-
-        if (power >= 0)
-            result = mantissa * Math.Pow(2, power);
-        else
-            result = mantissa / Math.Pow(2, -power);
-
-        if (negative)
+        result = Math.ScaleB(x, (int)(exp + 4 * keyDigit));
+        if (negate)
             result = -result;
-
         return true;
     }
+
+    // Py_ISSPACE: the six ASCII whitespace bytes
+    private static bool IsPySpace(char c) => c is ' ' or '\t' or '\n' or '\r' or '\v' or '\f';
+
+    private static int HexDigitValue(char c) => c switch
+    {
+        >= '0' and <= '9' => c - '0',
+        >= 'a' and <= 'f' => c - 'a' + 10,
+        >= 'A' and <= 'F' => c - 'A' + 10,
+        _ => -1,
+    };
 
     [AIGenerated]
     protected override PyResult Format(PyCallContext context, PyFloatObject self, PyObject formatSpec)

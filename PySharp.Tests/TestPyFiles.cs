@@ -3181,4 +3181,18 @@ public sealed class TestPyFiles
         var module = RunModule("test_neg_base_fractional_pow_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestFloatFromhexOptionalExponentRegression()
+    {
+        // Regression: float.fromhex implements CPython's float_fromhex —
+        // the 0x prefix, fraction, (p|P) exponent and surrounding
+        // whitespace are optional (missing exponent means p0, 'e' stays
+        // a hex digit), the coefficient rounds half-to-even with the
+        // exponent applied as powers of two, huge exponents clamp to the
+        // overflow/underflow paths, and non-str arguments report the
+        // built-in conversion TypeError.
+        var module = RunModule("test_float_fromhex_optional_exponent_regression.py");
+        Assert.IsNotNull(module);
+    }
 }
