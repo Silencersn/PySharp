@@ -3091,4 +3091,17 @@ public sealed class TestPyFiles
         var module = RunModule("test_format_replacement_index_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestDataclassMutableDefaultRegression()
+    {
+        // Regression: @dataclass rejects mutable field defaults at
+        // class definition time like CPython's _get_field — a default
+        // whose type derives from list/dict/set/bytearray raises
+        // "mutable default <class 'T'> for field <n> is not allowed:
+        // use default_factory", while field(default_factory=...) and
+        // hashable defaults stay accepted.
+        var module = RunModule("test_dataclass_mutable_default_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

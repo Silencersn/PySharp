@@ -116,6 +116,19 @@ def _set_eq(cls, field_list):
     setattr(cls, '__eq__', g['__eq__'])
 
 
+_UNHASHABLE_BASES = (list, dict, set, bytearray)
+
+
+def _reject_mutable_default(default, name):
+    # CPython _get_field rejects mutable defaults during field
+    # collection, using "the default's class __hash__ is None" as the
+    # mutability proxy; this runtime exposes no None-hash marker, so
+    # match the unhashable builtin bases across the MRO instead
+    for base in type(default).__mro__:
+        if base in _UNHASHABLE_BASES:
+            raise ValueError('mutable default ' + str(type(default)) + ' for field ' + name + ' is not allowed: use default_factory')
+
+
 def _process_class(cls, init, repr, eq, frozen, order):
     if frozen:
         raise TypeError('frozen dataclasses are not supported yet')
@@ -141,6 +154,8 @@ def _process_class(cls, init, repr, eq, frozen, order):
                 f_compare = value.compare
             else:
                 default = value
+        if default is not _MISSING:
+            _reject_mutable_default(default, name)
         fl = Field(default, default_factory, f_init, f_repr, f_compare)
         fl.name = name
         fl.type = ann[name]
