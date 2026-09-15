@@ -126,6 +126,7 @@ partial class PySR
     public const string Runtime_Number_PowThirdArgNotInteger = "pow() 3rd argument not allowed unless all arguments are integers";
     public const string Runtime_Number_DivisionByZero = "division by zero";
     public const string Runtime_Number_ZeroToNegativePower = "zero to a negative power";
+    public const string Runtime_Number_IntTooLargeForFloat = "int too large to convert to float";
     public const string Runtime_Complex_ArgMustBeStringOrNumber = "complex() argument must be a string or a number, not {0}";
     public const string Runtime_Complex_RealMustBeRealNumber = "complex() argument 'real' must be a real number, not {0}";
     public const string Runtime_Complex_ImagMustBeRealNumber = "complex() argument 'imag' must be a real number, not {0}";

@@ -85,7 +85,9 @@ internal static class PyMath
                     // where 0.0 ** negative raises instead of returning inf.
                     if (left.Value.IsZero)
                         return PyResult.ZeroDivisionError(PySR.Runtime_Number_ZeroToNegativePower);
-                    return PyFloatObject.FromDouble(Math.Pow(left.Value.ToDoubleRounded(), right.Value.ToDoubleRounded()));
+                    if (!left.Value.TryToDoubleRounded(out var baseValue) || !right.Value.TryToDoubleRounded(out var exponentValue))
+                        return PyResult.OverflowError(PySR.Runtime_Number_IntTooLargeForFloat);
+                    return PyFloatObject.FromDouble(Math.Pow(baseValue, exponentValue));
                 }
                 else
                 {

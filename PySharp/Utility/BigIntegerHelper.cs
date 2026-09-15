@@ -429,6 +429,17 @@ internal static class BigIntegerHelper
     }
 
     /// <summary>
+    /// PyLong_AsDouble reports a value outside the double range as
+    /// OverflowError instead of saturating to infinity; the rounded
+    /// conversion of a finite integer can only overflow to ±infinity.
+    /// </summary>
+    public static bool TryToDoubleRounded(this BigInteger value, out double result)
+    {
+        result = value.ToDoubleRounded();
+        return !double.IsInfinity(result);
+    }
+
+    /// <summary>
     /// Converts a BigInteger to double with round-half-to-even semantics
     /// (CPython's PyLong_AsDouble). The plain (double) cast truncates the
     /// bits below the 53-bit mantissa and lands 1 ulp low at rounding

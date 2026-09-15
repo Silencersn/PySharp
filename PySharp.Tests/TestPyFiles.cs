@@ -3155,4 +3155,17 @@ public sealed class TestPyFiles
         var module = RunModule("test_generator_throw_unstarted_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestBigintFloatOverflowRegression()
+    {
+        // Regression: arithmetic conversions of a bigint to float follow
+        // PyLong_AsDouble — values outside the double range (including
+        // ones rounding up to infinity) raise "int too large to convert
+        // to float" in mixed int/float and int/complex operations,
+        // negative-exponent int pow, the complex() constructor and the
+        // %e/%f/%g/% format fallback; comparisons never convert.
+        var module = RunModule("test_bigint_float_overflow_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

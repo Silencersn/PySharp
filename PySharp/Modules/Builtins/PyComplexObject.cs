@@ -143,7 +143,11 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
         if (other is PyComplexObject c)
             return PyComplexObject.FromComplex(self.Value + c.Value);
         if (other is PyIntObject i)
-            return PyComplexObject.FromComplex(self.Value + new Complex(i.Value.ToDoubleRounded(), 0));
+        {
+            if (!i.Value.TryToDoubleRounded(out var d))
+                return PyResult.OverflowError(PySR.Runtime_Number_IntTooLargeForFloat);
+            return PyComplexObject.FromComplex(self.Value + new Complex(d, 0));
+        }
         if (other is PyFloatObject f)
             return PyComplexObject.FromComplex(self.Value + new Complex(f.Value, 0));
         return base.Add(context, self, other);
@@ -153,7 +157,11 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
         if (other is PyComplexObject c)
             return PyComplexObject.FromComplex(self.Value - c.Value);
         if (other is PyIntObject i)
-            return PyComplexObject.FromComplex(self.Value - new Complex(i.Value.ToDoubleRounded(), 0));
+        {
+            if (!i.Value.TryToDoubleRounded(out var d))
+                return PyResult.OverflowError(PySR.Runtime_Number_IntTooLargeForFloat);
+            return PyComplexObject.FromComplex(self.Value - new Complex(d, 0));
+        }
         if (other is PyFloatObject f)
             return PyComplexObject.FromComplex(self.Value - new Complex(f.Value, 0));
         return base.Sub(context, self, other);
@@ -163,7 +171,11 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
         if (other is PyComplexObject c)
             return PyComplexObject.FromComplex(ComplexProduct(self.Value, c.Value));
         if (other is PyIntObject i)
-            return PyComplexObject.FromComplex(self.Value * new Complex(i.Value.ToDoubleRounded(), 0));
+        {
+            if (!i.Value.TryToDoubleRounded(out var d))
+                return PyResult.OverflowError(PySR.Runtime_Number_IntTooLargeForFloat);
+            return PyComplexObject.FromComplex(self.Value * new Complex(d, 0));
+        }
         if (other is PyFloatObject f)
             return PyComplexObject.FromComplex(self.Value * new Complex(f.Value, 0));
         return base.Mul(context, self, other);
@@ -178,7 +190,8 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
         }
         if (other is PyIntObject i)
         {
-            double v = i.Value.ToDoubleRounded();
+            if (!i.Value.TryToDoubleRounded(out var v))
+                return PyResult.OverflowError(PySR.Runtime_Number_IntTooLargeForFloat);
             if (v is 0)
                 return PyResult.ZeroDivisionError();
             return PyComplexObject.FromComplex(ComplexCrQuot(self.Value, v));
@@ -195,8 +208,8 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
     {
         // CPython complex_pow: the exponent converts first (a non-number
         // yields NotImplemented), then a non-None modulo is rejected.
-        if (!TryToRealComplex(other, out var exponent))
-            return base.Pow(context, self, other, modulo);
+        if (!TryToRealComplex(other, out var exponent, out var error))
+            return error ?? base.Pow(context, self, other, modulo);
         if (modulo is not PyNoneObject)
             return PyResult.ValueError(PySR.Runtime_Complex_Modulo);
         return ComplexPower(self.Value, exponent);
@@ -209,8 +222,8 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
     protected override PyResult RSub(PyCallContext context, PyComplexObject self, PyObject other)
     {
         // CPython complex_rsub computes other - self.
-        if (!TryToRealComplex(other, out var value))
-            return base.RSub(context, self, other);
+        if (!TryToRealComplex(other, out var value, out var error))
+            return error ?? base.RSub(context, self, other);
         return PyComplexObject.FromComplex(value - self.Value);
     }
     protected override PyResult RMul(PyCallContext context, PyComplexObject self, PyObject other)
@@ -222,8 +235,8 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
     {
         // CPython complex_rdiv computes other / self: the zero check applies
         // to the complex denominator, after the other operand converts.
-        if (!TryToRealComplex(other, out var numerator))
-            return base.RTrueDiv(context, self, other);
+        if (!TryToRealComplex(other, out var numerator, out var error))
+            return error ?? base.RTrueDiv(context, self, other);
         if (self.Value == System.Numerics.Complex.Zero)
             return PyResult.ZeroDivisionError();
         if (other is PyComplexObject)
@@ -234,8 +247,8 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
     {
         // CPython complex_rpow delegates to complex_pow(other, self): the
         // complex operand supplies the exponent.
-        if (!TryToRealComplex(other, out var baseValue))
-            return base.RPow(context, self, other, modulo);
+        if (!TryToRealComplex(other, out var baseValue, out var error))
+            return error ?? base.RPow(context, self, other, modulo);
         if (modulo is not PyNoneObject)
             return PyResult.ValueError(PySR.Runtime_Complex_Modulo);
         return ComplexPower(baseValue, self.Value);
@@ -244,8 +257,9 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
     // CPython TO_COMPLEX/real_to_double: a complex operand passes through
     // with both parts, a float or int (index-able) value contributes its
     // value as the real part; anything else fails the conversion.
-    private static bool TryToRealComplex(PyObject operand, out System.Numerics.Complex value)
+    private static bool TryToRealComplex(PyObject operand, out System.Numerics.Complex value, out PyResult? error)
     {
+        error = null;
         switch (operand)
         {
             case PyComplexObject complex:
@@ -255,7 +269,13 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
                 value = new Complex(floatObject.Value, 0);
                 return true;
             case PyIntObject intObject:
-                value = new Complex(intObject.Value.ToDoubleRounded(), 0);
+                if (!intObject.Value.TryToDoubleRounded(out var real))
+                {
+                    error = PyResult.OverflowError(PySR.Runtime_Number_IntTooLargeForFloat);
+                    value = default;
+                    return false;
+                }
+                value = new Complex(real, 0);
                 return true;
             default:
                 value = default;
@@ -609,12 +629,16 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
             case PyFloatObject floatObject:
                 return PyComplexObject.FromRealImag(floatObject.Value, 0);
             case PyIntObject intObject:
-                return PyComplexObject.FromRealImag(intObject.Value.ToDoubleRounded(), 0);
+                if (!intObject.Value.TryToDoubleRounded(out var argReal))
+                    return PyResult.OverflowError(PySR.Runtime_Number_IntTooLargeForFloat);
+                return PyComplexObject.FromRealImag(argReal, 0);
         }
 
         var index = PySpecialMethods.Index(context, arg);
         if (index.IsError)
             return PyResult.TypeError(errorMessage, arg.PyType.Name);
-        return PyComplexObject.FromRealImag(index.Value.Value.ToDoubleRounded(), 0);
+        if (!index.Value.Value.TryToDoubleRounded(out var indexReal))
+            return PyResult.OverflowError(PySR.Runtime_Number_IntTooLargeForFloat);
+        return PyComplexObject.FromRealImag(indexReal, 0);
     }
 }

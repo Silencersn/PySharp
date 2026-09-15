@@ -301,9 +301,8 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
 
     protected override PyResult Float(PyCallContext context, PyIntObject self)
     {
-        var d = self.Value.ToDoubleRounded();
-        if (double.IsInfinity(d))
-            return PyResult.OverflowError("int too large to convert to float");
+        if (!self.Value.TryToDoubleRounded(out var d))
+            return PyResult.OverflowError(PySR.Runtime_Number_IntTooLargeForFloat);
         return PyFloatObject.FromDouble(d);
     }
 
@@ -531,7 +530,9 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
             case 'g':
             case '%':
                 // fallback to float format
-                return PySpecialMethods.Format(context, PyFloatObject.FromDouble(val.ToDoubleRounded()), formatSpec);
+                if (!val.TryToDoubleRounded(out var valDouble))
+                    return PyResult.OverflowError(PySR.Runtime_Number_IntTooLargeForFloat);
+                return PySpecialMethods.Format(context, PyFloatObject.FromDouble(valDouble), formatSpec);
             default:
                 return PyResult.ValueError(PySR.Runtime_Object_FormatUnknownCode, formatType, self.PyType.FullName);
         }
