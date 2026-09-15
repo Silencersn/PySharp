@@ -287,7 +287,13 @@ public static class PySpecialMethods
 
         var iter = Iter(context, obj);
         if (iter.IsError)
+        {
+            // CPython _PySequence_IterSearch: a TypeError from iter() in
+            // the contains path reports the container message instead.
+            if (PyTypeErrorObjectType.Shared.IsInstance(iter.Exception))
+                return PyResult.TypeError(PySR.Runtime_Sequence_ArgumentNotContainer, obj.PyType.FullName);
             return iter;
+        }
 
         var element = Next(context, iter.Value);
         while (!element.IsStopIteration)

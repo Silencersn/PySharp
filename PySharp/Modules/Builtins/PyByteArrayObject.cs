@@ -281,7 +281,17 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
     protected override PyResult Add(PyCallContext context, PyByteArrayObject self, PyObject other)
     {
         if (!TryGetSpan(other, out var otherSpan))
+        {
+            // The right operand's reflected __radd__ runs before the
+            // concat TypeError (CPython's bytearray has no nb_add).
+            if (other.PyType.Slots.RAdd is not null)
+            {
+                var reflected = other.PyType.Slots.RAdd(context, other, self);
+                if (!reflected.IsNotImplemented)
+                    return reflected;
+            }
             return PyResult.TypeError("can't concat {0} to bytearray", other.PyType.FullName);
+        }
 
         var result = new byte[self.Length + otherSpan.Length];
         self.AsSpan().CopyTo(result);

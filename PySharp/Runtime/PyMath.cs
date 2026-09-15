@@ -23,7 +23,7 @@ internal static class PyMath
                 return PyIntObject.FromInteger(left.Value * right.Value);
 
             case PyOperatorTypes.MatMult:
-                return PyResult.TypeError(PySR.Runtime_Operator_UnsupportedBetween, "@", "int", "int");
+                return PyResult.TypeError(PySR.Runtime_Operator_UnsupportedOperand, "@", "int", "int");
 
             case PyOperatorTypes.TrueDiv:
                 {

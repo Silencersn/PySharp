@@ -3131,4 +3131,17 @@ public sealed class TestPyFiles
         var module = RunModule("test_dict_view_len_contains_eq_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestBinopErrorMessagesRegression()
+    {
+        // Regression: binary-operator TypeErrors use CPython's message
+        // templates — "unsupported operand type(s) for OP:" with the
+        // "** or pow()" display and augmented in-place names ("+=", "**="),
+        // the per-type concatenate errors raised by the left operand's
+        // sq_concat after reflection declines, and _PySequence_IterSearch's
+        // "argument of type ... is not a container or iterable" for `in`.
+        var module = RunModule("test_binop_error_messages_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

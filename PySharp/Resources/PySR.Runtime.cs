@@ -143,6 +143,7 @@ partial class PySR
     public const string Runtime_Sequence_NegativeLen = "__len__() should return >= 0";
     public const string Runtime_Sequence_NoLen = "object of type '{0}' has no len()";
     public const string Runtime_Sequence_NonIterable = "'{0}' object is not iterable";
+    public const string Runtime_Sequence_ArgumentNotContainer = "argument of type '{0}' is not a container or iterable";
     public const string Runtime_Sequence_IterReturnsNonIterator = "iter() returned non-iterator of type '{0}'";
     public const string Runtime_Sequence_ObjectNotIterator = "'{0}' object is not an iterator";
     public const string Runtime_Sequence_NonSubscriptable = "'{0}' object is not subscriptable";
@@ -161,6 +162,7 @@ partial class PySR
     public const string Runtime_Tuple_IndexOutOfRange = "tuple index out of range";
     [AIGenerated]
     public const string Runtime_Tuple_AddNonTuple = "can only concatenate tuple (not \"{0}\") to tuple";
+    public const string Runtime_List_AddNonList = "can only concatenate list (not \"{0}\") to list";
 
     public const string Runtime_Dictionary_UpdateEltLengthNotMatch = "dictionary update sequence element #{0} has length {1}; 2 is required";
     public const string Runtime_Dictionary_PopEmptyDict = "popitem(): dictionary is empty";

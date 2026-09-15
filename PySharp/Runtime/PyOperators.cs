@@ -72,6 +72,17 @@ public static class PyOperators
             : PySR.Runtime_Operator_UnsupportedOperand;
     }
 
+    // CPython's binop_type_error operator spellings: pow shares one
+    // display across ** and pow(), and in-place ops name the augmented
+    // form ("+=", "**=", ...) instead of the plain operator.
+    private static string OperatorErrorToString(PyOperatorTypes op, bool inPlace)
+    {
+        var name = OperatorToString(op);
+        if (inPlace)
+            return name + "=";
+        return op is PyOperatorTypes.Pow ? "** or pow()" : name;
+    }
+
     private static PyResult EvalReflectiveOperator(PyCallContext context, PyObject self, PyObject other, PyBinaryFunction? selfFunc, PyBinaryFunction? otherFunc)
     {
         if (selfFunc is not null)
@@ -110,7 +121,7 @@ public static class PyOperators
         return PyNotImplementedObject.NotImplemented;
     }
 
-    private static PyResult EvalLeftFirstReflectiveOperator(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo, bool allowReflected)
+    private static PyResult EvalLeftFirstReflectiveOperator(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo, bool allowReflected, bool inPlace = false)
     {
         PyResult result;
         var leftType = left.PyType;
@@ -174,12 +185,12 @@ public static class PyOperators
         }
 
         if (result.IsNotImplemented)
-            return PyResult.TypeError(OperatorTypeErrorName(op), OperatorToString(op), left.PyType.FullName, right.PyType.FullName);
+            return PyResult.TypeError(OperatorTypeErrorName(op), OperatorErrorToString(op, inPlace), left.PyType.FullName, right.PyType.FullName);
 
         return result;
     }
 
-    private static PyResult EvalRightFirstReflectiveOperator(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo)
+    private static PyResult EvalRightFirstReflectiveOperator(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo, bool inPlace = false)
     {
         PyResult result;
         var leftType = left.PyType;
@@ -243,7 +254,7 @@ public static class PyOperators
         }
 
         if (result.IsNotImplemented)
-            return PyResult.TypeError(OperatorTypeErrorName(op), OperatorToString(op), left.PyType.FullName, right.PyType.FullName);
+            return PyResult.TypeError(OperatorTypeErrorName(op), OperatorErrorToString(op, inPlace), left.PyType.FullName, right.PyType.FullName);
 
         return result;
     }
@@ -299,9 +310,9 @@ public static class PyOperators
                     return result;
             }
         }
-        return ReflectiveOperator(context, op, left, right, modulo);
+        return ReflectiveOperator(context, op, left, right, modulo, inPlace: true);
     }
-    private static PyResult ReflectiveOperator(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo = null)
+    private static PyResult ReflectiveOperator(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo = null, bool inPlace = false)
     {
         if (left.PyType is PyIntObjectType && right.PyType is PyIntObjectType)
         {
@@ -318,14 +329,14 @@ public static class PyOperators
             return eq.ExceptionResult;
 
         if (!eq.Value.BoolValue && right.PyType.IsSubclassOf(left.PyType))
-            return EvalRightFirstReflectiveOperator(context, op, left, right, modulo);
+            return EvalRightFirstReflectiveOperator(context, op, left, right, modulo, inPlace);
 
         // CPython binary_op1: identical operand types resolve to a single
         // shared slot, so for arithmetic ops only the forward variant is
         // tried and the reflected method never runs; comparisons keep both
         // directions.
         var allowReflected = !eq.Value.BoolValue || IsComparisonOp(op);
-        return EvalLeftFirstReflectiveOperator(context, op, left, right, modulo, allowReflected);
+        return EvalLeftFirstReflectiveOperator(context, op, left, right, modulo, allowReflected, inPlace);
     }
 
     public static PyResult Add(PyCallContext context, PyObject left, PyObject right)

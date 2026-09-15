@@ -207,9 +207,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
 
     protected override PyResult Add(PyCallContext context, PyListObject self, PyObject other)
     {
-        if (other is not PyListObject)
-            return PyNotImplementedObject.NotImplemented;
-        return self.PyAdd(other);
+        return self.PyAdd(context, other);
     }
 
     protected override PyResult IAdd(PyCallContext context, PyListObject self, PyObject other)
