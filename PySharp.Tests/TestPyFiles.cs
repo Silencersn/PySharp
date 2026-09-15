@@ -3079,4 +3079,16 @@ public sealed class TestPyFiles
         var module = RunModule("test_percent_empty_precision_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestFormatReplacementIndexRegression()
+    {
+        // Regression: str.format's out-of-range positional field raises
+        // CPython's "Replacement index N out of range for positional
+        // args tuple" (carrying the field index) for both automatic and
+        // manual numbering, instead of the generic "tuple index out of
+        // range" .NET leak.
+        var module = RunModule("test_format_replacement_index_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

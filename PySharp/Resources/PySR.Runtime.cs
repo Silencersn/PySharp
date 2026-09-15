@@ -138,6 +138,7 @@ partial class PySR
     public const string Runtime_Complex_ZeroToNegativeOrComplexPower = "zero to a negative or complex power";
     public const string Runtime_Str_Format_ManualToAutoFieldNumber = "cannot switch from manual field specification to automatic field numbering";
     public const string Runtime_Str_Format_AutoToManualFieldSpecification = "cannot switch from automatic field numbering to manual field specification";
+    public const string Runtime_Str_Format_ReplacementIndexOutOfRange = "Replacement index {0} out of range for positional args tuple";
 
     public const string Runtime_Sequence_NegativeLen = "__len__() should return >= 0";
     public const string Runtime_Sequence_NoLen = "object of type '{0}' has no len()";

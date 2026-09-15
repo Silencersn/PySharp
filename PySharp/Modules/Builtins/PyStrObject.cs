@@ -1122,7 +1122,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
             var args = arguments.ExtraArgs;
             if (autoNumber >= args.Count)
-                return PyResult.IndexError("tuple index out of range");
+                return PyResult.IndexError(PySR.Format(PySR.Runtime_Str_Format_ReplacementIndexOutOfRange, autoNumber));
             value = args[autoNumber++];
         }
         else if (IsAllAsciiDigits(first))
@@ -1138,7 +1138,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
             var args = arguments.ExtraArgs;
             if (index >= args.Count)
-                return PyResult.IndexError("tuple index out of range");
+                return PyResult.IndexError(PySR.Format(PySR.Runtime_Str_Format_ReplacementIndexOutOfRange, index));
             value = args[index];
         }
         else if (!arguments.TryGetExtraKwarg(first.ToString(), out value))
