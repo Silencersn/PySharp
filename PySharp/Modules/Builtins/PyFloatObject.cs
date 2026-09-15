@@ -751,6 +751,22 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
         while (i < end && IsPySpace(text[i]))
             i++;
 
+        // CPython _Py_parse_inf_or_nan: an optionally signed inf/infinity
+        // or nan token (ASCII case-insensitive) parses directly, before
+        // the sign and coefficient grammar; trailing content still fails
+        // the end-of-string check
+        int tokenEnd = ParseInfOrNan(text, i, out var tokenValue);
+        if (tokenEnd != i)
+        {
+            i = tokenEnd;
+            while (i < end && IsPySpace(text[i]))
+                i++;
+            if (i != end)
+                return false;
+            result = tokenValue;
+            return true;
+        }
+
         bool negate = false;
         if (i < end && text[i] is '-')
         {
@@ -919,6 +935,59 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
 
     // Py_ISSPACE: the six ASCII whitespace bytes
     private static bool IsPySpace(char c) => c is ' ' or '\t' or '\n' or '\r' or '\v' or '\f';
+
+    // CPython _Py_parse_inf_or_nan (pystrtod.c): an optional sign, then
+    // "inf" optionally extended to "infinity", or "nan" — ASCII
+    // case-insensitive. Returns the position after the token, or start
+    // when nothing matched.
+    private static int ParseInfOrNan(string text, int start, out double value)
+    {
+        int i = start;
+        bool negate = false;
+        if (i < text.Length && text[i] is '-')
+        {
+            negate = true;
+            i++;
+        }
+        else if (i < text.Length && text[i] is '+')
+        {
+            i++;
+        }
+        if (CaseInsensitiveMatch(text, i, "inf"))
+        {
+            i += 3;
+            if (CaseInsensitiveMatch(text, i, "inity"))
+                i += 5;
+            value = negate ? double.NegativeInfinity : double.PositiveInfinity;
+        }
+        else if (CaseInsensitiveMatch(text, i, "nan"))
+        {
+            i += 3;
+            // the sign bit of a NaN is unobservable from Python
+            value = double.NaN;
+        }
+        else
+        {
+            i = start;
+            value = 0;
+        }
+        return i;
+    }
+
+    private static bool CaseInsensitiveMatch(string text, int pos, string pattern)
+    {
+        if (pos + pattern.Length > text.Length)
+            return false;
+        for (int k = 0; k < pattern.Length; k++)
+        {
+            var c = text[pos + k];
+            if (c is >= 'A' and <= 'Z')
+                c = (char)(c + 32);
+            if (c != pattern[k])
+                return false;
+        }
+        return true;
+    }
 
     private static int HexDigitValue(char c) => c switch
     {

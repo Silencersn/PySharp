@@ -3195,4 +3195,16 @@ public sealed class TestPyFiles
         var module = RunModule("test_float_fromhex_optional_exponent_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestFloatFromhexNonfiniteRegression()
+    {
+        // Regression: float.fromhex parses non-finite literals like
+        // CPython's _Py_parse_inf_or_nan — an optionally signed
+        // inf/infinity/nan token, ASCII case-insensitive, checked before
+        // the hex grammar; partial tokens still fail the literal check,
+        // keeping the hex() round trip intact for inf and NaN.
+        var module = RunModule("test_float_fromhex_nonfinite_regression.py");
+        Assert.IsNotNull(module);
+    }
 }
