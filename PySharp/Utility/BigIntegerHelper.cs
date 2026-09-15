@@ -41,16 +41,29 @@ internal static class BigIntegerHelper
         if (!TryConvertCharToInt(s[0], out _))
             return IntParseStatus.Invalid;
 
+        bool errorIfNonzero = false;
         if (numBase is 0)
         {
             if (s.StartsWith("0x") || s.StartsWith("0X"))
+            {
                 numBase = 16;
+            }
             else if (s.StartsWith("0b") || s.StartsWith("0B"))
+            {
                 numBase = 2;
+            }
             else if (s.StartsWith("0o") || s.StartsWith("0O"))
+            {
                 numBase = 8;
+            }
             else
+            {
                 numBase = 10;
+                // CPython long_from_string: a base-0 decimal literal
+                // starting with '0' is an invalid old-style octal
+                // unless the parsed value is zero
+                errorIfNonzero = s[0] is '0';
+            }
 
             if (numBase is not 10)
             {
@@ -135,6 +148,8 @@ internal static class BigIntegerHelper
         }
 
         result = negative ? -result : result;
+        if (errorIfNonzero && !result.IsZero)
+            return IntParseStatus.Invalid;
         return IntParseStatus.Success;
 
         static bool ValidateAfterRemovingPrefix(ReadOnlySpan<char> s)

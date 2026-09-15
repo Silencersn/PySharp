@@ -3104,4 +3104,17 @@ public sealed class TestPyFiles
         var module = RunModule("test_dataclass_mutable_default_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestIntBase0LeadingZeroRegression()
+    {
+        // Regression: int(s, 0) follows the base-0 literal rules — a
+        // prefix-less literal starting with '0' is invalid unless its
+        // parsed value is zero (CPython long_from_string's
+        // error_if_nonzero), so '08'/'0_8' raise ValueError while
+        // '00'/'0_0' stay valid; explicit base 10 keeps accepting
+        // leading zeros.
+        var module = RunModule("test_int_base0_leading_zero_regression.py");
+        Assert.IsNotNull(module);
+    }
 }
