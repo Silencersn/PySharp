@@ -3144,4 +3144,15 @@ public sealed class TestPyFiles
         var module = RunModule("test_binop_error_messages_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestGeneratorThrowUnstartedRegression()
+    {
+        // Regression: gen_throw on a never-started generator propagates
+        // the exception straight to the caller and closes the generator
+        // instead of resuming the VM (which popped an empty operand stack
+        // and crashed the process with IndexOutOfRangeException).
+        var module = RunModule("test_generator_throw_unstarted_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

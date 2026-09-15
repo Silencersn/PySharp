@@ -258,6 +258,15 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
         if (_vmStates.RunToEnd)
             return PyResult.FromException(exc);
 
+        // CPython gen_throw: an exception thrown into a never-started
+        // generator propagates straight to the caller (no frame is
+        // running that could catch it) and the generator is closed.
+        if (!IsGeneratorRunning)
+        {
+            _vmStates.RunToEnd = true;
+            return PyResult.FromException(exc);
+        }
+
         if (IsExecuting)
             return AlreadyExecutingError();
 
