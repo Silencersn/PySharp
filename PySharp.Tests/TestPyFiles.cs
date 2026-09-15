@@ -3117,4 +3117,18 @@ public sealed class TestPyFiles
         var module = RunModule("test_int_base0_leading_zero_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestDictViewLenContainsEqRegression()
+    {
+        // Regression: dict views implement the CPython view protocol —
+        // sq_length reads the live source size, keys/items membership
+        // looks up the source dict (dictkeys_contains/dictitems_contains),
+        // and the set-like richcompare (dictview_richcompare) compares
+        // contents against sets and other set-like views, gated on the
+        // length check; dict_values keeps iteration-only membership and
+        // identity-only equality.
+        var module = RunModule("test_dict_view_len_contains_eq_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

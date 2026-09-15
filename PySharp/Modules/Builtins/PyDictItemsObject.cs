@@ -60,6 +60,173 @@ public sealed partial class PyDictItemsObjectType : PyTypeObject<PyDictItemsObje
     {
         return PyDictItemIteratorObject.ReversedItems(self);
     }
+
+    protected override PyResult Len(PyCallContext context, PyDictItemsObject self)
+    {
+        return PyIntObject.FromInteger(self._dict.Count);
+    }
+
+    protected override PyResult Contains(PyCallContext context, PyDictItemsObject self, PyObject item)
+    {
+        return ContainsItem(context, self, item);
+    }
+
+    protected override PyResult Eq(PyCallContext context, PyDictItemsObject self, PyObject other)
+    {
+        return CompareView(context, self, other, PyOperatorTypes.Eq);
+    }
+
+    protected override PyResult Lt(PyCallContext context, PyDictItemsObject self, PyObject other)
+    {
+        return CompareView(context, self, other, PyOperatorTypes.Lt);
+    }
+
+    protected override PyResult Le(PyCallContext context, PyDictItemsObject self, PyObject other)
+    {
+        return CompareView(context, self, other, PyOperatorTypes.LtE);
+    }
+
+    protected override PyResult Gt(PyCallContext context, PyDictItemsObject self, PyObject other)
+    {
+        return CompareView(context, self, other, PyOperatorTypes.Gt);
+    }
+
+    protected override PyResult Ge(PyCallContext context, PyDictItemsObject self, PyObject other)
+    {
+        return CompareView(context, self, other, PyOperatorTypes.GtE);
+    }
+
+    // CPython dictitems_contains: only a 2-tuple can match; the pair key
+    // is looked up in the source dict (unhashable keys raise) and the
+    // stored value is compared with ==.
+    internal static PyResult ContainsItem(PyCallContext context, PyDictItemsObject self, PyObject item)
+    {
+        if (item is not PyTupleObject pair || pair.Count is not 2)
+            return PyBoolObject.False;
+
+        var found = self._dict.GetItem(context, pair[0]);
+        if (found.IsKeyError)
+            return PyBoolObject.False;
+        if (found.IsError)
+            return found;
+
+        var equal = PyOperators.Eq(context, found.Value, pair[1]);
+        if (equal.IsError)
+            return equal;
+
+        var isTrue = PySpecialMethods.Bool(context, equal.Value);
+        if (isTrue.IsError)
+            return isTrue;
+
+        return PyBoolObject.FromBoolean(isTrue.Value.BoolValue);
+    }
+
+    // CPython dictview_richcompare: keys/items views compare as sets
+    // against sets and other set-like views; the length gate runs before
+    // the containment scan, and NE is the negated EQ result.
+    internal static PyResult CompareView(PyCallContext context, PyDictItemsObject self, PyObject other, PyOperatorTypes op)
+    {
+        if (!IsSetLike(other))
+            return PyNotImplementedObject.NotImplemented;
+
+        int selfSize = self._dict.Count;
+        int otherSize = SetLikeSize(other);
+
+        var gate = op switch
+        {
+            PyOperatorTypes.Eq or PyOperatorTypes.NotEq => selfSize == otherSize,
+            PyOperatorTypes.Lt => selfSize < otherSize,
+            PyOperatorTypes.LtE => selfSize <= otherSize,
+            PyOperatorTypes.Gt => selfSize > otherSize,
+            _ => selfSize >= otherSize,
+        };
+
+        if (gate)
+        {
+            var scan = op is PyOperatorTypes.Gt or PyOperatorTypes.GtE
+                ? AllContainedIn(context, other, self)
+                : AllContainedIn(context, self, other);
+            if (scan.IsError)
+                return scan;
+
+            gate = ((PyBoolObject)scan.Value).BoolValue;
+        }
+
+        return PyBoolObject.FromBoolean(op is PyOperatorTypes.NotEq ? !gate : gate);
+    }
+
+    private static bool IsSetLike(PyObject obj)
+    {
+        return obj is PySetObject or PyFrozenSetObject
+            || (obj is PyDictItemsObject view && view.DefaultPyType is PyDictKeysObjectType or PyDictItemsObjectType);
+    }
+
+    private static int SetLikeSize(PyObject obj) => obj switch
+    {
+        PySetObject set => set.Count,
+        PyFrozenSetObject frozenSet => frozenSet.Count,
+        PyDictItemsObject view => view._dict.Count,
+        _ => 0,
+    };
+
+    // CPython all_contained_in: every element of `source` must be
+    // contained in `target`; containment errors propagate.
+    private static PyResult AllContainedIn(PyCallContext context, PyObject source, PyObject target)
+    {
+        foreach (var element in EnumerateElements(source))
+        {
+            var contained = ContainsIn(context, target, element);
+            if (contained.IsError)
+                return contained;
+
+            if (!((PyBoolObject)contained.Value).BoolValue)
+                return PyBoolObject.False;
+        }
+
+        return PyBoolObject.True;
+    }
+
+    private static IEnumerable<PyObject> EnumerateElements(PyObject source)
+    {
+        if (source is PyDictItemsObject view)
+        {
+            var entries = view._dict.Entries.ToArray();
+            foreach (var entry in entries)
+            {
+                if (view.DefaultPyType is PyDictItemsObjectType)
+                    yield return PyTupleObject.CreateTuple(entry.Key, entry.Value);
+                else
+                    yield return entry.Key;
+            }
+
+            yield break;
+        }
+
+        foreach (var element in (IEnumerable<PyObject>)source)
+            yield return element;
+    }
+
+    private static PyResult ContainsIn(PyCallContext context, PyObject target, PyObject element)
+    {
+        if (target is PySetObject set)
+            return PyBoolObject.FromBoolean(set.Contains(element));
+        if (target is PyFrozenSetObject frozenSet)
+            return PyBoolObject.FromBoolean(frozenSet.Contains(element));
+
+        var view = (PyDictItemsObject)target;
+        if (view.DefaultPyType is PyDictKeysObjectType)
+        {
+            var found = view._dict.GetItem(context, element);
+            if (found.IsKeyError)
+                return PyBoolObject.False;
+            if (found.IsError)
+                return found;
+
+            return PyBoolObject.True;
+        }
+
+        return ContainsItem(context, view, element);
+    }
 }
 
 public sealed class PyDictItemIteratorObject : PyObject
@@ -176,6 +343,50 @@ public sealed partial class PyDictKeysObjectType : PyTypeObject<PyDictItemsObjec
     {
         return PyDictItemIteratorObject.ReversedKeys(self);
     }
+
+    protected override PyResult Len(PyCallContext context, PyDictItemsObject self)
+    {
+        return PyIntObject.FromInteger(self._dict.Count);
+    }
+
+    protected override PyResult Contains(PyCallContext context, PyDictItemsObject self, PyObject item)
+    {
+        // CPython dictkeys_contains: a direct lookup in the source dict,
+        // so unhashable keys report the lookup error instead of a scan.
+        var result = self._dict.GetItem(context, item);
+        if (result.IsSuccessful)
+            return PyBoolObject.True;
+
+        if (result.IsKeyError)
+            return PyBoolObject.False;
+
+        return result;
+    }
+
+    protected override PyResult Eq(PyCallContext context, PyDictItemsObject self, PyObject other)
+    {
+        return PyDictItemsObjectType.CompareView(context, self, other, PyOperatorTypes.Eq);
+    }
+
+    protected override PyResult Lt(PyCallContext context, PyDictItemsObject self, PyObject other)
+    {
+        return PyDictItemsObjectType.CompareView(context, self, other, PyOperatorTypes.Lt);
+    }
+
+    protected override PyResult Le(PyCallContext context, PyDictItemsObject self, PyObject other)
+    {
+        return PyDictItemsObjectType.CompareView(context, self, other, PyOperatorTypes.LtE);
+    }
+
+    protected override PyResult Gt(PyCallContext context, PyDictItemsObject self, PyObject other)
+    {
+        return PyDictItemsObjectType.CompareView(context, self, other, PyOperatorTypes.Gt);
+    }
+
+    protected override PyResult Ge(PyCallContext context, PyDictItemsObject self, PyObject other)
+    {
+        return PyDictItemsObjectType.CompareView(context, self, other, PyOperatorTypes.GtE);
+    }
 }
 
 [PyType("dict_keyiterator")]
@@ -207,6 +418,11 @@ public sealed partial class PyDictValuesObjectType : PyTypeObject<PyDictItemsObj
     protected override PyResult Reversed(PyCallContext context, PyDictItemsObject self)
     {
         return PyDictItemIteratorObject.ReversedValues(self);
+    }
+
+    protected override PyResult Len(PyCallContext context, PyDictItemsObject self)
+    {
+        return PyIntObject.FromInteger(self._dict.Count);
     }
 }
 
