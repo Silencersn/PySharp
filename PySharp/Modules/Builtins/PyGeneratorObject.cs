@@ -10,6 +10,8 @@ public abstract class PyGeneratorObject : PyObject, IPyObjectName
 {
     public string Name { get; }
     public override PyTypeObject DefaultPyType { get; }
+    internal PyStrObject? _pyNameOverride;
+    internal PyStrObject? _pyQualNameOverride;
 
     public PyGeneratorObject(PyTypeObject type, string name)
     {
@@ -17,6 +19,9 @@ public abstract class PyGeneratorObject : PyObject, IPyObjectName
         DefaultPyType = type;
         Name = name;
     }
+
+    // CPython gi_qualname: the creating code object's co_qualname
+    internal virtual string QualName => Name;
 
     internal abstract PyResult PyNext(PyCallContext context);
     internal abstract PyResult PySend(PyCallContext context, PyObject pyObject);
@@ -120,6 +125,8 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
         _frame = frame;
         _vmStates = states;
     }
+
+    internal override string QualName => _frame.CodeObject?.QualName ?? Name;
 
     /// <summary>
     /// PEP 479: a StopIteration escaping the generator frame (raised by the
@@ -317,6 +324,52 @@ public sealed partial class PyGeneratorObjectType : PyTypeObject<PyGeneratorObje
     protected override PyResult Repr(PyCallContext context, PyGeneratorObject self)
     {
         return PyStrObject.FromString($"<generator object {self.Name} at 0x{self.PyId:X16}>");
+    }
+
+    // CPython gen_get_name/gen_set_name: created from the code object,
+    // writable to str only, deletion rejected
+    [PyProperty(PySpecialNames.Name)]
+    private static PyResult Get_Name(PyCallContext context, PyGeneratorObject self)
+    {
+        return self._pyNameOverride ?? PyStrObject.FromString(self.Name);
+    }
+
+    [PyProperty(PySpecialNames.Name, Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_Name(PyCallContext context, PyGeneratorObject self, PyObject value)
+    {
+        if (value is not PyStrObject str)
+            return PyResult.TypeError("__name__ must be set to a string object");
+
+        self._pyNameOverride = str;
+        return PyNoneObject.None;
+    }
+
+    [PyProperty(PySpecialNames.Name, Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Name(PyCallContext context, PyGeneratorObject self)
+    {
+        return PyResult.TypeError("__name__ must be set to a string object");
+    }
+
+    [PyProperty(PySpecialNames.QualName)]
+    private static PyResult Get_QualName(PyCallContext context, PyGeneratorObject self)
+    {
+        return self._pyQualNameOverride ?? PyStrObject.FromString(self.QualName);
+    }
+
+    [PyProperty(PySpecialNames.QualName, Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_QualName(PyCallContext context, PyGeneratorObject self, PyObject value)
+    {
+        if (value is not PyStrObject str)
+            return PyResult.TypeError("__qualname__ must be set to a string object");
+
+        self._pyQualNameOverride = str;
+        return PyNoneObject.None;
+    }
+
+    [PyProperty(PySpecialNames.QualName, Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_QualName(PyCallContext context, PyGeneratorObject self)
+    {
+        return PyResult.TypeError("__qualname__ must be set to a string object");
     }
 
     protected override PyResult Iter(PyCallContext context, PyGeneratorObject self)

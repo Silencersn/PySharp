@@ -809,6 +809,22 @@ partial class Emitter
         if (classScope.ClassCaptured)
             Builder.Emit(OpCode.MakeCell, PySpecialNames.Class);
 
+        // CPython class-body prologue (codegen.c codegen_class_body): the
+        // global __name__ stored as __module__, the symtable qualname, and
+        // the class statement's first line (the first decorator line for
+        // decorated classes); the class-body locals() exposes all three
+        // while the body runs
+        Debug.Assert(classScope.QualName is not null);
+        LoadName(PySpecialNames.Name);
+        StoreName(PySpecialNames.Module);
+        Builder.Emit(OpCode.LoadConst, PyStrObject.FromString(classScope.QualName));
+        StoreName(PySpecialNames.QualName);
+        var firstLinePos = node.DecoratorList.Length > 0
+            ? node.DecoratorList[0].MetaInfo.Range.Start
+            : node.MetaInfo.Range.Start;
+        Builder.Emit(OpCode.LoadConst, PyIntObject.FromInteger(_source.Code.OffsetToPosition(firstLinePos).Line));
+        StoreName(PySpecialNames.FirstLineNo);
+
         if (OptimizationLevel < 2 && TryGetDoc(node.Body, out var doc))
         {
             Builder.Emit(OpCode.LoadConst, doc);

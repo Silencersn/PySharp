@@ -3427,4 +3427,17 @@ public sealed class TestPyFiles
         var module = RunModule("test_module_lazy_attrs_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestQualnameMetadataRegression()
+    {
+        // Regression: qualified names and creation metadata — class
+        // __qualname__ carries the lexical scope path, the class-body
+        // preamble seeds __module__/__qualname__/__firstlineno__ (with
+        // __qualname__ moving to the type accessor), and functions,
+        // lambdas, generators, and coroutines expose
+        // __qualname__/__module__ with CPython's read/write behavior.
+        var module = RunModule("test_qualname_metadata_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

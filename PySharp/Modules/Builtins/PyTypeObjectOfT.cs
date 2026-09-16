@@ -138,18 +138,31 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
         if (layoutTypeOwnerResult.IsError)
             return layoutTypeOwnerResult;
 
+        // CPython type_new_set_ht_name: __qualname__ moves to ht_qualname
+        // (read by the accessor), is not kept as a dict entry, and must be
+        // a str when present
         var typeQualName = typeName;
-        if (dict.TryGetValue(PySpecialNames.QualName, out var qualNameObj) &&
-            qualNameObj is PyStrObject { Value: var qualNameStr })
+        if (dict.TryGetValue(PySpecialNames.QualName, out var qualNameObj))
+        {
+            if (qualNameObj is not PyStrObject { Value: var qualNameStr })
+                return PyResult.TypeError($"type __qualname__ must be a str, not {qualNameObj.PyType.Name}");
             typeQualName = qualNameStr;
-        else if (kwargs.TryGetValue(PySpecialNames.QualName, out qualNameObj) &&
-            qualNameObj is PyStrObject { Value: var qualNameStrFromKwargs })
+        }
+        else if (kwargs.TryGetValue(PySpecialNames.QualName, out qualNameObj))
+        {
+            if (qualNameObj is not PyStrObject { Value: var qualNameStrFromKwargs })
+                return PyResult.TypeError($"type __qualname__ must be a str, not {qualNameObj.PyType.Name}");
             typeQualName = qualNameStrFromKwargs;
+        }
 
         var type = layoutTypeOwnerResult.Value.CreateUserDefinedTypeWithSameLayout(typeName, typeQualName, bases);
         type._pyType = cls;
 
-        if (context.CurrentInternalFrame.Variables.Globals.TryGetValue(PySpecialNames.Name, out var module))
+        // the class namespace's __module__ wins; compiled class bodies store
+        // the global __name__ there (codegen.c codegen_class_body)
+        if (dict.TryGetValue(PySpecialNames.Module, out var moduleFromDict))
+            type.ModuleAsObject = moduleFromDict;
+        else if (context.CurrentInternalFrame.Variables.Globals.TryGetValue(PySpecialNames.Name, out var module))
             type.ModuleAsObject = module;
         else
             type.ModuleAsObject = PyStrObject.FromString("builtins");
@@ -158,6 +171,9 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
         {
             if (entry.Key is not PyStrObject { Value: var attr })
                 // TODO: RuntimeWarning: non-string key in the __dict__ of class xxx
+                continue;
+
+            if (attr is PySpecialNames.QualName)
                 continue;
 
             var value = entry.Value;
@@ -299,10 +315,21 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
             return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.QualName, self.FullName);
 
         if (value is not PyStrObject str)
-            return PyResult.TypeError(null);
+            return PyResult.TypeError($"can only assign string to {self.Module}.{self.QualName}.__qualname__, not '{value.PyType.Name}'");
 
         self.QualName = str.Value;
         return PyNoneObject.None;
+    }
+
+    [PyProperty(PySpecialNames.QualName, Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_QualName(PyCallContext context, PyTypeObject self)
+    {
+        if (self.IsTypeImmutable)
+            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.QualName, self.FullName);
+
+        // CPython check_set_special_type_attr: the delete path reports the
+        // attribute as belonging to an "immutable type" even on heap types
+        return PyResult.TypeError($"cannot delete '{PySpecialNames.QualName}' attribute of immutable type '{self.Module}.{self.QualName}'");
     }
 
     [PyProperty(PySpecialNames.MRO)]

@@ -12,6 +12,11 @@ internal sealed partial class UserDefinedType<TObject> : PyTypeObject<TObject> w
 
     internal UserDefinedType(string name, string qualName, IReadOnlyList<PyTypeObject> bases) : base(qualName, bases, false)
     {
+        // the base ctor derives Name from the qualname's last segment;
+        // an explicit __qualname__ whose tail differs from the name
+        // (class-body override, type(..., {'__qualname__': ...})) would
+        // otherwise clobber the real name
+        Name = name;
         DefaultName = name;
         Bases = bases;
     }

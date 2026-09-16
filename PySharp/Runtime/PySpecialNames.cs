@@ -30,6 +30,7 @@ public static partial class PySpecialNames
     public const string Package = "__package__";
 
     public const string Dir = "__dir__";
+    public const string FirstLineNo = "__firstlineno__";
 
     public const string MatchArgs = "__match_args__";
 

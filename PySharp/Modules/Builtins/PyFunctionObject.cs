@@ -12,6 +12,8 @@ public sealed class PyFunctionObject : PyObjectManagedDict, IPyObjectName
     internal PyDictObject _globals;
     private readonly PyCodeObject _code;
     internal PyStrObject? _pyName;
+    internal PyStrObject? _pyQualName;
+    internal PyObject? _pyModule;
 
 
     public string Name { get; internal set; }
@@ -28,6 +30,10 @@ public sealed class PyFunctionObject : PyObjectManagedDict, IPyObjectName
         _globals = globals;
         _code = code;
         _def = def;
+        // CPython func_new: __module__ snapshots globals['__name__'] at
+        // creation, or stays unset
+        if (globals.TryGetValue(PySpecialNames.Name, out var moduleName))
+            _pyModule = moduleName;
     }
 
     internal PyResult InternalCall(PyCallContext context, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
@@ -105,6 +111,53 @@ public sealed partial class PyFunctionObjectType : PyTypeObject<PyFunctionObject
     private static PyResult Get_Code(PyCallContext context, PyFunctionObject self)
     {
         return self.Code;
+    }
+
+    // CPython func_get_qualname/func_set_qualname: created from the code
+    // object's co_qualname, writable to str only, deletion rejected
+    [PyProperty(PySpecialNames.QualName)]
+    private static PyResult Get_QualName(PyCallContext context, PyFunctionObject self)
+    {
+        return self._pyQualName ??= PyStrObject.FromString(self.Code.QualName);
+    }
+
+    [PyProperty(PySpecialNames.QualName, Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_QualName(PyCallContext context, PyFunctionObject self, PyObject value)
+    {
+        if (value is not PyStrObject str)
+            return PyResult.TypeError("__qualname__ must be set to a string object");
+
+        self._pyQualName = str;
+        return PyNoneObject.None;
+    }
+
+    [PyProperty(PySpecialNames.QualName, Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_QualName(PyCallContext context, PyFunctionObject self)
+    {
+        return PyResult.TypeError("__qualname__ must be set to a string object");
+    }
+
+    // CPython __module__ is a plain T_OBJECT member: snapshotted from
+    // globals at creation, writable to any value; a deleted member reads
+    // back as None
+    [PyProperty(PySpecialNames.Module)]
+    private static PyResult Get_Module(PyCallContext context, PyFunctionObject self)
+    {
+        return self._pyModule ?? PyNoneObject.None;
+    }
+
+    [PyProperty(PySpecialNames.Module, Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_Module(PyCallContext context, PyFunctionObject self, PyObject value)
+    {
+        self._pyModule = value;
+        return PyNoneObject.None;
+    }
+
+    [PyProperty(PySpecialNames.Module, Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Module(PyCallContext context, PyFunctionObject self)
+    {
+        self._pyModule = null;
+        return PyNoneObject.None;
     }
 
     [PyProperty(PySpecialNames.Defaults)]
