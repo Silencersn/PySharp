@@ -29,6 +29,8 @@ public static partial class PySpecialNames
     public const string Path = "__path__";
     public const string Package = "__package__";
 
+    public const string Dir = "__dir__";
+
     public const string MatchArgs = "__match_args__";
 
     public const string Dict = "__dict__";

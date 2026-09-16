@@ -114,7 +114,30 @@ public sealed partial class PyModuleObjectType : PyTypeObject<PyModuleObject>
         if (item is not PyStrObject str)
             return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, item.PyType.FullName);
 
+        // PEP 562: on a namespace miss, a module-level __getattr__ resolves
+        // the attribute; its exceptions (AttributeError included) propagate
+        // unchanged, exactly as CPython's module_getattro passes the hook
+        // result through unchecked
+        if (self.PyAttributes.TryGetValue(PySpecialNames.GetAttr, out var hook))
+            return hook.Call(context, [str]);
+
         return PyResult.AttributeError(PySR.Runtime_Module_AttributeNotFound, self.Name, str.Value);
+    }
+
+    // CPython module.__dir__ (PEP 562): the module dict's __dir__ hook
+    // produces the name list, otherwise the plain dict keys are listed;
+    // dir() itself sorts the result
+    [PyMethod(PySpecialNames.Dir)]
+    [PyFunctionParameters()]
+    private static PyResult Dir(PyCallContext context, PyModuleObject self, PyArguments arguments)
+    {
+        if (self.PyAttributes.TryGetValue(PySpecialNames.Dir, out var hook))
+            return hook.Call(context);
+
+        List<PyObject> keys = [];
+        foreach (var pair in self.PyAttributes)
+            keys.Add(PyStrObject.FromString(pair.Key));
+        return PyListObject.CreateList(keys);
     }
 }
 

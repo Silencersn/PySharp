@@ -3415,4 +3415,16 @@ public sealed class TestPyFiles
         var module = RunModule("test_tuple_str_noarg_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestModuleLazyAttrsRegression()
+    {
+        // Regression: PEP 562 module-level __getattr__/__dir__ hooks — a
+        // namespace miss calls the module's __getattr__ (exceptions
+        // propagate unchanged, an AttributeError counting as missing), and
+        // the module's __dir__ honors a module-dict __dir__ hook with
+        // dir() sorting the result.
+        var module = RunModule("test_module_lazy_attrs_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

@@ -770,8 +770,35 @@ public static partial class PyBuiltinFunctions
     [PyFunctionParameters("object", "/")]
     private static PyResult DirImpl_2(PyCallContext context, PyArguments arguments)
     {
-        List<string> attrs = [];
         var obj = arguments[0];
+
+        // CPython dir(): the type's __dir__ (modules wire PEP 562 through
+        // it) produces the name list and dir() sorts it; types without
+        // __dir__ take the generic dict merge below (object.__dir__
+        // equivalent)
+        if (PyObject.TryLookupAttrInMro(obj.PyType, PySpecialNames.Dir, out var dirFunc))
+        {
+            var getFunc = dirFunc.PyType.Slots.Get;
+            if (getFunc is not null)
+            {
+                var bound = getFunc(context, dirFunc, obj, obj.PyType);
+                if (bound.IsError)
+                    return bound;
+
+                var names = bound.Value.Call(context);
+                if (names.IsError)
+                    return names;
+
+                var listed = PyUtils.IterableToList(context, names.Value);
+                if (listed.IsError)
+                    return listed.ExceptionResult;
+
+                listed.Value.PySort(context);
+                return listed.Value;
+            }
+        }
+
+        List<string> attrs = [];
         foreach (var pair in obj.PyAttributes)
             attrs.Add(pair.Key);
         foreach (var type in obj.PyType.MRO)
@@ -779,7 +806,10 @@ public static partial class PyBuiltinFunctions
             foreach (var pair in type.PyAttributes)
                 attrs.Add(pair.Key);
         }
-        var result = PyListObject.CreateList(attrs.Distinct().Order().Select(PyStrObject.FromString));
+        var result = PyListObject.CreateList(attrs.Distinct().Select(PyStrObject.FromString));
+        // sorted by the same ordinal comparison sorted() uses, not the
+        // culture-sensitive Enumerable.Order()
+        result.PySort(context);
         return result;
     }
 
