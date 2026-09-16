@@ -180,7 +180,7 @@ public class PySliceObject : PyObject
     }
 }
 
-[PyType("slice")]
+[PyType("slice", IsSealed = true)]
 public sealed partial class PySliceObjectType : PyTypeObject<PySliceObject>
 {
     [PyExport(PySpecialNames.New, nameof(NewImpl_1), nameof(NewImpl_2))]

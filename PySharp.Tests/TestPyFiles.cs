@@ -3525,4 +3525,15 @@ public sealed class TestPyFiles
         var module = RunModule("test_dataclass_generator_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestAcceptableBaseRegression()
+    {
+        // Regression: range/slice are sealed static types, so subclass
+        // creation raises "type 'X' is not an acceptable base type" via
+        // type() and metaclass paths alike, with per-base sealed/layout
+        // checks winning over the later duplicate-base scan.
+        var module = RunModule("test_acceptable_base_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

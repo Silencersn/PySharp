@@ -62,7 +62,7 @@ public class PyRangeObject : PyObject
     }
 }
 
-[PyType("range")]
+[PyType("range", IsSealed = true)]
 public sealed partial class PyRangeObjectType : PyTypeObject<PyRangeObject>
 {
 

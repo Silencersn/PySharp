@@ -81,13 +81,12 @@ public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
 
     internal static PyResult<PyTypeObject> ValidateBasesAndResolveLayoutTypeOwner(IEnumerable<PyTypeObject> bases)
     {
+        // CPython best_base vets each base (BASETYPE flag, then layout)
+        // before the MRO step's duplicate scan, so a sealed base must win
+        // over "duplicate base class" in combined-error cases
         var layoutTypeOwner = PyObjectType.Shared;
-        var seenBases = new HashSet<PyTypeObject>();
         foreach (var baseType in bases)
         {
-            if (!seenBases.Add(baseType))
-                return PyResult.TypeError(PySR.Runtime_Inheritance_DuplicateBase, baseType.Name);
-
             if (baseType.IsSealed)
                 return PyResult.TypeError(PySR.Runtime_Inheritance_UnacceptableBaseType, baseType.Name);
 
@@ -98,6 +97,13 @@ public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
                 layoutTypeOwner = baseType;
             else if (!layoutTypeOwner.LayoutType.IsAssignableFrom(baseType.LayoutType))
                 return PyResult.TypeError(PySR.Runtime_Inheritance_LayoutConflict);
+        }
+
+        var seenBases = new HashSet<PyTypeObject>();
+        foreach (var baseType in bases)
+        {
+            if (!seenBases.Add(baseType))
+                return PyResult.TypeError(PySR.Runtime_Inheritance_DuplicateBase, baseType.Name);
         }
 
         if (!TryCreateMROWithoutSelf(bases, out _))
