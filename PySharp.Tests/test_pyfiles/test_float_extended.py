@@ -31,8 +31,8 @@ assert (-1.5).as_integer_ratio() == (-3, 2)
 
 try:
     float('inf').as_integer_ratio()
-    assert False, 'should raise ValueError'
-except ValueError:
+    assert False, 'should raise OverflowError'
+except OverflowError:
     pass
 
 try:

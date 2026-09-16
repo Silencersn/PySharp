@@ -605,8 +605,12 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
     private static PyResult AsIntegerRatio(PyCallContext context, PyFloatObject self, PyArguments arguments)
     {
         var val = self.Value;
-        if (!double.IsFinite(val))
-            return PyResult.ValueError("cannot convert infinity/NaN to integer ratio");
+        // CPython deliberately distinguishes the two special values:
+        // infinities raise OverflowError, NaN raises ValueError
+        if (double.IsInfinity(val))
+            return PyResult.OverflowError(PySR.Runtime_Float_CannotConvertInfinityToIntegerRatio);
+        if (double.IsNaN(val))
+            return PyResult.ValueError(PySR.Runtime_Float_CannotConvertNaNToIntegerRatio);
 
         long bits = BitConverter.DoubleToInt64Bits(val);
         bool negative = (bits >> 63) is not 0;

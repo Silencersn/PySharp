@@ -3231,4 +3231,14 @@ public sealed class TestPyFiles
         var module = RunModule("test_complex_string_parsing_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestFloatAsIntegerRatioSpecialRegression()
+    {
+        // Regression: float.as_integer_ratio raises OverflowError for
+        // infinities and ValueError for NaN, with CPython's two dedicated
+        // messages; finite values keep the exact reduced pair.
+        var module = RunModule("test_float_as_integer_ratio_special_regression.py");
+        Assert.IsNotNull(module);
+    }
 }
