@@ -3252,4 +3252,16 @@ public sealed class TestPyFiles
         var module = RunModule("test_float_fromhex_subnormal_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestFloatRoundSubnormalRegression()
+    {
+        // Regression: round(x, ndigits) keeps subnormal magnitudes when
+        // ndigits matches the value's decimal order (the 10**nd composition
+        // used to overflow the double range and collapse to -0.0), and a
+        // coarse-place rounding that overflows raises OverflowError with
+        // CPython's double_round message.
+        var module = RunModule("test_float_round_subnormal_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

@@ -1361,6 +1361,10 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
             return PyFloatObject.FromDouble(Math.CopySign(0.0, self.Value));   // -> +-0.0
 
         var value = RoundDecimalExact(self.Value, (int)nd.Value);
+        // CPython double_round: a re-parse that overflows (rounded value
+        // infinite while x was finite) raises OverflowError
+        if (double.IsInfinity(value))
+            return PyResult.OverflowError(PySR.Runtime_Float_RoundedValueTooLarge);
         if (value.Equals(self.Value))
             return self;
         return PyFloatObject.FromDouble(value);
@@ -1399,7 +1403,13 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
             // R = round(mantissa * 10^ndigits * 2^e2)
             var num = mantissa * BigInteger.Pow(10, ndigits);
             r = e2 >= 0 ? num << e2 : DivRoundHalfEven(num, BigInteger.One << (-e2));
-            d = (double)r / Math.Pow(10, ndigits);
+            // compose through the decimal string: r itself can exceed the
+            // double range even when the quotient does not, and Parse is
+            // one correctly-rounded scaling, like CPython's strtod
+            d = double.Parse(
+                r.ToString(System.Globalization.CultureInfo.InvariantCulture) + "e" + (-ndigits).ToString(System.Globalization.CultureInfo.InvariantCulture),
+                System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture);
         }
         else
         {

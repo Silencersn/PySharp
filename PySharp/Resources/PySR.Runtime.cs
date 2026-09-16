@@ -241,6 +241,7 @@ partial class PySR
     public const string Runtime_Float_CannotConvertNaNToInteger = "cannot convert float NaN to integer";
     public const string Runtime_Float_CannotConvertInfinityToIntegerRatio = "cannot convert Infinity to integer ratio";
     public const string Runtime_Float_CannotConvertNaNToIntegerRatio = "cannot convert NaN to integer ratio";
+    public const string Runtime_Float_RoundedValueTooLarge = "rounded value too large to represent";
     public const string Runtime_Float_InvalidHexFloat = "invalid hexadecimal floating-point string";
     public const string Runtime_Float_HexValueTooLarge = "hexadecimal value too large to represent as a float";
     public const string Runtime_Float_FromHexBadArgumentType = "bad argument type for built-in operation";
