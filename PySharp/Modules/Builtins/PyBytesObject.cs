@@ -430,7 +430,7 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
 
     [PyMethod("decode")]
     [AIGenerated]
-    [PyFunctionParameters("encoding='utf-8'", "/")]
+    [PyFunctionParameters("encoding='utf-8'", "errors='strict'")]
     private static PyResult Decode(PyCallContext context, PyBytesObject self, PyArguments arguments)
     {
         string encoding = "utf-8";
@@ -439,50 +439,608 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
         else if (arguments[0] is not PyNoneObject)
             return PyResult.TypeError("decoding must be str");
 
-        return DecodeCore(context, self.AsSpan(), encoding);
+        string errors = "strict";
+        if (arguments[1] is PyStrObject errStr)
+            errors = errStr.Value;
+        else if (arguments[1] is not PyNoneObject)
+            return PyResult.TypeError("errors must be str");
+
+        return DecodeCore(context, self.AsSpan(), encoding, errors, self);
     }
 
-    // The bytes.decode core shared with the str(bytes, encoding)
-    // constructor form: codec resolution and the bare utf-16/32 BOM
-    // handling all match PyUnicode_Decode here
-    internal static PyResult<PyStrObject> DecodeCore(PyCallContext context, ReadOnlySpan<byte> data, string encoding)
+    // The bytes.decode core shared with the str(bytes, encoding) constructor
+    // form: codec resolution and the bare utf-16/32 BOM handling all match
+    // PyUnicode_Decode. The core codecs (utf-8, ascii, latin-1, utf-16,
+    // utf-32) decode bytewise with CPython's exact error reasons and
+    // subparts; errors= is resolved lazily so valid input never rejects an
+    // unknown handler name, and strict raises UnicodeDecodeError carrying
+    // encoding/object/start/end/reason.
+    internal static PyResult DecodeCore(PyCallContext context, ReadOnlySpan<byte> data, string encoding, string errors = "strict", PyObject? source = null)
     {
+        Encoding enc;
         try
         {
-            var enc = PyStrObjectType.GetEncoding(encoding);
-
-            // CPython's bare utf-16/utf-32 codecs treat a leading BOM as the
-            // byte order mark: it selects the decode order and is dropped;
-            // with no BOM the native (little-endian) order applies. The
-            // explicit -le/-be variants leave a BOM in the decoded text.
-            int bomLength = 0;
-            bool bigEndian = false;
-            switch (PyStrObjectType.NormalizeEncodingName(encoding))
-            {
-                case "utf16":
-                    if (data.StartsWith((ReadOnlySpan<byte>)[0xFE, 0xFF]))
-                        (bomLength, bigEndian) = (2, true);
-                    else if (data.StartsWith((ReadOnlySpan<byte>)[0xFF, 0xFE]))
-                        bomLength = 2;
-                    if (bigEndian)
-                        enc = Encoding.BigEndianUnicode;
-                    break;
-                case "utf32":
-                    if (data.StartsWith((ReadOnlySpan<byte>)[0x00, 0x00, 0xFE, 0xFF]))
-                        (bomLength, bigEndian) = (4, true);
-                    else if (data.StartsWith((ReadOnlySpan<byte>)[0xFF, 0xFE, 0x00, 0x00]))
-                        bomLength = 4;
-                    if (bigEndian)
-                        enc = new UTF32Encoding(bigEndian: true, byteOrderMark: false);
-                    break;
-            }
-
-            string result = enc.GetString(bomLength > 0 ? data[bomLength..] : data);
-            return PyStrObject.FromString(result);
+            enc = PyStrObjectType.GetEncoding(encoding);
         }
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException)
         {
             return PyResult.LookupError(PySR.Runtime_Codec_UnknownEncoding, encoding);
+        }
+
+        // CPython's bare utf-16/utf-32 codecs treat a leading BOM as the
+        // byte order mark: it selects the decode order and is dropped;
+        // with no BOM the native (little-endian) order applies. The
+        // explicit -le/-be variants leave a BOM in the decoded text.
+        int bomLength = 0;
+        bool bigEndian = false;
+        switch (PyStrObjectType.NormalizeEncodingName(encoding))
+        {
+            case "utf16":
+                if (data.StartsWith((ReadOnlySpan<byte>)[0xFE, 0xFF]))
+                    (bomLength, bigEndian) = (2, true);
+                else if (data.StartsWith((ReadOnlySpan<byte>)[0xFF, 0xFE]))
+                    bomLength = 2;
+                break;
+            case "utf32":
+                if (data.StartsWith((ReadOnlySpan<byte>)[0x00, 0x00, 0xFE, 0xFF]))
+                    (bomLength, bigEndian) = (4, true);
+                else if (data.StartsWith((ReadOnlySpan<byte>)[0xFF, 0xFE, 0x00, 0x00]))
+                    bomLength = 4;
+                break;
+        }
+
+        var payload = bomLength > 0 ? data[bomLength..] : data;
+        var sourceObject = source ?? PyBytesObject.FromBytes(payload);
+
+        switch (PyStrObjectType.NormalizeEncodingName(encoding))
+        {
+            case "utf8":
+                return DecodeUtf8(payload, "utf-8", errors, sourceObject);
+            case "ascii" or "usascii" or "us" or "646" or "iso646us" or "ansix341968" or "ansix341986" or "isoir6" or "csascii" or "ibm367" or "cp367":
+                return DecodeSingleByte(payload, "ascii", errors, sourceObject, ordinalMax: 0x7F);
+            // latin-1 (under any of its aliases) maps every byte, it can
+            // never fail
+            case "latin1" or "latin" or "l1" or "8859" or "88591" or "iso8859" or "iso88591" or "iso885911987" or "isoir100" or "csisolatin1" or "ibm819" or "cp819":
+            {
+                var latin = new StringBuilder(payload.Length);
+                foreach (var b in payload)
+                    latin.Append((char)b);
+                return PyStrObject.FromString(latin.ToString());
+            }
+            case "utf16":
+                return DecodeUtf16(payload, bigEndian, "utf-16", errors, sourceObject);
+            case "utf16le":
+                return DecodeUtf16(payload, bigEndian: false, "utf-16-le", errors, sourceObject);
+            case "utf16be":
+                return DecodeUtf16(payload, bigEndian: true, "utf-16-be", errors, sourceObject);
+            case "utf32":
+                return DecodeUtf32(payload, bigEndian, "utf-32", errors, sourceObject);
+            case "utf32le":
+                return DecodeUtf32(payload, bigEndian: false, "utf-32-le", errors, sourceObject);
+            case "utf32be":
+                return DecodeUtf32(payload, bigEndian: true, "utf-32-be", errors, sourceObject);
+            default:
+                return DecodeViaDotNet(payload, enc, encoding, errors, sourceObject);
+        }
+    }
+
+    internal enum DecodeErrorHandler
+    {
+        Strict,
+        Ignore,
+        Replace,
+        BackslashReplace,
+        SurrogateEscape,
+        SurrogatePass,
+    }
+
+    private static bool TryResolveErrors(string errors, out DecodeErrorHandler handler)
+    {
+        switch (errors)
+        {
+            case "strict": handler = DecodeErrorHandler.Strict; return true;
+            case "ignore": handler = DecodeErrorHandler.Ignore; return true;
+            case "replace": handler = DecodeErrorHandler.Replace; return true;
+            case "backslashreplace": handler = DecodeErrorHandler.BackslashReplace; return true;
+            case "surrogateescape": handler = DecodeErrorHandler.SurrogateEscape; return true;
+            case "surrogatepass": handler = DecodeErrorHandler.SurrogatePass; return true;
+            default: handler = default; return false;
+        }
+    }
+
+    private static PyResult.PyExceptionResult UnknownErrorHandler(string errors)
+    {
+        return PyResult.LookupError($"unknown error handler name '{errors}'");
+    }
+
+    private static PyResult.PyExceptionResult UnicodeDecodeError(string codecName, PyObject source, ReadOnlySpan<byte> data, int start, int end, string reason)
+    {
+        var exc = PyExceptionObject.UnsafeCreate(PyUnicodeDecodeErrorObjectType.Shared,
+            [PyStrObject.FromString(codecName), source, PyIntObject.FromInteger(start), PyIntObject.FromInteger(end), PyStrObject.FromString(reason)]);
+        return new(exc);
+    }
+
+    // one STRINGLIB(utf8_decode) iteration: decodes the sequence starting at
+    // data[i], appending to sb; returns 0 on success with i advanced, -1 for
+    // a sequence truncated at the end of input, or the CPython error code
+    // 1..4 leaving i at the sequence start
+    private static int Utf8DecodeStep(ReadOnlySpan<byte> data, ref int i, StringBuilder sb)
+    {
+        int s = i;
+        int ch = data[s];
+
+        if (ch < 0x80)
+        {
+            sb.Append((char)ch);
+            i = s + 1;
+            return 0;
+        }
+
+        if (ch < 0xE0)
+        {
+            if (ch < 0xC2)
+                return 1;
+            if (data.Length - s < 2)
+                return -1;
+            int ch2 = data[s + 1];
+            if (!IsContinuationByte(ch2))
+                return 2;
+            sb.Append((char)(((ch & 0x1F) << 6) | (ch2 & 0x3F)));
+            i = s + 2;
+            return 0;
+        }
+
+        if (ch < 0xF0)
+        {
+            if (data.Length - s < 3)
+            {
+                if (data.Length - s < 2)
+                    return -1;
+                int shortCh2 = data[s + 1];
+                if (!IsContinuationByte(shortCh2) || (shortCh2 < 0xA0 ? ch is 0xE0 : ch is 0xED))
+                    return 2;
+                return -1;
+            }
+            int ch2 = data[s + 1];
+            int ch3 = data[s + 2];
+            if (!IsContinuationByte(ch2))
+                return 2;
+            if (ch is 0xE0 && ch2 < 0xA0)
+                return 2;
+            if (ch is 0xED && ch2 >= 0xA0)
+                return 2;
+            if (!IsContinuationByte(ch3))
+                return 3;
+            sb.Append((char)(((ch & 0x0F) << 12) | ((ch2 & 0x3F) << 6) | (ch3 & 0x3F)));
+            i = s + 3;
+            return 0;
+        }
+
+        if (ch < 0xF5)
+        {
+            if (data.Length - s < 4)
+            {
+                if (data.Length - s < 2)
+                    return -1;
+                int shortCh2 = data[s + 1];
+                if (!IsContinuationByte(shortCh2) || (shortCh2 < 0x90 ? ch is 0xF0 : ch is 0xF4))
+                    return 2;
+                if (data.Length - s < 3)
+                    return -1;
+                if (!IsContinuationByte(data[s + 2]))
+                    return 3;
+                return -1;
+            }
+            int ch2 = data[s + 1];
+            int ch3 = data[s + 2];
+            int ch4 = data[s + 3];
+            if (!IsContinuationByte(ch2))
+                return 2;
+            if (ch is 0xF0 && ch2 < 0x90)
+                return 2;
+            if (ch is 0xF4 && ch2 >= 0x90)
+                return 2;
+            if (!IsContinuationByte(ch3))
+                return 3;
+            if (!IsContinuationByte(ch4))
+                return 4;
+            int c = ((ch & 0x07) << 18) | ((ch2 & 0x3F) << 12) | ((ch3 & 0x3F) << 6) | (ch4 & 0x3F);
+            c -= 0x10000;
+            sb.Append((char)(0xD800 + (c >> 10)));
+            sb.Append((char)(0xDC00 + (c & 0x3FF)));
+            i = s + 4;
+            return 0;
+        }
+
+        return 1;
+    }
+
+    private static bool IsContinuationByte(int b)
+    {
+        return b >= 0x80 && b < 0xC0;
+    }
+
+    private static PyResult DecodeUtf8(ReadOnlySpan<byte> data, string codecName, string errors, PyObject source)
+    {
+        var sb = new StringBuilder(data.Length);
+        int i = 0;
+        while (i < data.Length)
+        {
+            int start = i;
+            int code = Utf8DecodeStep(data, ref i, sb);
+            if (code is 0)
+                continue;
+
+            int end;
+            string reason;
+            if (code < 0)
+            {
+                // a truncated sequence swallows the whole remaining tail
+                end = data.Length;
+                reason = "unexpected end of data";
+            }
+            else
+            {
+                end = start + (code is 1 ? 1 : code - 1);
+                reason = code is 1 ? "invalid start byte" : "invalid continuation byte";
+            }
+
+            if (!TryResolveErrors(errors, out var handler))
+                return UnknownErrorHandler(errors);
+
+            // CPython surrogatepass: an encoded surrogate sequence
+            // (ED A0..BF 80..BF) decodes to its surrogate; other errors
+            // stay strict
+            if (handler is DecodeErrorHandler.SurrogatePass)
+            {
+                if (data[start] is 0xED && start + 2 < data.Length &&
+                    data[start + 1] is >= 0xA0 and <= 0xBF && IsContinuationByte(data[start + 2]))
+                {
+                    sb.Append((char)(0xD800 + ((data[start + 1] & 0x0F) << 6) + (data[start + 2] & 0x3F)));
+                    i = start + 3;
+                    continue;
+                }
+                return UnicodeDecodeError(codecName, source, data, start, end, reason);
+            }
+
+            switch (handler)
+            {
+                case DecodeErrorHandler.Ignore:
+                    break;
+                case DecodeErrorHandler.Replace:
+                    sb.Append('\uFFFD');
+                    break;
+                case DecodeErrorHandler.BackslashReplace:
+                case DecodeErrorHandler.SurrogateEscape:
+                    AppendBytesAsEscapes(sb, data[start..end], handler);
+                    break;
+                default:
+                    return UnicodeDecodeError(codecName, source, data, start, end, reason);
+            }
+            i = end;
+        }
+        return PyStrObject.FromString(sb.ToString());
+    }
+
+    private static void AppendBytesAsEscapes(StringBuilder sb, ReadOnlySpan<byte> bytes, DecodeErrorHandler handler)
+    {
+        foreach (var b in bytes)
+        {
+            switch (handler)
+            {
+                case DecodeErrorHandler.BackslashReplace:
+                    sb.Append("\\x").Append(b.ToString("x2"));
+                    break;
+                case DecodeErrorHandler.SurrogateEscape:
+                    sb.Append((char)(0xDC00 + b));
+                    break;
+            }
+        }
+    }
+
+    private static PyResult DecodeSingleByte(ReadOnlySpan<byte> data, string codecName, string errors, PyObject source, int ordinalMax)
+    {
+        var sb = new StringBuilder(data.Length);
+        int i = 0;
+        while (i < data.Length)
+        {
+            int b = data[i];
+            if (b <= ordinalMax)
+            {
+                sb.Append((char)b);
+                i++;
+                continue;
+            }
+
+            if (!TryResolveErrors(errors, out var handler))
+                return UnknownErrorHandler(errors);
+            switch (handler)
+            {
+                case DecodeErrorHandler.Ignore:
+                    break;
+                case DecodeErrorHandler.Replace:
+                    sb.Append('\uFFFD');
+                    break;
+                case DecodeErrorHandler.BackslashReplace:
+                    sb.Append("\\x").Append(b.ToString("x2"));
+                    break;
+                case DecodeErrorHandler.SurrogateEscape:
+                    sb.Append((char)(0xDC00 + b));
+                    break;
+                case DecodeErrorHandler.SurrogatePass:
+                default:
+                    return UnicodeDecodeError(codecName, source, data, i, i + 1, "ordinal not in range(128)");
+            }
+            i++;
+        }
+        return PyStrObject.FromString(sb.ToString());
+    }
+
+    private static PyResult DecodeUtf16(ReadOnlySpan<byte> data, bool bigEndian, string codecName, string errors, PyObject source)
+    {
+        var sb = new StringBuilder(data.Length / 2);
+        int i = 0;
+        while (i + 1 < data.Length)
+        {
+            int unit = bigEndian ? (data[i] << 8) | data[i + 1] : data[i] | (data[i + 1] << 8);
+
+            int start;
+            int end;
+            string reason;
+            if (unit is >= 0xDC00 and <= 0xDFFF)
+            {
+                // a lone low surrogate: the pair cannot combine
+                start = i;
+                end = i + 2;
+                reason = "illegal encoding";
+            }
+            else if (unit is >= 0xD800 and <= 0xDBFF)
+            {
+                if (i + 3 >= data.Length)
+                {
+                    // the high surrogate's tail is the final byte
+                    if (i + 2 == data.Length - 1)
+                    {
+                        start = i;
+                        end = data.Length;
+                        reason = "unexpected end of data";
+                    }
+                    else
+                    {
+                        start = i;
+                        end = i + 2;
+                        reason = "unexpected end of data";
+                    }
+                }
+                else
+                {
+                    int low = bigEndian ? (data[i + 2] << 8) | data[i + 3] : data[i + 2] | (data[i + 3] << 8);
+                    if (low is >= 0xDC00 and <= 0xDFFF)
+                    {
+                        int c = 0x10000 + ((unit - 0xD800) << 10) + (low - 0xDC00);
+                        sb.Append((char)(0xD800 + ((c - 0x10000) >> 10)));
+                        sb.Append((char)(0xDC00 + ((c - 0x10000) & 0x3FF)));
+                        i += 4;
+                        continue;
+                    }
+                    start = i;
+                    end = i + 2;
+                    reason = "illegal UTF-16 surrogate";
+                }
+            }
+            else
+            {
+                sb.Append((char)unit);
+                i += 2;
+                continue;
+            }
+
+            if (!TryResolveErrors(errors, out var handler))
+                return UnknownErrorHandler(errors);
+
+            // CPython surrogatepass: a complete lone surrogate unit passes
+            // through as its own code point
+            if (handler is DecodeErrorHandler.SurrogatePass && end - start is 2)
+            {
+                sb.Append((char)unit);
+                i = end;
+                continue;
+            }
+
+            switch (handler)
+            {
+                case DecodeErrorHandler.Ignore:
+                    break;
+                case DecodeErrorHandler.Replace:
+                    sb.Append('\uFFFD');
+                    break;
+                case DecodeErrorHandler.BackslashReplace:
+                case DecodeErrorHandler.SurrogateEscape:
+                    AppendBytesAsEscapes(sb, data[start..end], handler);
+                    break;
+                default:
+                    return UnicodeDecodeError(codecName, source, data, start, end, reason);
+            }
+            i = end;
+        }
+
+        if (data.Length % 2 is not 0)
+        {
+            int last = data.Length - 1;
+            if (!TryResolveErrors(errors, out var handler))
+                return UnknownErrorHandler(errors);
+            switch (handler)
+            {
+                case DecodeErrorHandler.Ignore:
+                    break;
+                case DecodeErrorHandler.Replace:
+                    sb.Append('\uFFFD');
+                    break;
+                case DecodeErrorHandler.BackslashReplace:
+                case DecodeErrorHandler.SurrogatePass:
+                case DecodeErrorHandler.SurrogateEscape:
+                    AppendBytesAsEscapes(sb, data[last..], handler);
+                    break;
+                default:
+                    return UnicodeDecodeError(codecName, source, data, last, data.Length, "truncated data");
+            }
+        }
+        return PyStrObject.FromString(sb.ToString());
+    }
+
+    private static PyResult DecodeUtf32(ReadOnlySpan<byte> data, bool bigEndian, string codecName, string errors, PyObject source)
+    {
+        var sb = new StringBuilder(data.Length / 4);
+        int i = 0;
+        while (i + 3 < data.Length)
+        {
+            uint unit = bigEndian
+                ? (uint)(data[i] << 24 | data[i + 1] << 16 | data[i + 2] << 8 | data[i + 3])
+                : (uint)(data[i] | data[i + 1] << 8 | data[i + 2] << 16 | data[i + 3] << 24);
+
+            if (unit is > 0x10FFFF or >= 0xD800 and <= 0xDFFF)
+            {
+                if (!TryResolveErrors(errors, out var handler))
+                    return UnknownErrorHandler(errors);
+
+                // CPython surrogatepass: surrogate code points pass through
+                if (handler is DecodeErrorHandler.SurrogatePass && unit is >= 0xD800 and <= 0xDFFF)
+                {
+                    sb.Append(char.ConvertFromUtf32((int)unit));
+                    i += 4;
+                    continue;
+                }
+
+                switch (handler)
+                {
+                    case DecodeErrorHandler.Ignore:
+                        break;
+                    case DecodeErrorHandler.Replace:
+                        sb.Append('\uFFFD');
+                        break;
+                    case DecodeErrorHandler.BackslashReplace:
+                    case DecodeErrorHandler.SurrogateEscape:
+                        AppendBytesAsEscapes(sb, data[i..(i + 4)], handler);
+                        break;
+                    default:
+                        return UnicodeDecodeError(codecName, source, data, i, i + 4, "illegal encoding");
+                }
+            }
+            else
+            {
+                sb.Append(char.ConvertFromUtf32((int)unit));
+            }
+            i += 4;
+        }
+
+        if (data.Length % 4 is not 0)
+        {
+            int start = data.Length - data.Length % 4;
+            if (!TryResolveErrors(errors, out var handler))
+                return UnknownErrorHandler(errors);
+            switch (handler)
+            {
+                case DecodeErrorHandler.Ignore:
+                    break;
+                case DecodeErrorHandler.Replace:
+                    sb.Append('\uFFFD');
+                    break;
+                case DecodeErrorHandler.BackslashReplace:
+                case DecodeErrorHandler.SurrogatePass:
+                case DecodeErrorHandler.SurrogateEscape:
+                    AppendBytesAsEscapes(sb, data[start..], handler);
+                    break;
+                default:
+                    return UnicodeDecodeError(codecName, source, data, start, data.Length, "truncated data");
+            }
+        }
+        return PyStrObject.FromString(sb.ToString());
+    }
+
+    // codecs without a hand-rolled core decode through .NET with the error
+    // handler expressed as a decoder fallback; strict keeps the CPython
+    // single-byte message shape
+    private static PyResult DecodeViaDotNet(ReadOnlySpan<byte> data, Encoding enc, string encoding, string errors, PyObject source)
+    {
+        if (!TryResolveErrors(errors, out var handler))
+            return UnknownErrorHandler(errors);
+
+        DecoderFallback fallback = handler switch
+        {
+            DecodeErrorHandler.Ignore => new DecoderReplacementFallback(string.Empty),
+            DecodeErrorHandler.Replace => new DecoderReplacementFallback("\uFFFD"),
+            DecodeErrorHandler.BackslashReplace => new ByteRendererFallback(b => $"\\x{b:x2}"),
+            DecodeErrorHandler.SurrogatePass or DecodeErrorHandler.SurrogateEscape => new ByteRendererFallback(b => char.ToString((char)(0xDC00 + b))),
+            _ => new DecoderExceptionFallback(),
+        };
+
+        try
+        {
+            var strict = Encoding.GetEncoding(enc.CodePage, new EncoderExceptionFallback(), fallback);
+            return PyStrObject.FromString(strict.GetString(data));
+        }
+        catch (DecoderFallbackException ex)
+        {
+            int start = ex.Index;
+            int end = start + (ex.BytesUnknown is { Length: > 0 } ? ex.BytesUnknown.Length : 1);
+            return UnicodeDecodeError(encoding, source, data, start, end, "invalid data");
+        }
+        catch (ArgumentException)
+        {
+            // this encoding cannot host fallback objects; degrade to its
+            // default replacement behavior
+            return PyStrObject.FromString(enc.GetString(data));
+        }
+    }
+
+    private sealed class ByteRendererFallback(Func<byte, string> renderer) : DecoderFallback
+    {
+        public override int MaxCharCount => 8;
+
+        public override DecoderFallbackBuffer CreateFallbackBuffer()
+        {
+            return new ByteRendererFallbackBuffer(renderer);
+        }
+
+        private sealed class ByteRendererFallbackBuffer(Func<byte, string> renderer) : DecoderFallbackBuffer
+        {
+            private string? _remaining;
+            private int _index;
+
+            public override bool Fallback(byte[] bytesUnknown, int index)
+            {
+                _remaining = renderer(bytesUnknown[0]);
+                _index = 0;
+                return true;
+            }
+
+            public override char GetNextChar()
+            {
+                if (_remaining is null || _index >= _remaining.Length)
+                    return '\0';
+                return _remaining[_index++];
+            }
+
+            public override int Remaining
+            {
+                get { return _remaining is not null && _index < _remaining.Length ? _remaining.Length - _index : 0; }
+            }
+
+            public override bool MovePrevious()
+            {
+                if (_index > 0)
+                {
+                    _index--;
+                    return true;
+                }
+                return false;
+            }
+
+            public override void Reset()
+            {
+                _remaining = null;
+                _index = 0;
+            }
         }
     }
 }

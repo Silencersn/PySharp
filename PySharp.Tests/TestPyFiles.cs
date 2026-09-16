@@ -3452,4 +3452,16 @@ public sealed class TestPyFiles
         var module = RunModule("test_sort_comparison_semantics_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestBytesDecodeErrorsRegression()
+    {
+        // Regression: bytes.decode defaults to errors='strict' and raises
+        // UnicodeDecodeError (carrying encoding/object/start/end/reason with
+        // CPython's str() forms) on invalid input instead of silently
+        // replacing, and the errors= parameter works in keyword and
+        // positional form with the standard handlers.
+        var module = RunModule("test_bytes_decode_errors_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

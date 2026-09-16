@@ -413,7 +413,66 @@ public sealed partial class PyTabErrorObjectType : PyExceptionType;
 public sealed partial class PySystemErrorObjectType : PyExceptionType;
 
 [PyException("UnicodeDecodeError", Bases = [typeof(PyUnicodeErrorObjectType)])]
-public sealed partial class PyUnicodeDecodeErrorObjectType : PyExceptionType;
+public sealed partial class PyUnicodeDecodeErrorObjectType : PyExceptionType
+{
+    // CPython UnicodeDecodeError_init: (encoding, object, start, end, reason)
+    // is validated and stored so the attributes and str() stay in sync
+    protected override PyResult Init(PyCallContext context, PyExceptionObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        if (kwargs.Count is not 0)
+            return PyResult.TypeError(PySR.Runtime_Exception_TakesNoKeywordArguments, self.PyType.Name);
+
+        if (args.Count is not 5)
+            return PyResult.TypeError($"UnicodeDecodeError() takes exactly 5 arguments ({args.Count} given)");
+
+        if (args[0] is not PyStrObject encoding)
+            return PyResult.TypeError($"UnicodeDecodeError() argument 1 must be str, not {args[0].PyType.Name}");
+        if (args[1] is not PyBytesObject and not PyByteArrayObject)
+            return PyResult.TypeError($"UnicodeDecodeError() argument 2 must be a bytes-like object, not {args[1].PyType.Name}");
+        if (args[2] is not PyIntObject || args[3] is not PyIntObject)
+            return PyResult.TypeError("an integer is required");
+        if (args[4] is not PyStrObject reason)
+            return PyResult.TypeError($"UnicodeDecodeError() argument 5 must be str, not {args[4].PyType.Name}");
+
+        self.Args = [.. args];
+        self.PyAttributes["encoding"] = args[0];
+        self.PyAttributes["object"] = args[1];
+        self.PyAttributes["start"] = args[2];
+        self.PyAttributes["end"] = args[3];
+        self.PyAttributes["reason"] = args[4];
+        return PyNoneObject.None;
+    }
+
+    // CPython UnicodeDecodeError_str: a single bad byte shows byte value and
+    // position, anything else shows a position range
+    protected override PyResult Str(PyCallContext context, PyExceptionObject self)
+    {
+        if (!self.PyAttributes.TryGetValue("object", out var objectAttr) ||
+            !self.PyAttributes.TryGetValue("encoding", out var encodingAttr) ||
+            !self.PyAttributes.TryGetValue("start", out var startAttr) ||
+            !self.PyAttributes.TryGetValue("end", out var endAttr) ||
+            !self.PyAttributes.TryGetValue("reason", out var reasonAttr))
+            return PyStrObject.Empty;
+
+        var start = (PyIntObject)startAttr;
+        var end = (PyIntObject)endAttr;
+        ReadOnlySpan<byte> data = objectAttr switch
+        {
+            PyBytesObject bytes => bytes.AsSpan(),
+            PyByteArrayObject byteArray => byteArray.AsSpan(),
+            _ => default,
+        };
+        long len = data.Length;
+        long i = (long)start.Value;
+        long j = (long)end.Value;
+        var encoding = ((PyStrObject)encodingAttr).Value;
+        var reason = ((PyStrObject)reasonAttr).Value;
+
+        if (i >= 0 && i < len && j >= 0 && j <= len && j == i + 1)
+            return PyStrObject.FromString($"'{encoding}' codec can't decode byte 0x{data[(int)i]:x2} in position {i}: {reason}");
+        return PyStrObject.FromString($"'{encoding}' codec can't decode bytes in position {i}-{j - 1}: {reason}");
+    }
+}
 
 [PyException("UnicodeTranslateError", Bases = [typeof(PyUnicodeErrorObjectType)])]
 public sealed partial class PyUnicodeTranslateErrorObjectType : PyExceptionType;

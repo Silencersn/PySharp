@@ -2756,12 +2756,14 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             return PyResult.TypeError(source is PyStrObject ? PySR.Runtime_Str_DecodingStrNotSupported : PySR.Runtime_Str_DecodingNeedBytesLike, source.PyType.FullName);
 
         var encodingName = encoding is PyStrObject encStr ? encStr.Value : "utf-8";
-        var obj = PyBytesObjectType.DecodeCore(context, data, encodingName);
+        var errorsName = errors is PyStrObject errStr ? errStr.Value : "strict";
+        var obj = PyBytesObjectType.DecodeCore(context, data, encodingName, errorsName, source);
         if (obj.IsError)
             return obj;
 
-        obj.Value._pyType = cls;
-        return obj;
+        var strObj = (PyStrObject)obj.Value!;
+        strObj._pyType = cls;
+        return strObj;
     }
 
     private static string BigIntegerToBase(BigInteger value, int radix, bool upper)
