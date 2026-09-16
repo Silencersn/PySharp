@@ -1497,6 +1497,17 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestLambdaParamCellRegression()
+    {
+        // Regression: a lambda parameter captured by a nested lambda or
+        // generator expression must be cell-ized like a def parameter — the
+        // lambda scope emits a CellVars prologue so closure packing gets real
+        // cells instead of aborting the process on plain parameter values.
+        var module = RunModule("test_lambda_param_cell_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestGenexpWalrusPromotionRegression()
     {
         // Regression: PEP 572 walrus targets inside a genexp bind in the
