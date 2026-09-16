@@ -8,36 +8,31 @@ namespace PySharp.Modules.Builtins;
 [PyType("dict")]
 public sealed partial class PyDictObjectType : PyTypeObject<PyDictObject>
 {
-    [PyExport(PySpecialNames.New, nameof(NewImpl_1), nameof(NewImpl_2))]
-    private static partial PyBuiltinFunctionOrMethodObject _new { get; }
-
-    [PyFunctionParameters("**kwargs")]
-    private static PyResult NewImpl_1(PyCallContext context, PyArguments arguments)
-    {
-        return PyDictObject.CreateDict(context, arguments.ExtraKwargs
-            .Select(pair => KeyValuePair.Create<PyObject, PyObject>(PyStrObject.FromString(pair.Key), pair.Value)));
-    }
-
-    [PyFunctionParameters("iterable_or_mapping", "/", "**kwargs")]
-    private static PyResult NewImpl_2(PyCallContext context, PyArguments arguments)
-    {
-        var dict = PyUtils.ToDict(context, arguments[0]);
-        if (dict.IsError)
-            return dict;
-
-        foreach (var kwarg in arguments.ExtraKwargs)
-            dict.Value.SetItem(kwarg.Key, kwarg.Value);
-
-        return dict;
-    }
-
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        var obj = _new.Call(context, args, kwargs);
-        if (obj.IsError)
-            return obj;
-        obj.Value._pyType = cls;
-        return obj;
+        // CPython dict_new: allocate an empty dict and ignore all arguments;
+        // they are consumed by dict_init, which a subclass __init__ replaces
+        return new PyDictObject { _pyType = cls };
+    }
+
+    protected override PyResult Init(PyCallContext context, PyDictObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        // CPython dict_init -> dict_update_common: at most one positional
+        // source plus keyword updates
+        if (args.Count > 1)
+            return PyResult.TypeError(PySR.Runtime_Dictionary_ExpectedAtMostOne, args.Count);
+
+        if (args.Count is 1)
+        {
+            var result = self.Update(context, args[0]);
+            if (result.IsError)
+                return result;
+        }
+
+        foreach (var pair in kwargs)
+            self.SetItem(pair.Key, pair.Value);
+
+        return PyNoneObject.None;
     }
 
     protected override PyResult GetItem(PyCallContext context, PyDictObject self, PyObject item)

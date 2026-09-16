@@ -3464,4 +3464,17 @@ public sealed class TestPyFiles
         var module = RunModule("test_bytes_decode_errors_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestContainerInitRegression()
+    {
+        // Regression: dict/list/set subclass construction dispatches to a
+        // custom __init__ (which replaces the built-in tp_init) instead of
+        // iterating the first argument as the builtins do; tuple/frozenset
+        // consume the iterable in tp_new and then still call the subclass
+        // __init__, and __new__/__init__ resolve by MRO rather than
+        // class-creation order.
+        var module = RunModule("test_container_init_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

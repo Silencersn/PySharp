@@ -121,6 +121,16 @@ public sealed partial class PyFrozenSetObjectType : PyTypeObject<PyFrozenSetObje
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
+        // CPython frozenset_new: keyword arguments are rejected unless the
+        // subtype overrides __init__ (slot_tp_init replaces the null
+        // frozenset tp_init); frozenset is immutable so tp_new consumes the
+        // iterable and the excess-argument message names the dynamic type
+        if (kwargs.Count is not 0 &&
+            ReferenceEquals(cls.Slots.Init, PyObjectType.Shared.Slots.Init))
+            return PyResult.TypeError(PySR.Runtime_FrozenSet_TakesNoKwargs);
+        if (args.Count > 1)
+            return PyResult.TypeError(PySR.Runtime_Set_ExpectedAtMostOne, cls.Name, args.Count);
+
         // CPython make_new_set: frozenset() of an exact frozenset returns the
         // instance itself, but only when constructing the exact base type —
         // any other type (subclasses included) copies the elements into a

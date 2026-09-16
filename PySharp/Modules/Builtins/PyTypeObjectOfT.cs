@@ -197,6 +197,9 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
                 type.Slots.TrySetSlot(attr, value);
         }
 
+        // resolve __new__/__init__ by MRO rather than class-creation order
+        RecomputeConstructionSlots(type);
+
 
         // NOTE: AI-Generated
         // Auto-inject __class_getitem__ if the class has __type_params__ (e.g. class Foo[T]:)

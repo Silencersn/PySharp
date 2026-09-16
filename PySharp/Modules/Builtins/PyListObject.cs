@@ -117,22 +117,29 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr, IList<PyOb
 [PyType("list")]
 public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
 {
-    [PyExport(PySpecialNames.New, nameof(NewImpl))]
-    private static partial PyBuiltinFunctionOrMethodObject _new { get; }
-
-    [PyFunctionParameters("iterable=()", "/")]
-    private static PyResult NewImpl(PyCallContext context, PyArguments arguments)
-    {
-        return PyUtils.IterableToList(context, arguments[0]);
-    }
-
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        var obj = _new.Call(context, args, kwargs);
-        if (obj.IsError)
-            return obj;
-        obj.Value._pyType = cls;
+        // CPython PyType_GenericNew: allocate an empty list; the iterable is
+        // consumed by list.__init__, which a subclass __init__ replaces
+        var obj = PyListObject.CreateList();
+        obj._pyType = cls;
         return obj;
+    }
+
+    protected override PyResult Init(PyCallContext context, PyListObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        // CPython list.__init__: no keyword arguments and at most one
+        // positional iterable; re-initialization clears previous contents
+        if (kwargs.Count is not 0)
+            return PyResult.TypeError(PySR.Runtime_List_TakesNoKwargs);
+        if (args.Count > 1)
+            return PyResult.TypeError(PySR.Runtime_List_ExpectedAtMostOne, args.Count);
+
+        self.Clear();
+        if (args.Count is 1)
+            return self.PyExtend(context, args[0]);
+
+        return PyNoneObject.None;
     }
 
     protected override PyResult GetItem(PyCallContext context, PyListObject self, PyObject item)

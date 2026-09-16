@@ -147,28 +147,28 @@ public partial class PySetObject : PyObject, IPyObjectRecursiveRepr, ISet<PyObje
 [PyType("set")]
 public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
 {
-    [PyExport(PySpecialNames.New, nameof(NewImpl_1), nameof(NewImpl_2))]
-    private static partial PyBuiltinFunctionOrMethodObject _new { get; }
-
-    [PyFunctionParameters()]
-    private static PyResult NewImpl_1(PyCallContext context, PyArguments arguments)
-    {
-        return new PySetObject();
-    }
-
-    [PyFunctionParameters("iterable", "/")]
-    private static PyResult NewImpl_2(PyCallContext context, PyArguments arguments)
-    {
-        return PyUtils.IterableToSet(context, arguments[0]);
-    }
-
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        var obj = _new.Call(context, args, kwargs);
-        if (obj.IsError)
-            return obj;
-        obj.Value._pyType = cls;
-        return obj;
+        // CPython set_new: allocate an empty set and ignore all arguments;
+        // the iterable is consumed by set.__init__, which a subclass
+        // __init__ replaces
+        return new PySetObject { _pyType = cls };
+    }
+
+    protected override PyResult Init(PyCallContext context, PySetObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        // CPython set_init: no keyword arguments and at most one positional
+        // iterable; the excess-argument message names the dynamic type
+        if (kwargs.Count is not 0)
+            return PyResult.TypeError(PySR.Runtime_Set_TakesNoKwargs);
+        if (args.Count > 1)
+            return PyResult.TypeError(PySR.Runtime_Set_ExpectedAtMostOne, self.PyType.Name, args.Count);
+
+        self.Clear();
+        if (args.Count is 1)
+            return self.PyUpdate(context, [args[0]]);
+
+        return PyNoneObject.None;
     }
 
     protected override PyResult Repr(PyCallContext context, PySetObject self)

@@ -116,6 +116,37 @@ partial class PyTypeObject
             && ReferenceEquals(value, defaultValue);
     }
 
+    // CPython resolves __new__/__init__ by MRO lookup at call time, while the
+    // eager slot fill bakes inherited delegates at class-creation order: a
+    // base defining __init__ could lose to a base created earlier whose slot
+    // was already filled with the built-in. Re-resolve from the first MRO
+    // entry defining the method in its own dict.
+    internal static void RecomputeConstructionSlots(PyTypeObject type)
+    {
+        RecomputeConstructionSlot(PySpecialNames.Init,
+            static t => t.Slots.Init, static (t, f) => t.Slots.Init = f, type);
+        RecomputeConstructionSlot(PySpecialNames.New,
+            static t => t.Slots.New, static (t, f) => t.Slots.New = f, type);
+    }
+
+    private static void RecomputeConstructionSlot<T>(string name, Func<PyTypeObject, T?> getSlot, Action<PyTypeObject, T> setSlot, PyTypeObject type) where T : Delegate
+    {
+        foreach (var entry in type.InternalMRO)
+        {
+            if (!entry.PyAttributes.TryGetValue(name, out var value))
+                continue;
+
+            // assigning object's defaults is a no-op for slot wiring
+            if (IsObjectDefaultSlotValue(name, value))
+                return;
+
+            var slot = getSlot(entry);
+            if (slot is not null)
+                setSlot(type, slot);
+            return;
+        }
+    }
+
     internal static PyResult DefaultDelAttr(PyCallContext context, PyObject self, PyObject item)
     {
         if (item is not PyStrObject str)
