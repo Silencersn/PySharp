@@ -3440,4 +3440,16 @@ public sealed class TestPyFiles
         var module = RunModule("test_qualname_metadata_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestSortComparisonSemanticsRegression()
+    {
+        // Regression: sort comparisons are PyObject_RichCompareBool(pivot,
+        // placed, Py_LT) with the result interpreted by Python truthiness —
+        // non-bool __lt__ return values (truthy tuples, None, ints) sort
+        // like CPython's listsort, whose count_run/binarysort comparison
+        // order is ported so an asymmetric __lt__ permutes identically.
+        var module = RunModule("test_sort_comparison_semantics_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

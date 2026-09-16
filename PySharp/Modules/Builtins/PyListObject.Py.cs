@@ -106,24 +106,218 @@ partial class PyListObject
 
     internal void PySort(PyCallContext context, Func<PyObject, PyObject>? key = null, bool reverse = false)
     {
-        IEnumerable<PyObject> sortedItems;
-
-        if (key is null)
+        // CPython 3.14 listsort (Objects/listobject.c): key results are
+        // computed once over the original order, a reverse sort reverses
+        // the arrays, sorts ascending, and reverses back, and every
+        // comparison asks PyObject_RichCompareBool(pivot, placed, Py_LT) —
+        // the pivot is the left operand — with the result interpreted by
+        // truthiness. An asymmetric __lt__ makes the operand order
+        // observable, so the algorithm's comparison pattern is ported
+        // faithfully: for n < 64 listsort is exactly one count_run plus one
+        // binarysort.
+        var items = _list.ToArray();
+        PyObject[]? keys = null;
+        if (key is not null)
         {
-            sortedItems = reverse
-                ? _list.OrderDescending(context.Comparer)
-                : _list.Order(context.Comparer);
+            keys = new PyObject[items.Length];
+            for (int i = 0; i < items.Length; i++)
+                keys[i] = key(items[i]);
         }
+        if (reverse)
+        {
+            Array.Reverse(items);
+            if (keys is not null)
+                Array.Reverse(keys);
+        }
+
+        if (items.Length < 64)
+            SmallSort(context, keys ?? items, keys is null ? null : items);
         else
         {
-            sortedItems = reverse
-                ? _list.OrderByDescending(key, context.Comparer)
-                : _list.OrderBy(key, context.Comparer);
+            // beyond one count_run + binarysort pass listsort merges runs;
+            // a stable merge over the same ISLT primitive agrees for
+            // consistent comparators and never rejects inconsistent ones
+            MergeSort(context, keys ?? items, keys is null ? null : items, 0, items.Length);
         }
 
-        var items = sortedItems.ToArray();
+        if (reverse)
+        {
+            Array.Reverse(items);
+            if (keys is not null)
+                Array.Reverse(keys);
+        }
+
         _list.Clear();
         _list.AddRange(items);
+    }
+
+    // one count_run + binarysort pass, the exact n < 64 listsort path
+    private static void SmallSort(PyCallContext context, PyObject[] a, PyObject[]? v)
+    {
+        // CPython listsort returns immediately for fewer than 2 elements
+        if (a.Length < 2)
+            return;
+
+        int run = CountRun(context, a, v, a.Length);
+        if (run < a.Length)
+            BinarySort(context, a, v, a.Length, run);
+    }
+
+    // stable top-down merge over the same ISLT primitive as listsort's
+    // merge pass: the right-run element is the left operand, and equal
+    // elements keep the left run first
+    private static void MergeSort(PyCallContext context, PyObject[] a, PyObject[]? v, int lo, int hi)
+    {
+        if (hi - lo < 2)
+            return;
+
+        int mid = (lo + hi) >> 1;
+        MergeSort(context, a, v, lo, mid);
+        MergeSort(context, a, v, mid, hi);
+
+        int leftLen = mid - lo;
+        var left = new PyObject[leftLen];
+        var leftV = v is null ? null : new PyObject[leftLen];
+        Array.Copy(a, lo, left, 0, leftLen);
+        if (v is not null && leftV is not null)
+            Array.Copy(v, lo, leftV, 0, leftLen);
+
+        int i = 0, j = mid, k = lo;
+        while (i < leftLen && j < hi)
+        {
+            if (IsLt(context, a[j], left[i]))
+            {
+                a[k] = a[j];
+                if (v is not null)
+                    v[k] = v[j];
+                j++;
+            }
+            else
+            {
+                a[k] = left[i];
+                if (v is not null)
+                    v[k] = leftV![i];
+                i++;
+            }
+            k++;
+        }
+        while (i < leftLen)
+        {
+            a[k] = left[i];
+            if (v is not null)
+                v[k] = leftV![i];
+            i++;
+            k++;
+        }
+    }
+
+    // PyObject_RichCompareBool(x, y, Py_LT): the Python truthiness of x < y
+    private static bool IsLt(PyCallContext context, PyObject x, PyObject y)
+    {
+        var lt = PyOperators.Lt(context, x, y);
+        if (lt.IsError)
+            throw new PyRuntimeException(context, lt.Exception);
+        var truth = PySpecialMethods.Bool(context, lt.Value);
+        if (truth.IsError)
+            throw new PyRuntimeException(context, truth.Exception);
+        return truth.Value.BoolValue;
+    }
+
+    // CPython count_run: length of the monotone run at the slice start,
+    // permuted in place to ascending; equal subruns inside a descending run
+    // are reversed so the final reversal restores their original order
+    private static int CountRun(PyCallContext context, PyObject[] a, PyObject[]? v, int nremaining)
+    {
+        int n;
+        for (n = 1; n < nremaining; n++)
+        {
+            if (IsLt(context, a[n], a[n - 1]))
+                break;
+        }
+        if (n == nremaining)
+            return n;
+
+        if (n > 1)
+        {
+            if (IsLt(context, a[0], a[n - 1]))
+                return n;
+            ReverseSlice(a, v, 0, n);
+        }
+        ++n;
+
+        int neq = 0;
+        for (; n < nremaining; n++)
+        {
+            if (IsLt(context, a[n], a[n - 1]))
+            {
+                if (neq is not 0)
+                {
+                    ++neq;
+                    ReverseSlice(a, v, n - neq, neq);
+                    neq = 0;
+                }
+            }
+            else if (IsLt(context, a[n - 1], a[n]))
+            {
+                break;
+            }
+            else
+            {
+                ++neq;
+            }
+        }
+        if (neq is not 0)
+        {
+            ++neq;
+            ReverseSlice(a, v, n - neq, neq);
+        }
+        ReverseSlice(a, v, 0, n);
+
+        for (; n < nremaining; n++)
+        {
+            if (IsLt(context, a[n], a[n - 1]))
+                break;
+        }
+        return n;
+    }
+
+    private static void ReverseSlice(PyObject[] a, PyObject[]? v, int start, int length)
+    {
+        Array.Reverse(a, start, length);
+        if (v is not null)
+            Array.Reverse(v, start, length);
+    }
+
+    // CPython binarysort: stable binary insertion sort; a[:ok] is already
+    // sorted, each pivot's slot is found with the pivot as the left operand
+    private static void BinarySort(PyCallContext context, PyObject[] a, PyObject[]? v, int n, int ok)
+    {
+        if (ok is 0)
+            ++ok;
+        for (; ok < n; ok++)
+        {
+            int l = 0, r = ok;
+            var pivot = a[ok];
+            var vPivot = v is null ? null : v[ok];
+            do
+            {
+                int m = (l + r) >> 1;
+                if (IsLt(context, pivot, a[m]))
+                    r = m;
+                else
+                    l = m + 1;
+            } while (l < r);
+            for (int m = ok; m > l; --m)
+                a[m] = a[m - 1];
+            a[l] = pivot;
+            if (v is not null)
+            {
+                var vItem = vPivot!;
+                for (int m = ok; m > l; --m)
+                    v[m] = v[m - 1];
+                v[l] = vItem;
+            }
+        }
     }
 
     internal void PyReverse()
