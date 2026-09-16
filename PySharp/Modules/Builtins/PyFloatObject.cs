@@ -1045,6 +1045,10 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
             text = double.IsNaN(val)
                 ? (char.IsUpper(formatType) ? "NAN" : "nan")
                 : (char.IsUpper(formatType) ? "INF" : "inf");
+            // CPython appends the '%' suffix unconditionally after
+            // rendering, so inf/nan keep it too (the *100 is a no-op)
+            if (formatType is '%')
+                text += "%";
         }
         else
         {

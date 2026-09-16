@@ -3207,4 +3207,15 @@ public sealed class TestPyFiles
         var module = RunModule("test_float_fromhex_nonfinite_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestFloatFormatPercentNonfiniteRegression()
+    {
+        // Regression: the '%' presentation type appends its suffix to
+        // non-finite floats too — CPython adds '%' unconditionally after
+        // rendering inf/nan, and the suffix participates in width, fill
+        // and alignment; precision and grouping stay no-ops there.
+        var module = RunModule("test_float_format_percent_nonfinite_regression.py");
+        Assert.IsNotNull(module);
+    }
 }
