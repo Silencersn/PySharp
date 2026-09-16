@@ -3344,4 +3344,16 @@ public sealed class TestPyFiles
         var module = RunModule("test_float_round_subnormal_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestMathLogIntParityRegression()
+    {
+        // Regression: math.log10/log2/log on ints mirror CPython's
+        // loghelper — the value converts to double for the correctly
+        // rounded libm call (exact results for powers of ten), huge ints
+        // fall back to _PyLong_Frexp scaling, and domain errors carry the
+        // original argument repr.
+        var module = RunModule("test_math_log_int_parity_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

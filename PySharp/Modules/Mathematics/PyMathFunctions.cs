@@ -2,6 +2,7 @@ using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
+using PySharp.Utility;
 using System.Numerics;
 
 namespace PySharp.Modules.Mathematics;
@@ -67,7 +68,7 @@ internal static partial class PyMathFunctions
     [PyExport("log1p", nameof(Log1pImpl))]
     public static partial PyBuiltinFunctionOrMethodObject Log1p { get; }
 
-    private static PyResult<PyFloatObject> Math1Impl(PyCallContext context, PyObject arg, Func<double, double> func, bool canOverflow, string? errMsg)
+    private static PyResult<PyFloatObject> Math1Impl(PyCallContext context, PyObject arg, Func<double, double> func, bool canOverflow, string? errMsg, PyObject? reprSource = null)
     {
         var xResult = PySpecialMethods.Float(context, arg);
         if (xResult.IsError)
@@ -79,7 +80,7 @@ internal static partial class PyMathFunctions
         if (double.IsNaN(r) && !double.IsNaN(x))
         {
             if (errMsg is not null)
-                return PyResult.ValueError(errMsg, x);
+                return ValueErrorMessageArg(context, errMsg, reprSource ?? arg);
             return PyResult.ValueError("math domain error");
         }
 
@@ -89,11 +90,21 @@ internal static partial class PyMathFunctions
                 return PyResult.OverflowError("math range error");
 
             if (errMsg is not null)
-                return PyResult.ValueError(errMsg, x);
+                return ValueErrorMessageArg(context, errMsg, reprSource ?? arg);
             return PyResult.ValueError("math domain error");
         }
 
         return PyFloatObject.FromDouble(r);
+    }
+
+    // CPython math_1 formats the domain error with the repr of the original
+    // argument, not the converted double
+    private static PyResult.PyExceptionResult ValueErrorMessageArg(PyCallContext context, string errMsg, PyObject arg)
+    {
+        var repr = PySpecialMethods.Repr(context, arg);
+        if (repr.IsError)
+            return repr.ExceptionResult;
+        return PyResult.ValueError(errMsg, repr.Value.Value);
     }
 
     private static PyResult<PyFloatObject> Math2Impl(PyCallContext context, PyObject arg0, PyObject arg1, Func<double, double, double> func)
@@ -381,48 +392,91 @@ internal static partial class PyMathFunctions
         }
     }
 
-    private static PyResult<PyFloatObject> MathLogImpl(PyCallContext context, PyObject arg, Func<BigInteger, double> intFunc, Func<double, double> doubleFunc)
+    private static PyResult<PyFloatObject> MathLogImpl(PyCallContext context, PyObject arg, Func<double, double> doubleFunc)
     {
         if (arg is PyIntObject { Value: var intValue })
         {
-            if (intValue <= 0)
-                return PyResult.ValueError("math domain error");
-            return PyFloatObject.FromDouble(intFunc(intValue));
+            // CPython loghelper: non-positive ints carry the plain message
+            if (intValue.Sign <= 0)
+                return PyResult.ValueError("expected a positive input");
+            // values that fit a double go straight to the libm function
+            if (intValue.TryToDoubleRounded(out var direct))
+                return PyFloatObject.FromDouble(doubleFunc(direct));
+            // too large: value ~= m * 2**e, so log = func(m) + func(2) * e
+            var m = LongFrexp(intValue, out var e);
+            return PyFloatObject.FromDouble(doubleFunc(m) + doubleFunc(2.0) * e);
         }
 
         if (arg.PyType.Slots.Float is not null)
         {
-            var result = PySpecialMethods.Float(context, arg);
-            if (result.IsError)
-                return result;
-
-            return Math1Impl(context, result.Value, doubleFunc, canOverflow: false, errMsg: "expected a positive input, got {0}");
+            return Math1Impl(context, arg, doubleFunc, canOverflow: false, errMsg: "expected a positive input, got {0}");
         }
         else
         {
-            var result = PySpecialMethods.Index(context, arg);
-            if (result.IsError)
-                return result.ExceptionResult;
-
-            if (result.Value.Value <= 0)
-                return PyResult.ValueError("math domain error");
-            return PyFloatObject.FromDouble(intFunc(result.Value.Value));
+            // no __float__: PyFloat_AsDouble falls back to __index__ and
+            // the value is then treated as a float
+            var index = PySpecialMethods.Index(context, arg);
+            if (index.IsError)
+                return index.ExceptionResult;
+            if (!index.Value.Value.TryToDoubleRounded(out var indexValue))
+                return PyResult.OverflowError(PySR.Runtime_Number_IntTooLargeForFloat);
+            return Math1Impl(context, PyFloatObject.FromDouble(indexValue), doubleFunc,
+                canOverflow: false, errMsg: "expected a positive input, got {0}", reprSource: arg);
         }
+    }
+
+    // CPython _PyLong_Frexp: value ~= m * 2**e with m in [0.5, 1), rounded
+    // half-to-even into 53 significant bits with a sticky lowest bit
+    private static double LongFrexp(BigInteger value, out long e)
+    {
+        long bits = value.GetBitLength();
+        e = bits;
+        BigInteger x;
+        if (bits <= 55)
+        {
+            x = value << (int)(55 - bits);
+        }
+        else
+        {
+            long drop = bits - 55;
+            x = value >> (int)drop;
+            if (!(value & ((BigInteger.One << (int)drop) - 1)).IsZero)
+                x |= BigInteger.One;
+        }
+        // round to a multiple of 4, ties to a multiple of 8
+        x += (int)(x & 7) switch
+        {
+            1 => -1,
+            2 => -2,
+            3 => 1,
+            5 => -1,
+            6 => 2,
+            7 => 1,
+            _ => 0,
+        };
+        var d = (double)x;
+        d /= 4.0 * Math.Pow(2, 53);
+        if (d is 1.0)
+        {
+            d = 0.5;
+            e++;
+        }
+        return d;
     }
 
     [PyFunctionParameters("x", "/")]
     private static PyResult LogImpl_1(PyCallContext context, PyArguments arguments)
     {
-        return MathLogImpl(context, arguments[0], BigInteger.Log, Math.Log);
+        return MathLogImpl(context, arguments[0], Math.Log);
     }
     [PyFunctionParameters("x", "base", "/")]
     private static PyResult LogImpl_2(PyCallContext context, PyArguments arguments)
     {
-        var num = MathLogImpl(context, arguments[0], BigInteger.Log, Math.Log);
+        var num = MathLogImpl(context, arguments[0], Math.Log);
         if (num.IsError)
             return num;
 
-        var den = MathLogImpl(context, arguments[1], BigInteger.Log, Math.Log);
+        var den = MathLogImpl(context, arguments[1], Math.Log);
         if (den.IsError)
             return den;
 
@@ -432,12 +486,12 @@ internal static partial class PyMathFunctions
     [PyFunctionParameters("x", "/")]
     private static PyResult Log2Impl(PyCallContext context, PyArguments arguments)
     {
-        return MathLogImpl(context, arguments[0], static i => (double)BigInteger.Log(i, 2), Math.Log2);
+        return MathLogImpl(context, arguments[0], Math.Log2);
     }
     [PyFunctionParameters("x", "/")]
     private static PyResult Log10Impl(PyCallContext context, PyArguments arguments)
     {
-        return MathLogImpl(context, arguments[0], BigInteger.Log10, Math.Log10);
+        return MathLogImpl(context, arguments[0], Math.Log10);
     }
     [PyFunctionParameters("x", "/")]
     private static PyResult Log1pImpl(PyCallContext context, PyArguments arguments)
