@@ -3356,4 +3356,16 @@ public sealed class TestPyFiles
         var module = RunModule("test_math_log_int_parity_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestBytearrayOrderingRegression()
+    {
+        // Regression: bytearray order comparisons accept every bytes-like
+        // operand and compare bytewise with a length tiebreak; bytes
+        // reaches them through the reflected slot while its own order
+        // comparisons still require two exact bytes operands, and bytes
+        // gains the previously missing <=/>/>= slots.
+        var module = RunModule("test_bytearray_ordering_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

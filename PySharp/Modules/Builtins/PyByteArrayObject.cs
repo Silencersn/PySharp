@@ -354,6 +354,43 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
         return PyNotImplementedObject.NotImplemented;
     }
 
+    // bytearray_richcompare accepts any bytes-like operand (bytes,
+    // bytearray, memoryview) for order comparisons; bytes sends its
+    // cross-type comparisons here through the reflected slot because
+    // bytes_richcompare requires both operands to be exact bytes.
+    protected override PyResult Lt(PyCallContext context, PyByteArrayObject self, PyObject other)
+    {
+        if (!TryGetSpan(other, out var otherSpan))
+            return PyNotImplementedObject.NotImplemented;
+        return PyBoolObject.FromBoolean(CompareContent(self.AsSpan(), otherSpan) < 0);
+    }
+
+    protected override PyResult Le(PyCallContext context, PyByteArrayObject self, PyObject other)
+    {
+        if (!TryGetSpan(other, out var otherSpan))
+            return PyNotImplementedObject.NotImplemented;
+        return PyBoolObject.FromBoolean(CompareContent(self.AsSpan(), otherSpan) <= 0);
+    }
+
+    protected override PyResult Gt(PyCallContext context, PyByteArrayObject self, PyObject other)
+    {
+        if (!TryGetSpan(other, out var otherSpan))
+            return PyNotImplementedObject.NotImplemented;
+        return PyBoolObject.FromBoolean(CompareContent(self.AsSpan(), otherSpan) > 0);
+    }
+
+    protected override PyResult Ge(PyCallContext context, PyByteArrayObject self, PyObject other)
+    {
+        if (!TryGetSpan(other, out var otherSpan))
+            return PyNotImplementedObject.NotImplemented;
+        return PyBoolObject.FromBoolean(CompareContent(self.AsSpan(), otherSpan) >= 0);
+    }
+
+    // memcmp over the content; SequenceCompareTo already breaks a common
+    // prefix by length, matching Py_RETURN_RICHCOMPARE(len_a, len_b, op)
+    private static int CompareContent(ReadOnlySpan<byte> left, ReadOnlySpan<byte> right)
+        => left.SequenceCompareTo(right);
+
     protected override PyResult Hash(PyCallContext context, PyByteArrayObject self)
     {
         return PyResult.TypeError(PySR.Runtime_Object_Unhashable, self.PyType.FullName);

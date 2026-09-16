@@ -268,25 +268,45 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
         }
     }
 
+    // bytes_richcompare: order comparisons require two exact bytes
+    // operands — bytes-like types compare through bytearray's reflected
+    // slot instead, mirroring CPython's do_richcompare fallback
     protected override PyResult Lt(PyCallContext context, PyBytesObject self, PyObject other)
     {
         if (other is not PyBytesObject otherBytes)
             return PyNotImplementedObject.NotImplemented;
 
-        var minLen = Math.Min(self.Length, otherBytes.Length);
-        for (int i = 0; i < minLen; i++)
-        {
-            var l = self[i];
-            var r = otherBytes[i];
-
-            if (l < r)
-                return PyBoolObject.True;
-            else if (l > r)
-                return PyBoolObject.False;
-        }
-
-        return PyBoolObject.FromBoolean(self.Length < otherBytes.Length);
+        return PyBoolObject.FromBoolean(CompareContent(self.AsSpan(), otherBytes.AsSpan()) < 0);
     }
+
+    protected override PyResult Le(PyCallContext context, PyBytesObject self, PyObject other)
+    {
+        if (other is not PyBytesObject otherBytes)
+            return PyNotImplementedObject.NotImplemented;
+
+        return PyBoolObject.FromBoolean(CompareContent(self.AsSpan(), otherBytes.AsSpan()) <= 0);
+    }
+
+    protected override PyResult Gt(PyCallContext context, PyBytesObject self, PyObject other)
+    {
+        if (other is not PyBytesObject otherBytes)
+            return PyNotImplementedObject.NotImplemented;
+
+        return PyBoolObject.FromBoolean(CompareContent(self.AsSpan(), otherBytes.AsSpan()) > 0);
+    }
+
+    protected override PyResult Ge(PyCallContext context, PyBytesObject self, PyObject other)
+    {
+        if (other is not PyBytesObject otherBytes)
+            return PyNotImplementedObject.NotImplemented;
+
+        return PyBoolObject.FromBoolean(CompareContent(self.AsSpan(), otherBytes.AsSpan()) >= 0);
+    }
+
+    // memcmp over the content; SequenceCompareTo already breaks a common
+    // prefix by length, matching Py_RETURN_RICHCOMPARE(len_a, len_b, op)
+    private static int CompareContent(ReadOnlySpan<byte> left, ReadOnlySpan<byte> right)
+        => left.SequenceCompareTo(right);
 
     // Buffer-protocol types accepted wherever CPython takes a bytes-like
     // operand: bytes, bytearray, memoryview
