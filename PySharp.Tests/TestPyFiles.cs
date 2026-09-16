@@ -1508,6 +1508,40 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestWithBreakContinueRegression()
+    {
+        // Regression: break/continue/return crossing with blocks must inline
+        // the __exit__ cleanup and drop the handler record before jumping —
+        // bare jumps skipped __exit__, leaked the [exit, manager] pair
+        // (stack assert / iterator corruption / overflow) and left a dead
+        // handler record that misdispatched later exceptions.
+        var module = RunModule("test_with_break_continue_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestFinallyControlFlowRegression()
+    {
+        // Regression: break/continue/return crossing try/finally must copy
+        // the finally body inline into the jump (record dropped first);
+        // leaving an except handler body clears the in-flight exception and
+        // deletes the `except ... as name` binding.
+        var module = RunModule("test_finally_control_flow_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestAsyncControlFlowRegression()
+    {
+        // Regression: break/continue/return crossing async with inlines the
+        // awaited __aexit__(None, None, None) sequence, and jumping out of
+        // an async-for body drops its await-watching record; both used to
+        // leak stack items and handler records.
+        var module = RunModule("test_async_control_flow_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestGenexpWalrusPromotionRegression()
     {
         // Regression: PEP 572 walrus targets inside a genexp bind in the

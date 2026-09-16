@@ -3,6 +3,7 @@ using PySharp.Compilation.CodeAnalysis;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
@@ -36,11 +37,39 @@ internal sealed partial class Emitter
     private SemanticModel Model => _model;
     private int OptimizationLevel => _context.PyEnvironment.Options.OptimizationLevel;
     private VariableScope VariableScope { get; set; }
-    private Stack<(Label LoopBegin, Label LoopEnd)> Loops { get; } = [];
-    private Stack<int> ForDepth { get; } = [];
-    private int CurrentForDepth { get; set; }
+    private Stack<EmitterRegion> Regions { get; } = [];
     private bool IsInteractive { get; set; }
     private bool OnlyAsName { get; set; }
+
+    /// <summary>
+    /// A compile-time region covering a loop, with-item or try record, mirroring
+    /// the runtime handler records a jump out of the region must dispose of.
+    /// break/continue/return unwind these inline (codegen.c fblock analogue).
+    /// </summary>
+    private sealed class EmitterRegion
+    {
+        public required EmitterRegionKind Kind;
+        // loops: jump targets (the loop's own stack residency is handled there)
+        public Label? LoopBegin;
+        public Label? LoopEnd;
+        // TryStatement: finally body copied inline on unwind
+        public ImmutableArray<AstStmtNode> FinalBody;
+        // ExceptHandlerBody: `except E as name` implicit del on unwind
+        public string? ExceptName;
+    }
+
+    private enum EmitterRegionKind
+    {
+        ForLoop,            // 1 resident iterator, popped by the jump target / return unwind
+        WhileLoop,          // no stack residency
+        WithItem,           // [exit, manager] resident + 1 handler
+        AsyncWithItem,      // [aexit, manager] resident + 1 handler, exit awaits
+        TryStatement,       // 1 handler; unwind copies the finally body inline
+        ExceptHandlerBody,  // inside a running except handler (+ name-cleanup handler when named)
+        FinallyBody,        // the finally body itself: 1 handler, nothing copied
+        AsyncForAwait,      // async-for await wrapper around the body: 1 handler
+        SavedValue,         // a TOS value riding below an inline finally copy
+    }
 
     public void Emit()
     {
@@ -144,25 +173,27 @@ internal sealed partial class Emitter
         private readonly Emitter _emitter;
         private readonly BytecodeBuilder _savedBuilder;
         private readonly VariableScope _savedScope;
+        private readonly EmitterRegion[] _savedRegions;
 
         public EmitterSubScope(Emitter emitter, VariableScope scope)
         {
             _emitter = emitter;
             _savedBuilder = emitter.Builder;
             _savedScope = emitter.VariableScope;
+            _savedRegions = [.. emitter.Regions];
             emitter.Builder = new BytecodeBuilder(emitter._source);
             emitter.VariableScope = scope;
-            if (scope is FunctionVariableScope or AsyncFunctionVariableScope)
-            {
-                emitter.ForDepth.Push(emitter.CurrentForDepth);
-                emitter.CurrentForDepth = 0;
-            }
+            // a sub scope emits a separate code object: its jumps can never
+            // unwind the enclosing code object's regions
+            emitter.Regions.Clear();
         }
 
         public void Dispose()
         {
-            if (_emitter.VariableScope is FunctionVariableScope or AsyncFunctionVariableScope)
-                _emitter.CurrentForDepth = _emitter.ForDepth.Pop();
+            _emitter.Regions.Clear();
+            // ToArray() is top-first, so replay it back-to-front
+            for (int i = _savedRegions.Length - 1; i >= 0; i--)
+                _emitter.Regions.Push(_savedRegions[i]);
 
             _emitter.Builder = _savedBuilder;
             _emitter.VariableScope = _savedScope;

@@ -179,6 +179,7 @@ public sealed class Bytecode
                 case OpCode._SetupFinally:
                 case OpCode._SetupExcept:
                 case OpCode._ClearExcept:
+                case OpCode._PopFinally:
                 case OpCode._EnterFinally:
                 case OpCode._ExitFinally:
                 case OpCode._PopException:

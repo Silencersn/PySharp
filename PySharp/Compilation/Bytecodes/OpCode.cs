@@ -140,6 +140,7 @@ internal enum OpCode : byte
     _PrepReraiseStar,
     _StarReraise,
     _ClearExcept,
+    _PopFinally,
 
     _UnaryOp,
     UnaryNot,

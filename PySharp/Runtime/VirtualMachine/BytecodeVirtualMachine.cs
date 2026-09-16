@@ -890,6 +890,15 @@ internal static partial class BytecodeVirtualMachine
                         states.ExceptionHandlers.Peek().ExceptOffset = ExceptionHandler.NoExcepts;
                         break;
 
+                    // Dumps handler records abandoned by compile-time unwound
+                    // jumps (break/continue/return crossing with/try regions);
+                    // no exception is in flight on those paths, so a plain pop
+                    // is the whole cleanup
+                    case OpCode._PopFinally:
+                        for (int i = 0; i < instructionArg; i++)
+                            states.ExceptionHandlers.Pop();
+                        break;
+
                     case OpCode._EnterFinally:
                         states.ExceptionHandlers.Peek().State = ExceptionHandler.State_Finally;
                         break;

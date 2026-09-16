@@ -235,7 +235,9 @@ partial class Emitter
 
             if (exceptor.Name is null)
             {
+                Regions.Push(new EmitterRegion { Kind = EmitterRegionKind.ExceptHandlerBody });
                 EmitStmts(exceptor.Body);
+                Regions.Pop();
 
                 Builder.Emit(OpCode._PopException);
                 Builder.Jump(finallyBlockLabel); // jump to finally
@@ -248,7 +250,9 @@ partial class Emitter
                 var nameCleanupLabel = Builder.DefineLabel();
                 Builder.Emit(OpCode._SetupFinally, nameCleanupLabel);
 
+                Regions.Push(new EmitterRegion { Kind = EmitterRegionKind.ExceptHandlerBody, ExceptName = exceptor.Name });
                 EmitStmts(exceptor.Body);
+                Regions.Pop();
                 EmitExceptNameCleanup(exceptor.Name);
 
                 Builder.Emit(OpCode._ExitFinally);
@@ -360,19 +364,30 @@ partial class Emitter
         else
             Debug.Assert(node is TryNode);
 
+        Regions.Push(new EmitterRegion { Kind = EmitterRegionKind.TryStatement, FinalBody = node.FinalBody });
         EmitStmts(node.Body);
         Builder.Emit(OpCode._ClearExcept);
         EmitStmts(node.OrElse);
+        Regions.Pop();
+
         Builder.MarkLabel(finallyBlockLabel);
         Builder.Emit(OpCode._EnterFinally);
+        // a jump out of the finally body only drops the record: its body is
+        // already running
+        Regions.Push(new EmitterRegion { Kind = EmitterRegionKind.FinallyBody });
         EmitStmts(node.FinalBody);
+        Regions.Pop();
         Builder.Emit(OpCode._ExitFinally);
         Builder.Jump(tryStmtEndLabel);
 
+        // handler bodies run with the try record still alive, so a jump out
+        // of them must run the finally body and drop the record
+        Regions.Push(new EmitterRegion { Kind = EmitterRegionKind.TryStatement, FinalBody = node.FinalBody });
         if (node is TryNode)
             InternalEmitTryExceptors(node.Exceptors, exceptorLabels, finallyBlockLabel);
         else
             InternalEmitTryStarExceptors(node.Exceptors, exceptorLabels, finallyBlockLabel);
+        Regions.Pop();
 
         Builder.MarkLabel(tryStmtEndLabel);
     }
@@ -392,8 +407,7 @@ partial class Emitter
         var forIterLabel = Builder.DefineLabel();
         var forElseLabel = Builder.DefineLabel();
         var endForLabel = Builder.DefineLabel();
-        Loops.Push((forIterLabel, endForLabel));
-        CurrentForDepth++;
+        Regions.Push(new EmitterRegion { Kind = EmitterRegionKind.ForLoop, LoopBegin = forIterLabel, LoopEnd = endForLabel });
 
         LoadExpr(node.Iter);
         Builder.Emit(OpCode.GetIter);
@@ -411,20 +425,21 @@ partial class Emitter
         Builder.MarkLabel(endForLabel);
         Builder.Emit(OpCode.PopIter);
 
-        CurrentForDepth--;
-        Loops.Pop();
+        Regions.Pop();
     }
 
     private void EmitBreak(out bool isPostUnreachable)
     {
         isPostUnreachable = true;
-        Builder.Jump(Loops.Peek().LoopEnd);
+        var loop = InternalUnwindToLoop();
+        Builder.Jump(loop.LoopEnd!.Value);
     }
 
     private void EmitContinue(out bool isPostUnreachable)
     {
         isPostUnreachable = true;
-        Builder.Jump(Loops.Peek().LoopBegin);
+        var loop = InternalUnwindToLoop();
+        Builder.Jump(loop.LoopBegin!.Value);
     }
 
     private void EmitWhile(WhileNode node)
@@ -432,7 +447,7 @@ partial class Emitter
         var whileBeginLabel = Builder.DefineLabel();
         var whileElseLabel = Builder.DefineLabel();
         var whileEndLabel = Builder.DefineLabel();
-        Loops.Push((whileBeginLabel, whileEndLabel));
+        Regions.Push(new EmitterRegion { Kind = EmitterRegionKind.WhileLoop, LoopBegin = whileBeginLabel, LoopEnd = whileEndLabel });
 
         Builder.MarkLabel(whileBeginLabel);
         LoadExpr(node.Test);
@@ -447,12 +462,128 @@ partial class Emitter
 
         Builder.MarkLabel(whileEndLabel);
 
-        Loops.Pop();
+        Regions.Pop();
     }
 
     private void EmitPass()
     {
         Builder.Emit(OpCode.NoOperation);
+    }
+
+    /// <summary>
+    /// Emits inline unwinding sequences for all regions above the innermost
+    /// <paramref name="keep"/> bottom-most ones, like codegen.c's
+    /// codegen_unwind_fblock_stack. With preserveTos, a value on TOS rides
+    /// below every cleanup (codegen_unwind_fblock's preserve_tos). The region
+    /// stack is lexical and restored afterwards: statements after the jump
+    /// still compile against the regions they lexically sit in.
+    /// </summary>
+    private void EmitUnwindRegions(int keep, bool preserveTos)
+    {
+        if (Regions.Count <= keep)
+            return;
+
+        var drained = new List<EmitterRegion>();
+        while (Regions.Count > keep)
+            drained.Add(Regions.Pop());
+
+        // drained is top-first, so this unwinds innermost-first
+        foreach (var region in drained)
+            EmitUnwindRegion(region, preserveTos);
+
+        for (int i = drained.Count - 1; i >= 0; i--)
+            Regions.Push(drained[i]);
+    }
+
+    private void EmitUnwindRegion(EmitterRegion region, bool preserveTos)
+    {
+        switch (region.Kind)
+        {
+            case EmitterRegionKind.ForLoop:
+                if (preserveTos)
+                    Builder.Emit(OpCode.Swap, 2);
+                Builder.Emit(OpCode.PopTop); // the resident iterator
+                break;
+
+            case EmitterRegionKind.WhileLoop:
+                break;
+
+            case EmitterRegionKind.WithItem:
+                // drop the record first: an exception from __exit__ must
+                // dispatch to outer handlers, not re-enter this region
+                Builder.Emit(OpCode._PopFinally, 1);
+                if (preserveTos)
+                {
+                    // [exit, manager, value] -> [value, exit, manager]
+                    Builder.Emit(OpCode.Swap, 3);
+                    Builder.Emit(OpCode.Swap, 2);
+                }
+                EmitWithExitCall();
+                break;
+
+            case EmitterRegionKind.AsyncWithItem:
+                Builder.Emit(OpCode._PopFinally, 1);
+                if (preserveTos)
+                {
+                    Builder.Emit(OpCode.Swap, 3);
+                    Builder.Emit(OpCode.Swap, 2);
+                }
+                EmitAsyncWithExitCall();
+                break;
+
+            case EmitterRegionKind.TryStatement:
+                // drop the record first so an exception raised by the
+                // inline copy dispatches to outer handlers only
+                Builder.Emit(OpCode._PopFinally, 1);
+                if (preserveTos)
+                    Regions.Push(new EmitterRegion { Kind = EmitterRegionKind.SavedValue });
+                EmitStmts(region.FinalBody);
+                if (preserveTos)
+                    Regions.Pop();
+                break;
+
+            case EmitterRegionKind.ExceptHandlerBody:
+                if (region.ExceptName is not null)
+                {
+                    EmitExceptNameCleanup(region.ExceptName);
+                    Builder.Emit(OpCode._PopFinally, 1); // name-cleanup record
+                }
+                // clears the in-flight exception; the try record itself is
+                // disposed by the TryStatement region below
+                Builder.Emit(OpCode._PopException);
+                break;
+
+            case EmitterRegionKind.FinallyBody:
+            case EmitterRegionKind.AsyncForAwait:
+                Builder.Emit(OpCode._PopFinally, 1);
+                break;
+
+            case EmitterRegionKind.SavedValue:
+                if (preserveTos)
+                    Builder.Emit(OpCode.Swap, 2);
+                Builder.Emit(OpCode.PopTop);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Unwinds every region above the innermost loop and returns it.
+    /// The loop's own residency is handled by the jump targets
+    /// (endForLabel's PopIter / the iterator staying for ForIter).
+    /// </summary>
+    private EmitterRegion InternalUnwindToLoop()
+    {
+        var snapshot = Regions.ToArray(); // top-first
+        int stop = 0;
+        while (stop < snapshot.Length && snapshot[stop].Kind is not (EmitterRegionKind.ForLoop or EmitterRegionKind.WhileLoop))
+            stop++;
+
+        if (stop == snapshot.Length)
+            throw new InvalidOperationException("break/continue is not inside a loop");
+
+        // keep the loop and everything below it
+        EmitUnwindRegions(snapshot.Length - stop, preserveTos: false);
+        return snapshot[stop];
     }
 
     private void InternalEmitIFunctionDef(IFunctionDefNode node)
@@ -658,12 +789,17 @@ partial class Emitter
     {
         isPostUnreachable = true;
 
+        // the value is evaluated before unwinding, so an exception it raises
+        // still dispatches through the enclosing regions' handlers
         if (node.Value is not null)
             LoadExpr(node.Value);
         else
             Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
 
-        Builder.Emit(OpCode.ReturnValue, CurrentForDepth);
+        // inline-unwind every region down to the scope base, preserving the
+        // value on TOS (codegen.c codegen_return + preserve_tos)
+        EmitUnwindRegions(keep: 0, preserveTos: true);
+        Builder.Emit(OpCode.ReturnValue);
     }
 
     private PyCodeObject MakeClassDefBodyCoObj(ClassVariableScope classScope, ClassDefNode node)
@@ -940,7 +1076,7 @@ partial class Emitter
         var forIterLabel = Builder.DefineLabel();
         var forElseLabel = Builder.DefineLabel();
         var endForLabel = Builder.DefineLabel();
-        Loops.Push((forIterLabel, endForLabel));
+        Regions.Push(new EmitterRegion { Kind = EmitterRegionKind.ForLoop, LoopBegin = forIterLabel, LoopEnd = endForLabel });
 
         LoadExpr(node.Iter);
         Builder.Emit(OpCode.GetAIter);
@@ -955,6 +1091,7 @@ partial class Emitter
         var afterStopLabel = Builder.DefineLabel();
         Builder.Emit(OpCode._SetupFinally, cleanupLabel);
         Builder.Emit(OpCode._SetupExcept, exceptLabel);
+        Regions.Push(new EmitterRegion { Kind = EmitterRegionKind.AsyncForAwait });
 
         // Await __anext__() via Send
         Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
@@ -973,6 +1110,7 @@ partial class Emitter
         StoreExpr(node.Target);
 
         EmitStmts(node.Body);
+        Regions.Pop();
         Builder.Jump(cleanupLabel);
 
         // StopAsyncIteration handler
@@ -1006,7 +1144,7 @@ partial class Emitter
         Builder.MarkLabel(endForLabel);
         Builder.Emit(OpCode.PopIter);
 
-        Loops.Pop();
+        Regions.Pop();
     }
 
     private void EmitWith(WithNode node)
@@ -1048,7 +1186,9 @@ partial class Emitter
                 Builder.Emit(OpCode.PopTop);
             // -> [exit, manager]
 
+            Regions.Push(new EmitterRegion { Kind = EmitterRegionKind.WithItem });
             EmitWithItem(i + 1);
+            Regions.Pop();
             Builder.Jump(finallyLabel);
 
             Builder.MarkLabel(exceptLabel);
@@ -1065,15 +1205,21 @@ partial class Emitter
             Builder.Emit(OpCode._LoadHitExcept);
             Builder.PopJumpIfTrue(exitFinallyLabel);
 
-            Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
-            Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
-            Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
-            Builder.Emit(OpCode.Call, 4);
-            Builder.Emit(OpCode.PopTop);
+            EmitWithExitCall();
 
             Builder.MarkLabel(exitFinallyLabel);
             Builder.Emit(OpCode._ExitFinally);
         }
+    }
+
+    // __exit__(manager, None, None, None), consuming the resident [exit, manager]
+    private void EmitWithExitCall()
+    {
+        Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
+        Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
+        Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
+        Builder.Emit(OpCode.Call, 4);
+        Builder.Emit(OpCode.PopTop);
     }
 
     [AIGenerated]
@@ -1132,7 +1278,9 @@ partial class Emitter
                 Builder.Emit(OpCode.PopTop);
             // -> [aexit, manager]
 
+            Regions.Push(new EmitterRegion { Kind = EmitterRegionKind.AsyncWithItem });
             EmitAsyncWithItem(i + 1);
+            Regions.Pop();
             Builder.Jump(finallyLabel);
 
             Builder.MarkLabel(exceptLabel);
@@ -1165,30 +1313,35 @@ partial class Emitter
             Builder.Emit(OpCode._LoadHitExcept);
             Builder.PopJumpIfTrue(exitFinallyLabel);
 
-            Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
-            Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
-            Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
-            Builder.Emit(OpCode.Call, 4);
-
-            // Await __aexit__() result for normal exit
-            Builder.Emit(OpCode.GetAwaitable);
-            Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
-
-            var sendExitNormalLabel = Builder.DefineLabel();
-            var afterExitNormalLabel = Builder.DefineLabel();
-            Builder.MarkLabel(sendExitNormalLabel);
-            Builder.Emit(OpCode.Send, afterExitNormalLabel);
-            Builder.Emit(OpCode.YieldValue);
-            Builder.Jump(sendExitNormalLabel);
-
-            Builder.MarkLabel(afterExitNormalLabel);
-            Builder.Emit(OpCode.Swap, 2); // [result, coroutine]
-            Builder.Emit(OpCode.PopTop);  // pop coroutine
-            Builder.Emit(OpCode.PopTop);  // pop result
+            EmitAsyncWithExitCall();
 
             Builder.MarkLabel(exitFinallyLabel);
             Builder.Emit(OpCode._ExitFinally);
         }
+    }
+
+    // awaits __aexit__(manager, None, None, None), consuming [aexit, manager]
+    private void EmitAsyncWithExitCall()
+    {
+        Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
+        Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
+        Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
+        Builder.Emit(OpCode.Call, 4);
+
+        Builder.Emit(OpCode.GetAwaitable);
+        Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
+
+        var sendLabel = Builder.DefineLabel();
+        var afterLabel = Builder.DefineLabel();
+        Builder.MarkLabel(sendLabel);
+        Builder.Emit(OpCode.Send, afterLabel);
+        Builder.Emit(OpCode.YieldValue);
+        Builder.Jump(sendLabel);
+
+        Builder.MarkLabel(afterLabel);
+        Builder.Emit(OpCode.Swap, 2); // [result, coroutine]
+        Builder.Emit(OpCode.PopTop);  // pop coroutine
+        Builder.Emit(OpCode.PopTop);  // pop result
     }
 
     private void EmitMatch(MatchNode node)
