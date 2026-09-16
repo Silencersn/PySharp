@@ -3241,4 +3241,15 @@ public sealed class TestPyFiles
         var module = RunModule("test_float_as_integer_ratio_special_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestFloatFromhexSubnormalRegression()
+    {
+        // Regression: float.fromhex parses subnormal hex strings with IEEE
+        // 754 subnormal semantics — values below the normalized range keep
+        // their magnitude and sign down to 5e-324, and the hex→fromhex
+        // round trip stays an exact identity across the subnormal range.
+        var module = RunModule("test_float_fromhex_subnormal_regression.py");
+        Assert.IsNotNull(module);
+    }
 }
