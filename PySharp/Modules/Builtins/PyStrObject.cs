@@ -308,13 +308,13 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters("old", "new", "/", "count=-1")]
     private static PyResult Replace(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (arguments[0] is not PyStrObject oldStr || arguments[1] is not PyStrObject newStr)
-            return PyResult.TypeError($"replace args must be str");
+        if (arguments[0] is not PyStrObject oldStr)
+            return PyResult.TypeError(PySR.Runtime_Str_MethodArgMustBeStr, "replace", 1, arguments[0].PyType.Name);
+        if (arguments[1] is not PyStrObject newStr)
+            return PyResult.TypeError(PySR.Runtime_Str_MethodArgMustBeStr, "replace", 2, arguments[1].PyType.Name);
 
-        if (arguments[2] is not PyIntObject countArg)
-            return PyResult.TypeError($"replace count must be int");
-
-        int count = countArg.Int32Value;
+        if (!TrySizeArg(context, arguments[2], PySR.Runtime_Number_Int_TooLargeForSsize, out int count, out var countError))
+            return countError;
 
         if (string.IsNullOrEmpty(oldStr.Value))
         {
@@ -361,11 +361,13 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     private static PyResult Split(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
         var sepObj = arguments[0];
-        var maxsplitObj = arguments[1];
 
-        int maxsplit = -1;
-        if (maxsplitObj is PyIntObject maxsplitInt)
-            maxsplit = maxsplitInt.Int32Value;
+        // CPython do_split: the separator is validated before maxsplit
+        if (sepObj is not PyNoneObject and not PyStrObject)
+            return PyResult.TypeError(PySR.Runtime_Str_SplitSepMustBeStr, sepObj.PyType.Name);
+
+        if (!TrySizeArg(context, arguments[1], PySR.Runtime_Number_Int_TooLargeForSsize, out int maxsplit, out var maxsplitError))
+            return maxsplitError;
 
         string[] parts;
         if (sepObj is PyNoneObject)
@@ -375,8 +377,9 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             else
                 parts = self.Value.Split((char[]?)null, maxsplit + 1, StringSplitOptions.RemoveEmptyEntries);
         }
-        else if (sepObj is PyStrObject sepStr)
+        else
         {
+            var sepStr = (PyStrObject)sepObj;
             if (string.IsNullOrEmpty(sepStr.Value))
                 return PyResult.ValueError("empty separator");
 
@@ -384,10 +387,6 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 parts = self.Value.Split([sepStr.Value], StringSplitOptions.None);
             else
                 parts = self.Value.Split([sepStr.Value], maxsplit + 1, StringSplitOptions.None);
-        }
-        else
-        {
-            return PyResult.TypeError("must be str or None");
         }
 
         var list = new List<PyObject>(parts.Length);
@@ -403,11 +402,13 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     private static PyResult RSplit(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
         var sepObj = arguments[0];
-        var maxsplitObj = arguments[1];
 
-        int maxsplit = -1;
-        if (maxsplitObj is PyIntObject maxsplitInt)
-            maxsplit = maxsplitInt.Int32Value;
+        // CPython do_xsplit: the separator is validated before maxsplit
+        if (sepObj is not PyNoneObject and not PyStrObject)
+            return PyResult.TypeError(PySR.Runtime_Str_SplitSepMustBeStr, sepObj.PyType.Name);
+
+        if (!TrySizeArg(context, arguments[1], PySR.Runtime_Number_Int_TooLargeForSsize, out int maxsplit, out var maxsplitError))
+            return maxsplitError;
 
         string[] parts;
         if (sepObj is PyNoneObject)
@@ -443,8 +444,9 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 parts = [.. resultList];
             }
         }
-        else if (sepObj is PyStrObject sepStr)
+        else
         {
+            var sepStr = (PyStrObject)sepObj;
             if (string.IsNullOrEmpty(sepStr.Value))
                 return PyResult.ValueError("empty separator");
 
@@ -470,10 +472,6 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 resultList.Reverse();
                 parts = [.. resultList];
             }
-        }
-        else
-        {
-            return PyResult.TypeError("must be str or None");
         }
 
         var list = new List<PyObject>(parts.Length);
@@ -523,37 +521,67 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         return true;
     }
 
+    // CPython clinic Py_ssize_t/int converters: non-int arguments convert
+    // through __index__ (propagating its "cannot be interpreted as an
+    // integer" TypeError) and out-of-range ints raise OverflowError with
+    // the C-level type name
+    private static bool TrySizeArg(PyCallContext context, PyObject arg, string overflowMessage, out int value, out PyResult error)
+    {
+        var indexResult = PySpecialMethods.Index(context, arg);
+        if (indexResult.IsError)
+        {
+            value = default;
+            error = indexResult;
+            return false;
+        }
+
+        var big = indexResult.Value.Value;
+        if (big > int.MaxValue || big < int.MinValue)
+        {
+            value = default;
+            error = PyResult.OverflowError(overflowMessage);
+            return false;
+        }
+
+        value = (int)big;
+        error = default!;
+        return true;
+    }
+
     [PyMethod("find")]
     [AIGenerated]
     [PyFunctionParameters("sub", "/", "start=0", "end=2147483647")]
     private static PyResult Find(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (arguments[0] is PyStrObject subStr)
-        {
-            if (!TrySliceIndex(context, arguments[1], 0, out int start, out var startError))
-                return startError!;
-            if (!TrySliceIndex(context, arguments[2], int.MaxValue, out int end, out var endError))
-                return endError!;
-            // CPython ADJUST_INDICES: like startswith above, start clamps
-            // only at 0 so an above-length start keeps end - start negative
-            if (start < 0)
-                start = ClampRuneStart(start, self.PyLength);
-            end = ClampRuneEnd(end, self.PyLength);
-            // stringlib/find.h: an empty needle is found at the window
-            // start whenever the window is valid (end - start >= 0)
-            if (subStr.Value.Length is 0)
-                return end - start < 0 ? PyIntObject.MinusOne : PyIntObject.FromInteger(start);
-            if (start >= end)
-                return PyIntObject.MinusOne;
-            var sliced = self.SubstringByRuneRange(start, end);
-            int charIdx = sliced.IndexOf(subStr.Value);
-            if (charIdx < 0)
-                return PyIntObject.MinusOne;
-            int charStart = self.RuneIndexToCharIndex(start);
-            int resultRuneIdx = PyStrObject.CharIndexToRuneIndex(self.Value, charStart + charIdx);
-            return PyIntObject.FromInteger(resultRuneIdx);
-        }
-        return PyResult.TypeError($"find arg must be str");
+        return FindImpl(context, self, arguments, "find");
+    }
+
+    private static PyResult FindImpl(PyCallContext context, PyStrObject self, PyArguments arguments, string methodName)
+    {
+        if (arguments[0] is not PyStrObject subStr)
+            return PyResult.TypeError(PySR.Runtime_Str_MethodArgMustBeStr, methodName, 1, arguments[0].PyType.Name);
+        if (!TrySliceIndex(context, arguments[1], 0, out int start, out var startError))
+            return startError!;
+        if (!TrySliceIndex(context, arguments[2], int.MaxValue, out int end, out var endError))
+            return endError!;
+        // CPython ADJUST_INDICES: like startswith above, start clamps
+        // only at 0 so an above-length start keeps end - start negative
+        if (start < 0)
+            start = ClampRuneStart(start, self.PyLength);
+        end = ClampRuneEnd(end, self.PyLength);
+        // stringlib/find.h: an empty needle is found at the window
+        // start whenever the window is valid (end - start >= 0)
+        if (subStr.Value.Length is 0)
+            return end - start < 0 ? PyIntObject.MinusOne : PyIntObject.FromInteger(start);
+        if (start >= end)
+            return PyIntObject.MinusOne;
+        var sliced = self.SubstringByRuneRange(start, end);
+        int charIdx = sliced.IndexOf(subStr.Value);
+        if (charIdx < 0)
+            return PyIntObject.MinusOne;
+        int charStart = self.RuneIndexToCharIndex(start);
+        int resultRuneIdx = PyStrObject.CharIndexToRuneIndex(self.Value, charStart + charIdx);
+        return PyIntObject.FromInteger(resultRuneIdx);
     }
 
     [PyMethod("rfind")]
@@ -561,31 +589,34 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters("sub", "/", "start=0", "end=2147483647")]
     private static PyResult RFind(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (arguments[0] is PyStrObject subStr)
-        {
-            if (!TrySliceIndex(context, arguments[1], 0, out int start, out var startError))
-                return startError!;
-            if (!TrySliceIndex(context, arguments[2], int.MaxValue, out int end, out var endError))
-                return endError!;
-            // CPython ADJUST_INDICES: start clamps only at 0
-            if (start < 0)
-                start = ClampRuneStart(start, self.PyLength);
-            end = ClampRuneEnd(end, self.PyLength);
-            // stringlib/find.h: an empty needle is reported at the window
-            // end whenever the window is valid (end - start >= 0)
-            if (subStr.Value.Length is 0)
-                return end - start < 0 ? PyIntObject.MinusOne : PyIntObject.FromInteger(end);
-            if (start >= end)
-                return PyIntObject.MinusOne;
-            var sliced = self.SubstringByRuneRange(start, end);
-            int charIdx = sliced.LastIndexOf(subStr.Value);
-            if (charIdx < 0)
-                return PyIntObject.MinusOne;
-            int charStart = self.RuneIndexToCharIndex(start);
-            int resultRuneIdx = PyStrObject.CharIndexToRuneIndex(self.Value, charStart + charIdx);
-            return PyIntObject.FromInteger(resultRuneIdx);
-        }
-        return PyResult.TypeError($"rfind arg must be str");
+        return RFindImpl(context, self, arguments, "rfind");
+    }
+
+    private static PyResult RFindImpl(PyCallContext context, PyStrObject self, PyArguments arguments, string methodName)
+    {
+        if (arguments[0] is not PyStrObject subStr)
+            return PyResult.TypeError(PySR.Runtime_Str_MethodArgMustBeStr, methodName, 1, arguments[0].PyType.Name);
+        if (!TrySliceIndex(context, arguments[1], 0, out int start, out var startError))
+            return startError!;
+        if (!TrySliceIndex(context, arguments[2], int.MaxValue, out int end, out var endError))
+            return endError!;
+        // CPython ADJUST_INDICES: start clamps only at 0
+        if (start < 0)
+            start = ClampRuneStart(start, self.PyLength);
+        end = ClampRuneEnd(end, self.PyLength);
+        // stringlib/find.h: an empty needle is reported at the window
+        // end whenever the window is valid (end - start >= 0)
+        if (subStr.Value.Length is 0)
+            return end - start < 0 ? PyIntObject.MinusOne : PyIntObject.FromInteger(end);
+        if (start >= end)
+            return PyIntObject.MinusOne;
+        var sliced = self.SubstringByRuneRange(start, end);
+        int charIdx = sliced.LastIndexOf(subStr.Value);
+        if (charIdx < 0)
+            return PyIntObject.MinusOne;
+        int charStart = self.RuneIndexToCharIndex(start);
+        int resultRuneIdx = PyStrObject.CharIndexToRuneIndex(self.Value, charStart + charIdx);
+        return PyIntObject.FromInteger(resultRuneIdx);
     }
 
     [PyMethod("index")]
@@ -593,7 +624,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters("sub", "/", "start=0", "end=2147483647")]
     private static PyResult Index(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        var result = Find(context, self, arguments);
+        var result = FindImpl(context, self, arguments, "index");
         if (result.IsError)
             return result;
         if (result.Value is not PyIntObject intVal)
@@ -608,7 +639,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters("sub", "/", "start=0", "end=2147483647")]
     private static PyResult RIndex(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        var result = RFind(context, self, arguments);
+        var result = RFindImpl(context, self, arguments, "rindex");
         if (result.IsError)
             return result;
         if (result.Value is not PyIntObject intVal)
@@ -651,22 +682,22 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters("width", "fillchar=' '", "/")]
     private static PyResult Center(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (arguments[0] is not PyIntObject widthObj)
-            return PyResult.TypeError("width must be int");
+        if (!TrySizeArg(context, arguments[0], PySR.Runtime_Number_Int_TooLargeForSsize, out int width, out var widthError))
+            return widthError;
 
         string fillchar = " ";
         if (arguments[1] is PyStrObject fillStr)
         {
             if (fillStr.PyLength is not 1)
-                return PyResult.TypeError("fillchar must be a string of length 1");
+                return PyResult.TypeError(PySR.Runtime_Str_FillCharLength);
             fillchar = fillStr.Value;
         }
-        else if (arguments[1] is not PyNoneObject)
+        else
         {
-            return PyResult.TypeError("fillchar must be a character");
+            // CPython: the fillchar default applies by omission only; None
+            // reports as NoneType like any other non-string
+            return PyResult.TypeError(PySR.Runtime_Str_FillCharMustBeUnicode, arguments[1].PyType.Name);
         }
-
-        int width = widthObj.Int32Value;
         if (width <= self.PyLength)
             return self;
 
@@ -689,7 +720,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     private static PyResult Count(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
         if (arguments[0] is not PyStrObject subStr)
-            return PyResult.TypeError("count arg must be str");
+            return PyResult.TypeError(PySR.Runtime_Str_MethodArgMustBeStr, "count", 1, arguments[0].PyType.Name);
 
         if (!TrySliceIndex(context, arguments[1], 0, out int start, out var startError))
             return startError!;
@@ -849,9 +880,8 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters("width", "/")]
     private static PyResult Zfill(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (arguments[0] is not PyIntObject widthObj)
-            return PyResult.TypeError("width must be int");
-        int width = widthObj.Int32Value;
+        if (!TrySizeArg(context, arguments[0], PySR.Runtime_Number_Int_TooLargeForSsize, out int width, out var widthError))
+            return widthError;
         if (width <= self.PyLength)
             return self;
 
@@ -1259,7 +1289,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     private static PyResult Partition(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
         if (arguments[0] is not PyStrObject sepStr)
-            return PyResult.TypeError("partition sep must be str");
+            return PyResult.TypeError(PySR.Runtime_Str_SepMustBeStr, arguments[0].PyType.Name);
         if (string.IsNullOrEmpty(sepStr.Value))
             return PyResult.ValueError("empty separator");
 
@@ -1353,19 +1383,15 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters("tabsize=8", "/")]
     private static PyResult ExpandTabs(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        int tabsize = 8;
-        if (arguments[0] is PyIntObject tabsizeObj)
-        {
-            tabsize = tabsizeObj.Int32Value;
-            // CPython unicode_expandtabs: a negative tabsize means 0
-            // (tab deletion), it is accepted rather than rejected
-            if (tabsize < 0)
-                tabsize = 0;
-        }
-        else if (arguments[0] is not PyNoneObject)
-        {
-            return PyResult.TypeError("tabsize must be int");
-        }
+        // expandtabs uses the C int converter (its overflow message names
+        // "C int", unlike the ssize_t converters elsewhere)
+        if (!TrySizeArg(context, arguments[0], PySR.Runtime_Number_Int_MaxDigitsNotInt32, out int tabsize, out var tabsizeError))
+            return tabsizeError;
+
+        // CPython unicode_expandtabs: a negative tabsize means 0
+        // (tab deletion), it is accepted rather than rejected
+        if (tabsize < 0)
+            tabsize = 0;
 
         var sb = new StringBuilder();
         int col = 0;
@@ -1399,22 +1425,22 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters("width", "fillchar=' '", "/")]
     private static PyResult LJust(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (arguments[0] is not PyIntObject widthObj)
-            return PyResult.TypeError("width must be int");
+        if (!TrySizeArg(context, arguments[0], PySR.Runtime_Number_Int_TooLargeForSsize, out int width, out var widthError))
+            return widthError;
 
         string fillchar = " ";
         if (arguments[1] is PyStrObject fillStr)
         {
             if (fillStr.PyLength is not 1)
-                return PyResult.TypeError("fillchar must be a string of length 1");
+                return PyResult.TypeError(PySR.Runtime_Str_FillCharLength);
             fillchar = fillStr.Value;
         }
-        else if (arguments[1] is not PyNoneObject)
+        else
         {
-            return PyResult.TypeError("fillchar must be a character");
+            // CPython: the fillchar default applies by omission only; None
+            // reports as NoneType like any other non-string
+            return PyResult.TypeError(PySR.Runtime_Str_FillCharMustBeUnicode, arguments[1].PyType.Name);
         }
-
-        int width = widthObj.Int32Value;
         if (width <= self.PyLength)
             return self;
 
@@ -1427,22 +1453,22 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters("width", "fillchar=' '", "/")]
     private static PyResult RJust(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        if (arguments[0] is not PyIntObject widthObj)
-            return PyResult.TypeError("width must be int");
+        if (!TrySizeArg(context, arguments[0], PySR.Runtime_Number_Int_TooLargeForSsize, out int width, out var widthError))
+            return widthError;
 
         string fillchar = " ";
         if (arguments[1] is PyStrObject fillStr)
         {
             if (fillStr.PyLength is not 1)
-                return PyResult.TypeError("fillchar must be a string of length 1");
+                return PyResult.TypeError(PySR.Runtime_Str_FillCharLength);
             fillchar = fillStr.Value;
         }
-        else if (arguments[1] is not PyNoneObject)
+        else
         {
-            return PyResult.TypeError("fillchar must be a character");
+            // CPython: the fillchar default applies by omission only; None
+            // reports as NoneType like any other non-string
+            return PyResult.TypeError(PySR.Runtime_Str_FillCharMustBeUnicode, arguments[1].PyType.Name);
         }
-
-        int width = widthObj.Int32Value;
         if (width <= self.PyLength)
             return self;
 
@@ -1456,7 +1482,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     private static PyResult RPartition(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
         if (arguments[0] is not PyStrObject sepStr)
-            return PyResult.TypeError("rpartition sep must be str");
+            return PyResult.TypeError(PySR.Runtime_Str_SepMustBeStr, arguments[0].PyType.Name);
         if (string.IsNullOrEmpty(sepStr.Value))
             return PyResult.ValueError("empty separator");
 
@@ -1483,7 +1509,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     private static PyResult RemovePrefix(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
         if (arguments[0] is not PyStrObject prefixStr)
-            return PyResult.TypeError("removeprefix arg must be str");
+            return PyResult.TypeError(PySR.Runtime_Str_PrefixArgMustBeStr, "removeprefix", arguments[0].PyType.Name);
 
         if (self.Value.StartsWith(prefixStr.Value))
             return PyStrObject.FromString(self.Value[prefixStr.Value.Length..]);
@@ -1497,7 +1523,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     private static PyResult RemoveSuffix(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
         if (arguments[0] is not PyStrObject suffixStr)
-            return PyResult.TypeError("removesuffix arg must be str");
+            return PyResult.TypeError(PySR.Runtime_Str_PrefixArgMustBeStr, "removesuffix", arguments[0].PyType.Name);
 
         if (self.Value.EndsWith(suffixStr.Value))
             return PyStrObject.FromString(self.Value[..^suffixStr.Value.Length]);

@@ -3477,4 +3477,16 @@ public sealed class TestPyFiles
         var module = RunModule("test_container_init_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestStrErrorMessagesRegression()
+    {
+        // Regression: str method TypeErrors use CPython's exact wording
+        // with the argument ordinal and offending type name, the numeric
+        // converter arguments (maxsplit/count/width/tabsize) convert
+        // through __index__ with the C-level OverflowError messages, and
+        // index/rindex carry their own templates.
+        var module = RunModule("test_str_error_messages_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

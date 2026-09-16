@@ -170,6 +170,13 @@ partial class PySR
     public const string Runtime_Str_ArgMustBeStr = "str() argument '{0}' must be str, not {1}";
     public const string Runtime_Str_DecodingNeedBytesLike = "decoding to str: need a bytes-like object, {0} found";
     public const string Runtime_Str_DecodingStrNotSupported = "decoding str is not supported";
+    public const string Runtime_Str_MethodArgMustBeStr = "{0}() argument {1} must be str, not {2}";
+    public const string Runtime_Str_SepMustBeStr = "must be str, not {0}";
+    public const string Runtime_Str_SplitSepMustBeStr = "must be str or None, not {0}";
+    public const string Runtime_Str_PrefixArgMustBeStr = "{0}() argument must be str, not {1}";
+    public const string Runtime_Str_FillCharMustBeUnicode = "The fill character must be a unicode character, not {0}";
+    public const string Runtime_Str_FillCharLength = "The fill character must be exactly one character long";
+    public const string Runtime_Number_Int_TooLargeForSsize = "Python int too large to convert to C ssize_t";
 
     public const string Runtime_List_ItemNotFound = "list.{0}(x): x not in list";
     public const string Runtime_List_PopIndexOutOfRange = "pop index out of range";
