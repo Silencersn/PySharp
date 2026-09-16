@@ -3513,4 +3513,16 @@ public sealed class TestPyFiles
         var module = RunModule("test_docstring_dedent_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestDataclassGeneratorRegression()
+    {
+        // Regression: the dataclass generator merges inherited base
+        // fields into the generated __init__, supports field(metadata=)
+        // and kw_only (class and field level), calls __post_init__ with
+        // the InitVar values, keeps InitVar pseudo-fields out of the
+        // instance, and generates __match_args__ for class patterns.
+        var module = RunModule("test_dataclass_generator_regression.py");
+        Assert.IsNotNull(module);
+    }
 }
