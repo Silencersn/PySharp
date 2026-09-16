@@ -3380,4 +3380,16 @@ public sealed class TestPyFiles
         var module = RunModule("test_bytes_str_encoding_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestUnaryNotimplementedRegression()
+    {
+        // Regression: unary slot hooks pass their result through unchecked
+        // — __neg__/__pos__/__invert__ returning NotImplemented yield the
+        // singleton itself like __abs__ always did, while a missing slot
+        // still raises the bad-operand TypeError and the binary reflected
+        // fallback keeps its own semantics.
+        var module = RunModule("test_unary_notimplemented_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

@@ -561,12 +561,11 @@ public static class PyOperators
 
     private static PyResult EvalUnaryOperator(PyCallContext context, PyObject value, PyUnaryFunction? func, char op)
     {
+        // CPython's unary slot wrappers pass the hook result through
+        // unchecked — a hook returning NotImplemented yields the singleton
+        // itself (unlike binary slots); only a missing slot raises here
         if (func is not null)
-        {
-            var result = func(context, value);
-            if (!result.IsNotImplemented)
-                return result;
-        }
+            return func(context, value);
 
         return PyResult.TypeError(PySR.Runtime_Operator_UnsupportedForUnary, op, value.PyType.FullName);
     }
