@@ -165,6 +165,8 @@ partial class PySR
     public const string InvalidSyntax_Semantic_UnreachablePatterns_Wildcard = "wildcard makes remaining patterns unreachable";
     public const string InvalidSyntax_Semantic_UnreachablePatterns_Capture = "name capture '{0}' makes remaining patterns unreachable";
 
+    public const string InvalidSyntax_Semantic_PatternMultipleAssignments = "multiple assignments to name '{0}' in pattern";
+
     public const string InvalidSyntax_Semantic_BindDifferentNames = "alternative patterns bind different names";
 
     public const string InvalidSyntax_Semantic_MultipleStarredInAssignment = "multiple starred expressions in assignment";

@@ -284,6 +284,8 @@ partial class SemanticAnalyzer
         {
             var c = node.Cases[i];
 
+            CheckDuplicatePatternCaptures(c.Pattern, []);
+
             var irrefutablePattern = FindIrrefutablePattern(c.Pattern, out var isLast);
 
             if (irrefutablePattern is null)
@@ -331,6 +333,51 @@ partial class SemanticAnalyzer
                 throw SyntaxError(PySR.InvalidSyntax_Semantic_UnreachablePatterns_Wildcard);
 
             throw SyntaxError(PySR.InvalidSyntax_Semantic_UnreachablePatterns_Capture, irrefutablePattern.Name);
+        }
+
+        // CPython codegen_pattern_helper_store_name: a name may be captured
+        // only once per pattern path; each or-pattern alternative has its own
+        // capture set.
+        void CheckDuplicatePatternCaptures(AstPatternNode pattern, HashSet<string> names)
+        {
+            switch (pattern)
+            {
+                case MatchAsNode n:
+                    if (n.Pattern is not null)
+                        CheckDuplicatePatternCaptures(n.Pattern, names);
+                    if (n.Name is not null && !names.Add(n.Name))
+                        throw SyntaxError(PySR.InvalidSyntax_Semantic_PatternMultipleAssignments, n.Name);
+                    break;
+
+                case MatchStarNode n:
+                    if (n.Name is not null && !names.Add(n.Name))
+                        throw SyntaxError(PySR.InvalidSyntax_Semantic_PatternMultipleAssignments, n.Name);
+                    break;
+
+                case MatchSequenceNode n:
+                    foreach (var subPattern in n.Patterns)
+                        CheckDuplicatePatternCaptures(subPattern, names);
+                    break;
+
+                case MatchMappingNode n:
+                    foreach (var subPattern in n.Patterns)
+                        CheckDuplicatePatternCaptures(subPattern, names);
+                    if (n.Rest is not null && !names.Add(n.Rest))
+                        throw SyntaxError(PySR.InvalidSyntax_Semantic_PatternMultipleAssignments, n.Rest);
+                    break;
+
+                case MatchClassNode n:
+                    foreach (var subPattern in n.Patterns)
+                        CheckDuplicatePatternCaptures(subPattern, names);
+                    foreach (var subPattern in n.KwdPatterns)
+                        CheckDuplicatePatternCaptures(subPattern, names);
+                    break;
+
+                case MatchOrNode n:
+                    foreach (var subPattern in n.Patterns)
+                        CheckDuplicatePatternCaptures(subPattern, []);
+                    break;
+            }
         }
 
         VisitNode(node.Subject);

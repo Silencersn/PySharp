@@ -124,7 +124,7 @@ partial class Parser
     {
         var pos = TokenPosition;
 
-        if (CurrentTokenType is TokenType.Number or TokenType.String or TokenType.FStringStart ||
+        if (CurrentTokenType is TokenType.Minus or TokenType.Number or TokenType.String or TokenType.FStringStart ||
             CurrentTokenType is TokenType.Name && IsKeyword(CurrentTokenStringAsSpan))
             return ParseLiteralPattern();
 
@@ -231,7 +231,7 @@ partial class Parser
     [GrammarSyntaxRule("literal_expr")]
     private AstExprNode ParseLiteralExpr()
     {
-        if (CurrentTokenType is TokenType.Number)
+        if (CurrentTokenType is TokenType.Minus or TokenType.Number)
         {
             var pos = TokenPosition;
 
@@ -367,24 +367,23 @@ partial class Parser
     [GrammarSyntaxRule("attr")]
     private AttributeNode ParseAttr()
     {
-        var metaInfo = CreateAstMetaInfo();
         var nameOrAttr = ParseNameOrAttr();
-        EnsureTokenTypeThenMove(TokenType.Dot);
-        var name = ParseIdentifier();
-        return Ast.Attribute(nameOrAttr, name).With(metaInfo);
+        if (nameOrAttr is not AttributeNode attribute)
+            throw SyntaxError();
+        return attribute;
     }
 
     [GrammarSyntaxRule("name_or_attr")]
     private AstExprNode ParseNameOrAttr()
     {
-        var pos = TokenPosition;
         var metaInfo = CreateAstMetaInfo();
-        var name = ParseIdentifier();
-        if (CurrentTokenType is not TokenType.Dot)
-            return Ast.Name(name).With(metaInfo);
-
-        TokenPosition = pos;
-        return ParseAttr();
+        AstExprNode result = Ast.Name(ParseIdentifier()).With(metaInfo);
+        while (CurrentTokenType is TokenType.Dot)
+        {
+            MoveNextToken();
+            result = Ast.Attribute(result, ParseIdentifier()).With(metaInfo.WithPreviousEnd());
+        }
+        return result;
     }
 
     [GrammarSyntaxRule("maybe_sequence_pattern")]

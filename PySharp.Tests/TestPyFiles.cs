@@ -776,6 +776,41 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestMatchValuePatternRegression()
+    {
+        // Regression: dotted value patterns (case Color.RED:) used to put the
+        // parser into an infinite ParseAttr <-> ParseNameOrAttr recursion,
+        // crashing the process with an uncatchable .NET stack overflow at
+        // compile time. Fails until the fix lands.
+        var module = RunModule("test_match_value_pattern_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestMatchNegativeLiteralPatternRegression()
+    {
+        // Regression: negative numeric literal patterns (case -1: / case -1.5:)
+        // are valid per PEP 634 signed_number but used to be rejected with
+        // SyntaxError; '+1' and minus before non-numbers keep being rejected.
+        // Fails until the fix lands.
+        var module = RunModule("test_match_negative_literal_pattern_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestMatchDuplicateCaptureRegression()
+    {
+        // Regression: a capture name repeated inside one pattern (case [a, a]:)
+        // must be rejected with "multiple assignments to name 'a' in pattern"
+        // like CPython codegen_pattern_helper_store_name, instead of silently
+        // matching everything with the later binding shadowing the earlier;
+        // the same name across or-pattern alternatives and across cases stays
+        // legal. Fails until the fix lands.
+        var module = RunModule("test_match_duplicate_capture_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestUnpackExtended()
     {
         var module = RunModule("test_unpack_extended.py");
