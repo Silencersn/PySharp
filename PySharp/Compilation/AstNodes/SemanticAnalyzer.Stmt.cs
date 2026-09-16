@@ -1,4 +1,5 @@
 using PySharp.Compilation.Primitives;
+using PySharp.Modules.Builtins;
 using System.Diagnostics;
 
 namespace PySharp.Compilation.AstNodes;
@@ -192,6 +193,12 @@ partial class SemanticAnalyzer
 
     private void VisitAssert(AssertNode node)
     {
+        // CPython codegen_assert: a non-empty tuple literal display as the
+        // test (the classic "assert (cond, msg)" mistake) warns at compile
+        // time; an empty tuple warns nowhere since it is always false
+        if (node.Test is TupleNode { Elts.IsEmpty: false } || node.Test is ConstantNode { Value: PyTupleObject { Count: > 0 } })
+            _ = _context.WarnSyntax(PySR.InvalidSyntax_Warning_AssertionAlwaysTrue, this).PyUnwrap(_context);
+
         VisitNode(node.Test);
         VisitNullableNode(node.Msg);
     }

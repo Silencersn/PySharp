@@ -3489,4 +3489,16 @@ public sealed class TestPyFiles
         var module = RunModule("test_str_error_messages_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestAssertTupleWarningRegression()
+    {
+        // Regression: an assert whose test is a non-empty tuple literal
+        // display emits CPython's compile-time SyntaxWarning ("assertion
+        // is always true, perhaps remove parentheses?") while the runtime
+        // behavior is unchanged; variable-bound tuples, parenthesized
+        // non-tuples, and the always-false empty tuple stay silent.
+        var module = RunModule("test_assert_tuple_warning_regression.py");
+        Assert.IsNotNull(module);
+    }
 }
