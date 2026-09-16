@@ -3501,4 +3501,16 @@ public sealed class TestPyFiles
         var module = RunModule("test_assert_tuple_warning_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestDocstringDedentRegression()
+    {
+        // Regression: __doc__ (function/class/module first-statement
+        // string literals, exec included) is cleaned at compile time with
+        // CPython's _PyCompile_CleanDoc semantics — expandtabs, first-line
+        // leading-space strip, and common-margin dedent of the following
+        // non-blank lines — while non-docstring constants stay raw.
+        var module = RunModule("test_docstring_dedent_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

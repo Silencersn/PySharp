@@ -141,6 +141,37 @@ public partial class PyStrObject : PyObject
     {
         return GetHashCode(Value);
     }
+
+    // CPython unicode_expandtabs: the column counts runes, a tab advances
+    // to the next tab stop, and \n/\r reset the column
+    internal static string ExpandTabsCore(string value, int tabsize)
+    {
+        var sb = new StringBuilder();
+        int col = 0;
+        foreach (var rune in value.EnumerateRunes())
+        {
+            if (rune.Value is '\t')
+            {
+                if (tabsize > 0)
+                {
+                    int spaces = tabsize - (col % tabsize);
+                    sb.Append(' ', spaces);
+                    col += spaces;
+                }
+            }
+            else if (rune.Value is '\n' or '\r')
+            {
+                sb.Append(rune.ToString());
+                col = 0;
+            }
+            else
+            {
+                sb.Append(rune.ToString());
+                col++;
+            }
+        }
+        return sb.ToString();
+    }
 }
 
 [PyType("str")]
@@ -1393,32 +1424,9 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         if (tabsize < 0)
             tabsize = 0;
 
-        var sb = new StringBuilder();
-        int col = 0;
-        foreach (var rune in self.Value.EnumerateRunes())
-        {
-            if (rune.Value is '\t')
-            {
-                if (tabsize > 0)
-                {
-                    int spaces = tabsize - (col % tabsize);
-                    sb.Append(' ', spaces);
-                    col += spaces;
-                }
-            }
-            else if (rune.Value is '\n' or '\r')
-            {
-                sb.Append(rune.ToString());
-                col = 0;
-            }
-            else
-            {
-                sb.Append(rune.ToString());
-                col++;
-            }
-        }
-        return PyStrObject.FromString(sb.ToString());
+        return PyStrObject.FromString(PyStrObject.ExpandTabsCore(self.Value, tabsize));
     }
+
 
     [PyMethod("ljust")]
     [AIGenerated]

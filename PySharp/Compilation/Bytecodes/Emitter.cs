@@ -5,6 +5,7 @@ using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Text;
 using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Compilation.Bytecodes;
@@ -114,12 +115,78 @@ internal sealed partial class Emitter
             exprNode.Value is ConstantNode constantNode &&
             constantNode.Value is PyStrObject strObj)
         {
-            doc = strObj;
+            doc = CleanDoc(strObj);
             return true;
         }
 
         doc = null;
         return false;
+    }
+
+    // CPython _PyCompile_CleanDoc: inspect.cleandoc minus the removal of
+    // blank edge lines (line numbers stay valid). The doc expands tabs,
+    // loses its first line's leading spaces, and every non-blank line
+    // after the first loses the common leading margin; lines with less
+    // indentation and blank lines are left as-is.
+    private static PyStrObject CleanDoc(PyStrObject doc)
+    {
+        string value = PyStrObject.ExpandTabsCore(doc.Value, 8);
+        int len = value.Length;
+
+        // first pass: the minimum indentation of any non-blank line after
+        // the first
+        int p = 0;
+        while (p < len && value[p++] is not '\n')
+        {
+        }
+
+        int margin = int.MaxValue;
+        while (p < len)
+        {
+            int lineStart = p;
+            while (p < len && value[p] is ' ')
+                p++;
+            if (p < len && value[p] is not '\n')
+                margin = Math.Min(margin, p - lineStart);
+            while (p < len && value[p++] is not '\n')
+            {
+            }
+        }
+        if (margin is int.MaxValue)
+            margin = 0;
+
+        // second pass: copy the first line without leading spaces
+        p = 0;
+        while (p < len && value[p] is ' ')
+            p++;
+        if (p is 0 && margin is 0)
+            return PyStrObject.FromString(value);
+
+        var sb = new StringBuilder(len);
+        while (p < len)
+        {
+            char ch = value[p++];
+            sb.Append(ch);
+            if (ch is '\n')
+                break;
+        }
+
+        // copy subsequent lines without the margin
+        while (p < len)
+        {
+            for (int i = 0; i < margin && p < len && value[p] is ' '; i++, p++)
+            {
+            }
+            while (p < len)
+            {
+                char ch = value[p++];
+                sb.Append(ch);
+                if (ch is '\n')
+                    break;
+            }
+        }
+
+        return PyStrObject.FromString(sb.ToString());
     }
 
     /// <summary>
