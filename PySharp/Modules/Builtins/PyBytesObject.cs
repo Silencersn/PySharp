@@ -47,18 +47,51 @@ public sealed class PyBytesObject : PyObject
 [PyType("bytes")]
 public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
 {
-    [PyExport(PySpecialNames.New, nameof(NewImpl))]
-    private static partial PyBuiltinFunctionOrMethodObject _new { get; }
-
-    [PyFunctionParameters("source=b''")]
-    private static PyResult NewImpl(PyCallContext context, PyArguments arguments)
+    protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        var source = arguments[0];
+        // CPython bytes_new: the clinic parser reports arity, keyword and
+        // str-converter failures before bytes_new_impl sees the arguments;
+        // a string source encodes, and non-string sources then take the
+        // zero-fill / iterable / copy conversions
+        var bindResult = BindCodecArguments("bytes", args, kwargs, out var source, out var encoding, out var errors);
+        if (bindResult.IsError)
+            return bindResult;
+
+        var encodingResult = CheckCodecStrArgument("bytes", "encoding", encoding, out var encodingName);
+        if (encodingResult.IsError)
+            return encodingResult;
+
+        var errorsResult = CheckCodecStrArgument("bytes", "errors", errors, out var errorsName);
+        if (errorsResult.IsError)
+            return errorsResult;
+
+        if (source is PyStrObject strSource)
+        {
+            if (encodingName is null)
+                return PyResult.TypeError(PySR.Runtime_Bytes_StrWithoutEncoding);
+            return PyStrObjectType.EncodeCore(context, strSource.Value, encodingName, errorsName ?? "strict");
+        }
+
+        if (encodingName is not null)
+            return PyResult.TypeError(PySR.Runtime_Codec_EncodingWithoutString);
+        if (errorsName is not null)
+            return PyResult.TypeError(PySR.Runtime_Codec_ErrorsWithoutString);
+
+        var obj = FromSource(context, source);
+        if (obj.IsError)
+            return obj;
+
+        obj.Value._pyType = cls;
+        return obj;
+    }
+
+    private static PyResult FromSource(PyCallContext context, PyObject? source)
+    {
+        if (source is null)
+            return PyBytesObject.Empty;
+
         if (source is PyBytesObject)
             return source;
-
-        if (source is PyStrObject)
-            return PyResult.TypeError(PySR.Runtime_Bytes_StrWithoutEncoding);
 
         // CPython bytes(n): an indexable source zero-fills n bytes
         // (PyNumber_Index); the iterable protocol is only the fallback
@@ -117,14 +150,57 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
         return PyBytesObject.MoveBytes(bytes);
     }
 
-    protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    // Clinic binding shared by the bytes()/bytearray() (source, encoding,
+    // errors) signatures: arity above three, unknown keyword names and
+    // keyword/positional collisions report before any conversion runs
+    internal static PyResult BindCodecArguments(string typeName, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, out PyObject? source, out PyObject? encoding, out PyObject? errors)
     {
-        var obj = _new.Call(context, args, kwargs);
-        if (obj.IsError)
-            return obj;
+        source = args.Count > 0 ? args[0] : null;
+        encoding = args.Count > 1 ? args[1] : null;
+        errors = args.Count > 2 ? args[2] : null;
 
-        obj.Value._pyType = cls;
-        return obj;
+        if (args.Count + kwargs.Count > 3)
+            return PyResult.TypeError(PySR.Runtime_Codec_TakesAtMostThreeArgs, typeName, args.Count + kwargs.Count);
+
+        foreach (var (name, value) in kwargs)
+        {
+            switch (name)
+            {
+                case "source" when source is null:
+                    source = value;
+                    break;
+                case "encoding" when encoding is null:
+                    encoding = value;
+                    break;
+                case "errors" when errors is null:
+                    errors = value;
+                    break;
+                case "source" or "encoding" or "errors":
+                    return PyResult.TypeError(PySR.Runtime_Codec_MultipleValues, typeName, name, name is "source" ? 1 : name is "encoding" ? 2 : 3);
+                default:
+                    return PyResult.TypeError(PySR.Runtime_Codec_UnexpectedKeyword, typeName, name);
+            }
+        }
+
+        return PyNoneObject.None;
+    }
+
+    // Clinic 'str' converters reject non-str before the guards; None
+    // reports as "None", other types by name
+    internal static PyResult CheckCodecStrArgument(string typeName, string name, PyObject? value, out string? text)
+    {
+        if (value is null)
+        {
+            text = null;
+            return PyNoneObject.None;
+        }
+        if (value is PyStrObject str)
+        {
+            text = str.Value;
+            return PyNoneObject.None;
+        }
+        text = null;
+        return PyResult.TypeError(PySR.Runtime_Codec_ArgMustBeStr, typeName, name, value is PyNoneObject ? "None" : value.PyType.Name);
     }
 
     protected override PyResult Repr(PyCallContext context, PyBytesObject self)

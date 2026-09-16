@@ -3368,4 +3368,16 @@ public sealed class TestPyFiles
         var module = RunModule("test_bytearray_ordering_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestBytesStrEncodingRegression()
+    {
+        // Regression: bytes(str, encoding, errors) encodes through the
+        // str.encode core (bytearray too), with the clinic faces in
+        // CPython order — arity, keyword names, str type checks, the
+        // without-a-string guards — plus the latin-1/utf8/mbcs/mac-roman/
+        // cpNNNN codec alias families and strict encode converters.
+        var module = RunModule("test_bytes_str_encoding_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

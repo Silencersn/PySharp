@@ -1645,26 +1645,28 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters("encoding='utf-8'", "errors='strict'")]
     private static PyResult Encode(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        string encoding = "utf-8";
-        if (arguments[0] is PyStrObject encStr)
-            encoding = encStr.Value;
-        else if (arguments[0] is not PyNoneObject)
-            return PyResult.TypeError("encoding must be str");
+        // CPython 3.14's strict converters: neither parameter accepts None
+        if (arguments[0] is not PyStrObject encodingArg)
+            return PyResult.TypeError(PySR.Runtime_StrEncode_ArgMustBeStr, "encoding", arguments[0] is PyNoneObject ? "None" : arguments[0].PyType.Name);
+        if (arguments[1] is not PyStrObject errorsArg)
+            return PyResult.TypeError(PySR.Runtime_StrEncode_ArgMustBeStr, "errors", arguments[1] is PyNoneObject ? "None" : arguments[1].PyType.Name);
 
-        string errors = "strict";
-        if (arguments[1] is PyStrObject errStr)
-            errors = errStr.Value;
-        else if (arguments[1] is not PyNoneObject)
-            return PyResult.TypeError("errors must be str");
+        return EncodeCore(context, self.Value, encodingArg.Value, errorsArg.Value);
+    }
 
+    // The str.encode core shared with the bytes()/bytearray()
+    // string+encoding constructors: codec resolution, error handlers and
+    // the bare utf-16/32 BOM all match unicode_encode here
+    internal static PyResult EncodeCore(PyCallContext context, string value, string encoding, string errors)
+    {
         Encoding enc;
         try
         {
             enc = GetEncoding(encoding);
         }
-        catch (ArgumentException)
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException)
         {
-            return PyResult.ValueError($"unknown encoding: {encoding}");
+            return PyResult.LookupError(PySR.Runtime_Codec_UnknownEncoding, encoding);
         }
 
         byte[] bytes;
@@ -1672,33 +1674,31 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         {
             if (errors is "strict")
             {
-                bytes = enc.GetBytes(self.Value);
+                bytes = enc.GetBytes(value);
             }
             else if (errors is "ignore")
             {
-                enc.GetBytes(self.Value, 0, self.Value.Length, new byte[enc.GetMaxByteCount(self.Value.Length)], 0);
-                // Simple approach: use encoder fallback
                 var encoder = enc.GetEncoder();
                 encoder.Fallback = new EncoderReplacementFallback(string.Empty);
-                int byteCount = encoder.GetByteCount(self.Value.ToCharArray(), 0, self.Value.Length, true);
+                int byteCount = encoder.GetByteCount(value.ToCharArray(), 0, value.Length, true);
                 bytes = new byte[byteCount];
-                encoder.GetBytes(self.Value.ToCharArray(), 0, self.Value.Length, bytes, 0, true);
+                encoder.GetBytes(value.ToCharArray(), 0, value.Length, bytes, 0, true);
             }
             else if (errors is "replace")
             {
                 var encoder = enc.GetEncoder();
                 encoder.Fallback = new EncoderReplacementFallback("?");
-                int byteCount = encoder.GetByteCount(self.Value.ToCharArray(), 0, self.Value.Length, true);
+                int byteCount = encoder.GetByteCount(value.ToCharArray(), 0, value.Length, true);
                 bytes = new byte[byteCount];
-                encoder.GetBytes(self.Value.ToCharArray(), 0, self.Value.Length, bytes, 0, true);
+                encoder.GetBytes(value.ToCharArray(), 0, value.Length, bytes, 0, true);
             }
             else if (errors is "xmlcharrefreplace" or "backslashreplace" or "namereplace")
             {
                 var encoder = enc.GetEncoder();
                 encoder.Fallback = new EscapeEncoderFallback(errors);
-                int byteCount = encoder.GetByteCount(self.Value.ToCharArray(), 0, self.Value.Length, true);
+                int byteCount = encoder.GetByteCount(value.ToCharArray(), 0, value.Length, true);
                 bytes = new byte[byteCount];
-                encoder.GetBytes(self.Value.ToCharArray(), 0, self.Value.Length, bytes, 0, true);
+                encoder.GetBytes(value.ToCharArray(), 0, value.Length, bytes, 0, true);
             }
             else
             {
@@ -1708,9 +1708,9 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 // with a throwing fallback and only then raise LookupError
                 var encoder = enc.GetEncoder();
                 encoder.Fallback = new EncoderExceptionFallback();
-                int byteCount = encoder.GetByteCount(self.Value.ToCharArray(), 0, self.Value.Length, true);
+                int byteCount = encoder.GetByteCount(value.ToCharArray(), 0, value.Length, true);
                 bytes = new byte[byteCount];
-                encoder.GetBytes(self.Value.ToCharArray(), 0, self.Value.Length, bytes, 0, true);
+                encoder.GetBytes(value.ToCharArray(), 0, value.Length, bytes, 0, true);
             }
         }
         catch (EncoderFallbackException)
@@ -1731,18 +1731,48 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     /// codec names by lowercasing and dropping non-alphanumeric characters,
     /// so 'utf-16-le' / 'utf-16be' / 'utf_16_le' all denote the same codec;
     /// .NET's Encoding.GetEncoding does not know the dashed 'utf-16-le' form.
+    /// The Python alias families latin-1, mbcs, mac-roman and cpNNNN map to
+    /// their .NET codepages.
     /// </summary>
     internal static Encoding GetEncoding(string name)
     {
         CodePagesEncoding.EnsureRegistered();
-        return NormalizeEncodingName(name) switch
+        var normalized = NormalizeEncodingName(name);
+        switch (normalized)
         {
-            "utf16le" => Encoding.Unicode,
-            "utf16be" => Encoding.BigEndianUnicode,
-            "utf32le" => Encoding.UTF32,
-            "utf32be" => new UTF32Encoding(bigEndian: true, byteOrderMark: false),
-            _ => System.Text.Encoding.GetEncoding(name),
-        };
+            case "utf8":
+                return Encoding.UTF8;
+            case "utf16le":
+                return Encoding.Unicode;
+            case "utf16be":
+                return Encoding.BigEndianUnicode;
+            case "utf32le":
+                return Encoding.UTF32;
+            case "utf32be":
+                return new UTF32Encoding(bigEndian: true, byteOrderMark: false);
+            // iso-8859-1 and every Python alias thereof ('latin-1' itself is
+            // not a .NET name)
+            case "latin1" or "latin" or "l1" or "8859" or "88591" or "iso8859" or "iso88591" or "iso885911987" or "isoir100" or "csisolatin1" or "ibm819" or "cp819":
+                return Encoding.Latin1;
+            case "macroman":
+                return Encoding.GetEncoding(10000);
+            case "mbcs":
+                return Encoding.Default;
+        }
+        // The Windows codepages are primary Python codec names as cpNNNN
+        // (and bare NNNN), while .NET only registers some of them by name
+        if (normalized.StartsWith("cp") && int.TryParse(normalized[2..], out var cpCodepage))
+            return Encoding.GetEncoding(cpCodepage);
+        if (int.TryParse(normalized, out var codepage))
+            return Encoding.GetEncoding(codepage);
+        try
+        {
+            return Encoding.GetEncoding(name);
+        }
+        catch (ArgumentException)
+        {
+        }
+        return Encoding.GetEncoding(normalized);
     }
 
     /// <summary>

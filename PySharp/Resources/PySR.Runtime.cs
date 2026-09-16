@@ -193,6 +193,7 @@ partial class PySR
     public const string Runtime_Builtin_Ord_ExpectedACharacter = "ord() expected a character, but string of length {0} found";
     public const string Runtime_Builtin_Iter_CallableRequired = "iter(v, w): v must be callable";
     public const string Runtime_Codec_UnknownErrorHandlerName = "unknown error handler name '{0}'";
+    public const string Runtime_Codec_UnknownEncoding = "unknown encoding: {0}";
     public const string Runtime_Builtin_Import_NameMustBeString = "module name must be a string";
     public const string Runtime_Builtin_Import_GlobalsMustBeDict = "globals must be a dict";
     public const string Runtime_Builtin_IsInstance_MustBeTypeOrTupleOfTypes = "isinstance() arg 2 must be a type or a tuple of types";
@@ -313,6 +314,14 @@ partial class PySR
     public const string Runtime_Bytes_CannotConvert = "cannot convert '{0}' object to bytes";
     public const string Runtime_Bytes_IndexOverflow = "cannot fit '{0}' into an index-sized integer";
     public const string Runtime_ByteArray_CannotConvert = "cannot convert '{0}' object to bytearray";
+
+    public const string Runtime_Codec_TakesAtMostThreeArgs = "{0}() takes at most 3 arguments ({1} given)";
+    public const string Runtime_Codec_UnexpectedKeyword = "{0}() got an unexpected keyword argument '{1}'";
+    public const string Runtime_Codec_MultipleValues = "argument for {0}() given by name ('{1}') and position ({2})";
+    public const string Runtime_Codec_ArgMustBeStr = "{0}() argument '{1}' must be str, not {2}";
+    public const string Runtime_Codec_EncodingWithoutString = "encoding without a string argument";
+    public const string Runtime_Codec_ErrorsWithoutString = "errors without a string argument";
+    public const string Runtime_StrEncode_ArgMustBeStr = "encode() argument '{0}' must be str, not {1}";
 
     public const string Runtime_IndexOutOfRange = "index out of range";
     public const string Runtime_Index_CannotFitInt = "cannot fit 'int' into an index-sized integer";

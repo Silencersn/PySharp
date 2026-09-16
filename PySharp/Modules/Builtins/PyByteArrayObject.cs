@@ -123,21 +123,59 @@ public sealed class PyByteArrayObject : PyObject
 [PyType("bytearray")]
 public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObject>
 {
-    [PyExport(PySpecialNames.New, nameof(NewImpl))]
-    private static partial PyBuiltinFunctionOrMethodObject _new { get; }
-
-    [PyFunctionParameters("source=b''")]
-    private static PyResult NewImpl(PyCallContext context, PyArguments arguments)
+    protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        var source = arguments[0];
+        // CPython bytearray_new: the clinic parser reports arity, keyword
+        // and str-converter failures before bytearray_new_impl sees the
+        // arguments; a string source encodes, and non-string sources then
+        // take the zero-fill / iterable / copy conversions
+        var bindResult = PyBytesObjectType.BindCodecArguments("bytearray", args, kwargs, out var source, out var encoding, out var errors);
+        if (bindResult.IsError)
+            return bindResult;
+
+        var encodingResult = PyBytesObjectType.CheckCodecStrArgument("bytearray", "encoding", encoding, out var encodingName);
+        if (encodingResult.IsError)
+            return encodingResult;
+
+        var errorsResult = PyBytesObjectType.CheckCodecStrArgument("bytearray", "errors", errors, out var errorsName);
+        if (errorsResult.IsError)
+            return errorsResult;
+
+        if (source is PyStrObject strSource)
+        {
+            if (encodingName is null)
+                return PyResult.TypeError(PySR.Runtime_Bytes_StrWithoutEncoding);
+
+            var encoded = PyStrObjectType.EncodeCore(context, strSource.Value, encodingName, errorsName ?? "strict");
+            if (encoded.IsError)
+                return encoded;
+
+            return PyByteArrayObject.FromBytes(((PyBytesObject)encoded.Value!).AsSpan());
+        }
+
+        if (encodingName is not null)
+            return PyResult.TypeError(PySR.Runtime_Codec_EncodingWithoutString);
+        if (errorsName is not null)
+            return PyResult.TypeError(PySR.Runtime_Codec_ErrorsWithoutString);
+
+        var obj = FromSource(context, source);
+        if (obj.IsError)
+            return obj;
+
+        obj.Value._pyType = cls;
+        return obj;
+    }
+
+    private static PyResult FromSource(PyCallContext context, PyObject? source)
+    {
+        if (source is null)
+            return PyByteArrayObject.CreateEmpty();
+
         if (source is PyByteArrayObject byteArray)
             return byteArray.Copy();
 
         if (source is PyBytesObject bytes)
             return PyByteArrayObject.FromBytes(bytes.AsSpan());
-
-        if (source is PyStrObject)
-            return PyResult.TypeError(PySR.Runtime_Bytes_StrWithoutEncoding);
 
         // CPython bytearray(n): an indexable source zero-fills n bytes
         // (PyNumber_Index); the iterable protocol is only the fallback
@@ -191,16 +229,6 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
         }
 
         return PyByteArrayObject.FromBytes(data);
-    }
-
-    protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
-    {
-        var obj = _new.Call(context, args, kwargs);
-        if (obj.IsError)
-            return obj;
-
-        obj.Value._pyType = cls;
-        return obj;
     }
 
     protected override PyResult Repr(PyCallContext context, PyByteArrayObject self)
