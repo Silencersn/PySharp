@@ -439,10 +439,17 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
         else if (arguments[0] is not PyNoneObject)
             return PyResult.TypeError("decoding must be str");
 
+        return DecodeCore(context, self.AsSpan(), encoding);
+    }
+
+    // The bytes.decode core shared with the str(bytes, encoding)
+    // constructor form: codec resolution and the bare utf-16/32 BOM
+    // handling all match PyUnicode_Decode here
+    internal static PyResult<PyStrObject> DecodeCore(PyCallContext context, ReadOnlySpan<byte> data, string encoding)
+    {
         try
         {
             var enc = PyStrObjectType.GetEncoding(encoding);
-            var data = self.AsSpan();
 
             // CPython's bare utf-16/utf-32 codecs treat a leading BOM as the
             // byte order mark: it selects the decode order and is dropped;
@@ -473,9 +480,9 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
             string result = enc.GetString(bomLength > 0 ? data[bomLength..] : data);
             return PyStrObject.FromString(result);
         }
-        catch (ArgumentException)
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException)
         {
-            return PyResult.ValueError($"unknown encoding: {encoding}");
+            return PyResult.LookupError(PySR.Runtime_Codec_UnknownEncoding, encoding);
         }
     }
 }

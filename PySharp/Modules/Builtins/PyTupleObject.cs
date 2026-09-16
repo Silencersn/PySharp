@@ -76,8 +76,19 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        if (!PyArgsValidator.ValidateSinglePositionalArg(args, kwargs, out var err))
-            return err.Value;
+        // CPython tuple_new: no keyword parameters at all and at most one
+        // positional argument; the empty tuple needs no conversion
+        if (kwargs.Count > 0)
+            return PyResult.TypeError(PySR.Runtime_Tuple_TakesNoKwargs);
+        if (args.Count > 1)
+            return PyResult.TypeError(PySR.Runtime_Tuple_ExpectedAtMostOne, args.Count);
+
+        if (args.Count is 0)
+        {
+            var empty = PyTupleObject.CreateTuple();
+            empty._pyType = cls;
+            return empty;
+        }
 
         var tuple = PyUtils.IterableToTuple(context, args[0]);
         if (tuple.IsError)

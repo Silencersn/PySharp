@@ -3404,4 +3404,15 @@ public sealed class TestPyFiles
         var module = RunModule("test_slice_value_semantics_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestTupleStrNoargRegression()
+    {
+        // Regression: tuple() and str() construct without arguments and
+        // their dispatch reports CPython's exact arity/keyword faces; str
+        // binds object/encoding/errors by keyword and decodes bytes-like
+        // sources, sharing bytes.decode's codec core.
+        var module = RunModule("test_tuple_str_noarg_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

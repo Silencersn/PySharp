@@ -2706,9 +2706,62 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        if (!PyArgsValidator.ValidateSinglePositionalArg(args, kwargs, out var err))
-            return err.Value;
-        return PySpecialMethods.Str(context, args[0]);
+        // CPython str_new: a missing object is the empty string regardless
+        // of encoding; without encoding/errors the object converts via
+        // PyObject_Str, otherwise a bytes-like object decodes
+        if (args.Count + kwargs.Count > 3)
+            return PyResult.TypeError(PySR.Runtime_Str_ExpectedAtMostThree, args.Count + kwargs.Count);
+
+        PyObject? source = args.Count > 0 ? args[0] : null;
+        PyObject? encoding = args.Count > 1 ? args[1] : null;
+        PyObject? errors = args.Count > 2 ? args[2] : null;
+        foreach (var (name, value) in kwargs)
+        {
+            switch (name)
+            {
+                case "object":
+                    if (source is not null)
+                        return PyResult.TypeError(PySR.Runtime_Codec_MultipleValues, "str", name, 1);
+                    source = value;
+                    break;
+                case "encoding":
+                    if (encoding is not null)
+                        return PyResult.TypeError(PySR.Runtime_Codec_MultipleValues, "str", name, 2);
+                    encoding = value;
+                    break;
+                case "errors":
+                    if (errors is not null)
+                        return PyResult.TypeError(PySR.Runtime_Codec_MultipleValues, "str", name, 3);
+                    errors = value;
+                    break;
+                default:
+                    return PyResult.TypeError(PySR.Runtime_Str_UnexpectedKeyword, name);
+            }
+        }
+
+        if (source is null)
+            return PyStrObject.Empty;
+
+        // the clinic 'str' converters reject non-str before any conversion;
+        // None reports as "NoneType" here (unlike bytes())
+        if (encoding is not null and not PyStrObject)
+            return PyResult.TypeError(PySR.Runtime_Str_ArgMustBeStr, "encoding", encoding.PyType.Name);
+        if (errors is not null and not PyStrObject)
+            return PyResult.TypeError(PySR.Runtime_Str_ArgMustBeStr, "errors", errors.PyType.Name);
+
+        if (encoding is null && errors is null)
+            return PySpecialMethods.Str(context, source);
+
+        if (!PyBytesObjectType.TryGetBytesLikeSpan(source, out var data))
+            return PyResult.TypeError(source is PyStrObject ? PySR.Runtime_Str_DecodingStrNotSupported : PySR.Runtime_Str_DecodingNeedBytesLike, source.PyType.FullName);
+
+        var encodingName = encoding is PyStrObject encStr ? encStr.Value : "utf-8";
+        var obj = PyBytesObjectType.DecodeCore(context, data, encodingName);
+        if (obj.IsError)
+            return obj;
+
+        obj.Value._pyType = cls;
+        return obj;
     }
 
     private static string BigIntegerToBase(BigInteger value, int radix, bool upper)
