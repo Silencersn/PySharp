@@ -3392,4 +3392,16 @@ public sealed class TestPyFiles
         var module = RunModule("test_unary_notimplemented_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestSliceValueSemanticsRegression()
+    {
+        // Regression: slice objects carry value semantics — rich comparison
+        // delegates to the (start, stop, step) tuple with the identity
+        // shortcut, the hash is the tuplehash lanes without the length
+        // mix-in, repr prints the three-part constructor form, and
+        // slice.indices() converts like CPython's METH_O binding.
+        var module = RunModule("test_slice_value_semantics_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

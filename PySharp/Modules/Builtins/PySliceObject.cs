@@ -1,5 +1,6 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.Comparison;
 using PySharp.Runtime.PyAttributes;
 using System.Numerics;
 
@@ -206,6 +207,22 @@ public sealed partial class PySliceObjectType : PyTypeObject<PySliceObject>
         return obj;
     }
 
+    protected override PyResult Repr(PyCallContext context, PySliceObject self)
+    {
+        // slice_repr: the constructor form with all three parts explicit
+        var start = PySpecialMethods.Repr(context, self.Start);
+        if (start.IsError)
+            return start;
+        var stop = PySpecialMethods.Repr(context, self.Stop);
+        if (stop.IsError)
+            return stop;
+        var step = PySpecialMethods.Repr(context, self.Step);
+        if (step.IsError)
+            return step;
+
+        return PyStrObject.FromString($"slice({start.Value.Value}, {stop.Value.Value}, {step.Value.Value})");
+    }
+
     protected override PyResult Eq(PyCallContext context, PySliceObject self, PyObject other)
     {
         if (other is not PySliceObject otherSlice)
@@ -233,11 +250,85 @@ public sealed partial class PySliceObjectType : PyTypeObject<PySliceObject>
         return PyBoolObject.True;
     }
 
+    // Order comparisons delegate to the tuple (start, stop, step) like
+    // slice_richcompare; the identity shortcut makes LE/GE true and
+    // LT/GT false without consulting the parts
+    protected override PyResult Lt(PyCallContext context, PySliceObject self, PyObject other)
+        => RichCompare(context, self, other, PyCollectionComparer.Lt, referenceResult: PyBoolObject.False);
+    protected override PyResult Le(PyCallContext context, PySliceObject self, PyObject other)
+        => RichCompare(context, self, other, PyCollectionComparer.Le, referenceResult: PyBoolObject.True);
+    protected override PyResult Gt(PyCallContext context, PySliceObject self, PyObject other)
+        => RichCompare(context, self, other, PyCollectionComparer.Gt, referenceResult: PyBoolObject.False);
+    protected override PyResult Ge(PyCallContext context, PySliceObject self, PyObject other)
+        => RichCompare(context, self, other, PyCollectionComparer.Ge, referenceResult: PyBoolObject.True);
+
+    private static PyResult RichCompare(PyCallContext context, PySliceObject self, PyObject other, Func<PyCallContext, ReadOnlySpan<PyObject>, ReadOnlySpan<PyObject>, PyResult> compare, PyBoolObject referenceResult)
+    {
+        if (other is not PySliceObject)
+            return PyNotImplementedObject.NotImplemented;
+
+        if (ReferenceEquals(self, other))
+            return referenceResult;
+
+        ReadOnlySpan<PyObject> left = [self.Start, self.Stop, self.Step];
+        ReadOnlySpan<PyObject> right = [((PySliceObject)other).Start, ((PySliceObject)other).Stop, ((PySliceObject)other).Step];
+        return compare(context, left, right);
+    }
+
     protected override PyResult Hash(PyCallContext context, PySliceObject self)
     {
-        // CPython slice_hash: the tuple hash of (start, stop, step).
-        var tuple = PyTupleObject.CreateTuple(self.Start, self.Stop, self.Step);
-        return PySpecialMethods.Hash(context, tuple);
+        // CPython slice_hash: the tuplehash lane combination without the
+        // length mix-in, so hash(slice) never equals hash(tuple) of the
+        // same parts
+        unchecked
+        {
+            ulong acc = 2870177450012600261; // _PyHASH_XXPRIME_5
+            foreach (var part in new[] { self.Start, self.Stop, self.Step })
+            {
+                var laneResult = PySpecialMethods.Hash(context, part);
+                if (laneResult.IsError)
+                    return laneResult;
+
+                acc += (ulong)(long)laneResult.Value.Value * 14029467366897019727; // _PyHASH_XXPRIME_2
+                acc = (acc << 31) | (acc >> 33); // _PyHASH_XXROTATE
+                acc *= 11400714785074694791; // _PyHASH_XXPRIME_1
+            }
+
+            if (acc is ulong.MaxValue)
+                acc = 1546275796;
+
+            return PyIntObject.FromInteger((long)acc);
+        }
+    }
+
+    [PyMethod("indices")]
+    [PyFunctionParameters("*args", "**kwargs")]
+    private static PyResult Indices(PyCallContext context, PySliceObject self, PyArguments arguments)
+    {
+        // CPython's METH_O binding reports the keyword and arity
+        // rejections before slice_indices converts anything
+        if (arguments.ExtraKwargs.Count > 0)
+            return PyResult.TypeError(PySR.Runtime_Slice_IndicesNoKwargs);
+
+        var count = arguments.Args.Length + arguments.ExtraArgs.Count;
+        if (count is not 1)
+            return PyResult.TypeError(PySR.Runtime_Slice_IndicesOneArgument, count);
+
+        // slice_indices: the length goes through PyNumber_Index (strict
+        // __index__, no saturation) and rejects negatives; the parts then
+        // convert with full precision (_PySlice_GetLongIndices)
+        var lengthResult = PySpecialMethods.Index(context, arguments[0]);
+        if (lengthResult.IsError)
+            return lengthResult;
+
+        if (lengthResult.Value.Value.Sign < 0)
+            return PyResult.ValueError(PySR.Runtime_Slice_LengthShouldNotBeNegative);
+
+        var indicesResult = self.Indices(context, lengthResult.Value.Value, out var indices);
+        if (indicesResult.IsError)
+            return indicesResult;
+
+        return PyTupleObject.CreateTuple(PyIntObject.FromInteger(indices.start), PyIntObject.FromInteger(indices.stop), PyIntObject.FromInteger(indices.step));
     }
 
     [PyProperty("start")]
