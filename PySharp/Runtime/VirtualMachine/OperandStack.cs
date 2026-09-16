@@ -69,8 +69,8 @@ internal ref struct ValueOperandStack
         if (_size >= _span.Length)
         {
             // a VM layout bug must not corrupt the pooled array
-            Debug.Assert(false, "operand stack overflow");
-            throw new InvalidOperationException("operand stack overflow");
+            Debug.Fail("operand stack overflow");
+            throw new UnreachableException("operand stack overflow");
         }
         _span[_size++] = value;
     }
@@ -93,8 +93,8 @@ internal ref struct ValueOperandStack
         if (_size is 0)
         {
             // a VM layout bug must not surface as a bare index crash
-            Debug.Assert(false, "operand stack underflow");
-            throw new InvalidOperationException("operand stack underflow");
+            Debug.Fail("operand stack underflow");
+            throw new UnreachableException("operand stack underflow");
         }
         var value = _span[--_size];
         _span[_size] = null!;
