@@ -3218,4 +3218,17 @@ public sealed class TestPyFiles
         var module = RunModule("test_float_format_percent_nonfinite_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestComplexStringParsingRegression()
+    {
+        // Regression: complex(str) parses string arguments like CPython's
+        // complex_from_string_inner — a '_' pre-pass allowing underscores
+        // only between digits, then <float>, <float>j,
+        // <float><signed-float>j plus the legacy <sign>j/j forms, an
+        // optional repr bracket, inf/nan literals and the dedicated
+        // ValueError messages for malformed input.
+        var module = RunModule("test_complex_string_parsing_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

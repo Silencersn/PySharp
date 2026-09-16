@@ -600,6 +600,24 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
             ReferenceEquals(cls, PyComplexObjectType.Shared))
             return exact;
 
+        // CPython actual_complex_new: a single string argument goes through
+        // the complex string parser, not the numeric conversion below.
+        if (args[0] is PyStrObject str)
+        {
+            if (!TryParseComplexString(str.Value, out var parsed, out var underscoreError))
+            {
+                if (underscoreError)
+                {
+                    var repr = PySpecialMethods.Repr(context, str);
+                    if (repr.IsError)
+                        return repr;
+                    return PyResult.ValueError(PySR.Runtime_Complex_CouldNotConvertString, repr.Value.Value);
+                }
+                return PyResult.ValueError(PySR.Runtime_Complex_MalformedString);
+            }
+            return CreateOfType(cls, parsed.Real, parsed.Imaginary);
+        }
+
         var result = ToComponent(context, args[0], PySR.Runtime_Complex_ArgMustBeStringOrNumber);
         if (result.IsError)
             return result;
@@ -640,5 +658,190 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
         if (!index.Value.Value.TryToDoubleRounded(out var indexReal))
             return PyResult.OverflowError(PySR.Runtime_Number_IntTooLargeForFloat);
         return PyComplexObject.FromRealImag(indexReal, 0);
+    }
+
+    // CPython complex_subtype_from_string: a '_' pre-pass validates that
+    // underscores sit between digits and strips them, then the inner
+    // grammar accepts <float>, <float>j and <float><signed-float>j, plus
+    // the legacy <float><sign>j, <sign>j and j forms, optionally wrapped
+    // in the repr-style bracket.
+    private static bool TryParseComplexString(string text, out Complex value, out bool underscoreError)
+    {
+        value = default;
+        underscoreError = false;
+        string s = text;
+        if (s.Contains('_'))
+        {
+            var sb = new System.Text.StringBuilder(s.Length);
+            var prev = '\0';
+            foreach (var ch in s)
+            {
+                if (ch is '_')
+                {
+                    // underscores are only allowed after a digit
+                    if (!(prev >= '0' && prev <= '9'))
+                    {
+                        underscoreError = true;
+                        return false;
+                    }
+                }
+                else
+                {
+                    sb.Append(ch);
+                    // and only before a digit
+                    if (prev is '_' && !(ch >= '0' && ch <= '9'))
+                    {
+                        underscoreError = true;
+                        return false;
+                    }
+                }
+                prev = ch;
+            }
+            // underscores are not allowed at the end
+            if (prev is '_')
+            {
+                underscoreError = true;
+                return false;
+            }
+            s = sb.ToString();
+        }
+        return TryParseComplexInner(s, out value);
+    }
+
+    private static bool TryParseComplexInner(string s, out Complex value)
+    {
+        value = default;
+        double x = 0.0, y = 0.0;
+        int i = 0;
+
+        // position on first nonblank
+        while (i < s.Length && PyFloatObjectType.IsPySpace(s[i]))
+            i++;
+        bool gotBracket = false;
+        if (i < s.Length && s[i] is '(')
+        {
+            // skip over possible bracket from repr()
+            gotBracket = true;
+            i++;
+            while (i < s.Length && PyFloatObjectType.IsPySpace(s[i]))
+                i++;
+        }
+
+        if (TryParseFloatToken(s, ref i, out var z))
+        {
+            if (i < s.Length && s[i] is '+' or '-')
+            {
+                // <float><signed-float>j | <float><sign>j
+                x = z;
+                if (!TryParseFloatToken(s, ref i, out y))
+                {
+                    y = s[i] is '+' ? 1.0 : -1.0;
+                    i++;
+                }
+                if (i >= s.Length || s[i] is not ('j' or 'J'))
+                    return false;
+                i++;
+            }
+            else if (i < s.Length && s[i] is 'j' or 'J')
+            {
+                // <float>j
+                y = z;
+                i++;
+            }
+            else
+            {
+                // <float>
+                x = z;
+            }
+        }
+        else
+        {
+            // not starting with <float>; must be <sign>j or j
+            if (i < s.Length && s[i] is '+' or '-')
+            {
+                y = s[i] is '+' ? 1.0 : -1.0;
+                i++;
+            }
+            else if (i < s.Length && s[i] is 'j' or 'J')
+            {
+                y = 1.0;
+            }
+            else
+            {
+                return false;
+            }
+            if (i >= s.Length || s[i] is not ('j' or 'J'))
+                return false;
+            i++;
+        }
+
+        // trailing whitespace and closing bracket
+        while (i < s.Length && PyFloatObjectType.IsPySpace(s[i]))
+            i++;
+        if (gotBracket)
+        {
+            if (i >= s.Length || s[i] is not ')')
+                return false;
+            i++;
+            while (i < s.Length && PyFloatObjectType.IsPySpace(s[i]))
+                i++;
+        }
+        if (i != s.Length)
+            return false;
+
+        value = new Complex(x, y);
+        return true;
+    }
+
+    // CPython _PyOS_ascii_strtod: the decimal grammar of _Py_dg_strtod
+    // (optional sign, digits with optional point, optional exponent), and
+    // when nothing decimal matched, an inf/infinity/nan token from
+    // _Py_parse_inf_or_nan. An incomplete exponent leaves the position on
+    // the 'e' instead of consuming it.
+    private static bool TryParseFloatToken(string s, ref int i, out double value)
+    {
+        value = 0;
+        int start = i;
+        if (i < s.Length && s[i] is '+' or '-')
+            i++;
+        int digitsStart = i;
+        while (i < s.Length && s[i] >= '0' && s[i] <= '9')
+            i++;
+        bool anyDigit = i > digitsStart;
+        if (i < s.Length && s[i] is '.')
+        {
+            i++;
+            int fracStart = i;
+            while (i < s.Length && s[i] >= '0' && s[i] <= '9')
+                i++;
+            anyDigit |= i > fracStart;
+        }
+        if (!anyDigit)
+        {
+            int tokenEnd = PyFloatObjectType.ParseInfOrNan(s, start, out value);
+            if (tokenEnd == start)
+            {
+                i = start;
+                return false;
+            }
+            i = tokenEnd;
+            return true;
+        }
+        if (i < s.Length && s[i] is 'e' or 'E')
+        {
+            int expMark = i;
+            int j = i + 1;
+            if (j < s.Length && s[j] is '+' or '-')
+                j++;
+            int expDigitsStart = j;
+            while (j < s.Length && s[j] >= '0' && s[j] <= '9')
+                j++;
+            if (j > expDigitsStart)
+                i = j;
+            else
+                i = expMark;
+        }
+        value = double.Parse(s[start..i], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture);
+        return true;
     }
 }

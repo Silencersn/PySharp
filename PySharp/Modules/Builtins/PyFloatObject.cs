@@ -934,13 +934,13 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
     }
 
     // Py_ISSPACE: the six ASCII whitespace bytes
-    private static bool IsPySpace(char c) => c is ' ' or '\t' or '\n' or '\r' or '\v' or '\f';
+    internal static bool IsPySpace(char c) => c is ' ' or '\t' or '\n' or '\r' or '\v' or '\f';
 
     // CPython _Py_parse_inf_or_nan (pystrtod.c): an optional sign, then
     // "inf" optionally extended to "infinity", or "nan" — ASCII
     // case-insensitive. Returns the position after the token, or start
     // when nothing matched.
-    private static int ParseInfOrNan(string text, int start, out double value)
+    internal static int ParseInfOrNan(string text, int start, out double value)
     {
         int i = start;
         bool negate = false;

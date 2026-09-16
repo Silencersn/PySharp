@@ -137,6 +137,8 @@ partial class PySR
     public const string Runtime_Complex_Modulo = "complex modulo";
     public const string Runtime_Complex_ExponentiationOverflow = "complex exponentiation";
     public const string Runtime_Complex_ZeroToNegativeOrComplexPower = "zero to a negative or complex power";
+    public const string Runtime_Complex_MalformedString = "complex() arg is a malformed string";
+    public const string Runtime_Complex_CouldNotConvertString = "could not convert string to complex: {0}";
     public const string Runtime_Str_Format_ManualToAutoFieldNumber = "cannot switch from manual field specification to automatic field numbering";
     public const string Runtime_Str_Format_AutoToManualFieldSpecification = "cannot switch from automatic field numbering to manual field specification";
     public const string Runtime_Str_Format_ReplacementIndexOutOfRange = "Replacement index {0} out of range for positional args tuple";
