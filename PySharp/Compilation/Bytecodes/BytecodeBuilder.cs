@@ -17,7 +17,6 @@ internal sealed class BytecodeBuilder
     private readonly OrderedDictionary<string, int> _names = new(StringComparer.Ordinal);
     private readonly Stack<ValueCodeMetaInfo> _metaInfoStack = [];
     private readonly CodeSource _source;
-    private Instruction _lastInstruction;
 
     internal BytecodeBuilder(CodeSource source)
     {
@@ -85,18 +84,6 @@ internal sealed class BytecodeBuilder
         }
     }
 
-    private static bool IsStackTopBool(Instruction instruction)
-    {
-        return instruction.OpCode switch
-        {
-            OpCode.ToBool or
-            OpCode.IsOp or
-            OpCode.UnaryNot => true,
-
-            _ => false
-        };
-    }
-
     private void InternalEmit(OpCode opCode, int arg)
     {
         if (arg > byte.MaxValue)
@@ -109,19 +96,11 @@ internal sealed class BytecodeBuilder
                 _instructions.Add(new Instruction(OpCode.ExtendedArg, b));
         }
 
-        var instruction = new Instruction(opCode, (byte)arg);
-        _instructions.Add(instruction);
-        _lastInstruction = instruction;
+        _instructions.Add(new Instruction(opCode, (byte)arg));
     }
 
     public void Emit(OpCode opCode)
     {
-        if (opCode is OpCode.ToBool)
-        {
-            if (IsStackTopBool(_lastInstruction))
-                return;
-        }
-
         InternalEmit(opCode, arg: default);
     }
 
@@ -149,15 +128,6 @@ internal sealed class BytecodeBuilder
     public void Emit(OpCode opCode, Label label)
     {
         Debug.Assert(label.Id > 0);
-
-        if (opCode is OpCode.PopJumpIfFalse or OpCode.PopJumpIfTrue)
-        {
-            if (_lastInstruction.OpCode is OpCode.UnaryNot)
-            {
-                _instructions.RemoveAt(_instructions.Count - 1);
-                opCode = opCode is OpCode.PopJumpIfFalse ? OpCode.PopJumpIfTrue : OpCode.PopJumpIfFalse;
-            }
-        }
 
         opCode |= OpCode.__LabelFlag;
         Span<byte> bytes = stackalloc byte[4];

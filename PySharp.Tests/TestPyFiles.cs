@@ -3562,4 +3562,17 @@ public sealed class TestPyFiles
         var module = RunModule("test_length_hint_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestBoolOpNotConditionRegression()
+    {
+        // Regression: `not` as the last operand of a short-circuiting test
+        // must not be folded into the condition jump. A bool short-circuit
+        // value used to invert the branch, and any other truthy short-circuit
+        // value used to reach the jump un-converted (InvalidCastException).
+        // Covers if/while/assert/match guard/ternary/comprehension,
+        // including the async comprehension if clause.
+        var module = RunModule("test_boolop_not_condition_regression.py");
+        Assert.IsNotNull(module);
+    }
 }
