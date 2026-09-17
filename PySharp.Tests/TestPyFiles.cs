@@ -3536,4 +3536,15 @@ public sealed class TestPyFiles
         var module = RunModule("test_acceptable_base_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestTypeAttrGuardRegression()
+    {
+        // Regression: attribute set/delete on static (non-heap) types
+        // raises "cannot set 'X' attribute of immutable type 'Y'" (the
+        // delete path reports "cannot set" too) while heap classes,
+        // custom metaclasses, and function instances keep full support.
+        var module = RunModule("test_type_attr_guard_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

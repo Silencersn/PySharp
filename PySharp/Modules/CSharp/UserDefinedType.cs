@@ -9,6 +9,7 @@ internal sealed partial class UserDefinedType<TObject> : PyTypeObject<TObject> w
     public override IReadOnlyList<PyTypeObject> Bases { get; }
     internal override bool IsTypeImmutable => false;
     internal override bool IsImmutable => false;
+    internal override bool IsRuntimeCreated => true;
 
     internal UserDefinedType(string name, string qualName, IReadOnlyList<PyTypeObject> bases) : base(qualName, bases, false)
     {

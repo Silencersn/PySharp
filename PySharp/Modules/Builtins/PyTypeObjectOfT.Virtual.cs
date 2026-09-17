@@ -50,13 +50,12 @@ partial class PyTypeObject<TObject>
     [PySlot]
     protected virtual partial PyResult SetAttr(PyCallContext context, TObject self, PyObject key, PyObject value)
     {
-        // TODO: how to define immutable type
-        if (self.IsImmutable)
+        if (self is PyTypeObject ownerType && !ownerType.IsRuntimeCreated)
         {
             if (key is not PyStrObject str)
                 return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, key.PyType.FullName);
 
-            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, str.Value, self.PyType.FullName);
+            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, str.Value, ownerType.FullName);
         }
 
         return DefaultSetAttr(context, self, key, value);
@@ -65,13 +64,12 @@ partial class PyTypeObject<TObject>
     [PySlot]
     protected virtual partial PyResult DelAttr(PyCallContext context, TObject self, PyObject item)
     {
-        // TODO: how to define immutable type
-        if (self.IsImmutable)
+        if (self is PyTypeObject ownerType && !ownerType.IsRuntimeCreated)
         {
             if (item is not PyStrObject str)
                 return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, item.PyType.FullName);
 
-            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, str.Value, self.PyType.FullName);
+            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, str.Value, ownerType.FullName);
         }
         return DefaultDelAttr(context, self, item);
     }

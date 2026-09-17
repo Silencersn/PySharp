@@ -39,6 +39,10 @@ public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
     public abstract Type LayoutType { get; }
     internal virtual bool IsTypeImmutable => true;
 
+    // CPython Py_TPFLAGS_HEAPTYPE: only runtime-created classes accept
+    // attribute writes on the type object itself
+    internal virtual bool IsRuntimeCreated => false;
+
     internal PyTypeObject()
     {
         if (DefaultModule is not null)

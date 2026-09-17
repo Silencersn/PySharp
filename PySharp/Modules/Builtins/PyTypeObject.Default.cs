@@ -86,6 +86,11 @@ partial class PyTypeObject
         var type = self.PyType;
         var name = str.Value;
 
+        // CPython type_setattro: the immutable-type check fires before any
+        // descriptor or instance-dict handling
+        if (self is PyTypeObject ownerType && !ownerType.IsRuntimeCreated)
+            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, name, ownerType.FullName);
+
         if (TryLookupAttrInMro(type, name, out var attr))
         {
             var func = attr.PyType.Slots.Set;
@@ -155,6 +160,11 @@ partial class PyTypeObject
         var type = self.PyType;
         var name = str.Value;
 
+        // same immutable-type gate as the set path; the delete path reports
+        // "cannot set" in CPython too
+        if (self is PyTypeObject ownerType && !ownerType.IsRuntimeCreated)
+            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, name, ownerType.FullName);
+
         if (TryLookupAttrInMro(type, name, out var attr))
         {
             var func = attr.PyType.Slots.Delete;
@@ -169,7 +179,11 @@ partial class PyTypeObject
 
         var removed = self.PyAttributes.Remove(name);
         if (!removed)
+        {
+            if (self is PyTypeObject heapType)
+                return PyResult.AttributeError(PySR.Runtime_Type_AttributeNotFound, heapType.Name, name);
             return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, type.FullName, name);
+        }
 
         return PyNoneObject.None;
     }
