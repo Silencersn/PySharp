@@ -61,6 +61,17 @@ public partial class PyStrObject : PyObject
             return _charPool[value[0]];
         return new PyStrObject(value);
     }
+
+    /// <summary>
+    /// A fresh instance outside the empty singleton and the character pool,
+    /// for callers that retag the result to another type (subclass
+    /// construction); <see cref="FromString"/> may hand out shared objects.
+    /// </summary>
+    public static PyStrObject FromStringNoCache(string value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        return new PyStrObject(value);
+    }
     public static PyStrObject FromRune(Rune value)
     {
         if (value.Value < CharPoolSize)
@@ -2111,7 +2122,11 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     }
     protected override PyResult Str(PyCallContext context, PyStrObject self)
     {
-        return self;
+        // CPython unicode_result_unchanged: an exact str returns itself, a
+        // subclass instance converts to a fresh exact str
+        if (self.PyType == PyStrObjectType.Shared)
+            return self;
+        return PyStrObject.FromString(self.Value);
     }
 
     protected override PyResult Hash(PyCallContext context, PyStrObject self)
@@ -2773,30 +2788,50 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             }
         }
 
+        PyResult result;
         if (source is null)
-            return PyStrObject.Empty;
+        {
+            result = PyStrObject.Empty;
+        }
+        else
+        {
+            // the clinic 'str' converters reject non-str before any conversion;
+            // None reports as "NoneType" here (unlike bytes())
+            if (encoding is not null and not PyStrObject)
+                return PyResult.TypeError(PySR.Runtime_Str_ArgMustBeStr, "encoding", encoding.PyType.Name);
+            if (errors is not null and not PyStrObject)
+                return PyResult.TypeError(PySR.Runtime_Str_ArgMustBeStr, "errors", errors.PyType.Name);
 
-        // the clinic 'str' converters reject non-str before any conversion;
-        // None reports as "NoneType" here (unlike bytes())
-        if (encoding is not null and not PyStrObject)
-            return PyResult.TypeError(PySR.Runtime_Str_ArgMustBeStr, "encoding", encoding.PyType.Name);
-        if (errors is not null and not PyStrObject)
-            return PyResult.TypeError(PySR.Runtime_Str_ArgMustBeStr, "errors", errors.PyType.Name);
+            if (encoding is null && errors is null)
+            {
+                result = PySpecialMethods.Str(context, source);
+                if (result.IsError)
+                    return result;
+            }
+            else
+            {
+                if (!PyBytesObjectType.TryGetBytesLikeSpan(source, out var data))
+                    return PyResult.TypeError(source is PyStrObject ? PySR.Runtime_Str_DecodingStrNotSupported : PySR.Runtime_Str_DecodingNeedBytesLike, source.PyType.FullName);
 
-        if (encoding is null && errors is null)
-            return PySpecialMethods.Str(context, source);
+                var encodingName = encoding is PyStrObject encStr ? encStr.Value : "utf-8";
+                var errorsName = errors is PyStrObject errStr ? errStr.Value : "strict";
+                result = PyBytesObjectType.DecodeCore(context, data, encodingName, errorsName, source);
+                if (result.IsError)
+                    return result;
+            }
+        }
 
-        if (!PyBytesObjectType.TryGetBytesLikeSpan(source, out var data))
-            return PyResult.TypeError(source is PyStrObject ? PySR.Runtime_Str_DecodingStrNotSupported : PySR.Runtime_Str_DecodingNeedBytesLike, source.PyType.FullName);
-
-        var encodingName = encoding is PyStrObject encStr ? encStr.Value : "utf-8";
-        var errorsName = errors is PyStrObject errStr ? errStr.Value : "strict";
-        var obj = PyBytesObjectType.DecodeCore(context, data, encodingName, errorsName, source);
-        if (obj.IsError)
-            return obj;
-
-        var strObj = (PyStrObject)obj.Value!;
-        strObj._pyType = cls;
+        // CPython str_new hands subtypes a fresh copy (unicode_subtype_new):
+        // the empty string, character-pool entries and PyObject_Str results
+        // are shared, so retagging one in place would retype it everywhere
+        var strObj = (PyStrObject)result.Value!;
+        if (strObj.PyType != cls)
+        {
+            strObj = ReferenceEquals(cls, this)
+                ? PyStrObject.FromString(strObj.Value)
+                : PyStrObject.FromStringNoCache(strObj.Value);
+            strObj._pyType = cls;
+        }
         return strObj;
     }
 

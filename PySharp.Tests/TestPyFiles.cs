@@ -3589,4 +3589,19 @@ public sealed class TestPyFiles
         var module = RunModule("test_int_truediv_precision_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestStrSubclassRegression()
+    {
+        // Regression: str subclass instances keep their subclass type —
+        // construction hands out a fresh retagged copy (unicode_subtype_new)
+        // instead of a shared exact str, so subclass methods resolve,
+        // overrides win, instance dicts work and str() converts back to the
+        // exact type; bytes/float/tuple copy for subtypes too instead of
+        // retagging shared instances (source objects, empty singletons)
+        // process-wide, and exact-type construction keeps identity
+        // passthrough.
+        var module = RunModule("test_str_subclass_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

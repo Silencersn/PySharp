@@ -81,7 +81,15 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
         if (obj.IsError)
             return obj;
 
-        obj.Value._pyType = cls;
+        // CPython bytes_new hands subtypes a fresh copy (bytes_subtype_new):
+        // FromSource passes exact bytes sources and the shared empty through,
+        // so retagging one in place would retype it everywhere
+        if (obj.Value.PyType != cls)
+        {
+            var bytesObj = PyBytesObject.MoveBytes(((PyBytesObject)obj.Value).AsSpan().ToArray());
+            bytesObj._pyType = cls;
+            return bytesObj;
+        }
         return obj;
     }
 

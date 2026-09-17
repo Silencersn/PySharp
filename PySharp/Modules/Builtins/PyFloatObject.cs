@@ -1485,10 +1485,16 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
             return result;
 
         // CPython float_new: a subclass call produces a subclass instance
+        // copied from the value (float_subtype_new); the conversion may
+        // pass a shared exact float through, which must not be retagged
+        // in place
         var obj = result.Value;
         Debug.Assert(obj is PyFloatObject);
         if (obj.PyType != cls)
+        {
+            obj = PyFloatObject.FromDouble(((PyFloatObject)obj).Value);
             obj._pyType = cls;
+        }
         return obj;
     }
 }

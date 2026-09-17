@@ -49,6 +49,16 @@ public partial class PyTupleObject : PyObject, IPyObjectRecursiveRepr, IReadOnly
         return new PyTupleObject(array);
     }
 
+    /// <summary>
+    /// Always a fresh instance, even for no items — for callers that retag
+    /// the result to another type (subclass construction);
+    /// <see cref="CreateTuple"/> hands out the shared empty singleton.
+    /// </summary>
+    public static PyTupleObject CreateTupleNoCache(ReadOnlySpan<PyObject> items)
+    {
+        return new PyTupleObject(items.ToArray());
+    }
+
     PyResult<PyStrObject> IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<PyObject> ids)
     {
         return PyUtils.CollectionRecursiveRepr(context, this, _array, "(", ")", ids, forceTrailingComma: true);
@@ -83,20 +93,35 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
         if (args.Count > 1)
             return PyResult.TypeError(PySR.Runtime_Tuple_ExpectedAtMostOne, args.Count);
 
+        PyTupleObject tuple;
         if (args.Count is 0)
         {
-            var empty = PyTupleObject.CreateTuple();
-            empty._pyType = cls;
-            return empty;
+            tuple = PyTupleObject.Empty;
+        }
+        else if (ReferenceEquals(cls, PyTupleObjectType.Shared) &&
+                 args[0] is PyTupleObject exactSource &&
+                 args[0].PyType == PyTupleObjectType.Shared)
+        {
+            // CPython tuple_new: an exact tuple source returns itself
+            return exactSource;
+        }
+        else
+        {
+            var result = PyUtils.IterableToTuple(context, args[0]);
+            if (result.IsError)
+                return result;
+            tuple = result.Value;
         }
 
-        var tuple = PyUtils.IterableToTuple(context, args[0]);
-        if (tuple.IsError)
-            return tuple;
-
-        var obj = tuple.Value;
-        obj._pyType = cls;
-        return obj;
+        // CPython tuple_new hands subtypes a fresh copy (tuple_subtype_new):
+        // the empty tuple is a shared singleton, so retagging it in place
+        // would retype () everywhere
+        if (tuple.PyType != cls)
+        {
+            tuple = PyTupleObject.CreateTupleNoCache(tuple.AsSpan());
+            tuple._pyType = cls;
+        }
+        return tuple;
     }
 
     protected override PyResult Iter(PyCallContext context, PyTupleObject self)
