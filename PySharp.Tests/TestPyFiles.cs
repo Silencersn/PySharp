@@ -3575,4 +3575,18 @@ public sealed class TestPyFiles
         var module = RunModule("test_boolop_not_condition_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestIntTruedivPrecisionRegression()
+    {
+        // Regression: int/int true division follows CPython's
+        // long_true_divide exactly — the shift clamps at DBL_MIN_EXP so
+        // subnormal quotients round once in the integer domain, 0/negative
+        // keeps a -0.0 sign, underflow below 2^-1075 lands on signed zero,
+        // and a quotient rounding up to 2^1024 raises OverflowError
+        // instead of returning inf; half-even ties and exact quotients
+        // stay correctly rounded.
+        var module = RunModule("test_int_truediv_precision_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

@@ -29,49 +29,50 @@ internal static class PyMath
                 {
                     if (right.Value.IsZero)
                         return PyResult.ZeroDivisionError();
-                    var (tdQ, tdR) = BigInteger.DivRem(left.Value, right.Value);
-                    if (tdR.IsZero)
-                    {
-                        // exact quotient: the plain (double) cast truncates
-                        // instead of rounding like CPython's long->float,
-                        // and an infinite result is an overflow
-                        var dq = tdQ.ToDoubleRounded();
-                        if (double.IsInfinity(dq))
-                            return PyResult.OverflowError("integer division result too large for a float");
-                        return PyFloatObject.FromDouble(dq);
-                    }
-                    // exact overflow check: |left/right| >= 2^1024  <=>  |left| >= |right| << 1024
-                    if (BigInteger.Abs(left.Value) >= BigInteger.Abs(right.Value) << 1024)
-                        return PyResult.OverflowError("integer division result too large for a float");
-                    // CPython long_true_divide: the quotient is rounded to
-                    // double precision from 54+ significant bits — scale
-                    // the dividend (or the divisor, keeping the quotient
-                    // value) so it carries guard bits, then round-half-to-
-                    // even using the low quotient bits and the remainder
-                    // as the sticky bit.
+                    // 0/b keeps the sign of b (long_true_divide's
+                    // underflow_or_zero exit)
+                    bool tdNegate = (left.Value.Sign < 0) != (right.Value.Sign < 0);
+                    if (left.Value.IsZero)
+                        return PyFloatObject.FromDouble(tdNegate ? -0.0 : 0.0);
                     var tdA = BigInteger.Abs(left.Value);
                     var tdB = BigInteger.Abs(right.Value);
-                    int shift = 55 - (int)tdA.GetBitLength() + (int)tdB.GetBitLength();
-                    var (tdQ2, tdRem) = shift >= 0
-                        ? BigInteger.DivRem(tdA << shift, tdB)
-                        : BigInteger.DivRem(tdA, tdB << -shift);
-                    int qLen = (int)tdQ2.GetBitLength();
-                    int lowBits = qLen - 53;
-                    var mantissa = (long)(tdQ2 >> lowBits);
-                    bool guard = ((tdQ2 >> (lowBits - 1)) & BigInteger.One).IsOne;
-                    bool sticky = !tdRem.IsZero || !((tdQ2 & ((BigInteger.One << (lowBits - 1)) - BigInteger.One))).IsZero;
-                    if (guard && (sticky || (mantissa & 1) is not 0))
-                        mantissa++;
-                    int exp2 = (qLen - 53) - shift;
-                    if (mantissa is 1L << 53)
-                    {
-                        mantissa >>= 1;
-                        exp2++;
-                    }
-                    if (exp2 > 1023)
+                    // exact overflow filter: |left/right| >= 2^1024 rounds
+                    // to infinity
+                    if (tdA >= tdB << 1024)
                         return PyResult.OverflowError("integer division result too large for a float");
-                    var tdResult = Math.ScaleB((double)mantissa, exp2);
-                    if ((left.Value.Sign < 0) != (right.Value.Sign < 0))
+                    // |left/right| < 2^-1075 rounds to (signed) zero; below
+                    // the clamp the scaled quotient itself could reach zero
+                    int tdDiff = (int)tdA.GetBitLength() - (int)tdB.GetBitLength();
+                    if (tdDiff < -1075)
+                        return PyFloatObject.FromDouble(tdNegate ? -0.0 : 0.0);
+                    // CPython long_true_divide: shift = MAX(diff, DBL_MIN_EXP)
+                    // - DBL_MANT_DIG - 2. Clamping to DBL_MIN_EXP keeps
+                    // subnormal results rounding exactly once, here in the
+                    // integer domain, instead of a second time inside ScaleB.
+                    int shift = Math.Max(tdDiff, -1021) - 55;
+                    var (tdQ2, tdRem) = shift <= 0
+                        ? BigInteger.DivRem(tdA << -shift, tdB)
+                        : BigInteger.DivRem(tdA, tdB << shift);
+                    int qBits = (int)tdQ2.GetBitLength();
+                    // two or three quotient bits stay below the 53-bit
+                    // mantissa (a clamped subnormal quotient is kept at 55);
+                    // round half-to-even over them, with the remainder as
+                    // the sticky bit — inexact folds into bit 0
+                    int extra = Math.Max(qBits, 55) - 53;
+                    var mask = BigInteger.One << (extra - 1);
+                    var low = tdQ2 | (tdRem.IsZero ? BigInteger.Zero : BigInteger.One);
+                    if (!(low & mask).IsZero && !(low & 3 * mask - 1).IsZero)
+                        low += mask;
+                    tdQ2 = low & ~(2 * mask - 1);
+                    // exact conversion: at most 53 significant bits, or the
+                    // round-up carry to a power of two
+                    var mantissa = (double)tdQ2;
+                    // overflow once the rounded value reaches 2^1024; the
+                    // equality arm catches a round-up carry into 2^qBits
+                    if (shift + qBits >= 1024 && (shift + qBits > 1024 || mantissa == Math.ScaleB(1.0, qBits)))
+                        return PyResult.OverflowError("integer division result too large for a float");
+                    var tdResult = Math.ScaleB(mantissa, shift);
+                    if (tdNegate)
                         tdResult = -tdResult;
                     return PyFloatObject.FromDouble(tdResult);
                 }
