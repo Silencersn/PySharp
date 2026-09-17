@@ -132,15 +132,35 @@ internal partial struct PyInternalFrame
         // defaults to globals only when globals was passed explicitly.
         if (locals is null && globals is null)
         {
-            // an inline comprehension frame runs its fast-local ops against
-            // the owner function's span (PEP 709 inlining), so its live
-            // locals are the owner's; class-parented comprehension frames
-            // own their names (CPython compiles those as real functions)
             ref var owner = ref context.FrameState.FindOuterNonInlineFrame();
-            if (owner.FrameType is FrameType.Function && owner.Variables.HasLocals)
+
+            // An inlined comprehension frame (PEP 709): eval sees the
+            // comprehension's own targets together with the owner function's
+            // locals — they share one frame in CPython. Other frames keep
+            // the classic defaulting: the owner function's locals snapshot,
+            // or this frame's live mapping (class namespace).
+            if (FrameType is FrameType.Comprehension)
+            {
+                PyDictObject? merged = owner.FrameType is FrameType.Function && owner.Variables.HasLocals
+                    ? owner.Variables.GetLocals(context)
+                    : null;
+                if (Variables.HasLocals)
+                {
+                    var own = Variables.LocalsMapping as PyDictObject ?? Variables.GetLocals(context);
+                    merged ??= new PyDictObject();
+                    foreach (var pair in own.Entries)
+                        merged.SetItem(context, pair.Key, pair.Value);
+                }
+                localsDictionary = merged;
+            }
+            else if (owner.FrameType is FrameType.Function && owner.Variables.HasLocals)
+            {
                 localsDictionary = owner.Variables.GetLocals(context);
+            }
             else if (Variables.HasLocals)
+            {
                 localsDictionary = Variables.LocalsMapping as PyDictObject ?? Variables.GetLocals(context);
+            }
         }
 
         if (closure is not null)

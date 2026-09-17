@@ -174,10 +174,15 @@ internal sealed class PyVariables
     }
     internal PyVariables CreateInline()
     {
+        // the enclosing globals stay live (CPython: a comprehension reads and
+        // writes the enclosing frame's globals by reference). A module-parent
+        // inline frame gets its own name-based storage (backed by the live
+        // globals for lookups) so comprehension targets stay isolated from
+        // the module namespace.
         if (!HasLocals)
-            return new PyVariables(new PyDictObject(_globals));
+            return new PyVariables(_globals, new PyDictObject()!);
 
-        var variables = new PyVariables(new PyDictObject(_globals), _localsTable);
+        var variables = new PyVariables(_globals, _localsTable);
         LocalsSpan.CopyTo(variables.LocalsSpan);
         if (_locals is not null)
             // the parent mapping only backs lookups (e.g. the comprehension's
@@ -185,6 +190,11 @@ internal sealed class PyVariables
             // proxy's own enumeration stays the comprehension's names, like
             // CPython's separate comprehension function sees as its locals
             variables._locals = new PyFrameLocalsProxyObject(_localsTable, variables.LocalsPlusMemory, _locals);
+        else
+            // a function frame has no locals dict of its own: give the inline
+            // frame a plain one so name-based stores (comprehension targets)
+            // have somewhere to land
+            variables._locals = new PyDictObject()!;
         return variables;
     }
 

@@ -3604,4 +3604,19 @@ public sealed class TestPyFiles
         var module = RunModule("test_str_subclass_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestComprehensionScopeRegression()
+    {
+        // Regression: list/set/dict comprehensions compile with their own
+        // implicit scope in every enclosing scope kind (function, module,
+        // class) — iteration variables never leak, never appear out of thin
+        // air, and never rebind same-named locals or closure cells; walrus
+        // targets inside a comprehension bind in the enclosing scope (PEP
+        // 572), eval/exec sees comprehension targets together with the
+        // owner function's locals, and async comprehensions still require
+        // an async function.
+        var module = RunModule("test_comprehension_scope_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

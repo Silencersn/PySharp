@@ -778,6 +778,27 @@ partial class Emitter
         Builder.Emit(OpCode.Copy, 1);
 
         var name = node.Target.Id;
+        if (VariableScope is ComprehensionVariableScope comprehensionScope)
+        {
+            // PEP 572: the walrus target binds in the enclosing scope, never
+            // in the comprehension itself — a cell-held one stores through
+            // the cell, a global one stores the global.
+            var walrusType = comprehensionScope.Variables.TryGetValue(name, out var type)
+                ? type
+                : PyVariableType.Global;
+            switch (walrusType)
+            {
+                case PyVariableType.CapturedLocal or PyVariableType.Closure:
+                    Builder.Emit(OpCode.StoreDeref, name);
+                    return;
+                case PyVariableType.Global:
+                    Builder.Emit(OpCode.StoreGlobal, name);
+                    return;
+                default:
+                    Builder.Emit(OpCode._StoreNameIncludedNonInlineFrame, name);
+                    return;
+            }
+        }
         if (VariableScope is CallableVariableScope scope && (scope.CellVars.Contains(name) || scope.FreeVars.Contains(name)))
             Builder.Emit(OpCode._StoreDerefIncludedNonInlineFrame, name);
         else if (VariableScope is CallableVariableScope { } callable && !callable.LocalsTable.ContainsKey(name))

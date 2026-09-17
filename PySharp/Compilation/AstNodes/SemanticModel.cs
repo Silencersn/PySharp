@@ -309,12 +309,14 @@ internal sealed class GeneratorExpVariableScope : CallableVariableScope
 }
 
 /// <summary>
-/// Scope for the body of an inlined comprehension (list/set/dict comp) directly
-/// inside a class body. The class scope is invisible to nested scopes, so free
-/// names resolve as if the class block were skipped (CPython symtable rule);
-/// only the outermost iterable is evaluated in the class scope. Locals are the
-/// comprehension targets, resolved name-based inside the inline frame instead
-/// of via fast-local slots (the body shares the enclosing code object).
+/// Scope for the body of an inlined comprehension (list/set/dict comp).
+/// Inside a class body the class scope is invisible to nested scopes, so
+/// free names resolve as if the class block were skipped (CPython symtable
+/// rule); only the outermost iterable is evaluated in the enclosing scope.
+/// Locals are the comprehension targets, resolved name-based inside the
+/// inline frame instead of via fast-local slots (the body shares the
+/// enclosing code object), which keeps them isolated from the enclosing
+/// scope's own locals (no leaking, no rebinding).
 /// A target captured by a nested function is promoted to CapturedLocal and
 /// gets a cell in the inline frame (CPython: the comprehension function owns
 /// the cellvar), so the nested function receives it in its closure.

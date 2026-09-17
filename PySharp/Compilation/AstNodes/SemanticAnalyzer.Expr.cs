@@ -222,22 +222,14 @@ partial class SemanticAnalyzer
         _currentNestedComprehensionStats.PopComprehension();
     }
 
-    // The comprehension body is a nested scope that skips the class block:
-    // class scopes are invisible to nested scopes, and only the outermost
-    // iterable is evaluated in the enclosing class scope (CPython symtable
-    // rule). In any other scope the inlined form is kept and body names
-    // simply merge into the enclosing scope.
+    // The comprehension body is its own scope (CPython symtable: an implicit
+    // function, inlined by the emitter into a private inline frame): targets
+    // are locals of the comprehension and never merge into the enclosing
+    // scope, a class scope stays invisible to the body, and only the
+    // outermost iterable is evaluated in the enclosing scope.
     private void VisitInlineComprehension(AstExprNode node, ImmutableArray<AstComprehensionNode> generators, Action visitElement)
     {
-        if (_currentScopeStats.Scope is not ClassVariableScope classScope)
-        {
-            _currentNestedComprehensionStats.CurrentComprehensionStats.VisitingPart = ComprehensionStatsVisitingPart.Element;
-            visitElement();
-            VisitNodes(generators);
-            return;
-        }
-
-        var comprehensionScope = new ComprehensionVariableScope(node, classScope);
+        var comprehensionScope = new ComprehensionVariableScope(node, _currentScopeStats.Scope);
         PushComprehensionScope(comprehensionScope);
         try
         {
@@ -249,7 +241,7 @@ partial class SemanticAnalyzer
                 var generator = generators[i];
                 _nodesToRoot.Push(generator);
 
-                if (generator.IsAsync)
+                if (generator.IsAsync && !IsWithinAsyncFunction(comprehensionScope))
                     throw SyntaxError(PySR.InvalidSyntax_Semantic_AsyncCompOutsideAsyncFunc);
 
                 _currentNestedComprehensionStats.CurrentComprehensionStats.VisitingPart = ComprehensionStatsVisitingPart.GeneratorTarget;
@@ -258,7 +250,7 @@ partial class SemanticAnalyzer
                 _currentNestedComprehensionStats.CurrentComprehensionStats.VisitingPart = ComprehensionStatsVisitingPart.GeneratorIter;
                 if (i is 0)
                 {
-                    // the outermost iterable is evaluated in the class scope
+                    // the outermost iterable is evaluated in the enclosing scope
                     PopComprehensionScope();
                     VisitNode(generator.Iter);
                     PushComprehensionScope(comprehensionScope);
@@ -279,6 +271,18 @@ partial class SemanticAnalyzer
         {
             PopComprehensionScope();
         }
+    }
+
+    // CPython: an async comprehension only runs inside an async function.
+    // Comprehension scopes are transparent for this check (an async listcomp
+    // nested in another comprehension still belongs to the enclosing async
+    // function), while a lambda or plain function scope stops the walk.
+    private static bool IsWithinAsyncFunction(VariableScope scope)
+    {
+        var parent = scope.Parent;
+        while (parent is ComprehensionVariableScope or GeneratorExpVariableScope)
+            parent = parent.Parent;
+        return parent is AsyncFunctionVariableScope;
     }
 
     private void VisitGeneratorExp(GeneratorExpNode node)
@@ -374,23 +378,25 @@ partial class SemanticAnalyzer
     private void VisitNamedExpr(NamedExprNode node)
     {
         if ((_currentScopeStats.Scope is ClassVariableScope && _currentNestedComprehensionStats.IsWithinComprehension)
-            || _currentScopeStats.Scope is ComprehensionVariableScope)
+            || _currentScopeStats.Scope is ComprehensionVariableScope { Parent: ClassVariableScope })
             throw SyntaxError(PySR.InvalidSyntax_Semantic_NamedExprInComprehensionInClass);
 
         CheckNamedExprIfWithinComprehension(node.Target.Id);
 
-        // PEP 572: a genexp target binds in the nearest enclosing
-        // non-comprehension scope (an enclosing function local via a
-        // shared cell, or the global scope), never in the genexp itself.
+        // PEP 572: a genexp or comprehension target binds in the nearest
+        // enclosing non-comprehension scope (an enclosing function local via a
+        // shared cell, or the global scope), never in the comprehension itself.
         if (_currentScopeStats.Scope is GeneratorExpVariableScope generatorExpScope)
             BindNamedExprTargetInEnclosingScope(generatorExpScope, node.Target.Id);
+        else if (_currentScopeStats.Scope is ComprehensionVariableScope comprehensionScope)
+            BindNamedExprTargetInEnclosingScope(comprehensionScope, node.Target.Id);
         else
             VisitNode(node.Target);
 
         VisitNode(node.Value);
     }
 
-    private void BindNamedExprTargetInEnclosingScope(GeneratorExpVariableScope scope, string name)
+    private void BindNamedExprTargetInEnclosingScope(VariableScope scope, string name)
     {
         var parent = scope.Parent;
         while (parent is GeneratorExpVariableScope or ComprehensionVariableScope)
@@ -404,7 +410,7 @@ partial class SemanticAnalyzer
             case CallableVariableScope callableScope:
                 callableScope.AppendVariable(name, ExprContextType.Store);
                 if (callableScope.Variables[name] is PyVariableType.Global)
-                    break; // global-declared in the owner: the genexp stores the global
+                    break; // global-declared in the owner: the comprehension stores the global
 
                 // Reference the owner's cell as a free variable; the closure
                 // pass promotes the owner's local to a captured cell.
@@ -412,7 +418,7 @@ partial class SemanticAnalyzer
                 break;
 
             default:
-                // module scope: the genexp stores the global
+                // module scope: the comprehension stores the global
                 break;
         }
     }
@@ -609,7 +615,13 @@ partial class SemanticAnalyzer
 
     private void VisitAwait(AwaitNode node)
     {
-        if (_currentScopeStats.Scope is not AsyncFunctionVariableScope)
+        // inlined comprehension scopes are transparent: an await inside a
+        // comprehension belongs to the enclosing async function
+        var scope = _currentScopeStats.Scope;
+        while (scope is ComprehensionVariableScope or GeneratorExpVariableScope)
+            scope = scope.Parent;
+
+        if (scope is not AsyncFunctionVariableScope)
             throw SyntaxError(PySR.InvalidSyntax_Semantic_AwaitOutsideAsyncFunc);
 
         VisitNode(node.Value);

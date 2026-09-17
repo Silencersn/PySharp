@@ -152,10 +152,10 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
                         break;
                     }
 
-                    // Comprehension targets inside a class body: the inline
-                    // comprehension scope owns them, so a nested function's
-                    // reference is a closure over that scope (CPython treats
-                    // the comprehension as a function owning the cellvar).
+                    // Comprehension targets: the inline comprehension scope
+                    // owns them, so a nested function's reference is a closure
+                    // over that scope (CPython treats the comprehension as a
+                    // function owning the cellvar).
                     if (parent is ComprehensionVariableScope comprehensionScope &&
                         comprehensionScope.Variables.TryGetValue(name, out var typeOfCompVariable) &&
                         typeOfCompVariable is not (PyVariableType.Global or PyVariableType.Closure))
