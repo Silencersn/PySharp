@@ -125,49 +125,96 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
     // with format_float_short presentation: scientific notation iff the
     // decimal point sits at position <= -4 or > 16, exponent at least two
     // digits, integral values keep a trailing ".0", always lowercase 'e'.
-    // .NET "G" yields the identical shortest digits, so only the
-    // presentation is rebuilt here.
+    // The digits come from exact BigInteger math instead of .NET's shortest
+    // round-trip mode: on ties like 2**-25 .NET's 16-digit output parses
+    // back to the lower neighbor, one digit short of CPython's.
     internal static string FormatShortestRepr(double val)
     {
         if (val is 0.0)
             return double.IsNegative(val) ? "-0.0" : "0.0";
 
-        var text = val.ToString("G", CultureInfo.InvariantCulture);
-        var negative = text[0] is '-';
-        if (negative)
-            text = text[1..];
-
-        string digits;
-        int decpt;
-        var eIndex = text.IndexOfAny(['e', 'E']);
-        if (eIndex >= 0)
+        long bits = BitConverter.DoubleToInt64Bits(val);
+        bool negative = bits < 0;
+        int expBits = (int)((bits >> 52) & 0x7FF);
+        long mant = bits & 0xFFFFFFFFFFFFFL;
+        int e2;
+        if (expBits is 0)
         {
-            digits = text[..eIndex].Replace(".", string.Empty);
-            decpt = int.Parse(text[(eIndex + 1)..], CultureInfo.InvariantCulture) + 1;
+            e2 = -1074;   // subnormals carry no implicit bit
         }
         else
         {
-            var point = text.IndexOf('.');
-            if (point >= 0)
+            mant |= 1L << 52;
+            e2 = expBits - 1075;
+        }
+        var m = new BigInteger(mant);
+
+        // the exact decimal of |val|: value = digits * 10^s
+        BigInteger exactDigits;
+        int s;
+        if (e2 >= 0)
+        {
+            exactDigits = m << e2;
+            s = 0;
+        }
+        else
+        {
+            exactDigits = m * BigInteger.Pow(5, -e2);
+            s = e2;
+        }
+        int exactLen = exactDigits.ToString().Length;
+
+        // dtoa mode 0: the fewest significant digits whose correctly rounded
+        // value is |val| again. At each width every candidate inside the
+        // value's rounding cell qualifies; dtoa emits the one closest to the
+        // exact decimal, ties to even.
+        string digits = null!;
+        int decpt = 0;
+        for (int p = 1; p <= exactLen; p++)
+        {
+            BigInteger baseDigits;
+            BigInteger rem;
+            int drop;
+            int scale;
+            if (p >= exactLen)
             {
-                digits = text.Remove(point, 1);
-                decpt = point;
+                // the exact decimal always lies in its own cell
+                baseDigits = exactDigits;
+                rem = BigInteger.Zero;
+                drop = 0;
+                scale = s;
             }
             else
             {
-                digits = text;
-                decpt = text.Length;
+                drop = exactLen - p;
+                baseDigits = BigInteger.DivRem(exactDigits, BigInteger.Pow(10, drop), out rem);
+                scale = drop + s;
             }
-        }
 
-        // a fixed-form "0.0001" carries leading zeros with no significance
-        var firstSignificant = 0;
-        while (firstSignificant < digits.Length - 1 && digits[firstSignificant] is '0')
-            firstSignificant++;
-        if (firstSignificant > 0)
-        {
-            digits = digits[firstSignificant..];
-            decpt -= firstSignificant;
+            BigInteger best = default;
+            BigInteger bestDist = default;
+            var found = false;
+            for (long off = -1; off <= 2; off++)
+            {
+                var cand = baseDigits + off;
+                if (cand.Sign <= 0 || !InCell(cand, scale, mant, e2))
+                    continue;
+
+                var dist = BigInteger.Abs(off * BigInteger.Pow(10, drop) - rem);
+                if (!found || dist.CompareTo(bestDist) < 0 || (dist == bestDist && cand.IsEven))
+                {
+                    found = true;
+                    best = cand;
+                    bestDist = dist;
+                }
+            }
+
+            if (found)
+            {
+                digits = best.ToString();
+                decpt = digits.Length + scale;
+                break;
+            }
         }
 
         var sb = new System.Text.StringBuilder();
@@ -203,6 +250,53 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
         }
 
         return sb.ToString();
+    }
+
+    // sign of a*2^pa*5^qa - b*2^pb*5^qb
+    private static int CompareScaled(BigInteger a, int pa, int qa, BigInteger b, int pb, int qb)
+    {
+        int d2 = pa - pb;
+        int d5 = qa - qb;
+        if (d2 >= 0)
+            a *= BigInteger.Pow(2, d2);
+        else
+            b *= BigInteger.Pow(2, -d2);
+        if (d5 >= 0)
+            a *= BigInteger.Pow(5, d5);
+        else
+            b *= BigInteger.Pow(5, -d5);
+        return a.CompareTo(b);
+    }
+
+    // does cand*10^s parse back to v = mant*2^e2? the candidate lies in v's
+    // rounding cell (mid(L,v), mid(v,U)] with ties-to-even; for a power of
+    // two the lower neighbor sits only half an ulp away, so the cell floor
+    // is a quarter ulp below v
+    private static bool InCell(BigInteger cand, int s, long mant, int e2)
+    {
+        bool even = (mant & 1L) is 0;
+
+        // upper midpoint (m + 1/2) * 2^e2 = (2m + 1) * 2^(e2-1)
+        var upper = new BigInteger(2 * mant + 1);
+        int cmpUpper = CompareScaled(cand, s, s, upper, e2 - 1, 0);
+        if (cmpUpper > 0 || (cmpUpper is 0 && !even))
+            return false;
+
+        int cmpLower;
+        if (mant is 1L << 52)
+        {
+            // v is a power of two: the cell floor is v - (1/4)*2^e2
+            // = (4m - 1) * 2^(e2-2)
+            var floor = new BigInteger(4 * mant - 1);
+            cmpLower = CompareScaled(cand, s, s, floor, e2 - 2, 0);
+        }
+        else
+        {
+            // lower midpoint (m - 1/2) * 2^e2 = (2m - 1) * 2^(e2-1)
+            var lower = new BigInteger(2 * mant - 1);
+            cmpLower = CompareScaled(cand, s, s, lower, e2 - 1, 0);
+        }
+        return cmpLower > 0 || (cmpLower is 0 && even);
     }
 
     protected override PyResult Hash(PyCallContext context, PyFloatObject self)

@@ -3619,4 +3619,17 @@ public sealed class TestPyFiles
         var module = RunModule("test_comprehension_scope_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestFloatReprShortestRegression()
+    {
+        // Regression: float repr renders the shortest round-trip digit
+        // string per CPython dtoa mode 0 using exact BigInteger math —
+        // .NET's shortest mode emits one digit too few on ties like
+        // 2**-25 (its 16-digit output parses back to the lower neighbor);
+        // presentation boundaries (scientific thresholds, integral ".0")
+        // and the power-of-two quarter-ulp cell floor stay aligned.
+        var module = RunModule("test_float_repr_shortest_regression.py");
+        Assert.IsNotNull(module);
+    }
 }
