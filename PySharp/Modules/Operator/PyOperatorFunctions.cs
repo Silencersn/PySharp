@@ -43,6 +43,8 @@ public static partial class PyOperatorFunctions
     public static partial PyBuiltinFunctionOrMethodObject Gt { get; }
     [PyExport("ge", nameof(GeImpl))]
     public static partial PyBuiltinFunctionOrMethodObject Ge { get; }
+    [PyExport("length_hint", nameof(LengthHintImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject LengthHint { get; }
 
     [PyFunctionParameters("a", "b", "/")]
     private static PyResult AddImpl(PyCallContext context, PyArguments arguments)
@@ -134,5 +136,26 @@ public static partial class PyOperatorFunctions
     private static PyResult GeImpl(PyCallContext context, PyArguments arguments)
     {
         return PyOperators.GtE(context, arguments[0], arguments[1]);
+    }
+
+    // CPython _operator.length_hint: the clinic Py_ssize_t converter runs
+    // __index__ on default before the hint machinery is entered, and every
+    // validation error inside the hint itself propagates to the caller
+    [PyFunctionParameters("obj", "default=0", "/")]
+    private static PyResult LengthHintImpl(PyCallContext context, PyArguments arguments)
+    {
+        var defaultResult = PySpecialMethods.Index(context, arguments[1]);
+        if (defaultResult.IsError)
+            return defaultResult;
+
+        var defaultValue = defaultResult.Value.Value;
+        if (defaultValue < long.MinValue || defaultValue > long.MaxValue)
+            return PyResult.OverflowError(PySR.Runtime_Number_Int_TooLargeForSsize);
+
+        var hint = PyUtils.LengthHint(context, arguments[0], (long)defaultValue);
+        if (hint.IsError)
+            return hint.ExceptionResult;
+
+        return hint.Value;
     }
 }

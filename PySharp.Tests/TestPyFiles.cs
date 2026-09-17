@@ -3547,4 +3547,19 @@ public sealed class TestPyFiles
         var module = RunModule("test_type_attr_guard_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestLengthHintRegression()
+    {
+        // Regression: the length-hint protocol. len() wins (only its
+        // TypeError falls through), __length_hint__ is looked up on the
+        // type MRO and only its TypeError falls back — every other error
+        // propagates out of list()/extend/+=/[*x]/sorted()/bytes()/
+        // bytearray.extend/operator.length_hint, with value validation
+        // (TypeError/ValueError/OverflowError/MemoryError). tuple/set/dict
+        // construction, dict.update, set.update, the bytearray()
+        // constructor, and bytearray += stay hint-free.
+        var module = RunModule("test_length_hint_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

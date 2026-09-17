@@ -17,7 +17,9 @@ partial class PyListObject
 
     internal PyResult PyExtend(PyCallContext context, PyObject iterable)
     {
-        var list = PyUtils.IterableToList(context, iterable);
+        // CPython list_extend's iterator path: the length hint is consulted
+        // after starting iteration and its errors propagate
+        var list = PyUtils.IteratorToListWithHint(context, iterable);
         if (list.IsError)
             return list;
 

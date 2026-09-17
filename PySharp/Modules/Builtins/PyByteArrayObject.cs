@@ -499,7 +499,20 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
             return PyNoneObject.None;
         }
 
-        var listResult = PyUtils.IterableToList(context, iterable);
+        // CPython bytearray_extend's iterator path: the length hint is
+        // consulted after starting iteration and its errors propagate (the
+        // buffer fast path above never sees the hint)
+        var iterator = PySpecialMethods.Iter(context, iterable);
+        if (iterator.IsError)
+            return iterator;
+
+        var hintResult = PyUtils.LengthHint(context, iterable, 32);
+        if (hintResult.IsError)
+            return hintResult.ExceptionResult;
+        if (hintResult.Value.Value > PyUtils.MaxPreallocationHint)
+            return PyResult.MemoryError(null);
+
+        var listResult = PyUtils.IteratorToList(context, iterator.Value);
         if (listResult.IsError)
             return listResult;
 

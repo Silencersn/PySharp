@@ -144,6 +144,8 @@ partial class PySR
     public const string Runtime_Str_Format_ReplacementIndexOutOfRange = "Replacement index {0} out of range for positional args tuple";
 
     public const string Runtime_Sequence_NegativeLen = "__len__() should return >= 0";
+    public const string Runtime_Sequence_LengthHintNotInteger = "__length_hint__ must be an integer, not {0}";
+    public const string Runtime_Sequence_LengthHintNegative = "__length_hint__() should return >= 0";
     public const string Runtime_Sequence_NoLen = "object of type '{0}' has no len()";
     public const string Runtime_Sequence_NonIterable = "'{0}' object is not iterable";
     public const string Runtime_Sequence_ArgumentNotContainer = "argument of type '{0}' is not a container or iterable";

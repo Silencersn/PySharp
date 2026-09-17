@@ -10,6 +10,92 @@ namespace PySharp.Runtime;
 
 internal static class PyUtils
 {
+    // .NET cannot materialize containers beyond the array limit, so a hint
+    // beyond it deterministically reproduces CPython's preallocation
+    // MemoryError (hints in the resource-dependent band below the limit are
+    // simply not used for allocation)
+    internal static readonly long MaxPreallocationHint = Array.MaxLength;
+
+    // CPython PyObject_LengthHint: len() wins when available (only its
+    // TypeError falls through), then __length_hint__ is looked up on the
+    // type's MRO — descriptors bind, instance attributes are ignored — and
+    // called with no arguments. Only TypeError from that call falls back;
+    // every other error propagates, which is what makes user errors inside
+    // __length_hint__ observable (issue 178)
+    internal static PyResult<PyIntObject> LengthHint(PyCallContext context, PyObject obj, long fallback)
+    {
+        if (obj.PyType.Slots.Len is not null)
+        {
+            var len = PySpecialMethods.Len(context, obj);
+            if (len.IsError)
+            {
+                if (!PyTypeErrorObjectType.Shared.IsInstance(len.Exception))
+                    return len.ExceptionResult;
+            }
+            else
+            {
+                return len.Value;
+            }
+        }
+
+        if (!PyObject.TryLookupAttrInMro(obj.PyType, PySpecialNames.LengthHint, out var attr))
+            return PyIntObject.FromInteger(fallback);
+
+        var hint = attr;
+        var getFunc = attr.PyType.Slots.Get;
+        if (getFunc is not null)
+        {
+            var bound = getFunc(context, attr, obj, obj.PyType);
+            if (bound.IsError)
+            {
+                // _PyObject_LookupSpecial swallows only AttributeError
+                if (bound.IsAttributeError)
+                    return PyIntObject.FromInteger(fallback);
+                return bound.ExceptionResult;
+            }
+            hint = bound.Value;
+        }
+
+        var result = hint.Call(context);
+        if (result.IsError)
+        {
+            // a non-callable attribute and a user TypeError both fall back
+            if (PyTypeErrorObjectType.Shared.IsInstance(result.Exception))
+                return PyIntObject.FromInteger(fallback);
+            return result.ExceptionResult;
+        }
+
+        if (result.Value is PyNotImplementedObject)
+            return PyIntObject.FromInteger(fallback);
+        if (result.Value is not PyIntObject hintValue) // bool is a PyIntObject
+            return PyResult.TypeError(PySR.Runtime_Sequence_LengthHintNotInteger, result.Value.PyType.FullName);
+        if (hintValue.Value < 0)
+            return PyResult.ValueError(PySR.Runtime_Sequence_LengthHintNegative);
+        if (hintValue.Value > long.MaxValue)
+            return PyResult.OverflowError(PySR.Runtime_Number_Int_TooLargeForSsize);
+        return hintValue;
+    }
+
+    // CPython list_extend iter path: start iteration first (a failing
+    // __iter__ wins over a failing hint), then consult the length hint on
+    // the original iterable, then drain. Shared by list.__init__/extend/
+    // +=/LIST_EXTEND and sorted(); the list() built-in consumes the hint,
+    // tuple()/set()/dict() do not
+    internal static PyResult<PyListObject> IteratorToListWithHint(PyCallContext context, PyObject iterable)
+    {
+        var iterator = PySpecialMethods.Iter(context, iterable);
+        if (iterator.IsError)
+            return iterator.ExceptionResult;
+
+        var hint = LengthHint(context, iterable, 8);
+        if (hint.IsError)
+            return hint.ExceptionResult;
+        if (hint.Value.Value > MaxPreallocationHint)
+            return PyResult.MemoryError(null);
+
+        return IteratorToList(context, iterator.Value);
+    }
+
     private static PyResult<T> IterableToContainer<T>(PyCallContext context, PyObject iterable, Func<List<PyObject>, T> createContainer) where T : PyObject
     {
         var iterator = PySpecialMethods.Iter(context, iterable);

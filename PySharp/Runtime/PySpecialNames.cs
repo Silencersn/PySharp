@@ -33,6 +33,7 @@ public static partial class PySpecialNames
     public const string FirstLineNo = "__firstlineno__";
 
     public const string MatchArgs = "__match_args__";
+    public const string LengthHint = "__length_hint__";
 
     public const string Dict = "__dict__";
     public const string Defaults = "__defaults__";

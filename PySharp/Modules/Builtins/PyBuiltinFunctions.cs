@@ -1255,7 +1255,9 @@ public static partial class PyBuiltinFunctions
     [PyFunctionParameters("iterable", "/", "*", "key=None", "reverse=False")]
     private static PyResult SortedImpl(PyCallContext context, PyArguments arguments)
     {
-        var list = PyUtils.IterableToList(context, arguments[0]);
+        // CPython sorted() builds through PySequence_List → list(), so the
+        // iterable's length hint is consumed here too
+        var list = PyUtils.IteratorToListWithHint(context, arguments[0]);
         if (list.IsError)
             return list;
 
