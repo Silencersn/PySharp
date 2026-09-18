@@ -2840,6 +2840,13 @@ public sealed class TestPyFiles
         // a ValueError, r+ close/with-exit flushes once without
         // ObjectDisposedException, "x" grants write access, and opening a
         // directory raises PermissionError. Fails until the fixes land.
+        // The corpus probes "x"-mode candidates (t_file_io_x_N/xplus_N) and
+        // cannot delete them itself (no os module yet): each run leaks one
+        // pair into the CWD, so wipe stale artifacts first or the 100-name
+        // pool exhausts after 100 runs.
+        foreach (var stale in Directory.EnumerateFiles(Directory.GetCurrentDirectory(), "t_file_io_*").ToArray())
+            File.Delete(stale);
+
         var module = RunModule("test_file_io_error_regression.py");
         Assert.IsNotNull(module);
     }

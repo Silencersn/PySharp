@@ -15,6 +15,10 @@ public abstract class PyEnvironmentHost
 
     public virtual bool SupportsColorOutput => true;
 
+    // Hosts without terminal state keep the legacy opt-in behavior; the
+    // console host decides error coloring per stream like CPython does.
+    public virtual bool SupportsErrorColorOutput => SupportsColorOutput;
+
     public virtual IPyEnvironmentBuilder CreateEnvironmentBuilder()
     {
         return new PyEnvironmentBuilder(this);
@@ -60,6 +64,18 @@ public abstract class PyEnvironmentHost
         // deterministic stand-in for Console.OutputEncoding
         internal virtual Encoding StdOutEncoding => Console.OutputEncoding;
         internal virtual Encoding StdErrEncoding => Console.OutputEncoding;
+
+        // terminal-state and environment seams for the color decision;
+        // tests override them instead of touching process state
+        internal virtual bool StdOutRedirected => Console.IsOutputRedirected;
+        internal virtual bool StdErrRedirected => Console.IsErrorRedirected;
+        internal virtual Func<string, string?> ColorEnvironment => System.Environment.GetEnvironmentVariable;
+
+        public override bool SupportsColorOutput =>
+            PyColorSupport.EnvironmentAllowsColor(ColorEnvironment) ?? !StdOutRedirected;
+
+        public override bool SupportsErrorColorOutput =>
+            PyColorSupport.EnvironmentAllowsColor(ColorEnvironment) ?? !StdErrRedirected;
 
         public override Stream AllocateStdIn() => Console.OpenStandardInput();
         public override Stream AllocateStdOut() => Console.OpenStandardOutput();

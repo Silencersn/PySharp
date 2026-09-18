@@ -47,7 +47,7 @@ public sealed partial class PyEnvironment : IDisposable
         _error.AutoFlush = true;
         _isInteractive = isInteractive;
         _supportsColorOut = supportsColorOut ?? Host.SupportsColorOutput;
-        _supportsColorError = supportsColorError ?? Host.SupportsColorOutput;
+        _supportsColorError = supportsColorError ?? Host.SupportsErrorColorOutput;
         _paths = paths is null ? [] : [.. paths];
         _args = args is null ? [] : [.. args];
         Options = options ?? PyEnvironmentOptions.Default;
