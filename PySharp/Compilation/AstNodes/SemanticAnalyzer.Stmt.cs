@@ -65,6 +65,23 @@ partial class SemanticAnalyzer
 
     private void VisitAnnAssign(AnnAssignNode node)
     {
+        // CPython analyze_name: an annotated name can't be global/nonlocal.
+        // root Variables are all Global (every module name is), so only
+        // non-root scopes diagnose here; the root ann-then-global order is
+        // caught by VisitGlobal through AnnotatedNames instead
+        if (node.Simple && node.Target is NameNode { Id: var name })
+        {
+            var currentScope = _currentScopeStats.Scope;
+            if (!currentScope.IsRoot && currentScope.Variables.TryGetValue(name, out var type))
+            {
+                if (type is PyVariableType.Global)
+                    throw SyntaxError(PySR.InvalidSyntax_Semantic_AnnotatedNameCantBeGlobal, name);
+                if (type is PyVariableType.Nonlocal)
+                    throw SyntaxError(PySR.InvalidSyntax_Semantic_AnnotatedNameCantBeNonlocal, name);
+            }
+            currentScope.AnnotatedNames.Add(name);
+        }
+
         VisitNode(node.Target);
         VisitNullableNode(node.Value);
     }
@@ -131,12 +148,22 @@ partial class SemanticAnalyzer
         if (currentScope.IsRoot)
         {
             if (currentScope is RootVariableScope rootScope)
+            {
+                foreach (var name in node.Names)
+                {
+                    if (rootScope.AnnotatedNames.Contains(name))
+                        throw SyntaxError(PySR.InvalidSyntax_Semantic_AnnotatedNameCantBeGlobal, name);
+                }
                 rootScope.DeclaredGlobals.UnionWith(node.Names);
+            }
             return;
         }
 
         foreach (var name in node.Names)
         {
+            if (currentScope.AnnotatedNames.Contains(name))
+                throw SyntaxError(PySR.InvalidSyntax_Semantic_AnnotatedNameCantBeGlobal, name);
+
             if (!currentScope.Variables.TryGetValue(name, out var type))
             {
                 currentScope.Variables.Add(name, PyVariableType.Global);
@@ -168,6 +195,9 @@ partial class SemanticAnalyzer
 
         foreach (var name in node.Names)
         {
+            if (currentScope.AnnotatedNames.Contains(name))
+                throw SyntaxError(PySR.InvalidSyntax_Semantic_AnnotatedNameCantBeNonlocal, name);
+
             if (!currentScope.Variables.TryGetValue(name, out var type))
             {
                 currentScope.Variables.Add(name, PyVariableType.Nonlocal);

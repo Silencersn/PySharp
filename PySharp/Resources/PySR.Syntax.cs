@@ -189,6 +189,9 @@ partial class PySR
     public const string InvalidSyntax_Semantic_NonlocalAtModule = "nonlocal declaration not allowed at module level";
     public const string InvalidSyntax_Semantic_NonlocalNoBinding = "no binding for nonlocal '{0}' found";
 
+    public const string InvalidSyntax_Semantic_AnnotatedNameCantBeGlobal = "annotated name '{0}' can't be global";
+    public const string InvalidSyntax_Semantic_AnnotatedNameCantBeNonlocal = "annotated name '{0}' can't be nonlocal";
+
     public const string InvalidSyntax_Semantic_DuplicateArgument = "duplicate argument '{0}' in function definition";
 
     public const string InvalidSyntax_Semantic_NonLastDefaultExcept = "default 'except:' must be last";

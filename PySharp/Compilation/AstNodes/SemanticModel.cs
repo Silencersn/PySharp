@@ -44,6 +44,10 @@ internal abstract class VariableScope
     // root scope does not need to maintain this property
     internal Dictionary<string, ExprContextType> FirstContext { get; } = [];
 
+    // names annotated in this scope (AnnAssign with a simple name target):
+    // CPython rejects combining them with a later global/nonlocal declaration
+    internal HashSet<string> AnnotatedNames { get; } = [];
+
     public VariableScope? Parent { get; }
     public List<VariableScope> Children { get; } = [];
 

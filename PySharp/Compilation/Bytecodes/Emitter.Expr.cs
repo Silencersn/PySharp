@@ -91,6 +91,8 @@ partial class Emitter
         {
             if (classVariableScope.Variables.TryGetValue(name, out var type) && type is PyVariableType.Closure)
                 AsDeref();
+            else if (type is PyVariableType.Global)
+                AsGlobal();
             else
                 AsName();
         }
@@ -798,6 +800,26 @@ partial class Emitter
                     Builder.Emit(OpCode._StoreNameIncludedNonInlineFrame, name);
                     return;
             }
+        }
+        if (VariableScope is ClassVariableScope classScope)
+        {
+            // same routing as EmitName: a global-declared target stores the
+            // module global, a nonlocal one its cell, never the class dict
+            if (classScope.Variables.TryGetValue(name, out var type))
+            {
+                if (type is PyVariableType.Global)
+                {
+                    Builder.Emit(OpCode.StoreGlobal, name);
+                    return;
+                }
+                if (type is PyVariableType.Closure)
+                {
+                    Builder.Emit(OpCode.StoreDeref, name);
+                    return;
+                }
+            }
+            Builder.Emit(OpCode._StoreNameIncludedNonInlineFrame, name);
+            return;
         }
         if (VariableScope is CallableVariableScope scope && (scope.CellVars.Contains(name) || scope.FreeVars.Contains(name)))
             Builder.Emit(OpCode._StoreDerefIncludedNonInlineFrame, name);

@@ -3562,6 +3562,19 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestClassBodyGlobalRegression()
+    {
+        // Regression: `global` declarations inside a class body route every
+        // binding form (assignment, walrus, import-as, def/class, for/with/
+        // except-as targets) to the module globals instead of the class
+        // dict, and an annotated name combined with global/nonlocal is a
+        // compile error in any order outside the module-level
+        // global-before-annotation case.
+        var module = RunModule("test_class_body_global_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestPowSlotArityRegression()
     {
         // Regression: the pow-family slots pass two arguments to Python-level
