@@ -3550,6 +3550,18 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestExceptionMixinInheritanceRegression()
+    {
+        // Regression: exception classes combined with plain mixin bases
+        // (in either base order) define, instantiate, raise and match
+        // except single-class, tuple and except* handlers along the full
+        // MRO; only unrelated solid layouts (Exception + dict) keep
+        // conflicting and non-exception handlers stay refused.
+        var module = RunModule("test_exception_mixin_inheritance_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestPowSlotArityRegression()
     {
         // Regression: the pow-family slots pass two arguments to Python-level
