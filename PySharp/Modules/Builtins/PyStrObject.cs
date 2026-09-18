@@ -271,9 +271,9 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         var sub = arguments[0];
 
         if (!TrySliceIndex(context, arguments[1], 0, out int start, out var startError))
-            return startError!;
+            return startError;
         if (!TrySliceIndex(context, arguments[2], int.MaxValue, out int end, out var endError))
-            return endError!;
+            return endError;
 
         if (sub is PyTupleObject prefixTuple)
         {
@@ -303,9 +303,9 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         var sub = arguments[0];
 
         if (!TrySliceIndex(context, arguments[1], 0, out int start, out var startError))
-            return startError!;
+            return startError;
         if (!TrySliceIndex(context, arguments[2], int.MaxValue, out int end, out var endError))
-            return endError!;
+            return endError;
 
         if (sub is PyTupleObject suffixTuple)
         {
@@ -544,7 +544,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         if (arg is PyNoneObject)
         {
             value = defaultValue;
-            error = default!;
+            error = default;
             return true;
         }
 
@@ -559,7 +559,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         }
 
         value = PyUtils.SaturateIndex(indexResult.Value.Value);
-        error = default!;
+        error = default;
         return true;
     }
 
@@ -586,7 +586,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         }
 
         value = (int)big;
-        error = default!;
+        error = default;
         return true;
     }
 
@@ -603,9 +603,9 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         if (arguments[0] is not PyStrObject subStr)
             return PyResult.TypeError(PySR.Runtime_Str_MethodArgMustBeStr, methodName, 1, arguments[0].PyType.Name);
         if (!TrySliceIndex(context, arguments[1], 0, out int start, out var startError))
-            return startError!;
+            return startError;
         if (!TrySliceIndex(context, arguments[2], int.MaxValue, out int end, out var endError))
-            return endError!;
+            return endError;
         // CPython ADJUST_INDICES: like startswith above, start clamps
         // only at 0 so an above-length start keeps end - start negative
         if (start < 0)
@@ -639,9 +639,9 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         if (arguments[0] is not PyStrObject subStr)
             return PyResult.TypeError(PySR.Runtime_Str_MethodArgMustBeStr, methodName, 1, arguments[0].PyType.Name);
         if (!TrySliceIndex(context, arguments[1], 0, out int start, out var startError))
-            return startError!;
+            return startError;
         if (!TrySliceIndex(context, arguments[2], int.MaxValue, out int end, out var endError))
-            return endError!;
+            return endError;
         // CPython ADJUST_INDICES: start clamps only at 0
         if (start < 0)
             start = ClampRuneStart(start, self.PyLength);
@@ -727,7 +727,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         if (!TrySizeArg(context, arguments[0], PySR.Runtime_Number_Int_TooLargeForSsize, out int width, out var widthError))
             return widthError;
 
-        string fillchar = " ";
+        string fillchar;
         if (arguments[1] is PyStrObject fillStr)
         {
             if (fillStr.PyLength is not 1)
@@ -765,9 +765,9 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             return PyResult.TypeError(PySR.Runtime_Str_MethodArgMustBeStr, "count", 1, arguments[0].PyType.Name);
 
         if (!TrySliceIndex(context, arguments[1], 0, out int start, out var startError))
-            return startError!;
+            return startError;
         if (!TrySliceIndex(context, arguments[2], int.MaxValue, out int end, out var endError))
-            return endError!;
+            return endError;
         // CPython ADJUST_INDICES: start clamps only at 0
         if (start < 0)
             start = ClampRuneStart(start, self.PyLength);
@@ -1447,7 +1447,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         if (!TrySizeArg(context, arguments[0], PySR.Runtime_Number_Int_TooLargeForSsize, out int width, out var widthError))
             return widthError;
 
-        string fillchar = " ";
+        string fillchar;
         if (arguments[1] is PyStrObject fillStr)
         {
             if (fillStr.PyLength is not 1)
@@ -1475,7 +1475,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         if (!TrySizeArg(context, arguments[0], PySR.Runtime_Number_Int_TooLargeForSsize, out int width, out var widthError))
             return widthError;
 
-        string fillchar = " ";
+        string fillchar;
         if (arguments[1] is PyStrObject fillStr)
         {
             if (fillStr.PyLength is not 1)

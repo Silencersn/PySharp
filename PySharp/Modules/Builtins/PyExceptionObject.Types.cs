@@ -425,13 +425,13 @@ public sealed partial class PyUnicodeDecodeErrorObjectType : PyExceptionType
         if (args.Count is not 5)
             return PyResult.TypeError($"UnicodeDecodeError() takes exactly 5 arguments ({args.Count} given)");
 
-        if (args[0] is not PyStrObject encoding)
+        if (args[0] is not PyStrObject)
             return PyResult.TypeError($"UnicodeDecodeError() argument 1 must be str, not {args[0].PyType.Name}");
         if (args[1] is not PyBytesObject and not PyByteArrayObject)
             return PyResult.TypeError($"UnicodeDecodeError() argument 2 must be a bytes-like object, not {args[1].PyType.Name}");
         if (args[2] is not PyIntObject || args[3] is not PyIntObject)
             return PyResult.TypeError("an integer is required");
-        if (args[4] is not PyStrObject reason)
+        if (args[4] is not PyStrObject)
             return PyResult.TypeError($"UnicodeDecodeError() argument 5 must be str, not {args[4].PyType.Name}");
 
         self.Args = [.. args];

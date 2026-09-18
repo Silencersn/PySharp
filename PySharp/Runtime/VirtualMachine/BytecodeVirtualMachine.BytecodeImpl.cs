@@ -333,7 +333,7 @@ internal static partial class BytecodeVirtualMachine
             ? Enumerable.Range(0, dt.Count).Select(i => dt[i]).ToArray()
             : [];
 
-        var def = PyArgsDef.FromCodeObjectAndDefaults(codeObj, kwDefaults!, defaults!);
+        var def = PyArgsDef.FromCodeObjectAndDefaults(codeObj, kwDefaults, defaults);
         var func = PyCore.MakeFunction(ref frame, codeObj, def);
         stack.Push(func);
     }

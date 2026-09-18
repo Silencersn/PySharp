@@ -13,7 +13,7 @@ namespace PySharp.Modules.Builtins;
 public sealed class PyAsyncGeneratorASendObject : PyObject
 {
     private readonly PyGeneratorObject _generator;
-    private PyObject? _initialSendValue;
+    private readonly PyObject? _initialSendValue;
     private bool _initialSendUsed;
     private PyObject? _throwValue;
 

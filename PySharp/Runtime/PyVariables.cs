@@ -105,7 +105,7 @@ internal sealed class PyVariables
 
         ArrayPool<PyObject?>.Shared.Return(_localsPlus, clearArray: true);
         _memory = default;
-        _localsPlus = null!;
+        _localsPlus = null;
         _canDispose = false;
     }
 
@@ -132,7 +132,7 @@ internal sealed class PyVariables
     internal static IPyVariablesLocalsDict CreateClassLocals(PyCallContext context, PyObject? preparedNamespace)
     {
         if (preparedNamespace is null)
-            return new PyDictObject()!;
+            return new PyDictObject();
 
         if (preparedNamespace is PyDictObject dictNs && ReferenceEquals(dictNs.PyType, PyDictObjectType.Shared))
             return dictNs;
@@ -144,7 +144,7 @@ internal sealed class PyVariables
     internal PyVariables CreateForBuildingClass(PyCodeObject codeObject, PyTupleObject? closure, IPyVariablesLocalsDict? classLocals)
     {
         if (!HasLocals)
-            return new PyVariables(_globals, classLocals ?? new PyDictObject()!);
+            return new PyVariables(_globals, classLocals ?? new PyDictObject());
 
         // Use the constructor that rents localsPlus and sets _localsTable
         // (free vars). _localsTable is used by TryLoadFromLocals → LoadDeref.
@@ -181,7 +181,7 @@ internal sealed class PyVariables
 
         // Use a plain dict for _locals so that only StoreName'd entries appear
         // in the class namespace — free vars in _localsTable are NOT exposed.
-        vars._locals = classLocals ?? new PyDictObject()!;
+        vars._locals = classLocals ?? new PyDictObject();
         return vars;
     }
     internal PyVariables CreatePlaceholder()
@@ -196,7 +196,7 @@ internal sealed class PyVariables
         // globals for lookups) so comprehension targets stay isolated from
         // the module namespace.
         if (!HasLocals)
-            return new PyVariables(_globals, new PyDictObject()!);
+            return new PyVariables(_globals, new PyDictObject());
 
         var variables = new PyVariables(_globals, _localsTable);
         LocalsSpan.CopyTo(variables.LocalsSpan);
@@ -210,7 +210,7 @@ internal sealed class PyVariables
             // a function frame has no locals dict of its own: give the inline
             // frame a plain one so name-based stores (comprehension targets)
             // have somewhere to land
-            variables._locals = new PyDictObject()!;
+            variables._locals = new PyDictObject();
         return variables;
     }
 

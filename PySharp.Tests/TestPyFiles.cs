@@ -2019,7 +2019,7 @@ public sealed class TestPyFiles
             $"100 nested parentheses must compile and run (at the limit):\n{shallowOut}");
 
         // 101 levels: one past the limit, must be rejected with SyntaxError
-        var (edgeCode, edgeOut) = RunChild(101);
+        var (_, edgeOut) = RunChild(101);
         Assert.DoesNotContain("Stack overflow", edgeOut,
             $"stack overflow crash at 101 nested parentheses:\n{edgeOut}");
         Assert.Contains("too many nested parentheses", edgeOut,
@@ -2027,7 +2027,7 @@ public sealed class TestPyFiles
 
         // 250 levels: far past the limit and past the pre-fix ~156-level
         // stack-overflow boundary, must still be rejected, never crash
-        var (deepCode, deepOut) = RunChild(250);
+        var (_, deepOut) = RunChild(250);
         Assert.DoesNotContain("Stack overflow", deepOut,
             $"stack overflow crash at 250 nested parentheses:\n{deepOut}");
         Assert.Contains("too many nested parentheses", deepOut,

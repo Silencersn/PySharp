@@ -26,7 +26,7 @@ partial class PyDictObject : IPyVariablesLocalsDict, IPyAttributesObject
         {
             var entry = _entries[i];
             if (entry.Key is PyStrObject { Value: var str })
-                yield return KeyValuePair.Create(str, entry.Value)!;
+                yield return KeyValuePair.Create(str, entry.Value);
         }
     }
 

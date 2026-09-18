@@ -7,3 +7,12 @@ csharp_style_namespace_declarations = file_scoped
 
 dotnet_diagnostic.RS1032.severity = silent
 dotnet_diagnostic.RS2008.severity = silent
+
+dotnet_diagnostic.IDE0004.severity = warning
+dotnet_diagnostic.IDE0044.severity = warning
+dotnet_diagnostic.IDE0059.severity = warning
+dotnet_diagnostic.IDE0130.severity = warning
+dotnet_diagnostic.IDE0370.severity = warning
+
+[**/GlobalUsings.cs]
+dotnet_diagnostic.IDE0130.severity = silent

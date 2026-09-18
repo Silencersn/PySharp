@@ -201,7 +201,7 @@ internal static class PyCore
     // value
     public static PyObject DisplayHook(PyCallContext context, PyObject value)
     {
-        var builtins = (PyModuleObject)context.PyEnvironment.LoadBuiltinModule(context, "builtins");
+        var builtins = context.PyEnvironment.LoadBuiltinModule(context, "builtins");
 
         if (value is not PyNoneObject)
         {
@@ -383,8 +383,8 @@ internal static class PyCore
     {
         if (exc.IsGroup)
         {
-            foreach (var sub in exc.AsGroup!.Exceptions)
-                CollectGroupLeaves((PyExceptionObject)sub, leafIds);
+            foreach (var sub in exc.AsGroup.Exceptions)
+                CollectGroupLeaves(sub, leafIds);
         }
         else
         {
@@ -398,9 +398,9 @@ internal static class PyCore
             return leafIds.Contains(eg) ? eg : null;
 
         List<PyExceptionObject> match = [];
-        foreach (var sub in eg.AsGroup!.Exceptions)
+        foreach (var sub in eg.AsGroup.Exceptions)
         {
-            var projected = ProjectGroup(context, (PyExceptionObject)sub, leafIds);
+            var projected = ProjectGroup(context, sub, leafIds);
             if (projected is not null)
                 match.Add(projected);
         }

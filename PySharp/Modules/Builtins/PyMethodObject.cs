@@ -79,7 +79,7 @@ public sealed partial class PyMethodObjectType : PyTypeObject<PyMethodObject>
         var funcHash = PySpecialMethods.Hash(context, self._functionObj);
         if (funcHash.IsError)
             return funcHash;
-        return PyIntObject.FromInteger(self._target.GetHashCode() ^ ((PyIntObject)funcHash.Value).Int32Value);
+        return PyIntObject.FromInteger(self._target.GetHashCode() ^ funcHash.Value.Int32Value);
     }
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)

@@ -13,7 +13,7 @@ public sealed class PyStdIoObject : PyObject
     private readonly TextReader? _reader;
     private readonly TextWriter? _writer;
     internal readonly string _name;
-    private bool _closed = false;
+    private readonly bool _closed = false;
 
     private PyStdIoObject(TextReader? reader, TextWriter? writer, string name)
     {

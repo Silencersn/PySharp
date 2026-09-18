@@ -33,20 +33,20 @@ partial class Emitter
         switch (node)
         {
             case ExprNode n: EmitExpr(n); break;
-            case PassNode n: EmitPass(); break;
+            case PassNode: EmitPass(); break;
             case AssignNode n: EmitAssign(n); break;
             case AugAssignNode n: EmitAugAssign(n); break;
             case AnnAssignNode n: EmitAnnAssign(n); break;
             case DeleteNode n: EmitDelete(n); break;
             case RaiseNode n: EmitRaise(n, out isPostUnreachable); break;
-            case BreakNode n: EmitBreak(out isPostUnreachable); break;
-            case ContinueNode n: EmitContinue(out isPostUnreachable); break;
+            case BreakNode: EmitBreak(out isPostUnreachable); break;
+            case ContinueNode: EmitContinue(out isPostUnreachable); break;
             case ReturnNode n: EmitReturn(n, out isPostUnreachable); break;
             case TypeAliasNode n: EmitTypeAlias(n); break;
             case ImportNode n: EmitImport(n); break;
             case ImportFromNode n: EmitImportFrom(n); break;
-            case GlobalNode n: break;
-            case NonlocalNode n: break;
+            case GlobalNode: break;
+            case NonlocalNode: break;
             case AssertNode n: EmitAssert(n); break;
             case IfNode n: EmitIf(n, out isPostUnreachable); break;
             case TryNode n: EmitTry(n); break;
