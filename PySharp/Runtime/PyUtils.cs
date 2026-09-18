@@ -414,4 +414,27 @@ internal static class PyUtils
         var slots = obj.PyType.Slots;
         return slots.Set is not null || slots.Delete is not null;
     }
+
+    // CPython dictobject.c/setobject.c: only TypeErrors from a failed key
+    // hash re-raise with the container wording (str() of the original error
+    // embedded in parentheses); any other error propagates unchanged
+    public static PyResult WrapHashFailure(PyCallContext context, PyObject key, PyResult error, string role)
+    {
+        if (!error.IsError || !PyTypeErrorObjectType.Shared.IsInstance(error.Exception))
+            return error;
+
+        var message = error.Exception.Args is [PyStrObject { Value: var argMessage }, ..]
+            ? argMessage
+            : RenderExceptionMessage(context, error.Exception);
+        return PyResult.TypeError($"cannot use '{key.PyType.Name}' as {role} ({message})");
+    }
+
+    private static string RenderExceptionMessage(PyCallContext context, PyExceptionObject? exception)
+    {
+        if (exception is null)
+            return string.Empty;
+
+        var inner = PySpecialMethods.Str(context, exception);
+        return inner is { IsError: false } ? inner.Value.Value : string.Empty;
+    }
 }

@@ -16,11 +16,11 @@ public partial class PyFrozenSetObject : PyObject, IPyObjectRecursiveRepr, IRead
 
     public PyFrozenSetObject()
     {
-        _set = new HashSet<PyObject>(PyObjectComparer.Default);
+        _set = new HashSet<PyObject>(PyObjectComparer.SetDefault);
     }
     public PyFrozenSetObject(IEnumerable<PyObject> set)
     {
-        _set = new HashSet<PyObject>(set, PyObjectComparer.Default);
+        _set = new HashSet<PyObject>(set, PyObjectComparer.SetDefault);
     }
 
     PyResult<PyStrObject> IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<PyObject> ids)
@@ -162,6 +162,12 @@ public sealed partial class PyFrozenSetObjectType : PyTypeObject<PyFrozenSetObje
 
     protected override PyResult Contains(PyCallContext context, PyFrozenSetObject self, PyObject item)
     {
+        // hash before lookup: HashSet.Contains skips hashing on an empty
+        // set, but CPython rejects an unhashable item even then
+        var hash = PySpecialMethods.Hash(context, item);
+        if (hash.IsError)
+            return PyUtils.WrapHashFailure(context, item, hash, "a set element");
+
         return PyBoolObject.FromBoolean(self.Contains(item));
     }
 

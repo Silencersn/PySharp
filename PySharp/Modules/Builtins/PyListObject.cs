@@ -117,6 +117,19 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr, IList<PyOb
 [PyType("list")]
 public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
 {
+    static PyListObjectType()
+    {
+        // CPython add_operators: unhashable types carry __hash__ = None in
+        // the type dict (read face) while tp_hash raises the TypeError
+        Shared.PyAttributes[PySpecialNames.Hash] = PyNoneObject.None;
+    }
+
+    // CPython PyObject_HashNotImplemented
+    protected override PyResult Hash(PyCallContext context, PyListObject self)
+    {
+        return PyResult.TypeError(PySR.Runtime_Object_Unhashable, self.PyType.Name);
+    }
+
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         // CPython PyType_GenericNew: allocate an empty list; the iterable is

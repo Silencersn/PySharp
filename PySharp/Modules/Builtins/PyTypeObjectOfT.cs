@@ -196,11 +196,26 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
             else
                 type.PyAttributes[attr] = value;
             if (!IsObjectDefaultSlotValue(attr, value))
-                type.Slots.TrySetSlot(attr, value);
+            {
+                if (attr is PySpecialNames.Hash)
+                    PyTypeObject.SetHashSlot(type.Slots, value);
+                else
+                    type.Slots.TrySetSlot(attr, value);
+            }
         }
 
         // resolve __new__/__init__ by MRO rather than class-creation order
         RecomputeConstructionSlots(type);
+
+        // CPython type_new: a class defining __eq__ without a __hash__ entry,
+        // or with __hash__ = None, is explicitly unhashable — None lands in
+        // the type dict and blocks inheritance of object's identity hash
+        if (type.PyAttributes.ContainsKey(PySpecialNames.Eq) &&
+            (!type.PyAttributes.TryGetValue(PySpecialNames.Hash, out var hashEntry) || hashEntry is PyNoneObject))
+        {
+            type.PyAttributes[PySpecialNames.Hash] = PyNoneObject.None;
+            type.Slots.Hash = PyTypeObject.HashNotImplemented;
+        }
 
 
         // NOTE: AI-Generated

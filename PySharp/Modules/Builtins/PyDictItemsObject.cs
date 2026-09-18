@@ -33,6 +33,19 @@ public sealed class PyDictItemsObject : PyObject
 [PyType("dict_items")]
 public sealed partial class PyDictItemsObjectType : PyTypeObject<PyDictItemsObject>
 {
+    static PyDictItemsObjectType()
+    {
+        // CPython add_operators: unhashable types carry __hash__ = None in
+        // the type dict (read face) while tp_hash raises the TypeError
+        Shared.PyAttributes[PySpecialNames.Hash] = PyNoneObject.None;
+    }
+
+    // CPython PyObject_HashNotImplemented
+    protected override PyResult Hash(PyCallContext context, PyDictItemsObject self)
+    {
+        return PyResult.TypeError(PySR.Runtime_Object_Unhashable, self.PyType.Name);
+    }
+
     protected override PyResult Repr(PyCallContext context, PyDictItemsObject self)
     {
         return ReprView(context, self, "dict_items");
@@ -329,6 +342,19 @@ public sealed partial class PyDictItemIteratorObjectType : PyTypeObject<PyDictIt
 [PyType("dict_keys")]
 public sealed partial class PyDictKeysObjectType : PyTypeObject<PyDictItemsObject>
 {
+    static PyDictKeysObjectType()
+    {
+        // CPython add_operators: unhashable types carry __hash__ = None in
+        // the type dict (read face) while tp_hash raises the TypeError
+        Shared.PyAttributes[PySpecialNames.Hash] = PyNoneObject.None;
+    }
+
+    // CPython PyObject_HashNotImplemented
+    protected override PyResult Hash(PyCallContext context, PyDictItemsObject self)
+    {
+        return PyResult.TypeError(PySR.Runtime_Object_Unhashable, self.PyType.Name);
+    }
+
     protected override PyResult Repr(PyCallContext context, PyDictItemsObject self)
     {
         return PyDictItemsObjectType.ReprView(context, self, "dict_keys");

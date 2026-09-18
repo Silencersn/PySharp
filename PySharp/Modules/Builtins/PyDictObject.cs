@@ -120,12 +120,14 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
 
     public PyResult GetItem(PyCallContext context, PyObject key)
     {
-        if (_count is 0)
-            return PyResult.KeyError(key);
-
+        // hash before the empty-dict short-circuit: CPython reports the
+        // unhashable key even when no entry could match it
         var hash = PySpecialMethods.Hash(context, key);
         if (hash.IsError)
-            return hash;
+            return PyUtils.WrapHashFailure(context, key, hash, "a dict key");
+
+        if (_count is 0)
+            return PyResult.KeyError(key);
 
         var hashCode = (uint)hash.Value.UncheckedInt32Value;
         var index = GetBucket(hashCode);
@@ -227,7 +229,7 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
     {
         var hash = PySpecialMethods.Hash(context, key);
         if (hash.IsError)
-            return hash;
+            return PyUtils.WrapHashFailure(context, key, hash, "a dict key");
 
         if (_count == _entries.Length)
             EnsureCapacity(_count + 1);
@@ -309,6 +311,12 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
 
     internal PyResult Pop(PyCallContext context, PyObject key)
     {
+        // CPython _PyDict_Pop: the empty-table fast path precedes hashing,
+        // and hash errors surface exactly as they do for delitem — no
+        // conversion here, and the key is hashed only once
+        if (_count is 0)
+            return PyResult.KeyError(key);
+
         return InternalSetItem(context, key, value: null);
     }
 

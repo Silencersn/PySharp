@@ -18,11 +18,11 @@ public partial class PySetObject : PyObject, IPyObjectRecursiveRepr, ISet<PyObje
 
     public PySetObject()
     {
-        _set = new HashSet<PyObject>(PyObjectComparer.Default);
+        _set = new HashSet<PyObject>(PyObjectComparer.SetDefault);
     }
     public PySetObject(IEnumerable<PyObject> set)
     {
-        _set = new HashSet<PyObject>(set, PyObjectComparer.Default);
+        _set = new HashSet<PyObject>(set, PyObjectComparer.SetDefault);
     }
 
     PyResult<PyStrObject> IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<PyObject> ids)
@@ -147,6 +147,19 @@ public partial class PySetObject : PyObject, IPyObjectRecursiveRepr, ISet<PyObje
 [PyType("set")]
 public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
 {
+    static PySetObjectType()
+    {
+        // CPython add_operators: unhashable types carry __hash__ = None in
+        // the type dict (read face) while tp_hash raises the TypeError
+        Shared.PyAttributes[PySpecialNames.Hash] = PyNoneObject.None;
+    }
+
+    // CPython PyObject_HashNotImplemented
+    protected override PyResult Hash(PyCallContext context, PySetObject self)
+    {
+        return PyResult.TypeError(PySR.Runtime_Object_Unhashable, self.PyType.Name);
+    }
+
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         // CPython set_new: allocate an empty set and ignore all arguments;
@@ -178,6 +191,12 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
 
     protected override PyResult Contains(PyCallContext context, PySetObject self, PyObject item)
     {
+        // hash before lookup: HashSet.Contains skips hashing on an empty
+        // set, but CPython rejects an unhashable item even then
+        var hash = PySpecialMethods.Hash(context, item);
+        if (hash.IsError)
+            return PyUtils.WrapHashFailure(context, item, hash, "a set element");
+
         return PyBoolObject.FromBoolean(self.Contains(item));
     }
 
@@ -362,6 +381,12 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
     [PyFunctionParameters("item", "/")]
     private static PyResult Discard(PyCallContext context, PySetObject self, PyArguments arguments)
     {
+        // HashSet.Remove skips hashing on an empty set; CPython set_discard
+        // still hashes the item first
+        var hash = PySpecialMethods.Hash(context, arguments[0]);
+        if (hash.IsError)
+            return PyUtils.WrapHashFailure(context, arguments[0], hash, "a set element");
+
         return self.PyDiscard(arguments[0]);
     }
 
@@ -411,6 +436,12 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
     [PyFunctionParameters("item", "/")]
     private static PyResult Remove(PyCallContext context, PySetObject self, PyArguments arguments)
     {
+        // HashSet.Remove skips hashing on an empty set; CPython set_remove
+        // still hashes the item first
+        var hash = PySpecialMethods.Hash(context, arguments[0]);
+        if (hash.IsError)
+            return PyUtils.WrapHashFailure(context, arguments[0], hash, "a set element");
+
         return self.PyRemove(arguments[0]);
     }
 

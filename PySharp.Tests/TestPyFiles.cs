@@ -3463,6 +3463,21 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestHashableEnforcementRegression()
+    {
+        // Regression: hashability enforcement — mutable containers carry
+        // CPython's PyObject_HashNotImplemented semantics (hash() raises
+        // "unhashable type", __hash__ reads as None, dict-key and
+        // set-element paths re-raise with the container wording), tuple
+        // hashing propagates element failures, and the __eq__-without-
+        // __hash__ type-creation rule makes such classes explicitly
+        // unhashable with None in the type dict, rewiring and MRO
+        // re-inheritance included.
+        var module = RunModule("test_hashable_enforcement_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestSortComparisonSemanticsRegression()
     {
         // Regression: sort comparisons are PyObject_RichCompareBool(pivot,

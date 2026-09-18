@@ -30,6 +30,23 @@ partial class PyTypeObject
     {
         return PyIntObject.FromInteger(self.GetHashCode());
     }
+
+    // CPython PyObject_HashNotImplemented: __hash__ = None marks a type
+    // explicitly unhashable and blocks inheritance of object's identity hash
+    internal static PyResult HashNotImplemented(PyCallContext context, PyObject self)
+    {
+        return PyResult.TypeError(PySR.Runtime_Object_Unhashable, self.PyType.Name);
+    }
+
+    // __hash__ slot wiring treats None as the explicit unhashable marker
+    // instead of wrapping it as a callable
+    internal static void SetHashSlot(PyTypeSlots slots, PyObject value)
+    {
+        if (value is PyNoneObject)
+            slots.Hash = HashNotImplemented;
+        else
+            slots.TrySetSlot(PySpecialNames.Hash, value);
+    }
     internal static PyResult DefaultGetAttribute(PyCallContext context, PyObject self, PyObject item)
     {
         // if this method changed,
@@ -103,7 +120,12 @@ partial class PyTypeObject
         // When setting an attribute on a type object (e.g. cls.__init__ = func),
         // also update the corresponding slot so that Call/New etc. pick it up.
         if (self is PyTypeObject typeObj && !IsObjectDefaultSlotValue(name, value))
-            typeObj.Slots.TrySetSlot(name, value);
+        {
+            if (name is PySpecialNames.Hash)
+                SetHashSlot(typeObj.Slots, value);
+            else
+                typeObj.Slots.TrySetSlot(name, value);
+        }
 
         return PyNoneObject.None;
     }
@@ -191,7 +213,28 @@ partial class PyTypeObject
             return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, type.FullName, name);
         }
 
+        // deleting an explicit __hash__ re-inherits the slot through the MRO
+        // (CPython fixup_slot_dispatchers): an ancestor's None keeps the type
+        // unhashable, otherwise object's identity hash comes back
+        if (self is PyTypeObject hashOwner && name is PySpecialNames.Hash)
+            RecomputeHashSlot(hashOwner);
+
         return PyNoneObject.None;
+    }
+
+    private static void RecomputeHashSlot(PyTypeObject type)
+    {
+        foreach (var entry in type.InternalMRO)
+        {
+            if (ReferenceEquals(entry, type))
+                continue;
+
+            if (entry.Slots.Hash is { } inherited)
+            {
+                type.Slots.Hash = inherited;
+                return;
+            }
+        }
     }
 
 

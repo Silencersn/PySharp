@@ -8,6 +8,19 @@ namespace PySharp.Modules.Builtins;
 [PyType("dict")]
 public sealed partial class PyDictObjectType : PyTypeObject<PyDictObject>
 {
+    static PyDictObjectType()
+    {
+        // CPython add_operators: unhashable types carry __hash__ = None in
+        // the type dict (read face) while tp_hash raises the TypeError
+        Shared.PyAttributes[PySpecialNames.Hash] = PyNoneObject.None;
+    }
+
+    // CPython PyObject_HashNotImplemented
+    protected override PyResult Hash(PyCallContext context, PyDictObject self)
+    {
+        return PyResult.TypeError(PySR.Runtime_Object_Unhashable, self.PyType.Name);
+    }
+
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         // CPython dict_new: allocate an empty dict and ignore all arguments;

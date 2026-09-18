@@ -13,11 +13,18 @@ public sealed class PyObjectComparer :
 {
     public static PyObjectComparer Default { get; } = new(PyCallContext.PyObjectComparison);
 
+    // set/frozenset storage: hash failures carry CPython's set-element
+    // wording instead of the raw "unhashable type" error
+    internal static PyObjectComparer SetDefault { get; } = new(PyCallContext.PyObjectComparison, wrapAsSetElement: true);
+
+    private readonly bool _wrapAsSetElement;
+
     private PyCallContext Context { get; }
 
-    internal PyObjectComparer(PyCallContext context)
+    internal PyObjectComparer(PyCallContext context, bool wrapAsSetElement = false)
     {
         Context = context;
+        _wrapAsSetElement = wrapAsSetElement;
     }
 
     public int Compare(PyObject? x, PyObject? y)
@@ -54,7 +61,17 @@ public sealed class PyObjectComparer :
 
     public int GetHashCode([DisallowNull] PyObject obj)
     {
-        return GetHashCode(Context, obj).PyUnwrap(Context).Value.GetHashCode();
+        var hash = GetHashCode(Context, obj);
+        if (hash.IsError && _wrapAsSetElement)
+        {
+            // contextless overload: the static comparison context has no
+            // frame for a traceback; the interpreter boundary attaches one
+            // with the live context when the exception surfaces
+            if (PyUtils.WrapHashFailure(Context, obj, hash, "a set element").Exception is { } wrappedException)
+                throw new PyRuntimeException(wrappedException);
+        }
+
+        return hash.PyUnwrap(Context).Value.GetHashCode();
     }
 
     public bool Equals((PyCallContext Context, PyObject Object) alternate, PyObject other)
