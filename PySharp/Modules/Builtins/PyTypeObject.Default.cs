@@ -165,6 +165,12 @@ partial class PyTypeObject
         if (self is PyTypeObject ownerType && !ownerType.IsRuntimeCreated)
             return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, name, ownerType.FullName);
 
+        // __doc__ has no metaclass descriptor (reads resolve through the MRO
+        // like a plain attribute), so its guard lives here: CPython refuses
+        // the delete on every type object, heap types included
+        if (self is PyTypeObject docType && name is PySpecialNames.Doc)
+            return PyResult.TypeError($"cannot delete '{PySpecialNames.Doc}' attribute of immutable type '{docType.Name}'");
+
         if (TryLookupAttrInMro(type, name, out var attr))
         {
             var func = attr.PyType.Slots.Delete;

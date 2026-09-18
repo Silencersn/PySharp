@@ -3449,6 +3449,20 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestTypeAttrDeleteGuardRegression()
+    {
+        // Regression: deleting type-object attributes raises CPython's
+        // TypeError "cannot delete ... attribute of immutable type" with
+        // the bare type name for __name__/__qualname__/__module__/
+        // __bases__/__doc__ on heap types (script classes, type()-created,
+        // nested included), the "cannot set ..." wording on immutable
+        // builtins, CPython's non-str setter messages, and the bare-name
+        // AttributeError for the never-materialized __annotations__ dict.
+        var module = RunModule("test_type_attr_delete_guard_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestSortComparisonSemanticsRegression()
     {
         // Regression: sort comparisons are PyObject_RichCompareBool(pivot,

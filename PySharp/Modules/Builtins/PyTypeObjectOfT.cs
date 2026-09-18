@@ -298,6 +298,15 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
         return PyTupleObject.CreateTuple(self.Bases);
     }
 
+    [PyProperty(PySpecialNames.Bases, Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Bases(PyCallContext context, PyTypeObject self)
+    {
+        if (self.IsTypeImmutable)
+            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Bases, self.FullName);
+
+        return PyResult.TypeError($"cannot delete '{PySpecialNames.Bases}' attribute of immutable type '{self.Name}'");
+    }
+
     [PyProperty(PySpecialNames.Name)]
     private static PyResult Get_Name(PyCallContext context, PyTypeObject self)
     {
@@ -311,10 +320,21 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
             return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Name, self.FullName);
 
         if (value is not PyStrObject str)
-            return PyResult.TypeError(null);
+            return PyResult.TypeError($"can only assign string to {self.Name}.{PySpecialNames.Name}, not '{value.PyType.Name}'");
 
         self.Name = str.Value;
         return PyNoneObject.None;
+    }
+
+    [PyProperty(PySpecialNames.Name, Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Name(PyCallContext context, PyTypeObject self)
+    {
+        if (self.IsTypeImmutable)
+            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Name, self.FullName);
+
+        // CPython check_set_special_type_attr: the delete path reports the
+        // attribute as belonging to an "immutable type" even on heap types
+        return PyResult.TypeError($"cannot delete '{PySpecialNames.Name}' attribute of immutable type '{self.Name}'");
     }
 
     [PyProperty(PySpecialNames.QualName)]
@@ -330,7 +350,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
             return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.QualName, self.FullName);
 
         if (value is not PyStrObject str)
-            return PyResult.TypeError($"can only assign string to {self.Module}.{self.QualName}.__qualname__, not '{value.PyType.Name}'");
+            return PyResult.TypeError($"can only assign string to {self.Name}.{PySpecialNames.QualName}, not '{value.PyType.Name}'");
 
         self.QualName = str.Value;
         return PyNoneObject.None;
@@ -344,7 +364,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
 
         // CPython check_set_special_type_attr: the delete path reports the
         // attribute as belonging to an "immutable type" even on heap types
-        return PyResult.TypeError($"cannot delete '{PySpecialNames.QualName}' attribute of immutable type '{self.Module}.{self.QualName}'");
+        return PyResult.TypeError($"cannot delete '{PySpecialNames.QualName}' attribute of immutable type '{self.Name}'");
     }
 
     [PyProperty(PySpecialNames.MRO)]
@@ -370,6 +390,15 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
 
         self.ModuleAsObject = value;
         return PyNoneObject.None;
+    }
+
+    [PyProperty(PySpecialNames.Module, Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Module(PyCallContext context, PyTypeObject self)
+    {
+        if (self.IsTypeImmutable)
+            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Module, self.FullName);
+
+        return PyResult.TypeError($"cannot delete '{PySpecialNames.Module}' attribute of immutable type '{self.Name}'");
     }
 
     [PyProperty(PySpecialNames.Annotations)]
@@ -403,6 +432,12 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
     {
         if (self.IsTypeImmutable)
             return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Annotations, self.FullName);
+
+        // CPython raises a bare-name AttributeError when __annotations__ was
+        // never materialized in the type dict; the lazy getter creates it on
+        // first access, so only the never-touched face lands here
+        if (!self.PyAttributes.ContainsKey(PySpecialNames.Annotations))
+            return PyResult.AttributeError(PySpecialNames.Annotations);
 
         self.PyAttributes.Remove(PySpecialNames.Annotations);
         self.PyAttributes.Remove(PySpecialNames.Annotate);

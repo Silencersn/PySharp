@@ -86,7 +86,7 @@ public sealed class ColorSupportTests
 
         Assert.AreEqual(1, environment.ExitCode);
         var text = Encoding.UTF8.GetString(error.ToArray());
-        Assert.IsFalse(text.Contains('\x1b'), $"unexpected ANSI escape: {text}");
+        Assert.DoesNotContain('\x1b', text, $"unexpected ANSI escape: {text}");
         StringAssert.StartsWith(text, "Traceback");
         StringAssert.Contains(text, "ValueError: boom");
     }
