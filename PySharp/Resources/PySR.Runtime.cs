@@ -39,7 +39,7 @@ partial class PySR
 
     public const string Runtime_Inheritance_UnacceptableBaseType = "type '{0}' is not an acceptable base type";
     public const string Runtime_Inheritance_LayoutConflict = "multiple bases have instance lay-out conflict";
-    public const string Runtime_Inheritance_CannotCreateMRO = "Cannot create a consistent method resolution order (MRO)";
+    public const string Runtime_Inheritance_CannotCreateMRO = "Cannot create a consistent method resolution order (MRO) for bases {0}";
     public const string Runtime_Inheritance_DuplicateBase = "duplicate base class {0}";
     public const string Runtime_Inheritance_MetaclassConflict = "metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases";
     public const string Runtime_Inheritance_PrepareMustReturnMapping = "{0}.__prepare__() must return a mapping, not {1}";

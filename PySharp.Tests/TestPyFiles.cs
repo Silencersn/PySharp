@@ -3538,6 +3538,18 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestRedundantBaseLayoutRegression()
+    {
+        // Regression: a base whose layout is already covered by another
+        // base's MRO (K(B, object), K(D, dict)) must not raise a layout
+        // conflict; only unrelated layouts conflict, and unlinearizable
+        // orders fail with "Cannot create a consistent method resolution
+        // order (MRO) for bases X, Y".
+        var module = RunModule("test_redundant_base_layout_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestTypeAttrGuardRegression()
     {
         // Regression: attribute set/delete on static (non-heap) types

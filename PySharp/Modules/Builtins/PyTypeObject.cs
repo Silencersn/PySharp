@@ -94,12 +94,12 @@ public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
             if (baseType.IsSealed)
                 return PyResult.TypeError(PySR.Runtime_Inheritance_UnacceptableBaseType, baseType.Name);
 
-            if (baseType.LayoutType == layoutTypeOwner.LayoutType)
-                continue;
-
+            // best_base keeps the winner when the base's layout is the same
+            // or an ancestor of it (a redundant base like object after a
+            // derived layout owner); only unrelated layouts conflict
             if (baseType.LayoutType.IsSubclassOf(layoutTypeOwner.LayoutType))
                 layoutTypeOwner = baseType;
-            else if (!layoutTypeOwner.LayoutType.IsAssignableFrom(baseType.LayoutType))
+            else if (!baseType.LayoutType.IsAssignableFrom(layoutTypeOwner.LayoutType))
                 return PyResult.TypeError(PySR.Runtime_Inheritance_LayoutConflict);
         }
 
@@ -110,16 +110,17 @@ public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
                 return PyResult.TypeError(PySR.Runtime_Inheritance_DuplicateBase, baseType.Name);
         }
 
-        if (!TryCreateMROWithoutSelf(bases, out _))
-            return PyResult.TypeError(PySR.Runtime_Inheritance_CannotCreateMRO);
+        if (!TryCreateMROWithoutSelf(bases, out _, out var stuckHeads))
+            return PyResult.TypeError(PySR.Runtime_Inheritance_CannotCreateMRO, string.Join(", ", stuckHeads.Select(stuckHead => stuckHead.Name)));
 
         return layoutTypeOwner;
     }
 
-    private static bool TryCreateMROWithoutSelf(IEnumerable<PyTypeObject> bases, [NotNullWhen(true)] out List<PyTypeObject>? mro)
+    private static bool TryCreateMROWithoutSelf(IEnumerable<PyTypeObject> bases, [NotNullWhen(true)] out List<PyTypeObject>? mro, [NotNullWhen(false)] out List<PyTypeObject>? stuckHeads)
     {
         // L[C(B1 ... BN)] = C + merge(L[B1] ... L[BN], B1 ... BN)
         mro = [];
+        stuckHeads = [];
 
         // B1 ... BN
         var baseTypes = new Queue<PyTypeObject>(bases);
@@ -183,6 +184,14 @@ public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
                 else if (i == baseMros.Count - 1)
                 {
                     mro = null;
+                    // set_mro_error: the merge is blocked by the distinct
+                    // current heads of the remaining lists
+                    var seenHeads = new HashSet<PyTypeObject>();
+                    foreach (var baseMro in baseMros)
+                    {
+                        if (seenHeads.Add(baseMro.Peek()))
+                            stuckHeads.Add(baseMro.Peek());
+                    }
                     return false;
                 }
             }
@@ -194,7 +203,7 @@ public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
 
     private static List<PyTypeObject> CreateMROWithoutSelf(IEnumerable<PyTypeObject> bases)
     {
-        if (TryCreateMROWithoutSelf(bases, out var mro))
+        if (TryCreateMROWithoutSelf(bases, out var mro, out _))
             return mro;
 
         throw new UnreachableException();
