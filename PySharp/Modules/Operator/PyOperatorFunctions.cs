@@ -154,7 +154,7 @@ public static partial class PyOperatorFunctions
 
         var hint = PyUtils.LengthHint(context, arguments[0], (long)defaultValue);
         if (hint.IsError)
-            return hint.ExceptionResult;
+            return hint;
 
         return hint.Value;
     }

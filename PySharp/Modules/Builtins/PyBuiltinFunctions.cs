@@ -791,7 +791,7 @@ public static partial class PyBuiltinFunctions
 
                 var listed = PyUtils.IterableToList(context, names.Value);
                 if (listed.IsError)
-                    return listed.ExceptionResult;
+                    return listed;
 
                 listed.Value.PySort(context);
                 return listed.Value;

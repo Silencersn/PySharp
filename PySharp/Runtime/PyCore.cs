@@ -207,7 +207,7 @@ internal static class PyCore
         {
             var reprResult = PySpecialMethods.Repr(context, value);
             if (reprResult.IsError)
-                return reprResult.Exception!;
+                return reprResult.Exception;
             context.Out.WriteLine(reprResult.Value.Value);
         }
 

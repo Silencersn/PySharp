@@ -25,6 +25,10 @@ public partial class PySharpAnalyzer : DiagnosticAnalyzer
         context.RegisterSyntaxNodeAction(AnalyzeFactoryToConstant,
             SyntaxKind.InvocationExpression);
         context.RegisterSyntaxNodeAction(AnalyzeExceptionResultReturn,
-            SyntaxKind.ReturnStatement);
+            SyntaxKind.ReturnStatement,
+            SyntaxKind.ArrowExpressionClause,
+            SyntaxKind.SimpleLambdaExpression,
+            SyntaxKind.ParenthesizedLambdaExpression,
+            SyntaxKind.AnonymousMethodExpression);
     }
 }

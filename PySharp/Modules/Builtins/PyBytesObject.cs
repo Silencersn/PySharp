@@ -141,7 +141,7 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
         // starting iteration and its errors propagate
         var hintResult = PyUtils.LengthHint(context, source, 64);
         if (hintResult.IsError)
-            return hintResult.ExceptionResult;
+            return hintResult;
         if (hintResult.Value.Value > PyUtils.MaxPreallocationHint)
             return PyResult.MemoryError(null);
 

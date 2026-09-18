@@ -30,7 +30,7 @@ internal static class PyUtils
             if (len.IsError)
             {
                 if (!PyTypeErrorObjectType.Shared.IsInstance(len.Exception))
-                    return len.ExceptionResult;
+                    return len;
             }
             else
             {
@@ -330,7 +330,7 @@ internal static class PyUtils
         {
             var eq = PyComparer.Eq(context, element, item);
             if (eq.IsError)
-                return eq.ExceptionResult;
+                return eq;
 
             if (eq.Value.BoolValue)
                 return PyBoolObject.True;
@@ -354,7 +354,7 @@ internal static class PyUtils
                     first = false;
 
                 if (!IPyObjectRecursiveRepr.TryGetRecursiveRepr(context, item, ids, out var str, out var result))
-                    return result.ExceptionResult;
+                    return result;
 
                 builder.Append(str.Value);
                 itemsCount++;
@@ -388,10 +388,10 @@ internal static class PyUtils
                     first = false;
 
                 if (!IPyObjectRecursiveRepr.TryGetRecursiveRepr(context, pair.Key, ids, out var keyStr, out var keyResult))
-                    return keyResult.ExceptionResult;
+                    return keyResult;
 
                 if (!IPyObjectRecursiveRepr.TryGetRecursiveRepr(context, pair.Value, ids, out var valueStr, out var valueResult))
-                    return valueResult.ExceptionResult;
+                    return valueResult;
 
                 builder
                     .Append(keyStr.Value)

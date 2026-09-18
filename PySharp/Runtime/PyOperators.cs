@@ -326,7 +326,7 @@ public static class PyOperators
 
         var eq = PyComparer.Eq(context, left.PyType, right.PyType);
         if (eq.IsError)
-            return eq.ExceptionResult;
+            return eq;
 
         if (!eq.Value.BoolValue && right.PyType.IsSubclassOf(left.PyType))
             return EvalRightFirstReflectiveOperator(context, op, left, right, modulo, inPlace);

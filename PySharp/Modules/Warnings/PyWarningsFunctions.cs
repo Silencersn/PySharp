@@ -32,7 +32,7 @@ public static partial class PyWarningsFunctions
 
         var stacklevelResult = PySpecialMethods.Index(context, arguments[2]);
         if (stacklevelResult.IsError)
-            return stacklevelResult.ExceptionResult;
+            return stacklevelResult;
         if (!stacklevelResult.Value.IsInt32)
             return PyResult.OverflowError("stacklevel is too large");
 
@@ -62,7 +62,7 @@ public static partial class PyWarningsFunctions
 
         var linenoResult = PySpecialMethods.Index(context, arguments[3]);
         if (linenoResult.IsError)
-            return linenoResult.ExceptionResult;
+            return linenoResult;
         if (!linenoResult.Value.IsInt32)
             return PyResult.OverflowError("lineno is too large");
 

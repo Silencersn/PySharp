@@ -133,7 +133,7 @@ public sealed partial class PySuperObjectType : PyTypeObject<PySuperObject>
         {
             var eq = PyComparer.Eq(context, iter.Current, self._type);
             if (eq.IsError)
-                return eq.ExceptionResult;
+                return eq;
 
             if (eq.Value.BoolValue)
                 break;

@@ -137,7 +137,7 @@ public sealed partial class PyDeprecatedObjectType : PyTypeObject<PyDeprecatedOb
         {
             var idx = PySpecialMethods.Index(context, slObj);
             if (idx.IsError)
-                return idx.ExceptionResult;
+                return idx;
             if (!idx.Value.IsInt32)
                 return PyResult.OverflowError("stacklevel is too large");
             stacklevel = idx.Value.Int32Value;

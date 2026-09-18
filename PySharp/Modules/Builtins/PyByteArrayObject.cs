@@ -150,7 +150,7 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
             if (encoded.IsError)
                 return encoded;
 
-            return PyByteArrayObject.FromBytes(((PyBytesObject)encoded.Value!).AsSpan());
+            return PyByteArrayObject.FromBytes(((PyBytesObject)encoded.Value).AsSpan());
         }
 
         if (encodingName is not null)
@@ -508,7 +508,7 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
 
         var hintResult = PyUtils.LengthHint(context, iterable, 32);
         if (hintResult.IsError)
-            return hintResult.ExceptionResult;
+            return hintResult;
         if (hintResult.Value.Value > PyUtils.MaxPreallocationHint)
             return PyResult.MemoryError(null);
 
