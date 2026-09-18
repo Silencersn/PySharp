@@ -194,6 +194,20 @@ public static class PyDelegateConverter
     {
         return (context, self, other, third) => obj.Call(context, [self, other, third]);
     }
+    // slot_nb_power: the binary form (modulo None) passes no modulus; only
+    // the ternary pow() form forwards it
+    public static PyTernaryFunction ToPowFunction(this PyObject obj)
+    {
+        return (context, self, other, modulo) =>
+            modulo is PyNoneObject
+                ? obj.Call(context, [self, other])
+                : obj.Call(context, [self, other, modulo]);
+    }
+    // slot_nb_inplace_power: the modulus is dropped entirely
+    public static PyTernaryFunction ToInPlacePowFunction(this PyObject obj)
+    {
+        return (context, self, other, _) => obj.Call(context, [self, other]);
+    }
     public static PyQuaternaryFunction ToQuaternaryFunction(this PyObject obj)
     {
         return (context, self, other, third, fourth) => obj.Call(context, [self, other, third, fourth]);

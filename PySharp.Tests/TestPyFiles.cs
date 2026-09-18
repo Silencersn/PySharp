@@ -3550,6 +3550,26 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestPowSlotArityRegression()
+    {
+        // Regression: the pow-family slots pass two arguments to Python-level
+        // __pow__/__rpow__ for the binary form (modulo None) and three only
+        // for the ternary pow() form, matching slot_nb_power.
+        var module = RunModule("test_pow_slot_arity_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestIPowProtocolRegression()
+    {
+        // Regression: **= dispatches to __ipow__ with two arguments (the
+        // modulus is dropped) and falls back to __pow__ when __ipow__ is
+        // not defined, matching slot_nb_inplace_power.
+        var module = RunModule("test_ipow_protocol_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestTypeAttrGuardRegression()
     {
         // Regression: attribute set/delete on static (non-heap) types

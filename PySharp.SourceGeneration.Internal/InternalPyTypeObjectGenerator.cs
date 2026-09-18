@@ -100,4 +100,14 @@ public partial class InternalPyTypeObjectGenerator : IIncrementalGenerator
 
     private static string GetExtensionMethodName(string delegateName)
         => delegateName.StartsWith("Py", StringComparison.Ordinal) ? "To" + delegateName.Substring(2) : "To" + delegateName;
+
+    // slot_nb_power adapts the call to the binary/ternary form at call time;
+    // slot_nb_inplace_power always drops the modulus (typeobject.c)
+    private static string GetSlotConverterMethodName(string specialName, string delegateTypeName)
+        => specialName switch
+        {
+            "__pow__" or "__rpow__" => "ToPowFunction",
+            "__ipow__" => "ToInPlacePowFunction",
+            _ => GetExtensionMethodName(delegateTypeName),
+        };
 }

@@ -119,7 +119,7 @@ partial class InternalPyTypeObjectGenerator
             var specialName = attributeData.GetConstructorArgument<string>(0);
             var delegateType = attributeData.GetConstructorArgument<INamedTypeSymbol>(1);
             if (specialName is null || delegateType is null) continue;
-            var extMethod = GetExtensionMethodName(delegateType.Name);
+            var extMethod = GetSlotConverterMethodName(specialName, delegateType.Name);
             builder.AppendLine($"case \"{specialName}\": {method.Name} = value.{extMethod}(); break;");
         }
 
@@ -134,7 +134,7 @@ partial class InternalPyTypeObjectGenerator
                 var specialName = attributeData.GetConstructorArgument<string>(0);
                 var delegateType = attributeData.GetConstructorArgument<INamedTypeSymbol>(1);
                 if (specialName is null || delegateType is null) continue;
-                var extMethod = GetExtensionMethodName(delegateType.Name);
+                var extMethod = GetSlotConverterMethodName(specialName, delegateType.Name);
                 builder.AppendLine($"case \"{specialName}\": {fieldName} ??= new(); {fieldName}.{method.Name} = value.{extMethod}(); break;");
             }
         }
