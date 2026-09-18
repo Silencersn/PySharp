@@ -125,10 +125,26 @@ internal sealed class PyVariables
     {
         return new PyVariables(globals, localsTable);
     }
+    // class-body name-op storage: the exact dict handed back by type's
+    // __prepare__ is used directly; anything else (dict subclass with
+    // overridden item methods, arbitrary user mapping) is wrapped so every
+    // access goes through the generic item protocol
+    internal static IPyVariablesLocalsDict CreateClassLocals(PyCallContext context, PyObject? preparedNamespace)
+    {
+        if (preparedNamespace is null)
+            return new PyDictObject()!;
+
+        if (preparedNamespace is PyDictObject dictNs && ReferenceEquals(dictNs.PyType, PyDictObjectType.Shared))
+            return dictNs;
+
+        return new PyPreparedNamespaceLocals(context, preparedNamespace);
+    }
     internal PyVariables CreateForBuildingClass(PyCodeObject codeObject, PyTupleObject? closure)
+        => CreateForBuildingClass(codeObject, closure, null);
+    internal PyVariables CreateForBuildingClass(PyCodeObject codeObject, PyTupleObject? closure, IPyVariablesLocalsDict? classLocals)
     {
         if (!HasLocals)
-            return new PyVariables(_globals, new PyDictObject()!);
+            return new PyVariables(_globals, classLocals ?? new PyDictObject()!);
 
         // Use the constructor that rents localsPlus and sets _localsTable
         // (free vars). _localsTable is used by TryLoadFromLocals → LoadDeref.
@@ -165,7 +181,7 @@ internal sealed class PyVariables
 
         // Use a plain dict for _locals so that only StoreName'd entries appear
         // in the class namespace — free vars in _localsTable are NOT exposed.
-        vars._locals = new PyDictObject()!;
+        vars._locals = classLocals ?? new PyDictObject()!;
         return vars;
     }
     internal PyVariables CreatePlaceholder()
@@ -298,7 +314,14 @@ internal sealed class PyVariables
             }
             else
             {
-                throw new UnreachableException();
+                // a prepared class namespace (arbitrary mapping): CPython's
+                // locals() in a class body returns the mapping itself; a
+                // snapshot is the long-standing dict behavior here too
+                foreach (var (key, value) in _locals)
+                {
+                    if (value is not null)
+                        dict.SetItem(context, PyStrObject.FromString(key), value);
+                }
             }
 
             return dict;

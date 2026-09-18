@@ -91,18 +91,36 @@ internal static class PyCore
                 throw context.TypeError(PySR.Runtime_Inheritance_MetaclassConflict);
         }
 
+        // PEP 3115: the class body runs in the mapping returned by the
+        // metaclass __prepare__ hook. CPython resolves the hook with a full
+        // attribute lookup on the metaclass (bltinmodule.c
+        // builtin___build_class__) and passes the class kwargs through; the
+        // same object then reaches the metaclass call as the namespace.
+        // type's own __prepare__ is immutable and returns a fresh dict, so
+        // metaclass-free creation skips the lookup.
+        PyObject ns;
+        IPyVariablesLocalsDict classLocals;
+        if (ReferenceEquals(metaClass, PyTypeObjectType.Shared))
+        {
+            ns = new PyDictObject();
+            classLocals = (PyDictObject)ns;
+        }
+        else
+        {
+            ns = PrepareClassNamespace(context, metaClass, codeObject.Name, bases, kwargs);
+            classLocals = PyVariables.CreateClassLocals(context, ns);
+        }
+
         if (bases.Count is 0)
             bases.Add(PyObjectType.Shared);
 
-        var newFrame = context.CurrentInternalFrame.CreateClassBuildFrame(codeObject, closure);
-        var ns = newFrame.Variables.Locals;
+        var newFrame = context.CurrentInternalFrame.CreateClassBuildFrame(codeObject, closure, classLocals);
         using (var withFrame = context.WithFrame(ref newFrame))
             Eval(context).PyUnwrap(context);
 
         var nameStr = PyStrObject.FromString(codeObject.Name);
         var basesTuple = PyTupleObject.CreateTuple(bases);
-        var nsObj = (PyDictObject)ns;
-        var args = PyTupleObject.CreateTuple([nameStr, basesTuple, nsObj]);
+        var args = PyTupleObject.CreateTuple([nameStr, basesTuple, ns]);
 
         var newFunc = metaClass.Slots.New ?? throw context.TypeError(null);
         var obj = newFunc(context, metaClass, args, kwargs).PyUnwrap(context);
@@ -113,6 +131,38 @@ internal static class PyCore
             _ = PyTypeObjectType.CallInit(context, metaClass, obj, args, kwargs).PyUnwrap(context);
 
         return obj;
+    }
+
+    // builtin___build_class__ (bltinmodule.c): resolve the metaclass
+    // __prepare__ hook with a plain attribute lookup (descriptor binding
+    // included — a classmethod binds to the metaclass, a plain function
+    // stays unbound), call it with (name, bases, **class kwargs) and accept
+    // only a mapping back. type.__prepare__ always resolves on a metaclass
+    // MRO, so a miss here can only come from a metaclass __getattr__
+    // reporting AttributeError — CPython treats that as "no hook" and
+    // defaults to a plain dict.
+    private static PyObject PrepareClassNamespace(PyCallContext context, PyTypeObject metaClass, string name, List<PyTypeObject> bases, OrderedDictionary<string, PyObject> kwargs)
+    {
+        var basesTuple = PyTupleObject.CreateTuple(bases);
+
+        var prepResult = PyOperators.GetAttr(context, metaClass, PySpecialNames.Prepare);
+        if (prepResult.IsError)
+        {
+            if (prepResult.IsAttributeError)
+                return new PyDictObject();
+
+            throw new PyRuntimeException(context, prepResult.Exception);
+        }
+
+        var nsResult = PySpecialMethods.Call(context, prepResult.Value, [PyStrObject.FromString(name), basesTuple], kwargs);
+        if (nsResult.IsError)
+            throw new PyRuntimeException(context, nsResult.Exception);
+
+        var ns = nsResult.Value;
+        if (ns.PyType.Slots.GetItem is null)
+            throw context.TypeError(PySR.Runtime_Inheritance_PrepareMustReturnMapping, metaClass.Name, ns.PyType.Name);
+
+        return ns;
     }
 
     public static PyNoneObject ImportAllFrom(PyCallContext context, ref PyInternalFrame frame, PyModuleObject module)

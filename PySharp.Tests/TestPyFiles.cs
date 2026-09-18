@@ -3621,6 +3621,23 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestMetaclassPrepareRegression()
+    {
+        // Regression: the metaclass __prepare__ hook (PEP 3115) runs before
+        // the class body and its return value becomes the namespace the
+        // body executes in — the same object then reaches the metaclass
+        // __new__/__init__. The hook resolves through a full attribute
+        // lookup on the metaclass (inherited type.__prepare__ included, so
+        // hasattr(type, "__prepare__") holds), the most derived metaclass's
+        // hook wins, class kwargs pass through, raising hooks abort class
+        // creation, non-mapping returns raise TypeError, and non-dict
+        // mappings run the body before type.__new__ rejects them
+        // (dict subclasses with overridden __setitem__ see every store).
+        var module = RunModule("test_metaclass_prepare_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestFloatReprShortestRegression()
     {
         // Regression: float repr renders the shortest round-trip digit

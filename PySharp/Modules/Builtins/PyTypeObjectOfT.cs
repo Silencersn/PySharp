@@ -120,7 +120,9 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
             return PyResult.TypeError(PySR.Runtime_Type_New_Arg2MustBeTuple, basesObj.PyType.FullName);
 
         if (dictObj is not PyDictObject dict)
-            return PyResult.TypeError(PySR.Runtime_Type_New_Arg3MustBeDict, dictObj.PyType.FullName);
+            // CPython formats tp_name, which is the plain __name__ for heap
+            // types (not the qualified name)
+            return PyResult.TypeError(PySR.Runtime_Type_New_Arg3MustBeDict, dictObj.PyType.Name);
 
         var bases = new List<PyTypeObject>();
         foreach (var baseObj in basesTuple)
@@ -278,6 +280,16 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
     protected override PyResult GetAttribute(PyCallContext context, PyTypeObject self, PyObject item)
     {
         return DefaultTypeGetAttribute(context, self, item);
+    }
+
+    // type_prepare (PEP 3115): the default __prepare__ ignores everything
+    // and hands out a fresh dict; metaclasses inherit it, so the hook is
+    // resolvable on every type
+    [PyClassMethod(PySpecialNames.Prepare)]
+    [PyFunctionParameters("*args", "**kwds")]
+    private static PyResult PrepareImpl(PyCallContext context, PyTypeObject cls, PyArguments arguments)
+    {
+        return new PyDictObject();
     }
 
     [PyProperty(PySpecialNames.Bases)]

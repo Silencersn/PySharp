@@ -42,6 +42,7 @@ partial class PySR
     public const string Runtime_Inheritance_CannotCreateMRO = "Cannot create a consistent method resolution order (MRO)";
     public const string Runtime_Inheritance_DuplicateBase = "duplicate base class {0}";
     public const string Runtime_Inheritance_MetaclassConflict = "metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases";
+    public const string Runtime_Inheritance_PrepareMustReturnMapping = "{0}.__prepare__() must return a mapping, not {1}";
 
     public const string Runtime_Assignment_UnpackCountNotMatch = "too many or too few values to unpack";
     public const string Runtime_Assignment_NotEnoughToUnpack = "not enough values to unpack (expected {0}, got {1})";

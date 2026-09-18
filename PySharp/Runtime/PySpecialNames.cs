@@ -32,6 +32,9 @@ public static partial class PySpecialNames
     public const string Dir = "__dir__";
     public const string FirstLineNo = "__firstlineno__";
 
+    // PEP 3115 metaclass hook
+    public const string Prepare = "__prepare__";
+
     public const string MatchArgs = "__match_args__";
     public const string LengthHint = "__length_hint__";
 
