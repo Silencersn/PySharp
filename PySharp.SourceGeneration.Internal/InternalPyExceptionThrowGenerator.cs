@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 using PySharp.SourceGeneration.Diagnostics;
 using PySharp.SourceGeneration.Utility;
+using System;
 using System.Linq;
 using System.Text;
 
@@ -24,7 +25,7 @@ internal class InternalPyExceptionThrowGenerator : IIncrementalGenerator
                     var filePath = generatorContext.TargetNode.SyntaxTree.FilePath;
 
                     // Only the PyExceptionObject.Types.cs declarations are processed here; other [PyException] usages are normal skips.
-                    if (!filePath.EndsWith("PyExceptionObject.Types.cs"))
+                    if (!filePath.EndsWith("PyExceptionObject.Types.cs", StringComparison.Ordinal))
                         return null;
 
                     // An explicitly null qual name is an error carried in the model; an undecodable

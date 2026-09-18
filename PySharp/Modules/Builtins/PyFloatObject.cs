@@ -162,7 +162,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
             exactDigits = m * BigInteger.Pow(5, -e2);
             s = e2;
         }
-        int exactLen = exactDigits.ToString().Length;
+        int exactLen = exactDigits.ToString(CultureInfo.InvariantCulture).Length;
 
         // dtoa mode 0: the fewest significant digits whose correctly rounded
         // value is |val| again. At each width every candidate inside the
@@ -211,7 +211,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
 
             if (found)
             {
-                digits = best.ToString();
+                digits = best.ToString(CultureInfo.InvariantCulture);
                 decpt = digits.Length + scale;
                 break;
             }

@@ -238,10 +238,10 @@ internal static class PySourceDecoder
         }
 
         var prefix = new string(normalized[..length]);
-        if (prefix is "utf-8" || prefix.StartsWith("utf-8-"))
+        if (prefix is "utf-8" || prefix.StartsWith("utf-8-", StringComparison.Ordinal))
             return "utf-8";
         if (prefix is "latin-1" or "iso-8859-1" or "iso-latin-1" ||
-            prefix.StartsWith("latin-1-") || prefix.StartsWith("iso-8859-1-") || prefix.StartsWith("iso-latin-1-"))
+            prefix.StartsWith("latin-1-", StringComparison.Ordinal) || prefix.StartsWith("iso-8859-1-", StringComparison.Ordinal) || prefix.StartsWith("iso-latin-1-", StringComparison.Ordinal))
             return "iso-8859-1";
 
         return Encoding.ASCII.GetString(name);

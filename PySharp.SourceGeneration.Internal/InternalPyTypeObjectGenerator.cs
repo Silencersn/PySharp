@@ -99,5 +99,5 @@ public partial class InternalPyTypeObjectGenerator : IIncrementalGenerator
     }
 
     private static string GetExtensionMethodName(string delegateName)
-        => delegateName.StartsWith("Py") ? "To" + delegateName.Substring(2) : "To" + delegateName;
+        => delegateName.StartsWith("Py", StringComparison.Ordinal) ? "To" + delegateName.Substring(2) : "To" + delegateName;
 }

@@ -1,6 +1,7 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
+using System.Globalization;
 using System.Text;
 
 namespace PySharp.Modules.Builtins;
@@ -376,7 +377,7 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
 
         var builder = new StringBuilder(self.DataSpan.Length * 2);
         foreach (byte b in self.DataSpan)
-            builder.AppendFormat("{0:x2}", b);
+            builder.AppendFormat(CultureInfo.InvariantCulture, "{0:x2}", b);
         return PyStrObject.FromString(builder.ToString());
     }
 

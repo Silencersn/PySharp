@@ -342,7 +342,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         if (end - start < needle.PyLength)
             return false;
         var sliced = self.SubstringByRuneRange(start, end);
-        return startswith ? sliced.StartsWith(needle.Value) : sliced.EndsWith(needle.Value);
+        return startswith ? sliced.StartsWith(needle.Value, StringComparison.Ordinal) : sliced.EndsWith(needle.Value, StringComparison.Ordinal);
     }
 
     [PyMethod("replace")]
@@ -387,7 +387,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         int startIndex = 0;
         while (count > 0)
         {
-            int idx = resObj.IndexOf(oldStr.Value, startIndex);
+            int idx = resObj.IndexOf(oldStr.Value, startIndex, StringComparison.Ordinal);
             if (idx is -1)
                 break;
             resObj = resObj.Remove(idx, oldStr.Value.Length).Insert(idx, newStr.Value);
@@ -503,7 +503,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 int count = 0;
                 while (count < maxsplit)
                 {
-                    int idx = remaining.LastIndexOf(sepStr.Value);
+                    int idx = remaining.LastIndexOf(sepStr.Value, StringComparison.Ordinal);
                     if (idx < 0)
                         break;
                     resultList.Add(remaining[(idx + sepStr.Value.Length)..]);
@@ -618,7 +618,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         if (start >= end)
             return PyIntObject.MinusOne;
         var sliced = self.SubstringByRuneRange(start, end);
-        int charIdx = sliced.IndexOf(subStr.Value);
+        int charIdx = sliced.IndexOf(subStr.Value, StringComparison.Ordinal);
         if (charIdx < 0)
             return PyIntObject.MinusOne;
         int charStart = self.RuneIndexToCharIndex(start);
@@ -653,7 +653,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         if (start >= end)
             return PyIntObject.MinusOne;
         var sliced = self.SubstringByRuneRange(start, end);
-        int charIdx = sliced.LastIndexOf(subStr.Value);
+        int charIdx = sliced.LastIndexOf(subStr.Value, StringComparison.Ordinal);
         if (charIdx < 0)
             return PyIntObject.MinusOne;
         int charStart = self.RuneIndexToCharIndex(start);
@@ -785,7 +785,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
         int count = 0;
         int index = 0;
-        while ((index = sliced.IndexOf(subStr.Value, index)) is not -1)
+        while ((index = sliced.IndexOf(subStr.Value, index, StringComparison.Ordinal)) is not -1)
         {
             count++;
             index += subStr.Value.Length;
@@ -1254,7 +1254,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                     context,
                     value,
                     IsAllAsciiDigits(key)
-                        ? PyIntObject.FromInteger(int.Parse(key))
+                        ? PyIntObject.FromInteger(int.Parse(key, CultureInfo.InvariantCulture))
                         : PyStrObject.FromString(key.ToString()));
                 if (itemResult.IsError)
                     return itemResult;
@@ -1530,7 +1530,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         if (arguments[0] is not PyStrObject prefixStr)
             return PyResult.TypeError(PySR.Runtime_Str_PrefixArgMustBeStr, "removeprefix", arguments[0].PyType.Name);
 
-        if (self.Value.StartsWith(prefixStr.Value))
+        if (self.Value.StartsWith(prefixStr.Value, StringComparison.Ordinal))
             return PyStrObject.FromString(self.Value[prefixStr.Value.Length..]);
 
         return self;
@@ -1544,7 +1544,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         if (arguments[0] is not PyStrObject suffixStr)
             return PyResult.TypeError(PySR.Runtime_Str_PrefixArgMustBeStr, "removesuffix", arguments[0].PyType.Name);
 
-        if (self.Value.EndsWith(suffixStr.Value))
+        if (self.Value.EndsWith(suffixStr.Value, StringComparison.Ordinal))
             return PyStrObject.FromString(self.Value[..^suffixStr.Value.Length]);
 
         return self;
@@ -1806,7 +1806,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         }
         // The Windows codepages are primary Python codec names as cpNNNN
         // (and bare NNNN), while .NET only registers some of them by name
-        if (normalized.StartsWith("cp") && int.TryParse(normalized[2..], out var cpCodepage))
+        if (normalized.StartsWith("cp", StringComparison.Ordinal) && int.TryParse(normalized[2..], out var cpCodepage))
             return Encoding.GetEncoding(cpCodepage);
         if (int.TryParse(normalized, out var codepage))
             return Encoding.GetEncoding(codepage);
@@ -2388,7 +2388,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 while (i < formatStr.Length && char.IsDigit(formatStr[i]))
                     widthStr += formatStr[i++];
                 if (widthStr.Length > 0)
-                    width = int.Parse(widthStr);
+                    width = int.Parse(widthStr, CultureInfo.InvariantCulture);
             }
 
             // Parse precision
@@ -2416,7 +2416,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                         precStr += formatStr[i++];
                     // CPython sets the precision to 0 as soon as the dot
                     // is consumed, so an empty precision field is valid
-                    precision = precStr.Length > 0 ? int.Parse(precStr) : 0;
+                    precision = precStr.Length > 0 ? int.Parse(precStr, CultureInfo.InvariantCulture) : 0;
                 }
             }
 
@@ -2493,9 +2493,9 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                         var intVal = intObj.Value;
                         string intStr;
                         if (precision >= 0)
-                            intStr = BigInteger.Abs(intVal).ToString($"D{precision}");
+                            intStr = BigInteger.Abs(intVal).ToString($"D{precision}", CultureInfo.InvariantCulture);
                         else
-                            intStr = BigInteger.Abs(intVal).ToString();
+                            intStr = BigInteger.Abs(intVal).ToString(CultureInfo.InvariantCulture);
                         if (intVal.Sign < 0)
                             intStr = "-" + intStr;
                         else if (flagSign)

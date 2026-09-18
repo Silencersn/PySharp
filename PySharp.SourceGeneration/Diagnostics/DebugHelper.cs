@@ -11,6 +11,6 @@ internal static class DebugHelper
     {
         Debug.Assert(value is not null);
         if (value is null)
-            throw new Exception("Unreachable");
+            throw new InvalidOperationException("Unreachable");
     }
 }

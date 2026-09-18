@@ -1,6 +1,7 @@
 using PySharp.Compilation.Tokenization;
 using PySharp.Modules.Builtins;
 using PySharp.Utility;
+using System.Globalization;
 
 namespace PySharp.Compilation.AstNodes;
 
@@ -344,7 +345,7 @@ partial class Parser
         if (parseStatus is BigIntegerHelper.IntParseStatus.Success)
             return Ast.Constant(integer).With(metaInfo);
 
-        return Ast.Constant(double.Parse(value)).With(metaInfo);
+        return Ast.Constant(double.Parse(value, CultureInfo.InvariantCulture)).With(metaInfo);
     }
 
     [GrammarSyntaxRule("capture_pattern")]

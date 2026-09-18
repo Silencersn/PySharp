@@ -5,6 +5,7 @@ using System.Collections.Frozen;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 
 namespace PySharp.Compilation.AstNodes;
 
@@ -188,13 +189,13 @@ internal sealed class GenericParamVariableScope : VariableScope, IScopeWithFreeV
     public GenericParamVariableScope(ClassDefNode owner, VariableScope parent) : base(parent)
     {
         Owner = owner;
-        Name = string.Format(NameTemplate, owner.Name);
+        Name = string.Format(CultureInfo.InvariantCulture, NameTemplate, owner.Name);
     }
 
     public GenericParamVariableScope(IFunctionDefNode owner, VariableScope parent) : base(parent)
     {
         Owner = (AstNode)owner;
-        Name = string.Format(NameTemplate, owner.Name);
+        Name = string.Format(CultureInfo.InvariantCulture, NameTemplate, owner.Name);
     }
 
     public override void Bind(SemanticModel model)

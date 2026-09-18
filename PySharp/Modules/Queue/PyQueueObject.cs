@@ -7,7 +7,7 @@ using System.Diagnostics;
 
 namespace PySharp.Modules.Queue;
 
-public sealed partial class PyQueueObject : PyObject
+public sealed partial class PyQueueObject : PyObject, IDisposable
 {
     private readonly ConcurrentQueue<PyObject> _queue;
     private readonly BlockingCollection<PyObject> _collection;
@@ -25,6 +25,13 @@ public sealed partial class PyQueueObject : PyObject
             _collection = new BlockingCollection<PyObject>(_queue, maxSize);
         _source = null;
         _unfinished_tasks = 0;
+    }
+
+    // host-side deterministic release of the BlockingCollection's internal
+    // semaphore; interpreter instances stay GC-managed like CPython queues
+    public void Dispose()
+    {
+        _collection.Dispose();
     }
 }
 

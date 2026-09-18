@@ -1,6 +1,7 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -551,7 +552,7 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
             else if (b >= 0x20 && b <= 0x7E)
                 builder.Append((char)b);
             else
-                builder.AppendFormat("\\x{0:x2}", b);
+                builder.AppendFormat(CultureInfo.InvariantCulture, "\\x{0:x2}", b);
         }
 
         builder.Append(wrapper);

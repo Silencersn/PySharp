@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 
 namespace PySharp.Utility;
@@ -68,7 +69,7 @@ public sealed class IndentedStringBuilder
     public IndentedStringBuilder AppendFormat(string value, params ReadOnlySpan<object> args)
     {
         EnsureIndent();
-        _builder.AppendFormat(value, args);
+        _builder.AppendFormat(CultureInfo.InvariantCulture, value, args);
         return this;
     }
 

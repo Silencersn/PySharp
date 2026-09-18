@@ -2,6 +2,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using System;
 using System.Collections.Generic;
 
 namespace PySharp.Analyzer.Internal;
@@ -149,7 +150,7 @@ partial class PySharpAnalyzerInternalAnalyzer
     /// Examples of valid names: <c>PyObjectType</c>, <c>PyIntObjectType</c>, <c>PyTypeObjectType</c>.
     /// </summary>
     private static bool IsValidTypeObjectName(string name) =>
-        name.StartsWith("Py") && name.EndsWith("ObjectType");
+        name.StartsWith("Py", StringComparison.Ordinal) && name.EndsWith("ObjectType", StringComparison.Ordinal);
 
     /// <summary>
     /// Checks whether <paramref name="name"/> follows the <c>Py&lt;Name&gt;Object</c> pattern.
@@ -158,5 +159,5 @@ partial class PySharpAnalyzerInternalAnalyzer
     /// Examples of valid names: <c>PyIntObject</c>, <c>PyStrObject</c>, <c>PyDictObject</c>.
     /// </summary>
     private static bool IsValidObjectName(string name) =>
-        name.StartsWith("Py") && name.EndsWith("Object") && !name.EndsWith("ObjectType");
+        name.StartsWith("Py", StringComparison.Ordinal) && name.EndsWith("Object", StringComparison.Ordinal) && !name.EndsWith("ObjectType", StringComparison.Ordinal);
 }

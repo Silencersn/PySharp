@@ -127,7 +127,7 @@ public sealed class PyArgsDef
         var indexOfStar = -1;
         for (int i = 0; i < parameters.Length; i++)
         {
-            if (parameters[i].StartsWith('*') && !parameters[i].StartsWith("**"))
+            if (parameters[i].StartsWith('*') && !parameters[i].StartsWith("**", StringComparison.Ordinal))
             {
                 indexOfStar = i;
                 varArg = parameters[i] is "*" ? null : parameters[i][1..];
@@ -152,7 +152,7 @@ public sealed class PyArgsDef
         // ... (<- args) **
         // ... (<- kwonlyArgs) **
         //
-        if (parameters.Length > 0 && parameters[^1].StartsWith("**"))
+        if (parameters.Length > 0 && parameters[^1].StartsWith("**", StringComparison.Ordinal))
         {
             kwArg = parameters[^1][..^2];
             parameters = parameters[..^1];

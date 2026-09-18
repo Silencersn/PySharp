@@ -4,7 +4,7 @@ using System.Text;
 
 namespace PySharp.Compilation.Bytecodes;
 
-internal sealed class LineTableBuilder
+internal sealed class LineTableBuilder : IDisposable
 {
     internal readonly MemoryStream _stream;
     private readonly BinaryWriter _writer;
@@ -31,9 +31,16 @@ internal sealed class LineTableBuilder
     {
         EnsureWritten();
         var lineTable = new LineTable(_source, _stream.GetBuffer(), (int)_stream.Length);
+        Dispose();
+        return lineTable;
+    }
+
+    // releases the buffers if compilation abandons the builder mid-way;
+    // idempotent so the ToLineTable path and using-blocks can overlap
+    public void Dispose()
+    {
         _stream.Dispose();
         _writer.Dispose();
-        return lineTable;
     }
 
     public void Write(int index, ValueCodeMetaInfo info)

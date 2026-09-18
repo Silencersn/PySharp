@@ -142,7 +142,7 @@ internal static class PyStrConverter
                                 return false;
                             }
 
-                            charToWrite = (char)byte.Parse(xSeq, NumberStyles.HexNumber);
+                            charToWrite = (char)byte.Parse(xSeq, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
                             i += 2;
                             break;
 
@@ -170,7 +170,7 @@ internal static class PyStrConverter
                             }
                             // CPython allows lone surrogates in string literals (e.g. '\ud800', len 1);
                             // only encode('utf-8') etc. raises UnicodeEncodeError at runtime.
-                            charToWrite = (char)ushort.Parse(uSeq4, NumberStyles.HexNumber);
+                            charToWrite = (char)ushort.Parse(uSeq4, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
                             i += 4;
                             break;
 
@@ -196,7 +196,7 @@ internal static class PyStrConverter
                                 IncreaseUntilNonHexDight(ref info, uSeq8);
                                 return false;
                             }
-                            var value = uint.Parse(uSeq8, NumberStyles.HexNumber);
+                            var value = uint.Parse(uSeq8, NumberStyles.HexNumber, CultureInfo.InvariantCulture);
 
                             if (value is >= 0xD800 and <= 0xDFFF)
                             {
@@ -578,17 +578,17 @@ internal static class PyStrConverter
 
                 default:
                     if (ch < ' ' || ch is 0x7F)
-                        builder.AppendFormat("\\x{0:x2}", ch);
+                        builder.AppendFormat(CultureInfo.InvariantCulture, "\\x{0:x2}", ch);
                     else if (ch < 0x7F)
                         builder.Append((char)ch);
                     else if (IsPrintable(rune))
                         builder.Append(rune.ToString());
                     else if (ch < 0x100)
-                        builder.AppendFormat("\\x{0:x2}", ch);
+                        builder.AppendFormat(CultureInfo.InvariantCulture, "\\x{0:x2}", ch);
                     else if (ch < 0x10000)
-                        builder.AppendFormat("\\u{0:x4}", ch);
+                        builder.AppendFormat(CultureInfo.InvariantCulture, "\\u{0:x4}", ch);
                     else
-                        builder.AppendFormat("\\U{0:x8}", ch);
+                        builder.AppendFormat(CultureInfo.InvariantCulture, "\\U{0:x8}", ch);
                     break;
             }
         }

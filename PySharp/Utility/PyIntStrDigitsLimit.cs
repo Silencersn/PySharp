@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Numerics;
 
 namespace PySharp.Utility;
@@ -44,7 +45,7 @@ internal static class PyIntStrDigitsLimit
         var max = _maxStrDigits;
         if (max <= 0)
         {
-            text = value.ToString();
+            text = value.ToString(CultureInfo.InvariantCulture);
             return true;
         }
 
@@ -58,12 +59,12 @@ internal static class PyIntStrDigitsLimit
                 return false;
             if (lowerBound < max - 2.0)
             {
-                text = value.ToString();
+                text = value.ToString(CultureInfo.InvariantCulture);
                 return true;
             }
         }
 
-        var candidate = value.ToString();
+        var candidate = value.ToString(CultureInfo.InvariantCulture);
         var digitCount = candidate.Length - (candidate[0] is '-' ? 1 : 0);
         if (digitCount > max)
             return false;

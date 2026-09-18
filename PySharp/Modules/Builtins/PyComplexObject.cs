@@ -1,6 +1,7 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
+using System.Globalization;
 using System.Numerics;
 
 using PySharp.Utility;
@@ -39,11 +40,11 @@ public class PyComplexObject : PyObject
                 if (c is not '_')
                     builder.Append(c);
             }
-            var imag = double.Parse(builder.ToString());
+            var imag = double.Parse(builder.ToString(), CultureInfo.InvariantCulture);
             return FromRealImag(0, imag);
         }
 
-        var imagValue = double.Parse(value);
+        var imagValue = double.Parse(value, CultureInfo.InvariantCulture);
         return FromRealImag(0, imagValue);
     }
 }

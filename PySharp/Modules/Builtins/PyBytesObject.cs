@@ -1,6 +1,7 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
+using System.Globalization;
 using System.Text;
 
 namespace PySharp.Modules.Builtins;
@@ -244,7 +245,7 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
             else if (b >= 0x20 && b <= 0x7E)
                 builder.Append((char)b);
             else
-                builder.AppendFormat("\\x{0:x2}", b);
+                builder.AppendFormat(CultureInfo.InvariantCulture, "\\x{0:x2}", b);
         }
         builder.Append(wrapper);
         return PyStrObject.FromString(builder.ToString());
@@ -745,7 +746,7 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
             switch (handler)
             {
                 case DecodeErrorHandler.BackslashReplace:
-                    sb.Append("\\x").Append(b.ToString("x2"));
+                    sb.Append("\\x").Append(b.ToString("x2", CultureInfo.InvariantCulture));
                     break;
                 case DecodeErrorHandler.SurrogateEscape:
                     sb.Append((char)(0xDC00 + b));
@@ -778,7 +779,7 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
                     sb.Append('\uFFFD');
                     break;
                 case DecodeErrorHandler.BackslashReplace:
-                    sb.Append("\\x").Append(b.ToString("x2"));
+                    sb.Append("\\x").Append(b.ToString("x2", CultureInfo.InvariantCulture));
                     break;
                 case DecodeErrorHandler.SurrogateEscape:
                     sb.Append((char)(0xDC00 + b));

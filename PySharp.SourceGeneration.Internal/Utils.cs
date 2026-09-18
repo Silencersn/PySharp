@@ -9,9 +9,9 @@ internal class Utils
     {
         return context.SyntaxProvider.CreateSyntaxProvider(
             predicate: static (node, _) => node is BaseTypeDeclarationSyntax,
-            transform: (ctx, _) =>
+            transform: (ctx, cancellationToken) =>
             {
-                if (ctx.SemanticModel.GetDeclaredSymbol(ctx.Node) is INamedTypeSymbol symbol &&
+                if (ctx.SemanticModel.GetDeclaredSymbol(ctx.Node, cancellationToken) is INamedTypeSymbol symbol &&
                     symbol.ToDisplayString() == fullyQualifiedName)
                 {
                     return symbol;

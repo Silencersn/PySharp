@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 
 namespace PySharp.Resources;
 
@@ -9,6 +10,6 @@ internal static partial class PySR
         if (args.IsEmpty)
             return format;
 
-        return string.Format(format, args);
+        return string.Format(CultureInfo.InvariantCulture, format, args);
     }
 }

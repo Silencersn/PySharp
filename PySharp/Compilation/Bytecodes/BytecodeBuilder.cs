@@ -8,7 +8,7 @@ using System.Runtime.CompilerServices;
 
 namespace PySharp.Compilation.Bytecodes;
 
-internal sealed class BytecodeBuilder
+internal sealed class BytecodeBuilder : IDisposable
 {
     private readonly ImmutableArray<Instruction>.Builder _instructions = ImmutableArray.CreateBuilder<Instruction>();
     private readonly List<int> _labelOffsets = [];
@@ -41,6 +41,13 @@ internal sealed class BytecodeBuilder
         }
 
         return new Bytecode(_instructions.MoveToImmutable(), _lineTableBuilder.ToLineTable(), [.. _consts.Keys], [.. _names.Keys]);
+    }
+
+    // releases the line-table buffers if compilation abandons the builder
+    // before ToBytecode consumes it; after ToBytecode this is a no-op chain
+    public void Dispose()
+    {
+        _lineTableBuilder.Dispose();
     }
 
     internal void PushMetaInfo(ValueCodeMetaInfo info)

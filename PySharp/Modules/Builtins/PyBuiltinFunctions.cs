@@ -5,6 +5,7 @@ using PySharp.Runtime.Environments;
 using PySharp.Runtime.PyAttributes;
 using PySharp.Utility;
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 
 namespace PySharp.Modules.Builtins;
@@ -1179,11 +1180,11 @@ public static partial class PyBuiltinFunctions
             if (rune.IsAscii)
                 builder.Append(rune.ToString());
             else if (ch < 0x100)
-                builder.AppendFormat("\\x{0:x2}", ch);
+                builder.AppendFormat(CultureInfo.InvariantCulture, "\\x{0:x2}", ch);
             else if (ch < 0x10000)
-                builder.AppendFormat("\\u{0:x4}", ch);
+                builder.AppendFormat(CultureInfo.InvariantCulture, "\\u{0:x4}", ch);
             else
-                builder.AppendFormat("\\U{0:x8}", ch);
+                builder.AppendFormat(CultureInfo.InvariantCulture, "\\U{0:x8}", ch);
         }
 
         return builder.ToString();

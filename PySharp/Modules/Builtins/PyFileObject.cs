@@ -12,7 +12,7 @@ namespace PySharp.Modules.Builtins;
 /// Wraps a .NET Stream and provides text/binary file I/O.
 /// </summary>
 [AIGenerated]
-public sealed class PyFileObject : PyObject
+public sealed class PyFileObject : PyObject, IDisposable
 {
     private readonly Stream _stream;
     internal readonly bool _isTextMode;
@@ -157,6 +157,15 @@ public sealed class PyFileObject : PyObject
             _writer = null;
         }
         return PyNoneObject.None;
+    }
+
+    // host-side deterministic cleanup mirroring CPython's close-on-__del__:
+    // same flush/dispose path as Close() with its error swallowing; repeat
+    // calls are no-ops once _closed is set
+    public void Dispose()
+    {
+        if (!_closed)
+            Close();
     }
 
     // CPython reports OS-level file errors as OSError subclasses in the

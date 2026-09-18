@@ -2,6 +2,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using System;
 
 namespace PySharp.Analyzer.Internal;
 
@@ -45,7 +46,7 @@ partial class PySharpAnalyzerInternalAnalyzer
             return;
 
         // Must match the __xxx__ pattern (at least __x__)
-        if (text.Length <= 4 || !text.StartsWith("__") || !text.EndsWith("__"))
+        if (text.Length <= 4 || !text.StartsWith("__", StringComparison.Ordinal) || !text.EndsWith("__", StringComparison.Ordinal))
             return;
 
         // Only flag inside PySharp.Modules.Builtins namespace
