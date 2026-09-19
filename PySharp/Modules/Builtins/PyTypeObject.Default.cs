@@ -115,6 +115,11 @@ partial class PyTypeObject
                 return func(context, attr, self, value);
         }
 
+        // CPython _PyObject_GenericSetAttrWithDict: dict-less instances
+        // (IsImmutable) reject the write before any instance-dict handling
+        if (self.IsImmutable)
+            return FrozenAttrWriteError(type, name, attr);
+
         self.PyAttributes[name] = value;
 
         // When setting an attribute on a type object (e.g. cls.__init__ = func),
@@ -128,6 +133,18 @@ partial class PyTypeObject
         }
 
         return PyNoneObject.None;
+    }
+
+    // CPython _PyObject_GenericSetAttrWithDict: dict-less instances reject
+    // attribute writes with two AttributeError shapes — a name found in the
+    // MRO without a setter is "read-only", anything else is the shared
+    // "no attribute and no __dict__" error (assignment and deletion alike)
+    private static PyResult FrozenAttrWriteError(PyTypeObject type, string name, PyObject? attr)
+    {
+        if (attr is not null)
+            return PyResult.AttributeError(PySR.Runtime_Object_AttributeReadOnly, type.FullName, name);
+
+        return PyResult.AttributeError(PySR.Runtime_Object_AttributeNoDict, type.FullName, name);
     }
 
     // CPython fixup_slot_dispatchers: assigning the inherited object default
@@ -204,6 +221,11 @@ partial class PyTypeObject
             if (PyUtils.IsDataDescriptor(attr))
                 return PyResult.AttributeError(PySR.Runtime_Attribute_NoDelete);
         }
+
+        // same dict-less gate as the set path; CPython reports the same two
+        // AttributeError shapes for deletion too
+        if (self.IsImmutable)
+            return FrozenAttrWriteError(type, name, attr);
 
         var removed = self.PyAttributes.Remove(name);
         if (!removed)

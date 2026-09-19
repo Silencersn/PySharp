@@ -3878,4 +3878,18 @@ public sealed class TestPyFiles
         var module = RunModule("test_float_repr_shortest_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestFrozenInstanceSetattrRegression()
+    {
+        // Regression: attribute writes and deletes on dict-less (frozen)
+        // instances raise the two catchable CPython AttributeError shapes
+        // ("read-only" for MRO entries without a setter, "no attribute and
+        // no __dict__" otherwise, shared by set and delete) instead of
+        // leaking a .NET NotSupportedException from the frozen attributes
+        // stub; mutable subclass instances and property descriptors are
+        // unaffected.
+        var module = RunModule("test_frozen_instance_setattr_regression.py");
+        Assert.IsNotNull(module);
+    }
 }
