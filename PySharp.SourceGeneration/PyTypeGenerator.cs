@@ -240,6 +240,7 @@ public class PyTypeGenerator : IIncrementalGenerator
                                 else
                                     builder.AppendLine($"FillSlot(PySpecialNames.{slot.Name}, ref Slots.{slot.Name}, {slot.Name});");
                             })
+                            .AppendLine("FillReflectedSlots();")
                         .ExitBlock())
 
                     .If(methods.Count > 0 || classMethods.Count > 0 || staticMethods.Count > 0, builder => builder

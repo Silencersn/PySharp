@@ -314,6 +314,13 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
         return new PyByteArrayIteratorObject(self);
     }
 
+    // CPython's reflected wrappers cover as_number and sq_repeat slots
+    // only; sq_concat has no reflected variant (bytearray.__radd__ does
+    // not exist). __mul__ keeps its __rmul__ entry with the non-swapping
+    // self*value order of wrap_indexargfunc.
+    protected override bool SynthesizeReflectedAdd => false;
+    protected override bool ReflectedMulSwapsOperands => false;
+
     protected override PyResult Add(PyCallContext context, PyByteArrayObject self, PyObject other)
     {
         if (!TryGetSpan(other, out var otherSpan))

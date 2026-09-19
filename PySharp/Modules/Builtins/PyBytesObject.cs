@@ -290,6 +290,13 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
         return new PyBytesIteratorObject(self);
     }
 
+    // CPython's reflected wrappers cover as_number and sq_repeat slots
+    // only; sq_concat has no reflected variant (bytes.__radd__ does not
+    // exist). __mul__ keeps its __rmul__ entry with the non-swapping
+    // self*value order of wrap_indexargfunc.
+    protected override bool SynthesizeReflectedAdd => false;
+    protected override bool ReflectedMulSwapsOperands => false;
+
     protected override PyResult Add(PyCallContext context, PyBytesObject self, PyObject other)
     {
         // bytes_concat accepts any bytes-like operand; the concat TypeError

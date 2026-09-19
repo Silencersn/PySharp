@@ -298,6 +298,24 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestBuiltinReflectedWrapperRegression()
+    {
+        // Regression: builtin types synthesize reflected operator
+        // wrappers from their non-null as_number slots (CPython
+        // add_operators). int exposed no __radd__..__ror__ at all, so
+        // hasattr probes failed and direct calls raised AttributeError;
+        // the dispatch itself was always correct — only the type-level
+        // visibility was missing. Also pins the CPython shape rules:
+        // sq_concat has no reflected variant (str/list/tuple/bytes
+        // lack __radd__), sq_repeat keeps a non-swapping __rmul__,
+        // static builtins inheriting a slot resolve the wrapper through
+        // the base's dict (bool.__dict__ has no __radd__), and the
+        // ternary pow wrapper keeps its modulus optional.
+        var module = RunModule("test_builtin_reflected_wrapper_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestClosure()
     {
         var module = RunModule("test_closure.py");

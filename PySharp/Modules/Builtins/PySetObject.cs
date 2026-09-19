@@ -270,6 +270,9 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
         return new PySetIteratorObject(self);
     }
 
+    // CPython has no nb_add for set at all (the union operator is __or__):
+    // the placeholder Add slot must not synthesize a reflected __radd__
+    protected override bool SynthesizeReflectedAdd => false;
     protected override PyResult Add(PyCallContext context, PySetObject self, PyObject other)
     {
         return PyNotImplementedObject.NotImplemented;

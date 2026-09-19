@@ -195,12 +195,18 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
         return self.PyHash(context);
     }
 
+    // CPython's reflected wrappers cover as_number and sq_repeat slots
+    // only; sq_concat has no reflected variant (tuple.__radd__ does not
+    // exist). __mul__ keeps its __rmul__ entry with the non-swapping
+    // self*value order of wrap_indexargfunc.
+    protected override bool SynthesizeReflectedAdd => false;
+    protected override bool ReflectedMulSwapsOperands => false;
+
     [AIGenerated]
     protected override PyResult Add(PyCallContext context, PyTupleObject self, PyObject other)
     {
         return self.PyAdd(context, other);
     }
-
     [AIGenerated]
     protected override PyResult Mul(PyCallContext context, PyTupleObject self, PyObject other)
     {
