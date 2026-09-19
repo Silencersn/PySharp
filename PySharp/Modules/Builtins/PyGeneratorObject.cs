@@ -145,7 +145,13 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
             : IsAsyncGenerator ? PySR.Runtime_AsyncGen_RaisedStopIteration
             : PySR.Runtime_Generator_RaisedStopIteration;
         var error = PyResult.RuntimeError(message);
+        // CPython _PyErr_FormatFromCause links the StopIteration as both
+        // __cause__ and __context__ of the PEP 479 RuntimeError; setting a
+        // cause also marks the implicit context suppressed
+        // (PyException_SetCause)
         error.Exception!.Cause = result.Exception;
+        error.Exception.Context = result.Exception;
+        error.Exception.SuppressContext = true;
         return error;
     }
 
@@ -198,7 +204,13 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
         if (IsExecuting)
             return AlreadyExecutingError();
 
-        _vmStates.ExceptionToRaise = PyGeneratorExitObjectType.Shared.Create();
+        // CPython gen_close raises the GeneratorExit (PyErr_SetNone) before
+        // swapping the exception state, so it chains the close caller's
+        // handled slot; the per-frame settle inside the generator only
+        // overwrites it with the generator's own slot when it has one
+        var generatorExit = PyGeneratorExitObjectType.Shared.Create();
+        context.ChainHandledContext(generatorExit);
+        _vmStates.ExceptionToRaise = generatorExit;
         IsExecuting = true;
         try
         {
@@ -263,7 +275,10 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
     private PyResult ThrowResolved(PyCallContext context, PyExceptionObject exc)
     {
         if (_vmStates.RunToEnd)
-            return PyResult.FromException(exc);
+            // CPython gen_throw exits before swapping the exception state,
+            // so a dead generator's throw is restored with PyErr_Restore at
+            // the throw() call site: it propagates without implicit chaining
+            throw new PyRuntimeException(exc);
 
         // CPython gen_throw: an exception thrown into a never-started
         // generator propagates straight to the caller (no frame is
@@ -271,7 +286,7 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
         if (!IsGeneratorRunning)
         {
             _vmStates.RunToEnd = true;
-            return PyResult.FromException(exc);
+            throw new PyRuntimeException(exc);
         }
 
         if (IsExecuting)
@@ -300,13 +315,18 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
         }
     }
 
-    // Generator resume shares the caller's context: restore the handled
-    // exception observed on entry when the generator suspends or exits, so
-    // its handler state never leaks onto the caller's chain (a bare raise
-    // after resuming must see the caller's active exception, not a dead one).
+    // Generator resume mirrors CPython gen_send_ex2: the thread's exception
+    // state swaps to the generator's own handled exception while it runs,
+    // and the caller's observed value stays visible only when the generator
+    // has none of its own (GetTopmostException walks the chain). Suspending
+    // or exiting restores the caller's value, so generator handler state
+    // never leaks onto the caller's chain.
     private PyResult ResumeEval(PyCallContext context)
     {
         var savedHandledException = context.HandledException;
+        _vmStates.ResumeObservedHandledException = savedHandledException;
+        if (_vmStates.Exceptions.TryPeek(out var ownHandled) && ownHandled is not null)
+            context.HandledException = ownHandled;
         try
         {
             return BytecodeVirtualMachine.Eval(context, ref _vmStates);

@@ -3117,6 +3117,19 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestExcContextChainingRegression()
+    {
+        // Regression: implicit __context__ chains must form exactly where
+        // CPython sets an exception (_PyErr_SetObject reads the thread-wide
+        // handled slot) - so interpreter-raised errors, callee-frame raises
+        // and deferred error results chain too, while reraise-style
+        // propagation (bare raise, except* settlement rethrows) leaves the
+        // context untouched and an explicit re-raise overwrites it.
+        var module = RunModule("test_exc_context_chaining_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestExceptStarControlFlowSyntaxRegression()
     {
         // Regression: break/continue/return cannot cross an except* handler

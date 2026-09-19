@@ -14,11 +14,13 @@ public class PyRuntimeException : Exception
     public PyRuntimeException(PyCallContext context, PyExceptionObject exception)
     {
         ArgumentNullException.ThrowIfNull(exception);
+        context.ChainHandledContext(exception);
         _exception = exception.WithTraceback(context);
     }
 
     internal PyRuntimeException(PyCallContext context, PyExceptionObject exception, ICodeMetaInfoProvider? compiler = null)
     {
+        context.ChainHandledContext(exception);
         _exception = exception.WithTraceback(context, compiler: compiler);
         _compiler = compiler;
     }

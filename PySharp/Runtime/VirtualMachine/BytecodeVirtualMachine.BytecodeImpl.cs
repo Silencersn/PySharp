@@ -140,43 +140,91 @@ internal static partial class BytecodeVirtualMachine
 
         if (states.ExceptionToRaise is not null)
         {
-            // throw or close
-
-            iter = stack[-1];
-
-            if (PyGeneratorExitObjectType.Shared.IsInstance(states.ExceptionToRaise))
+            // throw or close. CPython runs gen_close/gen_throw (and any
+            // nested sub-generator delegation) while the delegating frame
+            // is suspended, so the whole delegation region observes the
+            // resume caller's handled slot, never the delegating
+            // generator's own one; per-frame settlement below reads the
+            // own slot from states.Exceptions directly
+            var savedHandledException = context.HandledException;
+            context.HandledException = states.ResumeObservedHandledException;
+            try
             {
-                // close sub generator
-                var close = PyOperators.GetAttr(context, iter, "close");
-                if (!close.IsAttributeError)
-                    _ = close.PyUnwrap(context).Call(context).PyUnwrap(context);
+                iter = stack[-1];
 
-                // close self
-                if (states.ExceptionToRaise is not null)
+                if (PyGeneratorExitObjectType.Shared.IsInstance(states.ExceptionToRaise))
                 {
-                    var exc = Move(ref states.ExceptionToRaise);
-                    throw new PyRuntimeException(exc);
-                }
-            }
-            else
-            {
-                var throwMethod = PyOperators.GetAttr(context, iter, "throw");
-                if (!throwMethod.IsAttributeError)
-                {
-                    var exc = Move(ref states.ExceptionToRaise);
-                    value = throwMethod.PyUnwrap(context).Call(context, [exc]).PyUnwrap(context);
-                    stack.Push(value);
-                }
-                else
-                {
-                    // throw at self
+                    // close sub generator
+                    var close = PyOperators.GetAttr(context, iter, "close");
+                    if (!close.IsAttributeError)
+                    {
+                        // a non-AttributeError close-lookup failure escapes before
+                        // any injection: drop the pending GeneratorExit
+                        if (close.IsError)
+                            Move(ref states.ExceptionToRaise);
+
+                        var closed = close.PyUnwrap(context).Call(context);
+                        if (closed.IsError)
+                        {
+                            // CPython gen_close re-injects a failing sub-close
+                            // into this frame (gen_send_ex exc=1). The ignored
+                            // GeneratorExit RuntimeError was created inside the
+                            // sub-generator's gen_close with the exception state
+                            // already restored, so it first chains this call's
+                            // handled slot (PyErr_SetString), and the
+                            // re-injection settles it against this generator's
+                            // own slot again; this frame's own GeneratorExit is
+                            // never delivered on that path, so consume it to
+                            // keep a later resume from injecting the stale exit
+                            Move(ref states.ExceptionToRaise);
+                            context.ChainHandledContext(closed.Exception);
+                            PyCore.SettleInjectedContext(states, closed.Exception);
+                            throw new PyRuntimeException(closed.Exception);
+                        }
+                    }
+
+                    // close self
                     if (states.ExceptionToRaise is not null)
                     {
                         var exc = Move(ref states.ExceptionToRaise);
+                        PyCore.SettleInjectedContext(states, exc);
                         throw new PyRuntimeException(exc);
                     }
                 }
-                return;
+                else
+                {
+                    var throwMethod = PyOperators.GetAttr(context, iter, "throw");
+                    if (!throwMethod.IsAttributeError)
+                    {
+                        var exc = Move(ref states.ExceptionToRaise);
+                        var thrown = throwMethod.PyUnwrap(context).Call(context, [exc]);
+                        if (thrown.IsError)
+                        {
+                            // CPython _gen_throw re-injects a failing sub-throw
+                            // into this frame (gen_send_ex exc=1), settling the
+                            // context against this generator's own slot again
+                            PyCore.SettleInjectedContext(states, thrown.Exception);
+                            throw new PyRuntimeException(thrown.Exception);
+                        }
+
+                        stack.Push(thrown.Value);
+                    }
+                    else
+                    {
+                        // throw at self
+                        if (states.ExceptionToRaise is not null)
+                        {
+                            var exc = Move(ref states.ExceptionToRaise);
+                            PyCore.SettleInjectedContext(states, exc);
+                            throw new PyRuntimeException(exc);
+                        }
+                    }
+                    return;
+                }
+            }
+            finally
+            {
+                context.HandledException = savedHandledException;
             }
         }
 
@@ -369,16 +417,31 @@ internal static partial class BytecodeVirtualMachine
         // stays on the stack for later handlers and the end-of-statement
         // settlement, the match becomes the bare-raise source
         var type = stack.Pop();
-        var exc = (PyExceptionObject)stack.Pop();
+        var exc = stack.Pop();
 
-        PyExceptionObject group = exc.IsGroup ? exc : PyBaseExceptionGroupObjectType.CreateExceptionGroup(string.Empty, [exc]);
+        // CPython CHECK_EG_MATCH validates the match type unconditionally
+        // (_PyEval_CheckExceptStarTypeValid), even for an exhausted rest
+        PyCore.CheckExceptTypeValid(context, type);
+
+        // an exhausted rest reaches later handlers whenever an earlier one
+        // fully matched; CPython short-circuits with rest = match = None
+        // (_PyEval_ExceptionGroupMatch) instead of splitting None
+        if (exc is PyNoneObject)
+        {
+            stack.Push(PyNoneObject.None);
+            stack.Push(PyNoneObject.None);
+            return;
+        }
+
+        var excException = (PyExceptionObject)exc;
+        PyExceptionObject group = excException.IsGroup ? excException : PyBaseExceptionGroupObjectType.CreateExceptionGroup(string.Empty, [excException]);
         var (rest, match) = PyCore.SplitExceptionGroup(context, group, type);
 
         // a non-group original only travels wrapped while matching: with no
         // match in this handler the next handler (or the settlement) must
         // see the bare original again
-        if (match is PyNoneObject && !exc.IsGroup)
-            rest = exc;
+        if (match is PyNoneObject && !excException.IsGroup)
+            rest = excException;
 
         if (rest is null)
             stack.Push(PyNoneObject.None);
@@ -391,7 +454,15 @@ internal static partial class BytecodeVirtualMachine
         // settlement consumes the last one (_StarReraise / Lclean pop)
         states.Exceptions.Push(rest!);
         if (match is PyExceptionObject matched)
+        {
+            // CPython CHECK_EG_MATCH: PyErr_SetHandledException(match_o)
+            // swaps the handled slot to the matched subgroup for the whole
+            // statement, so interpreter errors inside handler bodies chain
+            // the subgroup, not the original group (the statement-level
+            // handler record restores the pre-group value on exit)
             states.Exceptions.Push(matched);
+            context.HandledException = matched;
+        }
     }
 
     private static void InternalBuildSlice(ref ValueOperandStack stack, int instructionArg)

@@ -29,6 +29,12 @@ internal static partial class BytecodeVirtualMachine
         // HandledException value observed when this handler was first entered;
         // _PopException restores it so bare raise does not see a dead handler.
         public PyExceptionObject? SavedHandledException;
+        // states.Exceptions depth observed when the record was created;
+        // _ExitFinally's rethrow pops back to it (CPython POP_EXCEPT also
+        // unwinds the exception stack, not just the exc_info slot), so a
+        // finished region never leaves stale entries for bare raise or the
+        // raise-statement chain source to pick up
+        public int ExceptionStackDepth;
 
         public ExceptionHandler(int exceptOffset, int finallyOffset)
         {
@@ -732,6 +738,7 @@ internal static partial class BytecodeVirtualMachine
                         if (states.ExceptionToRaise is not null)
                         {
                             var exc = Move(ref states.ExceptionToRaise);
+                            PyCore.SettleInjectedContext(states, exc);
                             throw new PyRuntimeException(exc);
                         }
                         break;
@@ -872,7 +879,8 @@ internal static partial class BytecodeVirtualMachine
                         var handler = new ExceptionHandler(ExceptionHandler.NoExcepts, instructionArg)
                         {
                             StackDepth = Stack.Count,
-                            FrameIndex = context.FrameState.CurrentFrameCount - 1
+                            FrameIndex = context.FrameState.CurrentFrameCount - 1,
+                            ExceptionStackDepth = states.Exceptions.Count
                         };
                         states.ExceptionHandlers.Push(handler);
                         break;
@@ -895,16 +903,37 @@ internal static partial class BytecodeVirtualMachine
                         break;
 
                     // Dumps handler records abandoned by compile-time unwound
-                    // jumps (break/continue/return crossing with/try regions);
-                    // no exception is in flight on those paths, so a plain pop
-                    // is the whole cleanup
+                    // jumps (break/continue/return crossing with/try regions).
+                    // A record still holding an in-flight exception was
+                    // abandoned mid-unwind (a break/continue inside its
+                    // finally): the discarded exception must take its stack
+                    // entries and handled-slot value with it, or they linger
+                    // as later raise/chain sources (CPython pops the exc_info
+                    // on the escape)
                     case OpCode._PopFinally:
                         for (int i = 0; i < instructionArg; i++)
-                            states.ExceptionHandlers.Pop();
+                        {
+                            var dropped = states.ExceptionHandlers.Pop();
+                            if (dropped.PyException is not null)
+                            {
+                                context.HandledException = dropped.SavedHandledException;
+                                while (states.Exceptions.Count > dropped.ExceptionStackDepth)
+                                    states.Exceptions.Pop();
+                            }
+                        }
                         break;
 
                     case OpCode._EnterFinally:
-                        states.ExceptionHandlers.Peek().State = ExceptionHandler.State_Finally;
+                        var entering = states.ExceptionHandlers.Peek();
+                        entering.State = ExceptionHandler.State_Finally;
+                        // a normally-entered finally was never dispatched to,
+                        // so its record still holds the null default and a
+                        // raise inside the body would restore that null over
+                        // the live ambient slot; HitExcept marks records the
+                        // catch path already initialized (with suppression
+                        // and settlement entries included)
+                        if (!entering.HitExcept)
+                            entering.SavedHandledException = context.HandledException;
                         break;
 
                     case OpCode._ExitFinally:
@@ -914,6 +943,15 @@ internal static partial class BytecodeVirtualMachine
                         {
                             var exc = currentHandler.PyException;
                             states.ExceptionHandlers.Pop();
+                            // CPython restores exc_info (POP_EXCEPT) before
+                            // the settlement/reraise RERAISE, so the escaping
+                            // exception leaves no handled-slot residue;
+                            // POP_EXCEPT also unwinds the exception stack,
+                            // which bare raise and the raise-statement chain
+                            // source would otherwise read as still-active
+                            context.HandledException = currentHandler.SavedHandledException;
+                            while (states.Exceptions.Count > currentHandler.ExceptionStackDepth)
+                                states.Exceptions.Pop();
                             throw new PyRuntimeException(exc);
                         }
                         states.ExceptionHandlers.Pop();
@@ -983,11 +1021,20 @@ internal static partial class BytecodeVirtualMachine
                         break;
 
                     // re-raise the settlement result through the statement's
-                    // own handler record so the finally block unwinds it
+                    // own handler record so the finally block unwinds it.
+                    // CPython's settlement unwind enters the finally through
+                    // a PUSH_EXC_INFO-wrapped region: the propagating
+                    // exception becomes both the handled slot and the
+                    // frame's exception stack top (so finally-body errors,
+                    // bare raises, generator suspends and injections all
+                    // observe it), and the _ExitFinally unwind pops it
                     case OpCode._StarReraise:
                         {
                             var raisedResult = Stack.Pop();
-                            states.ExceptionHandlers.Peek().PyException = (PyExceptionObject)raisedResult;
+                            var settlement = (PyExceptionObject)raisedResult;
+                            states.ExceptionHandlers.Peek().PyException = settlement;
+                            states.Exceptions.Push(settlement);
+                            context.HandledException = settlement;
                         }
                         break;
 
@@ -1113,10 +1160,17 @@ internal static partial class BytecodeVirtualMachine
             }
             else if (currentHandler.State is ExceptionHandler.State_Finally)
             {
-                // raise exception during finally body
-
-                states.Exceptions.Clear();
-                states.ExceptionHandlers.Pop();
+                // raise exception during finally body: discard this region's
+                // own unwind state and redispatch the new exception, but
+                // restore the handled slot the record saved on entry and pop
+                // the exception stack back to its creation depth (CPython
+                // POP_EXCEPT on unwind) — Clear() would also drop OUTER
+                // regions' in-flight entries and leak them into the
+                // redispatched exception's saved slot
+                var dead = states.ExceptionHandlers.Pop();
+                context.HandledException = dead.SavedHandledException;
+                while (states.Exceptions.Count > dead.ExceptionStackDepth)
+                    states.Exceptions.Pop();
 
                 goto handle;
             }

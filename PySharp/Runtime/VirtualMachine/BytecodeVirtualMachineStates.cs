@@ -14,6 +14,13 @@ internal struct BytecodeVirtualMachineStates
     // restored on frame exit so a callee's handler state never leaks onto
     // the caller's chain (CPython: frame exc_state pop on exit).
     internal PyExceptionObject? SavedHandledException;
+    // HandledException value the current generator resume observed before
+    // swapping to the frame's own slot. Sub-generator close/throw
+    // delegation runs in the gen_close/gen_throw region where the
+    // delegating frame is suspended, so it observes the resume caller's
+    // slot (CPython: gi_exc_state is unlinked while the generator does not
+    // execute), never the delegating generator's own one.
+    internal PyExceptionObject? ResumeObservedHandledException;
     internal Stack<BytecodeVirtualMachine.ExceptionHandler> ExceptionHandlers => field ??= [];
     internal readonly OperandStack? Stack;
     internal Stack<PyExceptionObject> Exceptions => field ??= [];

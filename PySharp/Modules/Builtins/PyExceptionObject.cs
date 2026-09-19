@@ -44,6 +44,11 @@ public sealed class PyExceptionObject : PyObjectManagedDict
     public bool SuppressContext { get; internal set; }
     public PyExceptionObject? Cause { get; internal set; }
     public PyExceptionObject? Context { get; internal set; }
+    // Set by machinery whose exceptions are settled with PyErr_Restore-style
+    // semantics (generator throw-in/close injection, except* settlement):
+    // later propagation hops through deferred error results must not chain
+    // again
+    internal bool ContextSettled { get; set; }
     internal string? CauseReason { get; set; }
     // Rebindable per CPython BaseException_init: when __new__ is overridden
     // but __init__ is not, the inherited __init__ re-binds e.args to the
@@ -67,37 +72,53 @@ public sealed class PyExceptionObject : PyObjectManagedDict
     internal string ToMessage(PyCallContext context)
     {
         var builder = new IndentedStringBuilder();
+        // CPython traceback._seen: a __context__/__cause__ cycle built via
+        // the user-facing setters is legal and must not recurse forever
+        var seen = new HashSet<PyExceptionObject>(ReferenceEqualityComparer.Instance);
         if (IsGroup)
         {
             using (builder.Indent())
-                PrintMessage(builder, context);
+                PrintMessage(builder, context, seen);
         }
         else
         {
-            PrintMessage(builder, context);
+            PrintMessage(builder, context, seen);
         }
         return builder.ToString();
     }
 
-    internal void PrintMessage(IndentedStringBuilder builder, PyCallContext context)
+    internal void PrintMessage(IndentedStringBuilder builder, PyCallContext context, HashSet<PyExceptionObject> seen)
     {
-        if (Cause is not null)
+        if (!seen.Add(this))
         {
-            Cause.PrintMessage(builder, context);
+            // this exception's chain segment already rendered; print the
+            // header alone, exactly like the CPython seen-set break
+            PrintTrailer(builder, context, seen);
+            return;
+        }
+
+        if (Cause is not null && !seen.Contains(Cause))
+        {
+            Cause.PrintMessage(builder, context, seen);
             builder
                 .AppendLine()
                 .AppendLine(CauseReason)
                 .AppendLine();
         }
-        else if (!SuppressContext && Context is not null)
+        else if (!SuppressContext && Context is not null && !seen.Contains(Context))
         {
-            Context.PrintMessage(builder, context);
+            Context.PrintMessage(builder, context, seen);
             builder
                 .AppendLine()
                 .AppendLine("During handling of the above exception, another exception occurred:")
                 .AppendLine();
         }
 
+        PrintTrailer(builder, context, seen);
+    }
+
+    private void PrintTrailer(IndentedStringBuilder builder, PyCallContext context, HashSet<PyExceptionObject> seen)
+    {
         if (Traceback?.ThreadInfo is not null)
         {
             builder
@@ -106,7 +127,7 @@ public sealed class PyExceptionObject : PyObjectManagedDict
 
         if (IsGroup)
         {
-            PrintExceptionGroupMessage(builder, context);
+            PrintExceptionGroupMessage(builder, context, seen);
             return;
         }
 
@@ -135,7 +156,7 @@ public sealed class PyExceptionObject : PyObjectManagedDict
         }
     }
 
-    private void PrintExceptionGroupMessage(IndentedStringBuilder builder, PyCallContext context)
+    private void PrintExceptionGroupMessage(IndentedStringBuilder builder, PyCallContext context, HashSet<PyExceptionObject> seen)
     {
         Debug.Assert(AsGroup is not null);
 
@@ -163,12 +184,12 @@ public sealed class PyExceptionObject : PyObjectManagedDict
 
                 if (isLastGroup = subExc.IsGroup)
                 {
-                    subExc.PrintMessage(builder, context);
+                    subExc.PrintMessage(builder, context, seen);
                 }
                 else
                 {
                     using (builder.Indent("| "))
-                        subExc.PrintMessage(builder, context);
+                        subExc.PrintMessage(builder, context, seen);
                 }
             }
             if (!isLastGroup)

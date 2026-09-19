@@ -257,10 +257,24 @@ internal static class PyCore
             }
         }
 
-        if (states.Exceptions.TryPeek(out var pre) && !ReferenceEquals(pre, exc))
+        // The frame's innermost handled exception; an except* body keeps the
+        // matched subgroup on the frame stack while HandledException still
+        // names the original group. An empty stack means the raise came from
+        // outside this frame's try regions, so fall back to the context-wide
+        // slot (CPython reads the thread-state slot, which callees observe).
+        var pre = states.Exceptions.TryPeek(out var frameTop) && frameTop is not null
+            ? frameTop
+            : context.HandledException;
+        if (pre is not null && !ReferenceEquals(pre, exc))
+        {
+            BreakContextLinkTo(pre, exc);
             exc.Context = pre;
+        }
 
-        throw new PyRuntimeException(context, exc);
+        // Chaining is done above with _PyErr_SetObject's overwrite semantics,
+        // so the exception must not run through the constructor's
+        // set-time chaining again
+        throw new PyRuntimeException(exc);
 
         static PyExceptionObject? ToException(PyCallContext context, PyObject? pyObj, bool isCause)
         {
@@ -283,6 +297,66 @@ internal static class PyCore
                 throw context.TypeError(message);
             }
         }
+    }
+
+    // Generator throw-in/close injection settles the injected exception's
+    // context at each frame re-injection (CPython _PyErr_ChainStackItem via
+    // gen_send_ex exc=1): the generator frame's own handled slot chains on
+    // with overwrite semantics and never falls back to the caller's slot;
+    // with an empty slot the context is left as-is (gen_close raised the
+    // GeneratorExit before swapping the exception state, so it keeps the
+    // close caller's chain). ContextSettled keeps non-injection propagation
+    // hops from re-chaining later.
+    internal static void SettleInjectedContext(BytecodeVirtualMachineStates states, PyExceptionObject exc)
+    {
+        if (states.Exceptions.TryPeek(out var own) && own is not null && !ReferenceEquals(own, exc))
+        {
+            BreakContextLinkTo(own, exc);
+            exc.Context = own;
+        }
+
+        exc.ContextSettled = true;
+    }
+
+    // CPython _PyErr_SetObject clears any link pointing at value in the
+    // handled exception's context chain before (re)setting value's context,
+    // so re-raising an ancestor cannot close a cycle — the traceback printer
+    // recurses along Context and a cycle would overflow the native stack.
+    // Floyd's slow pointer bounds the walk when the chain already contains a
+    // foreign cycle.
+    internal static void BreakContextLinkTo(PyExceptionObject handled, PyExceptionObject exc)
+    {
+        var node = handled;
+        var slow = handled;
+        var slowToggle = false;
+        while (node.Context is { } context)
+        {
+            if (ReferenceEquals(context, exc))
+            {
+                node.Context = null;
+                return;
+            }
+
+            node = context;
+            if (ReferenceEquals(node, slow))
+                return;
+
+            if (slowToggle && slow.Context is { } slowNext)
+                slow = slowNext;
+            slowToggle = !slowToggle;
+        }
+    }
+
+    // _PyEval_CheckExceptTypeValid: the match type must be an exception
+    // class or a tuple of them; shared by plain except (via
+    // MakeExceptCondition) and except* (CHECK_EG_MATCH validates
+    // unconditionally, even for an exhausted rest)
+    internal static void CheckExceptTypeValid(PyCallContext context, PyObject type)
+    {
+        var valid = type is PyTypeObject typeObj && typeObj.IsSubclassOf(PyBaseExceptionObjectType.Shared)
+            || type is PyTupleObject tupleObj && tupleObj.All(obj => obj is PyTypeObject t && t.IsSubclassOf(PyBaseExceptionObjectType.Shared));
+        if (!valid)
+            throw context.TypeError(PySR.Runtime_TryStmt_CatchNonException);
     }
 
     public static Func<PyExceptionObject, bool> MakeExceptCondition(PyCallContext context, PyObject type)
@@ -336,6 +410,17 @@ internal static class PyCore
         if (items.Count is 0)
             return null;
 
+        var prepared = PrepReraiseStarCore(context, orig, items);
+        if (prepared is not null)
+            // CPython's RERAISE of the settlement result uses
+            // PyErr_SetRaisedException, which never chains: mark the context
+            // final so propagation hops cannot attach the ambient handler
+            prepared.ContextSettled = true;
+        return prepared;
+    }
+
+    private static PyExceptionObject? PrepReraiseStarCore(PyCallContext context, PyExceptionObject orig, List<PyExceptionObject> items)
+    {
         if (!orig.IsGroup)
             // a naked exception was caught and wrapped; only one except*
             // clause could have executed, so at most one item remains

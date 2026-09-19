@@ -250,7 +250,9 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
         var result = PySpecialMethods.Index(context, other);
         if (result.IsError)
             return result;
-        return self.PyMul(result.Value.Int32Value);
+        if (!result.Value.IsInt32)
+            return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt);
+        return self.PyMul((int)result.Value.Value);
     }
 
     protected override PyResult RMul(PyCallContext context, PyListObject self, PyObject other)
@@ -263,7 +265,9 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
         var result = PySpecialMethods.Index(context, other);
         if (result.IsError)
             return result;
-        return self.PyIMul(result.Value.Int32Value);
+        if (!result.Value.IsInt32)
+            return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt);
+        return self.PyIMul((int)result.Value.Value);
     }
 
     [PyMethod("append")]
@@ -288,7 +292,9 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
         var result = PySpecialMethods.Index(context, arguments[0]);
         if (result.IsError)
             return result;
-        self.PyInsert(result.Value.Int32Value, arguments[1]);
+        if (!result.Value.IsInt32)
+            return PyResult.OverflowError(PySR.Runtime_Number_Int_TooLargeForSsize);
+        self.PyInsert((int)result.Value.Value, arguments[1]);
         return PyNoneObject.None;
     }
 
@@ -308,13 +314,15 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
         var result = PySpecialMethods.Index(context, arguments[0]);
         if (result.IsError)
             return result;
-        // CPython's list_pop_impl special-cases the empty list before any
-        // index handling, so even an explicit index reports this message
+        // CPython converts the index before list_pop_impl's empty check,
+        // so the overflow outranks the pop-from-empty message
+        if (!result.Value.IsInt32)
+            return PyResult.OverflowError(PySR.Runtime_Number_Int_TooLargeForSsize);
         if (self.Count is 0)
             return PyResult.IndexError(PySR.Runtime_List_PopFromEmpty);
-        if (PyUtils.IsIndexOutOfRange(result.Value.Int32Value, self.Count))
+        if (PyUtils.IsIndexOutOfRange((int)result.Value.Value, self.Count))
             return PyResult.IndexError(PySR.Runtime_List_PopIndexOutOfRange);
-        return self.PyPop(result.Value.Int32Value);
+        return self.PyPop((int)result.Value.Value);
     }
 
     [PyMethod("clear")]
