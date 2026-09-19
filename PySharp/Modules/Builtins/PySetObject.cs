@@ -1,6 +1,5 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
-using PySharp.Runtime.Comparison;
 using PySharp.Runtime.PyAttributes;
 using System.Collections;
 
@@ -8,21 +7,22 @@ namespace PySharp.Modules.Builtins;
 
 public partial class PySetObject : PyObject, IPyObjectRecursiveRepr, ISet<PyObject>
 {
-    private readonly HashSet<PyObject> _set;
+    internal readonly PySetTable _table;
 
     public override PyTypeObject DefaultPyType => PySetObjectType.Shared;
 
-    public int Count => _set.Count;
+    public int Count => _table.Count;
 
     bool ICollection<PyObject>.IsReadOnly => false;
 
     public PySetObject()
     {
-        _set = new HashSet<PyObject>(PyObjectComparer.SetDefault);
+        _table = new PySetTable();
     }
-    public PySetObject(IEnumerable<PyObject> set)
+
+    internal PySetObject(PySetTable table)
     {
-        _set = new HashSet<PyObject>(set, PyObjectComparer.SetDefault);
+        _table = table;
     }
 
     PyResult<PyStrObject> IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<PyObject> ids)
@@ -32,115 +32,181 @@ public partial class PySetObject : PyObject, IPyObjectRecursiveRepr, ISet<PyObje
         // builtin {…} form.
         if (PyType is not PySetObjectType)
         {
-            return _set.Count is 0
+            return _table.Count is 0
                 ? PyStrObject.FromString($"{PyType.FullName}()")
-                : PyUtils.CollectionRecursiveRepr(context, this, _set, $"{PyType.FullName}({{", "})", ids);
+                : PyUtils.CollectionRecursiveRepr(context, this, _table.Keys, $"{PyType.FullName}({{", "})", ids);
         }
 
-        if (_set.Count is 0)
+        if (_table.Count is 0)
             return PyStrObject.FromString("set()");
 
-        return PyUtils.CollectionRecursiveRepr(context, this, _set, "{", "}", ids);
+        return PyUtils.CollectionRecursiveRepr(context, this, _table.Keys, "{", "}", ids);
     }
 
+    // Runtime construction (BUILD_SET): element hashes run under the live
+    // context and hash errors carry CPython's set wording
+    public static PyResult<PySetObject> CreateSet(PyCallContext context, params IEnumerable<PyObject> items)
+    {
+        var set = new PySetObject();
+        foreach (var item in items)
+        {
+            var added = set.PyAdd(context, item);
+            if (added.IsError)
+                return added.ExceptionResult;
+        }
+
+        return set;
+    }
+
+    // Compile-time constant folding: elements are value-typed literals, so
+    // hashing under the non-context dependency context never runs Python code
     public static PySetObject CreateSet(params IEnumerable<PyObject> items)
     {
-        return [.. items];
+        var set = new PySetObject();
+        foreach (var item in items)
+        {
+            var added = set.PyAdd(PyCallContext.NonContextDependency, item);
+            if (added.IsError)
+                throw new PyRuntimeException(added.Exception);
+        }
+
+        return set;
     }
 
-    public HashSet<PyObject>.Enumerator GetEnumerator()
+    // The .NET collection face has no execution context. By contract it
+    // only receives value-typed elements (compile-time constants,
+    // embedded-C# usage); a user-defined element would run its callbacks
+    // under a frame-less context and surface as a .NET exception.
+    private static bool UnwrapEntry(PyResult<PyBoolObject> result)
     {
-        return _set.GetEnumerator();
-    }
-
-    IEnumerator<PyObject> IEnumerable<PyObject>.GetEnumerator()
-    {
-        return GetEnumerator();
-    }
-
-    IEnumerator IEnumerable.GetEnumerator()
-    {
-        return GetEnumerator();
+        return result.IsError ? throw new PyRuntimeException(result.Exception) : result.Value.BoolValue;
     }
 
     public bool Add(PyObject item)
     {
-        return _set.Add(item);
-    }
-
-    public void ExceptWith(IEnumerable<PyObject> other)
-    {
-        _set.ExceptWith(other);
-    }
-
-    public void IntersectWith(IEnumerable<PyObject> other)
-    {
-        _set.IntersectWith(other);
-    }
-
-    public bool IsProperSubsetOf(IEnumerable<PyObject> other)
-    {
-        return _set.IsProperSubsetOf(other);
-    }
-
-    public bool IsProperSupersetOf(IEnumerable<PyObject> other)
-    {
-        return _set.IsProperSupersetOf(other);
-    }
-
-    public bool IsSubsetOf(IEnumerable<PyObject> other)
-    {
-        return _set.IsSubsetOf(other);
-    }
-
-    public bool IsSupersetOf(IEnumerable<PyObject> other)
-    {
-        return _set.IsSupersetOf(other);
-    }
-
-    public bool Overlaps(IEnumerable<PyObject> other)
-    {
-        return _set.Overlaps(other);
-    }
-
-    public bool SetEquals(IEnumerable<PyObject> other)
-    {
-        return _set.SetEquals(other);
-    }
-
-    public void SymmetricExceptWith(IEnumerable<PyObject> other)
-    {
-        _set.SymmetricExceptWith(other);
-    }
-
-    public void UnionWith(IEnumerable<PyObject> other)
-    {
-        _set.UnionWith(other);
+        return UnwrapEntry(PyAddEntry(PyCallContext.NonContextDependency, item));
     }
 
     void ICollection<PyObject>.Add(PyObject item)
     {
-        _set.Add(item);
-    }
-
-    public void Clear()
-    {
-        _set.Clear();
+        _ = Add(item);
     }
 
     public bool Contains(PyObject item)
     {
-        return _set.Contains(item);
-    }
-
-    public void CopyTo(PyObject[] array, int arrayIndex)
-    {
-        _set.CopyTo(array, arrayIndex);
+        return UnwrapEntry(PyContainsEntry(PyCallContext.NonContextDependency, item));
     }
 
     public bool Remove(PyObject item)
     {
-        return _set.Remove(item);
+        return UnwrapEntry(PyRemoveEntry(PyCallContext.NonContextDependency, item));
+    }
+
+    public void Clear()
+    {
+        _table.Clear();
+    }
+
+    public void CopyTo(PyObject[] array, int arrayIndex)
+    {
+        ArgumentNullException.ThrowIfNull(array);
+        ArgumentOutOfRangeException.ThrowIfNegative(arrayIndex);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(arrayIndex, array.Length - _table.Count);
+
+        foreach (var key in _table.Keys)
+            array[arrayIndex++] = key;
+    }
+
+    public void UnionWith(IEnumerable<PyObject> other)
+    {
+        foreach (var item in other)
+            UnwrapEntry(PyAddEntry(PyCallContext.NonContextDependency, item));
+    }
+
+    public void ExceptWith(IEnumerable<PyObject> other)
+    {
+        foreach (var item in other)
+            UnwrapEntry(PyRemoveEntry(PyCallContext.NonContextDependency, item));
+    }
+
+    public void IntersectWith(IEnumerable<PyObject> other)
+    {
+        var temp = new PySetObject();
+        foreach (var item in other)
+            UnwrapEntry(temp.PyAddEntry(PyCallContext.NonContextDependency, item));
+
+        var intersection = PySetOps.IntersectionTable(PyCallContext.NonContextDependency, _table, temp._table);
+        if (intersection.IsError)
+            throw new PyRuntimeException(intersection.Error!);
+
+        _table.ReplaceWith(intersection.Table);
+    }
+
+    public bool IsSubsetOf(IEnumerable<PyObject> other)
+    {
+        var temp = CopyOf(other);
+        return UnwrapEntry(PySetOps.IsSubset(PyCallContext.NonContextDependency, _table, temp._table));
+    }
+
+    public bool IsProperSubsetOf(IEnumerable<PyObject> other)
+    {
+        var temp = CopyOf(other);
+        return _table.Count < temp._table.Count
+            && UnwrapEntry(PySetOps.IsSubset(PyCallContext.NonContextDependency, _table, temp._table));
+    }
+
+    public bool IsSupersetOf(IEnumerable<PyObject> other)
+    {
+        var temp = CopyOf(other);
+        return UnwrapEntry(PySetOps.IsSubset(PyCallContext.NonContextDependency, temp._table, _table));
+    }
+
+    public bool IsProperSupersetOf(IEnumerable<PyObject> other)
+    {
+        var temp = CopyOf(other);
+        return _table.Count > temp._table.Count
+            && UnwrapEntry(PySetOps.IsSubset(PyCallContext.NonContextDependency, temp._table, _table));
+    }
+
+    public bool Overlaps(IEnumerable<PyObject> other)
+    {
+        var temp = CopyOf(other);
+        return !UnwrapEntry(PySetOps.IsDisjoint(PyCallContext.NonContextDependency, _table, temp._table));
+    }
+
+    public bool SetEquals(IEnumerable<PyObject> other)
+    {
+        var temp = CopyOf(other);
+        return _table.Count == temp._table.Count
+            && UnwrapEntry(PySetOps.IsSubset(PyCallContext.NonContextDependency, temp._table, _table));
+    }
+
+    public void SymmetricExceptWith(IEnumerable<PyObject> other)
+    {
+        var temp = CopyOf(other);
+        var result = PySetOps.SymmetricDifferenceUpdate(PyCallContext.NonContextDependency, _table, temp._table);
+        if (result.IsError)
+            throw new PyRuntimeException(result.Exception);
+    }
+
+    private PySetObject CopyOf(IEnumerable<PyObject> items)
+    {
+        var temp = new PySetObject();
+        foreach (var item in items)
+            UnwrapEntry(temp.PyAddEntry(PyCallContext.NonContextDependency, item));
+
+        return temp;
+    }
+
+    IEnumerator<PyObject> IEnumerable<PyObject>.GetEnumerator()
+    {
+        foreach (var key in _table.Keys)
+            yield return key;
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return ((IEnumerable<PyObject>)this).GetEnumerator();
     }
 }
 
@@ -191,13 +257,7 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
 
     protected override PyResult Contains(PyCallContext context, PySetObject self, PyObject item)
     {
-        // hash before lookup: HashSet.Contains skips hashing on an empty
-        // set, but CPython rejects an unhashable item even then
-        var hash = PySpecialMethods.Hash(context, item);
-        if (hash.IsError)
-            return PyUtils.WrapHashFailure(context, item, hash, "a set element");
-
-        return PyBoolObject.FromBoolean(self.Contains(item));
+        return self.PyContainsEntry(context, item);
     }
 
     protected override PyResult Len(PyCallContext context, PySetObject self)
@@ -295,57 +355,67 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
         return self;
     }
 
+    // CPython set_richcompare: the size gates run before any element
+    // callback, then the subset/superset checks do the element work
     protected override PyResult Lt(PyCallContext context, PySetObject self, PyObject other)
     {
-        if (other is PySetObject otherSet)
-            return PyBoolObject.FromBoolean(self.IsProperSubsetOf(otherSet));
-        if (other is PyFrozenSetObject otherFrozenSet)
-            return PyBoolObject.FromBoolean(self.IsProperSubsetOf(otherFrozenSet));
-        return PyNotImplementedObject.NotImplemented;
+        var otherTable = PySetOps.SetTableOf(other);
+        if (otherTable is null)
+            return PyNotImplementedObject.NotImplemented;
+
+        if (self.Count >= otherTable.Count)
+            return PyBoolObject.False;
+
+        return PySetOps.IsSubset(context, self._table, otherTable);
     }
 
     protected override PyResult Le(PyCallContext context, PySetObject self, PyObject other)
     {
-        if (other is PySetObject otherSet)
-            return PyBoolObject.FromBoolean(self.IsSubsetOf(otherSet));
-        if (other is PyFrozenSetObject otherFrozenSet)
-            return PyBoolObject.FromBoolean(self.IsSubsetOf(otherFrozenSet));
-        return PyNotImplementedObject.NotImplemented;
+        var otherTable = PySetOps.SetTableOf(other);
+        if (otherTable is null)
+            return PyNotImplementedObject.NotImplemented;
+
+        return PySetOps.IsSubset(context, self._table, otherTable);
     }
 
     protected override PyResult Gt(PyCallContext context, PySetObject self, PyObject other)
     {
-        if (other is PySetObject otherSet)
-            return PyBoolObject.FromBoolean(self.IsProperSupersetOf(otherSet));
-        if (other is PyFrozenSetObject otherFrozenSet)
-            return PyBoolObject.FromBoolean(self.IsProperSupersetOf(otherFrozenSet));
-        return PyNotImplementedObject.NotImplemented;
+        var otherTable = PySetOps.SetTableOf(other);
+        if (otherTable is null)
+            return PyNotImplementedObject.NotImplemented;
+
+        if (self.Count <= otherTable.Count)
+            return PyBoolObject.False;
+
+        return PySetOps.IsSuperset(context, self._table, otherTable);
     }
 
     protected override PyResult Ge(PyCallContext context, PySetObject self, PyObject other)
     {
-        if (other is PySetObject otherSet)
-            return PyBoolObject.FromBoolean(self.IsSupersetOf(otherSet));
-        if (other is PyFrozenSetObject otherFrozenSet)
-            return PyBoolObject.FromBoolean(self.IsSupersetOf(otherFrozenSet));
-        return PyNotImplementedObject.NotImplemented;
+        var otherTable = PySetOps.SetTableOf(other);
+        if (otherTable is null)
+            return PyNotImplementedObject.NotImplemented;
+
+        return PySetOps.IsSuperset(context, self._table, otherTable);
     }
 
     protected override PyResult Eq(PyCallContext context, PySetObject self, PyObject other)
     {
-        if (other is PySetObject otherSet)
-            return PyBoolObject.FromBoolean(self.SetEquals(otherSet));
-        if (other is PyFrozenSetObject otherFrozenSet)
-            return PyBoolObject.FromBoolean(self.SetEquals(otherFrozenSet));
-        return PyNotImplementedObject.NotImplemented;
+        var otherTable = PySetOps.SetTableOf(other);
+        if (otherTable is null)
+            return PyNotImplementedObject.NotImplemented;
+
+        if (self.Count != otherTable.Count)
+            return PyBoolObject.False;
+
+        return PySetOps.IsSubset(context, self._table, otherTable);
     }
 
     [PyMethod("add")]
     [PyFunctionParameters("item", "/")]
     private static PyResult Add(PyCallContext context, PySetObject self, PyArguments arguments)
     {
-        self.PyAdd(arguments[0]);
-        return PyNoneObject.None;
+        return self.PyAdd(context, arguments[0]);
     }
 
     [PyMethod("clear")]
@@ -381,13 +451,7 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
     [PyFunctionParameters("item", "/")]
     private static PyResult Discard(PyCallContext context, PySetObject self, PyArguments arguments)
     {
-        // HashSet.Remove skips hashing on an empty set; CPython set_discard
-        // still hashes the item first
-        var hash = PySpecialMethods.Hash(context, arguments[0]);
-        if (hash.IsError)
-            return PyUtils.WrapHashFailure(context, arguments[0], hash, "a set element");
-
-        return self.PyDiscard(arguments[0]);
+        return self.PyDiscard(context, arguments[0]);
     }
 
     [PyMethod("intersection")]
@@ -436,13 +500,7 @@ public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
     [PyFunctionParameters("item", "/")]
     private static PyResult Remove(PyCallContext context, PySetObject self, PyArguments arguments)
     {
-        // HashSet.Remove skips hashing on an empty set; CPython set_remove
-        // still hashes the item first
-        var hash = PySpecialMethods.Hash(context, arguments[0]);
-        if (hash.IsError)
-            return PyUtils.WrapHashFailure(context, arguments[0], hash, "a set element");
-
-        return self.PyRemove(arguments[0]);
+        return self.PyRemove(context, arguments[0]);
     }
 
     [PyMethod("symmetric_difference")]

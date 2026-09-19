@@ -3478,6 +3478,22 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestSetUserHashEqRegression()
+    {
+        // Regression: set/frozenset storage runs user __hash__/__eq__ on
+        // PySharp's own entry table under the live context — failures are
+        // catchable Python exceptions, merge copies reuse stored hashes
+        // without re-calling __hash__, probes compare with the stored
+        // element as receiver (identity shortcut first), only direct
+        // element faces wrap hash TypeErrors with the set wording while
+        // iterable conversions propagate raw, and iterators raise
+        // "Set changed size during iteration" per CPython's si_used check
+        // (same-size mutation allowed, sticky, exhausted iterators silent).
+        var module = RunModule("test_set_user_hash_eq_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestSortComparisonSemanticsRegression()
     {
         // Regression: sort comparisons are PyObject_RichCompareBool(pivot,

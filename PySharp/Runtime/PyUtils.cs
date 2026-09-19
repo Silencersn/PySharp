@@ -133,7 +133,14 @@ internal static class PyUtils
 
     public static PyResult<PySetObject> IterableToSet(PyCallContext context, PyObject iterable)
     {
-        return IterableToContainer(context, iterable, list => PySetObject.CreateSet(list));
+        // CPython set(x) is an empty set updated from the iterable: elements
+        // stream in and each hash runs under the live context
+        var set = new PySetObject();
+        var result = set.PyUpdate(context, [iterable]);
+        if (result.IsError)
+            return result.ExceptionResult;
+
+        return set;
     }
 
     public static PyResult<PyTupleObject> IterableToTuple(PyCallContext context, PyObject iterable)
@@ -415,17 +422,18 @@ internal static class PyUtils
         return slots.Set is not null || slots.Delete is not null;
     }
 
-    // CPython dictobject.c/setobject.c: only TypeErrors from a failed key
-    // hash re-raise with the container wording (str() of the original error
-    // embedded in parentheses); any other error propagates unchanged
+    // CPython dictobject.c/setobject.c (Py_IS_TYPE): only an exact
+    // TypeError from a failed key hash re-raises with the container wording
+    // (str() of the original error embedded in parentheses); subclasses and
+    // any other error propagate unchanged with their identity preserved
     public static PyResult WrapHashFailure(PyCallContext context, PyObject key, PyResult error, string role)
     {
-        if (!error.IsError || !PyTypeErrorObjectType.Shared.IsInstance(error.Exception))
+        if (!error.IsError || !ReferenceEquals(error.Exception.PyType, PyTypeErrorObjectType.Shared))
             return error;
 
-        var message = error.Exception.Args is [PyStrObject { Value: var argMessage }, ..]
-            ? argMessage
-            : RenderExceptionMessage(context, error.Exception);
+        // CPython %S is str(exc): always the full str(), so custom
+        // __str__ and multi-arg tuples render exactly as Python sees them
+        var message = RenderExceptionMessage(context, error.Exception);
         return PyResult.TypeError($"cannot use '{key.PyType.Name}' as {role} ({message})");
     }
 

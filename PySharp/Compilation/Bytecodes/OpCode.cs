@@ -98,6 +98,7 @@ internal enum OpCode : byte
     ListAppend,
     ListExtend,
     SetAdd,
+    SetUpdate,
     MapAdd,
     DictUpdate,
     DictMerge,

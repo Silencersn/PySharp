@@ -72,9 +72,11 @@ public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
 
     public bool IsSubclassOf(PyTypeObject pyType)
     {
+        // CPython recursive_issubclass compares by identity — a metaclass
+        // __eq__ never participates here, so no user code can run
         foreach (var baseType in InternalMRO)
         {
-            if (PyObjectComparer.Default.Equals(baseType, pyType))
+            if (ReferenceEquals(baseType, pyType))
                 return true;
         }
 

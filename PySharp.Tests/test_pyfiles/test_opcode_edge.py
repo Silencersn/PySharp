@@ -1,6 +1,6 @@
 """
 Edge case opcode coverage tests
-Covers: PushNull, _ListToSet, GetAwaitable, CheckEgMatch, _CheckMatch,
+Covers: PushNull, SET_UPDATE, GetAwaitable, CheckEgMatch, _CheckMatch,
         _PopExceptionAndJumpIfNull, PopJumpIfNone, MatchMapping, MatchKeys, MatchClass
 """
 
@@ -21,11 +21,11 @@ Covers: PushNull, _ListToSet, GetAwaitable, CheckEgMatch, _CheckMatch,
 #     pass
 
 # ============================================================
-# _ListToSet: set display with unpacking
+# set display with unpacking (BUILD_SET + SET_UPDATE)
 # ============================================================
 def test_list_to_set():
     base = [1, 2, 3]
-    # This triggers _ListToSet because of the starred unpacking in set
+    # This triggers the starred set display path (BUILD_SET + SET_UPDATE) because of the starred unpacking in set
     s = {*base, 4, 5}
     assert s == {1, 2, 3, 4, 5}
     assert isinstance(s, set)

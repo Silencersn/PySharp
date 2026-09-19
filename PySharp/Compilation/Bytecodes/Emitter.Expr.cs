@@ -469,12 +469,22 @@ partial class Emitter
 
     private void EmitSet(SetNode node)
     {
-        InternalEmitElts(node.Elts, ExprContextType.Load, out var unpackWhenLoad);
+        // CPython: starred displays build an empty set first, then
+        // SET_UPDATE each starred iterable (a set argument merges with its
+        // stored hashes) and SET_ADD each plain element, left to right
+        if (node.Elts.Any(static item => item is StarredNode))
+        {
+            Builder.Emit(OpCode.BuildSet, 0);
+            foreach (var elt in node.Elts)
+            {
+                LoadExpr(elt);
+                Builder.Emit(elt is StarredNode ? OpCode.SetUpdate : OpCode.SetAdd, 1);
+            }
+            return;
+        }
 
-        if (unpackWhenLoad)
-            Builder.Emit(OpCode.CallIntrinsic1, IntrinsicFunctionType._ListToSet);
-        else
-            Builder.Emit(OpCode.BuildSet, node.Elts.Length);
+        InternalEmitElts(node.Elts, ExprContextType.Load, out _);
+        Builder.Emit(OpCode.BuildSet, node.Elts.Length);
     }
 
     private void EmitDict(DictNode node)

@@ -565,7 +565,7 @@ internal static partial class BytecodeVirtualMachine
 
                     case OpCode.BuildSet:
                         LoadArgs(ref Stack, states.CacheArgs, instructionArg);
-                        Stack.Push(PySetObject.CreateSet(states.CacheArgs));
+                        Stack.Push(PySetObject.CreateSet(context, states.CacheArgs).PyUnwrap(context));
                         break;
 
                     case OpCode.BuildMap:
@@ -618,9 +618,6 @@ internal static partial class BytecodeVirtualMachine
                                 IntrinsicFunctionType.ListToTuple
                                     => PyTupleObject.CreateTuple(((PyListObject)value).AsSpan()),
 
-                                IntrinsicFunctionType._ListToSet
-                                    => PySetObject.CreateSet((PyListObject)value),
-
                                 IntrinsicFunctionType.Print
                                     => PyCore.DisplayHook(context, value),
 
@@ -638,7 +635,14 @@ internal static partial class BytecodeVirtualMachine
                     case OpCode.SetAdd:
                         {
                             value = Stack.Pop();
-                            ((PySetObject)Stack[-instructionArg]).Add(value);
+                            _ = ((PySetObject)Stack[-instructionArg]).PyAdd(context, value).PyUnwrap(context);
+                        }
+                        break;
+
+                    case OpCode.SetUpdate:
+                        {
+                            value = Stack.Pop();
+                            _ = ((PySetObject)Stack[-instructionArg]).PyUpdateOne(context, value).PyUnwrap(context);
                         }
                         break;
 

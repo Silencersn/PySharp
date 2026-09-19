@@ -244,6 +244,7 @@ public sealed class Bytecode
                 case OpCode.ListAppend:
                 case OpCode.ListExtend:
                 case OpCode.SetAdd:
+                case OpCode.SetUpdate:
                 case OpCode.DictUpdate:
                 case OpCode.DictMerge:
                 case OpCode.BinarySubscr:
