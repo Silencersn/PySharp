@@ -1047,3 +1047,59 @@ def continue_in_finally_ctx():
     return seen
 
 assert continue_in_finally_ctx() == [None], continue_in_finally_ctx()
+
+# --- round-14 faces: __exit__ raising ---
+
+# with body raises and __exit__ raises: the exit error chains the body's
+# exception (the with unwind keeps the in-flight exception on the frame
+# stack and as the handled slot while __exit__ runs)
+def with_body_and_exit_raise():
+    class CM:
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            raise RuntimeError("from-exit")
+    try:
+        with CM():
+            raise ValueError("orig")
+    except RuntimeError as exit_error:
+        return type(exit_error).__name__, ctx_name(exit_error)
+
+assert with_body_and_exit_raise() == ("RuntimeError", "ValueError")
+
+# no exception in the body: the exit error has nothing to chain
+def with_exit_raise_no_body_error():
+    class CM:
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            raise RuntimeError("from-exit")
+    try:
+        with CM():
+            pass
+    except RuntimeError as exit_error:
+        return ctx_name(exit_error)
+
+assert with_exit_raise_no_body_error() is None
+
+# nested with: the inner exit error is in flight when the outer __exit__
+# raises, so the outer error chains the inner one
+def nested_with_exit_chain():
+    class Outer:
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            raise RuntimeError("outer-exit")
+    class Inner:
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            raise RuntimeError("inner-exit")
+    try:
+        with Outer():
+            with Inner():
+                raise ValueError("orig")
+    except RuntimeError as exit_error:
+        return type(exit_error).__name__, ctx_name(exit_error)
+
+assert nested_with_exit_chain() == ("RuntimeError", "RuntimeError")
