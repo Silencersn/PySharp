@@ -1,5 +1,6 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.Comparison;
 using PySharp.Runtime.PyAttributes;
 using System.Diagnostics;
 using System.Numerics;
@@ -151,15 +152,14 @@ public sealed partial class PyRangeObjectType : PyTypeObject<PyRangeObject>
             if (element.IsError)
                 return element;
 
-            var eq = PyOperators.Eq(context, element.Value, item);
+            // CPython range_contains falls back to _PySequence_IterSearch,
+            // which compares through PyObject_RichCompareBool — the identity
+            // shortcut applies
+            var eq = PyComparer.Eq(context, element.Value, item);
             if (eq.IsError)
                 return eq;
 
-            var b = PySpecialMethods.Bool(context, eq.Value);
-            if (b.IsError)
-                return b;
-
-            if (b.Value.BoolValue)
+            if (eq.Value.BoolValue)
                 return PyBoolObject.True;
 
             element = PySpecialMethods.Next(context, iter.Value);

@@ -268,6 +268,19 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestContainerIdentityShortcutRegression()
+    {
+        // Regression: container equality and lookup carry the CPython
+        // PyObject_RichCompareBool identity shortcut — identical operands
+        // are equal (or never unequal) before any user __eq__ runs, so a
+        // NaN finds itself in its own containers and a raising __eq__ is
+        // never consulted; direct operators keep full-comparison
+        // semantics.
+        var module = RunModule("test_container_identity_shortcut_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestClosure()
     {
         var module = RunModule("test_closure.py");

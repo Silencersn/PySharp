@@ -1,6 +1,7 @@
 using PySharp.Modules.Builtins;
 using PySharp.Modules.Typing;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.Comparison;
 using System.Numerics;
 
 namespace PySharp.Runtime;
@@ -301,15 +302,13 @@ public static class PySpecialMethods
             if (element.IsError)
                 return element;
 
-            var eq = PyOperators.Eq(context, element.Value, item);
+            // CPython _PySequence_IterSearch compares through
+            // PyObject_RichCompareBool — the identity shortcut applies
+            var eq = PyComparer.Eq(context, element.Value, item);
             if (eq.IsError)
                 return eq;
 
-            var b = Bool(context, eq.Value);
-            if (b.IsError)
-                return b;
-
-            if (b.Value.BoolValue)
+            if (eq.Value.BoolValue)
                 return PyBoolObject.True;
 
             element = Next(context, iter.Value);

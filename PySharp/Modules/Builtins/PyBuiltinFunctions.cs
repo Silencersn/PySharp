@@ -797,7 +797,9 @@ public static partial class PyBuiltinFunctions
                 bound = dirFunc;
             }
 
-            var names = bound.Value.Call(context);
+            // the lookup hit guarantees a non-null bound value: either the
+            // descriptor's get result or the MRO entry itself
+            var names = bound.Value!.Call(context);
             if (names.IsError)
                 return names;
 

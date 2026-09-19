@@ -20,6 +20,13 @@ public static class PyComparer
         if (right is null)
             return PyBoolObject.False;
 
+        // CPython PyObject_RichCompareBool: identity implies equality,
+        // checked before any user __eq__ runs — the guarantee container
+        // lookups rely on (a NaN finds itself) and the reason a raising
+        // __eq__ is never reached for identical operands
+        if (ReferenceEquals(left, right))
+            return PyBoolObject.True;
+
         return ToBool(context, PyOperators.Eq(context, left, right));
     }
     public static PyResult<PyBoolObject> NotEq(PyCallContext context, PyObject? left, PyObject? right)
@@ -28,6 +35,11 @@ public static class PyComparer
             return PyBoolObject.FromBoolean(right is null);
 
         if (right is null)
+            return PyBoolObject.False;
+
+        // CPython PyObject_RichCompareBool: identical operands are never
+        // unequal, again before any user __ne__ runs
+        if (ReferenceEquals(left, right))
             return PyBoolObject.False;
 
         return ToBool(context, PyOperators.NotEq(context, left, right));

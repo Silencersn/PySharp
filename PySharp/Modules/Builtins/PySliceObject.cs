@@ -235,15 +235,14 @@ public sealed partial class PySliceObjectType : PyTypeObject<PySliceObject>
 
         foreach (var (left, right) in new[] { (self.Start, otherSlice.Start), (self.Stop, otherSlice.Stop), (self.Step, otherSlice.Step) })
         {
-            var eq = PyOperators.Eq(context, left, right);
+            // CPython packs the parts into tuples and compares with
+            // PyObject_RichCompare — the tuple scan uses RichCompareBool,
+            // so the identity shortcut applies per part
+            var eq = PyComparer.Eq(context, left, right);
             if (eq.IsError)
                 return eq;
 
-            var b = PySpecialMethods.Bool(context, eq.Value);
-            if (b.IsError)
-                return b;
-
-            if (!b.Value.BoolValue)
+            if (!eq.Value.BoolValue)
                 return PyBoolObject.False;
         }
 

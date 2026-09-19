@@ -1,5 +1,6 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.Comparison;
 using PySharp.Runtime.PyAttributes;
 using System.Diagnostics;
 
@@ -123,15 +124,13 @@ public sealed partial class PyDictItemsObjectType : PyTypeObject<PyDictItemsObje
         if (found.IsError)
             return found;
 
-        var equal = PyOperators.Eq(context, found.Value, pair[1]);
+        // the stored value comparison inherits dict/set lookup semantics:
+        // PyObject_RichCompareBool with its identity shortcut
+        var equal = PyComparer.Eq(context, found.Value, pair[1]);
         if (equal.IsError)
             return equal;
 
-        var isTrue = PySpecialMethods.Bool(context, equal.Value);
-        if (isTrue.IsError)
-            return isTrue;
-
-        return PyBoolObject.FromBoolean(isTrue.Value.BoolValue);
+        return PyBoolObject.FromBoolean(equal.Value.BoolValue);
     }
 
     // CPython dictview_richcompare: keys/items views compare as sets
