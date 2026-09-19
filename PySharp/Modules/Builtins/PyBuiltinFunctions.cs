@@ -765,7 +765,9 @@ public static partial class PyBuiltinFunctions
     private static PyResult DirImpl_1(PyCallContext context, PyArguments arguments)
     {
         var result = PyListObject.CreateProxy(context.CurrentInternalFrame.Variables.GetDir());
-        result.PySort(context);
+        var sortResult = result.PySort(context);
+        if (sortResult.IsError)
+            return sortResult;
         return result;
     }
     [PyFunctionParameters("object", "/")]
@@ -794,7 +796,9 @@ public static partial class PyBuiltinFunctions
                 if (listed.IsError)
                     return listed;
 
-                listed.Value.PySort(context);
+                var sortStatus = listed.Value.PySort(context);
+                if (sortStatus.IsError)
+                    return sortStatus;
                 return listed.Value;
             }
         }
@@ -810,7 +814,9 @@ public static partial class PyBuiltinFunctions
         var result = PyListObject.CreateList(attrs.Distinct().Select(PyStrObject.FromString));
         // sorted by the same ordinal comparison sorted() uses, not the
         // culture-sensitive Enumerable.Order()
-        result.PySort(context);
+        var sortResult = result.PySort(context);
+        if (sortResult.IsError)
+            return sortResult;
         return result;
     }
 

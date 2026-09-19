@@ -3603,6 +3603,18 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestSortErrorCatchabilityRegression()
+    {
+        // Regression: sort/sorted comparison failures propagate through the
+        // PyResult error plumbing as ordinary catchable Python exceptions on
+        // both the binarysort and merge paths — never escaping the
+        // interpreter's handler table the way a .NET-native sort callback
+        // would.
+        var module = RunModule("test_sort_error_catchability_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBytesDecodeErrorsRegression()
     {
         // Regression: bytes.decode defaults to errors='strict' and raises

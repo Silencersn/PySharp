@@ -1,5 +1,6 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.Comparison;
 
 namespace PySharp.Modules.Builtins;
 
@@ -89,7 +90,7 @@ partial class PyListObject
             return result;
         if (keySelector is PyNoneObject)
         {
-            PySort(context, reverse: result.Value.BoolValue);
+            return PySort(context, reverse: result.Value.BoolValue);
         }
         else
         {
@@ -101,12 +102,11 @@ partial class PyListObject
                     return key;
                 itemToKey[item] = key.Value;
             }
-            PySort(context, item => itemToKey[item], result.Value.BoolValue);
+            return PySort(context, item => itemToKey[item], result.Value.BoolValue);
         }
-        return PyNoneObject.None;
     }
 
-    internal void PySort(PyCallContext context, Func<PyObject, PyObject>? key = null, bool reverse = false)
+    internal PyResult PySort(PyCallContext context, Func<PyObject, PyObject>? key = null, bool reverse = false)
     {
         // CPython 3.14 listsort (Objects/listobject.c): key results are
         // computed once over the original order, a reverse sort reverses
@@ -132,15 +132,14 @@ partial class PyListObject
                 Array.Reverse(keys);
         }
 
-        if (items.Length < 64)
-            SmallSort(context, keys ?? items, keys is null ? null : items);
-        else
-        {
-            // beyond one count_run + binarysort pass listsort merges runs;
-            // a stable merge over the same ISLT primitive agrees for
-            // consistent comparators and never rejects inconsistent ones
-            MergeSort(context, keys ?? items, keys is null ? null : items, 0, items.Length);
-        }
+        // beyond one count_run + binarysort pass listsort merges runs;
+        // a stable merge over the same ISLT primitive agrees for
+        // consistent comparators and never rejects inconsistent ones
+        var status = items.Length < 64
+            ? SmallSort(context, keys ?? items, keys is null ? null : items)
+            : MergeSort(context, keys ?? items, keys is null ? null : items, 0, items.Length);
+        if (status.IsError)
+            return status;
 
         if (reverse)
         {
@@ -151,31 +150,43 @@ partial class PyListObject
 
         _list.Clear();
         _list.AddRange(items);
+        return PyNoneObject.None;
     }
 
     // one count_run + binarysort pass, the exact n < 64 listsort path
-    private static void SmallSort(PyCallContext context, PyObject[] a, PyObject[]? v)
+    private static PyResult SmallSort(PyCallContext context, PyObject[] a, PyObject[]? v)
     {
         // CPython listsort returns immediately for fewer than 2 elements
         if (a.Length < 2)
-            return;
+            return PyNoneObject.None;
 
-        int run = CountRun(context, a, v, a.Length);
+        var runResult = CountRun(context, a, v, a.Length, out int run);
+        if (runResult.IsError)
+            return runResult;
         if (run < a.Length)
-            BinarySort(context, a, v, a.Length, run);
+        {
+            var sorted = BinarySort(context, a, v, a.Length, run);
+            if (sorted.IsError)
+                return sorted;
+        }
+        return PyNoneObject.None;
     }
 
     // stable top-down merge over the same ISLT primitive as listsort's
     // merge pass: the right-run element is the left operand, and equal
     // elements keep the left run first
-    private static void MergeSort(PyCallContext context, PyObject[] a, PyObject[]? v, int lo, int hi)
+    private static PyResult MergeSort(PyCallContext context, PyObject[] a, PyObject[]? v, int lo, int hi)
     {
         if (hi - lo < 2)
-            return;
+            return PyNoneObject.None;
 
         int mid = (lo + hi) >> 1;
-        MergeSort(context, a, v, lo, mid);
-        MergeSort(context, a, v, mid, hi);
+        var lower = MergeSort(context, a, v, lo, mid);
+        if (lower.IsError)
+            return lower;
+        var upper = MergeSort(context, a, v, mid, hi);
+        if (upper.IsError)
+            return upper;
 
         int leftLen = mid - lo;
         var left = new PyObject[leftLen];
@@ -187,7 +198,10 @@ partial class PyListObject
         int i = 0, j = mid, k = lo;
         while (i < leftLen && j < hi)
         {
-            if (IsLt(context, a[j], left[i]))
+            var lt = PyComparer.Lt(context, a[j], left[i]);
+            if (lt.IsError)
+                return lt;
+            if (lt.Value.BoolValue)
             {
                 a[k] = a[j];
                 if (v is not null)
@@ -211,38 +225,40 @@ partial class PyListObject
             i++;
             k++;
         }
-    }
-
-    // PyObject_RichCompareBool(x, y, Py_LT): the Python truthiness of x < y
-    private static bool IsLt(PyCallContext context, PyObject x, PyObject y)
-    {
-        var lt = PyOperators.Lt(context, x, y);
-        if (lt.IsError)
-            throw new PyRuntimeException(context, lt.Exception);
-        var truth = PySpecialMethods.Bool(context, lt.Value);
-        if (truth.IsError)
-            throw new PyRuntimeException(context, truth.Exception);
-        return truth.Value.BoolValue;
+        return PyNoneObject.None;
     }
 
     // CPython count_run: length of the monotone run at the slice start,
     // permuted in place to ascending; equal subruns inside a descending run
     // are reversed so the final reversal restores their original order
-    private static int CountRun(PyCallContext context, PyObject[] a, PyObject[]? v, int nremaining)
+    private static PyResult CountRun(PyCallContext context, PyObject[] a, PyObject[]? v, int nremaining, out int run)
     {
+        run = 0;
         int n;
         for (n = 1; n < nremaining; n++)
         {
-            if (IsLt(context, a[n], a[n - 1]))
+            var lt = PyComparer.Lt(context, a[n], a[n - 1]);
+            if (lt.IsError)
+                return lt;
+            if (lt.Value.BoolValue)
                 break;
         }
         if (n == nremaining)
-            return n;
+        {
+            run = n;
+            return PyNoneObject.None;
+        }
 
         if (n > 1)
         {
-            if (IsLt(context, a[0], a[n - 1]))
-                return n;
+            var lt = PyComparer.Lt(context, a[0], a[n - 1]);
+            if (lt.IsError)
+                return lt;
+            if (lt.Value.BoolValue)
+            {
+                run = n;
+                return PyNoneObject.None;
+            }
             ReverseSlice(a, v, 0, n);
         }
         ++n;
@@ -250,7 +266,10 @@ partial class PyListObject
         int neq = 0;
         for (; n < nremaining; n++)
         {
-            if (IsLt(context, a[n], a[n - 1]))
+            var lt = PyComparer.Lt(context, a[n], a[n - 1]);
+            if (lt.IsError)
+                return lt;
+            if (lt.Value.BoolValue)
             {
                 if (neq is not 0)
                 {
@@ -259,12 +278,13 @@ partial class PyListObject
                     neq = 0;
                 }
             }
-            else if (IsLt(context, a[n - 1], a[n]))
-            {
-                break;
-            }
             else
             {
+                var gt = PyComparer.Lt(context, a[n - 1], a[n]);
+                if (gt.IsError)
+                    return gt;
+                if (gt.Value.BoolValue)
+                    break;
                 ++neq;
             }
         }
@@ -277,10 +297,14 @@ partial class PyListObject
 
         for (; n < nremaining; n++)
         {
-            if (IsLt(context, a[n], a[n - 1]))
+            var lt = PyComparer.Lt(context, a[n], a[n - 1]);
+            if (lt.IsError)
+                return lt;
+            if (lt.Value.BoolValue)
                 break;
         }
-        return n;
+        run = n;
+        return PyNoneObject.None;
     }
 
     private static void ReverseSlice(PyObject[] a, PyObject[]? v, int start, int length)
@@ -292,7 +316,7 @@ partial class PyListObject
 
     // CPython binarysort: stable binary insertion sort; a[:ok] is already
     // sorted, each pivot's slot is found with the pivot as the left operand
-    private static void BinarySort(PyCallContext context, PyObject[] a, PyObject[]? v, int n, int ok)
+    private static PyResult BinarySort(PyCallContext context, PyObject[] a, PyObject[]? v, int n, int ok)
     {
         if (ok is 0)
             ++ok;
@@ -301,14 +325,17 @@ partial class PyListObject
             int l = 0, r = ok;
             var pivot = a[ok];
             var vPivot = v is null ? null : v[ok];
-            do
+            while (l < r)
             {
                 int m = (l + r) >> 1;
-                if (IsLt(context, pivot, a[m]))
+                var lt = PyComparer.Lt(context, pivot, a[m]);
+                if (lt.IsError)
+                    return lt;
+                if (lt.Value.BoolValue)
                     r = m;
                 else
                     l = m + 1;
-            } while (l < r);
+            }
             for (int m = ok; m > l; --m)
                 a[m] = a[m - 1];
             a[l] = pivot;
@@ -320,6 +347,7 @@ partial class PyListObject
                 v[l] = vItem;
             }
         }
+        return PyNoneObject.None;
     }
 
     internal void PyReverse()
