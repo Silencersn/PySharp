@@ -316,6 +316,36 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestExcArgsSetterRegression()
+    {
+        // Regression: BaseException.args is a writable member (CPython
+        // BaseException_set_args). Assignment accepts any iterable via
+        // PySequence_Tuple semantics — a tuple is kept by identity,
+        // anything else drains into a fresh tuple, a non-iterable fails
+        // with the plain iteration error — and deletion is rejected with
+        // "args may not be deleted". str()/repr() read args live, so the
+        // rewrite-after-catch pattern is visible immediately.
+        var module = RunModule("test_exc_args_setter_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestExcSubclassStrRegression()
+    {
+        // Regression: the exception subclasses with dedicated __str__
+        // implementations from Objects/exceptions.c. OSError renders
+        // [Errno %S] %S with the : %R / -> %R filename suffixes and the
+        // MS_WINDOWS [WinError %S] branches, swaps the allocated type
+        // for a mapped errno and truncates args to (errno, strerror)
+        // once a filename is stored; UnicodeEncodeError_str and
+        // UnicodeTranslateError_str escape a single bad code point by
+        // magnitude; SyntaxError_str renders "msg (basename, line N)"
+        // over the info tuple with the member table defaulting to None.
+        var module = RunModule("test_exc_subclass_str_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestClosure()
     {
         var module = RunModule("test_closure.py");
