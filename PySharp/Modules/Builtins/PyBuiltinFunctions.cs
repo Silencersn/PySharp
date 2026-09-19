@@ -781,26 +781,34 @@ public static partial class PyBuiltinFunctions
         // equivalent)
         if (PyObject.TryLookupAttrInMro(obj.PyType, PySpecialNames.Dir, out var dirFunc))
         {
+            // CPython _PyObject_LookupSpecial returns a non-descriptor MRO
+            // entry as-is; the unbound call then raises TypeError for
+            // non-callables instead of silently taking the default path
+            PyResult bound;
             var getFunc = dirFunc.PyType.Slots.Get;
             if (getFunc is not null)
             {
-                var bound = getFunc(context, dirFunc, obj, obj.PyType);
+                bound = getFunc(context, dirFunc, obj, obj.PyType);
                 if (bound.IsError)
                     return bound;
-
-                var names = bound.Value.Call(context);
-                if (names.IsError)
-                    return names;
-
-                var listed = PyUtils.IterableToList(context, names.Value);
-                if (listed.IsError)
-                    return listed;
-
-                var sortStatus = listed.Value.PySort(context);
-                if (sortStatus.IsError)
-                    return sortStatus;
-                return listed.Value;
             }
+            else
+            {
+                bound = dirFunc;
+            }
+
+            var names = bound.Value.Call(context);
+            if (names.IsError)
+                return names;
+
+            var listed = PyUtils.IterableToList(context, names.Value);
+            if (listed.IsError)
+                return listed;
+
+            var sortStatus = listed.Value.PySort(context);
+            if (sortStatus.IsError)
+                return sortStatus;
+            return listed.Value;
         }
 
         List<string> attrs = [];

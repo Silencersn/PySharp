@@ -246,6 +246,18 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestDirHookRegression()
+    {
+        // Regression: dir(instance) resolves a custom __dir__ hook through
+        // the type's MRO, sorts the result without dedup, and accepts any
+        // iterable. A non-descriptor __dir__ entry in the class dict is
+        // called as-is — non-callables raise the CPython TypeError instead
+        // of silently falling back to the default attribute enumeration.
+        var module = RunModule("test_dir_hook_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestContainsValueEqualityRegression()
     {
         // Regression: list/tuple `in` must use Python value equality
