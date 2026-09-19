@@ -10,8 +10,6 @@ namespace PySharp.Modules.Typing;
 [PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyGenericObjectType))]
 public sealed partial class PyTypingModuleObject : PyModuleObject
 {
-    public override string? Origin => "built-in";
-
     public PyTypingModuleObject() : base("typing")
     {
     }

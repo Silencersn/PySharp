@@ -20,7 +20,7 @@ internal static class PyStandardLibrary
 {
     public static PyModuleObject? TryCreateModule(PyCallContext context, string name)
     {
-        return name switch
+        PyModuleObject? module = name switch
         {
             "builtins" => new PyBuiltinsModuleObject(),
             "site" => new PySiteModuleObject(),
@@ -38,5 +38,13 @@ internal static class PyStandardLibrary
 
             _ => null
         };
+
+        // C#-implemented stdlib modules are compiled into the interpreter
+        // itself — the analog of CPython's statically linked built-ins.
+        // Embedded-source modules already carry their "frozen" origin.
+        if (module is not null && module.Origin is null)
+            module.Origin = "built-in";
+
+        return module;
     }
 }

@@ -11,7 +11,14 @@ namespace PySharp.Modules.Builtins;
 public class PyModuleObject : PyObjectManagedDict, IPyObjectName
 {
     public string Name { get; }
-    public virtual string? Origin => null;
+
+    // CPython's module repr derives its source annotation from the module
+    // spec (origin "built-in"/"frozen" parenthesized, a location origin as
+    // "from 'path'"). Without a spec system the module records its kind at
+    // creation: "built-in" for C#-implemented stdlib modules, "frozen" for
+    // embedded-source modules, "namespace" for packages without __init__.py.
+    public string? Origin { get; internal set; }
+
     public override PyTypeObject DefaultPyType => PyModuleObjectType.Shared;
     internal PyDictObject PyAttributesDict => (PyDictObject)_pyAttributes!;
 
@@ -68,8 +75,29 @@ public sealed partial class PyModuleObjectType : PyTypeObject<PyModuleObject>
 
     protected override PyResult Repr(PyCallContext context, PyModuleObject self)
     {
-        if (self.Origin is not null)
-            return PyStrObject.FromString($"<module '{self.Name}' ({self.Origin})>");
+        // CPython _module_repr precedence: the spec's origin annotation wins
+        // over any __file__, a namespace package lists its __path__, and a
+        // file location renders as "from 'path'"; everything else is bare.
+        switch (self.Origin)
+        {
+            case "built-in" or "frozen":
+                return PyStrObject.FromString($"<module '{self.Name}' ({self.Origin})>");
+
+            case "namespace":
+                if (self.PyAttributes.TryGetValue(PySpecialNames.Path, out var pathValue)
+                    && PyUtils.IterableToList(context, pathValue) is { IsError: false } paths)
+                {
+                    var pathRepr = PySpecialMethods.Repr(context, paths.Value);
+                    if (pathRepr.IsSuccessful)
+                        return PyStrObject.FromString($"<module '{self.Name}' (namespace) from {pathRepr.Value.Value}>");
+                }
+
+                return PyStrObject.FromString($"<module '{self.Name}' (namespace)>");
+        }
+
+        if (self.PyAttributes.TryGetValue(PySpecialNames.File, out var file) && file is PyStrObject fileStr)
+            return PyStrObject.FromString($"<module '{self.Name}' from '{fileStr.Value}'>");
+
         return PyStrObject.FromString($"<module '{self.Name}'>");
     }
 
@@ -143,10 +171,9 @@ public sealed partial class PyModuleObjectType : PyTypeObject<PyModuleObject>
 
 public abstract class PyFrozenModuleObject : PyModuleObject
 {
-    public sealed override string? Origin => "frozen";
-
     protected PyFrozenModuleObject(string name) : base(name)
     {
+        Origin = "frozen";
     }
 
     public abstract string Code { get; }

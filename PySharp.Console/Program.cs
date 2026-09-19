@@ -143,9 +143,10 @@ internal static class Program
         {
             var code = PySourceDecoder.Decode(context, sourceBytes, fullPath);
             PyInterpreter.RunCodeWithContext(context, code,
-                Path.GetFileNameWithoutExtension(path),
+                PySpecialNames.Main,
                 fullPath,
-                isMain: true);
+                isMain: true,
+                sourceFile: fullPath);
         });
         return env.ExitCode;
     }
@@ -178,7 +179,7 @@ internal static class Program
         using var context = PyCallContext.CreateInterpreterRootContext(env);
         PyInterpreter.PyTryCatch(context, () =>
         {
-            PyInterpreter.RunCodeWithContext(context, code, "<module>", "-c", isMain: true);
+            PyInterpreter.RunCodeWithContext(context, code, PySpecialNames.Main, "-c", isMain: true);
         });
         return env.ExitCode;
     }
@@ -202,7 +203,7 @@ internal static class Program
         using var context = PyCallContext.CreateInterpreterRootContext(env);
         PyInterpreter.PyTryCatch(context, () =>
         {
-            PyInterpreter.RunCodeWithContext(context, code, "<module>", "<stdin>", isMain: true);
+            PyInterpreter.RunCodeWithContext(context, code, PySpecialNames.Main, "<stdin>", isMain: true, sourceFile: "<stdin>");
         });
         return env.ExitCode;
     }

@@ -8,8 +8,6 @@ namespace PySharp.Modules.Sys;
 [PyModuleInclude(PyModuleIncludeScheme.StaticMembers, typeof(PySysFunctions))]
 public partial class PySysModuleObject : PyModuleObject
 {
-    public override string? Origin => "built-in";
-
     public PySysModuleObject() : base("sys")
     {
     }

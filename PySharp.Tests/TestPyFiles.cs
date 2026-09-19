@@ -586,6 +586,87 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestModuleReprOriginRegression()
+    {
+        // Regression: module repr annotates its source the way CPython's
+        // importlib._bootstrap._module_repr does — spec-less origins
+        // "built-in"/"frozen" render parenthesized, a location renders as
+        // "from 'path'" with __file__ recorded before the module body runs,
+        // and namespace packages list their __path__ while exposing
+        // __file__ as None.
+        var root = Path.Combine(Path.GetTempPath(), $"modrepr_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        Directory.CreateDirectory(Path.Combine(root, "pkg_r"));
+        Directory.CreateDirectory(Path.Combine(root, "ns_r"));
+        File.WriteAllText(Path.Combine(root, "mod_r.py"), "X = 1");
+        File.WriteAllText(Path.Combine(root, "pkg_r", "__init__.py"), "Y = 2");
+        var script = Path.Combine(root, "repr_main.py");
+        File.WriteAllText(script, TestModuleReprOriginSource);
+
+        try
+        {
+            PyInterpreter.RunFile(script);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    private const string TestModuleReprOriginSource = """
+        # Built-in: C#-implemented stdlib modules are the analog of CPython's
+        # statically linked extensions.
+        import builtins
+        import math
+        import operator
+        import queue
+        import random
+        import sys
+        import threading
+        import time
+        import typing
+        import warnings
+
+        for name, module in [
+            ("builtins", builtins),
+            ("math", math),
+            ("operator", operator),
+            ("queue", queue),
+            ("random", random),
+            ("sys", sys),
+            ("threading", threading),
+            ("time", time),
+            ("typing", typing),
+            ("warnings", warnings),
+        ]:
+            assert repr(module) == f"<module '{name}' (built-in)>", repr(module)
+
+        # Frozen: embedded-source modules.
+        import dataclasses
+        assert repr(dataclasses) == "<module 'dataclasses' (frozen)>", repr(dataclasses)
+
+        # File module: __file__ is recorded before the body runs and the
+        # repr names the same location.
+        import mod_r
+        assert mod_r.__file__.endswith("mod_r.py"), mod_r.__file__
+        assert repr(mod_r) == f"<module 'mod_r' from '{mod_r.__file__}'>", repr(mod_r)
+
+        # Regular package: the location is the __init__.py.
+        import pkg_r
+        assert pkg_r.__file__.endswith("__init__.py"), pkg_r.__file__
+        assert repr(pkg_r) == f"<module 'pkg_r' from '{pkg_r.__file__}'>", repr(pkg_r)
+
+        # Namespace package: parenthesized form listing __path__, no location.
+        import ns_r
+        assert ns_r.__file__ is None, ns_r.__file__
+        expected_ns = "<module 'ns_r' (namespace) from [" + repr(ns_r.__path__[0]) + "]>"
+        assert repr(ns_r) == expected_ns, repr(ns_r)
+
+        # Script main: __file__ is available to the body.
+        assert __file__.endswith("repr_main.py"), __file__
+        """;
+
+    [TestMethod]
     public void TestIterationExtended()
     {
         var module = RunModule("test_iteration_extended.py");

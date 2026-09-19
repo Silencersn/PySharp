@@ -6,8 +6,6 @@ namespace PySharp.Modules.Site;
 
 public class PySiteModuleObject : PyModuleObject
 {
-    public override string? Origin => "built-in";
-
     public PySiteModuleObject() : base("site")
     {
         //PyStandardLibrary.Builtins.AddObjToAttrs(PySiteFunctions.Exit);

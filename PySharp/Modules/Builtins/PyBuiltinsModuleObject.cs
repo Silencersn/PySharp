@@ -109,8 +109,6 @@ namespace PySharp.Modules.Builtins;
 [PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyUnicodeWarningObjectType))]
 public partial class PyBuiltinsModuleObject : PyModuleObject
 {
-    public override string? Origin => "built-in";
-
     public PyBuiltinsModuleObject() : base("builtins")
     {
     }

@@ -28,6 +28,7 @@ public static partial class PySpecialNames
 
     public const string Path = "__path__";
     public const string Package = "__package__";
+    public const string File = "__file__";
 
     public const string Dir = "__dir__";
     public const string FirstLineNo = "__firstlineno__";

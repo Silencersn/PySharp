@@ -9,8 +9,6 @@ namespace PySharp.Modules.Warnings;
 [PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(PyDeprecatedObjectType))]
 public partial class PyWarningsModuleObject : PyModuleObject
 {
-    public override string? Origin => "built-in";
-
     public PyWarningsModuleObject() : base("warnings")
     {
         AppendAttribute(PySpecialNames.All, PyListObject.CreateList(

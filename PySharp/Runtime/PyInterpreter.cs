@@ -197,7 +197,6 @@ public sealed class PyInterpreter : IDisposable
         ArgumentNullException.ThrowIfNull(filename);
 
         var sourceBytes = File.ReadAllBytes(filename);
-        var moduleName = Path.GetFileNameWithoutExtension(filename);
         var host = PyEnvironmentHost.CreateConsole(usingPhysicalFileSystem: true);
 
         var fullPath = Path.GetFullPath(filename);
@@ -212,7 +211,7 @@ public sealed class PyInterpreter : IDisposable
         using var environment = builder.Build();
         using var context = PyCallContext.CreateInterpreterRootContext(environment);
         var code = PySourceDecoder.Decode(context, sourceBytes, fullPath);
-        return RunCodeWithContext(context, code, moduleName, fullPath, isMain: true);
+        return RunCodeWithContext(context, code, PySpecialNames.Main, fullPath, isMain: true, sourceFile: fullPath);
     }
 
     public static PyModuleObject? RunCode(string code, string? moduleName = null, string? sourceName = null, IEnumerable<string>? args = null)
@@ -243,9 +242,14 @@ public sealed class PyInterpreter : IDisposable
         return RunCodeWithContext(context, code, moduleName, sourceName, isMain: true);
     }
 
-    internal static PyModuleObject RunCodeWithContext(PyCallContext context, string code, string moduleName, string sourceName, bool isMain)
+    internal static PyModuleObject RunCodeWithContext(PyCallContext context, string code, string moduleName, string sourceName, bool isMain, string? sourceFile = null)
     {
         var module = new PyModuleObject(moduleName);
+        if (sourceFile is not null)
+            // CPython records the script location before running it, so the
+            // body (and module repr) can read __file__; a -c command has none.
+            module.PyAttributes[PySpecialNames.File] = PyStrObject.FromString(sourceFile);
+
         RunCodeWithContext(context, code, module, sourceName, isMain);
         return module;
     }

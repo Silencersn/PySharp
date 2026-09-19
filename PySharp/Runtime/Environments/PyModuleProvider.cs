@@ -67,15 +67,25 @@ internal sealed class PathProvider : PyModuleProvider
 
         foreach (var p in path)
         {
-            var dir = pathHelper.Combine(p, name);
+            var dir = fileSystem.GetFullPath(pathHelper.Combine(p, name));
             if (fileSystem.ExistsDirectory(dir))
             {
                 var package = PyModuleObject.CreatePackage(fullName, [dir]);
                 var initFilename = pathHelper.Combine(dir, "__init__.py");
                 if (fileSystem.ExistsFile(initFilename))
                 {
+                    // Regular package: the location is the __init__.py and
+                    // must exist before the package body runs.
+                    package.PyAttributes[PySpecialNames.File] = PyStrObject.FromString(initFilename);
                     var initCode = PySourceDecoder.Decode(context, fileSystem.ReadAllBytes(initFilename), initFilename);
                     PyInterpreter.RunCodeWithContext(context, initCode, package, initFilename, isMain: false);
+                }
+                else
+                {
+                    // A directory without __init__.py imports as a namespace
+                    // package: no location, __file__ exposed as None.
+                    package.Origin = "namespace";
+                    package.PyAttributes[PySpecialNames.File] = PyNoneObject.None;
                 }
                 module = package;
                 return true;
@@ -85,9 +95,11 @@ internal sealed class PathProvider : PyModuleProvider
             if (!fileSystem.ExistsFile(filename))
                 continue;
 
-            var fullPath = fileSystem.GetFullPath(filename);
-            var code = PySourceDecoder.Decode(context, fileSystem.ReadAllBytes(filename), fullPath);
-            module = PyInterpreter.RunCodeWithContext(context, code, fullName, fullPath, isMain: false);
+            var code = PySourceDecoder.Decode(context, fileSystem.ReadAllBytes(filename), filename);
+            module = new PyModuleObject(fullName);
+            // __file__ must exist before the module body runs.
+            module.PyAttributes[PySpecialNames.File] = PyStrObject.FromString(filename);
+            PyInterpreter.RunCodeWithContext(context, code, module, filename, isMain: false);
             module.OnImport(context, context.PyEnvironment);
             return true;
         }
