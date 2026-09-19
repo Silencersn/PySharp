@@ -477,17 +477,11 @@ public static class PyOperators
             // error or non-NotImplemented value
             return neResult;
 
-        var eq = Eq(context, left, right);
-        if (eq.IsError)
-            return eq;
-
-        Debug.Assert(!eq.IsNotImplemented);
-
-        var result = PySpecialMethods.Bool(context, eq.Value);
-        if (result.IsError)
-            return result;
-
-        return PyBoolObject.FromBoolean(!result.Value.BoolValue);
+        // CPython do_richcompare: once both sides' __ne__ return
+        // NotImplemented, Py_NE falls back to the identity check — __eq__
+        // is not consulted (its inversion lives in object.__ne__, which
+        // the slot dispatch reaches whenever no __ne__ is defined)
+        return IsNot(left, right);
     }
 
     public static PyBoolObject Is(PyObject left, PyObject right)

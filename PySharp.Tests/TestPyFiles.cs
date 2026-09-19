@@ -281,6 +281,23 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestMiSpecialMethodMroRegression()
+    {
+        // Regression: special methods that object gives defaults for
+        // (__ne__, __gt__, __ge__, __hash__, __repr__, ...) resolve
+        // through the first MRO dict hit (CPython fixup_slot_dispatchers).
+        // Inherited copies of the object defaults baked into earlier
+        // bases' slots used to mask a non-first parent's real method, so
+        // != fell back to __eq__ inversion, > raised TypeError, >=
+        // dispatched the wrong parent's __le__, and __hash__ fell back to
+        // the id hash. Also covers the do_richcompare Py_NE fallback: a
+        // __ne__ returning NotImplemented on both sides ends in the
+        // identity check, never in an __eq__ inversion.
+        var module = RunModule("test_mi_special_method_mro_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestClosure()
     {
         var module = RunModule("test_closure.py");

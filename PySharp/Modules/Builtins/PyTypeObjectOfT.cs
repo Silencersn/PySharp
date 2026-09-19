@@ -217,6 +217,12 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
             type.Slots.Hash = PyTypeObject.HashNotImplemented;
         }
 
+        // CPython type_new fixup_slot_dispatchers: the object-defaultable
+        // special-method slots re-resolve through the MRO dicts so an
+        // inherited default copy from an earlier base cannot mask a later
+        // base's real method
+        PyTypeObject.FixupSlotDispatchers(type);
+
 
         // NOTE: AI-Generated
         // Auto-inject __class_getitem__ if the class has __type_params__ (e.g. class Foo[T]:)

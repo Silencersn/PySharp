@@ -191,6 +191,58 @@ partial class PyTypeObject
         }
     }
 
+    // CPython fixup_slot_dispatchers: each special-method slot resolves
+    // through the first MRO entry defining the dunder in its own dict.
+    // The eager FillNullWith pass bakes inherited copies of object's
+    // default implementations into base slots, and such a copy then masks
+    // a later base's real method (a non-first parent's __ne__/__gt__/
+    // __ge__/__hash__ was unreachable), so re-resolve the defaultable
+    // family from the MRO dicts. A non-runtime-created base ends the walk:
+    // its slots are authoritative for everything behind it, and its dict
+    // misses (dunders it models purely through C# slots) must not let a
+    // later base override it.
+    private static readonly string[] DefaultableSlotNames =
+    [
+        PySpecialNames.Repr,
+        PySpecialNames.Str,
+        PySpecialNames.Hash,
+        PySpecialNames.Eq,
+        PySpecialNames.Ne,
+        PySpecialNames.Lt,
+        PySpecialNames.Le,
+        PySpecialNames.Gt,
+        PySpecialNames.Ge,
+    ];
+
+    internal static void FixupSlotDispatchers(PyTypeObject type)
+    {
+        foreach (var name in DefaultableSlotNames)
+        {
+            for (int i = 0; i < type.InternalMRO.Length; i++)
+            {
+                var entry = type.InternalMRO[i];
+                if (!entry.IsRuntimeCreated)
+                    break;
+
+                if (!entry.PyAttributes.TryGetValue(name, out var value))
+                    continue;
+
+                // index 0 is the type itself: its own dict entry is already
+                // wired by the namespace scan, so an own-dict hit only ends
+                // the walk — rewiring it here would lose the main loop's
+                // exact delegate
+                if (i > 0)
+                {
+                    if (name is PySpecialNames.Hash)
+                        SetHashSlot(type.Slots, value);
+                    else
+                        type.Slots.TrySetSlot(name, value);
+                }
+                break;
+            }
+        }
+    }
+
     internal static PyResult DefaultDelAttr(PyCallContext context, PyObject self, PyObject item)
     {
         if (item is not PyStrObject str)
