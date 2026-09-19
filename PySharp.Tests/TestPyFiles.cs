@@ -1697,6 +1697,19 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestWithExceptionFileReopenRegression()
+    {
+        // Regression: a with-block's exception exit releases the file handle
+        // synchronously — __exit__ runs during unwinding, the closed flag is
+        // set, and the same path reopens immediately in write mode too (a
+        // lingering handle would collide with OS sharing rules and escape as
+        // a native IOException), including when the exception unwinds out of
+        // a function frame.
+        var module = RunModule("test_with_exception_file_reopen_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestEvalExecCallerLocalsRegression()
     {
         // Regression: eval/exec with default globals/locals use the calling
