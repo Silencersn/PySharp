@@ -252,29 +252,56 @@ partial class Emitter
                 Builder.Emit(arg is StarredNode ? OpCode.ListExtend : OpCode.ListAppend, 1);
             }
 
-            var nonStarredCount = 0;
+            // CPython compiles kwargs of a **-call into one accumulating map
+            // (BUILD_MAP 0), merging consecutive explicit-keyword runs and each
+            // **mapping as separate DICT_MERGE groups in source order; without
+            // a **mapping it emits a single BUILD_MAP of all explicit keywords.
+            var hasMapping = node.Keywords.Any(static kwarg => kwarg.Arg is null);
 
-            foreach (var kwarg in node.Keywords)
+            if (hasMapping)
             {
-                if (kwarg.Arg is null)
-                    continue;
+                Builder.Emit(OpCode.BuildMap, 0);
+                var pendingCount = 0;
 
-                nonStarredCount++;
-                Builder.Emit(OpCode.LoadConst, PyStrObject.FromString(kwarg.Arg));
-                LoadExpr(kwarg.Value);
+                foreach (var kwarg in node.Keywords)
+                {
+                    if (kwarg.Arg is null)
+                    {
+                        CloseKeywordGroup(ref pendingCount);
+                        LoadExpr(kwarg.Value);
+                        Builder.Emit(OpCode.DictMerge, 1);
+                        continue;
+                    }
+
+                    Builder.Emit(OpCode.LoadConst, PyStrObject.FromString(kwarg.Arg));
+                    LoadExpr(kwarg.Value);
+                    pendingCount++;
+                }
+
+                CloseKeywordGroup(ref pendingCount);
             }
-            Builder.Emit(OpCode.BuildMap, nonStarredCount);
-
-            foreach (var kwarg in node.Keywords)
+            else
             {
-                if (kwarg.Arg is not null)
-                    continue;
+                foreach (var kwarg in node.Keywords)
+                {
+                    Builder.Emit(OpCode.LoadConst, PyStrObject.FromString(kwarg.Arg ?? throw new UnreachableException()));
+                    LoadExpr(kwarg.Value);
+                }
 
-                LoadExpr(kwarg.Value);
-                Builder.Emit(OpCode.DictMerge, 1);
+                Builder.Emit(OpCode.BuildMap, node.Keywords.Length);
             }
 
             Builder.Emit(OpCode.CallFunctionEx);
+
+            void CloseKeywordGroup(ref int pendingCount)
+            {
+                if (pendingCount is 0)
+                    return;
+
+                Builder.Emit(OpCode.BuildMap, pendingCount);
+                Builder.Emit(OpCode.DictMerge, 1);
+                pendingCount = 0;
+            }
         }
     }
 

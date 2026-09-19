@@ -570,6 +570,22 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestCallDoubleStarKwargsRegression()
+    {
+        // Regression: the kwargs of a **-call accumulate into one map with
+        // per-group DICT_MERGEs in source order (CPython ceval.c DICT_MERGE /
+        // _PyDict_MergeEx override=2) — key order, evaluation order and the
+        // reported duplicate key all follow source appearance; DICT_MERGE
+        // re-reports a missing keys() as "argument after ** must be a
+        // mapping" and a single-arg lookup KeyError as a duplicate keyword,
+        // while dict displays keep silent overwrite with the "'X' object is
+        // not a mapping" wording and dict()/dict.update() keep the
+        // iterable-pairs fallback.
+        var module = RunModule("test_call_doublestar_kwargs_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestIterationExtended()
     {
         var module = RunModule("test_iteration_extended.py");

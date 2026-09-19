@@ -221,25 +221,123 @@ internal static partial class BytecodeVirtualMachine
     {
         var map = stack.Pop();
         var dict = (PyDictObject)stack[-instructionArg];
-        _ = dict.Update(context, map).PyUnwrap(context);
+
+        if (map is PyDictObject)
+        {
+            _ = dict.Update(context, map).PyUnwrap(context);
+            return;
+        }
+
+        // DICT_UPDATE accepts mappings only: PyUtils.ToDict's iterable-pairs
+        // fallback is dict()/dict.update() semantics. Per CPython's DICT_UPDATE
+        // handler, any AttributeError escaping the keys lookup, the keys()
+        // call or a per-key __getitem__ reads as "'X' object is not a
+        // mapping"; every other error propagates unchanged.
+        var keysMethod = PyOperators.GetAttr(context, map, "keys");
+        if (!keysMethod.IsSuccessful)
+            throw FormatDictUpdateError(context, map, keysMethod.Exception);
+
+        var keysCall = keysMethod.Value.Call(context);
+        if (keysCall.IsError)
+            throw FormatDictUpdateError(context, map, keysCall.Exception);
+
+        var keys = PyUtils.IterableToList(context, keysCall.Value);
+        if (keys.IsError)
+            throw FormatDictUpdateError(context, map, keys.Exception);
+
+        foreach (var key in keys.Value)
+        {
+            var value = PySpecialMethods.GetItem(context, map, key);
+            if (value.IsError)
+                throw FormatDictUpdateError(context, map, value.Exception);
+
+            var set = dict.SetItem(context, key, value.Value);
+            if (set.IsError)
+                throw FormatDictUpdateError(context, map, set.Exception);
+        }
     }
 
     private static void InternalDictMerge(PyCallContext context, ref ValueOperandStack stack, int instructionArg)
     {
         var map = stack.Pop();
-        var dictToMerge = PyUtils.ToDict(context, map).PyUnwrap(context);
         var dict = (PyDictObject)stack[-instructionArg];
-        foreach (var pair in dictToMerge)
+
+        if (map is PyDictObject dictSource)
         {
-            var contains = dict.GetItem(context, pair.Key);
+            var snapshot = new PyDictObject(dictSource);
+            foreach (var pair in snapshot)
+            {
+                var contains = dict.GetItem(context, pair.Key);
+                if (contains.IsSuccessful)
+                    throw context.TypeError(PySR.Runtime_Arguments_MultipleKeywords, pair.Key);
+
+                if (!contains.IsKeyError)
+                    _ = contains.PyUnwrap(context);
+
+                _ = dict.SetItem(context, pair.Key, pair.Value).PyUnwrap(context);
+            }
+
+            return;
+        }
+
+        // DICT_MERGE accepts mappings only: PyUtils.ToDict's iterable-pairs
+        // fallback is dict()/dict.update() semantics. CPython streams the keys
+        // with a contains check before each __getitem__, so a duplicate key
+        // never reaches __getitem__, and views every error escaping the merge
+        // through _PyEval_FormatKwargsError: AttributeError reads as a missing
+        // mapping protocol, a single-arg KeyError as a duplicate keyword,
+        // everything else propagates unchanged.
+        var keysMethod = PyOperators.GetAttr(context, map, "keys");
+        if (!keysMethod.IsSuccessful)
+            throw FormatKwargsError(context, map, keysMethod.Exception);
+
+        var keysCall = keysMethod.Value.Call(context);
+        if (keysCall.IsError)
+            throw FormatKwargsError(context, map, keysCall.Exception);
+
+        var keys = PyUtils.IterableToList(context, keysCall.Value);
+        if (keys.IsError)
+            throw FormatKwargsError(context, map, keys.Exception);
+
+        foreach (var key in keys.Value)
+        {
+            var contains = dict.GetItem(context, key);
             if (contains.IsSuccessful)
-                throw context.TypeError(PySR.Runtime_Arguments_MultipleKeywords, pair.Key);
+                throw context.TypeError(PySR.Runtime_Arguments_MultipleKeywords, key);
 
             if (!contains.IsKeyError)
                 _ = contains.PyUnwrap(context);
 
-            _ = dict.SetItem(context, pair.Key, pair.Value).PyUnwrap(context);
+            var value = PySpecialMethods.GetItem(context, map, key);
+            if (value.IsError)
+                throw FormatKwargsError(context, map, value.Exception);
+
+            var set = dict.SetItem(context, key, value.Value);
+            if (set.IsError)
+                throw FormatKwargsError(context, map, set.Exception);
         }
+    }
+
+    // CPython _PyEval_FormatKwargsError lens over the whole DICT_MERGE.
+    private static PyRuntimeException FormatKwargsError(PyCallContext context, PyObject update, PyExceptionObject exception)
+    {
+        if (PyAttributeErrorObjectType.Shared.IsInstance(exception))
+            return context.TypeError(PySR.Runtime_Arguments_StarStarNotMapping, update.PyType.FullName);
+
+        if (PyKeyErrorObjectType.Shared.IsInstance(exception) && exception.Args.Count is 1)
+            return context.TypeError(PySR.Runtime_Arguments_MultipleKeywords, exception.Args[0]);
+
+        return new PyRuntimeException(context, exception);
+    }
+
+    // CPython DICT_UPDATE wording: only AttributeError reads as a missing
+    // mapping protocol; everything else propagates unchanged.
+    private static PyRuntimeException FormatDictUpdateError(PyCallContext context, PyObject update, PyExceptionObject exception)
+    {
+        if (PyAttributeErrorObjectType.Shared.IsInstance(exception))
+            return context.TypeError(PySR.Runtime_Dictionary_NotAMapping, update.PyType.FullName);
+
+        return new PyRuntimeException(context, exception);
     }
 
     private static void InternalRaiseVarArgs(PyCallContext context, ref ValueOperandStack stack, ref BytecodeVirtualMachineStates states, int instructionArg)
