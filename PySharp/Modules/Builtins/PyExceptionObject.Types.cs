@@ -25,9 +25,9 @@ public sealed partial class PyBaseExceptionObjectType : PyExceptionType
 {
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        if (kwargs.Count is not 0)
-            return PyResult.TypeError(PySR.Runtime_Exception_TakesNoKeywordArguments, cls.Name);
-
+        // CPython BaseException_new accepts and ignores keyword arguments;
+        // the rejection lives in __init__, so a subclass with a custom
+        // __init__ still receives the original instantiation kwargs.
         return new PyExceptionObject(cls, [.. args]);
     }
 

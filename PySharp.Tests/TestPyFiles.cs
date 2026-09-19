@@ -3615,6 +3615,17 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestExceptionInitKwargsRegression()
+    {
+        // Regression: BaseException/BaseExceptionGroup __new__ accept and
+        // ignore keyword arguments (the rejection lives in __init__), so a
+        // subclass's custom __init__ receives the original instantiation
+        // kwargs through raise and direct construction alike.
+        var module = RunModule("test_exception_init_kwargs_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBytesDecodeErrorsRegression()
     {
         // Regression: bytes.decode defaults to errors='strict' and raises

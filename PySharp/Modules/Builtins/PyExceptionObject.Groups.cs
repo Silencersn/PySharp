@@ -20,7 +20,7 @@ public sealed partial class PyBaseExceptionGroupObjectType : PyExceptionType
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        if (!TryParseExceptionGroupInfo(this, args, kwargs, out var info, out var err))
+        if (!TryParseExceptionGroupInfo(this, args, out var info, out var err))
             return err.Value;
 
         PyTypeObject type = cls;
@@ -246,7 +246,7 @@ public sealed partial class PyBaseExceptionGroupObjectType : PyExceptionType
 
         if (excs.Count is 0)
         {
-            err = PyResult.TypeError(PySR.Runtime_ExceptionGroup_NewGroup_ExcsEmpty);
+            err = PyResult.ValueError(PySR.Runtime_ExceptionGroup_NewGroup_ExcsEmpty);
             return false;
         }
 
@@ -264,15 +264,15 @@ public sealed partial class PyBaseExceptionGroupObjectType : PyExceptionType
         return true;
     }
 
-    internal static bool TryParseExceptionGroupInfo(PyTypeObject exceptionGroupType, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs,
+    // CPython BaseExceptionGroup_new parses only the args tuple and ignores
+    // keyword arguments: the rejection lives in __init__, or a subclass with
+    // a custom __init__ consumes the kwargs
+    internal static bool TryParseExceptionGroupInfo(PyTypeObject exceptionGroupType, IReadOnlyList<PyObject> args,
         [NotNullWhen(true)] out ExceptionGroupInfo? info, [NotNullWhen(false)] out PyResult? err)
     {
         info = null;
 
         if (!PyArgsValidator.ValidateArgs(args, 2, out err))
-            return false;
-
-        if (!PyArgsValidator.ValidateEmptyKwargs(kwargs, out err))
             return false;
 
         if (args[0] is not PyStrObject msg)
