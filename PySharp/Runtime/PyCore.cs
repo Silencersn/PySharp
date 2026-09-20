@@ -624,6 +624,14 @@ internal static class PyCore
         if (name is PySpecialNames.Class)
             return type;
 
+        if (name is PySpecialNames.Dict)
+        {
+            if (self.IsImmutable)
+                return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.FullName, name);
+
+            return self.PyAttributes.Self;
+        }
+
         if (PyObject.TryLookupAttrInMro(type, name, out var attr))
         {
             if (PyUtils.IsDataDescriptor(attr))

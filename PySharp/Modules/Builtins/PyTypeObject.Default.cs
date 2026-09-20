@@ -120,6 +120,21 @@ partial class PyTypeObject
         if (self.IsImmutable)
             return FrozenAttrWriteError(type, name, attr);
 
+        // CPython subtype_setdict -> _PyObject_SetDict: the value replaces the
+        // whole instance dict (PyDict_Check accepts a subclass), and a type
+        // object reads __dict__ through a getset with no setter
+        if (name is PySpecialNames.Dict)
+        {
+            if (self is PyTypeObject)
+                return PyResult.AttributeError(PySR.Runtime_Type_DictNotWritable);
+
+            if (value is not PyDictObject assigned)
+                return PyResult.TypeError(PySR.Runtime_Object_DictMustBeDictionary, value.PyType.Name);
+
+            self.PyAttributes = assigned;
+            return PyNoneObject.None;
+        }
+
         self.PyAttributes[name] = value;
 
         // When setting an attribute on a type object (e.g. cls.__init__ = func),
@@ -278,6 +293,17 @@ partial class PyTypeObject
         // AttributeError shapes for deletion too
         if (self.IsImmutable)
             return FrozenAttrWriteError(type, name, attr);
+
+        // CPython subtype_setdict with a NULL value drops the dict: the next
+        // read materializes an empty one, the dropped dict keeps its items
+        if (name is PySpecialNames.Dict)
+        {
+            if (self is PyTypeObject)
+                return PyResult.AttributeError(PySR.Runtime_Type_DictNotWritable);
+
+            self.PyAttributes = new PyDictObject();
+            return PyNoneObject.None;
+        }
 
         var removed = self.PyAttributes.Remove(name);
         if (!removed)

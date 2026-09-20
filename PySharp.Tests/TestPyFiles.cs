@@ -4199,4 +4199,17 @@ public sealed class TestPyFiles
         var module = RunModule("test_function_defaults_rewrite_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestInstanceDictReplaceRegression()
+    {
+        // Regression: an instance __dict__ is writable (CPython
+        // subtype_setdict -> _PyObject_SetDict). The assigned dict replaces
+        // the storage wholesale and stays live in both directions, a dict
+        // subclass is accepted, a non-dict raises TypeError, deletion drops
+        // the dict, a type object's __dict__ stays read-only, and frozen
+        // instances keep their no-dict shapes.
+        var module = RunModule("test_instance_dict_replace_regression.py");
+        Assert.IsNotNull(module);
+    }
 }
