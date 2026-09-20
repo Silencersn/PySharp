@@ -556,6 +556,9 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
         BackslashReplace,
         SurrogateEscape,
         SurrogatePass,
+        // the escape-style handlers CPython registers for encoding only; a
+        // decode error reaching one is a TypeError, not an unknown name
+        EncodeOnly,
     }
 
     private static bool TryResolveErrors(string errors, out DecodeErrorHandler handler)
@@ -568,13 +571,50 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
             case "backslashreplace": handler = DecodeErrorHandler.BackslashReplace; return true;
             case "surrogateescape": handler = DecodeErrorHandler.SurrogateEscape; return true;
             case "surrogatepass": handler = DecodeErrorHandler.SurrogatePass; return true;
+            case "xmlcharrefreplace" or "namereplace": handler = DecodeErrorHandler.EncodeOnly; return true;
             default: handler = default; return false;
         }
+    }
+
+    // CPython resolves the handler name at the first actual decoding error
+    // (unicode_decode_call_errorhandler), so a name it does not know is only
+    // rejected once one happens
+    private static PyResult? ResolveErrors(string errors, out DecodeErrorHandler handler)
+    {
+        if (!TryResolveErrors(errors, out handler))
+            return UnknownErrorHandler(errors);
+        if (handler is DecodeErrorHandler.EncodeOnly)
+            return WrongErrorHandlerType();
+        return null;
     }
 
     private static PyResult.PyExceptionResult UnknownErrorHandler(string errors)
     {
         return PyResult.LookupError($"unknown error handler name '{errors}'");
+    }
+
+    // CPython wrong_exception_type
+    private static PyResult.PyExceptionResult WrongErrorHandlerType()
+    {
+        return PyResult.TypeError("don't know how to handle UnicodeDecodeError in error callback");
+    }
+
+    /// <summary>
+    /// CPython surrogateescape decode: escape up to four bytes >= 0x80
+    /// starting at the error; a run that starts with an ASCII byte is not
+    /// escapable and the codec's own error stands.
+    /// </summary>
+    private static bool TrySurrogateEscape(ReadOnlySpan<byte> data, int start, int end, StringBuilder sb, out int next)
+    {
+        var limit = Math.Min(4, end - start);
+        var consumed = 0;
+        while (consumed < limit && data[start + consumed] >= 0x80)
+        {
+            sb.Append((char)(0xDC00 + data[start + consumed]));
+            consumed++;
+        }
+        next = start + consumed;
+        return consumed > 0;
     }
 
     private static PyResult.PyExceptionResult UnicodeDecodeError(string codecName, PyObject source, ReadOnlySpan<byte> data, int start, int end, string reason)
@@ -709,8 +749,9 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
                 reason = code is 1 ? "invalid start byte" : "invalid continuation byte";
             }
 
-            if (!TryResolveErrors(errors, out var handler))
-                return UnknownErrorHandler(errors);
+            var unresolved = ResolveErrors(errors, out var handler);
+            if (unresolved is not null)
+                return unresolved.Value;
 
             // CPython surrogatepass: an encoded surrogate sequence
             // (ED A0..BF 80..BF) decodes to its surrogate; other errors
@@ -727,6 +768,13 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
                 return UnicodeDecodeError(codecName, source, data, start, end, reason);
             }
 
+            if (handler is DecodeErrorHandler.SurrogateEscape)
+            {
+                if (!TrySurrogateEscape(data, start, end, sb, out i))
+                    return UnicodeDecodeError(codecName, source, data, start, end, reason);
+                continue;
+            }
+
             switch (handler)
             {
                 case DecodeErrorHandler.Ignore:
@@ -735,7 +783,6 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
                     sb.Append('\uFFFD');
                     break;
                 case DecodeErrorHandler.BackslashReplace:
-                case DecodeErrorHandler.SurrogateEscape:
                     AppendBytesAsEscapes(sb, data[start..end], handler);
                     break;
                 default:
@@ -776,8 +823,18 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
                 continue;
             }
 
-            if (!TryResolveErrors(errors, out var handler))
-                return UnknownErrorHandler(errors);
+            var unresolved = ResolveErrors(errors, out var handler);
+            if (unresolved is not null)
+                return unresolved.Value;
+
+            if (handler is DecodeErrorHandler.SurrogateEscape)
+            {
+                if (!TrySurrogateEscape(data, i, i + 1, sb, out var escapedEnd))
+                    return UnicodeDecodeError(codecName, source, data, i, i + 1, "ordinal not in range(128)");
+                i = escapedEnd;
+                continue;
+            }
+
             switch (handler)
             {
                 case DecodeErrorHandler.Ignore:
@@ -787,9 +844,6 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
                     break;
                 case DecodeErrorHandler.BackslashReplace:
                     sb.Append("\\x").Append(b.ToString("x2", CultureInfo.InvariantCulture));
-                    break;
-                case DecodeErrorHandler.SurrogateEscape:
-                    sb.Append((char)(0xDC00 + b));
                     break;
                 case DecodeErrorHandler.SurrogatePass:
                 default:
@@ -859,8 +913,9 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
                 continue;
             }
 
-            if (!TryResolveErrors(errors, out var handler))
-                return UnknownErrorHandler(errors);
+            var unresolved = ResolveErrors(errors, out var handler);
+            if (unresolved is not null)
+                return unresolved.Value;
 
             // CPython surrogatepass: a complete lone surrogate unit passes
             // through as its own code point
@@ -868,6 +923,13 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
             {
                 sb.Append((char)unit);
                 i = end;
+                continue;
+            }
+
+            if (handler is DecodeErrorHandler.SurrogateEscape)
+            {
+                if (!TrySurrogateEscape(data, start, end, sb, out i))
+                    return UnicodeDecodeError(codecName, source, data, start, end, reason);
                 continue;
             }
 
@@ -879,7 +941,6 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
                     sb.Append('\uFFFD');
                     break;
                 case DecodeErrorHandler.BackslashReplace:
-                case DecodeErrorHandler.SurrogateEscape:
                     AppendBytesAsEscapes(sb, data[start..end], handler);
                     break;
                 default:
@@ -888,25 +949,34 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
             i = end;
         }
 
-        if (data.Length % 2 is not 0)
+        // a partial code unit at the end, either from a truncated input or
+        // left over by an error handler that resumed mid-unit
+        if (i < data.Length)
         {
-            int last = data.Length - 1;
-            if (!TryResolveErrors(errors, out var handler))
-                return UnknownErrorHandler(errors);
-            switch (handler)
+            var unresolved = ResolveErrors(errors, out var handler);
+            if (unresolved is not null)
+                return unresolved.Value;
+            if (handler is DecodeErrorHandler.SurrogateEscape)
             {
-                case DecodeErrorHandler.Ignore:
-                    break;
-                case DecodeErrorHandler.Replace:
-                    sb.Append('\uFFFD');
-                    break;
-                case DecodeErrorHandler.BackslashReplace:
-                case DecodeErrorHandler.SurrogatePass:
-                case DecodeErrorHandler.SurrogateEscape:
-                    AppendBytesAsEscapes(sb, data[last..], handler);
-                    break;
-                default:
-                    return UnicodeDecodeError(codecName, source, data, last, data.Length, "truncated data");
+                if (!TrySurrogateEscape(data, i, data.Length, sb, out _))
+                    return UnicodeDecodeError(codecName, source, data, i, data.Length, "truncated data");
+            }
+            else
+            {
+                switch (handler)
+                {
+                    case DecodeErrorHandler.Ignore:
+                        break;
+                    case DecodeErrorHandler.Replace:
+                        sb.Append('\uFFFD');
+                        break;
+                    case DecodeErrorHandler.BackslashReplace:
+                    case DecodeErrorHandler.SurrogatePass:
+                        AppendBytesAsEscapes(sb, data[i..], handler);
+                        break;
+                    default:
+                        return UnicodeDecodeError(codecName, source, data, i, data.Length, "truncated data");
+                }
             }
         }
         return PyStrObject.FromString(sb.ToString());
@@ -924,14 +994,30 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
 
             if (unit is > 0x10FFFF or >= 0xD800 and <= 0xDFFF)
             {
-                if (!TryResolveErrors(errors, out var handler))
-                    return UnknownErrorHandler(errors);
+                var unresolved = ResolveErrors(errors, out var handler);
+                if (unresolved is not null)
+                    return unresolved.Value;
+
+                var reason = unit is >= 0xD800 and <= 0xDFFF
+                    ? "code point in surrogate code point range(0xd800, 0xe000)"
+                    : "code point not in range(0x110000)";
 
                 // CPython surrogatepass: surrogate code points pass through
+                // as their own code point
                 if (handler is DecodeErrorHandler.SurrogatePass && unit is >= 0xD800 and <= 0xDFFF)
                 {
-                    sb.Append(char.ConvertFromUtf32((int)unit));
+                    sb.Append((char)unit);
                     i += 4;
+                    continue;
+                }
+
+                if (handler is DecodeErrorHandler.SurrogateEscape)
+                {
+                    // the utf-32 decoder reports the whole unit, whose first
+                    // byte decides whether surrogateescape can take it
+                    if (!TrySurrogateEscape(data, i, i + 4, sb, out var next))
+                        return UnicodeDecodeError(codecName, source, data, i, i + 4, reason);
+                    i = next;
                     continue;
                 }
 
@@ -943,11 +1029,10 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
                         sb.Append('\uFFFD');
                         break;
                     case DecodeErrorHandler.BackslashReplace:
-                    case DecodeErrorHandler.SurrogateEscape:
                         AppendBytesAsEscapes(sb, data[i..(i + 4)], handler);
                         break;
                     default:
-                        return UnicodeDecodeError(codecName, source, data, i, i + 4, "illegal encoding");
+                        return UnicodeDecodeError(codecName, source, data, i, i + 4, reason);
                 }
             }
             else
@@ -957,57 +1042,78 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
             i += 4;
         }
 
-        if (data.Length % 4 is not 0)
+        // a partial code unit at the end, either from a truncated input or
+        // left over by an error handler that resumed mid-unit
+        if (i < data.Length)
         {
-            int start = data.Length - data.Length % 4;
-            if (!TryResolveErrors(errors, out var handler))
-                return UnknownErrorHandler(errors);
-            switch (handler)
+            var unresolved = ResolveErrors(errors, out var handler);
+            if (unresolved is not null)
+                return unresolved.Value;
+            if (handler is DecodeErrorHandler.SurrogateEscape)
             {
-                case DecodeErrorHandler.Ignore:
-                    break;
-                case DecodeErrorHandler.Replace:
-                    sb.Append('\uFFFD');
-                    break;
-                case DecodeErrorHandler.BackslashReplace:
-                case DecodeErrorHandler.SurrogatePass:
-                case DecodeErrorHandler.SurrogateEscape:
-                    AppendBytesAsEscapes(sb, data[start..], handler);
-                    break;
-                default:
-                    return UnicodeDecodeError(codecName, source, data, start, data.Length, "truncated data");
+                if (!TrySurrogateEscape(data, i, data.Length, sb, out _))
+                    return UnicodeDecodeError(codecName, source, data, i, data.Length, "truncated data");
+            }
+            else
+            {
+                switch (handler)
+                {
+                    case DecodeErrorHandler.Ignore:
+                        break;
+                    case DecodeErrorHandler.Replace:
+                        sb.Append('\uFFFD');
+                        break;
+                    case DecodeErrorHandler.BackslashReplace:
+                    case DecodeErrorHandler.SurrogatePass:
+                        AppendBytesAsEscapes(sb, data[i..], handler);
+                        break;
+                    default:
+                        return UnicodeDecodeError(codecName, source, data, i, data.Length, "truncated data");
+                }
             }
         }
         return PyStrObject.FromString(sb.ToString());
     }
 
     // codecs without a hand-rolled core decode through .NET with the error
-    // handler expressed as a decoder fallback; strict keeps the CPython
-    // single-byte message shape
+    // handler expressed as a decoder fallback. The handler name is resolved
+    // at the first actual failure, and the failure is reported with the
+    // failing codec's own name and wording.
     private static PyResult DecodeViaDotNet(ReadOnlySpan<byte> data, Encoding enc, string encoding, string errors, PyObject source)
     {
-        if (!TryResolveErrors(errors, out var handler))
-            return UnknownErrorHandler(errors);
-
-        DecoderFallback fallback = handler switch
-        {
-            DecodeErrorHandler.Ignore => new DecoderReplacementFallback(string.Empty),
-            DecodeErrorHandler.Replace => new DecoderReplacementFallback("\uFFFD"),
-            DecodeErrorHandler.BackslashReplace => new ByteRendererFallback(b => $"\\x{b:x2}"),
-            DecodeErrorHandler.SurrogatePass or DecodeErrorHandler.SurrogateEscape => new ByteRendererFallback(b => char.ToString((char)(0xDC00 + b))),
-            _ => new DecoderExceptionFallback(),
-        };
+        var codec = PyCodecInfo.Classify(PyStrObjectType.NormalizeEncodingName(encoding));
 
         try
         {
-            var strict = Encoding.GetEncoding(enc.CodePage, new EncoderExceptionFallback(), fallback);
-            return PyStrObject.FromString(strict.GetString(data));
+            return PyStrObject.FromString(BuildDecoder(enc, new DecoderExceptionFallback()).GetString(data));
         }
         catch (DecoderFallbackException ex)
         {
-            int start = ex.Index;
-            int end = start + (ex.BytesUnknown is { Length: > 0 } ? ex.BytesUnknown.Length : 1);
-            return UnicodeDecodeError(encoding, source, data, start, end, "invalid data");
+            var unresolved = ResolveErrors(errors, out var handler);
+            if (unresolved is not null)
+                return unresolved.Value;
+            if (handler is DecodeErrorHandler.Strict)
+                return DecodeFailure(codec, source, data, ex);
+
+            try
+            {
+                DecoderFallback fallback = handler switch
+                {
+                    DecodeErrorHandler.Ignore => new DecoderReplacementFallback(string.Empty),
+                    DecodeErrorHandler.Replace => new DecoderReplacementFallback("\uFFFD"),
+                    DecodeErrorHandler.BackslashReplace => new ByteRendererFallback(b => $"\\x{b:x2}"),
+                    _ => new ByteRendererFallback(b => char.ToString((char)(0xDC00 + b))),
+                };
+                return PyStrObject.FromString(BuildDecoder(enc, fallback).GetString(data));
+            }
+            catch (DecoderFallbackException retried)
+            {
+                return DecodeFailure(codec, source, data, retried);
+            }
+            catch (ArgumentException)
+            {
+                return PyStrObject.FromString(enc.GetString(data));
+            }
         }
         catch (ArgumentException)
         {
@@ -1015,6 +1121,24 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
             // default replacement behavior
             return PyStrObject.FromString(enc.GetString(data));
         }
+    }
+
+    private static Encoding BuildDecoder(Encoding enc, DecoderFallback fallback)
+    {
+        return Encoding.GetEncoding(enc.CodePage, new EncoderExceptionFallback(), fallback);
+    }
+
+    // the charmap codecs call one byte unmappable; everything else reports
+    // whatever the decoder could not consume
+    private static PyResult DecodeFailure(PyCodecInfo.Codec codec, PyObject source, ReadOnlySpan<byte> data, DecoderFallbackException ex)
+    {
+        var start = ex.Index;
+        var translated = codec.Kind is PyCodecInfo.CodecKind.Charmap;
+        var end = translated
+            ? start + 1
+            : start + (ex.BytesUnknown is { Length: > 0 } ? ex.BytesUnknown.Length : 1);
+        var reason = translated ? PyCodecInfo.CharmapReason : codec.Reason;
+        return UnicodeDecodeError(codec.ErrorName, source, data, start, end, reason);
     }
 
     private sealed class ByteRendererFallback(Func<byte, string> renderer) : DecoderFallback

@@ -3834,6 +3834,31 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestBytesDecodeErrorHandlersRegression()
+    {
+        // Regression: bytes.decode must reject the encode-only handlers
+        // (xmlcharrefreplace/namereplace) with CPython's TypeError, apply
+        // surrogateescape only to runs of bytes >= 0x80, keep a lone
+        // utf-16/utf-32 surrogate unit strict, decode it for surrogatepass
+        // (no raw .NET exception), and resolve an unknown handler name only
+        // at the first actual failure.
+        var module = RunModule("test_bytes_decode_error_handlers_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestStrEncodeStrictRegression()
+    {
+        // Regression: str.encode defaults to errors='strict' and raises
+        // UnicodeEncodeError carrying the failing codec's own name, wording
+        // and code-point range (the whole run of unmappable code points)
+        // instead of substituting '?' or U+FFFD, with surrogatepass and
+        // surrogateescape in the same handler table.
+        var module = RunModule("test_str_encode_strict_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestContainerInitRegression()
     {
         // Regression: dict/list/set subclass construction dispatches to a

@@ -208,18 +208,20 @@ public partial class PyStrObject : PyObject
     }
 
     /// <summary>Convert a code-point index to a char index in the string.</summary>
-    internal int CodePointIndexToCharIndex(int codePointIndex)
+    internal int CodePointIndexToCharIndex(int codePointIndex) => CodePointIndexToCharIndex(Value, codePointIndex);
+
+    internal static int CodePointIndexToCharIndex(ReadOnlySpan<char> value, int codePointIndex)
     {
         if (codePointIndex <= 0)
             return 0;
         int count = 0;
-        for (int i = 0; i < Value.Length; i += CharWidthAt(Value, i))
+        for (int i = 0; i < value.Length; i += CharWidthAt(value, i))
         {
             if (count == codePointIndex)
                 return i;
             count++;
         }
-        return Value.Length;
+        return value.Length;
     }
 
     /// <summary>Convert a char index back to a code-point index.</summary>
@@ -253,12 +255,13 @@ public partial class PyStrObject : PyObject
         return PyStrObject.FromString(builder.ToString());
     }
 
-    internal static int[] ToCodePointArray(PyStrObject self)
+    internal static int[] ToCodePointArray(PyStrObject self) => ToCodePointArray(self.Value);
+
+    internal static int[] ToCodePointArray(ReadOnlySpan<char> value)
     {
-        var count = self.PyLength;
-        var result = new int[count];
-        var enumerator = self.EnumerateCodePoints();
-        for (var i = 0; i < count; i++)
+        var result = new int[CountCodePoints(value)];
+        var enumerator = new CodePointEnumerator(value);
+        for (var i = 0; i < result.Length; i++)
         {
             enumerator.MoveNext();
             result[i] = enumerator.Current;
@@ -1796,7 +1799,11 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
     // The str.encode core shared with the bytes()/bytearray()
     // string+encoding constructors: codec resolution, error handlers and
-    // the bare utf-16/32 BOM all match unicode_encode here
+    // the bare utf-16/32 BOM all match unicode_encode here. .NET's encoders
+    // substitute a replacement character instead of failing, so the whole
+    // string goes through an encoder that reports the first unmappable
+    // code point, and the CPython handler for errors= decides what happens
+    // from there.
     internal static PyResult EncodeCore(PyCallContext context, string value, string encoding, string errors)
     {
         Encoding enc;
@@ -1809,62 +1816,228 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             return PyResult.LookupError(PySR.Runtime_Codec_UnknownEncoding, encoding);
         }
 
-        byte[] bytes;
+        var codec = PyCodecInfo.Classify(NormalizeEncodingName(encoding));
+        var strict = CreateReportingEncoding(enc);
+        var codePoints = PyStrObject.ToCodePointArray(value);
+        var bytes = new List<byte>(value.Length);
+
+        var position = 0;
+        while (position < codePoints.Length)
+        {
+            var rest = value[PyStrObject.CodePointIndexToCharIndex(value, position)..];
+            byte[] encoded;
+            try
+            {
+                encoded = strict.GetBytes(rest);
+            }
+            catch (EncoderFallbackException ex)
+            {
+                // the failed call discards what it had encoded so far
+                if (ex.Index > 0)
+                    bytes.AddRange(strict.GetBytes(rest[..ex.Index]));
+                var failed = position + PyStrObject.CharIndexToCodePointIndex(rest, ex.Index);
+                var runEnd = codec.CollectsRun ? UnmappableRunEnd(strict, codePoints, failed) : failed + 1;
+                var error = ApplyEncodeErrorHandler(codec, codePoints, failed, runEnd, errors, bytes, strict, value);
+                if (error is not null)
+                    return PyResult.FromException(error);
+                position = runEnd;
+                continue;
+            }
+            bytes.AddRange(encoded);
+            break;
+        }
+
+        if (codec.EmitsBom)
+            bytes.InsertRange(0, enc.GetPreamble());
+        return PyBytesObject.MoveBytes([.. bytes]);
+    }
+
+    /// <summary>
+    /// An encoding whose encoder reports the first code point it cannot
+    /// represent instead of replacing it. .NET refuses the fallback objects
+    /// for a few codecs; those keep their own substitution behavior.
+    /// </summary>
+    private static Encoding CreateReportingEncoding(Encoding enc)
+    {
         try
         {
-            if (errors is "strict")
-            {
-                bytes = enc.GetBytes(value);
-            }
-            else if (errors is "ignore")
-            {
-                var encoder = enc.GetEncoder();
-                encoder.Fallback = new EncoderReplacementFallback(string.Empty);
-                int byteCount = encoder.GetByteCount(value.ToCharArray(), 0, value.Length, true);
-                bytes = new byte[byteCount];
-                encoder.GetBytes(value.ToCharArray(), 0, value.Length, bytes, 0, true);
-            }
-            else if (errors is "replace")
-            {
-                var encoder = enc.GetEncoder();
-                encoder.Fallback = new EncoderReplacementFallback("?");
-                int byteCount = encoder.GetByteCount(value.ToCharArray(), 0, value.Length, true);
-                bytes = new byte[byteCount];
-                encoder.GetBytes(value.ToCharArray(), 0, value.Length, bytes, 0, true);
-            }
-            else if (errors is "xmlcharrefreplace" or "backslashreplace" or "namereplace")
-            {
-                var encoder = enc.GetEncoder();
-                encoder.Fallback = new EscapeEncoderFallback(errors);
-                int byteCount = encoder.GetByteCount(value.ToCharArray(), 0, value.Length, true);
-                bytes = new byte[byteCount];
-                encoder.GetBytes(value.ToCharArray(), 0, value.Length, bytes, 0, true);
-            }
-            else
-            {
-                // CPython resolves the errors handler lazily at the first
-                // actual encoding error (unicode_encode_call_errorhandler);
-                // until one happens the name is never consulted, so encode
-                // with a throwing fallback and only then raise LookupError
-                var encoder = enc.GetEncoder();
-                encoder.Fallback = new EncoderExceptionFallback();
-                int byteCount = encoder.GetByteCount(value.ToCharArray(), 0, value.Length, true);
-                bytes = new byte[byteCount];
-                encoder.GetBytes(value.ToCharArray(), 0, value.Length, bytes, 0, true);
-            }
+            return Encoding.GetEncoding(enc.CodePage, new EncoderExceptionFallback(), new DecoderExceptionFallback());
+        }
+        catch (ArgumentException)
+        {
+            return enc;
+        }
+    }
+
+    // CPython extends an unmappable character over the run of code points
+    // the encoder also cannot map, so the error covers the whole run
+    private static int UnmappableRunEnd(Encoding strict, int[] codePoints, int start)
+    {
+        var end = start + 1;
+        while (end < codePoints.Length && !CanEncode(strict, codePoints[end]))
+            end++;
+        return end;
+    }
+
+    private static bool CanEncode(Encoding strict, int codePoint)
+    {
+        try
+        {
+            strict.GetBytes(PyStrObject.FromCodePoint(codePoint).Value);
+            return true;
         }
         catch (EncoderFallbackException)
         {
-            return PyResult.LookupError(PySR.Runtime_Codec_UnknownErrorHandlerName, errors);
+            return false;
         }
-        if (BareUtfCodecEmitsBom(encoding))
-        {
-            var preamble = enc.GetPreamble();
-            if (preamble.Length > 0)
-                bytes = [.. preamble, .. bytes];
-        }
-        return PyBytesObject.MoveBytes(bytes);
     }
+
+    /// <summary>
+    /// CPython's encode error handlers, applied to the run of unmappable
+    /// code points [start, end). Returns the exception to raise, or null
+    /// after the run's replacement has been appended to <paramref name="bytes"/>.
+    /// </summary>
+    private static PyExceptionObject? ApplyEncodeErrorHandler(
+        PyCodecInfo.Codec codec, int[] codePoints, int start, int end, string errors,
+        List<byte> bytes, Encoding strict, string value)
+    {
+        switch (errors)
+        {
+            case "ignore":
+                return null;
+            case "replace":
+                return AppendEncodedText(bytes, strict, codec, value, start, end, new string('?', end - start));
+            case "backslashreplace" or "xmlcharrefreplace" or "namereplace":
+            {
+                var text = new StringBuilder();
+                for (var i = start; i < end; i++)
+                    text.Append(EncodeErrorReplacement(errors, codePoints[i]));
+                return AppendEncodedText(bytes, strict, codec, value, start, end, text.ToString());
+            }
+            case "surrogateescape":
+                for (var i = start; i < end; i++)
+                {
+                    // only bytes escaped into U+DC80-U+DCFF are recoverable;
+                    // anything else keeps the codec's own error
+                    if (codePoints[i] is < 0xDC80 or > 0xDCFF)
+                        return UnicodeEncodeError(codec, value, start, end);
+                }
+                // the handler hands back one byte per code point, which the
+                // utf-16/utf-32 encoders reject as a partial unit
+                if ((end - start) % codec.UnitSize is not 0)
+                    return UnicodeEncodeError(codec, value, start, end);
+                for (var i = start; i < end; i++)
+                    bytes.Add((byte)(codePoints[i] - 0xDC00));
+                return null;
+            case "surrogatepass":
+                if (!codec.SupportsSurrogatePass)
+                    return UnicodeEncodeError(codec, value, start, end);
+                for (var i = start; i < end; i++)
+                {
+                    if (codePoints[i] is < 0xD800 or > 0xDFFF)
+                        return UnicodeEncodeError(codec, value, start, end);
+                    AppendSurrogateUnit(bytes, codec.Kind, codePoints[i]);
+                }
+                return null;
+            default:
+                // CPython resolves the handler name at the first actual
+                // encoding error (unicode_encode_call_errorhandler), so a
+                // name it does not know is only rejected once one happens
+                return errors is "strict" ? UnicodeEncodeError(codec, value, start, end) : UnknownErrorHandler(errors);
+        }
+    }
+
+    // the replacement text is itself encoded through the codec, so it lands
+    // in the codec's own byte order (utf-16 '?' is two bytes)
+    private static PyExceptionObject? AppendEncodedText(
+        List<byte> bytes, Encoding strict, PyCodecInfo.Codec codec, string value, int start, int end, string text)
+    {
+        try
+        {
+            bytes.AddRange(strict.GetBytes(text));
+            return null;
+        }
+        catch (EncoderFallbackException)
+        {
+            return UnicodeEncodeError(codec, value, start, end);
+        }
+    }
+
+    // CPython surrogatepass: the surrogate's own code unit in the codec's
+    // byte order; the bare utf-16/utf-32 codecs write little-endian units
+    private static void AppendSurrogateUnit(List<byte> bytes, PyCodecInfo.CodecKind kind, int codePoint)
+    {
+        switch (kind)
+        {
+            case PyCodecInfo.CodecKind.Utf8:
+                bytes.Add((byte)(0xE0 | (codePoint >> 12)));
+                bytes.Add((byte)(0x80 | ((codePoint >> 6) & 0x3F)));
+                bytes.Add((byte)(0x80 | (codePoint & 0x3F)));
+                break;
+            case PyCodecInfo.CodecKind.Utf16 or PyCodecInfo.CodecKind.Utf16Le:
+                bytes.Add((byte)codePoint);
+                bytes.Add((byte)(codePoint >> 8));
+                break;
+            case PyCodecInfo.CodecKind.Utf16Be:
+                bytes.Add((byte)(codePoint >> 8));
+                bytes.Add((byte)codePoint);
+                break;
+            case PyCodecInfo.CodecKind.Utf32 or PyCodecInfo.CodecKind.Utf32Le:
+                bytes.Add((byte)codePoint);
+                bytes.Add((byte)(codePoint >> 8));
+                bytes.Add((byte)(codePoint >> 16));
+                bytes.Add((byte)(codePoint >> 24));
+                break;
+            default:
+                bytes.Add((byte)(codePoint >> 24));
+                bytes.Add((byte)(codePoint >> 16));
+                bytes.Add((byte)(codePoint >> 8));
+                bytes.Add((byte)codePoint);
+                break;
+        }
+    }
+
+    private static PyExceptionObject UnicodeEncodeError(PyCodecInfo.Codec codec, string value, int start, int end)
+    {
+        return PyExceptionObject.UnsafeCreate(PyUnicodeEncodeErrorObjectType.Shared,
+            [
+                PyStrObject.FromString(codec.ErrorName),
+                PyStrObject.FromString(value),
+                PyIntObject.FromInteger(start),
+                PyIntObject.FromInteger(end),
+                PyStrObject.FromString(codec.Reason),
+            ]);
+    }
+
+    private static PyExceptionObject UnknownErrorHandler(string errors)
+    {
+        return PyResult.LookupError(PySR.Runtime_Codec_UnknownErrorHandlerName, errors).Exception!;
+    }
+
+    /// <summary>
+    /// The replacement text of CPython's escape-style encode error handlers:
+    /// xmlcharrefreplace ('&amp;#NNNN;'), backslashreplace ('\xNN' / '\uNNNN' /
+    /// '\UNNNNNNNN') and namereplace ('\N{NAME}').
+    /// </summary>
+    private static string EncodeErrorReplacement(string errors, int codePoint)
+    {
+        switch (errors)
+        {
+            case "xmlcharrefreplace":
+                return $"&#{codePoint};";
+            case "namereplace":
+                return GetNameReplacement(codePoint);
+            default:
+                return BackslashEscape(codePoint);
+        }
+    }
+
+    private static string BackslashEscape(int codePoint) => codePoint switch
+    {
+        <= 0xFF => $"\\x{codePoint:x2}",
+        <= 0xFFFF => $"\\u{codePoint:x4}",
+        _ => $"\\U{codePoint:x8}",
+    };
 
     /// <summary>
     /// Resolves a Python codec name to a .NET encoding. Python normalizes
@@ -1915,14 +2088,6 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         return Encoding.GetEncoding(normalized);
     }
 
-    /// <summary>
-    /// CPython's bare 'utf-16' / 'utf-32' codecs emit a native-order BOM
-    /// before the encoded data, even for the empty string; the explicit
-    /// -le/-be variants emit no BOM.
-    /// </summary>
-    internal static bool BareUtfCodecEmitsBom(string name)
-        => NormalizeEncodingName(name) is "utf16" or "utf32";
-
     internal static string NormalizeEncodingName(string name)
     {
         var sb = new StringBuilder(name.Length);
@@ -1935,281 +2100,213 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     }
 
     /// <summary>
-    /// Encoder fallback implementing CPython's escape-style error handlers:
-    /// xmlcharrefreplace ('&#NNNN;'), backslashreplace ('\xNN' / '\uNNNN' /
-    /// '\UNNNNNNNN') and namereplace ('\N{NAME}').
+    /// CPython namereplace: '\N{NAME}', or a hex escape for the code points
+    /// without a name. .NET has no Unicode name lookup API, so embed the
+    /// names for the range most relevant to ASCII-encoding namereplace
+    /// (Basic Latin + Latin-1 Supplement, U+0000-U+00FF; generated from
+    /// UnicodeData); beyond that the name is unknown here.
     /// </summary>
-    private sealed class EscapeEncoderFallback : EncoderFallback
+    private static string GetNameReplacement(int codePoint)
     {
-        private readonly string _errors;
-        public EscapeEncoderFallback(string errors) => _errors = errors;
-
-        public override int MaxCharCount => 64; // longest Unicode name + wrappers
-
-        public override EncoderFallbackBuffer CreateFallbackBuffer() => new EscapeFallbackBuffer(_errors);
+        if (_unicodeNames.TryGetValue(codePoint, out var name))
+            return $"\\N{{{name}}}";
+        return BackslashEscape(codePoint);
     }
 
-    private sealed class EscapeFallbackBuffer : EncoderFallbackBuffer
+    private static readonly Dictionary<int, string> _unicodeNames = new()
     {
-        private readonly string _errors;
-        private string _replacement = string.Empty;
-        private int _pos;
-
-        public EscapeFallbackBuffer(string errors) => _errors = errors;
-
-        public override bool Fallback(char charUnknownHigh, char charUnknownLow, int index)
-            => SetReplacement(char.ConvertToUtf32(charUnknownHigh, charUnknownLow));
-
-        public override bool Fallback(char charUnknown, int index) => SetReplacement(charUnknown);
-
-        private bool SetReplacement(int codePoint)
-        {
-            _replacement = _errors switch
-            {
-                "xmlcharrefreplace" => $"&#{codePoint};",
-                "backslashreplace" => codePoint switch
-                {
-                    <= 0xFF => $"\\x{codePoint:x2}",
-                    <= 0xFFFF => $"\\u{codePoint:x4}",
-                    _ => $"\\U{codePoint:x8}",
-                },
-                "namereplace" => GetNameReplacement(codePoint),
-                _ => string.Empty,
-            };
-            _pos = 0;
-            return _replacement.Length > 0;
-        }
-
-        private static string GetNameReplacement(int codePoint)
-        {
-            // .NET has no Unicode name lookup API, so embed the names for the
-            // range most relevant to ASCII-encoding namereplace (Basic Latin +
-            // Latin-1 Supplement, U+0000-U+00FF; generated from UnicodeData).
-            // Beyond that, fall back to hex escapes (same as CPython does for
-            // code points without a name).
-            if (_unicodeNames.TryGetValue(codePoint, out var name))
-                return $"\\N{{{name}}}";
-            return codePoint switch
-            {
-                <= 0xFF => $"\\x{codePoint:x2}",
-                <= 0xFFFF => $"\\u{codePoint:x4}",
-                _ => $"\\U{codePoint:x8}",
-            };
-        }
-
-        private static readonly Dictionary<int, string> _unicodeNames = new()
-        {
-            [0x20] = "SPACE",
-            [0x21] = "EXCLAMATION MARK",
-            [0x22] = "QUOTATION MARK",
-            [0x23] = "NUMBER SIGN",
-            [0x24] = "DOLLAR SIGN",
-            [0x25] = "PERCENT SIGN",
-            [0x26] = "AMPERSAND",
-            [0x27] = "APOSTROPHE",
-            [0x28] = "LEFT PARENTHESIS",
-            [0x29] = "RIGHT PARENTHESIS",
-            [0x2A] = "ASTERISK",
-            [0x2B] = "PLUS SIGN",
-            [0x2C] = "COMMA",
-            [0x2D] = "HYPHEN-MINUS",
-            [0x2E] = "FULL STOP",
-            [0x2F] = "SOLIDUS",
-            [0x30] = "DIGIT ZERO",
-            [0x31] = "DIGIT ONE",
-            [0x32] = "DIGIT TWO",
-            [0x33] = "DIGIT THREE",
-            [0x34] = "DIGIT FOUR",
-            [0x35] = "DIGIT FIVE",
-            [0x36] = "DIGIT SIX",
-            [0x37] = "DIGIT SEVEN",
-            [0x38] = "DIGIT EIGHT",
-            [0x39] = "DIGIT NINE",
-            [0x3A] = "COLON",
-            [0x3B] = "SEMICOLON",
-            [0x3C] = "LESS-THAN SIGN",
-            [0x3D] = "EQUALS SIGN",
-            [0x3E] = "GREATER-THAN SIGN",
-            [0x3F] = "QUESTION MARK",
-            [0x40] = "COMMERCIAL AT",
-            [0x41] = "LATIN CAPITAL LETTER A",
-            [0x42] = "LATIN CAPITAL LETTER B",
-            [0x43] = "LATIN CAPITAL LETTER C",
-            [0x44] = "LATIN CAPITAL LETTER D",
-            [0x45] = "LATIN CAPITAL LETTER E",
-            [0x46] = "LATIN CAPITAL LETTER F",
-            [0x47] = "LATIN CAPITAL LETTER G",
-            [0x48] = "LATIN CAPITAL LETTER H",
-            [0x49] = "LATIN CAPITAL LETTER I",
-            [0x4A] = "LATIN CAPITAL LETTER J",
-            [0x4B] = "LATIN CAPITAL LETTER K",
-            [0x4C] = "LATIN CAPITAL LETTER L",
-            [0x4D] = "LATIN CAPITAL LETTER M",
-            [0x4E] = "LATIN CAPITAL LETTER N",
-            [0x4F] = "LATIN CAPITAL LETTER O",
-            [0x50] = "LATIN CAPITAL LETTER P",
-            [0x51] = "LATIN CAPITAL LETTER Q",
-            [0x52] = "LATIN CAPITAL LETTER R",
-            [0x53] = "LATIN CAPITAL LETTER S",
-            [0x54] = "LATIN CAPITAL LETTER T",
-            [0x55] = "LATIN CAPITAL LETTER U",
-            [0x56] = "LATIN CAPITAL LETTER V",
-            [0x57] = "LATIN CAPITAL LETTER W",
-            [0x58] = "LATIN CAPITAL LETTER X",
-            [0x59] = "LATIN CAPITAL LETTER Y",
-            [0x5A] = "LATIN CAPITAL LETTER Z",
-            [0x5B] = "LEFT SQUARE BRACKET",
-            [0x5C] = "REVERSE SOLIDUS",
-            [0x5D] = "RIGHT SQUARE BRACKET",
-            [0x5E] = "CIRCUMFLEX ACCENT",
-            [0x5F] = "LOW LINE",
-            [0x60] = "GRAVE ACCENT",
-            [0x61] = "LATIN SMALL LETTER A",
-            [0x62] = "LATIN SMALL LETTER B",
-            [0x63] = "LATIN SMALL LETTER C",
-            [0x64] = "LATIN SMALL LETTER D",
-            [0x65] = "LATIN SMALL LETTER E",
-            [0x66] = "LATIN SMALL LETTER F",
-            [0x67] = "LATIN SMALL LETTER G",
-            [0x68] = "LATIN SMALL LETTER H",
-            [0x69] = "LATIN SMALL LETTER I",
-            [0x6A] = "LATIN SMALL LETTER J",
-            [0x6B] = "LATIN SMALL LETTER K",
-            [0x6C] = "LATIN SMALL LETTER L",
-            [0x6D] = "LATIN SMALL LETTER M",
-            [0x6E] = "LATIN SMALL LETTER N",
-            [0x6F] = "LATIN SMALL LETTER O",
-            [0x70] = "LATIN SMALL LETTER P",
-            [0x71] = "LATIN SMALL LETTER Q",
-            [0x72] = "LATIN SMALL LETTER R",
-            [0x73] = "LATIN SMALL LETTER S",
-            [0x74] = "LATIN SMALL LETTER T",
-            [0x75] = "LATIN SMALL LETTER U",
-            [0x76] = "LATIN SMALL LETTER V",
-            [0x77] = "LATIN SMALL LETTER W",
-            [0x78] = "LATIN SMALL LETTER X",
-            [0x79] = "LATIN SMALL LETTER Y",
-            [0x7A] = "LATIN SMALL LETTER Z",
-            [0x7B] = "LEFT CURLY BRACKET",
-            [0x7C] = "VERTICAL LINE",
-            [0x7D] = "RIGHT CURLY BRACKET",
-            [0x7E] = "TILDE",
-            [0xA0] = "NO-BREAK SPACE",
-            [0xA1] = "INVERTED EXCLAMATION MARK",
-            [0xA2] = "CENT SIGN",
-            [0xA3] = "POUND SIGN",
-            [0xA4] = "CURRENCY SIGN",
-            [0xA5] = "YEN SIGN",
-            [0xA6] = "BROKEN BAR",
-            [0xA7] = "SECTION SIGN",
-            [0xA8] = "DIAERESIS",
-            [0xA9] = "COPYRIGHT SIGN",
-            [0xAA] = "FEMININE ORDINAL INDICATOR",
-            [0xAB] = "LEFT-POINTING DOUBLE ANGLE QUOTATION MARK",
-            [0xAC] = "NOT SIGN",
-            [0xAD] = "SOFT HYPHEN",
-            [0xAE] = "REGISTERED SIGN",
-            [0xAF] = "MACRON",
-            [0xB0] = "DEGREE SIGN",
-            [0xB1] = "PLUS-MINUS SIGN",
-            [0xB2] = "SUPERSCRIPT TWO",
-            [0xB3] = "SUPERSCRIPT THREE",
-            [0xB4] = "ACUTE ACCENT",
-            [0xB5] = "MICRO SIGN",
-            [0xB6] = "PILCROW SIGN",
-            [0xB7] = "MIDDLE DOT",
-            [0xB8] = "CEDILLA",
-            [0xB9] = "SUPERSCRIPT ONE",
-            [0xBA] = "MASCULINE ORDINAL INDICATOR",
-            [0xBB] = "RIGHT-POINTING DOUBLE ANGLE QUOTATION MARK",
-            [0xBC] = "VULGAR FRACTION ONE QUARTER",
-            [0xBD] = "VULGAR FRACTION ONE HALF",
-            [0xBE] = "VULGAR FRACTION THREE QUARTERS",
-            [0xBF] = "INVERTED QUESTION MARK",
-            [0xC0] = "LATIN CAPITAL LETTER A WITH GRAVE",
-            [0xC1] = "LATIN CAPITAL LETTER A WITH ACUTE",
-            [0xC2] = "LATIN CAPITAL LETTER A WITH CIRCUMFLEX",
-            [0xC3] = "LATIN CAPITAL LETTER A WITH TILDE",
-            [0xC4] = "LATIN CAPITAL LETTER A WITH DIAERESIS",
-            [0xC5] = "LATIN CAPITAL LETTER A WITH RING ABOVE",
-            [0xC6] = "LATIN CAPITAL LETTER AE",
-            [0xC7] = "LATIN CAPITAL LETTER C WITH CEDILLA",
-            [0xC8] = "LATIN CAPITAL LETTER E WITH GRAVE",
-            [0xC9] = "LATIN CAPITAL LETTER E WITH ACUTE",
-            [0xCA] = "LATIN CAPITAL LETTER E WITH CIRCUMFLEX",
-            [0xCB] = "LATIN CAPITAL LETTER E WITH DIAERESIS",
-            [0xCC] = "LATIN CAPITAL LETTER I WITH GRAVE",
-            [0xCD] = "LATIN CAPITAL LETTER I WITH ACUTE",
-            [0xCE] = "LATIN CAPITAL LETTER I WITH CIRCUMFLEX",
-            [0xCF] = "LATIN CAPITAL LETTER I WITH DIAERESIS",
-            [0xD0] = "LATIN CAPITAL LETTER ETH",
-            [0xD1] = "LATIN CAPITAL LETTER N WITH TILDE",
-            [0xD2] = "LATIN CAPITAL LETTER O WITH GRAVE",
-            [0xD3] = "LATIN CAPITAL LETTER O WITH ACUTE",
-            [0xD4] = "LATIN CAPITAL LETTER O WITH CIRCUMFLEX",
-            [0xD5] = "LATIN CAPITAL LETTER O WITH TILDE",
-            [0xD6] = "LATIN CAPITAL LETTER O WITH DIAERESIS",
-            [0xD7] = "MULTIPLICATION SIGN",
-            [0xD8] = "LATIN CAPITAL LETTER O WITH STROKE",
-            [0xD9] = "LATIN CAPITAL LETTER U WITH GRAVE",
-            [0xDA] = "LATIN CAPITAL LETTER U WITH ACUTE",
-            [0xDB] = "LATIN CAPITAL LETTER U WITH CIRCUMFLEX",
-            [0xDC] = "LATIN CAPITAL LETTER U WITH DIAERESIS",
-            [0xDD] = "LATIN CAPITAL LETTER Y WITH ACUTE",
-            [0xDE] = "LATIN CAPITAL LETTER THORN",
-            [0xDF] = "LATIN SMALL LETTER SHARP S",
-            [0xE0] = "LATIN SMALL LETTER A WITH GRAVE",
-            [0xE1] = "LATIN SMALL LETTER A WITH ACUTE",
-            [0xE2] = "LATIN SMALL LETTER A WITH CIRCUMFLEX",
-            [0xE3] = "LATIN SMALL LETTER A WITH TILDE",
-            [0xE4] = "LATIN SMALL LETTER A WITH DIAERESIS",
-            [0xE5] = "LATIN SMALL LETTER A WITH RING ABOVE",
-            [0xE6] = "LATIN SMALL LETTER AE",
-            [0xE7] = "LATIN SMALL LETTER C WITH CEDILLA",
-            [0xE8] = "LATIN SMALL LETTER E WITH GRAVE",
-            [0xE9] = "LATIN SMALL LETTER E WITH ACUTE",
-            [0xEA] = "LATIN SMALL LETTER E WITH CIRCUMFLEX",
-            [0xEB] = "LATIN SMALL LETTER E WITH DIAERESIS",
-            [0xEC] = "LATIN SMALL LETTER I WITH GRAVE",
-            [0xED] = "LATIN SMALL LETTER I WITH ACUTE",
-            [0xEE] = "LATIN SMALL LETTER I WITH CIRCUMFLEX",
-            [0xEF] = "LATIN SMALL LETTER I WITH DIAERESIS",
-            [0xF0] = "LATIN SMALL LETTER ETH",
-            [0xF1] = "LATIN SMALL LETTER N WITH TILDE",
-            [0xF2] = "LATIN SMALL LETTER O WITH GRAVE",
-            [0xF3] = "LATIN SMALL LETTER O WITH ACUTE",
-            [0xF4] = "LATIN SMALL LETTER O WITH CIRCUMFLEX",
-            [0xF5] = "LATIN SMALL LETTER O WITH TILDE",
-            [0xF6] = "LATIN SMALL LETTER O WITH DIAERESIS",
-            [0xF7] = "DIVISION SIGN",
-            [0xF8] = "LATIN SMALL LETTER O WITH STROKE",
-            [0xF9] = "LATIN SMALL LETTER U WITH GRAVE",
-            [0xFA] = "LATIN SMALL LETTER U WITH ACUTE",
-            [0xFB] = "LATIN SMALL LETTER U WITH CIRCUMFLEX",
-            [0xFC] = "LATIN SMALL LETTER U WITH DIAERESIS",
-            [0xFD] = "LATIN SMALL LETTER Y WITH ACUTE",
-            [0xFE] = "LATIN SMALL LETTER THORN",
-            [0xFF] = "LATIN SMALL LETTER Y WITH DIAERESIS",
-        };
-
-        public override char GetNextChar() => _pos < _replacement.Length ? _replacement[_pos++] : '\0';
-
-        public override bool MovePrevious()
-        {
-            if (_pos <= 0)
-                return false;
-            _pos--;
-            return true;
-        }
-
-        public override int Remaining => _replacement.Length - _pos;
-
-        public override void Reset()
-        {
-            _replacement = string.Empty;
-            _pos = 0;
-        }
-    }
+        [0x20] = "SPACE",
+        [0x21] = "EXCLAMATION MARK",
+        [0x22] = "QUOTATION MARK",
+        [0x23] = "NUMBER SIGN",
+        [0x24] = "DOLLAR SIGN",
+        [0x25] = "PERCENT SIGN",
+        [0x26] = "AMPERSAND",
+        [0x27] = "APOSTROPHE",
+        [0x28] = "LEFT PARENTHESIS",
+        [0x29] = "RIGHT PARENTHESIS",
+        [0x2A] = "ASTERISK",
+        [0x2B] = "PLUS SIGN",
+        [0x2C] = "COMMA",
+        [0x2D] = "HYPHEN-MINUS",
+        [0x2E] = "FULL STOP",
+        [0x2F] = "SOLIDUS",
+        [0x30] = "DIGIT ZERO",
+        [0x31] = "DIGIT ONE",
+        [0x32] = "DIGIT TWO",
+        [0x33] = "DIGIT THREE",
+        [0x34] = "DIGIT FOUR",
+        [0x35] = "DIGIT FIVE",
+        [0x36] = "DIGIT SIX",
+        [0x37] = "DIGIT SEVEN",
+        [0x38] = "DIGIT EIGHT",
+        [0x39] = "DIGIT NINE",
+        [0x3A] = "COLON",
+        [0x3B] = "SEMICOLON",
+        [0x3C] = "LESS-THAN SIGN",
+        [0x3D] = "EQUALS SIGN",
+        [0x3E] = "GREATER-THAN SIGN",
+        [0x3F] = "QUESTION MARK",
+        [0x40] = "COMMERCIAL AT",
+        [0x41] = "LATIN CAPITAL LETTER A",
+        [0x42] = "LATIN CAPITAL LETTER B",
+        [0x43] = "LATIN CAPITAL LETTER C",
+        [0x44] = "LATIN CAPITAL LETTER D",
+        [0x45] = "LATIN CAPITAL LETTER E",
+        [0x46] = "LATIN CAPITAL LETTER F",
+        [0x47] = "LATIN CAPITAL LETTER G",
+        [0x48] = "LATIN CAPITAL LETTER H",
+        [0x49] = "LATIN CAPITAL LETTER I",
+        [0x4A] = "LATIN CAPITAL LETTER J",
+        [0x4B] = "LATIN CAPITAL LETTER K",
+        [0x4C] = "LATIN CAPITAL LETTER L",
+        [0x4D] = "LATIN CAPITAL LETTER M",
+        [0x4E] = "LATIN CAPITAL LETTER N",
+        [0x4F] = "LATIN CAPITAL LETTER O",
+        [0x50] = "LATIN CAPITAL LETTER P",
+        [0x51] = "LATIN CAPITAL LETTER Q",
+        [0x52] = "LATIN CAPITAL LETTER R",
+        [0x53] = "LATIN CAPITAL LETTER S",
+        [0x54] = "LATIN CAPITAL LETTER T",
+        [0x55] = "LATIN CAPITAL LETTER U",
+        [0x56] = "LATIN CAPITAL LETTER V",
+        [0x57] = "LATIN CAPITAL LETTER W",
+        [0x58] = "LATIN CAPITAL LETTER X",
+        [0x59] = "LATIN CAPITAL LETTER Y",
+        [0x5A] = "LATIN CAPITAL LETTER Z",
+        [0x5B] = "LEFT SQUARE BRACKET",
+        [0x5C] = "REVERSE SOLIDUS",
+        [0x5D] = "RIGHT SQUARE BRACKET",
+        [0x5E] = "CIRCUMFLEX ACCENT",
+        [0x5F] = "LOW LINE",
+        [0x60] = "GRAVE ACCENT",
+        [0x61] = "LATIN SMALL LETTER A",
+        [0x62] = "LATIN SMALL LETTER B",
+        [0x63] = "LATIN SMALL LETTER C",
+        [0x64] = "LATIN SMALL LETTER D",
+        [0x65] = "LATIN SMALL LETTER E",
+        [0x66] = "LATIN SMALL LETTER F",
+        [0x67] = "LATIN SMALL LETTER G",
+        [0x68] = "LATIN SMALL LETTER H",
+        [0x69] = "LATIN SMALL LETTER I",
+        [0x6A] = "LATIN SMALL LETTER J",
+        [0x6B] = "LATIN SMALL LETTER K",
+        [0x6C] = "LATIN SMALL LETTER L",
+        [0x6D] = "LATIN SMALL LETTER M",
+        [0x6E] = "LATIN SMALL LETTER N",
+        [0x6F] = "LATIN SMALL LETTER O",
+        [0x70] = "LATIN SMALL LETTER P",
+        [0x71] = "LATIN SMALL LETTER Q",
+        [0x72] = "LATIN SMALL LETTER R",
+        [0x73] = "LATIN SMALL LETTER S",
+        [0x74] = "LATIN SMALL LETTER T",
+        [0x75] = "LATIN SMALL LETTER U",
+        [0x76] = "LATIN SMALL LETTER V",
+        [0x77] = "LATIN SMALL LETTER W",
+        [0x78] = "LATIN SMALL LETTER X",
+        [0x79] = "LATIN SMALL LETTER Y",
+        [0x7A] = "LATIN SMALL LETTER Z",
+        [0x7B] = "LEFT CURLY BRACKET",
+        [0x7C] = "VERTICAL LINE",
+        [0x7D] = "RIGHT CURLY BRACKET",
+        [0x7E] = "TILDE",
+        [0xA0] = "NO-BREAK SPACE",
+        [0xA1] = "INVERTED EXCLAMATION MARK",
+        [0xA2] = "CENT SIGN",
+        [0xA3] = "POUND SIGN",
+        [0xA4] = "CURRENCY SIGN",
+        [0xA5] = "YEN SIGN",
+        [0xA6] = "BROKEN BAR",
+        [0xA7] = "SECTION SIGN",
+        [0xA8] = "DIAERESIS",
+        [0xA9] = "COPYRIGHT SIGN",
+        [0xAA] = "FEMININE ORDINAL INDICATOR",
+        [0xAB] = "LEFT-POINTING DOUBLE ANGLE QUOTATION MARK",
+        [0xAC] = "NOT SIGN",
+        [0xAD] = "SOFT HYPHEN",
+        [0xAE] = "REGISTERED SIGN",
+        [0xAF] = "MACRON",
+        [0xB0] = "DEGREE SIGN",
+        [0xB1] = "PLUS-MINUS SIGN",
+        [0xB2] = "SUPERSCRIPT TWO",
+        [0xB3] = "SUPERSCRIPT THREE",
+        [0xB4] = "ACUTE ACCENT",
+        [0xB5] = "MICRO SIGN",
+        [0xB6] = "PILCROW SIGN",
+        [0xB7] = "MIDDLE DOT",
+        [0xB8] = "CEDILLA",
+        [0xB9] = "SUPERSCRIPT ONE",
+        [0xBA] = "MASCULINE ORDINAL INDICATOR",
+        [0xBB] = "RIGHT-POINTING DOUBLE ANGLE QUOTATION MARK",
+        [0xBC] = "VULGAR FRACTION ONE QUARTER",
+        [0xBD] = "VULGAR FRACTION ONE HALF",
+        [0xBE] = "VULGAR FRACTION THREE QUARTERS",
+        [0xBF] = "INVERTED QUESTION MARK",
+        [0xC0] = "LATIN CAPITAL LETTER A WITH GRAVE",
+        [0xC1] = "LATIN CAPITAL LETTER A WITH ACUTE",
+        [0xC2] = "LATIN CAPITAL LETTER A WITH CIRCUMFLEX",
+        [0xC3] = "LATIN CAPITAL LETTER A WITH TILDE",
+        [0xC4] = "LATIN CAPITAL LETTER A WITH DIAERESIS",
+        [0xC5] = "LATIN CAPITAL LETTER A WITH RING ABOVE",
+        [0xC6] = "LATIN CAPITAL LETTER AE",
+        [0xC7] = "LATIN CAPITAL LETTER C WITH CEDILLA",
+        [0xC8] = "LATIN CAPITAL LETTER E WITH GRAVE",
+        [0xC9] = "LATIN CAPITAL LETTER E WITH ACUTE",
+        [0xCA] = "LATIN CAPITAL LETTER E WITH CIRCUMFLEX",
+        [0xCB] = "LATIN CAPITAL LETTER E WITH DIAERESIS",
+        [0xCC] = "LATIN CAPITAL LETTER I WITH GRAVE",
+        [0xCD] = "LATIN CAPITAL LETTER I WITH ACUTE",
+        [0xCE] = "LATIN CAPITAL LETTER I WITH CIRCUMFLEX",
+        [0xCF] = "LATIN CAPITAL LETTER I WITH DIAERESIS",
+        [0xD0] = "LATIN CAPITAL LETTER ETH",
+        [0xD1] = "LATIN CAPITAL LETTER N WITH TILDE",
+        [0xD2] = "LATIN CAPITAL LETTER O WITH GRAVE",
+        [0xD3] = "LATIN CAPITAL LETTER O WITH ACUTE",
+        [0xD4] = "LATIN CAPITAL LETTER O WITH CIRCUMFLEX",
+        [0xD5] = "LATIN CAPITAL LETTER O WITH TILDE",
+        [0xD6] = "LATIN CAPITAL LETTER O WITH DIAERESIS",
+        [0xD7] = "MULTIPLICATION SIGN",
+        [0xD8] = "LATIN CAPITAL LETTER O WITH STROKE",
+        [0xD9] = "LATIN CAPITAL LETTER U WITH GRAVE",
+        [0xDA] = "LATIN CAPITAL LETTER U WITH ACUTE",
+        [0xDB] = "LATIN CAPITAL LETTER U WITH CIRCUMFLEX",
+        [0xDC] = "LATIN CAPITAL LETTER U WITH DIAERESIS",
+        [0xDD] = "LATIN CAPITAL LETTER Y WITH ACUTE",
+        [0xDE] = "LATIN CAPITAL LETTER THORN",
+        [0xDF] = "LATIN SMALL LETTER SHARP S",
+        [0xE0] = "LATIN SMALL LETTER A WITH GRAVE",
+        [0xE1] = "LATIN SMALL LETTER A WITH ACUTE",
+        [0xE2] = "LATIN SMALL LETTER A WITH CIRCUMFLEX",
+        [0xE3] = "LATIN SMALL LETTER A WITH TILDE",
+        [0xE4] = "LATIN SMALL LETTER A WITH DIAERESIS",
+        [0xE5] = "LATIN SMALL LETTER A WITH RING ABOVE",
+        [0xE6] = "LATIN SMALL LETTER AE",
+        [0xE7] = "LATIN SMALL LETTER C WITH CEDILLA",
+        [0xE8] = "LATIN SMALL LETTER E WITH GRAVE",
+        [0xE9] = "LATIN SMALL LETTER E WITH ACUTE",
+        [0xEA] = "LATIN SMALL LETTER E WITH CIRCUMFLEX",
+        [0xEB] = "LATIN SMALL LETTER E WITH DIAERESIS",
+        [0xEC] = "LATIN SMALL LETTER I WITH GRAVE",
+        [0xED] = "LATIN SMALL LETTER I WITH ACUTE",
+        [0xEE] = "LATIN SMALL LETTER I WITH CIRCUMFLEX",
+        [0xEF] = "LATIN SMALL LETTER I WITH DIAERESIS",
+        [0xF0] = "LATIN SMALL LETTER ETH",
+        [0xF1] = "LATIN SMALL LETTER N WITH TILDE",
+        [0xF2] = "LATIN SMALL LETTER O WITH GRAVE",
+        [0xF3] = "LATIN SMALL LETTER O WITH ACUTE",
+        [0xF4] = "LATIN SMALL LETTER O WITH CIRCUMFLEX",
+        [0xF5] = "LATIN SMALL LETTER O WITH TILDE",
+        [0xF6] = "LATIN SMALL LETTER O WITH DIAERESIS",
+        [0xF7] = "DIVISION SIGN",
+        [0xF8] = "LATIN SMALL LETTER O WITH STROKE",
+        [0xF9] = "LATIN SMALL LETTER U WITH GRAVE",
+        [0xFA] = "LATIN SMALL LETTER U WITH ACUTE",
+        [0xFB] = "LATIN SMALL LETTER U WITH CIRCUMFLEX",
+        [0xFC] = "LATIN SMALL LETTER U WITH DIAERESIS",
+        [0xFD] = "LATIN SMALL LETTER Y WITH ACUTE",
+        [0xFE] = "LATIN SMALL LETTER THORN",
+        [0xFF] = "LATIN SMALL LETTER Y WITH DIAERESIS",
+    };
 
     protected override PyResult Repr(PyCallContext context, PyStrObject self)
     {
