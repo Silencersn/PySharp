@@ -37,7 +37,13 @@ public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
     public virtual bool IsSealed => false;
     public override PyTypeObject DefaultPyType => PyTypeObjectType.Shared;
     public abstract Type LayoutType { get; }
-    internal virtual bool IsTypeImmutable => true;
+    /// <summary>
+    /// Whether instances of this type are immutable: an immutable instance carries no
+    /// per-instance <c>__dict__</c> and rejects attribute writes and deletions
+    /// (CPython types with a zero tp_dictoffset, such as int, str and tuple), which is
+    /// also why the type-attribute guards refuse writes on their type objects.
+    /// </summary>
+    internal virtual bool InstancesAreImmutable => true;
 
     // CPython Py_TPFLAGS_HEAPTYPE: only runtime-created classes accept
     // attribute writes on the type object itself

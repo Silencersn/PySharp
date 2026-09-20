@@ -33,7 +33,7 @@ public partial class PyObject
     }
 
     [DebuggerBrowsable(DebuggerBrowsableState.Never)]
-    internal virtual bool IsImmutable => PyType.IsTypeImmutable;
+    internal virtual bool IsImmutable => PyType.InstancesAreImmutable;
 
     public PyObject()
     {

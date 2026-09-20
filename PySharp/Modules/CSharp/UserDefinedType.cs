@@ -7,7 +7,7 @@ internal sealed partial class UserDefinedType<TObject> : PyTypeObject<TObject> w
     protected override string? DefaultModule => null;
     protected override string DefaultName { get; }
     public override IReadOnlyList<PyTypeObject> Bases { get; }
-    internal override bool IsTypeImmutable => false;
+    internal override bool InstancesAreImmutable => false;
     internal override bool IsImmutable => false;
     internal override bool IsRuntimeCreated => true;
 

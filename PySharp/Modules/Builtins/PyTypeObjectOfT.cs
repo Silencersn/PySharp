@@ -330,7 +330,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
     [PyProperty(PySpecialNames.Bases, Type = PyPropertyMethodType.Deleter)]
     private static PyResult Delete_Bases(PyCallContext context, PyTypeObject self)
     {
-        if (self.IsTypeImmutable)
+        if (self.InstancesAreImmutable)
             return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Bases, self.FullName);
 
         return PyResult.TypeError($"cannot delete '{PySpecialNames.Bases}' attribute of immutable type '{self.Name}'");
@@ -345,7 +345,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
     [PyProperty(PySpecialNames.Name, Type = PyPropertyMethodType.Setter)]
     private static PyResult Set_Name(PyCallContext context, PyTypeObject self, PyObject value)
     {
-        if (self.IsTypeImmutable)
+        if (self.InstancesAreImmutable)
             return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Name, self.FullName);
 
         if (value is not PyStrObject str)
@@ -358,7 +358,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
     [PyProperty(PySpecialNames.Name, Type = PyPropertyMethodType.Deleter)]
     private static PyResult Delete_Name(PyCallContext context, PyTypeObject self)
     {
-        if (self.IsTypeImmutable)
+        if (self.InstancesAreImmutable)
             return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Name, self.FullName);
 
         // CPython check_set_special_type_attr: the delete path reports the
@@ -375,7 +375,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
     [PyProperty(PySpecialNames.QualName, Type = PyPropertyMethodType.Setter)]
     private static PyResult Set_QualName(PyCallContext context, PyTypeObject self, PyObject value)
     {
-        if (self.IsTypeImmutable)
+        if (self.InstancesAreImmutable)
             return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.QualName, self.FullName);
 
         if (value is not PyStrObject str)
@@ -388,7 +388,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
     [PyProperty(PySpecialNames.QualName, Type = PyPropertyMethodType.Deleter)]
     private static PyResult Delete_QualName(PyCallContext context, PyTypeObject self)
     {
-        if (self.IsTypeImmutable)
+        if (self.InstancesAreImmutable)
             return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.QualName, self.FullName);
 
         // CPython check_set_special_type_attr: the delete path reports the
@@ -414,7 +414,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
     [PyProperty(PySpecialNames.Module, Type = PyPropertyMethodType.Setter)]
     private static PyResult Set_Module(PyCallContext context, PyTypeObject self, PyObject value)
     {
-        if (self.IsTypeImmutable)
+        if (self.InstancesAreImmutable)
             return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Module, self.FullName);
 
         self.ModuleAsObject = value;
@@ -424,7 +424,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
     [PyProperty(PySpecialNames.Module, Type = PyPropertyMethodType.Deleter)]
     private static PyResult Delete_Module(PyCallContext context, PyTypeObject self)
     {
-        if (self.IsTypeImmutable)
+        if (self.InstancesAreImmutable)
             return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Module, self.FullName);
 
         return PyResult.TypeError($"cannot delete '{PySpecialNames.Module}' attribute of immutable type '{self.Name}'");
@@ -433,7 +433,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
     [PyProperty(PySpecialNames.Annotations)]
     private static PyResult Get_Annotations(PyCallContext context, PyTypeObject self)
     {
-        if (self.IsTypeImmutable)
+        if (self.InstancesAreImmutable)
             return PyResult.AttributeError(PySR.Runtime_Type_AttributeNotFound, self.FullName, PySpecialNames.Annotations);
 
         if (self.PyAttributes.TryGetValue(PySpecialNames.Annotations, out var existing))
@@ -445,7 +445,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
     [PyProperty(PySpecialNames.Annotations, Type = PyPropertyMethodType.Setter)]
     private static PyResult Set_Annotations(PyCallContext context, PyTypeObject self, PyObject value)
     {
-        if (self.IsTypeImmutable)
+        if (self.InstancesAreImmutable)
             return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Annotations, self.FullName);
 
         if (value is not PyDictObject && value is not PyNoneObject)
@@ -459,7 +459,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
     [PyProperty(PySpecialNames.Annotations, Type = PyPropertyMethodType.Deleter)]
     private static PyResult Delete_Annotations(PyCallContext context, PyTypeObject self)
     {
-        if (self.IsTypeImmutable)
+        if (self.InstancesAreImmutable)
             return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Annotations, self.FullName);
 
         // CPython raises a bare-name AttributeError when __annotations__ was

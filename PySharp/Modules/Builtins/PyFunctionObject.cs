@@ -60,7 +60,7 @@ public sealed class PyFunctionObject : PyObjectManagedDict, IPyObjectName
 [PyType("function", IsSealed = true)]
 public sealed partial class PyFunctionObjectType : PyTypeObject<PyFunctionObject>
 {
-    internal override bool IsTypeImmutable => false;
+    internal override bool InstancesAreImmutable => false;
 
     protected override PyResult Repr(PyCallContext context, PyFunctionObject self)
     {
