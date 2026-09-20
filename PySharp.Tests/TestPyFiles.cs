@@ -463,6 +463,15 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestStrCodePointWidthRegression()
+    {
+        // Regression: zfill and %-formatting measure width and precision in
+        // code points, so an astral character occupies a single column.
+        var module = RunModule("test_str_codepoint_width_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestStrCodePointView()
     {
         // Regression: index/slice/iterate/pad count code points, so an

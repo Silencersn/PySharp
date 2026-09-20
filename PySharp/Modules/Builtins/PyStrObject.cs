@@ -161,6 +161,36 @@ public partial class PyStrObject : PyObject
             builder.Append(value);
     }
 
+    // CPython unicode_compare: ordering is by code point, not by UTF-16
+    // code unit (a surrogate pair sorts above U+E000-U+FFFF)
+    internal static int CompareCodePoints(ReadOnlySpan<char> left, ReadOnlySpan<char> right)
+    {
+        var leftEnumerator = new CodePointEnumerator(left);
+        var rightEnumerator = new CodePointEnumerator(right);
+        while (true)
+        {
+            var hasLeft = leftEnumerator.MoveNext();
+            var hasRight = rightEnumerator.MoveNext();
+            if (!hasLeft || !hasRight)
+                return hasLeft == hasRight ? 0 : hasLeft ? 1 : -1;
+            if (leftEnumerator.Current != rightEnumerator.Current)
+                return leftEnumerator.Current < rightEnumerator.Current ? -1 : 1;
+        }
+    }
+
+    /// <summary>Prefix of at most <paramref name="count"/> code points.</summary>
+    internal static string CodePointPrefix(string value, int count)
+    {
+        if (CountCodePoints(value) <= count)
+            return value;
+
+        var builder = new StringBuilder(count);
+        var enumerator = new CodePointEnumerator(value);
+        for (var taken = 0; taken < count && enumerator.MoveNext(); taken++)
+            AppendCodePoint(builder, enumerator.Current);
+        return builder.ToString();
+    }
+
     /// <summary>Convert a code-point index to a char index in the string.</summary>
     internal int CodePointIndexToCharIndex(int codePointIndex)
     {
@@ -992,12 +1022,16 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         if (width <= self.PyLength)
             return self;
 
-        // a sign is a single code unit
+        // CPython unicode_zfill: '0' fills up to the requested code point
+        // count, placed after a leading sign when there is one
+        var fill = width - self.PyLength;
         var first = self.FirstCodePoint();
-        if (self.PyLength is not 0 && (first is '+' or '-'))
-            return PyStrObject.FromString(self.Value[..1] + self.Value[1..].PadLeft(width - 1, '0'));
-
-        return PyStrObject.FromString(self.Value.PadLeft(width, '0'));
+        var signLength = self.PyLength is not 0 && (first is '+' or '-') ? 1 : 0;
+        var sb = new StringBuilder(self.Value.Length + fill);
+        sb.Append(self.Value, 0, signLength);
+        sb.Append('0', fill);
+        sb.Append(self.Value, signLength, self.Value.Length - signLength);
+        return PyStrObject.FromString(sb.ToString());
     }
 
     [AIGenerated]
@@ -2275,27 +2309,27 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     {
         if (other is not PyStrObject strObj)
             return PyNotImplementedObject.NotImplemented;
-        // Ordinal (code point) comparison, matching CPython's unicode_compare.
-        // string.CompareTo would use culture rules ('a' < 'B' incorrectly).
-        return PyBoolObject.FromBoolean(string.CompareOrdinal(self.Value, strObj.Value) < 0);
+        // CPython unicode_compare order; string.CompareTo would use culture
+        // rules ('a' < 'B' incorrectly) and CompareOrdinal code units.
+        return PyBoolObject.FromBoolean(PyStrObject.CompareCodePoints(self.Value, strObj.Value) < 0);
     }
     protected override PyResult Le(PyCallContext context, PyStrObject self, PyObject other)
     {
         if (other is not PyStrObject strObj)
             return PyNotImplementedObject.NotImplemented;
-        return PyBoolObject.FromBoolean(string.CompareOrdinal(self.Value, strObj.Value) <= 0);
+        return PyBoolObject.FromBoolean(PyStrObject.CompareCodePoints(self.Value, strObj.Value) <= 0);
     }
     protected override PyResult Gt(PyCallContext context, PyStrObject self, PyObject other)
     {
         if (other is not PyStrObject strObj)
             return PyNotImplementedObject.NotImplemented;
-        return PyBoolObject.FromBoolean(string.CompareOrdinal(self.Value, strObj.Value) > 0);
+        return PyBoolObject.FromBoolean(PyStrObject.CompareCodePoints(self.Value, strObj.Value) > 0);
     }
     protected override PyResult Ge(PyCallContext context, PyStrObject self, PyObject other)
     {
         if (other is not PyStrObject strObj)
             return PyNotImplementedObject.NotImplemented;
-        return PyBoolObject.FromBoolean(string.CompareOrdinal(self.Value, strObj.Value) >= 0);
+        return PyBoolObject.FromBoolean(PyStrObject.CompareCodePoints(self.Value, strObj.Value) >= 0);
     }
     protected override PyResult Mul(PyCallContext context, PyStrObject self, PyObject other)
     {
@@ -2523,8 +2557,8 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                         if (strResult.IsError)
                             return strResult;
                         formatted = strResult.Value.Value;
-                        if (precision >= 0 && formatted.Length > precision)
-                            formatted = formatted[..precision];
+                        if (precision >= 0)
+                            formatted = PyStrObject.CodePointPrefix(formatted, precision);
                         break;
                     }
                 case 'r':
@@ -2533,8 +2567,8 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                         if (reprResult.IsError)
                             return reprResult;
                         formatted = reprResult.Value.Value;
-                        if (precision >= 0 && formatted.Length > precision)
-                            formatted = formatted[..precision];
+                        if (precision >= 0)
+                            formatted = PyStrObject.CodePointPrefix(formatted, precision);
                         break;
                     }
                 case 'a':
@@ -2543,8 +2577,8 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                         if (asciiResult.IsError)
                             return asciiResult;
                         formatted = ((PyStrObject)asciiResult.Value).Value;
-                        if (precision >= 0 && formatted.Length > precision)
-                            formatted = formatted[..precision];
+                        if (precision >= 0)
+                            formatted = PyStrObject.CodePointPrefix(formatted, precision);
                         break;
                     }
                 case 'd':
@@ -2776,38 +2810,38 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
             // Override width if the # flag added extra characters for octal/hex
 
-            // Apply width and alignment
-            if (width > formatted.Length)
+            // Apply width and alignment; CPython unicode_format pads the
+            // code point sequence, so an astral character counts once
+            var formattedLength = PyStrObject.CountCodePoints(formatted);
+            if (width > formattedLength)
             {
+                var pad = width - formattedLength;
                 char padChar = flagZeroPad && !flagLeftAlign ? '0' : ' ';
                 if (flagLeftAlign)
                 {
-                    formatted = formatted.PadRight(width, padChar);
+                    formatted += new string(padChar, pad);
                 }
                 else if (flagZeroPad && formatted.Length > 0)
                 {
                     // Zero-padding: zeros go after any sign and any
                     // '0x'/'0o'/'0X' alternate prefix ('%#08x' % -16 -> '-0x00010').
-                    int padCount = width;
                     string head = string.Empty;
                     string tail = formatted;
                     if (tail[0] is '+' or '-' or ' ')
                     {
                         head = tail[..1];
                         tail = tail[1..];
-                        padCount--;
                     }
                     if (tail.Length >= 2 && tail[0] is '0' && tail[1] is 'x' or 'o' or 'X')
                     {
                         head += tail[..2];
                         tail = tail[2..];
-                        padCount -= 2;
                     }
-                    formatted = head + tail.PadLeft(padCount, padChar);
+                    formatted = head + new string(padChar, pad) + tail;
                 }
                 else
                 {
-                    formatted = formatted.PadLeft(width, padChar);
+                    formatted = new string(padChar, pad) + formatted;
                 }
             }
 

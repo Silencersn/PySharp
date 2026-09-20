@@ -33,8 +33,20 @@ assert ('abc' > 'ab') is True
 # Code point order beyond ASCII (accented chars, non-BMP, lone surrogates)
 assert ('é' > 'e') is True
 assert ('😀' > '中') is True
-# Lone surrogates via literal (chr() rejects the surrogate range)
+# Lone surrogates compare by their own code point
 assert ('\ud800' < '\udc00') is True
+
+# Astral characters sort above the whole BMP: comparing UTF-16 code units
+# instead would place the high surrogate (U+D800-U+DBFF) below U+E000-U+FFFF
+assert (chr(0xFFFF) < chr(0x10000)) is True
+assert (chr(0xE000) < chr(0x10000)) is True
+assert (chr(0xD7FF) < chr(0x10000)) is True
+assert (chr(0x10000) > chr(0xFFFF)) is True
+assert (chr(0x10000) < chr(0x10FFFF)) is True
+assert ('a' + chr(0x10000)) > ('a' + chr(0xFFFF))
+assert min(chr(0x10000), chr(0xFFFF)) == chr(0xFFFF)
+assert max(chr(0x10000), chr(0xFFFF)) == chr(0x10000)
+assert sorted([chr(0x10000), chr(0xFFFF), 'a']) == ['a', chr(0xFFFF), chr(0x10000)]
 
 # sorted uses the same ordering
 assert sorted(['B', 'a', 'A', 'b']) == ['A', 'B', 'a', 'b']
