@@ -14,6 +14,7 @@ public sealed class PyFunctionObject : PyObjectManagedDict, IPyObjectName
     internal PyStrObject? _pyName;
     internal PyStrObject? _pyQualName;
     internal PyObject? _pyModule;
+    internal PyTupleObject? _pyDefaults;
 
 
     public string Name { get; internal set; }
@@ -164,11 +165,51 @@ public sealed partial class PyFunctionObjectType : PyTypeObject<PyFunctionObject
         return PyNoneObject.None;
     }
 
+    // CPython func_get_defaults: the tuple the function holds, None when it
+    // holds none; a function whose defaults were never assigned builds its
+    // tuple once and hands out that same object afterwards
     [PyProperty(PySpecialNames.Defaults)]
     private static PyResult Get_Defaults(PyCallContext context, PyFunctionObject self)
     {
+        if (self._pyDefaults is not null)
+            return self._pyDefaults;
+
         if (self._def.Defaults.Length is 0)
             return PyNoneObject.None;
-        return PyTupleObject.CreateTuple(self._def.Defaults);
+
+        return self._pyDefaults = PyTupleObject.CreateTuple(self._def.Defaults);
+    }
+
+    // CPython func_set_defaults: a tuple replaces the defaults wholesale, so
+    // the parameters that lack a value move with it; a tuple subclass is
+    // accepted (PyTuple_Check) and None clears them
+    [PyProperty(PySpecialNames.Defaults, Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_Defaults(PyCallContext context, PyFunctionObject self, PyObject value)
+    {
+        switch (value)
+        {
+            case PyNoneObject:
+                self._def.Defaults = [];
+                self._pyDefaults = null;
+                return PyNoneObject.None;
+
+            case PyTupleObject tuple:
+                self._def.Defaults = tuple.InternalArray;
+                self._pyDefaults = tuple;
+                return PyNoneObject.None;
+
+            default:
+                return PyResult.TypeError("__defaults__ must be set to a tuple object");
+        }
+    }
+
+    // del f.__defaults__ (func_set_defaults with NULL) leaves the function
+    // holding none, which reads back as None
+    [PyProperty(PySpecialNames.Defaults, Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Defaults(PyCallContext context, PyFunctionObject self)
+    {
+        self._def.Defaults = [];
+        self._pyDefaults = null;
+        return PyNoneObject.None;
     }
 }

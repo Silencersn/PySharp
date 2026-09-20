@@ -4186,4 +4186,17 @@ public sealed class TestPyFiles
         var module = RunModule("test_frozen_instance_setattr_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestFunctionDefaultsRewriteRegression()
+    {
+        // Regression: function.__defaults__ is writable (CPython
+        // func_set_defaults). The assigned tuple replaces the defaults
+        // wholesale, reads back as the same object, accepts a tuple
+        // subclass, rejects a non-tuple with TypeError, and None or a
+        // deletion clears them, so the parameters that lack a value and
+        // the arity messages follow the live tuple.
+        var module = RunModule("test_function_defaults_rewrite_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

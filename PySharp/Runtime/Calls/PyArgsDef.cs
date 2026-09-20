@@ -45,7 +45,11 @@ public sealed class PyArgsDef
     internal string[] Args { get; }
     internal string[] KwonlyArgs { get; }
     internal PyObject?[] KwDefaults { get; }
-    internal PyObject[] Defaults { get; }
+
+    // replaced wholesale by a Python-level __defaults__ assignment
+    // (func_set_defaults), which also moves the count of parameters that
+    // lack a value
+    internal PyObject[] Defaults { get; set; }
     internal string? VarArg { get; }
     internal string? KwArg { get; }
     internal int BufferLength => PosonlyArgs.Length + Args.Length + KwonlyArgs.Length;
