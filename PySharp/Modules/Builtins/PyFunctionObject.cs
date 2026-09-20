@@ -21,6 +21,10 @@ public sealed class PyFunctionObject : PyObjectManagedDict, IPyObjectName
     internal PyCodeObject Code => _code;
     internal PyStrObject PyName => _pyName ??= PyStrObject.FromString(Name);
 
+    // CPython func_qualname: what the argument binding errors name, mutable
+    // through __qualname__ and defaulting to the code object's own name
+    internal string QualName => _pyQualName?.Value ?? _code.QualName;
+
     public override PyTypeObject DefaultPyType => PyFunctionObjectType.Shared;
 
     internal PyFunctionObject(PyCellObject[]? closure, PyDictObject globals, PyCodeObject code, PyArgsDef def)
@@ -40,7 +44,7 @@ public sealed class PyFunctionObject : PyObjectManagedDict, IPyObjectName
     {
         using var buffer = _def.CreateBuffer();
         if (!_def.TryParse(args, kwargs, buffer, out var arguments))
-            return PyResult.TypeError(null /* TODO */);
+            return PyResult.TypeError(_def.Describe(args, kwargs).Format(QualName));
 
         ref var backFrame = ref context.CurrentInternalFrame;
         var frame = PyInternalFrame.CreateFuncCallFrame(context, this, FrameType.Function, _globals, _code);

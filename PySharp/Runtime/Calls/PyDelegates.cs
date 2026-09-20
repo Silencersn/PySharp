@@ -70,7 +70,9 @@ public static class PyDelegateConverter
         };
     }
 
-    public static PyUncompoundedDelegate ToUncompounded(this PyDelegateDefinition<PyFunction> method)
+    // The parameter list is bound the same way a Python function's is, so the
+    // failure names the builtin the way CPython's messages do
+    public static PyUncompoundedDelegate ToUncompounded(this PyDelegateDefinition<PyFunction> method, string name)
     {
         PyArgsDef? def = null;
 
@@ -82,17 +84,20 @@ public static class PyDelegateConverter
             if (def.TryParse(args, kwargs, buffer, out var result))
                 return method.Delegate.Invoke(context, result);
 
-            return PyResult.TypeError(null);
+            return PyResult.TypeError(def.Describe(args, kwargs).Format(name));
         };
     }
-    public static PyUncompoundedDelegate ToUncompounded<TObject>(this PyDelegateDefinition<PyMethod<TObject>> method) where TObject : PyObject
+    public static PyUncompoundedDelegate ToUncompounded<TObject>(this PyDelegateDefinition<PyMethod<TObject>> method, string name, string ownerName) where TObject : PyObject
     {
         PyArgsDef? def = null;
 
         return (context, args, kwargs) =>
         {
-            if (args.Count is 0 || args[0] is not TObject selfOfT)
-                return PyResult.TypeError(null);
+            if (args.Count is 0)
+                return PyResult.TypeError(PySR.Runtime_Descriptor_NeedsArg, name, ownerName);
+
+            if (args[0] is not TObject selfOfT)
+                return PyResult.TypeError(PySR.Runtime_Descriptor_ReceiveObjectOfWrongType, name, ownerName, args[0].PyType.FullName);
 
             def ??= PyArgsDef.FromDef(method.Parameters);
 
@@ -101,11 +106,11 @@ public static class PyDelegateConverter
             if (def.TryParse(args, kwargs, buffer, out var result))
                 return method.Delegate.Invoke(context, selfOfT, result);
 
-            return PyResult.TypeError(null);
+            return PyResult.TypeError(def.Describe(args, kwargs).Format($"{ownerName}.{name}"));
         };
     }
 
-    public static PyUncompoundedDelegate CreateOverloadDispatcher(params PyDelegateDefinition<PyFunction>[] functions)
+    public static PyUncompoundedDelegate CreateOverloadDispatcher(string name, params PyDelegateDefinition<PyFunction>[] functions)
     {
         PyArgsDef[]? defs = null;
 
@@ -121,7 +126,11 @@ public static class PyDelegateConverter
                     return functions[i].Delegate.Invoke(context, result);
             }
 
-            return PyResult.TypeError(null);
+            // an overload is chosen by the first signature that binds, so the
+            // reported failure is the one of the first overload: the widest,
+            // and the one a caller most likely meant
+            var failure = defs.Length is 0 ? default : defs[0].Describe(args, kwargs);
+            return PyResult.TypeError(failure.Format(name));
         };
 
         void EnsureDefCache()
@@ -141,14 +150,17 @@ public static class PyDelegateConverter
             }
         }
     }
-    public static PyUncompoundedDelegate CreateOverloadDispatcher<TObject>(params PyDelegateDefinition<PyMethod<TObject>>[] methods) where TObject : PyObject
+    public static PyUncompoundedDelegate CreateOverloadDispatcher<TObject>(string name, string ownerName, params PyDelegateDefinition<PyMethod<TObject>>[] methods) where TObject : PyObject
     {
         PyArgsDef[]? defs = null;
 
         return (context, args, kwargs) =>
         {
-            if (args.Count is 0 || args[0] is not TObject selfOfT)
-                return PyResult.TypeError(null);
+            if (args.Count is 0)
+                return PyResult.TypeError(PySR.Runtime_Descriptor_NeedsArg, name, ownerName);
+
+            if (args[0] is not TObject selfOfT)
+                return PyResult.TypeError(PySR.Runtime_Descriptor_ReceiveObjectOfWrongType, name, ownerName, args[0].PyType.FullName);
 
             EnsureDefCache();
             Debug.Assert(defs is not null);
@@ -161,7 +173,10 @@ public static class PyDelegateConverter
                     return methods[i].Delegate.Invoke(context, selfOfT, result);
             }
 
-            return PyResult.TypeError(null);
+            // the reported failure is the one of the first overload (see the
+            // function dispatcher)
+            var failure = defs.Length is 0 ? default : defs[0].Describe(args, kwargs);
+            return PyResult.TypeError(failure.Format($"{ownerName}.{name}"));
         };
 
         void EnsureDefCache()

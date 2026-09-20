@@ -62,6 +62,7 @@ partial class PySR
     public const string Runtime_Exception_TakesNoKeywordArguments = "{0}() takes no keyword arguments";
     public const string Runtime_Type_InitTakes1Or3Arguments = "type.__init__() takes 1 or 3 arguments";
     public const string Runtime_Type_New_WrongArgCount = "type() takes 1 or 3 arguments";
+    public const string Runtime_Type_New_NotEnoughArguments = "{0}.__new__(): not enough arguments";
     public const string Runtime_Type_New_Arg1MustBeStr = "type.__new__() argument 1 must be str, not {0}";
     public const string Runtime_Type_New_Arg2MustBeTuple = "type.__new__() argument 2 must be tuple, not {0}";
     public const string Runtime_Type_New_Arg3MustBeDict = "type.__new__() argument 3 must be dict, not {0}";
@@ -203,6 +204,9 @@ partial class PySR
     public const string Runtime_Dictionary_NotAMapping = "'{0}' object is not a mapping";
 
     public const string Runtime_Range_Arg3Zero = "range() arg 3 must not be zero";
+    public const string Runtime_Range_ExpectedAtLeastArgument = "range expected at least 1 argument, got {0}";
+    public const string Runtime_Range_ExpectedAtMostArguments = "range expected at most 3 arguments, got {0}";
+    public const string Runtime_Range_TakesNoKeywordArguments = "range() takes no keyword arguments";
 
     public const string Runtime_Zip_SecondShorterThanFirst = "zip() argument 2 is shorter than argument 1";
     public const string Runtime_Zip_NthShorterThanPrevious = "zip() argument {0} is shorter than arguments 1-{1}";
@@ -314,8 +318,8 @@ partial class PySR
     public const string Runtime_Arguments_MissingArg = "missing 1 required positional argument";
     public const string Runtime_Arguments_MissingArgs = "missing {0} required positional arguments";
     public const string Runtime_Arguments_UnexpectedKey = "got an unexpected keyword argument '{0}'";
-    public const string Runtime_Arguments_MultipleKeywords = "got multiple values for keyword argument '{0}'";
-    public const string Runtime_Arguments_StarStarNotMapping = "argument after ** must be a mapping, not {0}";
+    public const string Runtime_Arguments_MultipleKeywords = "{0} got multiple values for keyword argument '{1}'";
+    public const string Runtime_Arguments_StarStarNotMapping = "{0} argument after ** must be a mapping, not {1}";
 
     public const string Runtime_Recursion_MaxRecursionDepthExceeded = "maximum recursion depth exceeded";
 

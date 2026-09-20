@@ -35,7 +35,7 @@ public class PyBuiltinFunctionOrMethodObject : PyObject, IPyObjectName
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static PyBuiltinFunctionOrMethodObject CreateFunction(string name, params PyDelegateDefinition<PyFunction>[] funcs)
     {
-        return CreateFunction(name, PyDelegateConverter.CreateOverloadDispatcher(funcs));
+        return CreateFunction(name, PyDelegateConverter.CreateOverloadDispatcher(name, funcs));
     }
     internal static PyBuiltinFunctionOrMethodObject CreateFunction(string name, PyUncompoundedDelegate uncompoundedDelegate)
     {

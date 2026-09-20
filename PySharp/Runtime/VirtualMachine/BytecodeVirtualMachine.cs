@@ -420,7 +420,7 @@ internal static partial class BytecodeVirtualMachine
 
                             using var buffer = func._def.CreateBuffer();
                             if (!func._def.TryParse(callArgs, callKwargs, buffer, out var arguments))
-                                throw context.TypeError(null /* TODO */);
+                                throw context.TypeError(func._def.Describe(callArgs, callKwargs).Format(func.QualName));
 
                             frame.InstructionIndex++;
                             var newFrame = PyInternalFrame.CreateFuncCallFrame(context, func, FrameType.Function, func._globals, func.Code);

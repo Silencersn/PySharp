@@ -215,34 +215,38 @@ public sealed partial class PyRangeObjectType : PyTypeObject<PyRangeObject>
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
+        // range_new takes up to three positional arguments and no keywords,
+        // each one converted through __index__
         if (kwargs.Count is not 0)
-            return PyResult.TypeError(null);
+            return PyResult.TypeError(PySR.Runtime_Range_TakesNoKeywordArguments);
+
+        if (args.Count is 0)
+            return PyResult.TypeError(PySR.Runtime_Range_ExpectedAtLeastArgument, args.Count);
+
+        if (args.Count > 3)
+            return PyResult.TypeError(PySR.Runtime_Range_ExpectedAtMostArguments, args.Count);
+
+        var start = PySpecialMethods.Index(context, args[0]);
+        if (start.IsError)
+            return start;
+
         if (args.Count is 1)
-        {
-            if (args[0] is not PyIntObject stopObj)
-                return PyResult.TypeError(null);
-            return PyRangeObject.CreateRange(stopObj.Value);
-        }
-        else if (args.Count is 2)
-        {
-            if (args[0] is not PyIntObject startObj)
-                return PyResult.TypeError(null);
-            if (args[1] is not PyIntObject stopObj)
-                return PyResult.TypeError(null);
-            return PyRangeObject.CreateRange(startObj.Value, stopObj.Value, BigInteger.One);
-        }
-        else if (args.Count is 3)
-        {
-            if (args[0] is not PyIntObject startObj)
-                return PyResult.TypeError(null);
-            if (args[1] is not PyIntObject stopObj)
-                return PyResult.TypeError(null);
-            if (args[2] is not PyIntObject stepObj)
-                return PyResult.TypeError(null);
-            if (stepObj.Value.IsZero)
-                return PyResult.ValueError(PySR.Runtime_Range_Arg3Zero);
-            return PyRangeObject.CreateRange(startObj.Value, stopObj.Value, stepObj.Value);
-        }
-        return PyResult.TypeError(null);
+            return PyRangeObject.CreateRange(start.Value.Value);
+
+        var stop = PySpecialMethods.Index(context, args[1]);
+        if (stop.IsError)
+            return stop;
+
+        if (args.Count is 2)
+            return PyRangeObject.CreateRange(start.Value.Value, stop.Value.Value, BigInteger.One);
+
+        var step = PySpecialMethods.Index(context, args[2]);
+        if (step.IsError)
+            return step;
+
+        if (step.Value.Value.IsZero)
+            return PyResult.ValueError(PySR.Runtime_Range_Arg3Zero);
+
+        return PyRangeObject.CreateRange(start.Value.Value, stop.Value.Value, step.Value.Value);
     }
 }

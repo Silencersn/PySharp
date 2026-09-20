@@ -122,7 +122,7 @@ internal static class PyCore
         var basesTuple = PyTupleObject.CreateTuple(bases);
         var args = PyTupleObject.CreateTuple([nameStr, basesTuple, ns]);
 
-        var newFunc = metaClass.Slots.New ?? throw context.TypeError(null);
+        var newFunc = metaClass.Slots.New ?? throw context.PySharpException("metaclass {0} has no __new__ slot", metaClass.FullName);
         var obj = newFunc(context, metaClass, args, kwargs).PyUnwrap(context);
         if (!metaClass.IsInstance(obj))
             return obj;

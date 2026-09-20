@@ -52,7 +52,7 @@ internal sealed partial class PyWrapperDescriptorObjectType : PyTypeObject<PyWra
                     : PyResult.TypeError(PySR.Runtime_Arguments_OverflowArgs, 3, args.Count),
             },
             PyQuaternaryFunction f => PyArgsValidator.ValidateArgs(args, 4, out err) ? f(context, args[0], args[1], args[2], args[3]) : err.Value,
-            PySelfArgsKwargsFunction f => args.Count > 0 ? f(context, args[0], [.. args.Skip(1)], kwargs) : PyResult.TypeError(null /* TODO */),
+            PySelfArgsKwargsFunction f => args.Count > 0 ? f(context, args[0], [.. args.Skip(1)], kwargs) : PyResult.TypeError(PySR.Runtime_Arguments_MissingArg),
             _ => throw new UnreachableException()
         };
     }

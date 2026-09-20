@@ -15,29 +15,29 @@ partial class PyTypeObject<TObject>
     [EditorBrowsable(EditorBrowsableState.Never)]
     protected void AppendMethodDescriptor(string name, PyDelegateDefinition<PyMethod<TObject>> method)
     {
-        var uncompoundedDelegate = method.ToUncompounded();
+        var uncompoundedDelegate = method.ToUncompounded(name, FullName);
         PyAttributes[name] = new PyMethodDescriptorObject(name, this, uncompoundedDelegate);
     }
 
     [EditorBrowsable(EditorBrowsableState.Never)]
     protected void AppendMethodDescriptor(string name, params PyDelegateDefinition<PyMethod<TObject>>[] methods)
     {
-        var uncompoundedDelegate = methods.Length is 1 ? methods[0].ToUncompounded() : PyDelegateConverter.CreateOverloadDispatcher(methods);
+        var uncompoundedDelegate = methods.Length is 1 ? methods[0].ToUncompounded(name, FullName) : PyDelegateConverter.CreateOverloadDispatcher(name, FullName, methods);
         PyAttributes[name] = new PyMethodDescriptorObject(name, this, uncompoundedDelegate);
     }
 
     [EditorBrowsable(EditorBrowsableState.Never)]
     protected void AppendClassMethod(string name, PyDelegateDefinition<PyMethod<PyTypeObject>> classMethod)
     {
-        var uncompoundedDelegate = classMethod.ToUncompounded();
-        var func = PyBuiltinFunctionOrMethodObject.CreateFunction(name, classMethod.ToUncompounded());
+        var uncompoundedDelegate = classMethod.ToUncompounded(name, FullName);
+        var func = PyBuiltinFunctionOrMethodObject.CreateFunction(name, classMethod.ToUncompounded(name, FullName));
         PyAttributes[name] = new PyClassMethodObject(func);
     }
 
     [EditorBrowsable(EditorBrowsableState.Never)]
     protected void AppendClassMethod(string name, params PyDelegateDefinition<PyMethod<PyTypeObject>>[] classMethods)
     {
-        var uncompoundedDelegate = classMethods.Length is 1 ? classMethods[0].ToUncompounded() : PyDelegateConverter.CreateOverloadDispatcher(classMethods);
+        var uncompoundedDelegate = classMethods.Length is 1 ? classMethods[0].ToUncompounded(name, FullName) : PyDelegateConverter.CreateOverloadDispatcher(name, FullName, classMethods);
         var func = PyBuiltinFunctionOrMethodObject.CreateFunction(name, uncompoundedDelegate);
         PyAttributes[name] = new PyClassMethodObject(func);
     }
@@ -45,14 +45,14 @@ partial class PyTypeObject<TObject>
     [EditorBrowsable(EditorBrowsableState.Never)]
     protected void AppendStaticMethod(string name, PyDelegateDefinition<PyFunction> staticMethod)
     {
-        var func = PyBuiltinFunctionOrMethodObject.CreateFunction(name, staticMethod.ToUncompounded());
+        var func = PyBuiltinFunctionOrMethodObject.CreateFunction(name, staticMethod.ToUncompounded($"{FullName}.{name}"));
         PyAttributes[name] = new PyStaticMethodObject(func);
     }
 
     [EditorBrowsable(EditorBrowsableState.Never)]
     protected void AppendStaticMethod(string name, params PyDelegateDefinition<PyFunction>[] staticMethods)
     {
-        var uncompoundedDelegate = staticMethods.Length is 1 ? staticMethods[0].ToUncompounded() : PyDelegateConverter.CreateOverloadDispatcher(staticMethods);
+        var uncompoundedDelegate = staticMethods.Length is 1 ? staticMethods[0].ToUncompounded($"{FullName}.{name}") : PyDelegateConverter.CreateOverloadDispatcher($"{FullName}.{name}", staticMethods);
         var func = PyBuiltinFunctionOrMethodObject.CreateFunction(name, uncompoundedDelegate);
         PyAttributes[name] = new PyStaticMethodObject(func);
     }
@@ -217,7 +217,7 @@ partial class PyTypeObject<TObject>
         var method = PyBuiltinFunctionOrMethodObject.CreateBoundMethodFromBound(PySpecialNames.New, this, null! /* TODO */, (context, args, kwargs) =>
         {
             if (args.Count is 0)
-                return PyResult.TypeError(null /* TODO */);
+                return PyResult.TypeError(PySR.Runtime_Type_New_NotEnoughArguments, FullName);
 
             if (args[0] is not PyTypeObject cls)
                 return PyResult.TypeError(PySR.Runtime_Type_NewClsNonType, FullName, args[0].PyType.FullName);

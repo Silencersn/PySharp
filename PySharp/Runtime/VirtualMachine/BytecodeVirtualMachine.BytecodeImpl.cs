@@ -310,6 +310,11 @@ internal static partial class BytecodeVirtualMachine
         var map = stack.Pop();
         var dict = (PyDictObject)stack[-instructionArg];
 
+        // the call sequence keeps the callable below its argument list, and
+        // CPython reports every clash of the merge against it
+        // (_PyEval_FormatKwargsError)
+        var callable = stack[-instructionArg - 2];
+
         if (map is PyDictObject dictSource)
         {
             var snapshot = new PyDictObject(dictSource);
@@ -317,7 +322,7 @@ internal static partial class BytecodeVirtualMachine
             {
                 var contains = dict.GetItem(context, pair.Key);
                 if (contains.IsSuccessful)
-                    throw context.TypeError(PySR.Runtime_Arguments_MultipleKeywords, pair.Key);
+                    throw MultipleKeywordError(context, callable, pair.Key);
 
                 if (!contains.IsKeyError)
                     _ = contains.PyUnwrap(context);
@@ -337,45 +342,64 @@ internal static partial class BytecodeVirtualMachine
         // everything else propagates unchanged.
         var keysMethod = PyOperators.GetAttr(context, map, "keys");
         if (!keysMethod.IsSuccessful)
-            throw FormatKwargsError(context, map, keysMethod.Exception);
+            throw FormatKwargsError(context, callable, map, keysMethod.Exception);
 
         var keysCall = keysMethod.Value.Call(context);
         if (keysCall.IsError)
-            throw FormatKwargsError(context, map, keysCall.Exception);
+            throw FormatKwargsError(context, callable, map, keysCall.Exception);
 
         var keys = PyUtils.IterableToList(context, keysCall.Value);
         if (keys.IsError)
-            throw FormatKwargsError(context, map, keys.Exception);
+            throw FormatKwargsError(context, callable, map, keys.Exception);
 
         foreach (var key in keys.Value)
         {
             var contains = dict.GetItem(context, key);
             if (contains.IsSuccessful)
-                throw context.TypeError(PySR.Runtime_Arguments_MultipleKeywords, key);
+                throw MultipleKeywordError(context, callable, key);
 
             if (!contains.IsKeyError)
                 _ = contains.PyUnwrap(context);
 
             var value = PySpecialMethods.GetItem(context, map, key);
             if (value.IsError)
-                throw FormatKwargsError(context, map, value.Exception);
+                throw FormatKwargsError(context, callable, map, value.Exception);
 
             var set = dict.SetItem(context, key, value.Value);
             if (set.IsError)
-                throw FormatKwargsError(context, map, set.Exception);
+                throw FormatKwargsError(context, callable, map, set.Exception);
         }
     }
 
     // CPython _PyEval_FormatKwargsError lens over the whole DICT_MERGE.
-    private static PyRuntimeException FormatKwargsError(PyCallContext context, PyObject update, PyExceptionObject exception)
+    private static PyRuntimeException FormatKwargsError(PyCallContext context, PyObject callable, PyObject update, PyExceptionObject exception)
     {
         if (PyAttributeErrorObjectType.Shared.IsInstance(exception))
-            return context.TypeError(PySR.Runtime_Arguments_StarStarNotMapping, update.PyType.FullName);
+            return context.TypeError(PySR.Runtime_Arguments_StarStarNotMapping, PyCallableName.Get(context, callable), update.PyType.FullName);
 
         if (PyKeyErrorObjectType.Shared.IsInstance(exception) && exception.Args.Count is 1)
-            return context.TypeError(PySR.Runtime_Arguments_MultipleKeywords, exception.Args[0]);
+            return MultipleKeywordError(context, callable, exception.Args[0]);
 
         return new PyRuntimeException(context, exception);
+    }
+
+    // "%U got multiple values for keyword argument '%S'": the callable is named
+    // in full, and the keyword keeps its own text rather than an object repr
+    private static PyRuntimeException MultipleKeywordError(PyCallContext context, PyObject callable, PyObject keyword)
+    {
+        return context.TypeError(
+            PySR.Runtime_Arguments_MultipleKeywords,
+            PyCallableName.Get(context, callable),
+            KeywordText(context, keyword));
+    }
+
+    private static string KeywordText(PyCallContext context, PyObject keyword)
+    {
+        if (keyword is PyStrObject str)
+            return str.Value;
+
+        var text = PySpecialMethods.Str(context, keyword);
+        return text.IsSuccessful ? text.Value.Value : keyword.PyType.FullName;
     }
 
     // CPython DICT_UPDATE wording: only AttributeError reads as a missing

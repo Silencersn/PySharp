@@ -3223,6 +3223,23 @@ public sealed class TestPyFiles
         Assert.IsNotNull(module);
     }
 
+    [TestMethod]
+    public void TestArgumentBindingErrorRegression()
+    {
+        // Regression: a failed call must describe the failure the way
+        // CPython initialize_locals does - missing parameters named one by
+        // one (with format_missing's "and"/Oxford-comma list), the
+        // positional overflow with its defaults-dependent arity, repeated
+        // and unexpected keywords, positional-only names passed by keyword,
+        // a "Did you mean" match for a misspelled keyword, and the callable
+        // named by its mutable __qualname__. Keywords are bound before the
+        // missing parameters are reported, and a duplicate keyword of a **
+        // merge names the callable in full instead of rendering the key
+        // object's debug format.
+        var module = RunModule("test_argument_binding_error_regression.py");
+        Assert.IsNotNull(module);
+    }
+
     // console host with captured streams; the encoding handover is injected
     // deterministically instead of reading the runner's Console.OutputEncoding
     private sealed class RedirectedConsoleHost : PyEnvironmentHost.ConsolePyEnvironmentHostBase

@@ -3,7 +3,6 @@ using PySharp.Modules.Builtins;
 using PySharp.Utility;
 using System.Buffers;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -241,177 +240,349 @@ public sealed class PyArgsDef
             );
     }
 
+    // Binds a call the way CPython initialize_locals does (Python/ceval.c):
+    // keywords are bound first, then the positional overflow is reported, and
+    // only then the missing positional and keyword-only parameters are filled
+    // in from the defaults or reported as missing.
+    //
+    // This is the hot path, so a failure only answers "no": what a message
+    // would name is collected by Describe, on the exception path only.
     internal bool TryParse(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, in Buffer buffer, out PyArguments result)
     {
-        var span = Buffer.AsSpan(in buffer);
+        return Bind(args, kwargs, Buffer.AsSpan(in buffer), describe: false, out result, out _);
+    }
+
+    // The message side of a failure: binds the same call a second time with the
+    // detail switched on. The binding is pure, so the second pass reports what
+    // the first one did; the fresh buffer matters because the failed attempt
+    // left its own values in the caller's.
+    internal PyArgBindingError Describe(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        using var buffer = CreateBuffer();
+        var bound = Bind(args, kwargs, Buffer.AsSpan(in buffer), describe: true, out _, out var error);
+        Debug.Assert(!bound, "Describe reports a call the binding already rejected");
+
+        return error;
+    }
+
+    // `describe` only decides whether a failure carries what its message needs;
+    // it never decides whether the call binds.
+    private bool Bind(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, Span<PyObject> span, bool describe, out PyArguments result, out PyArgBindingError error)
+    {
         Debug.Assert(span.Length >= BufferLength);
         span = span[..BufferLength];
 
         if (ParametersType is PyArgsDefParametersType.NoAnyArgs)
-            return TryParse_NoAnyArgs(args, kwargs, out result);
+            return TryParse_NoAnyArgs(args, kwargs, describe, out result, out error);
 
-        if (ParametersType is PyArgsDefParametersType.OnlyArgs)
-        {
-            if (kwargs.Count is 0)
-                return TryParse_OnlyArgs(args, span, out result);
-        }
+        if (ParametersType is PyArgsDefParametersType.OnlyArgs && kwargs.Count is 0)
+            return TryParse_OnlyArgs(args, span, describe, out result, out error);
 
         if (kwargs.Count is 0)
-            return TryParseGeneral(args, span, out result);
+            return TryParseGeneral(args, span, describe, out result, out error);
 
-        return TryParseGeneral(args, kwargs, span, out result);
+        return TryParseGeneral(args, kwargs, span, describe, out result, out error);
     }
 
-    private bool TryParseArgsPart(IReadOnlyList<PyObject> args, Span<PyObject> resultArgs, [NotNullWhen(true)] out PyObject[]? resultExtraArgs)
-    {
-        resultExtraArgs = null;
-
-        var defaultsCountForPosonly = int.Max(0, Defaults.Length - Args.Length);
-        var leastPosonlyArgsCount = PosonlyArgs.Length - defaultsCountForPosonly;
-        if (args.Count < leastPosonlyArgsCount)
-            return false;
-
-        if (args.Count > resultArgs.Length && VarArg is null)
-            return false;
-
-        for (int i = 0; i < PosonlyArgs.Length; i++)
-        {
-            if (i < args.Count)
-                resultArgs[i] = args[i];
-            else
-                resultArgs[i] = Defaults[i - leastPosonlyArgsCount];
-        }
-
-        if (Defaults.Length > Args.Length)
-            Defaults.AsSpan()[^Args.Length..].CopyTo(resultArgs[^Args.Length..]);
-        else
-            Defaults.CopyTo(resultArgs[^Defaults.Length..]);
-
-        var maxLength = int.Min(resultArgs.Length, args.Count);
-        for (int i = PosonlyArgs.Length; i < maxLength; i++)
-            resultArgs[i] = args[i];
-
-        resultExtraArgs = [];
-        if (VarArg is not null && args.Count > resultArgs.Length)
-            resultExtraArgs = [.. args.Skip(resultArgs.Length)];
-
-        return true;
-    }
-
-    private bool TryParseGeneral(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, Span<PyObject> buffer, out PyArguments result)
+    private bool TryParseGeneral(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, Span<PyObject> buffer, bool describe, out PyArguments result, out PyArgBindingError error)
     {
         result = default;
+        error = default;
 
-        var totalArgsCount = PosonlyArgs.Length + Args.Length;
-        var resultArgs = buffer[..totalArgsCount];
+        var positionalCount = PosonlyArgs.Length + Args.Length;
+        var resultArgs = buffer[..positionalCount];
+        var resultKwargs = buffer[positionalCount..];
 
-        if (!TryParseArgsPart(args, resultArgs, out var resultExtraArgs))
-            return false;
-
-        var resultKwargs = buffer[totalArgsCount..];
-        KwDefaults.CopyTo(resultKwargs!);
+        CopyPositionalArgs(args, resultArgs, out var resultExtraArgs);
 
         List<KeyValuePair<string, PyObject>>? resultExtraKwargs = null;
+        var positionalOnlyChecked = false;
 
-        int index;
         foreach (var pair in kwargs)
         {
-            index = KwonlyArgs.IndexOf(pair.Key);
+            var index = KwonlyArgs.IndexOf(pair.Key);
 
             if (index is not -1)
             {
                 // no duplication, guaranteed by the compiler
                 resultKwargs[index] = pair.Value;
+                continue;
             }
-            else if ((index = Args.IndexOf(pair.Key)) is not -1)
+
+            if ((index = Args.IndexOf(pair.Key)) is not -1)
             {
                 var offset = PosonlyArgs.Length + index;
-                ref var value = ref resultArgs[offset];
-                if (value is not null && offset < args.Count)
+                if (resultArgs[offset] is not null)
+                {
+                    if (describe)
+                        error = new PyArgBindingError { Kind = PyArgBindingErrorKind.MultipleValues, Name = pair.Key };
+
                     return false;
-                value = pair.Value;
+                }
+
+                resultArgs[offset] = pair.Value;
+                continue;
             }
-            else if (KwArg is not null)
+
+            if (KwArg is not null)
             {
                 (resultExtraKwargs ??= []).Add(KeyValuePair.Create(pair.Key, pair.Value));
+                continue;
             }
-            else
+
+            // a positional-only name the call also passed by name is reported
+            // before the keyword that found no parameter
+            if (describe)
             {
-                return false;
+                if (PosonlyArgs.Length is not 0 && !positionalOnlyChecked)
+                {
+                    positionalOnlyChecked = true;
+                    if (CollectPositionalOnlyNames(kwargs, out var positionalOnlyNames))
+                    {
+                        error = new PyArgBindingError { Kind = PyArgBindingErrorKind.PositionalOnlyAsKeyword, Names = positionalOnlyNames };
+                        return false;
+                    }
+                }
+
+                error = new PyArgBindingError
+                {
+                    Kind = PyArgBindingErrorKind.UnexpectedKeyword,
+                    Name = pair.Key,
+                    Candidates = [.. Args, .. KwonlyArgs],
+                };
             }
+
+            return false;
         }
 
-        foreach (var arg in resultArgs[^Args.Length..])
-        {
-            if (arg is null)
-                return false;
-        }
-
-        foreach (var value in resultKwargs)
-        {
-            if (value is null)
-                return false;
-        }
+        if (!TryFillAndCheck(args.Count, resultArgs, resultKwargs, describe, out error))
+            return false;
 
         result = new PyArguments(this, buffer, resultExtraArgs, resultExtraKwargs);
         return true;
     }
 
-    private bool TryParseGeneral(IReadOnlyList<PyObject> args, Span<PyObject> buffer, out PyArguments result)
+    private bool TryParseGeneral(IReadOnlyList<PyObject> args, Span<PyObject> buffer, bool describe, out PyArguments result, out PyArgBindingError error)
     {
         result = default;
+        error = default;
 
-        if (KwonlyArgs.Length > 0 && KwDefaults.Any(static value => value is null))
+        var positionalCount = PosonlyArgs.Length + Args.Length;
+        var resultArgs = buffer[..positionalCount];
+        var resultKwargs = buffer[positionalCount..];
+
+        CopyPositionalArgs(args, resultArgs, out var resultExtraArgs);
+
+        if (!TryFillAndCheck(args.Count, resultArgs, resultKwargs, describe, out error))
             return false;
-
-        var totalArgsCount = PosonlyArgs.Length + Args.Length;
-        var resultArgs = buffer[..totalArgsCount];
-
-        if (!TryParseArgsPart(args, resultArgs, out var resultExtraArgs))
-            return false;
-
-        foreach (var arg in resultArgs[^Args.Length..])
-        {
-            if (arg is null)
-                return false;
-        }
-
-        KwDefaults.CopyTo(buffer[resultArgs.Length..]!);
 
         result = new PyArguments(this, buffer, resultExtraArgs, null);
         return true;
     }
 
-    private bool TryParse_NoAnyArgs(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, out PyArguments result)
+    // The positional arguments fill the leading slots; whatever exceeds the
+    // signature lands in *args when there is one
+    private void CopyPositionalArgs(IReadOnlyList<PyObject> args, Span<PyObject> resultArgs, out PyObject[]? resultExtraArgs)
+    {
+        resultExtraArgs = null;
+
+        var given = int.Min(args.Count, resultArgs.Length);
+        for (int i = 0; i < given; i++)
+            resultArgs[i] = args[i];
+
+        if (VarArg is not null && args.Count > resultArgs.Length)
+            resultExtraArgs = [.. args.Skip(resultArgs.Length)];
+    }
+
+    // The tail of the argument binding: an overflowing positional argument set
+    // is reported before the missing ones, then the defaults fill the slots
+    // the call left empty - the positional ones first, so that the message for
+    // a missing keyword-only parameter only names parameters without a default
+    private bool TryFillAndCheck(int given, Span<PyObject> resultArgs, Span<PyObject> resultKwargs, bool describe, out PyArgBindingError error)
+    {
+        error = default;
+
+        if (VarArg is null && given > resultArgs.Length)
+        {
+            if (describe)
+            {
+                var kwonlyGiven = 0;
+                foreach (var slot in resultKwargs)
+                {
+                    if (slot is not null)
+                        kwonlyGiven++;
+                }
+
+                error = new PyArgBindingError
+                {
+                    Kind = PyArgBindingErrorKind.TooManyPositional,
+                    Given = given,
+                    Arity = resultArgs.Length,
+                    DefaultsCount = Defaults.Length,
+                    KwonlyGiven = kwonlyGiven,
+                };
+            }
+
+            return false;
+        }
+
+        var required = resultArgs.Length - Defaults.Length;
+        if (CollectMissing(resultArgs, required, PosonlyArgs, Args, describe, out var missingPositional))
+        {
+            if (describe)
+                error = new PyArgBindingError { Kind = PyArgBindingErrorKind.MissingPositional, Names = missingPositional };
+
+            return false;
+        }
+
+        for (int i = required; i < resultArgs.Length; i++)
+        {
+            if (resultArgs[i] is null)
+                resultArgs[i] = Defaults[i - required];
+        }
+
+        // keyword-only defaults only fill the slots the call left empty, so a
+        // parameter bound by keyword keeps its value
+        for (int i = 0; i < resultKwargs.Length; i++)
+        {
+            if (resultKwargs[i] is null && KwDefaults[i] is { } kwDefault)
+                resultKwargs[i] = kwDefault;
+        }
+
+        if (CollectMissing(resultKwargs, resultKwargs.Length, [], KwonlyArgs, describe, out var missingKwonly))
+        {
+            if (describe)
+                error = new PyArgBindingError { Kind = PyArgBindingErrorKind.MissingKeywordOnly, Names = missingKwonly };
+
+            return false;
+        }
+
+        return true;
+    }
+
+    // Every parameter left without a value, in declaration order - CPython
+    // scans the whole positional block and names the empty slots. Without
+    // detail the scan stops at the first empty slot instead of naming them.
+    private static bool CollectMissing(Span<PyObject> slots, int required, ReadOnlySpan<string> leadingNames, ReadOnlySpan<string> trailingNames, bool describe, out string[] missing)
+    {
+        List<string>? collected = null;
+
+        for (int i = 0; i < required; i++)
+        {
+            if (slots[i] is not null)
+                continue;
+
+            if (!describe)
+            {
+                missing = [];
+                return true;
+            }
+
+            (collected ??= []).Add(i < leadingNames.Length ? leadingNames[i] : trailingNames[i - leadingNames.Length]);
+        }
+
+        missing = collected is null ? [] : [.. collected];
+        return collected is not null;
+    }
+
+    // positional_only_passed_as_keyword (ceval.c): every parameter of the
+    // positional-only block that the call also passed by name, in declaration
+    // order - a clash anywhere in the keyword set is reported from the first
+    // keyword that has no parameter
+    private bool CollectPositionalOnlyNames(IReadOnlyDictionary<string, PyObject> kwargs, out string[] names)
+    {
+        List<string>? conflicts = null;
+
+        foreach (var posonlyName in PosonlyArgs)
+        {
+            if (kwargs.ContainsKey(posonlyName))
+                (conflicts ??= []).Add(posonlyName);
+        }
+
+        names = conflicts is null ? [] : [.. conflicts];
+        return conflicts is not null;
+    }
+
+    private bool TryParse_NoAnyArgs(IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs, bool describe, out PyArguments result, out PyArgBindingError error)
     {
         Debug.Assert(ParametersType is PyArgsDefParametersType.NoAnyArgs);
 
         result = PyArguments.Empty;
-        return args.Count is 0 && kwargs.Count is 0;
+        error = default;
+
+        // "def f()" has no parameter to bind a keyword to, and keywords are
+        // still reported before the positional overflow
+        if (kwargs.Count is not 0)
+        {
+            if (describe)
+            {
+                // the message names the first keyword, in insertion order
+                foreach (var pair in kwargs)
+                {
+                    error = new PyArgBindingError { Kind = PyArgBindingErrorKind.UnexpectedKeyword, Name = pair.Key, Candidates = [] };
+                    break;
+                }
+            }
+
+            return false;
+        }
+
+        if (args.Count is not 0)
+        {
+            if (describe)
+                error = new PyArgBindingError { Kind = PyArgBindingErrorKind.TooManyPositional, Given = args.Count };
+
+            return false;
+        }
+
+        return true;
     }
 
-    private bool TryParse_OnlyArgs(IReadOnlyList<PyObject> args, Span<PyObject> buffer, out PyArguments result)
+    private bool TryParse_OnlyArgs(IReadOnlyList<PyObject> args, Span<PyObject> buffer, bool describe, out PyArguments result, out PyArgBindingError error)
     {
         Debug.Assert(ParametersType is PyArgsDefParametersType.OnlyArgs);
         Debug.Assert(Args.Length == BufferLength);
 
         result = default;
+        error = default;
         var argsCount = args.Count;
 
-        if (argsCount + Defaults.Length < Args.Length)
-            return false;
-
         if (argsCount > Args.Length)
+        {
+            if (describe)
+            {
+                error = new PyArgBindingError
+                {
+                    Kind = PyArgBindingErrorKind.TooManyPositional,
+                    Given = argsCount,
+                    Arity = Args.Length,
+                    DefaultsCount = Defaults.Length,
+                };
+            }
+
             return false;
+        }
+
+        var required = Args.Length - Defaults.Length;
+        if (argsCount < required)
+        {
+            if (describe)
+            {
+                error = new PyArgBindingError
+                {
+                    Kind = PyArgBindingErrorKind.MissingPositional,
+                    Names = [.. Args.AsSpan()[argsCount..required]],
+                };
+            }
+
+            return false;
+        }
 
         for (int i = 0; i < argsCount; i++)
             buffer[i] = args[i];
 
-        if (argsCount < Args.Length)
-        {
-            var needDefaultsCount = Args.Length - argsCount;
-            Defaults.AsSpan()[^needDefaultsCount..].CopyTo(buffer[^needDefaultsCount..]);
-        }
+        for (int i = argsCount; i < Args.Length; i++)
+            buffer[i] = Defaults[i - required];
 
         result = new PyArguments(this, buffer, null, null);
         return true;
