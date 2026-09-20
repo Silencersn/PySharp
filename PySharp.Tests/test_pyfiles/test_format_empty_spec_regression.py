@@ -4,7 +4,7 @@
 # interpolation and format(); float rendered the 'g' default-precision
 # form instead of the shortest-repr str(float).
 
-# int / bool (issue-217 matrix)
+# int / bool matrix
 assert format(True) == 'True'
 assert format(False) == 'False'
 assert f"{True}" == 'True'
@@ -47,7 +47,7 @@ assert f"{123.456}" == '123.456'
 assert format(1.5, '.3g') == '1.5'
 assert f"{1.5:8.2f}" == '    1.50'
 
-# issue-124 original repro: integral floats keep the .0 in f-string
+# original repro: integral floats keep the .0 in f-string
 # implicit conversion (no conversion and empty spec both route to str)
 assert f'{1.0}' == '1.0'
 assert f'{2.0}' == '2.0'
@@ -64,7 +64,7 @@ assert f'{x}' == '3.0'
 assert f'{x!s}' == '3.0'
 assert f'{x:}' == '3.0'
 
-# issue-168 original repro: comparison/membership bools render as
+# original repro: comparison/membership bools render as
 # True/False, including through a variable
 assert f'{1 < 2}' == 'True'
 assert f'{2 > 1}' == 'True'

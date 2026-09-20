@@ -21,7 +21,7 @@ internal static class PyUtils
     // type's MRO — descriptors bind, instance attributes are ignored — and
     // called with no arguments. Only TypeError from that call falls back;
     // every other error propagates, which is what makes user errors inside
-    // __length_hint__ observable (issue 178)
+    // __length_hint__ observable
     internal static PyResult<PyIntObject> LengthHint(PyCallContext context, PyObject obj, long fallback)
     {
         if (obj.PyType.Slots.Len is not null)
