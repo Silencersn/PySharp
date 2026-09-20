@@ -242,12 +242,51 @@ public partial class PyStrObject : PyObject
     /// <summary>First code point of the string, or -1 when empty.</summary>
     internal int FirstCodePoint() => Value.Length is 0 ? -1 : CodePointAt(Value, 0);
 
-    // Rune cannot represent U+D800-U+DFFF, which have no case mapping
-    internal static string ToUpperCodePoint(int codePoint) =>
-        Rune.IsValid(codePoint) ? Rune.ToUpperInvariant(new Rune(codePoint)).ToString() : ((char)codePoint).ToString();
+    // CPython's unicode_upper/lower/casefold shape: map every code point and
+    // rebuild the string
+    internal static PyResult MapCodePoints(PyStrObject self, Func<int, string> map)
+    {
+        var builder = new StringBuilder(self.Value.Length);
+        var enumerator = self.EnumerateCodePoints();
+        while (enumerator.MoveNext())
+            builder.Append(map(enumerator.Current));
+        return PyStrObject.FromString(builder.ToString());
+    }
 
-    internal static string ToLowerCodePoint(int codePoint) =>
-        Rune.IsValid(codePoint) ? Rune.ToLowerInvariant(new Rune(codePoint)).ToString() : ((char)codePoint).ToString();
+    internal static int[] ToCodePointArray(PyStrObject self)
+    {
+        var count = self.PyLength;
+        var result = new int[count];
+        var enumerator = self.EnumerateCodePoints();
+        for (var i = 0; i < count; i++)
+        {
+            enumerator.MoveNext();
+            result[i] = enumerator.Current;
+        }
+        return result;
+    }
+
+    // CPython lower_ucs4: U+03A3 takes the context-sensitive Final_Sigma
+    // rule, every other code point the table
+    internal static string ToLowerAt(int[] codePoints, int index) =>
+        codePoints[index] is 0x3A3
+            ? (IsFinalSigma(codePoints, index) ? "\u03C2" : "\u03C3")
+            : PyUnicodeData.ToLower(codePoints[index]);
+
+    private static bool IsFinalSigma(int[] codePoints, int index)
+    {
+        var j = index - 1;
+        while (j >= 0 && PyUnicodeData.IsCaseIgnorable(codePoints[j]))
+            j--;
+
+        if (j < 0 || !PyUnicodeData.IsCased(codePoints[j]))
+            return false;
+
+        j = index + 1;
+        while (j < codePoints.Length && PyUnicodeData.IsCaseIgnorable(codePoints[j]))
+            j++;
+        return j == codePoints.Length || !PyUnicodeData.IsCased(codePoints[j]);
+    }
 
     public static int GetHashCode(string s)
     {
@@ -307,17 +346,19 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyMethod("upper")]
     [AIGenerated]
     [PyFunctionParameters]
-    private static PyResult Upper(PyCallContext context, PyStrObject self, PyArguments arguments)
-    {
-        return PyStrObject.FromString(self.Value.ToUpperInvariant());
-    }
+    private static PyResult Upper(PyCallContext context, PyStrObject self, PyArguments arguments) =>
+        PyStrObject.MapCodePoints(self, PyUnicodeData.ToUpper);
 
     [PyMethod("lower")]
     [AIGenerated]
     [PyFunctionParameters]
     private static PyResult Lower(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        return PyStrObject.FromString(self.Value.ToLowerInvariant());
+        var codePoints = PyStrObject.ToCodePointArray(self);
+        var sb = new StringBuilder(self.Value.Length);
+        for (var i = 0; i < codePoints.Length; i++)
+            sb.Append(PyStrObject.ToLowerAt(codePoints, i));
+        return PyStrObject.FromString(sb.ToString());
     }
 
     [PyMethod("strip")]
@@ -810,23 +851,21 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     {
         if (self.PyLength is 0)
             return self;
+        // CPython unicode_capitalize: the first character takes the titlecase
+        // mapping, the rest the (context-sensitive) lowercase one
+        var codePoints = PyStrObject.ToCodePointArray(self);
         var sb = new StringBuilder();
-        sb.Append(PyStrObject.ToUpperCodePoint(self.FirstCodePoint()));
-        // rest of the string in lower case
-        var enumerator = self.EnumerateCodePoints();
-        enumerator.MoveNext();
-        while (enumerator.MoveNext())
-            sb.Append(PyStrObject.ToLowerCodePoint(enumerator.Current));
+        sb.Append(PyUnicodeData.ToTitle(codePoints[0]));
+        for (var i = 1; i < codePoints.Length; i++)
+            sb.Append(PyStrObject.ToLowerAt(codePoints, i));
         return PyStrObject.FromString(sb.ToString());
     }
 
     [PyMethod("casefold")]
     [AIGenerated]
     [PyFunctionParameters]
-    private static PyResult Casefold(PyCallContext context, PyStrObject self, PyArguments arguments)
-    {
-        return PyStrObject.FromString(self.Value.ToLowerInvariant()); // C# doesn't have a direct casefold, toLowerInvariant works mostly identical for standard cases.
-    }
+    private static PyResult Casefold(PyCallContext context, PyStrObject self, PyArguments arguments) =>
+        PyStrObject.MapCodePoints(self, PyUnicodeData.ToCasefold);
 
     [PyMethod("center")]
     [AIGenerated]
@@ -969,19 +1008,20 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     {
         if (self.PyLength is 0)
             return self;
+        var codePoints = PyStrObject.ToCodePointArray(self);
         var sb = new StringBuilder(self.Value.Length);
-        bool newWord = true;
-        foreach (var rune in self.Value.EnumerateRunes())
+        var previousIsCased = false;
+        for (var i = 0; i < codePoints.Length; i++)
         {
-            if (Rune.IsLetter(rune))
+            if (PyUnicodeData.IsCased(codePoints[i]))
             {
-                sb.Append(newWord ? Rune.ToUpperInvariant(rune).ToString() : Rune.ToLowerInvariant(rune).ToString());
-                newWord = false;
+                sb.Append(previousIsCased ? PyStrObject.ToLowerAt(codePoints, i) : PyUnicodeData.ToTitle(codePoints[i]));
+                previousIsCased = true;
             }
             else
             {
-                sb.Append(rune.ToString());
-                newWord = true;
+                PyStrObject.AppendCodePoint(sb, codePoints[i]);
+                previousIsCased = false;
             }
         }
         return PyStrObject.FromString(sb.ToString());
@@ -992,15 +1032,16 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters]
     private static PyResult Swapcase(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
+        var codePoints = PyStrObject.ToCodePointArray(self);
         var sb = new StringBuilder(self.Value.Length);
-        foreach (var rune in self.Value.EnumerateRunes())
+        for (var i = 0; i < codePoints.Length; i++)
         {
-            if (Rune.IsUpper(rune))
-                sb.Append(Rune.ToLowerInvariant(rune).ToString());
-            else if (Rune.IsLower(rune))
-                sb.Append(Rune.ToUpperInvariant(rune).ToString());
+            if (PyUnicodeData.IsUpper(codePoints[i]))
+                sb.Append(PyStrObject.ToLowerAt(codePoints, i));
+            else if (PyUnicodeData.IsLower(codePoints[i]))
+                sb.Append(PyUnicodeData.ToUpper(codePoints[i]));
             else
-                sb.Append(rune.ToString());
+                PyStrObject.AppendCodePoint(sb, codePoints[i]);
         }
         return PyStrObject.FromString(sb.ToString());
     }

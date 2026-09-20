@@ -463,6 +463,15 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestStrCaseMappingRegression()
+    {
+        // Regression: full case mappings, the titlecase mapping and the
+        // Final_Sigma rule match CPython.
+        var module = RunModule("test_str_case_mapping_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestStrUnicodePredicatesRegression()
     {
         // Regression: the str predicates follow CPython's Unicode tables
