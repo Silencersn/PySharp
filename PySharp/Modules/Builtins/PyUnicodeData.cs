@@ -788,6 +788,47 @@ internal static class PyUnicodeData
 
     public static bool IsSpace(int codePoint) => InRanges(Spaces, codePoint);
 
+    // CPython _PyUnicode_TransformDecimalAndSpaceToASCII (unicodeobject.c):
+    // ASCII text passes through, a non-ASCII space becomes ' ', every Nd code
+    // point becomes its ASCII digit, and the first code point that is none of
+    // those ends the result with a '?'.
+    public static string TransformDecimalAndSpaceToAscii(string text)
+    {
+        if (Ascii.IsValid(text))
+            return text;
+
+        var builder = new StringBuilder(text.Length);
+        foreach (var rune in text.EnumerateRunes())
+        {
+            if (rune.Value < 127)
+            {
+                builder.Append((char)rune.Value);
+            }
+            else if (IsSpace(rune.Value))
+            {
+                builder.Append(' ');
+            }
+            else
+            {
+                var digit = DigitValue(rune);
+                if (digit < 0)
+                {
+                    builder.Append('?');
+                    break;
+                }
+
+                builder.Append((char)('0' + digit));
+            }
+        }
+
+        return builder.ToString();
+    }
+
+    // Nd code points above the BMP are addressed through their surrogate pair
+    private static int DigitValue(Rune rune) => rune.IsBmp
+        ? CharUnicodeInfo.GetDecimalDigitValue((char)rune.Value)
+        : CharUnicodeInfo.GetDecimalDigitValue(rune.ToString(), 0);
+
     public static bool IsUpper(int codePoint) =>
         Category(codePoint) is UnicodeCategory.UppercaseLetter || InRanges(UpperExtras, codePoint);
 

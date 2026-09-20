@@ -670,7 +670,8 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
     {
         value = default;
         underscoreError = false;
-        string s = text;
+        // the underscore pass validates ASCII digits, so the transform runs first
+        string s = PyUnicodeData.TransformDecimalAndSpaceToAscii(text);
         if (s.Contains('_'))
         {
             var sb = new System.Text.StringBuilder(s.Length);

@@ -4225,4 +4225,17 @@ public sealed class TestPyFiles
         var module = RunModule("test_class_reassign_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestUnicodeDigitConversionRegression()
+    {
+        // Regression: float()/complex()/int() accept Nd strings through the
+        // CPython transform (ASCII passes through, a non-ASCII space becomes
+        // ' ', Nd becomes its ASCII digit, the first other code point ends the
+        // text with '?'). int() applies its base-0 literal rules to the
+        // transformed text, the complex underscore pass sees ASCII digits, and
+        // code points above the BMP map as well.
+        var module = RunModule("test_unicode_digit_conversion_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

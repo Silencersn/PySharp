@@ -106,7 +106,8 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
     {
         if (arguments[0] is PyStrObject str)
         {
-            var parseStatus = BigIntegerHelper.TryParse(str.Value, 10, out var integer, out var digitCount);
+            var text = PyUnicodeData.TransformDecimalAndSpaceToAscii(str.Value);
+            var parseStatus = BigIntegerHelper.TryParse(text, 10, out var integer, out var digitCount);
             if (parseStatus is BigIntegerHelper.IntParseStatus.OverLimit)
                 return PyResult.ValueError(PySR.Runtime_Number_Int_ExceedsMaxStrDigits, PyIntStrDigitsLimit.MaxStrDigits, digitCount);
             if (parseStatus is BigIntegerHelper.IntParseStatus.Invalid)
@@ -139,7 +140,8 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
 
         if (arguments[0] is PyStrObject str)
         {
-            var parseStatus = BigIntegerHelper.TryParse(str.Value, numBase.Int32Value, out var result, out var digitCount);
+            var text = PyUnicodeData.TransformDecimalAndSpaceToAscii(str.Value);
+            var parseStatus = BigIntegerHelper.TryParse(text, numBase.Int32Value, out var result, out var digitCount);
             if (parseStatus is BigIntegerHelper.IntParseStatus.OverLimit)
                 return PyResult.ValueError(PySR.Runtime_Number_Int_ExceedsMaxStrDigits, PyIntStrDigitsLimit.MaxStrDigits, digitCount);
             if (parseStatus is BigIntegerHelper.IntParseStatus.Invalid)

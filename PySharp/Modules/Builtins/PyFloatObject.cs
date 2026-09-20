@@ -804,7 +804,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
     private static bool TryParseFloatString(string text, out double result)
     {
         result = 0;
-        var trimmed = text.Trim().ToLowerInvariant();
+        var trimmed = PyUnicodeData.TransformDecimalAndSpaceToAscii(text).Trim().ToLowerInvariant();
 
         // Handle special values
         if (trimmed is "inf" or "infinity")
