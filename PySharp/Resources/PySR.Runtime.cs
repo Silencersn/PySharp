@@ -5,6 +5,7 @@ partial class PySR
     public const string Runtime_Keyword_KeywordsMustBeStrings = "keywords must be strings";
 
     public const string Runtime_TryStmt_CatchNonException = "catching classes that do not inherit from BaseException is not allowed";
+    public const string Runtime_TryStmt_CatchExceptionGroupWithExceptStar = "catching ExceptionGroup with except* is not allowed. Use except instead.";
     public const string Runtime_TryStmt_SplitReturnsNonTuple = "{0}.split must return a tuple, not {1}";
     public const string Runtime_TryStmt_SplitReturnsTupleWithWrongSize = "{0}.split must return a 2-tuple, got tuple of size {1}";
     public const string Runtime_TryStmt_ExpectedExceptionOrNone = "Exception expected for value, {0} found";

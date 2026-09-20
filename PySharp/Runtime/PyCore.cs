@@ -348,15 +348,31 @@ internal static class PyCore
     }
 
     // _PyEval_CheckExceptTypeValid: the match type must be an exception
-    // class or a tuple of them; shared by plain except (via
-    // MakeExceptCondition) and except* (CHECK_EG_MATCH validates
-    // unconditionally, even for an exhausted rest)
+    // class or a tuple of them; except* reaches it through
+    // CheckExceptStarTypeValid, plain except enforces the same rule in
+    // MakeExceptCondition
     internal static void CheckExceptTypeValid(PyCallContext context, PyObject type)
     {
         var valid = type is PyTypeObject typeObj && typeObj.IsSubclassOf(PyBaseExceptionObjectType.Shared)
             || type is PyTupleObject tupleObj && tupleObj.All(obj => obj is PyTypeObject t && t.IsSubclassOf(PyBaseExceptionObjectType.Shared));
         if (!valid)
             throw context.TypeError(PySR.Runtime_TryStmt_CatchNonException);
+    }
+
+    // _PyEval_CheckExceptStarTypeValid: except* refuses a match type that is
+    // a BaseExceptionGroup subclass, or a tuple containing one
+    internal static void CheckExceptStarTypeValid(PyCallContext context, PyObject type)
+    {
+        CheckExceptTypeValid(context, type);
+
+        var groupType = type is PyTupleObject tupleObj
+            ? tupleObj.Any(IsExceptionGroupType)
+            : IsExceptionGroupType(type);
+        if (groupType)
+            throw context.TypeError(PySR.Runtime_TryStmt_CatchExceptionGroupWithExceptStar);
+
+        static bool IsExceptionGroupType(PyObject obj)
+            => obj is PyTypeObject typeObj && typeObj.IsSubclassOf(PyBaseExceptionGroupObjectType.Shared);
     }
 
     public static Func<PyExceptionObject, bool> MakeExceptCondition(PyCallContext context, PyObject type)

@@ -918,6 +918,19 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestExceptStarGroupMatchRegression()
+    {
+        // Regression: except* rejects a match type that is (or holds) a
+        // BaseExceptionGroup subclass — the runtime half of CPython's
+        // _PyEval_CheckExceptStarTypeValid that CHECK_EG_MATCH runs
+        // unconditionally, while a clause the try never reaches stays
+        // unvalidated. BaseExceptionGroup.split matches the node itself
+        // before descending, so a matching group is returned as-is.
+        var module = RunModule("test_except_star_group_match_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestTryExceptElse()
     {
         // Regression test: exceptions raised in the else block of

@@ -444,8 +444,9 @@ internal static partial class BytecodeVirtualMachine
         var exc = stack.Pop();
 
         // CPython CHECK_EG_MATCH validates the match type unconditionally
-        // (_PyEval_CheckExceptStarTypeValid), even for an exhausted rest
-        PyCore.CheckExceptTypeValid(context, type);
+        // (_PyEval_CheckExceptStarTypeValid), even for an exhausted rest,
+        // and rejects an exception group type outright
+        PyCore.CheckExceptStarTypeValid(context, type);
 
         // an exhausted rest reaches later handlers whenever an earlier one
         // fully matched; CPython short-circuits with rest = match = None

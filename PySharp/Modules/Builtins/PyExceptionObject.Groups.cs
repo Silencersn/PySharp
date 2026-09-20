@@ -127,7 +127,7 @@ public sealed partial class PyBaseExceptionGroupObjectType : PyExceptionType
 
             predicate = exc => PyBoolObject.FromBoolean(types.Any(type => type.IsInstance(exc)));
         }
-        else
+        else if (IsCallable(conditionObj))
         {
             predicate = exc =>
             {
@@ -137,6 +137,10 @@ public sealed partial class PyBaseExceptionGroupObjectType : PyExceptionType
 
                 return PySpecialMethods.Bool(context, result.Value);
             };
+        }
+        else
+        {
+            return PyResult.TypeError(PySR.Runtime_ExceptionGroup_SplitExpectedCondition);
         }
 
         (var err, PyObject? match, PyObject? rest) = SplitImpl(self);
@@ -149,39 +153,40 @@ public sealed partial class PyBaseExceptionGroupObjectType : PyExceptionType
         return PyTupleObject.CreateTuple(match, rest);
 
 
+        // get_matcher_type: a non-class value is usable only as a predicate
+        static bool IsCallable(PyObject obj)
+            => obj.PyType.Slots.Call is not null ||
+               PyObject.TryLookupAttrInMro(obj.PyType, PySpecialNames.Interned.Call.Value, out _);
+
         (PyResult? Error, PyExceptionObject? MatchGroup, PyExceptionObject? RestGroup) SplitImpl(PyExceptionObject exceptionGroup)
         {
+            // exceptiongroup_split_recursive tests the node itself before
+            // descending: a condition that matches a group yields that group
+            // rather than a derived subset of its children
+            var nodeMatch = predicate(exceptionGroup);
+            if (nodeMatch.IsError)
+                return ReturnError(nodeMatch);
+
+            if (nodeMatch.Value.BoolValue)
+                return (null, exceptionGroup, null);
+
             if (!exceptionGroup.IsGroup)
-                return ReturnError(PyResult.TypeError(null));
+                return (null, null, exceptionGroup);
 
             List<PyExceptionObject> match = [];
             List<PyExceptionObject> rest = [];
 
             foreach (var subException in exceptionGroup.AsGroup.Exceptions)
             {
-                if (subException.IsGroup)
-                {
-                    var (err, subMatch, subRest) = SplitImpl(subException);
-                    if (err is not null)
-                        return ReturnError(err.Value);
+                var (err, subMatch, subRest) = SplitImpl(subException);
+                if (err is not null)
+                    return ReturnError(err.Value);
 
-                    if (subMatch is not null)
-                        match.Add(subMatch);
+                if (subMatch is not null)
+                    match.Add(subMatch);
 
-                    if (subRest is not null)
-                        rest.Add(subRest);
-                }
-                else
-                {
-                    var matched = predicate(subException);
-                    if (matched.IsError)
-                        return ReturnError(matched);
-
-                    if (matched.Value.BoolValue)
-                        match.Add(subException);
-                    else
-                        rest.Add(subException);
-                }
+                if (subRest is not null)
+                    rest.Add(subRest);
             }
 
             PyExceptionObject? matchGroup = null;
