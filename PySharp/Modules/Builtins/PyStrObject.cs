@@ -418,7 +418,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
     [PyMethod("startswith")]
     [AIGenerated]
-    [PyFunctionParameters("prefix", "/", "start=0", "end=2147483647")]
+    [PyFunctionParameters("prefix", "start=0", "end=2147483647", "/")]
     private static PyResult StartsWith(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
         var sub = arguments[0];
@@ -450,7 +450,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
     [PyMethod("endswith")]
     [AIGenerated]
-    [PyFunctionParameters("suffix", "/", "start=0", "end=2147483647")]
+    [PyFunctionParameters("suffix", "start=0", "end=2147483647", "/")]
     private static PyResult EndsWith(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
         var sub = arguments[0];
@@ -748,7 +748,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
     [PyMethod("find")]
     [AIGenerated]
-    [PyFunctionParameters("sub", "/", "start=0", "end=2147483647")]
+    [PyFunctionParameters("sub", "start=0", "end=2147483647", "/")]
     private static PyResult Find(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
         return FindImpl(context, self, arguments, "find");
@@ -784,7 +784,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
     [PyMethod("rfind")]
     [AIGenerated]
-    [PyFunctionParameters("sub", "/", "start=0", "end=2147483647")]
+    [PyFunctionParameters("sub", "start=0", "end=2147483647", "/")]
     private static PyResult RFind(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
         return RFindImpl(context, self, arguments, "rfind");
@@ -819,7 +819,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
     [PyMethod("index")]
     [AIGenerated]
-    [PyFunctionParameters("sub", "/", "start=0", "end=2147483647")]
+    [PyFunctionParameters("sub", "start=0", "end=2147483647", "/")]
     private static PyResult Index(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
         var result = FindImpl(context, self, arguments, "index");
@@ -834,7 +834,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
     [PyMethod("rindex")]
     [AIGenerated]
-    [PyFunctionParameters("sub", "/", "start=0", "end=2147483647")]
+    [PyFunctionParameters("sub", "start=0", "end=2147483647", "/")]
     private static PyResult RIndex(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
         var result = RFindImpl(context, self, arguments, "rindex");
@@ -911,7 +911,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
     [PyMethod("count")]
     [AIGenerated]
-    [PyFunctionParameters("sub", "/", "start=0", "end=2147483647")]
+    [PyFunctionParameters("sub", "start=0", "end=2147483647", "/")]
     private static PyResult Count(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
         if (arguments[0] is not PyStrObject subStr)

@@ -348,7 +348,7 @@ public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
     }
 
     [PyMethod("read")]
-    [PyFunctionParameters("size=-1")]
+    [PyFunctionParameters("size=-1", "/")]
     private static PyResult Read(PyCallContext context, PyFileObject self, PyArguments arguments)
     {
         var sizeObj = arguments[0];
@@ -358,7 +358,7 @@ public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
     }
 
     [PyMethod("write")]
-    [PyFunctionParameters("data")]
+    [PyFunctionParameters("data", "/")]
     private static PyResult Write(PyCallContext context, PyFileObject self, PyArguments arguments)
     {
         return self.Write(context, arguments[0]);
@@ -379,7 +379,7 @@ public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
     }
 
     [PyMethod("seek")]
-    [PyFunctionParameters("offset", "whence=0")]
+    [PyFunctionParameters("offset", "whence=0", "/")]
     private static PyResult Seek(PyCallContext context, PyFileObject self, PyArguments arguments)
     {
         // PyNumber_AsOff_t / clinic int: both arguments go through __index__
@@ -432,7 +432,7 @@ public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
     }
 
     [PyMethod("readline")]
-    [PyFunctionParameters("size=-1")]
+    [PyFunctionParameters("size=-1", "/")]
     private static PyResult ReadLine(PyCallContext context, PyFileObject self, PyArguments arguments)
     {
         var sizeObj = arguments[0];
@@ -442,7 +442,7 @@ public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
     }
 
     [PyMethod("readlines")]
-    [PyFunctionParameters("hint=-1")]
+    [PyFunctionParameters("hint=-1", "/")]
     private static PyResult ReadLines(PyCallContext context, PyFileObject self, PyArguments arguments)
     {
         // CPython _IOBase.readlines: keep readline() until EOF, stopping

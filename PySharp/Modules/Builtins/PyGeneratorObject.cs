@@ -403,7 +403,7 @@ public sealed partial class PyGeneratorObjectType : PyTypeObject<PyGeneratorObje
     }
 
     [PyMethod("send")]
-    [PyFunctionParameters("value")]
+    [PyFunctionParameters("value", "/")]
     private static PyResult Send(PyCallContext context, PyGeneratorObject self, PyArguments arguments)
     {
         if (arguments[0] is PyNoneObject)

@@ -123,14 +123,14 @@ public sealed partial class PyAsyncGeneratorASendObjectType : PyTypeObject<PyAsy
     }
 
     [PyMethod("send")]
-    [PyFunctionParameters("value")]
+    [PyFunctionParameters("value", "/")]
     private static PyResult Send(PyCallContext context, PyAsyncGeneratorASendObject self, PyArguments arguments)
     {
         return DriveGenerator(self, context, arguments[0]);
     }
 
     [PyMethod("throw")]
-    [PyFunctionParameters("value")]
+    [PyFunctionParameters("value", "/")]
     private static PyResult Throw(PyCallContext context, PyAsyncGeneratorASendObject self, PyArguments arguments)
     {
         // throw() always calls PyThrow, never PySend.
@@ -172,7 +172,7 @@ public sealed partial class PyAsyncGeneratorObjectType : PyTypeObject<PyGenerato
     }
 
     [PyMethod("asend")]
-    [PyFunctionParameters("value")]
+    [PyFunctionParameters("value", "/")]
     private static PyResult ASend(PyCallContext context, PyGeneratorObject self, PyArguments arguments)
     {
         // asend() must return an awaitable. Wrap the async generator
@@ -181,7 +181,7 @@ public sealed partial class PyAsyncGeneratorObjectType : PyTypeObject<PyGenerato
     }
 
     [PyMethod("athrow")]
-    [PyFunctionParameters("value")]
+    [PyFunctionParameters("value", "/")]
     private static PyResult AThrow(PyCallContext context, PyGeneratorObject self, PyArguments arguments)
     {
         // athrow() must return an awaitable. Wrap in PyAsyncGeneratorASendObject

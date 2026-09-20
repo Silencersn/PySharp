@@ -426,7 +426,7 @@ public static partial class PyBuiltinFunctions
         return new PyAnextAwaitableObject(arguments[0], arguments[1]);
     }
 
-    [PyFunctionParameters("iterable")]
+    [PyFunctionParameters("iterable", "/")]
     private static PyResult AllImpl(PyCallContext context, PyArguments arguments)
     {
         var iterable = arguments[0];
@@ -445,7 +445,7 @@ public static partial class PyBuiltinFunctions
         return PyBoolObject.True;
     }
 
-    [PyFunctionParameters("iterable")]
+    [PyFunctionParameters("iterable", "/")]
     private static PyResult AnyImpl(PyCallContext context, PyArguments arguments)
     {
         var iterable = arguments[0];
@@ -1278,14 +1278,14 @@ public static partial class PyBuiltinFunctions
     }
 
     [AIGenerated]
-    [PyFunctionParameters("number", "/")]
+    [PyFunctionParameters("number")]
     private static PyResult RoundImpl_1(PyCallContext context, PyArguments arguments)
     {
         return PySpecialMethods.Round(context, arguments[0], PyNoneObject.None);
     }
 
     [AIGenerated]
-    [PyFunctionParameters("number", "ndigits", "/")]
+    [PyFunctionParameters("number", "ndigits")]
     private static PyResult RoundImpl_2(PyCallContext context, PyArguments arguments)
     {
         return PySpecialMethods.Round(context, arguments[0], arguments[1]);

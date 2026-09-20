@@ -4101,6 +4101,18 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestBuiltinPositionalOnlyRegression()
+    {
+        // Regression: built-in callables whose CPython signature carries no
+        // keyword support reject every keyword argument (the str search
+        // family's start/end, any/all, the generator/coroutine/async
+        // generator send family, file and stdio read/readline/readlines/
+        // write/seek), while round() keeps taking number/ndigits by name.
+        var module = RunModule("test_builtin_positional_only_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestFrozenInstanceSetattrRegression()
     {
         // Regression: attribute writes and deletes on dict-less (frozen)

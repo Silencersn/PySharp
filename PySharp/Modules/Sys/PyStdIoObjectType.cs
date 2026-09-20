@@ -13,7 +13,7 @@ public sealed partial class PyStdIoObjectType : PyTypeObject<PyStdIoObject>
     }
 
     [PyMethod("read")]
-    [PyFunctionParameters("size=-1")]
+    [PyFunctionParameters("size=-1", "/")]
     private static PyResult Read(PyCallContext context, PyStdIoObject self, PyArguments arguments)
     {
         var sizeObj = arguments[0];
@@ -23,7 +23,7 @@ public sealed partial class PyStdIoObjectType : PyTypeObject<PyStdIoObject>
     }
 
     [PyMethod("write")]
-    [PyFunctionParameters("data")]
+    [PyFunctionParameters("data", "/")]
     private static PyResult Write(PyCallContext context, PyStdIoObject self, PyArguments arguments)
     {
         return self.Write(context, arguments[0]);
@@ -37,7 +37,7 @@ public sealed partial class PyStdIoObjectType : PyTypeObject<PyStdIoObject>
     }
 
     [PyMethod("readline")]
-    [PyFunctionParameters("size=-1")]
+    [PyFunctionParameters("size=-1", "/")]
     private static PyResult ReadLine(PyCallContext context, PyStdIoObject self, PyArguments arguments)
     {
         var sizeObj = arguments[0];
