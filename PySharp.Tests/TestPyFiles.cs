@@ -281,6 +281,19 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestContainerComparisonRecursionRegression()
+    {
+        // Regression: comparison recursion is bounded by the native stack.
+        // Cyclic container pairs and __eq__ re-entry enter no Python frame,
+        // so the frame counters could not stop them from exhausting the
+        // .NET stack and killing the process; they now raise a catchable
+        // RecursionError, while identical operands keep the identity
+        // shortcut and shallow comparisons are unchanged.
+        var module = RunModule("test_container_comparison_recursion_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestMiSpecialMethodMroRegression()
     {
         // Regression: special methods that object gives defaults for
