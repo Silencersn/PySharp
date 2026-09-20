@@ -1038,13 +1038,8 @@ internal static class PyUnicodeErrorStr
         if (start >= 0 && start < length && end >= 0 && end <= length && end == start + 1)
         {
             // PyUnicode_ReadChar returns the raw code point, lone
-            // surrogates included — EnumerateRunes would swap them for
-            // the replacement character
-            string value = objectStr.Value;
-            int charIndex = objectStr.RuneIndexToCharIndex((int)start);
-            uint badchar = value[charIndex];
-            if (charIndex + 1 < value.Length && char.IsHighSurrogate(value[charIndex]) && char.IsLowSurrogate(value[charIndex + 1]))
-                badchar = (uint)char.ConvertToUtf32(value[charIndex], value[charIndex + 1]);
+            // surrogates included
+            uint badchar = (uint)PyStrObject.CodePointAt(objectStr.Value, (int)start);
 
             string escape = badchar <= 0xff ? $"\\x{badchar:x2}"
                 : badchar <= 0xffff ? $"\\u{badchar:x4}" : $"\\U{badchar:x8}";

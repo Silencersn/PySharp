@@ -456,10 +456,19 @@ public sealed class TestPyFiles
     [TestMethod]
     public void TestChrSurrogateRegression()
     {
-        // Regression: chr() must explicitly reject surrogate code points
-        // (U+D800-U+DFFF) with PySharpException instead of silently returning
-        // the wrong U+FFFD replacement character.
+        // Regression: chr() returns a lone surrogate for U+D800-U+DFFF, and
+        // ord()/repr()/ascii() read it back instead of yielding U+FFFD.
         var module = RunModule("test_chr_surrogate_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestStrCodePointView()
+    {
+        // Regression: index/slice/iterate/pad count code points, so an
+        // astral character counts once and an unpaired surrogate stays
+        // itself rather than becoming U+FFFD.
+        var module = RunModule("test_str_codepoint_view.py");
         Assert.IsNotNull(module);
     }
 

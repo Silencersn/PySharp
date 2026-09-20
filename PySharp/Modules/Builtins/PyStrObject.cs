@@ -29,7 +29,7 @@ public partial class PyStrObject : PyObject
         {
             if (field is not -1)
                 return field;
-            return field = Value.EnumerateRunes().Count();
+            return field = CountCodePoints(Value);
         }
     }
     public static PyStrObject Empty { get; } = new PyStrObject(string.Empty);
@@ -72,11 +72,14 @@ public partial class PyStrObject : PyObject
         ArgumentNullException.ThrowIfNull(value);
         return new PyStrObject(value);
     }
-    public static PyStrObject FromRune(Rune value)
+    // CPython's chr(): a code point in U+D800-U+DFFF yields a lone surrogate
+    internal static PyStrObject FromCodePoint(int codePoint)
     {
-        if (value.Value < CharPoolSize)
-            return _charPool[value.Value];
-        return new PyStrObject(value.ToString());
+        if ((uint)codePoint < CharPoolSize)
+            return _charPool[codePoint];
+        return codePoint < 0x10000
+            ? new PyStrObject(((char)codePoint).ToString())
+            : new PyStrObject(char.ConvertFromUtf32(codePoint));
     }
 
     internal string Repr()
@@ -84,61 +87,121 @@ public partial class PyStrObject : PyObject
         return PyStrConverter.FromStringToLiteral(Value);
     }
 
-    internal Rune PyCharAt(int index)
+    // CPython's str stores code points (PEP 393), where U+D800-U+DFFF are
+    // ordinary values; System.Rune cannot represent a surrogate and
+    // String.EnumerateRunes() yields U+FFFD for an unpaired one, so the
+    // character views below step over UTF-16 code units themselves.
+    internal ref struct CodePointEnumerator(ReadOnlySpan<char> value)
     {
-        foreach (var rune in Value.EnumerateRunes())
+        private readonly ReadOnlySpan<char> _value = value;
+        private int _index = -1;
+
+        public int Current { get; private set; } = -1;
+
+        public bool MoveNext()
+        {
+            var next = _index + 1;
+            if (next >= _value.Length)
+                return false;
+
+            _index = next;
+            var unit = _value[next];
+            if (char.IsHighSurrogate(unit) && next + 1 < _value.Length && char.IsLowSurrogate(_value[next + 1]))
+            {
+                _index = next + 1;
+                Current = char.ConvertToUtf32(unit, _value[next + 1]);
+            }
+            else
+            {
+                Current = unit;
+            }
+            return true;
+        }
+    }
+
+    internal CodePointEnumerator EnumerateCodePoints() => new(Value);
+
+    internal static int CountCodePoints(ReadOnlySpan<char> value)
+    {
+        var count = 0;
+        var enumerator = new CodePointEnumerator(value);
+        while (enumerator.MoveNext())
+            count++;
+        return count;
+    }
+
+    internal static int CodePointAt(ReadOnlySpan<char> value, int index)
+    {
+        var enumerator = new CodePointEnumerator(value);
+        while (enumerator.MoveNext())
         {
             if (index-- is 0)
-                return rune;
+                return enumerator.Current;
         }
         throw new UnreachableException();
     }
 
-    /// <summary>Convert code-point (Rune) index to char index in the string.</summary>
-    internal int RuneIndexToCharIndex(int runeIndex)
+    internal int PyCharAt(int index) => CodePointAt(Value, index);
+
+    // width in UTF-16 code units of the code point starting at index
+    internal static int CharWidthAt(ReadOnlySpan<char> value, int index) =>
+        char.IsHighSurrogate(value[index]) && index + 1 < value.Length && char.IsLowSurrogate(value[index + 1]) ? 2 : 1;
+
+    internal static void AppendCodePoint(StringBuilder builder, int codePoint)
     {
-        if (runeIndex <= 0)
+        if (codePoint < 0x10000)
+            builder.Append((char)codePoint);
+        else
+            builder.Append(char.ConvertFromUtf32(codePoint));
+    }
+
+    internal static void AppendRepeated(StringBuilder builder, string value, int count)
+    {
+        for (var i = 0; i < count; i++)
+            builder.Append(value);
+    }
+
+    /// <summary>Convert a code-point index to a char index in the string.</summary>
+    internal int CodePointIndexToCharIndex(int codePointIndex)
+    {
+        if (codePointIndex <= 0)
             return 0;
-        int runeCount = 0;
-        for (int i = 0; i < Value.Length; i++)
+        int count = 0;
+        for (int i = 0; i < Value.Length; i += CharWidthAt(Value, i))
         {
-            if (runeCount == runeIndex)
+            if (count == codePointIndex)
                 return i;
-            if (char.IsHighSurrogate(Value[i]))
-                i++;
-            runeCount++;
+            count++;
         }
         return Value.Length;
     }
 
-    /// <summary>Convert char index back to code-point (Rune) index.</summary>
-    internal static int CharIndexToRuneIndex(string value, int charIndex)
+    /// <summary>Convert a char index back to a code-point index.</summary>
+    internal static int CharIndexToCodePointIndex(string value, int charIndex)
     {
-        int runeCount = 0;
-        for (int i = 0; i < value.Length && i < charIndex; i++)
-        {
-            if (char.IsHighSurrogate(value[i]))
-                i++;
-            runeCount++;
-        }
-        return runeCount;
+        int count = 0;
+        for (int i = 0; i < value.Length && i < charIndex; i += CharWidthAt(value, i))
+            count++;
+        return count;
     }
 
-    /// <summary>Return substring limited by rune (code-point) range [startRune, endRune).</summary>
-    internal string SubstringByRuneRange(int startRune, int endRune)
+    /// <summary>Return the substring covering the code-point range [start, end).</summary>
+    internal string SubstringByCodePointRange(int start, int end)
     {
-        int startChar = RuneIndexToCharIndex(startRune);
-        int endChar = RuneIndexToCharIndex(endRune);
+        int startChar = CodePointIndexToCharIndex(start);
+        int endChar = CodePointIndexToCharIndex(end);
         return Value[startChar..endChar];
     }
 
-    /// <summary>Get the first Rune of the string, or default (null character) if empty.</summary>
-    internal Rune FirstRune()
-    {
-        foreach (var rune in Value.EnumerateRunes())
-            return rune;
-        return default;
-    }
+    /// <summary>First code point of the string, or -1 when empty.</summary>
+    internal int FirstCodePoint() => Value.Length is 0 ? -1 : CodePointAt(Value, 0);
+
+    // Rune cannot represent U+D800-U+DFFF, which have no case mapping
+    internal static string ToUpperCodePoint(int codePoint) =>
+        Rune.IsValid(codePoint) ? Rune.ToUpperInvariant(new Rune(codePoint)).ToString() : ((char)codePoint).ToString();
+
+    internal static string ToLowerCodePoint(int codePoint) =>
+        Rune.IsValid(codePoint) ? Rune.ToLowerInvariant(new Rune(codePoint)).ToString() : ((char)codePoint).ToString();
 
     public static int GetHashCode(string s)
     {
@@ -341,7 +404,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         // zero-width windows and the empty string
         if (end - start < needle.PyLength)
             return false;
-        var sliced = self.SubstringByRuneRange(start, end);
+        var sliced = self.SubstringByCodePointRange(start, end);
         return startswith ? sliced.StartsWith(needle.Value, StringComparison.Ordinal) : sliced.EndsWith(needle.Value, StringComparison.Ordinal);
     }
 
@@ -363,8 +426,11 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             // CPython interleave semantics for an empty oldValue: insert
             // newStr n times between the characters, where n = min(count,
             // len(s)+1) (count < 0 means "no limit", i.e. n = len(s)+1).
-            var runes = self.Value.EnumerateRunes().ToArray();
-            int slen = runes.Length;
+            var codePoints = new List<int>(self.PyLength);
+            var enumerator = self.EnumerateCodePoints();
+            while (enumerator.MoveNext())
+                codePoints.Add(enumerator.Current);
+            int slen = codePoints.Count;
             int n = count < 0 ? slen + 1 : Math.Min(count, slen + 1);
             if (n is 0)
                 return self;
@@ -373,10 +439,10 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             {
                 sb.Append(newStr.Value);
                 if (i < slen)
-                    sb.Append(runes[i]);
+                    PyStrObject.AppendCodePoint(sb, codePoints[i]);
             }
             for (int i = n; i < slen; i++)
-                sb.Append(runes[i]);
+                PyStrObject.AppendCodePoint(sb, codePoints[i]);
             return PyStrObject.FromString(sb.ToString());
         }
 
@@ -617,12 +683,12 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             return end - start < 0 ? PyIntObject.MinusOne : PyIntObject.FromInteger(start);
         if (start >= end)
             return PyIntObject.MinusOne;
-        var sliced = self.SubstringByRuneRange(start, end);
+        var sliced = self.SubstringByCodePointRange(start, end);
         int charIdx = sliced.IndexOf(subStr.Value, StringComparison.Ordinal);
         if (charIdx < 0)
             return PyIntObject.MinusOne;
-        int charStart = self.RuneIndexToCharIndex(start);
-        int resultRuneIdx = PyStrObject.CharIndexToRuneIndex(self.Value, charStart + charIdx);
+        int charStart = self.CodePointIndexToCharIndex(start);
+        int resultRuneIdx = PyStrObject.CharIndexToCodePointIndex(self.Value, charStart + charIdx);
         return PyIntObject.FromInteger(resultRuneIdx);
     }
 
@@ -652,12 +718,12 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             return end - start < 0 ? PyIntObject.MinusOne : PyIntObject.FromInteger(end);
         if (start >= end)
             return PyIntObject.MinusOne;
-        var sliced = self.SubstringByRuneRange(start, end);
+        var sliced = self.SubstringByCodePointRange(start, end);
         int charIdx = sliced.LastIndexOf(subStr.Value, StringComparison.Ordinal);
         if (charIdx < 0)
             return PyIntObject.MinusOne;
-        int charStart = self.RuneIndexToCharIndex(start);
-        int resultRuneIdx = PyStrObject.CharIndexToRuneIndex(self.Value, charStart + charIdx);
+        int charStart = self.CodePointIndexToCharIndex(start);
+        int resultRuneIdx = PyStrObject.CharIndexToCodePointIndex(self.Value, charStart + charIdx);
         return PyIntObject.FromInteger(resultRuneIdx);
     }
 
@@ -698,16 +764,13 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     {
         if (self.PyLength is 0)
             return self;
-        var first = self.FirstRune();
         var sb = new StringBuilder();
-        sb.Append(Rune.ToUpperInvariant(first).ToString());
-        // Rest of the string in lower case
-        bool firstDone = false;
-        foreach (var rune in self.Value.EnumerateRunes())
-        {
-            if (!firstDone) { firstDone = true; continue; }
-            sb.Append(Rune.ToLowerInvariant(rune).ToString());
-        }
+        sb.Append(PyStrObject.ToUpperCodePoint(self.FirstCodePoint()));
+        // rest of the string in lower case
+        var enumerator = self.EnumerateCodePoints();
+        enumerator.MoveNext();
+        while (enumerator.MoveNext())
+            sb.Append(PyStrObject.ToLowerCodePoint(enumerator.Current));
         return PyStrObject.FromString(sb.ToString());
     }
 
@@ -749,10 +812,12 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         int padLeft = marg / 2 + (marg & width & 1);
         int padRight = marg - padLeft;
 
-        var sb = new StringBuilder(self.Value.Length + padLeft + padRight);
-        sb.Append(fillchar[0], padLeft);
+        // the fill character is one code point, which an astral one spells
+        // with two code units — repeat the whole character, not a unit of it
+        var sb = new StringBuilder(self.Value.Length + (padLeft + padRight) * fillchar.Length);
+        PyStrObject.AppendRepeated(sb, fillchar, padLeft);
         sb.Append(self.Value);
-        sb.Append(fillchar[0], padRight);
+        PyStrObject.AppendRepeated(sb, fillchar, padRight);
         return PyStrObject.FromString(sb.ToString());
     }
 
@@ -781,7 +846,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
         if (start >= end)
             return PyIntObject.Zero;
-        var sliced = self.SubstringByRuneRange(start, end);
+        var sliced = self.SubstringByCodePointRange(start, end);
 
         int count = 0;
         int index = 0;
@@ -927,12 +992,10 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         if (width <= self.PyLength)
             return self;
 
-        var first = self.FirstRune();
-        if (self.PyLength > 0 && (first.Value is '+' or '-'))
-        {
-            int firstCharLen = first.Utf16SequenceLength;
-            return PyStrObject.FromString(self.Value[..firstCharLen] + self.Value[firstCharLen..].PadLeft(width - 1, '0'));
-        }
+        // a sign is a single code unit
+        var first = self.FirstCodePoint();
+        if (self.PyLength is not 0 && (first is '+' or '-'))
+            return PyStrObject.FromString(self.Value[..1] + self.Value[1..].PadLeft(width - 1, '0'));
 
         return PyStrObject.FromString(self.Value.PadLeft(width, '0'));
     }
@@ -983,7 +1046,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         var length = self.PyLength;
         if (spec.Precision is int precision && precision < length)
         {
-            text = self.SubstringByRuneRange(0, precision);
+            text = self.SubstringByCodePointRange(0, precision);
             length = precision;
         }
 
@@ -1463,8 +1526,11 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         if (width <= self.PyLength)
             return self;
 
-        int pad = width - self.PyLength;
-        return PyStrObject.FromString(self.Value.PadRight(self.Value.Length + pad, fillchar[0]));
+        var pad = width - self.PyLength;
+        var sb = new StringBuilder(self.Value.Length + pad * fillchar.Length);
+        sb.Append(self.Value);
+        PyStrObject.AppendRepeated(sb, fillchar, pad);
+        return PyStrObject.FromString(sb.ToString());
     }
 
     [PyMethod("rjust")]
@@ -1491,8 +1557,11 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         if (width <= self.PyLength)
             return self;
 
-        int pad = width - self.PyLength;
-        return PyStrObject.FromString(self.Value.PadLeft(self.Value.Length + pad, fillchar[0]));
+        var pad = width - self.PyLength;
+        var sb = new StringBuilder(self.Value.Length + pad * fillchar.Length);
+        PyStrObject.AppendRepeated(sb, fillchar, pad);
+        sb.Append(self.Value);
+        return PyStrObject.FromString(sb.ToString());
     }
 
     [PyMethod("rpartition")]
@@ -2152,14 +2221,14 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             if (length is 0)
                 return PyStrObject.Empty;
 
-            // Collect all runes for slicing
-            var runes = new List<Rune>(self.PyLength);
-            foreach (var rune in self.Value.EnumerateRunes())
-                runes.Add(rune);
+            var codePoints = new List<int>(self.PyLength);
+            var enumerator = self.EnumerateCodePoints();
+            while (enumerator.MoveNext())
+                codePoints.Add(enumerator.Current);
 
             var sb = new StringBuilder(length);
             for (int i = start, ri = 0; ri < length; i += step, ri++)
-                sb.Append(runes[i].ToString());
+                PyStrObject.AppendCodePoint(sb, codePoints[i]);
             return PyStrObject.FromString(sb.ToString());
         }
 
@@ -2172,7 +2241,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         index = PyUtils.MapIndex(index, self.PyLength);
         if (index < 0 || index >= self.PyLength)
             return PyResult.IndexError(PySR.Runtime_String_IndexOutOfRange);
-        return PyStrObject.FromRune(self.PyCharAt(index));
+        return PyStrObject.FromCodePoint(self.PyCharAt(index));
     }
     // CPython's reflected wrappers cover as_number and sq_repeat slots
     // only; sq_concat has no reflected variant (str.__radd__ does not

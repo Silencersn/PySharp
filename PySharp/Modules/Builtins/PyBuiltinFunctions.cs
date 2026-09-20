@@ -839,16 +839,8 @@ public static partial class PyBuiltinFunctions
         var value = result.Value.Value;
         if (value < 0 || value > 0x10FFFF)
             return PyResult.ValueError(PySR.Runtime_Builtin_Chr_OutOfRange);
-        // Mitigation: the str pipeline (ord/repr/ascii) cannot keep
-        // lone surrogates intact, so reject the surrogate range explicitly
-        // instead of silently producing the wrong U+FFFD replacement character.
-        if (value >= 0xD800 && value <= 0xDFFF)
-            return PyResult.PySharpException("chr() with a surrogate code point (U+D800-U+DFFF) is not supported");
-        int cp = (int)value;
         // CPython allows lone surrogates: chr(0xD800) -> '\ud800' (len 1)
-        return cp <= 0xFFFF
-            ? PyStrObject.FromString(((char)cp).ToString())
-            : PyStrObject.FromRune(new Rune(cp));
+        return PyStrObject.FromCodePoint((int)value);
     }
 
     [PyFunctionParameters("c", "/")]
@@ -871,7 +863,7 @@ public static partial class PyBuiltinFunctions
             case PyStrObject strObj:
                 if (strObj.PyLength is not 1)
                     return PyResult.TypeError(PySR.Runtime_Builtin_Ord_ExpectedACharacter, strObj.PyLength);
-                return PyIntObject.FromInteger(strObj.PyCharAt(0).Value);
+                return PyIntObject.FromInteger(strObj.PyCharAt(0));
             default:
                 return PyResult.TypeError(PySR.Runtime_Builtin_Ord_ExpectedString, arg.PyType.Name);
         }
