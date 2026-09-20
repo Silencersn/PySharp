@@ -5,6 +5,7 @@ using PySharp.Utility;
 using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
 
 namespace PySharp.Modules.Builtins;
 
@@ -61,10 +62,10 @@ public sealed class PyExceptionObject : PyObjectManagedDict
     internal bool IsGroup => AsGroup is not null;
     internal ExceptionGroupInfo? AsGroup { get; }
 
-    internal PyExceptionObject WithTraceback(PyCallContext context, bool overwriteExisting = false, ICodeMetaInfoProvider? compiler = null)
+    internal PyExceptionObject WithTraceback(PyCallContext context, bool overwriteExisting = false)
     {
         if (Traceback is null || overwriteExisting)
-            Traceback = PyTraceback.GetTracebackInfo(context, compiler);
+            Traceback = PyTraceback.GetTracebackInfo(context);
 
         return this;
     }
@@ -131,13 +132,19 @@ public sealed class PyExceptionObject : PyObjectManagedDict
             return;
         }
 
-        if (Traceback is not null)
+        // CPython gates the header on the stack summary being non-empty
+        // (traceback.py format: "if exc.stack:"), so a parse-time
+        // SyntaxError with no frames prints no header at all
+        if (Traceback is not null && Traceback.Frames.Count is not 0)
         {
             builder.AppendLine("Traceback (most recent call last):");
             Traceback.Print(builder);
         }
 
-        PrintSimpleMessage(builder, context);
+        if (PySyntaxErrorObjectType.Shared.IsInstance(this))
+            PrintSyntaxErrorMessage(builder, context);
+        else
+            PrintSimpleMessage(builder, context);
         builder.AppendLine();
     }
 
@@ -156,11 +163,114 @@ public sealed class PyExceptionObject : PyObjectManagedDict
         }
     }
 
+    // CPython traceback.TracebackException._format_syntax_error: for the
+    // SyntaxError family the location block comes from the exception's own
+    // attributes rather than any traceback frame, and the final line uses
+    // the msg attribute so str(exc)'s "msg (filename, line N)" suffix is
+    // never duplicated here
+    private void PrintSyntaxErrorMessage(IndentedStringBuilder builder, PyCallContext context)
+    {
+        var attrs = PyAttributes;
+        attrs.TryGetValue("filename", out var filenameValue);
+        attrs.TryGetValue("lineno", out var linenoValue);
+        attrs.TryGetValue("offset", out var offsetValue);
+        attrs.TryGetValue("text", out var textValue);
+        attrs.TryGetValue("end_lineno", out var endLinenoValue);
+        attrs.TryGetValue("end_offset", out var endOffsetValue);
+
+        string filenameSuffix = string.Empty;
+        if (linenoValue is PyIntObject linenoInt && linenoValue is not PyBoolObject)
+        {
+            var name = filenameValue is PyStrObject nameStr ? nameStr.Value : "<string>";
+            builder.AppendLine($"  File \"{name}\", line {linenoInt.Value}");
+        }
+        else if (filenameValue is PyStrObject filenameStr)
+        {
+            filenameSuffix = $" ({filenameStr.Value})";
+        }
+
+        if (textValue is PyStrObject text)
+        {
+            string rtext = text.Value.TrimEnd('\n');
+            string ltext = rtext.TrimStart(' ', '\n', '\f');
+            int spaces = rtext.Length - ltext.Length;
+
+            if (offsetValue is PyIntObject offsetInt)
+            {
+                // info-tuple values come from user code too, so the math
+                // stays in arbitrary precision exactly like CPython
+                BigInteger offset = offsetInt.Value;
+                // CPython's fallback order: an invalid/zero/missing end
+                // offset degenerates to the start offset on the same line,
+                // out-of-line ranges caret to the line end, and a non-range
+                // becomes a single caret
+                BigInteger endOffset;
+                if (linenoValue is PyIntObject sameLine && endLinenoValue is PyIntObject endLinenoInt && endLinenoInt.Value == sameLine.Value)
+                {
+                    endOffset = endOffsetValue is PyIntObject endOffsetInt && endOffsetInt.Value != 0
+                        ? endOffsetInt.Value
+                        : offset;
+                }
+                else
+                {
+                    endOffset = rtext.Length + 1;
+                }
+
+                if (text.Value.Length is not 0 && offset > text.Value.Length)
+                    offset = rtext.Length + 1;
+                if (text.Value.Length is not 0 && endOffset > text.Value.Length)
+                    endOffset = rtext.Length + 1;
+                if (offset >= endOffset || endOffset < 0)
+                    endOffset = offset + 1;
+
+                BigInteger colno = offset - 1 - spaces;
+                BigInteger endColno = endOffset - 1 - spaces;
+                if (colno >= 0)
+                {
+                    builder.AppendLine($"    {ltext}");
+                    // whitespace characters of the caret prefix are kept
+                    // for tab alignment (CPython caretspace)
+                    int prefixLength = (int)BigInteger.Min(colno, ltext.Length);
+                    string caretspace = string.Create(prefixLength, ltext, static (span, source) =>
+                    {
+                        for (int i = 0; i < span.Length; i++)
+                            span[i] = char.IsWhiteSpace(source[i]) ? source[i] : ' ';
+                    });
+                    int caretCount = (int)BigInteger.Min(BigInteger.Max(0, endColno - colno), rtext.Length + 1);
+                    builder.AppendLine($"    {caretspace}{new string('^', caretCount)}");
+                }
+                else
+                {
+                    builder.AppendLine($"    {ltext}");
+                }
+            }
+            else
+            {
+                builder.AppendLine($"    {ltext}");
+            }
+        }
+
+        builder.Append(PyType.FullName).Append(": ").Append(ResolveSyntaxErrorMessage(context));
+        if (filenameSuffix.Length is not 0)
+            builder.Append(filenameSuffix);
+    }
+
+    private string ResolveSyntaxErrorMessage(PyCallContext context)
+    {
+        var msg = PyAttributes.TryGetValue("msg", out var msgValue) ? msgValue : PyNoneObject.None;
+        // CPython "self.msg or '<no detail available>'"
+        if (msg is PyNoneObject || (msg is PyStrObject str && str.Value.Length is 0))
+            return "<no detail available>";
+
+        var result = PySpecialMethods.Str(context, msg);
+        return result.IsSuccessful ? result.Value.Value : "<exception str() failed>";
+    }
+
     private void PrintExceptionGroupMessage(IndentedStringBuilder builder, PyCallContext context, HashSet<PyExceptionObject> seen)
     {
         Debug.Assert(AsGroup is not null);
 
-        if (Traceback is not null)
+        if (Traceback is not null && Traceback.Frames.Count is not 0)
         {
             builder.AppendLine("+ Exception Group Traceback (most recent call last):");
             using (builder.Indent("| "))

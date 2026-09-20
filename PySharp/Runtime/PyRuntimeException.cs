@@ -21,7 +21,7 @@ public class PyRuntimeException : Exception
     internal PyRuntimeException(PyCallContext context, PyExceptionObject exception, ICodeMetaInfoProvider? compiler = null)
     {
         context.ChainHandledContext(exception);
-        _exception = exception.WithTraceback(context, compiler: compiler);
+        _exception = exception.WithTraceback(context);
         _compiler = compiler;
     }
 

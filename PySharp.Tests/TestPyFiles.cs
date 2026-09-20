@@ -3130,6 +3130,20 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestSyntaxErrorLocationRegression()
+    {
+        // Regression: parse-time SyntaxError family errors carry the full
+        // location attribute tuple like CPython (raised by the parser, not
+        // attached as a traceback frame), so the display layer renders the
+        // File/caret block from the attributes and only prints the
+        // "Traceback (most recent call last):" header for exceptions that
+        // actually have frames. Encoding problems and runtime raises stay
+        // attribute-free; the info-tuple constructor path is unchanged.
+        var module = RunModule("test_syntax_error_location_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestExceptStarControlFlowSyntaxRegression()
     {
         // Regression: break/continue/return cannot cross an except* handler

@@ -131,7 +131,7 @@ internal static class PyTraceback
         return new PyTracebackObject(null, null);
     }
 
-    public static TracebackInfo GetTracebackInfo(PyCallContext context, ICodeMetaInfoProvider? compiler = null)
+    public static TracebackInfo GetTracebackInfo(PyCallContext context)
     {
         List<(CodeMetaInfo? Info, string? CallerName)> list = new(context.FrameState.CurrentFrameCount);
         string? threadInfo = null;
@@ -146,11 +146,6 @@ internal static class PyTraceback
             {
                 var info = frame.CodeObject.Bytecode.LineTable.Read(frame.InstructionIndex);
                 list.Add((info, frame.CallerName));
-            }
-            else if (i == context.FrameState.CurrentFrameCount - 1)
-            {
-                if (compiler is not null)
-                    list.Add((compiler.MetaInfo, null));
             }
         }
 
