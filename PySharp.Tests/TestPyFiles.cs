@@ -329,6 +329,19 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestClassKeywordInitSubclassRegression()
+    {
+        // Regression: class keywords are handed to the first
+        // __init_subclass__ after the new class (CPython
+        // type_new_init_subclass), and object's default implementation is a
+        // no-argument classmethod, so a keyword nobody consumed -- a
+        // misspelled one included -- is a TypeError naming that class
+        // instead of being swallowed.
+        var module = RunModule("test_class_keyword_init_subclass_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestMiSpecialMethodMroRegression()
     {
         // Regression: special methods that object gives defaults for

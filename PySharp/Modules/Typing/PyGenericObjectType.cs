@@ -51,10 +51,29 @@ internal sealed partial class PyGenericObjectType : PyTypeObject<PyGenericObject
     /// validation is skipped — acceptable until TypeVar support is added.
     /// </summary>
     [PyClassMethod(PySpecialNames.InitSubclass)]
-    [PyFunctionParameters("**kwargs")]
+    [PyFunctionParameters("*args", "**kwargs")]
     private static PyResult InitSubclass(PyCallContext context, PyTypeObject cls, PyArguments arguments)
     {
         // Minimal: no TypeVar objects exist yet, so __parameters__ is not set.
-        return PyNoneObject.None;
+        // typing.Generic forwards class keywords up the chain (Lib/typing.py),
+        // which leaves the default hook to reject what nobody consumed.
+        var superObj = PySuperObject.CreateSuper(Shared, cls);
+        if (superObj.IsError)
+            return superObj;
+
+        var next = PyOperators.GetAttr(context, superObj.Value, PySpecialNames.Interned.InitSubclass);
+        if (next.IsError)
+        {
+            if (next.IsAttributeError)
+                return PyNoneObject.None;
+
+            return next;
+        }
+
+        var kwargs = new Dictionary<string, PyObject>(arguments.ExtraKwargs.Count, StringComparer.Ordinal);
+        foreach (var pair in arguments.ExtraKwargs)
+            kwargs[pair.Key] = pair.Value;
+
+        return next.Value.Call(context, arguments.ExtraArgs, kwargs);
     }
 }

@@ -110,14 +110,23 @@ public sealed partial class PyObjectType : PyTypeObject<PyObject>
 
     /// <summary>
     /// Implements object.__init_subclass__.
-    /// In CPython this is a no-op classmethod (METH_CLASS | METH_NOARGS).
-    /// It provides a terminal node for the cooperative __init_subclass__ chain.
-    /// Currently accepts **kwargs silently for simplicity.
+    /// In CPython this is a no-op classmethod (METH_CLASS | METH_NOARGS): it
+    /// terminates the cooperative __init_subclass__ chain and rejects every
+    /// argument, which is what makes an unconsumed class keyword an error.
+    /// The rejection names the class the descriptor bound to (methodobject.c
+    /// meth_get__qualname__).
     /// </summary>
     [PyClassMethod(PySpecialNames.InitSubclass)]
     [PyFunctionParameters("**kwargs")]
     private static PyResult InitSubclassImpl(PyCallContext context, PyTypeObject cls, PyArguments arguments)
     {
+        if (arguments.ExtraKwargs.Count is not 0)
+        {
+            return PyResult.TypeError(
+                PySR.Runtime_Exception_TakesNoKeywordArguments,
+                $"{cls.QualName}.{PySpecialNames.InitSubclass}");
+        }
+
         return PyNoneObject.None;
     }
 
