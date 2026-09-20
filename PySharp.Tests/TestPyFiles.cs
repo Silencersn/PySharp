@@ -463,6 +463,15 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestStrUnicodePredicatesRegression()
+    {
+        // Regression: the str predicates follow CPython's Unicode tables
+        // (Numeric_Type, the explicit space list, Other_Uppercase/Other_Lowercase).
+        var module = RunModule("test_str_unicode_predicates_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestStrCodePointWidthRegression()
     {
         // Regression: zfill and %-formatting measure width and precision in

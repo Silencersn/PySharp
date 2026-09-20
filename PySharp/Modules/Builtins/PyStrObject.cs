@@ -178,6 +178,22 @@ public partial class PyStrObject : PyObject
         }
     }
 
+    // CPython's isalpha/isdigit/... shape: every code point must satisfy the
+    // predicate, and the empty string is False
+    internal static PyResult AllCodePoints(PyStrObject self, Func<int, bool> predicate)
+    {
+        if (self.PyLength is 0)
+            return PyBoolObject.False;
+
+        var enumerator = self.EnumerateCodePoints();
+        while (enumerator.MoveNext())
+        {
+            if (!predicate(enumerator.Current))
+                return PyBoolObject.False;
+        }
+        return PyBoolObject.True;
+    }
+
     /// <summary>Prefix of at most <paramref name="count"/> code points.</summary>
     internal static string CodePointPrefix(string value, int count)
     {
@@ -891,47 +907,20 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyMethod("isalnum")]
     [AIGenerated]
     [PyFunctionParameters]
-    private static PyResult IsAlnum(PyCallContext context, PyStrObject self, PyArguments arguments)
-    {
-        if (self.PyLength is 0)
-            return PyBoolObject.False;
-        foreach (var rune in self.Value.EnumerateRunes())
-        {
-            if (!Rune.IsLetterOrDigit(rune))
-                return PyBoolObject.False;
-        }
-        return PyBoolObject.True;
-    }
+    private static PyResult IsAlnum(PyCallContext context, PyStrObject self, PyArguments arguments) =>
+        PyStrObject.AllCodePoints(self, PyUnicodeData.IsAlnum);
 
     [PyMethod("isalpha")]
     [AIGenerated]
     [PyFunctionParameters]
-    private static PyResult IsAlpha(PyCallContext context, PyStrObject self, PyArguments arguments)
-    {
-        if (self.PyLength is 0)
-            return PyBoolObject.False;
-        foreach (var rune in self.Value.EnumerateRunes())
-        {
-            if (!Rune.IsLetter(rune))
-                return PyBoolObject.False;
-        }
-        return PyBoolObject.True;
-    }
+    private static PyResult IsAlpha(PyCallContext context, PyStrObject self, PyArguments arguments) =>
+        PyStrObject.AllCodePoints(self, PyUnicodeData.IsAlpha);
 
     [PyMethod("isdigit")]
     [AIGenerated]
     [PyFunctionParameters]
-    private static PyResult IsDigit(PyCallContext context, PyStrObject self, PyArguments arguments)
-    {
-        if (self.PyLength is 0)
-            return PyBoolObject.False;
-        foreach (var rune in self.Value.EnumerateRunes())
-        {
-            if (!Rune.IsDigit(rune))
-                return PyBoolObject.False;
-        }
-        return PyBoolObject.True;
-    }
+    private static PyResult IsDigit(PyCallContext context, PyStrObject self, PyArguments arguments) =>
+        PyStrObject.AllCodePoints(self, PyUnicodeData.IsDigit);
 
     [PyMethod("islower")]
     [AIGenerated]
@@ -940,12 +929,14 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     {
         if (self.PyLength is 0)
             return PyBoolObject.False;
-        bool hasCased = false;
-        foreach (var rune in self.Value.EnumerateRunes())
+
+        var hasCased = false;
+        var enumerator = self.EnumerateCodePoints();
+        while (enumerator.MoveNext())
         {
-            if (Rune.IsUpper(rune))
+            if (PyUnicodeData.IsUpper(enumerator.Current))
                 return PyBoolObject.False;
-            if (Rune.IsLower(rune))
+            if (PyUnicodeData.IsLower(enumerator.Current))
                 hasCased = true;
         }
         return PyBoolObject.FromBoolean(hasCased);
@@ -958,12 +949,14 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     {
         if (self.PyLength is 0)
             return PyBoolObject.False;
-        bool hasCased = false;
-        foreach (var rune in self.Value.EnumerateRunes())
+
+        var hasCased = false;
+        var enumerator = self.EnumerateCodePoints();
+        while (enumerator.MoveNext())
         {
-            if (Rune.IsLower(rune))
+            if (PyUnicodeData.IsLower(enumerator.Current))
                 return PyBoolObject.False;
-            if (Rune.IsUpper(rune))
+            if (PyUnicodeData.IsUpper(enumerator.Current))
                 hasCased = true;
         }
         return PyBoolObject.FromBoolean(hasCased);
@@ -1504,18 +1497,8 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyMethod("isspace")]
     [AIGenerated]
     [PyFunctionParameters]
-    private static PyResult IsSpace(PyCallContext context, PyStrObject self, PyArguments arguments)
-    {
-        if (self.PyLength is 0)
-            return PyBoolObject.False;
-
-        foreach (var rune in self.Value.EnumerateRunes())
-        {
-            if (!Rune.IsWhiteSpace(rune))
-                return PyBoolObject.False;
-        }
-        return PyBoolObject.True;
-    }
+    private static PyResult IsSpace(PyCallContext context, PyStrObject self, PyArguments arguments) =>
+        PyStrObject.AllCodePoints(self, PyUnicodeData.IsSpace);
 
     [PyMethod("expandtabs")]
     [AIGenerated]
@@ -1677,16 +1660,19 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         bool isCased = false;
         bool previousIsCased = false;
 
-        foreach (var rune in self.Value.EnumerateRunes())
+        var enumerator = self.EnumerateCodePoints();
+        while (enumerator.MoveNext())
         {
-            if (Rune.IsUpper(rune))
+            var codePoint = enumerator.Current;
+            // CPython treats titlecase as upper in this state machine
+            if (PyUnicodeData.IsUpper(codePoint) || PyUnicodeData.IsTitle(codePoint))
             {
                 if (previousIsCased)
                     return PyBoolObject.False;
                 previousIsCased = true;
                 isCased = true;
             }
-            else if (Rune.IsLower(rune))
+            else if (PyUnicodeData.IsLower(codePoint))
             {
                 if (!previousIsCased)
                     return PyBoolObject.False;
@@ -1704,37 +1690,14 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyMethod("isdecimal")]
     [AIGenerated]
     [PyFunctionParameters]
-    private static PyResult IsDecimal(PyCallContext context, PyStrObject self, PyArguments arguments)
-    {
-        if (self.PyLength is 0)
-            return PyBoolObject.False;
-
-        foreach (var rune in self.Value.EnumerateRunes())
-        {
-            if (Rune.GetUnicodeCategory(rune) is not System.Globalization.UnicodeCategory.DecimalDigitNumber)
-                return PyBoolObject.False;
-        }
-        return PyBoolObject.True;
-    }
+    private static PyResult IsDecimal(PyCallContext context, PyStrObject self, PyArguments arguments) =>
+        PyStrObject.AllCodePoints(self, PyUnicodeData.IsDecimal);
 
     [PyMethod("isnumeric")]
     [AIGenerated]
     [PyFunctionParameters]
-    private static PyResult IsNumeric(PyCallContext context, PyStrObject self, PyArguments arguments)
-    {
-        if (self.PyLength is 0)
-            return PyBoolObject.False;
-
-        foreach (var rune in self.Value.EnumerateRunes())
-        {
-            var cat = Rune.GetUnicodeCategory(rune);
-            if (cat is not System.Globalization.UnicodeCategory.DecimalDigitNumber
-                && cat is not System.Globalization.UnicodeCategory.LetterNumber
-                && cat is not System.Globalization.UnicodeCategory.OtherNumber)
-                return PyBoolObject.False;
-        }
-        return PyBoolObject.True;
-    }
+    private static PyResult IsNumeric(PyCallContext context, PyStrObject self, PyArguments arguments) =>
+        PyStrObject.AllCodePoints(self, PyUnicodeData.IsNumeric);
 
     [PyMethod("isidentifier")]
     [AIGenerated]
@@ -1767,22 +1730,10 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     [PyFunctionParameters]
     private static PyResult IsPrintable(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
-        // Py_UNICODE_ISPRINTABLE: characters in the Unicode "Other" and
-        // "Separator" categories are non-printable; the ASCII space (U+0020)
-        // is the only exception
-        foreach (var rune in self.Value.EnumerateRunes())
+        var enumerator = self.EnumerateCodePoints();
+        while (enumerator.MoveNext())
         {
-            if (rune.Value is ' ')
-                continue;
-            var cat = Rune.GetUnicodeCategory(rune);
-            if (cat is System.Globalization.UnicodeCategory.Control
-                or System.Globalization.UnicodeCategory.Format
-                or System.Globalization.UnicodeCategory.Surrogate
-                or System.Globalization.UnicodeCategory.PrivateUse
-                or System.Globalization.UnicodeCategory.OtherNotAssigned
-                or System.Globalization.UnicodeCategory.SpaceSeparator
-                or System.Globalization.UnicodeCategory.LineSeparator
-                or System.Globalization.UnicodeCategory.ParagraphSeparator)
+            if (!PyUnicodeData.IsPrintable(enumerator.Current))
                 return PyBoolObject.False;
         }
         return PyBoolObject.True;

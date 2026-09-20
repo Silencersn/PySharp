@@ -583,7 +583,7 @@ internal static class PyStrConverter
                         builder.AppendFormat(CultureInfo.InvariantCulture, "\\x{0:x2}", ch);
                     else if (ch < 0x7F)
                         builder.Append((char)ch);
-                    else if (IsPrintable(ch))
+                    else if (PyUnicodeData.IsPrintable(ch))
                         PyStrObject.AppendCodePoint(builder, ch);
                     else if (ch < 0x100)
                         builder.AppendFormat(CultureInfo.InvariantCulture, "\\x{0:x2}", ch);
@@ -600,33 +600,6 @@ internal static class PyStrConverter
         return builder.ToString();
     }
 
-    private static bool IsPrintable(int c)
-    {
-        if (0x1F < c && c < 0x7F)
-            return true;
-
-        if (c <= 0xA0 || c is 0xAD)
-            return false;
-
-        if (c <= 0xFF)
-            return true;
-
-        // Rune cannot represent a surrogate, so those are looked up by unit
-        var category = c <= 0xFFFF
-            ? char.GetUnicodeCategory((char)c)
-            : Rune.GetUnicodeCategory(new Rune(c));
-
-        return category is not
-            (
-                UnicodeCategory.Control or
-                UnicodeCategory.Format or
-                UnicodeCategory.Surrogate or
-                UnicodeCategory.OtherNotAssigned or
-                UnicodeCategory.LineSeparator or
-                UnicodeCategory.ParagraphSeparator or
-                UnicodeCategory.SpaceSeparator
-            );
-    }
 
     public static string FromSourceToLiteral(ReadOnlySpan<char> str, bool isRaw, StringBuilder builder)
     {
