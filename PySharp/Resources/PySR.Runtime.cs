@@ -92,6 +92,10 @@ partial class PySR
     public const string Runtime_Object_AttributeNoDict = "'{0}' object has no attribute '{1}' and no __dict__ for setting new attributes";
     public const string Runtime_Object_AttributeReadOnly = "'{0}' object attribute '{1}' is read-only";
     public const string Runtime_Object_DictMustBeDictionary = "__dict__ must be set to a dictionary, not a '{0}'";
+    public const string Runtime_Object_ClassMustBeClass = "__class__ must be set to a class, not '{0}' object";
+    public const string Runtime_Object_ClassAssignmentNotMutable = "__class__ assignment only supported for mutable types or ModuleType subclasses";
+    public const string Runtime_Object_ClassLayoutDiffers = "__class__ assignment: '{0}' object layout differs from '{1}'";
+    public const string Runtime_Object_ClassCannotDelete = "can't delete __class__ attribute";
     public const string Runtime_Object_SpecialMethodNotDefined = "type {0} doesn't define {1} method";
     public const string Runtime_Object_NewTakesExactlyOneArg = "object.__new__() takes exactly one argument (the type to instantiate)";
     public const string Runtime_Object_TakesNoArguments = "{0}() takes no arguments";

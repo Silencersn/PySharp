@@ -115,6 +115,12 @@ partial class PyTypeObject
                 return func(context, attr, self, value);
         }
 
+        // CPython reaches __class__ through the getset descriptor on object,
+        // which the MRO lookup above would have found first when a class body
+        // shadows the name: only an unshadowed __class__ is the type pointer
+        if (name is PySpecialNames.Class && attr is null)
+            return SetClassAttribute(self, value);
+
         // CPython _PyObject_GenericSetAttrWithDict: dict-less instances
         // (IsImmutable) reject the write before any instance-dict handling
         if (self.IsImmutable)
@@ -161,6 +167,31 @@ partial class PyTypeObject
 
         return PyResult.AttributeError(PySR.Runtime_Object_AttributeNoDict, type.FullName, name);
     }
+
+    // CPython object_set_class: the value must be a class, both sides must be
+    // mutable (ModuleType subclasses qualify) and share a layout, and only the
+    // type pointer moves — __init__ never runs and the instance dict stays
+    private static PyResult SetClassAttribute(PyObject self, PyObject value)
+    {
+        if (value is not PyTypeObject newType)
+            return PyResult.TypeError(PySR.Runtime_Object_ClassMustBeClass, value.PyType.Name);
+
+        var oldType = self.PyType;
+
+        if (!IsModuleSubclass(oldType) || !IsModuleSubclass(newType))
+        {
+            if (!oldType.IsRuntimeCreated || !newType.IsRuntimeCreated)
+                return PyResult.TypeError(PySR.Runtime_Object_ClassAssignmentNotMutable);
+        }
+
+        if (newType.LayoutType != oldType.LayoutType)
+            return PyResult.TypeError(PySR.Runtime_Object_ClassLayoutDiffers, newType.Name, oldType.Name);
+
+        self._pyType = newType;
+        return PyNoneObject.None;
+    }
+
+    private static bool IsModuleSubclass(PyTypeObject type) => type.IsSubclassOf(PyModuleObjectType.Shared);
 
     // CPython fixup_slot_dispatchers: assigning the inherited object default
     // (__new__ / __init__) is a no-op for slot wiring — the slot keeps
@@ -288,6 +319,11 @@ partial class PyTypeObject
             if (PyUtils.IsDataDescriptor(attr))
                 return PyResult.AttributeError(PySR.Runtime_Attribute_NoDelete);
         }
+
+        // CPython object_set_class rejects the NULL value up front, so an
+        // unshadowed __class__ is never deletable
+        if (name is PySpecialNames.Class && attr is null)
+            return PyResult.TypeError(PySR.Runtime_Object_ClassCannotDelete);
 
         // same dict-less gate as the set path; CPython reports the same two
         // AttributeError shapes for deletion too

@@ -4212,4 +4212,17 @@ public sealed class TestPyFiles
         var module = RunModule("test_instance_dict_replace_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestClassReassignRegression()
+    {
+        // Regression: __class__ is writable (CPython object_set_class). The
+        // type pointer moves wholesale — type()/isinstance()/method lookup
+        // follow the new class, __init__ does not run again and the instance
+        // dict stays in place — while a non-class value, an immutable type or
+        // a layout mismatch raises the CPython TypeError and an unshadowed
+        // __class__ is never deletable.
+        var module = RunModule("test_class_reassign_regression.py");
+        Assert.IsNotNull(module);
+    }
 }
