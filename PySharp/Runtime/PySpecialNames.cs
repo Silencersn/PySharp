@@ -36,6 +36,10 @@ public static partial class PySpecialNames
     // PEP 3115 metaclass hook
     public const string Prepare = "__prepare__";
 
+    // type-check hooks, resolved on the type of the second argument
+    public const string InstanceCheck = "__instancecheck__";
+    public const string SubclassCheck = "__subclasscheck__";
+
     public const string MatchArgs = "__match_args__";
     public const string LengthHint = "__length_hint__";
 

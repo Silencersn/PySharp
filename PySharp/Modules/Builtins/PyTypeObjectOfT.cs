@@ -190,7 +190,15 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
                 continue;
             }
 
-            if (value is PyFunctionObject &&
+            // CPython type_new binds three dunders implicitly: a plain-function
+            // __new__ becomes a staticmethod (type_new_staticmethod), while
+            // __init_subclass__ and __class_getitem__ become classmethods
+            // (type_new_classmethod). Slot wiring below keeps the raw function,
+            // matching slot_tp_new, which unwraps the staticmethod and passes
+            // the class explicitly.
+            if (value is PyFunctionObject && attr is PySpecialNames.New)
+                type.PyAttributes[attr] = new PyStaticMethodObject(value);
+            else if (value is PyFunctionObject &&
                 attr is PySpecialNames.InitSubclass or PySpecialNames.ClassGetItem)
                 type.PyAttributes[attr] = new PyClassMethodObject(value);
             else

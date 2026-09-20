@@ -294,6 +294,41 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestNewImplicitStaticmethodRegression()
+    {
+        // Regression: a plain-function __new__ in a class body is an
+        // implicit staticmethod (CPython type_new_staticmethod), so
+        // super().__new__(cls, ...) resolves it unbound and passes the
+        // class once. Without the wrap a metaclass chain raised an arity
+        // TypeError and a varargs __new__ shifted every argument by one.
+        var module = RunModule("test_new_implicit_staticmethod_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestMetatypeAttributeFallbackRegression()
+    {
+        // Regression: a class-object attribute lookup that misses on the
+        // class's own MRO returns a non-descriptor entry found on the
+        // metaclass MRO (CPython _Py_type_getattro_impl), while the
+        // descriptor precedence rules stay unchanged.
+        var module = RunModule("test_metatype_attribute_fallback_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestTypeCheckHookRegression()
+    {
+        // Regression: isinstance/issubclass dispatch __instancecheck__ /
+        // __subclasscheck__ resolved on the type of the second argument
+        // (CPython object_recursive_isinstance / object_issubclass),
+        // recursing through tuple classinfo and interpreting the hook
+        // result by its truth instead of silently using the plain check.
+        var module = RunModule("test_type_check_hook_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestMiSpecialMethodMroRegression()
     {
         // Regression: special methods that object gives defaults for

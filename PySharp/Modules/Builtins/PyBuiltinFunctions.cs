@@ -975,36 +975,42 @@ public static partial class PyBuiltinFunctions
     [PyFunctionParameters("object", "classinfo", "/")]
     private static PyResult IsInstanceImpl(PyCallContext context, PyArguments arguments)
     {
-        var ret = IsInstanceForUnknown(arguments[0], arguments[1]);
-        if (ret is null)
-            return PyResult.TypeError(PySR.Runtime_Builtin_IsInstance_MustBeTypeOrTupleOfTypes);
-        return PyBoolObject.FromBoolean(ret.Value);
+        return RecursiveIsInstance(context, arguments[0], arguments[1]);
+    }
 
-        static bool? IsInstanceForUnknown(PyObject obj, PyObject classInfo)
+    // CPython object_recursive_isinstance (Objects/abstract.c): an exact type
+    // match short-circuits, a classinfo whose type is exactly type takes the
+    // plain check, tuple classinfo checks element by element, and any other
+    // classinfo dispatches __instancecheck__ resolved on its type. The hook
+    // lookup precedes the classinfo validation, so a non-type carrying the
+    // hook is honored instead of rejected.
+    private static PyResult<PyBoolObject> RecursiveIsInstance(PyCallContext context, PyObject obj, PyObject classInfo)
+    {
+        if (ReferenceEquals(obj.PyType, classInfo))
+            return PyBoolObject.True;
+
+        if (classInfo is PyTypeObject exactType &&
+            ReferenceEquals(exactType.PyType, PyTypeObjectType.Shared))
+            return PyBoolObject.FromBoolean(exactType.IsInstance(obj));
+
+        if (classInfo is PyTupleObject types)
         {
-            return classInfo switch
+            foreach (var item in types)
             {
-                PyTypeObject type => IsInstanceForType(obj, type),
-                PyTupleObject types => IsInstanceForTuple(obj, types),
-                _ => null
-            };
-        }
-
-        static bool? IsInstanceForType(PyObject obj, PyTypeObject type)
-        {
-            return type.IsInstance(obj);
-        }
-
-        static bool? IsInstanceForTuple(PyObject obj, PyTupleObject types)
-        {
-            foreach (var type in types)
-            {
-                var ret = IsInstanceForUnknown(obj, type);
-                if (ret is null or true)
+                var ret = RecursiveIsInstance(context, obj, item);
+                if (ret.IsError || ret.Value.BoolValue)
                     return ret;
             }
-            return false;
+            return PyBoolObject.False;
         }
+
+        if (PyObject.TryLookupAttrInMro(classInfo.PyType, PySpecialNames.InstanceCheck, out var hook))
+            return CallTypeCheckHook(context, hook, classInfo, obj);
+
+        if (classInfo is PyTypeObject type)
+            return PyBoolObject.FromBoolean(type.IsInstance(obj));
+
+        return PyResult.TypeError(PySR.Runtime_Builtin_IsInstance_MustBeTypeOrTupleOfTypes);
     }
 
     [PyFunctionParameters("class", "classinfo", "/")]
@@ -1012,36 +1018,65 @@ public static partial class PyBuiltinFunctions
     {
         if (arguments[0] is not PyTypeObject typeObj)
             return PyResult.TypeError(PySR.Runtime_Builtin_IsSubclass_Arg1MustBeClass);
-        var ret = IsSubclassForUnknown(typeObj, arguments[1]);
-        if (ret is null)
-            return PyResult.TypeError(PySR.Runtime_Builtin_IsSubclass_Arg2MustBeTypeOrTupleOfTypes);
-        return PyBoolObject.FromBoolean(ret.Value);
+        return RecursiveIsSubclass(context, typeObj, arguments[1]);
+    }
 
-        static bool? IsSubclassForUnknown(PyTypeObject obj, PyObject classInfo)
+    // CPython object_issubclass (Objects/abstract.c): the same shape as the
+    // instance side, dispatching __subclasscheck__ and rejecting a classinfo
+    // that is neither a class nor a tuple of classes.
+    private static PyResult<PyBoolObject> RecursiveIsSubclass(PyCallContext context, PyTypeObject derived, PyObject classInfo)
+    {
+        if (ReferenceEquals(derived, classInfo))
+            return PyBoolObject.True;
+
+        if (classInfo is PyTypeObject exactType &&
+            ReferenceEquals(exactType.PyType, PyTypeObjectType.Shared))
+            return PyBoolObject.FromBoolean(derived.IsSubclassOf(exactType));
+
+        if (classInfo is PyTupleObject types)
         {
-            return classInfo switch
+            foreach (var item in types)
             {
-                PyTypeObject type => IsSubclassForType(obj, type),
-                PyTupleObject types => IsSubclassForTuple(obj, types),
-                _ => null
-            };
-        }
-
-        static bool? IsSubclassForType(PyTypeObject obj, PyTypeObject type)
-        {
-            return obj.IsSubclassOf(type);
-        }
-
-        static bool? IsSubclassForTuple(PyTypeObject obj, PyTupleObject types)
-        {
-            foreach (var type in types)
-            {
-                var ret = IsSubclassForUnknown(obj, type);
-                if (ret is null or true)
+                var ret = RecursiveIsSubclass(context, derived, item);
+                if (ret.IsError || ret.Value.BoolValue)
                     return ret;
             }
-            return false;
+            return PyBoolObject.False;
         }
+
+        if (PyObject.TryLookupAttrInMro(classInfo.PyType, PySpecialNames.SubclassCheck, out var hook))
+            return CallTypeCheckHook(context, hook, classInfo, derived);
+
+        if (classInfo is PyTypeObject type)
+            return PyBoolObject.FromBoolean(derived.IsSubclassOf(type));
+
+        return PyResult.TypeError(PySR.Runtime_Builtin_IsSubclass_Arg2MustBeTypeOrTupleOfTypes);
+    }
+
+    // CPython _PyObject_LookupSpecial: the hook resolves on the type of the
+    // classinfo and binds to it (a plain function in a metaclass becomes a
+    // bound method whose __self__ is that class), a non-descriptor entry is
+    // used as-is, and the call result is interpreted by its truth.
+    private static PyResult<PyBoolObject> CallTypeCheckHook(PyCallContext context, PyObject hook, PyObject classInfo, PyObject argument)
+    {
+        PyResult bound;
+        var getFunc = hook.PyType.Slots.Get;
+        if (getFunc is not null)
+        {
+            bound = getFunc(context, hook, classInfo, classInfo.PyType);
+            if (bound.IsError)
+                return bound.ExceptionResult;
+        }
+        else
+        {
+            bound = hook;
+        }
+
+        var result = bound.Value!.Call(context, [argument]);
+        if (result.IsError)
+            return result.ExceptionResult;
+
+        return PySpecialMethods.Bool(context, result.Value!);
     }
 
     [PyFunctionParameters("object", "/")]

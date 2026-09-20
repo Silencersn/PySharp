@@ -350,6 +350,10 @@ partial class PyTypeObject
             var getFunc = metaAttr.PyType.Slots.Get;
             if (getFunc is not null)
                 return getFunc(context, metaAttr, self, metaType);
+
+            // CPython _Py_type_getattro_impl: a non-descriptor metatype entry
+            // answers once the type's own MRO has missed
+            return metaAttr;
         }
 
         return PyResult.AttributeError(PySR.Runtime_Type_AttributeNotFound, self.FullName, name);
