@@ -2905,12 +2905,17 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             if (width > formattedLength)
             {
                 var pad = width - formattedLength;
-                char padChar = flagZeroPad && !flagLeftAlign ? '0' : ' ';
+                // CPython zero-fills only numeric conversions: F_ZERO is gated
+                // on arg->sign in unicode_format_arg_output, which s/r/a/c never set
+                bool zeroPad = flagZeroPad && !flagLeftAlign
+                    && fmtType is 'd' or 'i' or 'u' or 'o' or 'x' or 'X'
+                               or 'e' or 'E' or 'f' or 'F' or 'g' or 'G';
+                char padChar = zeroPad ? '0' : ' ';
                 if (flagLeftAlign)
                 {
                     formatted += new string(padChar, pad);
                 }
-                else if (flagZeroPad && formatted.Length > 0)
+                else if (zeroPad && formatted.Length > 0)
                 {
                     // Zero-padding: zeros go after any sign and any
                     // '0x'/'0o'/'0X' alternate prefix ('%#08x' % -16 -> '-0x00010').

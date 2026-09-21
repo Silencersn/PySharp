@@ -88,3 +88,21 @@ expect(TypeError, "%d format: a real number is required, not dict", lambda: '%d'
 # --- key parsing ---
 expect(ValueError, "incomplete format key", lambda: '%(abc' % {})
 assert '%.*d' % (-1, 42) == '42'            # negative dynamic precision clamps
+
+# --- '0' flag pads string-like conversions with spaces, not zeros
+# (CPython gates F_ZERO on arg->sign, which s/r/a/c never set) ---
+assert '%05s' % 'ab' == '   ab'
+assert '%05.5s' % 'ab' == '   ab'
+assert '%05.2s' % 'abcdef' == '   ab'
+assert '%+05s' % 'ab' == '   ab'
+assert '% 05s' % 'ab' == '   ab'
+assert '%05s' % '' == '     '
+assert '%05r' % 'ab' == " 'ab'"
+assert '%05a' % 'ab' == " 'ab'"
+assert '%05c' % 65 == '    A'
+assert '%05c' % 'A' == '    A'
+assert '%-05s' % 'ab' == 'ab   '
+# numeric conversions keep zero-fill
+assert '%05d' % 12 == '00012'
+assert '%#05x' % 255 == '0x0ff'
+assert '%+05d' % 12 == '+0012'
