@@ -4271,4 +4271,15 @@ public sealed class TestPyFiles
         var module = RunModule("test_unicode_digit_conversion_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestFloatStrUnderscoreCommaRegression()
+    {
+        // Regression: float() string parsing matches the CPython separator
+        // rules — thousands separators are rejected (no AllowThousands) and
+        // underscores between digits are validated and stripped before the
+        // parse, in any segment and after the Nd transform.
+        var module = RunModule("test_float_str_underscore_comma_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

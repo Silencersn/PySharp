@@ -804,7 +804,39 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
     private static bool TryParseFloatString(string text, out double result)
     {
         result = 0;
-        var trimmed = PyUnicodeData.TransformDecimalAndSpaceToAscii(text).Trim().ToLowerInvariant();
+        // CPython PyFloat_FromString: the Nd/space transform runs first, then
+        // _Py_string_to_number_with_underscores validates that every '_'
+        // sits between digits and strips it; the float grammar has no
+        // thousands separator, so any ',' must fail the parse below
+        var transformed = PyUnicodeData.TransformDecimalAndSpaceToAscii(text);
+        if (transformed.Contains('_'))
+        {
+            var sb = new System.Text.StringBuilder(transformed.Length);
+            var prev = '\0';
+            foreach (var ch in transformed)
+            {
+                if (ch is '_')
+                {
+                    // underscores are only allowed after a digit
+                    if (!(prev >= '0' && prev <= '9'))
+                        return false;
+                }
+                else
+                {
+                    sb.Append(ch);
+                    // and only before a digit
+                    if (prev is '_' && !(ch >= '0' && ch <= '9'))
+                        return false;
+                }
+                prev = ch;
+            }
+            // underscores are not allowed at the end
+            if (prev is '_')
+                return false;
+            transformed = sb.ToString();
+        }
+
+        var trimmed = transformed.Trim().ToLowerInvariant();
 
         // Handle special values
         if (trimmed is "inf" or "infinity")
@@ -828,7 +860,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
             return true;
         }
 
-        return double.TryParse(trimmed, System.Globalization.NumberStyles.Float | System.Globalization.NumberStyles.AllowThousands,
+        return double.TryParse(trimmed, System.Globalization.NumberStyles.Float,
             CultureInfo.InvariantCulture, out result);
     }
 
