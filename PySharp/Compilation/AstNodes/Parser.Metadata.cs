@@ -38,6 +38,10 @@ partial class Parser
         {
             return new(_parser, StartTokenPosition, EndTokenPosition, _parser.TokenPosition, _parser.TokenPosition);
         }
+        public AstMetaInfo WithCrucial(int tokenPosition)
+        {
+            return new(_parser, StartTokenPosition, EndTokenPosition, tokenPosition, tokenPosition);
+        }
         public AstMetaInfo WithPreviousEnd(bool includeCrucial = false)
         {
             var position = _parser.TokenPosition - 1;

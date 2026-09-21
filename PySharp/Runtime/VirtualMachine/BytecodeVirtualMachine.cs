@@ -422,7 +422,6 @@ internal static partial class BytecodeVirtualMachine
                             if (!func._def.TryParse(callArgs, callKwargs, buffer, out var arguments))
                                 throw context.TypeError(func._def.Describe(callArgs, callKwargs).Format(func.QualName));
 
-                            frame.InstructionIndex++;
                             var newFrame = PyInternalFrame.CreateFuncCallFrame(context, func, FrameType.Function, func._globals, func.Code);
                             newFrame.InitArgs(func._def, func.Code, arguments, func.Closure);
                             context.FrameState.EnterFrame(ref newFrame);
@@ -1253,6 +1252,10 @@ internal static partial class BytecodeVirtualMachine
 
             context.FrameState.ExitInternalFrame(context, dispose: true);
             frame = ref context.CurrentInternalFrame;
+            // The Call this frame was entered for completes now, so the caller
+            // resumes after it. The index has to stay on the Call while the callee
+            // runs: a suspended frame reports that as its position.
+            frame.InstructionIndex++;
             // Leaving an inline frame restores the handled exception it was
             // entered with, so its handler state never leaks onto the caller.
             context.HandledException = states.SavedHandledException;

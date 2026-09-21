@@ -3254,6 +3254,39 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestCallFrameCaretRegression()
+    {
+        // Regression: a frame suspended in a call reports the Call instruction
+        // itself (CPython's tb_lasti), so the traceback draws the call line with
+        // the argument list as its anchor. The caller's instruction index used to
+        // be advanced before the callee was entered, which rendered the
+        // instruction after the call instead - a position that usually spans the
+        // whole line and is dropped by the full-line suppression.
+        var ex = Assert.ThrowsExactly<PyRuntimeException>(() =>
+            PyInterpreter.RunCode("def add(a, b):\n    return a + b\n\nprint(add(1, 'x'))\n"));
+        var message = LineFeedOf(ex.Message);
+        StringAssert.Contains(message, "\n    print(add(1, 'x'))\n          ~~~^^^^^^^^\n");
+        StringAssert.Contains(message, "\n    return a + b\n           ~~^~~\n");
+
+        // the anchor is the call's own bracket pair, so a method call and a call
+        // spanning the whole line (previously suppressed) both render
+        ex = Assert.ThrowsExactly<PyRuntimeException>(() =>
+            PyInterpreter.RunCode("class C:\n    def m(self, a, b):\n        return a + b\n\no = C()\no.m(1, 'x')\n"));
+        message = LineFeedOf(ex.Message);
+        StringAssert.Contains(message, "\n    o.m(1, 'x')\n    ~~~^^^^^^^^\n");
+
+        // a resumed generator frame is the callee of next(), so its own position
+        // is the call it is running inside
+        ex = Assert.ThrowsExactly<PyRuntimeException>(() =>
+            PyInterpreter.RunCode("def add(a, b):\n    return a + b\n\n\ndef gen():\n    yield add(1, 'x')\n\n\nnext(gen())\n"));
+        message = LineFeedOf(ex.Message);
+        StringAssert.Contains(message, "\n    next(gen())\n    ~~~~^^^^^^^\n");
+        StringAssert.Contains(message, "\n    yield add(1, 'x')\n          ~~~^^^^^^^^\n");
+
+        static string LineFeedOf(string text) => text.Replace("\r\n", "\n");
+    }
+
+    [TestMethod]
     public void TestExceptStarControlFlowSyntaxRegression()
     {
         // Regression: break/continue/return cannot cross an except* handler

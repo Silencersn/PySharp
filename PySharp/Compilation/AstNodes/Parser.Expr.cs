@@ -902,14 +902,14 @@ partial class Parser
                 if (isGenExp)
                 {
                     var genExp = ParseGenExp();
-                    primary = Ast.Call(primary, [genExp], []).With(startMetaInfo.WithPreviousEnd());
+                    primary = Ast.Call(primary, [genExp], []).With(startMetaInfo.WithCrucial(pos).WithPreviousEnd(includeCrucial: true));
                 }
                 else
                 {
                     MoveNextToken();
                     var (args, kwargs) = ParseArguments();
                     EnsureTokenTypeThenMove(TokenType.RightParen);
-                    primary = Ast.Call(primary, args, kwargs).With(startMetaInfo.WithPreviousEnd());
+                    primary = Ast.Call(primary, args, kwargs).With(startMetaInfo.WithCrucial(pos).WithPreviousEnd(includeCrucial: true));
                 }
 
                 bool TestIsGenExp()
