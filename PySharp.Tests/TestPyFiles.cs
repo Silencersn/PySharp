@@ -3155,6 +3155,20 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestExceptionStrMroRegression()
+    {
+        // Regression: fixup_slot_dispatchers must walk the full MRO dicts
+        // like CPython's _PyType_Lookup - a native base that merely
+        // inherits the slot pointer (TypeError has no own __str__) must
+        // not mask a later native base's real method (KeyError's
+        // repr-style __str__). Previously the walk stopped at the first
+        // non-runtime-created entry, so class Dual(TypeError, KeyError)
+        // lost KeyError's __str__.
+        var module = RunModule("test_exception_str_mro_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestFileIoErrorRegression()
     {
         // Regression: file IO must follow CPython - reopening the same path

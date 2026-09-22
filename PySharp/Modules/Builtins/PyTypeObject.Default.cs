@@ -243,10 +243,13 @@ partial class PyTypeObject
     // default implementations into base slots, and such a copy then masks
     // a later base's real method (a non-first parent's __ne__/__gt__/
     // __ge__/__hash__ was unreachable), so re-resolve the defaultable
-    // family from the MRO dicts. A non-runtime-created base ends the walk:
-    // its slots are authoritative for everything behind it, and its dict
-    // misses (dunders it models purely through C# slots) must not let a
-    // later base override it.
+    // family from the MRO dicts. The walk never stops at a base whose own
+    // dict misses: a native base that merely inherits the slot pointer
+    // (e.g. TypeError for __str__) must not mask a later base's real
+    // method (KeyError's), exactly like CPython's _PyType_Lookup. A native
+    // base WITH its own entry is authoritative — its wrapper is wired and
+    // the walk ends. No hit at all keeps the eager-filled slot, so a
+    // C#-modelled default never loses to object's.
     private static readonly string[] DefaultableSlotNames =
     [
         PySpecialNames.Repr,
@@ -266,11 +269,7 @@ partial class PyTypeObject
         {
             for (int i = 0; i < type.InternalMRO.Length; i++)
             {
-                var entry = type.InternalMRO[i];
-                if (!entry.IsRuntimeCreated)
-                    break;
-
-                if (!entry.PyAttributes.TryGetValue(name, out var value))
+                if (!type.InternalMRO[i].PyAttributes.TryGetValue(name, out var value))
                     continue;
 
                 // index 0 is the type itself: its own dict entry is already
