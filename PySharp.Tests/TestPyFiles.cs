@@ -3142,6 +3142,19 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestUnwindFinallyJumpsRegression()
+    {
+        // Regression: a finally body copied inline for an in-flight
+        // return must compile with the regions outside the try visible -
+        // break/continue/return inside the copy resolve against the
+        // enclosing constructs, discard the pending exit, and still run
+        // outer cleanups. Previously any break/continue in such a body
+        // crashed the compiler ("break/continue is not inside a loop").
+        var module = RunModule("test_unwind_finally_jumps_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestFileIoErrorRegression()
     {
         // Regression: file IO must follow CPython - reopening the same path

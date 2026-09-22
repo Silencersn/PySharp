@@ -476,7 +476,10 @@ partial class Emitter
     /// codegen_unwind_fblock_stack. With preserveTos, a value on TOS rides
     /// below every cleanup (codegen_unwind_fblock's preserve_tos). The region
     /// stack is lexical and restored afterwards: statements after the jump
-    /// still compile against the regions they lexically sit in.
+    /// still compile against the regions they lexically sit in. Each cleanup
+    /// itself compiles with the regions outside it visible again, so jumps
+    /// inside a re-emitted finally body (break/continue/return) resolve
+    /// against the enclosing constructs instead of the drained stack.
     /// </summary>
     private void EmitUnwindRegions(int keep, bool preserveTos)
     {
@@ -488,8 +491,16 @@ partial class Emitter
             drained.Add(Regions.Pop());
 
         // drained is top-first, so this unwinds innermost-first
-        foreach (var region in drained)
-            EmitUnwindRegion(region, preserveTos);
+        for (int i = 0; i < drained.Count; i++)
+        {
+            // every handler leaves the stack as it found it, so what sits
+            // above `keep` afterwards is exactly the context pushed here
+            for (int j = drained.Count - 1; j > i; j--)
+                Regions.Push(drained[j]);
+            EmitUnwindRegion(drained[i], preserveTos);
+            while (Regions.Count > keep)
+                Regions.Pop();
+        }
 
         for (int i = drained.Count - 1; i >= 0; i--)
             Regions.Push(drained[i]);
