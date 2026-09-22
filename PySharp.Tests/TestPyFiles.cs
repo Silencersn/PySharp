@@ -3133,10 +3133,10 @@ public sealed class TestPyFiles
     {
         // Regression: the str search family must follow CPython's
         // ADJUST_INDICES (start clamps only at 0, so an above-range start
-        // keeps the window negative) - partition raises on a missing
-        // separator, an empty needle counts/finds at the zero-width window,
-        // and expandtabs treats a negative tabsize as 0. Fails until the
-        // fixes land.
+        // keeps the window negative) - partition falls back to
+        // (self, '', '') on a missing separator, an empty needle
+        // counts/finds at the zero-width window, and expandtabs treats a
+        // negative tabsize as 0. Fails until the fixes land.
         var module = RunModule("test_str_find_count_regression.py");
         Assert.IsNotNull(module);
     }

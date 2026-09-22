@@ -1,7 +1,7 @@
 # str find/count/partition/expandtabs regression, aligned with CPython:
 #
-# - partition raises "substring not found" when the separator is absent
-#   (only rpartition returns a fallback tuple)
+# - partition falls back to (self, '', '') when the separator is absent
+#   (rpartition's miss yields ('', '', self))
 # - ADJUST_INDICES clamps end into [0, len] but start only at 0, so an
 #   above-range start keeps end - start negative (the miss signal)
 # - an empty needle counts/finds at the zero-width window: count is
@@ -9,12 +9,7 @@
 #   reports the window start, rfind the window end
 # - expandtabs accepts a negative tabsize as 0 (tabs deleted, no error)
 
-try:
-    'abc'.partition('z')
-except ValueError as e:
-    assert str(e) == "substring not found", str(e)
-else:
-    raise AssertionError("partition must raise on a missing separator")
+assert 'abc'.partition('z') == ('abc', '', '')
 
 assert 'abcd'.partition('cd') == ('ab', 'cd', '')
 assert 'abc'.rpartition('z') == ('', '', 'abc')

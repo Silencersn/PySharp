@@ -1470,10 +1470,16 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             return PyResult.ValueError("empty separator");
 
         int idx = self.Value.IndexOf(sepStr.Value, StringComparison.Ordinal);
-        // CPython stringlib/partition.h: a missing separator raises instead
-        // of returning the whole string (that fallback belongs to rpartition)
+        // CPython stringlib/partition.h: a missing separator yields
+        // (self, "", "") — partition has no error path there
         if (idx < 0)
-            return PyResult.ValueError("substring not found");
+        {
+            return PyTupleObject.CreateTuple(
+                self,
+                PyStrObject.Empty,
+                PyStrObject.Empty
+            );
+        }
 
         return PyTupleObject.CreateTuple(
             PyStrObject.FromString(self.Value[..idx]),
