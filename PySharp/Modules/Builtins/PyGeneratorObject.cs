@@ -163,10 +163,20 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
         return PyResult.ValueError(message);
     }
 
+    // CPython gen_send_ex2: resuming a finished coroutine is an error
+    // (gen_close is the only silent path), while a finished generator
+    // merely stops iterating
+    private PyResult ExhaustedResumeError()
+    {
+        return IsCoroutine
+            ? PyResult.RuntimeError(PySR.Runtime_Async_CoroutineCannotReuse)
+            : PyResult.StopIteration();
+    }
+
     private PyResult Send(PyCallContext context, PyObject value)
     {
         if (_vmStates.RunToEnd)
-            return PyResult.StopIteration();
+            return ExhaustedResumeError();
 
         if (IsExecuting)
             return AlreadyExecutingError();
@@ -252,7 +262,7 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
         // iteration immediately; only a never-started generator
         // rejects a non-None send value
         if (_vmStates.RunToEnd)
-            return PyResult.StopIteration();
+            return ExhaustedResumeError();
 
         if (!IsGeneratorRunning && pyObject is not PyNoneObject)
         {
@@ -275,10 +285,18 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
     private PyResult ThrowResolved(PyCallContext context, PyExceptionObject exc)
     {
         if (_vmStates.RunToEnd)
+        {
+            // CPython gen_send_ex2 replaces the exception being thrown with
+            // the reuse error for a finished coroutine, while a dead
+            // generator still propagates it
+            if (IsCoroutine)
+                return ExhaustedResumeError();
+
             // CPython gen_throw exits before swapping the exception state,
             // so a dead generator's throw is restored with PyErr_Restore at
             // the throw() call site: it propagates without implicit chaining
             throw new PyRuntimeException(exc);
+        }
 
         // CPython gen_throw: an exception thrown into a never-started
         // generator propagates straight to the caller (no frame is

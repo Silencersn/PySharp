@@ -3658,6 +3658,19 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestCoroutineReuseRegression()
+    {
+        // Regression: resuming a finished coroutine raises RuntimeError
+        // "cannot reuse already awaited coroutine" on the send, throw and
+        // await paths (gen_close stays silent), instead of the exhausted
+        // generator's StopIteration that made a double await look like a
+        // normal return. Finished generators and async generators keep
+        // their own exhaustion semantics.
+        var module = RunModule("test_coroutine_reuse_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBigintFloatOverflowRegression()
     {
         // Regression: arithmetic conversions of a bigint to float follow

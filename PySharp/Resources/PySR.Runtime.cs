@@ -334,6 +334,7 @@ partial class PySR
     public const string Runtime_Async_SendNonNoneAtFirst = "can't send non-None value to a just-started coroutine";
     public const string Runtime_Async_IgnoredGeneratorExit = "coroutine ignored GeneratorExit";
     public const string Runtime_Async_CoroutineRaisedStopIteration = "coroutine raised StopIteration";
+    public const string Runtime_Async_CoroutineCannotReuse = "cannot reuse already awaited coroutine";
     public const string Runtime_AsyncGen_RaisedStopIteration = "async generator raised StopIteration";
 
     public const string Runtime_Builtin_Aiter_NotAsyncIterable = "'{0}' object is not an async iterable";
