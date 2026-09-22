@@ -28,6 +28,11 @@ public abstract class PyGeneratorObject : PyObject, IPyObjectName
     internal abstract PyResult PyThrow(PyCallContext context, PyObject pyObject);
     internal abstract PyResult PyClose(PyCallContext context);
 
+    // CPython FRAME_STATE_FINISHED / ag_running_async, read by the
+    // aclose()/athrow() awaitable before it drives the generator
+    internal virtual bool IsFinished => false;
+    internal virtual bool IsRunning => false;
+
     // CPython gen_throw's deprecated (type, value, tb) form: warns, then
     // normalizes — an exception-class type instantiates with the value
     // (no value or None → no-arg construction; an exception instance
@@ -127,6 +132,9 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
     }
 
     internal override string QualName => _frame.CodeObject?.QualName ?? Name;
+
+    internal override bool IsFinished => _vmStates.RunToEnd;
+    internal override bool IsRunning => IsExecuting;
 
     /// <summary>
     /// PEP 479: a StopIteration escaping the generator frame (raised by the
@@ -239,8 +247,9 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
             if (!_vmStates.RunToEnd)
             {
                 // still yield or await value
-                return PyResult.RuntimeError(IsCoroutine ?
-                    PySR.Runtime_Async_IgnoredGeneratorExit : PySR.Runtime_Generator_IgnoredGeneratorExit);
+                return PyResult.RuntimeError(IsCoroutine ? PySR.Runtime_Async_IgnoredGeneratorExit
+                    : IsAsyncGenerator ? PySR.Runtime_AsyncGen_IgnoredGeneratorExit
+                    : PySR.Runtime_Generator_IgnoredGeneratorExit);
             }
 
             return result;

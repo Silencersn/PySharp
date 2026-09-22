@@ -3671,6 +3671,19 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestAsyncGeneratorACloseRegression()
+    {
+        // Regression: aclose() returns the async_generator_athrow
+        // awaitable and defers the cleanup to the await (PEP 525), instead
+        // of closing the generator eagerly and returning None, which made
+        // `await gen.aclose()` raise TypeError and reordered the cleanup
+        // side effects. The same awaitable backs athrow(), is driven only
+        // once and reports "async generator ignored GeneratorExit".
+        var module = RunModule("test_async_generator_aclose_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestBigintFloatOverflowRegression()
     {
         // Regression: arithmetic conversions of a bigint to float follow
