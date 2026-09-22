@@ -171,7 +171,9 @@ internal static class Program
 
     private static int RunCode(IPyEnvironmentBuilder builder, string code, string[] extraArgs)
     {
+        // CPython sets sys.path[0] = '' (the current directory) for -c.
         builder
+            .AddPath(Environment.CurrentDirectory)
             .AddArg("-c")
             .AddArgs(extraArgs);
 
