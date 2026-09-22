@@ -2,7 +2,9 @@ using PySharp.Compilation.CodeAnalysis;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using System.Diagnostics;
+using System.Globalization;
 using System.Numerics;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace PySharp.Compilation.Tokenization;
@@ -740,8 +742,90 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             return;
         }
 
+        if (!IsPrintable(content[_offset]))
+            throw SyntaxError(PySR.InvalidSyntax_Tokenize_InvalidNonPrintableCharacter, (int)content[_offset]);
+
         throw SyntaxError();
     }
+
+    // CPython first scans the whole run of "potential identifier" characters
+    // (ASCII alphanumerics, '_' and every non-ASCII char) and only then
+    // validates that run against the XID_Start/XID_Continue tables, reporting
+    // the first offending character by its own code point.
+    private bool TryTokenizeName(ReadOnlySpan<char> content, out ValueGroup group)
+    {
+        group = default;
+        var start = _offset;
+        var index = start;
+        var nonAscii = false;
+        while (index < content.Length)
+        {
+            var c = content[index];
+            if (c < 0x80)
+            {
+                if (!char.IsAsciiLetterOrDigit(c) && c is not '_')
+                    break;
+
+                index++;
+                continue;
+            }
+
+            nonAscii = true;
+            index += char.IsHighSurrogate(c) && index + 1 < content.Length && char.IsLowSurrogate(content[index + 1]) ? 2 : 1;
+        }
+
+        if (index == start)
+            return false;
+
+        if (nonAscii)
+            ValidateIdentifier(content[start..index]);
+
+        group.Index = start;
+        group.Length = index - start;
+        group.Value = content.Slice(start, index - start);
+        return true;
+    }
+
+    private void ValidateIdentifier(ReadOnlySpan<char> name)
+    {
+        var index = 0;
+        while (index < name.Length)
+        {
+            Rune.DecodeFromUtf16(name[index..], out var rune, out var consumed);
+            if (consumed is 0)
+                consumed = 1;
+
+            var valid = index is 0
+                ? UnicodeIdentifier.IsXidStart(rune.Value)
+                : UnicodeIdentifier.IsXidContinue(rune.Value);
+            if (!valid)
+                ThrowInvalidCharacter(rune);
+
+            index += consumed;
+        }
+    }
+
+    // Unprintable code points are reported by code point only, printable
+    // ones carry the character itself. The ASCII space is handled by the
+    // whitespace scan and never reaches these checks.
+    private void ThrowInvalidCharacter(Rune rune)
+    {
+        if (IsPrintable(rune.Value))
+            throw SyntaxError(PySR.InvalidSyntax_Tokenize_InvalidCharacter, rune.ToString(), rune.Value);
+
+        throw SyntaxError(PySR.InvalidSyntax_Tokenize_InvalidNonPrintableCharacter, rune.Value);
+    }
+
+    private static bool IsPrintable(int codePoint)
+        => CharUnicodeInfo.GetUnicodeCategory(codePoint) is not (
+            UnicodeCategory.Control
+            or UnicodeCategory.Format
+            or UnicodeCategory.Surrogate
+            or UnicodeCategory.PrivateUse
+            or UnicodeCategory.OtherNotAssigned
+            or UnicodeCategory.LineSeparator
+            or UnicodeCategory.ParagraphSeparator
+            or UnicodeCategory.SpaceSeparator);
 
     private void TokenizeToken(ReadOnlySpan<char> content, out ValueGroup group)
     {
@@ -793,7 +877,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                     TokenizeContStr(ref group);
                 else if (TryTokenizeSingleFString(content, out group))
                 { }
-                else if (IsStrictMatchFromCurrent(content, LexerRegexes.StartsWithName, out group))
+                else if (TryTokenizeName(content, out group))
                     AppendToken(TokenType.Name, group.Length);
                 else
                     throw SyntaxError();
@@ -859,7 +943,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                 break;
 
             default:
-                if (IsStrictMatchFromCurrent(content, LexerRegexes.StartsWithName, out group))
+                if (TryTokenizeName(content, out group))
                     AppendToken(TokenType.Name, group.Length);
                 else
                     TokenizeFallback(content, out group);

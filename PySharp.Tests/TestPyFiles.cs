@@ -2519,6 +2519,19 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestIdentifierXidRegression()
+    {
+        // Regression: identifier character classes must follow CPython's
+        // XID_Start/XID_Continue tables instead of the .NET word class -
+        // Nd leading characters were accepted, Nl leading characters were
+        // rejected, and rejected characters collapsed to a bare "invalid
+        // syntax" instead of "invalid character '<c>' (U+XXXX)". Fails
+        // until the fix lands.
+        var module = RunModule("test_identifier_xid_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestLongBinOpChainNoCrashRegression()
     {
         // Regression: a flat left-associated binary operator chain (3000+

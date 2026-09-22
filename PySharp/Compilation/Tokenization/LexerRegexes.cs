@@ -15,9 +15,6 @@ public static partial class LexerRegexes
     //[GeneratedRegex(LexerRegexPatterns.Ignore)]
     //public static partial Regex Ignore { get; }
 
-    //[GeneratedRegex(LexerRegexPatterns.Name)]
-    //public static partial Regex Name { get; }
-
     //[GeneratedRegex(LexerRegexPatterns.Number)]
     //public static partial Regex Number { get; }
 
@@ -51,18 +48,8 @@ public static partial class LexerRegexes
     //public static partial Regex ContStr { get; }
 
 
-    //[GeneratedRegex(LexerRegexPatterns.Token)]
-    //public static partial Regex Token { get; }
-
-
     //[GeneratedRegex(LexerRegexPatterns.PseudoExtras)]
     //public static partial Regex PseudoExtras { get; }
-
-
-    //[GeneratedRegex(LexerRegexPatterns.PseudoToken)]
-    //public static partial Regex PseudoToken { get; }
-
-
 
     [GeneratedRegex($"^{LexerRegexPatterns.PseudoExtras}")]
     public static partial Regex StartsWithPseudoExtras { get; }
@@ -75,8 +62,5 @@ public static partial class LexerRegexes
 
     [GeneratedRegex($"^{LexerRegexPatterns.ContStr}")]
     public static partial Regex StartsWithContStr { get; }
-
-    [GeneratedRegex($"^{LexerRegexPatterns.Name}")]
-    public static partial Regex StartsWithName { get; }
 
 }

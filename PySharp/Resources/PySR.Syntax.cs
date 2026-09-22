@@ -22,6 +22,9 @@ partial class PySR
     public const string InvalidSyntax_Tokenize_InvalidDigitInOctalLiteral = "invalid digit '{0}' in octal literal";
     public const string InvalidSyntax_Tokenize_InvalidDigitInBinaryLiteral = "invalid digit '{0}' in binary literal";
 
+    public const string InvalidSyntax_Tokenize_InvalidCharacter = "invalid character '{0}' (U+{1:X4})";
+    public const string InvalidSyntax_Tokenize_InvalidNonPrintableCharacter = "invalid non-printable character U+{0:X4}";
+
     public const string InvalidSyntax_Tokenize_UnindentNotMatch = "unindent does not match any outer indentation level";
     public const string InvalidSyntax_Tokenize_InconsistentTabsAndSpaces = "inconsistent use of tabs and spaces in indentation";
     public const string InvalidSyntax_Tokenize_SourceNullBytes = "source code cannot contain null bytes";

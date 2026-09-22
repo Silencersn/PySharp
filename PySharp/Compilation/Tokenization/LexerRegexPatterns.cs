@@ -14,10 +14,6 @@ public static class LexerRegexPatterns
     public const string Ignore = @$"{Whitespace}(\\\r?\n{Whitespace})*({Comment})?";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
-    public const string Name = @"\w+";
-
-
-    [StringSyntax(StringSyntaxAttribute.Regex)]
     public const string Hexnumber = @"0[xX](?:_?[0-9a-fA-F])+";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
@@ -80,19 +76,9 @@ public static class LexerRegexPatterns
     public const string String = @$"({StringPrefix}'[^\n'\\]*(?:\\.[^\n'\\]*)*'|{StringPrefix}""[^\n""\\]*(?:\\.[^\n""\\]*)*"")";
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
-    public const string PlainToken = $"({Number}|{Funny}|{String}|{Name})";
-
-    [StringSyntax(StringSyntaxAttribute.Regex)]
-    public const string Token = Ignore + PlainToken;
-
-
-    [StringSyntax(StringSyntaxAttribute.Regex)]
     public const string ContStr = @$"({StringPrefix}'[^\n'\\]*(?:\\.[^\n'\\]*)*('|\\\r?\n)|{StringPrefix}""[^\n""\\]*(?:\\.[^\n""\\]*)*(""|\\\r?\n))";
 
 
     [StringSyntax(StringSyntaxAttribute.Regex)]
     public const string PseudoExtras = $@"(\\\r?\n|\Z|{Comment}|{Triple})";
-
-    [StringSyntax(StringSyntaxAttribute.Regex)]
-    public const string PseudoToken = Whitespace + $@"({PseudoExtras}|{Number}|{Funny}|{ContStr}|{Name})";
 }
