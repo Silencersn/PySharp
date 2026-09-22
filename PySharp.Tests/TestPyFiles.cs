@@ -6,6 +6,7 @@ using PySharp.Runtime.Calls.Extensions;
 using PySharp.Runtime.Environments;
 using PySharp.Runtime.IO;
 using PySharp.Runtime.IO.Memory;
+using System.Text;
 
 namespace PySharp.Tests;
 
@@ -4358,5 +4359,24 @@ public sealed class TestPyFiles
         // parse, in any segment and after the Nd transform.
         var module = RunModule("test_float_str_underscore_comma_regression.py");
         Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestYieldFromCloseLookupUnraisableRegression()
+    {
+        // Regression: a failing `close` attribute lookup on a yield from
+        // delegate is reported through the unraisable channel (CPython
+        // gen_close_iter -> PyErr_FormatUnraisable) instead of escaping from
+        // close(), which used to abort the caller's cleanup and leave the
+        // generator suspended. A delegate close() that itself raises still
+        // propagates to the caller.
+        var stderr = new MemoryStream();
+        var host = new StdioHost(new MemoryStream(), new MemoryStream(), stderr);
+        var module = RunModuleWithHost("test_yield_from_close_lookup_unraisable_regression.py", host);
+        Assert.IsNotNull(module);
+
+        var text = Encoding.UTF8.GetString(stderr.ToArray());
+        StringAssert.Contains(text, "Exception ignored while closing generator");
+        StringAssert.Contains(text, "RuntimeError: boom-getattr:close");
     }
 }

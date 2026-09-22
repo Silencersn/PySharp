@@ -88,6 +88,16 @@ public sealed class PyExceptionObject : PyObjectManagedDict
         return builder.ToString();
     }
 
+    // CPython write_unraisable_exc prints the traceback and a single
+    // "module.qualname: str(value)" line; unlike the unhandled-exception path
+    // it never renders the __context__/__cause__ chain.
+    internal string ToUnraisableMessage(PyCallContext context)
+    {
+        var builder = new IndentedStringBuilder();
+        PrintTrailer(builder, context, new HashSet<PyExceptionObject>(ReferenceEqualityComparer.Instance) { this });
+        return builder.ToString();
+    }
+
     internal void PrintMessage(IndentedStringBuilder builder, PyCallContext context, HashSet<PyExceptionObject> seen)
     {
         if (!seen.Add(this))

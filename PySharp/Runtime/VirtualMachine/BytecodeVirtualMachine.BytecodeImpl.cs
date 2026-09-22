@@ -156,13 +156,17 @@ internal static partial class BytecodeVirtualMachine
                 {
                     // close sub generator
                     var close = PyOperators.GetAttr(context, iter, "close");
-                    if (!close.IsAttributeError)
+                    if (close.IsError && !close.IsAttributeError)
                     {
-                        // a non-AttributeError close-lookup failure escapes before
-                        // any injection: drop the pending GeneratorExit
-                        if (close.IsError)
-                            Move(ref states.ExceptionToRaise);
-
+                        // CPython gen_close_iter reports a failing close lookup
+                        // through the unraisable channel and then closes the
+                        // generator as if the delegate had no close at all, so
+                        // the pending GeneratorExit still reaches this frame
+                        PyUnraisable.Write(context, "Exception ignored while closing generator",
+                            iter, close.Exception);
+                    }
+                    else if (!close.IsAttributeError)
+                    {
                         var closed = close.PyUnwrap(context).Call(context);
                         if (closed.IsError)
                         {
