@@ -1164,6 +1164,11 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
         if (groupingError.IsError)
             return groupingError;
 
+        // CPython dispatches on the presentation type right after the parse,
+        // so inf/nan reject non-float codes exactly like finite values.
+        if (char.ToLowerInvariant(formatType) is not ('f' or 'e' or 'g' or 'n' or '%' or 'r'))
+            return PyFormatSpec.UnknownCode(formatType, self.PyType.FullName);
+
         if (spec.CoercePositiveZero && val is 0.0 && double.IsNegative(val))
             val = 0.0;
 
@@ -1244,7 +1249,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
                         text = ApplyGrouping(text, spec.WidthGrouping.Value);
                     break;
                 default:
-                    return PyResult.ValueError(PySR.Runtime_Object_FormatUnknownCode, formatType, self.PyType.FullName);
+                    return PyFormatSpec.UnknownCode(formatType, self.PyType.FullName);
             }
 
             // CPython's ADD_DOT_0 behavior for an omitted type with an
@@ -1304,15 +1309,11 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
         }
 
         var prefix = string.Empty;
+        // CPython drops a NaN's own sign but still honours '+'/' '.
         if (double.IsNegative(val) && !double.IsNaN(val))
-        {
             prefix = "-";
-        }
-        else if (!double.IsNaN(val))
-        {
-            if (spec.Sign is '+' or ' ')
-                prefix = spec.Sign.Value.ToString();
-        }
+        else if (spec.Sign is '+' or ' ')
+            prefix = spec.Sign.Value.ToString();
 
         if (spec.Width is not null)
         {

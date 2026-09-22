@@ -1094,7 +1094,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             return groupingError;
 
         if (spec.Type is not (null or 's'))
-            return PyResult.ValueError(PySR.Runtime_Object_FormatUnknownCode, spec.Type, self.PyType.FullName);
+            return PyFormatSpec.UnknownCode(spec.Type.Value, self.PyType.FullName);
 
         if (spec.Sign is not null)
         {

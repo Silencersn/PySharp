@@ -1,9 +1,32 @@
 using PySharp.Runtime.Calls;
+using System.Globalization;
 
 namespace PySharp.Runtime;
 
 internal readonly struct PyFormatSpec
 {
+    /// <summary>
+    /// CPython's unknown_presentation_type/invalid_thousands_separator_type:
+    /// a code is shown literally only between ' ' and DEL, everything else
+    /// (control characters, the space itself, non-ASCII) is escaped as \x%x.
+    /// </summary>
+    internal static string DescribeType(char type)
+    {
+        return type > 32 && type < 128
+            ? type.ToString()
+            : "\\x" + ((int)type).ToString("x", CultureInfo.InvariantCulture);
+    }
+
+    internal static PyResult UnknownCode(char type, string typeName)
+    {
+        return PyResult.ValueError(PySR.Runtime_Object_FormatUnknownCode, DescribeType(type), typeName);
+    }
+
+    internal static PyResult GroupingTypeError(char grouping, char type)
+    {
+        return PyResult.ValueError(PySR.Runtime_Object_FormatGroupingType, grouping, DescribeType(type));
+    }
+
     /// <summary>
     /// CPython's parser treats one leftover character after the grammar
     /// prefix as the presentation type ("Unknown format code"); any other
@@ -26,9 +49,9 @@ internal readonly struct PyFormatSpec
                     return PyResult.ValueError(PySR.Runtime_Object_FormatGroupingBoth);
 
                 if (prefix.WidthGrouping is char grouping && !IsGroupingCompatibleType(grouping, trailing))
-                    return PyResult.ValueError(PySR.Runtime_Object_FormatGroupingType, grouping, trailing);
+                    return GroupingTypeError(grouping, trailing);
 
-                return PyResult.ValueError(PySR.Runtime_Object_FormatUnknownCode, trailing, typeName);
+                return UnknownCode(trailing, typeName);
             }
         }
 
@@ -56,7 +79,7 @@ internal readonly struct PyFormatSpec
             return PyResult.ValueError(PySR.Runtime_Object_FormatGroupingBoth);
 
         if (spec.WidthGrouping is not null && !IsGroupingCompatibleType(spec.WidthGrouping.Value, effectiveType))
-            return PyResult.ValueError(PySR.Runtime_Object_FormatGroupingType, spec.WidthGrouping.Value, effectiveType);
+            return GroupingTypeError(spec.WidthGrouping.Value, effectiveType);
 
         return default;
     }

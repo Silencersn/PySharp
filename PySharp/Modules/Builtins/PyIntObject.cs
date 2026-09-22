@@ -536,7 +536,7 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
                     return PyResult.OverflowError(PySR.Runtime_Number_IntTooLargeForFloat);
                 return PySpecialMethods.Format(context, PyFloatObject.FromDouble(valDouble), formatSpec);
             default:
-                return PyResult.ValueError(PySR.Runtime_Object_FormatUnknownCode, formatType, self.PyType.FullName);
+                return PyFormatSpec.UnknownCode(formatType, self.PyType.FullName);
         }
 
         var prefix = string.Empty;
