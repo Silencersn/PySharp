@@ -379,7 +379,15 @@ public static partial class PyBuiltinFunctions
             Debug.Assert(code.Bytecode is not null);
             var newFrame = frame.CreateExecEvalFrame(context, FrameType.Exec, globalsDict, localsDict, code, closureTuple);
             using var withFrame = context.WithFrame(ref newFrame);
-            return PyCore.Eval(context);
+
+            // CPython's builtin_exec_impl decrefs the value the program
+            // produced and returns None, which is observable for code
+            // objects compiled in 'eval' mode.
+            var result = PyCore.Eval(context);
+            if (result.IsError)
+                return result;
+
+            return PyNoneObject.None;
         }
 
         Debug.Assert(closure is PyNoneObject);

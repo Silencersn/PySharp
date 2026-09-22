@@ -2532,6 +2532,17 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestExecReturnNoneRegression()
+    {
+        // Regression: exec() must return None for every source form, like
+        // CPython's builtin_exec_impl which drops the evaluation result. A
+        // code object compiled in 'eval' mode used to leak its value, and a
+        // REPL then echoed it. Fails until the fix lands.
+        var module = RunModule("test_exec_return_none_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestLongBinOpChainNoCrashRegression()
     {
         // Regression: a flat left-associated binary operator chain (3000+
