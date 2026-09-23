@@ -53,9 +53,19 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr, IList<PyOb
         return CollectionsMarshal.AsSpan(_list);
     }
 
+    // CPython list_repr re-fetches Py_SIZE each step ("Note that this may
+    // mutate the list"): element __repr__ may append and the appended items
+    // are rendered too. The default List<T> enumerator would throw
+    // InvalidOperationException on that modification.
+    internal IEnumerable<PyObject> EnumerateLive()
+    {
+        for (int i = 0; i < _list.Count; i++)
+            yield return _list[i];
+    }
+
     PyResult<PyStrObject> IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<PyObject> ids)
     {
-        return PyUtils.CollectionRecursiveRepr(context, this, _list, "[", "]", ids);
+        return PyUtils.CollectionRecursiveRepr(context, this, EnumerateLive(), "[", "]", ids);
     }
 
     public List<PyObject>.Enumerator GetEnumerator()

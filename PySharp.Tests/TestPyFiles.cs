@@ -4404,4 +4404,17 @@ public sealed class TestPyFiles
         StringAssert.Contains(text, "Exception ignored while closing generator");
         StringAssert.Contains(text, "RuntimeError: boom-getattr:close");
     }
+
+    [TestMethod]
+    public void TestContainerReprMutationRegression()
+    {
+        // Regression: repr-time mutation visibility must match CPython —
+        // set/frozenset snapshot their keys before rendering (mutations by
+        // an element's __repr__ stay out of the text), dict and list
+        // live-iterate so entries appended by a __repr__ callback show up,
+        // and mutating a list during its own repr must not escape as a raw
+        // .NET InvalidOperationException.
+        var module = RunModule("test_container_repr_mutation_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

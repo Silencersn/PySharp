@@ -34,13 +34,13 @@ public partial class PySetObject : PyObject, IPyObjectRecursiveRepr, ISet<PyObje
         {
             return _table.Count is 0
                 ? PyStrObject.FromString($"{PyType.FullName}()")
-                : PyUtils.CollectionRecursiveRepr(context, this, _table.Keys, $"{PyType.FullName}({{", "})", ids);
+                : PyUtils.CollectionRecursiveRepr(context, this, _table.SnapshotKeys(), $"{PyType.FullName}({{", "})", ids);
         }
 
         if (_table.Count is 0)
             return PyStrObject.FromString("set()");
 
-        return PyUtils.CollectionRecursiveRepr(context, this, _table.Keys, "{", "}", ids);
+        return PyUtils.CollectionRecursiveRepr(context, this, _table.SnapshotKeys(), "{", "}", ids);
     }
 
     // Runtime construction (BUILD_SET): element hashes run under the live

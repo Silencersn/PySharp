@@ -432,10 +432,20 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
         return ref buckets[hashCode % buckets.Length];
     }
 
+    // CPython dict_repr live-iterates with _PyDict_Next ("Note that repr
+    // may mutate the dict"): a key/value __repr__ may insert entries, and
+    // the loop re-reads _count/_entries each step so those show up, same
+    // as CPython. Deletion shifts the dense array, skipping like CPython's
+    // ob-item walk; objects are GC-managed so no INCREF equivalent.
+    internal IEnumerable<KeyValuePair<PyObject, PyObject>> EnumeratePairsLive()
+    {
+        for (int i = 0; i < _count; i++)
+            yield return KeyValuePair.Create(_entries[i].Key, _entries[i].Value);
+    }
+
     PyResult<PyStrObject> IPyObjectRecursiveRepr.RecursiveRepr(PyCallContext context, HashSet<PyObject> ids)
     {
-        // TODO: perf
-        return PyUtils.DictionaryRecursiveRepr(context, this, Entries.ToArray().Select(static entry => KeyValuePair.Create(entry.Key, entry.Value)), "{", "}", ids);
+        return PyUtils.DictionaryRecursiveRepr(context, this, EnumeratePairsLive(), "{", "}", ids);
     }
 
     public IEnumerator<KeyValuePair<PyObject, PyObject>> GetEnumerator()

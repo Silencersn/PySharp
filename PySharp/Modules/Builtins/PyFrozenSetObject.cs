@@ -37,13 +37,13 @@ public partial class PyFrozenSetObject : PyObject, IPyObjectRecursiveRepr, IRead
         {
             return _table.Count is 0
                 ? PyStrObject.FromString($"{PyType.FullName}()")
-                : PyUtils.CollectionRecursiveRepr(context, this, _table.Keys, $"{PyType.FullName}({{", "})", ids);
+                : PyUtils.CollectionRecursiveRepr(context, this, _table.SnapshotKeys(), $"{PyType.FullName}({{", "})", ids);
         }
 
         if (_table.Count is 0)
             return PyStrObject.FromString("frozenset()");
 
-        return PyUtils.CollectionRecursiveRepr(context, this, _table.Keys, "frozenset({", "})", ids);
+        return PyUtils.CollectionRecursiveRepr(context, this, _table.SnapshotKeys(), "frozenset({", "})", ids);
     }
 
     // Compile-time constant folding and embedded-C# construction: elements
