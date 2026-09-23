@@ -383,7 +383,7 @@ internal sealed class PyVariables
         return value;
     }
 
-    public PyResult LoadDeref(string name)
+    public PyResult LoadDeref(PyCodeObject code, string name)
     {
         Debug.Assert(HasLocals, "no locals");
 
@@ -396,7 +396,15 @@ internal sealed class PyVariables
         var cell = (PyCellObject)result.Value;
 
         if (cell.Value is null)
-            return PyResult.NameError(PySR.Runtime_Variable_UnboundLocalOrFreeError, name);
+        {
+            // CPython _PyEval_FormatExcUnbound: an empty cell raises
+            // UnboundLocalError for a cellvar owned by this frame's code,
+            // NameError (free wording) for a free variable — same rule as
+            // the _LoadDerefFast slot path.
+            return code.CellVars.Contains(name)
+                ? PyResult.UnboundLocalError(PySR.Runtime_Variable_UnboundLocalError, name)
+                : PyResult.NameError(PySR.Runtime_Variable_UnboundFreeError, name);
+        }
 
         return cell.Value;
     }

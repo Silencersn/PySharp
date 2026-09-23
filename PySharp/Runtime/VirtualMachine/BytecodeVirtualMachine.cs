@@ -204,7 +204,7 @@ internal static partial class BytecodeVirtualMachine
                         break;
 
                     case OpCode.LoadDeref:
-                        value = frame.Variables.LoadDeref(names[instructionArg]).PyUnwrap(context);
+                        value = frame.Variables.LoadDeref(frame.CodeObject!, names[instructionArg]).PyUnwrap(context);
                         Stack.Push(value);
                         break;
 

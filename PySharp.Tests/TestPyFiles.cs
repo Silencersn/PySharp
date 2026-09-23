@@ -1229,6 +1229,18 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestLoadDerefUnboundRegression()
+    {
+        // Regression: the by-name deref path (inline comprehensions, class
+        // bodies) must classify an empty cell like the slot path and CPython
+        // (_PyEval_FormatExcUnbound): UnboundLocalError + local wording for a
+        // cellvar, NameError + free wording for a freevar — never the
+        // CPython-nonexistent "local or free variable" message.
+        var module = RunModule("test_load_deref_unbound_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestInputEofRegression()
     {
         // Regression: input() at EOF must raise EOFError ("EOF when reading a
