@@ -179,7 +179,9 @@ public sealed class PyExceptionObject : PyObjectManagedDict
 
     private void PrintSimpleMessage(IndentedStringBuilder builder, PyCallContext context)
     {
-        builder.Append(PyType.QualName);
+        // traceback.TracebackException.format_exception_only names the type as
+        // module.qualname, dropping "builtins" and "__main__"
+        builder.Append(PyType.FullyQualifiedName);
         var result = PySpecialMethods.Str(context, this);
         if (result.IsSuccessful)
         {
@@ -279,7 +281,9 @@ public sealed class PyExceptionObject : PyObjectManagedDict
             }
         }
 
-        builder.Append(PyType.QualName).Append(": ").Append(ResolveSyntaxErrorMessage(context));
+        // the syntax-error line follows the same naming rule as
+        // PrintSimpleMessage (format_exception_only)
+        builder.Append(PyType.FullyQualifiedName).Append(": ").Append(ResolveSyntaxErrorMessage(context));
         if (filenameSuffix.Length is not 0)
             builder.Append(filenameSuffix);
     }

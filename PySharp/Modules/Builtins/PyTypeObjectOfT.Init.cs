@@ -217,10 +217,10 @@ partial class PyTypeObject<TObject>
         var method = PyBuiltinFunctionOrMethodObject.CreateBoundMethodFromBound(PySpecialNames.New, this, null! /* TODO */, (context, args, kwargs) =>
         {
             if (args.Count is 0)
-                return PyResult.TypeError(PySR.Runtime_Type_New_NotEnoughArguments, QualName);
+                return PyResult.TypeError(PySR.Runtime_Type_New_NotEnoughArguments, TpName);
 
             if (args[0] is not PyTypeObject cls)
-                return PyResult.TypeError(PySR.Runtime_Type_NewClsNonType, QualName, args[0].PyType.QualName);
+                return PyResult.TypeError(PySR.Runtime_Type_NewClsNonType, TpName, args[0].PyType.TpName);
 
             var validateResult = PyArgsValidator.ValidateNewCls(this, cls);
             if (validateResult.IsError)

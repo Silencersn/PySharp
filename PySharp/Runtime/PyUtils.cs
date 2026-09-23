@@ -68,7 +68,7 @@ internal static class PyUtils
         if (result.Value is PyNotImplementedObject)
             return PyIntObject.FromInteger(fallback);
         if (result.Value is not PyIntObject hintValue) // bool is a PyIntObject
-            return PyResult.TypeError(PySR.Runtime_Sequence_LengthHintNotInteger, result.Value.PyType.QualName);
+            return PyResult.TypeError(PySR.Runtime_Sequence_LengthHintNotInteger, result.Value.PyType.TpName);
         if (hintValue.Value < 0)
             return PyResult.ValueError(PySR.Runtime_Sequence_LengthHintNegative);
         if (hintValue.Value > long.MaxValue)
@@ -432,9 +432,11 @@ internal static class PyUtils
             return error;
 
         // CPython %S is str(exc): always the full str(), so custom
-        // __str__ and multi-arg tuples render exactly as Python sees them
+        // __str__ and multi-arg tuples render exactly as Python sees them;
+        // the key's own name is %T, the fully qualified name
+        // (Objects/dictobject.c:2363 and Objects/setobject.c:238)
         var message = RenderExceptionMessage(context, error.Exception);
-        return PyResult.TypeError($"cannot use '{key.PyType.Name}' as {role} ({message})");
+        return PyResult.TypeError($"cannot use '{key.PyType.FullyQualifiedName}' as {role} ({message})");
     }
 
     private static string RenderExceptionMessage(PyCallContext context, PyExceptionObject? exception)

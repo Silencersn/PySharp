@@ -50,7 +50,10 @@ public sealed partial class PyBaseExceptionObjectType : PyExceptionType
     protected override PyResult Repr(PyCallContext context, PyExceptionObject self)
     {
         var builder = new StringBuilder();
-        builder.Append(self.PyType.QualName);
+        // BaseException_repr names the type with _PyType_Name
+        // (Objects/exceptions.c:200), i.e. the bare name — a class defined in a
+        // function reprs as "LocalError('m')", never "f.<locals>.LocalError"
+        builder.Append(self.PyType.Name);
         builder.Append('(');
 
         for (int i = 0; i < self.Args.Count; i++)

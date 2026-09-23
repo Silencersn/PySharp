@@ -27,7 +27,7 @@ public static class PySpecialMethods
 
         static string MessageCreator(PyObject o)
         {
-            return PySR.Format(PySR.Runtime_Object_SpecialMethodReturnsWrongType, PySpecialNames.Str, "string", o.PyType.QualName);
+            return PySR.Format(PySR.Runtime_Object_SpecialMethodReturnsWrongType, PySpecialNames.Str, "string", o.PyType.TpName);
         }
     }
 
@@ -39,7 +39,7 @@ public static class PySpecialMethods
 
         static string MessageCreator(PyObject o)
         {
-            return PySR.Format(PySR.Runtime_Object_SpecialMethodReturnsWrongType, PySpecialNames.Repr, "string", o.PyType.QualName);
+            return PySR.Format(PySR.Runtime_Object_SpecialMethodReturnsWrongType, PySpecialNames.Repr, "string", o.PyType.TpName);
         }
     }
 
@@ -63,7 +63,7 @@ public static class PySpecialMethods
 
         static string MessageCreator(PyObject o)
         {
-            return PySR.Format(PySR.Runtime_Object_BoolShouldReturnBool, o.PyType.QualName);
+            return PySR.Format(PySR.Runtime_Object_BoolShouldReturnBool, o.PyType.TpName);
         }
     }
 
@@ -71,7 +71,7 @@ public static class PySpecialMethods
     {
         var func = obj.PyType.Slots.Hash;
         if (func is null)
-            return PyResult.TypeError(PySR.Runtime_Object_Unhashable, obj.PyType.QualName);
+            return PyResult.TypeError(PySR.Runtime_Object_Unhashable, obj.PyType.TpName);
         var hash = ValidateResultOf<PyIntObject>(func(context, obj), MessageCreator);
         if (hash.IsError)
             return hash;
@@ -86,7 +86,7 @@ public static class PySpecialMethods
 
         static string MessageCreator(PyObject o)
         {
-            return PySR.Format(PySR.Runtime_Object_SpecialMethodReturnsWrongType, PySpecialNames.Hash, "int", o.PyType.QualName);
+            return PySR.Format(PySR.Runtime_Object_SpecialMethodReturnsWrongType, PySpecialNames.Hash, "int", o.PyType.TpName);
         }
     }
 
@@ -99,11 +99,11 @@ public static class PySpecialMethods
         if (func is not null)
             return ValidateResultOf<PyIntObject>(func(context, obj), MessageCreator);
 
-        return PyResult.TypeError(PySR.Runtime_Number_Int_CannotInterpretedAsInt, obj.PyType.QualName);
+        return PyResult.TypeError(PySR.Runtime_Number_Int_CannotInterpretedAsInt, obj.PyType.TpName);
 
         static string MessageCreator(PyObject o)
         {
-            return PySR.Format(PySR.Runtime_Object_SpecialMethodReturnsWrongType, PySpecialNames.Index, "int", o.PyType.QualName);
+            return PySR.Format(PySR.Runtime_Object_SpecialMethodReturnsWrongType, PySpecialNames.Index, "int", o.PyType.TpName);
         }
     }
 
@@ -113,11 +113,11 @@ public static class PySpecialMethods
         if (func is not null)
             return ValidateResultOf<PyFloatObject>(func(context, obj), MessageCreator);
 
-        return PyResult.TypeError(PySR.Runtime_Number_Float_WrongArg, obj.PyType.QualName);
+        return PyResult.TypeError(PySR.Runtime_Number_Float_WrongArg, obj.PyType.TpName);
 
         static string MessageCreator(PyObject o)
         {
-            return PySR.Format(PySR.Runtime_Object_SpecialMethodReturnsWrongType, PySpecialNames.Float, "float", o.PyType.QualName);
+            return PySR.Format(PySR.Runtime_Object_SpecialMethodReturnsWrongType, PySpecialNames.Float, "float", o.PyType.TpName);
         }
     }
 
@@ -144,11 +144,11 @@ public static class PySpecialMethods
             return result;
         }
 
-        return PyResult.TypeError(PySR.Runtime_Sequence_NoLen, obj.PyType.QualName);
+        return PyResult.TypeError(PySR.Runtime_Sequence_NoLen, obj.PyType.TpName);
 
         static string MessageCreator(PyObject o)
         {
-            return PySR.Format(PySR.Runtime_Number_Int_CannotInterpretedAsInt, o.PyType.QualName);
+            return PySR.Format(PySR.Runtime_Number_Int_CannotInterpretedAsInt, o.PyType.TpName);
         }
     }
 
@@ -164,7 +164,7 @@ public static class PySpecialMethods
             // lacks __next__ ("iter() returned non-iterator of type '...'",
             // named after the returned value, not the iterable)
             if (iterResult.Value.PyType.Slots.Next is null)
-                return PyResult.TypeError(PySR.Runtime_Sequence_IterReturnsNonIterator, iterResult.Value.PyType.QualName);
+                return PyResult.TypeError(PySR.Runtime_Sequence_IterReturnsNonIterator, iterResult.Value.PyType.TpName);
             return iterResult;
         }
 
@@ -172,7 +172,7 @@ public static class PySpecialMethods
         if (getItemFunc is not null)
             return new PyIteratorObject(obj);
 
-        return PyResult.TypeError(PySR.Runtime_Sequence_NonIterable, obj.PyType.QualName);
+        return PyResult.TypeError(PySR.Runtime_Sequence_NonIterable, obj.PyType.TpName);
     }
 
     public static PyResult Await(PyCallContext context, PyObject obj)
@@ -181,7 +181,7 @@ public static class PySpecialMethods
         if (func is not null)
             return func(context, obj);
 
-        return PyResult.TypeError(PySR.Runtime_Async_NonAwaitable, obj.PyType.QualName);
+        return PyResult.TypeError(PySR.Runtime_Async_NonAwaitable, obj.PyType.TpName);
     }
 
     public static PyResult AIter(PyCallContext context, PyObject obj)
@@ -190,7 +190,7 @@ public static class PySpecialMethods
         if (func is not null)
             return func(context, obj);
 
-        return PyResult.TypeError(PySR.Runtime_AsyncFor_MissingAIter, obj.PyType.QualName);
+        return PyResult.TypeError(PySR.Runtime_AsyncFor_MissingAIter, obj.PyType.TpName);
     }
 
     public static PyResult Next(PyCallContext context, PyObject obj)
@@ -199,7 +199,7 @@ public static class PySpecialMethods
         if (func is null)
             // CPython's builtin_next rejects the argument itself, without
             // involving iter() ("'int' object is not an iterator")
-            return PyResult.TypeError(PySR.Runtime_Sequence_ObjectNotIterator, obj.PyType.QualName);
+            return PyResult.TypeError(PySR.Runtime_Sequence_ObjectNotIterator, obj.PyType.TpName);
 
         return func(context, obj);
     }
@@ -221,7 +221,7 @@ public static class PySpecialMethods
 
         var func = obj.PyType.Slots.GetItem;
         if (func is null)
-            return PyResult.TypeError(PySR.Runtime_Sequence_NonSubscriptable, obj.PyType.QualName);
+            return PyResult.TypeError(PySR.Runtime_Sequence_NonSubscriptable, obj.PyType.TpName);
 
         return func(context, obj, key);
     }
@@ -259,14 +259,14 @@ public static class PySpecialMethods
         if (!attrResult.IsAttributeError)
             return attrResult;
 
-        return PyResult.TypeError(PySR.Format("type '{0}' is not subscriptable", type.QualName));
+        return PyResult.TypeError(PySR.Format("type '{0}' is not subscriptable", type.TpName));
     }
 
     public static PyResult SetItem(PyCallContext context, PyObject obj, PyObject key, PyObject value)
     {
         var func = obj.PyType.Slots.SetItem;
         if (func is null)
-            return PyResult.TypeError(PySR.Runtime_Sequence_ItemAssignmentNotSupported, obj.PyType.QualName);
+            return PyResult.TypeError(PySR.Runtime_Sequence_ItemAssignmentNotSupported, obj.PyType.TpName);
 
         return func(context, obj, key, value);
     }
@@ -275,7 +275,7 @@ public static class PySpecialMethods
     {
         var func = obj.PyType.Slots.DelItem;
         if (func is null)
-            return PyResult.TypeError(PySR.Runtime_Sequence_ItemDeletionNotSupported, obj.PyType.QualName);
+            return PyResult.TypeError(PySR.Runtime_Sequence_ItemDeletionNotSupported, obj.PyType.TpName);
 
         return func(context, obj, key);
     }
@@ -292,7 +292,7 @@ public static class PySpecialMethods
             // CPython _PySequence_IterSearch: a TypeError from iter() in
             // the contains path reports the container message instead.
             if (PyTypeErrorObjectType.Shared.IsInstance(iter.Exception))
-                return PyResult.TypeError(PySR.Runtime_Sequence_ArgumentNotContainer, obj.PyType.QualName);
+                return PyResult.TypeError(PySR.Runtime_Sequence_ArgumentNotContainer, obj.PyType.TpName);
             return iter;
         }
 
@@ -335,7 +335,7 @@ public static class PySpecialMethods
                 return result;
         }
 
-        return PyResult.TypeError(PySR.Runtime_Operator_UnsupportedForDivmod, left.PyType.QualName, right.PyType.QualName);
+        return PyResult.TypeError(PySR.Runtime_Operator_UnsupportedForDivmod, left.PyType.TpName, right.PyType.TpName);
     }
 
     public static PyResult Abs(PyCallContext context, PyObject obj)
@@ -344,7 +344,7 @@ public static class PySpecialMethods
         if (func is not null)
             return func(context, obj);
 
-        return PyResult.TypeError(PySR.Runtime_Operator_UnsupportedForAbs, obj.PyType.QualName);
+        return PyResult.TypeError(PySR.Runtime_Operator_UnsupportedForAbs, obj.PyType.TpName);
     }
 
     public static PyResult Call(PyCallContext context, PyObject callable, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
@@ -353,7 +353,7 @@ public static class PySpecialMethods
         if (func is not null)
             return func(context, callable, args, kwargs);
 
-        return PyResult.TypeError(PySR.Runtime_Object_NonCallable, callable.PyType.QualName);
+        return PyResult.TypeError(PySR.Runtime_Object_NonCallable, callable.PyType.TpName);
     }
 
     public static PyResult<PyStrObject> Format(PyCallContext context, PyObject obj, PyObject formatSpec)
@@ -364,7 +364,7 @@ public static class PySpecialMethods
 
         static string MessageCreator(PyObject o)
         {
-            return PySR.Format(PySR.Runtime_Object_FormatReturnsNonString, o.PyType.QualName);
+            return PySR.Format(PySR.Runtime_Object_FormatReturnsNonString, o.PyType.TpName);
         }
     }
 
@@ -374,7 +374,7 @@ public static class PySpecialMethods
         if (func is not null)
             return func(context, obj, ndigits);
 
-        return PyResult.TypeError(PySR.Runtime_Object_SpecialMethodNotDefined, obj.PyType.QualName, PySpecialNames.Round);
+        return PyResult.TypeError(PySR.Runtime_Object_SpecialMethodNotDefined, obj.PyType.TpName, PySpecialNames.Round);
     }
 
     public static PyResult Trunc(PyCallContext context, PyObject obj)
@@ -383,7 +383,7 @@ public static class PySpecialMethods
         if (func is not null)
             return func(context, obj);
 
-        return PyResult.TypeError(PySR.Runtime_Object_SpecialMethodNotDefined, obj.PyType.QualName, PySpecialNames.Trunc);
+        return PyResult.TypeError(PySR.Runtime_Object_SpecialMethodNotDefined, obj.PyType.TpName, PySpecialNames.Trunc);
     }
 
     public static PyResult Floor(PyCallContext context, PyObject obj)
@@ -392,7 +392,7 @@ public static class PySpecialMethods
         if (func is not null)
             return func(context, obj);
 
-        return PyResult.TypeError(PySR.Runtime_Object_SpecialMethodNotDefined, obj.PyType.QualName, PySpecialNames.Floor);
+        return PyResult.TypeError(PySR.Runtime_Object_SpecialMethodNotDefined, obj.PyType.TpName, PySpecialNames.Floor);
     }
 
     public static PyResult Ceil(PyCallContext context, PyObject obj)
@@ -401,7 +401,7 @@ public static class PySpecialMethods
         if (func is not null)
             return func(context, obj);
 
-        return PyResult.TypeError(PySR.Runtime_Object_SpecialMethodNotDefined, obj.PyType.QualName, PySpecialNames.Ceil);
+        return PyResult.TypeError(PySR.Runtime_Object_SpecialMethodNotDefined, obj.PyType.TpName, PySpecialNames.Ceil);
     }
 
     public static PyResult<PyIntObject> Int(PyCallContext context, PyObject obj)
@@ -416,7 +416,7 @@ public static class PySpecialMethods
             if (result.Value is not PyIntObject intObj)
             {
                 return PyResult.TypeError(PySR.Runtime_Object_SpecialMethodReturnsWrongType,
-                    PySpecialNames.Int, "int", result.Value.PyType.QualName);
+                    PySpecialNames.Int, "int", result.Value.PyType.TpName);
             }
 
             return intObj;
@@ -432,12 +432,12 @@ public static class PySpecialMethods
             if (result.Value is not PyIntObject intObj)
             {
                 return PyResult.TypeError(PySR.Runtime_Object_SpecialMethodReturnsWrongType,
-                    PySpecialNames.Index, "int", result.Value.PyType.QualName);
+                    PySpecialNames.Index, "int", result.Value.PyType.TpName);
             }
 
             return intObj;
         }
 
-        return PyResult.TypeError(PySR.Runtime_Number_Int_WrongArg, obj.PyType.QualName);
+        return PyResult.TypeError(PySR.Runtime_Number_Int_WrongArg, obj.PyType.TpName);
     }
 }

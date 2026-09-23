@@ -373,7 +373,7 @@ partial class PyListObject
                 if (!reflected.IsNotImplemented)
                     return reflected;
             }
-            return PyResult.TypeError(PySR.Runtime_List_AddNonList, other.PyType.QualName);
+            return PyResult.TypeError(PySR.Runtime_List_AddNonList, other.PyType.TpName);
         }
 
         var newList = new List<PyObject>(_list.Count + otherList.Count);

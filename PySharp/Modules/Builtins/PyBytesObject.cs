@@ -112,7 +112,7 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
                 // CPython replaces a failed top-level conversion with its
                 // own message; item-level errors later on are untouched
                 if (PyTypeErrorObjectType.Shared.IsInstance(indexResult.Exception))
-                    return PyResult.TypeError(PySR.Runtime_Bytes_CannotConvert, source.PyType.QualName);
+                    return PyResult.TypeError(PySR.Runtime_Bytes_CannotConvert, source.PyType.TpName);
 
                 return indexResult;
             }
@@ -133,7 +133,7 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
         {
             // CPython replaces a failed GetIter with its own message
             if (PyTypeErrorObjectType.Shared.IsInstance(iterResult.Exception))
-                return PyResult.TypeError(PySR.Runtime_Bytes_CannotConvert, source.PyType.QualName);
+                return PyResult.TypeError(PySR.Runtime_Bytes_CannotConvert, source.PyType.TpName);
 
             return iterResult;
         }
@@ -312,7 +312,7 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
             if (!reflected.IsNotImplemented)
                 return reflected;
         }
-        return PyResult.TypeError(PySR.Runtime_Bytes_CannotConcat, other.PyType.QualName);
+        return PyResult.TypeError(PySR.Runtime_Bytes_CannotConcat, other.PyType.TpName);
         }
 
         var combinedBytes = new byte[self.Length + otherSpan.Length];
@@ -449,7 +449,7 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
             return PyBoolObject.FromBoolean(self.AsSpan().Contains((byte)value));
         }
 
-        return PyResult.TypeError(PySR.Runtime_Bytes_BytesLikeRequired, item.PyType.QualName);
+        return PyResult.TypeError(PySR.Runtime_Bytes_BytesLikeRequired, item.PyType.TpName);
     }
 
     [PyMethod("decode")]

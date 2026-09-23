@@ -1075,7 +1075,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     protected override PyResult Format(PyCallContext context, PyStrObject self, PyObject formatSpec)
     {
         if (formatSpec is not PyStrObject specStr)
-            return PyResult.TypeError(PySR.Runtime_Object_FormatArg2NonString, formatSpec.PyType.QualName);
+            return PyResult.TypeError(PySR.Runtime_Object_FormatArg2NonString, formatSpec.PyType.TpName);
 
         // CPython _PyUnicode_FormatAdvancedWriter: a zero-length spec makes
         // __format__ equivalent to str(obj)
@@ -1083,7 +1083,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             return PySpecialMethods.Str(context, self);
 
         if (!PyFormatSpec.TryParse(specStr.Value, out var spec, out var bothSeparators))
-            return PyFormatSpec.ParseError(specStr.Value, self.PyType.QualName);
+            return PyFormatSpec.ParseError(specStr.Value, self.PyType.TpName);
 
         // CPython validates in this order: the parse-level grouping check,
         // the presentation-type dispatch, then format_string_internal's
@@ -1094,7 +1094,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             return groupingError;
 
         if (spec.Type is not (null or 's'))
-            return PyFormatSpec.UnknownCode(spec.Type.Value, self.PyType.QualName);
+            return PyFormatSpec.UnknownCode(spec.Type.Value, self.PyType.TpName);
 
         if (spec.Sign is not null)
         {
@@ -2392,7 +2392,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             if (!reflected.IsNotImplemented)
                 return reflected;
         }
-        return PyResult.TypeError(PySR.Runtime_String_AddNonStr, other.PyType.QualName);
+        return PyResult.TypeError(PySR.Runtime_String_AddNonStr, other.PyType.TpName);
     }
     protected override PyResult Eq(PyCallContext context, PyStrObject self, PyObject other)
     {
@@ -2692,7 +2692,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                             // other types get the %-type specific TypeError
                             var intResult = PySpecialMethods.Int(context, value);
                             if (intResult.IsError)
-                                return PyResult.TypeError(PySR.Runtime_Str_PctFormatRealNumberRequired, fmtType, value.PyType.QualName);
+                                return PyResult.TypeError(PySR.Runtime_Str_PctFormatRealNumberRequired, fmtType, value.PyType.TpName);
                             intObj = intResult.Value;
                         }
                         var intVal = intObj.Value;
@@ -2714,7 +2714,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                     {
                         var indexResult = PySpecialMethods.Index(context, value);
                         if (indexResult.IsError)
-                            return PyResult.TypeError(PySR.Runtime_Str_PctFormatIntegerRequired, fmtType, value.PyType.QualName);
+                            return PyResult.TypeError(PySR.Runtime_Str_PctFormatIntegerRequired, fmtType, value.PyType.TpName);
                         var octVal = indexResult.Value.Value;
                         bool isNeg = octVal.Sign < 0;
                         var absVal = isNeg ? -octVal : octVal;
@@ -2733,7 +2733,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                     {
                         var indexResult = PySpecialMethods.Index(context, value);
                         if (indexResult.IsError)
-                            return PyResult.TypeError(PySR.Runtime_Str_PctFormatIntegerRequired, fmtType, value.PyType.QualName);
+                            return PyResult.TypeError(PySR.Runtime_Str_PctFormatIntegerRequired, fmtType, value.PyType.TpName);
                         var hexBigInt = indexResult.Value.Value;
                         bool isNeg = hexBigInt.Sign < 0;
                         var absVal = isNeg ? -hexBigInt : hexBigInt;
@@ -2752,7 +2752,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                     {
                         var indexResult = PySpecialMethods.Index(context, value);
                         if (indexResult.IsError)
-                            return PyResult.TypeError(PySR.Runtime_Str_PctFormatIntegerRequired, fmtType, value.PyType.QualName);
+                            return PyResult.TypeError(PySR.Runtime_Str_PctFormatIntegerRequired, fmtType, value.PyType.TpName);
                         var hexBigInt = indexResult.Value.Value;
                         bool isNeg = hexBigInt.Sign < 0;
                         var absVal = isNeg ? -hexBigInt : hexBigInt;
@@ -3021,7 +3021,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             else
             {
                 if (!PyBytesObjectType.TryGetBytesLikeSpan(source, out var data))
-                    return PyResult.TypeError(source is PyStrObject ? PySR.Runtime_Str_DecodingStrNotSupported : PySR.Runtime_Str_DecodingNeedBytesLike, source.PyType.QualName);
+                    return PyResult.TypeError(source is PyStrObject ? PySR.Runtime_Str_DecodingStrNotSupported : PySR.Runtime_Str_DecodingNeedBytesLike, source.PyType.TpName);
 
                 var encodingName = encoding is PyStrObject encStr ? encStr.Value : "utf-8";
                 var errorsName = errors is PyStrObject errStr ? errStr.Value : "strict";

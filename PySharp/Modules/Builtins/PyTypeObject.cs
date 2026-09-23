@@ -40,6 +40,34 @@ public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
     protected virtual string DefaultQualName => DefaultName;
     public string QualName { get; internal set; }
 
+    // CPython tp_name, which is what nearly every error message names a type by
+    // (Objects/object.c:1313 and 2001, Objects/call.c:194, Objects/abstract.c:203
+    // and 1699). type_new_set_name (Objects/typeobject.c:4233) sets it to the
+    // bare __name__ for a class created at runtime, whatever its __qualname__ or
+    // __module__ say, while a declared type keeps the name it was registered
+    // with — module prefix included, as PyType_FromMetaclass-derived extension
+    // types do (Objects/typeobject.c:5092).
+    public string TpName => IsRuntimeCreated ? Name : QualName;
+
+    // CPython's %T, the fully qualified name read by
+    // _PyType_GetFullyQualifiedName (Objects/typeobject.c:1589): a declared type
+    // is named by its tp_name, a runtime-created class as "module.qualname" with
+    // "builtins" and "__main__" dropped. Used by the dict-key/set-element hash
+    // failure wording and by complex() — the places CPython reaches for %T
+    // rather than tp_name.
+    public string FullyQualifiedName
+    {
+        get
+        {
+            if (!IsRuntimeCreated)
+                return TpName;
+            if (ModuleAsObject is PyStrObject { Value: var module }
+                && module is not "builtins" and not PySpecialNames.Main)
+                return $"{module}.{QualName}";
+            return QualName;
+        }
+    }
+
     public virtual bool IsSealed => false;
     public override PyTypeObject DefaultPyType => PyTypeObjectType.Shared;
     public abstract Type LayoutType { get; }

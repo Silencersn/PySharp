@@ -401,15 +401,15 @@ internal static class PyCore
     {
         var splitResult = exception.CallMethod(context, "split", [type]).PyUnwrap(context);
         if (splitResult is not PyTupleObject tuple)
-            throw context.TypeError(PySR.Runtime_TryStmt_SplitReturnsNonTuple, exception.PyType.QualName, splitResult.PyType.QualName);
+            throw context.TypeError(PySR.Runtime_TryStmt_SplitReturnsNonTuple, exception.PyType.TpName, splitResult.PyType.TpName);
 
         if (tuple.Count is not 2)
-            throw context.TypeError(PySR.Runtime_TryStmt_SplitReturnsTupleWithWrongSize, exception.PyType.QualName, tuple.Count);
+            throw context.TypeError(PySR.Runtime_TryStmt_SplitReturnsTupleWithWrongSize, exception.PyType.TpName, tuple.Count);
 
         var match = tuple[0];
         var restObj = tuple[1];
         var rest = restObj is PyNoneObject ? null : (restObj as PyExceptionObject) ??
-            throw context.TypeError(PySR.Runtime_TryStmt_ExpectedExceptionOrNone, tuple[1].PyType.QualName);
+            throw context.TypeError(PySR.Runtime_TryStmt_ExpectedExceptionOrNone, tuple[1].PyType.TpName);
 
         return (rest, match);
     }
@@ -627,7 +627,7 @@ internal static class PyCore
         if (name is PySpecialNames.Dict)
         {
             if (self.IsImmutable)
-                return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.QualName, name);
+                return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.TpName, name);
 
             return self.PyAttributes.Self;
         }
@@ -664,6 +664,6 @@ internal static class PyCore
         if (getAttrFunc is not null)
             return getAttrFunc(context, self, context.PyEnvironment.InternPool.Intern(name));
 
-        return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.QualName, name);
+        return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.TpName, name);
     }
 }

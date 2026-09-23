@@ -66,7 +66,7 @@ public sealed partial class PyBuiltinFunctionOrMethodObjectType : PyTypeObject<P
     private static PyResult Get_Self(PyCallContext context, PyBuiltinFunctionOrMethodObject self)
     {
         if (self.Self is null)
-            return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.QualName, PySpecialNames.Self);
+            return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.TpName, PySpecialNames.Self);
         return self.Self;
     }
 

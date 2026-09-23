@@ -98,7 +98,7 @@ public sealed partial class PyMethodObjectType : PyTypeObject<PyMethodObject>
         if (callAttr.IsError && !callAttr.IsAttributeError)
             return callAttr;
         if (callAttr.IsAttributeError)
-            return PyResult.TypeError(PySR.Format(PySR.Runtime_Object_NonCallable, function.PyType.QualName));
+            return PyResult.TypeError(PySR.Format(PySR.Runtime_Object_NonCallable, function.PyType.TpName));
 
         // Validate instance is not None (CPython allows None but creates unbound method)
         if (instance is PyNoneObject)

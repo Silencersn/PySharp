@@ -4473,4 +4473,19 @@ public sealed class TestPyFiles
         var module = RunModule("test_repr_module_name_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestTypeNameRenderRegression()
+    {
+        // Regression: error messages named a type by __qualname__, so a class
+        // created at runtime leaked "<locals>" and its module prefix
+        // ('f.<locals>.C' object has no attribute ...) where CPython prints
+        // tp_name, the bare __name__ of a runtime-created class
+        // (Objects/typeobject.c type_new_set_name). The corpus pins the three
+        // CPython rules the fix keeps apart: messages read tp_name, the
+        // property wording keeps the qualname (PyType_GetQualName) and the
+        // dict-key/set-element hash failure uses %T, the fully qualified name.
+        var module = RunModule("test_type_name_render_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

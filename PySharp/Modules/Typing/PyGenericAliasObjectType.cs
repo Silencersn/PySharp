@@ -87,7 +87,7 @@ internal sealed partial class PyGenericAliasObjectType : PyTypeObject<PyGenericA
         if (callFunc is not null)
             return callFunc(context, self._origin, args, kwargs);
 
-        return PyResult.TypeError(PySR.Format(PySR.Runtime_Type_CannotCreateInstance, self._origin.PyType.QualName));
+        return PyResult.TypeError(PySR.Format(PySR.Runtime_Type_CannotCreateInstance, self._origin.PyType.TpName));
     }
 
     /// <summary>
@@ -97,7 +97,7 @@ internal sealed partial class PyGenericAliasObjectType : PyTypeObject<PyGenericA
     protected override PyResult GetAttr(PyCallContext context, PyGenericAliasObject self, PyObject item)
     {
         if (item is not PyStrObject str)
-            return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, item.PyType.QualName);
+            return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, item.PyType.TpName);
 
         // First check our own attributes
         if (self.PyAttributes.TryGetValue(str.Value, out var ownAttr))

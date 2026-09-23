@@ -53,7 +53,7 @@ partial class PyTypeObject
         // change PyCore.GetAttrOrMethod together
 
         if (item is not PyStrObject str)
-            return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, item.PyType.QualName);
+            return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, item.PyType.TpName);
 
         var type = self.PyType;
         var name = str.Value;
@@ -66,7 +66,7 @@ partial class PyTypeObject
             // Objects without a genuine instance dict (built-in values, builtin
             // functions, methods, code, ...) have no __dict__ (CPython).
             if (self.IsImmutable)
-                return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.QualName, name);
+                return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.TpName, name);
             return self.PyAttributes.Self;
         }
 
@@ -92,13 +92,13 @@ partial class PyTypeObject
             return attr;
         }
 
-        return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.QualName, name);
+        return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.TpName, name);
     }
 
     internal static PyResult DefaultSetAttr(PyCallContext context, PyObject self, PyObject key, PyObject value)
     {
         if (key is not PyStrObject str)
-            return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, key.PyType.QualName);
+            return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, key.PyType.TpName);
 
         var type = self.PyType;
         var name = str.Value;
@@ -106,7 +106,7 @@ partial class PyTypeObject
         // CPython type_setattro: the immutable-type check fires before any
         // descriptor or instance-dict handling
         if (self is PyTypeObject ownerType && !ownerType.IsRuntimeCreated)
-            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, name, ownerType.QualName);
+            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, name, ownerType.TpName);
 
         if (TryLookupAttrInMro(type, name, out var attr))
         {
@@ -163,9 +163,9 @@ partial class PyTypeObject
     private static PyResult FrozenAttrWriteError(PyTypeObject type, string name, PyObject? attr)
     {
         if (attr is not null)
-            return PyResult.AttributeError(PySR.Runtime_Object_AttributeReadOnly, type.QualName, name);
+            return PyResult.AttributeError(PySR.Runtime_Object_AttributeReadOnly, type.TpName, name);
 
-        return PyResult.AttributeError(PySR.Runtime_Object_AttributeNoDict, type.QualName, name);
+        return PyResult.AttributeError(PySR.Runtime_Object_AttributeNoDict, type.TpName, name);
     }
 
     // CPython object_set_class: the value must be a class, both sides must be
@@ -291,7 +291,7 @@ partial class PyTypeObject
     internal static PyResult DefaultDelAttr(PyCallContext context, PyObject self, PyObject item)
     {
         if (item is not PyStrObject str)
-            return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, item.PyType.QualName);
+            return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, item.PyType.TpName);
 
         var type = self.PyType;
         var name = str.Value;
@@ -299,7 +299,7 @@ partial class PyTypeObject
         // same immutable-type gate as the set path; the delete path reports
         // "cannot set" in CPython too
         if (self is PyTypeObject ownerType && !ownerType.IsRuntimeCreated)
-            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, name, ownerType.QualName);
+            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, name, ownerType.TpName);
 
         // __doc__ has no metaclass descriptor (reads resolve through the MRO
         // like a plain attribute), so its guard lives here: CPython refuses
@@ -345,7 +345,7 @@ partial class PyTypeObject
         {
             if (self is PyTypeObject heapType)
                 return PyResult.AttributeError(PySR.Runtime_Type_AttributeNotFound, heapType.Name, name);
-            return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, type.QualName, name);
+            return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, type.TpName, name);
         }
 
         // deleting an explicit __hash__ re-inherits the slot through the MRO
@@ -376,7 +376,7 @@ partial class PyTypeObject
     internal static PyResult DefaultTypeGetAttribute(PyCallContext context, PyTypeObject self, PyObject item)
     {
         if (item is not PyStrObject str)
-            return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, item.PyType.QualName);
+            return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, item.PyType.TpName);
 
         var metaType = self.PyType;
         var name = str.Value;
@@ -417,19 +417,19 @@ partial class PyTypeObject
             return metaAttr;
         }
 
-        return PyResult.AttributeError(PySR.Runtime_Type_AttributeNotFound, self.QualName, name);
+        return PyResult.AttributeError(PySR.Runtime_Type_AttributeNotFound, self.TpName, name);
     }
 
     internal static PyResult DefaultFormat(PyCallContext context, PyObject self, PyObject formatSpec)
     {
         if (formatSpec is not PyStrObject str)
-            return PyResult.TypeError(PySR.Runtime_Object_FormatArg2NonString, formatSpec.PyType.QualName);
+            return PyResult.TypeError(PySR.Runtime_Object_FormatArg2NonString, formatSpec.PyType.TpName);
 
         if (str.Value.Length is 0)
             return PySpecialMethods.Str(context, self);
 
         // CPython object.__format__ rejects a non-empty spec with TypeError
-        return PyResult.TypeError(PySR.Runtime_Object_FormatUnsupported, self.PyType.QualName);
+        return PyResult.TypeError(PySR.Runtime_Object_FormatUnsupported, self.PyType.TpName);
 
     }
 

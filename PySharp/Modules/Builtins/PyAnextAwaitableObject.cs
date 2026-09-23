@@ -37,7 +37,7 @@ internal sealed partial class PyAnextAwaitableObjectType : PyTypeObject<PyAnextA
     {
         var slot = self.Iterator.PyType.Slots.ANext;
         if (slot is null)
-            return PyResult.TypeError(PySR.Runtime_Builtin_ANext_NotAsyncIterator, self.Iterator.PyType.QualName);
+            return PyResult.TypeError(PySR.Runtime_Builtin_ANext_NotAsyncIterator, self.Iterator.PyType.TpName);
 
         var result = slot(context, self.Iterator);
         if (result.IsError)
@@ -74,7 +74,7 @@ internal sealed partial class PyAnextAwaitableObjectType : PyTypeObject<PyAnextA
         {
             var nextSlot = inner.PyType.Slots.Next;
             if (nextSlot is null)
-                return PyResult.TypeError(PySR.Runtime_Sequence_IterReturnsNonIterator, inner.PyType.QualName);
+                return PyResult.TypeError(PySR.Runtime_Sequence_IterReturnsNonIterator, inner.PyType.TpName);
             result = nextSlot(context, inner);
         }
 

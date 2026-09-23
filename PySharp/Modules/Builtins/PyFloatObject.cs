@@ -1131,7 +1131,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
     protected override PyResult Format(PyCallContext context, PyFloatObject self, PyObject formatSpec)
     {
         if (formatSpec is not PyStrObject str)
-            return PyResult.TypeError(PySR.Runtime_Object_FormatArg2NonString, formatSpec.PyType.QualName);
+            return PyResult.TypeError(PySR.Runtime_Object_FormatArg2NonString, formatSpec.PyType.TpName);
 
         // CPython _PyFloat_FormatAdvancedWriter: a zero-length spec makes
         // __format__ equivalent to str(obj) - the shortest-repr rendering,
@@ -1140,7 +1140,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
             return PySpecialMethods.Str(context, self);
 
         if (!PyFormatSpec.TryParse(str.Value, out var spec, out var bothSeparators))
-            return PyFormatSpec.ParseError(str.Value, self.PyType.QualName);
+            return PyFormatSpec.ParseError(str.Value, self.PyType.TpName);
 
         double val = self.Value;
 
@@ -1167,7 +1167,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
         // CPython dispatches on the presentation type right after the parse,
         // so inf/nan reject non-float codes exactly like finite values.
         if (char.ToLowerInvariant(formatType) is not ('f' or 'e' or 'g' or 'n' or '%' or 'r'))
-            return PyFormatSpec.UnknownCode(formatType, self.PyType.QualName);
+            return PyFormatSpec.UnknownCode(formatType, self.PyType.TpName);
 
         if (spec.CoercePositiveZero && val is 0.0 && double.IsNegative(val))
             val = 0.0;
@@ -1249,7 +1249,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
                         text = ApplyGrouping(text, spec.WidthGrouping.Value);
                     break;
                 default:
-                    return PyFormatSpec.UnknownCode(formatType, self.PyType.QualName);
+                    return PyFormatSpec.UnknownCode(formatType, self.PyType.TpName);
             }
 
             // CPython's ADD_DOT_0 behavior for an omitted type with an

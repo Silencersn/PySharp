@@ -63,7 +63,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
             // called through instantiation (a direct __init__() call
             // is exempt)
             if (initResult.Value is not PyNoneObject)
-                return PyResult.TypeError(PySR.Runtime_Type_InitShouldReturnNone, initResult.Value.PyType.QualName);
+                return PyResult.TypeError(PySR.Runtime_Type_InitShouldReturnNone, initResult.Value.PyType.TpName);
         }
         return PyNoneObject.None;
     }
@@ -72,7 +72,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
     {
         var newFunc = self.Slots.New;
         if (newFunc is null)
-            return PyResult.TypeError(PySR.Runtime_Type_CannotCreateInstance, self.QualName);
+            return PyResult.TypeError(PySR.Runtime_Type_CannotCreateInstance, self.TpName);
 
         var result = newFunc(context, self, args, kwargs);
         if (result.IsError)
@@ -114,10 +114,10 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
         var dictObj = args[2];
 
         if (nameObj is not PyStrObject { Value: var typeName })
-            return PyResult.TypeError(PySR.Runtime_Type_New_Arg1MustBeStr, nameObj.PyType.QualName);
+            return PyResult.TypeError(PySR.Runtime_Type_New_Arg1MustBeStr, nameObj.PyType.TpName);
 
         if (basesObj is not PyTupleObject basesTuple)
-            return PyResult.TypeError(PySR.Runtime_Type_New_Arg2MustBeTuple, basesObj.PyType.QualName);
+            return PyResult.TypeError(PySR.Runtime_Type_New_Arg2MustBeTuple, basesObj.PyType.TpName);
 
         if (dictObj is not PyDictObject dict)
             // CPython formats tp_name, which is the plain __name__ for heap
@@ -331,7 +331,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
     private static PyResult Delete_Bases(PyCallContext context, PyTypeObject self)
     {
         if (self.InstancesAreImmutable)
-            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Bases, self.QualName);
+            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Bases, self.TpName);
 
         return PyResult.TypeError($"cannot delete '{PySpecialNames.Bases}' attribute of immutable type '{self.Name}'");
     }
@@ -346,7 +346,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
     private static PyResult Set_Name(PyCallContext context, PyTypeObject self, PyObject value)
     {
         if (self.InstancesAreImmutable)
-            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Name, self.QualName);
+            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Name, self.TpName);
 
         if (value is not PyStrObject str)
             return PyResult.TypeError($"can only assign string to {self.Name}.{PySpecialNames.Name}, not '{value.PyType.Name}'");
@@ -359,7 +359,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
     private static PyResult Delete_Name(PyCallContext context, PyTypeObject self)
     {
         if (self.InstancesAreImmutable)
-            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Name, self.QualName);
+            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Name, self.TpName);
 
         // CPython check_set_special_type_attr: the delete path reports the
         // attribute as belonging to an "immutable type" even on heap types
@@ -376,7 +376,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
     private static PyResult Set_QualName(PyCallContext context, PyTypeObject self, PyObject value)
     {
         if (self.InstancesAreImmutable)
-            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.QualName, self.QualName);
+            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.QualName, self.TpName);
 
         if (value is not PyStrObject str)
             return PyResult.TypeError($"can only assign string to {self.Name}.{PySpecialNames.QualName}, not '{value.PyType.Name}'");
@@ -407,7 +407,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
     {
         var module = self.ModuleAsObject;
         if (module is null)
-            return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.QualName, PySpecialNames.Module);
+            return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.TpName, PySpecialNames.Module);
         return module;
     }
 
@@ -415,7 +415,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
     private static PyResult Set_Module(PyCallContext context, PyTypeObject self, PyObject value)
     {
         if (self.InstancesAreImmutable)
-            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Module, self.QualName);
+            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Module, self.TpName);
 
         self.ModuleAsObject = value;
         return PyNoneObject.None;
@@ -425,7 +425,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
     private static PyResult Delete_Module(PyCallContext context, PyTypeObject self)
     {
         if (self.InstancesAreImmutable)
-            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Module, self.QualName);
+            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Module, self.TpName);
 
         return PyResult.TypeError($"cannot delete '{PySpecialNames.Module}' attribute of immutable type '{self.Name}'");
     }
@@ -434,7 +434,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
     private static PyResult Get_Annotations(PyCallContext context, PyTypeObject self)
     {
         if (self.InstancesAreImmutable)
-            return PyResult.AttributeError(PySR.Runtime_Type_AttributeNotFound, self.QualName, PySpecialNames.Annotations);
+            return PyResult.AttributeError(PySR.Runtime_Type_AttributeNotFound, self.TpName, PySpecialNames.Annotations);
 
         if (self.PyAttributes.TryGetValue(PySpecialNames.Annotations, out var existing))
             return existing;
@@ -446,7 +446,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
     private static PyResult Set_Annotations(PyCallContext context, PyTypeObject self, PyObject value)
     {
         if (self.InstancesAreImmutable)
-            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Annotations, self.QualName);
+            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Annotations, self.TpName);
 
         if (value is not PyDictObject && value is not PyNoneObject)
             return PyResult.TypeError("__annotations__ must be set to a dict object");
@@ -460,7 +460,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
     private static PyResult Delete_Annotations(PyCallContext context, PyTypeObject self)
     {
         if (self.InstancesAreImmutable)
-            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Annotations, self.QualName);
+            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Annotations, self.TpName);
 
         // CPython raises a bare-name AttributeError when __annotations__ was
         // never materialized in the type dict; the lazy getter creates it on

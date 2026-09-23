@@ -655,7 +655,9 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
 
         var index = PySpecialMethods.Index(context, arg);
         if (index.IsError)
-            return PyResult.TypeError(errorMessage, arg.PyType.Name);
+            // complex() is one of the messages CPython renders with %T, the
+            // fully qualified name (Objects/complexobject.c:1148)
+            return PyResult.TypeError(errorMessage, arg.PyType.FullyQualifiedName);
         if (!index.Value.Value.TryToDoubleRounded(out var indexReal))
             return PyResult.OverflowError(PySR.Runtime_Number_IntTooLargeForFloat);
         return PyComplexObject.FromRealImag(indexReal, 0);

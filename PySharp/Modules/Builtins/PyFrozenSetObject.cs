@@ -36,8 +36,8 @@ public partial class PyFrozenSetObject : PyObject, IPyObjectRecursiveRepr, IRead
         if (PyType is not PyFrozenSetObjectType)
         {
             return _table.Count is 0
-                ? PyStrObject.FromString($"{PyType.QualName}()")
-                : PyUtils.CollectionRecursiveRepr(context, this, _table.SnapshotKeys(), $"{PyType.QualName}({{", "})", ids);
+                ? PyStrObject.FromString($"{PyType.TpName}()")
+                : PyUtils.CollectionRecursiveRepr(context, this, _table.SnapshotKeys(), $"{PyType.TpName}({{", "})", ids);
         }
 
         if (_table.Count is 0)

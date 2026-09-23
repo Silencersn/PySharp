@@ -39,7 +39,7 @@ internal static partial class BytecodeVirtualMachine
         if (IsSpecialType(cls))
         {
             if (instructionArg > 1)
-                throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsLengthNotEnough, cls.QualName, 1, string.Empty, instructionArg);
+                throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsLengthNotEnough, cls.TpName, 1, string.Empty, instructionArg);
             else if (instructionArg is 1)
                 values[0] = subject;
         }
@@ -58,14 +58,14 @@ internal static partial class BytecodeVirtualMachine
                 throw new PyRuntimeException(context, matchArgsResult.Exception);
 
             if (matchArgs is not PyTupleObject tuple)
-                throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsIsNonTuple, cls.QualName, matchArgs.PyType.QualName);
+                throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsIsNonTuple, cls.TpName, matchArgs.PyType.TpName);
             if (instructionArg > tuple.Count)
-                throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsLengthNotEnough, cls.QualName, tuple.Count, tuple.Count is 1 ? string.Empty : "s", instructionArg);
+                throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsLengthNotEnough, cls.TpName, tuple.Count, tuple.Count is 1 ? string.Empty : "s", instructionArg);
 
             for (int i = 0; i < instructionArg; i++)
             {
                 if (tuple[i] is not PyStrObject attrName)
-                    throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsEltMustBeString, tuple[i].PyType.QualName);
+                    throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsEltMustBeString, tuple[i].PyType.TpName);
 
                 var attr = PyOperators.GetAttr(context, subject, attrName);
                 if (attr.IsAttributeError)
@@ -384,7 +384,7 @@ internal static partial class BytecodeVirtualMachine
     private static PyRuntimeException FormatKwargsError(PyCallContext context, PyObject callable, PyObject update, PyExceptionObject exception)
     {
         if (PyAttributeErrorObjectType.Shared.IsInstance(exception))
-            return context.TypeError(PySR.Runtime_Arguments_StarStarNotMapping, PyCallableName.Get(context, callable), update.PyType.QualName);
+            return context.TypeError(PySR.Runtime_Arguments_StarStarNotMapping, PyCallableName.Get(context, callable), update.PyType.TpName);
 
         if (PyKeyErrorObjectType.Shared.IsInstance(exception) && exception.Args.Count is 1)
             return MultipleKeywordError(context, callable, exception.Args[0]);
@@ -416,7 +416,7 @@ internal static partial class BytecodeVirtualMachine
     private static PyRuntimeException FormatDictUpdateError(PyCallContext context, PyObject update, PyExceptionObject exception)
     {
         if (PyAttributeErrorObjectType.Shared.IsInstance(exception))
-            return context.TypeError(PySR.Runtime_Dictionary_NotAMapping, update.PyType.QualName);
+            return context.TypeError(PySR.Runtime_Dictionary_NotAMapping, update.PyType.TpName);
 
         return new PyRuntimeException(context, exception);
     }
