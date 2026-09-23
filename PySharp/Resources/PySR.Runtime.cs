@@ -341,6 +341,9 @@ partial class PySR
     public const string Runtime_AsyncGen_ReusedAThrow = "cannot reuse already awaited aclose()/athrow()";
     public const string Runtime_AsyncGen_AlreadyRunningAClose = "aclose(): asynchronous generator is already running";
     public const string Runtime_AsyncGen_AlreadyRunningAThrow = "athrow(): asynchronous generator is already running";
+    public const string Runtime_AsyncGen_ReusedASend = "cannot reuse already awaited __anext__()/asend()";
+    public const string Runtime_AsyncGen_AlreadyRunningANext = "anext(): asynchronous generator is already running";
+    public const string Runtime_AsyncGen_ASendIgnoredGeneratorExit = "coroutine ignored GeneratorExit";
 
     public const string Runtime_Builtin_Aiter_NotAsyncIterable = "'{0}' object is not an async iterable";
     public const string Runtime_Builtin_ANext_NotAsyncIterator = "'{0}' object is not an async iterator";

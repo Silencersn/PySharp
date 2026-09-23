@@ -9,45 +9,35 @@ namespace PySharp.Modules.Builtins;
 /// Equivalent to CPython's async_generator_asend type.
 /// When awaited (via __await__), drives the underlying async generator
 /// and returns the yielded value, or raises StopAsyncIteration when exhausted.
+/// Like CPython's AWAITABLE_STATE_* machinery the awaitable is single use:
+/// one step — a yield, an exhaustion or an error — leaves it closed.
 /// </summary>
 public sealed class PyAsyncGeneratorASendObject : PyObject
 {
-    private readonly PyGeneratorObject _generator;
-    private readonly PyObject? _initialSendValue;
-    private bool _initialSendUsed;
-    private PyObject? _throwValue;
-
-    private PyAsyncGeneratorASendObject(PyGeneratorObject generator, PyObject? initialSendValue, PyObject? throwValue)
-        : this(generator, initialSendValue)
+    // CPython AWAITABLE_STATE_*: the awaitable is created in Init, passes
+    // through Iter while a step runs, and every produced step - a yield, an
+    // exhaustion or an error - leaves it Closed.
+    internal enum DriveState
     {
-        _throwValue = throwValue;
+        Init,
+        Iter,
+        Closed,
     }
+
+    private readonly PyGeneratorObject _generator;
 
     public PyAsyncGeneratorASendObject(PyGeneratorObject generator, PyObject? initialSendValue = null)
     {
         _generator = generator;
-        _initialSendValue = initialSendValue;
-    }
-
-    /// <summary>
-    /// Creates an async_generator_asend for athrow mode.
-    /// When driven, throws the given exception into the generator.
-    /// </summary>
-    public static PyAsyncGeneratorASendObject CreateForThrow(PyGeneratorObject generator, PyObject throwValue)
-    {
-        return new PyAsyncGeneratorASendObject(generator, null, throwValue);
+        InitialSendValue = initialSendValue;
     }
 
     public override PyTypeObject DefaultPyType => PyAsyncGeneratorASendObjectType.Shared;
     public PyGeneratorObject Generator => _generator;
-    internal bool HasInitialSend => _initialSendValue is not null && !_initialSendUsed;
-    internal PyObject? TakeInitialSend()
-    {
-        _initialSendUsed = true;
-        return _initialSendValue;
-    }
-    internal PyObject? ThrowValue => _throwValue;
-    internal void ClearThrow() => _throwValue = null;
+    // CPython ags_sendval: the value captured by asend(), used only when the
+    // drive itself carries no value
+    internal PyObject? InitialSendValue { get; }
+    internal DriveState State { get; set; }
 }
 
 [PyType("async_generator_asend")]
@@ -74,34 +64,64 @@ public sealed partial class PyAsyncGeneratorASendObjectType : PyTypeObject<PyAsy
         return self;
     }
 
-    private static PyResult DriveGenerator(PyAsyncGeneratorASendObject self, PyCallContext context, PyObject? value = null)
+    /// <summary>
+    /// CPython async_gen_asend_send / async_gen_asend_throw: a closed
+    /// awaitable reports the reuse error, an INIT drive rejects an async
+    /// generator that is already running, the asend() value only applies to
+    /// a drive that carries no value of its own, and every step closes the
+    /// awaitable.
+    /// </summary>
+    private static PyResult Step(PyCallContext context, PyAsyncGeneratorASendObject self, PyObject? value, PyObject? throwValue)
     {
-        PyResult result;
-        if (self.ThrowValue is not null)
+        if (self.State is PyAsyncGeneratorASendObject.DriveState.Closed)
+            return PyResult.RuntimeError(PySR.Runtime_AsyncGen_ReusedASend);
+
+        if (self.State is PyAsyncGeneratorASendObject.DriveState.Init)
         {
-            // athrow mode: inject the exception on first drive
-            var exc = self.ThrowValue;
-            self.ClearThrow(); // clear so subsequent drives use PyNext
-            result = self.Generator.PyThrow(context, exc);
+            if (self.Generator.IsRunning)
+            {
+                self.State = PyAsyncGeneratorASendObject.DriveState.Closed;
+                return PyResult.RuntimeError(PySR.Runtime_AsyncGen_AlreadyRunningANext);
+            }
+
+            if (value is null || value is PyNoneObject)
+                value = self.InitialSendValue;
+
+            self.State = PyAsyncGeneratorASendObject.DriveState.Iter;
         }
-        else if (self.HasInitialSend)
+
+        try
         {
-            var sendValue = self.TakeInitialSend()!;
-            result = self.Generator.PySend(context, sendValue);
+            PyResult result;
+            if (throwValue is not null)
+                result = self.Generator.PyThrow(context, throwValue);
+            else if (value is not null && value is not PyNoneObject)
+                result = self.Generator.PySend(context, value);
+            else
+                result = self.Generator.PyNext(context);
+
+            return WrapStep(self, result);
         }
-        else if (value is not null)
+        catch
         {
-            result = self.Generator.PySend(context, value);
+            // a step that unwinds leaves the awaitable closed, like
+            // CPython's asend_send/asend_throw error paths
+            self.State = PyAsyncGeneratorASendObject.DriveState.Closed;
+            throw;
         }
-        else
-        {
-            result = self.Generator.PyNext(context);
-        }
-        return WrapResult(result);
     }
 
-    private static PyResult WrapResult(PyResult result)
+    /// <summary>
+    /// Maps one drive result onto the iterator protocol: an exhausted async
+    /// generator surfaces as StopAsyncIteration, other errors pass through,
+    /// and a yielded value ends the step with StopIteration. CPython's
+    /// async_gen_unwrap_value returns NULL for all three outcomes, so each
+    /// of them closes the awaitable.
+    /// </summary>
+    private static PyResult WrapStep(PyAsyncGeneratorASendObject self, PyResult result)
     {
+        self.State = PyAsyncGeneratorASendObject.DriveState.Closed;
+
         if (result.IsStopIteration)
             return PyResult.FromException(PyStopAsyncIterationObjectType.Shared.Create());
         if (result.IsError)
@@ -113,43 +133,61 @@ public sealed partial class PyAsyncGeneratorASendObjectType : PyTypeObject<PyAsy
     /// __next__() drives the underlying async generator and returns the
     /// yielded value wrapped in StopIteration to signal completion to Send.
     /// When the async generator is exhausted, raises StopAsyncIteration.
-    /// If constructed with an initial send value (asend mode), the first
-    /// drive uses PySend instead of PyNext.
     /// Non-StopIteration errors are propagated to the caller.
     /// </summary>
     protected override PyResult Next(PyCallContext context, PyAsyncGeneratorASendObject self)
     {
-        return DriveGenerator(self, context);
+        return Step(context, self, null, null);
     }
 
     [PyMethod("send")]
     [PyFunctionParameters("value", "/")]
     private static PyResult Send(PyCallContext context, PyAsyncGeneratorASendObject self, PyArguments arguments)
     {
-        return DriveGenerator(self, context, arguments[0]);
+        return Step(context, self, arguments[0], null);
     }
 
     [PyMethod("throw")]
     [PyFunctionParameters("value", "/")]
     private static PyResult Throw(PyCallContext context, PyAsyncGeneratorASendObject self, PyArguments arguments)
     {
-        // throw() always calls PyThrow, never PySend.
-        // _throwValue (from CreateForThrow) is consumed on first drive;
-        // subsequent throw() calls use the argument directly.
-        if (self.ThrowValue is not null)
-        {
-            var exc = self.ThrowValue;
-            self.ClearThrow();
-            return WrapResult(self.Generator.PyThrow(context, exc));
-        }
-        return WrapResult(self.Generator.PyThrow(context, arguments[0]));
+        return Step(context, self, null, arguments[0]);
     }
 
+    /// <summary>
+    /// CPython async_gen_asend_close: a closed awaitable is a no-op,
+    /// otherwise GeneratorExit goes through the throw path, where
+    /// StopIteration (the unwrapped yield value), StopAsyncIteration and
+    /// GeneratorExit all count as success.
+    /// </summary>
     [PyMethod("close")]
     [PyFunctionParameters()]
     private static PyResult Close(PyCallContext context, PyAsyncGeneratorASendObject self, PyArguments arguments)
     {
-        return self.Generator.PyClose(context);
+        if (self.State is PyAsyncGeneratorASendObject.DriveState.Closed)
+            return PyNoneObject.None;
+
+        try
+        {
+            var result = Step(context, self, null, PyGeneratorExitObjectType.Shared.Create());
+            if (!result.IsError)
+                return PyResult.RuntimeError(PySR.Runtime_AsyncGen_ASendIgnoredGeneratorExit);
+
+            return IsCloseSuccess(result.Exception) ? PyNoneObject.None : result;
+        }
+        catch (PyRuntimeException error)
+        {
+            if (IsCloseSuccess(error.PyException))
+                return PyNoneObject.None;
+            throw;
+        }
+    }
+
+    private static bool IsCloseSuccess(PyExceptionObject exception)
+    {
+        return PyStopIterationObjectType.Shared.IsInstance(exception)
+            || PyStopAsyncIterationObjectType.Shared.IsInstance(exception)
+            || PyGeneratorExitObjectType.Shared.IsInstance(exception);
     }
 }
 

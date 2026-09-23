@@ -4506,4 +4506,16 @@ public sealed class TestPyFiles
         var module = RunModule("test_number_message_repr_regression.py");
         Assert.IsNotNull(module);
     }
+    
+    public void TestAsyncGeneratorASendReuseRegression()
+    {
+        // Regression: the awaitable returned by __anext__()/asend() is
+        // single use (CPython async_gen_asend_* AWAITABLE_STATE_*): one step
+        // leaves it closed, so a second drive raises "cannot reuse already
+        // awaited __anext__()/asend()" instead of silently advancing the
+        // async generator. close() hands GeneratorExit to the generator and
+        // a fresh drive while it runs is reported by the awaitable.
+        var module = RunModule("test_async_generator_asend_reuse_regression.py");
+        Assert.IsNotNull(module);
+    }
 }
