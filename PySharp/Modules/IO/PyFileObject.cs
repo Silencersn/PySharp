@@ -121,7 +121,7 @@ public sealed class PyFileObject : PyObject, IDisposable
         {
             Debug.Assert(_writer is not null);
             if (data is not PyStrObject strObj)
-                return PyResult.TypeError(PySR.Runtime_File_WriteNeedStr, data.PyType.FullName);
+                return PyResult.TypeError(PySR.Runtime_File_WriteNeedStr, data.PyType.QualName);
             _writer.Write(strObj.Value);
             _writer.Flush();
             return PyIntObject.FromInteger(strObj.Value.Length);
@@ -129,7 +129,7 @@ public sealed class PyFileObject : PyObject, IDisposable
         else
         {
             if (data is not PyBytesObject bytesObj)
-                return PyResult.TypeError(PySR.Runtime_File_WriteNeedBytes, data.PyType.FullName);
+                return PyResult.TypeError(PySR.Runtime_File_WriteNeedBytes, data.PyType.QualName);
             var span = bytesObj.AsSpan();
             _stream.Write(span);
             return PyIntObject.FromInteger(span.Length);
@@ -312,7 +312,7 @@ public sealed class PyFileObject : PyObject, IDisposable
 
 [AIGenerated]
 // module position "_io" like CPython's io stack types (the qual name stays
-// bare; FullName composes it as "_io.FileObject" from the module)
+// bare; ReprName composes it as "_io.FileObject" from the module)
 [PyType("FileObject", Module = "_io")]
 public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
 {
@@ -419,7 +419,7 @@ public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
         }
         if (obj.PyType.Slots.Index is null)
         {
-            error = PyResult.TypeError(PySR.Runtime_Number_Int_CannotInterpretedAsInt, obj.PyType.FullName);
+            error = PyResult.TypeError(PySR.Runtime_Number_Int_CannotInterpretedAsInt, obj.PyType.QualName);
             return null;
         }
         var indexResult = PySpecialMethods.Index(context, obj);

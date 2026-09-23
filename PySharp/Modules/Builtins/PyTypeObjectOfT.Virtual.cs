@@ -53,9 +53,9 @@ partial class PyTypeObject<TObject>
         if (self is PyTypeObject ownerType && !ownerType.IsRuntimeCreated)
         {
             if (key is not PyStrObject str)
-                return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, key.PyType.FullName);
+                return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, key.PyType.QualName);
 
-            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, str.Value, ownerType.FullName);
+            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, str.Value, ownerType.QualName);
         }
 
         return DefaultSetAttr(context, self, key, value);
@@ -67,9 +67,9 @@ partial class PyTypeObject<TObject>
         if (self is PyTypeObject ownerType && !ownerType.IsRuntimeCreated)
         {
             if (item is not PyStrObject str)
-                return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, item.PyType.FullName);
+                return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, item.PyType.QualName);
 
-            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, str.Value, ownerType.FullName);
+            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, str.Value, ownerType.QualName);
         }
         return DefaultDelAttr(context, self, item);
     }

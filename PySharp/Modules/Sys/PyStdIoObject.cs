@@ -97,7 +97,7 @@ public sealed class PyStdIoObject : PyObject
         if (_writer is null)
             return PyResult.ValueError(PySR.Runtime_File_NotWritable);
         if (data is not PyStrObject strObj)
-            return PyResult.TypeError(PySR.Runtime_File_WriteNeedStr, data.PyType.FullName);
+            return PyResult.TypeError(PySR.Runtime_File_WriteNeedStr, data.PyType.QualName);
 
         _writer.Write(strObj.Value);
         _writer.Flush();

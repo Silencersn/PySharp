@@ -133,7 +133,7 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
     private static PyResult NewImpl_2(PyCallContext context, PyArguments arguments)
     {
         if (arguments[1] is not PyIntObject numBase)
-            return PyResult.TypeError(PySR.Runtime_Number_Int_CannotInterpretedAsInt, arguments[1].PyType.FullName);
+            return PyResult.TypeError(PySR.Runtime_Number_Int_CannotInterpretedAsInt, arguments[1].PyType.QualName);
 
         if (!((numBase.Value >= 2 && numBase.Value <= 36) || numBase.Value.IsZero))
             return PyResult.ValueError(PySR.Runtime_Number_Int_BaseOutOfRange);
@@ -452,7 +452,7 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
     protected override PyResult Format(PyCallContext context, PyIntObject self, PyObject formatSpec)
     {
         if (formatSpec is not PyStrObject str)
-            return PyResult.TypeError(PySR.Runtime_Object_FormatArg2NonString, formatSpec.PyType.FullName);
+            return PyResult.TypeError(PySR.Runtime_Object_FormatArg2NonString, formatSpec.PyType.QualName);
 
         // CPython _PyLong_FormatAdvancedWriter: a zero-length spec makes
         // __format__ equivalent to str(obj) - subtypes (bool) then render
@@ -461,7 +461,7 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
             return PySpecialMethods.Str(context, self);
 
         if (!PyFormatSpec.TryParse(str.Value, out var spec, out var bothSeparators))
-            return PyFormatSpec.ParseError(str.Value, self.PyType.FullName);
+            return PyFormatSpec.ParseError(str.Value, self.PyType.QualName);
 
         var formatType = spec.Type ?? 'd';
 
@@ -536,7 +536,7 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
                     return PyResult.OverflowError(PySR.Runtime_Number_IntTooLargeForFloat);
                 return PySpecialMethods.Format(context, PyFloatObject.FromDouble(valDouble), formatSpec);
             default:
-                return PyFormatSpec.UnknownCode(formatType, self.PyType.FullName);
+                return PyFormatSpec.UnknownCode(formatType, self.PyType.QualName);
         }
 
         var prefix = string.Empty;

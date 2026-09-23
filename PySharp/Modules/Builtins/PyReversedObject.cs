@@ -36,7 +36,7 @@ public sealed partial class PyReversedObjectType : PyTypeObject<PyReversedObject
         var lenFunc = obj.PyType.Slots.Len;
         var getItemFunc = obj.PyType.Slots.GetItem;
         if (lenFunc is null || getItemFunc is null)
-            return PyResult.TypeError(PySR.Runtime_Builtin_Reversed_NonReversible, obj.PyType.FullName);
+            return PyResult.TypeError(PySR.Runtime_Builtin_Reversed_NonReversible, obj.PyType.QualName);
 
         var len = PySpecialMethods.Len(context, obj);
         if (len.IsError)

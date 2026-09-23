@@ -64,7 +64,10 @@ public sealed partial class PyFunctionObjectType : PyTypeObject<PyFunctionObject
 
     protected override PyResult Repr(PyCallContext context, PyFunctionObject self)
     {
-        return PyStrObject.FromString($"<function {self.Name} at 0x{self.PyId:X16}>");
+        // CPython func_repr renders func_qualname with no module prefix
+        // (Objects/funcobject.c:1162), so nested functions show
+        // "g.<locals>.inner" and methods show "C.m".
+        return PyStrObject.FromString($"<function {self.QualName} at 0x{self.PyId:X16}>");
     }
 
     protected override PyResult Call(PyCallContext context, PyFunctionObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)

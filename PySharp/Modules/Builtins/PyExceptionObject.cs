@@ -179,7 +179,7 @@ public sealed class PyExceptionObject : PyObjectManagedDict
 
     private void PrintSimpleMessage(IndentedStringBuilder builder, PyCallContext context)
     {
-        builder.Append(PyType.FullName);
+        builder.Append(PyType.QualName);
         var result = PySpecialMethods.Str(context, this);
         if (result.IsSuccessful)
         {
@@ -279,7 +279,7 @@ public sealed class PyExceptionObject : PyObjectManagedDict
             }
         }
 
-        builder.Append(PyType.FullName).Append(": ").Append(ResolveSyntaxErrorMessage(context));
+        builder.Append(PyType.QualName).Append(": ").Append(ResolveSyntaxErrorMessage(context));
         if (filenameSuffix.Length is not 0)
             builder.Append(filenameSuffix);
     }

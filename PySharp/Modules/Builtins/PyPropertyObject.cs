@@ -95,14 +95,14 @@ public sealed partial class PyPropertyObjectType : PyTypeObject<PyPropertyObject
     protected override PyResult Set(PyCallContext context, PyPropertyObject self, PyObject instance, PyObject value)
     {
         if (self._fset is PyNoneObject)
-            return PyResult.AttributeError(PySR.Runtime_Property_NoSetter, DisplayName(context, self), instance.PyType.FullName);
+            return PyResult.AttributeError(PySR.Runtime_Property_NoSetter, DisplayName(context, self), instance.PyType.QualName);
         return self._fset.Call(context, [instance, value], FrozenDictionary<string, PyObject>.Empty);
     }
 
     protected override PyResult Delete(PyCallContext context, PyPropertyObject self, PyObject instance)
     {
         if (self._fdel is PyNoneObject)
-            return PyResult.AttributeError(PySR.Runtime_Property_NoDeleter, DisplayName(context, self), instance.PyType.FullName);
+            return PyResult.AttributeError(PySR.Runtime_Property_NoDeleter, DisplayName(context, self), instance.PyType.QualName);
         return self._fdel.Call(context, [instance], FrozenDictionary<string, PyObject>.Empty);
     }
 

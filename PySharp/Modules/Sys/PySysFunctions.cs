@@ -23,7 +23,7 @@ internal static partial class PySysFunctions
     private static PyResult SetIntMaxStrDigitsImpl(PyCallContext context, PyArguments arguments)
     {
         if (arguments[0] is not PyIntObject maxdigits)
-            return PyResult.TypeError(PySR.Runtime_Number_Int_CannotInterpretedAsInt, arguments[0].PyType.FullName);
+            return PyResult.TypeError(PySR.Runtime_Number_Int_CannotInterpretedAsInt, arguments[0].PyType.QualName);
 
         if (!maxdigits.IsInt32)
             return PyResult.OverflowError(PySR.Runtime_Number_Int_MaxDigitsNotInt32);

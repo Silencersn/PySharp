@@ -37,7 +37,7 @@ public sealed partial class PyMethodDescriptorObjectType : PyTypeObject<PyMethod
             return self;
 
         if (!self._declaringType.IsInstance(instance))
-            return PyResult.TypeError(PySR.Runtime_Descriptor_ReceiveObjectOfWrongType, self._name, self._declaringType.FullName, instance.PyType.FullName);
+            return PyResult.TypeError(PySR.Runtime_Descriptor_ReceiveObjectOfWrongType, self._name, self._declaringType.QualName, instance.PyType.QualName);
 
         return PyBuiltinFunctionOrMethodObject.CreateBoundMethodFromUnbound(self._name, instance, instance.PyType, self._uncompoundedDelegate);
     }
@@ -45,10 +45,10 @@ public sealed partial class PyMethodDescriptorObjectType : PyTypeObject<PyMethod
     protected override PyResult Call(PyCallContext context, PyMethodDescriptorObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (args.Count is 0)
-            return PyResult.TypeError(PySR.Runtime_Descriptor_NeedsArg, self._name, self._declaringType.FullName);
+            return PyResult.TypeError(PySR.Runtime_Descriptor_NeedsArg, self._name, self._declaringType.QualName);
 
         if (!self._declaringType.IsInstance(args[0]))
-            return PyResult.TypeError(PySR.Runtime_Descriptor_ReceiveObjectOfWrongType, self._name, self._declaringType.FullName, args[0].PyType.FullName);
+            return PyResult.TypeError(PySR.Runtime_Descriptor_ReceiveObjectOfWrongType, self._name, self._declaringType.QualName, args[0].PyType.QualName);
 
         return self.UnboundMethod.Call(context, args, kwargs);
     }

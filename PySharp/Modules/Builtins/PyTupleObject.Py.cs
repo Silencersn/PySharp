@@ -19,7 +19,7 @@ partial class PyTupleObject
                 if (!reflected.IsNotImplemented)
                     return reflected;
             }
-            return PyResult.TypeError(PySR.Runtime_Tuple_AddNonTuple, other.PyType.FullName);
+            return PyResult.TypeError(PySR.Runtime_Tuple_AddNonTuple, other.PyType.QualName);
         }
 
         if (otherTuple.Count is 0)

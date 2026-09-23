@@ -16,15 +16,15 @@ internal sealed partial class PyGenericAliasObjectType : PyTypeObject<PyGenericA
 {
     protected override PyResult Repr(PyCallContext context, PyGenericAliasObject self)
     {
-        // Format each type arg similar to CPython's _Py_typing_type_repr:
-        // - PyTypeObject → use its Name (e.g. "int", "str")
-        // - other objects → use repr() (e.g. "'hello'", "True")
+        // CPython renders every class (origin and args alike) through
+        // _Py_typing_type_repr: module-qualified name for non-builtins
+        // modules, plain qualname for builtins, repr() for non-types.
         var argsReprs = new List<string>(self._args.Count);
         foreach (var arg in self._args)
         {
             if (arg is PyTypeObject argType)
             {
-                argsReprs.Add(argType.Name);
+                argsReprs.Add(argType.ReprName);
             }
             else
             {
@@ -35,10 +35,9 @@ internal sealed partial class PyGenericAliasObjectType : PyTypeObject<PyGenericA
             }
         }
 
-        // Origin name: use FullName (omits "builtins." prefix) for types, repr for others
         var originName = self._origin switch
         {
-            PyTypeObject t => t.FullName,
+            PyTypeObject t => t.ReprName,
             _ => PySpecialMethods.Repr(context, self._origin).Value is PyStrObject s ? s.Value : "?"
         };
 
@@ -88,7 +87,7 @@ internal sealed partial class PyGenericAliasObjectType : PyTypeObject<PyGenericA
         if (callFunc is not null)
             return callFunc(context, self._origin, args, kwargs);
 
-        return PyResult.TypeError(PySR.Format(PySR.Runtime_Type_CannotCreateInstance, self._origin.PyType.FullName));
+        return PyResult.TypeError(PySR.Format(PySR.Runtime_Type_CannotCreateInstance, self._origin.PyType.QualName));
     }
 
     /// <summary>
@@ -98,7 +97,7 @@ internal sealed partial class PyGenericAliasObjectType : PyTypeObject<PyGenericA
     protected override PyResult GetAttr(PyCallContext context, PyGenericAliasObject self, PyObject item)
     {
         if (item is not PyStrObject str)
-            return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, item.PyType.FullName);
+            return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, item.PyType.QualName);
 
         // First check our own attributes
         if (self.PyAttributes.TryGetValue(str.Value, out var ownAttr))
@@ -118,6 +117,6 @@ internal sealed partial class PyGenericAliasObjectType : PyTypeObject<PyGenericA
         if (getAttributeFunc is not null)
             return getAttributeFunc(context, self._origin, item);
 
-        return PyResult.AttributeError($"'{self.PyType.FullName}' object has no attribute '{str.Value}'");
+        return PyResult.AttributeError($"'{self.PyType.QualName}' object has no attribute '{str.Value}'");
     }
 }

@@ -32,7 +32,7 @@ public sealed partial class PyBaseExceptionGroupObjectType : PyExceptionType
                 if (type is PyExceptionGroupObjectType)
                     return PyResult.TypeError(PySR.Runtime_ExceptionGroup_NestBaseExceptionsForExceptionGroup);
 
-                return PyResult.TypeError(PySR.Runtime_ExceptionGroup_NestBaseExceptions, type.FullName);
+                return PyResult.TypeError(PySR.Runtime_ExceptionGroup_NestBaseExceptions, type.QualName);
             }
         }
 
@@ -282,7 +282,7 @@ public sealed partial class PyBaseExceptionGroupObjectType : PyExceptionType
 
         if (args[0] is not PyStrObject msg)
         {
-            err = PyResult.TypeError(PySR.Runtime_ExceptionGroup_NewGroup_MsgNonStr, exceptionGroupType.FullName, args[0].PyType.FullName);
+            err = PyResult.TypeError(PySR.Runtime_ExceptionGroup_NewGroup_MsgNonStr, exceptionGroupType.QualName, args[0].PyType.QualName);
             return false;
         }
 

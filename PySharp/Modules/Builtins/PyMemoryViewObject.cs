@@ -131,7 +131,7 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
 
         // Unsupported type
         return PyResult.TypeError("memoryview: a bytes-like object is required, not '{0}'",
-            obj.PyType.FullName);
+            obj.PyType.QualName);
     }
 
     // --- __new__ ---

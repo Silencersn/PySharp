@@ -144,16 +144,16 @@ internal static partial class BytecodeVirtualMachine
                         {
                             LoadSpecialMethods.Enter => new PyWrapperDescriptorObject(
                                 Stack[-1].PyType.Slots.Enter ??
-                                throw context.TypeError(PySR.Runtime_WithStmt_MissingEnter, Stack[-1].PyType.FullName)),
+                                throw context.TypeError(PySR.Runtime_WithStmt_MissingEnter, Stack[-1].PyType.QualName)),
                             LoadSpecialMethods.Exit => new PyWrapperDescriptorObject(
                                 Stack[-1].PyType.Slots.Exit ??
-                                throw context.TypeError(PySR.Runtime_WithStmt_MissingExit, Stack[-1].PyType.FullName)),
+                                throw context.TypeError(PySR.Runtime_WithStmt_MissingExit, Stack[-1].PyType.QualName)),
                             LoadSpecialMethods.AEnter => new PyWrapperDescriptorObject(
                                 Stack[-1].PyType.Slots.AEnter ??
-                                throw context.TypeError(PySR.Runtime_AsyncWith_MissingAEnter, Stack[-1].PyType.FullName)),
+                                throw context.TypeError(PySR.Runtime_AsyncWith_MissingAEnter, Stack[-1].PyType.QualName)),
                             LoadSpecialMethods.AExit => new PyWrapperDescriptorObject(
                                 Stack[-1].PyType.Slots.AExit ??
-                                throw context.TypeError(PySR.Runtime_AsyncWith_MissingAExit, Stack[-1].PyType.FullName)),
+                                throw context.TypeError(PySR.Runtime_AsyncWith_MissingAExit, Stack[-1].PyType.QualName)),
 
                             _ => throw new UnreachableException()
                         };
@@ -712,7 +712,7 @@ internal static partial class BytecodeVirtualMachine
                             var aiter = PySpecialMethods.AIter(context, Stack[-1]).PyUnwrap(context);
                             // CPython 3.14 validates that the result of __aiter__() has __anext__
                             if (aiter.PyType.Slots.ANext is null)
-                                throw context.TypeError(PySR.Runtime_AsyncFor_AIterReturnsNoANext, aiter.PyType.FullName);
+                                throw context.TypeError(PySR.Runtime_AsyncFor_AIterReturnsNoANext, aiter.PyType.QualName);
                             Stack[-1] = aiter;
                         }
                         break;
@@ -721,7 +721,7 @@ internal static partial class BytecodeVirtualMachine
                         {
                             // CPython GET_ANEXT: get __anext__ via slot, call it, wrap in awaitable
                             var aiter = Stack[-1];
-                            var slot = aiter.PyType.Slots.ANext ?? throw context.TypeError(PySR.Runtime_AsyncFor_MissingANext, aiter.PyType.FullName);
+                            var slot = aiter.PyType.Slots.ANext ?? throw context.TypeError(PySR.Runtime_AsyncFor_MissingANext, aiter.PyType.QualName);
                             var nextIter = slot(context, aiter).PyUnwrap(context);
                             if (!PyCoroutineObjectType.Shared.IsInstance(nextIter))
                                 nextIter = PySpecialMethods.Await(context, nextIter).PyUnwrap(context);

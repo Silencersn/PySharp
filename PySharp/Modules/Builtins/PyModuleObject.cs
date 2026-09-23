@@ -140,7 +140,7 @@ public sealed partial class PyModuleObjectType : PyTypeObject<PyModuleObject>
     protected override PyResult GetAttr(PyCallContext context, PyModuleObject self, PyObject item)
     {
         if (item is not PyStrObject str)
-            return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, item.PyType.FullName);
+            return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, item.PyType.QualName);
 
         // PEP 562: on a namespace miss, a module-level __getattr__ resolves
         // the attribute; its exceptions (AttributeError included) propagate

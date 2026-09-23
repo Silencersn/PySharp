@@ -97,7 +97,7 @@ public static class PyDelegateConverter
                 return PyResult.TypeError(PySR.Runtime_Descriptor_NeedsArg, name, ownerName);
 
             if (args[0] is not TObject selfOfT)
-                return PyResult.TypeError(PySR.Runtime_Descriptor_ReceiveObjectOfWrongType, name, ownerName, args[0].PyType.FullName);
+                return PyResult.TypeError(PySR.Runtime_Descriptor_ReceiveObjectOfWrongType, name, ownerName, args[0].PyType.QualName);
 
             def ??= PyArgsDef.FromDef(method.Parameters);
 
@@ -160,7 +160,7 @@ public static class PyDelegateConverter
                 return PyResult.TypeError(PySR.Runtime_Descriptor_NeedsArg, name, ownerName);
 
             if (args[0] is not TObject selfOfT)
-                return PyResult.TypeError(PySR.Runtime_Descriptor_ReceiveObjectOfWrongType, name, ownerName, args[0].PyType.FullName);
+                return PyResult.TypeError(PySR.Runtime_Descriptor_ReceiveObjectOfWrongType, name, ownerName, args[0].PyType.QualName);
 
             EnsureDefCache();
             Debug.Assert(defs is not null);

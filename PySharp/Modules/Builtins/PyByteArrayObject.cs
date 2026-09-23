@@ -195,7 +195,7 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
                 // CPython replaces a failed top-level conversion with its
                 // own message; item-level errors later on are untouched
                 if (PyTypeErrorObjectType.Shared.IsInstance(indexResult.Exception))
-                    return PyResult.TypeError(PySR.Runtime_ByteArray_CannotConvert, source.PyType.FullName);
+                    return PyResult.TypeError(PySR.Runtime_ByteArray_CannotConvert, source.PyType.QualName);
 
                 return indexResult;
             }
@@ -216,7 +216,7 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
         {
             // CPython replaces a failed GetIter with its own message
             if (PyTypeErrorObjectType.Shared.IsInstance(iterResult.Exception))
-                return PyResult.TypeError(PySR.Runtime_ByteArray_CannotConvert, source.PyType.FullName);
+                return PyResult.TypeError(PySR.Runtime_ByteArray_CannotConvert, source.PyType.QualName);
 
             return iterResult;
         }
@@ -333,7 +333,7 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
                 if (!reflected.IsNotImplemented)
                     return reflected;
             }
-            return PyResult.TypeError("can't concat {0} to bytearray", other.PyType.FullName);
+            return PyResult.TypeError("can't concat {0} to bytearray", other.PyType.QualName);
         }
 
         var result = new byte[self.Length + otherSpan.Length];
@@ -345,7 +345,7 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
     protected override PyResult IAdd(PyCallContext context, PyByteArrayObject self, PyObject other)
     {
         if (!TryGetSpan(other, out var otherSpan))
-            return PyResult.TypeError("can't concat {0} to bytearray", other.PyType.FullName);
+            return PyResult.TypeError("can't concat {0} to bytearray", other.PyType.QualName);
 
         self.AddRange(otherSpan.ToArray());
         return self;
@@ -436,7 +436,7 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
 
     protected override PyResult Hash(PyCallContext context, PyByteArrayObject self)
     {
-        return PyResult.TypeError(PySR.Runtime_Object_Unhashable, self.PyType.FullName);
+        return PyResult.TypeError(PySR.Runtime_Object_Unhashable, self.PyType.QualName);
     }
 
     // bytearray_contains mirrors bytes_contains: a bytes-like operand is
@@ -459,7 +459,7 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
             return PyBoolObject.FromBoolean(self.AsSpan().Contains((byte)value));
         }
 
-        return PyResult.TypeError(PySR.Runtime_Bytes_BytesLikeRequired, item.PyType.FullName);
+        return PyResult.TypeError(PySR.Runtime_Bytes_BytesLikeRequired, item.PyType.QualName);
     }
 
     [PyMethod("append")]

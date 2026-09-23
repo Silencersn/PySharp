@@ -50,7 +50,7 @@ public sealed partial class PyBaseExceptionObjectType : PyExceptionType
     protected override PyResult Repr(PyCallContext context, PyExceptionObject self)
     {
         var builder = new StringBuilder();
-        builder.Append(self.PyType.FullName);
+        builder.Append(self.PyType.QualName);
         builder.Append('(');
 
         for (int i = 0; i < self.Args.Count; i++)

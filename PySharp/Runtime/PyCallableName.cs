@@ -26,7 +26,7 @@ internal static class PyCallableName
 
             case PyBuiltinFunctionOrMethodObject builtin:
                 qualname = builtin.IsMethod && builtin.SelfType is not null
-                    ? $"{builtin.SelfType.FullName}.{builtin.Name}"
+                    ? $"{builtin.SelfType.QualName}.{builtin.Name}"
                     : builtin.Name;
                 break;
 
@@ -38,7 +38,7 @@ internal static class PyCallableName
             default:
                 // no __qualname__ anywhere: CPython falls back to str(x)
                 var str = PySpecialMethods.Str(context, callable);
-                return str.IsSuccessful ? str.Value.Value : callable.PyType.FullName;
+                return str.IsSuccessful ? str.Value.Value : callable.PyType.QualName;
         }
 
         if (module is null or "builtins")

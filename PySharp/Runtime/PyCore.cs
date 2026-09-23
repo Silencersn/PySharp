@@ -122,7 +122,7 @@ internal static class PyCore
         var basesTuple = PyTupleObject.CreateTuple(bases);
         var args = PyTupleObject.CreateTuple([nameStr, basesTuple, ns]);
 
-        var newFunc = metaClass.Slots.New ?? throw context.PySharpException("metaclass {0} has no __new__ slot", metaClass.FullName);
+        var newFunc = metaClass.Slots.New ?? throw context.PySharpException("metaclass {0} has no __new__ slot", metaClass.QualName);
         var obj = newFunc(context, metaClass, args, kwargs).PyUnwrap(context);
         if (!metaClass.IsInstance(obj))
             return obj;
@@ -401,15 +401,15 @@ internal static class PyCore
     {
         var splitResult = exception.CallMethod(context, "split", [type]).PyUnwrap(context);
         if (splitResult is not PyTupleObject tuple)
-            throw context.TypeError(PySR.Runtime_TryStmt_SplitReturnsNonTuple, exception.PyType.FullName, splitResult.PyType.FullName);
+            throw context.TypeError(PySR.Runtime_TryStmt_SplitReturnsNonTuple, exception.PyType.QualName, splitResult.PyType.QualName);
 
         if (tuple.Count is not 2)
-            throw context.TypeError(PySR.Runtime_TryStmt_SplitReturnsTupleWithWrongSize, exception.PyType.FullName, tuple.Count);
+            throw context.TypeError(PySR.Runtime_TryStmt_SplitReturnsTupleWithWrongSize, exception.PyType.QualName, tuple.Count);
 
         var match = tuple[0];
         var restObj = tuple[1];
         var rest = restObj is PyNoneObject ? null : (restObj as PyExceptionObject) ??
-            throw context.TypeError(PySR.Runtime_TryStmt_ExpectedExceptionOrNone, tuple[1].PyType.FullName);
+            throw context.TypeError(PySR.Runtime_TryStmt_ExpectedExceptionOrNone, tuple[1].PyType.QualName);
 
         return (rest, match);
     }
@@ -627,7 +627,7 @@ internal static class PyCore
         if (name is PySpecialNames.Dict)
         {
             if (self.IsImmutable)
-                return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.FullName, name);
+                return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.QualName, name);
 
             return self.PyAttributes.Self;
         }
@@ -664,6 +664,6 @@ internal static class PyCore
         if (getAttrFunc is not null)
             return getAttrFunc(context, self, context.PyEnvironment.InternPool.Intern(name));
 
-        return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.FullName, name);
+        return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.QualName, name);
     }
 }

@@ -40,7 +40,7 @@ partial class InternalPyTypeObjectGenerator
                         .EnterBlock()
                         .AppendLine($"if (self is not TObject selfOfT)")
                         .Indent()
-                        .AppendLine($"return PyResult.TypeError(PySR.Runtime_Type_MethodReceiveSelfWithWrongType, PySpecialNames.{method.Name}, FullName, self.PyType.FullName);")
+                        .AppendLine($"return PyResult.TypeError(PySR.Runtime_Type_MethodReceiveSelfWithWrongType, PySpecialNames.{method.Name}, QualName, self.PyType.QualName);")
                         .Dedent()
                         .AppendLine($"return {method.Name}({parametersCall});")
                         .ExitBlock()

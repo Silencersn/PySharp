@@ -64,7 +64,7 @@ public static partial class PySiteFunctions
 
     private static PyResult PrintHelp(PyCallContext context, PyObject obj)
     {
-        var heading = obj.PyType.FullName;
+        var heading = obj.PyType.QualName;
         if (obj.PyAttributes.TryGetValue(PySpecialNames.Name, out var nameObj) && nameObj is PyStrObject nameStr)
             heading += $" {nameStr.Value}";
         context.Out.WriteLine($"Help on {heading}:");

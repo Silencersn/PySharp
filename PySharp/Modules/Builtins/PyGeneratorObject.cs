@@ -108,7 +108,7 @@ public abstract class PyGeneratorObject : PyObject, IPyObjectName
     private static PyResult ThrowArgTypeError(PyObject typeArg, out PyExceptionObject exc)
     {
         exc = default!;
-        return PyResult.TypeError(PySR.Runtime_Exception_NonException, typeArg.PyType.FullName);
+        return PyResult.TypeError(PySR.Runtime_Exception_NonException, typeArg.PyType.QualName);
     }
 }
 

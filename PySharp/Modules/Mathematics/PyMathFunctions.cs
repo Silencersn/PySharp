@@ -267,7 +267,7 @@ internal static partial class PyMathFunctions
                     return indexResult;
                 return indexResult.Value;
             }
-            return PyResult.TypeError(PySR.Runtime_Math_MustBeReal, arg.PyType.FullName);
+            return PyResult.TypeError(PySR.Runtime_Math_MustBeReal, arg.PyType.QualName);
         }
         var x = xResult.Value.Value;
         return PyFloatObjectType.ToRoundInt(isCeil ? Math.Ceiling(x) : Math.Floor(x));

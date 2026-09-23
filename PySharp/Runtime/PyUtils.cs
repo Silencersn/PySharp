@@ -68,7 +68,7 @@ internal static class PyUtils
         if (result.Value is PyNotImplementedObject)
             return PyIntObject.FromInteger(fallback);
         if (result.Value is not PyIntObject hintValue) // bool is a PyIntObject
-            return PyResult.TypeError(PySR.Runtime_Sequence_LengthHintNotInteger, result.Value.PyType.FullName);
+            return PyResult.TypeError(PySR.Runtime_Sequence_LengthHintNotInteger, result.Value.PyType.QualName);
         if (hintValue.Value < 0)
             return PyResult.ValueError(PySR.Runtime_Sequence_LengthHintNegative);
         if (hintValue.Value > long.MaxValue)

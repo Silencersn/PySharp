@@ -21,16 +21,22 @@ public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
 
     protected abstract string DefaultName { get; }
     public string Name { get; internal set; }
-    public string FullName
+
+    // The display rule shared by object_repr, type_repr and GenericAlias
+    // rendering (Objects/typeobject.c:6924 and 2303, Objects/typevarobject.c:262):
+    // a type whose __module__ is a string other than "builtins" shows as
+    // "module.qualname" (__main__ included), anything else falls back to the
+    // plain tp_name.
+    public string ReprName
     {
         get
         {
-            var moduleName = Module;
-            if (moduleName is null or PySpecialNames.Main or "builtins")
-                return QualName;
-            return $"{moduleName}.{QualName}";
+            if (ModuleAsObject is PyStrObject { Value: var module } && module is not "builtins")
+                return $"{module}.{QualName}";
+            return Name;
         }
     }
+
     protected virtual string DefaultQualName => DefaultName;
     public string QualName { get; internal set; }
 

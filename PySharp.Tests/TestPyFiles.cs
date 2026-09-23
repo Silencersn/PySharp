@@ -4439,4 +4439,20 @@ public sealed class TestPyFiles
         StringAssert.Contains(text, "Exception in thread");
         StringAssert.Contains(text, "ValueError: kaboom");
     }
+
+    [TestMethod]
+    public void TestReprModuleNameRegression()
+    {
+        // Regression: the default instance and class reprs used to drop the
+        // __main__ module qualifier (<T object ...> / <class 'T'>) because
+        // the old FullName helper special-cased it away, and function reprs
+        // rendered __name__ instead of __qualname__ (<function s at ...>
+        // instead of <function C.s at ...>). The corpus pins the CPython
+        // rule — "module.qualname" for non-builtins modules, bare name for
+        // builtins, qualname without module for functions — including the
+        // nested <locals> paths, bound methods, GenericAlias rendering and
+        // the callable-name prefix of keyword-collision errors.
+        var module = RunModule("test_repr_module_name_regression.py");
+        Assert.IsNotNull(module);
+    }
 }

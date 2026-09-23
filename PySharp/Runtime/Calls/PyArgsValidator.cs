@@ -64,13 +64,13 @@ public static class PyArgsValidator
     public static PyResult ValidateNewCls(PyTypeObject self, PyTypeObject cls)
     {
         if (!cls.IsSubclassOf(self))
-            return PyResult.TypeError(PySR.Runtime_Type_NewClsNotSubtype, self.FullName, cls.FullName);
+            return PyResult.TypeError(PySR.Runtime_Type_NewClsNotSubtype, self.QualName, cls.QualName);
 
         if (self.LayoutType != typeof(PyObject) || cls.LayoutType != typeof(PyObjectManagedDict))
         {
             if (cls.LayoutType.IsSubclassOf(self.LayoutType)
                 && !ReferenceEquals(cls.Slots.New, self.Slots.New))
-                return PyResult.TypeError(PySR.Runtime_Type_NewClsNotSafe, self.FullName, cls.FullName);
+                return PyResult.TypeError(PySR.Runtime_Type_NewClsNotSafe, self.QualName, cls.QualName);
         }
 
         return PyNoneObject.None;

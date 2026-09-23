@@ -185,7 +185,7 @@ public static class PyOperators
         }
 
         if (result.IsNotImplemented)
-            return PyResult.TypeError(OperatorTypeErrorName(op), OperatorErrorToString(op, inPlace), left.PyType.FullName, right.PyType.FullName);
+            return PyResult.TypeError(OperatorTypeErrorName(op), OperatorErrorToString(op, inPlace), left.PyType.QualName, right.PyType.QualName);
 
         return result;
     }
@@ -254,7 +254,7 @@ public static class PyOperators
         }
 
         if (result.IsNotImplemented)
-            return PyResult.TypeError(OperatorTypeErrorName(op), OperatorErrorToString(op, inPlace), left.PyType.FullName, right.PyType.FullName);
+            return PyResult.TypeError(OperatorTypeErrorName(op), OperatorErrorToString(op, inPlace), left.PyType.QualName, right.PyType.QualName);
 
         return result;
     }
@@ -561,7 +561,7 @@ public static class PyOperators
         if (func is not null)
             return func(context, value);
 
-        return PyResult.TypeError(PySR.Runtime_Operator_UnsupportedForUnary, op, value.PyType.FullName);
+        return PyResult.TypeError(PySR.Runtime_Operator_UnsupportedForUnary, op, value.PyType.QualName);
     }
 
     public static PyResult Invert(PyCallContext context, PyObject value)

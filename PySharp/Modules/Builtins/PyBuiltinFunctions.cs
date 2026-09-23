@@ -175,11 +175,11 @@ public static partial class PyBuiltinFunctions
     {
         var sepObj = arguments.GetKwargByIndex(0);
         if (!PyUtils.TryGetValue(sepObj, (PyStrObject str) => str.Value, " ", out var sep))
-            return PyResult.TypeError(PySR.Runtime_Builtin_Print_WrongArgType, "sep", sepObj.PyType.FullName);
+            return PyResult.TypeError(PySR.Runtime_Builtin_Print_WrongArgType, "sep", sepObj.PyType.QualName);
 
         var endObj = arguments.GetKwargByIndex(1);
         if (!PyUtils.TryGetValue(endObj, (PyStrObject str) => str.Value, "\n", out var end))
-            return PyResult.TypeError(PySR.Runtime_Builtin_Print_WrongArgType, "end", endObj.PyType.FullName);
+            return PyResult.TypeError(PySR.Runtime_Builtin_Print_WrongArgType, "end", endObj.PyType.QualName);
 
         var fileObj = arguments.GetKwargByIndex(2);
 
@@ -415,7 +415,7 @@ public static partial class PyBuiltinFunctions
         var obj = arguments[0];
         var slot = obj.PyType.Slots.AIter;
         if (slot is null)
-            return PyResult.TypeError(PySR.Runtime_Builtin_Aiter_NotAsyncIterable, obj.PyType.FullName);
+            return PyResult.TypeError(PySR.Runtime_Builtin_Aiter_NotAsyncIterable, obj.PyType.QualName);
         return slot(context, obj);
     }
 
@@ -425,7 +425,7 @@ public static partial class PyBuiltinFunctions
         var obj = arguments[0];
         var slot = obj.PyType.Slots.ANext;
         if (slot is null)
-            return PyResult.TypeError(PySR.Runtime_Builtin_ANext_NotAsyncIterator, obj.PyType.FullName);
+            return PyResult.TypeError(PySR.Runtime_Builtin_ANext_NotAsyncIterator, obj.PyType.QualName);
         return slot(context, obj);
     }
 
@@ -1283,13 +1283,13 @@ public static partial class PyBuiltinFunctions
         if (arguments[1] is PyStrObject filename)
             filenameStr = filename.Value;
         else
-            return PyResult.TypeError(PySR.Runtime_Builtin_Compile_FilenameWrongType, arguments[1].PyType.FullName);
+            return PyResult.TypeError(PySR.Runtime_Builtin_Compile_FilenameWrongType, arguments[1].PyType.QualName);
 
         string modeStr;
         if (arguments[2] is PyStrObject mode)
             modeStr = mode.Value;
         else
-            return PyResult.TypeError(PySR.Runtime_Builtin_Compile_ModeWrongType, arguments[2].PyType.FullName);
+            return PyResult.TypeError(PySR.Runtime_Builtin_Compile_ModeWrongType, arguments[2].PyType.QualName);
 
         var codeObject = modeStr switch
         {
@@ -1364,13 +1364,13 @@ public static partial class PyBuiltinFunctions
         if (fileObj is PyStrObject pathStr)
             path = pathStr.Value;
         else
-            return PyResult.TypeError(PySR.Runtime_Builtin_Open_Arg1Type, fileObj.PyType.FullName);
+            return PyResult.TypeError(PySR.Runtime_Builtin_Open_Arg1Type, fileObj.PyType.QualName);
 
         string mode;
         if (modeObj is PyStrObject modeStr)
             mode = modeStr.Value;
         else
-            return PyResult.TypeError(PySR.Runtime_Builtin_Open_Arg2Type, modeObj.PyType.FullName);
+            return PyResult.TypeError(PySR.Runtime_Builtin_Open_Arg2Type, modeObj.PyType.QualName);
 
         // Parse mode string
         const string ValidModeChars = "rwaxbt+";

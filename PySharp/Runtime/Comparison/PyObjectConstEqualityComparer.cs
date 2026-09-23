@@ -57,7 +57,7 @@ internal sealed class PyObjectConstEqualityComparer : IEqualityComparer<PyObject
             PyTupleObject t => GetTupleHash(t),
             PyNoneObject or PyEllipsisObject or PyCodeObject or PyTypeObject
                 => RuntimeHelpers.GetHashCode(obj),
-            _ => throw new NotSupportedException($"{obj.PyType.FullName} is not a supported constant type."),
+            _ => throw new NotSupportedException($"{obj.PyType.QualName} is not a supported constant type."),
         };
     }
 

@@ -99,7 +99,7 @@ public sealed partial class PySuperObjectType : PyTypeObject<PySuperObject>
             return PyResult.RuntimeError(PySR.Runtime_Super_ClassCellEmpty);
 
         if (cell.Value is not PyTypeObject type)
-            return PyResult.RuntimeError(PySR.Format(PySR.Runtime_Super_ClassNonType, cell.Value.PyType.FullName));
+            return PyResult.RuntimeError(PySR.Format(PySR.Runtime_Super_ClassNonType, cell.Value.PyType.QualName));
 
         return PySuperObject.CreateSuper(type, objectOrType);
     }
@@ -125,7 +125,7 @@ public sealed partial class PySuperObjectType : PyTypeObject<PySuperObject>
     protected override PyResult GetAttribute(PyCallContext context, PySuperObject self, PyObject item)
     {
         if (item is not PyStrObject str)
-            return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, item.PyType.FullName);
+            return PyResult.TypeError(PySR.Runtime_Object_AttributeMustBeString, item.PyType.QualName);
 
         PyTypeObject startType = self._type.IsInstance(self._object) ? self._object.PyType : (PyTypeObject)self._object;
         var iter = startType.MRO.GetEnumerator();

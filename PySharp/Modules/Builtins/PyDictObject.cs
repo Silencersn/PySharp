@@ -371,7 +371,7 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
             return result;
 
         if (result.Value is not PyDictObject dict)
-            return PyResult.TypeError($"'{cls.FullName}' is not a dict type");
+            return PyResult.TypeError($"'{cls.QualName}' is not a dict type");
 
         var val = value ?? PyNoneObject.None;
         var iterResult = PySpecialMethods.Iter(context, iterable);
