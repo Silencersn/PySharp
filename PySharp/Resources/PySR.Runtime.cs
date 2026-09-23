@@ -273,6 +273,8 @@ partial class PySR
     public const string Runtime_File_InvalidWhence = "invalid whence ({0}, should be 0, 1 or 2)";
     public const string Runtime_File_WhenceUnsupported = "whence value {0} unsupported";
     public const string Runtime_File_NegativeSeekPosition = "negative seek position {0}";
+    public const string Runtime_File_CurRelativeSeekUnsupported = "can't do nonzero cur-relative seeks";
+    public const string Runtime_File_EndRelativeSeekUnsupported = "can't do nonzero end-relative seeks";
     public const string Runtime_File_CannotFitOffset = "cannot fit 'int' into an offset-sized integer";
     public const string Runtime_Str_PctFormatRealNumberRequired = "%{0} format: a real number is required, not {1}";
     public const string Runtime_Str_PctFormatIntegerRequired = "%{0} format: an integer is required, not {1}";

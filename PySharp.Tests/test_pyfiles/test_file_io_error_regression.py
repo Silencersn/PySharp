@@ -39,8 +39,17 @@ except ValueError as ex:
 else:
     raise AssertionError("seek(0, 9) must raise ValueError")
 assert f.seek(2, 0) == 2
-assert f.seek(1, 1) == 3
-assert f.seek(-1, 1) == 2
+# text mode rejects nonzero cur-relative seeks with _io.UnsupportedOperation
+# (subclass of OSError and ValueError; not importable until an io module
+# exists, so the type is identified by name)
+for offset in (1, -1):
+    try:
+        f.seek(offset, 1)
+    except OSError as ex:
+        assert type(ex).__name__ == "UnsupportedOperation", type(ex).__name__
+        assert str(ex) == "can't do nonzero cur-relative seeks", str(ex)
+    else:
+        raise AssertionError("nonzero cur-relative seek must raise UnsupportedOperation")
 f.close()
 
 # 231: r+ full lifecycle

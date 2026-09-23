@@ -1,3 +1,4 @@
+using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Environments;
@@ -5,7 +6,7 @@ using PySharp.Runtime.PyAttributes;
 using System.Diagnostics;
 using System.Numerics;
 using System.Text;
-namespace PySharp.Modules.Builtins;
+namespace PySharp.Modules.IO;
 
 /// <summary>
 /// Python file object returned by open().
@@ -216,9 +217,14 @@ public sealed class PyFileObject : PyObject, IDisposable
         {
             if (whence is not 0 and not 1 and not 2)
                 return PyResult.ValueError(PySR.Runtime_File_InvalidWhence, whence);
-            // only SEEK_SET can reach a negative position; the cur/end
-            // relative forms reject nonzero offsets before this point in
-            // CPython and stay supported here
+            // TextIOWrapper accepts only zero-offset cur/end-relative seeks:
+            // nonzero forms raise io.UnsupportedOperation instead of reaching
+            // the underlying stream (Modules/_io/textio.c), seek(0, 1)
+            // resyncs to the current position and seek(0, 2) jumps to EOF.
+            if (whence is 1 && offset is not 0)
+                return PyResult.RaiseException(PyUnsupportedOperationObjectType.Shared, PySR.Runtime_File_CurRelativeSeekUnsupported);
+            if (whence is 2 && offset is not 0)
+                return PyResult.RaiseException(PyUnsupportedOperationObjectType.Shared, PySR.Runtime_File_EndRelativeSeekUnsupported);
             if (whence is 0 && offset < 0)
                 return PyResult.ValueError(PySR.Runtime_File_NegativeSeekPosition, offset);
         }
@@ -305,7 +311,9 @@ public sealed class PyFileObject : PyObject, IDisposable
 }
 
 [AIGenerated]
-[PyType("_io.FileObject")]
+// module position "_io" like CPython's io stack types (the qual name stays
+// bare; FullName composes it as "_io.FileObject" from the module)
+[PyType("FileObject", Module = "_io")]
 public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
 {
     protected override PyResult Repr(PyCallContext context, PyFileObject self)

@@ -1,7 +1,9 @@
 # file.seek()/tell(): whence and offset validation follows the CPython
 # io stack - the buffered layer rejects unknown whence values with
 # "whence value N unsupported" before the closed check, the text layer
-# reports "invalid whence (N, should be 0, 1 or 2)" after it; offsets
+# reports "invalid whence (N, should be 0, 1 or 2)" after it; the text
+# layer rejects nonzero cur/end-relative seeks with _io.UnsupportedOperation
+# (a subclass of both OSError and ValueError); offsets
 # go through __index__, out-of-range offsets fail the off_t conversion
 # (ValueError buffered, OSError EINVAL via the OS in text mode), and a
 # seek target before the start of the file is OSError errno 22 instead
@@ -16,13 +18,33 @@ def expect(exc_type, msg, fn):
         return
     raise AssertionError("expected " + exc_type.__name__)
 
+# UnsupportedOperation is not importable until PySharp grows an io
+# module, so the type is identified by name through its OSError base
+def expect_unsupported(msg, fn):
+    try:
+        fn()
+    except OSError as e:
+        assert type(e).__name__ == "UnsupportedOperation", type(e).__name__
+        assert str(e) == msg, str(e)
+        return
+    raise AssertionError("expected UnsupportedOperation")
+
 # normal operation, both layers
 t = open("seek_probe.txt")
 assert t.seek(3) == 3
 assert t.tell() == 3
 assert t.seek(0, 2) == 5
-assert t.seek(-2, 1) == 3
+assert t.seek(0, 1) == 5
 t.close()
+
+# text mode rejects nonzero cur/end-relative seeks (zero offsets stay
+# supported: seek(0, 1) resyncs, seek(0, 2) jumps to EOF)
+expect_unsupported("can't do nonzero cur-relative seeks",
+                   lambda: open("seek_probe.txt").seek(1, 1))
+expect_unsupported("can't do nonzero cur-relative seeks",
+                   lambda: open("seek_probe.txt").seek(-2, 1))
+expect_unsupported("can't do nonzero end-relative seeks",
+                   lambda: open("seek_probe.txt").seek(1, 2))
 
 b = open("seek_probe.txt", "rb")
 assert b.seek(3) == 3
