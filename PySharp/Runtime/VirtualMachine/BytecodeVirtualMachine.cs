@@ -172,12 +172,12 @@ internal static partial class BytecodeVirtualMachine
                         break;
 
                     case OpCode.LoadName:
-                        value = frame.Variables.LoadName(names[instructionArg]).PyUnwrap(context);
+                        value = frame.Variables.LoadName(context, names[instructionArg]).PyUnwrap(context);
                         Stack.Push(value);
                         break;
 
                     case OpCode.LoadGlobal:
-                        value = frame.Variables.LoadGlobal(names[instructionArg]).PyUnwrap(context);
+                        value = frame.Variables.LoadGlobal(context, names[instructionArg]).PyUnwrap(context);
                         Stack.Push(value);
                         break;
 

@@ -231,13 +231,38 @@ internal sealed class PyVariables
         return false;
     }
 
-    private bool TryLoadFromBuiltins(string name, [NotNullWhen(true)] out PyObject? value)
+    // CPython: the __builtins__ entry is the frame's builtins mapping, used
+    // as-is — a module acts as its namespace (unwrapped at frame creation by
+    // _PyDict_LoadBuiltinsFromGlobals), an exact dict is searched by content,
+    // anything else subscriptable goes through the generic item protocol
+    // where KeyError means the name is absent, and a non-subscriptable value
+    // (e.g. None) fails with TypeError at lookup time — lazily, and not as
+    // NameError (_PyEval_LoadName / _PyEval_LoadGlobalStackRef slow path).
+    // Returns the found value, a failing result to propagate, or null on miss.
+    private PyResult? LoadFromBuiltins(PyCallContext context, string name)
     {
-        value = null;
         if (!Globals.TryGetValue(PySpecialNames.Builtins, out var builtins))
-            return false;
+            return null;
 
-        return builtins.PyAttributes.TryGetValue(name, out value);
+        if (builtins is PyModuleObject module)
+        {
+            if (module.PyAttributes.TryGetValue(name, out var moduleValue))
+                return moduleValue;
+            return null;
+        }
+
+        if (builtins is PyDictObject dict && ReferenceEquals(dict.PyType, PyDictObjectType.Shared))
+        {
+            if (dict.TryGetValue(name, out var dictValue))
+                return dictValue;
+            return null;
+        }
+
+        var item = PySpecialMethods.GetItem(context, builtins, PyStrObject.FromString(name));
+        if (item.IsError && item.IsKeyError)
+            return null;
+
+        return item;
     }
 
     internal List<PyObject> GetDir()
@@ -376,24 +401,25 @@ internal sealed class PyVariables
         return cell.Value;
     }
 
-    public PyResult LoadGlobal(string name)
+    public PyResult LoadGlobal(PyCallContext context, string name)
     {
         if (Globals.TryGetValue(name, out var value))
             return value;
 
-        if (TryLoadFromBuiltins(name, out value))
-            return value;
+        var builtins = LoadFromBuiltins(context, name);
+        if (builtins.HasValue)
+            return builtins.Value;
 
         return PyResult.NameError(PySR.Runtime_Variable_NameNotDefined, name);
     }
 
-    public PyResult LoadName(string name)
+    public PyResult LoadName(PyCallContext context, string name)
     {
         if (!HasLocals)
-            return LoadGlobal(name);
+            return LoadGlobal(context, name);
 
         if (!TryLoadFromLocals(name, out var value))
-            return LoadGlobal(name);
+            return LoadGlobal(context, name);
 
         if (value is null)
             return PyResult.UnboundLocalError(PySR.Runtime_Variable_UnboundLocalError, name);
