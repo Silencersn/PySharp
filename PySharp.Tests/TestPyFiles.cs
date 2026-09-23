@@ -1327,6 +1327,24 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestImportCycleRegression()
+    {
+        // Regression: a module body ran before its module object was
+        // registered, so an import resolving back to the module being
+        // initialized reentered the body until RecursionError — a package
+        // could not do `from . import sub` in its own __init__, two modules
+        // could not import each other, and an unsatisfiable circular
+        // from-import surfaced as RecursionError instead of ImportError. The
+        // corpus pins CPython's rule (importlib._bootstrap._load_unlocked
+        // registers the module before exec_module and drops the entry again if
+        // the body raises): the in-progress module is visible to the imports
+        // its own body performs, and the next import retries a body that
+        // failed.
+        var module = RunModule("test_import_cycle_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestGenericClass()
     {
         var module = RunModule("test_generic_class.py");
