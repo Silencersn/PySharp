@@ -107,10 +107,26 @@ partial class Emitter
 
     private void EmitAnnAssign(AnnAssignNode node)
     {
-        // Store annotations as original source strings for simple names in class/module scope.
-        // Non-simple targets (self.x: int, x[i]: int) and function scope are skipped
-        // (matching CPython behavior; function annotations deferred to Phase 2).
-        if (node.Simple && VariableScope is RootVariableScope or ClassVariableScope)
+        // PEP 649 defers class-body annotations to the __annotate__ code
+        // object the class body builds; this statement only records that an
+        // annotation site inside control flow was reached (sites at the top
+        // level of the body always apply).
+        if (node.Simple && VariableScope is ClassVariableScope)
+        {
+            if (_classAnnotationIndexes is not null &&
+                _classAnnotationIndexes.TryGetValue(node, out var index))
+            {
+                Builder.Emit(OpCode.LoadName, PySpecialNames.ConditionalAnnotations);
+                Builder.Emit(OpCode.LoadConst, PyIntObject.FromInteger(index));
+                Builder.Emit(OpCode.SetAdd, 1);
+                Builder.Emit(OpCode.PopTop);
+            }
+        }
+        // Module-scope annotations are still recorded as source text.
+        // Non-simple targets (self.x: int, x[i]: int) and function scope are
+        // skipped (matching CPython behavior; function annotations deferred
+        // to Phase 2).
+        else if (node.Simple && VariableScope is RootVariableScope)
         {
             // Extract original source text of the annotation expression using its source span
             var span = node.Annotation.MetaInfo.Range;
@@ -815,6 +831,15 @@ partial class Emitter
 
     private PyCodeObject MakeClassDefBodyCoObj(ClassVariableScope classScope, ClassDefNode node)
     {
+        // PEP 649 splits a class body in two code objects: the body itself,
+        // where an annotation site only records that it ran, and the
+        // __annotate__ code object that evaluates the annotations once
+        // __annotations__ is first read.
+        var annotationSites = CollectClassAnnotations(node.Body, out var conditionalCount);
+        var annotateCodeObj = annotationSites.Count > 0 ?
+            MakeAnnotateBodyCoObj(classScope, annotationSites) :
+            null;
+
         using var sub = new EmitterSubScope(this, classScope);
 
         if (classScope.ClassCaptured)
@@ -842,6 +867,12 @@ partial class Emitter
             StoreName(PySpecialNames.Doc);
         }
 
+        if (conditionalCount > 0)
+        {
+            Builder.Emit(OpCode.BuildSet, 0);
+            StoreName(PySpecialNames.ConditionalAnnotations);
+        }
+
         int typeParamCount = node.TypeParams.Length;
         if (typeParamCount > 0)
         {
@@ -851,8 +882,151 @@ partial class Emitter
             StoreName(PySpecialNames.TypeParams);
         }
 
+        var savedAnnotationIndexes = _classAnnotationIndexes;
+        _classAnnotationIndexes = BuildConditionalAnnotationIndexes(annotationSites);
         EmitStmts(node.Body);
+        _classAnnotationIndexes = savedAnnotationIndexes;
 
+        if (annotateCodeObj is not null)
+        {
+            Builder.Emit(OpCode.LoadConst, annotateCodeObj);
+            if (conditionalCount > 0)
+                Builder.Emit(OpCode.LoadName, PySpecialNames.ConditionalAnnotations);
+            else
+                Builder.Emit(OpCode.PushNull);
+            Builder.Emit(OpCode.BuildTuple, 2);
+            Builder.Emit(OpCode.CallIntrinsic1, IntrinsicFunctionType.MakeAnnotateFunc);
+            StoreName(PySpecialNames.AnnotateFunc);
+
+            // the annotate function holds the set; the class namespace keeps
+            // only the function, like CPython's class dict
+            if (conditionalCount > 0)
+                Builder.Emit(OpCode.DeleteName, PySpecialNames.ConditionalAnnotations);
+        }
+
+        return new PyCodeObject(_source.Name, classScope, Builder.ToBytecode());
+    }
+
+    // PEP 649: annotation sites at the top level of a class body always land
+    // in __annotations__; sites inside control flow land there only when the
+    // class body reached them, which the body records by index.
+    private static List<(AnnAssignNode Node, int? Index)> CollectClassAnnotations(
+        ImmutableArray<AstStmtNode> body, out int conditionalCount)
+    {
+        var sites = new List<(AnnAssignNode, int?)>();
+        var nextConditionalIndex = 0;
+
+        Collect(body, isConditional: false);
+        conditionalCount = nextConditionalIndex;
+        return sites;
+
+        void Collect(ImmutableArray<AstStmtNode> stmts, bool isConditional)
+        {
+            foreach (var stmt in stmts)
+            {
+                switch (stmt)
+                {
+                    // non-simple targets (self.x: int, x[i]: int) are dropped
+                    case AnnAssignNode { Simple: true } ann:
+                        sites.Add((ann, isConditional ? nextConditionalIndex++ : null));
+                        break;
+
+                    case IfNode n:
+                        Collect(n.Body, true);
+                        Collect(n.OrElse, true);
+                        break;
+
+                    case WhileNode n:
+                        Collect(n.Body, true);
+                        Collect(n.OrElse, true);
+                        break;
+
+                    case ForNode n:
+                        Collect(n.Body, true);
+                        Collect(n.OrElse, true);
+                        break;
+
+                    case AsyncForNode n:
+                        Collect(n.Body, true);
+                        Collect(n.OrElse, true);
+                        break;
+
+                    case WithNode n:
+                        Collect(n.Body, true);
+                        break;
+
+                    case AsyncWithNode n:
+                        Collect(n.Body, true);
+                        break;
+
+                    case ITryNode n:
+                        Collect(n.Body, true);
+                        foreach (var handler in n.Exceptors)
+                            Collect(handler.Body, true);
+                        Collect(n.OrElse, true);
+                        Collect(n.FinalBody, true);
+                        break;
+
+                    case MatchNode n:
+                        foreach (var caseNode in n.Cases)
+                            Collect(caseNode.Body, true);
+                        break;
+
+                    // nested functions and classes own their annotations
+                }
+            }
+        }
+    }
+
+    private static Dictionary<AnnAssignNode, int>? BuildConditionalAnnotationIndexes(
+        List<(AnnAssignNode Node, int? Index)> sites)
+    {
+        Dictionary<AnnAssignNode, int>? indexes = null;
+
+        foreach (var (node, index) in sites)
+        {
+            if (index is null)
+                continue;
+            indexes ??= [];
+            indexes[node] = index.Value;
+        }
+
+        return indexes;
+    }
+
+    // The __annotate__ code object: one evaluation per annotation site, in
+    // source order, against the class namespace the evaluator seeds as its
+    // locals (see PyCore.EvaluateClassAnnotations). Sites inside control flow
+    // check the index set first.
+    private PyCodeObject MakeAnnotateBodyCoObj(
+        ClassVariableScope classScope, List<(AnnAssignNode Node, int? Index)> sites)
+    {
+        using var sub = new EmitterSubScope(this, classScope);
+
+        foreach (var (annNode, index) in sites)
+        {
+            Label? skipLabel = null;
+            if (index is not null)
+            {
+                Builder.Emit(OpCode.LoadConst, PyIntObject.FromInteger(index.Value));
+                Builder.Emit(OpCode.LoadName, PySpecialNames.ConditionalAnnotations);
+                Builder.Emit(OpCode.ContainsOp, 0);
+                skipLabel = Builder.DefineLabel();
+                Builder.PopJumpIfFalse(skipLabel.Value);
+            }
+
+            LoadExpr(annNode.Annotation);
+            Builder.Emit(OpCode.LoadName, PySpecialNames.Annotations);
+            Debug.Assert(annNode.Target is NameNode);
+            Builder.Emit(OpCode.LoadConst, PyStrObject.FromString(((NameNode)annNode.Target).Id));
+            Builder.Emit(OpCode.StoreSubscr);
+
+            if (skipLabel is not null)
+                Builder.MarkLabel(skipLabel.Value);
+        }
+
+        Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
+        Builder.Emit(OpCode.ReturnValue);
         return new PyCodeObject(_source.Name, classScope, Builder.ToBytecode());
     }
 

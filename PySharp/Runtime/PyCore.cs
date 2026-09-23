@@ -65,6 +65,52 @@ internal static class PyCore
         return new PyFunctionObject(GetFreeVars(ref frame, codeObject), frame.Variables.Globals, codeObject, def);
     }
 
+    // PEP 649: the class body hands over its annotate code object together
+    // with the index set of the annotation sites the body reached. The code
+    // object, the cells it needs from an enclosing function and the defining
+    // module's globals are everything the lazy __annotations__ getter needs.
+    public static PyTupleObject MakeAnnotateFunc(ref PyInternalFrame frame, PyTupleObject payload)
+    {
+        var code = (PyCodeObject)payload[0];
+        var cells = GetFreeVars(ref frame, code);
+
+        return PyTupleObject.CreateTuple([
+            code,
+            cells is null ? PyTupleObject.Empty : PyTupleObject.CreateTuple(cells),
+            frame.Variables.Globals,
+            payload[1]]);
+    }
+
+    // Runs the annotate code with the class namespace as its locals — the
+    // analogue of LOAD_FROM_DICT_OR_GLOBALS, a name resolves against the class
+    // dict, then the defining module's globals, then builtins — and the
+    // annotation dict as the write target.
+    public static PyResult EvaluateClassAnnotations(PyCallContext context, PyTypeObject cls, PyTupleObject data)
+    {
+        var code = (PyCodeObject)data[0];
+        var closure = (PyTupleObject)data[1];
+        var globals = (PyDictObject)data[2];
+
+        var ns = new PyDictObject();
+        foreach (var pair in cls.PyAttributes)
+            ns[pair.Key] = pair.Value;
+
+        var result = new PyDictObject();
+        ns[PySpecialNames.Annotations] = result;
+        if (data[3] is PySetObject conditional)
+            ns[PySpecialNames.ConditionalAnnotations] = conditional;
+
+        var locals = PyVariables.CreateClassLocals(context, ns);
+        var newFrame = PyInternalFrame.CreateAnnotateFrame(code, closure, locals, globals);
+        using (var withFrame = context.WithFrame(ref newFrame))
+        {
+            var evalResult = Eval(context);
+            if (evalResult.IsError)
+                return evalResult;
+        }
+        return result;
+    }
+
     public static PyObject BuildClass(PyCallContext context, PyCodeObject codeObject, List<PyTypeObject> bases, OrderedDictionary<string, PyObject> kwargs, PyTupleObject? closure)
     {
         PyTypeObject metaClass = PyTypeObjectType.Shared;

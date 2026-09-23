@@ -632,6 +632,9 @@ internal static partial class BytecodeVirtualMachine
                                 IntrinsicFunctionType.TypeVar
                                     => new PyTypeVarObject(((PyStrObject)value).Value),
 
+                                IntrinsicFunctionType.MakeAnnotateFunc
+                                    => PyCore.MakeAnnotateFunc(ref frame, (PyTupleObject)value),
+
                                 _ => throw new UnreachableException(),
                             };
                         }

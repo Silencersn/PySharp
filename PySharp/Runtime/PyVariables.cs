@@ -141,6 +141,25 @@ internal sealed class PyVariables
     }
     internal PyVariables CreateForBuildingClass(PyCodeObject codeObject, PyTupleObject? closure)
         => CreateForBuildingClass(codeObject, closure, null);
+
+    // PEP 649 annotation evaluation runs the __annotate__ code object, which
+    // is a class-body variant: local names resolve against the class
+    // namespace, but the globals are the class's own module globals rather
+    // than the accessing frame's. The closure holds the cells the annotation
+    // expressions captured from an enclosing function.
+    internal static PyVariables CreateForAnnotate(
+        PyCodeObject codeObject, PyTupleObject? closure, IPyVariablesLocalsDict classLocals, PyDictObject globals)
+    {
+        var vars = new PyVariables(globals, codeObject.LocalsTable);
+        var localsPlus = vars.LocalsSpanUnsafe;
+
+        for (int i = 0; closure is not null && i < closure.Count && i < localsPlus.Length; i++)
+            localsPlus[i] = closure[i];
+
+        vars._locals = classLocals;
+        return vars;
+    }
+
     internal PyVariables CreateForBuildingClass(PyCodeObject codeObject, PyTupleObject? closure, IPyVariablesLocalsDict? classLocals)
     {
         if (!HasLocals)

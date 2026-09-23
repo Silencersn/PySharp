@@ -83,6 +83,11 @@ partial class SemanticAnalyzer
         }
 
         VisitNode(node.Target);
+        // PEP 649 evaluates class-body annotations in a code object of their
+        // own but against the class-body scope, so their names belong to this
+        // scope — a name from an enclosing function is captured as a cell.
+        if (node.Simple && _currentScopeStats.Scope is ClassVariableScope)
+            VisitNode(node.Annotation);
         VisitNullableNode(node.Value);
     }
 

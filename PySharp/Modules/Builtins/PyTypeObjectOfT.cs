@@ -439,6 +439,18 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
         if (self.PyAttributes.TryGetValue(PySpecialNames.Annotations, out var existing))
             return existing;
 
+        // PEP 649: a class body stores __annotate_func__ instead of
+        // evaluating its annotations; the first read of __annotations__ runs
+        // it against the class namespace and caches the resulting dict.
+        if (self.PyAttributes.TryGetValue(PySpecialNames.AnnotateFunc, out var annotate) &&
+            annotate is PyTupleObject annotateData)
+        {
+            var evaluated = PyCore.EvaluateClassAnnotations(context, self, annotateData);
+            if (evaluated.IsError)
+                return evaluated;
+            return self.PyAttributes[PySpecialNames.Annotations] = evaluated.Value;
+        }
+
         return self.PyAttributes[PySpecialNames.Annotations] = new PyDictObject();
     }
 
@@ -452,6 +464,8 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
             return PyResult.TypeError("__annotations__ must be set to a dict object");
 
         self.PyAttributes[PySpecialNames.Annotations] = value;
+        // PEP 749: assigning __annotations__ detaches the lazy evaluator
+        self.PyAttributes.Remove(PySpecialNames.AnnotateFunc);
         self.PyAttributes.Remove(PySpecialNames.Annotate);
         return PyNoneObject.None;
     }
@@ -469,6 +483,9 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
             return PyResult.AttributeError(PySpecialNames.Annotations);
 
         self.PyAttributes.Remove(PySpecialNames.Annotations);
+        // PEP 749: deleting __annotations__ detaches the lazy evaluator, so
+        // the next read materializes an empty dict instead of recomputing
+        self.PyAttributes.Remove(PySpecialNames.AnnotateFunc);
         self.PyAttributes.Remove(PySpecialNames.Annotate);
         return PyNoneObject.None;
     }

@@ -208,9 +208,8 @@ assert not hasattr(PD2, "x")
 
 class PD3(metaclass=MD2):
     x: int = 5
-# the __annotations__ dict is created in the hook's namespace; annotation
-# values are stored as source strings (long-standing PySharp behavior,
-# CPython 3.14 evaluates them via PEP 649 — out of scope here)
+# the hook's namespace is the live class namespace, so the annotations read
+# back from the class the hook built
 assert "x" in PD3.__annotations__
 
 # --- generic classes run the hook too ---

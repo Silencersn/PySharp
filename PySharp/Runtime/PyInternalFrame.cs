@@ -101,6 +101,21 @@ internal partial struct PyInternalFrame
         { CodeObject = code };
     }
 
+    // PEP 649: the __annotate__ code object is a class-body variant, so it
+    // runs in a class frame — but with the class's own module globals instead
+    // of the accessing frame's.
+    internal static PyInternalFrame CreateAnnotateFrame(
+        PyCodeObject code, PyTupleObject? closure, IPyVariablesLocalsDict classLocals, PyDictObject globals)
+    {
+        var variables = PyVariables.CreateForAnnotate(code, closure, classLocals, globals);
+
+        return new PyInternalFrame(
+            variables,
+            caller: null, // deferred assignment
+            FrameType.Class)
+        { CodeObject = code };
+    }
+
     internal readonly PyInternalFrame CreateThreadRootFrame()
     {
         return new PyInternalFrame(Variables);

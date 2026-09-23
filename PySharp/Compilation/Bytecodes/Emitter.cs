@@ -42,6 +42,10 @@ internal sealed partial class Emitter
     private bool IsInteractive { get; set; }
     private bool OnlyAsName { get; set; }
 
+    // PEP 649: index of every annotation site inside control flow that the
+    // class body currently being emitted must record when it runs.
+    private Dictionary<AnnAssignNode, int>? _classAnnotationIndexes;
+
     /// <summary>
     /// A compile-time region covering a loop, with-item or try record, mirroring
     /// the runtime handler records a jump out of the region must dispose of.
