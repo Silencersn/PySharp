@@ -69,7 +69,7 @@ public sealed partial class PyThreadObjectType : PyTypeObject<PyThreadObject>
     {
         if (arguments[0] is PyNoneObject)
         {
-            self.PyJoin(-1);
+            self.PyJoin(context, -1);
             return PyNoneObject.None;
         }
         var result = PySpecialMethods.Float(context, arguments[0]);
@@ -77,8 +77,15 @@ public sealed partial class PyThreadObjectType : PyTypeObject<PyThreadObject>
             return result;
         var timeout = result.Value.Value;
         timeout = Math.Max(timeout, 0);
-        self.PyJoin(timeout);
+        self.PyJoin(context, timeout);
         return PyNoneObject.None;
+    }
+
+    [PyMethod("run")]
+    [PyFunctionParameters()]
+    private static PyResult Run(PyCallContext context, PyThreadObject self, PyArguments arguments)
+    {
+        return self.PyRun(context);
     }
 
     [PyMethod("is_alive")]

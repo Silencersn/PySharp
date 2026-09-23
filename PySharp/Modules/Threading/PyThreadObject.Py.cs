@@ -1,6 +1,7 @@
 using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.Calls.Extensions;
 using System.Diagnostics;
 
 namespace PySharp.Modules.Threading;
@@ -10,7 +11,7 @@ partial class PyThreadObject : PyObject
     public void PyStart(PyCallContext context)
     {
         if (_thread is not null)
-            throw new InvalidOperationException();
+            throw context.RuntimeError(PySR.Runtime_Threading_ThreadAlreadyStarted);
 
 
         _thread = new Thread(() =>
@@ -19,7 +20,7 @@ partial class PyThreadObject : PyObject
             ref var frame = ref threadContext.CurrentInternalFrame;
             try
             {
-                PyInterpreter.PyTryCatch(threadContext, () => PyRun(threadContext));
+                PyInterpreter.PyTryCatch(threadContext, () => PyDispatchRun(threadContext));
             }
             catch (ThreadInterruptedException)
             {
@@ -35,20 +36,30 @@ partial class PyThreadObject : PyObject
         _thread.Start();
     }
 
-    public void PyRun(PyCallContext context)
+    // CPython _bootstrap_inner invokes self.run() — an ordinary attribute
+    // lookup (threading.py:1082), so a subclass override replaces the
+    // default target call.
+    private void PyDispatchRun(PyCallContext context)
     {
-        if (_target is not PyNoneObject)
-        {
-            var result = _target.Call(context, _args, _kwargs);
-            if (result.IsError)
-                throw new PyRuntimeException(context, result.Exception);
-        }
+        var result = this.CallMethod(context, "run");
+        if (result.IsError)
+            throw new PyRuntimeException(context, result.Exception);
     }
 
-    public void PyJoin(double timeout = -1)
+    // CPython Thread.run default: invoke the constructor target, if any,
+    // with the stored args/kwargs (threading.py:1013-1028).
+    public PyResult PyRun(PyCallContext context)
+    {
+        if (_target is not PyNoneObject)
+            return _target.Call(context, _args, _kwargs);
+
+        return PyNoneObject.None;
+    }
+
+    public void PyJoin(PyCallContext context, double timeout = -1)
     {
         if (_thread is null)
-            throw new InvalidOperationException();
+            throw context.RuntimeError(PySR.Runtime_Threading_JoinBeforeStart);
 
         if (timeout < 0)
             _thread.Join();
@@ -58,9 +69,10 @@ partial class PyThreadObject : PyObject
 
     public bool PyIsAlive()
     {
-        if (_thread is null)
-            throw new InvalidOperationException();
-
-        return _thread.IsAlive;
+        // CPython gates is_alive on the started event (threading.py:1177):
+        // a never-started thread is simply not alive. The .NET Thread
+        // state machine would reject the IsAlive query, so an unset
+        // _thread maps to False instead.
+        return _thread?.IsAlive ?? false;
     }
 }

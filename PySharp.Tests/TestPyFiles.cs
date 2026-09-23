@@ -4417,4 +4417,26 @@ public sealed class TestPyFiles
         var module = RunModule("test_container_repr_mutation_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestThreadLifecycleRegression()
+    {
+        // Regression: is_alive() on a never-started thread used to pierce
+        // the process with .NET InvalidOperationException (CPython returns
+        // False), a Thread subclass's run() override was never invoked
+        // because the thread entry called the target directly instead of
+        // dispatching through self.run, and double start() / join() before
+        // start() crashed the same way instead of raising RuntimeError.
+        // The corpus asserts the lifecycle in Python; the thread's uncaught
+        // target exception must reach the stderr excepthook channel while
+        // the main thread keeps running.
+        var stderr = new MemoryStream();
+        var host = new StdioHost(new MemoryStream(), new MemoryStream(), stderr);
+        var module = RunModuleWithHost("test_thread_lifecycle_regression.py", host);
+        Assert.IsNotNull(module);
+
+        var text = Encoding.UTF8.GetString(stderr.ToArray());
+        StringAssert.Contains(text, "Exception in thread");
+        StringAssert.Contains(text, "ValueError: kaboom");
+    }
 }
