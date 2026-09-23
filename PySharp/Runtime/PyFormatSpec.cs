@@ -45,7 +45,7 @@ internal readonly struct PyFormatSpec
             var followsGrouping = prefix.WidthGrouping is not null || prefix.PrecisionGrouping is not null;
             if (!char.IsAsciiDigit(trailing) || followsGrouping)
             {
-                if (prefixBoth || trailing is ',' or '_')
+                if (prefixBoth)
                     return PyResult.ValueError(PySR.Runtime_Object_FormatGroupingBoth);
 
                 if (prefix.WidthGrouping is char grouping && !IsGroupingCompatibleType(grouping, trailing))
@@ -256,15 +256,29 @@ internal readonly struct PyFormatSpec
         }
         private static void ParseGrouping(ref ReadOnlySpan<char> format, ref char? grouping, ref bool bothSeparators)
         {
-            if (format.Length > 0 && IsGrouping(format[0]))
+            // CPython (formatter_unicode.c) reads three sequential separator
+            // checks at this position: one ',' (always consumed), one '_'
+            // (consumed, conflicting only after a ','), one ',' (consumed,
+            // conflicting only after a '_'). A repeated same separator is
+            // never consumed here — it stays for the type field, where the
+            // grouping/type whitelist reports "Cannot specify 'X' with 'X'."
+            if (format.Length > 0 && format[0] is ',')
             {
-                grouping = format[0];
+                grouping = ',';
                 format = format[1..];
 
-                // CPython reads one more separator: '_' after anything, or
-                // a ',' after '_', raises the both-separators error (',,'
-                // keeps parsing)
-                if (format.Length > 0 && IsGrouping(format[0]) && (format[0] is '_' || grouping is '_'))
+                if (format.Length > 0 && format[0] is '_')
+                {
+                    bothSeparators = true;
+                    format = format[1..];
+                }
+            }
+            else if (format.Length > 0 && format[0] is '_')
+            {
+                grouping = '_';
+                format = format[1..];
+
+                if (format.Length > 0 && format[0] is ',')
                 {
                     bothSeparators = true;
                     format = format[1..];
@@ -282,7 +296,6 @@ internal readonly struct PyFormatSpec
 
         private static bool IsAlign(char c) => c is '<' or '>' or '=' or '^';
         private static bool IsSign(char c) => c is '+' or '-' or ' ';
-        private static bool IsGrouping(char c) => c is ',' or '_';
         private static bool IsType(char c) => c is 'b' or 'c' or 'd' or 'e' or 'E' or 'f' or 'F' or 'g' or 'G' or 'n' or 'o' or 's' or 'x' or 'X' or '%';
     }
 }

@@ -108,14 +108,35 @@ else:
 assert format(1, '_b') == '1'
 assert format(1, '_d') == '1'
 
-# doubled grouping separators
-for spec in ('_,', ',_', '__', '_,_', '.2_,'):
+# two DIFFERENT separators in one position conflict
+for spec in ('_,', ',_', '_,_', '.2_,', '_,x'):
     try:
         format(1, spec)
     except ValueError as e:
         assert str(e) == "Cannot specify both ',' and '_'.", (spec, str(e))
     else:
         raise AssertionError(f"doubled grouping accepted: {spec!r}")
+
+# a repeated SAME separator is not consumed by the grouping parse
+# (formatter_unicode.c reads ',' once, '_' once; the last check peeks
+# without consuming) — it lands in the type field, so int/float/str
+# report the grouping-vs-type error or unknown-code messages instead
+for obj, spec, msg in [
+    (1, '__', "Cannot specify '_' with '_'."),
+    (1, ',,', "Cannot specify ',' with ','."),
+    (1, '10__', "Cannot specify '_' with '_'."),
+    (1.5, '__', "Cannot specify '_' with '_'."),
+    ('a', '__', "Cannot specify '_' with '_'."),
+    (1, '.2,,', "Unknown format code ',' for object of type 'int'"),
+    (1.5, '.__', "Unknown format code '_' for object of type 'float'"),
+    (1, '__,', "Invalid format specifier '__,' for object of type 'int'"),
+]:
+    try:
+        format(obj, spec)
+    except ValueError as e:
+        assert str(e) == msg, (repr(obj), spec, str(e))
+    else:
+        raise AssertionError(f"repeated grouping accepted: {repr(obj)} {spec!r}")
 
 # a width grouping and a precision grouping may coexist (independent flags)
 assert format(1234.5, ',.6_') == '1,234.5'
