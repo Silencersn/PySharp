@@ -27,6 +27,13 @@ public interface IPyObjectRecursiveRepr
     {
         ArgumentNullException.ThrowIfNull(pyObj);
 
+        // Every nested item of a container repr re-enters here, and none of
+        // those steps enters a Python frame, so the frame counters cannot
+        // bound how deeply repr/str/print/f-string/format recurse; probe the
+        // native stack (CPython checks it in PyObject_Repr)
+        if (PyRecursionGuard.ProbeNativeStack() is { } recursionError)
+            return PyResult<PyStrObject>.FromException(recursionError);
+
         if (pyObj is IPyObjectRecursiveRepr recursiveReprObj)
             return recursiveReprObj.RecursiveRepr(context, ids);
 

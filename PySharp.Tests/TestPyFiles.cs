@@ -295,6 +295,19 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestContainerReprHashRecursionRegression()
+    {
+        // Regression: repr and tuple hashing recurse in native code only as
+        // well, so the frame counters could not stop a deeply nested list
+        // (repr/str/print/f-string/format) or a deeply nested tuple (hash,
+        // dict key, set element) from exhausting the .NET stack and killing
+        // the process; both entries now raise a catchable RecursionError,
+        // while cycles and shallow reprs/hashes are unchanged.
+        var module = RunModule("test_container_repr_hash_recursion_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestNewImplicitStaticmethodRegression()
     {
         // Regression: a plain-function __new__ in a class body is an

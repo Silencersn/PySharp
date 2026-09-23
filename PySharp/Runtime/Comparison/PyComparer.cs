@@ -1,6 +1,5 @@
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
-using System.Runtime.CompilerServices;
 
 namespace PySharp.Runtime.Comparison;
 
@@ -31,11 +30,8 @@ public static class PyComparer
         // Comparison recursion enters no Python frame, so the frame counters
         // cannot bound a cyclic container pair or matching __eq__ re-entry;
         // probe the native stack (CPython checks it in PyObject_RichCompare)
-        if (!RuntimeHelpers.TryEnsureSufficientExecutionStack())
-        {
-            return PyResult<PyBoolObject>.FromException(PyRecursionErrorObjectType.Shared.Create(
-                PyStrObject.FromString(PySR.Runtime_Recursion_MaxRecursionDepthExceeded)));
-        }
+        if (PyRecursionGuard.ProbeNativeStack() is { } recursionError)
+            return PyResult<PyBoolObject>.FromException(recursionError);
 
         return ToBool(context, PyOperators.Eq(context, left, right));
     }

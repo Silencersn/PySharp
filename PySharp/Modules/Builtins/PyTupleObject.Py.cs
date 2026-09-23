@@ -90,6 +90,15 @@ partial class PyTupleObject
     [AIGenerated]
     internal PyResult PyHash(PyCallContext context)
     {
+        // A nested tuple hashes its items, which recurses back into here once
+        // per level, and none of those steps enters a Python frame: the frame
+        // counters cannot bound how deep hash() goes, nor how deep a nested
+        // tuple used as a dict key or held in a set goes. Probe the native
+        // stack (CPython's tuplehash calls PyObject_Hash, which its C-level
+        // recursion check bounds)
+        if (PyRecursionGuard.ProbeNativeStack() is { } recursionError)
+            return PyResult.FromException(recursionError);
+
         // Python's tuple hash implementation is more complex, but here's a reasonable version for PySharp.
         // We use a combination of element hashes.
         long hash = 0x345678;
