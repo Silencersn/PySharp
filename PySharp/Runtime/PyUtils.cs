@@ -447,4 +447,27 @@ internal static class PyUtils
         var inner = PySpecialMethods.Str(context, exception);
         return inner is { IsError: false } ? inner.Value.Value : string.Empty;
     }
+
+    // CPython quotes the argument of a failed conversion with %R of the
+    // original object — Objects/floatobject.c:162 and
+    // Objects/longobject.c:3126 — so control characters, quotes and
+    // backslashes reach the message as Python literal escapes instead of raw
+    // text, and an overridden __repr__ is the one that runs.
+    public static PyResult<PyStrObject> ReprForMessage(PyCallContext context, PyObject value, int maxLength = 0)
+    {
+        var repr = PySpecialMethods.Repr(context, value);
+        if (repr.IsError)
+            return repr;
+
+        return PyStrObject.FromString(TruncateRepr(repr.Value.Value, maxLength));
+    }
+
+    // The %.200R precision of the int messages (Objects/longobject.c:3071 and
+    // 3126) cuts the rendered repr itself, so a message that hits the cap ends
+    // without the closing quote (Objects/unicodeobject.c:2676). A maxLength of
+    // zero means no cap, which is what the float messages use
+    public static string TruncateRepr(string repr, int maxLength)
+    {
+        return maxLength > 0 && repr.Length > maxLength ? repr[..maxLength] : repr;
+    }
 }

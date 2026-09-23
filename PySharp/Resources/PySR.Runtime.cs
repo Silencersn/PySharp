@@ -125,14 +125,13 @@ partial class PySR
     public const string Runtime_Number_Int_WrongArg = "int() argument must be a string, a bytes-like object or a real number, not '{0}'";
     public const string Runtime_Number_Int_BaseOutOfRange = "int() base must be >= 2 and <= 36, or 0";
     public const string Runtime_Number_Int_ConvertNonStr = "int() can't convert non-string with explicit base";
-    public const string Runtime_Number_Int_InvalidLiteral = "invalid literal for int() with base {0}: '{1}'";
-    public const string Runtime_Number_Int_InvalidLiteralBytes = "invalid literal for int() with base {0}: {1}";
+    public const string Runtime_Number_Int_InvalidLiteral = "invalid literal for int() with base {0}: {1}";
     public const string Runtime_Number_Int_ExceedsMaxStrDigits = "Exceeds the limit ({0} digits) for integer string conversion: value has {1} digits; use sys.set_int_max_str_digits() to increase the limit";
     public const string Runtime_Number_Int_ExceedsMaxStrDigitsResult = "Exceeds the limit ({0} digits) for integer string conversion; use sys.set_int_max_str_digits() to increase the limit";
     public const string Runtime_Number_Int_MaxDigitsNotInt32 = "Python int too large to convert to C int";
     public const string Runtime_Number_Int_MaxDigitsInvalid = "maxdigits must be >= {0} or 0 for unlimited";
     public const string Runtime_Number_Float_WrongArg = "float() argument must be a string or a real number, not '{0}'";
-    public const string Runtime_Number_Float_InvalidLiteral = "could not convert string to float: '{0}'";
+    public const string Runtime_Number_Float_InvalidLiteral = "could not convert string to float: {0}";
     public const string Runtime_Number_PowWithZeroModulo = "pow() 3rd argument cannot be 0";
     public const string Runtime_Number_PowThirdArgNotInteger = "pow() 3rd argument not allowed unless all arguments are integers";
     public const string Runtime_Number_DivisionByZero = "division by zero";

@@ -111,7 +111,7 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
             if (parseStatus is BigIntegerHelper.IntParseStatus.OverLimit)
                 return PyResult.ValueError(PySR.Runtime_Number_Int_ExceedsMaxStrDigits, PyIntStrDigitsLimit.MaxStrDigits, digitCount);
             if (parseStatus is BigIntegerHelper.IntParseStatus.Invalid)
-                return PyResult.ValueError(PySR.Runtime_Number_Int_InvalidLiteral, 10, str.Value);
+                return InvalidStringLiteral(context, str, 10);
 
             return PyIntObject.FromInteger(integer);
         }
@@ -145,7 +145,7 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
             if (parseStatus is BigIntegerHelper.IntParseStatus.OverLimit)
                 return PyResult.ValueError(PySR.Runtime_Number_Int_ExceedsMaxStrDigits, PyIntStrDigitsLimit.MaxStrDigits, digitCount);
             if (parseStatus is BigIntegerHelper.IntParseStatus.Invalid)
-                return PyResult.ValueError(PySR.Runtime_Number_Int_InvalidLiteral, numBase.Value, str.Value);
+                return InvalidStringLiteral(context, str, numBase.Value);
 
             return PyIntObject.FromInteger(result);
         }
@@ -175,9 +175,30 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
         if (parseStatus is BigIntegerHelper.IntParseStatus.OverLimit)
             return PyResult.ValueError(PySR.Runtime_Number_Int_ExceedsMaxStrDigits, PyIntStrDigitsLimit.MaxStrDigits, digitCount);
         if (parseStatus is BigIntegerHelper.IntParseStatus.Invalid)
-            return PyResult.ValueError(PySR.Runtime_Number_Int_InvalidLiteralBytes, baseValue, PyByteArrayObjectType.FormatBytesLiteral(data));
+        {
+            // CPython builds a fresh bytes from the same data and formats it
+            // with %.200R (_PyLong_FromBytes, Objects/longobject.c:3093), so a
+            // bytes subclass repr never shows up here
+            return PyResult.ValueError(PySR.Runtime_Number_Int_InvalidLiteral, baseValue,
+                PyUtils.TruncateRepr(PyByteArrayObjectType.FormatBytesLiteral(data), InvalidLiteralReprLength));
+        }
 
         return PyIntObject.FromInteger(result);
+    }
+
+    // CPython reports a bad literal with %.200R of the string handed to the
+    // conversion (Objects/longobject.c:3071 for the C-string path, :3126 for
+    // the unicode one), so the repr brings its escapes and the 200-character
+    // precision cuts the message off without a closing quote
+    private const int InvalidLiteralReprLength = 200;
+
+    private static PyResult InvalidStringLiteral(PyCallContext context, PyStrObject str, object baseValue)
+    {
+        var repr = PyUtils.ReprForMessage(context, str, InvalidLiteralReprLength);
+        if (repr.IsError)
+            return repr;
+
+        return PyResult.ValueError(PySR.Runtime_Number_Int_InvalidLiteral, baseValue, repr.Value.Value);
     }
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)

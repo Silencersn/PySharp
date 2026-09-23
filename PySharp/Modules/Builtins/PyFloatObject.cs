@@ -102,7 +102,17 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
         if (arguments[0] is PyStrObject str)
         {
             if (!TryParseFloatString(str.Value, out var value))
-                return PyResult.ValueError(PySR.Runtime_Number_Float_InvalidLiteral, str.Value);
+            {
+                // CPython quotes the argument with %R of the original object
+                // (float_from_string_inner, Objects/floatobject.c:162): the
+                // repr supplies the escapes and any overridden __repr__, and
+                // unlike the int messages it carries no precision cap
+                var repr = PyUtils.ReprForMessage(context, str);
+                if (repr.IsError)
+                    return repr;
+
+                return PyResult.ValueError(PySR.Runtime_Number_Float_InvalidLiteral, repr.Value.Value);
+            }
 
             return PyFloatObject.FromDouble(value);
         }

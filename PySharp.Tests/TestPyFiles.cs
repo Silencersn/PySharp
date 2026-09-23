@@ -4488,4 +4488,22 @@ public sealed class TestPyFiles
         var module = RunModule("test_type_name_render_regression.py");
         Assert.IsNotNull(module);
     }
+
+    [TestMethod]
+    public void TestNumberMessageReprRegression()
+    {
+        // Regression: the failed-conversion messages pasted the raw string
+        // between hard-coded quotes, so control characters, U+200B, quotes and
+        // backslashes reached the terminal unescaped and a quote inside the
+        // value looked like a truncation. CPython formats the argument with %R
+        // of the original object (Objects/floatobject.c:162) — an overridden
+        // __repr__ included — and the int messages with %.200R
+        // (Objects/longobject.c:3126), whose precision cuts the rendered repr
+        // at 200 characters and so drops the closing quote. The corpus pins
+        // that cap, the uncapped float wording, the fresh-bytes repr of a
+        // bytes-like argument (_PyLong_FromBytes) and the neighbouring
+        // complex()/float.fromhex() strings that quote nothing at all.
+        var module = RunModule("test_number_message_repr_regression.py");
+        Assert.IsNotNull(module);
+    }
 }
