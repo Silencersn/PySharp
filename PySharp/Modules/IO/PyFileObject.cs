@@ -28,6 +28,14 @@ public sealed class PyFileObject : PyObject, IDisposable
     private StreamReader? _reader;
     private StreamWriter? _writer;
 
+    // TextIOWrapper newline=None translation state. Raw characters go through
+    // this buffer so a '\r' at a chunk boundary still swallows the '\n' that
+    // follows it in the next chunk.
+    private readonly char[] _textBuffer = new char[1024];
+    private int _textCount;
+    private int _textIndex;
+    private bool _pendingLineFeed;
+
     internal PyFileObject(Stream stream, string mode, string name,
         bool isTextMode, bool isReadable, bool isWritable, bool isSeekable)
     {
@@ -69,22 +77,7 @@ public sealed class PyFileObject : PyObject, IDisposable
         if (_isTextMode)
         {
             Debug.Assert(_reader is not null);
-            string result;
-            if (size < 0)
-            {
-                result = _reader.ReadToEnd();
-            }
-            else if (size is 0)
-            {
-                result = string.Empty;
-            }
-            else
-            {
-                var buf = new char[size];
-                var count = _reader.Read(buf, 0, size);
-                result = new string(buf, 0, count);
-            }
-            return PyStrObject.FromString(result);
+            return PyStrObject.FromString(ReadText(size));
         }
         else
         {
@@ -122,7 +115,7 @@ public sealed class PyFileObject : PyObject, IDisposable
             Debug.Assert(_writer is not null);
             if (data is not PyStrObject strObj)
                 return PyResult.TypeError(PySR.Runtime_File_WriteNeedStr, data.PyType.TpName);
-            _writer.Write(strObj.Value);
+            _writer.Write(TranslateForWrite(strObj.Value));
             _writer.Flush();
             return PyIntObject.FromInteger(strObj.Value.Length);
         }
@@ -241,6 +234,9 @@ public sealed class PyFileObject : PyObject, IDisposable
         {
             // Discard StreamReader's internal buffer after seek to avoid stale data
             _reader?.DiscardBufferedData();
+            _textCount = 0;
+            _textIndex = 0;
+            _pendingLineFeed = false;
             _writer?.Flush();
             var newPos = _stream.Seek(offset, (SeekOrigin)whence);
             return PyIntObject.FromInteger(newPos);
@@ -264,6 +260,85 @@ public sealed class PyFileObject : PyObject, IDisposable
         return PyIntObject.FromInteger(_stream.Position);
     }
 
+    // TextIOWrapper keeps newline=None as the default mode: text reads fold
+    // '\r\n' and '\r' into '\n' (universal newlines) while text writes expand
+    // '\n' into os.linesep, which Environment.NewLine mirrors
+    // (Modules/_io/textio.c: set_newline + _io_TextIOWrapper_write_impl).
+    private static string TranslateForWrite(string text)
+    {
+        var lineSeparator = Environment.NewLine;
+        if (lineSeparator.Length is 1 || !text.Contains('\n'))
+            return text;
+        return text.Replace("\n", lineSeparator);
+    }
+
+    private int ReadRawChar()
+    {
+        if (_textIndex >= _textCount)
+        {
+            _textCount = _reader!.Read(_textBuffer, 0, _textBuffer.Length);
+            _textIndex = 0;
+            if (_textCount <= 0)
+                return -1;
+        }
+        return _textBuffer[_textIndex++];
+    }
+
+    private int ReadTranslatedChar()
+    {
+        while (true)
+        {
+            var ch = ReadRawChar();
+            if (ch < 0)
+            {
+                _pendingLineFeed = false;
+                return -1;
+            }
+            if (_pendingLineFeed)
+            {
+                _pendingLineFeed = false;
+                if (ch is '\n')
+                    continue;
+            }
+            if (ch is '\r')
+            {
+                _pendingLineFeed = true;
+                return '\n';
+            }
+            return ch;
+        }
+    }
+
+    private string ReadText(int size)
+    {
+        if (size is 0)
+            return string.Empty;
+        var builder = new StringBuilder();
+        while (size < 0 || builder.Length < size)
+        {
+            var ch = ReadTranslatedChar();
+            if (ch < 0)
+                break;
+            builder.Append((char)ch);
+        }
+        return builder.ToString();
+    }
+
+    private string ReadTextLine(int size)
+    {
+        var builder = new StringBuilder();
+        while (size < 0 || builder.Length < size)
+        {
+            var ch = ReadTranslatedChar();
+            if (ch < 0)
+                break;
+            builder.Append((char)ch);
+            if (ch is '\n')
+                break;
+        }
+        return builder.ToString();
+    }
+
     internal PyResult ReadLine(int size = -1)
     {
         var check = CheckClosed();
@@ -275,21 +350,7 @@ public sealed class PyFileObject : PyObject, IDisposable
         if (_isTextMode)
         {
             Debug.Assert(_reader is not null);
-            // Build the line character by character to preserve trailing newline.
-            // StreamReader.ReadLine() strips newlines, which differs from Python semantics.
-            var lineBuilder = new StringBuilder();
-            int charsRead = 0;
-            int ch;
-            while ((ch = _reader.Read()) >= 0 && (size < 0 || charsRead < size))
-            {
-                lineBuilder.Append((char)ch);
-                charsRead++;
-                if (ch is '\n')
-                    break;
-            }
-            return charsRead is 0
-                ? (PyResult)PyStrObject.Empty
-                : (PyResult)PyStrObject.FromString(lineBuilder.ToString());
+            return PyStrObject.FromString(ReadTextLine(size));
         }
         else
         {

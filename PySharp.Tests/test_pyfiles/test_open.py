@@ -77,8 +77,12 @@ with open("_test_open_out.txt", "r") as f:
 print("OK: readline")
 
 # Test 8: seek and tell
+# The fixture is written in binary mode so that byte offsets are platform
+# independent (text-mode writes translate "\n" to os.linesep, see Test 9).
 print()
 print("=== Test 8: seek/tell ===")
+with open("_test_open_out.txt", "wb") as f:
+    f.write(b"line1\nline2\nline3\n")
 with open("_test_open_out.txt", "r") as f:
     f.seek(0)
     data = f.read(5)
@@ -92,6 +96,25 @@ with open("_test_open_out.txt", "r") as f:
     print(f"read(4) at pos 6: '{data}'")
     assert data == "line", f"Expected 'line', got '{data}'"
 print("OK: seek/tell")
+
+# Test 9: newline translation (newline=None default semantics)
+print()
+print("=== Test 9: newline translation ===")
+with open("_test_open_nl.txt", "w") as f:
+    assert f.write("a\nb\n") == 4, "write() returns the character count"
+with open("_test_open_nl.txt", "rb") as f:
+    raw = f.read()
+# writing expands "\n" into os.linesep: CRLF on Windows, LF otherwise
+assert raw in (b"a\nb\n", b"a\r\nb\r\n"), f"unexpected bytes: {raw!r}"
+with open("_test_open_nl.txt", "r") as f:
+    assert f.read() == "a\nb\n", "text round-trip must return the original"
+# reading folds "\r\n" and a lone "\r" into "\n" (universal newlines)
+with open("_test_open_nl.txt", "wb") as f:
+    f.write(b"a\r\nb\rc\n")
+with open("_test_open_nl.txt", "r") as f:
+    data = f.read()
+assert data == "a\nb\nc\n", f"Expected 'a\\nb\\nc\\n', got {data!r}"
+print("OK: newline translation")
 
 print()
 print("All open tests passed")
