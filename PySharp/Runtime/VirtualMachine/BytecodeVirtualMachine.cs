@@ -738,6 +738,12 @@ internal static partial class BytecodeVirtualMachine
                         {
                             var exc = Move(ref states.ExceptionToRaise);
                             PyCore.SettleInjectedContext(states, exc);
+                            // the exception is raised here, inside the resumed
+                            // frame, so this is where CPython's PyTraceback_Here
+                            // records that frame: gen_throw re-enters it with the
+                            // pending exception, and the frame joins the
+                            // traceback the exception already carried
+                            exc.PrependTraceback(context);
                             throw new PyRuntimeException(exc);
                         }
                         break;

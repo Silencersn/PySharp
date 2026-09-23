@@ -70,6 +70,25 @@ public sealed class PyExceptionObject : PyObjectManagedDict
         return this;
     }
 
+    // CPython accumulates a traceback as the exception travels: the injection
+    // machinery restores the exception's own traceback first
+    // (_gen_throw's PyErr_Restore with PyException_GetTraceback(val)), and
+    // every frame the exception then passes through prepends its own entry
+    // (PyTraceback_Here). Paths that inject an exception into a frame are
+    // therefore the one place where a traceback is appended to rather than
+    // replaced: a generator throw records the frames it enters in front of
+    // the traceback the exception already carried (which survives as the
+    // tail), instead of leaving the existing traceback frozen.
+    internal PyExceptionObject PrependTraceback(PyCallContext context)
+    {
+        var current = PyTraceback.GetTracebackInfo(context);
+        Traceback = Traceback is null
+            ? current
+            : new TracebackInfo([.. current.Frames, .. Traceback.Frames], current.ThreadInfo ?? Traceback.ThreadInfo);
+
+        return this;
+    }
+
     internal string ToMessage(PyCallContext context)
     {
         var builder = new IndentedStringBuilder();

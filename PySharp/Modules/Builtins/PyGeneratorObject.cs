@@ -313,6 +313,14 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
         if (!IsGeneratorRunning)
         {
             _vmStates.RunToEnd = true;
+            // The body never runs, but gen_send_ex2 still evaluates the frame
+            // with the pending exception (exc=1), so the frame ends up on the
+            // traceback at its first instruction — the code object's first
+            // line, the `def` line. Entering the frame is the only way to
+            // record it: no statement of the body executes, and the caller's
+            // stack cannot supply the entry.
+            using var withFrame = context.WithFrame(ref _frame, dispose: false);
+            exc.PrependTraceback(context);
             throw new PyRuntimeException(exc);
         }
 

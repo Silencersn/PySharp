@@ -215,11 +215,16 @@ internal static partial class BytecodeVirtualMachine
                     }
                     else
                     {
-                        // throw at self
+                        // throw at self. The delegate has no throw of its own
+                        // (a plain iterator, say), so CPython's _gen_throw falls
+                        // back to throw_here and re-enters this frame with the
+                        // pending exception (gen_send_ex exc=1); this frame is
+                        // then on the traceback, and no inner frame recorded it
                         if (states.ExceptionToRaise is not null)
                         {
                             var exc = Move(ref states.ExceptionToRaise);
                             PyCore.SettleInjectedContext(states, exc);
+                            exc.PrependTraceback(context);
                             throw new PyRuntimeException(exc);
                         }
                     }
