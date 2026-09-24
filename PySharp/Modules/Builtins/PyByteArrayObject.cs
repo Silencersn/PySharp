@@ -239,9 +239,11 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
         return PyByteArrayObject.FromBytes(data);
     }
 
+    // Objects/bytearrayobject.c:1096 names the subclass by _PyType_Name
+    // (Objects/typeobject.c:1443), so a subclass instance reprs as BA(b'x').
     protected override PyResult Repr(PyCallContext context, PyByteArrayObject self)
     {
-        return PyStrObject.FromString($"bytearray({FormatBytesLiteral(self.AsSpan())})");
+        return PyStrObject.FromString($"{self.PyType.TpName}({FormatBytesLiteral(self.AsSpan())})");
     }
 
     protected override PyResult Len(PyCallContext context, PyByteArrayObject self)

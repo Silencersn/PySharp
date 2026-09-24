@@ -117,4 +117,36 @@ assert repr(helper.ModuleErr("m")) == "ModuleErr('m')", repr(helper.ModuleErr("m
 LocalError = type("LocalError", (Exception,), {})
 assert repr(LocalError("m")) == "LocalError('m')", repr(LocalError("m"))
 
+# --- bytearray repr names the type bare too (Objects/bytearrayobject.c
+# bytearray_repr_lock_held reads _PyType_Name), so a subclass instance is told
+# apart from bytearray and eval(repr(x)) round trips to the subclass. bytes is
+# the deliberate exception: bytes_repr ignores the type, so a bytes subclass
+# reprs as b'x'.
+class ModuleBA(bytearray):
+    pass
+
+
+class ModuleBANested:
+    class NestedBA(bytearray):
+        pass
+
+
+def ba_factory():
+    class LocalBA(bytearray):
+        pass
+
+    return LocalBA
+
+
+assert repr(ModuleBA(b"x")) == "ModuleBA(b'x')", repr(ModuleBA(b"x"))
+assert repr(ModuleBA()) == "ModuleBA(b'')", repr(ModuleBA())
+assert repr(ba_factory()(b"x")) == "LocalBA(b'x')", repr(ba_factory()(b"x"))
+assert repr(ModuleBANested.NestedBA(b"y")) == "NestedBA(b'y')"
+assert str(ModuleBA(b"x")) == "ModuleBA(b'x')", str(ModuleBA(b"x"))
+assert f"{ModuleBA(b'x')}" == "ModuleBA(b'x')", f"{ModuleBA(b'x')}"
+assert repr(bytearray(b"x")) == "bytearray(b'x')", repr(bytearray(b"x"))
+RenamedBA = type("RenamedBA", (bytearray,), {})
+RenamedBA.__name__ = "Z"
+assert repr(RenamedBA(b"x")) == "Z(b'x')", repr(RenamedBA(b"x"))
+
 print("All type-name render tests passed!")
