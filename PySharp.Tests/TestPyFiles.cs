@@ -2077,6 +2077,17 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestIntFloatTrailingNulRegression()
+    {
+        // Regression: int()/float() string parsing rejects NUL anywhere —
+        // CPython's parsers must consume the whole input, while the .NET
+        // numeric parsers silently accepted a single trailing NUL, making
+        // int('1\x00') return 1 and float('1.5\x00') return 1.5.
+        var module = RunModule("test_int_float_trailing_nul_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestConcatReflectedRaddRegression()
     {
         // Regression: str/bytes/tuple `+` give the right operand's __radd__

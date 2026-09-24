@@ -25,6 +25,13 @@ internal static class BigIntegerHelper
         result = default;
         digitCount = 0;
 
+        // CPython only accepts a literal when the parser consumes the whole
+        // input, so NUL anywhere — embedded or trailing — is invalid in every
+        // base; BigInteger.TryParse would silently take a single trailing NUL
+        // as end-of-input instead
+        if (s.Contains('\0'))
+            return IntParseStatus.Invalid;
+
         s = s.Trim();
         if (s.IsEmpty)
             return IntParseStatus.Invalid;

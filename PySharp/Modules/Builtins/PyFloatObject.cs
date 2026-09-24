@@ -814,6 +814,12 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
     private static bool TryParseFloatString(string text, out double result)
     {
         result = 0;
+        // CPython rejects embedded NULs outright and otherwise requires the
+        // whole input consumed (pystrtod.c, floatobject.c), while
+        // double.TryParse would silently take a single trailing NUL as
+        // end-of-input; the Nd/space transform below passes NUL through
+        if (text.Contains('\0'))
+            return false;
         // CPython PyFloat_FromString: the Nd/space transform runs first, then
         // _Py_string_to_number_with_underscores validates that every '_'
         // sits between digits and strips it; the float grammar has no
