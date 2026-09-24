@@ -105,7 +105,29 @@ public sealed partial class PyObjectType : PyTypeObject<PyObject>
         FillSlot(PySpecialNames.GetAttribute, ref Slots.GetAttribute, GenericGetAttribute);
         FillSlot(PySpecialNames.SetAttr, ref Slots.SetAttr, DefaultSetAttr);
         FillSlot(PySpecialNames.DelAttr, ref Slots.DelAttr, DefaultDelAttr);
+        // CPython exposes object.__setattr__/__delattr__ through wrap_setattr/
+        // wrap_delattr, whose hackcheck refuses every type-object target; the
+        // generic setattro slot stays hack-free so `cls.x = v` (type_setattro)
+        // keeps working
+        PyAttributes[PySpecialNames.SetAttr] = new PyWrapperDescriptorObject((PyTernaryFunction)HackCheckedSetAttr);
+        PyAttributes[PySpecialNames.DelAttr] = new PyWrapperDescriptorObject((PyBinaryFunction)HackCheckedDelAttr);
         FillSlot(PySpecialNames.Init, ref Slots.Init, DefaultInit);
+    }
+
+    private static PyResult HackCheckedSetAttr(PyCallContext context, PyObject self, PyObject key, PyObject value)
+    {
+        if (self is PyTypeObject)
+            return PyResult.TypeError(PySR.Runtime_Object_CannotApplySetAttr, self.PyType.TpName);
+
+        return DefaultSetAttr(context, self, key, value);
+    }
+
+    private static PyResult HackCheckedDelAttr(PyCallContext context, PyObject self, PyObject item)
+    {
+        if (self is PyTypeObject)
+            return PyResult.TypeError(PySR.Runtime_Object_CannotApplyDelAttr, self.PyType.TpName);
+
+        return DefaultDelAttr(context, self, item);
     }
 
     /// <summary>

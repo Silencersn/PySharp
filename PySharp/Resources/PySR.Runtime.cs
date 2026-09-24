@@ -58,6 +58,7 @@ partial class PySR
     public const string Runtime_Type_NewClsNotSubtype = "{0}.__new__({1}): {1} is not a subtype of {0}";
     public const string Runtime_Type_NewClsNotSafe = "{0}.__new__({1}) is not safe, use {1}.__new__()";
     public const string Runtime_Type_SetImmutable = "cannot set '{0}' attribute of immutable type '{1}'";
+    public const string Runtime_Type_SetAttrRequiresType = "descriptor '{0}' requires a 'type' object but received a '{1}'";
     public const string Runtime_Type_DictNotWritable = "attribute '__dict__' of 'type' objects is not writable";
 
     public const string Runtime_Type_InitTakesNoKeywordArguments = "type.__init__() takes no keyword arguments";
@@ -91,6 +92,8 @@ partial class PySR
     public const string Runtime_Object_AttributeNotFound = "'{0}' object has no attribute '{1}'";
     public const string Runtime_Object_AttributeNoDict = "'{0}' object has no attribute '{1}' and no __dict__ for setting new attributes";
     public const string Runtime_Object_AttributeReadOnly = "'{0}' object attribute '{1}' is read-only";
+    public const string Runtime_Object_CannotApplySetAttr = "can't apply this __setattr__ to {0} object";
+    public const string Runtime_Object_CannotApplyDelAttr = "can't apply this __delattr__ to {0} object";
     public const string Runtime_Object_DictMustBeDictionary = "__dict__ must be set to a dictionary, not a '{0}'";
     public const string Runtime_Object_ClassMustBeClass = "__class__ must be set to a class, not '{0}' object";
     public const string Runtime_Object_ClassAssignmentNotMutable = "__class__ assignment only supported for mutable types or ModuleType subclasses";

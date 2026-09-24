@@ -51,6 +51,33 @@ public abstract partial class PyTypeObject<TObject> : PyTypeObject where TObject
 [PyType("type")]
 public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
 {
+    // CPython type.__setattr__/__delattr__ wrap type_setattro — distinct
+    // wrappers from object's hackchecked ones: type targets pass through to
+    // the generic setattro (the plain `cls.x = v` path) and non-type
+    // targets are rejected instead. The generated FillSlots owns the slot
+    // table, so the exposed wrappers are swapped in after construction.
+    static PyTypeObjectType()
+    {
+        Shared.PyAttributes[PySpecialNames.SetAttr] = new PyWrapperDescriptorObject((PyTernaryFunction)TypeSetAttr);
+        Shared.PyAttributes[PySpecialNames.DelAttr] = new PyWrapperDescriptorObject((PyBinaryFunction)TypeDelAttr);
+    }
+
+    private static PyResult TypeSetAttr(PyCallContext context, PyObject self, PyObject key, PyObject value)
+    {
+        if (self is not PyTypeObject)
+            return PyResult.TypeError(PySR.Runtime_Type_SetAttrRequiresType, PySpecialNames.SetAttr, self.PyType.TpName);
+
+        return DefaultSetAttr(context, self, key, value);
+    }
+
+    private static PyResult TypeDelAttr(PyCallContext context, PyObject self, PyObject item)
+    {
+        if (self is not PyTypeObject)
+            return PyResult.TypeError(PySR.Runtime_Type_SetAttrRequiresType, PySpecialNames.DelAttr, self.PyType.TpName);
+
+        return DefaultDelAttr(context, self, item);
+    }
+
     internal static PyResult<PyNoneObject> CallInit(PyCallContext context, PyTypeObject type, PyObject obj, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         var initFunc = type.Slots.Init;

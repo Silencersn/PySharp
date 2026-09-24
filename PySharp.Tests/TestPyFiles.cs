@@ -2088,6 +2088,18 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestObjectSetattrTypeHackcheckRegression()
+    {
+        // Regression: object.__setattr__/__delattr__ refuse type-object
+        // targets with CPython's hackcheck message (naming the target's
+        // metaclass) instead of silently writing the class dict or
+        // reporting the immutable-type error family; the generic
+        // setattro slot and type.__setattr__/__delattr__ are unchanged.
+        var module = RunModule("test_object_setattr_type_hackcheck_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestConcatReflectedRaddRegression()
     {
         // Regression: str/bytes/tuple `+` give the right operand's __radd__
