@@ -65,7 +65,15 @@ internal partial struct PyInternalFrame
     {
         var frame = new PyInternalFrame(isRoot);
         var builtins = context.PyEnvironment.LoadBuiltinModule(context, "builtins");
-        frame.Variables.Globals[PySpecialNames.Builtins] = builtins;
+        // CPython installs the builtins *module* in __main__ only
+        // (pylifecycle.c add_main_module); every other module gets
+        // interp->builtins, i.e. the builtins module's own namespace dict
+        // (import.c module_dict_for_exec). Both forms are accepted on lookup
+        // (_PyDict_LoadBuiltinsFromGlobals unwraps a module), so only the
+        // entry read back from globals differs.
+        frame.Variables.Globals[PySpecialNames.Builtins] = isRoot
+            ? builtins
+            : builtins.PyAttributesDict;
         frame.Variables.Globals[PySpecialNames.Name] = PyStrObject.FromString(moduleQualifiedName);
 
         if (!context.PyEnvironment.Options.NotImplyImportSite)
@@ -127,13 +135,14 @@ internal partial struct PyInternalFrame
 
         // Mirror CPython: builtins are resolved from globals["__builtins__"] at
         // frame creation (_PyDict_LoadBuiltinsFromGlobals); when the key is
-        // missing the interpreter's builtins are injected (_PyEval_EnsureBuiltins).
-        // A user-provided __builtins__ value is never overwritten.
+        // missing the running frame's builtins are injected (_PyEval_EnsureBuiltins
+        // writes PyEval_GetBuiltins()). A user-provided __builtins__ value is
+        // never overwritten.
         if (globals is not null)
         {
             var builtinsKey = PySpecialNames.Builtins;
             if (!globals.ContainsKey(builtinsKey))
-                globals[builtinsKey] = context.PyEnvironment.LoadBuiltinModule(context, "builtins");
+                globals[builtinsKey] = ResolveRunningBuiltins(context);
         }
 
         var pyGlobals = globals ?? Variables.Globals;
@@ -187,6 +196,19 @@ internal partial struct PyInternalFrame
 
         var variables = PyVariables.CreateExecEval(pyGlobals, localsDictionary);
         return new PyInternalFrame(variables, Caller, frameType) { CodeObject = code };
+    }
+
+    // The value CPython's PyEval_GetBuiltins() yields for this (the running)
+    // frame: the mapping _PyDict_LoadBuiltinsFromGlobals derives from the
+    // frame's own globals["__builtins__"], where a module is unwrapped to its
+    // namespace dict, and anything else — a user mapping, None — is taken
+    // as-is. A frame without the entry falls back to interp->builtins, the
+    // builtins module's dict.
+    private readonly PyObject ResolveRunningBuiltins(PyCallContext context)
+    {
+        if (Variables.Globals.TryGetValue(PySpecialNames.Builtins, out var builtins))
+            return builtins is PyModuleObject module ? module.PyAttributesDict : builtins;
+        return context.PyEnvironment.LoadBuiltinModule(context, "builtins").PyAttributesDict;
     }
 
     internal readonly PyInternalFrame CreateInlineFrame()

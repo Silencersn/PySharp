@@ -1242,6 +1242,18 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestBuiltinsInjectionFormRegression()
+    {
+        // Regression: the injected __builtins__ entry must take the form
+        // CPython picks per context — the builtins module in __main__, but
+        // builtins.__dict__ itself in exec()/eval() globals and in imported
+        // modules. exec()/eval() must also propagate the running frame's own
+        // mapping rather than always the interpreter's.
+        var module = RunModule("test_builtins_injection_form_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestLoadDerefUnboundRegression()
     {
         // Regression: the by-name deref path (inline comprehensions, class
