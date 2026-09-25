@@ -3,6 +3,11 @@
 ###############################################################################
 * text=auto
 
+# Python sources are baked verbatim into generated C# by
+# PyFrozenModuleGenerator; pin them to LF so every checkout feeds the
+# generator identical bytes.
+PySharp/Lib/**/*.py text eol=lf
+
 ###############################################################################
 # Set default behavior for command prompt diff.
 #

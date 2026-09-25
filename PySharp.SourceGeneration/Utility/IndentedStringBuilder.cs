@@ -71,7 +71,8 @@ internal class IndentedStringBuilder
 
     public IndentedStringBuilder AppendLine()
     {
-        _builder.AppendLine();
+        // StringBuilder.AppendLine would bake Environment.NewLine in
+        _builder.Append(GeneratedCode.NewLine);
         _isNewLine = true;
         return this;
     }

@@ -67,7 +67,10 @@ public class PyFrozenModuleGenerator : IIncrementalGenerator
             .Where(static at => at.Path.EndsWith(".py", StringComparison.OrdinalIgnoreCase))
             .Select(static (at, ct) => (at, at.GetText(ct)?.ToString()))
             .Where(static tuple => tuple.Item2 is not null)
-            .Select(static (tuple, ct) => new PyFileInfo(tuple.at.Path, tuple.Item2!))
+            // Working-tree line endings vary by checkout platform (git
+            // autocrlf); the text is baked verbatim into generated source,
+            // so normalize to the generated-code newline before embedding
+            .Select(static (tuple, ct) => new PyFileInfo(tuple.at.Path, tuple.Item2!.Replace("\r\n", GeneratedCode.NewLine).Replace("\r", GeneratedCode.NewLine)))
             .Collect();
 
         // Combine pipelines: for each frozen module, find the matching .py AdditionalFile
@@ -205,8 +208,9 @@ public class PyFrozenModuleGenerator : IIncrementalGenerator
             return $"{delimiter}{text}{delimiter}";
         }
 
-        // Multi-line raw string literal: opening/closing delimiters on separate lines
-        return $"{delimiter}\r\n{text}\r\n{delimiter}";
+        // Multi-line raw string literal: opening/closing delimiters on separate
+        // lines, delimited by the unified generated-code newline
+        return $"{delimiter}{GeneratedCode.NewLine}{text}{GeneratedCode.NewLine}{delimiter}";
     }
 
     private static string NormalizePath(string path)
