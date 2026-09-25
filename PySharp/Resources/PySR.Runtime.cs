@@ -195,6 +195,7 @@ partial class PySR
     public const string Runtime_Str_PrefixArgMustBeStr = "{0}() argument must be str, not {1}";
     public const string Runtime_Str_FillCharMustBeUnicode = "The fill character must be a unicode character, not {0}";
     public const string Runtime_Str_FillCharLength = "The fill character must be exactly one character long";
+    public const string Runtime_Str_ContainsLeftOperandMustBeStr = "'in <string>' requires string as left operand, not {0}";
     public const string Runtime_Number_Int_TooLargeForSsize = "Python int too large to convert to C ssize_t";
 
     public const string Runtime_List_ItemNotFound = "list.{0}(x): x not in list";

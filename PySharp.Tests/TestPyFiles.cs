@@ -355,6 +355,18 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestStrContainsMessageRegression()
+    {
+        // Regression: a non-str left operand in `<x> in <str>` raises a
+        // TypeError naming the offending type (CPython unicode_contains)
+        // instead of one with an empty message; None keeps its type name
+        // on this path, str subclasses are accepted, and `not in` plus an
+        // explicit __contains__ call reach the same check.
+        var module = RunModule("test_str_contains_message_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestClassKeywordInitSubclassRegression()
     {
         // Regression: class keywords are handed to the first

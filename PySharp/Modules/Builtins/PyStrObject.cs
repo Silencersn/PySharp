@@ -3156,8 +3156,11 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
     protected override PyResult Contains(PyCallContext context, PyStrObject self, PyObject item)
     {
+        // CPython unicode_contains (Objects/unicodeobject.c): the left
+        // operand must be a str, and the rejection names its tp_name —
+        // None included, unlike the getargs converter path
         if (item is not PyStrObject { Value: var str })
-            return PyResult.TypeError(null);
+            return PyResult.TypeError(PySR.Runtime_Str_ContainsLeftOperandMustBeStr, item.PyType.Name);
 
         return PyBoolObject.FromBoolean(self.Value.Contains(str));
     }
