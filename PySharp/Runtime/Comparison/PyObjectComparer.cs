@@ -15,6 +15,13 @@ public sealed class PyObjectComparer :
 
     private PyCallContext Context { get; }
 
+    // The IComparer/IEqualityComparer members are fixed-signature .NET faces;
+    // prefer the ambient current context so runtime usage of Default (host
+    // sorts, LINQ, BCL collections) runs Python callbacks on the live
+    // execution, and keep the bound context as the fallback for the
+    // compile-time constant paths that publish no ambient.
+    private PyCallContext EffectiveContext => PyCallContext.Current ?? Context;
+
     internal PyObjectComparer(PyCallContext context)
     {
         Context = context;
@@ -31,13 +38,13 @@ public sealed class PyObjectComparer :
         if (Equals(x, y))
             return 0;
 
-        var lt = PyOperators.Lt(Context, x, y);
+        var lt = PyOperators.Lt(EffectiveContext, x, y);
         if (lt.IsError)
-            throw new PyRuntimeException(Context, lt.Exception);
+            throw new PyRuntimeException(EffectiveContext, lt.Exception);
 
-        var ltBool = PySpecialMethods.Bool(Context, lt.Value);
+        var ltBool = PySpecialMethods.Bool(EffectiveContext, lt.Value);
         if (ltBool.IsError)
-            throw new PyRuntimeException(Context, ltBool.Exception);
+            throw new PyRuntimeException(EffectiveContext, ltBool.Exception);
 
         return ltBool.Value.BoolValue ? -1 : 1;
     }
@@ -49,12 +56,12 @@ public sealed class PyObjectComparer :
 
     public bool Equals(PyObject? x, PyObject? y)
     {
-        return PyComparer.Eq(Context, x, y).PyUnwrap(Context).BoolValue;
+        return PyComparer.Eq(EffectiveContext, x, y).PyUnwrap(EffectiveContext).BoolValue;
     }
 
     public int GetHashCode([DisallowNull] PyObject obj)
     {
-        return GetHashCode(Context, obj).PyUnwrap(Context).Value.GetHashCode();
+        return GetHashCode(EffectiveContext, obj).PyUnwrap(EffectiveContext).Value.GetHashCode();
     }
 
     public bool Equals((PyCallContext Context, PyObject Object) alternate, PyObject other)

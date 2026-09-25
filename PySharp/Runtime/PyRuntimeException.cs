@@ -31,7 +31,10 @@ public class PyRuntimeException : Exception
         _exception = exception;
     }
 
-    public override string Message => _message ??= _exception.ToMessage(PyCallContext.CSharpRuntime);
+    // Exception.Message is a fixed-signature .NET face; mid-run the ambient
+    // context renders the message, after the run the CSharpRuntime sentinel
+    // keeps the context-free fallback
+    public override string Message => _message ??= _exception.ToMessage(PyCallContext.Current ?? PyCallContext.CSharpRuntime);
 
     public PyExceptionObject PyException => _exception;
 

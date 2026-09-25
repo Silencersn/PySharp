@@ -12,6 +12,53 @@ public sealed partial class PyCallContext : IDisposable
     internal static PyCallContext CSharpRuntime { get; } = new("[CSharp Runtime]");
     internal static PyCallContext PyObjectComparison { get; } = new("[PyObject Comparison]");
 
+    // Ambient context for the fixed-signature .NET faces (object.ToString,
+    // Exception.Message, IComparer members) that cannot carry a context
+    // parameter: the AsyncLocal analog of CPython's per-thread state read by
+    // slot callbacks without a tstate argument. Published by the interpreter
+    // root and thread factories only, restored on Dispose — compile paths and
+    // the contract-value-typed collection faces never publish one and keep
+    // their sentinels as the no-ambient fallback.
+    private static readonly AsyncLocal<PyCallContext?> Ambient = new();
+
+    private PyCallContext? _ambientPrevious;
+    private bool _ambientPublished;
+    private int? _ambientThreadId;
+
+    // ExecutionContext flows the ambient into thread-pool continuations, but
+    // a context is a single-thread mutable object (frame stack, handled
+    // exception, builder pool); off-thread reads see null so callers fall
+    // back to their sentinel instead of sharing the publishing thread's state.
+    internal static PyCallContext? Current
+    {
+        get
+        {
+            var context = Ambient.Value;
+            return context is not null && context._ambientThreadId == Environment.CurrentManagedThreadId
+                ? context
+                : null;
+        }
+    }
+
+    private void PublishAmbient(bool inheritPrevious)
+    {
+        _ambientPrevious = inheritPrevious ? Ambient.Value : null;
+        _ambientThreadId = Environment.CurrentManagedThreadId;
+        _ambientPublished = true;
+        Ambient.Value = this;
+    }
+
+    private void UnpublishAmbient()
+    {
+        if (!_ambientPublished)
+            return;
+
+        _ambientPublished = false;
+        _ambientThreadId = null;
+        if (Ambient.Value == this)
+            Ambient.Value = _ambientPrevious;
+    }
+
     private readonly string _prompt;
     private readonly PyEnvironment _environment;
     private PyCallContextFrameState? _state;
@@ -96,6 +143,7 @@ public sealed partial class PyCallContext : IDisposable
         var context = new PyCallContext("[Interpreter Root Context]", environment);
         var frame = PyInternalFrame.CreateModuleFrame(context, isRoot: true, PySpecialNames.Main);
         context.InitState(ref frame);
+        context.PublishAmbient(inheritPrevious: true);
         return context;
     }
 
@@ -104,6 +152,10 @@ public sealed partial class PyCallContext : IDisposable
         var frame = context.CurrentInternalFrame.CreateThreadRootFrame();
         var threadContext = new PyCallContext("[From Creating Thread]", context._environment);
         threadContext.InitState(ref frame);
+        // Thread boundary: the parent ambient flowed in through ExecutionContext
+        // is overwritten and deliberately not restored, so the parent context can
+        // never leak back onto this thread once the thread context is disposed.
+        threadContext.PublishAmbient(inheritPrevious: false);
         return threadContext;
     }
 
@@ -114,6 +166,8 @@ public sealed partial class PyCallContext : IDisposable
 
     public void Dispose()
     {
+        UnpublishAmbient();
+
         if (_state is null)
             return;
 

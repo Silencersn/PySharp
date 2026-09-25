@@ -72,7 +72,10 @@ public partial class PyObject
 
     public override string ToString()
     {
-        var result = PySpecialMethods.Repr(PyCallContext.CSharpRuntime, this);
+        // object.ToString is a fixed-signature .NET face; a user __repr__
+        // runs on the ambient context while a run is active and on the
+        // CSharpRuntime sentinel when there is no execution to attach to
+        var result = PySpecialMethods.Repr(PyCallContext.Current ?? PyCallContext.CSharpRuntime, this);
         if (result.IsSuccessful)
             return $"{GetType().Name}{{id={PyId},repr={result.Value.Value}}}";
         return $"{GetType().Name}{{id={PyId}}}";
