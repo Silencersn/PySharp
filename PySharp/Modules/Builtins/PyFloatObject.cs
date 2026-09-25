@@ -98,25 +98,72 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
     [PyFunctionParameters("number=0.0", "/")]
     private static PyResult NewImpl_1(PyCallContext context, PyArguments arguments)
     {
-        if (arguments[0] is PyStrObject str)
+        var argument = arguments[0];
+
+        // CPython float_new_impl sends an exact str straight to
+        // PyFloat_FromString and everything else through PyNumber_Float,
+        // whose last resort is that same function (Objects/floatobject.c:1590)
+        if (argument is PyStrObject str && str.PyType == PyStrObjectType.Shared)
+            return ParseFloatFromString(context, str);
+
+        // PyNumber_Float consults __float__ before the string fallback, so a
+        // bytes/str subclass that defines __float__ beats the text parse
+        // (Objects/abstract.c:1603)
+        if (argument.PyType.Slots.Float is not null)
+            return PySpecialMethods.Float(context, argument);
+
+        // PyFloat_FromString: a str subclass parses through the Nd/space
+        // transform, while bytes, bytearray and buffers are read as raw bytes
+        // with no transform (Objects/floatobject.c:198-225)
+        return argument switch
         {
-            if (!TryParseFloatString(str.Value, out var value))
-            {
-                // CPython quotes the argument with %R of the original object
-                // (float_from_string_inner, Objects/floatobject.c:162): the
-                // repr supplies the escapes and any overridden __repr__, and
-                // unlike the int messages it carries no precision cap
-                var repr = PyUtils.ReprForMessage(context, str);
-                if (repr.IsError)
-                    return repr;
+            PyStrObject strSubclass => ParseFloatFromString(context, strSubclass),
+            PyBytesObject bytes => ParseFloatFromBytes(context, bytes.AsSpan(), bytes),
+            PyByteArrayObject byteArray => ParseFloatFromBytes(context, byteArray.AsSpan(), byteArray),
+            // A released view fails PyObject_GetBuffer, so CPython reports the
+            // generic TypeError instead of reading the stale buffer
+            PyMemoryViewObject memoryView when !memoryView.Released
+                => ParseFloatFromBytes(context, memoryView.DataSpan, memoryView),
+            _ => PySpecialMethods.Float(context, argument),
+        };
+    }
 
-                return PyResult.ValueError(PySR.Runtime_Number_Float_InvalidLiteral, repr.Value.Value);
-            }
+    private static PyResult ParseFloatFromString(PyCallContext context, PyStrObject str)
+    {
+        if (!TryParseFloatString(str.Value, out var value))
+            return InvalidFloatLiteral(context, str);
 
-            return PyFloatObject.FromDouble(value);
-        }
+        return PyFloatObject.FromDouble(value);
+    }
 
-        return PySpecialMethods.Float(context, arguments[0]);
+    // CPython PyFloat_FromString takes the bytes/bytearray/buffer contents
+    // verbatim — no Nd/space transform — and hands them to the same
+    // underscore-aware parse tail the str branch uses
+    private static PyResult ParseFloatFromBytes(PyCallContext context, ReadOnlySpan<byte> data, PyObject source)
+    {
+        var text = string.Create(data.Length, data, (span, bytes) =>
+        {
+            for (int i = 0; i < bytes.Length; i++)
+                span[i] = (char)bytes[i];
+        });
+
+        if (!TryParseFloatText(text, out var value))
+            return InvalidFloatLiteral(context, source);
+
+        return PyFloatObject.FromDouble(value);
+    }
+
+    private static PyResult InvalidFloatLiteral(PyCallContext context, PyObject source)
+    {
+        // CPython quotes the argument with %R of the original object
+        // (float_from_string_inner, Objects/floatobject.c:162): the repr
+        // supplies the escapes and any overridden __repr__, and unlike the int
+        // messages it carries no precision cap
+        var repr = PyUtils.ReprForMessage(context, source);
+        if (repr.IsError)
+            return repr;
+
+        return PyResult.ValueError(PySR.Runtime_Number_Float_InvalidLiteral, repr.Value.Value);
     }
 
     protected override PyResult Repr(PyCallContext context, PyFloatObject self)
@@ -812,18 +859,28 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
 
     private static bool TryParseFloatString(string text, out double result)
     {
+        // CPython PyFloat_FromString applies the Nd/space transform on the
+        // unicode branch only (Objects/floatobject.c:199), then both branches
+        // share the underscore pre-check and the ASCII whitespace strip
+        return TryParseFloatText(PyUnicodeData.TransformDecimalAndSpaceToAscii(text), out result);
+    }
+
+    // Shared tail of PyFloat_FromString for both the str and the bytes-like
+    // branches; the caller has already run any transform that applies.
+    private static bool TryParseFloatText(string text, out double result)
+    {
         result = 0;
         // CPython rejects embedded NULs outright and otherwise requires the
         // whole input consumed (pystrtod.c, floatobject.c), while
         // double.TryParse would silently take a single trailing NUL as
-        // end-of-input; the Nd/space transform below passes NUL through
+        // end-of-input; the Nd/space transform above passes NUL through
         if (text.Contains('\0'))
             return false;
         // CPython PyFloat_FromString: the Nd/space transform runs first, then
         // _Py_string_to_number_with_underscores validates that every '_'
         // sits between digits and strips it; the float grammar has no
         // thousands separator, so any ',' must fail the parse below
-        var transformed = PyUnicodeData.TransformDecimalAndSpaceToAscii(text);
+        var transformed = text;
         if (transformed.Contains('_'))
         {
             var sb = new System.Text.StringBuilder(transformed.Length);
@@ -851,7 +908,11 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
             transformed = sb.ToString();
         }
 
-        var trimmed = transformed.Trim().ToLowerInvariant();
+        // float_from_string_inner strips only Py_ISSPACE, so the strip and the
+        // parse must agree on the whitespace class: the default Float style
+        // would also swallow U+0085/U+00A0, which the bytes-like branch can
+        // produce from the raw 0x85/0xA0 bytes (Objects/floatobject.c:156)
+        var trimmed = TrimPySpace(transformed).ToLowerInvariant();
 
         // Handle special values
         if (trimmed is "inf" or "infinity")
@@ -875,8 +936,28 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
             return true;
         }
 
-        return double.TryParse(trimmed, System.Globalization.NumberStyles.Float,
+        // The whitespace flags are cleared for the same reason as the strip
+        // above: the parser must not accept a whitespace class wider than the
+        // one Py_ISSPACE defines
+        return double.TryParse(trimmed, AcceptFloatText,
             CultureInfo.InvariantCulture, out result);
+    }
+
+    private const NumberStyles AcceptFloatText =
+        NumberStyles.Float & ~(NumberStyles.AllowLeadingWhite | NumberStyles.AllowTrailingWhite);
+
+    // float_from_string_inner strips leading and trailing Py_ISSPACE only
+    // (Objects/floatobject.c:156), which is narrower than .NET's Trim
+    private static string TrimPySpace(string text)
+    {
+        int start = 0;
+        int end = text.Length;
+        while (start < end && IsPySpace(text[start]))
+            start++;
+        while (end > start && IsPySpace(text[end - 1]))
+            end--;
+
+        return start is 0 && end == text.Length ? text : text[start..end];
     }
 
     // CPython float_fromhex (floatobject.c), transcribed: a [sign]

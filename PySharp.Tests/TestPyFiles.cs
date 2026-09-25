@@ -4473,6 +4473,16 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestFloatBytesLikeRegression()
+    {
+        // Regression: float() accepts bytes/bytearray/memoryview through
+        // PyFloat_FromString, parsing the raw bytes with no Nd/space
+        // transform, and only an exact str skips __float__ dispatch.
+        var module = RunModule("test_float_bytes_like_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestYieldFromCloseLookupUnraisableRegression()
     {
         // Regression: a failing `close` attribute lookup on a yield from
