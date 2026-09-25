@@ -31,13 +31,17 @@ partial class PySR
     public const string Runtime_BaseException_ContextMayNotBeDeleted = "__context__ may not be deleted";
     public const string Runtime_BaseException_SuppressMayNotBeDeleted = "can't delete numeric/char attribute";
 
-    public const string Runtime_Import_ModuleNotFound = "No module named '{0}'";
+    // CPython quotes the module name with !r (Lib/importlib/_bootstrap.py
+    // _ERR_MSG_PREFIX), so the caller passes repr(name) — the name arrives
+    // with its own quotes and escapes
+    public const string Runtime_Import_ModuleNotFound = "No module named {0}";
     public const string Runtime_Import_RelativeNoKnownParentPackage = "attempted relative import with no known parent package";
     public const string Runtime_Import_RelativeBeyondTopLevel = "attempted relative import beyond top-level package";
     public const string Runtime_Import_PackageNotString = "__package__ not set to a string";
     public const string Runtime_Import_NonIterableAll = "{0}.__all__ must be iterable";
     public const string Runtime_Import_NonStringAllElt = "Item in {0}.__all__ must be str, not {1}";
     public const string Runtime_Import_CannotImportName = "cannot import name '{0}' from '{1}'";
+    public const string Runtime_Import_ErrorUnexpectedKeyword = "ImportError() got an unexpected keyword argument '{0}'";
 
     public const string Runtime_Inheritance_UnacceptableBaseType = "type '{0}' is not an acceptable base type";
     public const string Runtime_Inheritance_LayoutConflict = "multiple bases have instance lay-out conflict";

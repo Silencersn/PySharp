@@ -448,6 +448,41 @@ internal static class PyUtils
         return inner is { IsError: false } ? inner.Value.Value : string.Empty;
     }
 
+    // CPython raises the import failure with !r of the module name
+    // (Lib/importlib/_bootstrap.py _ERR_MSG_PREFIX) and sets
+    // ModuleNotFoundError.name to the raw name — repr supplies the quotes,
+    // so a name containing an apostrophe switches the message to double
+    // quotes and a control character arrives as an escape
+    public static PyResult ModuleNotFound(PyCallContext context, string name)
+    {
+        var nameObj = PyStrObject.FromString(name);
+        var repr = ReprForMessage(context, nameObj);
+        if (repr.IsError)
+            return repr;
+
+        return PyResult.FromException(CreateModuleNotFound(nameObj, repr.Value.Value));
+    }
+
+    // Same failure on the throwing path: the import machinery raises rather
+    // than returns, but the message and the name attribute are identical
+    public static PyRuntimeException ModuleNotFoundThrowable(PyCallContext context, string name)
+    {
+        var nameObj = PyStrObject.FromString(name);
+        var repr = ReprForMessage(context, nameObj);
+        if (repr.IsError)
+            return new PyRuntimeException(context, repr.Exception);
+
+        return new PyRuntimeException(context, CreateModuleNotFound(nameObj, repr.Value.Value));
+    }
+
+    private static PyExceptionObject CreateModuleNotFound(PyStrObject nameObj, string renderedName)
+    {
+        var exception = PyModuleNotFoundErrorObjectType.Shared.Create(
+            PyStrObject.FromString(PySR.Format(PySR.Runtime_Import_ModuleNotFound, renderedName)));
+        exception.PyAttributes["name"] = nameObj;
+        return exception;
+    }
+
     // CPython's argument converters render the offending argument's type as
     // "None" for Py_None and as tp_name for everything else — Python/getargs.c
     // converterr() and _PyArg_BadArgument(), both with

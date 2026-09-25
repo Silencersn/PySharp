@@ -656,7 +656,7 @@ internal static partial class BytecodeVirtualMachine
         }
 
         if (!context.PyEnvironment.TryLoadModule(context, name, out var rootModule, out var module))
-            throw context.ModuleNotFoundError(PySR.Runtime_Import_ModuleNotFound, name);
+            throw PyUtils.ModuleNotFoundThrowable(context, name);
 
         // If fromlist is non-empty, try to import each name as a submodule of the package
         // This mirrors CPython's _handle_fromlist: for from package import X, ensure X is

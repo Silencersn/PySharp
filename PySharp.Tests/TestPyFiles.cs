@@ -2113,6 +2113,19 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestImportNotFoundMessageRegression()
+    {
+        // Regression: a failed import quotes the module name with repr
+        // (Lib/importlib/_bootstrap.py's f'{_ERR_MSG_PREFIX}{name!r}'), so a
+        // name holding an apostrophe switches the message to double quotes and
+        // a control character arrives escaped, and the raw name lands on
+        // ModuleNotFoundError.name. ImportError's name/path/name_from keywords
+        // and its msg/str behavior follow Objects/exceptions.c.
+        var module = RunModule("test_import_not_found_message_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestMatchMissingMatchArgsRegression()
     {
         // Regression: a class pattern with positional sub-patterns against a

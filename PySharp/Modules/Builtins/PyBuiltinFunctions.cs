@@ -945,7 +945,7 @@ public static partial class PyBuiltinFunctions
         }
 
         if (!context.PyEnvironment.TryLoadModule(context, name, out var rootModule, out var module))
-            return PyResult.ModuleNotFoundError(PySR.Runtime_Import_ModuleNotFound, name);
+            return PyUtils.ModuleNotFound(context, name);
 
         var fromList = arguments[3];
 

@@ -390,7 +390,128 @@ public sealed partial class PyNameErrorObjectType : PyExceptionType;
 public sealed partial class PyUnboundLocalErrorObjectType : PyExceptionType;
 
 [PyException("ImportError")]
-public sealed partial class PyImportErrorObjectType : PyExceptionType;
+public sealed partial class PyImportErrorObjectType : PyExceptionType
+{
+    // CPython ImportError_init (Objects/exceptions.c:1810): BaseException_init
+    // runs first, then the name/path/name_from keywords are parsed off an
+    // empty positional tuple — so positional arguments set args as usual and
+    // only these three keywords are accepted. msg is args[0] when there is
+    // exactly one argument, otherwise it stays unset (ImportError_str falls
+    // back to BaseException's args rendering in that case).
+    protected override PyResult Init(PyCallContext context, PyExceptionObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
+    {
+        self.Args = [.. args];
+
+        foreach (var (key, value) in kwargs)
+        {
+            if (key is not ("name" or "path" or "name_from"))
+                // CPython parses the keywords with the literal format
+                // "|$OOO:ImportError", so a subclass is still reported under
+                // the base name
+                return PyResult.TypeError(PySR.Runtime_Import_ErrorUnexpectedKeyword, key);
+
+            self.PyAttributes[key] = value;
+        }
+
+        if (args.Count is 1)
+            self.PyAttributes["msg"] = args[0];
+
+        return PyNoneObject.None;
+    }
+
+    // CPython ImportError_str: an exact str msg wins over the args rendering,
+    // so a one-argument str() is the message even when args carries more
+    protected override PyResult Str(PyCallContext context, PyExceptionObject self)
+    {
+        if (self.PyAttributes.TryGetValue("msg", out var msg) && msg.PyType is PyStrObjectType)
+            return PySpecialMethods.Str(context, msg);
+
+        return PyBaseExceptionObjectType.BaseExceptionStr(context, self);
+    }
+
+    // The rest are plain members (Objects/exceptions.c ImportError_members):
+    // assignment and deletion go through __dict__ and are never rejected, and
+    // an unset member reads back as None.
+    [PyProperty("msg")]
+    private static PyResult Get_Msg(PyCallContext context, PyExceptionObject self)
+    {
+        return self.PyAttributes.TryGetValue("msg", out var msg) ? msg : PyNoneObject.None;
+    }
+
+    [PyProperty("msg", Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_Msg(PyCallContext context, PyExceptionObject self, PyObject value)
+    {
+        self.PyAttributes["msg"] = value;
+        return PyNoneObject.None;
+    }
+
+    [PyProperty("msg", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Msg(PyCallContext context, PyExceptionObject self)
+    {
+        self.PyAttributes.Remove("msg");
+        return PyNoneObject.None;
+    }
+
+    [PyProperty("name")]
+    private static PyResult Get_Name(PyCallContext context, PyExceptionObject self)
+    {
+        return self.PyAttributes.TryGetValue("name", out var name) ? name : PyNoneObject.None;
+    }
+
+    [PyProperty("name", Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_Name(PyCallContext context, PyExceptionObject self, PyObject value)
+    {
+        self.PyAttributes["name"] = value;
+        return PyNoneObject.None;
+    }
+
+    [PyProperty("name", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Name(PyCallContext context, PyExceptionObject self)
+    {
+        self.PyAttributes.Remove("name");
+        return PyNoneObject.None;
+    }
+
+    [PyProperty("path")]
+    private static PyResult Get_Path(PyCallContext context, PyExceptionObject self)
+    {
+        return self.PyAttributes.TryGetValue("path", out var path) ? path : PyNoneObject.None;
+    }
+
+    [PyProperty("path", Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_Path(PyCallContext context, PyExceptionObject self, PyObject value)
+    {
+        self.PyAttributes["path"] = value;
+        return PyNoneObject.None;
+    }
+
+    [PyProperty("path", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Path(PyCallContext context, PyExceptionObject self)
+    {
+        self.PyAttributes.Remove("path");
+        return PyNoneObject.None;
+    }
+
+    [PyProperty("name_from")]
+    private static PyResult Get_NameFrom(PyCallContext context, PyExceptionObject self)
+    {
+        return self.PyAttributes.TryGetValue("name_from", out var nameFrom) ? nameFrom : PyNoneObject.None;
+    }
+
+    [PyProperty("name_from", Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_NameFrom(PyCallContext context, PyExceptionObject self, PyObject value)
+    {
+        self.PyAttributes["name_from"] = value;
+        return PyNoneObject.None;
+    }
+
+    [PyProperty("name_from", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_NameFrom(PyCallContext context, PyExceptionObject self)
+    {
+        self.PyAttributes.Remove("name_from");
+        return PyNoneObject.None;
+    }
+}
 
 [PyException("ModuleNotFoundError", Bases = [typeof(PyImportErrorObjectType)])]
 public sealed partial class PyModuleNotFoundErrorObjectType : PyExceptionType;
