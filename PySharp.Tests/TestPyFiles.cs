@@ -2075,6 +2075,19 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestRangeSliceBoundsRegression()
+    {
+        // Regression: slicing a range keeps the start/stop/step computed
+        // from slice.indices() even when the result is empty or reversed
+        // (CPython compute_slice hands the bounds straight to range_new),
+        // so range(10)[5:2] reprs as range(5, 2) instead of collapsing to
+        // range(0, 0). len, iteration, membership and equality are
+        // unchanged — only the visible bounds.
+        var module = RunModule("test_range_slice_bounds_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestWarningsCustomCategoryRegression()
     {
         // Regression: warnings.warn with a user-defined Warning subclass

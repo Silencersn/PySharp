@@ -184,10 +184,12 @@ public sealed partial class PyRangeObjectType : PyTypeObject<PyRangeObject>
             var indicesResult = slice.Indices(context, self.RangeLen, out var indices);
             if (indicesResult.IsError)
                 return indicesResult;
-            var (sStart, sStop, sStep, sLength) = indices;
-            if (sLength.IsZero)
-                return PyRangeObject.CreateRange(self.Start, self.Start, self.Step);
-
+            var (sStart, sStop, sStep, _) = indices;
+            // CPython compute_slice computes substart/substop from the slice
+            // indices unconditionally and passes them to range_new, so an
+            // empty or reversed slice still reports the computed bounds
+            // (the length simply comes out zero) — the bounds are never
+            // collapsed to (0, 0)
             BigInteger newStart = self.Start + sStart * self.Step;
             BigInteger newStop = self.Start + sStop * self.Step;
             BigInteger newStep = self.Step * sStep;
