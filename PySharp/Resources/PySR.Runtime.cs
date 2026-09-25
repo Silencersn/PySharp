@@ -243,9 +243,12 @@ partial class PySR
     public const string Runtime_Codec_UnknownEncoding = "unknown encoding: {0}";
     public const string Runtime_Builtin_Import_NameMustBeString = "module name must be a string";
     public const string Runtime_Builtin_Import_GlobalsMustBeDict = "globals must be a dict";
-    public const string Runtime_Builtin_IsInstance_MustBeTypeOrTupleOfTypes = "isinstance() arg 2 must be a type or a tuple of types";
+    // CPython bltinmodule.c: the two rejection paths are hardcoded separately
+    // — isinstance admits types, issubclass admits classes, and both name the
+    // PEP 604 union as a third accepted form
+    public const string Runtime_Builtin_IsInstance_MustBeTypeOrTupleOfTypes = "isinstance() arg 2 must be a type, a tuple of types, or a union";
     public const string Runtime_Builtin_IsSubclass_Arg1MustBeClass = "issubclass() arg 1 must be a class";
-    public const string Runtime_Builtin_IsSubclass_Arg2MustBeTypeOrTupleOfTypes = "issubclass() arg 2 must be a type or a tuple of types";
+    public const string Runtime_Builtin_IsSubclass_Arg2MustBeTypeOrTupleOfTypes = "issubclass() arg 2 must be a class, a tuple of classes, or a union";
     public const string Runtime_Builtin_ExecEval_Globals = "globals must be a dict";
     public const string Runtime_Builtin_ExecEval_Locals = "locals must be a dict";
     public const string Runtime_Builtin_Exec_ClosureForNonCodeObj = "closure can only be used when source is a code object";

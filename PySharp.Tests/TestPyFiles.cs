@@ -342,6 +342,19 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestIsInstanceArg2MessageRegression()
+    {
+        // Regression: rejecting a classinfo that is neither a type nor a
+        // tuple names the PEP 604 union as a third accepted form, and
+        // issubclass carries CPython's own "class" wording instead of
+        // reusing isinstance's "type" wording — the two messages in
+        // Python/bltinmodule.c are hardcoded separately. Which inputs are
+        // accepted is unchanged.
+        var module = RunModule("test_isinstance_arg2_message_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestClassKeywordInitSubclassRegression()
     {
         // Regression: class keywords are handed to the first
