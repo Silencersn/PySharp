@@ -242,9 +242,6 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
             }
         }
 
-        // resolve __new__/__init__ by MRO rather than class-creation order
-        RecomputeConstructionSlots(type);
-
         // CPython type_new: a class defining __eq__ without a __hash__ entry,
         // or with __hash__ = None, is explicitly unhashable — None lands in
         // the type dict and blocks inheritance of object's identity hash
@@ -255,11 +252,12 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
             type.Slots.Hash = PyTypeObject.HashNotImplemented;
         }
 
-        // CPython type_new fixup_slot_dispatchers: the object-defaultable
-        // special-method slots re-resolve through the MRO dicts so an
-        // inherited default copy from an earlier base cannot mask a later
-        // base's real method
-        PyTypeObject.FixupSlotDispatchers(type);
+        // CPython type_new fixup_slot_dispatchers: every special-method slot
+        // re-resolves through the first MRO entry defining the dunder in its
+        // own dict, so an inherited default copy from an earlier base cannot
+        // mask a later base's real method (UpdateOneSlot keeps the namespace
+        // scan's own wiring and handles __new__/__init__/__hash__ = None)
+        PyTypeObject.FixupAllSlots(type);
 
 
         // NOTE: AI-Generated

@@ -4054,6 +4054,24 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestSlotPropagationRegression()
+    {
+        // Regression: slot re-resolution after mutation (issue #421,
+        // CPython update_slot / update_subclasses). A dunder assigned or
+        // deleted on a runtime class re-resolves on the type and recursively
+        // on every subclass whose own dict does not shadow the name —
+        // assignment reaches subclasses created earlier, deletion re-inherits
+        // the ancestor's exact delegate or clears the slot, an intermediate
+        // base gaining the dunder later propagates down, own entries shield
+        // their subtree, creation-time MRO-dict resolution covers every
+        // family (not just the object-defaultable nine), and the
+        // __setattr__/__delattr__ family resolves back to object's hack-free
+        // slot instead of a stale closure.
+        var module = RunModule("test_slot_propagation_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestSetUserHashEqRegression()
     {
         // Regression: set/frozenset storage runs user __hash__/__eq__ on

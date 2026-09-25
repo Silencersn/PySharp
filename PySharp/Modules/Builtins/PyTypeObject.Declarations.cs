@@ -17,9 +17,11 @@ partial class PyTypeObject
     /// <item>
     /// Slot delegate fields in <c>PyTypeObject.PyTypeSlots</c>, as well as utility methods:
     /// <list type="bullet">
-    /// <item><c>Clone()</c>: Creates a shallow copy of the slots structure.</item>
     /// <item><c>FillNullWith(other)</c>: Populates missing (null) slots with implementations from a base type (used in MRO).</item>
     /// <item><c>TrySetSlot(name, value)</c>: Dynamically sets a slot (converting a <c>PyObject</c> to the required delegate type) based on its special method name.</item>
+    /// <item><c>ClearSlot(name)</c>: Nulls a slot by special method name — the outcome of resolving with no dict provider anywhere in the MRO.</item>
+    /// <item><c>TrySetWrappedSlot(name, wrapper)</c>: Wires a slot from a wrapper descriptor's exact delegate when the delegate type matches the name.</item>
+    /// <item><c>AllSlotNames</c> / <c>IsSlotName(name)</c>: The full special-method name list and membership test driving slot re-resolution (creation fixup and mutation propagation).</item>
     /// </list>
     /// </item>
     /// <item>Constant string aliases in <c>PySpecialNames</c> (e.g. <c>public const string Add = "__add__";</c>).</item>
@@ -27,9 +29,10 @@ partial class PyTypeObject
     /// 
     /// <b>Note on Implementation Details:</b>
     /// Methods that do not consume an instance <c>self</c> as their first parameter (such as <c>__new__</c>, which receives <c>cls</c>) 
-    /// <b>are not defined here</b>. Because they don't fit the generic <c>TObject</c> signature pattern, their slot fields, 
-    /// and constants (e.g., <c>PyTypeSlots.New</c>, <c>PySpecialNames.New</c>) are managed manually. However, the generated 
-    /// <c>TrySetSlot</c> method still includes a hardcoded switch-case branch for <c>__new__</c> for integration convenience.
+    /// <b>are not defined here</b>. Because they don't fit the generic <c>TObject</c> signature pattern, their slot fields,
+    /// and constants (e.g., <c>PyTypeSlots.New</c>, <c>PySpecialNames.New</c>) are managed manually. However, the generated
+    /// <c>TrySetSlot</c>, <c>ClearSlot</c> and <c>TrySetWrappedSlot</c> methods still include hardcoded switch-case branches for
+    /// <c>__new__</c> for integration convenience (the last one returns false, preserving <c>FillNewSlot</c>'s validation closure).
     /// </summary>
     private static partial class Declarations
     {

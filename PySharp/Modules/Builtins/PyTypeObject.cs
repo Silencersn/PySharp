@@ -9,6 +9,53 @@ public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
 {
     private readonly PyTypeObject[] _mro;
 
+    // CPython tp_subclasses: a weak registry of the direct subclasses, walked
+    // when a dunder assignment/deletion on this type must re-resolve inherited
+    // slots down the subtree (typeobject.c update_subclasses). The entries are
+    // weak on purpose — a strong list held by the base would pin every
+    // runtime-created class forever.
+    private readonly object _subclassLock = new();
+    private List<WeakReference<PyTypeObject>>? _subclasses;
+
+    private void RegisterSubclass(PyTypeObject subclass)
+    {
+        // only runtime-created bases are ever walked: the type-attribute
+        // guards reject writes on static types, so their registries would be
+        // unreachable ballast (hundreds of startup-time entries in object's)
+        if (!IsRuntimeCreated)
+            return;
+
+        lock (_subclassLock)
+        {
+            _subclasses ??= [];
+            // nothing removes an entry at type death, so prune collected
+            // subclasses while registering — types that never trigger a slot
+            // update would otherwise grow their bases' registries unbounded
+            _subclasses.RemoveAll(static weakRef => !weakRef.TryGetTarget(out _));
+            _subclasses.Add(new WeakReference<PyTypeObject>(subclass));
+        }
+    }
+
+    private List<PyTypeObject> EnumerateLiveSubclasses()
+    {
+        lock (_subclassLock)
+        {
+            if (_subclasses is null)
+                return [];
+
+            // the registry is the only holder of these weak references, so
+            // collected subclasses are pruned while walking
+            _subclasses.RemoveAll(static weakRef => !weakRef.TryGetTarget(out _));
+            var live = new List<PyTypeObject>(_subclasses.Count);
+            foreach (var weakRef in _subclasses)
+            {
+                if (weakRef.TryGetTarget(out var subclass))
+                    live.Add(subclass);
+            }
+            return live;
+        }
+    }
+
     public virtual IReadOnlyList<PyTypeObject> Bases => [PyObjectType.Shared];
     internal ReadOnlySpan<PyTypeObject> InternalMRO => _mro;
     public IReadOnlyList<PyTypeObject> MRO => _mro;
@@ -88,8 +135,11 @@ public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
             ModuleAsObject = PyStrObject.FromString(DefaultModule);
         Name = DefaultName;
         QualName = DefaultQualName;
-        _mro = [this, .. CreateMROWithoutSelf(Bases)];
+        var bases = Bases;
+        _mro = [this, .. CreateMROWithoutSelf(bases)];
         Slots = PyTypeSlots.Create(MRO.Skip(1));
+        foreach (var baseType in bases.Distinct())
+            baseType.RegisterSubclass(this);
         PyAttributes[PySpecialNames.Doc] = PyNoneObject.None;
     }
 
@@ -101,6 +151,8 @@ public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
         QualName = qualName;
         _mro = [this, .. CreateMROWithoutSelf(bases)];
         Slots = PyTypeSlots.Create(MRO.Skip(1));
+        foreach (var baseType in bases.Distinct())
+            baseType.RegisterSubclass(this);
         PyAttributes[PySpecialNames.Doc] = PyNoneObject.None;
     }
 

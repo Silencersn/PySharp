@@ -143,15 +143,13 @@ partial class PyTypeObject
 
         self.PyAttributes[name] = value;
 
-        // When setting an attribute on a type object (e.g. cls.__init__ = func),
-        // also update the corresponding slot so that Call/New etc. pick it up.
-        if (self is PyTypeObject typeObj && !IsObjectDefaultSlotValue(name, value))
-        {
-            if (name is PySpecialNames.Hash)
-                SetHashSlot(typeObj.Slots, value);
-            else
-                typeObj.Slots.TrySetSlot(name, value);
-        }
+        // Setting a dunder on a type object re-resolves the slot here and on
+        // every subclass whose dict does not shadow it (CPython update_slot).
+        // Assigning object's default __new__/__init__ back participates too:
+        // UpdateOneSlot re-wires object's own delegate so a previous override
+        // stops applying, exactly like CPython rewiring tp_new/tp_init
+        if (self is PyTypeObject typeObj)
+            UpdateSlot(typeObj, name);
 
         return PyNoneObject.None;
     }
@@ -193,10 +191,10 @@ partial class PyTypeObject
 
     private static bool IsModuleSubclass(PyTypeObject type) => type.IsSubclassOf(PyModuleObjectType.Shared);
 
-    // CPython fixup_slot_dispatchers: assigning the inherited object default
-    // (__new__ / __init__) is a no-op for slot wiring — the slot keeps
-    // inheriting object's delegate, so the excess-argument checks in
-    // object.__new__/__init__ still see the defaults
+    // CPython type_update_dict: identity against object's dict entry detects
+    // that a __new__/__init__ value IS object's default, letting callers keep
+    // creation-time FillNullWith wiring instead of converting a closure — a
+    // converted closure would lose the ReferenceEquals default probes
     internal static bool IsObjectDefaultSlotValue(string name, PyObject value)
     {
         if (name is not (PySpecialNames.New or PySpecialNames.Init))
@@ -206,86 +204,166 @@ partial class PyTypeObject
             && ReferenceEquals(value, defaultValue);
     }
 
-    // CPython resolves __new__/__init__ by MRO lookup at call time, while the
-    // eager slot fill bakes inherited delegates at class-creation order: a
-    // base defining __init__ could lose to a base created earlier whose slot
-    // was already filled with the built-in. Re-resolve from the first MRO
-    // entry defining the method in its own dict.
-    internal static void RecomputeConstructionSlots(PyTypeObject type)
+    // CPython fixup_slot_dispatchers generalized to every slot (typeobject.c
+    // update_one_slot): each slot re-resolves through the first MRO entry
+    // defining the dunder in its OWN dict. The eager FillNullWith pass bakes
+    // inherited copies of an ancestor's delegate into base slots, and such a
+    // copy then masks a later base's real method (a non-first parent's
+    // __ne__/__gt__/__ge__/__hash__ was unreachable — the original 9-name
+    // fixup; the same masking exists for every other family, e.g. __iter__),
+    // so creation-time resolution walks the MRO dicts for all names.
+    internal static void FixupAllSlots(PyTypeObject type)
     {
-        RecomputeConstructionSlot(PySpecialNames.Init,
-            static t => t.Slots.Init, static (t, f) => t.Slots.Init = f, type);
-        RecomputeConstructionSlot(PySpecialNames.New,
-            static t => t.Slots.New, static (t, f) => t.Slots.New = f, type);
+        foreach (var name in PyTypeSlots.AllSlotNames)
+            UpdateOneSlot(type, name, wireOwn: false);
     }
 
-    private static void RecomputeConstructionSlot<T>(string name, Func<PyTypeObject, T?> getSlot, Action<PyTypeObject, T> setSlot, PyTypeObject type) where T : Delegate
+    // CPython update_slot + update_subclasses: after a dunder dict entry on a
+    // runtime class is written or deleted, re-resolve the slot on the type and
+    // recursively on every registered subclass whose own dict does not shadow
+    // the name — this is what makes a later Base.__add__ = g (or its deletion)
+    // visible to classes that already inherited the slot.
+    internal static void UpdateSlot(PyTypeObject type, string name)
     {
-        foreach (var entry in type.InternalMRO)
+        if (!PyTypeSlots.IsSlotName(name))
+            return;
+
+        UpdateOneSlot(type, name, wireOwn: true);
+        foreach (var subclass in type.EnumerateLiveSubclasses())
         {
+            // CPython recurse_down_subclasses: a subclass whose own dict
+            // defines the name shields its whole subtree from this change
+            if (subclass.PyAttributes.ContainsKey(name))
+                continue;
+            UpdateSlot(subclass, name);
+        }
+    }
+
+    private static void UpdateOneSlot(PyTypeObject type, string name, bool wireOwn)
+    {
+        var mro = type.InternalMRO;
+        for (int i = 0; i < mro.Length; i++)
+        {
+            var entry = mro[i];
             if (!entry.PyAttributes.TryGetValue(name, out var value))
                 continue;
 
-            // assigning object's defaults is a no-op for slot wiring
-            if (IsObjectDefaultSlotValue(name, value))
+            if (i is 0)
+            {
+                // The type's own dict entry is already wired (namespace scan at
+                // creation, setattr for later mutations) — creation-time
+                // resolution keeps that exact delegate: rewiring would lose
+                // FillNewSlot's validation closure and the reflected-synthesis
+                // delegates. The mutation entry point repeats the previous
+                // setattr sync; __hash__ treats None as the unhashable marker.
+                // One exception at creation: an own object-default
+                // __new__/__init__ entry is skipped by the namespace scan
+                // (IsObjectDefaultSlotValue gates it out), so without rewiring
+                // the slot would keep FillNullWith's baked ANCESTOR delegate
+                // when an ancestor overrides — CPython's specific test wires
+                // object's tp_new/tp_init for that idiom too
+                if (!wireOwn && !IsObjectDefaultSlotValue(name, value))
+                    return;
+
+                if (name is PySpecialNames.Hash)
+                {
+                    SetHashSlot(type.Slots, value);
+                }
+                else if (name is PySpecialNames.New or PySpecialNames.Init)
+                {
+                    // object's default in the own dict re-wires object's own
+                    // delegate (CPython rewires tp_new/tp_init), so an
+                    // overriding ancestor and a previous override stop applying
+                    if (IsObjectDefaultSlotValue(name, value))
+                    {
+                        if (name is PySpecialNames.New)
+                            type.Slots.New = PyObjectType.Shared.Slots.New;
+                        else
+                            type.Slots.Init = PyObjectType.Shared.Slots.Init;
+                    }
+                    else
+                    {
+                        // known pre-existing divergence: CPython's
+                        // update_one_slot keeps the existing tp_new when a
+                        // native type's __new__ wrapper (dict.__new__ & co)
+                        // is assigned; here the value is converted and the
+                        // cross-type call fails on the type check
+                        type.Slots.TrySetSlot(name, value);
+                    }
+                }
+                else
+                {
+                    type.Slots.TrySetSlot(name, value);
+                }
+                return;
+            }
+
+            // __new__/__init__ resolve to the provider's own slot delegate so
+            // FillNewSlot's cls-validation wrapper and object's ReferenceEquals
+            // default probes keep working — a converted closure over the dict
+            // value would lose both. A null provider slot never happens: every
+            // dict-carried provider also owns the slot (FillSlot wiring) and
+            // object sits at the end of every MRO with both slots filled
+            if (name is PySpecialNames.New or PySpecialNames.Init)
+            {
+                // creation-time resolution keeps the FillNullWith wiring when
+                // the provider is object's default — the slot already holds
+                // object's delegate. A mutation must still re-wire: after
+                // del cls.__init__/__new__ the slot carries the deleted
+                // override's delegate, and CPython update_one_slot re-resolves
+                // it to object's tp_init/tp_new
+                if (!wireOwn && IsObjectDefaultSlotValue(name, value))
+                    return;
+
+                if (name is PySpecialNames.New)
+                {
+                    if (entry.Slots.New is { } newFunc)
+                        type.Slots.New = newFunc;
+                }
+                else if (entry.Slots.Init is { } initFunc)
+                {
+                    type.Slots.Init = initFunc;
+                }
+                return;
+            }
+
+            // __hash__ = None marks a type explicitly unhashable regardless of
+            // which ancestor dict carries the None (dict's read face)
+            if (name is PySpecialNames.Hash && value is PyNoneObject)
+            {
+                type.Slots.Hash = HashNotImplemented;
+                return;
+            }
+
+            // object's dict entries for __setattr__/__delattr__ are the
+            // hackchecked wrappers, a different delegate from the hack-free
+            // generic setattro slot. CPython's hackcheck wraps exactly
+            // object_setattr so its specific test still hits; here the entry
+            // resolves back to object's hack-free slot delegate instead —
+            // never to a stale converted closure left by an earlier override
+            if ((name is PySpecialNames.SetAttr or PySpecialNames.DelAttr)
+                && ReferenceEquals(entry, PyObjectType.Shared))
+            {
+                if (name is PySpecialNames.SetAttr)
+                    type.Slots.SetAttr = PyObjectType.Shared.Slots.SetAttr;
+                else
+                    type.Slots.DelAttr = PyObjectType.Shared.Slots.DelAttr;
+                return;
+            }
+
+            // specific: a wrapper descriptor carries the provider's exact slot
+            // delegate (FillSlot shares the instance between the slot field and
+            // the type dict), so re-resolving an inherited native method keeps
+            // the direct call without a closure
+            if (value is PyWrapperDescriptorObject wrapper && type.Slots.TrySetWrappedSlot(name, wrapper))
                 return;
 
-            var slot = getSlot(entry);
-            if (slot is not null)
-                setSlot(type, slot);
+            type.Slots.TrySetSlot(name, value);
             return;
         }
-    }
 
-    // CPython fixup_slot_dispatchers: each special-method slot resolves
-    // through the first MRO entry defining the dunder in its own dict.
-    // The eager FillNullWith pass bakes inherited copies of object's
-    // default implementations into base slots, and such a copy then masks
-    // a later base's real method (a non-first parent's __ne__/__gt__/
-    // __ge__/__hash__ was unreachable), so re-resolve the defaultable
-    // family from the MRO dicts. The walk never stops at a base whose own
-    // dict misses: a native base that merely inherits the slot pointer
-    // (e.g. TypeError for __str__) must not mask a later base's real
-    // method (KeyError's), exactly like CPython's _PyType_Lookup. A native
-    // base WITH its own entry is authoritative — its wrapper is wired and
-    // the walk ends. No hit at all keeps the eager-filled slot, so a
-    // C#-modelled default never loses to object's.
-    private static readonly string[] DefaultableSlotNames =
-    [
-        PySpecialNames.Repr,
-        PySpecialNames.Str,
-        PySpecialNames.Hash,
-        PySpecialNames.Eq,
-        PySpecialNames.Ne,
-        PySpecialNames.Lt,
-        PySpecialNames.Le,
-        PySpecialNames.Gt,
-        PySpecialNames.Ge,
-    ];
-
-    internal static void FixupSlotDispatchers(PyTypeObject type)
-    {
-        foreach (var name in DefaultableSlotNames)
-        {
-            for (int i = 0; i < type.InternalMRO.Length; i++)
-            {
-                if (!type.InternalMRO[i].PyAttributes.TryGetValue(name, out var value))
-                    continue;
-
-                // index 0 is the type itself: its own dict entry is already
-                // wired by the namespace scan, so an own-dict hit only ends
-                // the walk — rewiring it here would lose the main loop's
-                // exact delegate
-                if (i > 0)
-                {
-                    if (name is PySpecialNames.Hash)
-                        SetHashSlot(type.Slots, value);
-                    else
-                        type.Slots.TrySetSlot(name, value);
-                }
-                break;
-            }
-        }
+        // CPython update_one_slot: no dict provider anywhere clears the slot
+        type.Slots.ClearSlot(name);
     }
 
     internal static PyResult DefaultDelAttr(PyCallContext context, PyObject self, PyObject item)
@@ -348,28 +426,14 @@ partial class PyTypeObject
             return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, type.TpName, name);
         }
 
-        // deleting an explicit __hash__ re-inherits the slot through the MRO
-        // (CPython fixup_slot_dispatchers): an ancestor's None keeps the type
-        // unhashable, otherwise object's identity hash comes back
-        if (self is PyTypeObject hashOwner && name is PySpecialNames.Hash)
-            RecomputeHashSlot(hashOwner);
+        // deleting a dunder re-resolves the slot from the MRO — an ancestor's
+        // __hash__ = None keeps the type unhashable, an ancestor's method comes
+        // back, nothing anywhere clears the slot — and propagates to subclasses
+        // (CPython update_slot through type_update_dict's delete path)
+        if (self is PyTypeObject typeObj)
+            UpdateSlot(typeObj, name);
 
         return PyNoneObject.None;
-    }
-
-    private static void RecomputeHashSlot(PyTypeObject type)
-    {
-        foreach (var entry in type.InternalMRO)
-        {
-            if (ReferenceEquals(entry, type))
-                continue;
-
-            if (entry.Slots.Hash is { } inherited)
-            {
-                type.Slots.Hash = inherited;
-                return;
-            }
-        }
     }
 
 
