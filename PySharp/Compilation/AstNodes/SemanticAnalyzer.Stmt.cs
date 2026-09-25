@@ -47,7 +47,7 @@ partial class SemanticAnalyzer
         VisitNode(node.Value);
     }
 
-    private void VisitPass(PassNode node)
+    private static void VisitPass(PassNode node)
     {
     }
 

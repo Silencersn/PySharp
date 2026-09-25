@@ -303,7 +303,7 @@ internal sealed class PyTextCodec
             : PyDecodeStatus.Error;
     }
 
-    private PyDecodeStatus DecodeLatin1Step(ReadOnlySpan<byte> data, ref int index, StringBuilder sb)
+    private static PyDecodeStatus DecodeLatin1Step(ReadOnlySpan<byte> data, ref int index, StringBuilder sb)
     {
         // latin-1 maps every byte, it can never fail
         sb.Append((char)data[index]);

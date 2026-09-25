@@ -472,11 +472,10 @@ internal static class PyCore
             return null;
 
         var prepared = PrepReraiseStarCore(context, orig, items);
-        if (prepared is not null)
-            // CPython's RERAISE of the settlement result uses
-            // PyErr_SetRaisedException, which never chains: mark the context
-            // final so propagation hops cannot attach the ambient handler
-            prepared.ContextSettled = true;
+        // CPython's RERAISE of the settlement result uses
+        // PyErr_SetRaisedException, which never chains: mark the context
+        // final so propagation hops cannot attach the ambient handler
+        prepared?.ContextSettled = true;
         return prepared;
     }
 

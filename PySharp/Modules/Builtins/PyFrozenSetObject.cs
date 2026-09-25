@@ -116,7 +116,7 @@ public partial class PyFrozenSetObject : PyObject, IPyObjectRecursiveRepr, IRead
             && UnwrapEntry(PySetOps.IsSubset(PyCallContext.NonContextDependency, temp._table, _table));
     }
 
-    private PyFrozenSetObject CopyOf(IEnumerable<PyObject> items)
+    private static PyFrozenSetObject CopyOf(IEnumerable<PyObject> items)
     {
         var temp = new PyFrozenSetObject();
         foreach (var item in items)

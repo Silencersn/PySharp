@@ -189,7 +189,7 @@ public partial class PySetObject : PyObject, IPyObjectRecursiveRepr, ISet<PyObje
             throw new PyRuntimeException(result.Exception);
     }
 
-    private PySetObject CopyOf(IEnumerable<PyObject> items)
+    private static PySetObject CopyOf(IEnumerable<PyObject> items)
     {
         var temp = new PySetObject();
         foreach (var item in items)

@@ -4575,6 +4575,7 @@ public sealed class TestPyFiles
         Assert.IsNotNull(module);
     }
 
+    [TestMethod]
     public void TestAsyncGeneratorASendReuseRegression()
     {
         // Regression: the awaitable returned by __anext__()/asend() is

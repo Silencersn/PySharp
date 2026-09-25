@@ -74,8 +74,7 @@ public sealed class PyFileObject : PyObject, IDisposable
         // CPython's _textiowrapper_fix_encoder_state
         _wrotePreamble = wrotePreamble;
         _rawBufBase = stream.Position;
-        if (_codec is not null)
-            _codec.PositionBase = _rawBufBase;
+        _codec?.PositionBase = _rawBufBase;
         _frontPos = stream.Position;
     }
 
@@ -386,8 +385,7 @@ public sealed class PyFileObject : PyObject, IDisposable
             _codec?.ResetBomSniff();
         else
             _codec?.MarkBomSniffedIfUnsniffed();
-        if (_codec is not null)
-            _codec.PositionBase = _rawBufBase;
+        _codec?.PositionBase = _rawBufBase;
     }
 
     // bytes for the decoder: refills the raw buffer from the stream
@@ -399,8 +397,7 @@ public sealed class PyFileObject : PyObject, IDisposable
             _rawEnd -= _rawStart;
             _rawBufBase += _rawStart;
             _rawStart = 0;
-            if (_codec is not null)
-                _codec.PositionBase = _rawBufBase;
+            _codec?.PositionBase = _rawBufBase;
         }
         int read;
         try

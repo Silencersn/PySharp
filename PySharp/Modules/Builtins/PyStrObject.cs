@@ -2027,15 +2027,12 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     /// </summary>
     private static string EncodeErrorReplacement(string errors, int codePoint)
     {
-        switch (errors)
+        return errors switch
         {
-            case "xmlcharrefreplace":
-                return $"&#{codePoint};";
-            case "namereplace":
-                return GetNameReplacement(codePoint);
-            default:
-                return BackslashEscape(codePoint);
-        }
+            "xmlcharrefreplace" => $"&#{codePoint};",
+            "namereplace" => GetNameReplacement(codePoint),
+            _ => BackslashEscape(codePoint),
+        };
     }
 
     private static string BackslashEscape(int codePoint) => codePoint switch

@@ -44,7 +44,7 @@ partial class SemanticAnalyzer
         }
     }
 
-    private void VisitConstant(ConstantNode node)
+    private static void VisitConstant(ConstantNode node)
     {
     }
 

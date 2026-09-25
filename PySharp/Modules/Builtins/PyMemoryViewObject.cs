@@ -47,7 +47,7 @@ public sealed class PyMemoryViewObject : PyObject
     internal bool CContiguous => _buffer.CContiguous;
     internal bool FContiguous => _buffer.FContiguous;
     internal bool Contiguous => _buffer.Contiguous;
-    internal nint[] SubOffsets => [];
+    internal static nint[] SubOffsets => [];
 
     // --- Release ---
 

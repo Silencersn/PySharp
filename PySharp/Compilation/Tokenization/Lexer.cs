@@ -785,7 +785,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
 
         group.Index = start;
         group.Length = index - start;
-        group.Value = content.Slice(start, index - start);
+        group.Value = content[start..index];
         return true;
     }
 
@@ -1032,23 +1032,16 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
     // lookahead asymmetry in verify_end_of_number)
     private static bool IsKeywordContinuation(ReadOnlySpan<char> rest)
     {
-        switch (rest[0])
+        return rest[0] switch
         {
-            case 'a':
-                return Matches(rest, "and");
-            case 'e':
-                return Matches(rest, "else");
-            case 'f':
-                return Matches(rest, "for");
-            case 'i':
-                return rest.Length >= 2 && rest[1] is 'f' or 'n' or 's';
-            case 'n':
-                return Matches(rest, "not");
-            case 'o':
-                return Matches(rest, "or");
-            default:
-                return false;
-        }
+            'a' => Matches(rest, "and"),
+            'e' => Matches(rest, "else"),
+            'f' => Matches(rest, "for"),
+            'i' => rest.Length >= 2 && rest[1] is 'f' or 'n' or 's',
+            'n' => Matches(rest, "not"),
+            'o' => Matches(rest, "or"),
+            _ => false,
+        };
 
         static bool Matches(ReadOnlySpan<char> rest, ReadOnlySpan<char> keyword)
             => rest.StartsWith(keyword) &&

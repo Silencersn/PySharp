@@ -134,7 +134,7 @@ partial class PyCallContext
         return filename;
     }
 
-    private PyResult ResolveWarningType(PyObject message, PyTypeObject<PyExceptionObject>? warningType)
+    private static PyResult ResolveWarningType(PyObject message, PyTypeObject<PyExceptionObject>? warningType)
     {
         // Warning instances retain their own category, matching CPython.
         if (PyWarningObjectType.Shared.IsInstance(message))
@@ -175,7 +175,7 @@ partial class PyCallContext
 
         var info = code.Bytecode.LineTable.Read(frame.InstructionIndex);
         int lineno = info is not null ? info.Start.Line : 0;
-        string? sourceLine = info is not null ? info.FirstLine.ToString() : null;
+        string? sourceLine = info?.FirstLine.ToString();
         string module = ResolveModuleName(ref frame);
         return (code.Filename, lineno, sourceLine, module, frame.Variables?.Globals);
     }
@@ -227,7 +227,7 @@ partial class PyCallContext
         var info = provider.MetaInfo;
         string filename = info?.Source?.Name ?? "<unknown>";
         int lineno = info is null ? 0 : info.Start.Line;
-        string? sourceLine = info is null ? null : info.FirstLine.ToString().Trim();
+        string? sourceLine = info?.FirstLine.ToString().Trim();
 
         // Speculative parses re-convert the same literal token; CPython
         // converts each literal exactly once, so a repeated warning at the

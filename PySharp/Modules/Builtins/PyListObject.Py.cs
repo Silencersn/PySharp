@@ -204,15 +204,13 @@ partial class PyListObject
             if (lt.Value.BoolValue)
             {
                 a[k] = a[j];
-                if (v is not null)
-                    v[k] = v[j];
+                v?[k] = v[j];
                 j++;
             }
             else
             {
                 a[k] = left[i];
-                if (v is not null)
-                    v[k] = leftV![i];
+                v?[k] = leftV![i];
                 i++;
             }
             k++;
@@ -220,8 +218,7 @@ partial class PyListObject
         while (i < leftLen)
         {
             a[k] = left[i];
-            if (v is not null)
-                v[k] = leftV![i];
+            v?[k] = leftV![i];
             i++;
             k++;
         }
@@ -324,7 +321,7 @@ partial class PyListObject
         {
             int l = 0, r = ok;
             var pivot = a[ok];
-            var vPivot = v is null ? null : v[ok];
+            var vPivot = v?[ok];
             while (l < r)
             {
                 int m = (l + r) >> 1;
