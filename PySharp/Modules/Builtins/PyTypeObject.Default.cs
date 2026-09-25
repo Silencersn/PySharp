@@ -194,13 +194,16 @@ partial class PyTypeObject
     // CPython type_update_dict: identity against object's dict entry detects
     // that a __new__/__init__ value IS object's default, letting callers keep
     // creation-time FillNullWith wiring instead of converting a closure — a
-    // converted closure would lose the ReferenceEquals default probes
+    // converted closure would lose the ReferenceEquals default probes.
+    // object's MRO is always [object], so this is an O(1) dict read. CPython
+    // keeps no slot provenance metadata either: tp_dict is the single source
+    // of truth and update_one_slot re-derives the specific test per call
     internal static bool IsObjectDefaultSlotValue(string name, PyObject value)
     {
         if (name is not (PySpecialNames.New or PySpecialNames.Init))
             return false;
 
-        return TryLookupAttrInMro(PyObjectType.Shared, name, out var defaultValue)
+        return PyObjectType.Shared.PyAttributes.TryGetValue(name, out var defaultValue)
             && ReferenceEquals(value, defaultValue);
     }
 
@@ -283,11 +286,13 @@ partial class PyTypeObject
                     }
                     else
                     {
-                        // known pre-existing divergence: CPython's
-                        // update_one_slot keeps the existing tp_new when a
-                        // native type's __new__ wrapper (dict.__new__ & co)
-                        // is assigned; here the value is converted and the
-                        // cross-type call fails on the type check
+                        // known pre-existing divergence: CPython's tp_new
+                        // special case (typeobject.c:11362-11383) installs
+                        // `specific = (void *)type->tp_new`, i.e. it KEEPS
+                        // the existing tp_new when a native type's __new__
+                        // wrapper (dict.__new__ & co) is assigned; here the
+                        // value is converted and the cross-type call fails
+                        // on the type check
                         type.Slots.TrySetSlot(name, value);
                     }
                 }
