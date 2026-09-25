@@ -1489,7 +1489,9 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
     [PyMethod("splitlines")]
     [AIGenerated]
-    [PyFunctionParameters("keepends=False", "/")]
+    // CPython's clinic signature is splitlines(self, /, keepends=False): the
+    // slash sits after self, so keepends also binds by keyword
+    [PyFunctionParameters("keepends=False")]
     private static PyResult SplitLines(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
         // CPython keepends is a plain truth test on the raw argument

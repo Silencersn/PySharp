@@ -4249,6 +4249,19 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestSplitLinesKeependsKwargRegression()
+    {
+        // Regression: str.splitlines binds keepends by keyword as well as
+        // by position — CPython's clinic signature puts the slash after
+        // self (splitlines(self, /, keepends=False)), so the standard
+        // splitlines(keepends=True) spelling works. Error wording is
+        // asserted loosely because the surrounding arity/keyword message
+        // families still diverge and are tracked separately.
+        var module = RunModule("test_splitlines_keepends_kwarg_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestAssertTupleWarningRegression()
     {
         // Regression: an assert whose test is a non-empty tuple literal
