@@ -41,8 +41,8 @@ PySharp 的类型机器（slots、方法描述符、异常工厂等）全部在�
   1. `PyTypeObject.Virtual.g.cs`：`PyTypeObject` 上的虚方法占位。
   2. `PyTypeObjectOfT.Sealed.g.cs`：`PyTypeObject<T>` 上带 `self is not TObject` 检查的强类型
      密封包装。
-  3. `PyTypeObject.Slots.g.cs`：`PyTypeSlots` 的委托字段（含分组）、`Clone()`、
-     `FillNullWith()`（MRO 补槽）、`TrySetSlot()`。
+  3. `PyTypeObject.Slots.g.cs`：`PyTypeSlots` 的委托字段（含分组）、`AllSlotNames`/`IsSlotName()`、
+     `FillNullWith()`（MRO 补槽）、`TrySetSlot()`、`ClearSlot()`、`TrySetWrappedSlot()`。
   4. `PySpecialNames.g.cs`：dunder 名常量与 `Interned` 预驻留字段。
   5. `PyTypeObjectOfT.Partial.g.cs`：`protected virtual` 协议声明，即手写覆写的目标。
 - `InternalPySpecialNamesGenerator` 为手写的非生成 `PySpecialNames` 常量补 `Interned` 字段，

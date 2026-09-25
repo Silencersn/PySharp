@@ -92,8 +92,9 @@ public static PyObject BuildClass(PyCallContext context, PyCodeObject codeObject
 4. 命名空间落盘，逐条写入 `type.PyAttributes`：
    - `__class__` 是 `PyCellObject` 时回填类型自身，即类体内 `__class__` 闭包引用的落地。
    - 名为 `__init_subclass__` 或 `__class_getitem__` 的函数自动包一层 `PyClassMethodObject`。
-   - `Slots.TrySetSlot(attr, value)` 把 dunder 名直接接线到协议槽，这是用户类协议方法生效的
-     地方，见[源生成器](./source-generators.md)。
+   - `Slots.TrySetSlot(attr, value)` 把 dunder 名直接接线到协议槽（object 默认的 `__new__`/
+     `__init__` 条目除外，由后续 `FixupAllSlots` 重接 object 自身的槽位委托），这是用户类协议
+     方法生效的地方，见[源生成器](./source-generators.md)。
    - 类体隐式键与 `__qualname__` 的去向，对齐 CPython 的 `codegen_class_body` 与
      `type_new_set_ht_name`：类体前导注入三键 `__module__`、`__qualname__`、
      `__firstlineno__`（类体 `locals()` 可见，`__firstlineno__` 取类语句首行，带装饰器时取首个
@@ -110,9 +111,12 @@ public static PyObject BuildClass(PyCallContext context, PyCodeObject codeObject
 
 实例化路径（`type.__call__`，`PyTypeObjectType.Call` 覆写）为标准序：先 `Slots.New`，结果是
 `cls` 实例且有 `Slots.Init` 时补 `__init__`。槽位按 MRO 重新解析：用户类创建完成后按 MRO 重查
-`__new__` 与 `__init__` 槽，因此多继承下先创建基类的内置实现不再冻结槽位、屏蔽后定义基类的
-`__init__`，对齐 CPython 的 fixup slot dispatch。容器子类（dict、list、set）据此拆分 `__new__`
-（仅分配）与 `__init__`（消费参数），子类自定义 `__init__` 取代内置初始化并接收全部构造参数。
+**全部**槽位名（`FixupAllSlots`，对齐 CPython 的 `fixup_slot_dispatchers` 推广到每个槽位），
+因此多继承下先创建基类的内置实现不再冻结槽位、屏蔽后定义基类的真实方法。运行期对类型的
+dunder 赋值/删除同样触发重解析（`UpdateSlot`），并向子类树递归传播——自有字典定义了该名的
+子类屏蔽整棵子树，对齐 CPython 的 `update_slot`/`update_subclasses`。容器子类（dict、list、
+set）据此拆分 `__new__`（仅分配）与 `__init__`（消费参数），子类自定义 `__init__` 取代内置
+初始化并接收全部构造参数。
 
 异常子类的 `args` 回绑是特例。`BaseException` 自有 `Init` 槽，对齐 CPython 的
 `BaseException_init`：子类覆盖 `__new__` 而不覆盖 `__init__` 时，`type.__call__` 仍会以原始
