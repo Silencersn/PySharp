@@ -66,8 +66,9 @@ internal static class LiteralParser
         }
 
         var source = new CodeSource("<literal_eval>", literal.ToString());
-        var tokens = Lexer.Tokenize(PyCallContext.NonContextDependency, source);
-        var node = Parser.ParseExpression(PyCallContext.NonContextDependency, source, tokens);
+        var session = new CompileSession();
+        var tokens = Lexer.Tokenize(PyCallContext.NonContextDependency, source, session);
+        var node = Parser.ParseExpression(PyCallContext.NonContextDependency, source, tokens, session);
         if (TryConvertLiteral(node.Body, out var value))
             return value;
         throw new NotSupportedException(literal.ToString());

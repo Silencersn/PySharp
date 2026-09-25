@@ -134,7 +134,7 @@ partial class SemanticAnalyzer
                 var message = op is CmpopType.Is
                     ? PySR.Format(PySR.InvalidSyntax_Warning_IsWithLiteral, GetLiteralTypeName(literal))
                     : PySR.Format(PySR.InvalidSyntax_Warning_IsNotWithLiteral, GetLiteralTypeName(literal));
-                _ = _context.WarnSyntax(message, this).PyUnwrap(_context);
+                _ = _context.WarnSyntax(message, this, _session).PyUnwrap(_context);
                 // CPython returns on the first warning, so a comparison warns
                 // at most once even with several offending operands
                 return;

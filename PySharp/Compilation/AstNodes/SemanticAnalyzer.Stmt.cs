@@ -232,7 +232,7 @@ partial class SemanticAnalyzer
         // test (the classic "assert (cond, msg)" mistake) warns at compile
         // time; an empty tuple warns nowhere since it is always false
         if (node.Test is TupleNode { Elts.IsEmpty: false } || node.Test is ConstantNode { Value: PyTupleObject { Count: > 0 } })
-            _ = _context.WarnSyntax(PySR.InvalidSyntax_Warning_AssertionAlwaysTrue, this).PyUnwrap(_context);
+            _ = _context.WarnSyntax(PySR.InvalidSyntax_Warning_AssertionAlwaysTrue, this, _session).PyUnwrap(_context);
 
         VisitNode(node.Test);
         VisitNullableNode(node.Msg);

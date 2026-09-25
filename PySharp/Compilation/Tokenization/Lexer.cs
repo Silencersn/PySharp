@@ -23,12 +23,13 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         FStringDefault,
     }
 
-    public static TokenSequence Tokenize(PyCallContext context, CodeSource codeSource, bool extraNewLine = false)
+    public static TokenSequence Tokenize(PyCallContext context, CodeSource codeSource, CompileSession session, bool extraNewLine = false)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(codeSource);
+        ArgumentNullException.ThrowIfNull(session);
 
-        var lexer = new Lexer(context, codeSource);
+        var lexer = new Lexer(context, codeSource, session);
         lexer.InternalStart();
         lexer.InternalTokenize();
         lexer.InternalEnd();
@@ -66,6 +67,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
 
     private readonly PyCallContext _context;
     private readonly CodeSource _codeSource;
+    private readonly CompileSession _session;
 
     private readonly List<Token> _tokens;
     private int _offset;
@@ -82,10 +84,11 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
     CodeMetaInfo? ICodeMetaInfoProvider.MetaInfo => CodeMetaInfo.FromPosition(_codeSource, new(Lineno, 0));
     private int Lineno => _codeSource.Code.OffsetToPosition(_offset).Line;
 
-    internal Lexer(PyCallContext context, CodeSource codeSource)
+    internal Lexer(PyCallContext context, CodeSource codeSource, CompileSession session)
     {
         _context = context;
         _codeSource = codeSource;
+        _session = session;
         _tokens = new List<Token>(GetTokensDefaultCapacity(codeSource.Code.Text.Length));
         _offset = 0;
         _explicitLineJoining = false;
@@ -985,7 +988,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             // the exact literal position keeps several offending literals on
             // one line distinct in the per-position warning dedup
             var info = CodeMetaInfo.FromPosition(_codeSource, _codeSource.Code.OffsetToPosition(_offset));
-            _ = _context.WarnSyntax(message, new PositionMetaInfo(info)).PyUnwrap(_context);
+            _ = _context.WarnSyntax(message, new PositionMetaInfo(info), _session).PyUnwrap(_context);
             return;
         }
 

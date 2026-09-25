@@ -12,17 +12,17 @@ namespace PySharp.Compilation.AstNodes;
 
 internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
 {
-    public static SemanticModel Analyze(PyCallContext context, CodeSource source, AstModNode root)
+    public static SemanticModel Analyze(PyCallContext context, CodeSource source, AstModNode root, CompileSession session)
     {
-        var scope = InternalAnalyze(context, source, root);
+        var scope = InternalAnalyze(context, source, root, session);
         var model = new SemanticModel(root);
         scope.Bind(model);
         return model;
     }
 
-    internal static RootVariableScope InternalAnalyze(PyCallContext context, CodeSource source, AstModNode root)
+    internal static RootVariableScope InternalAnalyze(PyCallContext context, CodeSource source, AstModNode root, CompileSession session)
     {
-        var analyzer = new SemanticAnalyzer(context, source);
+        var analyzer = new SemanticAnalyzer(context, source, session);
         var scope = analyzer.BuildBasicScope(root);
         FillUnknownVariables(scope);
         analyzer.CheckClosureAndFillCapturedVariables(scope);
@@ -32,6 +32,7 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
 
     private readonly CodeSource _source;
     private readonly PyCallContext _context;
+    private readonly CompileSession _session;
     private readonly Stack<AstNode> _nodesToRoot;
 
     private readonly Stack<ScopeStats> _scopeStatsStack;
@@ -41,12 +42,13 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
 
     CodeMetaInfo? ICodeMetaInfoProvider.MetaInfo => _nodesToRoot.TryPeek(out var node) ? CodeMetaInfo.FromSpan(_source, node.MetaInfo.Range, node.MetaInfo.CrucialRange) : null;
 
-    private SemanticAnalyzer(PyCallContext context, CodeSource source)
+    private SemanticAnalyzer(PyCallContext context, CodeSource source, CompileSession session)
     {
         _nodesToRoot = [];
         _scopeStatsStack = [];
         _context = context;
         _source = source;
+        _session = session;
         _currentScopeStats = null!;
         _nestedComprehensionStatsStack = [];
         _currentNestedComprehensionStats = null!;
@@ -390,7 +392,7 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
 
             if (node is TryNode)
             {
-                _ = _context.WarnSyntax(warningMessage, this).PyUnwrap(_context);
+                _ = _context.WarnSyntax(warningMessage, this, _session).PyUnwrap(_context);
                 return;
             }
         }

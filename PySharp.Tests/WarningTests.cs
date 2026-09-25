@@ -1,3 +1,4 @@
+using PySharp.Compilation;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Environments;
@@ -89,6 +90,34 @@ public sealed class WarningTests
         {
             context.Warn(PyUserWarningObjectType.Shared, "boom", "mod.py", 7);
             Assert.AreEqual("mod.py:7: UserWarning: boom\n", GetStderr(host, env));
+        }
+        finally
+        {
+            context.Dispose();
+            env.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void WarnSyntax_WarnsAgainOnSecondCompile()
+    {
+        // The syntax-warning dedup set lives on a per-compile session, like
+        // CPython's parser state: two compiles of the same source each warn,
+        // and independent literals inside one compile keep separate warnings.
+        var (host, env, context) = CreateContext();
+        try
+        {
+            var first = Compiler.Compile("x = \"\\400\"", CompileMode.Exec, context, "test.py");
+            Assert.IsFalse(first.IsError);
+            Assert.AreEqual(1, GetStderr(host, env).Split("is an invalid octal escape sequence").Length - 1);
+
+            var second = Compiler.Compile("x = \"\\400\"", CompileMode.Exec, context, "test.py");
+            Assert.IsFalse(second.IsError);
+            Assert.AreEqual(2, GetStderr(host, env).Split("is an invalid octal escape sequence").Length - 1);
+
+            var third = Compiler.Compile("y = \"\\400\" \"\\400\"", CompileMode.Exec, context, "test.py");
+            Assert.IsFalse(third.IsError);
+            Assert.AreEqual(4, GetStderr(host, env).Split("is an invalid octal escape sequence").Length - 1);
         }
         finally
         {

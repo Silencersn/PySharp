@@ -10,31 +10,34 @@ namespace PySharp.Compilation.AstNodes;
 
 public sealed partial class Parser : ICodeMetaInfoProvider
 {
-    public static ModuleNode ParseModule(PyCallContext context, CodeSource codeSource, TokenSequence tokens, bool enableNameMangling = true)
+    public static ModuleNode ParseModule(PyCallContext context, CodeSource codeSource, TokenSequence tokens, CompileSession session, bool enableNameMangling = true)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(codeSource);
         ArgumentNullException.ThrowIfNull(tokens);
+        ArgumentNullException.ThrowIfNull(session);
 
-        return new Parser(context, codeSource, tokens, enableNameMangling).ParseFile();
+        return new Parser(context, codeSource, tokens, session, enableNameMangling).ParseFile();
     }
 
-    public static ExpressionNode ParseExpression(PyCallContext context, CodeSource codeSource, TokenSequence tokens, bool enableNameMangling = true)
+    public static ExpressionNode ParseExpression(PyCallContext context, CodeSource codeSource, TokenSequence tokens, CompileSession session, bool enableNameMangling = true)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(codeSource);
         ArgumentNullException.ThrowIfNull(tokens);
+        ArgumentNullException.ThrowIfNull(session);
 
-        return new Parser(context, codeSource, tokens, enableNameMangling).ParseEval();
+        return new Parser(context, codeSource, tokens, session, enableNameMangling).ParseEval();
     }
 
-    public static InteractiveNode ParseInteractive(PyCallContext context, CodeSource codeSource, TokenSequence tokens, bool enableNameMangling = true)
+    public static InteractiveNode ParseInteractive(PyCallContext context, CodeSource codeSource, TokenSequence tokens, CompileSession session, bool enableNameMangling = true)
     {
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(codeSource);
         ArgumentNullException.ThrowIfNull(tokens);
+        ArgumentNullException.ThrowIfNull(session);
 
-        return new Parser(context, codeSource, tokens, enableNameMangling).ParseInteractive();
+        return new Parser(context, codeSource, tokens, session, enableNameMangling).ParseInteractive();
     }
 
     private static readonly FrozenSet<TokenType> AugOperators = [
@@ -68,6 +71,7 @@ public sealed partial class Parser : ICodeMetaInfoProvider
 
     private readonly PyCallContext _context;
     private readonly CodeSource _codeSource;
+    private readonly CompileSession _session;
     private readonly TokenSequence _tokenSequence;
     private readonly int _optimizationLevel;
     private readonly bool _enableNameMangling;
@@ -99,9 +103,10 @@ public sealed partial class Parser : ICodeMetaInfoProvider
 
     CodeMetaInfo? ICodeMetaInfoProvider.MetaInfo => CreateAstMetaInfo();
 
-    internal Parser(PyCallContext context, CodeSource codeSource, TokenSequence tokens, bool enableNameMangling = true)
+    internal Parser(PyCallContext context, CodeSource codeSource, TokenSequence tokens, CompileSession session, bool enableNameMangling = true)
     {
         _context = context;
+        _session = session;
         _optimizationLevel = _context.PyEnvironment.Options.OptimizationLevel;
         _tokenSequence = tokens;
         _codeSource = codeSource;

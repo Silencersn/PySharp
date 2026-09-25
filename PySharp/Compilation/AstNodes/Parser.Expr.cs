@@ -653,13 +653,13 @@ partial class Parser
             {
                 _ = _context.WarnSyntax(
                     PySR.Format(PySR.InvalidSyntax_Warning_InvalidEscapeSequence, info.Char),
-                    this).PyUnwrap(_context);
+                    this, _session).PyUnwrap(_context);
             }
             else if (info.Error is PyStrConverter.ConvertError.InvalidOctalEscapeSequence)
             {
                 _ = _context.WarnSyntax(
                     PySR.Format(PySR.InvalidSyntax_Warning_InvalidOctalEscapeSequence, Convert.ToString(info.Char, 8)),
-                    this).PyUnwrap(_context);
+                    this, _session).PyUnwrap(_context);
             }
 
             Debug.Assert(bytes is not null);
@@ -701,13 +701,13 @@ partial class Parser
             {
                 _ = _context.WarnSyntax(
                     PySR.Format(PySR.InvalidSyntax_Warning_InvalidEscapeSequence, info.Char),
-                    this).PyUnwrap(_context);
+                    this, _session).PyUnwrap(_context);
             }
             else if (info.Error is PyStrConverter.ConvertError.InvalidOctalEscapeSequence)
             {
                 _ = _context.WarnSyntax(
                     PySR.Format(PySR.InvalidSyntax_Warning_InvalidOctalEscapeSequence, Convert.ToString(info.Char, 8)),
-                    this).PyUnwrap(_context);
+                    this, _session).PyUnwrap(_context);
             }
 
             Debug.Assert(str is not null);

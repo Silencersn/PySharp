@@ -18,12 +18,13 @@ public enum CompileMode
 public static class Compiler
 {
     private static PyCodeObject InternalCompileBytecode(PyCallContext context, string code, string filename, string name,
-        Func<PyCallContext, CodeSource, TokenSequence, bool, AstModNode> parse, bool appendNewLine = false, bool onlyAsName = false)
+        Func<PyCallContext, CodeSource, TokenSequence, CompileSession, bool, AstModNode> parse, bool appendNewLine = false, bool onlyAsName = false)
     {
         var source = new CodeSource(filename, code);
-        var tokens = Lexer.Tokenize(context, source, appendNewLine);
-        var node = parse(context, source, tokens, true);
-        var model = SemanticAnalyzer.Analyze(context, source, node);
+        var session = new CompileSession();
+        var tokens = Lexer.Tokenize(context, source, session, appendNewLine);
+        var node = parse(context, source, tokens, session, true);
+        var model = SemanticAnalyzer.Analyze(context, source, node, session);
         var bytecode = Emitter.Emit(context, model, source, onlyAsName);
         return new PyCodeObject(name, filename, bytecode, CodeObjectFlags.Module);
     }

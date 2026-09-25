@@ -1,3 +1,4 @@
+using PySharp.Compilation;
 using PySharp.Compilation.CodeAnalysis;
 using PySharp.Modules.Builtins;
 using PySharp.Modules.Warnings;
@@ -221,7 +222,7 @@ partial class PyCallContext
     public PyResult Warn(PyExceptionType warningType, string message, string filename, int lineno, string? line = null)
         => WarnExplicit(PyStrObject.FromString(message), warningType, filename, lineno, line);
 
-    internal PyResult WarnSyntax(string message, ICodeMetaInfoProvider provider)
+    internal PyResult WarnSyntax(string message, ICodeMetaInfoProvider provider, CompileSession session)
     {
         var info = provider.MetaInfo;
         string filename = info?.Source?.Name ?? "<unknown>";
@@ -231,8 +232,9 @@ partial class PyCallContext
         // Speculative parses re-convert the same literal token; CPython
         // converts each literal exactly once, so a repeated warning at the
         // same source position is a re-parse artifact. Independent literals
-        // never share a position.
-        if (info is not null && !info.Source.WarnedSyntax.Add((info.Start.Line, info.Start.Offset, message)))
+        // never share a position. The dedup set lives on the per-compile
+        // session, so two compiles of the same source each warn.
+        if (info is not null && !session.WarnedSyntax.Add((info.Start.Line, info.Start.Offset, message)))
             return default;
 
         return WarnExplicit(PyStrObject.FromString(message), PySyntaxWarningObjectType.Shared, filename, lineno, sourceLine);
