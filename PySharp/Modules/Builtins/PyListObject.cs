@@ -235,19 +235,15 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
         return PyCollectionComparer.Ge(context, self.AsSpan(), otherList.AsSpan());
     }
 
-    // CPython's reflected wrappers cover as_number and sq_repeat slots
-    // only; sq_concat has no reflected variant (list.__radd__ does not
-    // exist). __mul__ keeps its __rmul__ entry with the non-swapping
-    // self*value order of wrap_indexargfunc.
-    protected override bool SynthesizeReflectedAdd => false;
-    protected override bool ReflectedMulSwapsOperands => false;
-
-    protected override PyResult Add(PyCallContext context, PyListObject self, PyObject other)
+    // sq_concat/sq_repeat live on the Sequence family slot; list has no
+    // reflected variant (list.__radd__ does not exist), and __rmul__ keeps
+    // the non-swapping self*value order of wrap_indexargfunc
+    protected override PyResult Concat(PyCallContext context, PyListObject self, PyObject other)
     {
         return self.PyAdd(context, other);
     }
 
-    protected override PyResult IAdd(PyCallContext context, PyListObject self, PyObject other)
+    protected override PyResult InplaceConcat(PyCallContext context, PyListObject self, PyObject other)
     {
         var result = self.PyExtend(context, other);
         if (result.IsError)
@@ -255,7 +251,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
         return self;
     }
 
-    protected override PyResult Mul(PyCallContext context, PyListObject self, PyObject other)
+    protected override PyResult Repeat(PyCallContext context, PyListObject self, PyObject other)
     {
         var result = PySpecialMethods.Index(context, other);
         if (result.IsError)
@@ -267,10 +263,10 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
 
     protected override PyResult RMul(PyCallContext context, PyListObject self, PyObject other)
     {
-        return Mul(context, self, other);
+        return Repeat(context, self, other);
     }
 
-    protected override PyResult IMul(PyCallContext context, PyListObject self, PyObject other)
+    protected override PyResult InplaceRepeat(PyCallContext context, PyListObject self, PyObject other)
     {
         var result = PySpecialMethods.Index(context, other);
         if (result.IsError)

@@ -121,6 +121,51 @@ public static class PyOperators
         return PyNotImplementedObject.NotImplemented;
     }
 
+    // The abstract-layer fallback from the number family to the sequence
+    // family (Objects/abstract.c): after the nb slots decline, PyNumber_Add
+    // tries the left operand's sq_concat only; PyNumber_Multiply tries the
+    // left operand's sq_repeat, else the right operand's — a left sequence
+    // family takes precedence in both directions, in-place included
+    private static PyResult ApplySequenceFallback(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyResult result, bool inPlace)
+    {
+        switch (op)
+        {
+            case PyOperatorTypes.Add:
+            {
+                var leftSequence = left.PyType.Slots.Sequence;
+                var concat = inPlace
+                    ? leftSequence?.InplaceConcat ?? leftSequence?.Concat
+                    : leftSequence?.Concat;
+                if (concat is not null)
+                    result = concat(context, left, right);
+                break;
+            }
+            case PyOperatorTypes.Mult:
+            {
+                // CPython: `if (mv && mv->sq_repeat) ... else if (mw &&
+                // mw->sq_repeat)` — the left side wins only by carrying an
+                // actual repeat slot, not by merely having the family struct
+                var leftSequence = left.PyType.Slots.Sequence;
+                var leftRepeat = inPlace
+                    ? leftSequence?.InplaceRepeat ?? leftSequence?.Repeat
+                    : leftSequence?.Repeat;
+                if (leftRepeat is not null)
+                {
+                    result = leftRepeat(context, left, right);
+                    break;
+                }
+                // the right operand's plain repeat runs only when the left
+                // operand has no repeat slot at all, and must not mutate it
+                // (abstract.c PyNumber_InPlaceMultiply)
+                var rightRepeat = right.PyType.Slots.Sequence?.Repeat;
+                if (rightRepeat is not null)
+                    result = rightRepeat(context, right, left);
+                break;
+            }
+        }
+        return result;
+    }
+
     private static PyResult EvalLeftFirstReflectiveOperator(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo, bool allowReflected, bool inPlace = false)
     {
         PyResult result;
@@ -184,6 +229,8 @@ public static class PyOperators
                 return PyResult.PySharpException($"Operator '{OperatorToString(op)}' is not supported.");
         }
 
+        if (result.IsNotImplemented)
+            result = ApplySequenceFallback(context, op, left, right, result, inPlace);
         if (result.IsNotImplemented)
             return PyResult.TypeError(OperatorTypeErrorName(op), OperatorErrorToString(op, inPlace), left.PyType.TpName, right.PyType.TpName);
 
@@ -254,6 +301,8 @@ public static class PyOperators
         }
 
         if (result.IsNotImplemented)
+            result = ApplySequenceFallback(context, op, left, right, result, inPlace);
+        if (result.IsNotImplemented)
             return PyResult.TypeError(OperatorTypeErrorName(op), OperatorErrorToString(op, inPlace), left.PyType.TpName, right.PyType.TpName);
 
         return result;
@@ -310,7 +359,10 @@ public static class PyOperators
                     return result;
             }
         }
-        return ReflectiveOperator(context, op, left, right, modulo, inPlace: true);
+        var reflective = ReflectiveOperator(context, op, left, right, modulo, inPlace: true);
+        if (reflective.IsNotImplemented)
+            reflective = ApplySequenceFallback(context, op, left, right, reflective, inPlace: true);
+        return reflective;
     }
     private static PyResult ReflectiveOperator(PyCallContext context, PyOperatorTypes op, PyObject left, PyObject right, PyObject? modulo = null, bool inPlace = false)
     {

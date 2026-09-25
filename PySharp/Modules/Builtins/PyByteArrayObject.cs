@@ -316,27 +316,15 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
         return new PyByteArrayIteratorObject(self);
     }
 
-    // CPython's reflected wrappers cover as_number and sq_repeat slots
-    // only; sq_concat has no reflected variant (bytearray.__radd__ does
-    // not exist). __mul__ keeps its __rmul__ entry with the non-swapping
-    // self*value order of wrap_indexargfunc.
-    protected override bool SynthesizeReflectedAdd => false;
-    protected override bool ReflectedMulSwapsOperands => false;
-
-    protected override PyResult Add(PyCallContext context, PyByteArrayObject self, PyObject other)
+    // sq_concat/sq_repeat live on the Sequence family slot; bytearray has no
+    // reflected variant (bytearray.__radd__ does not exist), and __rmul__
+    // keeps the non-swapping self*value order of wrap_indexargfunc
+    protected override PyResult Concat(PyCallContext context, PyByteArrayObject self, PyObject other)
     {
         if (!TryGetSpan(other, out var otherSpan))
-        {
-            // The right operand's reflected __radd__ runs before the
-            // concat TypeError (CPython's bytearray has no nb_add).
-            if (other.PyType.Slots.RAdd is not null)
-            {
-                var reflected = other.PyType.Slots.RAdd(context, other, self);
-                if (!reflected.IsNotImplemented)
-                    return reflected;
-            }
+            // the right operand's reflected __radd__ runs before this concat
+            // TypeError on the dispatch layer
             return PyResult.TypeError("can't concat {0} to bytearray", other.PyType.TpName);
-        }
 
         var result = new byte[self.Length + otherSpan.Length];
         self.AsSpan().CopyTo(result);
@@ -344,7 +332,7 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
         return PyByteArrayObject.FromBytes(result);
     }
 
-    protected override PyResult IAdd(PyCallContext context, PyByteArrayObject self, PyObject other)
+    protected override PyResult InplaceConcat(PyCallContext context, PyByteArrayObject self, PyObject other)
     {
         if (!TryGetSpan(other, out var otherSpan))
             return PyResult.TypeError("can't concat {0} to bytearray", other.PyType.TpName);
@@ -353,7 +341,7 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
         return self;
     }
 
-    protected override PyResult Mul(PyCallContext context, PyByteArrayObject self, PyObject other)
+    protected override PyResult Repeat(PyCallContext context, PyByteArrayObject self, PyObject other)
     {
         var indexResult = PySpecialMethods.Index(context, other);
         if (indexResult.IsError)
@@ -378,10 +366,10 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
 
     protected override PyResult RMul(PyCallContext context, PyByteArrayObject self, PyObject other)
     {
-        return Mul(context, self, other);
+        return Repeat(context, self, other);
     }
 
-    protected override PyResult IMul(PyCallContext context, PyByteArrayObject self, PyObject other)
+    protected override PyResult InplaceRepeat(PyCallContext context, PyByteArrayObject self, PyObject other)
     {
         var indexResult = PySpecialMethods.Index(context, other);
         if (indexResult.IsError)

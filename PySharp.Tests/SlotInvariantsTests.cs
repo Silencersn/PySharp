@@ -58,26 +58,27 @@ public sealed class SlotInvariantsTests
                 if (value is not PyWrapperDescriptorObject wrapper)
                     continue; // __new__ keeps a bound method in the dict, not a wrapper
 
-                if (!slotMembers.TryGetValue(name, out var member) || member is null)
+                if (!slotMembers.TryGetValue(name, out var members) || members.Count is 0)
                 {
                     violations.Add($"{type.TpName}.{name}: no slot field or forwarding accessor matches this slot name");
                     continue;
                 }
 
-                var slot = member switch
-                {
-                    FieldInfo field => field.GetValue(type.Slots),
-                    PropertyInfo property => property.GetValue(type.Slots),
-                    _ => null,
-                };
-                if (slot is null)
-                {
-                    violations.Add($"{type.TpName}.{name}: dict carries a wrapper descriptor but the slot delegate is null");
-                    continue;
-                }
+                // one dunder may map to several family slots (__add__ ->
+                // Number.Add + Sequence.Concat); the wrapper must share its
+                // delegate with the family slot it came from — exactly one
+                // of them is filled for every native type
+                var slotValues = members
+                    .Select(member => member switch
+                    {
+                        FieldInfo field => field.GetValue(type.Slots),
+                        PropertyInfo property => property.GetValue(type.Slots),
+                        _ => null,
+                    })
+                    .ToList();
 
                 checkedPairs++;
-                if (!ReferenceEquals(slot, wrapper._func))
+                if (!slotValues.Any(slot => slot is not null && ReferenceEquals(slot, wrapper._func)))
                     violations.Add($"{type.TpName}.{name}: slot delegate and wrapper._func must be one shared instance");
             }
         }
@@ -159,14 +160,16 @@ public sealed class SlotInvariantsTests
         }
     }
 
-    // Maps each slot dunder name to the PyTypeSlots member holding its
-    // delegate. Slot fields live on PyTypeSlots either directly (Repr) or
+    // Maps each slot dunder name to the PyTypeSlots members holding its
+    // delegates. Slot fields live on PyTypeSlots either directly (Repr) or
     // behind the generated forwarding accessors for group fields
     // (RAdd => Number.RAdd), so both fields and properties are searched.
-    // The member name comes from the PySpecialNames constant carrying the
+    // The member names come from the PySpecialNames constants carrying the
     // same dunder value — the generator derives field names and constant
-    // names from the same [PySpecialMethod] declaration.
-    private static (Dictionary<string, MemberInfo?> Map, List<string> Errors) BuildSlotMemberMap()
+    // names from the same [PySpecialMethod] declaration. One dunder may
+    // carry several constants (Add/Concat = "__add__") mapping to several
+    // family slots.
+    private static (Dictionary<string, List<MemberInfo>> Map, List<string> Errors) BuildSlotMemberMap()
     {
         const BindingFlags all = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
         var errors = new List<string>();
@@ -175,7 +178,7 @@ public sealed class SlotInvariantsTests
         if (slotsType is null)
         {
             errors.Add("PyTypeObject.PyTypeSlots not found via reflection");
-            return (new Dictionary<string, MemberInfo?>(), errors);
+            return (new Dictionary<string, List<MemberInfo>>(), errors);
         }
 
         var slotMembers = slotsType.GetMembers(all)
@@ -191,28 +194,19 @@ public sealed class SlotInvariantsTests
             .GroupBy(p => p.Value, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.Select(p => p.Name).ToArray(), StringComparer.Ordinal);
 
-        var map = new Dictionary<string, MemberInfo?>(StringComparer.Ordinal);
+        var map = new Dictionary<string, List<MemberInfo>>(StringComparer.Ordinal);
         foreach (var name in PyTypeObject.PyTypeSlots.AllSlotNames)
         {
-            MemberInfo? member = null;
-            var ambiguous = false;
-            foreach (var candidate in constants.GetValueOrDefault(name, []))
-            {
-                if (!slotMembers.TryGetValue(candidate, out var found))
-                    continue;
-                if (member is not null)
-                {
-                    ambiguous = true;
-                    break;
-                }
-                member = found;
-            }
+            var members = constants.GetValueOrDefault(name, [])
+                .Select(candidate => slotMembers.GetValueOrDefault(candidate))
+                .Where(member => member is not null)
+                .Cast<MemberInfo>()
+                .Distinct()
+                .ToList();
 
-            if (ambiguous)
-                errors.Add($"slot name {name}: multiple PySpecialNames constants map to slot members");
-            else if (member is null)
+            if (members.Count is 0)
                 errors.Add($"slot name {name}: no PySpecialNames constant resolves to a PyTypeSlots member");
-            map[name] = member;
+            map[name] = members;
         }
 
         return (map, errors);

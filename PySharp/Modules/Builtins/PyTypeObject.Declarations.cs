@@ -294,6 +294,24 @@ partial class PyTypeObject
         [PySpecialMethod("__ior__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Number))]
         static partial void IOr(PyCallContext context, TObject self, PyObject other);
 
+        // CPython's sq_concat/sq_repeat (and their in-place variants): the
+        // sequence-side slots of __add__/__mul__ — one dunder name mapping to
+        // slots in two protocol families. Native sequence types fill only the
+        // sq side; a heap type defining __add__/__mul__ keeps the sq slot
+        // NULL (slotdef function=NULL, typeobject.c:11131) and the abstract
+        // layer falls back from nb to sq.
+        [PySpecialMethod("__add__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Sequence))]
+        static partial void Concat(PyCallContext context, TObject self, PyObject other);
+
+        [PySpecialMethod("__mul__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Sequence))]
+        static partial void Repeat(PyCallContext context, TObject self, PyObject other);
+
+        [PySpecialMethod("__iadd__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Sequence))]
+        static partial void InplaceConcat(PyCallContext context, TObject self, PyObject other);
+
+        [PySpecialMethod("__imul__", typeof(PyBinaryFunction), SlotsMember = nameof(PyTypeSlots.Sequence))]
+        static partial void InplaceRepeat(PyCallContext context, TObject self, PyObject other);
+
         [PySpecialMethod("__enter__", typeof(PyUnaryFunction))]
         static partial void Enter(PyCallContext context, TObject self);
 

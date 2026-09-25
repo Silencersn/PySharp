@@ -45,6 +45,20 @@ GetItem:   对象是类型对象时走 __class_getitem__ 或 GenericAlias，否�
 两者皆返回 NotImplemented → TypeError
 ```
 
+- 协议族回退（nb → sq）：Number 组槽都放弃后，`ApplySequenceFallback` 对齐 abstract.c 的
+  abstract 层回退。`+` 只试左操作数的 `sq_concat`；`*` 先试左 `sq_repeat`，左侧没有才试右侧
+  （`2 * [1]` 即走右侧，以 `(right, left)` 调用）；就地版本依次
+  `sq_inplace_concat → sq_concat`、`sq_inplace_repeat → sq_repeat`。
+- 槽位协议族：`PyTypeSlots` 按族分组（`Number`、`Sequence`），`__add__`/`__mul__`/`__iadd__`/
+  `__imul__` 一名双槽（CPython slotdefs 的多对多映射）。堆类型定义这些 dunder 时填 Number 侧并
+  置空 Sequence 侧（typeobject.c:11131 的 sq=NULL 特判，副作用由上面的 nb→sq 回退吸收）；原生
+  序列类型（str/bytes/bytearray/list/tuple）只填 Sequence 侧；删除覆盖后按 wrapper 委托与
+  Sequence 槽的引用相等甄别族别并恢复（`PyWrapperDescrObject.d_base->wrapper` 签名匹配的等价物）。
+  原生序列类型因此没有 `__radd__`（sq_concat 无反射变体），`__rmul__` 由手写 RMul 覆写
+  （非换序的 wrap_indexargfunc 语义）提供。
+- match 语句的 sequence/mapping 判定与槽位无关：纯类型 flag（`PyTypeFlags.Sequence/Mapping`，
+  对齐 `Py_TPFLAGS_*` 的位值），构造期查静态表并沿 MRO 继承；str/bytes/bytearray 与自带
+  `__getitem__` 的用户类因无 flag 而不匹配序列模式。
 - 比较族（`Lt` 与 `Gt` 族）：无条件以「右操作数的镜像形式优先」调用，即 `left < right` 先试
   `right.__gt__` 再试 `left.__lt__`，与算术不同，不受同类型省略的影响。`Eq` 是特例，反射查询
   两侧都查 `__eq__`，均返回 `NotImplemented` 时退化为引用相等。

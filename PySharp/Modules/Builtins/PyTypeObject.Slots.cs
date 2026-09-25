@@ -8,10 +8,11 @@ partial class PyTypeObject
 
     protected internal sealed partial class PyTypeSlots
     {
-        // TODO: support different protocols
-
+        // Number and Sequence are the generated protocol families; the rest
+        // of the slots stay direct fields until a family needs its own group
         internal PyClsArgsKwargsFunction? New;
         internal PyNumberMethods? Number;
+        internal PySequenceMethods? Sequence;
 
         internal static PyTypeSlots Create(IEnumerable<PyTypeObject> types)
         {
@@ -25,5 +26,7 @@ partial class PyTypeObject
         }
 
         internal sealed partial class PyNumberMethods;
+
+        internal sealed partial class PySequenceMethods;
     }
 }

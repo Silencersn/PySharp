@@ -236,7 +236,14 @@ public class PyTypeGenerator : IIncrementalGenerator
                                 if (slot.Name is "New")
                                     builder.AppendLine("FillNewSlot();");
                                 else if (slot.SlotsMember is not null)
+                                {
+                                    // the group struct is only pre-seeded by
+                                    // FillNullWith when a base already carries
+                                    // one — a type filling the first slot of a
+                                    // family must create it itself
+                                    builder.AppendLine($"Slots.{slot.SlotsMember} ??= new();");
                                     builder.AppendLine($"FillSlot(PySpecialNames.{slot.Name}, ref Slots.{slot.SlotsMember}.{slot.Name}, {slot.Name});");
+                                }
                                 else
                                     builder.AppendLine($"FillSlot(PySpecialNames.{slot.Name}, ref Slots.{slot.Name}, {slot.Name});");
                             })

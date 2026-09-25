@@ -195,20 +195,16 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
         return self.PyHash(context);
     }
 
-    // CPython's reflected wrappers cover as_number and sq_repeat slots
-    // only; sq_concat has no reflected variant (tuple.__radd__ does not
-    // exist). __mul__ keeps its __rmul__ entry with the non-swapping
-    // self*value order of wrap_indexargfunc.
-    protected override bool SynthesizeReflectedAdd => false;
-    protected override bool ReflectedMulSwapsOperands => false;
-
+    // sq_concat/sq_repeat live on the Sequence family slot; tuple has no
+    // reflected variant (tuple.__radd__ does not exist), and __rmul__ keeps
+    // the non-swapping self*value order of wrap_indexargfunc
     [AIGenerated]
-    protected override PyResult Add(PyCallContext context, PyTupleObject self, PyObject other)
+    protected override PyResult Concat(PyCallContext context, PyTupleObject self, PyObject other)
     {
         return self.PyAdd(context, other);
     }
     [AIGenerated]
-    protected override PyResult Mul(PyCallContext context, PyTupleObject self, PyObject other)
+    protected override PyResult Repeat(PyCallContext context, PyTupleObject self, PyObject other)
     {
         var result = PySpecialMethods.Index(context, other);
         if (result.IsError)
@@ -219,7 +215,7 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
     [AIGenerated]
     protected override PyResult RMul(PyCallContext context, PyTupleObject self, PyObject other)
     {
-        return Mul(context, self, other);
+        return Repeat(context, self, other);
     }
 
     [PyMethod("index", Order = 1)]

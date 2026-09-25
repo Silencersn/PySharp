@@ -9,6 +9,66 @@ namespace PySharp.SourceGeneration.Internal;
 
 partial class InternalPyTypeObjectGenerator
 {
+    /// <summary>
+    /// One slot field addressable by a dunder name. A dunder may map to
+    /// several targets across protocol families (CPython slotdefs:
+    /// __add__ -> nb_add + sq_concat); the first target collected for a
+    /// name is the primary one that receives the converted value.
+    /// </summary>
+    private sealed class SlotTarget
+    {
+        public SlotTarget(string? fieldName, string methodName, string specialName, string delegateType, string extMethod)
+        {
+            FieldName = fieldName;
+            MethodName = methodName;
+            SpecialName = specialName;
+            DelegateType = delegateType;
+            ExtMethod = extMethod;
+        }
+
+        public string? FieldName { get; }
+        public string MethodName { get; }
+        public string SpecialName { get; }
+        public string DelegateType { get; }
+        public string ExtMethod { get; }
+    }
+
+    private static (string? specialName, string? delegateType) ReadSlotDef(IMethodSymbol method)
+    {
+        var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name == PySharpTypes.PySpecialMethodAttributeName);
+        return (attributeData.GetConstructorArgument<string>(0), attributeData.GetConstructorArgument<INamedTypeSymbol>(1)?.Name);
+    }
+
+    /// <summary>
+    /// Collects every slot target in declaration order: direct fields first,
+    /// then the SlotsMember groups. Group targets whose group has no
+    /// hand-written field/nested type on PyTypeSlots are skipped (mirrors
+    /// slotsMemberFieldTypes resolution).
+    /// </summary>
+    private static List<SlotTarget> CollectSlotTargets(
+        List<IMethodSymbol> directMethods,
+        List<IGrouping<string, IMethodSymbol>> slotsMemberGroups,
+        Dictionary<string, (IFieldSymbol field, INamedTypeSymbol type)> slotsMemberFieldTypes)
+    {
+        var targets = new List<SlotTarget>();
+        void Add(IMethodSymbol method, string? fieldName)
+        {
+            var (specialName, delegateType) = ReadSlotDef(method);
+            if (specialName is null || delegateType is null) return;
+            targets.Add(new SlotTarget(fieldName, method.Name, specialName, delegateType, GetSlotConverterMethodName(specialName, delegateType)));
+        }
+
+        foreach (var method in directMethods)
+            Add(method, null);
+        foreach (var group in slotsMemberGroups)
+        {
+            if (!slotsMemberFieldTypes.ContainsKey(group.Key)) continue;
+            foreach (var method in group)
+                Add(method, group.Key);
+        }
+        return targets;
+    }
+
     private static void GenerateSlotsFile(
         SourceProductionContext ctx,
         List<IMethodSymbol> directMethods,
@@ -108,59 +168,43 @@ partial class InternalPyTypeObjectGenerator
                 .EnterBlock()
                     .AppendLine("case \"__new__\": New = value.ToClsArgsKwargsFunction(); break;");
 
-        // TrySetSlot: direct fields
-        foreach (var method in directMethods)
+        // TrySetSlot: one case per dunder name. A name mapping to slots in
+        // several protocol families (e.g. __add__ -> nb_add + sq_concat)
+        // fills the first (number-side) slot with the converted value and
+        // NULLs the rest — CPython heap types defining __add__/__mul__ keep
+        // sq_concat/sq_repeat NULL and lean on the abstract-layer fallback
+        // (typeobject.c:11131)
+        foreach (var nameGroup in CollectSlotTargets(directMethods, slotsMemberGroups, slotsMemberFieldTypes).GroupBy(t => t.SpecialName))
         {
-            var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name == PySharpTypes.PySpecialMethodAttributeName);
-            var specialName = attributeData.GetConstructorArgument<string>(0);
-            var delegateType = attributeData.GetConstructorArgument<INamedTypeSymbol>(1);
-            if (specialName is null || delegateType is null) continue;
-            var extMethod = GetSlotConverterMethodName(specialName, delegateType.Name);
-            builder.AppendLine($"case \"{specialName}\": {method.Name} = value.{extMethod}(); break;");
-        }
-
-        // TrySetSlot: nested type fields
-        foreach (var group in slotsMemberGroups)
-        {
-            if (!slotsMemberFieldTypes.TryGetValue(group.Key, out var info)) continue;
-            var fieldName = group.Key;
-            foreach (var method in group)
+            builder.Append($"case \"{nameGroup.Key}\": ");
+            var first = true;
+            foreach (var target in nameGroup)
             {
-                var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name == PySharpTypes.PySpecialMethodAttributeName);
-                var specialName = attributeData.GetConstructorArgument<string>(0);
-                var delegateType = attributeData.GetConstructorArgument<INamedTypeSymbol>(1);
-                if (specialName is null || delegateType is null) continue;
-                var extMethod = GetSlotConverterMethodName(specialName, delegateType.Name);
-                builder.AppendLine($"case \"{specialName}\": {fieldName} ??= new(); {fieldName}.{method.Name} = value.{extMethod}(); break;");
+                if (first)
+                {
+                    builder.Append(target.FieldName is null
+                        ? $"{target.MethodName} = value.{target.ExtMethod}(); "
+                        : $"{target.FieldName} ??= new(); {target.FieldName}.{target.MethodName} = value.{target.ExtMethod}(); ");
+                    first = false;
+                }
+                else
+                {
+                    builder.Append(target.FieldName is null
+                        ? $"{target.MethodName} = null; "
+                        : $"if ({target.FieldName} is not null) {target.FieldName}.{target.MethodName} = null; ");
+                }
             }
+            builder.AppendLine("break;");
         }
 
         // every slot dunder name, "__new__" included (declared manually on the
-        // slots class); probed by the runtime re-resolution machinery
-        var allSlotNames = new List<string> { "__new__" };
-        foreach (var method in directMethods)
-        {
-            var specialName = method.GetAttributes().First(a => a.AttributeClass?.Name == PySharpTypes.PySpecialMethodAttributeName)
-                .GetConstructorArgument<string>(0);
-            if (specialName is not null)
-                allSlotNames.Add(specialName);
-        }
-        foreach (var group in slotsMemberGroups)
-        {
-            foreach (var method in group)
-            {
-                var specialName = method.GetAttributes().First(a => a.AttributeClass?.Name == PySharpTypes.PySpecialMethodAttributeName)
-                    .GetConstructorArgument<string>(0);
-                if (specialName is not null)
-                    allSlotNames.Add(specialName);
-            }
-        }
-
-        static (string? specialName, string? delegateType) ReadSlotDef(IMethodSymbol method)
-        {
-            var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name == PySharpTypes.PySpecialMethodAttributeName);
-            return (attributeData.GetConstructorArgument<string>(0), attributeData.GetConstructorArgument<INamedTypeSymbol>(1)?.Name);
-        }
+        // slots class); probed by the runtime re-resolution machinery.
+        // Distinct: a dunder may map to slots in several families
+        var allSlotNames = CollectSlotTargets(directMethods, slotsMemberGroups, slotsMemberFieldTypes)
+            .Select(t => t.SpecialName)
+            .Distinct()
+            .ToList();
+        allSlotNames.Insert(0, "__new__");
 
         builder
             .ExitBlock()   // switch (name)
@@ -181,51 +225,64 @@ partial class InternalPyTypeObjectGenerator
             .EnterBlock()
                 .AppendLine("switch (name)")
                 .EnterBlock()
-                    .AppendLine("case \"__new__\": New = null; break;")
-                    .ForEach(directMethods, static (builder, method) =>
-                    {
-                        var (specialName, _) = ReadSlotDef(method);
-                        if (specialName is null) return;
-                        builder.AppendLine($"case \"{specialName}\": {method.Name} = null; break;");
-                    })
-                    .ForEach(slotsMemberGroups, static (builder, group) =>
-                    {
-                        foreach (var method in group)
-                        {
-                            var (specialName, _) = ReadSlotDef(method);
-                            if (specialName is null) continue;
-                            builder.AppendLine($"case \"{specialName}\": if ({group.Key} is not null) {group.Key}.{method.Name} = null; break;");
-                        }
-                    })
-                .ExitBlock()
+                    .AppendLine("case \"__new__\": New = null; break;");
+
+        foreach (var nameGroup in CollectSlotTargets(directMethods, slotsMemberGroups, slotsMemberFieldTypes).GroupBy(t => t.SpecialName))
+        {
+            builder.Append($"case \"{nameGroup.Key}\": ");
+            foreach (var target in nameGroup)
+            {
+                builder.Append(target.FieldName is null
+                    ? $"{target.MethodName} = null; "
+                    : $"if ({target.FieldName} is not null) {target.FieldName}.{target.MethodName} = null; ");
+            }
+            builder.AppendLine("break;");
+        }
+
+        builder
+            .ExitBlock()
             .ExitBlock()
             .AppendLine()
             .AppendLine("// CPython update_one_slot's specific test: a wrapper descriptor wraps the")
             .AppendLine("// provider's exact slot delegate (FillSlot shares the instance between the")
             .AppendLine("// slot field and the type dict), so the wrapped delegate is wired directly")
             .AppendLine("// instead of a closure calling through the wrapper.")
+            .AppendLine("// For a dunder with slots in several families the wrapper identifies its")
+            .AppendLine("// family by delegate identity against the secondary (sequence-side) slot —")
+            .AppendLine("// the analog of CPython's d_base->wrapper signature match: a native")
+            .AppendLine("// sequence wrapper keeps the sq slot and leaves the nb slot dict-driven.")
             .AppendLine("internal bool TrySetWrappedSlot(string name, PyWrapperDescriptorObject wrapper)")
             .EnterBlock()
                 .AppendLine("switch (name)")
                 .EnterBlock()
-                    .AppendLine("case \"__new__\": return false;")
-                    .ForEach(directMethods, static (builder, method) =>
-                    {
-                        var (specialName, delegateType) = ReadSlotDef(method);
-                        if (specialName is null || delegateType is null) return;
-                        builder.AppendLine($"case \"{specialName}\": {{ if (wrapper._func is {delegateType} f) {{ {method.Name} = f; return true; }} return false; }}");
-                    })
-                    .ForEach(slotsMemberGroups, static (builder, group) =>
-                    {
-                        foreach (var method in group)
-                        {
-                            var (specialName, delegateType) = ReadSlotDef(method);
-                            if (specialName is null || delegateType is null) continue;
-                            builder.AppendLine($"case \"{specialName}\": {{ if (wrapper._func is {delegateType} f) {{ {group.Key} ??= new(); {group.Key}.{method.Name} = f; return true; }} return false; }}");
-                        }
-                    })
-                    .AppendLine("default: return false;")
-                .ExitBlock()
+                    .AppendLine("case \"__new__\": return false;");
+
+        foreach (var nameGroup in CollectSlotTargets(directMethods, slotsMemberGroups, slotsMemberFieldTypes).GroupBy(t => t.SpecialName))
+        {
+            var targets = nameGroup.ToList();
+            var primary = targets[0];
+            var secondaries = targets.Skip(1).ToList();
+
+            builder.Append($"case \"{nameGroup.Key}\": {{ if (wrapper._func is {primary.DelegateType} f) {{ ");
+            foreach (var secondary in secondaries)
+            {
+                builder.Append($"if (ReferenceEquals(f, {secondary.FieldName}?.{secondary.MethodName})) return true; ");
+            }
+            builder.Append(primary.FieldName is null
+                ? $"{primary.MethodName} = f; "
+                : $"{primary.FieldName} ??= new(); {primary.FieldName}.{primary.MethodName} = f; ");
+            foreach (var secondary in secondaries)
+            {
+                builder.Append(secondary.FieldName is null
+                    ? $"{secondary.MethodName} = null; "
+                    : $"if ({secondary.FieldName} is not null) {secondary.FieldName}.{secondary.MethodName} = null; ");
+            }
+            builder.AppendLine("return true; } return false; }");
+        }
+
+        builder
+            .AppendLine("default: return false;")
+            .ExitBlock()
             .ExitBlock()
             .ExitBlock()
             .ExitBlock();

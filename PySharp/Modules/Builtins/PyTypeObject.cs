@@ -129,6 +129,29 @@ public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
     // attribute writes on the type object itself
     internal virtual bool IsRuntimeCreated => false;
 
+    /// <summary>
+    /// The modeled CPython tp_flags bits (sequence/mapping pattern matching,
+    /// match-self). Resolved once during construction: static bits from the
+    /// table for builtins, then inherit_patma_flags along the MRO.
+    /// </summary>
+    internal PyTypeFlags TypeFlags { get; private set; }
+
+    private void ResolveTypeFlags()
+    {
+        var flags = IsRuntimeCreated ? PyTypeFlags.None : PyTypeFlagsTable.Lookup(TpName);
+        // CPython inherit_patma_flags (typeobject.c:8713): walk the MRO and
+        // take a base's bits only while the type has none of its own
+        for (int i = 1; i < InternalMRO.Length; i++)
+        {
+            var baseFlags = InternalMRO[i].TypeFlags;
+            if ((flags & PyTypeFlags.CollectionMask) == 0)
+                flags |= baseFlags & PyTypeFlags.CollectionMask;
+            if ((flags & PyTypeFlags.MatchSelf) == 0)
+                flags |= baseFlags & PyTypeFlags.MatchSelf;
+        }
+        TypeFlags = flags;
+    }
+
     internal PyTypeObject()
     {
         if (DefaultModule is not null)
@@ -138,6 +161,7 @@ public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
         var bases = Bases;
         _mro = [this, .. CreateMROWithoutSelf(bases)];
         Slots = PyTypeSlots.Create(MRO.Skip(1));
+        ResolveTypeFlags();
         foreach (var baseType in bases.Distinct())
             baseType.RegisterSubclass(this);
         PyAttributes[PySpecialNames.Doc] = PyNoneObject.None;
@@ -151,6 +175,7 @@ public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
         QualName = qualName;
         _mro = [this, .. CreateMROWithoutSelf(bases)];
         Slots = PyTypeSlots.Create(MRO.Skip(1));
+        ResolveTypeFlags();
         foreach (var baseType in bases.Distinct())
             baseType.RegisterSubclass(this);
         PyAttributes[PySpecialNames.Doc] = PyNoneObject.None;

@@ -636,25 +636,16 @@ internal static class PyCore
 
     internal static bool IsSequenceForMatch(PyObject obj)
     {
-        return obj switch
-        {
-            PyListObject or
-            PyTupleObject or
-            PyRangeObject => true,
-
-            PyStrObject => false, // str is not regarded as sequence
-
-            _ => false,// TODO: support other valid sequences
-        };
+        // MATCH_SEQUENCE is a pure tp_flags check (Python/bytecodes.c): no
+        // slot probe, no dict special case. str/bytes/bytearray have sq_item
+        // yet are excluded by not carrying Py_TPFLAGS_SEQUENCE, and so is a
+        // user class that merely defines __getitem__
+        return (obj.PyType.TypeFlags & PyTypeFlags.Sequence) != 0;
     }
 
     internal static bool IsMappingForMatch(PyObject obj)
     {
-        return obj switch
-        {
-            PyDictObject => true,
-            _ => false,// TODO: support other valid mapping
-        };
+        return (obj.PyType.TypeFlags & PyTypeFlags.Mapping) != 0;
     }
 
     internal static PyResult GetAttrOrMethod(PyCallContext context, PyObject self, string name, out bool isMethod)

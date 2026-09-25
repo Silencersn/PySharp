@@ -37,9 +37,16 @@ partial class InternalPyTypeObjectGenerator
                 .AppendLine()
                 .AppendLine("internal static partial System.Collections.Generic.IEnumerable<string> EnumerateGeneratedNames()")
                 .EnterBlock()
-                    .ForEach(methods, static (builder, method) =>
+                    // distinct by value: two constants may share one dunder
+                    // (Add/Concat = "__add__") and the intern pool is keyed
+                    // by the string value
+                    .ForEach(methods
+                        .Select(static method => method.GetAttributes().First(a => a.AttributeClass?.Name == PySharpTypes.PySpecialMethodAttributeName))
+                        .Select(static attributeData => attributeData.GetConstructorArgument<string>(0))
+                        .Where(static specialName => specialName is not null)
+                        .Distinct(), static (builder, specialName) =>
                     {
-                        builder.AppendLine($"yield return {method.Name};");
+                        builder.AppendLine($"yield return \"{specialName}\";");
                     })
                 .ExitBlock()
             .ExitBlock();

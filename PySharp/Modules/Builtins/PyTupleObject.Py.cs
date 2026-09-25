@@ -9,18 +9,9 @@ partial class PyTupleObject
     public PyResult PyAdd(PyCallContext context, PyObject other)
     {
         if (other is not PyTupleObject otherTuple)
-        {
-            // The right operand's reflected __radd__ runs first (CPython's
-            // tuple has no nb_add); the concat TypeError is the last resort
-            // when it declines or does not exist.
-            if (other.PyType.Slots.RAdd is not null)
-            {
-                var reflected = other.PyType.Slots.RAdd(context, other, this);
-                if (!reflected.IsNotImplemented)
-                    return reflected;
-            }
+            // the right operand's reflected __radd__ runs on the dispatch
+            // layer before this concat TypeError
             return PyResult.TypeError(PySR.Runtime_Tuple_AddNonTuple, other.PyType.TpName);
-        }
 
         if (otherTuple.Count is 0)
             return this;

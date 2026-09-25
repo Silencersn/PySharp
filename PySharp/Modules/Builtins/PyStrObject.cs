@@ -2387,26 +2387,16 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             return PyResult.IndexError(PySR.Runtime_String_IndexOutOfRange);
         return PyStrObject.FromCodePoint(self.PyCharAt(index));
     }
-    // CPython's reflected wrappers cover as_number and sq_repeat slots
-    // only; sq_concat has no reflected variant (str.__radd__ does not
-    // exist). __mul__ keeps its __rmul__ entry with the non-swapping
-    // self*value order of wrap_indexargfunc.
-    protected override bool SynthesizeReflectedAdd => false;
-    protected override bool ReflectedMulSwapsOperands => false;
-
-    protected override PyResult Add(PyCallContext context, PyStrObject self, PyObject other)
+    // sq_concat (modeled on the Sequence family slot, not Number.Add): no
+    // reflected variant exists (str.__radd__ does not exist), and __rmul__
+    // keeps the non-swapping self*value order of wrap_indexargfunc
+    protected override PyResult Concat(PyCallContext context, PyStrObject self, PyObject other)
     {
         if (other is PyStrObject strObj)
             return PyStrObject.FromString(self.Value + strObj.Value);
-        // CPython's str has no nb_add: the right operand's reflected
-        // __radd__ runs first, and the concat TypeError is the last resort
-        // (the sq_concat fallback) when it declines or does not exist.
-        if (other.PyType.Slots.RAdd is not null)
-        {
-            var reflected = other.PyType.Slots.RAdd(context, other, self);
-            if (!reflected.IsNotImplemented)
-                return reflected;
-        }
+        // the right operand's reflected __radd__ (if its type synthesized
+        // one) runs first on the dispatch layer; the concat TypeError is
+        // the last resort here
         return PyResult.TypeError(PySR.Runtime_String_AddNonStr, other.PyType.TpName);
     }
     protected override PyResult Eq(PyCallContext context, PyStrObject self, PyObject other)
@@ -2441,7 +2431,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             return PyNotImplementedObject.NotImplemented;
         return PyBoolObject.FromBoolean(PyStrObject.CompareCodePoints(self.Value, strObj.Value) >= 0);
     }
-    protected override PyResult Mul(PyCallContext context, PyStrObject self, PyObject other)
+    protected override PyResult Repeat(PyCallContext context, PyStrObject self, PyObject other)
     {
         var result = PySpecialMethods.Index(context, other);
         if (result.IsError)
@@ -2455,7 +2445,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     }
     protected override PyResult RMul(PyCallContext context, PyStrObject self, PyObject other)
     {
-        return Mul(context, self, other);
+        return Repeat(context, self, other);
     }
 
     [AIGenerated]

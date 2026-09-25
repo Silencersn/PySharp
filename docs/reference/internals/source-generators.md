@@ -43,6 +43,10 @@ PySharp 的类型机器（slots、方法描述符、异常工厂等）全部在�
      密封包装。
   3. `PyTypeObject.Slots.g.cs`：`PyTypeSlots` 的委托字段（含分组）、`AllSlotNames`/`IsSlotName()`、
      `FillNullWith()`（MRO 补槽）、`TrySetSlot()`、`ClearSlot()`、`TrySetWrappedSlot()`。
+     一个 dunder 名可映射多个族的槽位（slotdefs 的多对多：`__add__` → `Number.Add` +
+     `Sequence.Concat`）：`TrySetSlot`/`ClearSlot` 按名合并 case，赋值填首选（Number 侧）槽并
+     置空其余槽（CPython 的 sq=NULL 特判，typeobject.c:11131）；`TrySetWrappedSlot` 对多槽名以
+     wrapper 委托与次槽的引用相等甄别族别，命中则保留 Sequence 侧、Number 侧保持字典驱动。
   4. `PySpecialNames.g.cs`：dunder 名常量与 `Interned` 预驻留字段。
   5. `PyTypeObjectOfT.Partial.g.cs`：`protected virtual` 协议声明，即手写覆写的目标。
 - `InternalPySpecialNamesGenerator` 为手写的非生成 `PySpecialNames` 常量补 `Interned` 字段，

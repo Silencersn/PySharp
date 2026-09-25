@@ -1,5 +1,6 @@
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.Comparison;
 using PySharp.Runtime.Environments;
 using System.Diagnostics;
 
@@ -36,32 +37,34 @@ internal static partial class BytecodeVirtualMachine
 
         var values = new PyObject[instructionArg + keys.Count];
 
-        if (IsSpecialType(cls))
+        // CPython _PyEval_MatchClass reads __match_args__ on the class
+        // regardless of the positional pattern count; a missing one counts
+        // as an empty tuple (other lookup errors propagate), and
+        // _Py_TPFLAGS_MATCH_SELF only applies when the class does not
+        // define __match_args__ (ceval.c:874-891)
+        var matchArgsResult = PyOperators.GetAttr(context, cls, PySpecialNames.Interned.MatchArgs);
+        PyObject matchArgs;
+        if (!matchArgsResult.IsError)
+            matchArgs = matchArgsResult.Value;
+        else if (matchArgsResult.IsAttributeError)
+            matchArgs = PyTupleObject.Empty;
+        else
+            throw new PyRuntimeException(context, matchArgsResult.Exception);
+
+        if (matchArgs is not PyTupleObject tuple)
+            throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsIsNonTuple, cls.TpName, matchArgs.PyType.TpName);
+
+        var matchSelf = tuple.Count is 0 && (cls.TypeFlags & PyTypeFlags.MatchSelf) != 0;
+        var allowed = matchSelf ? 1 : tuple.Count;
+        if (instructionArg > allowed)
+            throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsLengthNotEnough, cls.TpName, allowed, allowed is 1 ? string.Empty : "s", instructionArg);
+
+        if (matchSelf && instructionArg is 1)
         {
-            if (instructionArg > 1)
-                throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsLengthNotEnough, cls.TpName, 1, string.Empty, instructionArg);
-            else if (instructionArg is 1)
-                values[0] = subject;
+            values[0] = subject;
         }
-        else if (instructionArg > 0)
+        else
         {
-            // CPython: a missing __match_args__ counts as an empty tuple,
-            // turning the failure into an arity TypeError instead of leaking
-            // the attribute lookup error; other lookup errors propagate.
-            var matchArgsResult = PyOperators.GetAttr(context, cls, PySpecialNames.Interned.MatchArgs);
-            PyObject matchArgs;
-            if (!matchArgsResult.IsError)
-                matchArgs = matchArgsResult.Value;
-            else if (matchArgsResult.IsAttributeError)
-                matchArgs = PyTupleObject.Empty;
-            else
-                throw new PyRuntimeException(context, matchArgsResult.Exception);
-
-            if (matchArgs is not PyTupleObject tuple)
-                throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsIsNonTuple, cls.TpName, matchArgs.PyType.TpName);
-            if (instructionArg > tuple.Count)
-                throw context.TypeError(PySR.Runtime_MatchStmt_MatchArgsLengthNotEnough, cls.TpName, tuple.Count, tuple.Count is 1 ? string.Empty : "s", instructionArg);
-
             for (int i = 0; i < instructionArg; i++)
             {
                 if (tuple[i] is not PyStrObject attrName)
@@ -94,22 +97,6 @@ internal static partial class BytecodeVirtualMachine
         }
 
         stack.Push(PyTupleObject.CreateProxy(values));
-
-        static bool IsSpecialType(PyTypeObject type)
-        {
-            return type is
-                PyBoolObjectType or
-                PyByteArrayObjectType or
-                PyBytesObjectType or
-                PyDictObjectType or
-                PyFloatObjectType or
-                PyFrozenSetObjectType or
-                PyIntObjectType or
-                PyListObjectType or
-                PySetObjectType or
-                PyStrObjectType or
-                PyTupleObjectType;
-        }
     }
 
     private static void InternalMatchKeys(PyCallContext context, ref ValueOperandStack stack)
@@ -117,17 +104,61 @@ internal static partial class BytecodeVirtualMachine
         var keys = (PyTupleObject)stack.Peek();
         var subject = stack[-2];
         var array = new PyObject[keys.Count];
+
+        // CPython _PyEval_MatchKeys fetches values through the subject's
+        // two-argument get(key, sentinel): a missing key is observed by
+        // identity against a fresh object() without triggering __missing__
+        // side effects, and a duplicate key raises ValueError (the PySet
+        // membership check, ceval.c:768-773)
+        for (int i = 1; i < keys.Count; i++)
+        {
+            for (int j = 0; j < i; j++)
+            {
+                var duplicate = PyComparer.Eq(context, keys[i], keys[j]).PyUnwrap(context);
+                if (duplicate.BoolValue)
+                    throw context.ValueError(PySR.Runtime_MatchStmt_DuplicateKey, PySpecialMethods.Repr(context, keys[i]).PyUnwrap(context).Value);
+            }
+        }
+
+        var objectNew = PyObjectType.Shared.Slots.New ?? throw new UnreachableException();
+        var sentinel = objectNew(context, PyObjectType.Shared, System.Array.Empty<PyObject>(), new Dictionary<string, PyObject>()).PyUnwrap(context);
+        PyObject? getBound = null;
+        if (PyObject.TryLookupAttrInMro(subject.PyType, "get", out var getAttr))
+        {
+            var getDescriptor = getAttr.PyType.Slots.Get;
+            getBound = getDescriptor is null
+                ? getAttr
+                : getDescriptor(context, getAttr, subject, subject.PyType).PyUnwrap(context);
+        }
+
         var matched = true;
         for (int i = 0; matched && i < array.Length; i++)
         {
             var key = keys[i];
-            var result = PySpecialMethods.GetItem(context, subject, key);
-            if (result.IsError && PyKeyErrorObjectType.Shared.IsInstance(result.Exception))
+            if (getBound is not null)
             {
-                matched = false;
-                break;
+                var result = getBound.Call(context, [key, sentinel]);
+                if (result.IsError)
+                    throw new PyRuntimeException(context, result.Exception);
+                if (ReferenceEquals(result.Value, sentinel))
+                {
+                    matched = false;
+                    break;
+                }
+                array[i] = result.Value;
             }
-            array[i] = result.PyUnwrap(context);
+            else
+            {
+                // a flagged type without get cannot arise in CPython; keep
+                // the item-fetch path as the defensive fallback
+                var result = PySpecialMethods.GetItem(context, subject, key);
+                if (result.IsError && PyKeyErrorObjectType.Shared.IsInstance(result.Exception))
+                {
+                    matched = false;
+                    break;
+                }
+                array[i] = result.PyUnwrap(context);
+            }
         }
         stack.Push(matched ? PyTupleObject.CreateProxy(array) : PyNoneObject.None);
     }

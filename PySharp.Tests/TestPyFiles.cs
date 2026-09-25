@@ -2253,6 +2253,33 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestMatchPatmaFlagsRegression()
+    {
+        // Regression: sequence/mapping pattern dispatch is a pure type-flag
+        // check (CPython Py_TPFLAGS_SEQUENCE/MAPPING) — list/dict subclasses
+        // match, user __getitem__ classes and str/bytes/bytearray do not;
+        // mapping keys go through get(key, sentinel) without __missing__
+        // side effects; duplicate keys raise ValueError; MATCH_SELF (incl.
+        // complex, and int subclasses) applies only without __match_args__.
+        var module = RunModule("test_match_patma_flags_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestSequenceFamilyRegression()
+    {
+        // Regression: the sequence protocol family (Concat/Repeat and their
+        // in-place variants) dispatches through the nb -> sq abstract-layer
+        // fallback with CPython's left/right directions; heap types defining
+        // __add__/__mul__ null the sequence-side slot (typeobject.c:11131);
+        // deleting the override restores the native wrapper; mutation
+        // propagation covers the subtree; native types expose no __radd__
+        // but keep the non-swapping __rmul__.
+        var module = RunModule("test_sequence_family_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestStarredPositionRegression()
     {
         // Regression: a bare starred expression (`*a`) in an illegal

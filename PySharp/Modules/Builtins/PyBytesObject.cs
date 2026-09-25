@@ -290,30 +290,17 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
         return new PyBytesIteratorObject(self);
     }
 
-    // CPython's reflected wrappers cover as_number and sq_repeat slots
-    // only; sq_concat has no reflected variant (bytes.__radd__ does not
-    // exist). __mul__ keeps its __rmul__ entry with the non-swapping
-    // self*value order of wrap_indexargfunc.
-    protected override bool SynthesizeReflectedAdd => false;
-    protected override bool ReflectedMulSwapsOperands => false;
-
-    protected override PyResult Add(PyCallContext context, PyBytesObject self, PyObject other)
+    // sq_concat lives on the Sequence family slot; bytes has no reflected
+    // variant (bytes.__radd__ does not exist), and __rmul__ keeps the
+    // non-swapping self*value order of wrap_indexargfunc
+    protected override PyResult Concat(PyCallContext context, PyBytesObject self, PyObject other)
     {
         // bytes_concat accepts any bytes-like operand; the concat TypeError
         // is reserved for fully unrelated types
         if (!TryGetBytesLikeSpan(other, out var otherSpan))
-        {
-            // The reflected __radd__ of the right operand gets the first chance
-            // (CPython's bytes has no nb_add); the concat TypeError is the last
-            // resort when it declines or does not exist.
-            if (other.PyType.Slots.RAdd is not null)
-            {
-                var reflected = other.PyType.Slots.RAdd(context, other, self);
-                if (!reflected.IsNotImplemented)
-                    return reflected;
-            }
+            // the right operand's reflected __radd__ gets the first chance on
+            // the dispatch layer; this TypeError is the last resort
             return PyResult.TypeError(PySR.Runtime_Bytes_CannotConcat, other.PyType.TpName);
-        }
 
         var combinedBytes = new byte[self.Length + otherSpan.Length];
         var dstSpan = combinedBytes.AsSpan();
@@ -322,7 +309,7 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
         return PyBytesObject.MoveBytes(combinedBytes);
     }
 
-    protected override PyResult Mul(PyCallContext context, PyBytesObject self, PyObject other)
+    protected override PyResult Repeat(PyCallContext context, PyBytesObject self, PyObject other)
     {
         var indexResult = PySpecialMethods.Index(context, other);
         if (indexResult.IsError)
@@ -346,7 +333,7 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
 
     protected override PyResult RMul(PyCallContext context, PyBytesObject self, PyObject other)
     {
-        return Mul(context, self, other);
+        return Repeat(context, self, other);
     }
 
     protected override PyResult Eq(PyCallContext context, PyBytesObject self, PyObject other)

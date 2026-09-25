@@ -392,6 +392,34 @@ partial class PyTypeObject<TObject>
     {
         return DefaultBinaryOperator(context, self, other);
     }
+
+    // the sequence-side concat/repeat slots (sq_concat/sq_repeat). Native
+    // sequence types override these; __add__/__mul__ user definitions go to
+    // the Number side and keep Sequence null (typeobject.c:11131)
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Sequence))]
+    protected virtual partial PyResult Concat(PyCallContext context, TObject self, PyObject other)
+    {
+        return DefaultBinaryOperator(context, self, other);
+    }
+
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Sequence))]
+    protected virtual partial PyResult Repeat(PyCallContext context, TObject self, PyObject other)
+    {
+        return DefaultBinaryOperator(context, self, other);
+    }
+
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Sequence))]
+    protected virtual partial PyResult InplaceConcat(PyCallContext context, TObject self, PyObject other)
+    {
+        return DefaultBinaryOperator(context, self, other);
+    }
+
+    [PySlot(SlotsMember = nameof(PyTypeSlots.Sequence))]
+    protected virtual partial PyResult InplaceRepeat(PyCallContext context, TObject self, PyObject other)
+    {
+        return DefaultBinaryOperator(context, self, other);
+    }
+
     [PySlot(SlotsMember = nameof(PyTypeSlots.Number))]
     protected virtual partial PyResult IMatMul(PyCallContext context, TObject self, PyObject other)
     {

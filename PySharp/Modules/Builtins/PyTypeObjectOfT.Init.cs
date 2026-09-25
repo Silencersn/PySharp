@@ -64,18 +64,6 @@ partial class PyTypeObject<TObject>
         PyAttributes[name] = new PyWrapperDescriptorObject(func);
     }
 
-    // CPython synthesizes reflected wrappers only on as_number/sq slots
-    // (add_operators has no reflected variant for sq_concat). PySharp
-    // models sequence concat on the shared Add slot field, so those
-    // types opt out of the reflected synthesis for it; sq_repeat keeps
-    // its __rmul__ entry but with the non-swapping self*value order of
-    // wrap_indexargfunc.
-    protected virtual bool SynthesizeReflectedAdd => true;
-
-    // nb_multiply reflection swaps the operands; sq_repeat's __rmul__
-    // wraps the same (self, count) call in both orders
-    protected virtual bool ReflectedMulSwapsOperands => true;
-
     // CPython add_operators: every non-null as_number slot exposes a
     // reflected wrapper that is a thin operand-swapping view of the
     // forward slot (wrap_binaryfunc_r / wrap_ternaryfunc_r keep the
@@ -91,9 +79,8 @@ partial class PyTypeObject<TObject>
         if (number is null)
             return;
 
-        if (SynthesizeReflectedAdd)
-            FillReflectedSlot(number, PySpecialNames.RAdd, static n => n.Add, static n => n.RAdd, static (n, f) => n.RAdd = f, swapsOperands: true);
-        FillReflectedSlot(number, PySpecialNames.RMul, static n => n.Mul, static n => n.RMul, static (n, f) => n.RMul = f, swapsOperands: ReflectedMulSwapsOperands);
+        FillReflectedSlot(number, PySpecialNames.RAdd, static n => n.Add, static n => n.RAdd, static (n, f) => n.RAdd = f, swapsOperands: true);
+        FillReflectedSlot(number, PySpecialNames.RMul, static n => n.Mul, static n => n.RMul, static (n, f) => n.RMul = f, swapsOperands: true);
         FillReflectedSlot(number, PySpecialNames.RSub, static n => n.Sub, static n => n.RSub, static (n, f) => n.RSub = f, swapsOperands: true);
         FillReflectedSlot(number, PySpecialNames.RMatMul, static n => n.MatMul, static n => n.RMatMul, static (n, f) => n.RMatMul = f, swapsOperands: true);
         FillReflectedSlot(number, PySpecialNames.RTrueDiv, static n => n.TrueDiv, static n => n.RTrueDiv, static (n, f) => n.RTrueDiv = f, swapsOperands: true);
