@@ -303,16 +303,16 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
         // is reserved for fully unrelated types
         if (!TryGetBytesLikeSpan(other, out var otherSpan))
         {
-        // The reflected __radd__ of the right operand gets the first chance
-        // (CPython's bytes has no nb_add); the concat TypeError is the last
-        // resort when it declines or does not exist.
-        if (other.PyType.Slots.RAdd is not null)
-        {
-            var reflected = other.PyType.Slots.RAdd(context, other, self);
-            if (!reflected.IsNotImplemented)
-                return reflected;
-        }
-        return PyResult.TypeError(PySR.Runtime_Bytes_CannotConcat, other.PyType.TpName);
+            // The reflected __radd__ of the right operand gets the first chance
+            // (CPython's bytes has no nb_add); the concat TypeError is the last
+            // resort when it declines or does not exist.
+            if (other.PyType.Slots.RAdd is not null)
+            {
+                var reflected = other.PyType.Slots.RAdd(context, other, self);
+                if (!reflected.IsNotImplemented)
+                    return reflected;
+            }
+            return PyResult.TypeError(PySR.Runtime_Bytes_CannotConcat, other.PyType.TpName);
         }
 
         var combinedBytes = new byte[self.Length + otherSpan.Length];
@@ -525,12 +525,12 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
             // latin-1 (under any of its aliases) maps every byte, it can
             // never fail
             case "latin1" or "latin" or "l1" or "8859" or "88591" or "iso8859" or "iso88591" or "iso885911987" or "isoir100" or "csisolatin1" or "ibm819" or "cp819":
-            {
-                var latin = new StringBuilder(payload.Length);
-                foreach (var b in payload)
-                    latin.Append((char)b);
-                return PyStrObject.FromString(latin.ToString());
-            }
+                {
+                    var latin = new StringBuilder(payload.Length);
+                    foreach (var b in payload)
+                        latin.Append((char)b);
+                    return PyStrObject.FromString(latin.ToString());
+                }
             case "utf16":
                 return DecodeUtf16(payload, bigEndian, "utf-16", errors, sourceObject);
             case "utf16le":

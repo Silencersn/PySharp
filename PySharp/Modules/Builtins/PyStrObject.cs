@@ -2,7 +2,6 @@ using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
 using PySharp.Utility;
-using System.Buffers;
 using System.Diagnostics;
 using System.Globalization;
 using System.Numerics;
@@ -1405,29 +1404,29 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             switch (conversion)
             {
                 case 's':
-                {
-                    var str = PySpecialMethods.Str(context, value);
-                    if (str.IsError)
-                        return str;
-                    value = str.Value;
-                    break;
-                }
+                    {
+                        var str = PySpecialMethods.Str(context, value);
+                        if (str.IsError)
+                            return str;
+                        value = str.Value;
+                        break;
+                    }
                 case 'r':
-                {
-                    var repr = PySpecialMethods.Repr(context, value);
-                    if (repr.IsError)
-                        return repr;
-                    value = repr.Value;
-                    break;
-                }
+                    {
+                        var repr = PySpecialMethods.Repr(context, value);
+                        if (repr.IsError)
+                            return repr;
+                        value = repr.Value;
+                        break;
+                    }
                 case 'a':
-                {
-                    var ascii = PySpecialMethods.Repr(context, value);
-                    if (ascii.IsError)
-                        return ascii;
-                    value = PyStrObject.FromString(PyBuiltinFunctions.EscapeNonAscii(ascii.Value.Value));
-                    break;
-                }
+                    {
+                        var ascii = PySpecialMethods.Repr(context, value);
+                        if (ascii.IsError)
+                            return ascii;
+                        value = PyStrObject.FromString(PyBuiltinFunctions.EscapeNonAscii(ascii.Value.Value));
+                        break;
+                    }
                 default:
                     return PyResult.ValueError($"Unknown conversion specifier {conversion}");
             }
@@ -1915,12 +1914,12 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             case "replace":
                 return AppendEncodedText(bytes, strict, codec, value, start, end, new string('?', end - start));
             case "backslashreplace" or "xmlcharrefreplace" or "namereplace":
-            {
-                var text = new StringBuilder();
-                for (var i = start; i < end; i++)
-                    text.Append(EncodeErrorReplacement(errors, codePoints[i]));
-                return AppendEncodedText(bytes, strict, codec, value, start, end, text.ToString());
-            }
+                {
+                    var text = new StringBuilder();
+                    for (var i = start; i < end; i++)
+                        text.Append(EncodeErrorReplacement(errors, codePoints[i]));
+                    return AppendEncodedText(bytes, strict, codec, value, start, end, text.ToString());
+                }
             case "surrogateescape":
                 for (var i = start; i < end; i++)
                 {

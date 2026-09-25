@@ -972,7 +972,7 @@ partial class Emitter
                             Collect(caseNode.Body, true);
                         break;
 
-                    // nested functions and classes own their annotations
+                        // nested functions and classes own their annotations
                 }
             }
         }

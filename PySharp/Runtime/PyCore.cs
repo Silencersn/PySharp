@@ -2,7 +2,6 @@ using PySharp.Compilation.Primitives;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.VirtualMachine;
-using System.Collections.Generic;
 using System.Diagnostics;
 
 namespace PySharp.Runtime;

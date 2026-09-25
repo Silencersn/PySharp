@@ -1,4 +1,3 @@
-using PySharp.Compilation.CodeAnalysis;
 using PySharp.Modules.CSharp;
 using PySharp.Modules.Typing;
 using PySharp.Runtime;

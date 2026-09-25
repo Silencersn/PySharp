@@ -78,7 +78,7 @@ public sealed partial class PyBaseExceptionGroupObjectType : PyExceptionType
             return err.Value;
 
         var info = new ExceptionGroupInfo(self.AsGroup.Message, [.. excs]);
-        var excResult = PyExceptionObject.Create(context, self.PyType, 
+        var excResult = PyExceptionObject.Create(context, self.PyType,
             [PyStrObject.FromString(info.Message),
             PyListObject.CreateList(info.Exceptions)], info);
         if (excResult.IsError)

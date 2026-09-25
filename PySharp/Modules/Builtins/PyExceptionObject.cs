@@ -1,4 +1,3 @@
-using PySharp.Compilation.CodeAnalysis;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Utility;

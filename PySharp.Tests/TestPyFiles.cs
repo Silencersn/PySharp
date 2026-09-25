@@ -2,7 +2,6 @@ using PySharp.Compilation;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
-using PySharp.Runtime.Calls.Extensions;
 using PySharp.Runtime.Environments;
 using PySharp.Runtime.IO;
 using PySharp.Runtime.IO.Memory;
@@ -4575,7 +4574,7 @@ public sealed class TestPyFiles
         var module = RunModule("test_number_message_repr_regression.py");
         Assert.IsNotNull(module);
     }
-    
+
     public void TestAsyncGeneratorASendReuseRegression()
     {
         // Regression: the awaitable returned by __anext__()/asend() is

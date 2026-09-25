@@ -5,8 +5,8 @@ using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Text;
 using System.Diagnostics.CodeAnalysis;
+using System.Text;
 
 namespace PySharp.Compilation.Bytecodes;
 

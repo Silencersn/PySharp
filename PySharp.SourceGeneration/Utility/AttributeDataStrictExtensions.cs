@@ -1,5 +1,4 @@
 using PySharp.SourceGeneration.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.SourceGeneration.Utility;
 

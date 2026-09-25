@@ -1,6 +1,5 @@
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Comparison;
-using System.Linq;
 
 namespace PySharp.Modules.Builtins;
 
