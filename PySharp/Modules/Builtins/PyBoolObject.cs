@@ -33,8 +33,17 @@ public sealed partial class PyBoolObjectType : PyTypeObject<PyBoolObject>
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        if (!PyArgsValidator.ValidateSinglePositionalArg(args, kwargs, out var err))
-            return err.Value;
+        // CPython bool_new: x defaults to Py_False, so no argument at all
+        // yields False; keyword arguments are rejected before the arity
+        // check, and more than one positional is an error (Objects/boolobject.c)
+        if (kwargs.Count > 0)
+            return PyResult.TypeError(PySR.Runtime_Bool_TakesNoKwargs);
+        if (args.Count > 1)
+            return PyResult.TypeError(PySR.Runtime_Bool_ExpectedAtMostOne, args.Count);
+
+        if (args.Count is 0)
+            return PyBoolObject.False;
+
         return PySpecialMethods.Bool(context, args[0]);
     }
 

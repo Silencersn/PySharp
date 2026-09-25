@@ -2540,6 +2540,17 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestBoolNoArgsRegression()
+    {
+        // Regression: bool() with no arguments returns False (CPython
+        // declares bool(object=False, /)), not TypeError; keyword
+        // arguments are refused before the arity check and more than one
+        // positional reports "bool expected at most 1 argument, got N".
+        var module = RunModule("test_bool_noargs_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestListPopEmptyRegression()
     {
         // Regression: pop() on an empty list must raise

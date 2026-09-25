@@ -181,6 +181,8 @@ partial class PySR
     public const string Runtime_Set_ExpectedAtMostOne = "{0} expected at most 1 argument, got {1}";
     public const string Runtime_Set_IterationChangedSize = "Set changed size during iteration";
     public const string Runtime_FrozenSet_TakesNoKwargs = "frozenset() takes no keyword arguments";
+    public const string Runtime_Bool_TakesNoKwargs = "bool() takes no keyword arguments";
+    public const string Runtime_Bool_ExpectedAtMostOne = "bool expected at most 1 argument, got {0}";
     public const string Runtime_Dictionary_ExpectedAtMostOne = "dict expected at most 1 argument, got {0}";
     public const string Runtime_Str_ExpectedAtMostThree = "str expected at most 3 arguments, got {0}";
     public const string Runtime_Str_UnexpectedKeyword = "str() got an unexpected keyword argument '{0}'";
