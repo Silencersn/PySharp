@@ -503,9 +503,9 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     private static PyResult Replace(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
         if (arguments[0] is not PyStrObject oldStr)
-            return PyResult.TypeError(PySR.Runtime_Str_MethodArgMustBeStr, "replace", 1, arguments[0].PyType.Name);
+            return PyResult.TypeError(PySR.Runtime_Str_MethodArgMustBeStr, "replace", 1, PyUtils.ArgumentTypeName(arguments[0]));
         if (arguments[1] is not PyStrObject newStr)
-            return PyResult.TypeError(PySR.Runtime_Str_MethodArgMustBeStr, "replace", 2, arguments[1].PyType.Name);
+            return PyResult.TypeError(PySR.Runtime_Str_MethodArgMustBeStr, "replace", 2, PyUtils.ArgumentTypeName(arguments[1]));
 
         if (!TrySizeArg(context, arguments[2], PySR.Runtime_Number_Int_TooLargeForSsize, out int count, out var countError))
             return countError;
@@ -756,7 +756,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     private static PyResult FindImpl(PyCallContext context, PyStrObject self, PyArguments arguments, string methodName)
     {
         if (arguments[0] is not PyStrObject subStr)
-            return PyResult.TypeError(PySR.Runtime_Str_MethodArgMustBeStr, methodName, 1, arguments[0].PyType.Name);
+            return PyResult.TypeError(PySR.Runtime_Str_MethodArgMustBeStr, methodName, 1, PyUtils.ArgumentTypeName(arguments[0]));
         if (!TrySliceIndex(context, arguments[1], 0, out int start, out var startError))
             return startError;
         if (!TrySliceIndex(context, arguments[2], int.MaxValue, out int end, out var endError))
@@ -792,7 +792,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     private static PyResult RFindImpl(PyCallContext context, PyStrObject self, PyArguments arguments, string methodName)
     {
         if (arguments[0] is not PyStrObject subStr)
-            return PyResult.TypeError(PySR.Runtime_Str_MethodArgMustBeStr, methodName, 1, arguments[0].PyType.Name);
+            return PyResult.TypeError(PySR.Runtime_Str_MethodArgMustBeStr, methodName, 1, PyUtils.ArgumentTypeName(arguments[0]));
         if (!TrySliceIndex(context, arguments[1], 0, out int start, out var startError))
             return startError;
         if (!TrySliceIndex(context, arguments[2], int.MaxValue, out int end, out var endError))
@@ -914,7 +914,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     private static PyResult Count(PyCallContext context, PyStrObject self, PyArguments arguments)
     {
         if (arguments[0] is not PyStrObject subStr)
-            return PyResult.TypeError(PySR.Runtime_Str_MethodArgMustBeStr, "count", 1, arguments[0].PyType.Name);
+            return PyResult.TypeError(PySR.Runtime_Str_MethodArgMustBeStr, "count", 1, PyUtils.ArgumentTypeName(arguments[0]));
 
         if (!TrySliceIndex(context, arguments[1], 0, out int start, out var startError))
             return startError;
@@ -1795,9 +1795,9 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     {
         // CPython 3.14's strict converters: neither parameter accepts None
         if (arguments[0] is not PyStrObject encodingArg)
-            return PyResult.TypeError(PySR.Runtime_StrEncode_ArgMustBeStr, "encoding", arguments[0] is PyNoneObject ? "None" : arguments[0].PyType.Name);
+            return PyResult.TypeError(PySR.Runtime_StrEncode_ArgMustBeStr, "encoding", PyUtils.ArgumentTypeName(arguments[0]));
         if (arguments[1] is not PyStrObject errorsArg)
-            return PyResult.TypeError(PySR.Runtime_StrEncode_ArgMustBeStr, "errors", arguments[1] is PyNoneObject ? "None" : arguments[1].PyType.Name);
+            return PyResult.TypeError(PySR.Runtime_StrEncode_ArgMustBeStr, "errors", PyUtils.ArgumentTypeName(arguments[1]));
 
         return EncodeCore(context, self.Value, encodingArg.Value, errorsArg.Value);
     }

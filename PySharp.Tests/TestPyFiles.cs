@@ -4212,6 +4212,19 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestStrNoneArgMessageRegression()
+    {
+        // Regression: the str methods whose sub/old/new arguments go
+        // through CPython's argument converter report None as "None"
+        // rather than its type name, matching converterr() in
+        // Python/getargs.c, while the neighbouring %T faces
+        // (startswith/endswith/join/partition/fillchar and the __index__
+        // converters) keep printing "NoneType".
+        var module = RunModule("test_str_none_arg_message_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestAssertTupleWarningRegression()
     {
         // Regression: an assert whose test is a non-empty tuple literal

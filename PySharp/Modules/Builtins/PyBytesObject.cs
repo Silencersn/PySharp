@@ -217,7 +217,7 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
             return PyNoneObject.None;
         }
         text = null;
-        return PyResult.TypeError(PySR.Runtime_Codec_ArgMustBeStr, typeName, name, value is PyNoneObject ? "None" : value.PyType.Name);
+        return PyResult.TypeError(PySR.Runtime_Codec_ArgMustBeStr, typeName, name, PyUtils.ArgumentTypeName(value));
     }
 
     protected override PyResult Repr(PyCallContext context, PyBytesObject self)

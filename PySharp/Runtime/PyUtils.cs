@@ -448,6 +448,13 @@ internal static class PyUtils
         return inner is { IsError: false } ? inner.Value.Value : string.Empty;
     }
 
+    // CPython's argument converters render the offending argument's type as
+    // "None" for Py_None and as tp_name for everything else — Python/getargs.c
+    // converterr() and _PyArg_BadArgument(), both with
+    // `arg == Py_None ? "None" : Py_TYPE(arg)->tp_name`
+    public static string ArgumentTypeName(PyObject arg) =>
+        arg is PyNoneObject ? "None" : arg.PyType.Name;
+
     // CPython quotes the argument of a failed conversion with %R of the
     // original object — Objects/floatobject.c:162 and
     // Objects/longobject.c:3126 — so control characters, quotes and
