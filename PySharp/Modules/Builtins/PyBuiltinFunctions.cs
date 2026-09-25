@@ -1562,7 +1562,7 @@ public static partial class PyBuiltinFunctions
             newline: newlineObj is PyStrObject nl ? nl.Value : null, codec: codec,
             // appending to a non-empty file must not inject another BOM
             // (CPython _textiowrapper_fix_encoder_state)
-            wrotePreamble: !binary && appending && stream.Length != 0);
+            wrotePreamble: !binary && appending && stream.Length is not 0);
     }
 
     private static PyIntObject? IndexArgument(PyCallContext context, PyObject obj, out PyResult error)

@@ -1,11 +1,10 @@
 global using Microsoft.CodeAnalysis;
 global using Microsoft.CodeAnalysis.CSharp;
-using System;
 using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("PySharp.SourceGeneration.Internal")]
 
-namespace PySharp.SourceGeneration;
+namespace System.Diagnostics.CodeAnalysis;
 
 [AttributeUsage(AttributeTargets.Parameter, Inherited = false)]
 internal sealed class NotNullWhenAttribute : Attribute

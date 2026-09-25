@@ -64,8 +64,8 @@ public sealed class PyFileObject : PyObject, IDisposable
         _isReadable = isReadable;
         _isWritable = isWritable;
         _isSeekable = isSeekable;
-        _encodingParam = !isTextMode ? "" : encoding ?? "utf-8";
-        _errorsName = !isTextMode ? "" : errors ?? "strict";
+        _encodingParam = !isTextMode ? string.Empty : encoding ?? "utf-8";
+        _errorsName = !isTextMode ? string.Empty : errors ?? "strict";
         _encodingName = _encodingParam;
         _newline = newline;
         if (isTextMode)
@@ -295,7 +295,7 @@ public sealed class PyFileObject : PyObject, IDisposable
             // error; -offset wraps for long.MinValue, which must read as the
             // most negative offset there is
             long target = whence is 1 ? _stream.Position : whence is 2 ? _stream.Length : 0;
-            if (offset < 0 && (offset == long.MinValue || target < -offset))
+            if (offset < 0 && (offset is long.MinValue || target < -offset))
                 return PyResult.OSError(PySR.Runtime_Os_InvalidArgumentErrno);
         }
         try
@@ -381,8 +381,8 @@ public sealed class PyFileObject : PyObject, IDisposable
         _pendingCRLen = 0;
         // utf-8-sig strips the BOM again after a seek back to the start,
         // and sniffed utf-16/32 re-recognize theirs
-        _bomChecked = pos != 0;
-        if (pos == 0)
+        _bomChecked = pos is not 0;
+        if (pos is 0)
             _codec?.ResetBomSniff();
         else
             _codec?.MarkBomSniffedIfUnsniffed();
@@ -445,8 +445,8 @@ public sealed class PyFileObject : PyObject, IDisposable
                 // a truncated BOM prefix at end-of-file is consumed like a
                 // BOM: CPython's utf-8-sig decoder yields '' for it instead
                 // of a truncated-sequence error
-                bool bomPrefix = (avail == 1 && _rawBuf[_rawStart] is 0xEF) ||
-                    (avail == 2 && _rawBuf[_rawStart] is 0xEF && _rawBuf[_rawStart + 1] is 0xBB);
+                bool bomPrefix = (avail is 1 && _rawBuf[_rawStart] is 0xEF) ||
+                    (avail is 2 && _rawBuf[_rawStart] is 0xEF && _rawBuf[_rawStart + 1] is 0xBB);
                 if (bomPrefix)
                 {
                     _frontPos += avail;
@@ -648,7 +648,7 @@ public sealed class PyFileObject : PyObject, IDisposable
         ch = _charBuf[_charStart];
         _frontPos += _charLens[_charStart];
         _charStart++;
-        if (ch is >= 0xD800 and <= 0xDBFF && _charStart < _charEnd && _charLens[_charStart] == 0)
+        if (ch is >= 0xD800 and <= 0xDBFF && _charStart < _charEnd && _charLens[_charStart] is 0)
         {
             ch = 0x10000 + ((ch - 0xD800) << 10) + (_charBuf[_charStart] - 0xDC00);
             _charStart++;
@@ -734,7 +734,6 @@ public sealed class PyFileObject : PyObject, IDisposable
                             if (err is not null)
                                 return err.Value;
                             PyTextCodec.AppendCodePoint(builder, next);
-                            read++;
                         }
                         break;
                     }
@@ -768,7 +767,6 @@ public sealed class PyFileObject : PyObject, IDisposable
                             if (err is not null)
                                 return err.Value;
                             PyTextCodec.AppendCodePoint(builder, next);
-                            read++;
                         }
                         break;
                     }
@@ -825,7 +823,7 @@ public sealed class PyFileObject : PyObject, IDisposable
             // encoder state resets on every seek: the codec preamble is
             // armed only when the final position is the very start
             var writePos = _stream.Seek(offset, (SeekOrigin)whence);
-            _wrotePreamble = writePos != 0;
+            _wrotePreamble = writePos is not 0;
             return PyIntObject.FromInteger(writePos);
         }
 
@@ -835,7 +833,7 @@ public sealed class PyFileObject : PyObject, IDisposable
         {
             case 0:
                 pos = offset & ~CookieFlagMask;
-                flag = (offset & CookieFlagMask) != 0;
+                flag = (offset & CookieFlagMask) is not 0;
                 break;
             case 1:
                 // resync: drop readahead and restart from the next
@@ -850,7 +848,7 @@ public sealed class PyFileObject : PyObject, IDisposable
         }
         ResetTextReadState(pos, flag);
         _stream.Seek(pos, SeekOrigin.Begin);
-        _wrotePreamble = pos != 0;
+        _wrotePreamble = pos is not 0;
         return PyIntObject.FromInteger(PackCookie(pos, flag));
     }
 }
@@ -961,7 +959,7 @@ public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
         var bigOffset = offsetInt.Value;
         if (self._isTextMode)
         {
-            if (whenceInt.Int32Value == 0)
+            if (whenceInt.Int32Value is 0)
             {
                 // the negativity check runs on the original value
                 if (bigOffset < 0)
@@ -1030,9 +1028,11 @@ public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
             return sizeError;
         var bigSize = size.Value;
         if (bigSize > long.MaxValue || bigSize < long.MinValue)
+        {
             return self._isTextMode
                 ? PyResult.OverflowError(PySR.Runtime_Number_Int_TooLargeForSsize)
                 : PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt);
+        }
         if (bigSize > int.MaxValue || bigSize < int.MinValue)
             return self.ReadLine(); // beyond C int the limit never binds
         return self.ReadLine(size.Int32Value);

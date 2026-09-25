@@ -62,7 +62,7 @@ internal sealed class PyTextCodec
     private bool _sniffed;
     private bool _bigEndian;
     private Decoder? _genericDecoder;
-    private GenericWidthMode _widthMode;
+    private readonly GenericWidthMode _widthMode;
 
     private PyTextCodec(string errorName, string errors, PyCodecInfo.CodecKind kind,
         bool stripUtf8Bom = false, bool sniffBom = false)
@@ -72,6 +72,10 @@ internal sealed class PyTextCodec
         _kind = kind;
         StripUtf8Bom = stripUtf8Bom;
         _sniffBom = sniffBom;
+        // only CodecKind.Other codecs reach the DecodeGeneric routes that
+        // dereference _genericEncoding, and those are always built through
+        // the other constructor with a resolved encoding
+        _genericEncoding = null!;
     }
 
     /// <summary>
@@ -242,7 +246,7 @@ internal sealed class PyTextCodec
     // raises its BOM rejection only after a decode event comes back clean
     private bool _pendingBomReject;
     private int _pendingBomRejectMarkLen;
-    private string _pendingBomRejectName = "";
+    private string _pendingBomRejectName = string.Empty;
 
     /// <summary>
     /// Consumes a deferred BOM rejection after a clean decode event,
@@ -391,7 +395,9 @@ internal sealed class PyTextCodec
             reason = "code point in surrogate code point range(0xd800, 0xe000)";
         }
         else if (word > 0x10FFFF)
+        {
             reason = "code point not in range(0x110000)";
+        }
         else
         {
             AppendCodePoint(sb, (int)word);
@@ -476,16 +482,20 @@ internal sealed class PyTextCodec
                 return 1;
             case GenericWidthMode.Dbcs:
                 // cp932: the halfwidth katakana block is single-byte
-                if (_genericEncoding.CodePage == 932 && b0 is >= 0xA1 and <= 0xDF)
+                if (_genericEncoding.CodePage is 932 && b0 is >= 0xA1 and <= 0xDF)
                     return 1;
                 return b0 >= 0x80 ? 2 : 1;
             case GenericWidthMode.EucJp:
-                if (b0 == 0x8F) return 3;
-                if (b0 == 0x8E) return 2;
+                if (b0 is 0x8F)
+                    return 3;
+                if (b0 is 0x8E)
+                    return 2;
                 return b0 >= 0xA1 ? 2 : 1;
             case GenericWidthMode.Gb18030:
-                if (b0 < 0x80) return 1;
-                if (index + 1 < data.Length && data[index + 1] is >= 0x30 and <= 0x39) return 4;
+                if (b0 < 0x80)
+                    return 1;
+                if (index + 1 < data.Length && data[index + 1] is >= 0x30 and <= 0x39)
+                    return 4;
                 return 2;
             default:
                 return 1;
@@ -499,7 +509,7 @@ internal sealed class PyTextCodec
     private PyDecodeStatus DecodeGeneric(ReadOnlySpan<byte> data, ref int index, bool eof, StringBuilder sb, out PyResult? error)
     {
         error = null;
-        if (_widthMode == GenericWidthMode.Legacy)
+        if (_widthMode is GenericWidthMode.Legacy)
             return DecodeGenericLegacy(data, ref index, eof, sb, out error);
 
         _genericDecoder ??= PyStrObjectType.MakeStrictDecoder(_genericEncoding);
@@ -527,14 +537,14 @@ internal sealed class PyTextCodec
                 ? PyDecodeStatus.Ok
                 : PyDecodeStatus.Error;
         }
-        if (charsUsed == 0 && bytesUsed > 0 && !eof)
+        if (charsUsed is 0 && bytesUsed > 0 && !eof)
         {
             // a prediction miss left an absorbed partial sequence: the
             // decoder state carries it, commit the real consumption
             index += bytesUsed;
             return PyDecodeStatus.Pending;
         }
-        if (charsUsed == 0)
+        if (charsUsed is 0)
         {
             // end-of-input left less than a full sequence: the whole slice is
             // the incomplete event, never a silent loss
@@ -573,9 +583,9 @@ internal sealed class PyTextCodec
                 ? PyDecodeStatus.Ok
                 : PyDecodeStatus.Error;
         }
-        if (charsUsed == 0 && bytesUsed == 0)
+        if (charsUsed is 0 && bytesUsed is 0)
             return eof ? PyDecodeStatus.EndOfInput : PyDecodeStatus.NeedMore;
-        if (charsUsed == 0 && bytesUsed > 0)
+        if (charsUsed is 0 && bytesUsed > 0)
         {
             // an absorbed partial sequence; at end-of-input it is the
             // incomplete event, never a silent loss
