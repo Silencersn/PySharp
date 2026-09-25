@@ -124,11 +124,11 @@ public sealed class PyByteArrayObject : PyObject
 [PyType("bytearray")]
 public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObject>
 {
-    static PyByteArrayObjectType()
+    // CPython add_operators: unhashable types carry __hash__ = None in
+    // the type dict (read face); the tp_hash override below raises
+    protected override void PostConstruct()
     {
-        // CPython add_operators: unhashable types carry __hash__ = None in
-        // the type dict (read face); the tp_hash override below raises
-        Shared.PyAttributes[PySpecialNames.Hash] = PyNoneObject.None;
+        PyAttributes[PySpecialNames.Hash] = PyNoneObject.None;
     }
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)

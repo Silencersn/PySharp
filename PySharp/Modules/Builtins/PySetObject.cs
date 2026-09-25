@@ -213,11 +213,11 @@ public partial class PySetObject : PyObject, IPyObjectRecursiveRepr, ISet<PyObje
 [PyType("set")]
 public sealed partial class PySetObjectType : PyTypeObject<PySetObject>
 {
-    static PySetObjectType()
+    // CPython add_operators: unhashable types carry __hash__ = None in
+    // the type dict (read face) while tp_hash raises the TypeError
+    protected override void PostConstruct()
     {
-        // CPython add_operators: unhashable types carry __hash__ = None in
-        // the type dict (read face) while tp_hash raises the TypeError
-        Shared.PyAttributes[PySpecialNames.Hash] = PyNoneObject.None;
+        PyAttributes[PySpecialNames.Hash] = PyNoneObject.None;
     }
 
     // CPython PyObject_HashNotImplemented

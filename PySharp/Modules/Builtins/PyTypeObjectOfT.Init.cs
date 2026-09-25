@@ -202,6 +202,23 @@ partial class PyTypeObject<TObject>
 
     }
 
+    /// <summary>
+    /// Runs immediately before slot, method and property registration;
+    /// identity, MRO and the type dict are already set up at this point.
+    /// </summary>
+    protected virtual void PreConstruct()
+    {
+    }
+
+    /// <summary>
+    /// Runs at the end of type construction, after slot, method and property
+    /// registration. Type-dict customization belongs here rather than in a
+    /// static constructor mutating <c>Shared</c> after its initializer.
+    /// </summary>
+    protected virtual void PostConstruct()
+    {
+    }
+
     [EditorBrowsable(EditorBrowsableState.Never)]
     protected void FillNewSlot()
     {

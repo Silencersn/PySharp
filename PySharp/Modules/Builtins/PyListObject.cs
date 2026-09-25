@@ -127,11 +127,11 @@ public partial class PyListObject : PyObject, IPyObjectRecursiveRepr, IList<PyOb
 [PyType("list")]
 public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
 {
-    static PyListObjectType()
+    // CPython add_operators: unhashable types carry __hash__ = None in
+    // the type dict (read face) while tp_hash raises the TypeError
+    protected override void PostConstruct()
     {
-        // CPython add_operators: unhashable types carry __hash__ = None in
-        // the type dict (read face) while tp_hash raises the TypeError
-        Shared.PyAttributes[PySpecialNames.Hash] = PyNoneObject.None;
+        PyAttributes[PySpecialNames.Hash] = PyNoneObject.None;
     }
 
     // CPython PyObject_HashNotImplemented

@@ -34,11 +34,11 @@ public sealed class PyDictItemsObject : PyObject
 [PyType("dict_items")]
 public sealed partial class PyDictItemsObjectType : PyTypeObject<PyDictItemsObject>
 {
-    static PyDictItemsObjectType()
+    // CPython add_operators: unhashable types carry __hash__ = None in
+    // the type dict (read face) while tp_hash raises the TypeError
+    protected override void PostConstruct()
     {
-        // CPython add_operators: unhashable types carry __hash__ = None in
-        // the type dict (read face) while tp_hash raises the TypeError
-        Shared.PyAttributes[PySpecialNames.Hash] = PyNoneObject.None;
+        PyAttributes[PySpecialNames.Hash] = PyNoneObject.None;
     }
 
     // CPython PyObject_HashNotImplemented
@@ -341,11 +341,11 @@ public sealed partial class PyDictItemIteratorObjectType : PyTypeObject<PyDictIt
 [PyType("dict_keys")]
 public sealed partial class PyDictKeysObjectType : PyTypeObject<PyDictItemsObject>
 {
-    static PyDictKeysObjectType()
+    // CPython add_operators: unhashable types carry __hash__ = None in
+    // the type dict (read face) while tp_hash raises the TypeError
+    protected override void PostConstruct()
     {
-        // CPython add_operators: unhashable types carry __hash__ = None in
-        // the type dict (read face) while tp_hash raises the TypeError
-        Shared.PyAttributes[PySpecialNames.Hash] = PyNoneObject.None;
+        PyAttributes[PySpecialNames.Hash] = PyNoneObject.None;
     }
 
     // CPython PyObject_HashNotImplemented

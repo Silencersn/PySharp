@@ -24,18 +24,22 @@ public abstract partial class PyTypeObject<TObject> : PyTypeObject where TObject
 
     public PyTypeObject()
     {
+        PreConstruct();
         FillSlots();
         RegisterMethods();
         RegisterProperties();
+        PostConstruct();
     }
 
     public PyTypeObject(string qualName, IReadOnlyList<PyTypeObject> bases, bool appendOverriddenMethods) : base(qualName, bases)
     {
         if (appendOverriddenMethods)
         {
+            PreConstruct();
             FillSlots();
             RegisterMethods();
             RegisterProperties();
+            PostConstruct();
         }
     }
 
@@ -55,10 +59,10 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
     // the generic setattro (the plain `cls.x = v` path) and non-type
     // targets are rejected instead. The generated FillSlots owns the slot
     // table, so the exposed wrappers are swapped in after construction.
-    static PyTypeObjectType()
+    protected override void PostConstruct()
     {
-        Shared.PyAttributes[PySpecialNames.SetAttr] = new PyWrapperDescriptorObject((PyTernaryFunction)TypeSetAttr);
-        Shared.PyAttributes[PySpecialNames.DelAttr] = new PyWrapperDescriptorObject((PyBinaryFunction)TypeDelAttr);
+        PyAttributes[PySpecialNames.SetAttr] = new PyWrapperDescriptorObject((PyTernaryFunction)TypeSetAttr);
+        PyAttributes[PySpecialNames.DelAttr] = new PyWrapperDescriptorObject((PyBinaryFunction)TypeDelAttr);
     }
 
     private static PyResult TypeSetAttr(PyCallContext context, PyObject self, PyObject key, PyObject value)
