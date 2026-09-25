@@ -3,6 +3,10 @@
   <PropertyGroup>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <!-- Single source of truth for the release version; every project
+         inherits it, including the bare dlls shipped in the main
+         package's analyzers/ directory. -->
+    <Version>0.50</Version>
   </PropertyGroup>
 
 </Project>

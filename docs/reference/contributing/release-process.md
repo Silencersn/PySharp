@@ -1,15 +1,15 @@
 # 发布流程 checklist
 
-相关配置：`PySharp/PySharp.csproj`、`PySharp.Analyzer/PySharp.Analyzer.csproj`。
+相关配置：`Directory.Build.props`（版本号）、`PySharp/PySharp.csproj`（打包结构）。
 
-当前发布物有两个 NuGet 包：主包 `PySharp`（解释器库加内嵌公开源生成器与分析器）与独立包 `PySharp.Analyzer`（只要 `PYSP*` 规则的场景）。本文给出从“代码就绪”到“发布后验证”的完整序列。
+当前发布物只有一个 NuGet 包：主包 `PySharp`（解释器库加内嵌公开源生成器与分析器，`PYSP*` 分析器随包分发）。本文给出从“代码就绪”到“发布后验证”的完整序列。
 
 ## 打包结构
 
 主包 `PySharp.csproj` 的关键配置：
 
 ```xml
-<Version>0.50</Version>
+<!-- 版本号统一在 Directory.Build.props，所有工程继承 -->
 
 <!-- 4 个工具项目以 Analyzer 方式接入构建（不拷引用程序集） -->
 <ProjectReference Include="..\PySharp.SourceGeneration\..." OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
@@ -24,13 +24,13 @@
 
 - 安装主包即自动获得公开生成器（`[PyType]` 一族可用）与 `PYSP*` 分析器，无需额外配置；
 - 两个 `Internal` 工具项目不打进包，它们用于自举，引用了库内 internal 类型；
+- `PySharp.Analyzer` 仅以裸 dll 随主包分发，其 csproj 中 `IsPackable=false` 关闭独立打包；
 - **顺序敏感**：`None Include` 指向 `bin\$(Configuration)\netstandard2.0\` 的构建产物路径，pack 之前必须先以同一配置完整构建解决方案，否则包里是旧 dll 或缺文件。
 
 ## 发布序列
 
 1. **全量验证**：`dotnet test PySharp.slnx` 全部绿灯；生成器改动另见[构建与测试](./build-and-test.md)的自举验证。
-2. **版本号**：更新 `PySharp/PySharp.csproj` 的 `<Version>`，按惯例单独一笔提交（`chore: 更新项目版本号至 x.yy`）。
-   `PySharp.Analyzer.csproj` 当前未显式设置版本，将落在 SDK 默认值；独立发布该包前需要先补 `<Version>`，并考虑与主包的版本节奏解耦。
+2. **版本号**：更新 `Directory.Build.props` 的 `<Version>`（唯一入口，所有工程统一继承，含 analyzers 目录两个裸 dll 的程序集版本），按惯例单独一笔提交（`chore: 更新项目版本号至 x.yy`）。
 3. **Release 构建整个解决方案**，为 analyzers 目录产出最新 dll：
 
    ```bash
@@ -44,17 +44,10 @@
    ```
 
    产物 `PySharp.<version>.nupkg` 含 `lib/net10.0/PySharp.dll`（trim 与 AOT 标记随程序集携带）与 `analyzers/dotnet/cs/`（两个公开工具 dll）。
-5. **（可选）独立分析器包**：
-
-   ```bash
-   dotnet pack PySharp.Analyzer/PySharp.Analyzer.csproj -c Release
-   ```
-
-6. **发布**：
+5. **发布**：
 
    ```bash
    dotnet nuget push PySharp.<version>.nupkg --source <源> --api-key <key>
-   dotnet nuget push PySharp.Analyzer.<version>.nupkg --source <源> --api-key <key>
    ```
 
 > 尚未配置的发布元数据（按需补齐）：csproj 中没有 `RepositoryUrl` / `PackageProjectUrl` / `License` / SourceLink / 符号包（snupkg）设置。补 SourceLink 后才能在消费者端获得可调试的堆栈。

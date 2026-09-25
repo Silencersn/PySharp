@@ -5,7 +5,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Authors>Silencersn</Authors>
-    <Version>0.50</Version>
     <Copyright>Copyright © 2025-2026 Silencersn. All rights reserved.</Copyright>
   </PropertyGroup>
 
