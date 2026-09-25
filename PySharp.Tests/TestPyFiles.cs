@@ -1797,6 +1797,40 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestFileTellSeekCookieRegression()
+    {
+        // Regression (issues #118/#311): text-mode tell() must return a seek
+        // cookie carrying the consumed byte position — clean decoder states
+        // pack to the literal byte offset like CPython — and seek(cookie)
+        // must restore the exact read state across \r\n folding, multi-byte
+        // sequences, truncated tails and >8K chunk refills.
+        var module = RunModule("test_file_tell_seek_cookie_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestOpenTextArgsRegression()
+    {
+        // Regression (issue #236): open() accepts buffering=, encoding=,
+        // errors= and newline= with CPython's validation order (binary-mode
+        // rejections before the file opens, buffering/codec/newline after
+        // it), exposes f.encoding / f.errors, and decodes through the
+        // CPython-exact error handlers including utf-8-sig/utf-16/latin-1.
+        var module = RunModule("test_open_text_args_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
+    public void TestStdioCloseRegression()
+    {
+        // Regression (issue #333): the std streams accept close(), the
+        // closed flag becomes visible, and later operations raise the
+        // closed-file ValueError; a repeated close is a no-op.
+        var module = RunModule("test_stdio_close_regression.py");
+        Assert.IsNotNull(module);
+    }
+
+    [TestMethod]
     public void TestComplexAbsRegression()
     {
         // Regression: abs() of a complex value must return hypot(real, imag)

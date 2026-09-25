@@ -263,7 +263,16 @@ partial class PySR
     public const string Runtime_Builtin_Open_Arg2Type = "open() argument 'mode' must be str, not {0}";
     public const string Runtime_Builtin_Open_InvalidMode = "invalid mode: '{0}'";
     public const string Runtime_Builtin_Open_ConflictingMode = "must have exactly one of create/read/write/append mode";
+    public const string Runtime_Builtin_Open_TextUnbuffered = "can't have unbuffered text I/O";
+    public const string Runtime_Builtin_Open_BinaryEncoding = "binary mode doesn't take an encoding argument";
+    public const string Runtime_Builtin_Open_BinaryErrors = "binary mode doesn't take an errors argument";
+    public const string Runtime_Builtin_Open_BinaryNewline = "binary mode doesn't take a newline argument";
+    public const string Runtime_Builtin_Open_IllegalNewline = "illegal newline value: {0}";
+    public const string Runtime_Builtin_Open_ArgMustBeStr = "open() argument '{0}' must be str or None, not {1}";
+    public const string Runtime_Builtin_Open_BinaryLineBuffering = "line buffering (buffering=1) isn't supported in binary mode, the default buffer size will be used";
 
+    public const string Runtime_File_SizeIntegerOrNone = "argument should be integer or None, not '{0}'";
+    public const string Runtime_Codec_StreamNoBom = "Stream does not start with BOM";
     public const string Runtime_File_Closed = "I/O operation on closed file.";
     public const string Runtime_File_ClosedNoPeriod = "I/O operation on closed file";
     public const string Runtime_File_SeekClosed = "seek of closed file";

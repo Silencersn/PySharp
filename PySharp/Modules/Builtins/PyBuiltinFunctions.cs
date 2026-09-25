@@ -1354,25 +1354,51 @@ public static partial class PyBuiltinFunctions
         return dict;
     }
 
-    [PyFunctionParameters("file", "mode='r'")]
+    [PyFunctionParameters("file", "mode='r'", "buffering=-1", "encoding=None", "errors=None", "newline=None")]
     private static PyResult OpenImpl(PyCallContext context, PyArguments arguments)
     {
         var fileObj = arguments[0];
         var modeObj = arguments[1];
 
-        string path;
-        if (fileObj is PyStrObject pathStr)
-            path = pathStr.Value;
-        else
-            return PyResult.TypeError(PySR.Runtime_Builtin_Open_Arg1Type, fileObj.PyType.TpName);
-
+        // the clinic conversions run in signature order during argument
+        // parsing: the mode string and buffering index come first, and the
+        // str-or-None arguments reject non-str types before the function
+        // body runs
         string mode;
         if (modeObj is PyStrObject modeStr)
             mode = modeStr.Value;
         else
             return PyResult.TypeError(PySR.Runtime_Builtin_Open_Arg2Type, modeObj.PyType.TpName);
 
-        // Parse mode string
+        var buffering = IndexArgument(context, arguments[2], out var bufferingError);
+        if (buffering is null)
+            return bufferingError;
+        // the clinic "i" converter is a C int: out-of-range values overflow
+        if (buffering.Value > int.MaxValue || buffering.Value < int.MinValue)
+            return PyResult.OverflowError(PySR.Runtime_Number_Int_MaxDigitsNotInt32);
+
+        string? encodingName = null;
+        if (arguments[3] is PyStrObject encStr)
+            encodingName = encStr.Value;
+        else if (arguments[3] is not PyNoneObject)
+            return PyResult.TypeError(PySR.Runtime_Builtin_Open_ArgMustBeStr, "encoding", arguments[3].PyType.TpName);
+        string? errorsName = null;
+        if (arguments[4] is PyStrObject errStr)
+            errorsName = errStr.Value;
+        else if (arguments[4] is not PyNoneObject)
+            return PyResult.TypeError(PySR.Runtime_Builtin_Open_ArgMustBeStr, "errors", arguments[4].PyType.TpName);
+        var newlineObj = arguments[5];
+        if (newlineObj is not PyStrObject && newlineObj is not PyNoneObject)
+            return PyResult.TypeError(PySR.Runtime_Builtin_Open_ArgMustBeStr, "newline", newlineObj.PyType.TpName);
+
+        // the function body starts here: CPython validates the file
+        // argument's type before anything else in the body
+        string path;
+        if (fileObj is PyStrObject pathStr)
+            path = pathStr.Value;
+        else
+            return PyResult.TypeError(PySR.Runtime_Builtin_Open_Arg1Type, fileObj.PyType.TpName);
+
         const string ValidModeChars = "rwaxbt+";
         if (!mode.All(ValidModeChars.Contains) || mode.Distinct().Count() != mode.Length)
             return PyResult.ValueError(PySR.Runtime_Builtin_Open_InvalidMode, mode);
@@ -1389,6 +1415,25 @@ public static partial class PyBuiltinFunctions
         // both zero (e.g. '', 'b', 't', '+') and multiple (e.g. 'rw') are invalid.
         if (span.Count(true) is 0 or > 1)
             return PyResult.ValueError(PySR.Runtime_Builtin_Open_ConflictingMode);
+
+        // text-only arguments are rejected for binary modes before the
+        // file path is touched
+        if (binary)
+        {
+            if (encodingName is not null)
+                return PyResult.ValueError(PySR.Runtime_Builtin_Open_BinaryEncoding);
+            if (errorsName is not null)
+                return PyResult.ValueError(PySR.Runtime_Builtin_Open_BinaryErrors);
+            if (newlineObj is not PyNoneObject)
+                return PyResult.ValueError(PySR.Runtime_Builtin_Open_BinaryNewline);
+            if (buffering.Value == 1)
+            {
+                var warned = context.Warn(PyStrObject.FromString(PySR.Runtime_Builtin_Open_BinaryLineBuffering),
+                    PyRuntimeWarningObjectType.Shared, stacklevel: 2);
+                if (warned.IsError)
+                    return warned;
+            }
+        }
 
         // Determine file mode
         FileMode fileMode;
@@ -1469,12 +1514,76 @@ public static partial class PyBuiltinFunctions
             return PyResult.RaiseException(PyPermissionErrorObjectType.Shared, PySR.Runtime_Os_PermissionDeniedErrno, path);
         }
 
+        // Everything below fails after the file is open, so the handle is
+        // released again — CPython's FileIO exists by the time
+        // TextIOWrapper/BufferedReader validation runs (the buffering=0 and
+        // newline checks live in the buffer layers, the codec lookup in
+        // TextIOWrapper.__init__).
+
+        if (buffering.Value.IsZero)
+        {
+            if (!binary)
+            {
+                stream.Dispose();
+                return PyResult.ValueError(PySR.Runtime_Builtin_Open_TextUnbuffered);
+            }
+        }
+
+        PyTextCodec? codec = null;
+        if (!binary)
+        {
+            // CPython rejects the newline value before looking the codec up
+            if (newlineObj is PyStrObject newlineStr)
+            {
+                var newline = newlineStr.Value;
+                if (newline is not ("" or "\n" or "\r" or "\r\n"))
+                {
+                    stream.Dispose();
+                    return PyResult.ValueError(PySR.Runtime_Builtin_Open_IllegalNewline, newline);
+                }
+            }
+
+            codec = PyTextCodec.Create(encodingName ?? "utf-8", errorsName ?? "strict", out var codecError);
+            if (codecError is not null)
+            {
+                stream.Dispose();
+                return codecError.Value;
+            }
+        }
+
         // For a+ mode, seek to end after opening
         if (appending && updating)
             stream.Seek(0, SeekOrigin.End);
 
         return new PyFileObject(stream, mode, path,
             isTextMode: !binary, isReadable: reading || updating,
-            isWritable: writing || appending || creating || updating, isSeekable);
+            isWritable: writing || appending || creating || updating, isSeekable,
+            encoding: encodingName, errors: errorsName,
+            newline: newlineObj is PyStrObject nl ? nl.Value : null, codec: codec,
+            // appending to a non-empty file must not inject another BOM
+            // (CPython _textiowrapper_fix_encoder_state)
+            wrotePreamble: !binary && appending && stream.Length != 0);
+    }
+
+    private static PyIntObject? IndexArgument(PyCallContext context, PyObject obj, out PyResult error)
+    {
+        if (obj is PyIntObject intObj)
+        {
+            error = default;
+            return intObj;
+        }
+        if (obj.PyType.Slots.Index is null)
+        {
+            error = PyResult.TypeError(PySR.Runtime_Number_Int_CannotInterpretedAsInt, obj.PyType.TpName);
+            return null;
+        }
+        var indexResult = PySpecialMethods.Index(context, obj);
+        if (indexResult.IsError)
+        {
+            error = indexResult;
+            return null;
+        }
+        error = default;
+        return indexResult.Value;
     }
 }

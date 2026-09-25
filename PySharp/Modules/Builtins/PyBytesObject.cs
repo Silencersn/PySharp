@@ -617,7 +617,7 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
         return consumed > 0;
     }
 
-    private static PyResult.PyExceptionResult UnicodeDecodeError(string codecName, PyObject source, ReadOnlySpan<byte> data, int start, int end, string reason)
+    private static PyResult.PyExceptionResult UnicodeDecodeError(string codecName, PyObject source, ReadOnlySpan<byte> data, long start, long end, string reason)
     {
         var exc = PyExceptionObject.UnsafeCreate(PyUnicodeDecodeErrorObjectType.Shared,
             [PyStrObject.FromString(codecName), source, PyIntObject.FromInteger(start), PyIntObject.FromInteger(end), PyStrObject.FromString(reason)]);
@@ -627,8 +627,9 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
     // one STRINGLIB(utf8_decode) iteration: decodes the sequence starting at
     // data[i], appending to sb; returns 0 on success with i advanced, -1 for
     // a sequence truncated at the end of input, or the CPython error code
-    // 1..4 leaving i at the sequence start
-    private static int Utf8DecodeStep(ReadOnlySpan<byte> data, ref int i, StringBuilder sb)
+    // 1..4 leaving i at the sequence start. Shared with the incremental
+    // text-file codec (Modules/IO/PyTextCodec.cs).
+    internal static int Utf8DecodeStep(ReadOnlySpan<byte> data, ref int i, StringBuilder sb)
     {
         int s = i;
         int ch = data[s];
@@ -749,49 +750,74 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
                 reason = code is 1 ? "invalid start byte" : "invalid continuation byte";
             }
 
-            var unresolved = ResolveErrors(errors, out var handler);
-            if (unresolved is not null)
-                return unresolved.Value;
-
-            // CPython surrogatepass: an encoded surrogate sequence
-            // (ED A0..BF 80..BF) decodes to its surrogate; other errors
-            // stay strict
-            if (handler is DecodeErrorHandler.SurrogatePass)
-            {
-                if (data[start] is 0xED && start + 2 < data.Length &&
-                    data[start + 1] is >= 0xA0 and <= 0xBF && IsContinuationByte(data[start + 2]))
-                {
-                    sb.Append((char)(0xD800 + ((data[start + 1] & 0x0F) << 6) + (data[start + 2] & 0x3F)));
-                    i = start + 3;
-                    continue;
-                }
-                return UnicodeDecodeError(codecName, source, data, start, end, reason);
-            }
-
-            if (handler is DecodeErrorHandler.SurrogateEscape)
-            {
-                if (!TrySurrogateEscape(data, start, end, sb, out i))
-                    return UnicodeDecodeError(codecName, source, data, start, end, reason);
-                continue;
-            }
-
-            switch (handler)
-            {
-                case DecodeErrorHandler.Ignore:
-                    break;
-                case DecodeErrorHandler.Replace:
-                    sb.Append('\uFFFD');
-                    break;
-                case DecodeErrorHandler.BackslashReplace:
-                    AppendBytesAsEscapes(sb, data[start..end], handler);
-                    break;
-                default:
-                    return UnicodeDecodeError(codecName, source, data, start, end, reason);
-            }
-            i = end;
+            if (!ApplyDecodeHandler(data, start, end, reason, errors, codecName, source, sb, out i, out var error))
+                return error!.Value;
         }
         return PyStrObject.FromString(sb.ToString());
     }
+
+    // one decode-error event through the errors= handler machinery: appends
+    // the handler's replacement (if any) to sb and reports the resume index;
+    // returns false with `error` set when the handler is strict
+    // (UnicodeDecodeError) or an unknown name (LookupError). Shared by
+    // bytes.decode and the incremental text-file codec.
+    internal static bool ApplyDecodeHandler(ReadOnlySpan<byte> data, int start, int end, string reason,
+        string errors, string codecName, PyObject source, StringBuilder sb, out int next, out PyResult? error,
+        long positionBase = 0)
+    {
+        error = null;
+        next = end;
+        var unresolved = ResolveErrors(errors, out var handler);
+        if (unresolved is not null)
+        {
+            error = unresolved.Value;
+            return false;
+        }
+
+        // CPython surrogatepass: an encoded surrogate sequence
+        // (ED A0..BF 80..BF) decodes to its surrogate; other errors
+        // stay strict
+        if (handler is DecodeErrorHandler.SurrogatePass)
+        {
+            if (data[start] is 0xED && start + 2 < data.Length &&
+                data[start + 1] is >= 0xA0 and <= 0xBF && IsContinuationByte(data[start + 2]))
+            {
+                sb.Append((char)(0xD800 + ((data[start + 1] & 0x0F) << 6) + (data[start + 2] & 0x3F)));
+                next = start + 3;
+                return true;
+            }
+            error = UnicodeDecodeError(codecName, source, data, start + positionBase, end + positionBase, reason);
+            return false;
+        }
+
+        if (handler is DecodeErrorHandler.SurrogateEscape)
+        {
+            if (TrySurrogateEscape(data, start, end, sb, out next))
+                return true;
+            error = UnicodeDecodeError(codecName, source, data, start + positionBase, end + positionBase, reason);
+            return false;
+        }
+
+        switch (handler)
+        {
+            case DecodeErrorHandler.Ignore:
+                return true;
+            case DecodeErrorHandler.Replace:
+                sb.Append('\uFFFD');
+                return true;
+            case DecodeErrorHandler.BackslashReplace:
+                AppendBytesAsEscapes(sb, data[start..end], handler);
+                return true;
+            default:
+                error = UnicodeDecodeError(codecName, source, data, start + positionBase, end + positionBase, reason);
+                return false;
+        }
+    }
+
+    // the incremental text-file codec reports decode errors with the same
+    // (encoding, object, start, end, reason) shape over its working chunk
+    internal static PyResult.PyExceptionResult CreateDecodeError(string codecName, ReadOnlySpan<byte> data, int start, int end, string reason, long positionBase = 0)
+        => UnicodeDecodeError(codecName, PyBytesObject.FromBytes(data.ToArray()), data, start + positionBase, end + positionBase, reason);
 
     private static void AppendBytesAsEscapes(StringBuilder sb, ReadOnlySpan<byte> bytes, DecodeErrorHandler handler)
     {

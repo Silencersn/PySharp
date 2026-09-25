@@ -1,4 +1,5 @@
 using PySharp.Modules.Builtins;
+using PySharp.Modules.IO;
 using PySharp.Runtime.Calls;
 using System.Text;
 
@@ -13,7 +14,7 @@ public sealed class PyStdIoObject : PyObject
     private readonly TextReader? _reader;
     private readonly TextWriter? _writer;
     internal readonly string _name;
-    private readonly bool _closed = false;
+    private bool _closed;
 
     private PyStdIoObject(TextReader? reader, TextWriter? writer, string name)
     {
@@ -36,6 +37,34 @@ public sealed class PyStdIoObject : PyObject
         if (_closed)
             return PyResult.ValueError(PySR.Runtime_File_Closed);
         return default;
+    }
+
+    // the flag queries use CPython's no-period closed message
+    internal PyResult CheckClosedNoPeriod()
+    {
+        if (_closed)
+            return PyResult.ValueError(PySR.Runtime_File_ClosedNoPeriod);
+        return default;
+    }
+
+    // sys.stdin/stdout/stderr accept close() like CPython's TextIOWrapper
+    // std streams: the closed flag is what matters (later operations raise
+    // the closed-file ValueError through CheckClosed); the process-wide
+    // console reader/writer itself stays usable for the host
+    internal PyResult Close()
+    {
+        if (_closed)
+            return PyNoneObject.None;
+        _closed = true;
+        try
+        {
+            _writer?.Flush();
+        }
+        catch (IOException)
+        {
+            // a failing final flush must not mask the successful close
+        }
+        return PyNoneObject.None;
     }
 
     internal PyResult Read(PyCallContext context, int size = -1)
@@ -101,7 +130,7 @@ public sealed class PyStdIoObject : PyObject
 
         _writer.Write(strObj.Value);
         _writer.Flush();
-        return PyIntObject.FromInteger(strObj.Value.Length);
+        return PyIntObject.FromInteger(PyFileObject.CodePointLength(strObj.Value));
     }
 
     internal PyResult Flush()

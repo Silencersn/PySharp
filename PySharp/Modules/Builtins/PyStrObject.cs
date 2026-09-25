@@ -1810,7 +1810,8 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     // string goes through an encoder that reports the first unmappable
     // code point, and the CPython handler for errors= decides what happens
     // from there.
-    internal static PyResult EncodeCore(PyCallContext context, string value, string encoding, string errors)
+    internal static PyResult EncodeCore(PyCallContext context, string value, string encoding, string errors,
+        bool emitPreamble = true)
     {
         Encoding enc;
         try
@@ -1853,7 +1854,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             break;
         }
 
-        if (codec.EmitsBom)
+        if (codec.EmitsBom && emitPreamble)
             bytes.InsertRange(0, enc.GetPreamble());
         return PyBytesObject.MoveBytes([.. bytes]);
     }
@@ -2061,6 +2062,9 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         {
             case "utf8":
                 return Encoding.UTF8;
+            // the BOM-emitting variant; the plain codec shares the encoder
+            case "utf8sig":
+                return new UTF8Encoding(encoderShouldEmitUTF8Identifier: true);
             case "utf16le":
                 return Encoding.Unicode;
             case "utf16be":
@@ -2103,6 +2107,21 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 sb.Append(char.ToLowerInvariant(c));
         }
         return sb.ToString();
+    }
+
+    // decoder factory for the incremental file layer's generic-codec path:
+    // the decoder raises, and the CPython errors= handler decides at the
+    // first failing event
+    internal static Decoder MakeStrictDecoder(Encoding encoding)
+    {
+        try
+        {
+            return Encoding.GetEncoding(encoding.CodePage, new EncoderExceptionFallback(), new DecoderExceptionFallback()).GetDecoder();
+        }
+        catch (ArgumentException)
+        {
+            return encoding.GetDecoder();
+        }
     }
 
     /// <summary>
