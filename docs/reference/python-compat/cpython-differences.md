@@ -30,6 +30,10 @@ PySharp 以 CPython 3 为行为参照，大量语义细节（反射协议、子�
   析构时机不保证。
 - 文件对象的文本模式定位：`seek` 在文本模式下对非零的相对定位（`whence=1` 或 `whence=2`）报
   `_io.UnsupportedOperation`，与 CPython 的 `TextIOWrapper` 一致；绝对定位受支持。
+- 标准流的类型名：`sys.stdin` / `sys.stdout` / `sys.stderr` 的类型自带名是 `_io.StdIo`，不是 CPython
+  的 `_io.TextIOWrapper`；三者的 `__module__` 为 `_io`，`type(...).__name__` 为 `StdIo`。依赖
+  `__name__ == 'TextIOWrapper'` 或 `isinstance(x, io.TextIOWrapper)` 的检查不成立（`io` 模块本身亦
+  未接入，见[标准库模块覆盖](./stdlib-modules.md)）。
 - `open()` 支持的参数与 CPython 对齐，包括 `buffering`、`encoding`、`errors` 与 `newline`；
   文本模式默认 `newline=None`，读入时做通用换行归一，写出时展开为平台换行符。详见
   [文件对象](../user-guide/file-objects.md)。

@@ -5,7 +5,9 @@ using PySharp.Runtime.PyAttributes;
 
 namespace PySharp.Modules.Sys;
 
-[PyType("_io.StdIo")]
+// module position "_io" like CPython's io stack types (the qual name stays
+// bare; ReprName composes it as "_io.StdIo" from the module)
+[PyType("StdIo", Module = "_io")]
 public sealed partial class PyStdIoObjectType : PyTypeObject<PyStdIoObject>
 {
     protected override PyResult Repr(PyCallContext context, PyStdIoObject self)
