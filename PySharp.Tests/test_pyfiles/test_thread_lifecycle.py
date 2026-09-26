@@ -1,6 +1,8 @@
 ﻿"""Verifies threading.Thread lifecycle semantics (issue #139): is_alive() before start, run() override dispatch, RuntimeError on double start and join-before-start, and excepthook handling of uncaught target exceptions.
 
 :kind: test
+
+:cpython-diff: an uncaught exception in a non-main thread leaves PySharp's exit code at 1 where CPython 3.14 exits 0; remove this exemption once exit codes match
 """
 
 # Regression for #139: threading.Thread lifecycle semantics.

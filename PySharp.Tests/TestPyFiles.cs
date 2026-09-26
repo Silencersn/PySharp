@@ -264,20 +264,7 @@ public sealed class TestPyFiles
         // in every configuration. The crash would kill this test host, so the
         // sources are compiled in a PySharp.Console child process and only its
         // output is inspected.
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "PySharp.slnx")))
-            dir = dir.Parent;
-        Assert.IsNotNull(dir, "repo root (PySharp.slnx) not found above the test output");
-        string? consoleExe = null;
-        foreach (var cfg in new[] { "Debug", "Release" })
-        {
-            var candidate = Path.Combine(dir.FullName, "PySharp.Console", "bin", cfg, "net10.0", "PySharp.Console.exe");
-            if (File.Exists(candidate))
-            {
-                consoleExe = candidate;
-                break;
-            }
-        }
+        var consoleExe = PyCpythonDiffRunner.FindPySharpConsole();
         if (consoleExe is null)
             Assert.Inconclusive("PySharp.Console build output not found; build PySharp.Console first");
 
@@ -347,20 +334,7 @@ public sealed class TestPyFiles
         // must pass: iterative traversal (child prints the result) or a
         // recursion guard (child fails with a graceful Python error).
         // Fails until the fix lands.
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "PySharp.slnx")))
-            dir = dir.Parent;
-        Assert.IsNotNull(dir, "repo root (PySharp.slnx) not found above the test output");
-        string? consoleExe = null;
-        foreach (var cfg in new[] { "Debug", "Release" })
-        {
-            var candidate = Path.Combine(dir.FullName, "PySharp.Console", "bin", cfg, "net10.0", "PySharp.Console.exe");
-            if (File.Exists(candidate))
-            {
-                consoleExe = candidate;
-                break;
-            }
-        }
+        var consoleExe = PyCpythonDiffRunner.FindPySharpConsole();
         if (consoleExe is null)
             Assert.Inconclusive("PySharp.Console build output not found; build PySharp.Console first");
 
@@ -431,20 +405,7 @@ public sealed class TestPyFiles
         // are byte-level file behaviors, so the sources are written to
         // temp files and compiled in a PySharp.Console child process.
         // Fails until the fix lands.
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !File.Exists(Path.Combine(dir.FullName, "PySharp.slnx")))
-            dir = dir.Parent;
-        Assert.IsNotNull(dir, "repo root (PySharp.slnx) not found above the test output");
-        string? consoleExe = null;
-        foreach (var cfg in new[] { "Debug", "Release" })
-        {
-            var candidate = Path.Combine(dir.FullName, "PySharp.Console", "bin", cfg, "net10.0", "PySharp.Console.exe");
-            if (File.Exists(candidate))
-            {
-                consoleExe = candidate;
-                break;
-            }
-        }
+        var consoleExe = PyCpythonDiffRunner.FindPySharpConsole();
         if (consoleExe is null)
             Assert.Inconclusive("PySharp.Console build output not found; build PySharp.Console first");
 

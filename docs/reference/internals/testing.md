@@ -11,8 +11,9 @@
 
 | 文件 | 职责 |
 | --- | --- |
-| `PyFileTests.g.cs`（生成） | 源生成器扫描 `test_pyfiles/` 根层 `.py` 自动生成的 MSTest 包装，每夹具一个 `[TestMethod]` |
-| `PyFixtureRunner.cs` | 生成代码调用的共享 runner：`PyInterpreter.RunFile` 驱动单个夹具 |
+| `PyFileTests.g.cs`、`PyFileCpythonTests.g.cs`（生成） | 源生成器扫描 `test_pyfiles/` 根层 `.py` 自动生成的两个 MSTest 包装：前者每夹具一个普通测试，后者每夹具一个 CPython 输出对比测试（登记了 `:cpython-diff:` 分歧的夹具带 `[Ignore]`） |
+| `PyFixtureRunner.cs` | 普通测试的共享 runner：`PyInterpreter.RunFile` 驱动单个夹具 |
+| `PyCpythonDiffRunner.cs` | 对比测试的共享 runner：把夹具作为脚本在 PySharp.Console 与本地 CPython 3.14 子进程中各跑一次，校验退出码与归一化 stdout 一致；同时提供 PySharp.Console 定位器（`TestPyFiles.cs` 的子进程测试也用它） |
 | `TestPyFiles.cs` | 需要特殊 host 的手写测试（注入 argv、捕获 stdin/stderr、校验 exit code、REPL、字节级输出、临时目录布局） |
 | `UtilityTests.cs` | 与 Python 语义无关的 C# 工具类测试（`ConcurrentSet`、`MemoryFileSystem` 等） |
 | `StdIoTests.cs`、`ColorSupportTests.cs`、`TracebackTests.cs`、`WarningTests.cs`、`ModuleProviderTests.cs` 等 | 标准流、颜色输出、traceback 渲染、警告机制与模块提供器的 C# 侧测试 |
@@ -23,8 +24,8 @@
 
 `PySharp.Tests.SourceGeneration` 是测试项目专属的 `IIncrementalGenerator`：csproj 用
 `<AdditionalFiles Include="test_pyfiles\*.py" />` 把根层夹具喂给生成器，生成器解析每个文件的
-docstring 头部元数据（`:kind: test` 生成测试、`:kind: helper` 跳过），发射一个 `PyFileTests`
-测试类。语料的元数据与命名规范见[测试语料规范](../contributing/test-corpus.md)。
+docstring 头部元数据（`:kind: test` 生成测试、`:kind: helper` 跳过），发射 `PyFileTests` 与
+`PyFileCpythonTests` 两个测试类。语料的元数据与命名规范见[测试语料规范](../contributing/test-corpus.md)。
 
 生成的方法体只做一件事——调用共享 runner：
 
@@ -43,6 +44,18 @@ runner 复刻原驱动语义：`PyInterpreter.RunFile(Path.Combine("test_pyfiles
   转为 `PyRuntimeException`，测试失败；脚本跑完即通过。
 - 生成器同时承担守门：文件名含 `regression`、缺 docstring、`:kind:` 非法等直接 build error，
   挡住命名回潮（诊断表见语料规范）。
+
+## CPython 输出对比层
+
+`PyFileCpythonTests` 的每个测试走 `PyCpythonDiffRunner.Run`：以两侧对等的命令行形态
+（`exe <夹具绝对路径>`）在**独立临时工作目录**里分别启动 PySharp.Console 与 CPython 3.14
+子进程，校验退出码对称、双侧成功时归一化 stdout 一致、双侧失败时最终异常类型一致。
+子进程形态（而非进程内 `RunFile`）是有意为之——退出码、argv 注入、Windows 换行翻译这类
+行为只有作为真实用户运行时才可见。
+
+CPython 探测顺序为 `PYSHARP_CPYTHON` 环境变量 → `py -3.14` → PATH 上的 `python`/`python3`，
+要求 3.14.x；找不到时对比测试逐个 Inconclusive（不失败）。归一化规则、stderr 不比对的裁定与
+豁免流程（`:cpython-diff:`）见语料规范的[CPython 输出对比](../contributing/test-corpus.md#cpython-输出对比)。
 
 ## 主题覆盖
 

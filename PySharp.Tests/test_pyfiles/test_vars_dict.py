@@ -8,6 +8,8 @@ CPython 3.14 reference:
     vars(o) for a plain user instance                                -> the instance dict
 
 :kind: test
+
+:cpython-diff: CPython 3.14 returns a mappingproxy from vars(cls) while PySharp returns a dict; divergence pending fix, remove this exemption when resolved
 """
 
 import math

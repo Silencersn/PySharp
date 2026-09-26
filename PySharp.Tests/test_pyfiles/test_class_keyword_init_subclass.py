@@ -17,6 +17,8 @@ Cases whose wording still differs carry a comment with CPython's text;
 they only assert the exception type.
 
 :kind: test
+
+:cpython-diff: the __init_subclass__() rejection message lacks the new class's qualname; remove this exemption once the message matches CPython
 """
 
 

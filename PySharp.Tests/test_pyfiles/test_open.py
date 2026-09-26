@@ -1,6 +1,8 @@
 """Verifies the open() builtin across write, read, context-manager, binary, append, FileNotFoundError, readline, seek/tell and newline-translation behaviors.
 
 :kind: test
+
+:cpython-diff: PySharp's FileNotFoundError message lacks CPython's '[Errno 2] No such file or directory:' errno prefix; remove this exemption once the message matches CPython
 """
 
 # test_open: Verify open() builtin function

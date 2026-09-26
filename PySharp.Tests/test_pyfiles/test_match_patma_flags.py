@@ -20,6 +20,8 @@ CPython 3.14 references:
   does not define __match_args__ (ceval.c:874-891); complex carries it.
 
 :kind: test
+
+:cpython-diff: CPython 3.14 rejects complex(...) match values while PySharp accepts them; divergence pending fix, remove this exemption when resolved
 """
 
 

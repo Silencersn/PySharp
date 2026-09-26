@@ -1,6 +1,8 @@
 ﻿"""Verifies file.seek()/tell() validation follows the CPython io stack: layer-specific whence messages, UnsupportedOperation for nonzero cur/end-relative text seeks, __index__ offset handling, off_t overflow, closed-file errors, and OSError errno 22 instead of leaked .NET errors.
 
 :kind: test
+
+:cpython-diff: Idx-vs-int ordering differs between PySharp and CPython 3.14; divergence pending fix, remove this exemption when resolved
 """
 
 # file.seek()/tell(): whence and offset validation follows the CPython

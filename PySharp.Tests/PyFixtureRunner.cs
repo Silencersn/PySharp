@@ -10,7 +10,8 @@ namespace PySharp.Tests;
 /// Fixture stdout/stderr (including the trailing "... passed" markers) is for
 /// local debugging only and is never asserted on: a fixture passes when it
 /// runs to completion and fails when an exception escapes. Comparing fixture
-/// output against CPython is a separate, not-yet-implemented effort.
+/// output against a local CPython 3.14 is the job of the generated
+/// PyFileCpythonTests class, driven by <see cref="PyCpythonDiffRunner"/>.
 /// </summary>
 internal static class PyFixtureRunner
 {
