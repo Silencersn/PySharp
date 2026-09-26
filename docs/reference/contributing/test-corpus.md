@@ -30,11 +30,19 @@ converts exact subtypes (bool) to pooled ints.
 
 | 字段 | 必填 | 取值 | 说明 |
 | --- | --- | --- | --- |
-| `:kind:` | 是 | `test` / `helper` | `test` 生成 MSTest 测试；`helper` 跳过生成。除被其他夹具 import 的辅助件外，**需要特殊 host 驱动的夹具**（注入 argv、捕获 stdio 等，由 `TestPyFiles.cs` 手写测试充当驱动者）也标 `helper`，并在 docstring 注明驱动者。必填而非默认，防止漏标辅助件时静默生成假测试 |
+| `:kind:` | 是 | `test` / `helper` | `test` 生成 MSTest 测试；`helper` 跳过生成。被其他夹具 import 的辅助件标 `helper`；**需要特殊 host 驱动的夹具**（注入 argv、捕获 stdio 内容等非默认 stdio 语义场景，由 `TestPyFiles.cs` 手写测试充当驱动者）同样标 `helper` 并在 docstring 注明驱动者。注意：仅因读取 stdin 并不需要 `helper`——进程内 runner 的 stdin 已恒为 EOF（见下）。必填而非默认，防止漏标辅助件时静默生成假测试 |
 | `:background:` | 否 | 自由文本 | 出身背景：当初的缺陷背景、CPython 行为引用（含版本与源码位置）。语义上承接原"回归"叙事 |
 | `:cpython-diff:` | 否 | 自由文本（单行） | 已知 CPython 分歧登记：非空时，CPython 对比测试以该理由 `[Ignore]`。理由必须描述分歧本身（"CPython 3.14 返回 mappingproxy 而 PySharp 返回 dict"），修复落地后**必须移除豁免**。空理由触发 PYFIX009 warning。字段对 `helper` 无意义 |
 
 解析约束：支持 `"""` 与 `'''`；docstring 内不做转义处理，引号串不要出现在头部；未知字段触发 warning——新增字段属于生成器改动，先改生成器再使用。
+
+### 进程内运行的 stdio 语义
+
+生成测试在测试宿主进程内运行，宿主提供 **stdin 恒为 EOF**（`PyEnvironmentHost.CreateFixtureRunner()`）：`input()` 抛 `EOFError`、`sys.stdin.readline()` 返回 `''`，与脚本在无管道输入的真实解释器下运行一致，也与对比层一致（对比层关闭子进程 stdin）。stdout/stderr 仍接到控制台，便于看 print 调试输出。
+
+因此夹具**不需要**为读取 stdin 而标 `helper`：直接按普通夹具写即可。反过来说，任何依赖「stdin 有数据」或交互输入的夹具都无法在语料里表达，必须进 `TestPyFiles.cs` 手写（如注入特定 argv 的 `TestSysArgv`）。
+
+生成测试带 `[Timeout]`（进程内 60 秒、对比 180 秒）：夹具若阻塞不返回（例如误用真实 stdin、死循环），会被**报告为失败**而不是把整个 `dotnet test` 挂住。
 
 ## 命名
 
@@ -76,7 +84,7 @@ converts exact subtypes (bool) to pooled ints.
 ## 新增测试的流程
 
 1. 语言与语义行为：新建 `test_pyfiles/test_<行为契约>.py`，断言写在 Python 内，docstring 按上述规范写，保存即完成——生成器自动注册测试，无需改 C#。
-2. 需要特殊 host 的场景（注入 argv、捕获 stdin/stderr、校验 exit code、REPL、字节级输出）：进 `TestPyFiles.cs` 手写测试，夹具本身仍按本规范写。
+2. 需要特殊 host 的场景（注入 argv、捕获 stdin/stderr 的**内容**、校验 exit code、REPL、字节级输出）：进 `TestPyFiles.cs` 手写测试，夹具本身仍按本规范写。仅"读 stdin 得到 EOF"不属于此类，进程内 runner 已提供。
 3. 辅助件：正常编写，docstring 标 `:kind: helper`。
 4. C# 工具类测试进 `UtilityTests.cs`，不走语料。
 

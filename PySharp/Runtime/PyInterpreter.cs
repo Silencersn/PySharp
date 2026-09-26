@@ -192,12 +192,21 @@ public sealed class PyInterpreter : IDisposable
         }
     }
 
-    public static PyModuleObject RunFile(string filename, IEnumerable<string>? args = null)
+    public static PyModuleObject RunFile(string filename, IEnumerable<string>? args = null) =>
+        RunFile(filename, args, PyEnvironmentHost.CreateConsole(usingPhysicalFileSystem: true));
+
+    /// <summary>
+    /// Runs a script file against an explicit host. The test suite supplies
+    /// <see cref="PyEnvironmentHost.CreateFixtureRunner"/> here so a fixture
+    /// that reads <c>sys.stdin</c> sees end-of-input instead of blocking on
+    /// the test host's real standard input.
+    /// </summary>
+    internal static PyModuleObject RunFile(string filename, IEnumerable<string>? args, PyEnvironmentHost host)
     {
         ArgumentNullException.ThrowIfNull(filename);
+        ArgumentNullException.ThrowIfNull(host);
 
         var sourceBytes = File.ReadAllBytes(filename);
-        var host = PyEnvironmentHost.CreateConsole(usingPhysicalFileSystem: true);
 
         var fullPath = Path.GetFullPath(filename);
         var scriptDirectory = Path.GetDirectoryName(fullPath)!;

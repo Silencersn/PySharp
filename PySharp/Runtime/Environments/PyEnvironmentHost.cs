@@ -45,6 +45,20 @@ public abstract class PyEnvironmentHost
         return new ReplPyEnvironmentHost();
     }
 
+    /// <summary>
+    /// Host for the test suite's in-process fixture runner: identical to the
+    /// console host except that stdin is already at EOF. A fixture that reads
+    /// <c>sys.stdin</c> or calls <c>input()</c> then sees end-of-input, which
+    /// is what a non-interactive script run means and what the subprocess-based
+    /// CPython comparison layer already provides (it closes the child's stdin).
+    /// Without this, such a fixture would block forever on the test host's own
+    /// standard input instead of reaching the EOF its assertions describe.
+    /// </summary>
+    internal static PyEnvironmentHost CreateFixtureRunner()
+    {
+        return new FixtureRunnerPyEnvironmentHost();
+    }
+
     public static IPyEnvironmentHostBuilder CreateBuilder()
     {
         return new PyEnvironmentHostBuilder();
@@ -111,5 +125,13 @@ public abstract class PyEnvironmentHost
     private sealed class ReplPyEnvironmentHost : ConsolePyEnvironmentHostBase
     {
         public override IVirtualFileSystem FileSystem { get; } = MemoryFileSystem.CreateBuilder().Build();
+    }
+
+    private sealed class FixtureRunnerPyEnvironmentHost : ConsolePyEnvironmentHostBase
+    {
+        // Stream.Null reads as an immediate EOF and discards writes; stdin
+        // never blocks on the test host's real standard input.
+        public override Stream AllocateStdIn() => Stream.Null;
+        public override IVirtualFileSystem FileSystem { get; } = PhysicalFileSystem.Shared;
     }
 }

@@ -153,26 +153,6 @@ public sealed class TestPyFiles
         """;
 
     [TestMethod]
-    public void TestInputEof()
-    {
-        // input() at EOF must raise EOFError ("EOF when reading a
-        // line"), not return ''. An empty stdin simulates EOF.
-        var host = new StdioHost(new MemoryStream(), new MemoryStream(), new MemoryStream());
-        var module = RunModuleWithHost("test_input_eof.py", host);
-        Assert.IsNotNull(module);
-    }
-
-    [TestMethod]
-    public void TestStdinStdoutEof()
-    {
-        // sys.stdin.readline() at EOF returns '' (not StopIteration);
-        // sys.stdout.write() returns the number of characters.
-        var host = new StdioHost(new MemoryStream(), new MemoryStream(), new MemoryStream());
-        var module = RunModuleWithHost("test_stdio_eof.py", host);
-        Assert.IsNotNull(module);
-    }
-
-    [TestMethod]
     public void TestSyntaxWarningOnce()
     {
         // Speculative parses (statement, generator-expression

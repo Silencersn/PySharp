@@ -37,8 +37,12 @@ public void TestFloatAbs()
 }
 ```
 
-runner 复刻原驱动语义：`PyInterpreter.RunFile(Path.Combine("test_pyfiles", fileName))`，走真实
-文件系统与默认 host。夹具 print 输出仅用于辅助调试，框架不校验其内容。
+runner 复刻原驱动语义：`PyInterpreter.RunFile(path, args: null, host: PyEnvironmentHost.CreateFixtureRunner())`，
+走真实文件系统。该宿主与 console 宿主相同，唯把 **stdin 换成 `Stream.Null`（恒为 EOF）**：夹具读
+`sys.stdin` / 调 `input()` 时立即得到 EOF，而不是去读测试宿主自己的标准输入——否则在终端或
+CI（stdin 为打开的管道）下 `readline()` 会无限期阻塞，且不产生任何错误输出。stdout/stderr 仍接
+控制台，夹具 print 输出仅用于辅助调试，框架不校验其内容。生成的测试带 `[Timeout]`，夹具若阻塞
+不返回会被报告为失败而非挂住整个运行。
 
 - 脚本内部以 `assert` 或主动 `raise` 自校验。断言失败即 `AssertionError` 未捕获，
   转为 `PyRuntimeException`，测试失败；脚本跑完即通过。
@@ -69,7 +73,8 @@ CPython 探测顺序为 `PYSHARP_CPYTHON` 环境变量 → `py -3.14` → PATH �
 
 1. 语言与语义行为：新建 `test_pyfiles/test_<行为契约>.py`，断言全部写在 Python 内，docstring 按语料
    规范写——保存即完成，生成器自动注册测试。
-2. 需要特殊 host 的场景：夹具照常写，测试进 `TestPyFiles.cs` 手写。
+2. 需要特殊 host 的场景（注入 argv、捕获 stdio 内容、非默认 stdio 语义）：夹具照常写，测试进
+   `TestPyFiles.cs` 手写；仅读 stdin 不需如此，进程内 runner 的 stdin 已是 EOF。
 3. 辅助件（被 import 而非独立运行）：`:kind: helper` 标记，位置随意。
 4. C# 工具类：进 `UtilityTests.cs`。
 5. 多文件场景（包、被导入模块）放 `test_pyfiles` 的子目录或同前缀家族，csproj 已含 `**/*` 通配。

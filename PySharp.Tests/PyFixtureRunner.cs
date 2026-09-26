@@ -1,5 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using PySharp.Runtime;
+using PySharp.Runtime.Environments;
 
 namespace PySharp.Tests;
 
@@ -12,12 +13,25 @@ namespace PySharp.Tests;
 /// runs to completion and fails when an exception escapes. Comparing fixture
 /// output against a local CPython 3.14 is the job of the generated
 /// PyFileCpythonTests class, driven by <see cref="PyCpythonDiffRunner"/>.
+///
+/// The host supplies a stdin already at EOF, matching a script run under a
+/// real interpreter with no piped input and matching the CPython comparison
+/// layer (which closes the child's stdin). Without it, a fixture calling
+/// <c>input()</c> or <c>sys.stdin.readline()</c> reads the test host's own
+/// standard input and blocks indefinitely whenever that handle is an open pipe
+/// or a console — a silent hang, not an assertion error, so it is fixed at the
+/// source rather than tolerated. The generated tests additionally carry
+/// <c>[Timeout]</c> so a future blocking fixture is reported instead of stalling
+/// the run.
 /// </summary>
 internal static class PyFixtureRunner
 {
     internal static void Run(string fileName)
     {
-        var module = PyInterpreter.RunFile(Path.Combine("test_pyfiles", fileName));
+        var module = PyInterpreter.RunFile(
+            Path.Combine("test_pyfiles", fileName),
+            args: null,
+            host: PyEnvironmentHost.CreateFixtureRunner());
         Assert.IsNotNull(module);
     }
 }
