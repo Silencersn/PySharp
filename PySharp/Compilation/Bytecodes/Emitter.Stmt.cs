@@ -1368,10 +1368,12 @@ partial class Emitter
 
             // []
             LoadExpr(item.ContextExpr); // -> [manager]
-            Builder.Emit(OpCode.LoadSpecial, LoadSpecialMethods.Enter); // -> [manager, enter]
-            Builder.Emit(OpCode.Swap, 2); // [enter, manager]
-            Builder.Emit(OpCode.LoadSpecial, LoadSpecialMethods.Exit); // -> [enter, manager, exit]
-            Builder.Emit(OpCode.Swap, 3); // -> [exit, manager, enter]
+            // CPython probes __exit__ before __enter__ (codegen_with_inner);
+            // the probe order decides which slot name the missing-slot
+            // TypeError reports when both are absent
+            Builder.Emit(OpCode.LoadSpecial, LoadSpecialMethods.Exit); // -> [manager, exit]
+            Builder.Emit(OpCode.Swap, 2); // -> [exit, manager]
+            Builder.Emit(OpCode.LoadSpecial, LoadSpecialMethods.Enter); // -> [exit, manager, enter]
             Builder.Emit(OpCode.Copy, 2); // -> [exit, manager, enter, manager]
             Builder.Emit(OpCode.Call, 1); // -> [exit, manager, value]
 
@@ -1444,10 +1446,11 @@ partial class Emitter
 
             // []
             LoadExpr(item.ContextExpr); // -> [manager]
-            Builder.Emit(OpCode.LoadSpecial, LoadSpecialMethods.AEnter); // -> [manager, aenter]
-            Builder.Emit(OpCode.Swap, 2); // [aenter, manager]
-            Builder.Emit(OpCode.LoadSpecial, LoadSpecialMethods.AExit); // -> [aenter, manager, aexit]
-            Builder.Emit(OpCode.Swap, 3); // -> [aexit, manager, aenter]
+            // Mirrors sync with: probe __aexit__ before __aenter__, matching
+            // CPython's slot probe order for the missing-slot TypeError
+            Builder.Emit(OpCode.LoadSpecial, LoadSpecialMethods.AExit); // -> [manager, aexit]
+            Builder.Emit(OpCode.Swap, 2); // -> [aexit, manager]
+            Builder.Emit(OpCode.LoadSpecial, LoadSpecialMethods.AEnter); // -> [aexit, manager, aenter]
             Builder.Emit(OpCode.Copy, 2); // -> [aexit, manager, aenter, manager]
             Builder.Emit(OpCode.Call, 1); // -> [aexit, manager, coroutine]
 

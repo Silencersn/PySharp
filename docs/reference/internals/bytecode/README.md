@@ -98,8 +98,8 @@ public sealed class Bytecode
 `AsyncForAwait`、`SavedValue`。`break`、`continue` 与 `return` 做非局部跳出时沿区域栈逐层展开：
 弹出处理器记录（`_PopFinally n`），内联复制穿过的 `finally` 体，补上下文管理器的 `__exit__` 调用
 与迭代器清理。这是修复「跳出 `with` 或 `try` 时泄漏迭代器、上下文管理器与异常状态」的机制，回归见
-`test_with_break_continue_regression.py`、`test_finally_control_flow_regression.py` 与
-`test_async_control_flow_regression.py`。
+`test_with_break_continue.py`、`test_finally_control_flow.py` 与
+`test_async_control_flow.py`。
 
 ## 相关阅读
 

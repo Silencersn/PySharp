@@ -201,56 +201,55 @@ while True:
 code '<module>'  StackSize=6  consts=3  names=3
     0  LoadConst            0   const[0]=True      ← while 条件（恒真，形态完整）
     1  ToBool               0
-  ⋯  PopJumpIfFalse       76                      ← 条件假 → 循环出口
+  ⋯  PopJumpIfFalse       75                      ← 条件假 → 循环出口
     6  LoadGlobal           0   name[0]='open'
     7  LoadConst            1   const[1]='data'
     8  Call                 1                       ← open('data')：管理器
-    9  LoadSpecial          0                       ← 取 __enter__ 描述符
-   10  Swap                 2                       ┐ 旋转出 with 的驻留布局
-   11  LoadSpecial          1                       │ [__exit__, manager]
-   12  Swap                 3                       │
-   13  Copy                 2                       ┘
-   14  Call                 1                       ← manager.__enter__()
-  ⋯  _SetupFinally       60                       ← with 处理器：异常 → 收口 60
-  ⋯  _SetupExcept        51                       ← __exit__ 判定区：异常 → 51
-   23  _ExcludeWithResult  1                       ← as 绑定值驻留栈上，校准处理器回滚基准
-   24  StoreGlobal         1   name[1]='f'         ← f = __enter__() 结果
-   25  LoadGlobal          2   name[2]='check'
-   26  LoadGlobal          1   name[1]='f'
-   27  Call                1
-   28  ToBool              0
-  ⋯  PopJumpIfFalse      47                       ← if 条件假 → 跳过 break
+    9  LoadSpecial          1                       ← 先探测 __exit__（对齐 CPython 探测序，
+   10  Swap                 2                       │  两槽皆缺时缺槽报错以 __exit__ 命名）
+   11  LoadSpecial          0                       ← 取 __enter__ 描述符
+   12  Copy                 2                       ┐
+   13  Call                 1                       ┘ manager.__enter__()
+  ⋯  _SetupFinally       59                       ← with 处理器：异常 → 收口 59
+  ⋯  _SetupExcept        50                       ← __exit__ 判定区：异常 → 50
+   22  _ExcludeWithResult  1                       ← as 绑定值驻留栈上，校准处理器回滚基准
+   23  StoreGlobal         1   name[1]='f'         ← f = __enter__() 结果
+   24  LoadGlobal          2   name[2]='check'
+   25  LoadGlobal          1   name[1]='f'
+   26  Call                1
+   27  ToBool              0
+  ⋯  PopJumpIfFalse      46                       ← if 条件假 → 跳过 break
   ⋯  _PopFinally          1                       ← 区域展开第一步：弹出 with 处理器记录
-   34  LoadConst           2   const[2]=None       ┐ 内联复制"清理体"：
-   35  LoadConst           2   const[2]=None       │ f.__exit__(None, None, None)
-   36  LoadConst           2   const[2]=None       │ （记录已弹，不能再走 60 的收口）
-   37  Call                4                        ┘
-   38  PopTop              0                        ← 丢弃 __exit__ 返回值
-  ⋯  Jump                76                       ← break：直接跳出整个 while
-  ⋯  Jump                47                       ← if 汇合补全（break 路径由 42 接管，不可达）
-  ⋯  Jump                60                       ← with 体正常尾 → 走收口骨架
-   51  _LoadExcInfo        0                        ┐ 异常路径：以 (type, exc, tb)
-   52  Call                4                        │ 调用驻留的 f.__exit__(…)
-   53  ToBool              0                        │
-   54  _PopExceptionIfTrue 0                        │ 返回真 → 吞掉：弹传播链
-  ⋯  PopJumpIfTrue       60                        │ 吞掉 → 进收口
-   59  RaiseVarArgs        0                        ┘ 不吞 → 重抛（穿透）
-   60  _EnterFinally       0                        ┐ with 的隐式收口骨架
-   61  _LoadHitExcept      0                        │（语句没有显式 finally，
-  ⋯  PopJumpIfTrue       71                        │  处理器状态机仍需这对收口）
-   66  LoadConst           2   const[2]=None        ┐ 正常路径补调
-   67  LoadConst           2   const[2]=None        │ f.__exit__(None, None, None)
-   68  LoadConst           2   const[2]=None        │
-   69  Call                4                         ┘
-   70  PopTop              0
-   71  _ExitFinally        0                        ← 弹处理器记录 + 挂起物交接
+   33  LoadConst           2   const[2]=None       ┐ 内联复制"清理体"：
+   34  LoadConst           2   const[2]=None       │ f.__exit__(None, None, None)
+   35  LoadConst           2   const[2]=None       │ （记录已弹，不能再走 59 的收口）
+   36  Call                4                        ┘
+   37  PopTop              0                        ← 丢弃 __exit__ 返回值
+  ⋯  Jump                75                       ← break：直接跳出整个 while
+  ⋯  Jump                46                       ← if 汇合补全（break 路径由 41 接管，不可达）
+  ⋯  Jump                59                       ← with 体正常尾 → 走收口骨架
+   50  _LoadExcInfo        0                        ┐ 异常路径：以 (type, exc, tb)
+   51  Call                4                        │ 调用驻留的 f.__exit__(…)
+   52  ToBool              0                        │
+   53  _PopExceptionIfTrue 0                        │ 返回真 → 吞掉：弹传播链
+  ⋯  PopJumpIfTrue       59                        │ 吞掉 → 进收口
+   58  RaiseVarArgs        0                        ┘ 不吞 → 重抛（穿透）
+   59  _EnterFinally       0                        ┐ with 的隐式收口骨架
+   60  _LoadHitExcept      0                        │（语句没有显式 finally，
+  ⋯  PopJumpIfTrue       70                        │  处理器状态机仍需这对收口）
+   65  LoadConst           2   const[2]=None        ┐ 正常路径补调
+   66  LoadConst           2   const[2]=None        │ f.__exit__(None, None, None)
+   67  LoadConst           2   const[2]=None        │
+   68  Call                4                         ┘
+   69  PopTop              0
+   70  _ExitFinally        0                        ← 弹处理器记录 + 挂起物交接
   ⋯  Jump                 0                       ← while 回边
-   76  __BytecodeEnd        0                       ← 循环出口 == 程序尾
+   75  __BytecodeEnd        0                       ← 循环出口 == 程序尾
 ```
 
-**核心看点：break 路径（33–42）与收口骨架（60–71）是互斥的两条清理通道。**`break` 跳出 `with` 时，`_PopFinally 1` 已把处理器记录弹出、`__exit__` 已在 34–38 内联调用，因此 break 路径**不能也不需要**进入 60 的收口骨架（那里 `_EnterFinally` / `_ExitFinally` 假定记录在栈上），`Jump 76` 直接跳到循环出口。发射器沿 `EmitterRegion` 区域栈展开时，把 with 的"清理体"（`__exit__` 调用）**内联复制**到 break 路径，即 `try/finally` 的 finally 体、`except E as name` 的名字删除同理。三条路径调用 `__exit__` 的对照：break 走 34–38（内联、无参）、正常尾走 66–69（收口骨架内补调）、异常走 51–52（exc_info 三参，返回真吞掉 / 假重抛）。
+**核心看点：break 路径（32–41）与收口骨架（59–70）是互斥的两条清理通道。**`break` 跳出 `with` 时，`_PopFinally 1` 已把处理器记录弹出、`__exit__` 已在 33–37 内联调用，因此 break 路径**不能也不需要**进入 59 的收口骨架（那里 `_EnterFinally` / `_ExitFinally` 假定记录在栈上），`Jump 75` 直接跳到循环出口。发射器沿 `EmitterRegion` 区域栈展开时，把 with 的"清理体"（`__exit__` 调用）**内联复制**到 break 路径，即 `try/finally` 的 finally 体、`except E as name` 的名字删除同理。三条路径调用 `__exit__` 的对照：break 走 33–37（内联、无参）、正常尾走 65–68（收口骨架内补调）、异常走 50–51（exc_info 三参，返回真吞掉 / 假重抛）。9–13 的探测序与 CPython 一致——`__exit__` 先于 `__enter__` 装载，`LOAD_SPECIAL` 遇槽缺失即抛，两槽皆缺时的 `TypeError` 因此以 `__exit__` 命名。
 
-其余看点：`_ExcludeWithResult 1` 把处理器的回滚基准下调一个栈位，因为 `as` 绑定值在受保护体期间驻留栈上，异常回滚不能把它清掉（`[__exit__, manager]` 对必须原样留给收口代码）；51–59 的"吞 / 穿透"判定是 `with` 异常语义的指令端（`__exit__` 返回真 → `_PopExceptionIfTrue` 吞掉传播链）。回归族：`test_with_break_continue_regression.py`、`test_finally_control_flow_regression.py`。
+其余看点：`_ExcludeWithResult 1` 把处理器的回滚基准下调一个栈位，因为 `as` 绑定值在受保护体期间驻留栈上，异常回滚不能把它清掉（`[__exit__, manager]` 对必须原样留给收口代码）；50–58 的"吞 / 穿透"判定是 `with` 异常语义的指令端（`__exit__` 返回真 → `_PopExceptionIfTrue` 吞掉传播链）。回归族：`test_with_break_continue.py`、`test_finally_control_flow.py`。
 
 ## 相关阅读
 
