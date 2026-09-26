@@ -1,4 +1,4 @@
-namespace PySharp.SourceGeneration.Diagnostics;
+namespace PySharp.Roslyn.Shared.Diagnostics;
 
 /// <summary>
 /// Central definitions of the source generator's common attribute-argument error diagnostics.

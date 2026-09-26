@@ -1,10 +1,23 @@
 # 源生成器与代码分析
 
-源码：`PySharp.SourceGeneration/`、`PySharp.SourceGeneration.Internal/`、`PySharp.Analyzer/`、
-`PySharp.Analyzer.Internal/`。
+源码：`PySharp.Roslyn.Shared/`、`PySharp.SourceGeneration/`、`PySharp.SourceGeneration.Internal/`、
+`PySharp.Analyzer/`、`PySharp.Analyzer.Internal/`。
 
 PySharp 的类型机器（slots、方法描述符、异常工厂等）全部在编译期由 Roslyn 增量源生成器产出，
 运行时零反射，这是 AOT 与 trimming 兼容的前提。配套的 Roslyn 分析器在编译期强制代码风格与惯用法。
+
+## 共享工具项目
+
+`PySharp.Roslyn.Shared` 是与生成器并列的独立程序集，存放生成器共用的编译期工具：
+`AttributeData` 读取扩展、`IndentedStringBuilder` 与 `GeneratedCode`、`ProviderExtensions`、
+诊断定义与助手（`DiagnosticInfo`、`PyGeneratorDiagnostics`、`ContextExtensions`、`DebugHelper`）、
+以及生成器解析类型的入口 `PySharpTypes`，命名空间相应为 `PySharp.Roslyn.Shared`、
+`PySharp.Roslyn.Shared.Utility`、`PySharp.Roslyn.Shared.Diagnostics`。
+
+它本身不是生成器也不是分析器，不单独发包，只作为裸 DLL 随主包的 `analyzers/dotnet/cs/` 一起发布。
+需要它的两个生成器项目各自引用它；`PySharp.SourceGeneration.Internal` 因此不再需要引用公开生成器
+程序集来借道取用工具类型——内部工具链与公开工具链之间不再有程序集级耦合。分析器项目不依赖这些
+工具，保持独立。
 
 ## 生成器总览
 
@@ -80,15 +93,20 @@ PySharp 的类型机器（slots、方法描述符、异常工厂等）全部在�
 ## 接线与验证
 
 - 接线：`PySharp.csproj` 以 `ProjectReference OutputItemType="Analyzer"
-  ReferenceOutputAssembly="false"` 引用全部 4 个工具项目，同时把公开生成器与分析器 DLL 以
+  ReferenceOutputAssembly="false"` 引用全部 4 个工具项目，并同样引用 `PySharp.Roslyn.Shared`。
+  共享工具必须走 `OutputItemType="Analyzer"` 而非普通引用：编译器只在被显式传入的程序集里解析
+  生成器的依赖，不会探查引用方 DLL 所在目录，普通引用会让生成器在初始化时报
+  `CS8784 FileNotFoundException`。打包后 `analyzers/dotnet/cs/` 下的 DLL 由消费端 SDK 整体
+  当作 analyzer 传入，与本仓库自身构建的行为一致。公开生成器、分析器与共享工具的 DLL 均以
   `Pack="true" PackagePath="analyzers/dotnet/cs"` 打进主 NuGet 包，安装包即自动获得工具链。
   `PySharp.Analyzer` 也可独立打包（`PackageId=PySharp.Analyzer`）。
 - 验证方式：没有独立的生成器单元测试，依赖自举与语义回归。主库是全部生成器的最大消费者，Debug
-  构建产物 `obj/.../generated/` 下有 260 余个文件，生成器回归即编译失败。语义回归见
-  [测试体系](./testing.md)。生成器项目启用 `EnforceExtendedAnalyzerRules`。
-- 框架：生成器项目为 `netstandard2.0` 加 `Microsoft.CodeAnalysis.CSharp 5.0`（增量生成器 API）；
-  分析器项目为 `Microsoft.CodeAnalysis.CSharp 3.3.1`（经典 `DiagnosticAnalyzer`，作为兼容性
-  基线）。
+  构建产物 `obj/.../generated/` 下有 270 余个文件，生成器回归即编译失败。语义回归见
+  [测试体系](./testing.md)。生成器与分析器项目均启用 `EnforceExtendedAnalyzerRules`。
+- 框架：全部生成器与分析器项目统一为 `netstandard2.0` 加 `Microsoft.CodeAnalysis.CSharp
+  $(RoslynVersion)`（当前 5.0），版本收敛在 `Directory.Build.props`。生成器需要增量 API
+  （Roslyn ≥ 4.0）；分析器只用经典 `DiagnosticAnalyzer`，但两者同宿共存时宿主的门槛取较高者，
+  压低分析器版本并不能放宽宿主要求，因此统一到高侧，`Microsoft.CodeAnalysis.Analyzers` 同理。
 
 ## 对贡献者的影响
 

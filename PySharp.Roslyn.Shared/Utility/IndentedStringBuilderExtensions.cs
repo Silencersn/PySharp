@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace PySharp.SourceGeneration.Utility;
+namespace PySharp.Roslyn.Shared.Utility;
 
 internal static class IndentedStringBuilderExtensions
 {

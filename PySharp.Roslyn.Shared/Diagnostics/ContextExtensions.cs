@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 
-namespace PySharp.SourceGeneration.Diagnostics;
+namespace PySharp.Roslyn.Shared.Diagnostics;
 
 internal static class ContextExtensions
 {

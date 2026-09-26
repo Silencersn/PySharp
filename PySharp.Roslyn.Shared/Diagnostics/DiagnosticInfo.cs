@@ -1,4 +1,4 @@
-namespace PySharp.SourceGeneration.Diagnostics;
+namespace PySharp.Roslyn.Shared.Diagnostics;
 
 /// <summary>
 /// A carrier for a single failed attribute-argument validation.

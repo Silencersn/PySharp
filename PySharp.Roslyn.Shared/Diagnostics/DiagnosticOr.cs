@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 
-namespace PySharp.SourceGeneration.Diagnostics;
+namespace PySharp.Roslyn.Shared.Diagnostics;
 
 /// <summary>
 /// A union of a value of type <typeparamref name="T"/> and zero or more

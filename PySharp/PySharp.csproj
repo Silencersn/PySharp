@@ -16,6 +16,18 @@
 </PropertyGroup>
 
   <ItemGroup>
+    <!-- Build-time utilities shared by every generator/analyzer assembly. It is
+         not itself an analyzer, but Roslyn resolves it as a dependency of the
+         generator dll, so it must ship in the same packed directory. It is
+         passed as an analyzer for the same reason the packed copy sits in
+         analyzers/dotnet/cs: the compiler only probes that path for dependency
+         dlls it was handed directly, never the directory of the dll that
+         referenced them. -->
+    <ProjectReference Include="..\PySharp.Roslyn.Shared\PySharp.Roslyn.Shared.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <None Include="..\PySharp.Roslyn.Shared\bin\$(Configuration)\netstandard2.0\PySharp.Roslyn.Shared.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\PySharp.SourceGeneration\PySharp.SourceGeneration.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <None Include="..\PySharp.SourceGeneration\bin\$(Configuration)\netstandard2.0\PySharp.SourceGeneration.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
   </ItemGroup>

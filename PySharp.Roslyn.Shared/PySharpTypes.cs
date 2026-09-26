@@ -1,4 +1,4 @@
-namespace PySharp.SourceGeneration;
+namespace PySharp.Roslyn.Shared;
 
 internal static class PySharpTypes
 {

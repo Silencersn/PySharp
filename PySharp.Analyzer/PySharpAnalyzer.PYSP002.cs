@@ -69,7 +69,7 @@ partial class PySharpAnalyzer
         {
             MethodDeclarationSyntax m => context.SemanticModel.GetDeclaredSymbol(m, context.CancellationToken),
             ConstructorDeclarationSyntax c => context.SemanticModel.GetDeclaredSymbol(c, context.CancellationToken),
-            LocalFunctionStatementSyntax lf => context.SemanticModel.GetDeclaredSymbol(lf, context.CancellationToken) as IMethodSymbol,
+            LocalFunctionStatementSyntax lf => context.SemanticModel.GetDeclaredSymbol(lf, context.CancellationToken),
             _ => null
         };
 

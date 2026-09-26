@@ -53,7 +53,7 @@ partial class PySharpAnalyzerInternalAnalyzer
         // Note: for file-scoped types, CloseBraceToken.Kind() is SyntaxKind.None,
         // not SyntaxKind.CloseBraceToken. IsMissing doesn't work here because
         // the parser doesn't insert an error-recovery token for this syntax.
-        if (typeDecl.CloseBraceToken.Kind() != SyntaxKind.CloseBraceToken)
+        if (!typeDecl.CloseBraceToken.IsKind(SyntaxKind.CloseBraceToken))
             return;
 
         context.ReportDiagnostic(Diagnostic.Create(

@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace PySharp.SourceGeneration.Utility;
+namespace PySharp.Roslyn.Shared.Utility;
 
 internal class IndentedStringBuilder
 {

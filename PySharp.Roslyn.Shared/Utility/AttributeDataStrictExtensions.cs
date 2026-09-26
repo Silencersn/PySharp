@@ -1,7 +1,7 @@
-using PySharp.SourceGeneration.Diagnostics;
+using PySharp.Roslyn.Shared.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
-namespace PySharp.SourceGeneration.Utility;
+namespace PySharp.Roslyn.Shared.Utility;
 
 /// <summary>
 /// Strict attribute-argument reading extensions: on failure they produce an

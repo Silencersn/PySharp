@@ -7,6 +7,12 @@
          inherits it, including the bare dlls shipped in the main
          package's analyzers/ directory. -->
     <Version>0.50</Version>
+    <!-- Single source of truth for the Roslyn toolchain. Every generator and
+         analyzer project compiles against one host Roslyn version; a host that
+         loads PySharp loads them side by side, so the effective floor is the
+         highest of them, not the lowest. -->
+    <RoslynVersion>5.0.0</RoslynVersion>
+    <RoslynAnalyzersVersion>3.11.0</RoslynAnalyzersVersion>
   </PropertyGroup>
 
 </Project>

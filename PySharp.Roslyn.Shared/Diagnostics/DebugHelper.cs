@@ -2,7 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
-namespace PySharp.SourceGeneration.Diagnostics;
+namespace PySharp.Roslyn.Shared.Diagnostics;
 
 internal static class DebugHelper
 {

@@ -1,8 +1,9 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
-using PySharp.SourceGeneration.Diagnostics;
-using PySharp.SourceGeneration.Utility;
+using PySharp.Roslyn.Shared;
+using PySharp.Roslyn.Shared.Diagnostics;
+using PySharp.Roslyn.Shared.Utility;
 using System;
 using System.Linq;
 using System.Text;

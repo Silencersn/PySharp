@@ -8,7 +8,7 @@
 ## 常用命令
 
 ```bash
-dotnet build PySharp.slnx        # 构建全部 7 个项目
+dotnet build PySharp.slnx        # 构建全部 9 个项目
 dotnet test  PySharp.slnx        # 全量测试
 
 dotnet build PySharp/PySharp.csproj                  # 只构建核心库
@@ -26,10 +26,11 @@ dotnet run --project PySharp.Console -- -c "print(40 + 2)"
 
 | 项目 | 说明 |
 | --- | --- |
-| `PySharp` | 核心库（net10.0，`IsTrimmable` / `IsAotCompatible`）。构建时同时运行 8 个源生成器（见[源生成器](../internals/source-generators.md)），`obj/.../generated/` 下产出 250 余个 `.g.cs`。生成器或清单（`PyTypeObject.Declarations.cs`、`PyExceptionObject.Types.cs`）有问题会直接编译失败 |
+| `PySharp` | 核心库（net10.0，`IsTrimmable` / `IsAotCompatible`）。构建时同时运行 8 个源生成器（见[源生成器](../internals/source-generators.md)），`obj/.../generated/` 下产出 270 余个 `.g.cs`。生成器或清单（`PyTypeObject.Declarations.cs`、`PyExceptionObject.Types.cs`）有问题会直接编译失败 |
 | `PySharp.Console` | 引用了内部分析器，`PYSPI*` 规则对其生效，可当最小嵌入方参照 |
 | `PySharp.Tests` | `test_pyfiles/` 以 `Content` 复制到输出目录，测试按相对路径读取；覆盖率配置在 `CodeCoverage.runsettings` |
-| `PySharp.SourceGeneration(.Internal)` / `PySharp.Analyzer(.Internal)` | netstandard2.0 的 Roslyn 工具项目；改完必须重新构建主库验证自举 |
+| `PySharp.SourceGeneration(.Internal)` / `PySharp.Analyzer(.Internal)` | netstandard2.0 的 Roslyn 工具项目；改完必须重新构建主库验证自举。Roslyn 版本收敛在 `Directory.Build.props` |
+| `PySharp.Roslyn.Shared` | 生成器共用的编译期工具库（netstandard2.0，`IsPackable=false`）；改动它同样要重新构建主库验证自举 |
 
 ## 验证你的改动
 

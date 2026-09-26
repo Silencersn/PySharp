@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
-namespace PySharp.SourceGeneration.Utility;
+namespace PySharp.Roslyn.Shared.Utility;
 
 internal static class AttributeDataExtensions
 {

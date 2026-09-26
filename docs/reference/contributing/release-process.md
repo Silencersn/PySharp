@@ -9,14 +9,17 @@
 主包 `PySharp.csproj` 的关键配置：
 
 ```xml
-<!-- 版本号统一在 Directory.Build.props，所有工程继承 -->
+<!-- 版本号与 Roslyn 版本统一在 Directory.Build.props，所有工程继承 -->
 
-<!-- 4 个工具项目以 Analyzer 方式接入构建（不拷引用程序集） -->
+<!-- 4 个工具项目 + 共享工具库以 Analyzer 方式接入构建（不拷引用程序集） -->
 <ProjectReference Include="..\PySharp.SourceGeneration\..." OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-<!-- 其中两个公开工具以【预构建 dll 路径】打进包的 analyzers 目录 -->
+<ProjectReference Include="..\PySharp.Roslyn.Shared\..." OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+<!-- 公开工具与共享工具以【预构建 dll 路径】打进包的 analyzers 目录 -->
 <None Include="..\PySharp.SourceGeneration\bin\$(Configuration)\netstandard2.0\PySharp.SourceGeneration.dll"
       Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
 <None Include="..\PySharp.Analyzer\bin\$(Configuration)\netstandard2.0\PySharp.Analyzer.dll"
+      Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+<None Include="..\PySharp.Roslyn.Shared\bin\$(Configuration)\netstandard2.0\PySharp.Roslyn.Shared.dll"
       Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
 ```
 
@@ -24,13 +27,14 @@
 
 - 安装主包即自动获得公开生成器（`[PyType]` 一族可用）与 `PYSP*` 分析器，无需额外配置；
 - 两个 `Internal` 工具项目不打进包，它们用于自举，引用了库内 internal 类型；
+- `PySharp.Roslyn.Shared` 是生成器的依赖，必须与生成器同目录分发：消费端编译器与仓库内构建一样，只在被显式传入的程序集里解析生成器依赖。因此它在主工程里也以 `OutputItemType="Analyzer"` 接入——若写成普通引用，生成器会在初始化时报 `CS8784 FileNotFoundException`，即使 dll 就在生成器旁边；
 - `PySharp.Analyzer` 仅以裸 dll 随主包分发，其 csproj 中 `IsPackable=false` 关闭独立打包；
 - **顺序敏感**：`None Include` 指向 `bin\$(Configuration)\netstandard2.0\` 的构建产物路径，pack 之前必须先以同一配置完整构建解决方案，否则包里是旧 dll 或缺文件。
 
 ## 发布序列
 
 1. **全量验证**：`dotnet test PySharp.slnx` 全部绿灯；生成器改动另见[构建与测试](./build-and-test.md)的自举验证。
-2. **版本号**：更新 `Directory.Build.props` 的 `<Version>`（唯一入口，所有工程统一继承，含 analyzers 目录两个裸 dll 的程序集版本），按惯例单独一笔提交（`chore: 更新项目版本号至 x.yy`）。
+2. **版本号**：更新 `Directory.Build.props` 的 `<Version>`（唯一入口，所有工程统一继承，含 analyzers 目录三个裸 dll 的程序集版本），按惯例单独一笔提交（`chore: 更新项目版本号至 x.yy`）。
 3. **Release 构建整个解决方案**，为 analyzers 目录产出最新 dll：
 
    ```bash
@@ -43,7 +47,7 @@
    dotnet pack PySharp/PySharp.csproj -c Release
    ```
 
-   产物 `PySharp.<version>.nupkg` 含 `lib/net10.0/PySharp.dll`（trim 与 AOT 标记随程序集携带）与 `analyzers/dotnet/cs/`（两个公开工具 dll）。
+   产物 `PySharp.<version>.nupkg` 含 `lib/net10.0/PySharp.dll`（trim 与 AOT 标记随程序集携带）与 `analyzers/dotnet/cs/`（公开生成器、分析器与共享工具三个 dll）。
 5. **发布**：
 
    ```bash

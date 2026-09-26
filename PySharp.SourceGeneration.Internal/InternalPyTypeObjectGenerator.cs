@@ -1,6 +1,7 @@
 using Microsoft.CodeAnalysis;
-using PySharp.SourceGeneration.Diagnostics;
-using PySharp.SourceGeneration.Utility;
+using PySharp.Roslyn.Shared;
+using PySharp.Roslyn.Shared.Diagnostics;
+using PySharp.Roslyn.Shared.Utility;
 using System;
 using System.Collections.Generic;
 using System.Linq;

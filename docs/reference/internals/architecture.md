@@ -58,8 +58,9 @@ public static PyResult<PyCodeObject> Compile(string code, CompileMode mode, PyCa
 | `Resources/` | 消息资源（`PySR.*`） |
 | `Lib/` | 内嵌 Python 源文件（`this.py`、`dataclasses.py`），经 `AdditionalFiles` 供冻结模块生成器使用 |
 
-解决方案中的工具项目（`PySharp.SourceGeneration`、`PySharp.Analyzer` 及各自的 `.Internal`）
-在编译期为库生成类型机器并强制代码风格，见[源生成器与代码分析](./source-generators.md)。
+解决方案中的工具项目（`PySharp.SourceGeneration`、`PySharp.Analyzer` 及各自的 `.Internal`，加共用
+工具库 `PySharp.Roslyn.Shared`）在编译期为库生成类型机器并强制代码风格，见
+[源生成器与代码分析](./source-generators.md)。
 
 ## 关键设计决策
 
