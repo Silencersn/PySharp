@@ -109,13 +109,13 @@ public partial class PyThisModuleObject : PyFrozenModuleObject;
 
 ## 模块解析与 PyModuleProvider
 
-`import` 按环境的模块提供器链解析，命中第一个即止：
+`import` 按环境的模块提供器链解析，命中第一个即止，默认链为：
 
 1. `PyModuleProvider.Builtin`：查询 `PyStandardLibrary` 注册表，即 `builtins`、`sys`、`math`
    等内建模块。
 2. `PyModuleProvider.Path`：扫描 `sys.path` 与环境文件系统，加载 `.py` 文件或包目录。
 
-`PyModuleProvider` 是公共类型：
+`PyModuleProvider` 是公共类型，采用与 CPython PEP 451 对应的两阶段协议：
 
 ```csharp
 public abstract class PyModuleProvider
@@ -123,17 +123,33 @@ public abstract class PyModuleProvider
     public static PyModuleProvider Builtin { get; }
     public static PyModuleProvider Path { get; }
 
-    public abstract bool TryGetModule(PyCallContext context, string fullName,
+    // 阶段一：定位并构造模块（可以"造即完整"，如内建注册表）
+    public abstract bool TryCreateModule(PyCallContext context, string fullName,
         IReadOnlyList<string>? path, [NotNullWhen(true)] out PyModuleObject? module);
+
+    // 阶段二：执行模块体。默认空实现，适用于 create 阶段已产出完整模块的提供器
+    protected internal virtual void ExecModule(PyCallContext context, PyModuleObject module);
 
     public static PyModuleProvider Create(IDictionary<string, Func<PyModuleObject>> mapping);
 }
 ```
 
-`Create(mapping)` 用「名字到工厂委托」的字典构造自定义提供器，内部会在返回前调用模块的
-`OnImport`。
+`Create(mapping)` 用「名字到工厂委托」的字典构造自定义提供器。两阶段的编排由导入机制层负责：
+`TryCreateModule` 命中后，机制层先把模块登记进模块缓存，再调 `ExecModule` 执行模块体，最后调
+模块的 `OnImport` 钩子——与 CPython 先往 `sys.modules` 放模块再 `exec_module` 一致，模块体或
+`OnImport` 里的循环导入与自引用 import 看到的是缓存中的半初始化模块，不会重入提供器；初始化抛
+异常时登记被回滚，下一次 import 从头重试。
 
-当前限制：把自定义提供器挂进某个环境的提供器链（`PyEnvironment.ModuleProviders`）暂无公共入口，
-标准库注册表（`PyStandardLibrary`）也只在库内扩展。因此在库外，C# 模块对象目前主要作为类型与函数的
-定义载体；嵌入场景请优先使用方式一。模块解析机制的内部细节见
+挂载入口是环境构建器（顺序即解析优先级，`import` 沿链命中第一个即止）：
+
+```csharp
+using var environment = host.CreateEnvironmentBuilder()
+    .AddModuleProvider(provider)        // 追加链尾：仅兜底，Path 命中的名字不受影响
+    .InsertModuleProvider(provider)     // 插到链头：遮蔽内建注册表与磁盘文件（同 sys.meta_path.insert(0, …)）
+    .ClearModuleProviders()             // 清空默认链后自建（后续 Add 逐一挂回）
+    .Build();
+```
+
+标准库注册表（`PyStandardLibrary`）仍只在库内扩展；要在嵌入侧补模块，用自定义提供器或
+[虚拟文件系统](./virtual-file-system.md)承载。模块解析机制的内部细节见
 [Environments 与模块解析](../internals/environments-and-modules.md)。

@@ -14,10 +14,6 @@ PySharp 以 CPython 3 为行为参照，大量语义细节（反射协议、子�
 - 内建函数为高频子集，共 44 个。`memoryview`、`classmethod` 等少数 CPython 内建未暴露；`__import__`
   已提供，但 `import` 语句本身仍由编译器与虚拟机处理，不依赖该函数。
 - 无字节码缓存：不产生也不读取 `.pyc`，每次 import 都重新编译。
-- 导入期间的模块缓存可见性：模块对象的 `OnImport`（含文件模块的源码执行）在登记进模块缓存之前
-  运行，此窗口内的循环导入会重新创建或执行模块。CPython 在执行前就往 `sys.modules` 放占位模块，
-  循环导入拿到的是部分初始化的模块对象。时序细节见
-  [Environments 与模块解析](../internals/environments-and-modules.md)。
 - `multiprocessing`、`subprocess` 等进程级模块未实现。
 
 ## 运行时与语言细节
@@ -50,8 +46,6 @@ PySharp 以 CPython 3 为行为参照，大量语义细节（反射协议、子�
 - 读取模块全局变量无公共 API：`RunCode` 与 `RunFile` 返回的模块对象暂不能从 C# 侧直接取属性。
   取回数据的方式是重定向 stdout，或抛出携带数据的异常，见
   [执行 Python 代码](../user-guide/executing-python.md#当前限制)。
-- 自定义模块提供器未完全接线：`PyModuleProvider.Create` 为公共 API，但挂载到环境提供器链的入口
-  当前为内部实现。嵌入场景应使用内存文件系统承载自定义模块。
 
 ## 工具链
 

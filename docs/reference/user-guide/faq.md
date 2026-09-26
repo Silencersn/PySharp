@@ -23,9 +23,9 @@
 
 推荐内存文件系统：`MemoryFileSystem.CreateBuilder().WithFile("/lib/m.py", 源码)` 加
 `AddPath("/lib")`，模块即可被 `import`。这是嵌入者提供自定义 Python 模块的一等方式，完整示例见
-[虚拟文件系统](./virtual-file-system.md#与-import-和-open-的关系)。注意 `PyModuleProvider.Create`
-虽是公共 API，但挂载入口当前为内部实现。在 C# 侧实现模块对象的方式见
-[用 C# 编写 Python 模块](./custom-modules.md)。
+[虚拟文件系统](./virtual-file-system.md#与-import-和-open-的关系)。C# 侧实现的模块可经
+`AddModuleProvider` 挂进环境提供器链，方式见
+[用 C# 编写 Python 模块](./custom-modules.md#模块解析与-pymoduleprovider)。
 
 问：`sys.exit()` 会发生什么？
 

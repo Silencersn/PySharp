@@ -34,7 +34,8 @@ public sealed partial class PyEnvironment : IDisposable
         Encoding? stderrEncoding = null,
         PyEnvironmentOptions? options = null,
         bool? supportsColorOut = null,
-        bool? supportsColorError = null)
+        bool? supportsColorError = null,
+        IEnumerable<PyModuleProvider>? moduleProviders = null)
     {
         Host = host;
         _inStream = host.AllocateStdIn();
@@ -51,7 +52,11 @@ public sealed partial class PyEnvironment : IDisposable
         _paths = paths is null ? [] : [.. paths];
         _args = args is null ? [] : [.. args];
         Options = options ?? PyEnvironmentOptions.Default;
-        ModuleProviders = [BuiltinModuleProvider.Shared, PathProvider.Shared];
+        // Null keeps the default [Builtin, Path] chain; an explicit chain is
+        // passed complete by the builder, where order is the resolution order.
+        ModuleProviders = moduleProviders is null
+            ? [BuiltinModuleProvider.Shared, PathProvider.Shared]
+            : [.. moduleProviders];
     }
 
     public PyEnvironmentHost Host { get; }

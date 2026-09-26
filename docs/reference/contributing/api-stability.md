@@ -14,7 +14,7 @@ PySharp 处于 0.x 阶段，公共 API 可能调整，但库对“哪些东西�
 | 对象与值 | `PyObject` 公共成员、各 `Py*Object` 的值构造工厂与读取访问器（速查表所列）、集合类的 C# 侧成员 |
 | 结果与错误 | `PyResult` / `PyResult<T>` 及异常工厂、`PyRuntimeException` / `PyExceptionObject` 公共属性 |
 | 协议操作 | `PyOperators` / `PySpecialMethods` / `Call` / `CallMethod` 扩展，可用性受上下文约束，见下 |
-| 扩展模型 | `PyAttributes` 全部特性、`PyTypeObject` / `PyTypeObject<T>` 的 protected 覆写面、`PyModuleObject` / `PyFrozenModuleObject`、`PyModuleProvider.Create` |
+| 扩展模型 | `PyAttributes` 全部特性、`PyTypeObject` / `PyTypeObject<T>` 的 protected 覆写面、`PyModuleObject` / `PyFrozenModuleObject`、`PyModuleProvider` 两阶段协议（`TryCreateModule` / `ExecModule` / `Create`）与 `IPyEnvironmentBuilder` 的提供器链入口 |
 
 internal 成员是实现细节，可自由重构，无兼容负担：`PyCallContext` 的构造与工厂、`PyUnwrap`、`PyEnvironment.ModuleProviders`、`Bytecode` / `Instruction` / `OpCode`、`PyInternalFrame` / `PyVariables`、`PySR`、生成的类型机器、`PyStandardLibrary`、`PyAttachedPropertiesManager`。
 

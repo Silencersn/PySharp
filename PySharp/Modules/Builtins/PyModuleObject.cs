@@ -58,15 +58,6 @@ public class PyModuleObject : PyObjectManagedDict, IPyObjectName
     /// Overridden by source-generated code when <see cref="PyModuleIncludeAttribute"/> is used.
     /// </summary>
     protected virtual void ApplyIncludes() { }
-
-    internal static PyModuleObject CreatePackage(string name, IReadOnlyList<string> paths)
-    {
-        var package = new PyModuleObject(name);
-        package.PyAttributes[PySpecialNames.Path] = PyListObject.CreateList(paths.Select(PyStrObject.FromString));
-        // For packages, __package__ should be the same as __name__
-        package.PyAttributes[PySpecialNames.Package] = PyStrObject.FromString(name);
-        return package;
-    }
 }
 
 [PyType("module")]
@@ -184,5 +175,24 @@ public abstract class PyFrozenModuleObject : PyModuleObject
     {
         CodeObject ??= Compiler.InternalCompileExec(context, Code, $"{Name}.py", Name);
         PyInterpreter.InternalExecuteToModule(context, CodeObject, this, isMain: false);
+    }
+}
+
+// Path-loaded modules carry the file whose body ExecModule runs: a regular
+// package's __init__.py and plain .py modules set it, a namespace package
+// leaves it null (nothing to execute).
+internal sealed class PyPathModuleObject : PyModuleObject
+{
+    internal PyPathModuleObject(string name) : base(name) { }
+
+    internal string? BodyPath { get; set; }
+
+    internal static PyPathModuleObject CreatePackage(string name, IReadOnlyList<string> paths)
+    {
+        var package = new PyPathModuleObject(name);
+        package.PyAttributes[PySpecialNames.Path] = PyListObject.CreateList(paths.Select(PyStrObject.FromString));
+        // For packages, __package__ should be the same as __name__
+        package.PyAttributes[PySpecialNames.Package] = PyStrObject.FromString(name);
+        return package;
     }
 }

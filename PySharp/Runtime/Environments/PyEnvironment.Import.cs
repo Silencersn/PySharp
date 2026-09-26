@@ -79,8 +79,11 @@ partial class PyEnvironment
 
         module = PyStandardLibrary.TryCreateModule(context, name);
         Debug.Assert(module is not null);
+        // Register before OnImport so a reentrant load during initialization
+        // finds the module instead of recursing, same bargain as the
+        // provider chain below.
+        Modules[name] = module;
         module.OnImport(context, this);
-        Modules.Add(name, module);
         return module;
     }
 
@@ -153,41 +156,29 @@ partial class PyEnvironment
 
         foreach (var provider in ModuleProviders)
         {
-            if (!provider.TryGetModule(context, qualifiedName, paths, out module))
+            if (!provider.TryCreateModule(context, qualifiedName, paths, out module))
                 continue;
 
-            // A provider that runs a module body registers the module itself
-            // before doing so (see RegisterInitializingModule); assigning
-            // again keeps both ways on the same key.
+            // Mirrors CPython's _load_unlocked: the module enters the cache
+            // before its body runs, so a reentrant import (a package imported
+            // from its own __init__, a circular import) finds the partially
+            // initialized object instead of reentering the provider. Rolling
+            // the registration back when initialization raises keeps a failed
+            // import importable again on the next attempt.
             Modules[qualifiedName] = module;
+            try
+            {
+                provider.ExecModule(context, module);
+                module.OnImport(context, this);
+            }
+            catch
+            {
+                Modules.Remove(qualifiedName);
+                throw;
+            }
             return true;
         }
 
         return false;
-    }
-
-    /// <summary>
-    /// Registers a module ahead of its body, mirroring CPython's
-    /// <c>_load_unlocked</c>, which stores the module in <c>sys.modules</c>
-    /// before <c>exec_module</c> runs it. An import that resolves back to the
-    /// module while it is still initializing then finds the partially
-    /// initialized object: a package imported from its own <c>__init__</c> (or
-    /// from a submodule that imports its parent) stops reentering the body, and
-    /// a circular import sees whatever the body has defined so far.
-    /// </summary>
-    internal void RegisterInitializingModule(string qualifiedName, PyModuleObject module)
-    {
-        Modules[qualifiedName] = module;
-    }
-
-    /// <summary>
-    /// Drops a registration made by <see cref="RegisterInitializingModule"/>
-    /// after the module body raised, mirroring CPython's
-    /// <c>del sys.modules[spec.name]</c> on failure: the next import retries the
-    /// module instead of handing out a half-initialized object.
-    /// </summary>
-    internal void DiscardInitializingModule(string qualifiedName)
-    {
-        Modules.Remove(qualifiedName);
     }
 }

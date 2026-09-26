@@ -26,7 +26,6 @@
 | --- | --- | --- |
 | 读取模块全局变量的公共 API | `PyModuleObject.PyAttributes` 为 internal，`RunCode` / `RunFile` 的结果取值靠 stdout 重定向（见[执行文档的限制说明](../user-guide/executing-python.md)）。开放它需要决定 API 形态（索引器或 `GetAttr` 快捷方法）与安全边界 | 中 |
 | `PyCallContext` 的受控公开 | 这是协议操作 API（`Call`、`GetAttr`、`PyOperators`）对宿主代码不可用的根源；需要设计无帧上下文的语义边界 | 大（政策级） |
-| 自定义模块提供器接线 | `PyModuleProvider.Create` 已是公共 API，但挂载点 `ModuleProviders` 为 internal；补一个环境构建器入口即可闭环 | 小 |
 | C# 与 Python 值的通用封送 | 目前手工走 `Py*Object` 工厂与访问器；一个约定式的 `ToPython()` / `As<T>()` 层可以大幅降低嵌入成本，前提是保持零反射 | 中 |
 | 组异常的公共遍历 API | 组结构访问器（`IsGroup`、`AsGroup`、`ExceptionGroupInfo`）当前全为 internal，C# 侧只能靠 `Args` 探测，形态随构造路径而异（见[异常组内幕](../internals/exception-groups.md)）。开放需要决定公共面形态（子异常枚举器、`Message`、嵌套组递归） | 中（政策级） |
 | CLI 选项 | `-m` 与 `-i` 未实现；`-O`、`-OO`、`-S`、`-`（stdin）与 `--` 终止符已落地，见[命令行与交互模式](../user-guide/cli-and-repl.md) | 小 |

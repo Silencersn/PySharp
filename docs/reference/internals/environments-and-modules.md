@@ -34,7 +34,9 @@ PyEnvironment
 
 - `PyEnvironment` 的构造函数为 `internal`：从宿主一次性分配三条 `Stream` 并按编码包装
   （`stdinEncoding ?? Host.DefaultEncoding`，stdout 与 stderr 的 `AutoFlush` 为 `true`）。
-  `ModuleProviders` 初始化为 `[Builtin, Path]`，顺序即解析顺序。`Options`（`NotImplyImportSite`
+  `ModuleProviders` 默认初始化为 `[Builtin, Path]`，顺序即解析顺序；环境构建器可用
+  `AddModuleProvider`（追加链尾）、`InsertModuleProvider`（插链头）与 `ClearModuleProviders`
+  （清空自建）定制完整链。`Options`（`NotImplyImportSite`
   与 `OptimizationLevel`）与 `Warnings`（每解释器的警告策略状态，见
   `Runtime/WarningState.cs`）随构造就位。
 - 生命周期：`Dispose` 依次执行 `Interrupt` 与 `Join` 全部登记线程（`Threads` 由 `threading`
@@ -49,37 +51,40 @@ PyEnvironment
 2. 点分名拆解：`a.b.c` 先加载根 `a`，再沿每段的 `__path__`（包搜索路径列表）逐级加载子模块，
    并把子模块绑定到父模块属性。
 3. 根模块：进入提供器链逐个尝试。非根模块使用父包的 `__path__`，而不是全局的 `Paths`。
-4. 每次加载在新的模块帧中执行（`CreateModuleFrame(isRoot: false)`），成功后登记 `Modules`。
+4. 加载分两个阶段（对齐 CPython PEP 451 与 `_load_unlocked`）：提供器先 `TryCreateModule`
+   定位并构造模块，机制层随即把模块登记进 `Modules`，再调用提供器的 `ExecModule` 执行模块体，
+   最后调用模块的 `OnImport`。初始化期间模块已在缓存里，循环导入看到的是半初始化对象而不会重入
+   提供器；初始化抛异常时机制层回滚登记，下一次 import 从头重试。整个流程都在
+   `CreateModuleFrame(isRoot: false)` 的新模块帧中执行。
 
 两个内建提供器（`PyModuleProvider.cs`）：
 
-- `BuiltinModuleProvider`：查询 `PyStandardLibrary.TryCreateModule`，即一张硬编码注册表
-  （`builtins`、`site`、`operator`、`math`、`time`、`random`、`this`、`dataclasses`、
-  `threading`、`queue`、`typing`、`sys`、`warnings`）。返回前调用模块对象的 `OnImport`，
-  `sys` 在此注入 `argv` 与三个 `PyStdIoObject` 流包装，冻结模块在此编译并执行 `Code`。
-- `PathProvider`：对 `sys.path` 的每个目录，若目录存在且名为 `<name>` 则为包，执行
-  `CreatePackage` 与 `__init__.py`；若 `<name>.py` 存在则读取源码，以 `isMain: false` 经
-  `RunCodeWithContext` 执行成模块。全部内容来自 `Host.FileSystem`。
+- `BuiltinModuleProvider`：`TryCreateModule` 查询 `PyStandardLibrary.TryCreateModule`，即一张
+  硬编码注册表（`builtins`、`site`、`operator`、`math`、`time`、`random`、`this`、`dataclasses`、
+  `threading`、`queue`、`typing`、`sys`、`warnings`）。注册表产出即完整模块（单阶段形态），
+  `ExecModule` 用默认空实现。
+- `PathProvider`：`TryCreateModule` 对搜索路径逐项定位——目录存在且名为 `<name>` 则为包（有
+  `__init__.py` 时设 `__file__` 并记下待执行体，没有时是 namespace 包，`__file__` 为 `None`），
+  `<name>.py` 存在则设 `__file__` 并记下文件；`ExecModule` 覆写把 `PySourceDecoder.Decode` 出的
+  源码经 `RunCodeWithContext(isMain: false)` 执行为模块体。全部内容来自 `Host.FileSystem`。
 
 `MappingModuleProvider`（由 `PyModuleProvider.Create` 构造）是公共的自定义提供器实现，
-字典命中即调用工厂并执行 `OnImport`。
+字典命中即调用工厂，同样走默认 `ExecModule`。
 
 ### OnImport 时序
 
-三类提供器一致：`OnImport` 在创建或执行成功后、登记进 `Modules` 缓存之前调用。
+`OnImport` 由机制层在 `ExecModule` 成功返回后统一调用，调用时模块已登记进 `Modules`：
 
-- `Mapping` 与 `Builtin`：工厂或注册表产出模块，立即调用 `OnImport`，调用方拿到后再
-  `Modules.Add`。
-- `Path`：读取源字节，经 `PySourceDecoder.Decode` 解码，`RunCodeWithContext` 执行成模块，再调用
-  `OnImport`。基类的 `OnImport` 是空实现，因为文件模块的「导入钩子」就是执行本身。真实的覆写点
-  只有 `site` 的 `exit` 与 `help` 注入、`sys` 的 `argv` 与三条流包装，以及冻结模块的编译执行。
+- `Mapping` 与 `Builtin`：工厂或注册表产出即完整模块，`OnImport` 是唯一的导入后钩子。
+- `Path`：普通模块与常规包先执行模块体（`ExecModule`），再触发 `OnImport`；namespace 包没有
+  模块体，只触发 `OnImport`。基类的 `OnImport` 是空实现，所以文件模块默认无可观察钩子。真实的
+  覆写点只有 `site` 的 `exit` 与 `help` 注入、`sys` 的 `argv` 与三条流包装，以及冻结模块的编译执行。
 - 冻结模块（`PyFrozenModuleObject.OnImport`）：`CodeObject ??=` 只缓存编译产物，
   `InternalExecuteToModule` 每次导入都会重新执行冻结源码。每环境首次导入各执行一遍，跨环境不共享
   执行状态，共享的只是编译后的指令。
-- 与 CPython 的差异：`OnImport` 执行期间模块不在 `Modules` 缓存里，此窗口内的循环导入会重入
-  提供器再次创建或执行模块。CPython 在执行前就往 `sys.modules` 放占位模块。对单次导入无感，
-  依赖「导入中即缓存可见」语义的脚本会观察到差异，见
-  [与 CPython 的差异](../python-compat/cpython-differences.md)。
+- 与 CPython 的对齐点：机制层在初始化前登记模块（对应 `sys.modules` 先注册再 `exec_module`）、
+  失败回滚（对应 `del sys.modules[name]`）。`site` 等经 `LoadBuiltinModule` 直取注册表的路径
+  遵循同一时序（先登记再 `OnImport`）。
 
 相对导入由 `ResolveRelativeModuleName` 实现（PEP 328 的 `resolve_name`）：以调用帧 globals 的
 `__package__`（回退到 `__name__` 加 `__path__` 判定）为基准，按 `level` 上溯包层级再拼接。

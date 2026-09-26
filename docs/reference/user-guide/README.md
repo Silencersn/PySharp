@@ -37,7 +37,7 @@
 | --- | --- |
 | [扩展 PySharp](./extending-pysharp.md) | 总览入口：attribute 到源生成器到类型机器的工作模型、特性速查、签名约定、`geom` 端到端示例、注册与可见性 |
 | [用 C# 定义 Python 类型](./custom-types.md) | 类型对全集、方法与属性、构造、协议覆写、`[PyException]` |
-| [用 C# 编写 Python 模块](./custom-modules.md) | 纯 Python 模块与 C# 模块对象两条路、`[PyModuleInclude]` 三种方案、冻结模块、`PyModuleProvider` |
+| [用 C# 编写 Python 模块](./custom-modules.md) | 纯 Python 模块与 C# 模块对象两条路、`[PyModuleInclude]` 三种方案、冻结模块、`PyModuleProvider` 与提供器链定制 |
 | [警告与数据类](./warnings-and-dataclasses.md) | `warnings` 的过滤动作与 `catch_warnings`、`@deprecated`、`@dataclass` 的字段控制与未覆盖面 |
 
 兼容性相关的用户视角结论（支持哪些语法与模块、与 CPython 的差异）在
