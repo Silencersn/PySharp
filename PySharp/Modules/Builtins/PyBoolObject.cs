@@ -94,4 +94,16 @@ public sealed partial class PyBoolObjectType : PyTypeObject<PyBoolObject>
     {
         return PyIntObject.FromInteger(self.Value);
     }
+
+    // CPython bool_invert warns before delegating to the int slot
+    // (Objects/boolobject.c: the deprecation is scheduled for removal in
+    // 3.16), so the warning fires on every '~' reaching this slot.
+    protected override PyResult Invert(PyCallContext context, PyBoolObject self)
+    {
+        var warnResult = context.Warn(PyDeprecationWarningObjectType.Shared, PySR.Runtime_Bool_InvertDeprecated);
+        if (warnResult.IsError)
+            return warnResult;
+
+        return PyIntObject.FromInteger(~self.Value);
+    }
 }

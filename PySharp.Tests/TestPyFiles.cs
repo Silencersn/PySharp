@@ -153,6 +153,47 @@ public sealed class TestPyFiles
         """;
 
     [TestMethod]
+    public void TestBoolInvertDeprecationWarning()
+    {
+        // `~` on a bool must emit CPython 3.14's DeprecationWarning
+        // (Objects/boolobject.c bool_invert; removal in 3.16); the warning
+        // fires on the variable, literal and __invert__() forms alike and
+        // the int result is unchanged. The fixture asserts the filter-facing
+        // semantics; this driver asserts the default-filter stderr output.
+        // The literal form is the one CPython refuses to constant-fold
+        // (Python/flowgraph.c eval_const_unaryop), so it must warn at runtime
+        // like the others. Fails until the fix lands.
+        var path = Path.Combine(PyFilesPath, "test_bool_invert_deprecation_warning.py");
+        var fullPath = Path.GetFullPath(path);
+        var stderr = new MemoryStream();
+        var host = new StdioHost(new MemoryStream(), new MemoryStream(), stderr);
+        using var environment = host
+            .CreateEnvironmentBuilder()
+            .AddPath(Path.GetDirectoryName(fullPath)!)
+            .AddArg(fullPath)
+            .Build();
+        using var context = PyCallContext.CreateInterpreterRootContext(environment);
+        var code = File.ReadAllText(path);
+        var module = PyInterpreter.RunCodeWithContext(
+            context, code, Path.GetFileNameWithoutExtension(path), fullPath, isMain: true);
+        Assert.IsNotNull(module);
+
+        environment.Error.Flush();
+        var text = System.Text.Encoding.UTF8.GetString(stderr.ToArray()).Replace("\r\n", "\n");
+        var count = text.Split("DeprecationWarning: Bitwise inversion '~' on bool is deprecated").Length - 1;
+        Assert.AreEqual(3, count, $"expected the three module-level forms to warn, got {count}:\n{text}");
+        StringAssert.Contains(
+            text,
+            "Bitwise inversion '~' on bool is deprecated and will be removed in Python 3.16. "
+            + "This returns the bitwise inversion of the underlying int object and is usually "
+            + "not what you expect from negating a bool. Use the 'not' operator for boolean "
+            + "negation or ~int(x) if you really want the bitwise inversion of the underlying int.",
+            text);
+        // the fixture's int-operand and filter cases must not add a fourth
+        Assert.AreEqual(3, text.Split("DeprecationWarning").Length - 1, text);
+    }
+
+    [TestMethod]
     public void TestSyntaxWarningOnce()
     {
         // Speculative parses (statement, generator-expression

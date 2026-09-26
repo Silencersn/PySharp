@@ -187,6 +187,7 @@ partial class PySR
     public const string Runtime_FrozenSet_TakesNoKwargs = "frozenset() takes no keyword arguments";
     public const string Runtime_Bool_TakesNoKwargs = "bool() takes no keyword arguments";
     public const string Runtime_Bool_ExpectedAtMostOne = "bool expected at most 1 argument, got {0}";
+    public const string Runtime_Bool_InvertDeprecated = "Bitwise inversion '~' on bool is deprecated and will be removed in Python 3.16. This returns the bitwise inversion of the underlying int object and is usually not what you expect from negating a bool. Use the 'not' operator for boolean negation or ~int(x) if you really want the bitwise inversion of the underlying int.";
     public const string Runtime_Dictionary_ExpectedAtMostOne = "dict expected at most 1 argument, got {0}";
     public const string Runtime_Str_ExpectedAtMostThree = "str expected at most 3 arguments, got {0}";
     public const string Runtime_Str_UnexpectedKeyword = "str() got an unexpected keyword argument '{0}'";

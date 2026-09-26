@@ -109,6 +109,14 @@ partial class Reducer
         var operand = FoldExpr(node.Operand, out var changed);
         if (operand is ConstantNode constantOperand)
         {
+            // CPython refuses to fold '~bool' so the deprecation warning
+            // stays at runtime (Python/flowgraph.c eval_const_unaryop
+            // returns NULL for PyBool_Check under UNARY_INVERT); folding here
+            // would swallow it, since the fold runs on a context without a
+            // warning sink.
+            if (node.Op is UnaryOpType.Invert && constantOperand.Value is PyBoolObject)
+                return changed ? Ast.UnaryOp(node.Op, operand) : node;
+
             var result = PyCore.EvalOperator(PyCallContext.NonContextDependency, node.Op, constantOperand.Value);
             if (result.IsSuccessful)
                 return Ast.Constant(result.Value);
