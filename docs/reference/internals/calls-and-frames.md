@@ -103,10 +103,14 @@ locals 有无 locals、快槽与 `IPyVariablesLocalsDict` 慢路径三形态；`
 
 ## traceback
 
-异常在帧间传播时经 `PyExceptionObject.WithTraceback(context)`（`PyTraceback`）逐帧捕获
-`CodeObject` 与 `InstructionIndex`，配合 `LineTable` 反查源码行，最终格式化为 Python 风格
-traceback 文本（`ToMessage`，即 `PyRuntimeException.Message`），见
-[错误处理](../user-guide/error-handling.md)。
+异常在帧间传播时**逐帧累积**：解释器的错误出口（`BytecodeVirtualMachine.Eval` 的
+`catch (PyRuntimeException)`）对当前帧调用 `PyExceptionObject.RecordFrame`，把该帧的
+`CodeObject` 与 `InstructionIndex` 经 `LineTable` 反查出的源码行**前插**到异常自带的
+`TracebackInfo` 上，因此异常不会在输出边界被活跃栈快照覆盖（对应 CPython 的
+`PyTraceBack_Here`）。两条路径不记录：`RERAISE` 语义的抛出（裸 `raise`、`finally` 收尾重抛）
+直接进入异常展开，异常保留既有 traceback；显式 `raise e` 保留旧 traceback 并前插本次 raise
+站点（对应 CPython `do_raise`）。最终由 `ToMessage`（即 `PyRuntimeException.Message`）格式化为
+Python 风格文本，见 [错误处理](../user-guide/error-handling.md)。
 
 ## 相关阅读
 

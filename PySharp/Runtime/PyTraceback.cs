@@ -131,24 +131,31 @@ internal static class PyTraceback
         return new PyTracebackObject(null, null);
     }
 
-    public static TracebackInfo GetTracebackInfo(PyCallContext context)
+    // One entry for the frame an exception is leaving. An inlined comprehension
+    // (PEP 709) shares its enclosing frame's code object, so its entry carries
+    // the enclosing frame's name and the comprehension line — the same single
+    // entry CPython records, since it has no separate frame for a comprehension.
+    public static (CodeMetaInfo? Info, string? CallerName)? CaptureFrameEntry(PyCallContext context)
     {
-        List<(CodeMetaInfo? Info, string? CallerName)> list = new(context.FrameState.CurrentFrameCount);
-        string? threadInfo = null;
+        ref var frame = ref context.CurrentInternalFrame;
+        if (frame.CodeObject is null)
+            return null;
+
+        return (frame.CodeObject.Bytecode.LineTable.Read(frame.InstructionIndex), frame.CallerName);
+    }
+
+    // CPython tags a traceback created on a non-main thread with a header
+    // naming that thread, taken from the thread-root frame the propagation
+    // started in.
+    public static string? CaptureThreadInfo(PyCallContext context)
+    {
         for (int i = 0; i < context.FrameState.CurrentFrameCount; i++)
         {
             ref var frame = ref context.FrameState.GetFrame(i);
-
             if (frame.FrameType is FrameType.ThreadRoot)
-                threadInfo = $"Exception in thread Thread-{Environment.CurrentManagedThreadId} ({frame.CallerName}):";
-
-            if (frame.CodeObject is not null)
-            {
-                var info = frame.CodeObject.Bytecode.LineTable.Read(frame.InstructionIndex);
-                list.Add((info, frame.CallerName));
-            }
+                return $"Exception in thread Thread-{Environment.CurrentManagedThreadId} ({frame.CallerName}):";
         }
 
-        return new TracebackInfo([.. list], threadInfo);
+        return null;
     }
 }

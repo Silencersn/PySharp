@@ -317,10 +317,11 @@ public sealed class PyBytecodeGeneratorObject : PyGeneratorObject
             // with the pending exception (exc=1), so the frame ends up on the
             // traceback at its first instruction — the code object's first
             // line, the `def` line. Entering the frame is the only way to
-            // record it: no statement of the body executes, and the caller's
-            // stack cannot supply the entry.
+            // record that entry: no statement of the body executes and no error
+            // label runs, so the caller's frame is recorded by the VM catch
+            // instead, exactly as in CPython.
             using var withFrame = context.WithFrame(ref _frame, dispose: false);
-            exc.PrependTraceback(context);
+            exc.RecordFrame(context);
             throw new PyRuntimeException(exc);
         }
 

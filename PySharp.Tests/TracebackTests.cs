@@ -143,6 +143,23 @@ public sealed class TracebackTests
         return Encoding.UTF8.GetString(error.ToArray());
     }
 
+    // Paths whose diagnostics go to stderr without failing the run (the
+    // unraisable channel reports and continues) still need the exit code zeroed,
+    // so this leaves the code unasserted.
+    private static string RunCapturingStderrUnchecked(string code)
+    {
+        var error = new MemoryStream();
+        var host = new StderrHost(error);
+
+        using var environment = host.CreateEnvironmentBuilder().Build();
+        using var context = PyCallContext.CreateInterpreterRootContext(environment);
+        PyInterpreter.PyTryCatch(context, () =>
+            PyInterpreter.RunCodeWithContext(context, code, "<module>", "<traceback>", isMain: true));
+
+        Assert.AreEqual(0, environment.ExitCode, "the unraisable report must not fail the run");
+        return Encoding.UTF8.GetString(error.ToArray());
+    }
+
     // "line N in caller: source" per frame, in print order. A traceback ends
     // with a blank line that CPython does not print (issue #349), which
     // TrimEnd keeps out of the comparison.
@@ -246,5 +263,123 @@ public sealed class TracebackTests
             "line 10 in <module>: g.throw(ValueError('boom'))",
             "line 3 in gen: yield 1",
         ], GeneratorHandler);
+    }
+
+    private const string ExplicitReraise = """
+        def inner():
+            raise ValueError('boom')
+
+
+        def mid():
+            try:
+                inner()
+            except ValueError as e:
+                raise e
+
+
+        mid()
+        """;
+
+    // An explicit re-raise keeps the traceback the exception already carries and
+    // prepends the raise site: CPython's do_raise sets the exception without
+    // touching its traceback, and the frame records itself when the error
+    // surfaces. Replacing the traceback with a fresh snapshot of the active
+    // stack loses every frame the exception travelled through.
+    [TestMethod]
+    public void ExplicitReraise_KeepsTheExistingTracebackAndPrependsTheRaiseSite()
+    {
+        AssertFrames([
+            "line 12 in <module>: mid()",
+            "line 9 in mid: raise e",
+            "line 7 in mid: inner()",
+            "line 2 in inner: raise ValueError('boom')",
+        ], ExplicitReraise);
+    }
+
+    private const string BareReraise = """
+        def inner():
+            raise ValueError('boom')
+
+
+        def mid():
+            try:
+                inner()
+            except ValueError:
+                raise
+
+
+        mid()
+        """;
+
+    // A bare raise reaches exception_unwind through RERAISE, not the error
+    // label, so the re-raising frame is not recorded: only the frames the
+    // exception actually travelled through appear.
+    [TestMethod]
+    public void BareReraise_DoesNotRecordTheReraisingFrame()
+    {
+        AssertFrames([
+            "line 12 in <module>: mid()",
+            "line 7 in mid: inner()",
+            "line 2 in inner: raise ValueError('boom')",
+        ], BareReraise);
+    }
+
+    private const string InlineComprehension = """
+        def f(x):
+            raise ValueError('boom')
+
+
+        r = [f(i) for i in range(1)]
+        """;
+
+    // PEP 709 inlines a comprehension into its enclosing frame, so the only
+    // entry the comprehension body contributes is the enclosing frame's own —
+    // CPython has no separate frame to record, and duplicating it here would
+    // print the module line twice.
+    [TestMethod]
+    public void InlineComprehension_RecordsTheEnclosingFrameOnce()
+    {
+        AssertFrames([
+            "line 5 in <module>: r = [f(i) for i in range(1)]",
+            "line 2 in f: raise ValueError('boom')",
+        ], InlineComprehension);
+    }
+
+    private const string UnraisableCloseLookup = """
+        class LookupRaises:
+            def __iter__(self):
+                return self
+
+            def __next__(self):
+                return 1
+
+            def __getattr__(self, name):
+                raise ValueError('boom-' + name)
+
+
+        def delegated():
+            yield from LookupRaises()
+
+
+        g = delegated()
+        next(g)
+        g.close()
+        """;
+
+    // The unraisable channel prints the exception's own traceback
+    // (write_unraisable_exc -> PyTraceBack_Print), not a snapshot of whatever
+    // stack happens to be live when it is written. The failing close lookup
+    // never unwinds the delegating or module frames, so snapshotting there added
+    // both of them to a report CPython gives for the raising frame alone.
+    [TestMethod]
+    public void UnraisableCloseLookup_RecordsOnlyTheRaisingFrame()
+    {
+        var stderr = RunCapturingStderrUnchecked(UnraisableCloseLookup);
+
+        CollectionAssert.AreEqual(
+            new[] { "line 9 in __getattr__: raise ValueError('boom-' + name)" },
+            FrameTrace(stderr), stderr);
+        StringAssert.Contains(stderr, "Exception ignored while closing generator", stderr);
+        StringAssert.Contains(stderr, "ValueError: boom-close", stderr);
     }
 }

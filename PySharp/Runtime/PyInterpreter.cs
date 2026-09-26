@@ -120,7 +120,7 @@ public sealed class PyInterpreter : IDisposable
             {
                 if (currentException is PyRuntimeException pyRuntimeException)
                 {
-                    var exc = pyRuntimeException.PyException.WithTraceback(context, overwriteExisting: false);
+                    var exc = pyRuntimeException.PyException;
 
                     if (PySystemExitObjectType.Shared.IsInstance(exc))
                     {

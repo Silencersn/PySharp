@@ -17,7 +17,7 @@ internal static class PyUnraisable
         else
             context.Error.WriteLine($"{message} {SafeRepr(context, target)}:");
 
-        context.Error.Write(exception.WithTraceback(context, overwriteExisting: false).ToUnraisableMessage(context));
+        context.Error.Write(exception.ToUnraisableMessage(context));
     }
 
     // CPython falls back to "<object repr() failed>" when the repr cannot be

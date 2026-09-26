@@ -15,13 +15,13 @@ public class PyRuntimeException : Exception
     {
         ArgumentNullException.ThrowIfNull(exception);
         context.ChainHandledContext(exception);
-        _exception = exception.WithTraceback(context);
+        _exception = exception;
     }
 
     internal PyRuntimeException(PyCallContext context, PyExceptionObject exception, ICodeMetaInfoProvider? compiler = null)
     {
         context.ChainHandledContext(exception);
-        _exception = exception.WithTraceback(context);
+        _exception = exception;
         _compiler = compiler;
     }
 
@@ -30,6 +30,11 @@ public class PyRuntimeException : Exception
         ArgumentNullException.ThrowIfNull(exception);
         _exception = exception;
     }
+
+    // Set when the throw does not record the frame it leaves: CPython's RERAISE
+    // (bare raise) and the finally-region rethrow reach exception_unwind directly
+    // instead of the error label, so the exception keeps the traceback it has.
+    internal bool SkipFrameRecording { get; init; }
 
     // Exception.Message is a fixed-signature .NET face; mid-run the ambient
     // context renders the message, after the run the CSharpRuntime sentinel

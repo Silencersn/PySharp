@@ -326,7 +326,6 @@ public static partial class PyBuiltinFunctions
         }
         catch (PyRuntimeException e)
         {
-            e.PyException.WithTraceback(context, overwriteExisting: false);
             return PyResult.FromException(e.PyException);
         }
     }
@@ -404,7 +403,6 @@ public static partial class PyBuiltinFunctions
         }
         catch (PyRuntimeException e)
         {
-            e.PyException.WithTraceback(context, overwriteExisting: false);
             return PyResult.FromException(e.PyException);
         }
     }

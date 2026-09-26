@@ -741,12 +741,10 @@ internal static partial class BytecodeVirtualMachine
                         {
                             var exc = Move(ref states.ExceptionToRaise);
                             PyCore.SettleInjectedContext(states, exc);
-                            // the exception is raised here, inside the resumed
-                            // frame, so this is where CPython's PyTraceback_Here
-                            // records that frame: gen_throw re-enters it with the
-                            // pending exception, and the frame joins the
-                            // traceback the exception already carried
-                            exc.PrependTraceback(context);
+                            // gen_throw re-enters the frame with the pending
+                            // exception, so this frame is recorded by the error
+                            // label below like any other raise here; the
+                            // exception keeps whatever traceback it carried
                             throw new PyRuntimeException(exc);
                         }
                         break;
@@ -960,7 +958,10 @@ internal static partial class BytecodeVirtualMachine
                             context.HandledException = currentHandler.SavedHandledException;
                             while (states.Exceptions.Count > currentHandler.ExceptionStackDepth)
                                 states.Exceptions.Pop();
-                            throw new PyRuntimeException(exc);
+                            // the escaping exception resumes propagation through
+                            // RERAISE, which reaches exception_unwind without
+                            // recording this frame again
+                            throw new PyRuntimeException(exc) { SkipFrameRecording = true };
                         }
                         states.ExceptionHandlers.Pop();
                         if (currentHandler.ReturnValue is not null)
@@ -1136,6 +1137,14 @@ internal static partial class BytecodeVirtualMachine
         }
         catch (PyRuntimeException e)
         {
+            // CPython's error label records the frame the error surfaced in
+            // (PyTraceBack_Here) before looking for a handler, so a frame that
+            // catches the exception still appears on it. Throws that model a
+            // RERAISE (bare raise, the end-of-finally rethrow) reach
+            // exception_unwind directly and keep the traceback unchanged.
+            if (!e.SkipFrameRecording)
+                e.PyException.RecordFrame(context);
+
             int nextIndex;
         handle:
             if (!states.ExceptionHandlers.TryPeek(out var currentHandler))
@@ -1205,8 +1214,6 @@ internal static partial class BytecodeVirtualMachine
             if (popCount > 0)
                 Stack.PopN(popCount);
 
-            e.PyException.WithTraceback(context, overwriteExisting: false);
-
             states.Exceptions.Push(e.PyException);
             context.HandledException = e.PyException;
 
@@ -1263,8 +1270,13 @@ internal static partial class BytecodeVirtualMachine
             frame = ref context.CurrentInternalFrame;
             // The Call this frame was entered for completes now, so the caller
             // resumes after it. The index has to stay on the Call while the callee
-            // runs: a suspended frame reports that as its position.
-            frame.InstructionIndex++;
+            // runs: a suspended frame reports that as its position. A callee that
+            // returned a value completes the Call; one that raised never does, and
+            // the caller's error label must still record the Call line, so the
+            // increment is skipped and the deferred error below is delivered with
+            // the frame still positioned there.
+            if (!evalResult.IsError)
+                frame.InstructionIndex++;
             // Leaving an inline frame restores the handled exception it was
             // entered with, so its handler state never leaks onto the caller.
             context.HandledException = states.SavedHandledException;

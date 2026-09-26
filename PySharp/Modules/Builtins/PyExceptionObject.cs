@@ -1,3 +1,4 @@
+using PySharp.Compilation.CodeAnalysis;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Utility;
@@ -61,29 +62,26 @@ public sealed class PyExceptionObject : PyObjectManagedDict
     internal bool IsGroup => AsGroup is not null;
     internal ExceptionGroupInfo? AsGroup { get; }
 
-    internal PyExceptionObject WithTraceback(PyCallContext context, bool overwriteExisting = false)
+    // CPython accumulates a traceback as the exception travels: every frame the
+    // exception leaves prepends its own entry (PyTraceBack_Here, run from the
+    // interpreter's error label), and an exception's traceback is never replaced
+    // by a fresh snapshot of the active stack. A new TracebackInfo is built per
+    // entry, so the reference changes exactly when the traceback grew —
+    // PrepReraiseStar reads that to tell an explicit re-raise from a bare one.
+    internal PyExceptionObject RecordFrame(PyCallContext context)
     {
-        if (Traceback is null || overwriteExisting)
-            Traceback = PyTraceback.GetTracebackInfo(context);
+        var entry = PyTraceback.CaptureFrameEntry(context);
+        if (entry is null)
+            return this;
 
-        return this;
-    }
+        var frames = new List<(CodeMetaInfo? Info, string? CallerName)>(Traceback?.Frames.Count + 1 ?? 1)
+        {
+            entry.Value,
+        };
+        if (Traceback is not null)
+            frames.AddRange(Traceback.Frames);
 
-    // CPython accumulates a traceback as the exception travels: the injection
-    // machinery restores the exception's own traceback first
-    // (_gen_throw's PyErr_Restore with PyException_GetTraceback(val)), and
-    // every frame the exception then passes through prepends its own entry
-    // (PyTraceback_Here). Paths that inject an exception into a frame are
-    // therefore the one place where a traceback is appended to rather than
-    // replaced: a generator throw records the frames it enters in front of
-    // the traceback the exception already carried (which survives as the
-    // tail), instead of leaving the existing traceback frozen.
-    internal PyExceptionObject PrependTraceback(PyCallContext context)
-    {
-        var current = PyTraceback.GetTracebackInfo(context);
-        Traceback = Traceback is null
-            ? current
-            : new TracebackInfo([.. current.Frames, .. Traceback.Frames], current.ThreadInfo ?? Traceback.ThreadInfo);
+        Traceback = new TracebackInfo(frames, Traceback?.ThreadInfo ?? PyTraceback.CaptureThreadInfo(context));
 
         return this;
     }

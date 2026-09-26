@@ -263,6 +263,7 @@ internal static class PyCore
     public static void Raise(PyCallContext context, ref BytecodeVirtualMachineStates states, PyObject? excObj, PyObject? causeObj)
     {
         PyExceptionObject exc;
+        bool isBare;
         if (excObj is null)
         {
             // bare raise re-raises the current exception as-is; inside an
@@ -275,14 +276,17 @@ internal static class PyCore
                 exc = context.HandledException ?? throw context.RuntimeError(PySR.Runtime_RaiseStmt_NoActiveException);
             else
                 exc = states.CurrentException;
+            isBare = true;
         }
         else
         {
-            // an explicit raise starts a fresh traceback head (CPython
-            // replaces it too); PrepReraiseStar exploits that reference
-            // change to tell an explicit re-raise from a bare one
+            // CPython do_raise sets the raised exception and leaves its
+            // traceback alone; the frame the raise surfaces in is recorded by
+            // the interpreter's error label, exactly once. An explicit re-raise
+            // of an exception that already carries a traceback therefore keeps
+            // it as the tail, with the new raise site prepended.
             exc = ToException(context, excObj, isCause: false)!;
-            exc.WithTraceback(context, overwriteExisting: true);
+            isBare = false;
         }
 
         if (causeObj is not null)
@@ -319,7 +323,7 @@ internal static class PyCore
         // Chaining is done above with _PyErr_SetObject's overwrite semantics,
         // so the exception must not run through the constructor's
         // set-time chaining again
-        throw new PyRuntimeException(exc);
+        throw new PyRuntimeException(exc) { SkipFrameRecording = isBare };
 
         static PyExceptionObject? ToException(PyCallContext context, PyObject? pyObj, bool isCause)
         {
