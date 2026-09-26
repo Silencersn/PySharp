@@ -1,5 +1,7 @@
-"""
-Regression tests for typing.Generic instantiation behavior.
+﻿"""
+tests for typing.Generic instantiation behavior.
+
+:kind: test
 """
 
 import typing

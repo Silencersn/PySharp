@@ -1,5 +1,7 @@
-"""
+﻿"""
 Tests for * and ** unpacking syntax - lists, tuples, dicts, function calls
+
+:kind: test
 """
 # * in list
 a = [1, 2, 3]

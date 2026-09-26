@@ -1,5 +1,7 @@
-"""
+﻿"""
 Tests for the time module
+
+:kind: test
 """
 import time
 

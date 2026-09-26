@@ -1,3 +1,8 @@
+﻿"""Verifies max()/min() key, default and error-propagation semantics and print()'s file/flush behavior, including writes to file objects and real files.
+
+:kind: test
+"""
+
 # test_builtin_maxmin_print:
 #   max()/min() key parameter and default semantics
 #   print() file/flush parameters
@@ -26,7 +31,7 @@ assert min([1, 3, 5], key=lambda x: x % 2) == 1
 assert max([], key=len, default=42) == 42
 assert min([], key=len, default=42) == 42
 
-# === max/min: default is not compared (regression fix) ===
+# === max/min: default is not compared (edge case) ===
 assert max([1, 2, 3], default=100) == 3
 assert min([1, 2, 3], default=100) == 1
 assert max([], default=100) == 100

@@ -1,6 +1,8 @@
-"""
+﻿"""
 Tests for None default vs no-default distinction in kwonly args.
 This should pass once the sentinel bug is fixed.
+
+:kind: test
 """
 print("testing defaults none")
 

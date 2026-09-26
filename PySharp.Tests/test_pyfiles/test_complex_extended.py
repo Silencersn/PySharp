@@ -1,5 +1,7 @@
-"""
+﻿"""
 Extended tests for complex numbers - covers edge cases for PyComplexObject, PyComplexObjectType
+
+:kind: test
 """
 
 # TODO: complex type not fully implemented yet - skipping extended tests

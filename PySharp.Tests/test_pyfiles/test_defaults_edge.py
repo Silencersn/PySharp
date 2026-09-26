@@ -1,5 +1,7 @@
-"""
+﻿"""
 Edge case tests for function default parameters
+
+:kind: test
 """
 # Multiple defaults
 def f_multi(a, b=2, c=3, d=4):

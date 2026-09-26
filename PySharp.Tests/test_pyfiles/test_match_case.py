@@ -1,5 +1,7 @@
-"""
+﻿"""
 Python 3.10+ match-case statement tests
+
+:kind: test
 """
 
 def test_match(x):

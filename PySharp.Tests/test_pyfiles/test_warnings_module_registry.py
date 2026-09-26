@@ -1,3 +1,8 @@
+"""Verifies warn_explicit registry deduplication: per-registry scoping, plain-dict registries with version-bump bookkeeping, registry=None disabling dedup, and the fields reported on recorded warnings.
+
+:kind: test
+"""
+
 import warnings
 
 # warn_explicit deduplicates within the same registry, and separate registries do not.

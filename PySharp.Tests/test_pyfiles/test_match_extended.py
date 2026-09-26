@@ -1,5 +1,7 @@
-"""
+﻿"""
 Extended match statement tests - covers guard, sequence with *rest, literals, bool, None
+
+:kind: test
 """
 # Guard patterns
 def match_guard(x):

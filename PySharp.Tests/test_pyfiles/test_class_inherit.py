@@ -1,5 +1,7 @@
 ﻿"""
 Class inheritance and super() behavior tests
+
+:kind: test
 """
 
 class Base:

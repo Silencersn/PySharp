@@ -1,5 +1,7 @@
 ﻿"""
 Module importing and attribute access tests
+
+:kind: test
 """
 
 import test_imported

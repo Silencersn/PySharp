@@ -1,3 +1,10 @@
+"""Verifies warnings filter behavior: simplefilter ignore/error, catch_warnings state restoration including nesting, and filterwarnings matching on module, lineno, and message regexes (case-insensitively) with append=True precedence.
+
+Also checks filterwarnings argument validation errors and that resetwarnings clears the active filters.
+
+:kind: test
+"""
+
 import warnings
 
 # simplefilter ignore/error

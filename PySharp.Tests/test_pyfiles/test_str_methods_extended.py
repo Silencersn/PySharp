@@ -1,5 +1,7 @@
-"""
+﻿"""
 Tests for extended str methods
+
+:kind: test
 """
 
 # --- rsplit ---

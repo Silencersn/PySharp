@@ -1,5 +1,7 @@
-"""
+﻿"""
 Closure and scope tests (nonlocal, global, nested functions)
+
+:kind: test
 """
 
 x = 0

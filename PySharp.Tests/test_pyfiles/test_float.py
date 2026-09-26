@@ -1,3 +1,8 @@
+"""Float core behavior — repr/str/hash/bool, int/float conversions, the full arithmetic, comparison and divmod/pow set against int and float operands, % formatting, and ZeroDivisionError for 1 / 0 — matches CPython results.
+
+:kind: test
+"""
+
 a = 3.5
 b = 2.0
 

@@ -1,5 +1,7 @@
-"""
+﻿"""
 Sorting and comparison tests - exercises comparison operations and edge cases
+
+:kind: test
 """
 
 # Comparison chaining

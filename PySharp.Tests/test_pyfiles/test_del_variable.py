@@ -1,7 +1,9 @@
-"""
+﻿"""
 Variable deletion and closure variable tests
 Covers: DeleteName, DeleteFast, DeleteGlobal, DeleteDeref, _DeleteDerefFast,
         StoreDeref, _StoreDerefIncludedNonInlineFrame
+
+:kind: test
 """
 
 # --- DeleteName: del at module level ---

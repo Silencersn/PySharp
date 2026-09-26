@@ -1,3 +1,8 @@
+"""Verifies aiter(), anext() with and without a default, and compile/eval/exec over bytes source match CPython behavior, including exact TypeError messages.
+
+:kind: test
+"""
+
 # Verify aiter() / anext() / compile(bytes) behavior against CPython
 
 def run(coro):

@@ -1,5 +1,7 @@
-"""
+﻿"""
 Metaclass keyword arguments and __init_subclass__ tests
+
+:kind: test
 """
 
 # Test 1: __init_subclass__ basic call

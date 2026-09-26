@@ -1,5 +1,10 @@
-"""
+﻿"""
 sys.argv tests
+
+:kind: helper
+
+Driven by the hand-written TestSysArgv, which injects the two argv
+entries the fixture asserts on; the default runner cannot do that.
 """
 
 import sys

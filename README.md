@@ -64,7 +64,8 @@ in `PySharp.Tests/` and the source.
 | `PySharp/` | Core interpreter library: `Compilation/` (lexer/AST/bytecode), `Runtime/` (VM and environments), `Modules/` (built-in objects and stdlib). |
 | `PySharp.SourceGeneration/`, `PySharp.SourceGeneration.Internal/` | Roslyn source generators (`[PyType]`, `[PyException]`, etc.). |
 | `PySharp.Analyzer/`, `PySharp.Analyzer.Internal/` | Roslyn analyzers (public `PYSP*` and internal `PYSPI*` rules). |
-| `PySharp.Tests/` | MSTest suite; `test_pyfiles/` holds the Python test corpus. |
+| `PySharp.Tests/` | MSTest suite; `test_pyfiles/` holds the Python test corpus, auto-discovered into tests by a fixture source generator. |
+| `PySharp.Tests.SourceGeneration/` | Fixture generator for the test suite (scans `test_pyfiles/` and emits MSTest wrappers). |
 | `PySharp.slnx` | Solution file. |
 
 ---

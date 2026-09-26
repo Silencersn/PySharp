@@ -1,3 +1,8 @@
+"""Verifies basic memoryview behavior: construction from bytes, indexing and len, the readonly/format/itemsize/ndim attributes, tobytes/tolist, slicing, empty views, iteration, equality, nesting a memoryview in a memoryview, release() invalidation, and TypeError for non-buffer arguments.
+
+:kind: test
+"""
+
 # Test memoryview basic behavior
 # Verify against CPython behavior
 

@@ -1,5 +1,7 @@
 ﻿"""
 List, Set, Dict comprehension and Generator expression tests
+
+:kind: test
 """
 
 # List comprehension

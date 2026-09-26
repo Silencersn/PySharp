@@ -1,4 +1,4 @@
-"""
+﻿"""
 Test for ExtendedArg jump target bug in StackSizeHelper.
 
 This test creates functions with conditional jumps (POP_JUMP_IF_FALSE)
@@ -11,6 +11,8 @@ The bug is in StackSizeHelper.InternalCalculate:
 
 When this bug is present, the stack size calculation may be wrong, potentially
 causing runtime IndexOutOfRangeException if the operand stack is undersized.
+
+:kind: test
 """
 
 # ============================================================

@@ -1,6 +1,8 @@
-"""
+﻿"""
 Extended tests for bytes type - covers edge cases for PyBytesObject, PyBytesObjectType
 Covers __add__, __mul__, __contains__, slicing, hash, and error cases
+
+:kind: test
 """
 
 # bytes concatenation

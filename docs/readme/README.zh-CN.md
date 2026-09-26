@@ -56,7 +56,8 @@ PyInterpreter.RunRepl();                     // 交互式 REPL
 | `PySharp/` | 解释器核心库：`Compilation/`（词法/AST/字节码）、`Runtime/`（虚拟机与运行环境）、`Modules/`（内建对象与标准库）。 |
 | `PySharp.SourceGeneration/`、`PySharp.SourceGeneration.Internal/` | Roslyn 源代码生成器（`[PyType]`、`[PyException]` 等）。 |
 | `PySharp.Analyzer/`、`PySharp.Analyzer.Internal/` | Roslyn 分析器（公共 `PYSP*` 与内部 `PYSPI*` 规则）。 |
-| `PySharp.Tests/` | MSTest 测试套件，`test_pyfiles/` 下为 Python 测试语料。 |
+| `PySharp.Tests/` | MSTest 测试套件，`test_pyfiles/` 下为 Python 测试语料，由夹具源生成器自动发现并生成测试。 |
+| `PySharp.Tests.SourceGeneration/` | 测试套件专属的夹具生成器（扫描 `test_pyfiles/` 并生成 MSTest 包装）。 |
 | `PySharp.slnx` | 解决方案文件。 |
 
 ---

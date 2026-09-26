@@ -1,5 +1,7 @@
-"""
+﻿"""
 Tests for type alias statement (Python 3.12+) - covers PyTypeAliasTypeObject
+
+:kind: test
 """
 print("testing type alias")
 

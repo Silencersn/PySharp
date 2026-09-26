@@ -1,5 +1,7 @@
-"""
+﻿"""
 Tests for str methods
+
+:kind: test
 """
 
 # upper/lower

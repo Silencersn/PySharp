@@ -1,3 +1,8 @@
+"""Verifies that async comprehensions execute at runtime, consuming an async iterable and an async generator expression through manually driven coroutines.
+
+:kind: test
+"""
+
 class AsyncRange:
     def __init__(self, n):
         self.n = n

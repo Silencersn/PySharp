@@ -1,3 +1,8 @@
+"""Verifies that a base-category filter matches subclass warning categories, and that user-defined warning categories can be emitted and filtered by their own category.
+
+:kind: test
+"""
+
 import warnings
 
 # base Warning category filter matches a subclass category

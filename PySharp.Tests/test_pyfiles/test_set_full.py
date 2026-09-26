@@ -1,3 +1,8 @@
+"""Verifies core set operations: len and membership, union/intersection/difference/symmetric_difference in both method and operator form, add/remove/discard/pop/clear, subset/superset/disjoint checks, in-place updates, copy independence, and set() construction from an iterable.
+
+:kind: test
+"""
+
 # Test set operations
 s1 = {1, 2, 3}
 s2 = {3, 4, 5}

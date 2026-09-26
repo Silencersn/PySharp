@@ -1,5 +1,5 @@
-"""
-Regression test: inline frame cleanup when exception occurs in comprehension
+﻿"""
+inline frame cleanup when exception occurs in comprehension
 inside a function with try-except.
 
 This test verifies that after a comprehension raises an exception that is
@@ -7,6 +7,8 @@ caught by an enclosing try-except in a function, the inline frame is properly
 cleaned up and subsequent operations work correctly.
 
 See: /memories/repo/inline-frame-exception-leak.md
+
+:kind: test
 """
 
 # ---------- Helper: track whether we reached end ----------

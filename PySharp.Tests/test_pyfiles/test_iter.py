@@ -1,3 +1,8 @@
+"""Verifies iter() drives the old-style __getitem__ iteration protocol: successive indices are requested and iteration stops when IndexError is raised, collecting the returned values.
+
+:kind: test
+"""
+
 class A:
 	def __init__(self):
 		self.num = 5

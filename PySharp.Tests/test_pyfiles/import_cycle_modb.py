@@ -1,3 +1,8 @@
+﻿"""Cycle partner of import_cycle_moda for module-level circular imports.
+
+:kind: helper
+"""
+
 import import_cycle_moda
 
 B_VAL = "b"

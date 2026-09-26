@@ -1,5 +1,7 @@
-"""
+﻿"""
 Keyword arguments and *args, **kwargs tests
+
+:kind: test
 """
 
 def func(a, b, c=10):

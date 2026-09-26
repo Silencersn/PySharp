@@ -1,5 +1,7 @@
-"""
+﻿"""
 Isolated test for bytearray iteration - no other tests in this file
+
+:kind: test
 """
 print("starting bytearray iteration test")
 ba = bytearray(b"ABC")

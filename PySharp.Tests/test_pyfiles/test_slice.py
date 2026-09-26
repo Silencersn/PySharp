@@ -1,4 +1,9 @@
-﻿class MyClass:
+﻿"""Verifies __getitem__ receives a slice object for subscript syntax, including tuple forms combining multiple slices.
+
+:kind: test
+"""
+
+class MyClass:
 	def __getitem__(self, item):
 		assert isinstance(item, slice)
 

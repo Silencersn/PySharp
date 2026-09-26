@@ -1,5 +1,7 @@
-"""
+﻿"""
 Tests for template string literals (t-strings, Python 3.14+) - PEP 750
+
+:kind: test
 """
 print("testing t-strings")
 

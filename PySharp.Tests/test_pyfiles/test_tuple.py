@@ -1,5 +1,7 @@
-"""
+﻿"""
 Standard tuple operations and behavior tests
+
+:kind: test
 """
 
 # Tuple creation and indexing

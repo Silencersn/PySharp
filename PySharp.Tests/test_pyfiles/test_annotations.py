@@ -1,4 +1,4 @@
-"""
+﻿"""
 Tests for __annotations__ support.
 Tests:
 - Class variable annotations evaluate to objects (PEP 649 lazy evaluation)
@@ -7,6 +7,8 @@ Tests:
 - Multiple annotations
 - type.__annotations__ descriptor behavior
 - Builtin types raise AttributeError
+
+:kind: test
 """
 print("testing annotations")
 

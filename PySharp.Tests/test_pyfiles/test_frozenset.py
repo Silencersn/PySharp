@@ -1,5 +1,7 @@
-"""
+﻿"""
 Tests for frozenset
+
+:kind: test
 """
 
 s = frozenset([1, 2, 3])

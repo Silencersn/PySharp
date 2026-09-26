@@ -1,4 +1,4 @@
-"""
+﻿"""
 Tests for generic class support (PEP 695).
 Tests:
 - Basic generic class definition with type params
@@ -7,6 +7,8 @@ Tests:
 - Multiple type parameters
 - Generic alias properties: __origin__, __args__
 - Import of typing.Generic
+
+:kind: test
 """
 print("testing generic class")
 

@@ -1,3 +1,10 @@
+"""Verifies compilation and runtime execution of async for and async with, including break, else clauses, nesting, and multiple context managers.
+
+Runtime coroutines are driven manually with send(None) to simulate an event loop.
+
+:kind: test
+"""
+
 # test_async_for: Verify compilation and runtime execution of async for / async with
 # Runtime tests use manual send(None) to drive coroutines, simulating an event loop
 

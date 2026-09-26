@@ -1,4 +1,13 @@
-﻿assert '\\' == '\\'
+"""String literal escapes produce CPython's exact values, and malformed escapes raise SyntaxError.
+
+Covers the standard escape table with raw-string exceptions, octal escapes
+greedily reading three digits (values above 0o377 kept with a SyntaxWarning),
+and lone surrogate escapes being allowed in literals.
+
+:kind: test
+"""
+
+assert '\\' == '\\'
 assert '\'' == "'"
 assert '\"' == '"'
 assert '\a' == '\a'

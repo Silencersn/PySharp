@@ -1,5 +1,7 @@
-"""
+﻿"""
 Tests for the math module
+
+:kind: test
 """
 import math
 

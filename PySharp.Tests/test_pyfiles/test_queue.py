@@ -1,5 +1,7 @@
-"""
+﻿"""
 Tests for the queue module
+
+:kind: test
 """
 import queue
 

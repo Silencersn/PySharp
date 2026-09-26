@@ -1,5 +1,7 @@
-"""
+﻿"""
 Function argument tests - exercises PyArgsValidator and argument handling
+
+:kind: test
 """
 
 # Too many positional args to built-in

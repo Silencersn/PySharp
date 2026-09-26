@@ -1,4 +1,7 @@
-"""Regression tests for list bugs found during code review."""
+﻿"""tests for list bugs found during code review.
+
+:kind: test
+"""
 
 print("=== Test 1: list == non_list should not crash ===")
 try:

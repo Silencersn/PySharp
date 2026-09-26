@@ -1,5 +1,7 @@
-"""
+﻿"""
 Tests for generic class capturing outer variables alongside type params.
+
+:kind: test
 """
 print("testing generic closure mix")
 

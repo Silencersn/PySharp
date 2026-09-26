@@ -1,3 +1,8 @@
+"""@dataclass synthesizes __init__, __repr__ and __eq__ honoring positional/keyword fields, plain defaults, default_factory fields, __dataclass_fields__, and init=False/repr=False overrides.
+
+:kind: test
+"""
+
 # Basic dataclass behavior tests.
 from dataclasses import dataclass, field
 

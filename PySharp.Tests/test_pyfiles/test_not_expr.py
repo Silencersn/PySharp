@@ -1,5 +1,7 @@
-"""
+﻿"""
 Tests for `not` expression
+
+:kind: test
 """
 assert not False is True
 assert not True is False

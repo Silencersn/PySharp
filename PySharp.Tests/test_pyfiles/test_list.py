@@ -1,5 +1,7 @@
-"""
+﻿"""
 Standard list operations and method tests
+
+:kind: test
 """
 
 # Basic list initialization and indexing

@@ -1,5 +1,7 @@
-"""
+﻿"""
 Tests for zip and enumerate built-ins
+
+:kind: test
 """
 
 # Test enumerate

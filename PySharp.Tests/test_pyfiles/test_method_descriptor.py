@@ -1,5 +1,7 @@
 ﻿"""
 Tests for method descriptors (bound/unbound methods)
+
+:kind: test
 """
 
 # Test bound method behavior (instance methods)

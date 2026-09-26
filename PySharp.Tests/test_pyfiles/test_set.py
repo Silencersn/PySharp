@@ -1,5 +1,7 @@
-"""
+﻿"""
 Standard set operations and behavior tests
+
+:kind: test
 """
 
 # Set creation

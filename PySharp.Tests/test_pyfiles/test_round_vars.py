@@ -1,5 +1,7 @@
-"""
+﻿"""
 Tests for round and vars
+
+:kind: test
 """
 
 # test round

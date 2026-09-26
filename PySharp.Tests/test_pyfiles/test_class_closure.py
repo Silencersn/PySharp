@@ -1,9 +1,11 @@
-"""
-Regression test: __class__ cell propagation through nested function chain.
+﻿"""
+__class__ cell propagation through nested function chain.
 
 Tests that when a metaclass __new__ defines nested closures whose inner
 functions use super(), the __class__ cell variable is properly propagated
 through ALL intermediate function scopes, not just the innermost one.
+
+:kind: test
 """
 
 # Test 1: basic chain - metaclass __new__ -> outer -> inner (with super)

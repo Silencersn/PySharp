@@ -1,5 +1,7 @@
-"""
+﻿"""
 Tests for ExceptionGroup - covers PyBaseExceptionGroupObjectType, PyExceptionGroupObjectType
+
+:kind: test
 """
 
 # Basic ExceptionGroup creation and catching

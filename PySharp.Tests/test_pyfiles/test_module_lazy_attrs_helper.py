@@ -1,3 +1,8 @@
+﻿"""Module with a module-level __getattr__ for the lazy attribute fixture.
+
+:kind: helper
+"""
+
 _helpers = {"magic": 42, "alpha": "letters"}
 
 

@@ -1,3 +1,8 @@
+"""Verifies the always, module, and once warning actions deduplicate warns at the correct scope (per-site, per-module, global, and per explicit registry), and that resetwarnings() bumps the filter version so registries forget earlier warns.
+
+:kind: test
+"""
+
 import warnings
 
 # always action shows the warning repeatedly at the same site

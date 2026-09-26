@@ -1,3 +1,8 @@
+"""Verifies the open() builtin across write, read, context-manager, binary, append, FileNotFoundError, readline, seek/tell and newline-translation behaviors.
+
+:kind: test
+"""
+
 # test_open: Verify open() builtin function
 
 # Test 1: Write text file

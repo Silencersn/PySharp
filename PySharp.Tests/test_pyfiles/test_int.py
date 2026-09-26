@@ -1,4 +1,9 @@
-﻿a = 7
+﻿"""Int core behavior — repr/str/hash/bool, conversions, arithmetic, bitwise, comparisons, divmod/pow, the full dunder slot surface, and an int subclass — matches CPython for both int and int subclass instances.
+
+:kind: test
+"""
+
+a = 7
 b = 3
 
 assert repr(a) == '7'

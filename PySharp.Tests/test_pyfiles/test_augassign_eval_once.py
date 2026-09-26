@@ -1,5 +1,5 @@
-"""
-Regression test: augmented assignment must evaluate the target's sub-expressions
+﻿"""
+augmented assignment must evaluate the target's sub-expressions
 exactly ONCE (CPython 3.14 semantics via Copy/Swap on the stack).
 
 The old emitter re-emitted the target for the store, which re-evaluated the
@@ -11,6 +11,8 @@ Covers:
 - slice targets: a[i:j] += c
 - name targets: x += c (unchanged path)
 - plain assignment a[b] = c still evaluates each part once
+
+:kind: test
 """
 
 # ============================================================

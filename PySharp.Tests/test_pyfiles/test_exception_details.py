@@ -1,6 +1,8 @@
-"""
+﻿"""
 Tests for exception details - args, repr, str, chaining, with_traceback
 Exercises PyBaseExceptionObjectType, PyExceptionObject
+
+:kind: test
 """
 
 # Exception with multiple args

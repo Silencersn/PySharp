@@ -1,3 +1,10 @@
+"""Verifies warnings.warn / warn_explicit basics: record fields, default DeprecationWarning filtering, resetwarnings, instance messages, __index__ conversion for lineno and stacklevel, and TypeError on invalid categories or messages.
+
+Also checks the warnings.deprecated() decorator on functions and classes, including subclass warnings and custom or None categories.
+
+:kind: test
+"""
+
 import warnings
 
 # warnings.warn / warn_explicit basics

@@ -1,6 +1,8 @@
-"""
+﻿"""
 Tests for function and code object attributes
 Exercises PyFunctionObjectType
+
+:kind: test
 """
 
 # Basic function attributes

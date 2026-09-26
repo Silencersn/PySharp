@@ -1,7 +1,9 @@
-"""
-Regression test: type() argument error messages must match CPython 3.14:
+﻿"""
+type() argument error messages must match CPython 3.14:
 - argument type errors use prefix "type.__new__()"
 - wrong argument count uses "type() takes 1 or 3 arguments"
+
+:kind: test
 """
 
 

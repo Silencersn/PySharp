@@ -1,5 +1,7 @@
-"""
+﻿"""
 Standard dictionary operation and method tests
+
+:kind: test
 """
 
 # Dictionary initialization and indexing

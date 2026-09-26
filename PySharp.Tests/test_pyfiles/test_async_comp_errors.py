@@ -1,3 +1,8 @@
+"""Verifies that async comprehensions raise SyntaxError in sync functions, at module level, and in class bodies, while an async genexp still compiles anywhere.
+
+:kind: test
+"""
+
 # test_async_comp_errors: Verify that async comprehension outside async function fails
 # Uses compile() to test at compile time without executing
 

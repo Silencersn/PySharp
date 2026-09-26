@@ -1,5 +1,7 @@
 ﻿"""
 Integer parsing tests (various bases and formatting)
+
+:kind: test
 """
 
 assert int('123') == 123

@@ -1,5 +1,7 @@
-"""
+﻿"""
 Extended tests for frozenset - covers operations on PyFrozenSetObject, PyFrozenSetObjectType
+
+:kind: test
 """
 
 # frozenset basic

@@ -1,5 +1,7 @@
-"""
+﻿"""
 Extended built-in function tests - more edge cases and uncovered functions
+
+:kind: test
 """
 
 # type() tests

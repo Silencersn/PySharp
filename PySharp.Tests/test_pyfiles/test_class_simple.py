@@ -1,5 +1,7 @@
 ﻿"""
 Simple class behavior tests
+
+:kind: test
 """
 
 class MyClass:

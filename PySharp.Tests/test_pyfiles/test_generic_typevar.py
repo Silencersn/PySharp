@@ -1,4 +1,4 @@
-"""
+﻿"""
 Tests for TypeVar runtime objects in generic classes (PEP 695).
 Comprehensive tests covering:
 - __type_params__ on generic classes
@@ -10,6 +10,8 @@ Comprehensive tests covering:
 - TypeVar in tuple/dict expressions
 - TypeVar with base class inheritance
 - Three or more type parameters
+
+:kind: test
 """
 print("testing generic typevar")
 

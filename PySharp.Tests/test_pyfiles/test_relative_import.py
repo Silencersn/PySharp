@@ -1,8 +1,10 @@
-"""
+﻿"""
 Relative import tests
 
 This script tests that explicit relative imports (PEP 328) work correctly.
 It imports submodules that use relative imports internally.
+
+:kind: test
 """
 
 # First, import the package to ensure __init__ runs

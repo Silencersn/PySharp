@@ -1,6 +1,8 @@
-"""
+﻿"""
 Tests for dict methods - setdefault, popitem, update edge cases, clear
 Exercises PyDictObject.Py.cs, PyDictObjectType
+
+:kind: test
 """
 
 # setdefault - key not present

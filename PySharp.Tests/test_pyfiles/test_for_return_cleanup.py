@@ -1,9 +1,11 @@
-"""
-Regression test: for-loop iterator cleanup on return.
+﻿"""
+for-loop iterator cleanup on return.
 
 Tests that returning from inside a for-loop body properly cleans up
 the iterator from the operand stack, preventing the debug-mode
 "Stack.Count is greater than 0" assertion.
+
+:kind: test
 """
 
 # Test 1: simple for-loop with return

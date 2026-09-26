@@ -1,5 +1,7 @@
-"""
+﻿"""
 Metaclass behavior tests
+
+:kind: test
 """
 
 class Meta(type):

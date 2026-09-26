@@ -1,5 +1,7 @@
 ﻿"""
 Tests for f-string formatting using __format__
+
+:kind: test
 """
 
 class MyClass:

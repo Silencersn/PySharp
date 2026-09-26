@@ -1,3 +1,8 @@
+"""Verifies async generators: async for consumption, asend(None), values received by yield via asend, StopAsyncIteration on exhaustion, and athrow.
+
+:kind: test
+"""
+
 # test_async_generator: Verify async def + yield support
 
 # Test 1: Basic async generator with async for

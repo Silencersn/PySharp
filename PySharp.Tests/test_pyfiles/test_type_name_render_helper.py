@@ -1,7 +1,11 @@
-# Helper for test_type_name_render_regression.py: a class created at runtime
-# whose __qualname__ differs from its __name__, both at module level and inside
-# a function. Imported by the regression fixture so the module-qualified forms
-# (%T) can be checked from outside __main__.
+﻿"""Class factory imported by the qualified type-name rendering fixture.
+
+Defines runtime classes whose __qualname__ differs from __name__, at module
+level and inside a function, so the module-qualified forms can be checked
+from outside __main__.
+
+:kind: helper
+"""
 
 class ModuleClass:
     __hash__ = None

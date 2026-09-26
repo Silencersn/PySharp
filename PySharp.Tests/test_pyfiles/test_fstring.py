@@ -1,4 +1,9 @@
-﻿a = f'''Level1{
+﻿"""Verifies that arbitrarily nested multi-line f-strings across all quote kinds (interpolating dicts, lists, sets, calls, conditionals, and further f-strings) parse and evaluate correctly, and that unterminated f-string errors name the right literal kind.
+
+:kind: test
+"""
+
+a = f'''Level1{
     f"Level2{ 
         f'''Level3{
             f"{'Innermost'}End"

@@ -1,4 +1,9 @@
-﻿class MyInt:
+﻿"""A user class defining the full set of special methods dispatches every corresponding operator, conversion, container, comparison, descriptor and attribute hook to the right implementation.
+
+:kind: test
+"""
+
+class MyInt:
     def __init__(self, value):
         self.value = value
     def __repr__(self):

@@ -1,5 +1,7 @@
-"""
+﻿"""
 Extended dictionary tests - more operations, edge cases, and error handling
+
+:kind: test
 """
 
 # dict() constructor from various sources

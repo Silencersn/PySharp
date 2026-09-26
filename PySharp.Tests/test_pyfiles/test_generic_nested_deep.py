@@ -1,6 +1,8 @@
-"""
-Deep nested generic closure regression tests.
+﻿"""
+Deep nested generic closures.
 Uses only supported features: functions, nested classes, methods, tuples, and closures.
+
+:kind: test
 """
 print("testing generic nested deep")
 

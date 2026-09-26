@@ -1,6 +1,8 @@
-"""
+﻿"""
 Tests for module attributes
 Exercises PyModuleObjectType, __dict__, __name__
+
+:kind: test
 """
 
 import math

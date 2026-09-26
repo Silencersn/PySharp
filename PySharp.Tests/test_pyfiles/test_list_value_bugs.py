@@ -1,4 +1,7 @@
-"""Regression tests: list operations with custom class __eq__."""
+﻿"""tests: list operations with custom class __eq__.
+
+:kind: test
+"""
 
 class Value:
     def __init__(self, v):

@@ -1,9 +1,11 @@
-"""
-Regression test: the str character views (index, slice, iterate, pad,
+﻿"""
+the str character views (index, slice, iterate, pad,
 replace) count code points, so an astral character counts once and an
 unpaired surrogate stays itself instead of becoming U+FFFD.
 
 CPython 3.14 reference values are inline in the assertions.
+
+:kind: test
 """
 
 astral = chr(0x1F600)

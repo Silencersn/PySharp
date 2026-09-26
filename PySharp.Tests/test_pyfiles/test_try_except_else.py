@@ -1,11 +1,13 @@
-"""
-Regression test: try-except-else semantics.
+﻿"""
+try-except-else semantics.
 
 Tests that:
 1. Exceptions raised in the else block are NOT caught by the except clause
    of the same try statement (CPython behavior).
 2. Normal else execution when no exception occurs.
 3. try-except-else-finally interaction.
+
+:kind: test
 """
 
 # Test 1: exception in else propagates (NOT caught by same try's except)

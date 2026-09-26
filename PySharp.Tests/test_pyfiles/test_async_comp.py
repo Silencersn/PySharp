@@ -1,3 +1,8 @@
+"""Verifies that async comprehensions (list, set, dict, and genexp forms) compile inside async functions, including mixed clauses, conditions, nesting, await, and the module-level genexp, without executing them.
+
+:kind: test
+"""
+
 class AsyncRange:
     pass
 

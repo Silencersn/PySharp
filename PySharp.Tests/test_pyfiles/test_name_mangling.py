@@ -1,3 +1,8 @@
+"""Double-underscore names inside class bodies are mangled to _ClassName__name, including attributes, methods, nested classes and imports.
+
+:kind: test
+"""
+
 class __Outer:
     __value = 10
     __special__ = 11

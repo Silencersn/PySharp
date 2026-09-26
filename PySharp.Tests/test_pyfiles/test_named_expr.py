@@ -1,4 +1,9 @@
-﻿# Basic assignment expression
+﻿"""Verifies that assignment expressions (PEP 572 walrus) bind the target in the enclosing scope across plain expressions, comprehensions, while/if tests, call arguments, tuples, and nested walrus chains.
+
+:kind: test
+"""
+
+# Basic assignment expression
 assert (x := 10) == 10
 assert x == 10
 

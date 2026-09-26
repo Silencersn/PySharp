@@ -1,5 +1,7 @@
-"""
+﻿"""
 Original user example: class C[T] with method test[K] referencing both T and K.
+
+:kind: test
 """
 print("testing original generic example")
 

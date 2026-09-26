@@ -1,5 +1,7 @@
-"""
+﻿"""
 Tests for extended float methods
+
+:kind: test
 """
 
 # --- conjugate ---

@@ -1,3 +1,8 @@
+"""Verifies bytearray construction with repr and len, indexing and slicing, item and slice (including extended-step) assignment, concatenation and repetition operators, append/extend, and the TypeError/ValueError error faces.
+
+:kind: test
+"""
+
 # Basic construction
 b = bytearray()
 assert repr(b) == "bytearray(b'')"

@@ -1,5 +1,7 @@
-"""
+﻿"""
 Extended iteration tests - exercises PyUtils iterable conversion and more iteration patterns
+
+:kind: test
 """
 
 # list() on various iterables

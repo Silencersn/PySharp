@@ -1,9 +1,11 @@
-"""
+﻿"""
 Tests for __class__ in nested class scopes (free variable propagation).
 Tests:
 - __class__ in nested class body raises NameError (cell empty, matches CPython)
 - __class__ in regular method
 - __class__ via method in nested class
+
+:kind: test
 """
 print("testing nested class __class__")
 

@@ -1,4 +1,9 @@
-﻿class Test:
+﻿"""@staticmethod is callable from both the class and its instances without receiving any implicit self or cls argument.
+
+:kind: test
+"""
+
+class Test:
     @staticmethod
     def add(a, b):
         return a + b

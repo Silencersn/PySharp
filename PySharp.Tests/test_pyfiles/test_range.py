@@ -1,5 +1,7 @@
-"""
+﻿"""
 Range object tests
+
+:kind: test
 """
 
 r = range(5)

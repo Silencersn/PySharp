@@ -1,5 +1,7 @@
 ﻿"""
 Function decorator behavior tests
+
+:kind: test
 """
 
 def memoize(func):

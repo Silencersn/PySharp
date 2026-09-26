@@ -1,5 +1,7 @@
 ﻿"""
 Property decorator tests (@property, setter, deleter)
+
+:kind: test
 """
 
 class Test:
