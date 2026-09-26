@@ -563,6 +563,12 @@ internal static class PyCore
         if (derived is not PyExceptionObject result || !result.IsGroup || !PyBaseExceptionGroupObjectType.Shared.IsInstance(result))
             throw context.TypeError(PySR.Runtime_ExceptionGroup_DeriveReturnNonGroup);
 
+        // exception_group_projection reads the projected group as "the same
+        // exception" as orig (is_same_exception_metadata compares traceback),
+        // so carry orig's traceback over like exceptiongroup_subset does
+        result.Traceback = eg.Traceback;
+        result.TracebackThreadInfo = eg.TracebackThreadInfo;
+
         return result;
     }
 

@@ -30,6 +30,12 @@ partial class PySR
     public const string Runtime_BaseException_CauseMayNotBeDeleted = "__cause__ may not be deleted";
     public const string Runtime_BaseException_ContextMayNotBeDeleted = "__context__ may not be deleted";
     public const string Runtime_BaseException_SuppressMayNotBeDeleted = "can't delete numeric/char attribute";
+    public const string Runtime_BaseException_TracebackMustBeTracebackOrNone = "__traceback__ must be a traceback or None";
+    public const string Runtime_BaseException_TracebackMayNotBeDeleted = "__traceback__ may not be deleted";
+    public const string Runtime_Traceback_LinenoNotWritable = "attribute 'tb_lineno' of 'traceback' objects is not writable";
+    public const string Runtime_Traceback_NextExpectedTraceback = "expected traceback object, got '{0}'";
+    public const string Runtime_Traceback_NextMayNotBeDeleted = "can't delete tb_next attribute";
+    public const string Runtime_Traceback_LoopDetected = "traceback loop detected";
 
     // CPython quotes the module name with !r (Lib/importlib/_bootstrap.py
     // _ERR_MSG_PREFIX), so the caller passes repr(name) — the name arrives

@@ -105,12 +105,21 @@ locals 有无 locals、快槽与 `IPyVariablesLocalsDict` 慢路径三形态；`
 
 异常在帧间传播时**逐帧累积**：解释器的错误出口（`BytecodeVirtualMachine.Eval` 的
 `catch (PyRuntimeException)`）对当前帧调用 `PyExceptionObject.RecordFrame`，把该帧的
-`CodeObject` 与 `InstructionIndex` 经 `LineTable` 反查出的源码行**前插**到异常自带的
-`TracebackInfo` 上，因此异常不会在输出边界被活跃栈快照覆盖（对应 CPython 的
-`PyTraceBack_Here`）。两条路径不记录：`RERAISE` 语义的抛出（裸 `raise`、`finally` 收尾重抛）
-直接进入异常展开，异常保留既有 traceback；显式 `raise e` 保留旧 traceback 并前插本次 raise
-站点（对应 CPython `do_raise`）。最终由 `ToMessage`（即 `PyRuntimeException.Message`）格式化为
-Python 风格文本，见 [错误处理](../user-guide/error-handling.md)。
+`CodeObject` 与 `InstructionIndex` 经 `LineTable` 反查出的源码行建为新节点，旧链挂在它的
+`tb_next` 上（对应 CPython `PyTraceBack_Here`）。因此异常不会在输出边界被活跃栈快照覆盖。链条
+用 Python 可见的 `PyTracebackObject`（类型名 `traceback`）表示，异常通过 `__traceback__` 暴露它：
+头节点是最外层帧，沿 `tb_next` 走向异常发生处，即 "most recent call last" 的打印顺序。属性可读
+可写（`None` 清空、traceback 替换），删除抛 `TypeError`，`BaseException.with_traceback` 转调该
+setter 并返回 `self`。
+
+两条路径不记录：`RERAISE` 语义的抛出（裸 `raise`、`finally` 收尾重抛）直接进入异常展开，异常
+保留既有 traceback；显式 `raise e` 保留旧 traceback 并前插本次 raise 站点（对应 CPython
+`do_raise`）。线程栈头（`Exception in thread ...`）存于异常而非 traceback 对象，故
+`__traceback__` 被重新赋值也不影响它。最终由 `ToMessage`（即 `PyRuntimeException.Message`）
+格式化为 Python 风格文本，见 [错误处理](../user-guide/error-handling.md)。
+
+`PyTracebackObject` 目前只暴露 `tb_next` 与 `tb_lineno`：`tb_frame` 需要尚不存在的帧对象类型、
+`tb_lasti` 的字节偏移语义与 PySharp 的字节码索引不可比，两者为已知缺口。
 
 ## 相关阅读
 

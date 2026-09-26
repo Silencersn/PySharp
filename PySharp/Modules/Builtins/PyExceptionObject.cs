@@ -1,4 +1,3 @@
-using PySharp.Compilation.CodeAnalysis;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Utility;
@@ -55,7 +54,11 @@ public sealed class PyExceptionObject : PyObjectManagedDict
     // but __init__ is not, the inherited __init__ re-binds e.args to the
     // original instantiation arguments.
     public IReadOnlyList<PyObject> Args { get; internal set; }
-    public TracebackInfo? Traceback { get; internal set; }
+    public PyTracebackObject? Traceback { get; internal set; }
+    // CPython prints the "Exception in thread ..." header from the threading
+    // layer, not from the traceback object, so the header stays on the
+    // exception and survives __traceback__ reassignment.
+    internal string? TracebackThreadInfo { get; set; }
     internal PyObject? ExtraValue { get; set; }
 
     [MemberNotNullWhen(true, nameof(AsGroup))]
@@ -65,23 +68,18 @@ public sealed class PyExceptionObject : PyObjectManagedDict
     // CPython accumulates a traceback as the exception travels: every frame the
     // exception leaves prepends its own entry (PyTraceBack_Here, run from the
     // interpreter's error label), and an exception's traceback is never replaced
-    // by a fresh snapshot of the active stack. A new TracebackInfo is built per
+    // by a fresh snapshot of the active stack. A new head node is built per
     // entry, so the reference changes exactly when the traceback grew —
     // PrepReraiseStar reads that to tell an explicit re-raise from a bare one.
     internal PyExceptionObject RecordFrame(PyCallContext context)
     {
-        var entry = PyTraceback.CaptureFrameEntry(context);
-        if (entry is null)
+        var node = PyTraceback.CaptureFrameNode(context);
+        if (node is null)
             return this;
 
-        var frames = new List<(CodeMetaInfo? Info, string? CallerName)>(Traceback?.Frames.Count + 1 ?? 1)
-        {
-            entry.Value,
-        };
-        if (Traceback is not null)
-            frames.AddRange(Traceback.Frames);
-
-        Traceback = new TracebackInfo(frames, Traceback?.ThreadInfo ?? PyTraceback.CaptureThreadInfo(context));
+        node._next = Traceback;
+        Traceback = node;
+        TracebackThreadInfo ??= PyTraceback.CaptureThreadInfo(context);
 
         return this;
     }
@@ -146,10 +144,10 @@ public sealed class PyExceptionObject : PyObjectManagedDict
 
     private void PrintTrailer(IndentedStringBuilder builder, PyCallContext context, HashSet<PyExceptionObject> seen)
     {
-        if (Traceback?.ThreadInfo is not null)
+        if (TracebackThreadInfo is not null)
         {
             builder
-                .AppendLine(Traceback.ThreadInfo);
+                .AppendLine(TracebackThreadInfo);
         }
 
         if (IsGroup)
@@ -161,10 +159,10 @@ public sealed class PyExceptionObject : PyObjectManagedDict
         // CPython gates the header on the stack summary being non-empty
         // (traceback.py format: "if exc.stack:"), so a parse-time
         // SyntaxError with no frames prints no header at all
-        if (Traceback is not null && Traceback.Frames.Count is not 0)
+        if (Traceback is not null)
         {
             builder.AppendLine("Traceback (most recent call last):");
-            Traceback.Print(builder);
+            PyTraceback.Print(builder, Traceback);
         }
 
         if (PySyntaxErrorObjectType.Shared.IsInstance(this))
@@ -300,11 +298,11 @@ public sealed class PyExceptionObject : PyObjectManagedDict
     {
         Debug.Assert(AsGroup is not null);
 
-        if (Traceback is not null && Traceback.Frames.Count is not 0)
+        if (Traceback is not null)
         {
             builder.AppendLine("+ Exception Group Traceback (most recent call last):");
             using (builder.Indent("| "))
-                Traceback.Print(builder);
+                PyTraceback.Print(builder, Traceback);
         }
 
         builder.Append("| ");

@@ -85,7 +85,9 @@ public sealed partial class PyBaseExceptionGroupObjectType : PyExceptionType
             return excResult;
 
         var result = excResult.Value;
-        result.Traceback = self.Traceback;
+        // A fresh group starts with no traceback: CPython's derive builds from
+        // (msg, excs) alone, and the sub-groups that do inherit one are loaded
+        // by the split()/settlement paths below (exceptiongroup_subset).
         result.Cause = self.Cause;
         result.Context = self.Context;
 
@@ -225,6 +227,13 @@ public sealed partial class PyBaseExceptionGroupObjectType : PyExceptionType
 
                 if (result.Value is not PyExceptionObject exc || !exc.IsGroup || !Shared.IsInstance(result.Value))
                     return PyResult.TypeError(PySR.Runtime_ExceptionGroup_DeriveReturnNonGroup);
+
+                // exceptiongroup_subset reloads the metadata the derived group
+                // must share with its source, so a split()-ed part counts as
+                // "the same exception" as the group it was carved from. derive
+                // itself leaves the traceback unset (CPython does the same).
+                exc.Traceback = exceptionGroup.Traceback;
+                exc.TracebackThreadInfo = exceptionGroup.TracebackThreadInfo;
 
                 return exc;
             }

@@ -150,10 +150,51 @@ public sealed partial class PyBaseExceptionObjectType : PyExceptionType
         return PyResult.TypeError(PySR.Runtime_BaseException_ContextMayNotBeDeleted);
     }
 
+    // CPython BaseException___traceback___get_impl returns self->traceback,
+    // which is NULL until the exception is raised (or assigned through
+    // with_traceback / the setter)
     [PyProperty(PySpecialNames.Traceback)]
     private static PyResult Get_Traceback(PyCallContext context, PyExceptionObject self)
     {
+        return (PyObject?)self.Traceback ?? PyNoneObject.None;
+    }
+
+    // CPython BaseException___traceback___set_impl accepts a traceback or
+    // None (clearing it) and rejects anything else
+    [PyProperty(PySpecialNames.Traceback, Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_Traceback(PyCallContext context, PyExceptionObject self, PyObject value)
+    {
+        if (value is PyNoneObject)
+        {
+            self.Traceback = null;
+            return PyNoneObject.None;
+        }
+
+        if (value is not PyTracebackObject traceback)
+            return PyResult.TypeError(PySR.Runtime_BaseException_TracebackMustBeTracebackOrNone);
+
+        self.Traceback = traceback;
         return PyNoneObject.None;
+    }
+
+    [PyProperty(PySpecialNames.Traceback, Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Traceback(PyCallContext context, PyExceptionObject self)
+    {
+        return PyResult.TypeError(PySR.Runtime_BaseException_TracebackMayNotBeDeleted);
+    }
+
+    // CPython BaseException_with_traceback delegates to the __traceback__
+    // setter and returns self; it leaves __cause__/__context__ and
+    // __suppress_context__ untouched.
+    [PyMethod("with_traceback")]
+    [PyFunctionParameters("tb", "/")]
+    private static PyResult WithTraceback(PyCallContext context, PyExceptionObject self, PyArguments arguments)
+    {
+        var setResult = Set_Traceback(context, self, arguments[0]);
+        if (setResult.IsError)
+            return setResult;
+
+        return self;
     }
 
     [PyProperty(PySpecialNames.SuppressContext)]

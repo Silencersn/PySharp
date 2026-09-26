@@ -31,7 +31,7 @@ public class PyRuntimeException : Exception
 | `PyExceptionObject? Cause { get; }` | `raise ... from ...` 设置的 `__cause__` |
 | `PyExceptionObject? Context { get; }` | `__context__`，处理过程中隐式链上的原异常 |
 | `bool SuppressContext { get; }` | `__suppress_context__` |
-| `TracebackInfo? Traceback { get; }` | traceback 信息，内部维护 |
+| `PyTracebackObject? Traceback { get; }` | `__traceback__` 链头，随传播逐帧累积 |
 
 ## 检查异常类型
 

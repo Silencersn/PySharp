@@ -6,27 +6,61 @@ using System.Diagnostics;
 
 namespace PySharp.Runtime;
 
-public sealed class TracebackInfo
+internal static class PyTraceback
 {
-    public IReadOnlyList<(CodeMetaInfo? Info, string? CallerName)> Frames { get; }
-    public string? ThreadInfo { get; }
-
-    public TracebackInfo(IReadOnlyList<(CodeMetaInfo? Info, string? CallerName)> frames, string? threadInfo = null)
+    public static PyTracebackObject CaptureCurrentFrame(PyCallContext context)
     {
-        Frames = frames;
-        ThreadInfo = threadInfo;
+        ref var frame = ref context.CurrentInternalFrame;
+        if (frame.CodeObject is not null)
+        {
+            var info = frame.CodeObject.Bytecode.LineTable.Read(frame.InstructionIndex);
+            return new PyTracebackObject(info, null);
+        }
+        return new PyTracebackObject(null, null);
     }
 
-    internal void Print(IndentedStringBuilder builder)
+    // One node for the frame an exception is leaving. An inlined comprehension
+    // (PEP 709) shares its enclosing frame's code object, so its node carries
+    // the enclosing frame's name and the comprehension line — the same single
+    // entry CPython records, since it has no separate frame for a comprehension.
+    public static PyTracebackObject? CaptureFrameNode(PyCallContext context)
+    {
+        ref var frame = ref context.CurrentInternalFrame;
+        if (frame.CodeObject is null)
+            return null;
+
+        return new PyTracebackObject(frame.CodeObject.Bytecode.LineTable.Read(frame.InstructionIndex), frame.CallerName);
+    }
+
+    // CPython tags a traceback created on a non-main thread with a header
+    // naming that thread, taken from the thread-root frame the propagation
+    // started in.
+    public static string? CaptureThreadInfo(PyCallContext context)
+    {
+        for (int i = 0; i < context.FrameState.CurrentFrameCount; i++)
+        {
+            ref var frame = ref context.FrameState.GetFrame(i);
+            if (frame.FrameType is FrameType.ThreadRoot)
+                return $"Exception in thread Thread-{Environment.CurrentManagedThreadId} ({frame.CallerName}):";
+        }
+
+        return null;
+    }
+
+    // Prints the chain from the outermost frame towards the raise site — the
+    // "most recent call last" order — folding runs of more than three frames
+    // that repeat the same source position (CPython tb_printinternal with
+    // TB_RECURSIVE_CUTOFF).
+    internal static void Print(IndentedStringBuilder builder, PyTracebackObject? traceback)
     {
         CodeMetaInfo? preInfo = null;
         int repeatCount = 0;
-        foreach (var (info, callerName) in Frames)
+        for (var node = traceback; node is not null; node = node._next)
         {
-            if (info is null)
+            if (node._info is null)
                 continue;
 
-            if (info == preInfo)
+            if (node._info == preInfo)
             {
                 repeatCount++;
             }
@@ -42,8 +76,8 @@ public sealed class TracebackInfo
             }
 
             if (repeatCount <= 3)
-                Print(builder, info, callerName);
-            preInfo = info;
+                Print(builder, node._info, node._callerName);
+            preInfo = node._info;
         }
 
         if (repeatCount > 3)
@@ -115,47 +149,5 @@ public sealed class TracebackInfo
                     .AppendLine();
             }
         }
-    }
-}
-
-internal static class PyTraceback
-{
-    public static PyTracebackObject CaptureCurrentFrame(PyCallContext context)
-    {
-        ref var frame = ref context.CurrentInternalFrame;
-        if (frame.CodeObject is not null)
-        {
-            var info = frame.CodeObject.Bytecode.LineTable.Read(frame.InstructionIndex);
-            return new PyTracebackObject(info, null);
-        }
-        return new PyTracebackObject(null, null);
-    }
-
-    // One entry for the frame an exception is leaving. An inlined comprehension
-    // (PEP 709) shares its enclosing frame's code object, so its entry carries
-    // the enclosing frame's name and the comprehension line — the same single
-    // entry CPython records, since it has no separate frame for a comprehension.
-    public static (CodeMetaInfo? Info, string? CallerName)? CaptureFrameEntry(PyCallContext context)
-    {
-        ref var frame = ref context.CurrentInternalFrame;
-        if (frame.CodeObject is null)
-            return null;
-
-        return (frame.CodeObject.Bytecode.LineTable.Read(frame.InstructionIndex), frame.CallerName);
-    }
-
-    // CPython tags a traceback created on a non-main thread with a header
-    // naming that thread, taken from the thread-root frame the propagation
-    // started in.
-    public static string? CaptureThreadInfo(PyCallContext context)
-    {
-        for (int i = 0; i < context.FrameState.CurrentFrameCount; i++)
-        {
-            ref var frame = ref context.FrameState.GetFrame(i);
-            if (frame.FrameType is FrameType.ThreadRoot)
-                return $"Exception in thread Thread-{Environment.CurrentManagedThreadId} ({frame.CallerName}):";
-        }
-
-        return null;
     }
 }

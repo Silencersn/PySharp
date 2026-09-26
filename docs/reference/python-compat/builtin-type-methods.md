@@ -69,7 +69,9 @@ invalid continuation byte、unexpected end of data、超长、代理与截断的
 - 生成器与协程：`send`、`throw`（含三参形态）、`close`，属性 `__name__` 与 `__qualname__`；
   守卫语义见[生成器与协程系统](../internals/generator-system.md)。
 - 异常实例：`args` 及异常链属性（`__cause__`、`__context__`、`__suppress_context__`、
-  `__traceback__`）支持赋值与删除，见[错误处理](../user-guide/error-handling.md)。
+  `__traceback__`）支持赋值与删除，另有 `with_traceback`，见[错误处理](../user-guide/error-handling.md)。
+- `traceback` 对象：`tb_next`（可写）、`tb_lineno`（只读）；`tb_frame` 与 `tb_lasti` 为已知缺口，
+  见[调用与帧](../internals/calls-and-frames.md)。
 
 ## 相关节点
 
