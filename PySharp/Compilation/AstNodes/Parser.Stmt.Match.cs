@@ -16,7 +16,7 @@ partial class Parser
 
         var subject = ParseSubjectExpr();
 
-        EnsureTokenTypeThenMove(TokenType.Colon);
+        EnsureColonThenMove();
         EnsureTokenTypeThenMove(TokenType.NewLine);
         EnsureTokenTypeThenMove(TokenType.Indent, PySR.Format(PySR.InvalidSyntax_Indentation_ExpectedForBlock, "'match'", lineno));
 
@@ -46,7 +46,7 @@ partial class Parser
         EnsureKeywordThenMove("case");
         var patterns = ParsePatterns();
         var guard = IsCurrentKeyword("if") ? ParseGuard() : null;
-        EnsureTokenTypeThenMove(TokenType.Colon);
+        EnsureColonThenMove();
         var body = ParseBlock("case");
         return Ast.MatchCase(patterns, guard, body).With(metaInfo);
     }

@@ -105,6 +105,8 @@ partial class PySR
 
     public const string InvalidSyntax_ForStmt_ExpectedIn = "'in' expected after for-loop variables";
 
+    public const string InvalidSyntax_ExpectedColon = "expected ':'";
+
     public const string InvalidSyntax_RightParenNeverClosed = "'(' was never closed";
     public const string InvalidSyntax_ParenNeverClosed = "'{0}' was never closed";
     public const string InvalidSyntax_ParenMismatch = "closing parenthesis '{0}' does not match opening parenthesis '{1}'";

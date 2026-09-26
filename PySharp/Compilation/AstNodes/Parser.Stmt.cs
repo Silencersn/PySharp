@@ -734,7 +734,7 @@ partial class Parser
     private ImmutableArray<AstStmtNode> ParseElseBlock()
     {
         EnsureKeywordThenMove("else");
-        EnsureTokenTypeThenMove(TokenType.Colon);
+        EnsureColonThenMove();
         return ParseBlock("else");
     }
 
@@ -745,7 +745,7 @@ partial class Parser
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove(ifOrElif);
         var test = ParseNamedExpression();
-        EnsureTokenTypeThenMove(TokenType.Colon);
+        EnsureColonThenMove();
         var body = ParseBlock(ifOrElif);
         IEnumerable<AstStmtNode> orElse = [];
         if (IsCurrentKeyword("elif"))
@@ -761,7 +761,7 @@ partial class Parser
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("while");
         var test = ParseNamedExpression();
-        EnsureTokenTypeThenMove(TokenType.Colon);
+        EnsureColonThenMove();
         var body = ParseBlock("while");
         IEnumerable<AstStmtNode> orElse = IsCurrentKeyword("else") ? ParseElseBlock() : [];
         return Ast.While(test, body, orElse).With(metaInfo);
@@ -772,7 +772,7 @@ partial class Parser
     {
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("try");
-        EnsureTokenTypeThenMove(TokenType.Colon);
+        EnsureColonThenMove();
         var body = ParseBlock("try");
         if (!IsCurrentKeyword("except") && !IsCurrentKeyword("finally"))
             throw SyntaxError(PySR.InvalidSyntax_TryStmt_ExpectedExceptOrFinally);
@@ -843,7 +843,7 @@ partial class Parser
             throw SyntaxError(PySR.InvalidSyntax_TryStmt_ExpectedExceptionTypes);
         }
 
-        EnsureTokenTypeThenMove(TokenType.Colon);
+        EnsureColonThenMove();
 
         var body = ParseBlock("except");
         return Ast.ExceptHandler(type, name, body).With(metaInfo);
@@ -853,7 +853,7 @@ partial class Parser
     private ImmutableArray<AstStmtNode> ParseFinallyBlock()
     {
         EnsureKeywordThenMove("finally");
-        EnsureTokenTypeThenMove(TokenType.Colon);
+        EnsureColonThenMove();
         return ParseBlock("finally");
     }
 
@@ -866,7 +866,7 @@ partial class Parser
         AstUtils.SetContext(target, ExprContextType.Store);
         EnsureKeywordThenMove("in");
         var iter = ParseStarExpressions(StopPredicates.UntilColon);
-        EnsureTokenTypeThenMove(TokenType.Colon);
+        EnsureColonThenMove();
         var body = ParseBlock("for");
         IEnumerable<AstStmtNode> orElse = IsCurrentKeyword("else") ? ParseElseBlock() : [];
         return Ast.For(target, iter, body, orElse).With(metaInfo);
@@ -889,7 +889,7 @@ partial class Parser
         {
             items = ParseSomethingList(ParseWithItem, StopPredicates.UntilColon, out _).MakeArray();
         }
-        EnsureTokenTypeThenMove(TokenType.Colon);
+        EnsureColonThenMove();
 
         var body = ParseBlock("with");
 
@@ -932,7 +932,7 @@ partial class Parser
             returns = ParseExpression();
         }
 
-        EnsureTokenTypeThenMove(TokenType.Colon);
+        EnsureColonThenMove();
         var body = ParseBlock("def");
         return Ast.FunctionDef(name, args, body, decorators ?? [], returns, typeParams).With(metaInfo);
     }
@@ -957,7 +957,7 @@ partial class Parser
             EnsureTokenTypeThenMove(TokenType.RightParen);
         }
 
-        EnsureTokenTypeThenMove(TokenType.Colon);
+        EnsureColonThenMove();
         ImmutableArray<AstStmtNode> body;
         _classNameTrimmedStack.Push(className.TrimStart('_'));
         body = ParseBlock("class");
@@ -1064,7 +1064,7 @@ partial class Parser
         AstUtils.SetContext(target, ExprContextType.Store);
         EnsureKeywordThenMove("in");
         var iter = ParseStarExpressions(StopPredicates.UntilColon);
-        EnsureTokenTypeThenMove(TokenType.Colon);
+        EnsureColonThenMove();
         var body = ParseBlock("for");
         IEnumerable<AstStmtNode> orElse = IsCurrentKeyword("else") ? ParseElseBlock() : [];
         return Ast.AsyncFor(target, iter, body, orElse).With(metaInfo);
@@ -1087,7 +1087,7 @@ partial class Parser
         {
             items = ParseSomethingList(ParseWithItem, StopPredicates.UntilColon, out _).MakeArray();
         }
-        EnsureTokenTypeThenMove(TokenType.Colon);
+        EnsureColonThenMove();
 
         var body = ParseBlock("with");
 
@@ -1117,7 +1117,7 @@ partial class Parser
             returns = ParseExpression();
         }
 
-        EnsureTokenTypeThenMove(TokenType.Colon);
+        EnsureColonThenMove();
         var body = ParseBlock("def");
         return Ast.AsyncFunctionDef(name, args, body, decorators ?? [], returns, typeParams).With(metaInfo);
     }

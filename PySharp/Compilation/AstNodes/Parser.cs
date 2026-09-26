@@ -226,4 +226,16 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         EnsureTokenType(type, message);
         MoveNextToken();
     }
+
+    /// <summary>
+    /// Consumes the colon closing a compound statement header (an <c>if</c>, a <c>for</c>,
+    /// a <c>def</c>, an <c>except</c> clause...). These positions all report the missing
+    /// token the same way, so they share one diagnostic instead of the generic
+    /// <see cref="PySR.InvalidSyntax"/>. Expression-level colons (dict entries, slices,
+    /// annotations, lambda bodies) are not these positions and keep their own messages.
+    /// </summary>
+    private void EnsureColonThenMove()
+    {
+        EnsureTokenTypeThenMove(TokenType.Colon, PySR.InvalidSyntax_ExpectedColon);
+    }
 }
