@@ -55,7 +55,14 @@ public class PySuperObject : PyObject
         if (type.IsInstance(objectOrType))
             return new PySuperObject(type, objectOrType);
 
-        return PyResult.TypeError(PySR.Runtime_Super_ObjNotMatchType);
+        // CPython supercheck names both sides of the check and picks the
+        // wording by whether obj is itself a type (Objects/typeobject.c:11993),
+        // both names cut to 200 UTF-8 bytes
+        var typeOrInstance = objectOrType is PyTypeObject ? "type" : "instance of";
+        var objectName = PyUtils.TruncateUtf8(
+            objectOrType is PyTypeObject objType ? objType.TpName : objectOrType.PyType.TpName, 200);
+        return PyResult.TypeError(
+            PySR.Runtime_Super_ObjNotMatchType, typeOrInstance, objectName, PyUtils.TruncateUtf8(type.TpName, 200));
     }
 }
 

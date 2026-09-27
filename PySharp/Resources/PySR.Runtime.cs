@@ -127,7 +127,7 @@ partial class PySR
     public const string Runtime_String_AddNonStr = "can only concatenate str (not \"{0}\") to str";
     public const string Runtime_String_JoinNonStrAt = "sequence item {0}: expected str instance, {1} found";
 
-    public const string Runtime_Super_ObjNotMatchType = "super(type, obj): obj must be an instance or subtype of type";
+    public const string Runtime_Super_ObjNotMatchType = "super(type, obj): obj ({0} {1}) is not an instance or subtype of type ({2}).";
     public const string Runtime_Super_NoArgs = "super(): no arguments";
     public const string Runtime_Super_Arg0Deleted = "super(): arg[0] deleted";
     public const string Runtime_Super_ClassCellNotFound = "super(): __class__ cell not found";

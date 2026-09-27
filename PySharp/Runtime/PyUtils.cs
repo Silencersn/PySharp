@@ -512,4 +512,23 @@ internal static class PyUtils
     {
         return maxLength > 0 && repr.Length > maxLength ? repr[..maxLength] : repr;
     }
+
+    // The %.200s precision CPython applies to tp_name in messages
+    // (Objects/typeobject.c:12007) measures UTF-8 bytes rather than characters
+    // — a C string is the input side of unicode_fromformat_write_utf8
+    // (Objects/unicodeobject.c:2712) — and backs off to the previous character
+    // boundary when the cut lands inside a multi-byte sequence. Only malformed
+    // input takes the \xfffd replacement; a name merely cut short does not. So
+    // 70 three-byte characters come out as 66 (198 bytes), not 200.
+    public static string TruncateUtf8(string value, int maxBytes)
+    {
+        if (maxBytes <= 0 || Encoding.UTF8.GetByteCount(value) <= maxBytes)
+            return value;
+
+        var bytes = Encoding.UTF8.GetBytes(value);
+        var length = maxBytes;
+        while (length > 0 && (bytes[length] & 0xC0) is 0x80)
+            length--;
+        return Encoding.UTF8.GetString(bytes, 0, length);
+    }
 }
