@@ -1,10 +1,15 @@
 # 文件对象
 
-源码：`PySharp/Modules/IO/PyFileObject.cs`、`PySharp/Modules/Builtins/PyBuiltinFunctions.cs`
-（`open`）。C# 侧类型 `PyFileObject`，Python 类型名 `_io.FileObject`。
+源码：`PySharp/Modules/IO/PyTextIOWrapperObject.cs`、`PySharp/Modules/Builtins/PyBuiltinFunctions.cs`
+（`open`）。C# 侧类型 `PyTextIOWrapperObject`，Python 类型名 `_io.TextIOWrapper`（与 CPython 同名）。
 
 `open()` 在环境的[虚拟文件系统](./virtual-file-system.md)上打开文件并返回文件对象。本篇说明该对象
 的 Python 侧方法面，供脚本作者与需要核对行为的嵌入者查阅。
+
+文本模式 `open()` 的返回值与 `sys.stdin` / `sys.stdout` / `sys.stderr` 是**同一类型**
+（`_io.TextIOWrapper`，见[宿主与 I/O 重定向](./hosting.md#编码与标准流对象)），成员面与 dunder
+协议一致，只有底层句柄与打开模式不同。二进制模式（`rb` / `wb` 等）复用同一 C# 布局，但 CPython 的
+`BufferedReader` / `BufferedWriter` 层尚未单独建模。
 
 ## `open(file, mode='r', buffering=-1, encoding=None, errors=None, newline=None)`
 
@@ -81,12 +86,12 @@ lines = open("data.txt").readlines()
 
 ## C# 侧
 
-`open()` 的返回值在 C# 中是 `PyFileObject`（命名空间 `PySharp.Modules.Builtins`），见
+`open()` 的返回值在 C# 中是 `PyTextIOWrapperObject`（命名空间 `PySharp.Modules.IO`），见
 [内建类型速查表](../api/builtin-types.md)。宿主代码通常不直接实例化它；需要从 C# 侧写文件喂给脚本时，
 直接操作 `IVirtualFileSystem` 更简单，见[虚拟文件系统](./virtual-file-system.md)。
 
 ## 相关节点
 
 - [虚拟文件系统](./virtual-file-system.md)：`open()` 与 `import` 背后的存储层
-- [宿主与 I/O 重定向](./hosting.md)：stdin、stdout、stderr 的包装，`sys.stdin` 等是另一套流对象
+- [宿主与 I/O 重定向](./hosting.md)：stdin、stdout、stderr 与文本模式 `open()` 同类型，只是句柄与编码来源不同
 - [标准库模块覆盖](../python-compat/stdlib-modules.md)：`open` 所属的内建函数清单

@@ -283,6 +283,13 @@ public sealed class PyInterpreter : IDisposable
         var context = interpreter._mainContext;
         var builder = new StringBuilder();
 
+        // Input is read through sys.stdin, the same text stream input() and
+        // sys.stdin use, so the three never hold competing buffers over one
+        // underlying handle.
+        var stdin = runEnv.LoadBuiltinModule(context, "sys");
+        if (!stdin.PyAttributes.TryGetValue("stdin", out var stdinObj) || stdinObj is PyNoneObject)
+            return;
+
         var endOfInput = false;
         while (!endOfInput)
         {
@@ -296,13 +303,20 @@ public sealed class PyInterpreter : IDisposable
                 while (true)
                 {
                     runEnv.Out.Write(isFirstLine ? ">>> " : "... ");
-                    var line = runEnv.In.ReadLine();
-                    if (line is null)
+                    var lineResult = stdinObj.CallMethod(context, "readline");
+                    if (lineResult.IsError)
+                        throw new PyRuntimeException(lineResult.Exception);
+                    // readline() returns '' only at EOF; a blank line is '\n'
+                    var raw = ((PyStrObject)lineResult.Value).Value;
+                    if (raw.Length is 0)
                     {
                         // Matches CPython: EOF terminates the interactive session.
                         endOfInput = true;
                         return;
                     }
+                    var line = raw.EndsWith('\n') ? raw[..^1] : raw;
+                    if (line.EndsWith('\r'))
+                        line = line[..^1];
                     builder.AppendLine(line);
                     isFirstLine = false;
 

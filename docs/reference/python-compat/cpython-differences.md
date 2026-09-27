@@ -30,10 +30,21 @@ PySharp 以 CPython 3 为行为参照，大量语义细节（反射协议、子�
   析构时机不保证。
 - 文件对象的文本模式定位：`seek` 在文本模式下对非零的相对定位（`whence=1` 或 `whence=2`）报
   `_io.UnsupportedOperation`，与 CPython 的 `TextIOWrapper` 一致；绝对定位受支持。
-- 标准流的类型名：`sys.stdin` / `sys.stdout` / `sys.stderr` 的类型自带名是 `_io.StdIo`，不是 CPython
-  的 `_io.TextIOWrapper`；三者的 `__module__` 为 `_io`，`type(...).__name__` 为 `StdIo`。依赖
-  `__name__ == 'TextIOWrapper'` 或 `isinstance(x, io.TextIOWrapper)` 的检查不成立（`io` 模块本身亦
-  未接入，见[标准库模块覆盖](./stdlib-modules.md)）。
+- 标准流与文件对象同类型：`sys.stdin` / `sys.stdout` / `sys.stderr` 与文本模式 `open()` 的返回值
+  同为 `_io.TextIOWrapper`（`__module__` 为 `_io`，`type(...).__name__` 为 `TextIOWrapper`），
+  `type(sys.stdout) is type(open(...))` 成立，成员面与 dunder 协议（`with`、迭代）一致。仍存的差异是
+  `io` / `_io` 模块本身未接入，故 `isinstance(x, io.TextIOWrapper)` 无从书写，见
+  [标准库模块覆盖](./stdlib-modules.md)。
+- 标准流的编码：`sys.stdout.encoding` 等取自宿主环境的标准流编码（控制台宿主为
+  `Console.OutputEncoding`，测试宿主默认 UTF-8），与 `open()` 的 `encoding` 参数同源。CPython 的
+  `PYTHONIOENCODING` 环境变量尚未支持。
+- 标准流的可定位性：`sys.stdout.seekable()` 等委托底层句柄。CPython 在 stdout 重定向到文件或 NUL
+  时报告 `True`（`seek`/`tell` 可用），而 .NET 的控制台流包装（`WindowsConsoleStream`）无论是否重定向
+  都报告 `CanSeek` 为 `False`，故 PySharp 一律报告 `False`，`seek`/`tell` 抛
+  `_io.UnsupportedOperation: underlying stream is not seekable`。
+- 文本流成员面尚缺 `fileno`、`buffer`、`detach`、`newlines`、`line_buffering`、`write_through`、
+  `reconfigure`、`truncate`、`isatty`、`writelines`；这些在标准流与 `open()` 的文本对象上同样缺失
+  （两类型共同的缺口，非二者之间的不对称）。
 - `open()` 支持的参数与 CPython 对齐，包括 `buffering`、`encoding`、`errors` 与 `newline`；
   文本模式默认 `newline=None`，读入时做通用换行归一，写出时展开为平台换行符。详见
   [文件对象](../user-guide/file-objects.md)。

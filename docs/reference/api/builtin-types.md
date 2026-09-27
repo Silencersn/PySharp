@@ -54,12 +54,13 @@
 | 通用迭代器 | `PyIteratorObject`（序列协议回退时使用）与各容器专用 `Py*IteratorObject` |
 | `enumerate`、`filter`、`map`、`zip`、`reversed` | `PyEnumerateObject`、`PyFilterObject`、`PyMapObject`、`PyZipObject`、`PyReversedObject` |
 | 闭包单元、帧、traceback | `PyCellObject`、`PyInternalFrame`、`PyTracebackObject` |
-| 文件对象（`open()` 返回值） | `PyFileObject` |
-| `sys.stdin`、`sys.stdout`、`sys.stderr` | `PyStdIoObject`，环境标准流的包装 |
+| 文本文件对象（`open()` 文本模式返回值、`sys.stdin`、`sys.stdout`、`sys.stderr`） | `PyTextIOWrapperObject`（Python 类型 `_io.TextIOWrapper`，与 CPython 同名） |
+| `sys.stdin`、`sys.stdout`、`sys.stderr` | 同上的 `PyTextIOWrapperObject`，标准流的包装，底层句柄不同 |
 
-`PyStdIoObject` 提供 `read([size])`、`readline([size])`、`write(data)`、`flush()`、`close()`、
-`readable()`、`writable()` 与属性 `closed`、`name`。用法见
-[宿主与 I/O 重定向](../user-guide/hosting.md#编码与标准流对象)。
+`PyTextIOWrapperObject` 提供 `read([size])`、`readline([size])`、`readlines([hint])`、
+`write(data)`、`flush()`、`close()`、`seek`、`tell`、`seekable()`、`readable()`、`writable()`，
+属性 `closed`、`name`、`mode`、`encoding`、`errors`，以及 `with` 与迭代协议。标准流与文本模式文件是
+同一类型，成员面一致。用法见 [宿主与 I/O 重定向](../user-guide/hosting.md#编码与标准流对象)。
 
 ## 异常类型
 

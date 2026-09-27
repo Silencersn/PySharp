@@ -187,56 +187,70 @@ public static partial class PyBuiltinFunctions
         if (flushResult.IsError)
             return flushResult;
 
+        // CPython's builtin_print_impl writes through sys.stdout, not the
+        // interpreter's own stream: rebinding sys.stdout redirects print, and
+        // the text layer's newline translation applies to it like any other
+        // text stream. A None sys.stdout (detached interpreter) prints nothing.
         if (fileObj is PyNoneObject)
         {
-            for (int i = 0; i < arguments.ExtraArgs.Count; i++)
-            {
-                if (i is not 0)
-                    context.Out.Write(sep);
-
-                var strResult = PySpecialMethods.Str(context, arguments.ExtraArgs[i]);
-                if (strResult.IsError)
-                    return strResult;
-                context.Out.Write(strResult.Value.Value);
-            }
-            context.Out.Write(end);
-            if (flushResult.Value.BoolValue)
-                context.Out.Flush();
+            var stdout = context.PyEnvironment.LoadBuiltinModule(context, "sys");
+            if (!stdout.PyAttributes.TryGetValue("stdout", out var stream) || stream is PyNoneObject)
+                return PyNoneObject.None;
+            fileObj = stream;
         }
-        else
+
+        PyResult WriteToFile(string text) => fileObj.CallMethod(context, "write", [PyStrObject.FromString(text)]);
+
+        for (int i = 0; i < arguments.ExtraArgs.Count; i++)
         {
-            PyResult WriteToFile(string text) => fileObj.CallMethod(context, "write", [PyStrObject.FromString(text)]);
-
-            for (int i = 0; i < arguments.ExtraArgs.Count; i++)
+            if (i is not 0)
             {
-                if (i is not 0)
-                {
-                    var sepResult = WriteToFile(sep);
-                    if (sepResult.IsError)
-                        return sepResult;
-                }
-
-                var strResult = PySpecialMethods.Str(context, arguments.ExtraArgs[i]);
-                if (strResult.IsError)
-                    return strResult;
-                var writeResult = WriteToFile(strResult.Value.Value);
-                if (writeResult.IsError)
-                    return writeResult;
+                var sepResult = WriteToFile(sep);
+                if (sepResult.IsError)
+                    return sepResult;
             }
 
-            var endResult = WriteToFile(end);
-            if (endResult.IsError)
-                return endResult;
+            var strResult = PySpecialMethods.Str(context, arguments.ExtraArgs[i]);
+            if (strResult.IsError)
+                return strResult;
+            var writeResult = WriteToFile(strResult.Value.Value);
+            if (writeResult.IsError)
+                return writeResult;
+        }
 
-            if (flushResult.Value.BoolValue)
-            {
-                var flushCall = fileObj.CallMethod(context, "flush");
-                if (flushCall.IsError)
-                    return flushCall;
-            }
+        var endResult = WriteToFile(end);
+        if (endResult.IsError)
+            return endResult;
+
+        if (flushResult.Value.BoolValue)
+        {
+            var flushCall = fileObj.CallMethod(context, "flush");
+            if (flushCall.IsError)
+                return flushCall;
         }
 
         return PyNoneObject.None;
+    }
+
+    // CPython's PyFile_GetLine: call readline() on the stream, then strip one
+    // trailing '\n' — and for a text stream a preceding '\r' too, since the
+    // line reader may hand back a raw '\r\n'. An empty result is EOF.
+    private static PyResult ReadLineAndStrip(PyCallContext context, PyObject stream)
+    {
+        var lineResult = stream.CallMethod(context, "readline");
+        if (lineResult.IsError)
+            return lineResult;
+        if (lineResult.Value is not PyStrObject line)
+            return PyResult.TypeError(PySR.Runtime_Builtin_Input_ReadLineNonString, lineResult.Value.PyType.TpName);
+
+        var text = line.Value;
+        if (text.Length is 0)
+            return PyResult.EOFError(PySR.Runtime_Builtin_Input_Eof);
+        if (text[^1] is '\n')
+            text = text[..^1];
+        if (text.Length is not 0 && text[^1] is '\r')
+            text = text[..^1];
+        return PyStrObject.FromString(text);
     }
 
     [PyFunctionParameters("base", "exp", "mod=None")]
@@ -252,26 +266,47 @@ public static partial class PyBuiltinFunctions
     {
         return PySpecialMethods.DivMod(context, arguments[0], arguments[1]);
     }
+    // CPython's builtin_input_impl reads a line from sys.stdin and writes the
+    // prompt to sys.stdout (both resolved at call time, so rebinding either
+    // redirects input()), then strips the trailing newline through
+    // PyFile_GetLine. Reading the sys objects rather than the interpreter's own
+    // reader is what keeps input() and sys.stdin on one buffer.
+    private static PyResult InputCore(PyCallContext context, PyObject? prompt)
+    {
+        var sys = context.PyEnvironment.LoadBuiltinModule(context, "sys");
+        if (!sys.PyAttributes.TryGetValue("stdin", out var stdin) || stdin is PyNoneObject)
+            return PyResult.RuntimeError(PySR.Runtime_Builtin_Input_LostStdin);
+        if (!sys.PyAttributes.TryGetValue("stdout", out var stdout) || stdout is PyNoneObject)
+            return PyResult.RuntimeError(PySR.Runtime_Builtin_Input_LostStdout);
+
+        if (prompt is not null)
+        {
+            var strResult = PySpecialMethods.Str(context, prompt);
+            if (strResult.IsError)
+                return strResult;
+            var promptResult = stdout.CallMethod(context, "write", [strResult.Value]);
+            if (promptResult.IsError)
+                return promptResult;
+        }
+
+        // CPython flushes stdout before reading, and stderr first, ignoring
+        // a failure on either
+        _ = stdout.CallMethod(context, "flush");
+        if (sys.PyAttributes.TryGetValue("stderr", out var stderr) && stderr is not PyNoneObject)
+            _ = stderr.CallMethod(context, "flush");
+
+        return ReadLineAndStrip(context, stdin);
+    }
+
     [PyFunctionParameters()]
     private static PyResult InputImpl_1(PyCallContext context, PyArguments arguments)
     {
-        var line = context.In.ReadLine();
-        if (line is null)
-            return PyResult.EOFError("EOF when reading a line");
-        return PyStrObject.FromString(line);
+        return InputCore(context, prompt: null);
     }
     [PyFunctionParameters("prompt", "/")]
     private static PyResult InputImpl_2(PyCallContext context, PyArguments arguments)
     {
-        var result = PySpecialMethods.Str(context, arguments[0]);
-        if (result.IsError)
-            return result;
-
-        context.Out.Write(result.Value.Value);
-        var line = context.In.ReadLine();
-        if (line is null)
-            return PyResult.EOFError("EOF when reading a line");
-        return PyStrObject.FromString(line);
+        return InputCore(context, arguments[0]);
     }
     [PyFunctionParameters("source", "/", "globals=None", "locals=None")]
     private static PyResult EvalImpl(PyCallContext context, PyArguments arguments)
@@ -1553,7 +1588,7 @@ public static partial class PyBuiltinFunctions
         if (appending && updating)
             stream.Seek(0, SeekOrigin.End);
 
-        return new PyFileObject(stream, mode, path,
+        return new PyTextIOWrapperObject(stream, mode, path,
             isTextMode: !binary, isReadable: reading || updating,
             isWritable: writing || appending || creating || updating, isSeekable,
             encoding: encodingName, errors: errorsName,

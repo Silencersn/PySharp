@@ -7,7 +7,7 @@ namespace PySharp.Runtime.Environments;
 
 public abstract class PyEnvironmentHost
 {
-    // Moved from PyFileObject.Utf8NoBom, cached so that it is not recreated on each access.
+    // Moved from the text file object's Utf8NoBom, cached so that it is not recreated on each access.
     internal static readonly Encoding Utf8NoBom = new UTF8Encoding(false);
 
     // Default encoding used for stdio wrappers; subclasses may override it.

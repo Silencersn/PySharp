@@ -301,6 +301,7 @@ partial class PySR
     public const string Runtime_File_NotReadable = "not readable";
     public const string Runtime_File_NotWritable = "not writable";
     public const string Runtime_File_NotSeekable = "file not seekable";
+    public const string Runtime_File_UnderlyingNotSeekable = "underlying stream is not seekable";
     public const string Runtime_File_WriteNeedStr = "write() argument must be str, not {0}";
     public const string Runtime_File_WriteNeedBytes = "a bytes-like object is required, not '{0}'";
     public const string Runtime_File_InvalidWhence = "invalid whence ({0}, should be 0, 1 or 2)";
@@ -309,6 +310,10 @@ partial class PySR
     public const string Runtime_File_CurRelativeSeekUnsupported = "can't do nonzero cur-relative seeks";
     public const string Runtime_File_EndRelativeSeekUnsupported = "can't do nonzero end-relative seeks";
     public const string Runtime_File_CannotFitOffset = "cannot fit 'int' into an offset-sized integer";
+    public const string Runtime_Builtin_Input_Eof = "EOF when reading a line";
+    public const string Runtime_Builtin_Input_ReadLineNonString = "object.readline() returned non-string";
+    public const string Runtime_Builtin_Input_LostStdin = "lost sys.stdin";
+    public const string Runtime_Builtin_Input_LostStdout = "lost sys.stdout";
     public const string Runtime_Str_PctFormatRealNumberRequired = "%{0} format: a real number is required, not {1}";
     public const string Runtime_Str_PctFormatIntegerRequired = "%{0} format: an integer is required, not {1}";
     public const string Runtime_Str_StartswithTupleItemMustBeStr = "tuple for startswith must only contain str, not {0}";

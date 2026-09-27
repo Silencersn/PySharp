@@ -7,7 +7,7 @@ PySharp 的标准库以 C# 内嵌模块为主，注册于 `PyStandardLibrary`，
 | 模块 | 提供内容 |
 | --- | --- |
 | `builtins` | 44 个内建函数（见下）、全部内建类型与 68 个异常类型（含警告族 12 个，即 `Warning` 基类加 11 个子类） |
-| `sys` | `argv`、`stdin`、`stdout`、`stderr`（`OnImport` 时以 `PyStdIoObject` 流包装注入，类型条目见[内建类型速查表](../api/builtin-types.md)）、`get_int_max_str_digits()` 与 `set_int_max_str_digits(n)`（见下文）。`version`、`flags`、`modules`、`path` 等对 Python 侧不可见，见[常见问题](../user-guide/faq.md) |
+| `sys` | `argv`、`stdin`、`stdout`、`stderr`（`OnImport` 时以 `PyTextIOWrapperObject` 流包装注入，与文本模式 `open()` 同类型，条目见[内建类型速查表](../api/builtin-types.md)）、`get_int_max_str_digits()` 与 `set_int_max_str_digits(n)`（见下文）。`version`、`flags`、`modules`、`path` 等对 Python 侧不可见，见[常见问题](../user-guide/faq.md) |
 | `site` | `exit`、`help` |
 | `operator` | 19 个运算函数：`add`、`sub`、`mul`、`truediv`、`floordiv`、`mod`、`pow`、`lshift`、`rshift`、`and_`、`or_`、`xor`、`lt`、`le`、`eq`、`ne`、`gt`、`ge`、`length_hint` |
 | `math` | 常量 `pi`、`e`、`tau`；29 个函数：`sqrt`、`acos`、`asin`、`atan`、`atan2`、`cos`、`sin`、`tan`、`acosh`、`asinh`、`atanh`、`cosh`、`sinh`、`tanh`、`exp`、`fabs`、`ceil`、`floor`、`trunc`、`remainder`、`copysign`、`fmod`、`pow`、`gcd`、`lcm`、`log`、`log2`、`log10`、`log1p` |

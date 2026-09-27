@@ -44,9 +44,12 @@ public sealed partial class PyEnvironment : IDisposable
         _inStream = host.AllocateStdIn();
         _outStream = host.AllocateStdOut();
         _errorStream = host.AllocateStdErr();
-        _in = new StreamReader(_inStream, stdinEncoding ?? Host.DefaultEncoding);
-        _out = new StreamWriter(_outStream, stdoutEncoding ?? Host.DefaultEncoding);
-        _error = new StreamWriter(_errorStream, stderrEncoding ?? Host.DefaultEncoding);
+        StdInEncoding = stdinEncoding ?? Host.DefaultEncoding;
+        StdOutEncoding = stdoutEncoding ?? Host.DefaultEncoding;
+        StdErrEncoding = stderrEncoding ?? Host.DefaultEncoding;
+        _in = new StreamReader(_inStream, StdInEncoding);
+        _out = new StreamWriter(_outStream, StdOutEncoding);
+        _error = new StreamWriter(_errorStream, StdErrEncoding);
         _out.AutoFlush = true;
         _error.AutoFlush = true;
         _isInteractive = isInteractive;
@@ -75,6 +78,13 @@ public sealed partial class PyEnvironment : IDisposable
     internal Stream InStream => _inStream;
     internal Stream OutStream => _outStream;
     internal Stream ErrorStream => _errorStream;
+
+    // The encodings the standard streams were opened with; the stdio
+    // TextIOWrapper objects report these as their encoding attribute and
+    // encode/decode through them.
+    internal Encoding StdInEncoding { get; }
+    internal Encoding StdOutEncoding { get; }
+    internal Encoding StdErrEncoding { get; }
     internal PyEnvironmentOptions Options { get; }
     internal Dictionary<string, PyModuleObject?> Modules { get; } = [];
     internal ConcurrentSet<Thread> Threads { get; } = [];

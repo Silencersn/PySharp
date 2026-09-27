@@ -44,7 +44,7 @@
 - **宿主（host）**：`PyEnvironmentHost` 是环境外部世界（标准流与文件系统）的提供者，预定义 Null / Console / Repl 与构建器。见[宿主与 I/O 重定向](./user-guide/hosting.md)。
 - **虚拟文件系统（virtual file system）**：`open()` 与 `import` 的唯一 IO 通道，可选 `MemoryFileSystem`（内存）、`PhysicalFileSystem`（磁盘桥接）或自定义实现。见[虚拟文件系统](./user-guide/virtual-file-system.md)。
 - **标准库模块**：编译进解释器的模块，当前共 13 个，其中 `builtins`、`math`、`sys`、`threading`、`warnings`、`queue` 等由 C# 实现。见[标准库模块覆盖](./python-compat/stdlib-modules.md)。
-- **`PyStdIoObject`**：`sys.stdin` / `sys.stdout` / `sys.stderr` 的流包装对象，方法有 `read`、`readline`、`write`、`flush`、`close`、`readable`、`writable`，属性有 `closed`、`name`。见[宿主与 I/O 重定向](./user-guide/hosting.md#编码与标准流对象)。
+- **`PyTextIOWrapperObject`**：文本文件对象，`open()` 文本模式的返回值与 `sys.stdin` / `sys.stdout` / `sys.stderr` 是同一类型（Python 侧 `_io.TextIOWrapper`）。方法有 `read`、`readline`、`readlines`、`write`、`flush`、`close`、`seek`、`tell`、`seekable`、`readable`、`writable`，属性有 `closed`、`name`、`mode`、`encoding`、`errors`。见[宿主与 I/O 重定向](./user-guide/hosting.md#编码与标准流对象)。
 - **`WarningState`**：每解释器的警告策略状态（internal），含过滤器列表、去重注册表与 record 收集器，随环境构造就位。见[警告与数据类](./user-guide/warnings-and-dataclasses.md)。
 - **优化级（`OptimizationLevel`）**：环境选项，CLI 的 `-O` / `-OO` 累加。大于 0 时不发射 `assert` 且 `__debug__` 为 `False`；大于等于 2 时连 docstring 一并去除。
 - **冻结模块（frozen module）**：以 `[PyFrozenModule]` 声明的编译期内置 Python 源码模块，当前有 `this` 与 `dataclasses`。

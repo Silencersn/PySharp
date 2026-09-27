@@ -41,10 +41,13 @@ ANSI 的地方（文件、管道、GUI 日志面板）时应覆写为 `false`，
   `sys.stdout` 等的文本进出都走它。未设置时用宿主的 `DefaultEncoding`。
 - 文件文本编码独立：`open()` 有独立的 `encoding` 参数，默认 UTF-8，与流的编码选项无关，见
   [文件对象](./file-objects.md)。
-- `sys.stdin`、`sys.stdout`、`sys.stderr` 以 `PyStdIoObject` 暴露给 Python：方法 `read([size])`、
-  `readline([size])`、`write(data)`、`flush()`、`close()`、`readable()`、`writable()`，属性
-  `closed`、`name`（值为 `"<stdin>"` 等）。`input()` 读取 stdin，EOF 时抛 `EOFError`；prompt 写
-  stdout。`sys.stdout.write()` 与 `print` 落到同一条流。
+- `sys.stdin`、`sys.stdout`、`sys.stderr` 以 `PyTextIOWrapperObject`（Python 类型
+  `_io.TextIOWrapper`，与文本模式 `open()` 同一类型）暴露给 Python：方法 `read([size])`、
+  `readline([size])`、`write(data)`、`flush()`、`close()`、`seek`、`tell`、`readable()`、
+  `writable()`、`seekable()`，属性 `closed`、`name`（值为 `"<stdin>"` 等）、`mode`、`encoding`、
+  `errors`。`encoding` 即此处配置的流编码；`stderr` 的 `errors` 为 `backslashreplace`，其余为
+  `strict`。`close()` 只关闭包装对象，不关闭宿主进程的句柄。`input()` 读取 stdin，EOF 时抛
+  `EOFError`；prompt 写 stdout。`sys.stdout.write()` 与 `print` 落到同一条流。
 
 宿主侧示例，让 Python 侧以 GBK 读写控制台：
 

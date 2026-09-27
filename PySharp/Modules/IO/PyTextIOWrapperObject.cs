@@ -8,17 +8,23 @@ using System.Text;
 namespace PySharp.Modules.IO;
 
 /// <summary>
-/// Python file object returned by open().
-/// Wraps a .NET Stream and provides text/binary file I/O.
+/// Python text file object: the result of open() in text mode and the wrapper
+/// around sys.stdin/sys.stdout/sys.stderr. Wraps a .NET Stream and provides
+/// text I/O; binary-mode open() results share the layout via
+/// <see cref="_isTextMode"/>. CPython models both as _io.TextIOWrapper, so the
+/// standard streams and open() share this one type object.
 /// </summary>
 [AIGenerated]
-public sealed class PyFileObject : PyObject, IDisposable
+public sealed class PyTextIOWrapperObject : PyObject, IDisposable
 {
     private readonly Stream _stream;
     internal readonly bool _isTextMode;
     internal readonly bool _isReadable;
     internal readonly bool _isWritable;
     internal readonly bool _isSeekable;
+    // open() owns its handle and closes it; the standard streams do not own the
+    // process's console handles, so close() only marks the wrapper closed
+    private readonly bool _ownsStream;
     internal readonly string _mode;
     internal readonly string _name;
     private bool _closed;
@@ -52,10 +58,10 @@ public sealed class PyFileObject : PyObject, IDisposable
     // to the first write only, like TextIOWrapper's incremental encoder
     private bool _wrotePreamble;
 
-    internal PyFileObject(Stream stream, string mode, string name,
+    internal PyTextIOWrapperObject(Stream stream, string mode, string name,
         bool isTextMode, bool isReadable, bool isWritable, bool isSeekable,
         string? encoding = null, string? errors = null, string? newline = null,
-        PyTextCodec? codec = null, bool wrotePreamble = false)
+        PyTextCodec? codec = null, bool wrotePreamble = false, bool ownsStream = true)
     {
         _stream = stream;
         _mode = mode;
@@ -64,6 +70,7 @@ public sealed class PyFileObject : PyObject, IDisposable
         _isReadable = isReadable;
         _isWritable = isWritable;
         _isSeekable = isSeekable;
+        _ownsStream = ownsStream;
         _encodingParam = !isTextMode ? string.Empty : encoding ?? "utf-8";
         _errorsName = !isTextMode ? string.Empty : errors ?? "strict";
         _encodingName = _encodingParam;
@@ -73,12 +80,34 @@ public sealed class PyFileObject : PyObject, IDisposable
         // appending to a non-empty file suppresses the codec preamble, like
         // CPython's _textiowrapper_fix_encoder_state
         _wrotePreamble = wrotePreamble;
-        _rawBufBase = stream.Position;
+        // a non-seekable stream (the standard streams) has no position to read
+        var position = stream.CanSeek ? stream.Position : 0;
+        _rawBufBase = position;
         _codec?.PositionBase = _rawBufBase;
-        _frontPos = stream.Position;
+        _frontPos = position;
     }
 
-    public override PyTypeObject DefaultPyType => PyFileObjectType.Shared;
+    /// <summary>
+    /// Wraps one of the environment's standard streams as CPython's
+    /// create_stdio does: a TextIOWrapper over the raw host stream, with
+    /// universal newlines, the environment's encoding and the per-stream
+    /// error handler (stderr uses backslashreplace). The handle stays owned by
+    /// the host, so close() never disposes it.
+    /// </summary>
+    internal static PyTextIOWrapperObject CreateStandardStream(
+        Stream stream, string name, string mode, bool readable, bool writable,
+        Encoding encoding, string errors)
+    {
+        var encodingName = PyTextCodec.CanonicalEncodingName(encoding);
+        return new PyTextIOWrapperObject(stream, mode, name,
+            isTextMode: true, isReadable: readable, isWritable: writable,
+            isSeekable: stream.CanSeek,
+            encoding: encodingName, errors: errors, newline: null,
+            codec: PyTextCodec.Create(encodingName, errors, out _),
+            ownsStream: false);
+    }
+
+    public override PyTypeObject DefaultPyType => PyTextIOWrapperObjectType.Shared;
     internal bool IsClosed => _closed;
 
     internal PyResult CheckClosed()
@@ -196,6 +225,23 @@ public sealed class PyFileObject : PyObject, IDisposable
         if (_closed)
             return PyNoneObject.None;
         _closed = true;
+        if (!_ownsStream)
+        {
+            // a standard stream: the host owns the handle, so a final flush
+            // must not tear the process's console down, and a failing flush
+            // must not mask the successful close
+            if (_isWritable)
+            {
+                try
+                {
+                    _stream.Flush();
+                }
+                catch (IOException)
+                {
+                }
+            }
+            return PyNoneObject.None;
+        }
         try
         {
             _stream.Dispose();
@@ -271,7 +317,13 @@ public sealed class PyFileObject : PyObject, IDisposable
                 : PySR.Runtime_File_SeekClosed);
         }
         if (!_isSeekable)
-            return PyResult.ValueError(PySR.Runtime_File_NotSeekable);
+        {
+            // TextIOWrapper: _unsupported(self->state, "underlying stream is
+            // not seekable") — only the standard streams reach this today
+            return _isTextMode
+                ? PyResult.RaiseException(PyUnsupportedOperationObjectType.Shared, PySR.Runtime_File_UnderlyingNotSeekable)
+                : PyResult.ValueError(PySR.Runtime_File_NotSeekable);
+        }
         if (_isTextMode)
         {
             if (whence is not 0 and not 1 and not 2)
@@ -319,7 +371,11 @@ public sealed class PyFileObject : PyObject, IDisposable
                 : PySR.Runtime_File_ClosedNoPeriod);
         }
         if (!_isSeekable)
-            return PyResult.ValueError(PySR.Runtime_File_NotSeekable);
+        {
+            return _isTextMode
+                ? PyResult.RaiseException(PyUnsupportedOperationObjectType.Shared, PySR.Runtime_File_UnderlyingNotSeekable)
+                : PyResult.ValueError(PySR.Runtime_File_NotSeekable);
+        }
         if (!_isTextMode)
             return PyIntObject.FromInteger(_stream.Position);
         // TextIOWrapper.tell(): an opaque cookie that seek() accepts back.
@@ -852,16 +908,20 @@ public sealed class PyFileObject : PyObject, IDisposable
 
 [AIGenerated]
 // module position "_io" like CPython's io stack types (the qual name stays
-// bare; ReprName composes it as "_io.FileObject" from the module)
-[PyType("FileObject", Module = "_io")]
-public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
+// bare; ReprName composes it as "_io.TextIOWrapper" from the module)
+[PyType("TextIOWrapper", Module = "_io")]
+public sealed partial class PyTextIOWrapperObjectType : PyTypeObject<PyTextIOWrapperObject>
 {
-    protected override PyResult Repr(PyCallContext context, PyFileObject self)
+    protected override PyResult Repr(PyCallContext context, PyTextIOWrapperObject self)
     {
-        return PyStrObject.FromString($"<_io.FileObject name='{self._name}' mode='{self._mode}'>");
+        // CPython's text repr carries the encoding; the binary layers
+        // (Buffered*) print no encoding field
+        return self._isTextMode
+            ? PyStrObject.FromString($"<_io.TextIOWrapper name='{self._name}' mode='{self._mode}' encoding='{self._encodingName}'>")
+            : PyStrObject.FromString($"<_io.TextIOWrapper name='{self._name}' mode='{self._mode}'>");
     }
 
-    protected override PyResult Enter(PyCallContext context, PyFileObject self)
+    protected override PyResult Enter(PyCallContext context, PyTextIOWrapperObject self)
     {
         var check = self.CheckClosed();
         if (check.IsError)
@@ -869,12 +929,12 @@ public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
         return self;
     }
 
-    protected override PyResult Exit(PyCallContext context, PyFileObject self, PyObject excType, PyObject excVal, PyObject excTb)
+    protected override PyResult Exit(PyCallContext context, PyTextIOWrapperObject self, PyObject excType, PyObject excVal, PyObject excTb)
     {
         return self.Close();
     }
 
-    protected override PyResult Iter(PyCallContext context, PyFileObject self)
+    protected override PyResult Iter(PyCallContext context, PyTextIOWrapperObject self)
     {
         var check = self.CheckClosed();
         if (check.IsError)
@@ -882,7 +942,7 @@ public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
         return self;
     }
 
-    protected override PyResult Next(PyCallContext context, PyFileObject self)
+    protected override PyResult Next(PyCallContext context, PyTextIOWrapperObject self)
     {
         var result = self.ReadLine();
         if (result.IsError)
@@ -897,7 +957,7 @@ public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
 
     [PyMethod("read")]
     [PyFunctionParameters("size=-1", "/")]
-    private static PyResult Read(PyCallContext context, PyFileObject self, PyArguments arguments)
+    private static PyResult Read(PyCallContext context, PyTextIOWrapperObject self, PyArguments arguments)
     {
         var sizeObj = arguments[0];
         if (sizeObj is PyNoneObject)
@@ -920,28 +980,28 @@ public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
 
     [PyMethod("write")]
     [PyFunctionParameters("data", "/")]
-    private static PyResult Write(PyCallContext context, PyFileObject self, PyArguments arguments)
+    private static PyResult Write(PyCallContext context, PyTextIOWrapperObject self, PyArguments arguments)
     {
         return self.Write(context, arguments[0]);
     }
 
     [PyMethod("close")]
     [PyFunctionParameters()]
-    private static PyResult Close(PyCallContext context, PyFileObject self, PyArguments arguments)
+    private static PyResult Close(PyCallContext context, PyTextIOWrapperObject self, PyArguments arguments)
     {
         return self.Close();
     }
 
     [PyMethod("flush")]
     [PyFunctionParameters()]
-    private static PyResult Flush(PyCallContext context, PyFileObject self, PyArguments arguments)
+    private static PyResult Flush(PyCallContext context, PyTextIOWrapperObject self, PyArguments arguments)
     {
         return self.Flush();
     }
 
     [PyMethod("seek")]
     [PyFunctionParameters("offset", "whence=0", "/")]
-    private static PyResult Seek(PyCallContext context, PyFileObject self, PyArguments arguments)
+    private static PyResult Seek(PyCallContext context, PyTextIOWrapperObject self, PyArguments arguments)
     {
         // PyNumber_AsOff_t / clinic int: both arguments go through __index__
         var offsetInt = IndexOrError(context, arguments[0], out var offsetError);
@@ -1007,14 +1067,14 @@ public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
 
     [PyMethod("tell")]
     [PyFunctionParameters()]
-    private static PyResult Tell(PyCallContext context, PyFileObject self, PyArguments arguments)
+    private static PyResult Tell(PyCallContext context, PyTextIOWrapperObject self, PyArguments arguments)
     {
         return self.Tell();
     }
 
     [PyMethod("readline")]
     [PyFunctionParameters("size=-1", "/")]
-    private static PyResult ReadLine(PyCallContext context, PyFileObject self, PyArguments arguments)
+    private static PyResult ReadLine(PyCallContext context, PyTextIOWrapperObject self, PyArguments arguments)
     {
         // the text layer's readline rejects None; the binary BufferedReader
         // readline accepts it
@@ -1037,7 +1097,7 @@ public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
 
     [PyMethod("readlines")]
     [PyFunctionParameters("hint=-1", "/")]
-    private static PyResult ReadLines(PyCallContext context, PyFileObject self, PyArguments arguments)
+    private static PyResult ReadLines(PyCallContext context, PyTextIOWrapperObject self, PyArguments arguments)
     {
         // CPython _IOBase.readlines: keep readline() until EOF, stopping
         // once the accumulated size EXCEEDS a positive hint (the crossing
@@ -1070,7 +1130,7 @@ public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
             var line = lineResult.Value;
             var lineLength = line switch
             {
-                PyStrObject s => PyFileObject.CodePointLength(s.Value),
+                PyStrObject s => PyTextIOWrapperObject.CodePointLength(s.Value),
                 PyBytesObject b => b.Length,
                 _ => 0,
             };
@@ -1088,7 +1148,7 @@ public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
 
     [PyMethod("readable")]
     [PyFunctionParameters()]
-    private static PyResult Readable(PyCallContext context, PyFileObject self, PyArguments arguments)
+    private static PyResult Readable(PyCallContext context, PyTextIOWrapperObject self, PyArguments arguments)
     {
         // CPython raises only when the file closed with the capability on
         var flag = self._isReadable;
@@ -1099,7 +1159,7 @@ public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
 
     [PyMethod("writable")]
     [PyFunctionParameters()]
-    private static PyResult Writable(PyCallContext context, PyFileObject self, PyArguments arguments)
+    private static PyResult Writable(PyCallContext context, PyTextIOWrapperObject self, PyArguments arguments)
     {
         // CPython raises only when the file closed with the capability on
         var flag = self._isWritable;
@@ -1110,7 +1170,7 @@ public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
 
     [PyMethod("seekable")]
     [PyFunctionParameters()]
-    private static PyResult Seekable(PyCallContext context, PyFileObject self, PyArguments arguments)
+    private static PyResult Seekable(PyCallContext context, PyTextIOWrapperObject self, PyArguments arguments)
     {
         // CPython raises only when the file closed with the capability on
         var flag = self._isSeekable;
@@ -1120,19 +1180,19 @@ public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
     }
 
     [PyProperty("closed")]
-    private static PyResult Get_closed(PyCallContext context, PyFileObject self)
+    private static PyResult Get_closed(PyCallContext context, PyTextIOWrapperObject self)
     {
         return PyBoolObject.FromBoolean(self.IsClosed);
     }
 
     [PyProperty("mode")]
-    private static PyResult Get_mode(PyCallContext context, PyFileObject self)
+    private static PyResult Get_mode(PyCallContext context, PyTextIOWrapperObject self)
     {
         return PyStrObject.FromString(self._mode);
     }
 
     [PyProperty("name")]
-    private static PyResult Get_name(PyCallContext context, PyFileObject self)
+    private static PyResult Get_name(PyCallContext context, PyTextIOWrapperObject self)
     {
         return PyStrObject.FromString(self._name);
     }
@@ -1140,18 +1200,18 @@ public sealed partial class PyFileObjectType : PyTypeObject<PyFileObject>
     // encoding/errors live on the text layer only (CPython TextIOWrapper);
     // binary files raise AttributeError like CPython's BufferedReader
     [PyProperty("encoding")]
-    private static PyResult Get_encoding(PyCallContext context, PyFileObject self)
+    private static PyResult Get_encoding(PyCallContext context, PyTextIOWrapperObject self)
     {
         if (!self._isTextMode)
-            return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, "_io.FileObject", "encoding");
+            return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, "_io.TextIOWrapper", "encoding");
         return PyStrObject.FromString(self._encodingName);
     }
 
     [PyProperty("errors")]
-    private static PyResult Get_errors(PyCallContext context, PyFileObject self)
+    private static PyResult Get_errors(PyCallContext context, PyTextIOWrapperObject self)
     {
         if (!self._isTextMode)
-            return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, "_io.FileObject", "errors");
+            return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, "_io.TextIOWrapper", "errors");
         return PyStrObject.FromString(self._errorsName);
     }
 }

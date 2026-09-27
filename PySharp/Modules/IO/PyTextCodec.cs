@@ -434,6 +434,37 @@ internal sealed class PyTextCodec
             errors, _errorName, source, sb, out next, out error, PositionBase);
     }
 
+    /// <summary>
+    /// The Python codec name a .NET encoding reports as. The standard streams
+    /// are built from the host's <see cref="Encoding"/> rather than from a
+    /// user-supplied name, so their <c>encoding</c> attribute has no spelling
+    /// to echo back; CPython's create_stdio reports the canonical codec name
+    /// ("utf-8", "cp1252", ...), which this resolves. The common UTF
+    /// encodings and ASCII/Latin-1 keep their Python registry names, and the
+    /// Windows/Latin code pages resolve through their codepage number, the
+    /// form .NET's own name (e.g. "windows-1252") does not match.
+    /// </summary>
+    internal static string CanonicalEncodingName(Encoding encoding)
+    {
+        // .NET spells the UTF families and the ASCII/Latin-1 pair with names
+        // that already normalize to their Python aliases; only the reported
+        // canonical spelling differs (us-ascii -> ascii, iso-8859-1 ->
+        // iso8859-1) and the byte-order variants need their dashed form
+        return PyStrObjectType.NormalizeEncodingName(encoding.WebName) switch
+        {
+            "utf8" => "utf-8",
+            "utf16" => "utf-16",
+            "utf16be" => "utf-16-be",
+            "utf32" => "utf-32",
+            "utf32be" => "utf-32-be",
+            "usascii" or "ascii" => "ascii",
+            "iso88591" or "latin1" => "iso8859-1",
+            // everything else (the Windows and CJK code pages) is named by its
+            // code page, which is also the spelling Create and open() resolve
+            _ => $"cp{encoding.CodePage}",
+        };
+    }
+
     internal static void AppendCodePoint(StringBuilder sb, int codePoint)
     {
         if (codePoint < 0x10000)
