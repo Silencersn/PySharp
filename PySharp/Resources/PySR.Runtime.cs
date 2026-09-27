@@ -39,8 +39,10 @@ partial class PySR
 
     // CPython quotes the module name with !r (Lib/importlib/_bootstrap.py
     // _ERR_MSG_PREFIX), so the caller passes repr(name) — the name arrives
-    // with its own quotes and escapes
+    // with its own quotes and escapes; the not-a-package clause quotes the
+    // parent the same way (_find_and_load_unlocked)
     public const string Runtime_Import_ModuleNotFound = "No module named {0}";
+    public const string Runtime_Import_ModuleNotPackage = "No module named {0}; {1} is not a package";
     public const string Runtime_Import_RelativeNoKnownParentPackage = "attempted relative import with no known parent package";
     public const string Runtime_Import_RelativeBeyondTopLevel = "attempted relative import beyond top-level package";
     public const string Runtime_Import_PackageNotString = "__package__ not set to a string";

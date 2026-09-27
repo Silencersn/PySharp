@@ -2,6 +2,7 @@ using PySharp.Modules;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Comparison;
+using PySharp.Runtime.Environments;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 using System.Text;
@@ -460,7 +461,8 @@ internal static class PyUtils
         if (repr.IsError)
             return repr;
 
-        return PyResult.FromException(CreateModuleNotFound(nameObj, repr.Value.Value));
+        return PyResult.FromException(CreateModuleNotFound(
+            nameObj, PySR.Format(PySR.Runtime_Import_ModuleNotFound, repr.Value.Value)));
     }
 
     // Same failure on the throwing path: the import machinery raises rather
@@ -472,13 +474,50 @@ internal static class PyUtils
         if (repr.IsError)
             return new PyRuntimeException(context, repr.Exception);
 
-        return new PyRuntimeException(context, CreateModuleNotFound(nameObj, repr.Value.Value));
+        return new PyRuntimeException(context, CreateModuleNotFound(
+            nameObj, PySR.Format(PySR.Runtime_Import_ModuleNotFound, repr.Value.Value)));
     }
 
-    private static PyExceptionObject CreateModuleNotFound(PyStrObject nameObj, string renderedName)
+    // CPython's _find_and_load_unlocked appends the not-a-package clause when
+    // a dotted import fails because the parent module imported but has no
+    // __path__; the failing level's child name owns both the message and the
+    // name attribute, and both names render through repr like the plain shape
+    [AIGenerated]
+    public static PyResult ModuleNotFound(PyCallContext context, ModuleNotPackageFailure failure)
     {
-        var exception = PyModuleNotFoundErrorObjectType.Shared.Create(
-            PyStrObject.FromString(PySR.Format(PySR.Runtime_Import_ModuleNotFound, renderedName)));
+        var nameObj = PyStrObject.FromString(failure.ModuleName);
+        var nameRepr = ReprForMessage(context, nameObj);
+        if (nameRepr.IsError)
+            return nameRepr;
+
+        var parentRepr = ReprForMessage(context, PyStrObject.FromString(failure.ParentName));
+        if (parentRepr.IsError)
+            return parentRepr;
+
+        return PyResult.FromException(CreateModuleNotFound(nameObj, PySR.Format(
+            PySR.Runtime_Import_ModuleNotPackage, nameRepr.Value.Value, parentRepr.Value.Value)));
+    }
+
+    // Same failure on the throwing path
+    [AIGenerated]
+    public static PyRuntimeException ModuleNotFoundThrowable(PyCallContext context, ModuleNotPackageFailure failure)
+    {
+        var nameObj = PyStrObject.FromString(failure.ModuleName);
+        var nameRepr = ReprForMessage(context, nameObj);
+        if (nameRepr.IsError)
+            return new PyRuntimeException(context, nameRepr.Exception);
+
+        var parentRepr = ReprForMessage(context, PyStrObject.FromString(failure.ParentName));
+        if (parentRepr.IsError)
+            return new PyRuntimeException(context, parentRepr.Exception);
+
+        return new PyRuntimeException(context, CreateModuleNotFound(nameObj, PySR.Format(
+            PySR.Runtime_Import_ModuleNotPackage, nameRepr.Value.Value, parentRepr.Value.Value)));
+    }
+
+    private static PyExceptionObject CreateModuleNotFound(PyStrObject nameObj, string message)
+    {
+        var exception = PyModuleNotFoundErrorObjectType.Shared.Create(PyStrObject.FromString(message));
         exception.SetMember("name", nameObj);
         return exception;
     }

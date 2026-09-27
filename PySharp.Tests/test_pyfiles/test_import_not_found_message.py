@@ -18,6 +18,14 @@ hence ModuleNotFoundError) accepts the name/path/name_from keywords, msg is
 args[0] for a single argument, and ImportError_str prefers a str msg over the
 args rendering.
 
+A dotted name whose parent module imported but has no __path__ fails with an
+explicit second clause in the same place (_find_and_load_unlocked):
+"No module named '<child>'; '<parent>' is not a package" — the failing
+level's child is both the quoted message name and the `name` attribute, so a
+grandchild of a plain module reports its parent chain ('p.c', not 'p.c.gc'),
+while a missing parent and a missing submodule of a real package stay
+note-free.
+
 :kind: test
 """
 
@@ -62,6 +70,56 @@ try:
 except ModuleNotFoundError as e:
     assert str(e) == "No module named 'it\\'s a \"test\"'"
     assert e.name == "it's a \"test\""
+
+# --- a dotted name whose parent is a plain module carries the note -------------
+# CPython _find_and_load_unlocked: the parent imports fine but has no
+# __path__, so the child import fails with
+#
+#     No module named '<child>'; '<parent>' is not a package
+#
+# where <child> is the failing level's own name — not the originally
+# requested one for deeper names
+try:
+    __import__("import_notpackage_mod.child")
+    assert False, "ModuleNotFoundError expected"
+except ModuleNotFoundError as e:
+    assert str(e) == ("No module named 'import_notpackage_mod.child'; "
+                      "'import_notpackage_mod' is not a package")
+    assert e.name == "import_notpackage_mod.child"
+
+# the import statement walks the same machinery
+try:
+    import import_notpackage_mod.child
+    assert False, "ModuleNotFoundError expected"
+except ModuleNotFoundError as e:
+    assert str(e) == ("No module named 'import_notpackage_mod.child'; "
+                      "'import_notpackage_mod' is not a package")
+    assert e.name == "import_notpackage_mod.child"
+
+# importing a grandchild of a plain module names 'parent.child': the error
+# belongs to that level's own import, which is where the chain broke
+try:
+    __import__("import_notpackage_mod.child.grandchild")
+    assert False, "ModuleNotFoundError expected"
+except ModuleNotFoundError as e:
+    assert str(e) == ("No module named 'import_notpackage_mod.child'; "
+                      "'import_notpackage_mod' is not a package")
+    assert e.name == "import_notpackage_mod.child"
+
+# a parent that fails its own import is reported without the note
+try:
+    __import__("no_such_parent_zz445.child")
+    assert False, "ModuleNotFoundError expected"
+except ModuleNotFoundError as e:
+    assert "is not a package" not in str(e)
+
+# a real package with a genuinely missing submodule stays note-free too
+try:
+    __import__("import_cycle_pkg.missing_zz445")
+    assert False, "ModuleNotFoundError expected"
+except ModuleNotFoundError as e:
+    assert str(e) == "No module named 'import_cycle_pkg.missing_zz445'"
+    assert e.name == "import_cycle_pkg.missing_zz445"
 
 # --- ModuleNotFoundError is an ImportError, as always -------------------------
 try:

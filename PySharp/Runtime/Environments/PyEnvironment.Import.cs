@@ -5,6 +5,15 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace PySharp.Runtime.Environments;
 
+// CPython's _find_and_load_unlocked fails a dotted import whose parent module
+// imported successfully but exposes no __path__ with an explicit second
+// clause — "No module named 'a.b'; 'a' is not a package" — and names the
+// failing level's child on the exception: importing 'a.b.c' with a
+// non-package 'a' reports 'a.b', because the error belongs to the parent
+// chain's own import rather than to the originally requested name.
+[AIGenerated]
+internal readonly record struct ModuleNotPackageFailure(string ModuleName, string ParentName);
+
 partial class PyEnvironment
 {
     /// <summary>
@@ -89,11 +98,18 @@ partial class PyEnvironment
 
     internal bool TryLoadModule(PyCallContext context, string qualifiedName, [NotNullWhen(true)] out PyModuleObject? rootModule, [NotNullWhen(true)] out PyModuleObject? module)
     {
-        return InternalTryLoadModule(context, qualifiedName, out rootModule, out module);
+        return InternalTryLoadModule(context, qualifiedName, out rootModule, out module, out _);
     }
 
-    internal bool InternalTryLoadModule(PyCallContext context, string qualifiedName, [NotNullWhen(true)] out PyModuleObject? rootModule, [NotNullWhen(true)] out PyModuleObject? module)
+    [AIGenerated]
+    internal bool TryLoadModule(PyCallContext context, string qualifiedName, [NotNullWhen(true)] out PyModuleObject? rootModule, [NotNullWhen(true)] out PyModuleObject? module, out ModuleNotPackageFailure? failure)
     {
+        return InternalTryLoadModule(context, qualifiedName, out rootModule, out module, out failure);
+    }
+
+    internal bool InternalTryLoadModule(PyCallContext context, string qualifiedName, [NotNullWhen(true)] out PyModuleObject? rootModule, [NotNullWhen(true)] out PyModuleObject? module, out ModuleNotPackageFailure? failure)
+    {
+        failure = null;
         if (!qualifiedName.Contains('.'))
         {
             var result = InternalTryLoadRootModule(context, qualifiedName, out rootModule);
@@ -111,7 +127,13 @@ partial class PyEnvironment
         for (int i = 1; i < parts.Length; i++)
         {
             if (!preModule.PyAttributes.TryGetValue(PySpecialNames.Path, out var pyObj))
+            {
+                // the parent imported but is not a package: the error names the
+                // child one level down, not the full requested name (see
+                // ModuleNotPackageFailure)
+                failure = new ModuleNotPackageFailure(string.Join('.', parts[..(i + 1)]), string.Join('.', parts[..i]));
                 return false;
+            }
 
             var list = PyUtils.IterableToList(context, pyObj);
             if (list.IsError)

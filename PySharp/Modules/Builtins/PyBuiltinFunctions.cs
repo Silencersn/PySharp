@@ -988,8 +988,12 @@ public static partial class PyBuiltinFunctions
             }
         }
 
-        if (!context.PyEnvironment.TryLoadModule(context, name, out var rootModule, out var module))
-            return PyUtils.ModuleNotFound(context, name);
+        if (!context.PyEnvironment.TryLoadModule(context, name, out var rootModule, out var module, out var failure))
+        {
+            return failure is not null
+                ? PyUtils.ModuleNotFound(context, failure.Value)
+                : PyUtils.ModuleNotFound(context, name);
+        }
 
         var fromList = arguments[3];
 

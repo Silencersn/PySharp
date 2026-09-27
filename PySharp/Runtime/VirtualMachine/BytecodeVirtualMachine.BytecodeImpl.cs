@@ -654,8 +654,12 @@ internal static partial class BytecodeVirtualMachine
             name = PyEnvironment.ResolveRelativeModuleName(context, packageObj, moduleName, hasPath, name, level.Int32Value);
         }
 
-        if (!context.PyEnvironment.TryLoadModule(context, name, out var rootModule, out var module))
-            throw PyUtils.ModuleNotFoundThrowable(context, name);
+        if (!context.PyEnvironment.TryLoadModule(context, name, out var rootModule, out var module, out var failure))
+        {
+            throw failure is not null
+                ? PyUtils.ModuleNotFoundThrowable(context, failure.Value)
+                : PyUtils.ModuleNotFoundThrowable(context, name);
+        }
 
         // If fromlist is non-empty, try to import each name as a submodule of the package
         // This mirrors CPython's _handle_fromlist: for from package import X, ensure X is
