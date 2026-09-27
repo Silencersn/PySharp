@@ -8,8 +8,9 @@ PySharp 的每个内建类型都是一个类型对：值类型 `Py*Object : PyOb
 `Py*ObjectType : PyTypeObject<T>` 定义 Python 行为（方法、属性、协议槽）。定义自己的类型时沿用
 同样的结构，由 Roslyn 源生成器（`PySharp.SourceGeneration`）根据特性生成注册代码，运行时不需要反射。
 
-这套模型是解释器定义全部内建类型的方式。方法、属性与协议覆写在库外程序集同样可用；个别接线点
-（如 `New` 覆写中写 `_pyType` 字段）是 `internal` 成员，因此当前完整的类型对体验以库内开发为主。
+这套模型是解释器定义全部内建类型的方式。方法、属性与协议覆写在库外程序集同样可用：协议槽的
+填充代码由生成器产出，库外的类型对走同一条路径。仍属 `internal` 的接线点只有一处——`New`
+覆写中为支持 Python 子类化写 `obj.Value._pyType = cls`（见[定义构造行为](#定义构造行为)）。
 新类型对 Python 代码的可见性还需要挂载到模块上，见文末与
 [用 C# 编写 Python 模块](./custom-modules.md)。
 
@@ -114,8 +115,8 @@ protected override PyResult GetItem(PyCallContext context, PyQueueObject self, P
 `Invert`，以及全部二元算术与反射算术（`Add`、`RAdd`、`Sub`、`RSub` 直到 `Eq`、`Ne`、`Lt`、
 `Le`、`Gt`、`Ge`）和就地运算。
 
-方式二，填充槽。在元类型构造函数中用 `FillSlot` 把委托挂到槽上，解释器内建类型大量使用这种方式，
-适合复用已有实现或使用非虚委托：
+方式二，填充槽。解释器内建类型在构造函数中用 `FillSlot` 把委托挂到槽上，适合复用已有实现或
+使用非虚委托：
 
 ```csharp
 private PyQueueObjectType()
@@ -124,7 +125,12 @@ private PyQueueObjectType()
 }
 ```
 
-`FillSlots()` 是生成器在初始化时调用的虚钩子，也可覆写它集中填槽。
+`FillSlots()` 是生成器在初始化时调用的虚钩子，方式一覆写的接线代码就生成在它的覆写里。
+
+不建议在外部类型对中手动填槽或直接写 `Slots.*` 的委托字段：手动 `FillSlot` 需要自己补齐
+生成器附带的接线（反射算术的 `FillReflectedSlots` 等），直接写槽字段则连类型字典的 wrapper
+描述符都不会注册，`repr()`、下标这类槽分发不会走它。覆写方式一的虚方法，这些全部由生成器
+代劳。
 
 ## 定义构造行为
 
@@ -157,6 +163,10 @@ protected override PyResult New(PyCallContext context, PyTypeObject cls,
 `[PyExport(name, methods)]` 声明一个由生成器实现的 `partial` 属性，把普通静态方法包装成
 `PyBuiltinFunctionOrMethodObject`。`methods` 用 `nameof` 引用实现方法，一个名字可对应多个重载，
 例如 `log` 的单参与双参版本。
+
+`_pyType` 是 `internal` 字段，上面的写法仅库内可用。库外类型若不需要支持 Python 子类化，在
+`New` 里直接返回构造好的值即可（实例的 `PyType` 回退到 `DefaultPyType`）；需要完整子类化支持
+时，这是当前仅剩的库内接线点。
 
 参数消费放在 `New` 还是 `Init`，对齐 CPython 的 `tp_new` 与 `tp_init` 分野：
 

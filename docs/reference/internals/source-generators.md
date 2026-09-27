@@ -23,7 +23,7 @@ PySharp 的类型机器（slots、方法描述符、异常工厂等）全部在�
 
 | 生成器（全名） | 触发特性 | 产物 | 内容 |
 | --- | --- | --- | --- |
-| `PySharp.SourceGeneration.PyTypeGenerator` | `[PyType]`、`[PyException]` | `{类型名}.g.cs` | 元类型的 `DefaultName`、`DefaultModule`、`IsSealed`，`Shared` 单例与构造（受 `[PyTypeConstructor]` 控制），`FillSlots()`（`FillSlot` 调用），`RegisterMethods()`（`AppendMethodDescriptor`、`AppendClassMethod`、`AppendStaticMethod`，按 `[PyMethod]` 的 `Order` 排序），`RegisterProperties()`（getter、setter、deleter 合并为 `AppendMemberDescriptor`） |
+| `PySharp.SourceGeneration.PyTypeGenerator` | `[PyType]`、`[PyException]` | `{类型名}.g.cs` | 元类型的 `DefaultName`、`DefaultModule`、`IsSealed`，`Shared` 单例与构造（受 `[PyTypeConstructor]` 控制），`FillSlots()`（把每个覆写的协议方法经 `*Bridge` 桥接填进槽，`FillSlot` 调用），`RegisterMethods()`（`AppendMethodDescriptor`、`AppendClassMethod`、`AppendStaticMethod`，按 `[PyMethod]` 的 `Order` 排序），`RegisterProperties()`（getter、setter、deleter 合并为 `AppendMemberDescriptor`） |
 | `...PyExceptionGenerator` | `[PyException]` | `{类型名}.Exception.g.cs` | 异常元类的 `Bases` 覆写 |
 | `...PyExportGenerator` | `[PyExport]`（partial 属性） | `{类名}.PyExport.g.cs` | 缓存字段与 `PyBuiltinFunctionOrMethodObject.CreateFunction(...)` 的属性实现。编译期读取 `[PyFunctionParameters]`，校验实现签名必须为 `PyResult M(PyCallContext, PyArguments)` |
 | `...PyFrozenModuleGenerator` | `[PyFrozenModule]` | `{类名}.PyFrozenModule.g.cs` | 构造函数与 `Code` 属性：把 `.py`（须在 csproj 的 `AdditionalFiles`，如 `Lib\**\*.py`）嵌入为 C# 原始字符串字面量，自动计算最小引号数 |
@@ -51,10 +51,15 @@ PySharp 的类型机器（slots、方法描述符、异常工厂等）全部在�
 - `Modules/Builtins/PyTypeObject.Declarations.cs` 是特殊方法清单
   （`[PySpecialMethod("__init__", typeof(PySelfArgsKwargsFunction))]`，可带 `SlotsMember` 分组）。
   由此 `InternalPyTypeObjectGenerator` 生成 5 个文件：
-  1. `PyTypeObject.Virtual.g.cs`：`PyTypeObject` 上的虚方法占位。
-  2. `PyTypeObjectOfT.Sealed.g.cs`：`PyTypeObject<T>` 上带 `self is not TObject` 检查的强类型
-     密封包装。
-  3. `PyTypeObject.Slots.g.cs`：`PyTypeSlots` 的委托字段（含分组）、`AllSlotNames`/`IsSlotName()`、
+  1. `PyTypeObject.Virtual.g.cs`：`PyTypeObject` 上的 `*Bridge` 虚方法占位（`protected internal`，
+     `PyObject` 签名）。
+  2. `PyTypeObjectOfT.Sealed.g.cs`：`PyTypeObject<T>` 上的密封桥接（`ReprBridge` 等，`protected
+     internal`）：检查 `self is not TObject` 后转发到第 5 点的强类型虚方法。槽委托（如
+     `PyUnaryFunction`）以 `PyObject` 为参数，`*Bridge` 是签名精确匹配的目标，强类型覆写经它
+     间接到达。
+  3. `PyTypeObject.Slots.g.cs`：`PyTypeSlots` 的委托字段（含分组，`public`——挂载在
+     `protected internal` 的嵌套类上，仅供生成代码经派生路径接线；`New` 等手工字段仍为
+     `internal`）、`AllSlotNames`/`IsSlotName()`、
      `FillNullWith()`（MRO 补槽）、`TrySetSlot()`、`ClearSlot()`、`TrySetWrappedSlot()`。
      一个 dunder 名可映射多个族的槽位（slotdefs 的多对多：`__add__` → `Number.Add` +
      `Sequence.Concat`）：`TrySetSlot`/`ClearSlot` 按名合并 case，赋值填首选（Number 侧）槽并

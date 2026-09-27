@@ -225,10 +225,10 @@ print(geom.area_of_circle(1))   # 3.14159...
    [虚拟文件系统](./virtual-file-system.md)。若其中的逻辑必须用 C# 实现，当前版本的公开接线尚在
    演进，见[与 CPython 的差异](../python-compat/cpython-differences.md)。
 
-另有两个 `internal` 边界，目前完整的类型对体验以库内为主：
+另有两个 `internal` 边界：
 
-- 支持子类化的 `obj.Value._pyType = cls` 写法使用了 internal 字段。库内完整模式见
-  `PyQueueObjectType`。
+- 支持 Python 子类化的 `obj.Value._pyType = cls` 写法使用了 internal 字段，库外无法写入；
+  不需要子类化支持的类型在 `New` 里直接返回构造好的值即可。库内完整模式见 `PyQueueObjectType`。
 - `PyCallContext` 仅由运行时在扩展点内提供。实现方法签名中的 `context` 参数就是入口，可在其中
   使用 `PyOperators` 与 `PySpecialMethods` 全套协议 API，并经 `context.PyEnvironment` 访问所在
   环境。扩展实现需要每次运行各不相同的宿主状态时，把数据注入环境而非静态字段，见

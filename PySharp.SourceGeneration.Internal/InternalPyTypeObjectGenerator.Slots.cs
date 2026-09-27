@@ -96,7 +96,7 @@ partial class InternalPyTypeObjectGenerator
             var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name == PySharpTypes.PySpecialMethodAttributeName);
             var delegateType = attributeData.GetConstructorArgument<INamedTypeSymbol>(1);
             if (delegateType is null) continue;
-            builder.AppendLine($"internal {delegateType.Name}? {method.Name};");
+            builder.AppendLine($"public {delegateType.Name}? {method.Name};");
         }
 
         // Nested types for each SlotsMember group — generate delegate fields inside the field's type
@@ -114,7 +114,7 @@ partial class InternalPyTypeObjectGenerator
                 var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name == PySharpTypes.PySpecialMethodAttributeName);
                 var delegateType = attributeData.GetConstructorArgument<INamedTypeSymbol>(1);
                 if (delegateType is null) continue;
-                builder.AppendLine($"internal {delegateType.Name}? {method.Name};");
+                builder.AppendLine($"public {delegateType.Name}? {method.Name};");
             }
 
             builder.ExitBlock();

@@ -84,6 +84,13 @@
 不可以。这些样板由源生成器按 `[PyType]` 等特性自动产出，手写会与生成代码重复定义而冲突。声明
 `partial` 类并标注特性即可，见[用 C# 定义 Python 类型](./custom-types.md)。
 
+问：可以绕过生成器手动填协议槽（`FillSlot` / `Slots.*`）吗？
+
+不建议。解释器内建类型这样做是库内实现细节；外部类型对手动 `FillSlot` 需要自己补齐生成器附带
+的接线（如反射算术的 `FillReflectedSlots`），直接写 `Slots.*` 的委托字段则连类型字典的 wrapper
+描述符都不会注册，`repr()`、下标这类槽分发不会走它。覆写协议虚方法即可，见
+[实现协议](./custom-types.md#实现协议)。
+
 问：`PyFunctionParameters` 签名串写错会怎样？
 
 签名不匹配在调用时以 Python 风格的 `TypeError`（缺参、多参或未知关键字）呈现，由

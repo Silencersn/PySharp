@@ -11,6 +11,8 @@ namespace PySharp.SourceGeneration.Internal;
 [Generator]
 public partial class InternalPyTypeObjectGenerator : IIncrementalGenerator
 {
+    private const string BridgeSuffix = "Bridge";
+
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var declarationsProvider = Utils.CreateNamedTypeSymbolProvider(context, "PySharp.Modules.Builtins.PyTypeObject.Declarations");

@@ -31,7 +31,7 @@ partial class InternalPyTypeObjectGenerator
                     }));
 
                     builder
-                        .AppendLine($"private protected virtual PyResult {method.Name}({parameters})")
+                        .AppendLine($"protected internal virtual PyResult {method.Name}{BridgeSuffix}({parameters})")
                         .EnterBlock()
                         .AppendLine("throw new UnreachableException(\"Implemented by PyTypeObject<TObject>\");")
                         .ExitBlock()

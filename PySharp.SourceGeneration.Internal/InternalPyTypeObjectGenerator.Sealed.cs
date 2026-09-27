@@ -36,7 +36,7 @@ partial class InternalPyTypeObjectGenerator
                     }));
 
                     builder
-                        .AppendLine($"private protected sealed override PyResult {method.Name}({parametersDef})")
+                        .AppendLine($"protected internal sealed override PyResult {method.Name}{BridgeSuffix}({parametersDef})")
                         .EnterBlock()
                         .AppendLine($"if (self is not TObject selfOfT)")
                         .Indent()

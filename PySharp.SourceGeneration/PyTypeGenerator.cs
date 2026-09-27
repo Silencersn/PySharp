@@ -243,10 +243,10 @@ public class PyTypeGenerator : IIncrementalGenerator
                                     // one — a type filling the first slot of a
                                     // family must create it itself
                                     builder.AppendLine($"Slots.{slot.SlotsMember} ??= new();");
-                                    builder.AppendLine($"FillSlot(PySpecialNames.{slot.Name}, ref Slots.{slot.SlotsMember}.{slot.Name}, {slot.Name});");
+                                    builder.AppendLine($"FillSlot(PySpecialNames.{slot.Name}, ref Slots.{slot.SlotsMember}.{slot.Name}, {slot.Name}Bridge);");
                                 }
                                 else
-                                    builder.AppendLine($"FillSlot(PySpecialNames.{slot.Name}, ref Slots.{slot.Name}, {slot.Name});");
+                                    builder.AppendLine($"FillSlot(PySpecialNames.{slot.Name}, ref Slots.{slot.Name}, {slot.Name}Bridge);");
                             })
                             .AppendLine("FillReflectedSlots();")
                         .ExitBlock())
