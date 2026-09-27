@@ -17,11 +17,13 @@ internal sealed class BytecodeBuilder : IDisposable
     private readonly OrderedDictionary<string, int> _names = new(StringComparer.Ordinal);
     private readonly Stack<ValueCodeMetaInfo> _metaInfoStack = [];
     private readonly CodeSource _source;
+    private readonly CompileSession _session;
 
-    internal BytecodeBuilder(CodeSource source)
+    internal BytecodeBuilder(CodeSource source, CompileSession session)
     {
         _source = source;
         _lineTableBuilder = new LineTableBuilder(_source);
+        _session = session;
     }
 
     internal Bytecode ToBytecode()
@@ -146,6 +148,14 @@ internal sealed class BytecodeBuilder : IDisposable
 
     public void Emit(OpCode opCode, PyObject pyObject)
     {
+        // Canonicalize through the compile unit's cache first, so this code
+        // object reaches the same object CPython's c_const_cache hands to every
+        // other code object in this compilation. The local pool still assigns
+        // its own index: co_consts stays per code object, only the objects it
+        // holds are shared (Python/compile.c merge_consts_recursive +
+        // _PyCompile_DictAddObj).
+        pyObject = _session.CanonicalizeConstant(pyObject);
+
         if (!_consts.TryGetValue(pyObject, out var index))
             _consts[pyObject] = index = _consts.Count;
         InternalEmit(opCode, index);

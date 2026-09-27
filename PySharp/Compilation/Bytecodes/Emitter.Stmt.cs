@@ -68,7 +68,7 @@ partial class Emitter
     private void EmitTypeAlias(TypeAliasNode n)
     {
         var currentBuilder = Builder;
-        Builder = new BytecodeBuilder(_source);
+        Builder = new BytecodeBuilder(_source, _session);
 
         LoadExpr(n.Value);
         Builder.Emit(OpCode.ReturnValue);

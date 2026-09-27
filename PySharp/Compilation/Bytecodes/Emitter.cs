@@ -12,9 +12,9 @@ namespace PySharp.Compilation.Bytecodes;
 
 internal sealed partial class Emitter
 {
-    public static Bytecode Emit(PyCallContext context, SemanticModel model, CodeSource source, bool onlyAsName = false)
+    public static Bytecode Emit(PyCallContext context, SemanticModel model, CodeSource source, CompileSession session, bool onlyAsName = false)
     {
-        var emitter = new Emitter(context, model, source) { OnlyAsName = onlyAsName };
+        var emitter = new Emitter(context, model, source, session) { OnlyAsName = onlyAsName };
         emitter.Emit();
         return emitter.Builder.ToBytecode();
     }
@@ -22,13 +22,15 @@ internal sealed partial class Emitter
     private readonly PyCallContext _context;
     private readonly SemanticModel _model;
     private readonly CodeSource _source;
+    private readonly CompileSession _session;
 
-    internal Emitter(PyCallContext context, SemanticModel model, CodeSource source)
+    internal Emitter(PyCallContext context, SemanticModel model, CodeSource source, CompileSession session)
     {
-        Builder = new BytecodeBuilder(source);
+        Builder = new BytecodeBuilder(source, session);
         _context = context;
         _model = model;
         _source = source;
+        _session = session;
         var scope = _model.GetVariableScope<RootVariableScope>(_model.Root);
         Debug.Assert(scope is not null);
         VariableScope = scope;
@@ -252,7 +254,7 @@ internal sealed partial class Emitter
             _savedBuilder = emitter.Builder;
             _savedScope = emitter.VariableScope;
             _savedRegions = [.. emitter.Regions];
-            emitter.Builder = new BytecodeBuilder(emitter._source);
+            emitter.Builder = new BytecodeBuilder(emitter._source, emitter._session);
             emitter.VariableScope = scope;
             // a sub scope emits a separate code object: its jumps can never
             // unwind the enclosing code object's regions

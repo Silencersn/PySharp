@@ -25,7 +25,7 @@ public static class Compiler
         var tokens = Lexer.Tokenize(context, source, session, appendNewLine);
         var node = parse(context, source, tokens, session, true);
         var model = SemanticAnalyzer.Analyze(context, source, node, session);
-        var bytecode = Emitter.Emit(context, model, source, onlyAsName);
+        var bytecode = Emitter.Emit(context, model, source, session, onlyAsName);
         return new PyCodeObject(name, filename, bytecode, CodeObjectFlags.Module);
     }
 
