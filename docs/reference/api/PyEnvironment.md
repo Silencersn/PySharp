@@ -13,12 +13,19 @@
 | `PyEnvironmentHost Host { get; }` | 构造时传入的宿主（I/O 与文件系统来源） |
 | `PyStrObject.InternPool InternPool { get; }` | 环境级字符串驻留池 |
 | `bool OutSupportsColor { get; }` / `bool ErrorSupportsColor { get; }` | 标准输出与错误输出是否支持 ANSI 颜色 |
+| `void SetEnvData(string key, object? value)` | 按键注入环境数据；同键覆盖。值以原生 C# 对象存放，对 Python 不可见，`Dispose` 不释放它 |
+| `bool TryGetEnvData(string key, out object? value)` | 按键读取，键未设置返回 `false` |
+| `bool TryGetEnvData<T>(string key, out T? value)` | 泛型读取；键未设置或存储值不能转换为 `T` 时返回 `false` |
+| `bool RemoveEnvData(string key, out object? value)` | 按键移除并取回，键未设置返回 `false` |
+| `event Action? OnDisposing` | 释放前钩子：`Dispose` 开始时（线程中断与流释放之前）触发一次；订阅者异常不阻断清理，但会在清理完成后从 `Dispose` 抛出 |
 | `static PyEnvironment CreateNull()` | 空宿主（`Stream.Null` 三流加空内存文件系统）的最小环境 |
 | `static PyEnvironment CreateConsole()` | 控制台宿主加内存文件系统的便捷环境 |
 | `void Dispose()` | 退出流程：中断并等待全部登记线程，随后释放三条标准流；幂等 |
 
 构造函数为 `internal`。模块缓存、`sys.path` 与 `sys.argv` 列表、线程集合以及 `ExitCode`
-等状态成员同为 `internal`，由运行时维护。
+等状态成员同为 `internal`，由运行时维护。环境数据的存储是随环境构造的私有
+`ConcurrentDictionary`，访问只经上表四个公共方法；并发与生命周期契约见
+[配置执行环境的环境数据注入](../user-guide/environment.md#环境数据注入)。
 
 ## IPyEnvironmentBuilder
 

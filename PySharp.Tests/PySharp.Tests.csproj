@@ -10,6 +10,13 @@
   <ItemGroup>
     <ProjectReference Include="..\PySharp\PySharp.csproj" />
     <ProjectReference Include="..\PySharp.Tests.SourceGeneration\PySharp.Tests.SourceGeneration.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <!-- The public [PyExport]/[PyModuleInclude] generators do not flow
+         through the PySharp ProjectReference (analyzers are not transitive),
+         so extension-surface tests wire them the same way the library does.
+         Roslyn.Shared must ride along as an analyzer for the compiler to
+         resolve the generator's dependency, mirroring PySharp.csproj. -->
+    <ProjectReference Include="..\PySharp.Roslyn.Shared\PySharp.Roslyn.Shared.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\PySharp.SourceGeneration\PySharp.SourceGeneration.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <ItemGroup>

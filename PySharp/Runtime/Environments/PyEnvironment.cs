@@ -1,6 +1,8 @@
 using PySharp.Modules.Builtins;
 using PySharp.Runtime.IO;
 using PySharp.Utility;
+using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 namespace PySharp.Runtime.Environments;
@@ -18,6 +20,7 @@ public sealed partial class PyEnvironment : IDisposable
     private readonly bool _supportsColorError;
     private readonly List<string> _paths;
     private readonly List<string> _args;
+    private readonly ConcurrentDictionary<string, object?> _envData;
     private bool _disposed;
 
     static PyEnvironment()
@@ -57,6 +60,8 @@ public sealed partial class PyEnvironment : IDisposable
         ModuleProviders = moduleProviders is null
             ? [BuiltinModuleProvider.Shared, PathProvider.Shared]
             : [.. moduleProviders];
+
+        _envData = [];
     }
 
     public PyEnvironmentHost Host { get; }
@@ -82,6 +87,71 @@ public sealed partial class PyEnvironment : IDisposable
 
     public PyStrObject.InternPool InternPool { get; } = new();
 
+    /// <summary>
+    /// Raised once when this environment is being disposed, before its
+    /// registered threads are interrupted and the standard streams are
+    /// released. Subscriber exceptions cannot stop the teardown, but they
+    /// propagate to the <see cref="Dispose"/> caller once the teardown has
+    /// completed. Hosts use this hook to reclaim values injected via
+    /// <see cref="SetEnvData"/>, which the environment never disposes itself.
+    /// </summary>
+    public event Action? OnDisposing;
+
+    /// <summary>
+    /// Stores a host-supplied value under <paramref name="key"/> for the
+    /// lifetime of this environment; setting an existing key replaces its
+    /// value. Extension implementations read values back through the call
+    /// context's <c>PyEnvironment</c>. The store is safe for concurrent
+    /// reads and writes. Stored values are never wrapped as Python objects
+    /// and cannot be reached from Python code. This environment never
+    /// disposes stored values — the host owns them; subscribe to
+    /// <see cref="OnDisposing"/> to reclaim them at teardown.
+    /// </summary>
+    public void SetEnvData(string key, object? value)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        _envData[key] = value;
+    }
+
+    /// <summary>
+    /// Removes the value stored under <paramref name="key"/>. Returns false
+    /// when the key is not currently set on this environment.
+    /// </summary>
+    public bool RemoveEnvData(string key, out object? value)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        return _envData.TryRemove(key, out value);
+    }
+
+    /// <summary>
+    /// Reads the value stored under <paramref name="key"/>. Returns false
+    /// when the key is not currently set on this environment.
+    /// </summary>
+    public bool TryGetEnvData(string key, out object? value)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        return _envData.TryGetValue(key, out value);
+    }
+
+    /// <summary>
+    /// Reads the value stored under <paramref name="key"/> as
+    /// <typeparamref name="T"/>. Returns false when the key is not currently
+    /// set on this environment or the stored value is not assignable to
+    /// <typeparamref name="T"/>.
+    /// </summary>
+    public bool TryGetEnvData<T>(string key, [NotNullWhen(true)] out T? value)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        if (TryGetEnvData(key, out var stored) && stored is T typed)
+        {
+            value = typed;
+            return true;
+        }
+
+        value = default;
+        return false;
+    }
+
     public void Dispose()
     {
         if (_disposed)
@@ -89,19 +159,26 @@ public sealed partial class PyEnvironment : IDisposable
 
         _disposed = true;
 
-        foreach (var thread in Threads)
-            // this Interrupt calling may be failed
-            //
-            // if the thread could not be interrupted,
-            // just wait to stay consistent with CPython
-            //
-            thread.Interrupt();
-        foreach (var thread in Threads)
-            thread.Join();
+        try
+        {
+            OnDisposing?.Invoke();
+        }
+        finally
+        {
+            foreach (var thread in Threads)
+                // this Interrupt calling may be failed
+                //
+                // if the thread could not be interrupted,
+                // just wait to stay consistent with CPython
+                //
+                thread.Interrupt();
+            foreach (var thread in Threads)
+                thread.Join();
 
-        _in.Dispose();
-        _out.Dispose();
-        _error.Dispose();
+            _in.Dispose();
+            _out.Dispose();
+            _error.Dispose();
+        }
     }
 
     public static PyEnvironment CreateNull()

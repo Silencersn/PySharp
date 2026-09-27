@@ -46,7 +46,8 @@ PySharp 以 CPython 3 为行为参照，大量语义细节（反射协议、子�
   `Py*Object` API 完成，见
   [在 C# 中操作 Python 对象](../user-guide/python-objects-from-csharp.md)。
 - `PyCallContext` 无公共构造：调用、属性与协议操作 API 需要上下文，当前仅在扩展点（自定义类型
-  或模块方法的实现）内由运行时提供。
+  或模块方法的实现）内由运行时提供。扩展实现可经上下文的 `PyEnvironment` 公共属性访问所在环境，
+  读取注入的环境数据，见[环境数据注入](../user-guide/environment.md#环境数据注入)。
 - 读取模块全局变量无公共 API：`RunCode` 与 `RunFile` 返回的模块对象暂不能从 C# 侧直接取属性。
   取回数据的方式是重定向 stdout，或抛出携带数据的异常，见
   [执行 Python 代码](../user-guide/executing-python.md#当前限制)。

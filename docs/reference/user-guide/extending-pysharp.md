@@ -230,7 +230,10 @@ print(geom.area_of_circle(1))   # 3.14159...
 - 支持子类化的 `obj.Value._pyType = cls` 写法使用了 internal 字段。库内完整模式见
   `PyQueueObjectType`。
 - `PyCallContext` 仅由运行时在扩展点内提供。实现方法签名中的 `context` 参数就是入口，可在其中
-  使用 `PyOperators` 与 `PySpecialMethods` 全套协议 API。
+  使用 `PyOperators` 与 `PySpecialMethods` 全套协议 API，并经 `context.PyEnvironment` 访问所在
+  环境。扩展实现需要每次运行各不相同的宿主状态时，把数据注入环境而非静态字段，见
+  [环境数据注入](./environment.md#环境数据注入)——自定义模块提供器负责把名字接进 `import`
+  体系，注入数据负责把状态送进函数实现，两者组合即是受支持的有状态扩展模块。
 
 ## 编译期反馈
 

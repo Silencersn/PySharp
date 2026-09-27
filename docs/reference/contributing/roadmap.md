@@ -24,8 +24,8 @@
 
 | 缺口 | 现状与入手点 | 难度 |
 | --- | --- | --- |
-| 读取模块全局变量的公共 API | `PyModuleObject.PyAttributes` 为 internal，`RunCode` / `RunFile` 的结果取值靠 stdout 重定向（见[执行文档的限制说明](../user-guide/executing-python.md)）。开放它需要决定 API 形态（索引器或 `GetAttr` 快捷方法）与安全边界 | 中 |
-| `PyCallContext` 的受控公开 | 这是协议操作 API（`Call`、`GetAttr`、`PyOperators`）对宿主代码不可用的根源；需要设计无帧上下文的语义边界 | 大（政策级） |
+| 读取模块全局变量的公共 API | `PyModuleObject.PyAttributes` 为 internal，`RunCode` / `RunFile` 的结果取值靠 stdout 重定向（见[执行文档的限制说明](../user-guide/executing-python.md)）。开放它需要决定 API 形态（索引器或 `GetAttr` 快捷方法）与安全边界。注意这是 Python → C# 方向；C# → Python 方向已有[环境数据注入](../user-guide/environment.md#环境数据注入) | 中 |
+| `PyCallContext` 的受控公开 | 部分落地：上下文的 `PyEnvironment` 公共属性与[环境数据注入](../user-guide/environment.md#环境数据注入)已开放，扩展模块的状态获取不再依赖内部管线。剩余部分是协议操作 API（`Call`、`GetAttr`、`PyOperators`）对无帧宿主代码的开放，需要设计无帧上下文的语义边界 | 大（政策级） |
 | C# 与 Python 值的通用封送 | 目前手工走 `Py*Object` 工厂与访问器；一个约定式的 `ToPython()` / `As<T>()` 层可以大幅降低嵌入成本，前提是保持零反射 | 中 |
 | 组异常的公共遍历 API | 组结构访问器（`IsGroup`、`AsGroup`、`ExceptionGroupInfo`）当前全为 internal，C# 侧只能靠 `Args` 探测，形态随构造路径而异（见[异常组内幕](../internals/exception-groups.md)）。开放需要决定公共面形态（子异常枚举器、`Message`、嵌套组递归） | 中（政策级） |
 | CLI 选项 | `-m` 与 `-i` 未实现；`-O`、`-OO`、`-S`、`-`（stdin）与 `--` 终止符已落地，见[命令行与交互模式](../user-guide/cli-and-repl.md) | 小 |

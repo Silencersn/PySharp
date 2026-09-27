@@ -40,6 +40,7 @@
 ## 模块与环境
 
 - **`PyEnvironment`**：一次 Python 会话的全部状态，含 I/O、`sys.path`、模块缓存与线程集；经 `host.CreateEnvironmentBuilder()` 构建，或用 `PyEnvironment.CreateConsole()` 等静态工厂，应 `Dispose`。
+- **环境数据（environment data）**：经 `SetEnvData` 挂到环境上、扩展实现经 `PyCallContext.PyEnvironment` 读回的按键数据，用于把每次运行各不相同的状态交给扩展函数；对 Python 不可见，随环境消亡。见[环境数据注入](./user-guide/environment.md#环境数据注入)。
 - **宿主（host）**：`PyEnvironmentHost` 是环境外部世界（标准流与文件系统）的提供者，预定义 Null / Console / Repl 与构建器。见[宿主与 I/O 重定向](./user-guide/hosting.md)。
 - **虚拟文件系统（virtual file system）**：`open()` 与 `import` 的唯一 IO 通道，可选 `MemoryFileSystem`（内存）、`PhysicalFileSystem`（磁盘桥接）或自定义实现。见[虚拟文件系统](./user-guide/virtual-file-system.md)。
 - **标准库模块**：编译进解释器的模块，当前共 13 个，其中 `builtins`、`math`、`sys`、`threading`、`warnings`、`queue` 等由 C# 实现。见[标准库模块覆盖](./python-compat/stdlib-modules.md)。

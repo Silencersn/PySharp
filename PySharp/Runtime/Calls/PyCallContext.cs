@@ -72,7 +72,14 @@ public sealed partial class PyCallContext : IDisposable
     // observe the caller's active exception without owning it.
     internal PyExceptionObject? HandledException { get; set; }
 
-    internal PyEnvironment PyEnvironment => _environment;
+    /// <summary>
+    /// The environment this context executes in. Extension implementations
+    /// reach data injected into the environment here: values stored via
+    /// <see cref="PyEnvironment.SetEnvData"/> are readable through
+    /// <c>PyEnvironment.TryGetEnvData</c> from any extension point that
+    /// receives this context.
+    /// </summary>
+    public PyEnvironment PyEnvironment => _environment;
     internal PyCallContextFrameState FrameState => _state ?? throw new InvalidOperationException("Context is not initialized or is disposed.");
     public PyObjectComparer Comparer => field ??= new PyObjectComparer(this);
     internal ImmutableArrayBuilderPool BuilderPool => _builderPool ??= new();

@@ -8,7 +8,7 @@
 | 篇目 | 覆盖类型 |
 | --- | --- |
 | [PyInterpreter](./PyInterpreter.md) | `PyInterpreter`：静态便捷方法与实例方法、REPL 行为、`__main__` 共享语义 |
-| [PyEnvironment](./PyEnvironment.md) | `PyEnvironment`、`IPyEnvironmentBuilder`、`PyEnvironmentOptions` |
+| [PyEnvironment](./PyEnvironment.md) | `PyEnvironment`、`IPyEnvironmentBuilder`、`PyEnvironmentOptions`：环境状态与环境数据注入 |
 | [PyEnvironmentHost](./PyEnvironmentHost.md) | `PyEnvironmentHost`、`IPyEnvironmentHostBuilder`：宿主抽象、预定义宿主、I/O 分配时机 |
 | [PyFileSystem](./PyFileSystem.md) | `IVirtualFileSystem`、`IVirtual*Info`、`MemoryFileSystem`、`PhysicalFileSystem` |
 | [PyObject](./PyObject.md) | `PyObject`、`PyObjectManagedDict`、`Call` 与 `CallMethod` 扩展 |

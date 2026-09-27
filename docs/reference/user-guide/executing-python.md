@@ -113,7 +113,10 @@ public void Dispose()
      见[错误处理](./error-handling.md)。
 - 动态调用 Python 对象（`Call`、`GetAttr` 等）需要 `PyCallContext`。该类型没有公共构造入口，
   仅在扩展点（自定义类型或模块方法的实现）中由运行时提供，见
-  [用 C# 定义 Python 类型](./custom-types.md)。
+  [用 C# 定义 Python 类型](./custom-types.md)。扩展实现可经上下文的 `PyEnvironment` 属性访问
+  所在环境。
+- 反方向（C# → Python）传数据有受支持通道：把环境数据注入执行环境，扩展实现经
+  `PyCallContext.PyEnvironment` 读回，见[环境数据注入](./environment.md#环境数据注入)。
 
 ## API 参考
 

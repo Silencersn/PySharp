@@ -59,7 +59,63 @@ catch (PyRuntimeException e)
 用第一个参数作标签区分正常完成与真实错误，未命中 `when` 过滤的异常继续上抛。详见
 [错误处理](./error-handling.md#读取异常参数)。
 
-## 场景 3：沙箱化执行不可信脚本
+## 场景 3：把环境数据注入执行环境
+
+适用每次运行各不相同的数据（一份快照、一份连接配置）要交到扩展函数手里的场景。数据挂在
+`PyEnvironment` 上，扩展实现经 `PyCallContext.PyEnvironment` 读回，不需要静态字段或闭包模块。
+先声明一个读数据的扩展模块（声明式写法见场景 7）：
+
+```csharp
+using PySharp.Modules.Builtins;
+using PySharp.Runtime;
+using PySharp.Runtime.Calls;
+using PySharp.Runtime.PyAttributes;
+
+internal static partial class SnapshotFunctions
+{
+    [PyExport("issue_count", nameof(IssueCountImpl))]
+    public static partial PyBuiltinFunctionOrMethodObject IssueCount { get; }
+
+    [PyFunctionParameters()]
+    private static PyResult IssueCountImpl(PyCallContext context, PyArguments arguments)
+    {
+        return context.PyEnvironment.TryGetEnvData<Snapshot>("snapshot", out var snapshot)
+            ? PyIntObject.FromInteger(snapshot.IssueCount)
+            : PyResult.TypeError("snapshot was not injected");
+    }
+}
+
+[PyModuleInclude(PyModuleIncludeScheme.StaticMembers, typeof(SnapshotFunctions))]
+public partial class SnapshotModuleObject : PyModuleObject
+{
+    public SnapshotModuleObject() : base("snapshot") { }
+}
+```
+
+再把模块挂进解析链、注入数据、执行：
+
+```csharp
+var provider = PyModuleProvider.Create(new Dictionary<string, Func<PyModuleObject>>
+{
+    ["snapshot"] = () => new SnapshotModuleObject(),
+});
+
+using var environment = host.CreateEnvironmentBuilder()
+    .InsertModuleProvider(provider)      // 挂链头，防与内建或路径模块撞名
+    .Build();
+
+environment.SetEnvData("snapshot", snapshot);    // 构建后、执行前注入
+
+using var interpreter = PyInterpreter.Create(environment);
+interpreter.Execute("import snapshot\nprint(snapshot.issue_count())", "<main>");
+```
+
+三条契约：数据随环境 `Dispose` 消亡，注入值本身的释放归宿主（可订阅 `OnDisposing` 在销毁时
+回收）；存取由 `ConcurrentDictionary` 支撑，任意时刻读写并发安全，典型用法仍是执行前注入；
+注入值以原生 C# 对象存放，Python 代码无法触达——要把能力（而非数据）暴露给 Python，走
+场景 7 的声明式路线。逐成员语义见[环境数据注入](./environment.md#环境数据注入)。
+
+## 场景 4：沙箱化执行不可信脚本
 
 适用插件与用户脚本。PySharp 的 IO 边界很干净，`open()` 与 `import` 只经环境的虚拟文件系统，
 没有其他磁盘通道。最小沙箱三件套：
@@ -89,7 +145,7 @@ using var environment = host.CreateEnvironmentBuilder()
 `try` 与 `except` 处理；宿主要在 C# 侧拦截则必须用 `RunCode` 或 `RunFile` 执行，见
 [警告与数据类](./warnings-and-dataclasses.md)。
 
-## 场景 4：把脚本组织成可 import 的模块
+## 场景 5：把脚本组织成可 import 的模块
 
 适用宿主提供一组 Python 编写的功能模块、主脚本按名取用的场景。内存文件系统是提供自定义 Python
 模块的一等方式：
@@ -120,9 +176,9 @@ interpreter.Execute("from greeting import hello\nprint(hello('PySharp'))", "<mai
 
 模块源码可来自数据库或配置系统，写进 `MemoryFileSystem`（`WriteAllText`）即可。
 `PyInterpreter.MakeModule(name)` 能把已执行代码的 `__main__` 状态复制成新的 `PyModuleObject`。
-需要在 C# 里实现模块逻辑时走声明式扩展，见场景 6。
+需要在 C# 里实现模块逻辑时走声明式扩展，见场景 7。
 
-## 场景 5：多会话隔离与生命周期管理
+## 场景 6：多会话隔离与生命周期管理
 
 适用每用户或每任务一个独立解释器实例的场景。`PyEnvironment` 之间状态完全隔离，I/O、`sys.path`
 与模块缓存互不可见，各自 `Dispose`：
@@ -156,7 +212,7 @@ PyInterpreter CreateSession(Stream output, string scriptDir)
 [常见问题](./faq.md)。驻留池隔离的含义是：同一句字面量在两个环境里是两个不同的 `PyStrObject`
 实例，`PyId` 不同、`is` 判 `False`，但值比较 `==` 仍然成立，因此跨环境传字符串数据无需特殊处理。
 
-## 场景 6：给脚本提供宿主能力
+## 场景 7：给脚本提供宿主能力
 
 适用把 C# 库的能力暴露成 Python 类型、模块或函数的场景。不包装现有对象，而是用 attribute 声明新
 类型，源生成器在编译期产出注册代码：
@@ -198,7 +254,7 @@ Python 侧即可调用 `w.resize(640, 480)`。参数读取按[类型映射与转
 过滤器对它同样生效。注意错误即值的读法：`"error"` 过滤器激活时，`Warn` 返回的是 `IsError` 的结果
 而非成功值，因此扩展实现应检查返回值来决定是让策略经返回值冒泡，还是自行处置。
 
-## 场景 7：交互式嵌入
+## 场景 8：交互式嵌入
 
 最快路径是 `PyInterpreter.RunRepl()`，适合把 PySharp 当独立解释器用，循环内异常打印后继续。
 需要自定义横幅或输入源时，用 `PyEnvironmentHost.CreateRepl()` 或构建器配
