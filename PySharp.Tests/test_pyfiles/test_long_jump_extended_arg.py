@@ -378,9 +378,12 @@ def test_if_else_deep(should_run):
         x = x + 86; x = x + 87; x = x + 88; x = x + 89; x = x + 90
         x = x + 91; x = x + 92; x = x + 93; x = x + 94; x = x + 95
         x = x + 96; x = x + 97; x = x + 98; x = x + 99; x = x + 100
-        # Build large tuple - pushes 50 items then pops them into a tuple
+        # Build large tuple - pushes 50 items then pops them into a tuple.
+        # The leading runtime element keeps this a runtime display: a wholly
+        # constant literal would constant-fold to a single LOAD_CONST and the
+        # stack pressure this test relies on would disappear.
         big_tuple = (
-            1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+            x, 2, 3, 4, 5, 6, 7, 8, 9, 10,
             11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
             21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
             31, 32, 33, 34, 35, 36, 37, 38, 39, 40,

@@ -25,6 +25,11 @@ internal sealed class PyObjectConstEqualityComparer : IEqualityComparer<PyObject
         Debug.Assert(IsSupported(x));
         Debug.Assert(IsSupported(y));
 
+        // Type is part of a constant's identity: 1, True and 1.0 are three
+        // distinct constants even though == says otherwise, and CPython keys
+        // the const cache on exactly that distinction (_PyCode_ConstantKey,
+        // Objects/codeobject.c). The check also keeps a PyBoolObject from
+        // folding with a PyIntObject, which it subclasses.
         if (!ReferenceEquals(x.PyType, y.PyType))
             return false;
 
@@ -40,6 +45,24 @@ internal sealed class PyObjectConstEqualityComparer : IEqualityComparer<PyObject
         {
             return BitConverter.DoubleToInt64Bits(cx.Real) == BitConverter.DoubleToInt64Bits(cy.Real)
                 && BitConverter.DoubleToInt64Bits(cx.Imag) == BitConverter.DoubleToInt64Bits(cy.Imag);
+        }
+
+        // A constant tuple's identity is its elements' identities, element by
+        // element — never element-wise ==. (1,) and (True,) compare equal but
+        // are different constants (CPython's _PyCode_ConstantKey recurses into
+        // tuples for this reason).
+        if (x is PyTupleObject tx && y is PyTupleObject ty)
+        {
+            if (tx.Count != ty.Count)
+                return false;
+
+            for (int i = 0; i < tx.Count; i++)
+            {
+                if (!Equals(tx[i], ty[i]))
+                    return false;
+            }
+
+            return true;
         }
 
         return PyObjectComparer.Default.Equals(x, y);

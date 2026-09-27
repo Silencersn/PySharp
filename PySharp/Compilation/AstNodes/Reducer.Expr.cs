@@ -12,7 +12,7 @@ partial class Reducer
 {
     private static bool CanFold(AstExprNode node)
     {
-        return node is BinOpNode or UnaryOpNode;
+        return node is BinOpNode or UnaryOpNode or TupleNode;
     }
 
     [return: NotNullIfNotNull(nameof(node))]
@@ -28,11 +28,38 @@ partial class Reducer
         {
             BinOpNode n => FoldBinOp(n),
             UnaryOpNode n => FoldUnaryOp(n),
+            TupleNode n => FoldTuple(n),
             _ => throw new UnreachableException()
         }).With(node.MetaInfo);
 
         changed = !ReferenceEquals(reduced, node);
         return reduced;
+    }
+
+    /// <summary>
+    /// A tuple display whose elements are all constant becomes one constant,
+    /// the LOAD_CONST (1, 2) CPython emits (codegen.c codegen_tuple /
+    /// flowgraph.c fold_tuple_of_constants). A store target is not an
+    /// expression, and a starred element is never a constant display, so
+    /// neither is folded. Folding an element without the tuple itself (a mixed
+    /// display) is left to the per-element fold in the emitter.
+    /// </summary>
+    private static AstExprNode FoldTuple(TupleNode node)
+    {
+        if (node.Ctx is not ExprContextType.Load)
+            return node;
+
+        var elts = node.Elts;
+        var values = new PyObject[elts.Length];
+        for (int i = 0; i < elts.Length; i++)
+        {
+            if (elts[i] is StarredNode || FoldExpr(elts[i], out _) is not ConstantNode constant)
+                return node;
+
+            values[i] = constant.Value;
+        }
+
+        return Ast.Constant(PyTupleObject.CreateTuple(values));
     }
 
     // TODO: consider whether it's necessary to construct a new complete Node for only leftChanged or rightChanged
