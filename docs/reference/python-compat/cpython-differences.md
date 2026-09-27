@@ -42,8 +42,14 @@ PySharp 以 CPython 3 为行为参照，大量语义细节（反射协议、子�
   时报告 `True`（`seek`/`tell` 可用），而 .NET 的控制台流包装（`WindowsConsoleStream`）无论是否重定向
   都报告 `CanSeek` 为 `False`，故 PySharp 一律报告 `False`，`seek`/`tell` 抛
   `_io.UnsupportedOperation: underlying stream is not seekable`。
-- 文本流成员面尚缺 `fileno`、`buffer`、`detach`、`newlines`、`line_buffering`、`write_through`、
-  `reconfigure`、`truncate`、`isatty`、`writelines`；这些在标准流与 `open()` 的文本对象上同样缺失
+- 标准流的缓冲与 CPython 的 `create_stdio` 对齐：`sys.stdout` 在终端上逐行缓冲、重定向到管道或文件时
+  按 8192 字节块缓冲，`sys.stderr` 无论是否重定向都逐行缓冲，缓冲内容在 `flush()`、`close()` 与解释器
+  退出（对齐 `flush_std_files`，flush 当时绑定的 `sys.stdout`/`sys.stderr`）时落盘。因此合并捕获
+  （`2>&1`）中 stderr 行先于全部 stdout 行出现，与 CPython 一致。`sys.stdout.isatty()`、
+  `line_buffering` 与 `write_through`（只读）按装配时的缓冲模式报告。`-u` 与 `PYTHONUNBUFFERED`
+  开关尚未支持。
+- 文本流成员面尚缺 `fileno`、`buffer`、`detach`、`newlines`、
+  `reconfigure`、`truncate`、`writelines`；这些在标准流与 `open()` 的文本对象上同样缺失
   （两类型共同的缺口，非二者之间的不对称）。
 - `open()` 支持的参数与 CPython 对齐，包括 `buffering`、`encoding`、`errors` 与 `newline`；
   文本模式默认 `newline=None`，读入时做通用换行归一，写出时展开为平台换行符。详见

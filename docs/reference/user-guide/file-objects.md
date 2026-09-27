@@ -62,6 +62,13 @@
 `ValueError: I/O operation on closed file`；`close` 幂等，`closed`、`mode`、`name`、
 `readable`、`writable`、`seekable` 等查询不受关闭影响。
 
+标准流（`sys.stdin` / `sys.stdout` / `sys.stderr`）的缓冲按 CPython `create_stdio` 的决策装配：
+`sys.stdout` 在终端上逐行缓冲、重定向到管道或文件时按 8192 字节块缓冲，`sys.stderr` 恒逐行缓冲。
+缓冲内容在 `flush()`、`close()` 与解释器退出时落盘，因此合并捕获（`2>&1`）中 stderr 行先于全部
+stdout 行出现，与 CPython 一致。文本模式文件对象与标准流另有 `isatty()` 方法及只读属性
+`line_buffering`、`write_through`，报告各自的装配模式（`open()` 的返回值保持逐写落盘，
+`write_through` 为 `True`）。
+
 ## 迭代与上下文管理器
 
 ```python

@@ -17,6 +17,10 @@ public sealed class AmbientContextTests
         public override Stream AllocateStdIn() => Stream.Null;
         public override Stream AllocateStdOut() => Stdout;
         public override Stream AllocateStdErr() => Stream.Null;
+        // fixture reads like an interactive terminal so the pre-dispose
+        // stdout assertions see line-buffered output without flushing
+        // the wrapper first
+        public override bool StdOutIsTerminal => true;
         public override IVirtualFileSystem FileSystem { get; } = MemoryFileSystem.CreateBuilder().Build();
     }
 

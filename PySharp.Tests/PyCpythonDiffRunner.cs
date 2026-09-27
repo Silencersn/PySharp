@@ -81,6 +81,16 @@ internal static class PyCpythonDiffRunner
         return null;
     }
 
+    /// <summary>
+    /// The probed CPython 3.14 executable for tests outside the fixture
+    /// comparison layer; null when no interpreter was found.
+    /// </summary>
+    internal static string? TryFindCpythonPath()
+    {
+        var (interpreter, _) = CpythonCache.Value;
+        return interpreter?.ExePath;
+    }
+
     internal static void Run(string fileName)
     {
         var consoleExe = ConsoleExeCache.Value;

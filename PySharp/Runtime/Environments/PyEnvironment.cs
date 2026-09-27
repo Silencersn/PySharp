@@ -1,4 +1,5 @@
 using PySharp.Modules.Builtins;
+using PySharp.Modules.IO;
 using PySharp.Runtime.IO;
 using PySharp.Utility;
 using System.Collections.Concurrent;
@@ -85,6 +86,12 @@ public sealed partial class PyEnvironment : IDisposable
     internal Encoding StdInEncoding { get; }
     internal Encoding StdOutEncoding { get; }
     internal Encoding StdErrEncoding { get; }
+
+    // Terminal-ness of the standard streams; the sys module hands it to the
+    // stdio wrappers as create_stdio's buffering and isatty input.
+    internal bool StdInIsTerminal => Host.StdInIsTerminal;
+    internal bool StdOutIsTerminal => Host.StdOutIsTerminal;
+    internal bool StdErrIsTerminal => Host.StdErrIsTerminal;
     internal PyEnvironmentOptions Options { get; }
     internal Dictionary<string, PyModuleObject?> Modules { get; } = [];
     internal ConcurrentSet<Thread> Threads { get; } = [];
@@ -185,9 +192,32 @@ public sealed partial class PyEnvironment : IDisposable
             foreach (var thread in Threads)
                 thread.Join();
 
+            // flush_std_files (Python/pylifecycle.c): the standard streams'
+            // buffered output must land before the raw handles are disposed.
+            // CPython flushes whatever sys.stdout/sys.stderr is bound to;
+            // only the built-in wrapper type is reachable here so teardown
+            // never runs arbitrary Python — a rebinding to a custom object
+            // keeps its buffer's lifecycle to itself.
+            FlushStandardStreams();
+
             _in.Dispose();
             _out.Dispose();
             _error.Dispose();
+        }
+    }
+
+    // flush_io/flush_std_files: drain the standard streams' Python-level
+    // write buffers in CPython's order (stderr first, then stdout), before
+    // exit messages/tracebacks are printed and before the environment exits
+    internal void FlushStandardStreams()
+    {
+        if (!Modules.TryGetValue("sys", out var sys) || sys is null)
+            return;
+        foreach (var name in (string[])["stderr", "stdout"])
+        {
+            if (sys.PyAttributes.TryGetValue(name, out var stream) &&
+                stream is PyTextIOWrapperObject wrapper)
+                wrapper.FlushAtShutdown();
         }
     }
 

@@ -19,6 +19,17 @@ public abstract class PyEnvironmentHost
     // console host decides error coloring per stream like CPython does.
     public virtual bool SupportsErrorColorOutput => SupportsColorOutput;
 
+    // Terminal-ness of the standard streams — the input to create_stdio's
+    // buffering decision (Python/pylifecycle.c): line buffering on a
+    // terminal, the 8192-byte block default when redirected. The streams
+    // come from the host's own AllocateStd* overloads, so only the host
+    // knows what it handed over; hosts that do not declare terminal state
+    // are treated like CPython's redirected case. The console host derives
+    // the answer from its redirection seams.
+    public virtual bool StdInIsTerminal => false;
+    public virtual bool StdOutIsTerminal => false;
+    public virtual bool StdErrIsTerminal => false;
+
     public virtual IPyEnvironmentBuilder CreateEnvironmentBuilder()
     {
         return new PyEnvironmentBuilder(this);
@@ -81,9 +92,14 @@ public abstract class PyEnvironmentHost
 
         // terminal-state and environment seams for the color decision;
         // tests override them instead of touching process state
+        internal virtual bool StdInRedirected => Console.IsInputRedirected;
         internal virtual bool StdOutRedirected => Console.IsOutputRedirected;
         internal virtual bool StdErrRedirected => Console.IsErrorRedirected;
         internal virtual Func<string, string?> ColorEnvironment => System.Environment.GetEnvironmentVariable;
+
+        public override bool StdInIsTerminal => !StdInRedirected;
+        public override bool StdOutIsTerminal => !StdOutRedirected;
+        public override bool StdErrIsTerminal => !StdErrRedirected;
 
         public override bool SupportsColorOutput =>
             PyColorSupport.EnvironmentAllowsColor(ColorEnvironment) ?? !StdOutRedirected;

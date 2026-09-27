@@ -24,19 +24,32 @@ public partial class PySysModuleObject : PyModuleObject
         // The standard streams are TextIOWrapper instances over the host's raw
         // streams, built the way CPython's create_stdio does: universal
         // newlines, the environment's encoding, and the per-stream error
-        // handler (stderr uses backslashreplace). The process's handles stay
-        // owned by the host, so close() only closes the wrapper.
+        // handler (stderr uses backslashreplace). Buffering follows
+        // create_stdio too: stdin/stdout line-buffered on a terminal and
+        // block-buffered when redirected, stderr line-buffered whatever its
+        // redirection. The process's handles stay owned by the host, so
+        // close() only closes the wrapper.
         AppendAttribute("stdin", PyTextIOWrapperObject.CreateStandardStream(
             environment.InStream, "<stdin>", "r",
             readable: true, writable: false,
-            environment.StdInEncoding, "strict"));
+            environment.StdInEncoding, "strict",
+            environment.StdInIsTerminal
+                ? PyStandardStreamBuffering.Line
+                : PyStandardStreamBuffering.Block,
+            environment.StdInIsTerminal));
         AppendAttribute("stdout", PyTextIOWrapperObject.CreateStandardStream(
             environment.OutStream, "<stdout>", "w",
             readable: false, writable: true,
-            environment.StdOutEncoding, "strict"));
+            environment.StdOutEncoding, "strict",
+            environment.StdOutIsTerminal
+                ? PyStandardStreamBuffering.Line
+                : PyStandardStreamBuffering.Block,
+            environment.StdOutIsTerminal));
         AppendAttribute("stderr", PyTextIOWrapperObject.CreateStandardStream(
             environment.ErrorStream, "<stderr>", "w",
             readable: false, writable: true,
-            environment.StdErrEncoding, "backslashreplace"));
+            environment.StdErrEncoding, "backslashreplace",
+            PyStandardStreamBuffering.Line,
+            environment.StdErrIsTerminal));
     }
 }

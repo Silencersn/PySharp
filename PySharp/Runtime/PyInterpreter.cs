@@ -122,6 +122,12 @@ public sealed class PyInterpreter : IDisposable
                 {
                     var exc = pyRuntimeException.PyException;
 
+                    // flush_io (Python/pythonrun.c): the standard streams'
+                    // Python-level buffers land before any exit message or
+                    // traceback is printed, so buffered stdout precedes the
+                    // traceback in merged capture
+                    context.PyEnvironment.FlushStandardStreams();
+
                     if (PySystemExitObjectType.Shared.IsInstance(exc))
                     {
                         context.PyEnvironment.ExitCode = ParseSystemExitCode(context, exc);

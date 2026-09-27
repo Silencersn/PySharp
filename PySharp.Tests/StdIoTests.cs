@@ -3,6 +3,7 @@ using PySharp.Modules.IO;
 using PySharp.Modules.Sys;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.Calls.Extensions;
 using PySharp.Runtime.Environments;
 using PySharp.Runtime.IO;
 using PySharp.Runtime.IO.Memory;
@@ -17,17 +18,25 @@ public sealed class StdIoTests
         private readonly Stream _in;
         private readonly Stream _out;
         private readonly Stream _err;
+        private readonly bool _stdioIsTerminal;
 
-        public StdioHost(Stream input, Stream output, Stream error)
+        // fixture runs read like an interactive terminal by default so
+        // stdout assertions see line-buffered output without flushing the
+        // wrapper; the redirected-buffering tests opt out explicitly
+        public StdioHost(Stream input, Stream output, Stream error, bool stdioIsTerminal = true)
         {
             _in = input;
             _out = output;
             _err = error;
+            _stdioIsTerminal = stdioIsTerminal;
         }
 
         public override Stream AllocateStdIn() => _in;
         public override Stream AllocateStdOut() => _out;
         public override Stream AllocateStdErr() => _err;
+        public override bool StdInIsTerminal => _stdioIsTerminal;
+        public override bool StdOutIsTerminal => _stdioIsTerminal;
+        public override bool StdErrIsTerminal => _stdioIsTerminal;
         public override IVirtualFileSystem FileSystem { get; } = MemoryFileSystem.CreateBuilder().Build();
     }
 
@@ -36,10 +45,20 @@ public sealed class StdIoTests
             stream, name, "w", readable: false, writable: true,
             System.Text.Encoding.UTF8, errors);
 
+    private static PyTextIOWrapperObject CreateBufferedOutput(
+        Stream stream, PyStandardStreamBuffering buffering, bool isTerminal) =>
+        PyTextIOWrapperObject.CreateStandardStream(
+            stream, "<stdout>", "w", readable: false, writable: true,
+            System.Text.Encoding.UTF8, "strict", buffering, isTerminal);
+
     private static PyTextIOWrapperObject CreateInput(Stream stream, string name = "<stdin>") =>
         PyTextIOWrapperObject.CreateStandardStream(
             stream, name, "r", readable: true, writable: false,
             System.Text.Encoding.UTF8, "strict");
+
+    // the std streams translate '\n' to the platform newline on write
+    private static string Text(MemoryStream stream) =>
+        System.Text.Encoding.UTF8.GetString(stream.ToArray()).Replace("\r\n", "\n");
 
     private static PyTextIOWrapperObject GetStream(PyModuleObject module, string name)
     {
@@ -236,4 +255,207 @@ public sealed class StdIoTests
             env.Dispose();
         }
     }
+
+    // --- standard stream buffering (create_stdio semantics) ---
+
+    [TestMethod]
+    public void Stdio_StdoutLineBuffering_HoldsPartialWriteAndFlushesOnNewline()
+    {
+        var stream = new MemoryStream();
+        var stdout = CreateBufferedOutput(stream, PyStandardStreamBuffering.Line, isTerminal: true);
+        var context = PyCallContext.CSharpRuntime;
+
+        Assert.IsFalse(stdout.Write(context, PyStrObject.FromString("par")).IsError);
+        Assert.AreEqual("", Text(stream), "a partial line must stay buffered");
+
+        Assert.IsFalse(stdout.Write(context, PyStrObject.FromString("tial\n")).IsError);
+        Assert.AreEqual("partial\n", Text(stream));
+
+        // CPython flushes a line-buffered write on a bare '\r' too
+        // (Modules/_io/textio.c: needflush checks '\n' or '\r')
+        Assert.IsFalse(stdout.Write(context, PyStrObject.FromString("cr\r")).IsError);
+        Assert.AreEqual("partial\ncr\r", Text(stream));
+    }
+
+    [TestMethod]
+    public void Stdio_StdoutBlockBuffering_HoldsUntilFlush()
+    {
+        var stream = new MemoryStream();
+        var stdout = CreateBufferedOutput(stream, PyStandardStreamBuffering.Block, isTerminal: false);
+        var context = PyCallContext.CSharpRuntime;
+
+        Assert.IsFalse(stdout.Write(context, PyStrObject.FromString("held\n")).IsError);
+        Assert.AreEqual("", Text(stream), "block-buffered stdout must not leak per write");
+
+        Assert.IsFalse(stdout.Flush().IsError);
+        Assert.AreEqual("held\n", Text(stream));
+    }
+
+    [TestMethod]
+    public void Stdio_StdoutBlockBuffering_LandsAtThe8192Boundary()
+    {
+        var stream = new MemoryStream();
+        var stdout = CreateBufferedOutput(stream, PyStandardStreamBuffering.Block, isTerminal: false);
+        var context = PyCallContext.CSharpRuntime;
+
+        Assert.IsFalse(stdout.Write(context, PyStrObject.FromString(new string('x', 8191))).IsError);
+        Assert.AreEqual(0, stream.Length, "8191 bytes stay pending");
+
+        Assert.IsFalse(stdout.Write(context, PyStrObject.FromString("x")).IsError);
+        Assert.AreEqual(8192, stream.Length, "crossing the 8192 threshold lands the chunk");
+    }
+
+    [TestMethod]
+    public void Stdio_CloseFlushesPendingBufferedOutput()
+    {
+        var stream = new MemoryStream();
+        var stdout = CreateBufferedOutput(stream, PyStandardStreamBuffering.Block, isTerminal: false);
+        var context = PyCallContext.CSharpRuntime;
+
+        Assert.IsFalse(stdout.Write(context, PyStrObject.FromString("bye\n")).IsError);
+        Assert.IsFalse(stdout.Close().IsError);
+        Assert.AreEqual("bye\n", Text(stream));
+    }
+
+    [TestMethod]
+    public void Stdio_StdoutShutdownFlush_LandsBufferedOutput()
+    {
+        var stream = new MemoryStream();
+        var stdout = CreateBufferedOutput(stream, PyStandardStreamBuffering.Block, isTerminal: false);
+        var context = PyCallContext.CSharpRuntime;
+
+        Assert.IsFalse(stdout.Write(context, PyStrObject.FromString("final\n")).IsError);
+        stdout.FlushAtShutdown();
+        Assert.AreEqual("final\n", Text(stream));
+        Assert.IsFalse(stdout.IsClosed, "the shutdown flush must not close the wrapper");
+    }
+
+    [TestMethod]
+    public void Stdio_MergedSink_LineBufferedStderrPrecedesBlockBufferedStdout()
+    {
+        // the merged-capture ordering contract (CPython 2>&1): stdout is
+        // block-buffered and lands at flush/exit while stderr streams per
+        // line, so the err lines must all precede the out lines
+        var sink = new MemoryStream();
+        var stdout = CreateBufferedOutput(sink, PyStandardStreamBuffering.Block, isTerminal: false);
+        var stderr = CreateBufferedOutput(sink, PyStandardStreamBuffering.Line, isTerminal: false);
+        var context = PyCallContext.CSharpRuntime;
+
+        Assert.IsFalse(stdout.Write(context, PyStrObject.FromString("out1\n")).IsError);
+        Assert.IsFalse(stderr.Write(context, PyStrObject.FromString("err1\n")).IsError);
+        Assert.IsFalse(stdout.Write(context, PyStrObject.FromString("out2\n")).IsError);
+        Assert.IsFalse(stderr.Write(context, PyStrObject.FromString("err2\n")).IsError);
+        stdout.FlushAtShutdown();
+
+        Assert.AreEqual("err1\nerr2\nout1\nout2\n", Text(sink));
+    }
+
+    [TestMethod]
+    public void Stdio_EnvironmentDispose_FlushesTheRedirectedStdout()
+    {
+        // flush_std_files: the block-buffered stdout must land when the
+        // environment is disposed, on every exit path
+        var stream = new MemoryStream();
+        var host = new StdioHost(new MemoryStream(), stream, new MemoryStream(), stdioIsTerminal: false);
+        var env = new PyEnvironment(host);
+        var context = PyCallContext.CreateInterpreterRootContext(env);
+        var module = env.LoadBuiltinModule(context, "sys");
+        var stdout = GetStream(module, "stdout");
+
+        Assert.IsFalse(stdout.Write(context, PyStrObject.FromString("exit-flush\n")).IsError);
+        Assert.AreEqual("", Text(stream), "redirected stdout holds its buffer while running");
+
+        context.Dispose();
+        env.Dispose();
+        Assert.AreEqual("exit-flush\n", Text(stream), "disposing the environment must flush sys.stdout");
+    }
+
+    [TestMethod]
+    public void Stdio_EnvironmentDispose_ToleratesReboundNonWrapperStreams()
+    {
+        // flush_std_files flushes whatever sys.stdout/sys.stderr is bound
+        // to; only the built-in wrapper type is reachable from the teardown,
+        // and any other binding must be skipped without error
+        var host = new StdioHost(new MemoryStream(), new MemoryStream(), new MemoryStream());
+        var env = new PyEnvironment(host);
+        var context = PyCallContext.CreateInterpreterRootContext(env);
+        var module = env.LoadBuiltinModule(context, "sys");
+        module.PyAttributes["stdout"] = PyStrObject.FromString("not a stream");
+        module.PyAttributes["stderr"] = PyNoneObject.None;
+        context.Dispose();
+        env.Dispose();
+    }
+
+    [TestMethod]
+    public void SysModule_StandardStreams_CarryCreateStdioBuffering()
+    {
+        // redirected wiring: stdout/stdin block-buffered, stderr always
+        // line-buffered — create_stdio's decision table
+        var redirected = new StdioHost(new MemoryStream(), new MemoryStream(), new MemoryStream(), stdioIsTerminal: false);
+        var redirectedEnv = new PyEnvironment(redirected);
+        var redirectedContext = PyCallContext.CreateInterpreterRootContext(redirectedEnv);
+        try
+        {
+            var module = redirectedEnv.LoadBuiltinModule(redirectedContext, "sys");
+            Assert.AreEqual(PyStandardStreamBuffering.Block, GetStream(module, "stdout")._buffering);
+            Assert.AreEqual(PyStandardStreamBuffering.Block, GetStream(module, "stdin")._buffering);
+            Assert.AreEqual(PyStandardStreamBuffering.Line, GetStream(module, "stderr")._buffering);
+            Assert.IsFalse(GetStream(module, "stdout")._isTerminal);
+            Assert.IsFalse(GetStream(module, "stdin")._isTerminal);
+            Assert.IsFalse(GetStream(module, "stderr")._isTerminal);
+        }
+        finally
+        {
+            redirectedContext.Dispose();
+            redirectedEnv.Dispose();
+        }
+
+        // terminal wiring: stdout/stdin line-buffered like CPython on a tty
+        var tty = new StdioHost(new MemoryStream(), new MemoryStream(), new MemoryStream());
+        var ttyEnv = new PyEnvironment(tty);
+        var ttyContext = PyCallContext.CreateInterpreterRootContext(ttyEnv);
+        try
+        {
+            var module = ttyEnv.LoadBuiltinModule(ttyContext, "sys");
+            Assert.AreEqual(PyStandardStreamBuffering.Line, GetStream(module, "stdout")._buffering);
+            Assert.AreEqual(PyStandardStreamBuffering.Line, GetStream(module, "stdin")._buffering);
+            Assert.AreEqual(PyStandardStreamBuffering.Line, GetStream(module, "stderr")._buffering);
+            Assert.IsTrue(GetStream(module, "stdout")._isTerminal);
+            Assert.IsTrue(GetStream(module, "stderr")._isTerminal);
+        }
+        finally
+        {
+            ttyContext.Dispose();
+            ttyEnv.Dispose();
+        }
+    }
+
+    [TestMethod]
+    public void Stdio_StandardStreams_ReportIsattyAndBufferingAttributes()
+    {
+        var tty = CreateBufferedOutput(new MemoryStream(), PyStandardStreamBuffering.Line, isTerminal: true);
+        var redirected = CreateBufferedOutput(new MemoryStream(), PyStandardStreamBuffering.Block, isTerminal: false);
+
+        Assert.AreSame(PyBoolObject.True, IsAtty(tty).Value);
+        Assert.AreSame(PyBoolObject.False, IsAtty(redirected).Value);
+
+        Assert.AreSame(PyBoolObject.True, GetBoolAttr(tty, "line_buffering").Value);
+        Assert.AreSame(PyBoolObject.False, GetBoolAttr(tty, "write_through").Value);
+        Assert.AreSame(PyBoolObject.False, GetBoolAttr(redirected, "line_buffering").Value);
+        Assert.AreSame(PyBoolObject.False, GetBoolAttr(redirected, "write_through").Value);
+    }
+
+    [TestMethod]
+    public void Stdio_ClosedIsatty_RaisesTheClosedError()
+    {
+        var stdout = CreateBufferedOutput(new MemoryStream(), PyStandardStreamBuffering.Line, isTerminal: true);
+        Assert.IsFalse(stdout.Close().IsError);
+        Assert.IsTrue(IsAtty(stdout).IsError, "isatty on a closed file must raise, like CPython's IOBase");
+    }
+
+    private static PyResult IsAtty(PyTextIOWrapperObject stream) =>
+        stream.CallMethod(PyCallContext.CSharpRuntime, "isatty");
+
+    private static PyResult GetBoolAttr(PyTextIOWrapperObject stream, string name) =>
+        PyOperators.GetAttr(PyCallContext.CSharpRuntime, stream, name);
 }

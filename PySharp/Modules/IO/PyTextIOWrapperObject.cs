@@ -8,6 +8,20 @@ using System.Text;
 namespace PySharp.Modules.IO;
 
 /// <summary>
+/// Write-buffering policy of the standard streams, the decision CPython's
+/// create_stdio makes (Python/pylifecycle.c): line buffering on a terminal
+/// and for stderr however it is redirected, the 8192-byte block default when
+/// stdout is redirected. open() files and directly constructed wrappers keep
+/// write-through, the historical per-write flush behavior.
+/// </summary>
+internal enum PyStandardStreamBuffering
+{
+    WriteThrough,
+    Line,
+    Block,
+}
+
+/// <summary>
 /// Python text file object: the result of open() in text mode and the wrapper
 /// around sys.stdin/sys.stdout/sys.stderr. Wraps a .NET Stream and provides
 /// text I/O; binary-mode open() results share the layout via
@@ -58,10 +72,23 @@ public sealed class PyTextIOWrapperObject : PyObject, IDisposable
     // to the first write only, like TextIOWrapper's incremental encoder
     private bool _wrotePreamble;
 
+    // Standard-stream write buffering. The buffer holds encoded bytes and
+    // lands on the raw stream per line, per ~8 KiB, and at flush()/close()
+    // /shutdown; one 8192-byte threshold stands in for CPython's two-level
+    // pipeline (text pending_bytes 8192 + BufferedWriter 8192), which is
+    // order-equivalent for everything the standard streams expose.
+    internal readonly PyStandardStreamBuffering _buffering;
+    internal readonly bool _isTerminal;
+    private readonly object _writeLock = new();
+    private readonly byte[] _writeBuf = new byte[8192];
+    private int _writeLen;
+
     internal PyTextIOWrapperObject(Stream stream, string mode, string name,
         bool isTextMode, bool isReadable, bool isWritable, bool isSeekable,
         string? encoding = null, string? errors = null, string? newline = null,
-        PyTextCodec? codec = null, bool wrotePreamble = false, bool ownsStream = true)
+        PyTextCodec? codec = null, bool wrotePreamble = false, bool ownsStream = true,
+        PyStandardStreamBuffering buffering = PyStandardStreamBuffering.WriteThrough,
+        bool isTerminal = false)
     {
         _stream = stream;
         _mode = mode;
@@ -80,6 +107,8 @@ public sealed class PyTextIOWrapperObject : PyObject, IDisposable
         // appending to a non-empty file suppresses the codec preamble, like
         // CPython's _textiowrapper_fix_encoder_state
         _wrotePreamble = wrotePreamble;
+        _buffering = buffering;
+        _isTerminal = isTerminal;
         // a non-seekable stream (the standard streams) has no position to read
         var position = stream.CanSeek ? stream.Position : 0;
         _rawBufBase = position;
@@ -92,11 +121,15 @@ public sealed class PyTextIOWrapperObject : PyObject, IDisposable
     /// create_stdio does: a TextIOWrapper over the raw host stream, with
     /// universal newlines, the environment's encoding and the per-stream
     /// error handler (stderr uses backslashreplace). The handle stays owned by
-    /// the host, so close() never disposes it.
+    /// the host, so close() never disposes it. The buffering mode carries
+    /// create_stdio's decision: line buffering on a terminal, the block
+    /// default when redirected.
     /// </summary>
     internal static PyTextIOWrapperObject CreateStandardStream(
         Stream stream, string name, string mode, bool readable, bool writable,
-        Encoding encoding, string errors)
+        Encoding encoding, string errors,
+        PyStandardStreamBuffering buffering = PyStandardStreamBuffering.WriteThrough,
+        bool isTerminal = false)
     {
         var encodingName = PyTextCodec.CanonicalEncodingName(encoding);
         return new PyTextIOWrapperObject(stream, mode, name,
@@ -104,7 +137,7 @@ public sealed class PyTextIOWrapperObject : PyObject, IDisposable
             isSeekable: stream.CanSeek,
             encoding: encodingName, errors: errors, newline: null,
             codec: PyTextCodec.Create(encodingName, errors, out _),
-            ownsStream: false);
+            ownsStream: false, buffering: buffering, isTerminal: isTerminal);
     }
 
     public override PyTypeObject DefaultPyType => PyTextIOWrapperObjectType.Shared;
@@ -177,6 +210,11 @@ public sealed class PyTextIOWrapperObject : PyObject, IDisposable
         {
             if (data is not PyStrObject strObj)
                 return PyResult.TypeError(PySR.Runtime_File_WriteNeedStr, data.PyType.TpName);
+            // the line-flush decision reads the pre-translation text like
+            // CPython does (Modules/_io/textio.c: haslf, and a bare '\r'
+            // flushes too)
+            var needLineFlush = _buffering is PyStandardStreamBuffering.Line &&
+                (strObj.Value.Contains('\n') || strObj.Value.Contains('\r'));
             var text = TranslateForWrite(strObj.Value);
             var encoded = PyStrObjectType.EncodeCore(context, text, _encodingParam, _errorsName,
                 emitPreamble: !_wrotePreamble);
@@ -185,11 +223,18 @@ public sealed class PyTextIOWrapperObject : PyObject, IDisposable
             var bytes = ((PyBytesObject)encoded.Value).AsSpan();
             try
             {
-                // flush per write like the old StreamWriter pipeline: a
-                // leaked file object may never be closed, and readers in
-                // the same process must see prior writes
-                _stream.Write(bytes);
-                _stream.Flush();
+                if (_buffering is PyStandardStreamBuffering.WriteThrough)
+                {
+                    // flush per write like the old StreamWriter pipeline: a
+                    // leaked file object may never be closed, and readers in
+                    // the same process must see prior writes
+                    _stream.Write(bytes);
+                    _stream.Flush();
+                }
+                else
+                {
+                    WriteBuffered(bytes, needLineFlush);
+                }
             }
             catch (IOException ex)
             {
@@ -209,14 +254,66 @@ public sealed class PyTextIOWrapperObject : PyObject, IDisposable
             var span = bytesObj.AsSpan();
             try
             {
-                _stream.Write(span);
-                _stream.Flush();
+                if (_buffering is PyStandardStreamBuffering.WriteThrough)
+                {
+                    _stream.Write(span);
+                    _stream.Flush();
+                }
+                else
+                {
+                    WriteBuffered(span, needLineFlush: false);
+                }
             }
             catch (IOException ex)
             {
                 return OSErrorFromIo(ex, _name);
             }
             return PyIntObject.FromInteger(span.Length);
+        }
+    }
+
+    // buffered write path for the standard streams: the caller's bytes join
+    // the pending buffer, which lands when the 8192 threshold fills, when a
+    // line-buffered write carried a newline, or at an explicit flush
+    private void WriteBuffered(ReadOnlySpan<byte> bytes, bool needLineFlush)
+    {
+        lock (_writeLock)
+        {
+            // no GIL: interpreter threads share the wrapper, so the buffer
+            // hand-off to the raw stream must not interleave mid-chunk
+            if (_writeLen > 0 && _writeLen + bytes.Length > _writeBuf.Length)
+                WriteBufferToStream();
+            if (bytes.Length >= _writeBuf.Length)
+            {
+                _stream.Write(bytes);
+                _stream.Flush();
+            }
+            else
+            {
+                bytes.CopyTo(_writeBuf.AsSpan(_writeLen));
+                _writeLen += bytes.Length;
+                if (_writeLen >= _writeBuf.Length)
+                    WriteBufferToStream();
+            }
+            if (needLineFlush && _writeLen > 0)
+                WriteBufferToStream();
+        }
+    }
+
+    // caller holds _writeLock
+    private void WriteBufferToStream()
+    {
+        _stream.Write(_writeBuf.AsSpan(0, _writeLen));
+        _stream.Flush();
+        _writeLen = 0;
+    }
+
+    private void FlushWriteBuffer()
+    {
+        lock (_writeLock)
+        {
+            if (_writeLen > 0)
+                WriteBufferToStream();
         }
     }
 
@@ -234,6 +331,7 @@ public sealed class PyTextIOWrapperObject : PyObject, IDisposable
             {
                 try
                 {
+                    FlushWriteBuffer();
                     _stream.Flush();
                 }
                 catch (IOException)
@@ -295,6 +393,7 @@ public sealed class PyTextIOWrapperObject : PyObject, IDisposable
             return check;
         try
         {
+            FlushWriteBuffer();
             _stream.Flush();
         }
         catch (IOException ex)
@@ -302,6 +401,24 @@ public sealed class PyTextIOWrapperObject : PyObject, IDisposable
             return OSErrorFromIo(ex, _name);
         }
         return PyNoneObject.None;
+    }
+
+    // flush_std_files (Python/pylifecycle.c): finalization drains the
+    // standard streams' buffers before the raw handles go away, tolerating
+    // failures the way the standard streams' close does; unlike close() it
+    // must not mark the wrapper closed
+    internal void FlushAtShutdown()
+    {
+        if (_closed || !_isWritable)
+            return;
+        try
+        {
+            FlushWriteBuffer();
+            _stream.Flush();
+        }
+        catch (IOException)
+        {
+        }
     }
 
     internal PyResult Seek(long offset, int whence)
@@ -875,6 +992,7 @@ public sealed class PyTextIOWrapperObject : PyObject, IDisposable
             // write-side only: positions are the flushed byte offset. The
             // encoder state resets on every seek: the codec preamble is
             // armed only when the final position is the very start
+            FlushWriteBuffer();
             var writePos = _stream.Seek(offset, (SeekOrigin)whence);
             _wrotePreamble = writePos is not 0;
             return PyIntObject.FromInteger(writePos);
@@ -1213,5 +1331,31 @@ public sealed partial class PyTextIOWrapperObjectType : PyTypeObject<PyTextIOWra
         if (!self._isTextMode)
             return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, "_io.TextIOWrapper", "errors");
         return PyStrObject.FromString(self._errorsName);
+    }
+
+    [PyMethod("isatty")]
+    [PyFunctionParameters()]
+    private static PyResult IsAtty(PyCallContext context, PyTextIOWrapperObject self, PyArguments arguments)
+    {
+        // IOBase.isatty raises the no-period closed error like the
+        // capability queries do
+        var check = self.CheckClosedNoPeriod();
+        if (check.IsError)
+            return check;
+        return PyBoolObject.FromBoolean(self._isTerminal);
+    }
+
+    // CPython exposes these as get/set attributes (the set path belongs to
+    // reconfigure(), which is not wired yet), so they read-only here
+    [PyProperty("line_buffering")]
+    private static PyResult Get_line_buffering(PyCallContext context, PyTextIOWrapperObject self)
+    {
+        return PyBoolObject.FromBoolean(self._buffering is PyStandardStreamBuffering.Line);
+    }
+
+    [PyProperty("write_through")]
+    private static PyResult Get_write_through(PyCallContext context, PyTextIOWrapperObject self)
+    {
+        return PyBoolObject.FromBoolean(self._buffering is PyStandardStreamBuffering.WriteThrough);
     }
 }

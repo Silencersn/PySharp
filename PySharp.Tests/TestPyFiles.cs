@@ -25,17 +25,25 @@ public sealed class TestPyFiles
         private readonly Stream _in;
         private readonly Stream _out;
         private readonly Stream _err;
+        private readonly bool _stdioIsTerminal;
 
-        public StdioHost(Stream input, Stream output, Stream error)
+        // fixture runs read like an interactive terminal by default: line
+        // buffering keeps stdout assertions valid without each test flushing
+        // the wrapper first; redirected-buffering tests opt out explicitly
+        public StdioHost(Stream input, Stream output, Stream error, bool stdioIsTerminal = true)
         {
             _in = input;
             _out = output;
             _err = error;
+            _stdioIsTerminal = stdioIsTerminal;
         }
 
         public override Stream AllocateStdIn() => _in;
         public override Stream AllocateStdOut() => _out;
         public override Stream AllocateStdErr() => _err;
+        public override bool StdInIsTerminal => _stdioIsTerminal;
+        public override bool StdOutIsTerminal => _stdioIsTerminal;
+        public override bool StdErrIsTerminal => _stdioIsTerminal;
         public override IVirtualFileSystem FileSystem { get; } = MemoryFileSystem.CreateBuilder().Build();
     }
 
@@ -767,6 +775,98 @@ public sealed class TestPyFiles
         Assert.IsFalse(errBytes.AsSpan().StartsWith(stackalloc byte[] { 0xEF, 0xBB, 0xBF }),
             "stderr must not start with a UTF-8 BOM: " + Convert.ToHexString(errBytes[..Math.Min(8, errBytes.Length)]));
         Assert.Contains("err-line", System.Text.Encoding.UTF8.GetString(errBytes));
+    }
+
+    [TestMethod]
+    public void TestMergedCaptureStderrPrecedesStdout()
+    {
+        // the buffering contract's user-visible face: with stdout and stderr
+        // merged into one pipe (2>&1), CPython's block-buffered stdout lands
+        // only at exit while line-buffered stderr streams through, so the
+        // stderr lines must all precede the stdout lines. cmd performs the
+        // merge because Process cannot share one pipe between the two
+        // handles. Fails until the fix lands.
+        var consoleExe = PyCpythonDiffRunner.FindPySharpConsole();
+        if (consoleExe is null)
+            Assert.Inconclusive("PySharp.Console build output not found; build PySharp.Console first");
+
+        var script = Path.Combine(Path.GetTempPath(), $"merged_capture_{Guid.NewGuid():N}.py");
+        File.WriteAllText(script,
+            "import sys\n" +
+            "sys.stdout.write(\"out1\\n\")\n" +
+            "sys.stderr.write(\"err1\\n\")\n" +
+            "sys.stdout.write(\"out2\\n\")\n" +
+            "sys.stderr.write(\"err2\\n\")\n");
+        try
+        {
+            var pysharpOrder = MergedCaptureOrder(consoleExe, $"\"{script}\"");
+
+            var cpython = PyCpythonDiffRunner.TryFindCpythonPath();
+            if (cpython is not null)
+            {
+                var cpythonOrder = MergedCaptureOrder(cpython, $"\"{script}\"");
+                Assert.AreEqual(cpythonOrder, pysharpOrder,
+                    $"merged capture (2>&1) ordering must match CPython:\ncpython: {cpythonOrder}\npysharp: {pysharpOrder}");
+            }
+            else
+            {
+                Assert.Inconclusive("CPython 3.14 not found; asserting the documented ordering only");
+            }
+
+            Assert.AreEqual("err1\nerr2\nout1\nout2\n", pysharpOrder,
+                $"stderr must precede the exit-flushed stdout in merged capture:\n{pysharpOrder}");
+        }
+        finally
+        {
+            File.Delete(script);
+        }
+    }
+
+    // runs `exe args 2>&1` through cmd so both child handles share one pipe,
+    // and returns the captured output in arrival order, CRLF-normalized
+    private static string MergedCaptureOrder(string exe, string args)
+    {
+        var psi = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "cmd.exe",
+            Arguments = $"/c \"\"{exe}\" {args} 2>&1\"",
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true,
+        };
+        using var process = System.Diagnostics.Process.Start(psi)!;
+        var outTask = process.StandardOutput.ReadToEndAsync();
+        var errTask = process.StandardError.ReadToEndAsync();
+        if (!process.WaitForExit(60_000))
+            process.Kill();
+        _ = errTask.Result; // cmd's own channel; the merged child stream is stdout
+        return outTask.Result.Replace("\r\n", "\n");
+    }
+
+    [TestMethod]
+    public void TestCrashFlushesBufferedStdoutBeforeTraceback()
+    {
+        // flush_io (CPython pythonrun.c): an unhandled error drains the
+        // standard streams' Python-level buffers before the traceback is
+        // printed, so buffered stdout precedes the traceback in merged
+        // capture. The stdout and stderr handles share one sink so the
+        // arrival order is observable.
+        var sink = new MemoryStream();
+        var host = new StdioHost(new MemoryStream(), sink, sink, stdioIsTerminal: false);
+        using var environment = host.CreateEnvironmentBuilder().Build();
+        using var context = PyCallContext.CreateInterpreterRootContext(environment);
+
+        PyInterpreter.PyTryCatch(context, () =>
+            PyInterpreter.RunCodeWithContext(context, "print('before-error')\n1/0", "<test>", "<test>", isMain: true));
+
+        var output = System.Text.Encoding.UTF8.GetString(sink.ToArray()).Replace("\r\n", "\n");
+        Assert.Contains("before-error", output);
+        Assert.Contains("ZeroDivisionError", output);
+        Assert.IsLessThan(
+            output.IndexOf("ZeroDivisionError", StringComparison.Ordinal),
+            output.IndexOf("before-error", StringComparison.Ordinal),
+            "buffered stdout must land before the traceback:\n" + output);
     }
 
     [TestMethod]
