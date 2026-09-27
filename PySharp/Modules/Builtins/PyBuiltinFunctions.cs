@@ -173,6 +173,31 @@ public static partial class PyBuiltinFunctions
     [PyFunctionParameters("*objects", "sep=' '", "end='\\n'", "file=None", "flush=False")]
     private static PyResult PrintImpl(PyCallContext context, PyArguments arguments)
     {
+        // CPython's argument clinic wrapper converts flush before the
+        // implementation runs, so a __bool__ failure outranks every check
+        // below; the implementation then resolves sys.stdout ahead of
+        // validating sep/end.
+        var flushResult = PySpecialMethods.Bool(context, arguments.GetKwargByIndex(3));
+        if (flushResult.IsError)
+            return flushResult;
+
+        var fileObj = arguments.GetKwargByIndex(2);
+
+        // CPython's builtin_print_impl writes through sys.stdout, not the
+        // interpreter's own stream: rebinding sys.stdout redirects print, and
+        // the text layer's newline translation applies to it like any other
+        // text stream. _PySys_GetRequiredAttr makes a *missing* attribute an
+        // error while a None one means "not connected", which prints nothing.
+        if (fileObj is PyNoneObject)
+        {
+            var sys = context.PyEnvironment.LoadBuiltinModule(context, "sys");
+            if (!sys.PyAttributes.TryGetValue("stdout", out var stream))
+                return PyResult.RuntimeError(PySR.Runtime_Sys_LostStdout);
+            if (stream is PyNoneObject)
+                return PyNoneObject.None;
+            fileObj = stream;
+        }
+
         var sepObj = arguments.GetKwargByIndex(0);
         if (!PyUtils.TryGetValue(sepObj, (PyStrObject str) => str.Value, " ", out var sep))
             return PyResult.TypeError(PySR.Runtime_Builtin_Print_WrongArgType, "sep", sepObj.PyType.TpName);
@@ -180,24 +205,6 @@ public static partial class PyBuiltinFunctions
         var endObj = arguments.GetKwargByIndex(1);
         if (!PyUtils.TryGetValue(endObj, (PyStrObject str) => str.Value, "\n", out var end))
             return PyResult.TypeError(PySR.Runtime_Builtin_Print_WrongArgType, "end", endObj.PyType.TpName);
-
-        var fileObj = arguments.GetKwargByIndex(2);
-
-        var flushResult = PySpecialMethods.Bool(context, arguments.GetKwargByIndex(3));
-        if (flushResult.IsError)
-            return flushResult;
-
-        // CPython's builtin_print_impl writes through sys.stdout, not the
-        // interpreter's own stream: rebinding sys.stdout redirects print, and
-        // the text layer's newline translation applies to it like any other
-        // text stream. A None sys.stdout (detached interpreter) prints nothing.
-        if (fileObj is PyNoneObject)
-        {
-            var stdout = context.PyEnvironment.LoadBuiltinModule(context, "sys");
-            if (!stdout.PyAttributes.TryGetValue("stdout", out var stream) || stream is PyNoneObject)
-                return PyNoneObject.None;
-            fileObj = stream;
-        }
 
         PyResult WriteToFile(string text) => fileObj.CallMethod(context, "write", [PyStrObject.FromString(text)]);
 
@@ -273,11 +280,19 @@ public static partial class PyBuiltinFunctions
     // reader is what keeps input() and sys.stdin on one buffer.
     private static PyResult InputCore(PyCallContext context, PyObject? prompt)
     {
+        // builtin_input_impl requires all three streams before doing any work:
+        // a missing or None one is "lost sys.<name>" for each of them
         var sys = context.PyEnvironment.LoadBuiltinModule(context, "sys");
         if (!sys.PyAttributes.TryGetValue("stdin", out var stdin) || stdin is PyNoneObject)
-            return PyResult.RuntimeError(PySR.Runtime_Builtin_Input_LostStdin);
+            return PyResult.RuntimeError(PySR.Runtime_Sys_LostStdin);
         if (!sys.PyAttributes.TryGetValue("stdout", out var stdout) || stdout is PyNoneObject)
-            return PyResult.RuntimeError(PySR.Runtime_Builtin_Input_LostStdout);
+            return PyResult.RuntimeError(PySR.Runtime_Sys_LostStdout);
+        if (!sys.PyAttributes.TryGetValue("stderr", out var stderr) || stderr is PyNoneObject)
+            return PyResult.RuntimeError(PySR.Runtime_Sys_LostStderr);
+
+        // CPython flushes stderr before the prompt is written and stdout after
+        // it, ignoring a failure on either
+        _ = stderr.CallMethod(context, "flush");
 
         if (prompt is not null)
         {
@@ -289,11 +304,7 @@ public static partial class PyBuiltinFunctions
                 return promptResult;
         }
 
-        // CPython flushes stdout before reading, and stderr first, ignoring
-        // a failure on either
         _ = stdout.CallMethod(context, "flush");
-        if (sys.PyAttributes.TryGetValue("stderr", out var stderr) && stderr is not PyNoneObject)
-            _ = stderr.CallMethod(context, "flush");
 
         return ReadLineAndStrip(context, stdin);
     }

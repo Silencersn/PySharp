@@ -312,8 +312,11 @@ partial class PySR
     public const string Runtime_File_CannotFitOffset = "cannot fit 'int' into an offset-sized integer";
     public const string Runtime_Builtin_Input_Eof = "EOF when reading a line";
     public const string Runtime_Builtin_Input_ReadLineNonString = "object.readline() returned non-string";
-    public const string Runtime_Builtin_Input_LostStdin = "lost sys.stdin";
-    public const string Runtime_Builtin_Input_LostStdout = "lost sys.stdout";
+    // _PySys_GetRequiredAttr's "lost sys.%U": a missing sys attribute is an
+    // error, while one bound to None is a separate, caller-decided case
+    public const string Runtime_Sys_LostStdin = "lost sys.stdin";
+    public const string Runtime_Sys_LostStdout = "lost sys.stdout";
+    public const string Runtime_Sys_LostStderr = "lost sys.stderr";
     public const string Runtime_Str_PctFormatRealNumberRequired = "%{0} format: a real number is required, not {1}";
     public const string Runtime_Str_PctFormatIntegerRequired = "%{0} format: an integer is required, not {1}";
     public const string Runtime_Str_StartswithTupleItemMustBeStr = "tuple for startswith must only contain str, not {0}";
