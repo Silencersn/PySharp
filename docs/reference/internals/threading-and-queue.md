@@ -42,8 +42,9 @@ _thread.Start();
 
 ### 环境收尾
 
-`PyEnvironment.Dispose` 对线程集中每个线程先 `Interrupt()` 再 `Join()`，见
-[配置执行环境](../user-guide/environment.md)：
+`PyEnvironment.Dispose` 先触发一次 `OnDisposing`（宿主的释放前钩子，见
+[配置执行环境](../user-guide/environment.md)），再对线程集中每个线程先 `Interrupt()` 后
+`Join()`：
 
 - `Interrupt` 触发线程内等待原语抛 `ThreadInterruptedException`，`PyStart` 的 catch 把它吞掉，
   线程带着未完成的帧退出。帧清理尚未完善的遗留点记录在源码的 `EnsureFrameState` 处。

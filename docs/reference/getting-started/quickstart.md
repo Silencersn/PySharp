@@ -57,7 +57,8 @@ catch (PyRuntimeException e)
 }
 ```
 
-实例方法 `Execute` 的行为不同，它打印异常后不再抛出。详见[错误处理](../user-guide/error-handling.md)。
+实例方法 `Execute` 同样以 `PyRuntimeException` 抛出；区别是抛出前先向环境错误流写出 traceback
+并把退出码记入环境。详见[错误处理](../user-guide/error-handling.md)。
 
 ## 使用受控环境
 

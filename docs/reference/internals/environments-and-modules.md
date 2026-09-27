@@ -24,6 +24,7 @@ PyEnvironment
     ├─ Paths / Args        : 搜索路径与 sys.argv
     ├─ Threads             : ConcurrentSet
     ├─ ModuleProviders     : List<PyModuleProvider>（Builtin 然后 Path）
+    ├─ EnvData             : ConcurrentDictionary（宿主注入数据，对 Python 不可见）
     ├─ Options             : PyEnvironmentOptions
     ├─ Warnings            : WarningState
     └─ ExitCode            : int（internal）
@@ -39,8 +40,14 @@ PyEnvironment
   （清空自建）定制完整链。`Options`（`NotImplyImportSite`
   与 `OptimizationLevel`）与 `Warnings`（每解释器的警告策略状态，见
   `Runtime/WarningState.cs`）随构造就位。
-- 生命周期：`Dispose` 依次执行 `Interrupt` 与 `Join` 全部登记线程（`Threads` 由 `threading`
-  模块注册），然后释放三条标准流。退出码存于环境的 `ExitCode`（`internal`）。
+- 环境数据注入：`SetEnvData` / `TryGetEnvData` / `RemoveEnvData` 按键存取宿主对象，存储是随环境
+  构造的私有 `ConcurrentDictionary`。注入值对 Python 结构性不可见——不进任何模块或内建的属性
+  字典，只有拿到 `PyCallContext` 的扩展点经其 `public` 访问器 `context.PyEnvironment` 才能读，
+  构成宿主向内建代码传值又不暴露给脚本的沙箱边界。环境 `Dispose` 不释放注入值，宿主用
+  `OnDisposing`（释放前钩子，见下）自行回收。
+- 生命周期：`Dispose` 先触发一次 `OnDisposing`（订阅者异常不阻断清理，但会在清理完成后从
+  `Dispose` 抛出），随后 `Interrupt` 并 `Join` 全部登记线程（`Threads` 由 `threading`
+  模块注册），最后释放三条标准流。退出码存于环境的 `ExitCode`（`internal`）。
 
 ## import 解析流程
 

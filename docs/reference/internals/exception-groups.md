@@ -28,9 +28,11 @@ BaseExceptionGroup (BaseException)
 
 ## derive 与 split
 
-- `derive(excs)`：以原子异常列表派生同型新组，保留原组的 message、traceback、`__cause__` 与
-  `__context__`，并按新内容重新定型（全为 `Exception` 则 `ExceptionGroup`，否则
-  `BaseExceptionGroup`）。它是 split 的构造原语。
+- `derive(excs)`：以原子异常列表派生同型新组，保留原组的 message、`__cause__` 与 `__context__`，
+  并按新内容重新定型（全为 `Exception` 则 `ExceptionGroup`，否则
+  `BaseExceptionGroup`）。它是 split 的构造原语。traceback 不在 derive 里携带（对齐 CPython：新组
+  从 `(msg, excs)` 起步，无 traceback）；split 切出的子组在结算路径（`exceptiongroup_subset`
+  语义）中重新装载源组的 traceback 与线程头信息，使切出的部分仍被视作「同一个异常」。
 - `split(condition)`：condition 为类型、类型元组或可调用谓词（逐异常调用并做 `bool()` 化）。
   算法是递归二分：遍历子异常，子组递归 split，非空的两半各自作为子组保留并保持嵌套结构；叶子异常
   按谓词分箱；两侧分别 `derive`，空侧为 `None`；返回 `(match, rest)` 二元组。

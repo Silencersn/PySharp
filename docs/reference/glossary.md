@@ -34,7 +34,7 @@
 - **同步驱动（协程）**：`await` 由 `Send` 指令同步驱动 awaitable，没有 .NET `Task` 桥接，与“协程即线程”的直觉不同。见[生成器与协程系统](./internals/generator-system.md)。
 - **异常组（exception group）**：PEP 654。`ExceptionGroup` / `BaseExceptionGroup` 与 `except*` 的子集匹配语义；组结构的 C# 侧遍历器当前全为 internal，见[异常组](./internals/exception-groups.md)。
 - **t-string（模板字符串，PEP 750）**：由 `Template` / `Interpolation` 对象承载的延迟插值字符串，构建期不求值。与 f-string 的差别见[f-string 与格式化](./internals/fstring-and-format.md)。
-- **警告升级（warnings-as-errors）**：`simplefilter("error")` 使 `warnings.warn` 抛异常。宿主侧拦截需经 `RunCode` / `RunFile`，实例方法 `Execute` 也会在未捕获时抛出。见[警告与数据类](./user-guide/warnings-and-dataclasses.md)。
+- **警告升级（warnings-as-errors）**：`simplefilter("error")` 使 `warnings.warn` 抛异常。宿主侧拦截可经 `RunCode` / `RunFile`，实例方法 `Execute` 也会在未捕获时抛出。见[警告与数据类](./user-guide/warnings-and-dataclasses.md)。
 - **traceback**：异常传播时逐帧捕获的定位信息，最终渲染为 Python 风格文本（`PyRuntimeException.Message`）。
 
 ## 模块与环境

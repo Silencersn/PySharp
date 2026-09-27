@@ -7,7 +7,7 @@
 
 | 文件 | 行数 | 职责 |
 | --- | --- | --- |
-| `Parser.cs` | 223 | 骨架：三个静态入口、token 游标、关键字与运算符集合、名称改写、字符串池 |
+| `Parser.cs` | 240 | 骨架：三个静态入口、token 游标、关键字与运算符集合、名称改写、字符串池 |
 | `Parser.Expr.cs` | 1965 | 表达式产生式：优先级阶梯、推导式、lambda、调用参数、下标与切片 |
 | `Parser.Stmt.cs` | 1149 | 简单与复合语句：赋值、控制流、`def` 与 `class`、`with`、`for` 与 `while`、`try`、`import` |
 | `Parser.Stmt.Match.cs` | 570 | `match` 与 `case` 模式：序列、映射、类、或模式、捕获 |

@@ -52,10 +52,10 @@
 | 值 | 名称 | 行为 |
 | --- | --- | --- |
 | 1 | `ListToTuple` | 列表转元组（字面量元组的两步构建：先 BuildList 再转换） |
-| 2 | `_ListToSet` | 列表转集合 |
-| 3 | `Print` | REPL 单表达式回显（`DisplayHook`，对齐 CPython `print_expr`）：`None` 原样，否则向 stdout 写 `repr(value)` 并把值绑定到 `builtins._`（上一条结果） |
-| 4 | `ImportStar` | `from m import *`：把模块属性批量导入当前帧名字空间 |
-| 5 | `TypeVar` | 由名字创建 `TypeVar` 对象（PEP 695 类型参数的运行期形态） |
+| 2 | `Print` | REPL 单表达式回显（`DisplayHook`，对齐 CPython `print_expr`）：`None` 原样，否则向 stdout 写 `repr(value)` 并把值绑定到 `builtins._`（上一条结果） |
+| 3 | `ImportStar` | `from m import *`：把模块属性批量导入当前帧名字空间 |
+| 4 | `TypeVar` | 由名字创建 `TypeVar` 对象（PEP 695 类型参数的运行期形态） |
+| 5 | `MakeAnnotateFunc` | 类体注解的 `__annotate__` 惰性求值函数构建（PEP 649，见[函数篇](./instructions-functions.md#类体注解的惰性求值pep-649-风格)） |
 
 ## 内联帧（推导式）
 

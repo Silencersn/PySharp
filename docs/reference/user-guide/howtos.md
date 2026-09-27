@@ -142,7 +142,8 @@ using var environment = host.CreateEnvironmentBuilder()
 见[标准库模块覆盖](../python-compat/stdlib-modules.md)。CPU 时间与内存不受解释器限制，需宿主自行
 约束，例如以超时包装执行线程。另一个约束手段是警告升级：让脚本执行
 `warnings.simplefilter("error")` 后，`warnings.warn` 会在 Python 侧抛出警告异常，脚本内可自行
-`try` 与 `except` 处理；宿主要在 C# 侧拦截则必须用 `RunCode` 或 `RunFile` 执行，见
+`try` 与 `except` 处理；宿主要在 C# 侧拦截，捕获 `RunCode`、`RunFile` 或 `Execute` 抛出的
+`PyRuntimeException` 即可，见
 [警告与数据类](./warnings-and-dataclasses.md)。
 
 ## 场景 5：把脚本组织成可 import 的模块

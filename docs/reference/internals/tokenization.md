@@ -9,7 +9,7 @@
 
 | 文件 | 职责 |
 | --- | --- |
-| `Lexer.cs`（1059 行） | 核心状态机，入口 `Lexer.Tokenize(context, codeSource, extraNewLine)` |
+| `Lexer.cs`（1055 行） | 核心状态机，入口 `Lexer.Tokenize(context, codeSource, extraNewLine)` |
 | `Token.cs` | `readonly record struct Token`，含 `TokenType` 与 `CodeTextSpan`，附带行定位辅助 |
 | `TokenType.cs` | 全部词法单元种类，含下划线前缀的内部状态型 token |
 | `TokenSequence.cs` | token 列表的轻量包装，支持按索引与 `AsSpan()` 访问 |

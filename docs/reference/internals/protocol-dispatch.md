@@ -93,7 +93,7 @@ GetItem:   对象是类型对象时走 __class_getitem__ 或 GenericAlias，否�
 | `PyComparer` | `Eq`、`NotEq`、`Lt`、`LtE`、`Gt`、`GtE` 的统一入口，把委托结果转 `PyBoolObject`；容器排序（`sorted`、`list.sort`）复用 |
 | `PyCollectionComparer` | 集合与序列的逐元素比较，即字典序语义 |
 | `PyObjectComparer` | 与 `PyCallContext` 绑定的比较器对象（`context.Comparer`） |
-| `PyObjectConstEqualityComparer` | 常量池去重用的 `IEqualityComparer<PyObject>`，按 Python 的 `==` 与 `hash` 语义，服务 `BytecodeBuilder` 的常量池 |
+| `PyObjectConstEqualityComparer` | 常量池去重用的 `IEqualityComparer<PyObject>`，同一性对齐 CPython `_PyCode_ConstantKey`（类型参与，float/complex 按位模式，元组按元素递归，其余按 `==`），服务 `BytecodeBuilder` 的常量池 |
 
 ## 修改协议行为的位置
 

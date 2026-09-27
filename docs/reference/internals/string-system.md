@@ -10,7 +10,7 @@
 
 | 文件 | 行数 | 职责 |
 | --- | --- | --- |
-| `PyStrObject.cs` | 3175 | 值类型（构造、工厂、char 池、`PyLength` 缓存、码点视图）加 `PyStrObjectType`（44 个 `[PyMethod]`、`__format__` 覆写与全部协议覆写） |
+| `PyStrObject.cs` | 3167 | 值类型（构造、工厂、char 池、`PyLength` 缓存、码点视图）加 `PyStrObjectType`（44 个 `[PyMethod]`、`__format__` 覆写与全部协议覆写） |
 | `PyStrObject.Intern.cs` | 106 | `InternPool`：驻留查找 |
 | `PyStrObject.Converter.cs` | 619 | `PyStrConverter`：字面量转义的双向转换 |
 | `PyStrObject.Py.cs` | 30 | 复杂方法的实例形态，目前是 `PyJoin` |

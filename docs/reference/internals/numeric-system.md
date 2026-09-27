@@ -88,7 +88,7 @@ internal static）持有进程级上限，默认 4300、最小有效值 640、0 
 
 ## float 与 complex
 
-- `PyFloatObject`（1642 行）：`double Value` 加常量族（`Pi`、`E`、`Tau`、`NaN`、
+- `PyFloatObject`（1723 行）：`double Value` 加常量族（`Pi`、`E`、`Tau`、`NaN`、
   `PositiveInfinity`、`NegativeInfinity`、`NegativeZero`、`Epsilon`）。`repr` 的最短往返格式化
   由自实现 dtoa（mode 0）完成——`double.ToString` 在 17 位有效数字边界会差 1 ulp；`round` 与
   `%` 语义等边界均有独立回归，如 `test_float_format_regression.py`。

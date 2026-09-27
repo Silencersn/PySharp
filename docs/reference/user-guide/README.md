@@ -26,7 +26,7 @@
 
 | 篇目 | 内容 |
 | --- | --- |
-| [错误处理](./error-handling.md) | `PyRuntimeException` 与 `PyExceptionObject` 公共面、按类型检查、读取 `Args`、`SystemExit` 退出码转换 |
+| [错误处理](./error-handling.md) | `PyRuntimeException` 与 `PyExceptionObject` 公共面、按类型检查、读取 `Args`、`SystemExit` 退出码转换、内建异常的成员属性 |
 | [在 C# 中操作 Python 对象](./python-objects-from-csharp.md) | 值构造与读取总表、集合的 C# 侧成员、协议操作的上下文边界 |
 | [类型映射与转换](./type-mapping.md) | Python 与 C# 的完整映射表、无隐式转换的边界、常见互操作陷阱 |
 | [运算符与协议分发](./operators-and-protocols.md) | `PyResult` 错误即值模式、`PyOperators` 反射协议与子类优先、`PySpecialMethods` 回退表、调用扩展 |
@@ -48,4 +48,4 @@
 | 篇目 | 内容 |
 | --- | --- |
 | [常见问题与故障排查](./faq.md) | 按问答组织的嵌入、互操作、扩展与兼容性高频问题，附按现象分层的排查流程 |
-| [嵌入场景手册](./howtos.md) | 七个任务式场景：取结果、异常传数据、沙箱、插件式模块、多会话、声明式暴露、REPL |
+| [嵌入场景手册](./howtos.md) | 八个任务式场景：取结果、异常传数据、环境数据注入、沙箱、插件式模块、多会话、声明式暴露、REPL |

@@ -9,8 +9,8 @@
 | 文件 | 职责 |
 | --- | --- |
 | `PyCore.cs` | 执行编排：`Eval(context)`、`MakeFunction`、`GetFreeVars`、`BuildClass` |
-| `BytecodeVirtualMachine.cs`（1307 行） | `Eval(PyCallContext, ref BytecodeVirtualMachineStates)` 主循环与大部分操作码实现 |
-| `BytecodeVirtualMachine.BytecodeImpl.cs`（693 行） | 一部分操作码的独立实现，复杂指令的分解 |
+| `BytecodeVirtualMachine.cs`（1319 行） | `Eval(PyCallContext, ref BytecodeVirtualMachineStates)` 主循环与大部分操作码实现 |
+| `BytecodeVirtualMachine.BytecodeImpl.cs`（723 行） | 一部分操作码的独立实现，复杂指令的分解 |
 | `BytecodeVirtualMachineStates.cs` | 可挂起的执行状态，供生成器与协程恢复：借用栈、操作数栈深、异常处理器栈等 |
 | `OperandStack.cs` | 操作数栈：池化数组 `OperandStack` 加 `ref struct` 视图 `ValueOperandStack`。`Pop` 下溢与 `Push` 上溢都有保护，即 `Debug.Assert` 加受控异常 |
 
@@ -63,7 +63,9 @@ internal sealed class ExceptionHandler
 ```
 
 `try` 编译为 `_SetupExcept` 与 `_SetupFinally` 家族指令。VM 捕获到 `PyRuntimeException` 时不直接
-上抛，而是查处理器栈：回滚操作数栈到 `StackDepth`，按状态机推进，`except` 匹配经 `CheckExcMatch`
+上抛，而是先在错误出口对当前帧调用 `PyExceptionObject.RecordFrame`（RERAISE 语义的抛出带
+`SkipFrameRecording` 跳过，对齐 CPython 错误标签先 `PyTraceBack_Here` 再找处理器），再查处理器
+栈：回滚操作数栈到 `StackDepth`，按状态机推进，`except` 匹配经 `CheckExcMatch`
 与 `CheckEgMatch`（异常组支持子集匹配），全部处理完才把剩余异常作为 `PyResult` 错误离开 `Eval`。
 `_LoadExcInfo` 与 `_LoadHitExcept` 支撑 `sys.exc_info` 族语义。
 

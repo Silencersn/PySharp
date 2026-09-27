@@ -10,10 +10,11 @@
 ```csharp
 public sealed partial class PyCallContext : IDisposable
 {
-    internal PyEnvironment PyEnvironment { get; }
+    public PyEnvironment PyEnvironment { get; }            // 所在环境，扩展点内直达
     internal PyCallContextFrameState FrameState { get; }   // 帧栈
     public PyObjectComparer Comparer { get; }              // 绑定上下文的比较器
-    internal StreamReader In / StreamWriter Out / StreamWriter Error;   // 转发环境 I/O
+    internal StreamWriter Out => PyEnvironment.Out;        // 转发环境标准流
+    internal StreamWriter Error => PyEnvironment.Error;
     internal ref PyInternalFrame CurrentInternalFrame => ref FrameState.CurrentInternalFrame;
 }
 ```
@@ -21,7 +22,9 @@ public sealed partial class PyCallContext : IDisposable
 - 唯一入口是环境。全部工厂（`CreateInterpreterRootContext`、`CreateFromEnvironment`、
   `FromCreatingThread`）为 `internal`。几个静态占位上下文（`CSharpRuntime` 等）服务库内非帧
   场景。这是「外部拿不到上下文」这一公共 API 边界的根源，见
-  [与 CPython 的差异](../python-compat/cpython-differences.md)。
+  [与 CPython 的差异](../python-compat/cpython-differences.md)。工厂虽为 internal，环境访问器
+  `PyEnvironment` 本身是 `public`：拿到上下文的扩展点（内建函数、槽实现等）可经它直达所在环境
+  （`sys.path`、宿主文件系统、环境数据等）。
 - 环境上下文（ambient context）：解释器根上下文与线程工厂把自身发布到 `AsyncLocal`，
   `Dispose` 时恢复原值；线程工厂不继承父级，异线程读取返回 `null`。`PyCallContext.Current`
   供无法携带上下文参数的 .NET 固定签名面使用：`PyObject.ToString()` 与

@@ -133,12 +133,14 @@
 ### `MatchSequence` — 序列模式判定
 
 - **Arg**：无；**栈效应**`(subject → subject, bool)`。
-- `PyCore.IsSequenceForMatch`（str / bytes 排除在外的序列判定）压布尔。
+- `PyCore.IsSequenceForMatch` 压布尔。判定是纯类型 flag（`PyTypeFlags.Sequence`，对齐
+  `Py_TPFLAGS_SEQUENCE`，沿 MRO 继承）：`str` / `bytes` / `bytearray` 虽有下标协议但不带该
+  flag，只定义了 `__getitem__` 的用户类同样不带，均不匹配序列模式。
 
 ### `MatchMapping` — 映射模式判定
 
 - **Arg**：无；**栈效应**`(subject → subject, bool)`。
-- `PyCore.IsMappingForMatch` 压布尔。
+- `PyCore.IsMappingForMatch` 压布尔，同为纯类型 flag（`PyTypeFlags.Mapping`）。
 
 ### `GetLen` — 取长度（长度预检）
 
@@ -149,13 +151,22 @@
 ### `MatchKeys` — 映射键捕获
 
 - **Arg**：无；**栈效应**`(subject, keys_tuple → subject, keys_tuple, values_or_None)`。
-- 栈布局 `[subject, keys_tuple]`（键元组在顶）。逐键 `GetItem`：任一键 `KeyError` → 压 `None`（失配）；全部命中 → 压**值元组**。`{"k": k}` 模式的捕获通道。
+- 栈布局 `[subject, keys_tuple]`（键元组在顶）。对齐 CPython `_PyEval_MatchKeys`：先做重复键
+  检查（逐对 `==`，重复报 `ValueError`），再经 subject 的双参 `get(key, sentinel)` 取值，以
+  身份比较新鲜 `object()` 哨兵判定缺失（不触发 `__missing__` 副作用，也不依赖 `KeyError`）；
+  任一键缺失 → 压 `None`（失配），全部命中 → 压**值元组**。`{"k": k}` 模式的捕获通道。
+- **错误**：键重复 → `ValueError`；`get` 调用抛错原样传播；subject 无 `get` 时退回 `GetItem`
+  路径（`KeyError` 视为键缺失，防御性回退）。
 
 ### `MatchClass` — 类模式捕获
 
 - **Arg**：位置模式数 `n`；**栈效应**`(subject, cls, keys_tuple → subject, cls, keys_tuple, values_or_None)`。
-- 栈布局 `[subject, cls, keys_tuple]`。subject 不是 cls 实例 → 压 `None`；否则取 `n` 个**位置**属性（内建特型直接取 subject / `__match_args__` 语义：类的 `__match_args__` 元组按序提供属性名，长度不足 → `TypeError`）与键元组的**关键字**属性（任一 `AttributeError` → 压 `None` 失配），压入值元组。
-- **错误**：非类 subject 上调用类模式、`__match_args__` 非元组 / 长度不足 → `TypeError`。
+- 栈布局 `[subject, cls, keys_tuple]`。subject 不是 cls 实例 → 压 `None`；否则对齐 CPython
+  `_PyEval_MatchClass`：先查**类**上的 `__match_args__`（缺失按空元组，其他查找错误传播，
+  非 `str` 元素报 `TypeError`），仅当类未定义 `__match_args__` 且带 `MATCH_SELF` flag 时才
+  直接取 subject；`__match_args__` 优先于 `MATCH_SELF`。位置数不足报 `TypeError`，关键字属性
+  沿实例 `GetAttr` 逐个取（`AttributeError` → 压 `None` 失配），全部命中压入值元组。
+- **错误**：非类 subject 上调用类模式、`__match_args__` 非元组 / 长度不足 / 元素非 `str` → `TypeError`。
 
 ## 相关阅读
 

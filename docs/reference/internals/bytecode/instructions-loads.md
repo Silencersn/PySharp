@@ -29,7 +29,10 @@
 
 - **Arg**：`LoadSpecialMethods` 枚举值：`0 = Enter`（`__enter__`）、`1 = Exit`（`__exit__`）、`2 = AEnter`（`__aenter__`）、`3 = AExit`（`__aexit__`）；**栈效应**`(obj → descriptor)`。
 - 取栈顶对象的类型，把对应槽包装为 `PyWrapperDescriptorObject` 压栈（槽不存在则报错）。这是 `with` / `async with` 语句的进入序列之一。
-- **错误**：槽缺失时 `TypeError`（消息区分 with / async with）。
+- **错误**：槽缺失时 `TypeError`，消息形如
+  `'<T>' object does not support the context manager protocol (missed __exit__ method)`
+  （异步为 `asynchronous context manager protocol` 与 `__aenter__` / `__aexit__`），即缺失的槽
+  与 with / async with 都体现在消息里。
 
 ### `PushNull` — 压入 null 占位
 

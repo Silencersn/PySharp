@@ -47,7 +47,10 @@
 ### `BuildTuple` — 元组字面量
 
 - **Arg**：元素数 `n`；**栈效应**`(e1 … en → tuple)`。
-- 同 `BuildList` 的收集方式，产出不可变的 `PyTupleObject`。两步构建（`BuildList` + `CallIntrinsic1` 的 `ListToTuple`）是另一条等价路线（见[格式化与杂项](./instructions-misc.md#callintrinsic1--单参内部函数调用)）。
+- 同 `BuildList` 的收集方式，产出不可变的 `PyTupleObject`。**注意**：元素全为常量的元组显示
+  （Load 上下文、无 starred 元素）已在编译期折叠为单个元组常量（见[总览](./README.md#编译期常量折叠)），
+  运行期发射的是含非常量或 starred 元素的场景。两步构建（`BuildList` + `CallIntrinsic1` 的
+  `ListToTuple`）是另一条等价路线（见[格式化与杂项](./instructions-misc.md#callintrinsic1--单参内部函数调用)）。
 - **错误**：无。
 
 ### `BuildSet` — 集合字面量

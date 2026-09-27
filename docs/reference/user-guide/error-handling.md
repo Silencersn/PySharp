@@ -3,9 +3,11 @@
 源码：`PySharp/Runtime/PyRuntimeException.cs`、`PySharp/Modules/Builtins/PyExceptionObject.cs`。
 
 Python 侧未捕获的异常不会以原始形式穿透到 .NET，而是以 `PyRuntimeException`（命名空间
-`PySharp.Runtime`）的形式冒泡到 C# 调用方。静态 `RunFile`、`RunCode` 与实例 `Execute` 都遵循这一
-行为：抛出前先经 `PyTryCatch` 处理，向环境错误流写出 traceback 并设置环境退出码。传播面的完整
-说明见[执行 Python 代码](./executing-python.md)与 [PyInterpreter 参考](../api/PyInterpreter.md)。
+`PySharp.Runtime`）的形式冒泡到 C# 调用方，`Message` 即格式化后的 traceback 文本。实例 `Execute`
+抛出前先经 `PyTryCatch` 处理：向环境错误流写出 traceback 并设置环境退出码，随后重新抛出；静态
+`RunFile` 与 `RunCode` 则直接抛出，不写环境错误流、不记退出码（CLI 等顶层路径自行包装
+`PyTryCatch`）。传播面的完整说明见[执行 Python 代码](./executing-python.md)与
+[PyInterpreter 参考](../api/PyInterpreter.md)。
 
 ## PyRuntimeException
 
@@ -93,7 +95,7 @@ catch (PyRuntimeException e)
     if (PySystemExitObjectType.Shared.IsInstance(e.PyException))
         return GetExitCode(e.PyException);
 
-    Console.Error.WriteLine(e.Message);   // traceback 已写入环境错误流，此处由宿主决定如何呈现
+    Console.Error.WriteLine(e.Message);   // RunFile 不写环境错误流，e.Message 即 traceback 文本
     return 1;
 }
 
@@ -157,7 +159,27 @@ Python 3.11 的异常组（`ExceptionGroup`、`BaseExceptionGroup`）已支持�
 - `SyntaxError`：按 `msg` 加位置信息元组渲染，含 `filename, lineno` 与平台分隔符 basename 等
   五种形态；`msg + info` 元组构造有 end_offset 校验。
 - `UnicodeEncodeError` / `UnicodeDecodeError` / `UnicodeTranslateError`：构造参数有形状校验，
-  `__str__` 按单个坏字符渲染，按码点幅值选 `\x` / `\u` / `\U` 转义，孤代理取原始码点。
+  `__str__` 按单个坏字符渲染，按码点幅值选 `\x` / `\u` / `\U` 转义，孤代理取原始码点；成员被改写后
+  `__str__` 在渲染时重新校验取值类型。
+
+## 内建异常的成员属性
+
+`OSError`、`SyntaxError`、`ImportError`、Unicode 三族等内建异常的具名成员与 CPython 一样存放在
+独立的成员槽中，不进实例 `__dict__`：构造后 `__dict__` 保持为空，向 `__dict__` 写同名键也不会遮蔽
+成员（成员描述符是数据描述符）。成员的行为面：
+
+- 未设置的成员读回 `None`，如 `ImportError("x").name`、`OSError(2, "no").filename`；
+- `del` 清空成员而非删除属性，之后仍可读且读回 `None`，重复删除同样无害；数值成员不可删除
+  （如 `UnicodeDecodeError` 的 `start` 与 `end`，报 `can't delete numeric/char attribute`）；
+- `ExceptionGroup` 的 `message` 与 `exceptions` 为只读，删除报 `readonly attribute`。
+
+各族的成员面：`SystemExit.code` 与 `StopIteration.value`；`OSError` 的 `errno`、`strerror`、
+`filename`、`filename2` 与 `winerror`；`SyntaxError` 的 `msg`、`filename`、`lineno`、`offset`、
+`text`、`end_lineno`、`end_offset` 与 `print_file_and_line`；`ImportError`（含
+`ModuleNotFoundError`）的 `msg`、`name`、`path` 与 `name_from`，构造还接受 `name`、`path`、
+`name_from` 关键字实参，`str(e)` 优先用 `msg`；Unicode 三族的 `encoding`、`object`、`start`、
+`end` 与 `reason`。导入失败消息按 CPython 的 `{name!r}` 形式引用模块名，`ModuleNotFoundError`
+的 `name` 保存原始未转义的模块名。
 
 ## PySharpException：行为缺口标记
 

@@ -66,6 +66,9 @@
 - **Arg**：`UnaryOpType` 值；**栈效应**`(operand → result)`。
 - 经 `PyCore.EvalOperator(context, unaryop, operand)` 分发到 `__invert__` / `__neg__` / `__pos__`（及 `not` 的逻辑语义路径）。
 - **槽存在时结果原样透传**，对齐 CPython：`__invert__` 等返回 `NotImplemented` 单例本身也是合法结果、原样压栈（与二元槽"返回 NotImplemented 表示放弃"的约定不同）；槽缺失才报 `TypeError: bad operand type for unary ...`。
+- **`~bool` 的弃用警告**：`bool` 有自己的 `Invert` 槽（对齐 CPython `bool_invert`），先发
+  `DeprecationWarning` 再返回按 `int` 取反的结果；编译期折叠豁免 `~bool` 让警告留在运行期（见
+  [总览](./README.md#编译期常量折叠)）。
 - **错误**：槽缺失 → `TypeError`。
 
 ### `UnaryNot` — 布尔取反

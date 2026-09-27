@@ -77,7 +77,7 @@ converts exact subtypes (bool) to pooled ints.
 
 - CPython 探测顺序：环境变量 `PYSHARP_CPYTHON`（指向 3.14 的 python.exe，多版本共存时用它显式指定）→ `py -3.14` → PATH 上的 `python`/`python3`，要求版本为 `Python 3.14.x`。找不到时对比测试逐个 Inconclusive，不算失败——本层是"环境具备即校验"，不是硬依赖。
 - 每次运行使用独立临时工作目录：夹具的相对文件 IO 落在临时目录，不污染语料与仓库。stdin 重定向为空（`input()` 两侧对称得到 EOFError）。单次超时 60 秒，超时按分歧处理。
-- 并发限流 8 路（叠加 MSTest 方法级并行）；实测整层使全量 `dotnet test` 增加约 20–40 秒（386 夹具 × 双侧子进程）。
+- 并发限流 8 路（叠加 MSTest 方法级并行）；实测整层使全量 `dotnet test` 增加约 20–40 秒（397 夹具 × 双侧子进程）。
 
 **豁免流程（`:cpython-diff:`）**：发现分歧 → 上报 issue → 夹具 docstring 登记 `:cpython-diff: <分歧描述>`（对比测试转为 `[Ignore]`，理由即豁免登记）→ 修复落地 → 移除豁免。豁免是待清零的登记簿，不允许无理由登记（空理由触发 PYFIX009）。
 

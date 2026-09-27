@@ -20,7 +20,7 @@
 | `event Action? OnDisposing` | 释放前钩子：`Dispose` 开始时（线程中断与流释放之前）触发一次；订阅者异常不阻断清理，但会在清理完成后从 `Dispose` 抛出 |
 | `static PyEnvironment CreateNull()` | 空宿主（`Stream.Null` 三流加空内存文件系统）的最小环境 |
 | `static PyEnvironment CreateConsole()` | 控制台宿主加内存文件系统的便捷环境 |
-| `void Dispose()` | 退出流程：中断并等待全部登记线程，随后释放三条标准流；幂等 |
+| `void Dispose()` | 退出流程：先触发 `OnDisposing`，随后中断并等待全部登记线程，再释放三条标准流（不关闭宿主进程句柄）；幂等 |
 
 构造函数为 `internal`。模块缓存、`sys.path` 与 `sys.argv` 列表、线程集合以及 `ExitCode`
 等状态成员同为 `internal`，由运行时维护。环境数据的存储是随环境构造的私有
@@ -43,6 +43,10 @@ public interface IPyEnvironmentBuilder
     IPyEnvironmentBuilder UseStdOutColorSupport(bool enabled);
     IPyEnvironmentBuilder UseStdErrColorSupport(bool enabled);
     IPyEnvironmentBuilder SetOptimizationLevel(int level);
+    IPyEnvironmentBuilder AddModuleProvider(PyModuleProvider provider);      // 追加到提供器链尾
+    IPyEnvironmentBuilder InsertModuleProvider(PyModuleProvider provider);   // 插入提供器链头
+    IPyEnvironmentBuilder ClearModuleProviders();               // 清空默认链，完全自建
+    IPyEnvironmentBuilder AddArgs(IEnumerable<string>? args);   // 接口默认实现：null 时空操作
     IPyEnvironmentBuilder NotImplyImportSite();
     PyEnvironment Build();
 }
@@ -50,6 +54,10 @@ public interface IPyEnvironmentBuilder
 
 构建器由宿主创建，即 `host.CreateEnvironmentBuilder()`。宿主会把默认流编码预置进构建器，
 见 [PyEnvironmentHost 参考](./PyEnvironmentHost.md)。实现类 `PyEnvironmentBuilder` 为 `internal`。
+`PyModuleProvider` 为公共抽象类（`TryCreateModule` 定位加 `ExecModule` 执行模块体的两阶段协议，
+静态入口 `PyModuleProvider.Builtin`、`PyModuleProvider.Path` 与 `PyModuleProvider.Create`），
+提供器链的顺序即模块解析优先级，机制见
+[Environments 与模块解析](../internals/environments-and-modules.md)。
 
 ## PyEnvironmentOptions
 

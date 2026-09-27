@@ -1,6 +1,6 @@
 # 语义分析
 
-源码：`PySharp/Compilation/AstNodes/SemanticAnalyzer.cs`（816 行）、`SemanticModel.cs`
+源码：`PySharp/Compilation/AstNodes/SemanticAnalyzer.cs`（818 行）、`SemanticModel.cs`
 （350 行），以及 `SemanticAnalyzer.Expr.cs`、`SemanticAnalyzer.Stmt.cs` 两个分部。
 
 Python 没有 C# 意义上的编译期类型检查。PySharp 的语义分析解决的是名字的存储分类：每个变量在每层

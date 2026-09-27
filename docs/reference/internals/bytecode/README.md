@@ -57,7 +57,7 @@ PySharp 定义了自己的字节码格式：每条指令 2 字节（`OpCode : by
 | `OpCode.cs` | 全部 118 个操作码枚举，下划线前缀为内部专用码 |
 | `Instruction.cs` | `readonly struct Instruction`，含 `OpCode` 与 `byte Arg` |
 | `BytecodeBuilder.cs` | 发射缓冲：指令列表、标签、常量池与名字池、行表写入，含小窥孔优化 |
-| `Emitter.cs`、`.Expr`、`.Stmt` | 按 `SemanticModel` 遍历 AST 生成指令，三个分部为 296、1086、1772 行 |
+| `Emitter.cs`、`.Expr`、`.Stmt` | 按 `SemanticModel` 遍历 AST 生成指令，三个分部为 298、1086、1775 行 |
 | `Bytecode.cs` | 成品：不可变指令数组、`LineTable`、`Consts`、`Names` 与预计算的 `StackSize` |
 | `LineTable.cs` | 指令索引到源码行的压缩映射（traceback 用），带 `TrimExcess` |
 | `Label.cs`、`OpargTypes.cs`、`IntrinsicFunctionType.cs` | 标签、参数类型与 `CallIntrinsic1` 的内部函数表 |
