@@ -286,32 +286,32 @@ public sealed partial class PySystemExitObjectType : PyExceptionType
         // CPython SystemExit_init: code is args[0] for a single argument,
         // the whole args tuple for multiple arguments, None for none;
         // assignment and deletion never fall back to args
-        self.ExtraValue = args.Count switch
+        self.SetMember("code", args.Count switch
         {
             0 => PyNoneObject.None,
             1 => args[0],
             _ => PyTupleObject.CreateTuple(args),
-        };
+        });
         return PyNoneObject.None;
     }
 
     [PyProperty("code")]
     private static PyResult Get_Code(PyCallContext context, PyExceptionObject self)
     {
-        return self.ExtraValue ?? PyNoneObject.None;
+        return self.GetMember("code") ?? PyNoneObject.None;
     }
 
     [PyProperty("code", Type = PyPropertyMethodType.Setter)]
     private static PyResult Set_Code(PyCallContext context, PyExceptionObject self, PyObject value)
     {
-        self.ExtraValue = value;
+        self.SetMember("code", value);
         return PyNoneObject.None;
     }
 
     [PyProperty("code", Type = PyPropertyMethodType.Deleter)]
     private static PyResult Delete_Code(PyCallContext context, PyExceptionObject self)
     {
-        self.ExtraValue = null;
+        self.DeleteMember("code");
         return PyNoneObject.None;
     }
 }
@@ -330,27 +330,27 @@ public sealed partial class PyStopIterationObjectType : PyExceptionType
         if (!PyArgsValidator.ValidateEmptyKwargs(kwargs, out var err))
             return err.Value;
 
-        self.ExtraValue = args.Count > 0 ? args[0] : PyNoneObject.None;
+        self.SetMember("value", args.Count > 0 ? args[0] : PyNoneObject.None);
         return PyNoneObject.None;
     }
 
     [PyProperty("value")]
     private static PyResult Get_Value(PyCallContext context, PyExceptionObject self)
     {
-        return self.ExtraValue ?? PyNoneObject.None;
+        return self.GetMember("value") ?? PyNoneObject.None;
     }
 
     [PyProperty("value", Type = PyPropertyMethodType.Setter)]
     private static PyResult Set_Value(PyCallContext context, PyExceptionObject self, PyObject value)
     {
-        self.ExtraValue = value;
+        self.SetMember("value", value);
         return PyNoneObject.None;
     }
 
     [PyProperty("value", Type = PyPropertyMethodType.Deleter)]
     private static PyResult Delete_Value(PyCallContext context, PyExceptionObject self)
     {
-        self.ExtraValue = null;
+        self.DeleteMember("value");
         return PyNoneObject.None;
     }
 }
@@ -389,7 +389,8 @@ public sealed partial class PyUnicodeEncodeErrorObjectType : PyExceptionType
 {
     // CPython UnicodeEncodeError_init: BaseException_init keeps the full
     // args tuple, then the "UUnnU" parse validates encoding/object/reason
-    // as str and start/end as index integers.
+    // as str and start/end as index integers (the "n" format consults
+    // __index__ and range checks against ssize_t).
     protected override PyResult Init(PyCallContext context, PyExceptionObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (kwargs.Count is not 0)
@@ -403,18 +404,22 @@ public sealed partial class PyUnicodeEncodeErrorObjectType : PyExceptionType
             return PyResult.TypeError($"argument 1 must be str, not {args[0].PyType.Name}");
         if (args[1] is not PyStrObject)
             return PyResult.TypeError($"argument 2 must be str, not {args[1].PyType.Name}");
-        if (args[2] is not PyIntObject)
-            return PyResult.TypeError($"'{args[2].PyType.Name}' object cannot be interpreted as an integer");
-        if (args[3] is not PyIntObject)
-            return PyResult.TypeError($"'{args[3].PyType.Name}' object cannot be interpreted as an integer");
+
+        var startResult = PyExceptionMemberAccess.ParseSsize(context, args[2]);
+        if (startResult.IsError)
+            return startResult;
+        var endResult = PyExceptionMemberAccess.ParseSsize(context, args[3]);
+        if (endResult.IsError)
+            return endResult;
+
         if (args[4] is not PyStrObject)
             return PyResult.TypeError($"argument 5 must be str, not {args[4].PyType.Name}");
 
-        self.PyAttributes["encoding"] = args[0];
-        self.PyAttributes["object"] = args[1];
-        self.PyAttributes["start"] = args[2];
-        self.PyAttributes["end"] = args[3];
-        self.PyAttributes["reason"] = args[4];
+        self.SetMember("encoding", args[0]);
+        self.SetMember("object", args[1]);
+        self.SetMember("start", startResult.Value);
+        self.SetMember("end", endResult.Value);
+        self.SetMember("reason", args[4]);
         return PyNoneObject.None;
     }
 
@@ -422,6 +427,51 @@ public sealed partial class PyUnicodeEncodeErrorObjectType : PyExceptionType
     {
         return PyUnicodeErrorStr.Format(context, self, withEncoding: true);
     }
+
+    [PyProperty("encoding")]
+    private static PyResult Get_Encoding(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Get(self, "encoding");
+
+    [PyProperty("encoding", Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_Encoding(PyCallContext context, PyExceptionObject self, PyObject value) => PyExceptionMemberAccess.Set(self, "encoding", value);
+
+    [PyProperty("encoding", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Encoding(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Delete(self, "encoding");
+
+    [PyProperty("object")]
+    private static PyResult Get_Object(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Get(self, "object");
+
+    [PyProperty("object", Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_Object(PyCallContext context, PyExceptionObject self, PyObject value) => PyExceptionMemberAccess.Set(self, "object", value);
+
+    [PyProperty("object", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Object(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Delete(self, "object");
+
+    [PyProperty("start")]
+    private static PyResult Get_Start(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Get(self, "start");
+
+    [PyProperty("start", Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_Start(PyCallContext context, PyExceptionObject self, PyObject value) => PyExceptionMemberAccess.SetSsize(self, "start", value);
+
+    [PyProperty("start", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Start(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.DeleteNumeric();
+
+    [PyProperty("end")]
+    private static PyResult Get_End(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Get(self, "end");
+
+    [PyProperty("end", Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_End(PyCallContext context, PyExceptionObject self, PyObject value) => PyExceptionMemberAccess.SetSsize(self, "end", value);
+
+    [PyProperty("end", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_End(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.DeleteNumeric();
+
+    [PyProperty("reason")]
+    private static PyResult Get_Reason(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Get(self, "reason");
+
+    [PyProperty("reason", Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_Reason(PyCallContext context, PyExceptionObject self, PyObject value) => PyExceptionMemberAccess.Set(self, "reason", value);
+
+    [PyProperty("reason", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Reason(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Delete(self, "reason");
 }
 
 [PyException("NameError")]
@@ -451,11 +501,11 @@ public sealed partial class PyImportErrorObjectType : PyExceptionType
                 // the base name
                 return PyResult.TypeError(PySR.Runtime_Import_ErrorUnexpectedKeyword, key);
 
-            self.PyAttributes[key] = value;
+            self.SetMember(key, value);
         }
 
         if (args.Count is 1)
-            self.PyAttributes["msg"] = args[0];
+            self.SetMember("msg", args[0]);
 
         return PyNoneObject.None;
     }
@@ -464,94 +514,62 @@ public sealed partial class PyImportErrorObjectType : PyExceptionType
     // so a one-argument str() is the message even when args carries more
     protected override PyResult Str(PyCallContext context, PyExceptionObject self)
     {
-        if (self.PyAttributes.TryGetValue("msg", out var msg) && msg.PyType is PyStrObjectType)
+        if (self.GetMember("msg") is { PyType: PyStrObjectType } msg)
             return PySpecialMethods.Str(context, msg);
 
         return PyBaseExceptionObjectType.BaseExceptionStr(context, self);
     }
 
     // The rest are plain members (Objects/exceptions.c ImportError_members):
-    // assignment and deletion go through __dict__ and are never rejected, and
-    // an unset member reads back as None.
+    // assignment and deletion go through the member slot and are never
+    // rejected, and an unset member reads back as None.
     [PyProperty("msg")]
     private static PyResult Get_Msg(PyCallContext context, PyExceptionObject self)
-    {
-        return self.PyAttributes.TryGetValue("msg", out var msg) ? msg : PyNoneObject.None;
-    }
+        => PyExceptionMemberAccess.Get(self, "msg");
 
     [PyProperty("msg", Type = PyPropertyMethodType.Setter)]
     private static PyResult Set_Msg(PyCallContext context, PyExceptionObject self, PyObject value)
-    {
-        self.PyAttributes["msg"] = value;
-        return PyNoneObject.None;
-    }
+        => PyExceptionMemberAccess.Set(self, "msg", value);
 
     [PyProperty("msg", Type = PyPropertyMethodType.Deleter)]
     private static PyResult Delete_Msg(PyCallContext context, PyExceptionObject self)
-    {
-        self.PyAttributes.Remove("msg");
-        return PyNoneObject.None;
-    }
+        => PyExceptionMemberAccess.Delete(self, "msg");
 
     [PyProperty("name")]
     private static PyResult Get_Name(PyCallContext context, PyExceptionObject self)
-    {
-        return self.PyAttributes.TryGetValue("name", out var name) ? name : PyNoneObject.None;
-    }
+        => PyExceptionMemberAccess.Get(self, "name");
 
     [PyProperty("name", Type = PyPropertyMethodType.Setter)]
     private static PyResult Set_Name(PyCallContext context, PyExceptionObject self, PyObject value)
-    {
-        self.PyAttributes["name"] = value;
-        return PyNoneObject.None;
-    }
+        => PyExceptionMemberAccess.Set(self, "name", value);
 
     [PyProperty("name", Type = PyPropertyMethodType.Deleter)]
     private static PyResult Delete_Name(PyCallContext context, PyExceptionObject self)
-    {
-        self.PyAttributes.Remove("name");
-        return PyNoneObject.None;
-    }
+        => PyExceptionMemberAccess.Delete(self, "name");
 
     [PyProperty("path")]
     private static PyResult Get_Path(PyCallContext context, PyExceptionObject self)
-    {
-        return self.PyAttributes.TryGetValue("path", out var path) ? path : PyNoneObject.None;
-    }
+        => PyExceptionMemberAccess.Get(self, "path");
 
     [PyProperty("path", Type = PyPropertyMethodType.Setter)]
     private static PyResult Set_Path(PyCallContext context, PyExceptionObject self, PyObject value)
-    {
-        self.PyAttributes["path"] = value;
-        return PyNoneObject.None;
-    }
+        => PyExceptionMemberAccess.Set(self, "path", value);
 
     [PyProperty("path", Type = PyPropertyMethodType.Deleter)]
     private static PyResult Delete_Path(PyCallContext context, PyExceptionObject self)
-    {
-        self.PyAttributes.Remove("path");
-        return PyNoneObject.None;
-    }
+        => PyExceptionMemberAccess.Delete(self, "path");
 
     [PyProperty("name_from")]
     private static PyResult Get_NameFrom(PyCallContext context, PyExceptionObject self)
-    {
-        return self.PyAttributes.TryGetValue("name_from", out var nameFrom) ? nameFrom : PyNoneObject.None;
-    }
+        => PyExceptionMemberAccess.Get(self, "name_from");
 
     [PyProperty("name_from", Type = PyPropertyMethodType.Setter)]
     private static PyResult Set_NameFrom(PyCallContext context, PyExceptionObject self, PyObject value)
-    {
-        self.PyAttributes["name_from"] = value;
-        return PyNoneObject.None;
-    }
+        => PyExceptionMemberAccess.Set(self, "name_from", value);
 
     [PyProperty("name_from", Type = PyPropertyMethodType.Deleter)]
     private static PyResult Delete_NameFrom(PyCallContext context, PyExceptionObject self)
-    {
-        self.PyAttributes.Remove("name_from");
-        return PyNoneObject.None;
-    }
+        => PyExceptionMemberAccess.Delete(self, "name_from");
 }
 
 [PyException("ModuleNotFoundError", Bases = [typeof(PyImportErrorObjectType)])]
@@ -572,7 +590,7 @@ public sealed partial class PySyntaxErrorObjectType : PyExceptionType
         self.Args = [.. args];
 
         if (args.Count >= 1)
-            self.PyAttributes["msg"] = args[0];
+            self.SetMember("msg", args[0]);
 
         if (args.Count is not 2)
             return PyNoneObject.None;
@@ -587,20 +605,20 @@ public sealed partial class PySyntaxErrorObjectType : PyExceptionType
         if (info.Count > 7)
             return PyResult.TypeError($"function takes at most 7 arguments ({info.Count} given)");
 
-        self.PyAttributes["filename"] = info[0];
-        self.PyAttributes["lineno"] = info[1];
-        self.PyAttributes["offset"] = info[2];
-        self.PyAttributes["text"] = info[3];
+        self.SetMember("filename", info[0]);
+        self.SetMember("lineno", info[1]);
+        self.SetMember("offset", info[2]);
+        self.SetMember("text", info[3]);
 
         if (info.Count is 5)
             return PyResult.TypeError("end_offset must be provided when end_lineno is provided");
         if (info.Count >= 6)
         {
-            self.PyAttributes["end_lineno"] = info[4];
-            self.PyAttributes["end_offset"] = info[5];
+            self.SetMember("end_lineno", info[4]);
+            self.SetMember("end_offset", info[5]);
         }
         if (info.Count is 7)
-            self.PyAttributes["_metadata"] = info[6];
+            self.SetMember("_metadata", info[6]);
 
         return PyNoneObject.None;
     }
@@ -611,16 +629,14 @@ public sealed partial class PySyntaxErrorObjectType : PyExceptionType
     // degenerates to str(msg) — None included.
     protected override PyResult Str(PyCallContext context, PyExceptionObject self)
     {
-        var attrs = self.PyAttributes;
-        PyObject msg = attrs.TryGetValue("msg", out var msgValue) ? msgValue : PyNoneObject.None;
+        PyObject msg = self.GetMember("msg") ?? PyNoneObject.None;
 
         string? basename = null;
-        if (attrs.TryGetValue("filename", out var filenameValue) && filenameValue is PyStrObject filenameStr)
+        if (self.GetMember("filename") is PyStrObject filenameStr)
             basename = Basename(filenameStr.Value);
 
-        bool haveLine = attrs.TryGetValue("lineno", out var linenoValue) &&
-                        linenoValue is PyIntObject &&
-                        linenoValue is not PyBoolObject;
+        var linenoValue = self.GetMember("lineno");
+        bool haveLine = linenoValue is PyIntObject and not PyBoolObject;
 
         if (basename is null && !haveLine)
             return PySpecialMethods.Str(context, msg);
@@ -630,15 +646,10 @@ public sealed partial class PySyntaxErrorObjectType : PyExceptionType
             return msgStr;
 
         if (basename is not null && haveLine)
-            return PyStrObject.FromString($"{msgStr.Value.Value} ({basename}, line {MemberLong(linenoValue)})");
+            return PyStrObject.FromString($"{msgStr.Value.Value} ({basename}, line {PyExceptionMemberAccess.MemberLong(linenoValue)})");
         if (basename is not null)
             return PyStrObject.FromString($"{msgStr.Value.Value} ({basename})");
-        return PyStrObject.FromString($"{msgStr.Value.Value} (line {MemberLong(linenoValue)})");
-    }
-
-    private static long MemberLong(PyObject? value)
-    {
-        return value is PyIntObject pyInt ? (long)pyInt.Value : 0;
+        return PyStrObject.FromString($"{msgStr.Value.Value} (line {PyExceptionMemberAccess.MemberLong(linenoValue)})");
     }
 
     // CPython my_basename splits on the platform SEP only
@@ -649,12 +660,16 @@ public sealed partial class PySyntaxErrorObjectType : PyExceptionType
     }
 
     // CPython SyntaxError_members: raw object members defaulting to None;
-    // writes keep __str__ live since it reads the members each time
+    // writes keep __str__ live since it reads the members each time.
+    // Every one of them is deletable (Py_T_OBJECT, flags 0).
     [PyProperty("msg")]
     private static PyResult Get_Msg(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Get(self, "msg");
 
     [PyProperty("msg", Type = PyPropertyMethodType.Setter)]
     private static PyResult Set_Msg(PyCallContext context, PyExceptionObject self, PyObject value) => PyExceptionMemberAccess.Set(self, "msg", value);
+
+    [PyProperty("msg", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Msg(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Delete(self, "msg");
 
     [PyProperty("filename")]
     private static PyResult Get_Filename(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Get(self, "filename");
@@ -662,11 +677,17 @@ public sealed partial class PySyntaxErrorObjectType : PyExceptionType
     [PyProperty("filename", Type = PyPropertyMethodType.Setter)]
     private static PyResult Set_Filename(PyCallContext context, PyExceptionObject self, PyObject value) => PyExceptionMemberAccess.Set(self, "filename", value);
 
+    [PyProperty("filename", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Filename(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Delete(self, "filename");
+
     [PyProperty("lineno")]
     private static PyResult Get_Lineno(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Get(self, "lineno");
 
     [PyProperty("lineno", Type = PyPropertyMethodType.Setter)]
     private static PyResult Set_Lineno(PyCallContext context, PyExceptionObject self, PyObject value) => PyExceptionMemberAccess.Set(self, "lineno", value);
+
+    [PyProperty("lineno", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Lineno(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Delete(self, "lineno");
 
     [PyProperty("offset")]
     private static PyResult Get_Offset(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Get(self, "offset");
@@ -674,11 +695,17 @@ public sealed partial class PySyntaxErrorObjectType : PyExceptionType
     [PyProperty("offset", Type = PyPropertyMethodType.Setter)]
     private static PyResult Set_Offset(PyCallContext context, PyExceptionObject self, PyObject value) => PyExceptionMemberAccess.Set(self, "offset", value);
 
+    [PyProperty("offset", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Offset(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Delete(self, "offset");
+
     [PyProperty("text")]
     private static PyResult Get_Text(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Get(self, "text");
 
     [PyProperty("text", Type = PyPropertyMethodType.Setter)]
     private static PyResult Set_Text(PyCallContext context, PyExceptionObject self, PyObject value) => PyExceptionMemberAccess.Set(self, "text", value);
+
+    [PyProperty("text", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Text(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Delete(self, "text");
 
     [PyProperty("end_lineno")]
     private static PyResult Get_EndLineno(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Get(self, "end_lineno");
@@ -686,11 +713,17 @@ public sealed partial class PySyntaxErrorObjectType : PyExceptionType
     [PyProperty("end_lineno", Type = PyPropertyMethodType.Setter)]
     private static PyResult Set_EndLineno(PyCallContext context, PyExceptionObject self, PyObject value) => PyExceptionMemberAccess.Set(self, "end_lineno", value);
 
+    [PyProperty("end_lineno", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_EndLineno(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Delete(self, "end_lineno");
+
     [PyProperty("end_offset")]
     private static PyResult Get_EndOffset(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Get(self, "end_offset");
 
     [PyProperty("end_offset", Type = PyPropertyMethodType.Setter)]
     private static PyResult Set_EndOffset(PyCallContext context, PyExceptionObject self, PyObject value) => PyExceptionMemberAccess.Set(self, "end_offset", value);
+
+    [PyProperty("end_offset", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_EndOffset(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Delete(self, "end_offset");
 
     [PyProperty("print_file_and_line")]
     private static PyResult Get_PrintFileAndLine(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Get(self, "print_file_and_line");
@@ -698,11 +731,17 @@ public sealed partial class PySyntaxErrorObjectType : PyExceptionType
     [PyProperty("print_file_and_line", Type = PyPropertyMethodType.Setter)]
     private static PyResult Set_PrintFileAndLine(PyCallContext context, PyExceptionObject self, PyObject value) => PyExceptionMemberAccess.Set(self, "print_file_and_line", value);
 
+    [PyProperty("print_file_and_line", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_PrintFileAndLine(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Delete(self, "print_file_and_line");
+
     [PyProperty("_metadata")]
     private static PyResult Get_Metadata(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Get(self, "_metadata");
 
     [PyProperty("_metadata", Type = PyPropertyMethodType.Setter)]
     private static PyResult Set_Metadata(PyCallContext context, PyExceptionObject self, PyObject value) => PyExceptionMemberAccess.Set(self, "_metadata", value);
+
+    [PyProperty("_metadata", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Metadata(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Delete(self, "_metadata");
 }
 
 [PyException("IndentationError", Bases = [typeof(PySyntaxErrorObjectType)])]
@@ -807,20 +846,20 @@ public sealed partial class PyOSErrorObjectType : PyExceptionType
         PyObject? winerror = args.Count >= 4 ? args[3] : null;
         PyObject? filename2 = args.Count >= 5 ? args[4] : null;
 
-        self.PyAttributes["errno"] = errno;
-        self.PyAttributes["strerror"] = strerror;
+        self.SetMember("errno", errno);
+        self.SetMember("strerror", strerror);
 
         if (filename is not null && filename is not PyNoneObject)
         {
-            self.PyAttributes["filename"] = filename;
+            self.SetMember("filename", filename);
             if (filename2 is not null && filename2 is not PyNoneObject)
-                self.PyAttributes["filename2"] = filename2;
+                self.SetMember("filename2", filename2);
 
             self.Args = [errno, strerror];
         }
 
         if (winerror is not null)
-            self.PyAttributes["winerror"] = winerror;
+            self.SetMember("winerror", winerror);
 
         return PyNoneObject.None;
     }
@@ -830,29 +869,28 @@ public sealed partial class PyOSErrorObjectType : PyExceptionType
     // filenames through repr().
     protected override PyResult Str(PyCallContext context, PyExceptionObject self)
     {
-        var attrs = self.PyAttributes;
-        PyObject? winerror = attrs.TryGetValue("winerror", out var winerrorValue) ? winerrorValue : null;
-        PyObject? strerror = attrs.TryGetValue("strerror", out var strerrorValue) ? strerrorValue : null;
+        PyObject? winerror = self.GetMember("winerror");
+        PyObject? strerror = self.GetMember("strerror");
 
         if (winerror is not null)
         {
-            if (attrs.TryGetValue("filename", out var filenameValue))
+            if (self.GetMember("filename") is { } filenameValue)
             {
-                PyObject? filename2 = attrs.TryGetValue("filename2", out var filename2Value) ? filename2Value : null;
+                PyObject? filename2 = self.GetMember("filename2");
                 return OSErrorMessage(context, winerror, strerror, filenameValue, filename2, winerror: true);
             }
             if (strerror is not null)
                 return OSErrorMessage(context, winerror, strerror, null, null, winerror: true);
         }
 
-        if (attrs.TryGetValue("filename", out var filename))
+        if (self.GetMember("filename") is { } filename)
         {
-            attrs.TryGetValue("errno", out var errnoValue);
-            attrs.TryGetValue("filename2", out var filename2);
+            PyObject? errnoValue = self.GetMember("errno");
+            PyObject? filename2 = self.GetMember("filename2");
             return OSErrorMessage(context, errnoValue, strerror, filename, filename2, winerror: false);
         }
 
-        if (attrs.TryGetValue("errno", out var errno) && strerror is not null)
+        if (self.GetMember("errno") is { } errno && strerror is not null)
             return OSErrorMessage(context, errno, strerror, null, null, winerror: false);
 
         return PyBaseExceptionObjectType.BaseExceptionStr(context, self);
@@ -908,11 +946,17 @@ public sealed partial class PyOSErrorObjectType : PyExceptionType
     [PyProperty("errno", Type = PyPropertyMethodType.Setter)]
     private static PyResult Set_Errno(PyCallContext context, PyExceptionObject self, PyObject value) => PyExceptionMemberAccess.Set(self, "errno", value);
 
+    [PyProperty("errno", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Errno(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Delete(self, "errno");
+
     [PyProperty("strerror")]
     private static PyResult Get_Strerror(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Get(self, "strerror");
 
     [PyProperty("strerror", Type = PyPropertyMethodType.Setter)]
     private static PyResult Set_Strerror(PyCallContext context, PyExceptionObject self, PyObject value) => PyExceptionMemberAccess.Set(self, "strerror", value);
+
+    [PyProperty("strerror", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Strerror(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Delete(self, "strerror");
 
     [PyProperty("filename")]
     private static PyResult Get_Filename(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Get(self, "filename");
@@ -920,17 +964,26 @@ public sealed partial class PyOSErrorObjectType : PyExceptionType
     [PyProperty("filename", Type = PyPropertyMethodType.Setter)]
     private static PyResult Set_Filename(PyCallContext context, PyExceptionObject self, PyObject value) => PyExceptionMemberAccess.Set(self, "filename", value);
 
+    [PyProperty("filename", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Filename(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Delete(self, "filename");
+
     [PyProperty("filename2")]
     private static PyResult Get_Filename2(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Get(self, "filename2");
 
     [PyProperty("filename2", Type = PyPropertyMethodType.Setter)]
     private static PyResult Set_Filename2(PyCallContext context, PyExceptionObject self, PyObject value) => PyExceptionMemberAccess.Set(self, "filename2", value);
 
+    [PyProperty("filename2", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Filename2(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Delete(self, "filename2");
+
     [PyProperty("winerror")]
     private static PyResult Get_Winerror(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Get(self, "winerror");
 
     [PyProperty("winerror", Type = PyPropertyMethodType.Setter)]
     private static PyResult Set_Winerror(PyCallContext context, PyExceptionObject self, PyObject value) => PyExceptionMemberAccess.Set(self, "winerror", value);
+
+    [PyProperty("winerror", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Winerror(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Delete(self, "winerror");
 }
 
 [PyException("BlockingIOError", Bases = [typeof(PyOSErrorObjectType)])]
@@ -1003,11 +1056,15 @@ public sealed partial class PySystemErrorObjectType : PyExceptionType;
 public sealed partial class PyUnicodeDecodeErrorObjectType : PyExceptionType
 {
     // CPython UnicodeDecodeError_init: (encoding, object, start, end, reason)
-    // is validated and stored so the attributes and str() stay in sync
+    // is validated and stored so the attributes and str() stay in sync. The
+    // "UOnnU" parse takes object as any buffer-providing value (CPython then
+    // copies it into bytes) and start/end through __index__.
     protected override PyResult Init(PyCallContext context, PyExceptionObject self, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         if (kwargs.Count is not 0)
             return PyResult.TypeError(PySR.Runtime_Exception_TakesNoKeywordArguments, self.PyType.Name);
+
+        self.Args = [.. args];
 
         if (args.Count is not 5)
             return PyResult.TypeError($"function takes exactly 5 arguments ({args.Count} given)");
@@ -1016,35 +1073,36 @@ public sealed partial class PyUnicodeDecodeErrorObjectType : PyExceptionType
             return PyResult.TypeError($"argument 1 must be str, not {args[0].PyType.Name}");
         if (args[1] is not PyBytesObject and not PyByteArrayObject and not PyMemoryViewObject)
             return PyResult.TypeError($"a bytes-like object is required, not '{args[1].PyType.Name}'");
-        if (args[2] is not PyIntObject)
-            return PyResult.TypeError($"'{args[2].PyType.Name}' object cannot be interpreted as an integer");
-        if (args[3] is not PyIntObject)
-            return PyResult.TypeError($"'{args[3].PyType.Name}' object cannot be interpreted as an integer");
+
+        var startResult = PyExceptionMemberAccess.ParseSsize(context, args[2]);
+        if (startResult.IsError)
+            return startResult;
+        var endResult = PyExceptionMemberAccess.ParseSsize(context, args[3]);
+        if (endResult.IsError)
+            return endResult;
+
         if (args[4] is not PyStrObject)
             return PyResult.TypeError($"argument 5 must be str, not {args[4].PyType.Name}");
 
-        self.Args = [.. args];
-        self.PyAttributes["encoding"] = args[0];
-        self.PyAttributes["object"] = args[1];
-        self.PyAttributes["start"] = args[2];
-        self.PyAttributes["end"] = args[3];
-        self.PyAttributes["reason"] = args[4];
+        self.SetMember("encoding", args[0]);
+        self.SetMember("object", args[1]);
+        self.SetMember("start", startResult.Value);
+        self.SetMember("end", endResult.Value);
+        self.SetMember("reason", args[4]);
         return PyNoneObject.None;
     }
 
-    // CPython UnicodeDecodeError_str: a single bad byte shows byte value and
-    // position, anything else shows a position range
+    // CPython UnicodeDecodeError_str: the object must be a bytes-like value
+    // (checked at str() time too, so a post-construction `object = 5` raises
+    // the fixed TypeError) and a single bad byte shows its value and position,
+    // anything else a position range. Encoding and reason are re-str()'d.
     protected override PyResult Str(PyCallContext context, PyExceptionObject self)
     {
-        if (!self.PyAttributes.TryGetValue("object", out var objectAttr) ||
-            !self.PyAttributes.TryGetValue("encoding", out var encodingAttr) ||
-            !self.PyAttributes.TryGetValue("start", out var startAttr) ||
-            !self.PyAttributes.TryGetValue("end", out var endAttr) ||
-            !self.PyAttributes.TryGetValue("reason", out var reasonAttr))
+        var objectAttr = self.GetMember("object");
+        if (objectAttr is null)
+            // CPython returns the empty string for an uninitialized object slot
             return PyStrObject.Empty;
 
-        var start = (PyIntObject)startAttr;
-        var end = (PyIntObject)endAttr;
         ReadOnlySpan<byte> data = objectAttr switch
         {
             PyBytesObject bytes => bytes.AsSpan(),
@@ -1052,16 +1110,69 @@ public sealed partial class PyUnicodeDecodeErrorObjectType : PyExceptionType
             PyMemoryViewObject memoryView => memoryView.DataSpan,
             _ => default,
         };
+        if (objectAttr is not (PyBytesObject or PyByteArrayObject or PyMemoryViewObject))
+            return PyResult.TypeError(PySR.Runtime_Unicode_ErrorObjectMustBeBytes);
+
+        var reasonResult = PySpecialMethods.Str(context, self.GetMember("reason") ?? PyNoneObject.None);
+        if (reasonResult.IsError)
+            return reasonResult;
+        var encodingResult = PySpecialMethods.Str(context, self.GetMember("encoding") ?? PyNoneObject.None);
+        if (encodingResult.IsError)
+            return encodingResult;
+
         long len = data.Length;
-        long i = (long)start.Value;
-        long j = (long)end.Value;
-        var encoding = ((PyStrObject)encodingAttr).Value;
-        var reason = ((PyStrObject)reasonAttr).Value;
+        long i = PyExceptionMemberAccess.MemberLong(self.GetMember("start"));
+        long j = PyExceptionMemberAccess.MemberLong(self.GetMember("end"));
 
         if (i >= 0 && i < len && j >= 0 && j <= len && j == i + 1)
-            return PyStrObject.FromString($"'{encoding}' codec can't decode byte 0x{data[(int)i]:x2} in position {i}: {reason}");
-        return PyStrObject.FromString($"'{encoding}' codec can't decode bytes in position {i}-{j - 1}: {reason}");
+            return PyStrObject.FromString($"'{encodingResult.Value.Value}' codec can't decode byte 0x{data[(int)i]:x2} in position {i}: {reasonResult.Value.Value}");
+        return PyStrObject.FromString($"'{encodingResult.Value.Value}' codec can't decode bytes in position {i}-{j - 1}: {reasonResult.Value.Value}");
     }
+
+    [PyProperty("encoding")]
+    private static PyResult Get_Encoding(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Get(self, "encoding");
+
+    [PyProperty("encoding", Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_Encoding(PyCallContext context, PyExceptionObject self, PyObject value) => PyExceptionMemberAccess.Set(self, "encoding", value);
+
+    [PyProperty("encoding", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Encoding(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Delete(self, "encoding");
+
+    [PyProperty("object")]
+    private static PyResult Get_Object(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Get(self, "object");
+
+    [PyProperty("object", Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_Object(PyCallContext context, PyExceptionObject self, PyObject value) => PyExceptionMemberAccess.Set(self, "object", value);
+
+    [PyProperty("object", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Object(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Delete(self, "object");
+
+    [PyProperty("start")]
+    private static PyResult Get_Start(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Get(self, "start");
+
+    [PyProperty("start", Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_Start(PyCallContext context, PyExceptionObject self, PyObject value) => PyExceptionMemberAccess.SetSsize(self, "start", value);
+
+    [PyProperty("start", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Start(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.DeleteNumeric();
+
+    [PyProperty("end")]
+    private static PyResult Get_End(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Get(self, "end");
+
+    [PyProperty("end", Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_End(PyCallContext context, PyExceptionObject self, PyObject value) => PyExceptionMemberAccess.SetSsize(self, "end", value);
+
+    [PyProperty("end", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_End(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.DeleteNumeric();
+
+    [PyProperty("reason")]
+    private static PyResult Get_Reason(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Get(self, "reason");
+
+    [PyProperty("reason", Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_Reason(PyCallContext context, PyExceptionObject self, PyObject value) => PyExceptionMemberAccess.Set(self, "reason", value);
+
+    [PyProperty("reason", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Reason(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Delete(self, "reason");
 }
 
 [PyException("UnicodeTranslateError", Bases = [typeof(PyUnicodeErrorObjectType)])]
@@ -1080,17 +1191,21 @@ public sealed partial class PyUnicodeTranslateErrorObjectType : PyExceptionType
             return PyResult.TypeError($"function takes exactly 4 arguments ({args.Count} given)");
         if (args[0] is not PyStrObject)
             return PyResult.TypeError($"argument 1 must be str, not {args[0].PyType.Name}");
-        if (args[1] is not PyIntObject)
-            return PyResult.TypeError($"'{args[1].PyType.Name}' object cannot be interpreted as an integer");
-        if (args[2] is not PyIntObject)
-            return PyResult.TypeError($"'{args[2].PyType.Name}' object cannot be interpreted as an integer");
+
+        var startResult = PyExceptionMemberAccess.ParseSsize(context, args[1]);
+        if (startResult.IsError)
+            return startResult;
+        var endResult = PyExceptionMemberAccess.ParseSsize(context, args[2]);
+        if (endResult.IsError)
+            return endResult;
+
         if (args[3] is not PyStrObject)
             return PyResult.TypeError($"argument 4 must be str, not {args[3].PyType.Name}");
 
-        self.PyAttributes["object"] = args[0];
-        self.PyAttributes["start"] = args[1];
-        self.PyAttributes["end"] = args[2];
-        self.PyAttributes["reason"] = args[3];
+        self.SetMember("object", args[0]);
+        self.SetMember("start", startResult.Value);
+        self.SetMember("end", endResult.Value);
+        self.SetMember("reason", args[3]);
         return PyNoneObject.None;
     }
 
@@ -1098,6 +1213,53 @@ public sealed partial class PyUnicodeTranslateErrorObjectType : PyExceptionType
     {
         return PyUnicodeErrorStr.Format(context, self, withEncoding: false);
     }
+
+    // UnicodeTranslateError shares UnicodeError_members with the decode/encode
+    // variants, so it exposes encoding too — just never filled by __init__
+    [PyProperty("encoding")]
+    private static PyResult Get_Encoding(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Get(self, "encoding");
+
+    [PyProperty("encoding", Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_Encoding(PyCallContext context, PyExceptionObject self, PyObject value) => PyExceptionMemberAccess.Set(self, "encoding", value);
+
+    [PyProperty("encoding", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Encoding(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Delete(self, "encoding");
+
+    [PyProperty("object")]
+    private static PyResult Get_Object(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Get(self, "object");
+
+    [PyProperty("object", Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_Object(PyCallContext context, PyExceptionObject self, PyObject value) => PyExceptionMemberAccess.Set(self, "object", value);
+
+    [PyProperty("object", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Object(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Delete(self, "object");
+
+    [PyProperty("start")]
+    private static PyResult Get_Start(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Get(self, "start");
+
+    [PyProperty("start", Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_Start(PyCallContext context, PyExceptionObject self, PyObject value) => PyExceptionMemberAccess.SetSsize(self, "start", value);
+
+    [PyProperty("start", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Start(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.DeleteNumeric();
+
+    [PyProperty("end")]
+    private static PyResult Get_End(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Get(self, "end");
+
+    [PyProperty("end", Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_End(PyCallContext context, PyExceptionObject self, PyObject value) => PyExceptionMemberAccess.SetSsize(self, "end", value);
+
+    [PyProperty("end", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_End(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.DeleteNumeric();
+
+    [PyProperty("reason")]
+    private static PyResult Get_Reason(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Get(self, "reason");
+
+    [PyProperty("reason", Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_Reason(PyCallContext context, PyExceptionObject self, PyObject value) => PyExceptionMemberAccess.Set(self, "reason", value);
+
+    [PyProperty("reason", Type = PyPropertyMethodType.Deleter)]
+    private static PyResult Delete_Reason(PyCallContext context, PyExceptionObject self) => PyExceptionMemberAccess.Delete(self, "reason");
 }
 
 #endregion Concrete Exceptions
@@ -1144,59 +1306,113 @@ public sealed partial class PyUnicodeWarningObjectType : PyExceptionType;
 
 #region Shared Exception Member Helpers
 
-// CPython exposes exception members through PyMemberDef getsets that
-// read as None until __init__ fills them; the OSError and SyntaxError
-// member tables share these accessors over the instance attributes.
+// CPython exposes exception members through PyMemberDef getsets that read as
+// None until __init__ fills them; the OSError, SyntaxError and UnicodeError
+// member tables share these accessors. The value lives in PyExceptionObject's
+// member map, not in the instance __dict__, so introspection stays clean.
 internal static class PyExceptionMemberAccess
 {
+    // _Py_T_OBJECT members hold any object and read back as None when unset
+    // (structmember.c PyMember_GetOne returns Py_None for a NULL slot).
     internal static PyResult Get(PyExceptionObject self, string name)
     {
-        return self.PyAttributes.TryGetValue(name, out var value) ? value : PyNoneObject.None;
+        return self.GetMember(name) ?? PyNoneObject.None;
     }
 
     internal static PyResult Set(PyExceptionObject self, string name, PyObject value)
     {
-        self.PyAttributes[name] = value;
+        self.SetMember(name, value);
         return PyNoneObject.None;
     }
+
+    internal static PyResult Delete(PyExceptionObject self, string name)
+    {
+        self.DeleteMember(name);
+        return PyNoneObject.None;
+    }
+
+    // A Py_T_PYSSIZET slot is neither _Py_T_OBJECT nor _Py_T_OBJECT_EX, so
+    // structmember.c PyMember_SetOne rejects the NULL write rather than
+    // clearing it — Unicode*Error's start/end cannot be deleted.
+    internal static PyResult DeleteNumeric()
+    {
+        return PyResult.TypeError(PySR.Runtime_Member_CannotDeleteNumeric);
+    }
+
+    // Py_T_PYSSIZET members store a C ssize_t, so the assigned value must go
+    // through PyLong_AsSsize_t: an exact int (or bool/int subclass) is range
+    // checked against the 64-bit ssize_t and saved as a plain int, anything
+    // else — __index__ is NOT consulted — fails with structmember.c's fixed
+    // "an integer is required" wording.
+    internal static PyResult SetSsize(PyExceptionObject self, string name, PyObject value)
+    {
+        if (value is not PyIntObject pyInt)
+            return PyResult.TypeError(PySR.Runtime_Member_IntegerRequired);
+
+        if (pyInt.Value > long.MaxValue || pyInt.Value < long.MinValue)
+            return PyResult.OverflowError(PySR.Runtime_Number_Int_TooLargeForSsize);
+
+        self.SetMember(name, PyIntObject.FromInteger((long)pyInt.Value));
+        return PyNoneObject.None;
+    }
+
+    // The "n" format of PyArg_ParseTuple (Python/getargs.c) does consult
+    // __index__, so Unicode*Error.__init__ rejects a non-index value with the
+    // generic index message and an out-of-ssize value with the overflow one.
+    // The result is the normalized ssize_t as a plain int.
+    internal static PyResult<PyIntObject> ParseSsize(PyCallContext context, PyObject value)
+    {
+        var indexResult = PySpecialMethods.Index(context, value);
+        if (indexResult.IsError)
+            return indexResult;
+
+        var big = indexResult.Value.Value;
+        if (big > long.MaxValue || big < long.MinValue)
+            return PyResult.OverflowError(PySR.Runtime_Number_Int_TooLargeForSsize);
+
+        return PyIntObject.FromInteger((long)big);
+    }
+
+    // A member rendered as a C long — an unset or non-int slot reads as 0,
+    // matching the Py_ssize_t field's zero default when str() ignores the
+    // member (CPython reads exc->start/end directly).
+    internal static long MemberLong(PyObject? value)
+        => value is PyIntObject pyInt ? (long)pyInt.Value : 0;
 }
 
 // Objects/exceptions.c UnicodeEncodeError_str / UnicodeTranslateError_str:
 // a single bad code point renders with its escape form (\x, \u, \U by
-// magnitude), anything else as a start-(end-1) range. Encoding and
-// reason are re-str()'d so post-construction member writes stay live.
+// magnitude), anything else as a start-(end-1) range. Encoding and reason are
+// re-str()'d so post-construction member writes stay live, and the object
+// member is re-checked as a str, raising the fixed TypeError otherwise.
 internal static class PyUnicodeErrorStr
 {
     internal static PyResult Format(PyCallContext context, PyExceptionObject self, bool withEncoding)
     {
-        var attrs = self.PyAttributes;
-        if (!attrs.TryGetValue("object", out var objectAttr) ||
-            !attrs.TryGetValue("start", out var startAttr) ||
-            !attrs.TryGetValue("end", out var endAttr) ||
-            !attrs.TryGetValue("reason", out var reasonAttr))
+        var objectAttr = self.GetMember("object");
+        if (objectAttr is null)
+            // CPython returns the empty string for an uninitialized object slot
             return PyStrObject.Empty;
 
-        if (objectAttr is not PyStrObject objectStr)
-            return PyStrObject.Empty;
+        var reasonStr = PySpecialMethods.Str(context, self.GetMember("reason") ?? PyNoneObject.None);
+        if (reasonStr.IsError)
+            return reasonStr;
 
         string codec = string.Empty;
         if (withEncoding)
         {
-            if (!attrs.TryGetValue("encoding", out var encodingAttr))
-                return PyStrObject.Empty;
-            var encodingStr = PySpecialMethods.Str(context, encodingAttr);
+            var encodingStr = PySpecialMethods.Str(context, self.GetMember("encoding") ?? PyNoneObject.None);
             if (encodingStr.IsError)
                 return encodingStr;
             codec = $"'{encodingStr.Value.Value}' codec ";
         }
 
-        var reasonStr = PySpecialMethods.Str(context, reasonAttr);
-        if (reasonStr.IsError)
-            return reasonStr;
+        if (objectAttr is not PyStrObject objectStr)
+            return PyResult.TypeError(PySR.Runtime_Unicode_ErrorObjectMustBeStr);
 
         long length = objectStr.PyLength;
-        long start = ReadMemberIndex(startAttr);
-        long end = ReadMemberIndex(endAttr);
+        long start = PyExceptionMemberAccess.MemberLong(self.GetMember("start"));
+        long end = PyExceptionMemberAccess.MemberLong(self.GetMember("end"));
         string verb = withEncoding ? "encode" : "translate";
 
         if (start >= 0 && start < length && end >= 0 && end <= length && end == start + 1)
@@ -1212,11 +1428,6 @@ internal static class PyUnicodeErrorStr
         }
         return PyStrObject.FromString(
             $"{codec}can't {verb} characters in position {start}-{end - 1}: {reasonStr.Value.Value}");
-    }
-
-    private static long ReadMemberIndex(PyObject value)
-    {
-        return value is PyIntObject pyInt ? (long)pyInt.Value : 0;
     }
 }
 

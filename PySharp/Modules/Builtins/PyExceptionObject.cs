@@ -59,7 +59,30 @@ public sealed class PyExceptionObject : PyObjectManagedDict
     // layer, not from the traceback object, so the header stays on the
     // exception and survives __traceback__ reassignment.
     internal string? TracebackThreadInfo { get; set; }
-    internal PyObject? ExtraValue { get; set; }
+
+    // CPython keeps these exception attributes in struct members
+    // (Objects/exceptions.c: the OSError_members/SyntaxError_members/
+    // ImportError_members/UnicodeError_members tables plus the StopIteration
+    // value and SystemExit code slots). They are reached through a member
+    // descriptor, never through tp_dict, so e.__dict__ stays empty, an unset
+    // member reads as None, and deleting one clears the slot while the
+    // attribute stays present. This map is that storage, keyed by member name
+    // (the generalization of the single ExtraValue slot StopIteration/SystemExit
+    // used before); PyAttributes is the user-facing __dict__ and never sees
+    // these names. A missing key is CPython's NULL slot.
+    private Dictionary<string, PyObject?>? _members;
+
+    /// The member's value, or null when the slot is unset — CPython's NULL
+    /// slot, which _Py_T_OBJECT readers present as None.
+    internal PyObject? GetMember(string name) => _members is not null && _members.TryGetValue(name, out var value) ? value : null;
+
+    internal void SetMember(string name, PyObject? value) => (_members ??= [])[name] = value;
+
+    // A member delete stores NULL and never errors: these slots are
+    // _Py_T_OBJECT, not the _Py_T_OBJECT_EX variant, and structmember.c
+    // PyMember_SetOne only raises for _EX. The attribute stays present and
+    // reads back as None.
+    internal void DeleteMember(string name) => _members?.Remove(name);
 
     [MemberNotNullWhen(true, nameof(AsGroup))]
     internal bool IsGroup => AsGroup is not null;
@@ -196,13 +219,12 @@ public sealed class PyExceptionObject : PyObjectManagedDict
     // never duplicated here
     private void PrintSyntaxErrorMessage(IndentedStringBuilder builder, PyCallContext context)
     {
-        var attrs = PyAttributes;
-        attrs.TryGetValue("filename", out var filenameValue);
-        attrs.TryGetValue("lineno", out var linenoValue);
-        attrs.TryGetValue("offset", out var offsetValue);
-        attrs.TryGetValue("text", out var textValue);
-        attrs.TryGetValue("end_lineno", out var endLinenoValue);
-        attrs.TryGetValue("end_offset", out var endOffsetValue);
+        var filenameValue = GetMember("filename");
+        var linenoValue = GetMember("lineno");
+        var offsetValue = GetMember("offset");
+        var textValue = GetMember("text");
+        var endLinenoValue = GetMember("end_lineno");
+        var endOffsetValue = GetMember("end_offset");
 
         string filenameSuffix = string.Empty;
         if (linenoValue is PyIntObject linenoInt && linenoValue is not PyBoolObject)
@@ -285,7 +307,7 @@ public sealed class PyExceptionObject : PyObjectManagedDict
 
     private string ResolveSyntaxErrorMessage(PyCallContext context)
     {
-        var msg = PyAttributes.TryGetValue("msg", out var msgValue) ? msgValue : PyNoneObject.None;
+        var msg = GetMember("msg") ?? PyNoneObject.None;
         // CPython "self.msg or '<no detail available>'"
         if (msg is PyNoneObject || (msg is PyStrObject str && str.Value.Length is 0))
             return "<no detail available>";

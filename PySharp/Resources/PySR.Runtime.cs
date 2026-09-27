@@ -208,6 +208,10 @@ partial class PySR
     public const string Runtime_Str_FillCharLength = "The fill character must be exactly one character long";
     public const string Runtime_Str_ContainsLeftOperandMustBeStr = "'in <string>' requires string as left operand, not {0}";
     public const string Runtime_Number_Int_TooLargeForSsize = "Python int too large to convert to C ssize_t";
+    public const string Runtime_Member_IntegerRequired = "an integer is required";
+    public const string Runtime_Member_CannotDeleteNumeric = "can't delete numeric/char attribute";
+    public const string Runtime_Unicode_ErrorObjectMustBeStr = "UnicodeError 'object' attribute must be a string";
+    public const string Runtime_Unicode_ErrorObjectMustBeBytes = "UnicodeError 'object' attribute must be a bytes";
 
     public const string Runtime_List_ItemNotFound = "list.{0}(x): x not in list";
     public const string Runtime_List_PopIndexOutOfRange = "pop index out of range";

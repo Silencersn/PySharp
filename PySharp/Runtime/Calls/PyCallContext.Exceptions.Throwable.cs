@@ -75,19 +75,19 @@ partial class PyCallContext
         if (source is not null)
         {
             filename = PyStrObject.FromString(source.Name);
-            exc.PyAttributes["filename"] = filename;
+            exc.SetMember("filename", filename);
             // CPython's text keeps the physical line including its line break
             if (source.Code.TryGetLine(metaInfo.Start.Line, true, out var line))
-                exc.PyAttributes["text"] = text = PyStrObject.FromString(line.ToString());
+                exc.SetMember("text", text = PyStrObject.FromString(line.ToString()));
         }
         var lineno = PyIntObject.FromInteger(metaInfo.Start.Line);
         var offset = PyIntObject.FromInteger(metaInfo.Start.Offset + 1);
         var endLineno = PyIntObject.FromInteger(metaInfo.End.Line);
         var endOffset = PyIntObject.FromInteger(metaInfo.End.Offset + 1);
-        exc.PyAttributes["lineno"] = lineno;
-        exc.PyAttributes["offset"] = offset;
-        exc.PyAttributes["end_lineno"] = endLineno;
-        exc.PyAttributes["end_offset"] = endOffset;
+        exc.SetMember("lineno", lineno);
+        exc.SetMember("offset", offset);
+        exc.SetMember("end_lineno", endLineno);
+        exc.SetMember("end_offset", endOffset);
 
         // CPython's parse errors carry (msg, info-tuple) args
         exc.Args =

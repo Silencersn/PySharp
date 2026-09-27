@@ -479,7 +479,7 @@ internal static class PyUtils
     {
         var exception = PyModuleNotFoundErrorObjectType.Shared.Create(
             PyStrObject.FromString(PySR.Format(PySR.Runtime_Import_ModuleNotFound, renderedName)));
-        exception.PyAttributes["name"] = nameObj;
+        exception.SetMember("name", nameObj);
         return exception;
     }
 

@@ -168,7 +168,7 @@ public sealed class PyInterpreter : IDisposable
         // rewrote or deleted code wins over the constructor-filled args.
         // SystemExit_init fills code with args[0], the whole args tuple for
         // multiple arguments, or None.
-        var code = exc.ExtraValue ?? PyNoneObject.None;
+        var code = exc.GetMember("code") ?? PyNoneObject.None;
         switch (code)
         {
             case PyNoneObject:
