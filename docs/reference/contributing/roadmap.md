@@ -2,7 +2,7 @@
 
 本文是非承诺性的贡献地图：0.x 阶段优先级随演进调整，认领前先在 issue 或讨论中对齐方向。
 
-缺口来源包括[与 CPython 的差异](../python-compat/cpython-differences.md)（用户视角限制）、语言与标准库支持面（[语言特性](../python-compat/language-features.md)、[标准库覆盖](../python-compat/stdlib-modules.md)、[内建类型方法面](../python-compat/builtin-type-methods.md)），以及源码内的 `TODO` 标记（当前 25 处）。按性质分档如下。
+缺口来源包括[与 CPython 的差异](../python-compat/cpython-differences.md)（用户视角限制）、语言与标准库支持面（[语言特性](../python-compat/language-features.md)、[标准库覆盖](../python-compat/stdlib-modules.md)、[内建类型方法面](../python-compat/builtin-type-methods.md)），以及源码内的 `TODO` 标记（当前 22 处）。按性质分档如下。
 
 ## 一、兼容性与标准库
 
@@ -15,7 +15,7 @@
 | `sys` 成员补全 | 目前提供 `sys.argv`、`stdin` / `stdout` / `stderr` 流包装与 `get_int_max_str_digits` / `set_int_max_str_digits`；尚缺 `sys.modules`、`sys.path` 的 Python 侧可见面，以及 `sys.flags`、`sys.version` 等信息量成员 | 小 |
 | `__static_attributes__` 类体隐式键 | CPython 3.13 起在类体编译期收集方法体内对首参（`self` / `cls`）的属性名元组，供 introspection 与内联优化使用。PySharp 尚未注入，`cls.__static_attributes__` 报 `AttributeError`；入手点是类语句发射处（紧邻已有的 `__firstlineno__` 注入点）与语义分析器的首参属性访问收集 | 中 |
 | `.pyc` 字节码缓存 | 每次 import 重新编译；需要缓存键设计（源文件 mtime 或哈希）与 `Bytecode` 的序列化 | 大 |
-| 错误消息对齐 | 措辞与 CPython 仍有出入，判别尺度见[错误消息规范](./error-messages.md)；可逐条对齐并补回归。运算符报文三模板、str 方法族 TypeError、容器构造参数校验、异常链属性删除报文、len 上界、int 转换位数限制等已完成对齐 | 小 |
+| 错误消息对齐 | 措辞与 CPython 仍有出入，判别尺度见[错误消息规范](./error-messages.md)；可逐条对齐并补回归。运算符报文三模板、str 方法族 TypeError、容器构造参数校验、异常链属性删除报文、len 上界、int 转换位数限制、super 与 isinstance 族分支报文、导入失败消息的模块名 repr 等已完成对齐 | 小 |
 | `__del__` 与终结器语义 | 依赖 .NET GC，时机与 CPython 的引用计数不同；需要明确文档化，或补充显式终结协议 | 中（先设计后动手） |
 
 ## 二、嵌入体验
@@ -32,25 +32,22 @@
 
 ## 三、运行时与对象系统
 
-以下是源码内 `TODO` 标记对应的改进点（`grep -rn "TODO"` 可复现，排除 `obj/`），四档合计 25 处。
+以下是源码内 `TODO` 标记对应的改进点（`grep -rn "TODO"` 可复现，排除 `obj/`），四档合计 22 处。
 
 | 线索 | 位置（代表性） |
 | --- | --- |
 | 异常处理器的回滚粒度 | `BytecodeVirtualMachine.cs` |
 | f-string 无效转义的告警 | `Lexer` 的 `FStringMiddle` 扫描处 |
-| 不可变类型的定义方式 | `PyTypeObjectOfT.Virtual.cs` |
+| `__debug__` 内建常量 | `AstUtils.cs` |
+| `ast` 内建模块 | `PyBuiltinFunctions.cs` |
 | 类 `__dict__` 非字符串键的 `RuntimeWarning` | `PyTypeObjectOfT.cs`，见[类创建](../internals/class-creation.md) |
-| `PyTypeSlots` 的协议分组泛化 | `PyTypeObject.Slots.cs` |
 | `CallMethod` 的 `GetAttrOrMethod` 优化路径 | `PyObjectCallExtensions.cs` |
 | 线程中断后的帧状态恢复 | `PyThreadObject.Py.cs`，见 [threading 与 queue](../internals/threading-and-queue.md) |
-| `exec` / `eval` 的 globals 映射与序列泛化 | `PyCore.cs` 两处 |
-| `import *` 的 `__all__` 异常路径错误化 | `PyEnvironment.Import.cs` |
 | dict 删除与重建的性能（`perf` 标记） | `PyDictObject.cs` 多处，见 [dict 系统](../internals/dict-system.md) |
 
 ## 四、工程与治理
 
 - 发布元数据补齐：csproj 尚缺 `RepositoryUrl`、`License`、SourceLink 与符号包，见[发布流程](./release-process.md)；
-- `PySharp.Analyzer` 的版本号与独立发版节奏，当前未显式设置 `<Version>`；
 - 生成器与分析器没有单元测试，依赖自举验证，见[源生成器](../internals/source-generators.md)；`Microsoft.CodeAnalysis` 的 generator snapshot 测试是可选补强方向；
 - 文档同步义务：改公共行为时同步 [API 参考](../api/)与兼容性文档。
 
@@ -58,5 +55,5 @@
 
 1. 先确认缺口是否仍存在，不要依赖本文的版本锚点；大项先开讨论对齐设计，尤其第二档的政策级条目；
 2. 实现遵循对应操作指南与[编码规范](./coding-standards.md)；语义行为必须附带 `test_pyfiles` 回归，见[测试体系](../internals/testing.md)；
-3. 与 CPython 行为对齐的条目以 CPython 为准绳落回归脚本，参照既有 `test_*_regression.py` 的最小复现风格；
+3. 与 CPython 行为对齐的条目以 CPython 为准绳落回归脚本，命名遵循[测试语料规范](./test-corpus.md)（按行为契约命名，标识符里不出现 `regression`，出身背景写在 `:background:` 字段）；
 4. 小步提交，一个缺口一笔 `feat:` 或 `fix:`，性能类提交附前后对比数据。

@@ -72,5 +72,5 @@
 ## 工程与测试
 
 - **`InternalsVisibleTo("PySharp.Tests")`**：测试工程可访问 internal 面，是调试解释器行为的关键杠杆。见[测试体系](./internals/testing.md)。
-- **`test_pyfiles` 语料**：断言写在 Python 里的回归测试脚本集，当前 387 个，按主题命名；`TestPyFiles.cs` 中的 `[TestMethod]` 负责登记。见[测试体系](./internals/testing.md)。
+- **`test_pyfiles` 语料**：断言写在 Python 里的测试脚本集，当前 408 个，按主题命名；由夹具元数据源生成器自动发现并生成 MSTest 包装。见[测试体系](./internals/testing.md)。
 - **Trimmable / AOT 兼容**：主库在 Debug 与 Release 均开启 `IsTrimmable` / `IsAotCompatible`；扩展模型不依赖运行时反射是其前提。

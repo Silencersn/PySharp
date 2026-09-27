@@ -41,8 +41,14 @@ PySharp 定义了自己的字节码格式：每条指令 2 字节（`OpCode : by
 纯字面量表达式在 AST 层（`AstNodes/LiteralParser.cs`）即被折叠：`TryConvertLiteral` 递归识别
 字面量及由它们构成的 `BinOp`、`UnaryOp`、`List`、`Tuple`、`Set`、`Dict` 节点，经
 `PyCore.EvalOperator`（`NonContextDependency` 上下文）在编译期求值，结果直接进常量池。因此
-`x = 1 + 2 * 3` 编译为单条 `LoadConst 7`。这是字面量折叠，不属于发射器的窥孔优化，后者见下文，
-只有两条规则。
+`x = 1 + 2 * 3` 编译为单条 `LoadConst 7`。
+
+`Reducer` 层（`AstNodes/Reducer.Expr.cs`）还有第二遍折叠：`BinOp` 与 `UnaryOp` 在操作数折叠出
+常量后继续求值（`str % x` 按 CPython 规则不折叠，留给运行期）；元素全为常量的元组显示
+（Load 上下文、无 starred 元素）折成单个元组常量，即 CPython 发出的 `LoadConst (1, 2)`。
+`~bool` 同样豁免折叠，让弃用警告留在运行期发出，见
+[警告与数据类](../../user-guide/warnings-and-dataclasses.md)。以上都不属于发射器的窥孔优化，
+后者见下文，只有两条规则。
 
 ## 文件一览
 
@@ -62,8 +68,10 @@ PySharp 定义了自己的字节码格式：每条指令 2 字节（`OpCode : by
 - 标签机制：`DefineLabel()` 与 `MarkLabel(label)`。跳转指令先以 `__LabelFlag` 加标签 ID 的
   4 字节占位发射，`Complete()` 在收尾统一回填为真实指令偏移，同样以最多 3 个 `ExtendedArg`
   编码。
-- 池去重：常量经 `PyObjectConstEqualityComparer`（按 Python 的 `==` 与 `hash` 语义）去重入
-  `_consts`；名字按序数字符串比较去重入 `_names`。
+- 池去重：常量经 `PyObjectConstEqualityComparer`（类型参与同一性，float/complex 按位模式区分，
+  元组按元素递归，对齐 CPython `_PyCode_ConstantKey`）去重入 `_consts`；入池前先经编译会话的
+  规范化常量表取规范对象，同一编译单元内各代码对象共享常量对象（`co_consts` 索引仍各自一份）；
+  名字按序数字符串比较去重入 `_names`。
 - 窥孔优化（发射时即做，当前只有两条）：`ToBool` 前的值已是布尔产生式（`ToBool`、`IsOp`、
   `UnaryNot`）则省略；`PopJumpIfFalse` 或 `PopJumpIfTrue` 紧跟 `UnaryNot` 时合并取反。
 - 对齐填充：`ToBytecode()` 把构建器容量尾部填 `__BytecodeEnd`，VM 遇到即跳出循环。

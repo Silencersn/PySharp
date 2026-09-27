@@ -20,8 +20,15 @@ public sealed partial class PyCallContext : IDisposable
 
 - 唯一入口是环境。全部工厂（`CreateInterpreterRootContext`、`CreateFromEnvironment`、
   `FromCreatingThread`）为 `internal`。几个静态占位上下文（`CSharpRuntime` 等）服务库内非帧
-  场景，如 `ToString` 求 repr。这是「外部拿不到上下文」这一公共 API 边界的根源，见
+  场景。这是「外部拿不到上下文」这一公共 API 边界的根源，见
   [与 CPython 的差异](../python-compat/cpython-differences.md)。
+- 环境上下文（ambient context）：解释器根上下文与线程工厂把自身发布到 `AsyncLocal`，
+  `Dispose` 时恢复原值；线程工厂不继承父级，异线程读取返回 `null`。`PyCallContext.Current`
+  供无法携带上下文参数的 .NET 固定签名面使用：`PyObject.ToString()` 与
+  `PyRuntimeException.Message` 在执行进行中走当前上下文（Python 侧用户 `__repr__` 能访问真实
+  执行状态），`PyObjectComparer` 的 `IComparer` / `IEqualityComparer` 成员让宿主排序、LINQ 与
+  BCL 集合在活跃执行上回调 Python `__lt__` / `__eq__`。无环境时回落 `CSharpRuntime` 等哨兵；
+  编译期路径与契约值类型的集合面不发布 ambient，始终用哨兵。
 - 帧栈：`PyCallContextFrameState` 维护 `PyInternalFrame` 栈（`EnterFrame`、
   `ExitInternalFrame`）。`WithFrame(ref frame)` 返回 `FrameSetter`，即 `ref struct` 加
   `IDisposable`，用 `using` 管理帧生命周期。

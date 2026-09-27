@@ -27,6 +27,10 @@ public partial class PyObject
 CPython `id()` 语义的稳定标识。判断 Python 类型可用 C# 的 `is` 模式匹配，
 即 `if (obj is PyStrObject s)`，也可走 Python 语义的 `PyType.IsInstance`。
 
+`ToString()` 求 repr 用的上下文取自当前执行（ambient context）：在 Python 代码运行的调用栈内
+调用它时，Python 侧自定义的 `__repr__` 按活跃执行运行；脱离执行（如事后调试打印）则退回独立的
+C# 运行时哨兵上下文，见[调用与帧](../internals/calls-and-frames.md)。
+
 ## 构造：C# 到 Python
 
 | Python 类型 | 工厂与单例 |

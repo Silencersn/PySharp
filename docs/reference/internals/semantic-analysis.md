@@ -65,7 +65,8 @@ public static SemanticModel Analyze(PyCallContext context, CodeSource source, As
 分析器还产出编译期语法警告（`SyntaxWarning`，不中断编译）：`is` 与 `is not` 和字面量的比较，
 以及 `assert` 测试表达式为非空元组字面量时的
 `assertion is always true, perhaps remove parentheses?`。后者对齐 CPython 的 `codegen_assert`，
-空元组恒假、变量绑定的元组、括号包裹的非元组都不告警。
+空元组恒假、变量绑定的元组、括号包裹的非元组都不告警。警告去重的范围是编译会话
+（`CompileSession`）：同一会话内同一处警告只报一次，两次 `exec` 各自独立去重。
 
 ## 在整体中的位置
 

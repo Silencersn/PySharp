@@ -93,6 +93,18 @@ class Legacy: ...
 `category=None` 则只打标、不告警，保留 `__deprecated__` 元数据。另接受 `stacklevel` 关键字，
 经 `__index__` 归化。
 
+### 解释器内置的警告
+
+除 `warnings.warn` 与 `@deprecated` 外，解释器自身也会在特定场景发出警告，同样经过过滤器，
+可被 `catch_warnings` 记录或升级为异常：
+
+- `~bool` 发出 `DeprecationWarning`（对齐 CPython 3.14，该行为计划于 3.16 移除）：结果为底层
+  int 的按位取反值（`~True == -2`，类型是 `int` 而非 `bool`），整型操作数保持静默。编译期常量
+  折叠对 `~bool` 豁免（对齐 CPython），因此字面量 `~True` 也会在运行期发出警告而非被折叠吞掉。
+  `"default"` 动作下同一位置只报一次，变量、字面量与显式 `__invert__()` 调用三种形态都会触发。
+- 编译期语法警告（`is` 与字面量比较、`assert` 非空元组恒真）在编译阶段产出，同一编译会话内去重，
+  见[语言特性支持清单](../python-compat/language-features.md)。
+
 ### 在宿主侧收集警告输出
 
 警告沿错误流输出。把宿主的 `UseError` 接到独立的 `MemoryStream`，即可在 C# 侧收集警告文本，与

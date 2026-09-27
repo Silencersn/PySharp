@@ -16,9 +16,9 @@
 
 | 篇目 | 内容 | 依据 |
 | --- | --- | --- |
-| [语言特性支持清单](./language-features.md) | 按类别（基础语法、函数、类与 OOP、异常、迭代与生成器、异步、流程控制、数据模型细节）的支持矩阵 | `test_pyfiles` 中 387 个回归脚本覆盖的主题 |
+| [语言特性支持清单](./language-features.md) | 按类别（基础语法、函数、类与 OOP、异常、迭代与生成器、异步、流程控制、数据模型细节）的支持矩阵 | `test_pyfiles` 中 408 个测试脚本覆盖的主题 |
 | [内建类型方法面覆盖](./builtin-type-methods.md) | `str`、`bytes`、`list`、`dict`、`set` 等内建类型已实现的方法与属性清单，并列出 CPython 有而未支持的高频成员 | 各类型 `[PyMethod]` 等声明的核对 |
-| [标准库模块覆盖](./stdlib-modules.md) | 13 个内嵌模块逐个列出常量、函数与方法，43 个内建函数清单，`open()` 与 import 的文件系统支撑 | 各模块 `[PyExport]` 与 `[PyMethod]` 声明 |
+| [标准库模块覆盖](./stdlib-modules.md) | 13 个内嵌模块逐个列出常量、函数与方法，44 个内建函数清单，`open()` 与 import 的文件系统支撑 | 各模块 `[PyExport]` 与 `[PyMethod]` 声明 |
 | [与 CPython 的差异](./cpython-differences.md) | 标准库面、运行时细节（错误消息、`hash`、`id`、线程、GC）、嵌入 API 边界、工具链（REPL、CLI）四组差异与限制 | 实现核对 |
 
 ## 维护约定

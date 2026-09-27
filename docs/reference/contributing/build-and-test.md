@@ -39,12 +39,12 @@ dotnet run --project PySharp.Console -- -c "print(40 + 2)"
 1. **改运行时、对象或标准库**：全量 `dotnet test`，针对性主题跑单测；
 2. **改编译前端（词法、语法、语义、发射）**：全量测试（语料覆盖广）加手工 REPL 冒烟（多行块、语法错误定位）；
 3. **改生成器或分析器**：先 `dotnet build PySharp/PySharp.csproj` 看自举是否通过（生成产物合法性与 PYARG 诊断），再全量测试；
-4. **新增 Python 语义行为**：按[测试体系](../internals/testing.md)的惯例补 `test_pyfiles/test_<主题>.py`（断言写在 Python 内）并在 `TestPyFiles.cs` 登记；缺陷修复用 `test_<现象>_regression.py` 命名。
+4. **新增 Python 语义行为**：在 `test_pyfiles/` 下按[测试语料规范](./test-corpus.md)补夹具（断言写在 Python 内，由夹具元数据源生成器自动发现并生成测试；仅特殊 host 驱动场景在 `TestPyFiles.cs` 手写）。夹具按行为契约命名，不以历史现象命名。
 
 ## 版本与发布
 
-- 版本号维护在 `PySharp/PySharp.csproj` 的 `Version`，当前为 0.50；发版惯例是单独一笔版本提交（`chore: 更新项目版本号至 x.yy`）。
-- 主 NuGet 包会内嵌公开生成器与分析器（`analyzers/dotnet/cs`）；`PySharp.Analyzer` 可独立打包。完整的打包顺序、推送与发布后验证见[发布流程 checklist](./release-process.md)。
+- 版本号维护在仓库根 `Directory.Build.props` 的 `Version`，当前为 0.50；发版惯例是单独一笔版本提交（`chore: 更新项目版本号至 x.yy`）。
+- 主 NuGet 包会内嵌公开生成器与分析器（`analyzers/dotnet/cs`）；`PySharp.Analyzer` 仅以裸 dll 随主包分发，不独立打包。完整的打包顺序、推送与发布后验证见[发布流程 checklist](./release-process.md)。
 
 ## 提交信息惯例
 

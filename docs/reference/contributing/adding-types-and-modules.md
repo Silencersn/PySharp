@@ -62,6 +62,6 @@
 
 - [ ] `dotnet build PySharp/PySharp.csproj` 通过，生成器自举且 PYARG / PYSP / PYSPI 诊断清零
 - [ ] `dotnet test PySharp.slnx` 全量通过
-- [ ] 新增 `test_pyfiles` 语料并在 `TestPyFiles.cs` 登记
+- [ ] 新增 `test_pyfiles` 语料：源生成器自动发现并生成测试，仅特殊 host 驱动场景在 `TestPyFiles.cs` 手写（见[测试语料规范](./test-corpus.md)）
 - [ ] 同步受影响的文档：[内建类型速查](../api/builtin-types.md)、[标准库覆盖](../python-compat/stdlib-modules.md)、[语言特性](../python-compat/language-features.md)
 - [ ] 提交信息遵循惯例，中文加 `feat:` / `fix:` / `refactor:` 前缀，见[构建与测试](./build-and-test.md)

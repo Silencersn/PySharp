@@ -1,8 +1,8 @@
 # 语言特性支持清单
 
 本清单归纳 PySharp 当前支持的 Python 语言特性，依据是解释器实现与 `PySharp.Tests/test_pyfiles/`
-下的 387 个回归测试脚本，这些脚本由 384 个 `[TestMethod]` 逐一驱动。未列出的特性可能部分可用，
-但未经系统验证。
+下的 408 个测试脚本：397 个测试夹具由夹具元数据源生成器自动发现并生成 MSTest 包装逐一驱动，
+其余为被 import 的辅助件。未列出的特性可能部分可用，但未经系统验证。
 
 ## 基础语法
 
@@ -98,7 +98,7 @@
   整数字符串互转的位数上限（`sys.get_int_max_str_digits` 与 `sys.set_int_max_str_digits`，
   对齐 CPython 3.11 及以后的默认 4300 位限制）。
 - `float`：格式化（`repr` 最短表示）、`round`、取模语义、`fromhex`（含 inf、nan 与次正规数）、
-  `as_integer_ratio` 边界。
+  `as_integer_ratio` 边界，`float()` 构造对 bytes、bytearray 与 memoryview 实参的解析。
 - `complex`：构造（含字符串实参）、一元正负、哈希与数值一致性、反射运算、幂运算主值分支。
 - `str`：方法全集（`split`、`join`、`replace`、`startswith`、`endswith` 元组参数、`strip`、
   `encode` 等）与大量边界回归，`__format__` 的对齐、精度与类型规格。

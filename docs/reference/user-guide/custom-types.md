@@ -54,6 +54,10 @@ public sealed partial class PyQueueObjectType : PyTypeObject<PyQueueObject>
   `RegisterProperties()` 都由 `.g.cs` 产出，手写这些成员会与生成代码冲突。仅当标注
   `[PyTypeConstructor(DoNotGenerateConstructor = true)]` 时才需要自己写构造与单例，如
   `PyObjectType`。
+- 基类构造在注册前后各留一个覆写点：`PreConstruct()` 在 `FillSlots()`、`RegisterMethods()` 与
+  `RegisterProperties()` 之前调用（此时身份、MRO 与类型字典已就绪）；`PostConstruct()` 在全部
+  注册完成后调用。需要定制类型字典（如替换 `__setattr__` 的包装描述符、把 `__hash__` 置
+  `None`）时覆写 `PostConstruct()`，而不是用静态构造函数在初始化后再改 `Shared`。
 
 ## 定义方法
 

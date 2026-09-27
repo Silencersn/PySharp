@@ -48,6 +48,11 @@ ANSI 的地方（文件、管道、GUI 日志面板）时应覆写为 `false`，
   `errors`。`encoding` 即此处配置的流编码；`stderr` 的 `errors` 为 `backslashreplace`，其余为
   `strict`。`close()` 只关闭包装对象，不关闭宿主进程的句柄。`input()` 读取 stdin，EOF 时抛
   `EOFError`；prompt 写 stdout。`sys.stdout.write()` 与 `print` 落到同一条流。
+- `print` 与 `input` 在调用时才解析 `sys.std*`，重绑定脚本内可见：`print` 遇到被删除的
+  `sys.stdout` 报 `RuntimeError: lost sys.stdout`，绑定 `None` 则静默不输出；`input` 要求三条流
+  全部就绪，缺失或绑定 `None` 依次报 `lost sys.stdin`、`lost sys.stdout`、`lost sys.stderr`。
+  主动拔掉宿主流的替代方式是把对应流换成 `Stream.Null` 而非删除属性，见
+  [预定义宿主](#预定义宿主)。
 
 宿主侧示例，让 Python 侧以 GBK 读写控制台：
 

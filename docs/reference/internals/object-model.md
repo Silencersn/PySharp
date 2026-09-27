@@ -54,6 +54,12 @@ public delegate PyResult PyBinaryFunction(PyCallContext context, PyObject self, 
   `IPyAttributesObject.FrozenEmpty` 并拒绝写入。
 - `PyObjectManagedDict`：带真实每实例字典的类型（模块、异常、用户类实例）改用实例字段
   `_pyAttributes`，同一接口，惰性创建为一个 `PyDictObject`，避免弱表开销。
+- 内建异常的结构化成员（如 `OSError.errno`、`SyntaxError.lineno`、`ImportError.msg`、
+  `UnicodeError` 族的 `encoding`/`object`/`start`/`end`/`reason`，以及 `StopIteration.value`、
+  `SystemExit.code`）不走实例 `__dict__`，对齐 CPython 的 `PyMemberDef`：按名存放在异常对象
+  自己的成员存储里，经成员描述符读写。未赋值的成员读回 `None`；`del` 清空槽位而不报错
+  （数值型成员除外，不可删除）；`__dict__` 写入同名键不会遮蔽成员——成员描述符是数据描述符，
+  在 `DefaultGetAttribute` 的顺序中先于实例字典。
 - 惰性属性模式：能从自身状态直接算出的属性不在构造时写入字典，而是用 `[PyProperty]` getter 按需
   导出。函数的 `__name__` 与代码对象的 `co_*` 系列都如此，`__name__` 另有 setter 支持运行时
   改名。
