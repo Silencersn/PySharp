@@ -185,6 +185,21 @@ dict 的三个消费场景（对象属性、帧 locals、全局名字空间）�
 - 非线程安全：纯数组结构无锁。没有 GIL，见 [threading 与 queue](./threading-and-queue.md)，
   跨线程共享 dict 需外部同步。
 
+## set 与 frozenset 的哈希表
+
+`set` 与 `frozenset` 不复用 dict 的表结构，也未使用 .NET 的 `HashSet<T>`（其比较器无法承载
+Python 的动态 `__hash__` / `__eq__`），而是自研两张组件（`Modules/Builtins/PySetTable.cs`、
+`PySetOps.cs`）：
+
+- `PySetTable`：参照 .NET `HashSet<T>` 骨架的桶链加槽位数组加自由链，槽内存储元素完整的 64 位
+  哈希（对应 CPython `setentry.hash`）。探测以全哈希快拒、恒等短路；已存元素作为接收者调用
+  `__eq__`，比较期间表被变更则自动重启探测。
+- `PySetOps`：CPython `setobject.c` 各操作算法的转置（迭代方向、尺寸阈值、merge 免重哈希等），
+  set 与 frozenset 共用；全部探测携带活动 `PyCallContext`，哈希与相等性错误以 `PyResult`
+  传播——自定义 `__hash__` 抛错可被 Python `try/except` 捕获，而非 .NET 未处理异常。
+- 迭代器对齐 `si_used` 语义：尺寸变更抛可捕获的 `RuntimeError`（同尺寸放行、错误粘滞、穷尽后
+  静默），并实现 `__length_hint__`。
+
 ## 相关阅读
 
 [对象模型](./object-model.md)（属性系统全景）· [调用与帧](./calls-and-frames.md)（PyVariables

@@ -17,6 +17,8 @@
 | 链式赋值、链式比较 | 支持 |
 | 编译期语法警告：`is` 与字面量比较、`assert` 非空元组恒真 | 支持 |
 | 三引号长字符串、转义序列、字节串字面量 | 支持 |
+| 标识符按 Unicode `XID_Start` / `XID_Continue` 校验，非法字符报精确位置与码点 | 支持 |
+| 变量注解与 `__annotations__`；类体注解按 PEP 649 风格经 `__annotate__` 首读惰性求值（前向引用与闭包名可解析，条件注解按执行计入） | 支持 |
 | 源码编码声明（PEP 263）与 UTF-8 BOM，字节解码统一作用于源码加载、import、`compile`、`exec`、`eval` | 支持 |
 | `%` 格式化（含浮点与前缀边界） | 支持 |
 | f-string（PEP 498，含格式说明符与多种前缀组合） | 支持 |
@@ -31,6 +33,7 @@
 | 装饰器（函数与类） | 支持 |
 | 闭包与自由变量（含嵌套，含与泛型混用） | 支持 |
 | 函数属性 `__name__`、`__qualname__`、`__module__`、`__doc__`，含运行时改名与删除语义 | 支持 |
+| `function.__defaults__` 整体改写（元组替换、`None` 与删除清空、变长移动缺省参数集合） | 支持 |
 | 泛型函数（PEP 695 类型参数语法） | 支持 |
 
 `__doc__` 在绑定时按 CPython 的 `_PyCompile_CleanDoc` 清理公共前导空白。
@@ -44,7 +47,8 @@
 | `classmethod`、`staticmethod`、`property`（含 setter 与 deleter） | 支持 |
 | 特殊方法（`__init__`、`__repr__`、`__len__`、`__getitem__`、运算符等） | 支持 |
 | 用户定义描述符（`__get__` 与 `__set__` 协议） | 支持 |
-| 元类（含元类关键字参数） | 支持 |
+| 元类（含元类关键字参数与 `__prepare__` 命名空间钩子，PEP 3115） | 支持 |
+| 实例 `__class__` 改写（布局一致的可变类型间切换）与 `__dict__` 整体替换/删除，错误文案对齐 CPython | 支持 |
 | 泛型类（PEP 695 的 `class Box[T]:`、`__type_params__`、多重与嵌套类型参数） | 支持 |
 | 类型别名（`type X = ...`、`TypeAliasType`） | 支持 |
 | `SomeClass[int]` 下标泛型（`__class_getitem__`、`GenericAlias`） | 支持 |

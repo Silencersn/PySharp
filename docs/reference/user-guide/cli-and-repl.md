@@ -16,7 +16,7 @@ Usage: pysharp [options] [script] [arg ...]
 | --- | --- |
 | `-h`、`--help` | 打印用法说明后退出，退出码 0 |
 | `-V`、`--version` | 打印 PySharp 版本后退出 |
-| `-c <code>` | 把 `<code>` 作为 Python 程序执行；`sys.argv[0]` 为 `'-c'`，其后参数透传 |
+| `-c <code>` | 把 `<code>` 作为 Python 程序执行；`sys.argv[0]` 为 `'-c'`，其后参数透传；当前工作目录进入模块搜索路径（同 REPL） |
 | `-` | 从 stdin 读入程序；stdin 连接终端时进入交互 REPL |
 | `--` | 终止选项解析，其后第一个参数视为脚本名（即使以 `-` 开头）；`pysharp --` 后无脚本则进 REPL；`--` 后的 `-` 仍选 stdin 模式 |
 | `-O` | 优化级加一：移除 `assert` 与依赖 `__debug__` 的语句 |

@@ -144,6 +144,21 @@ Python 3.11 的异常组（`ExceptionGroup`、`BaseExceptionGroup`）已支持�
 - `__suppress_context__` 仅接受 bool。
 - 删除三者抛精确的 `TypeError`；`__cause__` 与 `__context__` 赋非异常值时各报专属消息。
 
+## args 与专用 __str__
+
+`args` 对 Python 侧可写：赋值时任意可迭代经 `PySequence_Tuple` 语义落为元组（传元组则同一对象
+存取），非可迭代报迭代错误；`del e.args` 报 `args may not be deleted`。`str(e)` 与 `repr(e)`
+实时读取 `args`，捕获后改写立即反映在输出上。
+
+若干异常族有专用 `__str__`，对齐 CPython 的呈现规则：
+
+- `OSError`：按参数个数分四分支渲染，`errno` 与 `winerror` 优先于普通消息，带 `: 消息` 与
+  `-> 文件名` 后缀；以 errno 精确匹配的调用会映射到对应子类。
+- `SyntaxError`：按 `msg` 加位置信息元组渲染，含 `filename, lineno` 与平台分隔符 basename 等
+  五种形态；`msg + info` 元组构造有 end_offset 校验。
+- `UnicodeEncodeError` / `UnicodeDecodeError` / `UnicodeTranslateError`：构造参数有形状校验，
+  `__str__` 按单个坏字符渲染，按码点幅值选 `\x` / `\u` / `\U` 转义，孤代理取原始码点。
+
 ## 其他错误
 
 - 编译期错误（语法错误）同样以 `PyRuntimeException` 抛出，`PyException` 为

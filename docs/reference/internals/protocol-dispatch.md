@@ -29,6 +29,11 @@ GetItem:   对象是类型对象时走 __class_getitem__ 或 GenericAlias，否�
   `OverflowError: cannot fit 'int' into an index-sized integer`。
 - 哈希归一化：`Hash` 把 `__hash__` 的结果经 `PyHash.HashLong` 归一化，保证实现内不变量（如相等
   对象哈希相等），无槽类型直接判不可哈希。
+- 长度提示（CPython `PyObject_LengthHint` 语义，实现于 `PyUtils.LengthHint`）：`len()` 可用时
+  直接采用（仅其 `TypeError` 落空），否则沿类型 MRO 查 `__length_hint__`（描述符绑定，忽略实例
+  属性）调用。提示调用抛 `TypeError`、返回 `NotImplemented` 或属性不可调用时回退默认值，其余
+  错误原样传播；返回非 int 报 `TypeError`，负值报 `ValueError`。消费方是 `list`（默认 8）、
+  `bytes`（64）、`bytearray`（32）的构造预分配与 `operator.length_hint`。
 
 ## 运算符的反射协议
 

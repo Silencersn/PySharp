@@ -66,9 +66,15 @@ public static PyObject BuildClass(PyCallContext context, PyCodeObject codeObject
 - 元类决议，对齐 CPython 的 `calctype`：初值取首个基类的元类；显式的 `metaclass` 关键字参数必须
   是 `PyTypeObject`（非类型元类不支持，抛 `PySharpException`）；随后遍历基类找最派生元类，
   互不为对方子类时报 `TypeError: metaclass conflict`。
+- `__prepare__` 钩子（PEP 3115）：元类解析完成后经完整属性查找调用
+  `__prepare__(name, bases, **kwargs)`，类 kwargs 原样透传；`type` 自身走快路径直取新 dict，
+  最派生元类的钩子获胜，钩子抛错即中止类创建。返回值经映射校验后作为类体命名空间：精确 `dict`
+  直接使用；`dict` 子类与任意用户映射包装为通用取值协议适配器，`__setitem__` 覆写能看到每一次
+  类体 store 且声明顺序保留；非 dict 映射按 CPython 语义先执行类体，再由 `type.__new__` 报
+  `argument 3 must be dict`。
 - 类体执行：`CreateClassBuildFrame(codeObject, closure)` 创建 `FrameType.Class` 帧
   （`Variables.CreateForBuildingClass`，locals 是字典，闭包单元接进 free vars），`Eval` 跑完
-  类体。帧的 locals 字典就是命名空间。
+  类体。帧的 locals 就是 `__prepare__` 返回并适配后的命名空间。
 - 实例化元类：打包 `(name, bases, ns)` 调 `metaClass.Slots.New`；若结果确为该元类的实例且元类
   不是 `type`，再补调 `Slots.Init`，即自定义元类的 `__init__`。
 
