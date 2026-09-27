@@ -469,9 +469,13 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
 
         // PEP 649: a class body stores __annotate_func__ instead of
         // evaluating its annotations; the first read of __annotations__ runs
-        // it against the class namespace and caches the resulting dict.
+        // it against the class namespace and caches the resulting dict. The
+        // entry is a plain dict item anyone can overwrite (PEP 749), so the
+        // payload shape is validated — anything else degrades to an empty
+        // dict like CPython's non-callable face.
         if (self.PyAttributes.TryGetValue(PySpecialNames.AnnotateFunc, out var annotate) &&
-            annotate is PyTupleObject annotateData)
+            annotate is PyTupleObject annotateData &&
+            PyCore.IsValidAnnotateFuncPayload(annotateData))
         {
             var evaluated = PyCore.EvaluateClassAnnotations(context, self, annotateData);
             if (evaluated.IsError)

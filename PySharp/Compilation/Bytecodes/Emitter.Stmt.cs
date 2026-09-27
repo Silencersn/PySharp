@@ -107,40 +107,21 @@ partial class Emitter
 
     private void EmitAnnAssign(AnnAssignNode node)
     {
-        // PEP 649 defers class-body annotations to the __annotate__ code
-        // object the class body builds; this statement only records that an
-        // annotation site inside control flow was reached (sites at the top
-        // level of the body always apply).
-        if (node.Simple && VariableScope is ClassVariableScope)
-        {
-            if (_classAnnotationIndexes is not null &&
-                _classAnnotationIndexes.TryGetValue(node, out var index))
-            {
-                Builder.Emit(OpCode.LoadName, PySpecialNames.ConditionalAnnotations);
-                Builder.Emit(OpCode.LoadConst, PyIntObject.FromInteger(index));
-                Builder.Emit(OpCode.SetAdd, 1);
-                Builder.Emit(OpCode.PopTop);
-            }
-        }
-        // Module-scope annotations are still recorded as source text.
+        // PEP 649 defers class- and module-body annotations to the annotate
+        // payload the body stores (__annotate_func__ / __annotate__); this
+        // statement only records that an annotation site inside control flow
+        // was reached (sites at the top level of the body always apply).
         // Non-simple targets (self.x: int, x[i]: int) and function scope are
         // skipped (matching CPython behavior; function annotations deferred
         // to Phase 2).
-        else if (node.Simple && VariableScope is RootVariableScope)
+        if (node.Simple && VariableScope is ClassVariableScope or RootVariableScope &&
+            _conditionalAnnotationIndexes is not null &&
+            _conditionalAnnotationIndexes.TryGetValue(node, out var index))
         {
-            // Extract original source text of the annotation expression using its source span
-            var span = node.Annotation.MetaInfo.Range;
-            var annotationStr = _source.Code.GetString(span);
-
-            // Ensure __annotations__ dict exists in the current scope's locals
-            Builder.Emit(OpCode.SetupAnnotations);
-
-            // Store annotation string: __annotations__["name"] = "annotation_source_text"
-            Builder.Emit(OpCode.LoadConst, PyStrObject.FromString(annotationStr.ToString()));
-            Builder.Emit(OpCode.LoadName, PySpecialNames.Annotations);
-            Debug.Assert(node.Target is NameNode);
-            Builder.Emit(OpCode.LoadConst, PyStrObject.FromString(((NameNode)node.Target).Id));
-            Builder.Emit(OpCode.StoreSubscr);
+            Builder.Emit(OpCode.LoadName, PySpecialNames.ConditionalAnnotations);
+            Builder.Emit(OpCode.LoadConst, PyIntObject.FromInteger(index));
+            Builder.Emit(OpCode.SetAdd, 1);
+            Builder.Emit(OpCode.PopTop);
         }
 
         if (node.Value is null)
@@ -835,7 +816,7 @@ partial class Emitter
         // where an annotation site only records that it ran, and the
         // __annotate__ code object that evaluates the annotations once
         // __annotations__ is first read.
-        var annotationSites = CollectClassAnnotations(node.Body, out var conditionalCount);
+        var annotationSites = CollectAnnotations(node.Body, out var conditionalCount);
         var annotateCodeObj = annotationSites.Count > 0 ?
             MakeAnnotateBodyCoObj(classScope, annotationSites) :
             null;
@@ -882,10 +863,10 @@ partial class Emitter
             StoreName(PySpecialNames.TypeParams);
         }
 
-        var savedAnnotationIndexes = _classAnnotationIndexes;
-        _classAnnotationIndexes = BuildConditionalAnnotationIndexes(annotationSites);
+        var savedAnnotationIndexes = _conditionalAnnotationIndexes;
+        _conditionalAnnotationIndexes = BuildConditionalAnnotationIndexes(annotationSites);
         EmitStmts(node.Body);
-        _classAnnotationIndexes = savedAnnotationIndexes;
+        _conditionalAnnotationIndexes = savedAnnotationIndexes;
 
         if (annotateCodeObj is not null)
         {
@@ -907,10 +888,10 @@ partial class Emitter
         return new PyCodeObject(_source.Name, classScope, Builder.ToBytecode());
     }
 
-    // PEP 649: annotation sites at the top level of a class body always land
-    // in __annotations__; sites inside control flow land there only when the
-    // class body reached them, which the body records by index.
-    private static List<(AnnAssignNode Node, int? Index)> CollectClassAnnotations(
+    // PEP 649: annotation sites at the top level of a class or module body
+    // always land in __annotations__; sites inside control flow land there
+    // only when the body reached them, which the body records by index.
+    private static List<(AnnAssignNode Node, int? Index)> CollectAnnotations(
         ImmutableArray<AstStmtNode> body, out int conditionalCount)
     {
         var sites = new List<(AnnAssignNode, int?)>();
@@ -995,13 +976,13 @@ partial class Emitter
     }
 
     // The __annotate__ code object: one evaluation per annotation site, in
-    // source order, against the class namespace the evaluator seeds as its
-    // locals (see PyCore.EvaluateClassAnnotations). Sites inside control flow
-    // check the index set first.
+    // source order, against the evaluator-seeded locals (see
+    // PyCore.EvaluateClassAnnotations / EvaluateModuleAnnotations). Sites
+    // inside control flow check the index set first.
     private PyCodeObject MakeAnnotateBodyCoObj(
-        ClassVariableScope classScope, List<(AnnAssignNode Node, int? Index)> sites)
+        VariableScope scope, List<(AnnAssignNode Node, int? Index)> sites)
     {
-        using var sub = new EmitterSubScope(this, classScope);
+        using var sub = new EmitterSubScope(this, scope);
 
         foreach (var (annNode, index) in sites)
         {
@@ -1027,7 +1008,13 @@ partial class Emitter
 
         Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
         Builder.Emit(OpCode.ReturnValue);
-        return new PyCodeObject(_source.Name, classScope, Builder.ToBytecode());
+
+        // A module annotate code object has no free vars (the module scope is
+        // outermost), so it takes the flag-based constructor; CPython names
+        // the module annotate function __annotate__.
+        return scope is ClassVariableScope classScope
+            ? new PyCodeObject(_source.Name, classScope, Builder.ToBytecode())
+            : new PyCodeObject(PySpecialNames.Annotate, _source.Name, Builder.ToBytecode(), CodeObjectFlags.Class);
     }
 
     private void LoadClassDefArgsAndCoObj(ClassDefNode node, PyCodeObject codeObj)

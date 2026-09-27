@@ -73,11 +73,38 @@ internal static class PyCore
         var code = (PyCodeObject)payload[0];
         var cells = GetFreeVars(ref frame, code);
 
+        // PushNull packs a C# null when the body has no conditional
+        // annotation sites; the tuple is Python-visible (__annotate__ /
+        // __annotate_func__), so the slot must hold a real object
         return PyTupleObject.CreateTuple([
             code,
             cells is null ? PyTupleObject.Empty : PyTupleObject.CreateTuple(cells),
             frame.Variables.Globals,
-            payload[1]]);
+            payload[1] ?? PyNoneObject.None]);
+    }
+
+    // __annotate_func__ / __annotate__ are plain namespace entries a user or
+    // library can overwrite with anything (PEP 749), so every reader checks
+    // this shape — the payload the MakeAnnotateFunc intrinsic builds — and
+    // degrades to an empty dict on mismatch, exactly like CPython's
+    // non-callable face (typeobject.c type_get_annotations /
+    // moduleobject.c module_get_annotations: not callable → PyDict_New()).
+    [AIGenerated]
+    internal static bool IsValidAnnotateFuncPayload(PyTupleObject data)
+    {
+        if (data.Count is not 4 || data[0] is not PyCodeObject || data[2] is not PyDictObject)
+            return false;
+
+        if (data[1] is not PyTupleObject cells)
+            return false;
+
+        foreach (var cell in cells)
+        {
+            if (cell is not PyCellObject)
+                return false;
+        }
+
+        return true;
     }
 
     // Runs the annotate code with the class namespace as its locals — the
@@ -86,17 +113,36 @@ internal static class PyCore
     // annotation dict as the write target.
     public static PyResult EvaluateClassAnnotations(PyCallContext context, PyTypeObject cls, PyTupleObject data)
     {
-        var code = (PyCodeObject)data[0];
-        var closure = (PyTupleObject)data[1];
-        var globals = (PyDictObject)data[2];
-
         var ns = new PyDictObject();
         foreach (var pair in cls.PyAttributes)
             ns[pair.Key] = pair.Value;
 
+        return EvaluateAnnotateFunc(context, ns, data, seedConditional: true);
+    }
+
+    // PEP 649: module bodies store the same payload under __annotate__
+    // (codegen.c:832 — class blocks use __annotate_func__, module blocks
+    // __annotate__). Their annotate code sees an empty locals dict: names
+    // resolve straight against the module globals, which are the module's
+    // own namespace.
+    [AIGenerated]
+    public static PyResult EvaluateModuleAnnotations(PyCallContext context, PyTupleObject data)
+        // the module keeps __conditional_annotations__ in its globals, and
+        // CPython's module annotate function reads it via LOAD_GLOBAL at
+        // call time (codegen.c:766-771) — seeding the captured set would
+        // freeze it against later user rebinding, so the name resolves
+        // against the live globals instead
+        => EvaluateAnnotateFunc(context, new PyDictObject(), data, seedConditional: false);
+
+    private static PyResult EvaluateAnnotateFunc(PyCallContext context, PyDictObject ns, PyTupleObject data, bool seedConditional)
+    {
+        var code = (PyCodeObject)data[0];
+        var closure = (PyTupleObject)data[1];
+        var globals = (PyDictObject)data[2];
+
         var result = new PyDictObject();
         ns[PySpecialNames.Annotations] = result;
-        if (data[3] is PySetObject conditional)
+        if (seedConditional && data[3] is PySetObject conditional)
             ns[PySpecialNames.ConditionalAnnotations] = conditional;
 
         var locals = PyVariables.CreateClassLocals(context, ns);

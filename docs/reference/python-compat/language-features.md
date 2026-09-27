@@ -18,7 +18,7 @@
 | 编译期语法警告：`is` 与字面量比较、`assert` 非空元组恒真 | 支持 |
 | 三引号长字符串、转义序列、字节串字面量 | 支持 |
 | 标识符按 Unicode `XID_Start` / `XID_Continue` 校验，非法字符报精确位置与码点 | 支持 |
-| 变量注解与 `__annotations__`；类体注解按 PEP 649 风格经 `__annotate__` 首读惰性求值（前向引用与闭包名可解析，条件注解按执行计入） | 支持 |
+| 变量注解与 `__annotations__`；类体与模块级注解按 PEP 649 风格经 `__annotate__`/`__annotate_func__` 首读惰性求值（前向引用与闭包名可解析，条件注解按执行计入），模块作用域内裸名 `__annotations__` 报 NameError（与 CPython 一致） | 支持 |
 | 源码编码声明（PEP 263）与 UTF-8 BOM，字节解码统一作用于源码加载、import、`compile`、`exec`、`eval` | 支持 |
 | `%` 格式化（含浮点与前缀边界） | 支持 |
 | f-string（PEP 498，含格式说明符与多种前缀组合） | 支持 |

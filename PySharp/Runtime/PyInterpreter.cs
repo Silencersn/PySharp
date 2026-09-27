@@ -103,7 +103,16 @@ public sealed class PyInterpreter : IDisposable
 
         var module = new PyModuleObject(moduleName);
         foreach (var pair in _mainModule.PyAttributesDict)
+        {
+            // annotation state is per-module: __annotate__ captures this
+            // module's globals, and __annotations__ / the conditional-site
+            // set are its caches — copying them would bind the new module
+            // to __main__'s namespace
+            if (pair.Key is PyStrObject key && key.Value is PySpecialNames.Annotate
+                    or PySpecialNames.Annotations or PySpecialNames.ConditionalAnnotations)
+                continue;
             module.PyAttributesDict.SetItem(_mainContext, pair.Key, pair.Value);
+        }
         return module;
     }
 

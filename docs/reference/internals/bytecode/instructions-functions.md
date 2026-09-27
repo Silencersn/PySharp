@@ -66,18 +66,23 @@
 
 - **Arg**：无；**栈效应**：无。
 - 按帧形态在**类体帧的 locals** 或**模块帧的 globals** 中创建空的 `__annotations__` 字典（已存在则不动），这是变量注解（`x: int`）写入前的准备步骤。
+- **现状**：PEP 649 惰性求值落地后，编译器已不再发出该操作码（类体与模块体均不再物化 `__annotations__`）；操作码与运行时处理暂留，供未来 `from __future__ import annotations` 路径复用。
 - **错误**：无。
 
-### 类体注解的惰性求值（PEP 649 风格）
+### 类体与模块级注解的惰性求值（PEP 649 风格）
 
-类体的注解不再以源码文本写入命名空间：编译期为类体生成 `__annotate__` 代码对象（`CallIntrinsic`
-的 `MakeAnnotateFunc` 内建产出），首次读取 `__annotations__` 时才求值，字典里落的是求值后的
-对象。要点：
+类体和模块体的注解都不再以源码文本写入命名空间：编译期为体部生成 `__annotate__` 代码对象
+（`CallIntrinsic` 的 `MakeAnnotateFunc` 内建产出），首次读取 `__annotations__` 时才求值，字典里落
+的是求值后的对象。类体把负载存在类字典 `__annotate_func__` 名下（codegen.c:832），模块体存在模块
+globals 的 `__annotate__` 名下。要点：
 
 - 求值以类字典为局部命名空间（再退到模块 globals、builtins），前向引用、类属性名与外层函数
-  闭包名都可解析。
-- 条件分支内的注解只在分支执行到时计入，编译期按注解位点索引集记录。
+  闭包名都可解析；模块体的求值 locals 为空字典，名字直接解析模块 globals。
+- 条件分支内的注解只在分支执行到时计入，编译期按注解位点索引集记录；模块体的
+  `__conditional_annotations__` 集合留在 globals（与 CPython 一致，类体会删除）。
 - 对 `__annotations__` 的赋值或删除会摘掉惰性求值器，此后退回普通字典语义。
+- `__annotate_func__` / `__annotate__` 是普通命名空间条目，读取侧先做负载形状校验
+  （`PyCore.IsValidAnnotateFuncPayload`），不符时按 CPython 的不可调用语义退化为空字典。
 
 ## 相关阅读
 

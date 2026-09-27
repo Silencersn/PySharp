@@ -45,8 +45,8 @@ internal sealed partial class Emitter
     private bool OnlyAsName { get; set; }
 
     // PEP 649: index of every annotation site inside control flow that the
-    // class body currently being emitted must record when it runs.
-    private Dictionary<AnnAssignNode, int>? _classAnnotationIndexes;
+    // class or module body currently being emitted must record when it runs.
+    private Dictionary<AnnAssignNode, int>? _conditionalAnnotationIndexes;
 
     /// <summary>
     /// A compile-time region covering a loop, with-item or try record, mirroring
@@ -95,7 +95,41 @@ internal sealed partial class Emitter
                     Builder.Emit(OpCode.LoadConst, doc);
                     StoreName(PySpecialNames.Doc);
                 }
+
+                // PEP 649: like a class body, the module body splits in two —
+                // annotation sites inside control flow only record that they
+                // ran, and the annotate payload stored under __annotate__
+                // evaluates them at the first __annotations__ read
+                // (codegen.c:832; class bodies use __annotate_func__).
+                var annotationSites = CollectAnnotations(n.Body, out var conditionalCount);
+                var annotateCodeObj = annotationSites.Count > 0
+                    ? MakeAnnotateBodyCoObj(VariableScope, annotationSites)
+                    : null;
+
+                if (conditionalCount > 0)
+                {
+                    Builder.Emit(OpCode.BuildSet, 0);
+                    StoreName(PySpecialNames.ConditionalAnnotations);
+                }
+
+                var savedIndexes = _conditionalAnnotationIndexes;
+                _conditionalAnnotationIndexes = BuildConditionalAnnotationIndexes(annotationSites);
                 EmitStmts(n.Body);
+                _conditionalAnnotationIndexes = savedIndexes;
+
+                if (annotateCodeObj is not null)
+                {
+                    Builder.Emit(OpCode.LoadConst, annotateCodeObj);
+                    if (conditionalCount > 0)
+                        Builder.Emit(OpCode.LoadName, PySpecialNames.ConditionalAnnotations);
+                    else
+                        Builder.Emit(OpCode.PushNull);
+                    Builder.Emit(OpCode.BuildTuple, 2);
+                    Builder.Emit(OpCode.CallIntrinsic1, IntrinsicFunctionType.MakeAnnotateFunc);
+                    StoreName(PySpecialNames.Annotate);
+                    // the conditional set stays in module globals, like
+                    // CPython's module scope (only class bodies delete it)
+                }
                 break;
 
             case ExpressionNode n:

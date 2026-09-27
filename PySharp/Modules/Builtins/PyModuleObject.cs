@@ -104,6 +104,22 @@ public sealed partial class PyModuleObjectType : PyTypeObject<PyModuleObject>
         if (self.PyAttributes.TryGetValue(PySpecialNames.Annotations, out var existing))
             return existing;
 
+        // PEP 649: the module body stores its annotate payload under
+        // __annotate__ (codegen.c:832 — class blocks use __annotate_func__,
+        // module blocks __annotate__); the first read evaluates it against
+        // the module globals and caches into the module dict, like CPython's
+        // module_get_annotations. A malformed payload degrades to an empty
+        // dict, as does a missing one.
+        if (self.PyAttributes.TryGetValue(PySpecialNames.Annotate, out var annotate) &&
+            annotate is PyTupleObject annotateData &&
+            PyCore.IsValidAnnotateFuncPayload(annotateData))
+        {
+            var evaluated = PyCore.EvaluateModuleAnnotations(context, annotateData);
+            if (evaluated.IsError)
+                return evaluated;
+            return self.PyAttributes[PySpecialNames.Annotations] = evaluated.Value;
+        }
+
         return self.PyAttributes[PySpecialNames.Annotations] = new PyDictObject();
     }
 
