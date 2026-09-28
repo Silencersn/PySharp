@@ -1,11 +1,12 @@
-﻿"""Verifies the std streams accept close(), expose the closed flag it sets, raise ValueError on further I/O, and treat a second close as a no-op (issue #333).
+﻿"""Verifies the std streams accept close(), expose the closed flag it sets, raise ValueError on further I/O, and treat a second close as a no-op.
 
 :kind: test
+:background: `closed` was hardcoded False on the std streams and no code path
+    could ever set it, so close() was a no-op and the closed-file ValueError
+    guards never fired.
 """
 
-# Regression (issue #333): the std streams must accept close() and expose
-# the closed flag it sets — `closed` was hardcoded False and no code path
-# could ever set it, so the closed-file ValueError guards never fired.
+# the std streams must accept close() and expose the closed flag it sets.
 # Closing stderr/stdout is checked last so the messages still land somewhere
 # while the stream is still open.
 import sys

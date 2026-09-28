@@ -161,8 +161,8 @@ public sealed class TracebackTests
     }
 
     // "line N in caller: source" per frame, in print order. A traceback ends
-    // with a blank line that CPython does not print (issue #349), which
-    // TrimEnd keeps out of the comparison.
+    // with a blank line that CPython does not print, which TrimEnd keeps out
+    // of the comparison.
     private static string[] FrameTrace(string stderr)
     {
         var lines = stderr.Replace("\r\n", "\n").TrimEnd('\n').Split('\n');

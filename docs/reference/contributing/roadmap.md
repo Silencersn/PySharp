@@ -1,6 +1,6 @@
 # 路线图与可认领缺口
 
-本文是非承诺性的贡献地图：0.x 阶段优先级随演进调整，认领前先在 issue 或讨论中对齐方向。
+本文是非承诺性的贡献地图：0.x 阶段优先级随演进调整。
 
 缺口来源包括[与 CPython 的差异](../python-compat/cpython-differences.md)（用户视角限制）、语言与标准库支持面（[语言特性](../python-compat/language-features.md)、[标准库覆盖](../python-compat/stdlib-modules.md)、[内建类型方法面](../python-compat/builtin-type-methods.md)），以及源码内的 `TODO` 标记（当前 21 处）。按性质分档如下。
 

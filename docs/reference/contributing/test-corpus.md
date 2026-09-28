@@ -79,7 +79,7 @@ converts exact subtypes (bool) to pooled ints.
 - 每次运行使用独立临时工作目录：夹具的相对文件 IO 落在临时目录，不污染语料与仓库。stdin 重定向为空（`input()` 两侧对称得到 EOFError）。单次超时 60 秒，超时按分歧处理。
 - 并发限流 8 路（叠加 MSTest 方法级并行）；实测整层使全量 `dotnet test` 增加约 20–40 秒（397 夹具 × 双侧子进程）。
 
-**豁免流程（`:cpython-diff:`）**：发现分歧 → 上报 issue → 夹具 docstring 登记 `:cpython-diff: <分歧描述>`（对比测试转为 `[Ignore]`，理由即豁免登记）→ 修复落地 → 移除豁免。豁免是待清零的登记簿，不允许无理由登记（空理由触发 PYFIX009）。
+**豁免流程（`:cpython-diff:`）**：发现分歧 → 夹具 docstring 登记 `:cpython-diff: <分歧描述>`（对比测试转为 `[Ignore]`，理由即豁免登记）→ 修复落地 → 移除豁免。豁免是待清零的登记簿，不允许无理由登记（空理由触发 PYFIX009）。
 
 ## 新增测试的流程
 
@@ -95,4 +95,4 @@ converts exact subtypes (bool) to pooled ints.
 - [ ] 断言自校验，失败路径有明确 AssertionError 消息
 - [ ] 结尾 print 与文件名一致（仅调试用途）
 - [ ] `dotnet test` 中能看到对应生成的测试（普通 + CPython 对比各一）
-- [ ] 与 CPython 3.14 存在已知分歧时，登记 `:cpython-diff:` 并附 issue 链接
+- [ ] 与 CPython 3.14 存在已知分歧时，登记 `:cpython-diff:` 并写明分歧本身

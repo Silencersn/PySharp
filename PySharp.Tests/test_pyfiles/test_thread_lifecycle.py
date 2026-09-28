@@ -1,11 +1,14 @@
-﻿"""Verifies threading.Thread lifecycle semantics (issue #139): is_alive() before start, run() override dispatch, RuntimeError on double start and join-before-start, and excepthook handling of uncaught target exceptions.
+﻿"""Verifies threading.Thread lifecycle semantics: is_alive() before start, run() override dispatch, RuntimeError on double start and join-before-start, and excepthook handling of uncaught target exceptions.
 
 :kind: test
+:background: is_alive() on a never-started thread used to pierce the process
+    with a .NET InvalidOperationException instead of returning False, and a
+    subclass run() override was never dispatched.
 
 :cpython-diff: an uncaught exception in a non-main thread leaves PySharp's exit code at 1 where CPython 3.14 exits 0; remove this exemption once exit codes match
 """
 
-# Regression for #139: threading.Thread lifecycle semantics.
+# threading.Thread lifecycle semantics.
 #
 # 1. is_alive() on a never-started thread must return False (CPython
 #    threading.py:1177 gates on the started event) instead of piercing the
