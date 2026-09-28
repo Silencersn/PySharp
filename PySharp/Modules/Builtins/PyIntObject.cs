@@ -131,8 +131,12 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
     [PyFunctionParameters("string", "/", "base=10")]
     private static PyResult NewImpl_2(PyCallContext context, PyArguments arguments)
     {
-        if (arguments[1] is not PyIntObject numBase)
-            return PyResult.TypeError(PySR.Runtime_Number_Int_CannotInterpretedAsInt, arguments[1].PyType.TpName);
+        // CPython long_new resolves the base through PyNumber_AsSsize_t, which consults
+        // __index__; an oversized result saturates and then fails the range check below.
+        var baseResult = PySpecialMethods.Index(context, arguments[1]);
+        if (baseResult.IsError)
+            return baseResult;
+        var numBase = baseResult.Value;
 
         if (!((numBase.Value >= 2 && numBase.Value <= 36) || numBase.Value.IsZero))
             return PyResult.ValueError(PySR.Runtime_Number_Int_BaseOutOfRange);

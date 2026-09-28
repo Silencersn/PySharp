@@ -1,4 +1,5 @@
 using PySharp.Modules.Builtins;
+using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
 using PySharp.Utility;
@@ -22,8 +23,11 @@ internal static partial class PySysFunctions
     [PyFunctionParameters("maxdigits", "/")]
     private static PyResult SetIntMaxStrDigitsImpl(PyCallContext context, PyArguments arguments)
     {
-        if (arguments[0] is not PyIntObject maxdigits)
-            return PyResult.TypeError(PySR.Runtime_Number_Int_CannotInterpretedAsInt, arguments[0].PyType.TpName);
+        // CPython's "i" argument converter resolves __index__ before the C long conversion.
+        var maxDigitsResult = PySpecialMethods.Index(context, arguments[0]);
+        if (maxDigitsResult.IsError)
+            return maxDigitsResult;
+        var maxdigits = maxDigitsResult.Value;
 
         if (!maxdigits.IsInt32)
             return PyResult.OverflowError(PySR.Runtime_Number_Int_MaxDigitsNotInt32);
