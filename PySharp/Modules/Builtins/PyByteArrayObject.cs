@@ -12,6 +12,13 @@ public sealed class PyByteArrayObject : PyObject
 {
     private readonly List<byte> _data;
 
+    // Number of live buffer exports (memoryview objects viewing this
+    // bytearray). Mirrors CPython's ob_exports: while positive, every
+    // length-changing operation must refuse with BufferError so the
+    // exported views keep a stable length; same-size writes stay allowed
+    // and are observed by the views through the live storage.
+    private int _exports;
+
     public override PyTypeObject DefaultPyType => PyByteArrayObjectType.Shared;
 
     public int Length => _data.Count;
@@ -45,6 +52,31 @@ public sealed class PyByteArrayObject : PyObject
     public ReadOnlySpan<byte> AsSpan()
     {
         return CollectionsMarshal.AsSpan(_data);
+    }
+
+    internal Span<byte> AsMutableSpan()
+    {
+        return CollectionsMarshal.AsSpan(_data);
+    }
+
+    internal void AddExport()
+    {
+        _exports++;
+    }
+
+    internal void RemoveExport()
+    {
+        _exports--;
+    }
+
+    // CPython _canresize: refusal message for any length-changing operation
+    // while buffer exports are alive. Same-size writes bypass this on purpose
+    // (bytearray_resize_lock_held short-circuits before the export check).
+    internal PyResult? CheckNotExported()
+    {
+        if (_exports is not 0)
+            return PyResult.BufferError(PySR.Runtime_ByteArray_ResizedWhileExported);
+        return null;
     }
 
     public void Add(byte value)
@@ -90,10 +122,12 @@ public sealed class PyByteArrayObject : PyObject
 
     public void ReplaceSliceStep1(int start, int stop, List<byte> values)
     {
-        int lower = int.Min(start, stop);
-        int upper = int.Max(start, stop);
-        _data.RemoveRange(lower, upper - lower);
-        _data.InsertRange(lower, values);
+        // CPython bytearray_ass_subscript normalizes a reversed range
+        // (stop < start) to a plain insertion at start: nothing is deleted
+        if (stop < start)
+            stop = start;
+        _data.RemoveRange(start, stop - start);
+        _data.InsertRange(start, values);
     }
 
     public void ReplaceSliceStepN(int start, int step, int sliceLength, List<byte> values)
@@ -288,6 +322,16 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
             if (step is not 1 && values.Count != sliceLength)
                 return PyResult.ValueError(PySR.Runtime_Sequence_SliceStep_AssignWrongSize, sliceLength, values.Count);
 
+            // CPython bytearray_ass_subscript only resizes when the replacement
+            // length differs; a same-size step-1 assignment stays allowed with
+            // live exports and is observed by them
+            if (step is 1 && values.Count != sliceLength)
+            {
+                var resizeErr = self.CheckNotExported();
+                if (resizeErr is not null)
+                    return resizeErr.Value;
+            }
+
             if (step is 1)
                 self.ReplaceSliceStep1(start, stop, values);
             else
@@ -337,6 +381,13 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
         if (!TryGetSpan(other, out var otherSpan))
             return PyResult.TypeError("can't concat {0} to bytearray", other.PyType.TpName);
 
+        if (otherSpan.Length > 0)
+        {
+            var resizeErr = self.CheckNotExported();
+            if (resizeErr is not null)
+                return resizeErr.Value;
+        }
+
         self.AddRange(otherSpan.ToArray());
         return self;
     }
@@ -374,6 +425,18 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
         var indexResult = PySpecialMethods.Index(context, other);
         if (indexResult.IsError)
             return indexResult;
+
+        var n = indexResult.Value.Value;
+
+        // CPython bytearray_inplace_repeat only resizes when the result
+        // differs from the current size: *1 is a no-op and *0/ *n on an
+        // empty bytearray short-circuit in resize before the export check
+        if (self.Length is not 0 && n != 1)
+        {
+            var resizeErr = self.CheckNotExported();
+            if (resizeErr is not null)
+                return resizeErr.Value;
+        }
 
         self.RepeatInPlace(indexResult.Value.Int32Value);
         return self;
@@ -460,6 +523,10 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
         if (byteResult.IsError)
             return byteResult;
 
+        var resizeErr = self.CheckNotExported();
+        if (resizeErr is not null)
+            return resizeErr.Value;
+
         self.Add(b);
         return PyNoneObject.None;
     }
@@ -471,6 +538,15 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
         var valuesResult = TryGetByteList(context, arguments[0], out var values);
         if (valuesResult.IsError)
             return valuesResult;
+
+        // CPython resize short-circuits on the same size before the export
+        // check, so extending by nothing stays allowed with live exports
+        if (values.Count > 0)
+        {
+            var resizeErr = self.CheckNotExported();
+            if (resizeErr is not null)
+                return resizeErr.Value;
+        }
 
         self.AddRange(values);
         return PyNoneObject.None;

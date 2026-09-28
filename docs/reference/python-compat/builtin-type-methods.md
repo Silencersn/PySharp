@@ -23,7 +23,7 @@ PySharp 未支持的高频成员。它回答「这个类型能点出哪些方法
 | `tuple` | `count`、`index`，与 CPython 一致 | 无 | 无 |
 | `range` | 无方法 | 无 | `index`、`count` 与 `.start`、`.stop`、`.step` 属性。`len`、下标、迭代、`in`、`reversed` 经协议槽支持 |
 | `slice` | `indices` | `start`、`stop`、`step` | 无 |
-| `memoryview` | `tobytes`、`tolist`、`hex`、`release`、`toreadonly` | `obj`、`nbytes`、`readonly`、`format`、`itemsize`、`ndim`、`shape`、`strides`、`suboffsets`、`c_contiguous`、`f_contiguous`、`contiguous` | `cast`、`tobytes(order)` |
+| `memoryview` | `tobytes`、`tolist`、`hex`、`release`、`toreadonly`；切片与单项读写经 `__getitem__` 与 `__setitem__`，`with` 经 `__enter__`/`__exit__` | `obj`、`nbytes`、`readonly`、`format`、`itemsize`、`ndim`、`shape`、`strides`、`suboffsets`、`c_contiguous`、`f_contiguous`、`contiguous` | `cast`、`count`、`index`、`hex(sep, bytes_per_sep)`、`tobytes(order)` |
 
 `str` 的方法面与 CPython 高频面几乎重合，仅缺 `translate` 族三个。方法的 `TypeError` 报文已逐字
 对齐 CPython，覆盖 `find` 族、`partition` 族、`split` 族与 `center` 族的参数序号、类型名后缀与

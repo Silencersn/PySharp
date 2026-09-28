@@ -8,6 +8,8 @@ namespace PySharp.Runtime;
 /// Used internally by memoryview to track the layout of the underlying data.
 /// <para/>
 /// MVP: only supports 1D byte format ('B') for bytes and bytearray objects.
+/// The view reads and writes the exporter's live storage through
+/// <see cref="Object"/>; <see cref="Offset"/> locates the view's first byte.
 /// </summary>
 [AIGenerated]
 internal sealed class PyBuffer
@@ -19,9 +21,10 @@ internal sealed class PyBuffer
     public int NumberDimensions { get; }
     public nint[] Shape { get; }
     public nint[] Strides { get; }
+    public nint Offset { get; }
 
     public PyBuffer(PyObject obj, bool readOnly, int itemSize, string format,
-                    int numberDimensions, nint[] shape, nint[] strides)
+                    int numberDimensions, nint[] shape, nint[] strides, nint offset = 0)
     {
         Object = obj;
         ReadOnly = readOnly;
@@ -30,6 +33,7 @@ internal sealed class PyBuffer
         NumberDimensions = numberDimensions;
         Shape = shape;
         Strides = strides;
+        Offset = offset;
     }
 
     /// <summary>
@@ -53,8 +57,12 @@ internal sealed class PyBuffer
     {
         get
         {
+            // PyBuffer_IsContiguous: 1-D (and 0-dim) is C-contiguous when the
+            // sole stride equals the item size or the dimension holds a single
+            // element — a multi-element strided subview reports False, empty
+            // or not
             if (NumberDimensions <= 1)
-                return true;
+                return Shape.Length is 0 || Shape[0] is 1 || Strides[0] == ItemSize;
             nint expected = ItemSize;
             for (int i = 0; i < NumberDimensions; i++)
             {
@@ -74,7 +82,7 @@ internal sealed class PyBuffer
         get
         {
             if (NumberDimensions <= 1)
-                return true;
+                return Shape.Length is 0 || Shape[0] is 1 || Strides[0] == ItemSize;
             nint expected = ItemSize;
             for (int i = NumberDimensions - 1; i >= 0; i--)
             {

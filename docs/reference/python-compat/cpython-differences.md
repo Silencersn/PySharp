@@ -11,7 +11,7 @@ PySharp 以 CPython 3 为行为参照，大量语义细节（反射协议、子�
 - `sys` 成员较少：可靠提供 `argv`、`stdin`、`stdout`、`stderr` 与
   `get_int_max_str_digits()`、`set_int_max_str_digits()`。`sys.modules`、`sys.path` 等在运行时
   内部维护，Python 侧不可访问。
-- 内建函数为高频子集，共 44 个。`memoryview`、`classmethod` 等少数 CPython 内建未暴露；`__import__`
+- 内建函数为高频子集，共 44 个。`classmethod` 等少数 CPython 内建未暴露；`__import__`
   已提供，但 `import` 语句本身仍由编译器与虚拟机处理，不依赖该函数。
 - 无字节码缓存：不产生也不读取 `.pyc`，每次 import 都重新编译。
 - `multiprocessing`、`subprocess` 等进程级模块未实现。
@@ -28,6 +28,11 @@ PySharp 以 CPython 3 为行为参照，大量语义细节（反射协议、子�
   实现）需自行加锁。
 - GC 语义：对象生命周期由 .NET GC 管理，`__del__` 的时机与 CPython 引用计数驱动的方式不同，
   析构时机不保证。
+- 缓冲协议：`memoryview` 是底层 `bytes` / `bytearray` 的活视图——视图写入落入导出方、导出方的
+  修改对视图可见，与 CPython 一致；导出存活期间 bytearray 的一切变长操作报 `BufferError`
+  （同尺寸写入不受限），视图 `release()` 或 `with` 退出后解锁。与 CPython 的差异源于无引用计数且
+  无析构钩子：被丢弃（不再引用但未 `release()`）的视图会持续占用导出，GC 回收也不会解锁，该
+  bytearray 在进程存续期内无法再变长；CPython 在引用归零时立即释放。显式释放的代码两侧行为一致。
 - 文件对象的文本模式定位：`seek` 在文本模式下对非零的相对定位（`whence=1` 或 `whence=2`）报
   `_io.UnsupportedOperation`，与 CPython 的 `TextIOWrapper` 一致；绝对定位受支持。
 - 标准流与文件对象同类型：`sys.stdin` / `sys.stdout` / `sys.stderr` 与文本模式 `open()` 的返回值

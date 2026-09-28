@@ -11,22 +11,28 @@ namespace PySharp.Modules.Builtins;
 /// of an object supporting the buffer protocol without copying.
 /// <para/>
 /// MVP: only supports 1D byte format ('B') for bytes and bytearray objects.
+/// The view holds no data of its own: element reads and writes go straight to
+/// the exporter's live storage through <see cref="Buffer"/>, so writes through
+/// the view land in the exporter and exporter mutations are observed by the
+/// view. Creating a view counts as one buffer export on bytearray exporters,
+/// which blocks their length-changing operations with <c>BufferError</c> until
+/// the view is released.
 /// </summary>
 [AIGenerated]
 public sealed class PyMemoryViewObject : PyObject
 {
     private readonly PyBuffer _buffer;
-    private readonly byte[] _data;
     private bool _released;
 
     public override PyTypeObject DefaultPyType => PyMemoryViewObjectType.Shared;
     internal override bool IsImmutable => _buffer.ReadOnly;
 
-    internal PyMemoryViewObject(PyBuffer buffer, byte[] data)
+    internal PyMemoryViewObject(PyBuffer buffer)
     {
         _buffer = buffer;
-        _data = data;
         _released = false;
+        if (buffer.Object is PyByteArrayObject byteArray)
+            byteArray.AddExport();
     }
 
     // --- Public accessors ---
@@ -35,25 +41,97 @@ public sealed class PyMemoryViewObject : PyObject
 
     internal PyBuffer Buffer => _buffer;
     internal PyObject Object => _buffer.Object;
-    internal ReadOnlySpan<byte> DataSpan => _data.AsSpan();
-    internal byte[] DataArray => _data;
     internal bool ReadOnly => _buffer.ReadOnly;
     internal int ItemSize => _buffer.ItemSize;
     internal string Format => _buffer.Format;
     internal int NumberDimensions => _buffer.NumberDimensions;
     internal nint[] Shape => _buffer.Shape;
     internal nint[] Strides => _buffer.Strides;
+    internal nint Offset => _buffer.Offset;
     internal nint Length => _buffer.Length;
     internal bool CContiguous => _buffer.CContiguous;
     internal bool FContiguous => _buffer.FContiguous;
     internal bool Contiguous => _buffer.Contiguous;
-    internal static nint[] SubOffsets => [];
+
+    // --- Live data channel ---
+
+    // The element stride in bytes; every element access adds it on top of the
+    // view's base offset so strided subviews keep addressing the exporter
+    private nint ElementByteOffset(nint elementIndex)
+    {
+        return _buffer.Offset + elementIndex * _buffer.Strides[0];
+    }
+
+    internal byte ReadElement(nint elementIndex)
+    {
+        return ReadByteAt(ElementByteOffset(elementIndex));
+    }
+
+    internal void WriteElement(nint elementIndex, byte value)
+    {
+        WriteByteAt(ElementByteOffset(elementIndex), value);
+    }
+
+    private ReadOnlySpan<byte> ExporterSpan
+    {
+        get
+        {
+            return Object switch
+            {
+                PyByteArrayObject byteArray => byteArray.AsSpan(),
+                PyBytesObject bytes => bytes.AsSpan(),
+                // NewImpl only admits bytes and bytearray exporters
+                _ => throw new InvalidOperationException("memoryview exporter is neither bytes nor bytearray"),
+            };
+        }
+    }
+
+    private byte ReadByteAt(nint byteOffset)
+    {
+        return ExporterSpan[(int)byteOffset];
+    }
+
+    private void WriteByteAt(nint byteOffset, byte value)
+    {
+        // Only a bytearray exporter can be writable; NewImpl marks bytes
+        // views read-only and the write paths check ReadOnly first
+        ((PyByteArrayObject)Object).AsMutableSpan()[(int)byteOffset] = value;
+    }
+
+    // Live view of the buffer contents as a contiguous byte sequence: a
+    // direct window when the layout is contiguous, otherwise gathered
+    // element by element. Every call re-reads the exporter.
+    internal ReadOnlySpan<byte> DataSpan
+    {
+        get
+        {
+            var total = checked((int)Length);
+            var source = ExporterSpan;
+            if (_buffer.Strides[0] == _buffer.ItemSize)
+                return source.Slice((int)_buffer.Offset, total);
+
+            var gathered = new byte[total];
+            for (nint i = 0; i < total / _buffer.ItemSize; i++)
+            {
+                var src = (int)(_buffer.Offset + i * _buffer.Strides[0]);
+                source.Slice(src, _buffer.ItemSize).CopyTo(gathered.AsSpan((int)(i * _buffer.ItemSize), _buffer.ItemSize));
+            }
+
+            return gathered;
+        }
+    }
 
     // --- Release ---
 
+    // CPython 3.14 memory_release is idempotent: releasing a released view
+    // returns None. Each view object owns exactly one export, dropped here.
     internal void DoRelease()
     {
+        if (_released)
+            return;
         _released = true;
+        if (Object is PyByteArrayObject byteArray)
+            byteArray.RemoveExport();
     }
 
     // --- Index/slice helpers ---
@@ -102,13 +180,15 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
     {
         var obj = arguments[0];
 
-        // memoryview(memoryview)
+        // memoryview(memoryview): re-exports the same buffer, so .obj stays
+        // the original exporter (CPython memoryview_new) and the new view
+        // holds its own export
         if (obj is PyMemoryViewObject mv)
         {
             var err = mv.CheckReleased();
             if (err is not null)
                 return err.Value;
-            return new PyMemoryViewObject(mv.Buffer, mv.DataArray);
+            return new PyMemoryViewObject(mv.Buffer);
         }
 
         // memoryview(bytes) — readonly
@@ -117,16 +197,17 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
             var buffer = new PyBuffer(
                 bytes, readOnly: true, itemSize: 1, format: "B",
                 numberDimensions: 1, shape: [bytes.Length], strides: [1]);
-            return new PyMemoryViewObject(buffer, bytes.AsSpan().ToArray());
+            return new PyMemoryViewObject(buffer);
         }
 
-        // memoryview(bytearray) — snapshot-based for MVP
+        // memoryview(bytearray) — a live view over the bytearray's storage;
+        // the constructor registers the export that blocks resizes
         if (obj is PyByteArrayObject byteArray)
         {
             var buffer = new PyBuffer(
                 byteArray, readOnly: false, itemSize: 1, format: "B",
                 numberDimensions: 1, shape: [byteArray.Length], strides: [1]);
-            return new PyMemoryViewObject(buffer, byteArray.AsSpan().ToArray());
+            return new PyMemoryViewObject(buffer);
         }
 
         // Unsupported type
@@ -144,6 +225,23 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
             return obj;
         obj.Value._pyType = cls;
         return obj;
+    }
+
+    // --- __enter__ / __exit__ ---
+
+    protected override PyResult Enter(PyCallContext context, PyMemoryViewObject self)
+    {
+        var err = self.CheckReleased();
+        if (err is not null)
+            return err.Value;
+        return self;
+    }
+
+    protected override PyResult Exit(PyCallContext context, PyMemoryViewObject self,
+        PyObject excType, PyObject excValue, PyObject excTraceback)
+    {
+        self.DoRelease();
+        return PyNoneObject.None;
     }
 
     // --- __repr__: <memory at 0x...> ---
@@ -183,7 +281,8 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
         if (err is not null)
             return err.Value;
 
-        // Slice → subview
+        // Slice → subview over the same exporter, no copy: the subview
+        // advances the base offset and multiplies the stride by the step
         if (item is PySliceObject slice)
         {
             if (self.NumberDimensions is 0)
@@ -193,27 +292,12 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
             if (indicesResult.IsError)
                 return indicesResult;
             var (start, _, step, length) = indices;
-            if (length is 0)
-            {
-                return new PyMemoryViewObject(new PyBuffer(
-                    self.Object, self.ReadOnly, self.ItemSize, self.Format,
-                    self.NumberDimensions, [0], [self.Strides[0]]), []);
-            }
-
-            var offset = start * self.ItemSize;
-            var newData = new byte[length * self.ItemSize];
-            var src = self.DataSpan;
-            for (int i = 0; i < length; i++)
-            {
-                var srcIdx = offset + i * (int)self.Strides[0] * step;
-                var dstIdx = i * self.ItemSize;
-                src.Slice(srcIdx, self.ItemSize).CopyTo(newData.AsSpan(dstIdx));
-            }
 
             var sliceBuffer = new PyBuffer(
                 self.Object, self.ReadOnly, self.ItemSize, self.Format,
-                self.NumberDimensions, [length], [self.ItemSize]);
-            return new PyMemoryViewObject(sliceBuffer, newData);
+                self.NumberDimensions, [length], [self.Strides[0] * step],
+                offset: self.Offset + start * self.Strides[0]);
+            return new PyMemoryViewObject(sliceBuffer);
         }
 
         // Integer index → element value
@@ -225,12 +309,7 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
         if (mapErr is not null)
             return mapErr.Value;
 
-        var byteVal = self.DataSpan[idx * self.ItemSize];
-
-        if (self.Format is "B" or "b" or "c")
-            return PyIntObject.FromInteger(byteVal);
-
-        return PyIntObject.FromInteger(byteVal);
+        return PyIntObject.FromInteger(self.ReadElement(idx));
     }
 
     // --- __setitem__ ---
@@ -245,8 +324,37 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
         if (self.ReadOnly)
             return PyResult.TypeError("cannot modify read-only memory");
 
-        if (key is PySliceObject)
-            return PyResult.PySharpException("memoryview slice assignment not implemented");
+        if (key is PySliceObject slice)
+        {
+            // memory_ass_subscript takes the value's buffer before resolving
+            // the slice: a released view is inaccessible and refuses with
+            // ValueError, a non-buffer rvalue with TypeError
+            if (value is PyMemoryViewObject { Released: true })
+                return PyResult.ValueError("operation forbidden on released memoryview object");
+
+            if (!PyBytesObjectType.TryGetBytesLikeSpan(value, out var valueSpan))
+                return PyResult.TypeError(PySR.Runtime_Bytes_BytesLikeRequired, value.PyType.TpName);
+
+            if (self.NumberDimensions is 0)
+                return PyResult.TypeError("0-dim memory has no length");
+
+            var indicesResult = slice.Indices(context, (int)self.Shape[0], out var indices);
+            if (indicesResult.IsError)
+                return indicesResult;
+            var (start, _, step, sliceLength) = indices;
+
+            if (valueSpan.Length != sliceLength * self.ItemSize)
+                return PyResult.ValueError(PySR.Runtime_Memoryview_AssignmentStructureMismatch);
+
+            // CPython writes with memmove semantics: snapshot the rvalue so a
+            // live window sharing the exporter's storage (a contiguous view,
+            // the bytearray itself) is not corrupted by a forward overlap
+            var snapshot = valueSpan.ToArray();
+            for (var i = 0; i < sliceLength; i++)
+                self.WriteElement(start + i * step, snapshot[i * self.ItemSize]);
+
+            return PyNoneObject.None;
+        }
 
         var indexResult = PySpecialMethods.Index(context, key);
         if (indexResult.IsError)
@@ -256,12 +364,25 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
         if (mapErr is not null)
             return mapErr.Value;
 
-        var valueResult = PySpecialMethods.Index(context, value);
-        if (valueResult.IsError)
-            return valueResult;
+        var valueIndexResult = PySpecialMethods.Index(context, value);
+        if (valueIndexResult.IsError)
+        {
+            // pack_single rewrites a failed conversion with the format-
+            // specific TypeError; other failures propagate untouched
+            if (PyTypeErrorObjectType.Shared.IsInstance(valueIndexResult.Exception))
+                return PyResult.TypeError(PySR.Runtime_Memoryview_InvalidFormatType, self.Format);
+            return valueIndexResult;
+        }
 
-        var byteVal = (byte)(valueResult.Value.Value & 0xFF);
-        self.DataArray[idx] = byteVal;
+        var byteValue = valueIndexResult.Value.Value;
+        // pack_single: format 'b' is a signed char, 'B'/'c' are unsigned
+        var inRange = self.Format is "b"
+            ? byteValue >= sbyte.MinValue && byteValue <= sbyte.MaxValue
+            : byteValue >= byte.MinValue && byteValue <= byte.MaxValue;
+        if (!inRange)
+            return PyResult.ValueError(PySR.Runtime_Memoryview_InvalidFormatValue, self.Format);
+
+        self.WriteElement(idx, (byte)byteValue);
 
         return PyNoneObject.None;
     }
@@ -280,9 +401,10 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
 
     protected override PyResult Eq(PyCallContext context, PyMemoryViewObject self, PyObject other)
     {
-        var err = self.CheckReleased();
-        if (err is not null)
-            return err.Value;
+        // CPython 3.14 memory_richcompare: an inaccessible (released) operand
+        // short-circuits the whole comparison to identity instead of raising
+        if (self.Released || other is PyMemoryViewObject { Released: true })
+            return PyBoolObject.FromBoolean(ReferenceEquals(self, other));
 
         if (other is PyMemoryViewObject otherMv)
         {
@@ -360,9 +482,10 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
         if (err is not null)
             return err.Value;
 
-        var list = new PyObject[self.DataSpan.Length];
-        for (int i = 0; i < self.DataSpan.Length; i++)
-            list[i] = PyIntObject.FromInteger(self.DataSpan[i]);
+        var span = self.DataSpan;
+        var list = new PyObject[span.Length];
+        for (int i = 0; i < span.Length; i++)
+            list[i] = PyIntObject.FromInteger(span[i]);
 
         return PyListObject.CreateList(list);
     }
@@ -399,8 +522,8 @@ public sealed partial class PyMemoryViewObjectType : PyTypeObject<PyMemoryViewOb
 
         var roBuffer = new PyBuffer(
             self.Object, readOnly: true, self.ItemSize, self.Format,
-            self.NumberDimensions, self.Shape, self.Strides);
-        return new PyMemoryViewObject(roBuffer, self.DataArray);
+            self.NumberDimensions, self.Shape, self.Strides, offset: self.Offset);
+        return new PyMemoryViewObject(roBuffer);
     }
 
     // --- Attribute getters ---

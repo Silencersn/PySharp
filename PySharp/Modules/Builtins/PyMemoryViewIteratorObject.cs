@@ -27,10 +27,16 @@ public sealed class PyMemoryViewIteratorObject : PyObject
 
     internal PyResult PyNext(PyCallContext context)
     {
+        // CPython memoryiter_next checks exhaustion first: a spent iterator
+        // keeps returning StopIteration even after its view was released
         if (_index >= _mv.Shape[0])
             return PyResult.StopIteration();
 
-        var byteVal = _mv.DataSpan[_index * _mv.ItemSize];
+        var released = _mv.CheckReleased();
+        if (released is not null)
+            return released.Value;
+
+        var byteVal = _mv.ReadElement(_index);
         _index++;
         return PyIntObject.FromInteger(byteVal);
     }

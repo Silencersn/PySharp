@@ -408,6 +408,16 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
                 span = byteArray.AsSpan();
                 return true;
             case PyMemoryViewObject view:
+                // A released view no longer owns usable storage: its shape can
+                // trail a shrunken bytearray exporter, so reading it live would
+                // slice out of bounds. Refuse here — callers fall back to their
+                // own protocol paths (reflected identity, iteration), matching
+                // CPython's CHECK_RELEASED on PyObject_GetBuffer
+                if (view.Released)
+                {
+                    span = default;
+                    return false;
+                }
                 span = view.DataSpan;
                 return true;
             default:

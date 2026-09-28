@@ -410,6 +410,11 @@ partial class PySR
     public const string Runtime_Bytes_CannotConvert = "cannot convert '{0}' object to bytes";
     public const string Runtime_Bytes_IndexOverflow = "cannot fit '{0}' into an index-sized integer";
     public const string Runtime_ByteArray_CannotConvert = "cannot convert '{0}' object to bytearray";
+    public const string Runtime_ByteArray_ResizedWhileExported = "Existing exports of data: object cannot be re-sized";
+
+    public const string Runtime_Memoryview_InvalidFormatValue = "memoryview: invalid value for format '{0}'";
+    public const string Runtime_Memoryview_InvalidFormatType = "memoryview: invalid type for format '{0}'";
+    public const string Runtime_Memoryview_AssignmentStructureMismatch = "memoryview assignment: lvalue and rvalue have different structures";
 
     public const string Runtime_Codec_TakesAtMostThreeArgs = "{0}() takes at most 3 arguments ({1} given)";
     public const string Runtime_Codec_UnexpectedKeyword = "{0}() got an unexpected keyword argument '{1}'";
