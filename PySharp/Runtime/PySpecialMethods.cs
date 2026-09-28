@@ -21,6 +21,14 @@ public static class PySpecialMethods
 
     public static PyResult<PyStrObject> Str(PyCallContext context, PyObject obj)
     {
+        // PyObject_Str (Objects/object.c) enters the recursion guard before
+        // dispatching to tp_str, because a tp_str may loop without ever
+        // entering a Python frame. BaseException_str re-enters str() on
+        // args[0] natively, so an exception holding itself in args recurses
+        // here and nowhere else the guard already covers.
+        if (PyRecursionGuard.ProbeNativeStack() is { } recursionError)
+            return PyResult<PyStrObject>.FromException(recursionError);
+
         var func = obj.PyType.Slots.Str ?? PyTypeObject.DefaultStr;
         var result = func(context, obj);
         return ValidateResultOf<PyStrObject>(result, MessageCreator);
@@ -33,6 +41,10 @@ public static class PySpecialMethods
 
     public static PyResult<PyStrObject> Repr(PyCallContext context, PyObject obj)
     {
+        // Mirrors the Str entry; see PyObject_Repr in Objects/object.c.
+        if (PyRecursionGuard.ProbeNativeStack() is { } recursionError)
+            return PyResult<PyStrObject>.FromException(recursionError);
+
         var func = obj.PyType.Slots.Repr ?? PyTypeObject.DefaultRepr;
         var result = func(context, obj);
         return ValidateResultOf<PyStrObject>(result, MessageCreator);
