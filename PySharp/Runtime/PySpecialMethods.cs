@@ -98,7 +98,10 @@ public static class PySpecialMethods
 
         static string MessageCreator(PyObject o)
         {
-            return PySR.Format(PySR.Runtime_Object_SpecialMethodReturnsWrongType, PySpecialNames.Hash, "int", o.PyType.TpName);
+            // CPython's slot_tp_hash rejects a non-int result with its own
+            // sentence, unlike the non-<type> template the neighbouring slots
+            // use; it names no type either
+            return PySR.Runtime_Object_HashShouldReturnInteger;
         }
     }
 
