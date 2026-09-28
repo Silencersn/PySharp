@@ -42,6 +42,8 @@ partial struct PyResult
         return RaiseException(PyStopIterationObjectType.Shared, arg);
     }
 
+    // Known-gap marker for Python-reachable unimplemented/unsupported behavior,
+    // never for ordinary user errors — the full contract lives on PySharpException.
     internal static PyExceptionResult PySharpException(string? format, params ReadOnlySpan<object?> args)
     {
         return RaiseException(Modules.CSharp.PySharpException.Shared, format, args);

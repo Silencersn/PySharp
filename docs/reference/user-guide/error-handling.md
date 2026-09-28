@@ -159,6 +159,47 @@ Python 3.11 的异常组（`ExceptionGroup`、`BaseExceptionGroup`）已支持�
 - `UnicodeEncodeError` / `UnicodeDecodeError` / `UnicodeTranslateError`：构造参数有形状校验，
   `__str__` 按单个坏字符渲染，按码点幅值选 `\x` / `\u` / `\U` 转义，孤代理取原始码点。
 
+## PySharpException：行为缺口标记
+
+源码：`PySharp/Modules/CSharp/PySharpException.cs`。
+
+PySharp 在明确标注的未实现/不支持行为边界上，抛出专有的 `PySharpException`，而不是静默
+失败，也不是编造成某个 CPython 异常。它是语义完整的一等 Python 异常——基座为
+`BaseException`（`except BaseException` 可捕获），traceback 按 Python 格式渲染——专门
+抛进 Python 层：
+
+```python
+b = bytearray(b"abc")
+mv = memoryview(b)
+try:
+    mv[:3] = b"XYZ"              # memoryview 切片写穿尚未实现
+except BaseException as e:
+    print(type(e).__name__)      # PySharpException
+```
+
+该类型同时承担两个职责：
+
+- **缺口登记**：源码中搜索它的工厂调用（`PyResult.PySharpException` /
+  `context.PySharpException`）即可枚举全部已知行为缺口；与之相对，真正不可达的路径用
+  `UnreachableException`，两类异常的分工即"Python 可达的已知缺口"与"真不可达"。
+- **Python 层可处理**：缺口发生在 Python 层即可在 Python 层处理——宽捕获后按类型名与
+  消息判定，降级或绕行，不必被迫修改 C# 代码。
+
+**刻意不提供按名捕获**：Python 侧 `except PySharpException:` 会得到 `NameError`——这个名字
+没有绑定进任何 Python 可见命名空间。PySharp 不向 Python 暴露专有模块，若把该类型注册进
+builtins 或任何自带模块，等于向 CPython 兼容语义注入 CPython 不存在的名字。因此处理方式
+是宽 `except` 加类型名检查。
+
+该类型在 C# 侧为 `internal`，嵌入者通过异常对象的类型名判定：
+
+```csharp
+catch (PyRuntimeException e)
+{
+    if (e.PyException.PyType.TpName == "PySharpException")
+        Console.WriteLine("踩到了 PySharp 的行为缺口");
+}
+```
+
 ## 其他错误
 
 - 编译期错误（语法错误）同样以 `PyRuntimeException` 抛出，`PyException` 为

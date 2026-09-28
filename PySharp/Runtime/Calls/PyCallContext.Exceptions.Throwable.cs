@@ -97,6 +97,8 @@ partial class PyCallContext
         ];
     }
 
+    // Known-gap marker for Python-reachable unimplemented/unsupported behavior,
+    // never for ordinary user errors — the full contract lives on PySharpException.
     internal PyRuntimeException PySharpException(string? format, params ReadOnlySpan<object?> args)
     {
         return ThrowableException(Modules.CSharp.PySharpException.Shared, format, args);
