@@ -296,7 +296,15 @@ public sealed class PyFixtureTestsGenerator : IIncrementalGenerator
             }
             else
             {
-                ParseMetadata(fileName, docstring, diagnostics, ref kind, ref cpythonDiffReason);
+                var hasKindField = ParseMetadata(fileName, docstring, diagnostics, ref kind, ref cpythonDiffReason);
+
+                // :kind: is mandatory rather than defaulted: a helper that
+                // forgets the field would otherwise be silently generated as a
+                // test that asserts nothing and passes. An invalid value is
+                // already reported as PYFIX004, so only a truly absent field
+                // lands here.
+                if (kind is null && !hasKindField)
+                    diagnostics.Add((MissingKindField, new[] { fileName }));
 
                 var title = docstring.Split('\n').FirstOrDefault(static line => !string.IsNullOrWhiteSpace(line));
                 if (title is not null && title.TrimStart().StartsWith("Regression", StringComparison.OrdinalIgnoreCase))
@@ -305,21 +313,26 @@ public sealed class PyFixtureTestsGenerator : IIncrementalGenerator
 
             if (kind is null)
             {
-                // Only reached when the docstring was missing or unterminated;
-                // the error is already reported, defaulting keeps the record valid.
+                // Only reached when no usable kind was parsed: missing or
+                // unterminated docstring (PYFIX001/PYFIX002), a missing :kind:
+                // (PYFIX003) or an invalid one (PYFIX004). The error is already
+                // reported in every case, so defaulting merely keeps the record
+                // valid; Emit drops it anyway because HasErrors holds.
                 kind = FixtureKind.Test;
             }
 
             return new FixtureInfo(fileName, methodName, kind.Value, cpythonDiffReason, diagnostics.ToImmutable());
         }
 
-        private static void ParseMetadata(
+        /// <summary>Returns true when the docstring declares a ':kind:' field at all.</summary>
+        private static bool ParseMetadata(
             string fileName,
             string docstring,
             ImmutableArray<(DiagnosticDescriptor, string[])>.Builder diagnostics,
             ref FixtureKind? kind,
             ref string? cpythonDiffReason)
         {
+            var hasKindField = false;
             foreach (Match field in FieldRegex.Matches(docstring))
             {
                 var name = field.Groups[1].Value;
@@ -327,6 +340,7 @@ public sealed class PyFixtureTestsGenerator : IIncrementalGenerator
                 switch (name)
                 {
                     case "kind":
+                        hasKindField = true;
                         if (value == "test")
                             kind = FixtureKind.Test;
                         else if (value == "helper")
@@ -350,6 +364,7 @@ public sealed class PyFixtureTestsGenerator : IIncrementalGenerator
                         break;
                 }
             }
+            return hasKindField;
         }
 
         /// <summary>

@@ -54,7 +54,7 @@ converts exact subtypes (bool) to pooled ints.
 
 | 检查 | 级别 |
 | --- | --- |
-| 缺 docstring / `:kind:` 缺失或非法 | error |
+| 缺 docstring / `:kind:` 缺失或非法 | error (`:kind:` 缺失 PYFIX003 / 非法 PYFIX004) |
 | 文件名含 `regression` | error |
 | 方法名映射冲突 | error |
 | 未知元数据字段 | warning |
