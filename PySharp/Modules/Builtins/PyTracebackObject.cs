@@ -1,6 +1,4 @@
 using PySharp.Compilation.CodeAnalysis;
-using PySharp.Resources;
-using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
 

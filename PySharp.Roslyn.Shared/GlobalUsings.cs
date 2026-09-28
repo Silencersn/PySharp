@@ -5,16 +5,24 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("PySharp.SourceGeneration")]
 [assembly: InternalsVisibleTo("PySharp.SourceGeneration.Internal")]
 
-// Nullability-contract polyfills: netstandard2.0 predates these attributes, and
-// netstandard2.0 must not depend on the System.Diagnostics.CodeAnalysis package.
-namespace System.Diagnostics.CodeAnalysis;
-
-[AttributeUsage(AttributeTargets.Parameter, Inherited = false)]
-internal sealed class NotNullWhenAttribute : Attribute
+namespace PySharp.Roslyn.Shared
 {
-    public NotNullWhenAttribute(bool returnValue) => ReturnValue = returnValue;
-    public bool ReturnValue { get; }
+    // Add an extra empty namespace block to prevent the code cleaner
+    // from changing this file's namespace because of IDE0130.
 }
 
-[AttributeUsage(AttributeTargets.Field | AttributeTargets.Parameter | AttributeTargets.Property | AttributeTargets.ReturnValue, Inherited = false)]
-internal sealed class NotNullAttribute : Attribute;
+// Nullability-contract polyfills: netstandard2.0 predates these attributes, and
+// netstandard2.0 must not depend on the System.Diagnostics.CodeAnalysis package.
+namespace System.Diagnostics.CodeAnalysis
+{
+
+    [AttributeUsage(AttributeTargets.Parameter, Inherited = false)]
+    internal sealed class NotNullWhenAttribute : Attribute
+    {
+        public NotNullWhenAttribute(bool returnValue) => ReturnValue = returnValue;
+        public bool ReturnValue { get; }
+    }
+
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Parameter | AttributeTargets.Property | AttributeTargets.ReturnValue, Inherited = false)]
+    internal sealed class NotNullAttribute : Attribute;
+}

@@ -1,6 +1,6 @@
-using System.Reflection;
 using PySharp.Modules.Builtins;
 using PySharp.Runtime;
+using System.Reflection;
 
 #pragma warning disable MSTEST0037
 

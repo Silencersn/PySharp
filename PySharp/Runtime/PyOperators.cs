@@ -131,37 +131,37 @@ public static class PyOperators
         switch (op)
         {
             case PyOperatorTypes.Add:
-            {
-                var leftSequence = left.PyType.Slots.Sequence;
-                var concat = inPlace
-                    ? leftSequence?.InplaceConcat ?? leftSequence?.Concat
-                    : leftSequence?.Concat;
-                if (concat is not null)
-                    result = concat(context, left, right);
-                break;
-            }
-            case PyOperatorTypes.Mult:
-            {
-                // CPython: `if (mv && mv->sq_repeat) ... else if (mw &&
-                // mw->sq_repeat)` — the left side wins only by carrying an
-                // actual repeat slot, not by merely having the family struct
-                var leftSequence = left.PyType.Slots.Sequence;
-                var leftRepeat = inPlace
-                    ? leftSequence?.InplaceRepeat ?? leftSequence?.Repeat
-                    : leftSequence?.Repeat;
-                if (leftRepeat is not null)
                 {
-                    result = leftRepeat(context, left, right);
+                    var leftSequence = left.PyType.Slots.Sequence;
+                    var concat = inPlace
+                        ? leftSequence?.InplaceConcat ?? leftSequence?.Concat
+                        : leftSequence?.Concat;
+                    if (concat is not null)
+                        result = concat(context, left, right);
                     break;
                 }
-                // the right operand's plain repeat runs only when the left
-                // operand has no repeat slot at all, and must not mutate it
-                // (abstract.c PyNumber_InPlaceMultiply)
-                var rightRepeat = right.PyType.Slots.Sequence?.Repeat;
-                if (rightRepeat is not null)
-                    result = rightRepeat(context, right, left);
-                break;
-            }
+            case PyOperatorTypes.Mult:
+                {
+                    // CPython: `if (mv && mv->sq_repeat) ... else if (mw &&
+                    // mw->sq_repeat)` — the left side wins only by carrying an
+                    // actual repeat slot, not by merely having the family struct
+                    var leftSequence = left.PyType.Slots.Sequence;
+                    var leftRepeat = inPlace
+                        ? leftSequence?.InplaceRepeat ?? leftSequence?.Repeat
+                        : leftSequence?.Repeat;
+                    if (leftRepeat is not null)
+                    {
+                        result = leftRepeat(context, left, right);
+                        break;
+                    }
+                    // the right operand's plain repeat runs only when the left
+                    // operand has no repeat slot at all, and must not mutate it
+                    // (abstract.c PyNumber_InPlaceMultiply)
+                    var rightRepeat = right.PyType.Slots.Sequence?.Repeat;
+                    if (rightRepeat is not null)
+                        result = rightRepeat(context, right, left);
+                    break;
+                }
         }
         return result;
     }
