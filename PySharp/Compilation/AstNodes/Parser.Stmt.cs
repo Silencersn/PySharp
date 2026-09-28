@@ -878,22 +878,47 @@ partial class Parser
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("with");
 
-        ImmutableArray<AstWithItemNode> items;
-        if (CurrentTokenType is TokenType.LeftParen)
-        {
-            MoveNextToken();
-            items = ParseSomethingList(ParseWithItem, StopPredicates.UntilRightParen, out _).MakeArray();
-            EnsureTokenTypeThenMove(TokenType.RightParen);
-        }
-        else
-        {
-            items = ParseSomethingList(ParseWithItem, StopPredicates.UntilColon, out _).MakeArray();
-        }
-        EnsureColonThenMove();
+        var items = ParseWithItems();
 
         var body = ParseBlock("with");
 
         return Ast.With(items, body).With(metaInfo);
+    }
+
+    /// <summary>
+    /// Parses the with-item list together with its closing colon, mirroring the
+    /// two productions of CPython's with_stmt: the parenthesised item list and
+    /// the bare one. The parenthesised form is attempted first and, if it does
+    /// not work out, the parse restarts from the same token in the bare form —
+    /// the backtrack the PEG parser performs, which is what makes
+    /// <c>with (a) as x:</c> a single item whose context expression is the
+    /// parenthesised group <c>(a)</c> rather than a rejected item list.
+    /// </summary>
+    private ImmutableArray<AstWithItemNode> ParseWithItems()
+    {
+        var pos = TokenPosition;
+        if (CurrentTokenType is TokenType.LeftParen)
+        {
+            try
+            {
+                MoveNextToken();
+                var items = ParseSomethingList(ParseWithItem, StopPredicates.UntilRightParen, out _).MakeArray();
+                EnsureTokenTypeThenMove(TokenType.RightParen);
+                EnsureColonThenMove();
+                return items;
+            }
+            catch (PyRuntimeException)
+            {
+                // Only a syntax failure of the parenthesised form is a reason to
+                // try the other production; a .NET exception from a parser defect
+                // is not a PyRuntimeException and still propagates.
+                TokenPosition = pos;
+            }
+        }
+
+        var unparenthesized = ParseSomethingList(ParseWithItem, StopPredicates.UntilColon, out _).MakeArray();
+        EnsureColonThenMove();
+        return unparenthesized;
     }
 
     [GrammarSyntaxRule("with_item")]
@@ -1076,18 +1101,7 @@ partial class Parser
         EnsureKeywordThenMove("async");
         EnsureKeywordThenMove("with");
 
-        ImmutableArray<AstWithItemNode> items;
-        if (CurrentTokenType is TokenType.LeftParen)
-        {
-            MoveNextToken();
-            items = ParseSomethingList(ParseWithItem, StopPredicates.UntilRightParen, out _).MakeArray();
-            EnsureTokenTypeThenMove(TokenType.RightParen);
-        }
-        else
-        {
-            items = ParseSomethingList(ParseWithItem, StopPredicates.UntilColon, out _).MakeArray();
-        }
-        EnsureColonThenMove();
+        var items = ParseWithItems();
 
         var body = ParseBlock("with");
 

@@ -12,6 +12,12 @@ The load side is deliberately the opposite: ast_preprocess.c folds a Load-contex
 Name into the constant `not optimize` before the symbol table is even built, so
 reading __debug__ is legal everywhere and never binds a name. The guards at the
 bottom pin that side down, including that it is not a scope binding.
+
+:kind: test
+:background: ast_preprocess.c folds a Load-context Name into the constant
+    `not optimize` before the symbol table is built, while symtable.c
+    check_name rejects Store and Del. Reading __debug__ is therefore legal
+    everywhere; only binding it is rejected.
 """
 
 

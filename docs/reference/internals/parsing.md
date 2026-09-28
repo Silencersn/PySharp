@@ -38,6 +38,10 @@ public static InteractiveNode ParseInteractive(PyCallContext, CodeSource, TokenS
   关闭，供 `exec` 与 `eval` 场景使用。
 - 字符串池：标识符文本经静态驻留池与解析器本地池去重，控制分配。
 - 前瞻辅助：`IsMatchKeywordsSequence` 无副作用地试探关键字序列，用于消歧，如 `async` 前缀。
+- 回溯辅助：`with_stmt` 的两条产生式（括号项列表与裸项列表）与 CPython 的 PEG 一样先试括号形式，
+  失败则把 `TokenPosition` 复位再从同一 token 解析裸形式，于是 `with (a) as x:` 中 `(a)` 是单项的
+  上下文表达式而非被拒绝的项列表。捕获的是 `PyRuntimeException`（语法错误），解析器自身的 .NET
+  缺陷仍会向上抛出。
 
 ## AST 形态
 
