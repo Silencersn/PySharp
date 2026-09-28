@@ -105,10 +105,11 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
     {
         if (arguments[0] is PyStrObject str)
         {
+            var maxStrDigits = context.PyEnvironment.IntStrDigits.MaxStrDigits;
             var text = PyUnicodeData.TransformDecimalAndSpaceToAscii(str.Value);
-            var parseStatus = BigIntegerHelper.TryParse(text, 10, out var integer, out var digitCount);
+            var parseStatus = BigIntegerHelper.TryParse(text, 10, maxStrDigits, out var integer, out var digitCount);
             if (parseStatus is BigIntegerHelper.IntParseStatus.OverLimit)
-                return PyResult.ValueError(PySR.Runtime_Number_Int_ExceedsMaxStrDigits, PyIntStrDigitsLimit.MaxStrDigits, digitCount);
+                return PyResult.ValueError(PySR.Runtime_Number_Int_ExceedsMaxStrDigits, maxStrDigits, digitCount);
             if (parseStatus is BigIntegerHelper.IntParseStatus.Invalid)
                 return InvalidStringLiteral(context, str, 10);
 
@@ -143,10 +144,11 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
 
         if (arguments[0] is PyStrObject str)
         {
+            var maxStrDigits = context.PyEnvironment.IntStrDigits.MaxStrDigits;
             var text = PyUnicodeData.TransformDecimalAndSpaceToAscii(str.Value);
-            var parseStatus = BigIntegerHelper.TryParse(text, numBase.Int32Value, out var result, out var digitCount);
+            var parseStatus = BigIntegerHelper.TryParse(text, numBase.Int32Value, maxStrDigits, out var result, out var digitCount);
             if (parseStatus is BigIntegerHelper.IntParseStatus.OverLimit)
-                return PyResult.ValueError(PySR.Runtime_Number_Int_ExceedsMaxStrDigits, PyIntStrDigitsLimit.MaxStrDigits, digitCount);
+                return PyResult.ValueError(PySR.Runtime_Number_Int_ExceedsMaxStrDigits, maxStrDigits, digitCount);
             if (parseStatus is BigIntegerHelper.IntParseStatus.Invalid)
                 return InvalidStringLiteral(context, str, numBase.Value);
 
@@ -174,9 +176,9 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
                 span[i] = (char)bytes[i];
         });
 
-        var parseStatus = BigIntegerHelper.TryParse(text, baseValue, out var result, out var digitCount);
+        var parseStatus = BigIntegerHelper.TryParse(text, baseValue, context.PyEnvironment.IntStrDigits.MaxStrDigits, out var result, out var digitCount);
         if (parseStatus is BigIntegerHelper.IntParseStatus.OverLimit)
-            return PyResult.ValueError(PySR.Runtime_Number_Int_ExceedsMaxStrDigits, PyIntStrDigitsLimit.MaxStrDigits, digitCount);
+            return PyResult.ValueError(PySR.Runtime_Number_Int_ExceedsMaxStrDigits, context.PyEnvironment.IntStrDigits.MaxStrDigits, digitCount);
         if (parseStatus is BigIntegerHelper.IntParseStatus.Invalid)
         {
             // CPython builds a fresh bytes from the same data and formats it
@@ -249,8 +251,9 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
 
     protected override PyResult Repr(PyCallContext context, PyIntObject self)
     {
-        if (!PyIntStrDigitsLimit.TryToDecimalString(self.Value, out var text))
-            return PyResult.ValueError(PySR.Runtime_Number_Int_ExceedsMaxStrDigitsResult, PyIntStrDigitsLimit.MaxStrDigits);
+        var maxStrDigits = context.PyEnvironment.IntStrDigits.MaxStrDigits;
+        if (!PyIntStrDigitsLimit.TryToDecimalString(self.Value, maxStrDigits, out var text))
+            return PyResult.ValueError(PySR.Runtime_Number_Int_ExceedsMaxStrDigitsResult, maxStrDigits);
         return PyStrObject.FromString(text);
     }
 
@@ -360,37 +363,37 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
     {
         if (other is not PyIntObject intObj)
             return base.Add(context, self, other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.Add, self, intObj);
+        return PyMath.CalculatePyIntObject(context, PyOperatorTypes.Add, self, intObj);
     }
     protected override PyResult Sub(PyCallContext context, PyIntObject self, PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.Sub(context, self, other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.Sub, self, intObj);
+        return PyMath.CalculatePyIntObject(context, PyOperatorTypes.Sub, self, intObj);
     }
     protected override PyResult Mul(PyCallContext context, PyIntObject self, PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.Mul(context, self, other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.Mult, self, intObj);
+        return PyMath.CalculatePyIntObject(context, PyOperatorTypes.Mult, self, intObj);
     }
     protected override PyResult TrueDiv(PyCallContext context, PyIntObject self, PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.TrueDiv(context, self, other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.TrueDiv, self, intObj);
+        return PyMath.CalculatePyIntObject(context, PyOperatorTypes.TrueDiv, self, intObj);
     }
     protected override PyResult FloorDiv(PyCallContext context, PyIntObject self, PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.FloorDiv(context, self, other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.FloorDiv, self, intObj);
+        return PyMath.CalculatePyIntObject(context, PyOperatorTypes.FloorDiv, self, intObj);
     }
     protected override PyResult Mod(PyCallContext context, PyIntObject self, PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.Mod(context, self, other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.Mod, self, intObj);
+        return PyMath.CalculatePyIntObject(context, PyOperatorTypes.Mod, self, intObj);
     }
     protected override PyResult DivMod(PyCallContext context, PyIntObject self, PyObject other)
     {
@@ -409,67 +412,67 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
     {
         if (other is not PyIntObject intObj)
             return base.Pow(context, self, other, modulo);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.Pow, self, intObj, modulo);
+        return PyMath.CalculatePyIntObject(context, PyOperatorTypes.Pow, self, intObj, modulo);
     }
     protected override PyResult LShift(PyCallContext context, PyIntObject self, PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.LShift(context, self, other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.LShift, self, intObj);
+        return PyMath.CalculatePyIntObject(context, PyOperatorTypes.LShift, self, intObj);
     }
     protected override PyResult RShift(PyCallContext context, PyIntObject self, PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.RShift(context, self, other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.RShift, self, intObj);
+        return PyMath.CalculatePyIntObject(context, PyOperatorTypes.RShift, self, intObj);
     }
     protected override PyResult And(PyCallContext context, PyIntObject self, PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.And(context, self, other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.BitAnd, self, intObj);
+        return PyMath.CalculatePyIntObject(context, PyOperatorTypes.BitAnd, self, intObj);
     }
     protected override PyResult Xor(PyCallContext context, PyIntObject self, PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.Xor(context, self, other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.BitXor, self, intObj);
+        return PyMath.CalculatePyIntObject(context, PyOperatorTypes.BitXor, self, intObj);
     }
     protected override PyResult Or(PyCallContext context, PyIntObject self, PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.Or(context, self, other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.BitOr, self, intObj);
+        return PyMath.CalculatePyIntObject(context, PyOperatorTypes.BitOr, self, intObj);
     }
     protected override PyResult Lt(PyCallContext context, PyIntObject self, PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.Lt(context, self, other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.Lt, self, intObj);
+        return PyMath.CalculatePyIntObject(context, PyOperatorTypes.Lt, self, intObj);
     }
     protected override PyResult Gt(PyCallContext context, PyIntObject self, PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.Gt(context, self, other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.Gt, self, intObj);
+        return PyMath.CalculatePyIntObject(context, PyOperatorTypes.Gt, self, intObj);
     }
     protected override PyResult Le(PyCallContext context, PyIntObject self, PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.Le(context, self, other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.LtE, self, intObj);
+        return PyMath.CalculatePyIntObject(context, PyOperatorTypes.LtE, self, intObj);
     }
     protected override PyResult Ge(PyCallContext context, PyIntObject self, PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.Ge(context, self, other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.GtE, self, intObj);
+        return PyMath.CalculatePyIntObject(context, PyOperatorTypes.GtE, self, intObj);
     }
     protected override PyResult Eq(PyCallContext context, PyIntObject self, PyObject other)
     {
         if (other is not PyIntObject intObj)
             return base.Eq(context, self, other);
-        return PyMath.CalculatePyIntObject(PyOperatorTypes.Eq, self, intObj);
+        return PyMath.CalculatePyIntObject(context, PyOperatorTypes.Eq, self, intObj);
     }
 
     [AIGenerated]
@@ -540,8 +543,9 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
                 break;
             case 'd':
             case 'n':
-                if (!PyIntStrDigitsLimit.TryToDecimalString(BigInteger.Abs(val), out var decText))
-                    return PyResult.ValueError(PySR.Runtime_Number_Int_ExceedsMaxStrDigitsResult, PyIntStrDigitsLimit.MaxStrDigits);
+                var maxStrDigits = context.PyEnvironment.IntStrDigits.MaxStrDigits;
+                if (!PyIntStrDigitsLimit.TryToDecimalString(BigInteger.Abs(val), maxStrDigits, out var decText))
+                    return PyResult.ValueError(PySR.Runtime_Number_Int_ExceedsMaxStrDigitsResult, maxStrDigits);
                 text = decText;
                 if (spec.WidthGrouping is not null)
                     text = ApplyGrouping(text, spec.WidthGrouping.Value, 3);

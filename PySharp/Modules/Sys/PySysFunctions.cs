@@ -17,7 +17,7 @@ internal static partial class PySysFunctions
     [PyFunctionParameters()]
     private static PyResult GetIntMaxStrDigitsImpl(PyCallContext context, PyArguments arguments)
     {
-        return PyIntObject.FromInteger(PyIntStrDigitsLimit.MaxStrDigits);
+        return PyIntObject.FromInteger(context.PyEnvironment.IntStrDigits.MaxStrDigits);
     }
 
     [PyFunctionParameters("maxdigits", "/")]
@@ -32,7 +32,7 @@ internal static partial class PySysFunctions
         if (!maxdigits.IsInt32)
             return PyResult.OverflowError(PySR.Runtime_Number_Int_MaxDigitsNotInt32);
 
-        if (!PyIntStrDigitsLimit.TrySetMaxStrDigits(maxdigits.Int32Value))
+        if (!context.PyEnvironment.IntStrDigits.TrySetMaxStrDigits(maxdigits.Int32Value))
             return PyResult.ValueError(PySR.Runtime_Number_Int_MaxDigitsInvalid, PyIntStrDigitsLimit.MinMaxStrDigits);
 
         return PyNoneObject.None;

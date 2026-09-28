@@ -29,7 +29,10 @@ internal static class LiteralParser
 
         if (char.IsAsciiDigit(literal[0]) || literal[0] is '.' or '-' or '+')
         {
-            var parseStatus = BigIntegerHelper.TryParse(literal, 0, out var resultInt);
+            // LiteralEval has no environment: it resolves literals spelled in
+            // C#-declared metadata (e.g. [PyFunctionParameters] defaults),
+            // which are checked against the default limit, not a mutable one.
+            var parseStatus = BigIntegerHelper.TryParse(literal, 0, PyIntStrDigitsLimit.DefaultMaxStrDigits, out var resultInt);
             if (parseStatus is BigIntegerHelper.IntParseStatus.Success)
                 return PyIntObject.FromInteger(resultInt);
 

@@ -339,9 +339,10 @@ partial class Parser
             return Ast.Constant(complex).With(metaInfo);
         }
 
-        var parseStatus = BigIntegerHelper.TryParse(value, 0, out var integer, out var digitCount);
+        var maxStrDigits = _context.PyEnvironment.IntStrDigits.MaxStrDigits;
+        var parseStatus = BigIntegerHelper.TryParse(value, 0, maxStrDigits, out var integer, out var digitCount);
         if (parseStatus is BigIntegerHelper.IntParseStatus.OverLimit)
-            throw SyntaxError(PySR.InvalidSyntax_Literal_IntMaxStrDigits, PyIntStrDigitsLimit.MaxStrDigits, digitCount);
+            throw SyntaxError(PySR.InvalidSyntax_Literal_IntMaxStrDigits, maxStrDigits, digitCount);
         if (parseStatus is BigIntegerHelper.IntParseStatus.Success)
             return Ast.Constant(integer).With(metaInfo);
 

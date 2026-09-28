@@ -66,7 +66,7 @@ public sealed partial class PyBoolObjectType : PyTypeObject<PyBoolObject>
         if (other is PyBoolObject otherBool)
             return PyBoolObject.FromBoolean(self.BoolValue & otherBool.BoolValue);
         if (other is PyIntObject intObj)
-            return PyMath.CalculatePyIntObject(PyOperatorTypes.BitAnd, self, intObj);
+            return PyMath.CalculatePyIntObject(context, PyOperatorTypes.BitAnd, self, intObj);
         return base.And(context, self, other);
     }
 
@@ -75,7 +75,7 @@ public sealed partial class PyBoolObjectType : PyTypeObject<PyBoolObject>
         if (other is PyBoolObject otherBool)
             return PyBoolObject.FromBoolean(self.BoolValue ^ otherBool.BoolValue);
         if (other is PyIntObject intObj)
-            return PyMath.CalculatePyIntObject(PyOperatorTypes.BitXor, self, intObj);
+            return PyMath.CalculatePyIntObject(context, PyOperatorTypes.BitXor, self, intObj);
         return base.Xor(context, self, other);
     }
 
@@ -84,7 +84,7 @@ public sealed partial class PyBoolObjectType : PyTypeObject<PyBoolObject>
         if (other is PyBoolObject otherBool)
             return PyBoolObject.FromBoolean(self.BoolValue | otherBool.BoolValue);
         if (other is PyIntObject intObj)
-            return PyMath.CalculatePyIntObject(PyOperatorTypes.BitOr, self, intObj);
+            return PyMath.CalculatePyIntObject(context, PyOperatorTypes.BitOr, self, intObj);
         return base.Or(context, self, other);
     }
 

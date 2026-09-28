@@ -317,7 +317,7 @@ public static class PyOperators
             // non-integer-modulus rejection inside CalculatePyIntObject).
             if (op is PyOperatorTypes.Pow && modulo is not PyNoneObject && modulo is not PyIntObject)
                 return PyResult.TypeError(PySR.Runtime_Number_PowThirdArgNotInteger);
-            return PyMath.CalculatePyIntObject(op, (PyIntObject)left, (PyIntObject)right, modulo);
+            return PyMath.CalculatePyIntObject(context, op, (PyIntObject)left, (PyIntObject)right, modulo);
         }
 
         var slots = left.PyType.Slots;
@@ -373,7 +373,7 @@ public static class PyOperators
             // non-integer-modulus rejection inside CalculatePyIntObject).
             if (op is PyOperatorTypes.Pow && modulo is not PyNoneObject && modulo is not PyIntObject)
                 return PyResult.TypeError(PySR.Runtime_Number_PowThirdArgNotInteger);
-            return PyMath.CalculatePyIntObject(op, (PyIntObject)left, (PyIntObject)right, modulo);
+            return PyMath.CalculatePyIntObject(context, op, (PyIntObject)left, (PyIntObject)right, modulo);
         }
 
         var eq = PyComparer.Eq(context, left.PyType, right.PyType);

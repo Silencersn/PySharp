@@ -1,8 +1,8 @@
 """sys.set_int_max_str_digits accepts index-capable objects and rejects the rest with the same error types as CPython.
 
-The limit is process-wide mutable state shared with the in-process test
-host, so every mutation here is restored in a finally block before the
-fixture exits.
+The limit is per-environment state, but mutating it is still scoped to this
+fixture's own environment, so the original value is restored in a finally
+block before the fixture exits.
 
 :background: CPython 3.14 Python/sysmodule.c declares the argument with the
     "i" converter (Python/getargs.c), which resolves _PyNumber_Index before
@@ -29,18 +29,15 @@ class Plain:
 
 original = sys.get_int_max_str_digits()
 try:
-    # __index__ objects are accepted. Every accepted value stays at or above
-    # the process default: the limit is process-global mutable state and the
-    # corpus runs fixtures concurrently in the test host, so a transient
-    # drop below the default could race unrelated fixtures' bigint parsing.
-    sys.set_int_max_str_digits(Ix(7000))
-    assert sys.get_int_max_str_digits() == 7000, sys.get_int_max_str_digits()
+    # __index__ objects are accepted
+    sys.set_int_max_str_digits(Ix(700))
+    assert sys.get_int_max_str_digits() == 700, sys.get_int_max_str_digits()
 
     # plain int is unchanged
     sys.set_int_max_str_digits(0)
     assert sys.get_int_max_str_digits() == 0
-    sys.set_int_max_str_digits(6500)
-    assert sys.get_int_max_str_digits() == 6500
+    sys.set_int_max_str_digits(1000)
+    assert sys.get_int_max_str_digits() == 1000
 
     # value validation is identical for protocol results
     for bad in (Ix(3), 3, Ix(639), 639):
@@ -61,7 +58,18 @@ try:
             raise AssertionError("expected TypeError for " + repr(worse))
 
     # the failing attempts above left the last good value in place
-    assert sys.get_int_max_str_digits() == 6500
+    assert sys.get_int_max_str_digits() == 1000
+
+    # a lowered limit really gates the conversion it guards
+    sys.set_int_max_str_digits(1000)
+    v = int("9" * 1000)
+    assert v % 10 == 9
+    try:
+        int("9" * 1001)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("expected ValueError above the lowered limit")
 finally:
     sys.set_int_max_str_digits(original)
     assert sys.get_int_max_str_digits() == original

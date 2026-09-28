@@ -13,12 +13,12 @@ internal static class BigIntegerHelper
         OverLimit
     }
 
-    public static IntParseStatus TryParse(ReadOnlySpan<char> s, int numBase, out BigInteger result)
+    public static IntParseStatus TryParse(ReadOnlySpan<char> s, int numBase, int maxStrDigits, out BigInteger result)
     {
-        return TryParse(s, numBase, out result, out _);
+        return TryParse(s, numBase, maxStrDigits, out result, out _);
     }
 
-    public static IntParseStatus TryParse(ReadOnlySpan<char> s, int numBase, out BigInteger result, out int digitCount)
+    public static IntParseStatus TryParse(ReadOnlySpan<char> s, int numBase, int maxStrDigits, out BigInteger result, out int digitCount)
     {
         Debug.Assert(numBase is 0 or (>= 2 and <= 36));
 
@@ -137,7 +137,7 @@ internal static class BigIntegerHelper
         // Decimal (non-power-of-two) conversions over the configured digit
         // limit are rejected before the quadratic parse; a run containing
         // invalid characters keeps the plain invalid-literal error.
-        if (allValid && (numBase & (numBase - 1)) is not 0 && PyIntStrDigitsLimit.IsOverLimit(digitCount))
+        if (allValid && (numBase & (numBase - 1)) is not 0 && PyIntStrDigitsLimit.IsOverLimit(digitCount, maxStrDigits))
             return IntParseStatus.OverLimit;
 
         // BigInteger.TryParse only handles ASCII; runs with Unicode decimal

@@ -63,6 +63,40 @@ public sealed class TestPyFiles
         return PyInterpreter.RunCodeWithContext(context, code, moduleName, fullPath, isMain: true);
     }
 
+    // A private environment per run: each call gets its own host, so state
+    // that is per-environment (warnings, the int<->str digit limit) cannot
+    // leak between two calls of this helper.
+    private static PyModuleObject RunModuleInFreshEnvironment(string filename)
+    {
+        var path = Path.Combine(PyFilesPath, filename);
+        var code = File.ReadAllText(path);
+        var moduleName = Path.GetFileNameWithoutExtension(filename);
+        var fullPath = Path.GetFullPath(path);
+
+        using var environment = PyEnvironmentHost.CreateFixtureRunner()
+            .CreateEnvironmentBuilder()
+            .AddPath(Path.GetDirectoryName(fullPath)!)
+            .AddArg(fullPath)
+            .Build();
+        using var context = PyCallContext.CreateInterpreterRootContext(environment);
+        return PyInterpreter.RunCodeWithContext(context, code, moduleName, fullPath, isMain: true);
+    }
+
+    [TestMethod]
+    public void TestSysIntMaxStrDigitsIsPerEnvironment()
+    {
+        // The digit limit is per-environment state (CPython keeps it on the
+        // interpreter as long_state.max_str_digits): a script lowering it in
+        // one environment must not be visible to another environment of the
+        // same process — the checker asserts the default limit and parses a
+        // 4300-digit literal, both of which fail if the setter's value 640
+        // leaked into it.
+        var setter = RunModuleInFreshEnvironment("sys_int_limit_env_setter.py");
+        var checker = RunModuleInFreshEnvironment("sys_int_limit_env_checker.py");
+        Assert.IsNotNull(setter);
+        Assert.IsNotNull(checker);
+    }
+
     [TestMethod]
     public void Test_Interpreter()
     {

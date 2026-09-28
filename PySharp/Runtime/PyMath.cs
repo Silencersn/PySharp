@@ -8,7 +8,7 @@ namespace PySharp.Runtime;
 
 internal static class PyMath
 {
-    public static PyResult CalculatePyIntObject(PyOperatorTypes op, PyIntObject left, PyIntObject right, PyObject? modulo = null)
+    public static PyResult CalculatePyIntObject(PyCallContext context, PyOperatorTypes op, PyIntObject left, PyIntObject right, PyObject? modulo = null)
     {
         switch (op)
         {
@@ -173,8 +173,9 @@ internal static class PyMath
                     // The result cannot be represented at all; with the digit
                     // limit active any decimal conversion of it would report
                     // that limit, without it there is only out of memory.
-                    if (PyIntStrDigitsLimit.MaxStrDigits > 0)
-                        return PyResult.ValueError(PySR.Runtime_Number_Int_ExceedsMaxStrDigitsResult, PyIntStrDigitsLimit.MaxStrDigits);
+                    var maxStrDigits = context.PyEnvironment.IntStrDigits.MaxStrDigits;
+                    if (maxStrDigits > 0)
+                        return PyResult.ValueError(PySR.Runtime_Number_Int_ExceedsMaxStrDigitsResult, maxStrDigits);
                     return PyResult.MemoryError(null);
                 }
 
