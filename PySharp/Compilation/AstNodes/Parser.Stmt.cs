@@ -920,9 +920,17 @@ partial class Parser
             }
         }
 
-        var unparenthesized = ParseSomethingList(ParseWithItem, StopPredicates.UntilColon, out _).MakeArray();
+        var unparenthesized = ParseSomethingList(ParseWithItem, StopPredicates.UntilColon, out var endsWithComma);
+
+        // The bare production is ','.with_item+ ':' — unlike the parenthesised
+        // one it has no ','?, so a comma directly followed by the terminating
+        // colon has no third item to introduce; CPython blames the colon.
+        if (endsWithComma is not null)
+            throw SyntaxError();
+
+        var result = unparenthesized.MakeArray();
         EnsureColonThenMove();
-        return unparenthesized;
+        return result;
     }
 
     [GrammarSyntaxRule("with_item")]
