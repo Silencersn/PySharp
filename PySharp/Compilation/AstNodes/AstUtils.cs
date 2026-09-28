@@ -29,7 +29,7 @@ internal static class AstUtils
             ConstantNode node => node.Value switch
             {
                 PyNoneObject => "None",
-                PyBoolObject boolObj => boolObj.BoolValue ? "True" : "False", // TODO: __debug__
+                PyBoolObject boolObj => boolObj.BoolValue ? "True" : "False",
                 _ => "literal"
             },
             AttributeNode => "attribute",

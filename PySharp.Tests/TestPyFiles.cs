@@ -98,6 +98,40 @@ public sealed class TestPyFiles
     }
 
     [TestMethod]
+    public void TestDebugConstantFollowsOptimizationLevel()
+    {
+        // CPython folds a load of __debug__ to `not optimize` (ast_preprocess.c),
+        // so the same source reads True at level 0 and False under -O. The
+        // fixture corpus runs at the default level only, so the -O side needs
+        // its own environment here.
+        const string Source =
+            "results = []\n" +
+            "results.append(str(__debug__))\n" +
+            "def f():\n" +
+            "    return __debug__\n" +
+            "results.append(str(f()))\n" +
+            "results.append(str([__debug__ for _ in range(1)][0]))\n" +
+            "results.append(f\"{__debug__}\")\n";
+
+        foreach (var (level, expected) in new[] { (0, "True"), (1, "False"), (2, "False") })
+        {
+            using var environment = PyEnvironmentHost.CreateFixtureRunner()
+                .CreateEnvironmentBuilder()
+                .SetOptimizationLevel(level)
+                .Build();
+            using var context = PyCallContext.CreateInterpreterRootContext(environment);
+            var module = PyInterpreter.RunCodeWithContext(context, Source, "<debug-opt>", "<debug-opt>", isMain: true);
+            Assert.IsNotNull(module);
+
+            Assert.IsTrue(module.PyAttributes.TryGetValue("results", out var value), "results missing");
+            var results = (PyListObject)value;
+            Assert.AreEqual(4, results.Count);
+            foreach (var item in results)
+                Assert.AreEqual(expected, ((PyStrObject)item).Value);
+        }
+    }
+
+    [TestMethod]
     public void Test_Interpreter()
     {
         Assert.ThrowsExactly<PyRuntimeException>(() =>

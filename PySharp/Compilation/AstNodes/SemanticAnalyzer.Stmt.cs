@@ -428,6 +428,7 @@ partial class SemanticAnalyzer
 
     private void VisitFunctionDef(FunctionDefNode node)
     {
+        CheckReservedName(node.Name, ExprContextType.Store, node);
         _currentScopeStats.Scope.AppendVariable(node.Name, ExprContextType.Store);
 
         VisitNodes(node.DecoratorList);
@@ -441,7 +442,10 @@ partial class SemanticAnalyzer
             PushScope(genericParamScope);
 
             foreach (var tp in node.TypeParams)
+            {
+                CheckReservedName(tp.Name, ExprContextType.Store, tp);
                 genericParamScope.AppendVariable(tp.Name, ExprContextType.Store);
+            }
 
             var funcScope = new FunctionVariableScope(node, genericParamScope);
             PushScope(funcScope);
@@ -465,6 +469,7 @@ partial class SemanticAnalyzer
 
     private void VisitAsyncFunctionDef(AsyncFunctionDefNode node)
     {
+        CheckReservedName(node.Name, ExprContextType.Store, node);
         _currentScopeStats.Scope.AppendVariable(node.Name, ExprContextType.Store);
 
         VisitNodes(node.DecoratorList);
@@ -476,7 +481,10 @@ partial class SemanticAnalyzer
             PushScope(genericParamScope);
 
             foreach (var tp in node.TypeParams)
+            {
+                CheckReservedName(tp.Name, ExprContextType.Store, tp);
                 genericParamScope.AppendVariable(tp.Name, ExprContextType.Store);
+            }
 
             var funcScope = new AsyncFunctionVariableScope(node, genericParamScope);
             PushScope(funcScope);
@@ -500,10 +508,14 @@ partial class SemanticAnalyzer
 
     private void VisitClassDef(ClassDefNode node)
     {
+        CheckReservedName(node.Name, ExprContextType.Store, node);
         _currentScopeStats.Scope.AppendVariable(node.Name, ExprContextType.Store);
 
         VisitNodes(node.DecoratorList);
         VisitNodes(node.Bases);
+        // CPython check_keywords runs from the ClassDef visitor, so class C(x=1)
+        // reports the same reserved-name error a call keyword does.
+        CheckKeywords(node.Keywords);
         VisitNodes(node.Keywords);
 
         // Generic classes (class C[T]:) have an outer GenericParamVariableScope that creates
@@ -515,7 +527,10 @@ partial class SemanticAnalyzer
 
             // Register each type param as a local in the generic param scope
             foreach (var tp in node.TypeParams)
+            {
+                CheckReservedName(tp.Name, ExprContextType.Store, tp);
                 genericParamScope.AppendVariable(tp.Name, ExprContextType.Store);
+            }
 
             var classScope = new ClassVariableScope(node, genericParamScope);
             PushScope(classScope);
@@ -541,6 +556,6 @@ partial class SemanticAnalyzer
 
     private void VisitTypeAlias(TypeAliasNode node)
     {
-        VisitName(node.Name, ExprContextType.Store);
+        BindVariable(node.Name, ExprContextType.Store, node);
     }
 }

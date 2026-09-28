@@ -760,16 +760,11 @@ partial class Parser
 
                 throw SyntaxError();
             }
-            else if (CurrentTokenStringAsSpan is PySpecialNames.Debug)
-            {
-                // __debug__
-
-                MoveNextToken();
-                return Ast.Constant(_optimizationLevel is 0).With(metaInfo);
-            }
             else
             {
-                // identifier
+                // identifier (__debug__ included: it is a NAME, not a keyword, and
+                // stays a NameNode so the semantic layer can reject writes to it;
+                // the load folds to the constant in the emitter)
 
                 var nameNode = Ast.Name(ParseIdentifier()).With(metaInfo);
                 return nameNode;

@@ -73,7 +73,6 @@ public sealed partial class Parser : ICodeMetaInfoProvider
     private readonly CodeSource _codeSource;
     private readonly CompileSession _session;
     private readonly TokenSequence _tokenSequence;
-    private readonly int _optimizationLevel;
     private readonly bool _enableNameMangling;
     private readonly Stack<string> _classNameTrimmedStack = [];
     private int _position;
@@ -107,7 +106,6 @@ public sealed partial class Parser : ICodeMetaInfoProvider
     {
         _context = context;
         _session = session;
-        _optimizationLevel = _context.PyEnvironment.Options.OptimizationLevel;
         _tokenSequence = tokens;
         _codeSource = codeSource;
         _enableNameMangling = enableNameMangling;

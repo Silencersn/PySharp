@@ -28,7 +28,9 @@ public static InteractiveNode ParseInteractive(PyCallContext, CodeSource, TokenS
 - token 游标：`TokenPosition`、`CurrentToken`、`MoveNextToken()`。`NL` 与 `Comment` 一律跳过
   （`SkipUselessToken`）。
 - 关键字判定：35 个 Python 关键字的白名单（`IsKeyword`）。关键字在 token 层是 `Name` 类型，
-  在此按文本区分。这简化了词法层，也便于处理 `match` 这类软关键字。
+  在此按文本区分。这简化了词法层，也便于处理 `match` 这类软关键字。`__debug__` 不在白名单里，
+  词法上是普通 `Name`，也作为 `NameNode` 进入后面的阶段：读侧的常量折叠由 Emitter 完成
+  （`-O` 时折叠为 `False`），写侧由语义分析按保留名拒绝。
 - 运算符分组：`AugOperators`（13 个增强赋值）与 `BinaryOperators`（19 个二元）两个 `FrozenSet`，
   由语句与表达式两个分部共用。
 - 名称改写（`MangleIdentifier`）：类体内以双下划线开头且不以双下划线结尾的 `__name` 改写为

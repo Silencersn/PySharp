@@ -506,18 +506,66 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
         _currentScopeStats.Scope.Variables.Add(name, PyVariableType.Parameter);
     }
 
+    // CPython symtable check_name: a Store or Del binding of the reserved name
+    // __debug__ is a compile-time SyntaxError. The load side is not checked —
+    // it folds to a constant in the emitter instead (ast_preprocess.c folds
+    // only Name nodes with ctx == Load, which is why the two coexist).
+    private void CheckReservedName(string name, ExprContextType ctx, AstNode node)
+    {
+        // check_name only rejects writes, so a load (including obj.__debug__) is fine.
+        if (name is not PySpecialNames.Debug || ctx is ExprContextType.Load)
+            return;
+
+        var message = ctx is ExprContextType.Del ? PySR.InvalidSyntax_DelStmt_CannotDelete : PySR.InvalidSyntax_InvalidTarget;
+        throw SyntaxErrorAt(node, message, PySpecialNames.Debug);
+    }
+
+    private void BindVariable(string name, ExprContextType ctx, AstNode node)
+    {
+        // CPython folds a load of __debug__ to a constant in ast_preprocess.c,
+        // which runs before the symbol table is built, so the name never enters
+        // a scope. The emitter does that fold here.
+        if (name is PySpecialNames.Debug && ctx is ExprContextType.Load)
+            return;
+
+        CheckReservedName(name, ctx, node);
+        _currentScopeStats.Scope.AppendVariable(name, ctx);
+    }
+
+    // CPython check_keywords, reached from both the Call and the ClassDef
+    // visitor: keyword argument names are name-bound as Store.
+    private void CheckKeywords(ImmutableArray<AstKeywordNode> keywords)
+    {
+        foreach (var keyword in keywords)
+        {
+            if (keyword.Arg is not null)
+                CheckReservedName(keyword.Arg, ExprContextType.Store, keyword);
+        }
+    }
+
+    // Binds a parameter. CPython runs check_name from symtable_add_def as each
+    // parameter is added, before the duplicate-argument pass, so a reserved
+    // name outranks a duplicate.
+    private void BindParameter(string name, AstNode node)
+    {
+        CheckReservedName(name, ExprContextType.Store, node);
+
+        if (_currentScopeStats.Scope.Variables.ContainsKey(name))
+            throw SyntaxError(PySR.InvalidSyntax_Semantic_DuplicateArgument, name);
+
+        AddParameter(name);
+    }
+
     private void VisitMisc(AstNode node)
     {
         switch (node)
         {
             case AstArgNode n:
-                if (_currentScopeStats.Scope.Variables.ContainsKey(n.Arg))
-                    throw SyntaxError(PySR.InvalidSyntax_Semantic_DuplicateArgument, n.Arg);
-                AddParameter(n.Arg);
+                BindParameter(n.Arg, n);
                 break;
 
             case AstAliasNode n:
-                _currentScopeStats.Scope.AppendVariable(n.GetLocalName(), ExprContextType.Store);
+                BindVariable(n.GetLocalName(), ExprContextType.Store, n);
                 break;
 
             case AstPatternNode pattern:
@@ -526,7 +574,7 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
 
             case ExceptHandlerNode n:
                 if (n.Name is not null)
-                    _currentScopeStats.Scope.AppendVariable(n.Name, ExprContextType.Store);
+                    BindVariable(n.Name, ExprContextType.Store, n);
                 VisitNullableNode(n.Type);
                 VisitNodes(n.Body);
                 break;
@@ -580,7 +628,7 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
         {
             case MatchStarNode n:
                 if (n.Name is not null)
-                    _currentScopeStats.Scope.AppendVariable(n.Name, ExprContextType.Store);
+                    BindVariable(n.Name, ExprContextType.Store, n);
                 break;
 
             case MatchMappingNode n:
@@ -595,14 +643,14 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
                 }
 
                 if (n.Rest is not null)
-                    _currentScopeStats.Scope.AppendVariable(n.Rest, ExprContextType.Store);
+                    BindVariable(n.Rest, ExprContextType.Store, n);
                 VisitNodes(n.Keys);
                 VisitNodes(n.Patterns);
                 break;
 
             case MatchAsNode n:
                 if (n.Name is not null)
-                    _currentScopeStats.Scope.AppendVariable(n.Name, ExprContextType.Store);
+                    BindVariable(n.Name, ExprContextType.Store, n);
                 VisitNullableNode(n.Pattern);
                 break;
 
@@ -624,6 +672,12 @@ internal sealed partial class SemanticAnalyzer : ICodeMetaInfoProvider
                 break;
 
             case MatchClassNode n:
+                // CPython check_kwd_patterns runs before the repeated-attribute
+                // check. The keyword is an attribute name, not a binding, so
+                // only the reserved-name check applies.
+                foreach (var kwdAttr in n.KwdAttrs)
+                    CheckReservedName(kwdAttr, ExprContextType.Store, n);
+
                 for (int i = 1; i < n.KwdAttrs.Length; i++)
                 {
                     for (int j = 0; j < i; j++)

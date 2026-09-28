@@ -2,6 +2,7 @@ using PySharp.Compilation.AstNodes;
 using PySharp.Compilation.Bytecodes.Extensions;
 using PySharp.Compilation.Primitives;
 using PySharp.Modules.Builtins;
+using PySharp.Runtime;
 using PySharp.Utility;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -70,6 +71,16 @@ partial class Emitter
 
     private void EmitName(string name, ExprContextType ctx)
     {
+        // __debug__ folds to the optimization-level constant, the way
+        // ast_preprocess.c replaces a Load-context Name with a bool constant.
+        // Store and Del are rejected by the semantic layer's reserved-name
+        // check, so no other context can reach here.
+        if (ctx is ExprContextType.Load && name is PySpecialNames.Debug)
+        {
+            Builder.Emit(OpCode.LoadConst, PyBoolObject.FromBoolean(OptimizationLevel is 0));
+            return;
+        }
+
         if (VariableScope is RootVariableScope rootScope)
         {
             if (!OnlyAsName || rootScope.DeclaredGlobals.Contains(name))

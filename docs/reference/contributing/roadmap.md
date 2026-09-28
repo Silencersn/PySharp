@@ -2,7 +2,7 @@
 
 本文是非承诺性的贡献地图：0.x 阶段优先级随演进调整，认领前先在 issue 或讨论中对齐方向。
 
-缺口来源包括[与 CPython 的差异](../python-compat/cpython-differences.md)（用户视角限制）、语言与标准库支持面（[语言特性](../python-compat/language-features.md)、[标准库覆盖](../python-compat/stdlib-modules.md)、[内建类型方法面](../python-compat/builtin-type-methods.md)），以及源码内的 `TODO` 标记（当前 22 处）。按性质分档如下。
+缺口来源包括[与 CPython 的差异](../python-compat/cpython-differences.md)（用户视角限制）、语言与标准库支持面（[语言特性](../python-compat/language-features.md)、[标准库覆盖](../python-compat/stdlib-modules.md)、[内建类型方法面](../python-compat/builtin-type-methods.md)），以及源码内的 `TODO` 标记（当前 21 处）。按性质分档如下。
 
 ## 一、兼容性与标准库
 
@@ -32,13 +32,12 @@
 
 ## 三、运行时与对象系统
 
-以下是源码内 `TODO` 标记对应的改进点（`grep -rn "TODO"` 可复现，排除 `obj/`），四档合计 22 处。
+以下是源码内 `TODO` 标记对应的改进点（`grep -rn "TODO"` 可复现，排除 `obj/`），四档合计 21 处。
 
 | 线索 | 位置（代表性） |
 | --- | --- |
 | 异常处理器的回滚粒度 | `BytecodeVirtualMachine.cs` |
 | f-string 无效转义的告警 | `Lexer` 的 `FStringMiddle` 扫描处 |
-| `__debug__` 内建常量 | `AstUtils.cs` |
 | `ast` 内建模块 | `PyBuiltinFunctions.cs` |
 | 类 `__dict__` 非字符串键的 `RuntimeWarning` | `PyTypeObjectOfT.cs`，见[类创建](../internals/class-creation.md) |
 | `CallMethod` 的 `GetAttrOrMethod` 优化路径 | `PyObjectCallExtensions.cs` |

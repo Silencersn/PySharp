@@ -122,6 +122,7 @@ partial class PySR
     public const string InvalidSyntax_Assignment_AssignToYield = "assignment to yield expression not possible";
 
     public const string InvalidSyntax_DelStmt_CannotDeleteStarred = "cannot delete starred";
+    public const string InvalidSyntax_DelStmt_CannotDelete = "cannot delete {0}";
 
     public const string InvalidSyntax_TryStmt_ExpectedExceptOrFinally = "expected 'except' or 'finally' block";
     public const string InvalidSyntax_TryStmt_BothExceptAndExceptStar = "cannot have both 'except' and 'except*' on the same 'try'";

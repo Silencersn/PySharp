@@ -62,6 +62,12 @@ public static SemanticModel Analyze(PyCallContext context, CodeSource source, As
 分析器同样实现 `ICodeMetaInfoProvider`，用遍历路径上的 `_nodesToRoot` 栈提供当前节点区间。
 少量编译期即可判定的语法族错误（如作用域非法使用）在此以带定位的 `SyntaxError` 抛出。
 
+保留名 `__debug__` 的绑定校验也在这里，对应 CPython `symtable.c` 的 `check_name`：写入
+（赋值、`del`、参数、`import` 别名、`def`/`class`/`type` 名、类型参数、`except ... as`、匹配捕获、
+调用与类定义的关键字名、属性目标）一律拒绝，`del` 用 `cannot delete __debug__`、其余用
+`cannot assign to __debug__`，属性读取与 `global` 声明不受限。读侧不进任何作用域表（CPython 在
+建符号表之前就把它折叠成常量），由 Emitter 发 `LoadConst`。
+
 分析器还产出编译期语法警告（`SyntaxWarning`，不中断编译）：`is` 与 `is not` 和字面量的比较，
 以及 `assert` 测试表达式为非空元组字面量时的
 `assertion is always true, perhaps remove parentheses?`。后者对齐 CPython 的 `codegen_assert`，

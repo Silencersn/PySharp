@@ -53,13 +53,22 @@ partial class SemanticAnalyzer
         _currentScopeStats.Scope.AppendVariable(name, ctx);
     }
 
+    private void VisitName(string name, ExprContextType ctx, AstNode node)
+    {
+        BindVariable(name, ctx, node);
+    }
+
     private void VisitName(NameNode node)
     {
-        VisitName(node.Id, node.Ctx);
+        VisitName(node.Id, node.Ctx, node);
     }
 
     private void VisitCall(CallNode node)
     {
+        // symtable's check_keywords runs before codegen's duplicate-keyword
+        // check, so a reserved keyword name outranks a repeated one.
+        CheckKeywords(node.Keywords);
+
         for (int i = 0; i < node.Keywords.Length; i++)
         {
             var currentKeyword = node.Keywords[i];
@@ -163,6 +172,10 @@ partial class SemanticAnalyzer
 
     private void VisitAttribute(AttributeNode node)
     {
+        // CPython symtable Attribute_kind checks the attribute name with the
+        // accessed node's context: obj.__debug__ = / del o.__debug__ are errors,
+        // while reading the attribute is a normal load.
+        CheckReservedName(node.Identifier, node.Ctx, node);
         VisitNode(node.Value);
     }
 
@@ -382,6 +395,7 @@ partial class SemanticAnalyzer
             throw SyntaxError(PySR.InvalidSyntax_Semantic_NamedExprInComprehensionInClass);
 
         CheckNamedExprIfWithinComprehension(node.Target.Id);
+        CheckReservedName(node.Target.Id, ExprContextType.Store, node.Target);
 
         // PEP 572: a genexp or comprehension target binds in the nearest
         // enclosing non-comprehension scope (an enclosing function local via a
