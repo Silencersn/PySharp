@@ -79,9 +79,11 @@ internal static class PyUtils
 
     // CPython list_extend iter path: start iteration first (a failing
     // __iter__ wins over a failing hint), then consult the length hint on
-    // the original iterable, then drain. Shared by list.__init__/extend/
-    // +=/LIST_EXTEND and sorted(); the list() built-in consumes the hint,
-    // tuple()/set()/dict() do not
+    // the original iterable, then drain. Used where the result is a fresh
+    // list rather than the target being extended in place — the list()
+    // built-in and sorted(), which materialize; list.extend/+= write straight
+    // into the target (PyListObject.PyExtend). tuple()/set()/dict() do not
+    // consume the hint at all
     internal static PyResult<PyListObject> IteratorToListWithHint(PyCallContext context, PyObject iterable)
     {
         var iterator = PySpecialMethods.Iter(context, iterable);

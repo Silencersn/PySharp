@@ -337,23 +337,114 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
         return tuple;
     }
 
+    // CPython dict_update_arg: an exact dict takes dict_dict_merge, a keys()
+    // bearing object the generic merge, and anything else is read as an
+    // iterable of pairs. All three write into the target as they consume, so
+    // a source failing midway leaves the pairs already read visible —
+    // materializing first (PyUtils.ToDict) would have kept self untouched
     internal PyResult Update(PyCallContext context, PyObject iterableOrMapping)
     {
-        // TODO: perf
-        var dict = PyUtils.ToDict(context, iterableOrMapping);
-        if (dict.IsError)
-            return dict;
+        if (iterableOrMapping is PyDictObject source)
+            return MergeFromDict(context, source);
 
-        var entries = dict.Value.Entries;
-        for (int i = 0; i < entries.Length; i++)
+        var keysMethod = PyOperators.GetAttr(context, iterableOrMapping, "keys");
+        if (keysMethod.IsError)
         {
-            var entry = entries[i];
-            var result = SetItem(context, entry.Key, entry.Value);
+            // only the AttributeError branches to the pairs reading; any
+            // other error from the keys lookup propagates unchanged
+            if (!keysMethod.IsAttributeError)
+                return keysMethod;
+
+            return MergeFromSequence(context, iterableOrMapping);
+        }
+
+        return MergeFromMapping(context, iterableOrMapping, keysMethod.Value);
+    }
+
+    private PyResult MergeFromDict(PyCallContext context, PyDictObject source)
+    {
+        if (ReferenceEquals(this, source) || source.Count is 0)
+            return PyNoneObject.None;
+
+        // EnumeratePairsLive re-reads the source's dense array each step, so
+        // a dict mutated during the update is walked exactly as CPython's
+        // _PyDict_Next based dict_dict_merge sees it
+        foreach (var pair in source.EnumeratePairsLive())
+        {
+            var result = SetItem(context, pair.Key, pair.Value);
             if (result.IsError)
                 return result;
         }
 
         return PyNoneObject.None;
+    }
+
+    // dict_merge's slow path: keys then GetItem then SetItem, one key at a
+    // time, so a source failing partway leaves the first writes in place
+    private PyResult MergeFromMapping(PyCallContext context, PyObject mapping, PyObject keysMethod)
+    {
+        var keysCall = keysMethod.Call(context);
+        if (keysCall.IsError)
+            return keysCall;
+
+        var keysIterator = PySpecialMethods.Iter(context, keysCall.Value);
+        if (keysIterator.IsError)
+            return keysIterator;
+
+        while (true)
+        {
+            var key = PySpecialMethods.Next(context, keysIterator.Value);
+            if (key.IsError)
+            {
+                if (key.IsStopIteration)
+                    return PyNoneObject.None;
+
+                return key;
+            }
+
+            var value = PySpecialMethods.GetItem(context, mapping, key.Value);
+            if (value.IsError)
+                return value;
+
+            var result = SetItem(context, key.Value, value.Value);
+            if (result.IsError)
+                return result;
+        }
+    }
+
+    // PyDict_MergeFromSeq2: each element is unpacked and written as it is
+    // reached, so an element that fails leaves the preceding pairs committed
+    private PyResult MergeFromSequence(PyCallContext context, PyObject iterable)
+    {
+        var iterator = PySpecialMethods.Iter(context, iterable);
+        if (iterator.IsError)
+            return iterator;
+
+        for (int i = 0; ; i++)
+        {
+            var item = PySpecialMethods.Next(context, iterator.Value);
+            if (item.IsError)
+            {
+                if (item.IsStopIteration)
+                    return PyNoneObject.None;
+
+                return item;
+            }
+
+            var pairList = PyUtils.IterableToList(context, item.Value);
+            if (pairList.IsError)
+                return pairList;
+
+            int count = pairList.Value.Count;
+            if (count is not 2)
+                return PyResult.ValueError(PySR.Runtime_Dictionary_UpdateEltLengthNotMatch, i, count);
+
+            var key = pairList.Value[0];
+            var value = pairList.Value[1];
+            var result = SetItem(context, key, value);
+            if (result.IsError)
+                return result;
+        }
     }
 
     public void Clear()

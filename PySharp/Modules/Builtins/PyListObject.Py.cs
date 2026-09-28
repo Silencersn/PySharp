@@ -18,14 +18,43 @@ partial class PyListObject
 
     internal PyResult PyExtend(PyCallContext context, PyObject iterable)
     {
-        // CPython list_extend's iterator path: the length hint is consulted
-        // after starting iteration and its errors propagate
-        var list = PyUtils.IteratorToListWithHint(context, iterable);
-        if (list.IsError)
-            return list;
+        // CPython _list_extend detects extending a list with itself before
+        // iterating and replaces it with a doubling; without that guard the
+        // drain loop would feed the list from its own growth
+        if (ReferenceEquals(this, iterable))
+        {
+            PyIMul(2);
+            return PyNoneObject.None;
+        }
 
-        _list.AddRange(list.Value._list);
-        return PyNoneObject.None;
+        // CPython's list_extend drains the iterator straight into the target
+        // list, so items produced before a failure stay visible on it
+        // afterwards. Only the length hint precedes the writes — it sizes the
+        // preallocation, and its errors still propagate
+        var iterator = PySpecialMethods.Iter(context, iterable);
+        if (iterator.IsError)
+            return iterator;
+
+        var hint = PyUtils.LengthHint(context, iterable, 8);
+        if (hint.IsError)
+            return hint;
+        if (hint.Value.Value > PyUtils.MaxPreallocationHint)
+            return PyResult.MemoryError(null);
+
+        while (true)
+        {
+            var item = PySpecialMethods.Next(context, iterator.Value);
+            if (item.IsError)
+            {
+                if (item.IsStopIteration)
+                    return PyNoneObject.None;
+
+                // whatever the iterator already yielded is committed
+                return item;
+            }
+
+            PyAppend(item.Value);
+        }
     }
 
     internal void PyInsert(int index, PyObject item)
