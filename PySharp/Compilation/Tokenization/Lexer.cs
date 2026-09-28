@@ -143,9 +143,10 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             throw SyntaxError(PySR.InvalidSyntax_Tokenize_Unterminated_TripleStringLiteral, Lineno);
 
         // the innermost unclosed opener wins, exactly like CPython reading
-        // parenstack[level-1] on EOF
+        // parenstack[level-1] on EOF; CPython reports the opener column with
+        // a -1 end (RAISE macro +1 → 0), i.e. no endpoint at all
         if (_bracketStack.TryPeek(out var tuple))
-            throw BracketError(tuple.Offset, PySR.InvalidSyntax_ParenNeverClosed, tuple.Bracket);
+            throw BracketError(SyntaxErrorSpan.Endless, tuple.Offset, PySR.InvalidSyntax_ParenNeverClosed, tuple.Bracket);
 
         Debug.Assert(_tokens.Count > 0);
 
@@ -486,7 +487,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         {
             // same width reached with a different mix of tabs and spaces
             if (altcol != topAltCol)
-                throw _context.TabError(this, PySR.InvalidSyntax_Tokenize_InconsistentTabsAndSpaces);
+                throw _context.TabError(this, SyntaxErrorSpan.Endless, PySR.InvalidSyntax_Tokenize_InconsistentTabsAndSpaces);
         }
         else if (col > topCol)
         {
@@ -497,7 +498,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
 
             // a deeper level must also advance the tab-insensitive column
             if (altcol <= topAltCol)
-                throw _context.TabError(this, PySR.InvalidSyntax_Tokenize_InconsistentTabsAndSpaces);
+                throw _context.TabError(this, SyntaxErrorSpan.Endless, PySR.InvalidSyntax_Tokenize_InconsistentTabsAndSpaces);
 
             _indentationLevels.Push((col, altcol));
             AppendToken(TokenType.Indent, whitespaceLength);
@@ -511,11 +512,18 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             }
 
             if (col != _indentationLevels.Peek().Col)
-                throw _context.IndentationError(this, PySR.InvalidSyntax_Tokenize_UnindentNotMatch);
+                // CPython reports the tokenizer's scan column at the failing
+                // line's end (tok->cur = tok->inp on E_DEDENT) with no endpoint
+                throw _context.IndentationError(this, CurrentLineLength() + 1, PySR.InvalidSyntax_Tokenize_UnindentNotMatch);
 
             if (altcol != _indentationLevels.Peek().AltCol)
-                throw _context.TabError(this, PySR.InvalidSyntax_Tokenize_InconsistentTabsAndSpaces);
+                throw _context.TabError(this, SyntaxErrorSpan.Endless, PySR.InvalidSyntax_Tokenize_InconsistentTabsAndSpaces);
         }
+    }
+
+    private int CurrentLineLength()
+    {
+        return _codeSource.Code.TryGetLine(Lineno, false, out var line) ? line.Length : 0;
     }
 
     private ref struct ValueGroup
@@ -644,18 +652,18 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
 
         var openingLine = _codeSource.Code.OffsetToPosition(openingOffset).Line;
         if (openingLine != Lineno)
-            throw BracketError(_offset, PySR.InvalidSyntax_ParenMismatchOnLine, closing, opening, openingLine);
+            throw BracketError(SyntaxErrorSpan.Exact, _offset, PySR.InvalidSyntax_ParenMismatchOnLine, closing, opening, openingLine);
 
-        throw BracketError(_offset, PySR.InvalidSyntax_ParenMismatch, closing, opening);
+        throw BracketError(SyntaxErrorSpan.Exact, _offset, PySR.InvalidSyntax_ParenMismatch, closing, opening);
     }
 
-    private PyRuntimeException BracketError(int offset, string message, params ReadOnlySpan<object?> args)
+    private PyRuntimeException BracketError(SyntaxErrorSpan span, int offset, string message, params ReadOnlySpan<object?> args)
     {
         var info = CodeMetaInfo.FromPosition(
             _codeSource,
             _codeSource.Code.OffsetToPosition(offset),
             _codeSource.Code.OffsetToPosition(offset + 1));
-        return _context.SyntaxError(new PositionMetaInfo(info), message, args);
+        return _context.SyntaxError(new PositionMetaInfo(info), span, message, args);
     }
 
     private void TokenizeContStr(ref ValueGroup group)

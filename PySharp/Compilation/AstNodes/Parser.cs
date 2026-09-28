@@ -27,7 +27,11 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         ArgumentNullException.ThrowIfNull(tokens);
         ArgumentNullException.ThrowIfNull(session);
 
-        return new Parser(context, codeSource, tokens, session, enableNameMangling).ParseEval();
+        var parser = new Parser(context, codeSource, tokens, session, enableNameMangling)
+        {
+            _eofFallbackSpan = SyntaxErrorSpan.NoPosition,
+        };
+        return parser.ParseEval();
     }
 
     public static InteractiveNode ParseInteractive(PyCallContext context, CodeSource codeSource, TokenSequence tokens, CompileSession session, bool enableNameMangling = true)
@@ -37,7 +41,11 @@ public sealed partial class Parser : ICodeMetaInfoProvider
         ArgumentNullException.ThrowIfNull(tokens);
         ArgumentNullException.ThrowIfNull(session);
 
-        return new Parser(context, codeSource, tokens, session, enableNameMangling).ParseInteractive();
+        var parser = new Parser(context, codeSource, tokens, session, enableNameMangling)
+        {
+            _eofFallbackSpan = SyntaxErrorSpan.NoPosition,
+        };
+        return parser.ParseInteractive();
     }
 
     private static readonly FrozenSet<TokenType> AugOperators = [
@@ -96,6 +104,12 @@ public sealed partial class Parser : ICodeMetaInfoProvider
     private string CurrentTokenString => GetOrAddFromPool(CurrentTokenStringAsSpan);
 
     private bool IsCurrentIdentifier => CurrentTokenType is TokenType.Name && !IsKeyword(CurrentTokenStringAsSpan);
+
+    // CPython's EOF fallback differs by start rule: eval/single_input report
+    // no position at all (0/0), file_input pins the input end with a 1-column
+    // open interval (_PyPegen_raise_error vs RAISE_SYNTAX_ERROR_KNOWN_LOCATION
+    // on the EOF token)
+    private SyntaxErrorSpan _eofFallbackSpan = SyntaxErrorSpan.EndOfInput;
 
     // there should be no reentrancy risk where SharedBuilder is used
     private StringBuilder SharedBuilder => field ??= new StringBuilder();
@@ -160,7 +174,10 @@ public sealed partial class Parser : ICodeMetaInfoProvider
 
     public PyRuntimeException SyntaxError(string message = PySR.InvalidSyntax, params ReadOnlySpan<object?> args)
     {
-        return _context.SyntaxError(this, message, args);
+        // failures at the synthetic end-of-input newline / end marker carry no
+        // position of their own — apply the start rule's EOF convention
+        var span = CurrentTokenType is TokenType.NewLine or TokenType.EndMarker ? _eofFallbackSpan : SyntaxErrorSpan.Exact;
+        return _context.SyntaxError(this, span, message, args);
     }
 
     private static bool IsUselessToken(Token tokenInfo)

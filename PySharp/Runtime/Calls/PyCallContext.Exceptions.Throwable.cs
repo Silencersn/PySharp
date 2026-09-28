@@ -1,7 +1,22 @@
 using PySharp.Compilation.CodeAnalysis;
 using PySharp.Modules.Builtins;
+using System.Diagnostics;
 
 namespace PySharp.Runtime.Calls;
+
+// CPython does not fill parse-error locations with a span uniformly: values
+// without a precise endpoint travel as sentinels (pegen's RAISE macro adds
+// one to a -1 end, tokenizer-side missing ends stay -1), which is what lets
+// editors tell "error at this column" apart from "position unknown".
+internal enum SyntaxErrorSpan : byte
+{
+    Exact = 0,       // (Start+1, End+1): exact token/AST span, open-interval end
+    Endless,         // (Start+1, 0):    known start, no endpoint (never-closed, TabError)
+    NoPosition,      // (0, 0):          eval/single EOF fallback, no position at all
+    EndOfInput,      // (Start+1, Start+2): exec EOF fallback, pinned to a 1-column input end
+    OpenEnd,         // (Start+1, -1):   known start, endpoint not reached yet (expected block)
+    ExplicitOpenEnd, // (explicit, -1):  indent family, offset computed by the raise site
+}
 
 partial class PyCallContext
 {
@@ -41,22 +56,47 @@ partial class PyCallContext
 
     internal PyRuntimeException SyntaxError(ICodeMetaInfoProvider compiler, string format, params ReadOnlySpan<object?> args)
     {
+        return SyntaxError(compiler, SyntaxErrorSpan.Exact, format, args);
+    }
+
+    internal PyRuntimeException SyntaxError(ICodeMetaInfoProvider compiler, SyntaxErrorSpan span, string format, params ReadOnlySpan<object?> args)
+    {
         var exc = PySyntaxErrorObjectType.Shared.Create(PyStrObject.FromString(PySR.Format(format, args)));
-        AttachCompilerLocation(exc, compiler.MetaInfo);
+        AttachCompilerLocation(exc, compiler.MetaInfo, span);
         return new PyRuntimeException(this, exc, compiler);
     }
 
     internal PyRuntimeException IndentationError(ICodeMetaInfoProvider compiler, string format, params ReadOnlySpan<object?> args)
     {
+        return IndentationError(compiler, SyntaxErrorSpan.Exact, format, args);
+    }
+
+    internal PyRuntimeException IndentationError(ICodeMetaInfoProvider compiler, SyntaxErrorSpan span, string format, params ReadOnlySpan<object?> args)
+    {
         var exc = PyIndentationErrorObjectType.Shared.Create(PyStrObject.FromString(PySR.Format(format, args)));
-        AttachCompilerLocation(exc, compiler.MetaInfo);
+        AttachCompilerLocation(exc, compiler.MetaInfo, span);
+        return new PyRuntimeException(this, exc, compiler);
+    }
+
+    // indent errors whose start column follows the tokenizer's own accounting
+    // (unexpected indent: first non-blank column; unindent: scan column), not
+    // the provider's span — the value lands in e.offset verbatim
+    internal PyRuntimeException IndentationError(ICodeMetaInfoProvider compiler, int offset, string format, params ReadOnlySpan<object?> args)
+    {
+        var exc = PyIndentationErrorObjectType.Shared.Create(PyStrObject.FromString(PySR.Format(format, args)));
+        AttachCompilerLocation(exc, compiler.MetaInfo, SyntaxErrorSpan.ExplicitOpenEnd, offset);
         return new PyRuntimeException(this, exc, compiler);
     }
 
     internal PyRuntimeException TabError(ICodeMetaInfoProvider compiler, string format, params ReadOnlySpan<object?> args)
     {
+        return TabError(compiler, SyntaxErrorSpan.Exact, format, args);
+    }
+
+    internal PyRuntimeException TabError(ICodeMetaInfoProvider compiler, SyntaxErrorSpan span, string format, params ReadOnlySpan<object?> args)
+    {
         var exc = PyTabErrorObjectType.Shared.Create(PyStrObject.FromString(PySR.Format(format, args)));
-        AttachCompilerLocation(exc, compiler.MetaInfo);
+        AttachCompilerLocation(exc, compiler.MetaInfo, span);
         return new PyRuntimeException(this, exc, compiler);
     }
 
@@ -64,7 +104,7 @@ partial class PyCallContext
     // (_PyPegen_raise_error_known_location), so the display layer renders
     // the File/caret block from the exception's own attributes
     // (traceback.py _format_syntax_error) instead of a traceback frame
-    private static void AttachCompilerLocation(PyExceptionObject exc, CodeMetaInfo? metaInfo)
+    private static void AttachCompilerLocation(PyExceptionObject exc, CodeMetaInfo? metaInfo, SyntaxErrorSpan span = SyntaxErrorSpan.Exact, int explicitOffset = 0)
     {
         if (metaInfo is null)
             return;
@@ -80,20 +120,34 @@ partial class PyCallContext
             if (source.Code.TryGetLine(metaInfo.Start.Line, true, out var line))
                 exc.SetMember("text", text = PyStrObject.FromString(line.ToString()));
         }
+        var offset = span switch
+        {
+            SyntaxErrorSpan.NoPosition => 0,
+            SyntaxErrorSpan.ExplicitOpenEnd => explicitOffset,
+            _ => metaInfo.Start.Offset + 1,
+        };
+        var endOffset = span switch
+        {
+            SyntaxErrorSpan.Exact => metaInfo.End.Offset + 1,
+            SyntaxErrorSpan.EndOfInput => metaInfo.Start.Offset + 2,
+            SyntaxErrorSpan.Endless => 0,
+            SyntaxErrorSpan.NoPosition => 0,
+            SyntaxErrorSpan.OpenEnd => -1,
+            SyntaxErrorSpan.ExplicitOpenEnd => -1,
+            _ => throw new UnreachableException(),
+        };
         var lineno = PyIntObject.FromInteger(metaInfo.Start.Line);
-        var offset = PyIntObject.FromInteger(metaInfo.Start.Offset + 1);
         var endLineno = PyIntObject.FromInteger(metaInfo.End.Line);
-        var endOffset = PyIntObject.FromInteger(metaInfo.End.Offset + 1);
         exc.SetMember("lineno", lineno);
-        exc.SetMember("offset", offset);
+        exc.SetMember("offset", PyIntObject.FromInteger(offset));
         exc.SetMember("end_lineno", endLineno);
-        exc.SetMember("end_offset", endOffset);
+        exc.SetMember("end_offset", PyIntObject.FromInteger(endOffset));
 
         // CPython's parse errors carry (msg, info-tuple) args
         exc.Args =
         [
             exc.Args is [var msg, ..] ? msg : PyNoneObject.None,
-            PyTupleObject.CreateTuple(filename, lineno, offset, text, endLineno, endOffset),
+            PyTupleObject.CreateTuple(filename, lineno, PyIntObject.FromInteger(offset), text, endLineno, PyIntObject.FromInteger(endOffset)),
         ];
     }
 

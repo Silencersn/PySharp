@@ -1,5 +1,6 @@
 using PySharp.Compilation.Tokenization;
 using PySharp.Modules.Builtins;
+using PySharp.Runtime.Calls;
 using PySharp.Utility;
 using System.Globalization;
 
@@ -18,7 +19,10 @@ partial class Parser
 
         EnsureColonThenMove();
         EnsureTokenTypeThenMove(TokenType.NewLine);
-        EnsureTokenTypeThenMove(TokenType.Indent, PySR.Format(PySR.InvalidSyntax_Indentation_ExpectedForBlock, "'match'", lineno));
+        if (CurrentTokenType is not TokenType.Indent)
+            // the header's last column is exact, but there is no endpoint yet (-1)
+            throw _context.IndentationError(this, SyntaxErrorSpan.OpenEnd, PySR.Format(PySR.InvalidSyntax_Indentation_ExpectedForBlock, "'match'", lineno));
+        MoveNextToken();
 
         List<AstMatchCaseNode> cases = [ParseCaseBlock()];
         while (IsCurrentKeyword("case"))

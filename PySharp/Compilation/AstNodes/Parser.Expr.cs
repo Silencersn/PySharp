@@ -790,7 +790,10 @@ partial class Parser
         else
         {
             if (CurrentTokenType is TokenType.Indent)
-                throw _context.IndentationError(this, PySR.InvalidSyntax_Indentation_Unexpected);
+                // CPython pins the INDENT token one column before the first
+                // non-blank character (col + 1 on the tokenizer's own count),
+                // and the endpoint is unknown (-1)
+                throw _context.IndentationError(this, CurrentToken.GetEnd(_codeSource).Offset, PySR.InvalidSyntax_Indentation_Unexpected);
 
             throw SyntaxError();
         }

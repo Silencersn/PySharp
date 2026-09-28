@@ -1,6 +1,7 @@
 using PySharp.Compilation.Primitives;
 using PySharp.Compilation.Tokenization;
 using PySharp.Runtime;
+using PySharp.Runtime.Calls;
 using PySharp.Utility;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -212,7 +213,9 @@ partial class Parser
             return Ast.Return().With(metaInfo);
 
         var value = ParseStarExpressions(StopPredicates.UntilNewLineOrSemicolon);
-        return Ast.Return(value).With(metaInfo);
+        // the node spans the whole statement (keyword + value), matching
+        // CPython's AST so symtable-style errors report the full range
+        return Ast.Return(value).With(metaInfo.WithPreviousEnd());
     }
 
     [GrammarSyntaxRule("dotted_name")]
@@ -721,7 +724,8 @@ partial class Parser
                 _ => $"'{keyword}' statement"
             };
             var lineno = _tokenSequence[pos].GetStart(_codeSource).Line;
-            throw _context.IndentationError(this, PySR.InvalidSyntax_Indentation_ExpectedForBlock, statementName, lineno);
+            // the header's last column is exact, but there is no endpoint yet (-1)
+            throw _context.IndentationError(this, SyntaxErrorSpan.OpenEnd, PySR.InvalidSyntax_Indentation_ExpectedForBlock, statementName, lineno);
         }
         MoveNextToken();
 
