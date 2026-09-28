@@ -125,6 +125,14 @@ public sealed partial class PyRangeObjectType : PyTypeObject<PyRangeObject>
 
     protected override PyResult Len(PyCallContext context, PyRangeObject self)
     {
+        // range_length (Objects/rangeobject.c) is the C-level sq_length/
+        // mp_length slot, so the length goes straight through
+        // PyLong_AsSsize_t; a length past ssize_t therefore raises the
+        // conversion message, not the _PyNumber_Index one that a Python-level
+        // __len__ produces via slot_sq_length.
+        if (self.RangeLen > long.MaxValue)
+            return PyResult.OverflowError(PySR.Runtime_Number_Int_TooLargeForSsize);
+
         return PyIntObject.FromInteger(self.RangeLen);
     }
 

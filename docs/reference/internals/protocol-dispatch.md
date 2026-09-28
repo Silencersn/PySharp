@@ -27,6 +27,8 @@ GetItem:   对象是类型对象时走 __class_getitem__ 或 GenericAlias，否�
   `slot_sq_length`：bool 结果先归一为 `0` 或 `1`；负值报
   `ValueError: __len__() should return >= 0`；正值超出 `long` 上界报
   `OverflowError: cannot fit 'int' into an index-sized integer`。
+  `range` 不参与这三步——它是 C 级的 `range_length`，长度直接经 `PyLong_AsSsize_t`，
+  超出上界时报的是 `OverflowError: Python int too large to convert to C ssize_t`。
 - 哈希归一化：`Hash` 把 `__hash__` 的结果经 `PyHash.HashLong` 归一化，保证实现内不变量（如相等
   对象哈希相等），无槽类型直接判不可哈希。
 - 长度提示（CPython `PyObject_LengthHint` 语义，实现于 `PyUtils.LengthHint`）：`len()` 可用时
