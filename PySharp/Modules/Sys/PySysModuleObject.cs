@@ -21,6 +21,9 @@ public partial class PySysModuleObject : PyModuleObject
             : PyListObject.CreateList(PyStrObject.Empty);
         AppendAttribute("argv", args);
 
+        // int.to_bytes/from_bytes document passing sys.byteorder as the order
+        AppendAttribute("byteorder", PyStrObject.FromString(BitConverter.IsLittleEndian ? "little" : "big"));
+
         // The standard streams are TextIOWrapper instances over the host's raw
         // streams, built the way CPython's create_stdio does: universal
         // newlines, the environment's encoding, and the per-stream error

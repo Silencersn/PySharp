@@ -154,6 +154,11 @@ partial class PySR
     public const string Runtime_Number_Int_ExceedsMaxStrDigitsResult = "Exceeds the limit ({0} digits) for integer string conversion; use sys.set_int_max_str_digits() to increase the limit";
     public const string Runtime_Number_Int_MaxDigitsNotInt32 = "Python int too large to convert to C int";
     public const string Runtime_Number_Int_MaxDigitsInvalid = "maxdigits must be >= {0} or 0 for unlimited";
+    public const string Runtime_Number_Int_TooBigToConvert = "int too big to convert";
+    public const string Runtime_Number_Int_NegativeToUnsigned = "can't convert negative int to unsigned";
+    public const string Runtime_Number_Int_ByteorderMustBeLittleOrBig = "byteorder must be either 'little' or 'big'";
+    public const string Runtime_Number_Int_LengthMustBeNonNegative = "length argument must be non-negative";
+    public const string Runtime_Number_Int_ByteorderArgMustBeStr = "{0}() argument 'byteorder' must be str, not {1}";
     public const string Runtime_Number_Float_WrongArg = "float() argument must be a string or a real number, not '{0}'";
     public const string Runtime_Number_Float_InvalidLiteral = "could not convert string to float: {0}";
     public const string Runtime_Number_PowWithZeroModulo = "pow() 3rd argument cannot be 0";

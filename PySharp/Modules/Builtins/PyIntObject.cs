@@ -654,4 +654,271 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
             });
         }
     }
+
+    // CPython long_long: exact ints return as-is; bool and int subclasses
+    // convert to the exact built-in int. conjugate/as_integer_ratio and the
+    // real/imag/numerator/denominator getters all funnel through it, which is
+    // why True.numerator is 1 and not True.
+    private static PyObject ExactInt(PyIntObject self)
+    {
+        return self.PyType == PyIntObjectType.Shared
+            ? self
+            : PyIntObject.FromInteger(self.Value);
+    }
+
+    [PyMethod("bit_length")]
+    [PyFunctionParameters]
+    private static PyResult BitLength(PyCallContext context, PyIntObject self, PyArguments arguments)
+    {
+        return PyIntObject.FromInteger(self.Value.GetBitLength());
+    }
+
+    [PyMethod("bit_count")]
+    [PyFunctionParameters]
+    private static PyResult BitCount(PyCallContext context, PyIntObject self, PyArguments arguments)
+    {
+        // CPython long_bit_count counts the ones of the absolute value, and
+        // so does .NET's PopCount
+        return PyIntObject.FromInteger(BigInteger.PopCount(BigInteger.Abs(self.Value)));
+    }
+
+    [PyMethod("conjugate")]
+    [PyFunctionParameters]
+    private static PyResult Conjugate(PyCallContext context, PyIntObject self, PyArguments arguments)
+    {
+        return ExactInt(self);
+    }
+
+    [PyMethod("as_integer_ratio")]
+    [PyFunctionParameters]
+    private static PyResult AsIntegerRatio(PyCallContext context, PyIntObject self, PyArguments arguments)
+    {
+        // CPython long_as_integer_ratio packs (long_long(self), one)
+        return PyTupleObject.CreateTuple(ExactInt(self), PyIntObject.One);
+    }
+
+    [PyProperty("real")]
+    private static PyResult Get_Real(PyCallContext context, PyIntObject self)
+    {
+        return ExactInt(self);
+    }
+
+    [PyProperty("imag")]
+    private static PyResult Get_Imag(PyCallContext context, PyIntObject self)
+    {
+        return PyIntObject.Zero;
+    }
+
+    [PyProperty("numerator")]
+    private static PyResult Get_Numerator(PyCallContext context, PyIntObject self)
+    {
+        return ExactInt(self);
+    }
+
+    [PyProperty("denominator")]
+    private static PyResult Get_Denominator(PyCallContext context, PyIntObject self)
+    {
+        return PyIntObject.One;
+    }
+
+    [PyMethod("to_bytes")]
+    [PyFunctionParameters("length=1", "byteorder='big'", "*", "signed=False")]
+    private static PyResult ToBytes(PyCallContext context, PyIntObject self, PyArguments arguments)
+    {
+        // clinic binding order: length is converted through __index__ and
+        // range-checked against ssize_t, then byteorder is type-checked, then
+        // signed is truth-tested; the value checks run in the C body
+        var indexResult = PySpecialMethods.Index(context, arguments[0]);
+        if (indexResult.IsError)
+            return indexResult;
+        var lengthValue = indexResult.Value.Value;
+        if (lengthValue > long.MaxValue || lengthValue < long.MinValue)
+            return PyResult.OverflowError(PySR.Runtime_Number_Int_TooLargeForSsize);
+        long length = (long)lengthValue;
+
+        var orderResult = CheckByteorder(context, "to_bytes", arguments[1], out var littleEndian);
+        if (orderResult.IsError)
+            return orderResult;
+
+        var signedResult = PySpecialMethods.Bool(context, arguments["signed"]);
+        if (signedResult.IsError)
+            return signedResult;
+
+        if (length < 0)
+            return PyResult.ValueError(PySR.Runtime_Number_Int_LengthMustBeNonNegative);
+        if (length > int.MaxValue)
+            return PyResult.MemoryError(null);
+
+        // CPython _PyLong_AsByteArray: the unsigned form rejects negatives
+        // before the capacity check
+        var value = self.Value;
+        if (value.Sign < 0 && !signedResult.Value.BoolValue)
+            return PyResult.OverflowError(PySR.Runtime_Number_Int_NegativeToUnsigned);
+        if (!FitsInBytes(value, signedResult.Value.BoolValue, length * 8))
+            return PyResult.OverflowError(PySR.Runtime_Number_Int_TooBigToConvert);
+
+        var buffer = new byte[(int)length];
+        WriteTwoComplement(value, buffer);
+        if (!littleEndian)
+            Array.Reverse(buffer);
+        return PyBytesObject.MoveBytes(buffer);
+    }
+
+    [PyClassMethod("from_bytes")]
+    [PyFunctionParameters("bytes", "byteorder='big'", "*", "signed=False")]
+    private static PyResult FromBytes(PyCallContext context, PyTypeObject cls, PyArguments arguments)
+    {
+        var orderResult = CheckByteorder(context, "from_bytes", arguments[1], out var littleEndian);
+        if (orderResult.IsError)
+            return orderResult;
+
+        var signedResult = PySpecialMethods.Bool(context, arguments["signed"]);
+        if (signedResult.IsError)
+            return signedResult;
+
+        var bytesResult = BytesFromObject(context, arguments[0]);
+        if (bytesResult.IsError)
+            return bytesResult;
+
+        var value = ReadTwoComplement(bytesResult.Value.AsSpan(), littleEndian, signedResult.Value.BoolValue);
+
+        // CPython int_from_bytes rebuilds through the type for any subclass:
+        // bool.from_bytes(b'\x01') is True, not 1
+        var result = PyIntObject.FromInteger(value);
+        return cls == PyIntObjectType.Shared ? result : cls.Call(context, [result]);
+    }
+
+    // CPython PyObject_Bytes for the from_bytes source: buffer-like objects
+    // copy their data, str is singled out with its own message, and anything
+    // else goes through the iterator protocol item by item. Unlike bytes(n)
+    // there is no zero-fill shortcut for __index__ sources.
+    private static PyResult<PyBytesObject> BytesFromObject(PyCallContext context, PyObject source)
+    {
+        switch (source)
+        {
+            case PyBytesObject bytes:
+                return bytes;
+            case PyByteArrayObject byteArray:
+                return PyBytesObject.MoveBytes(byteArray.AsSpan().ToArray());
+            case PyMemoryViewObject memoryView:
+                return PyBytesObject.MoveBytes(memoryView.DataSpan.ToArray());
+            case PyStrObject:
+                return PyResult.TypeError(PySR.Runtime_Bytes_CannotConvert, source.PyType.TpName);
+        }
+
+        var iterResult = PySpecialMethods.Iter(context, source);
+        if (iterResult.IsError)
+        {
+            // CPython replaces a failed GetIter with its own message
+            if (PyTypeErrorObjectType.Shared.IsInstance(iterResult.Exception))
+                return PyResult.TypeError(PySR.Runtime_Bytes_CannotConvert, source.PyType.TpName);
+            return iterResult.ExceptionResult;
+        }
+
+        var hintResult = PyUtils.LengthHint(context, source, 64);
+        if (hintResult.IsError)
+            return hintResult.ExceptionResult;
+        if (hintResult.Value.Value > PyUtils.MaxPreallocationHint)
+            return PyResult.MemoryError(null);
+
+        var listResult = PyUtils.IteratorToList(context, iterResult.Value);
+        if (listResult.IsError)
+            return listResult.ExceptionResult;
+
+        var data = new byte[listResult.Value.Count];
+        for (int i = 0; i < listResult.Value.Count; i++)
+        {
+            var indexResult = PySpecialMethods.Index(context, listResult.Value[i]);
+            if (indexResult.IsError)
+                return indexResult.ExceptionResult;
+
+            var item = indexResult.Value.Value;
+            if (item < byte.MinValue || item > byte.MaxValue)
+                return PyResult.ValueError(PySR.Runtime_Bytes_OutOfRange);
+
+            data[i] = (byte)item;
+        }
+        return PyBytesObject.MoveBytes(data);
+    }
+
+    // clinic unicode converter: a non-str byteorder is rejected before the
+    // value check, naming the bound method and the actual type
+    private static PyResult CheckByteorder(PyCallContext context, string methodName, PyObject order, out bool littleEndian)
+    {
+        littleEndian = false;
+        if (order is not PyStrObject str)
+            return PyResult.TypeError(PySR.Runtime_Number_Int_ByteorderArgMustBeStr, methodName, order.PyType.TpName);
+
+        // CPython 3.14 dropped the 'sys' spelling; callers pass sys.byteorder
+        if (str.Value is "little")
+            littleEndian = true;
+        else if (str.Value is not "big")
+            return PyResult.ValueError(PySR.Runtime_Number_Int_ByteorderMustBeLittleOrBig);
+        return PyNoneObject.None;
+    }
+
+    // CPython _PyLong_AsByteArray: byte i is the arithmetic shift of the
+    // two's-complement value by 8i, which floor semantics produce directly
+    // for negative values without materializing the modulus. ToBytes has
+    // already range-checked the value against the buffer capacity.
+    private static void WriteTwoComplement(BigInteger value, byte[] buffer)
+    {
+        var current = value;
+        for (int i = 0; i < buffer.Length; i++)
+        {
+            buffer[i] = (byte)(current & byte.MaxValue);
+            current >>= 8;
+        }
+    }
+
+    private static BigInteger ReadTwoComplement(ReadOnlySpan<byte> data, bool littleEndian, bool isSigned)
+    {
+        var result = BigInteger.Zero;
+        if (littleEndian)
+        {
+            for (int i = data.Length - 1; i >= 0; i--)
+                result = (result << 8) | data[i];
+        }
+        else
+        {
+            foreach (var item in data)
+                result = (result << 8) | item;
+        }
+
+        if (isSigned && data.Length > 0)
+        {
+            var signByte = littleEndian ? data[^1] : data[0];
+            if ((signByte & 0x80) is not 0)
+                result -= PowerOfTwo(8L * data.Length);
+        }
+        return result;
+    }
+
+    // unsigned: value < 2**bits; signed: value in [-2**(bits-1), 2**(bits-1)-1]
+    private static bool FitsInBytes(BigInteger value, bool isSigned, long bits)
+    {
+        if (value.IsZero)
+            return true;
+        if (value.Sign < 0)
+        {
+            if (!isSigned)
+                return false;
+            // the most negative two's-complement value -2**(bits-1) fits, and
+            // it is the only power of two with that bit length
+            var magnitude = -value;
+            return magnitude.GetBitLength() < bits || (magnitude.GetBitLength() == bits && magnitude == (magnitude & -magnitude));
+        }
+        return value.GetBitLength() <= (isSigned ? bits - 1 : bits);
+    }
+
+    private static BigInteger PowerOfTwo(long bits)
+    {
+        var result = BigInteger.One;
+        while (bits > 30)
+        {
+            result <<= 30;
+            bits -= 30;
+        }
+        return result << (int)bits;
+    }
 }
