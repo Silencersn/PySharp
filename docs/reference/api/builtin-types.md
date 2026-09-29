@@ -42,6 +42,7 @@
 | `staticmethod`、`classmethod` | `PyStaticMethodObject`、`PyClassMethodObject` |
 | `property` | `PyPropertyObject` |
 | `super` | `PySuperObject` |
+| 类 `__dict__` 的只读视图 | `PyMappingProxyObject`（Python 类型名 `mappingproxy`；不导出为内建名字，经 `C.__dict__` / `vars(C)` 取得） |
 | 描述符 | `PyMemberDescriptorObject`、`PyMethodDescriptorObject`、`PyWrapperDescriptorObject` |
 
 ## 执行与迭代构件

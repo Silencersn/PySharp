@@ -67,6 +67,13 @@ partial class PyTypeObject
             // functions, methods, code, ...) have no __dict__ (CPython).
             if (self.IsImmutable)
                 return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.TpName, name);
+
+            // CPython type.__dict__ is a getset wrapping the namespace in a
+            // fresh mappingproxy on every read (typeobject.c type_dict); the
+            // mutable face stays on setattr/delattr
+            if (self is PyTypeObject)
+                return new PyMappingProxyObject(self.PyAttributes.Self);
+
             return self.PyAttributes.Self;
         }
 
@@ -454,7 +461,7 @@ partial class PyTypeObject
             return metaType;
 
         if (name is PySpecialNames.Dict)
-            return self.PyAttributes.Self;
+            return new PyMappingProxyObject(self.PyAttributes.Self);
 
         if (TryLookupAttrInMro(metaType, name, out var metaAttr))
         {

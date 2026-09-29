@@ -66,6 +66,11 @@ public delegate PyResult PyBinaryFunction(PyCallContext context, PyObject self, 
 - 类型对象的属性即「类属性」：方法描述符、成员描述符、`__init_subclass__` 等存放于此。实例查找走
   `DefaultGetAttribute`，顺序为数据描述符、实例 `__dict__`、非数据描述符与类属性（按 MRO），
   最后回退 `__getattr__`，由 `PyOperators.GetAttr` 两段式编排。
+- 类 `__dict__` 的暴露面对齐 CPython 的 `type_dict`：经 `C.__dict__` / `vars(C)` 读取时把类型
+  命名空间包成只读的 `PyMappingProxyObject`（`mappingproxy`），每次读取都是新包装；项赋值与删除
+  分别报 `does not support item assignment` / `does not support item deletion`，`update` 等变更
+  方法不可见。修改类结构仍走 `setattr` / `delattr`，其写入经同一命名空间立即可见。模块与用户类
+  实例的 `__dict__` 不经包装，仍是可变的 `PyDictObject`。
 
 ## MRO 与子类化
 

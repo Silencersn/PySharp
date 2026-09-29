@@ -720,6 +720,10 @@ internal static class PyCore
             if (self.IsImmutable)
                 return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.TpName, name);
 
+            // same mappingproxy face as DefaultGetAttribute's __dict__ branch
+            if (self is PyTypeObject)
+                return new PyMappingProxyObject(self.PyAttributes.Self);
+
             return self.PyAttributes.Self;
         }
 

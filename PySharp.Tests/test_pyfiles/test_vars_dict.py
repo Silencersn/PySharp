@@ -6,10 +6,9 @@ CPython 3.14 reference:
     vars(42) / vars('abc') / vars([1, 2]) / vars(len) / vars(code)  -> TypeError
     (42).__dict__                                                    -> AttributeError
     vars(o) for a plain user instance                                -> the instance dict
+    vars(cls)                                                        -> a mappingproxy, not a dict
 
 :kind: test
-
-:cpython-diff: CPython 3.14 returns a mappingproxy from vars(cls) while PySharp returns a dict; divergence pending fix, remove this exemption when resolved
 """
 
 import math
@@ -59,7 +58,9 @@ assert o.__dict__['a'] == 1
 def user_func():
     pass
 assert isinstance(vars(user_func), dict)
-assert isinstance(vars(Obj), dict)
+# vars(cls) wraps the class namespace in a read-only mappingproxy (CPython)
+assert not isinstance(vars(Obj), dict)
+assert type(vars(Obj)).__name__ == 'mappingproxy'
 assert isinstance(vars(math), dict)
 
 # Exception instances have a real __dict__ (CPython allows e.note = 1).

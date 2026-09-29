@@ -126,6 +126,11 @@ partial class PySR
     public const string Runtime_Sequence_ItemAssignmentNotSupported = "'{0}' object does not support item assignment";
     public const string Runtime_Sequence_ItemDeletionNotSupported = "'{0}' object doesn't support item deletion";
 
+    public const string Runtime_Mapping_ItemDeletionNotSupported = "'{0}' object does not support item deletion";
+
+    public const string Runtime_MappingProxy_ArgMustBeMapping = "mappingproxy() argument must be a mapping, not {0}";
+    public const string Runtime_MappingProxy_InPlaceOrNotSupported = "'|=' is not supported by {0}; use '|' instead";
+
     public const string Runtime_Module_AttributeNotFound = "module '{0}' has no attribute '{1}'";
 
     public const string Runtime_String_IndexOutOfRange = "string index out of range";

@@ -34,6 +34,7 @@ internal static class PyTypeFlagsTable
         ["range"] = PyTypeFlags.Sequence,
         ["memoryview"] = PyTypeFlags.Sequence,
         ["dict"] = PyTypeFlags.Mapping | PyTypeFlags.MatchSelf,
+        ["mappingproxy"] = PyTypeFlags.Mapping,
         ["int"] = PyTypeFlags.MatchSelf,
         ["float"] = PyTypeFlags.MatchSelf,
         ["complex"] = PyTypeFlags.MatchSelf,
