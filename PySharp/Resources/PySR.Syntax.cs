@@ -200,6 +200,8 @@ partial class PySR
 
     public const string InvalidSyntax_Semantic_DuplicateArgument = "duplicate argument '{0}' in function definition";
 
+    public const string InvalidSyntax_Semantic_DuplicateTypeParam = "duplicate type parameter '{0}'";
+
     public const string InvalidSyntax_Semantic_NonLastDefaultExcept = "default 'except:' must be last";
 
     #endregion SemanticAnalyzer

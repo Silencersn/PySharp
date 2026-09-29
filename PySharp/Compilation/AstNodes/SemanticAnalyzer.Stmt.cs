@@ -444,6 +444,7 @@ partial class SemanticAnalyzer
             foreach (var tp in node.TypeParams)
             {
                 CheckReservedName(tp.Name, ExprContextType.Store, tp);
+                CheckDuplicateTypeParam(genericParamScope, tp);
                 genericParamScope.AppendVariable(tp.Name, ExprContextType.Store);
             }
 
@@ -483,6 +484,7 @@ partial class SemanticAnalyzer
             foreach (var tp in node.TypeParams)
             {
                 CheckReservedName(tp.Name, ExprContextType.Store, tp);
+                CheckDuplicateTypeParam(genericParamScope, tp);
                 genericParamScope.AppendVariable(tp.Name, ExprContextType.Store);
             }
 
@@ -529,6 +531,7 @@ partial class SemanticAnalyzer
             foreach (var tp in node.TypeParams)
             {
                 CheckReservedName(tp.Name, ExprContextType.Store, tp);
+                CheckDuplicateTypeParam(genericParamScope, tp);
                 genericParamScope.AppendVariable(tp.Name, ExprContextType.Store);
             }
 
@@ -556,6 +559,28 @@ partial class SemanticAnalyzer
 
     private void VisitTypeAlias(TypeAliasNode node)
     {
+        // CPython registers every carrier's type params through symtable_add_def
+        // with DEF_TYPE_PARAM, whose clash check rejects duplicates uniformly —
+        // an alias declares no scope of its own here, so a local set plays that
+        // role
+        HashSet<string> seen = [];
+        foreach (var tp in node.TypeParams)
+        {
+            if (!seen.Add(tp.Name))
+                throw SyntaxErrorAt(tp, PySR.InvalidSyntax_Semantic_DuplicateTypeParam, tp.Name);
+        }
+
         BindVariable(node.Name, ExprContextType.Store, node);
+    }
+
+    // CPython symtable_add_def_helper: a DEF_TYPE_PARAM clash on re-registration
+    // is a SyntaxError pointing at the repeated parameter. The scope's Variables
+    // dict is name-keyed, so a present name means a previous type param claimed it;
+    // parameters sharing a type param's name stay legal (DEF_PARAM does not clash
+    // with DEF_TYPE_PARAM).
+    private void CheckDuplicateTypeParam(GenericParamVariableScope scope, AstTypeParamNode tp)
+    {
+        if (scope.Variables.ContainsKey(tp.Name))
+            throw SyntaxErrorAt(tp, PySR.InvalidSyntax_Semantic_DuplicateTypeParam, tp.Name);
     }
 }
