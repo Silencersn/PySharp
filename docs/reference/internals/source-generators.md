@@ -102,6 +102,13 @@ PySharp 的类型机器（slots、方法描述符、异常工厂等）全部在�
 | PYSPS006 | Allman 风格：`{` 独占一行，空块 `{ }` 豁免 |
 | PYSPS007 | 空类型体用 `class Foo;` |
 
+`PySharp.Analyzer.Style` 额外对**自身源码**做自检，普通 `dotnet build`（含 `--no-incremental`）
+即可触发。它不能像别的项目那样直接 `ProjectReference` 自己——那会在 restore 阶段形成循环依赖
+（`MSB4006`）——所以改从一份预先构建好的 dll 以 `<Analyzer Include>` 挂载。该 dll 又不能取自
+`bin/`，因为全新构建会先清空它；项目因此在 `CoreCompile` 前用一次受 `_PyspsSelfCheck` 守卫的
+子构建把 dll 产到 `obj/selfcheck/`。子构建必须使用独立的 `IntermediateOutputPath`，否则它会
+让外层 `CoreCompile` 误判为已是最新而跳过，自检静默失效。
+
 ## 接线与验证
 
 - 接线：`PySharp.csproj` 以 `ProjectReference OutputItemType="Analyzer"

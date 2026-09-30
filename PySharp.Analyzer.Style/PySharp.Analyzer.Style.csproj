@@ -16,4 +16,27 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="$(RoslynVersion)" />
   </ItemGroup>
 
+  <!-- Self-check: run this project's own rules over its own sources.
+       A direct ProjectReference to itself cycles at restore time (MSB4006), so
+       the analyzer is loaded from a pre-built dll instead. That dll cannot come
+       from the main build's bin directory, which a fresh build wipes before
+       compiling; hence the bootstrap below builds it into obj/selfcheck/ first.
+       The sub-build is guarded by _PyspsSelfCheck so it does not recurse, and it
+       gets its own IntermediateOutputPath because sharing the outer one would
+       leave the outer CoreCompile looking up-to-date and skip it. -->
+  <Target Name="PyspsSelfCheckBootstrap"
+          BeforeTargets="CoreCompile"
+          Condition="'$(_PyspsSelfCheck)' != 'true'">
+    <MSBuild Projects="$(MSBuildProjectFullPath)"
+             Targets="Build"
+             Properties="Configuration=$(Configuration);
+                         _PyspsSelfCheck=true;
+                         OutputPath=$(MSBuildProjectDirectory)/obj/selfcheck/;
+                         IntermediateOutputPath=$(MSBuildProjectDirectory)/obj/selfcheck-obj/" />
+  </Target>
+
+  <ItemGroup Condition="'$(_PyspsSelfCheck)' != 'true'">
+    <Analyzer Include="$(MSBuildProjectDirectory)/obj/selfcheck/PySharp.Analyzer.Style.dll" />
+  </ItemGroup>
+
 </Project>

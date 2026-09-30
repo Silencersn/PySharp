@@ -79,9 +79,7 @@ partial class PySharpStyleAnalyzer
             var firstStmtLine = block.Statements[0]
                 .GetLocation().GetLineSpan().StartLinePosition.Line;
             if (firstStmtLine == openLine)
-            {
                 context.ReportDiagnostic(Diagnostic.Create(PYSPS006, openBrace.GetLocation()));
-            }
         }
     }
 }
