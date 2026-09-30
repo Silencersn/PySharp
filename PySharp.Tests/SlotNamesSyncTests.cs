@@ -34,7 +34,7 @@ public sealed class SlotNamesSyncTests
         // the same name (Add, Concat => "__add__")
         var constantNamesByValue = typeof(PySpecialNames).GetFields(BindingFlags.Public | BindingFlags.Static)
             .Where(f => f.FieldType == typeof(string) && f.GetValue(null) is string)
-            .Select(f => (Value: (string)f.GetValue(null)!, Name: f.Name))
+            .Select(f => (Value: (string)f.GetValue(null)!, f.Name))
             .GroupBy(p => p.Value, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.Select(p => p.Name).ToHashSet(StringComparer.Ordinal), StringComparer.Ordinal);
 

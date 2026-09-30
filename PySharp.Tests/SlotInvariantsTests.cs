@@ -190,7 +190,7 @@ public sealed class SlotInvariantsTests
         // dunder value -> every string constant of PySpecialNames carrying it
         var constants = typeof(PySpecialNames).GetFields(BindingFlags.Public | BindingFlags.Static)
             .Where(f => f.FieldType == typeof(string) && f.GetValue(null) is string)
-            .Select(f => (Value: (string)f.GetValue(null)!, Name: f.Name))
+            .Select(f => (Value: (string)f.GetValue(null)!, f.Name))
             .GroupBy(p => p.Value, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.Select(p => p.Name).ToArray(), StringComparer.Ordinal);
 

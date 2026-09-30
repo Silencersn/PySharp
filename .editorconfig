@@ -5,6 +5,11 @@ dotnet_diagnostic.IDE0290.severity = silent
 
 csharp_style_namespace_declarations = file_scoped
 
+# PYSPI002 mandates brace-less single-statement bodies, the opposite of
+# IDE0011's built-in preference; align the option so the rule only reports
+# genuine drift instead of fighting the project convention.
+csharp_prefer_braces = false
+
 dotnet_diagnostic.RS1032.severity = silent
 dotnet_diagnostic.RS2008.severity = silent
 
@@ -16,8 +21,11 @@ dotnet_diagnostic.CA2016.severity = warning
 dotnet_diagnostic.CA2201.severity = warning
 
 dotnet_diagnostic.IDE0004.severity = warning
+dotnet_diagnostic.IDE0011.severity = warning
 dotnet_diagnostic.IDE0028.severity = warning
 dotnet_diagnostic.IDE0031.severity = warning
+dotnet_diagnostic.IDE0037.severity = warning
+dotnet_diagnostic.IDE0039.severity = warning
 dotnet_diagnostic.IDE0042.severity = warning
 dotnet_diagnostic.IDE0044.severity = warning
 dotnet_diagnostic.IDE0047.severity = warning
@@ -25,6 +33,7 @@ dotnet_diagnostic.IDE0057.severity = warning
 dotnet_diagnostic.IDE0059.severity = warning
 dotnet_diagnostic.IDE0066.severity = warning
 dotnet_diagnostic.IDE0074.severity = warning
+dotnet_diagnostic.IDE0090.severity = warning
 dotnet_diagnostic.IDE0100.severity = warning
 dotnet_diagnostic.IDE0110.severity = warning
 dotnet_diagnostic.IDE0130.severity = warning

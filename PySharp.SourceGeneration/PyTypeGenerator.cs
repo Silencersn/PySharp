@@ -17,7 +17,7 @@ public class PyTypeGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var predicate = static (SyntaxNode syntaxNode, CancellationToken _) => syntaxNode is ClassDeclarationSyntax;
+        static bool predicate(SyntaxNode syntaxNode, CancellationToken _) => syntaxNode is ClassDeclarationSyntax;
 
         var pyTypeProvider = context.SyntaxProvider
             .ForAttributeWithMetadataName(

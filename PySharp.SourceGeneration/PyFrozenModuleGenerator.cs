@@ -196,7 +196,7 @@ public class PyFrozenModuleGenerator : IIncrementalGenerator
 
         // Minimum delimiter length is 3; must exceed the longest quote run
         int delimiterLength = Math.Max(3, maxQuotes + 1);
-        string delimiter = new string('"', delimiterLength);
+        string delimiter = new('"', delimiterLength);
 
         // For raw string literals, the opening and closing delimiters must be on their own lines
         // when the content spans multiple lines (or contains quotes).
