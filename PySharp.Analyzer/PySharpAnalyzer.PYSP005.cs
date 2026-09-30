@@ -53,7 +53,7 @@ partial class PySharpAnalyzer
             return;
 
         // Right side must be "ExceptionResult"
-        if (memberAccess.Name is not IdentifierNameSyntax { Identifier: { ValueText: "ExceptionResult" } })
+        if (memberAccess.Name is not IdentifierNameSyntax { Identifier.ValueText: "ExceptionResult" })
             return;
 
         // Resolve the property symbol; must belong to PyResult / PyResult<T>

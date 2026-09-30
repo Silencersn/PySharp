@@ -140,10 +140,10 @@ public sealed class PyFixtureTestsGenerator : IIncrementalGenerator
     {
         foreach (var fixture in fixtures)
         {
-            foreach (var diagnostic in fixture.Diagnostics)
+            foreach (var (descriptor, messageArgs) in fixture.Diagnostics)
             {
                 context.ReportDiagnostic(Diagnostic.Create(
-                    diagnostic.Descriptor, Location.None, diagnostic.MessageArgs));
+                    descriptor, Location.None, messageArgs));
             }
         }
 
@@ -311,15 +311,12 @@ public sealed class PyFixtureTestsGenerator : IIncrementalGenerator
                     diagnostics.Add((RegressionTitle, new[] { fileName }));
             }
 
-            if (kind is null)
-            {
-                // Only reached when no usable kind was parsed: missing or
-                // unterminated docstring (PYFIX001/PYFIX002), a missing :kind:
-                // (PYFIX003) or an invalid one (PYFIX004). The error is already
-                // reported in every case, so defaulting merely keeps the record
-                // valid; Emit drops it anyway because HasErrors holds.
-                kind = FixtureKind.Test;
-            }
+            // Only reached when no usable kind was parsed: missing or
+            // unterminated docstring (PYFIX001/PYFIX002), a missing :kind:
+            // (PYFIX003) or an invalid one (PYFIX004). The error is already
+            // reported in every case, so defaulting merely keeps the record
+            // valid; Emit drops it anyway because HasErrors holds.
+            kind ??= FixtureKind.Test;
 
             return new FixtureInfo(fileName, methodName, kind.Value, cpythonDiffReason, diagnostics.ToImmutable());
         }

@@ -1642,7 +1642,7 @@ partial class Emitter
                         var (index, starred) = node.Patterns.Index().FirstOrDefault(static item => item.Item is MatchStarNode);
                         var hasStar = starred is not null;
                         Builder.Emit(OpCode.LoadConst, PyIntObject.FromInteger(node.Patterns.Length + (hasStar ? -1 : 0)));
-                        Builder.Emit(OpCode.CompareOp, (hasStar ? CmpopType.GtE : CmpopType.Eq));
+                        Builder.Emit(OpCode.CompareOp, hasStar ? CmpopType.GtE : CmpopType.Eq);
                         Builder.PopJumpIfFalse(matchFailLabel);
 
                         // unpack subject

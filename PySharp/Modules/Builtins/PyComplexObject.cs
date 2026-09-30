@@ -454,13 +454,13 @@ public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
             var ratio = bi / br;
             var denom = br + bi * ratio;
             real = a / denom;
-            imag = (-a * ratio) / denom;
+            imag = -a * ratio / denom;
         }
         else if (absBi >= absBr)
         {
             var ratio = br / bi;
             var denom = br * ratio + bi;
-            real = (a * ratio) / denom;
+            real = a * ratio / denom;
             imag = -a / denom;
         }
         else

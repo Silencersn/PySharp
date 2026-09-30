@@ -18,12 +18,38 @@ dotnet_diagnostic.CA2201.severity = warning
 dotnet_diagnostic.IDE0004.severity = warning
 dotnet_diagnostic.IDE0028.severity = warning
 dotnet_diagnostic.IDE0031.severity = warning
+dotnet_diagnostic.IDE0042.severity = warning
 dotnet_diagnostic.IDE0044.severity = warning
+dotnet_diagnostic.IDE0047.severity = warning
 dotnet_diagnostic.IDE0057.severity = warning
 dotnet_diagnostic.IDE0059.severity = warning
 dotnet_diagnostic.IDE0066.severity = warning
+dotnet_diagnostic.IDE0074.severity = warning
+dotnet_diagnostic.IDE0100.severity = warning
+dotnet_diagnostic.IDE0110.severity = warning
 dotnet_diagnostic.IDE0130.severity = warning
+dotnet_diagnostic.IDE0170.severity = warning
+dotnet_diagnostic.IDE0200.severity = warning
+dotnet_diagnostic.IDE0230.severity = warning
+dotnet_diagnostic.IDE0300.severity = warning
+dotnet_diagnostic.IDE0301.severity = warning
+dotnet_diagnostic.IDE0305.severity = warning
+dotnet_diagnostic.IDE0330.severity = warning
 dotnet_diagnostic.IDE0370.severity = warning
+
+# Deferred (the fix would break semantics or style; see discussion):
+# IDE0010/IDE0072 — filling a switch appends "case X: break;" to a switch that
+#   already has "default: throw new UnreachableException()", turning the
+#   unreachable assertion into a silent pass
+# IDE0078 — relational patterns cannot express BigInteger bound checks (CS9135);
+#   26 sites of that shape have no legal fix
+# IDE0045/IDE0046 — collapse guard-clause chains into deeply nested ternary
+#   expressions, and the fix is not idempotent (needs several passes to converge)
+dotnet_diagnostic.IDE0010.severity = silent
+dotnet_diagnostic.IDE0045.severity = silent
+dotnet_diagnostic.IDE0046.severity = silent
+dotnet_diagnostic.IDE0072.severity = silent
+dotnet_diagnostic.IDE0078.severity = silent
 
 [**/GlobalUsings.cs]
 dotnet_diagnostic.IDE0130.severity = silent

@@ -208,7 +208,7 @@ public sealed class EnvDataTests
         // try/finally in Dispose: the teardown completes, then the handler
         // exception flies to the Dispose caller.
         Assert.ThrowsExactly<InvalidOperationException>(
-            () => environment.Dispose(),
+            environment.Dispose,
             "handler exceptions fly after the teardown has completed");
 
         environment.Dispose();   // idempotent: no second raise, no second throw

@@ -537,20 +537,20 @@ public sealed class TestPyFiles
         }
 
         static byte[] Concat(params byte[][] parts) =>
-            parts.SelectMany(p => p).ToArray();
+            [.. parts.SelectMany(p => p)];
         static byte[] Ascii(string s) => System.Text.Encoding.ASCII.GetBytes(s);
 
         // red case 1: invalid UTF-8 without a declaration must be rejected
         // (today: silently replaced with U+FFFD and executed)
         var (c1Code, c1Out, c1Err) = RunChildBytes(Concat(
-            Ascii("s = '"), new byte[] { 0xE4 }, Ascii("'\nprint(len(s))\n")));
+            Ascii("s = '"), [0xE4], Ascii("'\nprint(len(s))\n")));
         Assert.AreNotEqual(0, c1Code,
             $"invalid UTF-8 without declaration must be rejected:\n{c1Out}{c1Err}");
         Assert.Contains("Non-UTF-8", c1Err, c1Err);
 
         // red case 2: latin-1 declaration must decode 0xE4 to U+00E4
         var (c2Code, c2Out, _) = RunChildBytes(Concat(
-            Ascii("# -*- coding: latin-1 -*-\ns = '"), new byte[] { 0xE4 },
+            Ascii("# -*- coding: latin-1 -*-\ns = '"), [0xE4],
             Ascii("'\nprint(repr(s))\n")));
         Assert.AreEqual(0, c2Code, c2Out);
         Assert.Contains("\u00e4", c2Out, c2Out);
@@ -558,7 +558,7 @@ public sealed class TestPyFiles
 
         // red case 3: gbk declaration must decode C4 E3 to U+4F60 (你)
         var (c3Code, c3Out, _) = RunChildBytes(Concat(
-            Ascii("# -*- coding: gbk -*-\ns = '"), new byte[] { 0xC4, 0xE3 },
+            Ascii("# -*- coding: gbk -*-\ns = '"), [0xC4, 0xE3],
             Ascii("'\nprint(repr(s), len(s))\n")));
         Assert.AreEqual(0, c3Code, c3Out);
         Assert.Contains("\u4f60", c3Out, c3Out);
@@ -575,7 +575,7 @@ public sealed class TestPyFiles
         // (é is written as its UTF-8 bytes: Ascii() alone would mangle it
         // to '?' before the child ever runs)
         var (gCode, gOut, _) = RunChildBytes(Concat(
-            Ascii("# -*- coding: utf-8 -*-\ns = \"h"), new byte[] { 0xC3, 0xA9 }, Ascii("llo\"\nprint(repr(s))\n")));
+            Ascii("# -*- coding: utf-8 -*-\ns = \"h"), [0xC3, 0xA9], Ascii("llo\"\nprint(repr(s))\n")));
         Assert.AreEqual(0, gCode, gOut);
         Assert.Contains("\u00e9", gOut, gOut);
         Assert.DoesNotContain("\uFFFD", gOut, gOut);

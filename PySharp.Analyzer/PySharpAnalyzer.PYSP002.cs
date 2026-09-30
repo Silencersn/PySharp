@@ -40,7 +40,7 @@ partial class PySharpAnalyzer
         var memberAccess = (MemberAccessExpressionSyntax)context.Node;
 
         // Right side must be "Default"
-        if (memberAccess.Name is not IdentifierNameSyntax { Identifier: { ValueText: "Default" } })
+        if (memberAccess.Name is not IdentifierNameSyntax { Identifier.ValueText: "Default" })
             return;
 
         // Left side must resolve to PyObjectComparer type

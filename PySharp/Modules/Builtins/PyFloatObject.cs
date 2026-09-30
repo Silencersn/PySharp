@@ -781,7 +781,7 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
             {
                 if (exp >= 52)
                 {
-                    numerator <<= (exp - 52);
+                    numerator <<= exp - 52;
                     denominator = BigInteger.One;
                 }
                 else

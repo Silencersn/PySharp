@@ -248,7 +248,7 @@ public sealed partial class PyFrozenSetObjectType : PyTypeObject<PyFrozenSetObje
 
     private static ulong ShuffleBits(ulong h)
     {
-        return ((h ^ 89869747UL) ^ (h << 16)) * 3644798167UL;
+        return (h ^ 89869747UL ^ (h << 16)) * 3644798167UL;
     }
 
     // CPython frozenset_hash_impl (Objects/setobject.c): xor of the slots'

@@ -59,7 +59,7 @@ internal sealed class PySetTable
     // CPython set_repr copies the keys into a list before repr'ing them
     // (set_repr_lock_held, gh-129967): element __repr__ may mutate the set,
     // and the snapshot keeps those mutations out of the rendered text.
-    internal PyObject[] SnapshotKeys() => Keys.ToArray();
+    internal PyObject[] SnapshotKeys() => [.. Keys];
 
     internal IEnumerable<(PyObject Key, long Hash)> LiveEntries
     {

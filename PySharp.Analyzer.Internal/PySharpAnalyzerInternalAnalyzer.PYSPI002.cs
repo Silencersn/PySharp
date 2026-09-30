@@ -95,10 +95,10 @@ partial class PySharpAnalyzerInternalAnalyzer
     {
         return node switch
         {
-            IfStatementSyntax _ => "if",
-            ForStatementSyntax _ => "for",
-            ForEachStatementSyntax _ => "foreach",
-            WhileStatementSyntax _ => "while",
+            IfStatementSyntax => "if",
+            ForStatementSyntax => "for",
+            ForEachStatementSyntax => "foreach",
+            WhileStatementSyntax => "while",
             _ => "statement",
         };
     }

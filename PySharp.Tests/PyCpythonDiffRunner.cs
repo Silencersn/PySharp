@@ -117,8 +117,8 @@ internal static class PyCpythonDiffRunner
             {
                 // Reference side first: the comparison asserts that PySharp
                 // matches CPython, so CPython's result is the baseline.
-                var cpyResult = RunProcess(cpython.ExePath, new[] { "-B", fixturePath }, workDir);
-                var psResult = RunProcess(consoleExe, new[] { fixturePath }, workDir);
+                var cpyResult = RunProcess(cpython.ExePath, ["-B", fixturePath], workDir);
+                var psResult = RunProcess(consoleExe, [fixturePath], workDir);
                 CompareAndAssert(fileName, cpyResult, psResult);
             }
             finally

@@ -109,7 +109,7 @@ partial class PySharpAnalyzer
         }
 
         return MatchNamedMember(argument, context,
-            new[] { "Zero", "One", "MinusOne" }, "BigInteger", "System.Numerics");
+            ["Zero", "One", "MinusOne"], "BigInteger", "System.Numerics");
     }
 
     /// <summary>Matches <c>FromDouble</c> for bit-identical literal values and <c>double.XXX</c> constants.</summary>
@@ -131,7 +131,7 @@ partial class PySharpAnalyzer
         }
 
         return MatchNamedMember(argument, context,
-            new[] { "NegativeZero", "NaN", "PositiveInfinity", "NegativeInfinity", "Pi", "E", "Epsilon", "Tau" },
+            ["NegativeZero", "NaN", "PositiveInfinity", "NegativeInfinity", "Pi", "E", "Epsilon", "Tau"],
             "Double", "System");
     }
 
@@ -158,7 +158,7 @@ partial class PySharpAnalyzer
                 return "Empty";
         }
 
-        return MatchNamedMember(argument, context, new[] { "Empty" }, "String", "System");
+        return MatchNamedMember(argument, context, ["Empty"], "String", "System");
     }
 
     /// <summary>

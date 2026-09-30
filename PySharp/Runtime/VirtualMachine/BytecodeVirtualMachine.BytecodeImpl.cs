@@ -121,7 +121,7 @@ internal static partial class BytecodeVirtualMachine
         }
 
         var objectNew = PyObjectType.Shared.Slots.New ?? throw new UnreachableException();
-        var sentinel = objectNew(context, PyObjectType.Shared, System.Array.Empty<PyObject>(), new Dictionary<string, PyObject>()).PyUnwrap(context);
+        var sentinel = objectNew(context, PyObjectType.Shared, [], new Dictionary<string, PyObject>()).PyUnwrap(context);
         PyObject? getBound = null;
         if (PyObject.TryLookupAttrInMro(subject.PyType, "get", out var getAttr))
         {

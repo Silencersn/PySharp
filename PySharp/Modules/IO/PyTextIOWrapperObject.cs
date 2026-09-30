@@ -79,7 +79,7 @@ public sealed class PyTextIOWrapperObject : PyObject, IDisposable
     // order-equivalent for everything the standard streams expose.
     internal readonly PyStandardStreamBuffering _buffering;
     internal readonly bool _isTerminal;
-    private readonly object _writeLock = new();
+    private readonly Lock _writeLock = new();
     private readonly byte[] _writeBuf = new byte[8192];
     private int _writeLen;
 

@@ -14,7 +14,7 @@ public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
     // slots down the subtree (typeobject.c update_subclasses). The entries are
     // weak on purpose — a strong list held by the base would pin every
     // runtime-created class forever.
-    private readonly object _subclassLock = new();
+    private readonly Lock _subclassLock = new();
     private List<WeakReference<PyTypeObject>>? _subclasses;
 
     private void RegisterSubclass(PyTypeObject subclass)

@@ -44,7 +44,7 @@ internal sealed record class DiagnosticInfo
     {
         return new DiagnosticInfo(
             PyGeneratorDiagnostics.RequiredArgumentNull,
-            new[] { argumentName },
+            [argumentName],
             ResolveLocation(attribute, syntaxReference));
     }
 
@@ -58,7 +58,7 @@ internal sealed record class DiagnosticInfo
     {
         return new DiagnosticInfo(
             PyGeneratorDiagnostics.InvalidEnumValue,
-            new[] { enumValue?.ToString() ?? string.Empty, enumTypeName, argumentName },
+            [enumValue?.ToString() ?? string.Empty, enumTypeName, argumentName],
             ResolveLocation(attribute, syntaxReference));
     }
 
@@ -72,7 +72,7 @@ internal sealed record class DiagnosticInfo
     {
         return new DiagnosticInfo(
             PyGeneratorDiagnostics.InvalidArgumentType,
-            new[] { argumentName, actualType, expectedType },
+            [argumentName, actualType, expectedType],
             ResolveLocation(attribute, syntaxReference));
     }
 

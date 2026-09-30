@@ -54,7 +54,7 @@ public class PyExportGenerator : IIncrementalGenerator
                 return;
 
             foreach (var group in validExports.GroupBy(static export => (export.Namespace, export.TypeName)))
-                GenerateSource(context, group.Key.Namespace, group.Key.TypeName, group.ToList());
+                GenerateSource(context, group.Key.Namespace, group.Key.TypeName, [.. group]);
         });
     }
 

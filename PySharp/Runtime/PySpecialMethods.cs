@@ -264,7 +264,7 @@ public static class PySpecialMethods
             // ClassGetItem handler then detects the tuple and uses it as the args tuple.
             var callArgs = key is PyTupleObject tuple
                 ? new PyObject[] { tuple }
-                : new PyObject[] { key };
+                : [key];
 
             return classGetItem.Call(context, callArgs);
         }

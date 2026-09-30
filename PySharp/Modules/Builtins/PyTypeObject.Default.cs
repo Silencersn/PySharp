@@ -87,7 +87,7 @@ partial class PyTypeObject
             }
         }
 
-        if (self.PyAttributes.TryGetValue(name, out var value) is true)
+        if (self.PyAttributes.TryGetValue(name, out var value))
             return value;
 
         if (attr is not null)

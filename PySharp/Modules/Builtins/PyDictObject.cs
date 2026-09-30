@@ -582,7 +582,7 @@ public partial class PyDictObject : PyObject, IPyObjectRecursiveRepr
             }
 
             // Outside of our predefined table. Compute the hard way.
-            for (int i = (min | 1); i < int.MaxValue; i += 2)
+            for (int i = min | 1; i < int.MaxValue; i += 2)
             {
                 if (IsPrime(i) && ((i - 1) % HashPrime is not 0))
                     return i;
