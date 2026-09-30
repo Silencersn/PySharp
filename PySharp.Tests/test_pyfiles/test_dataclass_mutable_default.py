@@ -1,4 +1,4 @@
-﻿"""@dataclass rejects mutable field defaults (list/dict/set/bytearray and their subclasses, including via field(default=...)) at class definition time with CPython's exact ValueError, while default_factory and hashable defaults stay accepted.
+"""@dataclass rejects mutable field defaults (list/dict/set/bytearray and their subclasses, including via field(default=...)) at class definition time with CPython's exact ValueError, while default_factory and hashable defaults stay accepted.
 
 :kind: test
 """

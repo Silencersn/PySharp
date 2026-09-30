@@ -1,4 +1,4 @@
-﻿"""
+"""
 str method TypeError messages carry the CPython wording with
 the argument ordinal and the offending type name, and the numeric
 converter arguments (split/rsplit maxsplit, replace count, center/ljust/

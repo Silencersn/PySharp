@@ -1,4 +1,4 @@
-﻿"""Verifies that throw() on a never-started generator propagates the exception straight to the caller and closes the generator.
+"""Verifies that throw() on a never-started generator propagates the exception straight to the caller and closes the generator.
 
 Covers instance and class forms, the deprecated three-arg form, StopIteration and GeneratorExit pass-through, exhausted and suspended generators, genexps, and non-None send / non-exception TypeErrors.
 

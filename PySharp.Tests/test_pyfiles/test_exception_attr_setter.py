@@ -1,4 +1,4 @@
-﻿"""
+"""
 BaseException.__cause__, __context__ and __suppress_context__
 must be writable like CPython. Assigning an exception to __cause__ also
 suppresses the implicit context (PyException_SetCause); None only clears;

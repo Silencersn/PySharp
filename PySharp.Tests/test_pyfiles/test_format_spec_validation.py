@@ -1,4 +1,4 @@
-﻿"""
+"""
 format() must reject invalid presentation types and invalid
 flag/type combinations with CPython's messages instead of silently
 accepting them. Covers:

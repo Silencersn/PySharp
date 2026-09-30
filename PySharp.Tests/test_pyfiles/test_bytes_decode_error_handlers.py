@@ -1,4 +1,4 @@
-﻿"""Verifies bytes.decode error-handler behavior: encode-only handlers reject decode errors with TypeError, surrogateescape escapes only bytes >= 0x80 and stops at ASCII, utf-16/utf-32 hand lone surrogate units to surrogatepass instead of raw errors, and unknown handler names stay lazy until the first actual error.
+"""Verifies bytes.decode error-handler behavior: encode-only handlers reject decode errors with TypeError, surrogateescape escapes only bytes >= 0x80 and stops at ASCII, utf-16/utf-32 hand lone surrogate units to surrogatepass instead of raw errors, and unknown handler names stay lazy until the first actual error.
 
 Asserts CPython 3.14 reference values and exact UnicodeDecodeError reasons for each face.
 

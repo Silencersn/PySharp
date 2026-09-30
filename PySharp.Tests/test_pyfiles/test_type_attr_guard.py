@@ -1,4 +1,4 @@
-﻿"""
+"""
 static (non-heap) types refuse attribute set/delete.
 
 CPython's type.__setattr__/__delattr__ rejects any attribute write on a

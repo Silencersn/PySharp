@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for the random module
 
 :kind: test

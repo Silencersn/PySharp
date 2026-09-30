@@ -1,4 +1,4 @@
-﻿"""
+"""
 a bare ':' inside an f-string replacement field ends the
 expression and starts the format spec, even when lexed as the fused ':='
 token. f"{-5:=8}" was rejected with a SyntaxError; it must equal

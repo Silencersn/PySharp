@@ -1,4 +1,4 @@
-﻿"""
+"""
 `not` in a short-circuiting test must not be folded into the jump.
 
 The bytecode builder used to infer from the previously emitted instruction

@@ -1,4 +1,4 @@
-﻿"""
+"""
 float()/complex()/int() accept Nd (Unicode decimal digit)
 strings, the way CPython's _PyUnicode_TransformDecimalAndSpaceToASCII pre-pass
 does. ASCII text passes through, a non-ASCII space becomes ' ', every Nd code

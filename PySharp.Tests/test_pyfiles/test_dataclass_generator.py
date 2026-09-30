@@ -1,4 +1,4 @@
-﻿"""
+"""
 dataclass generator deep fixes. The generated __init__ merges
 fields from dataclass bases (base order, child overrides), field() gains
 keyword-only parameters with metadata (wrapped mappingproxy-style) and

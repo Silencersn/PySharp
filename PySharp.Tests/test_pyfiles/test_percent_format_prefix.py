@@ -1,4 +1,4 @@
-﻿"""
+"""
 old-style %#o/%#x/%#X prefix handling must match CPython.
 
 CPython 3.14 reference:

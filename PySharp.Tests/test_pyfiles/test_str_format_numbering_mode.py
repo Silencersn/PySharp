@@ -1,4 +1,4 @@
-﻿"""
+"""
 str.format must reject mixing automatic '{}' and manual '{N}'
 numbering with CPython's ValueError, instead of silently binding automatic
 fields to argument 0. The mode is shared with nested format-spec fields,

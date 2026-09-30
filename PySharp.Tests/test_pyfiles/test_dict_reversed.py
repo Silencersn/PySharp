@@ -1,4 +1,4 @@
-﻿"""
+"""
 reversed() must support dicts and their views with dedicated
 reverse iterators (CPython dict_reversed). reversed(dict) previously fell
 through to the len/getitem protocol and raised KeyError because dict

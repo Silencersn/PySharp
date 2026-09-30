@@ -1,4 +1,4 @@
-﻿"""
+"""
 bound method objects must compare equal when both __func__
 and __self__ are identical (CPython method_richcompare compares by
 identity), and their hash must be consistent so methods work in `in`,

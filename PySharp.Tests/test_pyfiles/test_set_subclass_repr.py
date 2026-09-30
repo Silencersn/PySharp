@@ -1,4 +1,4 @@
-﻿"""
+"""
 set and frozenset subclass instances must render with the
 subclass type name — TypeName({…}) when non-empty and TypeName() when empty
 (CPython set_repr / frozenset_repr) — so they stay distinguishable from the

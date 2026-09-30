@@ -1,4 +1,4 @@
-﻿"""
+"""
 class keywords must be consumed by an __init_subclass__ hook.
 
 CPython type_new hands the class keywords to the first __init_subclass__

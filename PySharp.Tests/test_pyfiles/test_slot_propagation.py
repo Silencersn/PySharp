@@ -1,4 +1,4 @@
-﻿"""Runtime dunder assignment and deletion on a class re-resolve the slot on the type and recursively on every subclass whose own dict does not shadow the name, and class creation resolves inherited slots from the MRO dicts for every slot family (CPython update_slot / fixup_slot_dispatchers).
+"""Runtime dunder assignment and deletion on a class re-resolve the slot on the type and recursively on every subclass whose own dict does not shadow the name, and class creation resolves inherited slots from the MRO dicts for every slot family (CPython update_slot / fixup_slot_dispatchers).
 
 :kind: test
 """

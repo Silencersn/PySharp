@@ -1,4 +1,4 @@
-﻿"""
+"""
 PEP 479 — a StopIteration escaping a generator frame must be
 replaced by RuntimeError('generator raised StopIteration') with the original
 exception as __cause__, instead of being mistaken for normal exhaustion.

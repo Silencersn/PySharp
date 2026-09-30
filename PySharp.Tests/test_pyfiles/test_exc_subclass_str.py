@@ -1,4 +1,4 @@
-﻿"""OSError and the UnicodeEncodeError/UnicodeTranslateError/UnicodeDecodeError/SyntaxError builtins render CPython's dedicated __str__ forms over their member tables.
+"""OSError and the UnicodeEncodeError/UnicodeTranslateError/UnicodeDecodeError/SyntaxError builtins render CPython's dedicated __str__ forms over their member tables.
 
 Covers OSError's [Errno]/[WinError] rendering and errno-to-subclass mapping, code-point escaping in codec error messages, and SyntaxError's "msg (file, line N)" info tuple.
 

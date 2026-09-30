@@ -1,4 +1,4 @@
-﻿"""Verifies that when a later with-item's __enter__ fails, the already-entered managers' __exit__ runs in reverse order with the original exception preserved.
+"""Verifies that when a later with-item's __enter__ fails, the already-entered managers' __exit__ runs in reverse order with the original exception preserved.
 
 Covers operand temporaries pending in the body, as-target unpack failures, return through the body, nesting, generators, and async with.
 

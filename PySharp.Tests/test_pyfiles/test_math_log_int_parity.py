@@ -1,4 +1,4 @@
-﻿"""math.log, log2 and log10 on integer inputs convert through the double exactly like CPython's loghelper — exact powers of ten, the _PyLong_Frexp fallback for huge ints — with CPython's domain-error messages and two-arg log staying log(x)/log(base).
+"""math.log, log2 and log10 on integer inputs convert through the double exactly like CPython's loghelper — exact powers of ten, the _PyLong_Frexp fallback for huge ints — with CPython's domain-error messages and two-arg log staying log(x)/log(base).
 
 :kind: test
 """

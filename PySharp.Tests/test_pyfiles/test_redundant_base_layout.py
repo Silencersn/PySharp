@@ -1,4 +1,4 @@
-﻿"""
+"""
 redundant bases already covered by another base's MRO must not
 raise a layout conflict.
 

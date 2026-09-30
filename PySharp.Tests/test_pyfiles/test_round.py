@@ -1,4 +1,4 @@
-﻿"""
+"""
 round(float, ndigits) must match CPython's decimal-based
 rounding for ".xx5"-style values.
 

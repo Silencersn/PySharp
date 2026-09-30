@@ -1,4 +1,4 @@
-﻿"""Verifies generator state classification on send/throw and the deprecated three-argument throw() signature.
+"""Verifies generator state classification on send/throw and the deprecated three-argument throw() signature.
 
 Closed or exhausted generators stop iteration on any send, while the just-started TypeError applies only to a never-started one; throw(type, value, tb) warns with DeprecationWarning and normalizes arguments like CPython gen_throw.
 

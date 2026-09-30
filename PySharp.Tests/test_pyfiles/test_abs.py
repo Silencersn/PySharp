@@ -1,4 +1,4 @@
-﻿"""
+"""
 abs() must clear the sign bit of a float (CPython float_abs /
 fabs semantics), so abs(-0.0) is +0.0 and math.copysign sees a positive
 result. int.__abs__ must convert exact-subtype instances (bool) to pooled

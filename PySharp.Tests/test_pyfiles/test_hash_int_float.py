@@ -1,4 +1,4 @@
-﻿"""
+"""
 int and float hashes must be consistent for equal values, so
 dict/set mixed-key operations work.
 

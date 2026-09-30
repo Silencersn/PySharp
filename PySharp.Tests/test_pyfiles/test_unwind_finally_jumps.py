@@ -1,4 +1,4 @@
-﻿"""Verifies that a finally body copied inline for an in-flight exit compiles with the regions lexically outside the try visible, so break/continue/return inside the copy override the pending exit while outer cleanups still run.
+"""Verifies that a finally body copied inline for an in-flight exit compiles with the regions lexically outside the try visible, so break/continue/return inside the copy override the pending exit while outer cleanups still run.
 
 :kind: test
 """

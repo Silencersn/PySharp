@@ -1,4 +1,4 @@
-﻿"""
+"""
 truthiness must honor __len__ when __bool__ is absent
 (CPython PyObject_IsTrue). Types without __bool__ that define __len__
 were always truthy, so bool()/not/if/while/and-or ignored the length.

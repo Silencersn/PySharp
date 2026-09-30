@@ -1,4 +1,4 @@
-﻿"""int(s, 0) rejects a prefix-less literal starting with '0' unless its value is zero, raising ValueError with CPython's message, while explicit base 10 keeps accepting leading zeros and underscores.
+"""int(s, 0) rejects a prefix-less literal starting with '0' unless its value is zero, raising ValueError with CPython's message, while explicit base 10 keeps accepting leading zeros and underscores.
 
 :kind: test
 """

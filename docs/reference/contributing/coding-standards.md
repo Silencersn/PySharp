@@ -7,6 +7,15 @@
 - `PyObject` 子类必须命名为 `Py<Name>Object`，`PyTypeObject` 子类必须命名为 `Py<Name>ObjectType`；
 - 少量历史豁免内置在白名单里：`PyObjectManagedDict`、`PyTypeObject`、`PyExceptionType<>`、`UserDefinedType`、`PySharpException` 等。
 
+## 文件编码
+
+仓库内所有文本文件统一为 **UTF-8 无 BOM**，`.editorconfig` 的 `charset = utf-8` 是声明的正典。构建期以 `PYBOM001` 强制：`Directory.Build.targets` 里的 `EnforceNoBom` 目标用 `git ls-files` 枚举跟踪文件，任一文件以 `EF BB BF` 开头即报 error 并中断构建。
+
+- 不依赖 `.editorconfig` 本身——`charset` 只驱动编辑器与 IDE，编译器不会强制，所以另配了构建检查。BOM 在评审中不可见，但编辑器重写它时会留下一个游离的首行 diff。
+- 枚举走 `git ls-files`：既覆盖恰好随仓库交付的文件，也自动跳过被忽略的第三方树（`.reference/`、`.github/skills/`）——那些 CPython 参考源码里有刻意保留的带 BOM 与非 UTF-8 测试数据。
+- **夹具的 BOM 不是规范允许项**：`test_pyfiles/` 的 `.py` 同样是 UTF-8 无 BOM。需要测 BOM 语义时在内存里构造字节（`b"\xef\xbb\xbf"`）或写自己的临时文件，不要让夹具文件自身带 BOM——那会让"测试数据"与"仓库编码纪律"纠缠在一起。
+- 换行由 `.gitattributes` 的 `* text=auto` 归一，仓库内一律 LF；`PySharp/Lib/**/*.py` 另钉 `eol=lf`，因为其字节被逐字烘焙进生成代码。
+
 ## 控制流与大括号（PYSPS002 / 003 / 004 / 006）
 
 - 单语句体不用大括号且必须换行：

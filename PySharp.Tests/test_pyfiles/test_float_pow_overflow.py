@@ -1,4 +1,4 @@
-﻿"""
+"""
 float `**` (and pow()) overflowing the double range raises
 OverflowError with the errno args tuple, like CPython float_pow's
 ERANGE handling — instead of silently returning +/-inf. Underflow to

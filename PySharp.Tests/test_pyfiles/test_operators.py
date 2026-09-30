@@ -1,4 +1,4 @@
-﻿"""
+"""
 Operator tests (arithmetic, logical, bitwise, and rich comparison)
 
 :kind: test

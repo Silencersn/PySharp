@@ -1,4 +1,4 @@
-﻿"""
+"""
 sort comparison semantics.
 
 Every sort comparison is PyObject_RichCompareBool(pivot, placed, Py_LT)

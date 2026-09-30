@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for generic class support (PEP 695).
 Tests:
 - Basic generic class definition with type params

@@ -1,4 +1,4 @@
-﻿"""Verifies slice objects carry value semantics: rich comparison delegates to the (start, stop, step) tuple with an identity shortcut, the hash uses the tuplehash lanes without the length mix-in, repr prints the three-part constructor form, and indices() converts like CPython's _PySlice_GetLongIndices with clipping and exact error faces.
+"""Verifies slice objects carry value semantics: rich comparison delegates to the (start, stop, step) tuple with an identity shortcut, the hash uses the tuplehash lanes without the length mix-in, repr prints the three-part constructor form, and indices() converts like CPython's _PySlice_GetLongIndices with clipping and exact error faces.
 
 Value identity also makes slices usable as dict keys.
 

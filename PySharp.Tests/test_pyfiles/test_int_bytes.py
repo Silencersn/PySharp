@@ -1,4 +1,4 @@
-﻿"""
+"""
 int() accepts bytes-like arguments (bytes, bytearray,
 memoryview), parsing their ASCII characters with the given base like
 CPython PyNumber_Long. The old implementation rejected bytes with the

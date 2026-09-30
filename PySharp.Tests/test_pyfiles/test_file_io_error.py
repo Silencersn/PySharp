@@ -1,4 +1,4 @@
-﻿"""Verifies file I/O error semantics match CPython: legal reopening of shared handles, ValueError for invalid seek whence, the single-flush r+ lifecycle, writable exclusive "x"/"x+" creation, and PermissionError for opening a directory.
+"""Verifies file I/O error semantics match CPython: legal reopening of shared handles, ValueError for invalid seek whence, the single-flush r+ lifecycle, writable exclusive "x"/"x+" creation, and PermissionError for opening a directory.
 
 :kind: test
 """

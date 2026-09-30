@@ -1,4 +1,4 @@
-﻿"""Implicit __context__ chaining follows CPython's thread-wide handled slot: any new exception raised while another is handled chains it, including interpreter-raised and cross-frame errors, while reraise-style propagation never chains.
+"""Implicit __context__ chaining follows CPython's thread-wide handled slot: any new exception raised while another is handled chains it, including interpreter-raised and cross-frame errors, while reraise-style propagation never chains.
 
 Covers except-clause matching errors, finally and with unwinds, generator throw/close injection and yield-from delegation, except* settlement, context-cycle breaking, and slot restoration after handlers complete.
 

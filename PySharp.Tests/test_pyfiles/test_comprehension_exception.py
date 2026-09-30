@@ -1,4 +1,4 @@
-﻿"""
+"""
 inline frame cleanup when exception occurs in comprehension
 inside a function with try-except.
 

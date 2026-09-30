@@ -1,4 +1,4 @@
-﻿"""
+"""
 exception subclass __init__ receives keyword arguments.
 
 BaseException.__new__ (and BaseExceptionGroup.__new__) accept and ignore

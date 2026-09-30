@@ -1,4 +1,4 @@
-﻿"""
+"""
 format()/f-string int 'x'/'X' must not retain .NET's sign-bit
 leading '0' for values whose MSB is set.
 

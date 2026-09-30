@@ -1,4 +1,4 @@
-﻿"""
+"""
 the lexer must track every open bracket on a stack and
 report the innermost one still open at EOF (CPython raises
 SyntaxError: 'X' was never closed from parenstack[level-1]). The

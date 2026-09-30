@@ -1,4 +1,4 @@
-﻿"""
+"""
 bytes(n)/bytearray(n) with an index-able source (int, bool,
 any __index__) must zero-fill n bytes like CPython, with CPython's exact
 error handling: negative count -> ValueError, ssize_t overflow ->

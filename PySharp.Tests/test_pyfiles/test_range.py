@@ -1,4 +1,4 @@
-﻿"""
+"""
 Range object tests
 
 :kind: test

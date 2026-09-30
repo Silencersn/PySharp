@@ -1,4 +1,4 @@
-﻿"""
+"""
 runtime decimal conversions between int and str must raise
 ValueError beyond 4300 digits (the runtime half of the CVE-2020-10735
 guard), like CPython. PySharp used to accept both directions

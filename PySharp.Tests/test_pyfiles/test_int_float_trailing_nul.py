@@ -1,4 +1,4 @@
-﻿"""
+"""
 int()/float() string parsing must reject U+0000 anywhere in
 the input. CPython's parsers only accept a literal when they consume the
 whole string (Objects/longobject.c PyLong_FromUnicodeObject,

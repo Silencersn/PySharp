@@ -1,4 +1,4 @@
-﻿"""
+"""
 bin()/hex() on negative integers whose bit length is a multiple
 of 8 must not crash (Debug.Assert / FailFast) and must produce CPython's
 output.

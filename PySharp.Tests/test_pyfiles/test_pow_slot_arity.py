@@ -1,4 +1,4 @@
-﻿"""Pow slot arity validation.
+"""Pow slot arity validation.
 
 CPython's slot_nb_power passes two arguments to Python-level __pow__ and
 __rpow__ for the binary form (x ** y, pow(x, y), pow(x, y, None)) and

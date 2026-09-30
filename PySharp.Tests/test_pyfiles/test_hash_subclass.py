@@ -1,4 +1,4 @@
-﻿"""
+"""
 hash() must return the built-in int, never an int subclass
 instance. hash(MyInt(9)) had type MyInt in PySharp; CPython returns int.
 

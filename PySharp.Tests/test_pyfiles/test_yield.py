@@ -1,4 +1,4 @@
-﻿"""
+"""
 Generator and yield/yield from behavior tests
 
 :kind: test

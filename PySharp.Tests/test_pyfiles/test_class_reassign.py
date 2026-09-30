@@ -1,4 +1,4 @@
-﻿"""
+"""
 __class__ is writable (CPython object_set_class). Only the type
 pointer moves, so type()/isinstance()/method lookup follow the new class at
 once, __init__ does not run again and the instance dict stays in place. A

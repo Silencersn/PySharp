@@ -1,4 +1,4 @@
-﻿"""
+"""
 a star_expressions list with exactly one element followed by a
 trailing comma must build a single-element tuple, not silently degenerate
 into the bare element.

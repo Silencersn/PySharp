@@ -1,4 +1,4 @@
-﻿"""
+"""
 Test for ExtendedArg jump target bug in StackSizeHelper.
 
 This test creates functions with conditional jumps (POP_JUMP_IF_FALSE)

@@ -1,4 +1,4 @@
-﻿"""
+"""
 the complex constructor must bind 'real'/'imag' keyword
 arguments (CPython complex_new_impl) — keyword forms used to be silently
 ignored and always produced (0+0j). Keyword/positional conflicts, total

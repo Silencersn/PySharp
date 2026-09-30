@@ -1,4 +1,4 @@
-﻿"""
+"""
 open().readline() at EOF returns ''/b'' (not StopIteration),
 while iteration (__next__) raises StopIteration once exhausted.
 

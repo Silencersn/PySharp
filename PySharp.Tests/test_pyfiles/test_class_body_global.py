@@ -1,4 +1,4 @@
-﻿"""
+"""
 `global` declarations inside a class body route bindings to the
 module globals instead of the class namespace.
 

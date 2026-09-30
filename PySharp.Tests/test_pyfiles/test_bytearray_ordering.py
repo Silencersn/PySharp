@@ -1,4 +1,4 @@
-﻿"""Order comparisons (< <= > >= == !=) between bytearray, bytes and memoryview compare bytewise with a length tiebreak: bytearray accepts every bytes-like operand, bytes routes cross-type comparisons through the reflected slot and rejects memoryview, and unrelated types raise the exact TypeError.
+"""Order comparisons (< <= > >= == !=) between bytearray, bytes and memoryview compare bytewise with a length tiebreak: bytearray accepts every bytes-like operand, bytes routes cross-type comparisons through the reflected slot and rejects memoryview, and unrelated types raise the exact TypeError.
 
 Also checks ordering-driven sorted/min/max over mixed bytes-like sequences and a 600-case deterministic sweep across all six operators.
 

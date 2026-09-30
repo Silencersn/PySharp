@@ -1,4 +1,4 @@
-﻿"""
+"""
 str.startswith/endswith with a negative 'end' must map end to
 len+end (like slicing) before comparing.
 

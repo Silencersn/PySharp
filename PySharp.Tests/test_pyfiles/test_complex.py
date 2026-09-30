@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for complex numbers - covers PyComplexObject, PyComplexObjectType
 
 :kind: test

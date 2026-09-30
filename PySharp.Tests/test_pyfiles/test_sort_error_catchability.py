@@ -1,4 +1,4 @@
-﻿"""
+"""
 sort comparison errors stay ordinary Python exceptions.
 
 Every comparison inside list.sort()/sorted() propagates through the

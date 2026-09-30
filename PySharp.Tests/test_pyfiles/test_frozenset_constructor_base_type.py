@@ -1,4 +1,4 @@
-﻿"""
+"""
 frozenset() of an exact frozenset returns the instance itself
 (CPython make_new_set fast path), but a frozenset SUBCLASS instance must be
 copied into the base type — the constructor used to pass subclass instances

@@ -1,4 +1,4 @@
-﻿"""Verifies that unary slot hooks (__neg__/__pos__/__invert__/__abs__) pass their result through unchecked, so a hook returning NotImplemented yields the singleton itself, while a missing slot raises the bad-operand TypeError and the binary reflected fallback keeps its own semantics.
+"""Verifies that unary slot hooks (__neg__/__pos__/__invert__/__abs__) pass their result through unchecked, so a hook returning NotImplemented yields the singleton itself, while a missing slot raises the bad-operand TypeError and the binary reflected fallback keeps its own semantics.
 
 :kind: test
 """

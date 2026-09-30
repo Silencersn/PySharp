@@ -1,4 +1,4 @@
-﻿"""Verifies that __exit__ receives (None, None, None) on normal with-body completion and the active exception on failure, and that a truthy __exit__ return suppresses the exception.
+"""Verifies that __exit__ receives (None, None, None) on normal with-body completion and the active exception on failure, and that a truthy __exit__ return suppresses the exception.
 
 :kind: test
 """

@@ -1,4 +1,4 @@
-﻿"""
+"""
 file objects must expose readlines() with CPython's
 _IOBase.readlines hint semantics — read lines until the accumulated size
 EXCEEDS a positive hint (the crossing line is kept); hint <= 0 means no

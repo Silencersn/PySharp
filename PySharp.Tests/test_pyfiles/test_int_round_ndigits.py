@@ -1,4 +1,4 @@
-﻿"""
+"""
 round(int, ndigits) with a negative ndigits must round to the
 nearest multiple of 10 ** -ndigits using round-half-to-even (CPython
 long_round's divmod_near), not return the value unchanged. Ties go to the

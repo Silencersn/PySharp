@@ -1,4 +1,4 @@
-﻿"""
+"""
 comparison recursion is bounded by the native stack, not by
 Python frames. Cyclic container pairs and __eq__ re-entry never enter a
 frame, so the frame counters could not stop them from exhausting the

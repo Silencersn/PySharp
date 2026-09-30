@@ -1,4 +1,4 @@
-﻿"""
+"""
 async constructs outside their required context must be
 rejected with SyntaxError at compile time, like CPython. PySharp used to
 accept (and even fully execute) the following forms:

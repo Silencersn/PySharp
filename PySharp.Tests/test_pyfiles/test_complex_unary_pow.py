@@ -1,4 +1,4 @@
-﻿"""Complex unary minus negates both components and unary plus returns an exact complex unchanged, and complex ** supports integer, fractional (polar principal branch) and zero exponents, raising ZeroDivisionError for zero to a negative power.
+"""Complex unary minus negates both components and unary plus returns an exact complex unchanged, and complex ** supports integer, fractional (polar principal branch) and zero exponents, raising ZeroDivisionError for zero to a negative power.
 
 :kind: test
 """

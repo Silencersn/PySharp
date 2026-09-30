@@ -1,4 +1,4 @@
-﻿"""
+"""
 a non-str left operand in `<x> in <str>` raises a TypeError
 that names the offending type, instead of raising with an empty message.
 CPython unicode_contains formats the left operand's tp_name

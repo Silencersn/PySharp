@@ -1,4 +1,4 @@
-﻿"""
+"""
 a from-import of a name missing from a package raises
 ImportError ("cannot import name '<name>' from '<package>'"), never the
 underlying AttributeError. The old IMPORT_FROM path let AttributeError

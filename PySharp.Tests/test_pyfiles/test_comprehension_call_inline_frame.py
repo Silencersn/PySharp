@@ -1,4 +1,4 @@
-﻿"""Verifies that function calls made inside an inlined comprehension frame do not detach or corrupt the enclosing frame's locals (no UnboundLocalError from pool-recycled spans), and that UnboundLocalError names the source variable instead of a slot index.
+"""Verifies that function calls made inside an inlined comprehension frame do not detach or corrupt the enclosing frame's locals (no UnboundLocalError from pool-recycled spans), and that UnboundLocalError names the source variable instead of a slot index.
 
 :kind: test
 """

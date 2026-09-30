@@ -1,4 +1,4 @@
-﻿"""Converting a bigint outside the double range to float raises OverflowError with CPython's 'int too large to convert to float' message at every conversion site — mixed arithmetic, int pow, complex operations, the complex() constructor and float formatting — while comparisons never convert.
+"""Converting a bigint outside the double range to float raises OverflowError with CPython's 'int too large to convert to float' message at every conversion site — mixed arithmetic, int pow, complex operations, the complex() constructor and float formatting — while comparisons never convert.
 
 :kind: test
 """

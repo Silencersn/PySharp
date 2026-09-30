@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for __annotations__ support.
 Tests:
 - Class variable annotations evaluate to objects (PEP 649 lazy evaluation)

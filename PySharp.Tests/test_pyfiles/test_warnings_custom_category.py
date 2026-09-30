@@ -1,4 +1,4 @@
-﻿"""
+"""
 warnings.warn with a user-defined Warning subclass must
 record the warning like any built-in category. CreateWarningInstance
 hard-cast the category to the built-in PyExceptionType, so a custom

@@ -1,4 +1,4 @@
-﻿"""Float floor-division and divmod derive from CPython's fmod-based algorithm: operands involving infinity yield nan, and a zero quotient takes the sign of the true quotient (-2 // inf is -1.0, not -0.0).
+"""Float floor-division and divmod derive from CPython's fmod-based algorithm: operands involving infinity yield nan, and a zero quotient takes the sign of the true quotient (-2 // inf is -1.0, not -0.0).
 
 :kind: test
 """

@@ -1,4 +1,4 @@
-﻿"""
+"""
 Keyword arguments and *args, **kwargs tests
 
 :kind: test

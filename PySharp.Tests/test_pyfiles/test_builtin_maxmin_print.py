@@ -1,4 +1,4 @@
-﻿"""Verifies max()/min() key, default and error-propagation semantics and print()'s file/flush behavior, including writes to file objects and real files.
+"""Verifies max()/min() key, default and error-propagation semantics and print()'s file/flush behavior, including writes to file objects and real files.
 
 :kind: test
 """

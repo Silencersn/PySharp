@@ -1,4 +1,4 @@
-﻿"""
+"""
 Deep nested generic tests: class and function generics alternating.
 Tests closure chains across multiple generic scopes.
 

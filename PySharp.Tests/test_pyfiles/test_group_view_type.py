@@ -1,4 +1,4 @@
-﻿"""
+"""
 three CPython semantics alignments:
 - ExceptionGroup constructor reports non-exception items with their
   0-based index

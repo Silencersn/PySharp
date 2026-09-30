@@ -1,4 +1,4 @@
-﻿"""
+"""
 `x in range` must use CPython's O(1) arithmetic test for int
 (and bool) operands instead of enumerating up to range length — huge ranges
 such as `10**20 in range(10**30)` used to hang. Non-int operands keep the

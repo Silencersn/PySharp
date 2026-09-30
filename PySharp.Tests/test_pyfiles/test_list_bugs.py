@@ -1,4 +1,4 @@
-﻿"""tests for list bugs found during code review.
+"""tests for list bugs found during code review.
 
 :kind: test
 """

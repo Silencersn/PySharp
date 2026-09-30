@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for TypeVar runtime objects in generic classes (PEP 695).
 Comprehensive tests covering:
 - __type_params__ on generic classes

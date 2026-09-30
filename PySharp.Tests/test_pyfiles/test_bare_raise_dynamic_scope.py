@@ -1,4 +1,4 @@
-﻿"""A bare raise re-raises the active exception of the whole dynamic call chain (CPython exc_info), not just the current frame, and raises RuntimeError when no exception is active.
+"""A bare raise re-raises the active exception of the whole dynamic call chain (CPython exc_info), not just the current frame, and raises RuntimeError when no exception is active.
 
 Covers helpers called from except bodies and finallys, with-statement __exit__, nested handlers, and generator frames resumed by a caller.
 

@@ -1,4 +1,4 @@
-﻿"""Import target for the in-class-body name-mangled import fixture.
+"""Import target for the in-class-body name-mangled import fixture.
 
 :kind: helper
 """

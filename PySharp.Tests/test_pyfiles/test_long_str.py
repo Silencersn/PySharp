@@ -1,4 +1,4 @@
-﻿"""Very long string literals, plain and f-string built, over a thousand characters each, keep their full length and content.
+"""Very long string literals, plain and f-string built, over a thousand characters each, keep their full length and content.
 
 :kind: test
 """

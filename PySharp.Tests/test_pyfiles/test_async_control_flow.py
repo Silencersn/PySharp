@@ -1,4 +1,4 @@
-﻿"""Verifies that break, continue, and return jumping out of async with and async for await __aexit__ and unwind runtime handler state correctly.
+"""Verifies that break, continue, and return jumping out of async with and async for await __aexit__ and unwind runtime handler state correctly.
 
 Covers break and continue across async with, return from async with, break out of async for, and break crossing async with under try/finally; coroutines are driven manually with send(None).
 

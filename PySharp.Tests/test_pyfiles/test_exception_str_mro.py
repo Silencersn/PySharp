@@ -1,4 +1,4 @@
-﻿"""Exception __str__ is resolved through the first MRO entry that defines __str__ in its own dict, so a native base inheriting the default (TypeError) must not mask a later base's real method (KeyError's repr-style __str__).
+"""Exception __str__ is resolved through the first MRO entry that defines __str__ in its own dict, so a native base inheriting the default (TypeError) must not mask a later base's real method (KeyError's repr-style __str__).
 
 :kind: test
 """

@@ -1,4 +1,4 @@
-﻿"""
+"""
 excess constructor arguments on classes that define neither
 __new__ nor __init__ (the object defaults) must raise TypeError like
 CPython object_new/object_init, not be silently swallowed.

@@ -1,4 +1,4 @@
-﻿"""
+"""
 the lexer must validate the end of a number token like
 CPython's verify_end_of_number (Parser/lexer/lexer.c:304-358):
 

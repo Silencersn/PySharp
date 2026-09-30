@@ -1,4 +1,4 @@
-﻿"""
+"""
 zfill and %-formatting measure width and precision in
 code points, not in UTF-16 code units, so an astral character occupies a
 single column.

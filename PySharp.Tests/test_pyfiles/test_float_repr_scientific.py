@@ -1,4 +1,4 @@
-﻿"""Float repr/str switch to scientific notation exactly at CPython's thresholds (decimal point <= -4 or > 16) with lowercase 'e' and an exponent of at least two digits, and the repr slot is inherited by float subclasses.
+"""Float repr/str switch to scientific notation exactly at CPython's thresholds (decimal point <= -4 or > 16) with lowercase 'e' and an exponent of at least two digits, and the repr slot is inherited by float subclasses.
 
 :kind: test
 """

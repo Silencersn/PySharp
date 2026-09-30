@@ -1,4 +1,4 @@
-﻿"""In-place pow protocol semantics.
+"""In-place pow protocol semantics.
 
 CPython's slot_nb_inplace_power drops the modulus entirely and always
 calls __ipow__(self, other) with two arguments; **= falls back to the

@@ -1,4 +1,4 @@
-﻿"""
+"""
 dotted value patterns (`case Color.RED:`) used to put the parser
 into an infinite ParseAttr <-> ParseNameOrAttr recursion (the token cursor was
 reset before each re-entry), killing the process with an uncatchable .NET

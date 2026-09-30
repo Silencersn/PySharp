@@ -1,4 +1,4 @@
-﻿"""
+"""
 a plain-function __new__ in a class body is implicitly a
 staticmethod.
 

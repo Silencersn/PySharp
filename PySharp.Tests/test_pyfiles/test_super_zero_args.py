@@ -1,4 +1,4 @@
-﻿"""Zero-argument super() raises a catchable RuntimeError ("super(): no arguments" or "super(): arg[0] deleted") when the calling frame has no usable first positional parameter, and still works through captured (MakeCell'd) parameters and normal method and classmethod chains.
+"""Zero-argument super() raises a catchable RuntimeError ("super(): no arguments" or "super(): arg[0] deleted") when the calling frame has no usable first positional parameter, and still works through captured (MakeCell'd) parameters and normal method and classmethod chains.
 
 :kind: test
 """

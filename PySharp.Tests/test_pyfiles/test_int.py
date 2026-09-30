@@ -1,4 +1,4 @@
-﻿"""Int core behavior — repr/str/hash/bool, conversions, arithmetic, bitwise, comparisons, divmod/pow, the full dunder slot surface, and an int subclass — matches CPython for both int and int subclass instances.
+"""Int core behavior — repr/str/hash/bool, conversions, arithmetic, bitwise, comparisons, divmod/pow, the full dunder slot surface, and an int subclass — matches CPython for both int and int subclass instances.
 
 :kind: test
 """

@@ -1,4 +1,4 @@
-﻿"""
+"""
 tests for typing.Generic instantiation behavior.
 
 :kind: test

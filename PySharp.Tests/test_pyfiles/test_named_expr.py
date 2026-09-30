@@ -1,4 +1,4 @@
-﻿"""Verifies that assignment expressions (PEP 572 walrus) bind the target in the enclosing scope across plain expressions, comprehensions, while/if tests, call arguments, tuples, and nested walrus chains.
+"""Verifies that assignment expressions (PEP 572 walrus) bind the target in the enclosing scope across plain expressions, comprehensions, while/if tests, call arguments, tuples, and nested walrus chains.
 
 :kind: test
 """

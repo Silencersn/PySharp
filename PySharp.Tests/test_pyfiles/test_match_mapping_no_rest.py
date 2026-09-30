@@ -1,4 +1,4 @@
-﻿"""
+"""
 a mapping pattern (`case {...}`) that matches successfully
 without a `**rest` capture must not leave the keys tuple on the operand
 stack. The compiler used to skip popping the keys tuple on the success

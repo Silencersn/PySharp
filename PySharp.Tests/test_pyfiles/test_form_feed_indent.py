@@ -1,4 +1,4 @@
-﻿"""
+"""
 a form feed (U+000C) inside indentation must reset the column
 counter to zero, like CPython (Parser/lexer/lexer.c:529, "For Emacs
 users": col = altcol = 0). PySharp used to treat it as ordinary

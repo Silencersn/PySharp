@@ -1,4 +1,4 @@
-﻿"""
+"""
 Standard dictionary operation and method tests
 
 :kind: test

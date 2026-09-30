@@ -1,4 +1,4 @@
-﻿"""
+"""
 Relative import tests
 
 This script tests that explicit relative imports (PEP 328) work correctly.

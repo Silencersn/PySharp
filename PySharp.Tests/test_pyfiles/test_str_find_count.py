@@ -1,4 +1,4 @@
-﻿"""str find/count/partition/expandtabs match CPython's edge-case contracts.
+"""str find/count/partition/expandtabs match CPython's edge-case contracts.
 
 partition/rpartition miss falls back to (self, '', '') / ('', '', self), an
 empty needle counts and finds at the zero-width window with clamped bounds,

@@ -1,4 +1,4 @@
-﻿"""
+"""
 int(True) / int(False) must never retag the bool singletons.
 PyIntObjectType.New used to assign cls into obj._pyType unconditionally,
 permanently corrupting the process-wide True/False singletons (their type

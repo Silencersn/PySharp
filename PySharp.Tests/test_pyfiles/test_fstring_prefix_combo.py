@@ -1,4 +1,4 @@
-﻿"""
+"""
 incompatible string-prefix combinations (fB, tb, fu, ...) must
 not be silently accepted as f-string/t-string prefixes.
 

@@ -1,4 +1,4 @@
-﻿"""
+"""
 Standard list operations and method tests
 
 :kind: test

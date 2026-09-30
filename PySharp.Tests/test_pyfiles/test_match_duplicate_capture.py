@@ -1,4 +1,4 @@
-﻿"""
+"""
 a capture name repeated inside one pattern (`case [a, a]:`) used
 to be silently accepted - the pattern matched any two-element sequence with
 the later binding shadowing the earlier one.

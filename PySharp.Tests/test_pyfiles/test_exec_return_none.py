@@ -1,4 +1,4 @@
-﻿"""exec() must always return None, even when handed a code object compiled in 'eval' mode, while eval() keeps returning the value and exec() still applies its side effects to the target namespace.
+"""exec() must always return None, even when handed a code object compiled in 'eval' mode, while eval() keeps returning the value and exec() still applies its side effects to the target namespace.
 
 :kind: test
 """

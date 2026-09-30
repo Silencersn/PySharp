@@ -1,4 +1,4 @@
-﻿"""
+"""
 list.index(x, start) must clamp an out-of-range negative start to
 0 (CPython), instead of leaking a bare .NET ArgumentOutOfRangeException that
 Python try/except cannot catch.

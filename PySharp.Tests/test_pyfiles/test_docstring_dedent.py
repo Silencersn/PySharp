@@ -1,4 +1,4 @@
-﻿"""
+"""
 docstrings bound to __doc__ (function, class, module — the
 first statement being a string literal) are cleaned at compile time with
 CPython's _PyCompile_CleanDoc semantics: expandtabs first, then the first

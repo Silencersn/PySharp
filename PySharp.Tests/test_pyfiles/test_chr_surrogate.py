@@ -1,4 +1,4 @@
-﻿"""
+"""
 chr() returns a lone surrogate for a code point in
 U+D800-U+DFFF, and ord()/repr()/ascii() read it back unchanged.
 

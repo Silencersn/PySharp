@@ -1,4 +1,4 @@
-﻿"""Verifies that arbitrarily nested multi-line f-strings across all quote kinds (interpolating dicts, lists, sets, calls, conditionals, and further f-strings) parse and evaluate correctly, and that unterminated f-string errors name the right literal kind.
+"""Verifies that arbitrarily nested multi-line f-strings across all quote kinds (interpolating dicts, lists, sets, calls, conditionals, and further f-strings) parse and evaluate correctly, and that unterminated f-string errors name the right literal kind.
 
 :kind: test
 """

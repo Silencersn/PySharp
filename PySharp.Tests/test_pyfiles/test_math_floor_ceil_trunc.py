@@ -1,4 +1,4 @@
-﻿"""
+"""
 math.floor/ceil/trunc must return int (not float) and follow
 the CPython 3.14 dispatch - an exact float converts straight to int with
 the conversion errors for inf/nan, other objects try __floor__/__ceil__/

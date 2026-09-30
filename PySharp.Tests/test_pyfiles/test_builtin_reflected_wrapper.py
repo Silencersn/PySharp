@@ -1,4 +1,4 @@
-﻿"""Builtin types expose reflected operator wrappers (__radd__ through __ror__) synthesized from their non-null as_number slots, with CPython add_operators visibility rules.
+"""Builtin types expose reflected operator wrappers (__radd__ through __ror__) synthesized from their non-null as_number slots, with CPython add_operators visibility rules.
 
 Pins the int/bool/float/complex/str/set families, the absence of __radd__ on sequence types, and that the wrappers bind as real descriptors.
 

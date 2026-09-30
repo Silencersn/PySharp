@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for range edge cases - covers PyRangeObject iteration with step > 1, negative step
 
 :kind: test

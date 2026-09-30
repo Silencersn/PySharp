@@ -1,4 +1,4 @@
-﻿"""
+"""
 next(x) on a non-iterator must raise
 TypeError: '<type>' object is not an iterator, pointing at the argument
 itself, like CPython's builtin_next (Python/bltinmodule.c). PySharp used

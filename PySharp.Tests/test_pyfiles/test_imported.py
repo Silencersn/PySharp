@@ -1,4 +1,4 @@
-﻿"""Import target module exercised by the import statement fixtures.
+"""Import target module exercised by the import statement fixtures.
 
 :kind: helper
 """

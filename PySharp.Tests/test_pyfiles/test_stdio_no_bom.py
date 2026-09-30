@@ -1,4 +1,4 @@
-﻿"""Verifies stdout and stderr never emit a UTF-8 BOM; the C# side asserts the raw captured bytes.
+"""Verifies stdout and stderr never emit a UTF-8 BOM; the C# side asserts the raw captured bytes.
 
 :kind: test
 """

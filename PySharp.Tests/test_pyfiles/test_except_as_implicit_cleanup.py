@@ -1,4 +1,4 @@
-﻿"""An except-as name is implicitly cleaned up with `name = None; del name` on every handler exit, so an explicit del inside the body and an escaping exception never leak the binding or raise from the cleanup.
+"""An except-as name is implicitly cleaned up with `name = None; del name` on every handler exit, so an explicit del inside the body and an escaping exception never leak the binding or raise from the cleanup.
 
 :kind: test
 """

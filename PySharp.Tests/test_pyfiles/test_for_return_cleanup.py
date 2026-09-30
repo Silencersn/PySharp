@@ -1,4 +1,4 @@
-﻿"""
+"""
 for-loop iterator cleanup on return.
 
 Tests that returning from inside a for-loop body properly cleans up

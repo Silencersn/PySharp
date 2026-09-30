@@ -1,4 +1,4 @@
-﻿"""Built-in callables whose CPython signature is fully positional-only reject every keyword argument with a descriptive TypeError, while callables that declare keyword parameters keep accepting them by name.
+"""Built-in callables whose CPython signature is fully positional-only reject every keyword argument with a descriptive TypeError, while callables that declare keyword parameters keep accepting them by name.
 
 Covers the str search family, any/all, round, the generator/coroutine/async-generator send family, and the file and stdio io methods.
 

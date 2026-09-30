@@ -1,4 +1,4 @@
-﻿"""
+"""
 abs() of a complex value must dispatch the complex __abs__
 slot and return hypot(real, imag) as a float (CPython complex_abs) —
 it used to raise TypeError("bad operand type for abs(): 'complex'").

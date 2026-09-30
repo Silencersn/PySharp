@@ -1,4 +1,4 @@
-﻿"""
+"""
 bool's numeric slots follow the CPython boolobject.c
 specialization — bitwise and/or/xor keep bool when both operands are
 bool (falling through to the int slots otherwise), while the unary

@@ -1,4 +1,4 @@
-﻿"""
+"""
 complex str/repr must follow CPython complex_repr — a +0.0
 real part drops the parentheses and the real part (1j, -1j, 0j), while a
 -0.0 real part keeps the parenthesised form ((-0+0j)); the imaginary part

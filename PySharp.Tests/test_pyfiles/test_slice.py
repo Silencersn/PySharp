@@ -1,4 +1,4 @@
-﻿"""Verifies __getitem__ receives a slice object for subscript syntax, including tuple forms combining multiple slices.
+"""Verifies __getitem__ receives a slice object for subscript syntax, including tuple forms combining multiple slices.
 
 :kind: test
 """

@@ -1,4 +1,4 @@
-﻿"""Cycle partner of import_cycle_moda for module-level circular imports.
+"""Cycle partner of import_cycle_moda for module-level circular imports.
 
 :kind: helper
 """

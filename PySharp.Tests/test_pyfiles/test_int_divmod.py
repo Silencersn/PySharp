@@ -1,4 +1,4 @@
-﻿"""
+"""
 integer divmod() must use floor semantics like CPython's
 l_divmod (Objects/longobject.c) - quotient floored, remainder with the
 divisor's sign - and must raise ZeroDivisionError on a zero divisor.

@@ -1,4 +1,4 @@
-﻿"""
+"""
 int/float/bool on the LEFT of +, -, *, / and ** with a complex
 right operand must dispatch the complex reflected slots (CPython's
 order-agnostic complex slots) instead of raising TypeError — `1 + 1j` and

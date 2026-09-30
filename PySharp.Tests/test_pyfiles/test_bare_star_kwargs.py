@@ -1,4 +1,4 @@
-﻿"""
+"""
 a bare `*` (keyword-only separator) in a parameter list must
 be followed by at least one named keyword-only parameter. CPython rejects
 the bare-star-without-name forms with

@@ -1,4 +1,4 @@
-﻿"""Verifies that parse-time SyntaxErrors carry the full CPython location tuple (filename, lineno, offset, text, end_lineno, end_offset, msg and info args), while runtime-raised SyntaxErrors have no location info and the two-argument constructor path is unchanged.
+"""Verifies that parse-time SyntaxErrors carry the full CPython location tuple (filename, lineno, offset, text, end_lineno, end_offset, msg and info args), while runtime-raised SyntaxErrors have no location info and the two-argument constructor path is unchanged.
 
 :kind: test
 """

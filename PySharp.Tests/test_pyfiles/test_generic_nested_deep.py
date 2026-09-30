@@ -1,4 +1,4 @@
-﻿"""
+"""
 Deep nested generic closures.
 Uses only supported features: functions, nested classes, methods, tuples, and closures.
 

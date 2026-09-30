@@ -1,4 +1,4 @@
-﻿"""Verifies that closures capturing a comprehension's loop variable get a real cell in every compiler path — lambda-inlined comprehensions, generator expressions, and class-body comprehensions — with CPython 3.14 value semantics.
+"""Verifies that closures capturing a comprehension's loop variable get a real cell in every compiler path — lambda-inlined comprehensions, generator expressions, and class-body comprehensions — with CPython 3.14 value semantics.
 
 :kind: test
 """

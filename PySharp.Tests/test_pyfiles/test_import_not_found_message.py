@@ -1,4 +1,4 @@
-﻿"""
+"""
 a failed import quotes the module name through repr, and the
 raised ModuleNotFoundError carries the raw name on its `name` attribute.
 

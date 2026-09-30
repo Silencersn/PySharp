@@ -1,4 +1,4 @@
-﻿"""float.fromhex parses optionally signed, case-insensitive inf/infinity/nan literals before the hex grammar, rejects partial tokens with ValueError, and keeps the hex() round trip intact for non-finite values.
+"""float.fromhex parses optionally signed, case-insensitive inf/infinity/nan literals before the hex grammar, rejects partial tokens with ValueError, and keeps the hex() round trip intact for non-finite values.
 
 :kind: test
 """

@@ -1,4 +1,4 @@
-﻿"""
+"""
 BigInteger -> double conversion must round to nearest, ties to
 even (CPython's PyLong_AsDouble), using guard + sticky bits. The plain .NET
 (double) cast truncates the bits below the 53-bit mantissa, landing 1 ulp

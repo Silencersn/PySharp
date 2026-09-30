@@ -1,4 +1,4 @@
-﻿"""Verifies slice boundaries go through __index__ (PySlice_Unpack / _PyEval_SliceIndex), raising catchable TypeErrors instead of a .NET InvalidCastException.
+"""Verifies slice boundaries go through __index__ (PySlice_Unpack / _PyEval_SliceIndex), raising catchable TypeErrors instead of a .NET InvalidCastException.
 
 Covers __index__-provided bounds across list/tuple/bytes/bytearray/str, exact error messages, zero-step rejection before bounds unpacking, out-of-range saturation, and the shared conversion in slice assignment and deletion.
 

@@ -1,4 +1,4 @@
-﻿"""
+"""
 try-except-else semantics.
 
 Tests that:

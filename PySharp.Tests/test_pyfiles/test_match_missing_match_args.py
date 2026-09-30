@@ -1,4 +1,4 @@
-﻿"""
+"""
 a class pattern with positional sub-patterns against a class
 without __match_args__ raises the arity TypeError
 "<Name>() accepts 0 positional sub-patterns (N given)" like CPython

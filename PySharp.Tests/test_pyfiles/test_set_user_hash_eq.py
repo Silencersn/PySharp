@@ -1,4 +1,4 @@
-﻿"""Verifies set/frozenset storage of user-defined elements: full 64-bit stored hashes, merge paths reusing stored hashes without re-calling __hash__, stored-element __eq__ receivers with an identity shortcut, the exact TypeError wrapping and raw propagation rules for hash/eq failures, iterator size-change semantics, and frozenset hashing and lookup fallbacks.
+"""Verifies set/frozenset storage of user-defined elements: full 64-bit stored hashes, merge paths reusing stored hashes without re-calling __hash__, stored-element __eq__ receivers with an identity shortcut, the exact TypeError wrapping and raw propagation rules for hash/eq failures, iterator size-change semantics, and frozenset hashing and lookup fallbacks.
 
 Failures must surface as catchable Python exceptions, never .NET crashes.
 

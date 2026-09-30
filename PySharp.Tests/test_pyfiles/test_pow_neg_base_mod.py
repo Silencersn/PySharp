@@ -1,4 +1,4 @@
-﻿"""
+"""
 pow() with a negative base and a modulus must return CPython's
 normalized modulo result (in [0, |mod|)), not C# remainder semantics.
 

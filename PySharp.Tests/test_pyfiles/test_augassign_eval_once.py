@@ -1,4 +1,4 @@
-﻿"""
+"""
 augmented assignment must evaluate the target's sub-expressions
 exactly ONCE (CPython 3.14 semantics via Copy/Swap on the stack).
 

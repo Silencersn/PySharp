@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for generic function support (PEP 695) — __type_params__ on function objects.
 
 :kind: test

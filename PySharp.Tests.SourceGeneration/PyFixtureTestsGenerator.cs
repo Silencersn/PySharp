@@ -363,16 +363,14 @@ public sealed class PyFixtureTestsGenerator : IIncrementalGenerator
         }
 
         /// <summary>
-        /// Returns the body of the leading module docstring, skipping a UTF-8
-        /// BOM, leading whitespace and comment lines. Docstring escapes are not
-        /// interpreted (the corpus does not use them in headers).
+        /// Returns the body of the leading module docstring, skipping leading
+        /// whitespace and comment lines. Docstring escapes are not interpreted
+        /// (the corpus does not use them in headers).
         /// </summary>
         private static string? TryGetDocstring(string text, out bool unterminated)
         {
             unterminated = false;
             var index = 0;
-            if (text.Length > 0 && text[0] is '\uFEFF')
-                index++;
             while (index < text.Length)
             {
                 var ch = text[index];

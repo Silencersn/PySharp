@@ -1,4 +1,4 @@
-﻿"""
+"""
 Integer parsing tests (various bases and formatting)
 
 :kind: test

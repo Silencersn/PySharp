@@ -1,4 +1,4 @@
-﻿"""
+"""
 int() must accept any Unicode decimal digit (Nd) like CPython,
 for base 10 and every other base, keeping CPython's exact error messages
 (they quote the original string) and the digit-count limit semantics.

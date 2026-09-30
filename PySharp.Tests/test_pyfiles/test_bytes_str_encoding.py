@@ -1,4 +1,4 @@
-﻿"""Verifies bytes(str, encoding, errors) encodes like str.encode — the constructor accepts the encoding/errors pair positionally or by keyword and bytearray(str, encoding) shares the branch — and that the CPython clinic faces (arity, keyword names, str type checks, the without-a-string guards) report byte-exact messages.
+"""Verifies bytes(str, encoding, errors) encodes like str.encode — the constructor accepts the encoding/errors pair positionally or by keyword and bytearray(str, encoding) shares the branch — and that the CPython clinic faces (arity, keyword names, str type checks, the without-a-string guards) report byte-exact messages.
 
 :kind: test
 """

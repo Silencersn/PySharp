@@ -1,4 +1,4 @@
-﻿"""
+"""
 Exception handling tests (try-except-finally-else, raise)
 
 :kind: test

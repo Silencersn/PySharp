@@ -1,4 +1,4 @@
-﻿"""
+"""
 str/bytes/tuple `+` must give the right operand's
 __radd__ the first chance, like CPython (whose str/bytes/tuple have no
 nb_add — the reflected slot runs before the sq_concat fallback). The

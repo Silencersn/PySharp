@@ -1,4 +1,4 @@
-﻿"""
+"""
 str.replace('', new, count) must follow CPython's interleave
 semantics (n = min(count, len(s)+1) insertions) and must not leak a raw
 .NET exception for the default count.

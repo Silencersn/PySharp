@@ -1,4 +1,4 @@
-﻿"""
+"""
 __builtins__ must be injected in the form CPython picks per
 context, instead of always being the builtins module.
 

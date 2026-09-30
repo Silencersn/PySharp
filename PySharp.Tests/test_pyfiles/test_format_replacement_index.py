@@ -1,4 +1,4 @@
-﻿"""Verifies that str.format's out-of-range positional field raises CPython's IndexError 'Replacement index N out of range for positional args tuple' for both automatic and manual numbering, with neighboring error behaviors intact.
+"""Verifies that str.format's out-of-range positional field raises CPython's IndexError 'Replacement index N out of range for positional args tuple' for both automatic and manual numbering, with neighboring error behaviors intact.
 
 :kind: test
 """

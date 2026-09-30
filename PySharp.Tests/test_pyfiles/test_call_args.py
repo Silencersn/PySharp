@@ -1,4 +1,4 @@
-﻿"""
+"""
 Call-args edge cases.
 
 Cover paths introduced by b440261 (Span/ArrayPool argument parsing) that the

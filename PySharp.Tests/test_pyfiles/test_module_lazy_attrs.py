@@ -1,4 +1,4 @@
-﻿"""
+"""
 PEP 562 module-level __getattr__/__dir__ hooks.
 
 A module-level __getattr__ resolves attributes the module namespace

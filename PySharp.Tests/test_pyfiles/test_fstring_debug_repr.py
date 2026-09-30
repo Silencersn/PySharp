@@ -1,4 +1,4 @@
-﻿"""
+"""
 an f-string debug specifier (`{expr=}`) without an explicit
 conversion and without a format spec must default to repr(), like
 CPython. PySharp used to apply no conversion at all (str() semantics),

@@ -1,4 +1,4 @@
-﻿"""
+"""
 the by-name deref path (inline comprehensions per PEP 709 and
 class bodies) must report an empty cell exactly like CPython and like the
 _LoadDerefFast slot path already does: UnboundLocalError with the local

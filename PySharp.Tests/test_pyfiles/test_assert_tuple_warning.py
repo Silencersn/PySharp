@@ -1,4 +1,4 @@
-﻿"""
+"""
 `assert (tuple literal display)` emits the compile-time
 SyntaxWarning CPython emits in codegen_assert. Any non-empty tuple
 literal display as the assert test warns once with

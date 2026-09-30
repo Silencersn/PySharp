@@ -1,4 +1,4 @@
-﻿"""
+"""
 slice with step=0 must raise a catchable ValueError, not leak a
 bare .NET exception.
 

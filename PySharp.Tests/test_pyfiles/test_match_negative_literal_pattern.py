@@ -1,4 +1,4 @@
-﻿"""
+"""
 negative numeric literals in match case patterns (`case -1:`,
 `case -1.5:`) used to be rejected with a plain SyntaxError, while PEP 634
 allows signed numbers (minus only) as literal patterns.

@@ -1,4 +1,4 @@
-﻿"""complex(str) parses strings exactly like CPython's complex_from_string_inner: real/imaginary and j-suffix forms, inf/nan literals, digit underscores, optional brackets and whitespace, with ValueError for malformed input and TypeError for str in the two-argument form.
+"""complex(str) parses strings exactly like CPython's complex_from_string_inner: real/imaginary and j-suffix forms, inf/nan literals, digit underscores, optional brackets and whitespace, with ValueError for malformed input and TypeError for str in the two-argument form.
 
 :kind: test
 """

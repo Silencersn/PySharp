@@ -1,4 +1,4 @@
-﻿"""
+"""
 match statement sequence/mapping dispatch must be a pure
 type-flag check (CPython Py_TPFLAGS_SEQUENCE / Py_TPFLAGS_MAPPING),
 independent of slot presence.

@@ -1,4 +1,4 @@
-﻿"""
+"""
 callable() must probe __call__ on the *type* (CPython
 builtin_callable / tp_call semantics) — instance-level __getattr__ and
 __getattribute__ hooks must never fire, and their return values must not

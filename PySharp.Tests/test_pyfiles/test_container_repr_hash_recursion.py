@@ -1,4 +1,4 @@
-﻿"""
+"""
 container repr and tuple hashing recurse in native code only,
 so the Python frame counters could not bound them. A deeply nested list (or
 dict/tuple/frozenset) killed the process with an uncatchable

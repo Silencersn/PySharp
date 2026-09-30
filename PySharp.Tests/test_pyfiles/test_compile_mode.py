@@ -1,4 +1,4 @@
-﻿"""
+"""
 compile() with an invalid mode must raise ValueError (CPython
 raises "compile() mode must be 'exec', 'eval' or 'single'"), not TypeError.
 

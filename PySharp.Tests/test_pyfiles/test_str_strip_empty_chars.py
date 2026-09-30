@@ -1,4 +1,4 @@
-﻿"""
+"""
 str.strip/lstrip/rstrip with an empty 'chars' argument must not
 strip anything (CPython: an empty chars set means "strip nothing").
 

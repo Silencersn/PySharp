@@ -1,4 +1,4 @@
-﻿"""Verifies dict views expose the CPython view protocol: sq_length reads the live source size, keys/items membership goes through the source dict (items require exact 2-tuples), set-like richcompare gates on lengths before a containment scan, and dict_values stays iteration-only with identity-based equality.
+"""Verifies dict views expose the CPython view protocol: sq_length reads the live source size, keys/items membership goes through the source dict (items require exact 2-tuples), set-like richcompare gates on lengths before a containment scan, and dict_values stays iteration-only with identity-based equality.
 
 :kind: test
 """

@@ -1,4 +1,4 @@
-﻿"""
+"""
 `raise X from Y` must set __suppress_context__ = True for any
 explicit cause, an exception or None alike (CPython PyErr_SetCause).
 Previously only `from None` suppressed the implicit context; `from <exc>`

@@ -1,4 +1,4 @@
-﻿"""
+"""
 for identical operand types CPython's binary_op1 resolves both
 operands to a single shared slot, so only the forward variant is tried and
 the reflected method (__radd__ etc.) never runs — a class defining only

@@ -1,4 +1,4 @@
-﻿"""Verifies threading.Thread lifecycle semantics: is_alive() before start, run() override dispatch, RuntimeError on double start and join-before-start, and excepthook handling of uncaught target exceptions.
+"""Verifies threading.Thread lifecycle semantics: is_alive() before start, run() override dispatch, RuntimeError on double start and join-before-start, and excepthook handling of uncaught target exceptions.
 
 :kind: test
 :background: is_alive() on a never-started thread used to pierce the process

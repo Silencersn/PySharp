@@ -1,4 +1,4 @@
-﻿"""
+"""
 the length-hint protocol.
 
 CPython's PyObject_LengthHint consults len() first (only its TypeError falls

@@ -1,4 +1,4 @@
-﻿"""
+"""
 Double-star call kwargs edge cases.
 
 CPython compiles the kwargs of a **-call into one accumulating map, merging

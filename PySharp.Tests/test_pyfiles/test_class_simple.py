@@ -1,4 +1,4 @@
-﻿"""
+"""
 Simple class behavior tests
 
 :kind: test

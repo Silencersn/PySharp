@@ -1,4 +1,4 @@
-﻿"""
+"""
 a bare starred expression (`*a`) in an illegal position must
 raise SyntaxError, not be silently accepted with the star stripped.
 

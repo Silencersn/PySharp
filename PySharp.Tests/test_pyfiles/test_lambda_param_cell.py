@@ -1,4 +1,4 @@
-﻿"""Verifies that lambda parameters captured by nested lambdas or generator expressions are cell-ized like def parameters, so closure packing carries a real cell instead of aborting, including positional-only/keyword-only parameters and lazy genexp cells.
+"""Verifies that lambda parameters captured by nested lambdas or generator expressions are cell-ized like def parameters, so closure packing carries a real cell instead of aborting, including positional-only/keyword-only parameters and lazy genexp cells.
 
 :kind: test
 """

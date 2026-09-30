@@ -1,4 +1,4 @@
-﻿"""
+"""
 int() on NaN/infinity floats must raise catchable ValueError /
 OverflowError instead of crashing with a .NET OverflowException, and
 round(x) without ndigits must raise the same instead of a bare TypeError.

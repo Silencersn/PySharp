@@ -1,4 +1,4 @@
-﻿"""
+"""
 the sequence protocol family (sq_concat/sq_repeat and their
 in-place variants) lives on its own PyTypeSlots.Sequence group, with the
 CPython slotdefs "one name, many slots" semantics:

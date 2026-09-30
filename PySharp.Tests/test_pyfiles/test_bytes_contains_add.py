@@ -1,4 +1,4 @@
-﻿"""Verifies bytes/bytearray __contains__ — bytes-like subsequences in both cross directions, int/bool/__index__ byte membership with 0..255 validation, and the buffer TypeError for anything else — and __add__, which accepts any bytes-like operand keeping the left type and reports the exact concat TypeErrors.
+"""Verifies bytes/bytearray __contains__ — bytes-like subsequences in both cross directions, int/bool/__index__ byte membership with 0..255 validation, and the buffer TypeError for anything else — and __add__, which accepts any bytes-like operand keeping the left type and reports the exact concat TypeErrors.
 
 :kind: test
 """

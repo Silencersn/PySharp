@@ -1,4 +1,4 @@
-﻿"""
+"""
 a bytes literal containing a non-ASCII character (any code
 point above 0x7F) must be rejected with
 SyntaxError: bytes can only contain ASCII literal characters

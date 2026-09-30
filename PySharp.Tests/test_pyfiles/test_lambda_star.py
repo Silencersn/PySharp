@@ -1,4 +1,4 @@
-﻿"""
+"""
 a lambda's variable-arguments parameter must not swallow
 the body colon as a star annotation - 'lambda *a: a' used to fail
 with a bare SyntaxError because ParseParamStarAnnotation treated the

@@ -1,4 +1,4 @@
-﻿"""@classmethod binds to the class on both class-level and instance-level calls, passes the derived class through inheritance, and rejects wrong argument counts with TypeError.
+"""@classmethod binds to the class on both class-level and instance-level calls, passes the derived class through inheritance, and rejects wrong argument counts with TypeError.
 
 :kind: test
 """

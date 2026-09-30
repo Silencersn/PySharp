@@ -1,4 +1,4 @@
-﻿"""
+"""
 the str predicates follow CPython's Unicode tables rather
 than the general-category approximations — Numeric_Type=Digit/Numeric,
 the explicit space list, and the derived Other_Uppercase/Other_Lowercase

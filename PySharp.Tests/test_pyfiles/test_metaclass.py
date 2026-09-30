@@ -1,4 +1,4 @@
-﻿"""
+"""
 Metaclass behavior tests
 
 :kind: test

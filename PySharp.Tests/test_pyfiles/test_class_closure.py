@@ -1,4 +1,4 @@
-﻿"""
+"""
 __class__ cell propagation through nested function chain.
 
 Tests that when a metaclass __new__ defines nested closures whose inner

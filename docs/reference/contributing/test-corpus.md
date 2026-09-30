@@ -10,7 +10,7 @@
 
 ## 文件头元数据
 
-每个夹具必须以模块 docstring 开头（允许 UTF-8 BOM 与前导注释行），docstring 内含结构化字段列表：
+每个夹具必须以模块 docstring 开头（允许前导注释行），docstring 内含结构化字段列表：
 
 ```python
 """Float abs() clears the sign bit of a float and converts exact subtypes.

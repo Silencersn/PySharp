@@ -1,4 +1,4 @@
-﻿"""
+"""
 dir(instance) honors a custom __dir__ hook resolved through
 the type's MRO, sorting the result without dedup and accepting any
 iterable. A non-descriptor __dir__ entry in the class dict is called

@@ -1,4 +1,4 @@
-﻿"""
+"""
 consuming a generator while it is already executing raises
 the catchable ValueError "generator already executing" (CPython
 gen_send_ex2's gi_running guard) instead of recursing into the

@@ -1,4 +1,4 @@
-﻿"""Bytes literal escapes follow CPython's _PyBytes_DecodeEscape2 semantics, not the str escape decoder: out-of-range octals truncate to the low 8 bits, \\u/\\U and unknown escapes stay literal, raw bytes keep the backslash, and a truncated \\x escape raises SyntaxError.
+"""Bytes literal escapes follow CPython's _PyBytes_DecodeEscape2 semantics, not the str escape decoder: out-of-range octals truncate to the low 8 bits, \\u/\\U and unknown escapes stay literal, raw bytes keep the backslash, and a truncated \\x escape raises SyntaxError.
 
 :kind: test
 """

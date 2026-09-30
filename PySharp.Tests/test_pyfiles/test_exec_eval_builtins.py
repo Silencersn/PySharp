@@ -1,4 +1,4 @@
-﻿"""
+"""
 exec()/eval() with an explicit globals dict must inject the
 interpreter's builtins when the dict lacks a __builtins__ key (CPython
 behavior), instead of raising NameError for builtin names.

@@ -1,4 +1,4 @@
-﻿"""Verifies open() accepts the buffering=, encoding=, errors= and newline= parameters with CPython's argument-check order, lazy error-handler resolution, codec-specific BOM handling, and per-method error messages.
+"""Verifies open() accepts the buffering=, encoding=, errors= and newline= parameters with CPython's argument-check order, lazy error-handler resolution, codec-specific BOM handling, and per-method error messages.
 
 :kind: test
 :background: open() used to reject the buffering=, encoding=, errors= and

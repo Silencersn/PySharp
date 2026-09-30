@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for method descriptors (bound/unbound methods)
 
 :kind: test

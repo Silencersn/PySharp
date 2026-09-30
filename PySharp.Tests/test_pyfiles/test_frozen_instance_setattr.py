@@ -1,4 +1,4 @@
-﻿"""
+"""
 attribute writes and deletes on dict-less (frozen) instances
 raise catchable Python AttributeErrors instead of leaking a .NET
 NotSupportedException from the frozen attributes stub.

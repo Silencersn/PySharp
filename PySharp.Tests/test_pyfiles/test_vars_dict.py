@@ -1,4 +1,4 @@
-﻿"""
+"""
 vars(obj) must raise TypeError for objects without a __dict__
 (CPython), instead of returning {}; obj.__dict__ must raise AttributeError.
 

@@ -1,4 +1,4 @@
-﻿"""
+"""
 oct() / format(v, 'b'|'o') must match CPython for all sizes,
 including multi-byte boundary values (bit-extraction rewrite of
 ToOctString / ToDigitsInBase; previously repeated BigInteger division made

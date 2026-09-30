@@ -1,4 +1,4 @@
-﻿"""Mutable containers are unhashable: hash() raises "unhashable type" and dict-key/set-element paths re-raise with the container wording embedding the original error.
+"""Mutable containers are unhashable: hash() raises "unhashable type" and dict-key/set-element paths re-raise with the container wording embedding the original error.
 
 Also pins a class defining __eq__ without __hash__ (or with __hash__ = None) as explicitly unhashable, and that assigning or deleting __hash__ rewires the slot through the MRO.
 

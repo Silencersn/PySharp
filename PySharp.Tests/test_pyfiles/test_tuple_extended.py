@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for tuple extended operations - covers PyTupleObject.Py.cs (add, mul, slice, index, count)
 
 :kind: test

@@ -1,4 +1,4 @@
-﻿"""
+"""
 0 (or 0.0, including -0.0) raised to a negative power must raise
 ZeroDivisionError('zero to a negative power'), not return inf. Covers the
 int ** int, int ** float (reflected), and float ** float paths plus the

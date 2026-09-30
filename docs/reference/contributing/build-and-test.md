@@ -52,4 +52,4 @@ dotnet run --project PySharp.Console -- -c "print(40 + 2)"
 
 ## 代码风格
 
-构建即强制，分析器 Warning 一律处理，不留存量，规则见[编码规范](./coding-standards.md)。
+构建即强制，分析器 Warning 一律处理，不留存量，规则见[编码规范](./coding-standards.md)。文件编码（UTF-8 无 BOM）由 `Directory.Build.targets` 的 `PYBOM001` 检查一并强制，同样不接受存量。

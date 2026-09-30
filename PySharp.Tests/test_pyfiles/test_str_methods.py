@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for str methods
 
 :kind: test

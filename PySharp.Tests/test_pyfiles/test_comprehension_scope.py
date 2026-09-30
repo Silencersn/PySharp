@@ -1,4 +1,4 @@
-﻿"""Verifies that list/set/dict/generator comprehensions have their own implicit scope (PEP 709): iteration variables never leak into, appear in, or clobber the enclosing scope.
+"""Verifies that list/set/dict/generator comprehensions have their own implicit scope (PEP 709): iteration variables never leak into, appear in, or clobber the enclosing scope.
 
 Also pins PEP 572 walrus binding in the enclosing scope, eval/exec visibility inside comprehensions, async comprehensions, and compile-time rejections.
 

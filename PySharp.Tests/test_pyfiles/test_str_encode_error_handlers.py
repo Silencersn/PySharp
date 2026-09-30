@@ -1,4 +1,4 @@
-﻿"""
+"""
 str.encode error handlers 'xmlcharrefreplace' / 'backslashreplace'
 / 'namereplace' must produce the CPython escape sequences (not a plain '?'),
 and the legal encoding name 'utf-16-le' must be accepted.

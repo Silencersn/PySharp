@@ -1,4 +1,4 @@
-﻿"""
+"""
 sorted() with custom objects
 Previously crashed with: Context is not initialized or is disposed.
 

@@ -1,4 +1,4 @@
-﻿"""
+"""
 float() must accept bytes-like arguments, matching CPython's
 PyFloat_FromString branch order.
 

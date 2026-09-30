@@ -1,4 +1,4 @@
-﻿"""
+"""
 a module attribute miss must produce a clean AttributeError
 message - module 'sys' has no attribute 'nonexistent_zzz' - not leak the
 internal object dump of the attribute name:

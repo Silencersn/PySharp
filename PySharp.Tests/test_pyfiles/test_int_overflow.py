@@ -1,4 +1,4 @@
-﻿"""
+"""
 tests for .NET exception leaks (OverflowException /
 ArgumentOutOfRangeException) when operating on huge ints, and for
 int/float boundary semantics (silent inf / precision loss).

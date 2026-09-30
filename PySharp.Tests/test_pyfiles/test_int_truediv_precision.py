@@ -1,4 +1,4 @@
-﻿"""int / int true division matches CPython's long_true_divide exactly: half-to-even rounding with subnormal results rounded once, -0.0 from 0 divided by a negative, and OverflowError when the quotient rounds up to 2**1024.
+"""int / int true division matches CPython's long_true_divide exactly: half-to-even rounding with subnormal results rounded once, -0.0 from 0 divided by a negative, and OverflowError when the quotient rounds up to 2**1024.
 
 :kind: test
 """

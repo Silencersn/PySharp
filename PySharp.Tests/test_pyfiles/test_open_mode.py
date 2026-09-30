@@ -1,4 +1,4 @@
-﻿"""
+"""
 open() must reject modes that contain none of r/w/a/x (CPython
 raises ValueError instead of silently opening the file in read mode).
 

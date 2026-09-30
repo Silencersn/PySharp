@@ -1,4 +1,4 @@
-﻿"""float.fromhex parses subnormal hex strings with IEEE 754 subnormal semantics instead of underflowing to zero, and the hex-to-fromhex round trip stays an exact identity down to the smallest subnormal.
+"""float.fromhex parses subnormal hex strings with IEEE 754 subnormal semantics instead of underflowing to zero, and the hex-to-fromhex round trip stays an exact identity down to the smallest subnormal.
 
 :kind: test
 """

@@ -1,4 +1,4 @@
-﻿"""
+"""
 an instance __dict__ is writable (CPython subtype_setdict ->
 _PyObject_SetDict). The assigned dict replaces the instance storage
 wholesale, a non-dict raises TypeError, a dict subclass is accepted and

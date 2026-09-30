@@ -1,4 +1,4 @@
-﻿"""
+"""
 pop() on an empty list must raise
 IndexError: pop from empty list, like CPython's list_pop_impl
 (Objects/listobject.c) which special-cases the empty list before any

@@ -1,4 +1,4 @@
-﻿"""
+"""
 using NotImplemented in a boolean context must raise
 TypeError('NotImplemented should not be used in a boolean context') like
 CPython 3.12+ (hard error since 3.14; PySharp previously warned and

@@ -1,4 +1,4 @@
-﻿"""
+"""
 old-style %e/%E/%g/%G float formatting must match CPython.
 
 CPython 3.14 reference:

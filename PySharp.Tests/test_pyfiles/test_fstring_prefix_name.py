@@ -1,4 +1,4 @@
-﻿"""
+"""
 single-letter f/t function names must not be mistaken for
 f-string/t-string prefixes.
 

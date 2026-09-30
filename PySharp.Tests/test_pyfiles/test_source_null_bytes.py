@@ -1,4 +1,4 @@
-﻿"""
+"""
 a NUL byte anywhere in the source must be rejected with
 SyntaxError: source code cannot contain null bytes, like CPython
 (Parser/lexer/lexer.c contains_null_bytes, checked per line before

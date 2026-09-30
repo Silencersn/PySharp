@@ -1,4 +1,4 @@
-﻿"""Verifies that an empty format spec makes __format__ equivalent to str(obj) for int, bool and float (bool renders True/False, float uses shortest-repr), while non-empty specs keep the int delegation unchanged.
+"""Verifies that an empty format spec makes __format__ equivalent to str(obj) for int, bool and float (bool renders True/False, float uses shortest-repr), while non-empty specs keep the int delegation unchanged.
 
 :kind: test
 """

@@ -1,4 +1,4 @@
-﻿"""
+"""
 bytes.decode error handling.
 
 The default errors='strict' raises UnicodeDecodeError on invalid input

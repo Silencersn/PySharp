@@ -1,4 +1,4 @@
-﻿"""
+"""
 list/tuple `in` must use Python value equality (CPython
 semantics), not .NET reference equality, so equal-but-distinct elements
 are found.

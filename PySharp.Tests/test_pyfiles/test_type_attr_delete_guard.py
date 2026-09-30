@@ -1,4 +1,4 @@
-﻿"""Deleting __name__/__qualname__/__module__/__bases__/__doc__ on a type raises TypeError with CPython's immutable-type wording even on heap types, while plain attributes still delete, renaming works, and __annotations__ follows its lazy-materialization delete face.
+"""Deleting __name__/__qualname__/__module__/__bases__/__doc__ on a type raises TypeError with CPython's immutable-type wording even on heap types, while plain attributes still delete, renaming works, and __annotations__ follows its lazy-materialization delete face.
 
 :kind: test
 """

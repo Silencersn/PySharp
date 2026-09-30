@@ -1,4 +1,4 @@
-﻿"""
+"""
 except* rejects a group match type, and split matches node-first.
 
 PEP 654 forbids catching a group with except*. CPython's CHECK_EG_MATCH runs

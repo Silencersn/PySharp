@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for function and code object attributes
 Exercises PyFunctionObjectType
 

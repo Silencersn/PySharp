@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for * and ** unpacking syntax - lists, tuples, dicts, function calls
 
 :kind: test

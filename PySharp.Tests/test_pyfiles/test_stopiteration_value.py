@@ -1,4 +1,4 @@
-﻿"""
+"""
 StopIteration must expose the value attribute like CPython -
 a value member initialized from args[0] (or None) at construction,
 settable without touching args, deletable (reading None afterwards,

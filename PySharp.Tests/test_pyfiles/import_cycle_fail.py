@@ -1,4 +1,4 @@
-﻿"""Failing member of the import cycle family: raises on first execution.
+"""Failing member of the import cycle family: raises on first execution.
 
 :kind: helper
 """

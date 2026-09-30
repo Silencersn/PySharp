@@ -1,4 +1,4 @@
-﻿"""
+"""
 dir() without arguments must return names in sorted order
 (CPython semantics), not in insertion order.
 

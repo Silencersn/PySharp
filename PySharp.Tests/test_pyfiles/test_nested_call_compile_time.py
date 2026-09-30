@@ -1,4 +1,4 @@
-﻿"""
+"""
 compiling deeply nested call expressions must stay roughly
 linear, not exponential. PySharp used to blow up exponentially on
 f(f(...)) chains (+2 levels ~= x5; 24 levels > 60s; CPython: instant),

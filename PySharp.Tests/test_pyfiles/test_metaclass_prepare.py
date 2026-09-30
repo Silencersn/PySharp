@@ -1,4 +1,4 @@
-﻿"""The metaclass __prepare__ hook (PEP 3115) runs before the class body and its return value becomes the live class namespace handed to __new__/__init__.
+"""The metaclass __prepare__ hook (PEP 3115) runs before the class body and its return value becomes the live class namespace handed to __new__/__init__.
 
 Covers class-kwargs pass-through, hook resolution through the metaclass MRO, error faces (raising hook, non-mapping return, signature mismatch, non-dict mapping), dict-subclass namespaces, generics, and zero-arg super compatibility.
 

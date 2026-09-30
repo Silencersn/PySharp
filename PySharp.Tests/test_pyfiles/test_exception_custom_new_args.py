@@ -1,4 +1,4 @@
-﻿"""
+"""
 an exception subclass overriding __new__ but not __init__
 still records the original instantiation arguments in e.args, because
 CPython's type_call calls the inherited BaseException.__init__ with the

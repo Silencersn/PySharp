@@ -1,4 +1,4 @@
-﻿"""Verifies ord() accepts one-byte bytes and bytearray values (and bytes subclasses) and matches CPython's wrong-length and wrong-type error messages.
+"""Verifies ord() accepts one-byte bytes and bytearray values (and bytes subclasses) and matches CPython's wrong-length and wrong-type error messages.
 
 :kind: test
 """

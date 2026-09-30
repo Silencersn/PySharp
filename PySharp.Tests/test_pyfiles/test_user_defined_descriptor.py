@@ -1,4 +1,4 @@
-﻿"""
+"""
 User-defined descriptor tests (__get__, labels, and inheritance)
 
 :kind: test

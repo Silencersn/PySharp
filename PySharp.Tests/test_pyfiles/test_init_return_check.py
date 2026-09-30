@@ -1,4 +1,4 @@
-﻿"""
+"""
 __init__ must return None when called through instantiation,
 like CPython's slot_tp_init (Objects/typeobject.c): any other return
 value raises TypeError: __init__() should return None, not '<type>'.

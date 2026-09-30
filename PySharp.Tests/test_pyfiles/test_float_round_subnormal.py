@@ -1,4 +1,4 @@
-﻿"""round(x, ndigits) preserves subnormal magnitudes when ndigits matches the value's decimal order, clamps ndigits beyond the boundaries, and raises OverflowError with CPython's message when coarse-place rounding overflows the double range.
+"""round(x, ndigits) preserves subnormal magnitudes when ndigits matches the value's decimal order, clamps ndigits beyond the boundaries, and raises OverflowError with CPython's message when coarse-place rounding overflows the double range.
 
 :kind: test
 """

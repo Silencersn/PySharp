@@ -1,4 +1,4 @@
-﻿"""Verifies how container reprs behave when an element's __repr__ mutates the container: set repr snapshots its keys so added elements are not rendered, dict repr live-iterates so insertions appear after what was rendered so far (from both key and value side), and list repr re-fetches its size each step so appended elements are rendered without crashing.
+"""Verifies how container reprs behave when an element's __repr__ mutates the container: set repr snapshots its keys so added elements are not rendered, dict repr live-iterates so insertions appear after what was rendered so far (from both key and value side), and list repr re-fetches its size each step so appended elements are rendered without crashing.
 
 :kind: test
 """

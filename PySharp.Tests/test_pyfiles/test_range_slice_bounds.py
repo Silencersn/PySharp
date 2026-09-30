@@ -1,4 +1,4 @@
-﻿"""
+"""
 slicing a range keeps the start/stop/step computed from
 slice.indices() even when the result is empty or reversed. CPython's
 compute_slice (Objects/rangeobject.c) builds substart/substop/substep

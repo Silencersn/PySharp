@@ -1,4 +1,4 @@
-﻿"""
+"""
 float % must use Python modulo semantics (sign follows the
 divisor), not C# remainder semantics (sign follows the dividend).
 

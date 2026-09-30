@@ -1,4 +1,4 @@
-﻿"""float.fromhex follows CPython's grammar with the 0x prefix, fraction, p-exponent and surrounding whitespace all optional, rounds half-to-even from the coefficient, raises OverflowError for out-of-range exponents and ValueError for parse failures.
+"""float.fromhex follows CPython's grammar with the 0x prefix, fraction, p-exponent and surrounding whitespace all optional, rounds half-to-even from the coefficient, raises OverflowError for out-of-range exponents and ValueError for parse failures.
 
 :kind: test
 """

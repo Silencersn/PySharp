@@ -1,4 +1,4 @@
-﻿"""
+"""
 Extended exception handling tests - more patterns and error types
 
 :kind: test

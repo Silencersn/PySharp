@@ -1,0 +1,98 @@
+<Project>
+
+  <!-- The compiler does not enforce `.editorconfig`'s `charset`; that property
+       only drives editors. A BOM an editor reintroduces is invisible in review
+       yet leaves a spurious first-line diff, so it is checked here on every
+       build.
+
+       `git ls-files` defines the scan set: exactly what ships, which also skips
+       the ignored third-party trees (.reference/, .github/skills/) that carry
+       BOM and non-UTF-8 test data on purpose.
+
+       Every project runs the check, not just the main library — a leaf tool
+       project builds on its own without reaching PySharp. RoslynCodeTaskFactory
+       compiles the task once per source hash, so the repeated invocation costs
+       only one `git ls-files` and a 3-byte read per file. -->
+  <UsingTask TaskName="EnforceNoBom" TaskFactory="RoslynCodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <RepoRoot ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System" />
+      <Using Namespace="System.ComponentModel" />
+      <Using Namespace="System.Diagnostics" />
+      <Using Namespace="System.IO" />
+      <Using Namespace="Microsoft.Build.Framework" />
+      <Using Namespace="Microsoft.Build.Utilities" />
+      <Code Type="Fragment" Language="cs">
+        <![CDATA[
+        var psi = new ProcessStartInfo("git", "ls-files -z")
+        {
+            WorkingDirectory = RepoRoot,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+
+        string stdout;
+        try
+        {
+            using var proc = Process.Start(psi)!;
+            stdout = proc.StandardOutput.ReadToEnd();
+            proc.StandardError.ReadToEnd();
+            proc.WaitForExit();
+            if (proc.ExitCode != 0)
+            {
+                Log.LogMessage(MessageImportance.Low, "no-BOM check skipped: git ls-files failed");
+                return true;
+            }
+        }
+        catch (Win32Exception)
+        {
+            // No git on PATH: nothing to enumerate, nothing to check.
+            Log.LogMessage(MessageImportance.Low, "no-BOM check skipped: git not found");
+            return true;
+        }
+
+        var buffer = new byte[3];
+        foreach (var relative in stdout.Split('\0'))
+        {
+            if (relative.Length == 0)
+                continue;
+
+            // Report the repo-relative path as git spells it, so the diagnostic
+            // is stable across platforms instead of mixing separators.
+            var full = Path.Combine(RepoRoot, relative.Replace('/', Path.DirectorySeparatorChar));
+            try
+            {
+                using var stream = File.OpenRead(full);
+                if (stream.Read(buffer, 0, 3) == 3 &&
+                    buffer[0] == 0xEF && buffer[1] == 0xBB && buffer[2] == 0xBF)
+                {
+                    Log.LogError(
+                        null, "PYBOM001", null, full, 0, 0, 0, 0,
+                        "File '{0}' starts with a UTF-8 BOM; the repository requires UTF-8 without a BOM (.editorconfig: charset = utf-8).",
+                        relative);
+                }
+            }
+            catch (IOException)
+            {
+                // Unreadable tracked entry: not this check's concern.
+            }
+        }
+
+        // RoslynCodeTaskFactory appends `return true;` to a fragment.
+        ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+
+  <Target Name="EnforceNoBom"
+          BeforeTargets="CoreCompile"
+          Condition="'$(EnforceNoBom)' != 'false'">
+    <EnforceNoBom RepoRoot="$(MSBuildThisFileDirectory)" />
+  </Target>
+
+</Project>

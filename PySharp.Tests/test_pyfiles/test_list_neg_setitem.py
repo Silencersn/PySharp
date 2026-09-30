@@ -1,4 +1,4 @@
-﻿"""
+"""
 item assignment on a list must map negative indices to
 positive ones, like CPython's list_ass_subscript (Objects/listobject.c)
 which does index += size before storing. PySharp passed the raw

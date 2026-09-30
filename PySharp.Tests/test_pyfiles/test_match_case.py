@@ -1,4 +1,4 @@
-﻿"""
+"""
 Python 3.10+ match-case statement tests
 
 :kind: test

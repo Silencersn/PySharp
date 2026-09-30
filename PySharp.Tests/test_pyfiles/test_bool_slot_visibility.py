@@ -1,4 +1,4 @@
-﻿"""
+"""
 __bool__ slot visibility must match CPython. Types without a
 real bool slot (object, str, bytes, bytearray, list, tuple, dict, set,
 frozenset, memoryview, super, type) must not expose __bool__ at all; their

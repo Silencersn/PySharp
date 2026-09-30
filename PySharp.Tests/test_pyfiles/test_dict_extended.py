@@ -1,4 +1,4 @@
-﻿"""
+"""
 Extended dictionary tests - more operations, edge cases, and error handling
 
 :kind: test

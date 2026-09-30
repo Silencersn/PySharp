@@ -1,4 +1,4 @@
-﻿"""
+"""
 the str character views (index, slice, iterate, pad,
 replace) count code points, so an astral character counts once and an
 unpaired surrogate stays itself instead of becoming U+FFFD.

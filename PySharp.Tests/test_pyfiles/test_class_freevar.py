@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests that free variables in class bodies do not leak into the class dict.
 
 :kind: test

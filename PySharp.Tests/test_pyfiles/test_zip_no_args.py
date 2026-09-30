@@ -1,4 +1,4 @@
-﻿"""
+"""
 zip() with no arguments must be an exhausted iterator
 (CPython zip_next never yields the empty tuple). It previously returned
 () once before stopping, so list(zip()) was [()].

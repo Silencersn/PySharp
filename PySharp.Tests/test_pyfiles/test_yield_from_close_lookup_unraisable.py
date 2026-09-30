@@ -1,4 +1,4 @@
-﻿"""
+"""
 a failing `close` attribute lookup on a `yield from` delegate is
 reported through the unraisable channel instead of propagating out of the
 caller's `close()`.

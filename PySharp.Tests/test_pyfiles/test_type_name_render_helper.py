@@ -1,4 +1,4 @@
-﻿"""Class factory imported by the qualified type-name rendering fixture.
+"""Class factory imported by the qualified type-name rendering fixture.
 
 Defines runtime classes whose __qualname__ differs from __name__, at module
 level and inside a function, so the module-qualified forms can be checked

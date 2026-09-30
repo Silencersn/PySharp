@@ -1,4 +1,4 @@
-﻿"""Binary-operator TypeErrors carry CPython's exact message templates: the generic unsupported-operand form, the '** or pow()' display, augmented in-place names, the sequence concatenate family after reflected decline, and the container message when iter() raises TypeError inside `in`.
+"""Binary-operator TypeErrors carry CPython's exact message templates: the generic unsupported-operand form, the '** or pow()' display, augmented in-place names, the sequence concatenate family after reflected decline, and the container message when iter() raises TypeError inside `in`.
 
 :kind: test
 """

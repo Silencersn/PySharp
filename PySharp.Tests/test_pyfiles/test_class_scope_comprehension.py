@@ -1,4 +1,4 @@
-﻿"""
+"""
 names in a class-body comprehension's condition / element /
 value expressions must NOT resolve to the class scope. Only the outermost
 iterable is evaluated in the class scope; the comprehension body is a

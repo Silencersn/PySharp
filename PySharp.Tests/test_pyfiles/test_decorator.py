@@ -1,4 +1,4 @@
-﻿"""
+"""
 Function decorator behavior tests
 
 :kind: test

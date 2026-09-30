@@ -1,4 +1,4 @@
-﻿"""
+"""
 Extended tests for complex numbers - covers edge cases for PyComplexObject, PyComplexObjectType
 
 :kind: test

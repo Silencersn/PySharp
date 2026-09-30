@@ -1,4 +1,4 @@
-﻿"""Module with a module-level __getattr__ for the lazy attribute fixture.
+"""Module with a module-level __getattr__ for the lazy attribute fixture.
 
 :kind: helper
 """

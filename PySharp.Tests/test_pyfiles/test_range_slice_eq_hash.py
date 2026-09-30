@@ -1,4 +1,4 @@
-﻿"""
+"""
 range and slice must compare by their parameters and hash
 consistently with that equality. Both fell back to identity semantics:
 range(3) == range(3) was False and equal ranges hashed differently, so

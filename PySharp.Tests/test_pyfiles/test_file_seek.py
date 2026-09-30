@@ -1,4 +1,4 @@
-﻿"""Verifies file.seek()/tell() validation follows the CPython io stack: layer-specific whence messages, UnsupportedOperation for nonzero cur/end-relative text seeks, __index__ offset handling, off_t overflow, closed-file errors, and OSError errno 22 instead of leaked .NET errors.
+"""Verifies file.seek()/tell() validation follows the CPython io stack: layer-specific whence messages, UnsupportedOperation for nonzero cur/end-relative text seeks, __index__ offset handling, off_t overflow, closed-file errors, and OSError errno 22 instead of leaked .NET errors.
 
 :kind: test
 

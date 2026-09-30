@@ -1,4 +1,4 @@
-﻿"""
+"""
 async generator aclose() must return the async_generator_athrow
 awaitable and defer the cleanup to the await, like CPython (PEP 525).
 

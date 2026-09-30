@@ -1,4 +1,4 @@
-﻿"""Exercises the core builtins (abs, all/any, chr, dir, eval/exec, getattr/setattr/delattr, iter/next, max/min, ord, pow, repr, sum, sorted, ascii, format, zip, type checks) against CPython results, including error cases such as abs() on a string and max() of an empty iterable.
+"""Exercises the core builtins (abs, all/any, chr, dir, eval/exec, getattr/setattr/delattr, iter/next, max/min, ord, pow, repr, sum, sorted, ascii, format, zip, type checks) against CPython results, including error cases such as abs() on a string and max() of an empty iterable.
 
 :kind: test
 """

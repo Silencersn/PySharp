@@ -1,4 +1,4 @@
-﻿"""Verifies len() bounds a __len__ result like CPython's slot_sq_length: any negative result raises the >= 0 ValueError, an oversized positive raises OverflowError with the index-sized message, a bool result normalizes to an exact int, and the bool()/not fallback propagates the OverflowError.
+"""Verifies len() bounds a __len__ result like CPython's slot_sq_length: any negative result raises the >= 0 ValueError, an oversized positive raises OverflowError with the index-sized message, a bool result normalizes to an exact int, and the bool()/not fallback propagates the OverflowError.
 
 :kind: test
 """

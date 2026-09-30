@@ -1,4 +1,4 @@
-﻿"""
+"""
 upper/lower/casefold/title/swapcase/capitalize use
 CPython's full case mappings (multi-character results, the derived
 properties, the titlecase mapping and the Final_Sigma rule).

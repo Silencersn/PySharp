@@ -1,4 +1,4 @@
-﻿"""
+"""
 bool() with no argument returns False instead of raising
 TypeError. CPython's bool is declared as bool(object=False, /), so the
 zero-argument form is a legal call and bool_new starts from Py_False

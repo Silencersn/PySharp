@@ -1,4 +1,4 @@
-﻿"""float.as_integer_ratio() raises OverflowError for infinities and ValueError for NaN with CPython's dedicated messages, while finite values (including -0.0 and the smallest subnormal) keep exact ratios.
+"""float.as_integer_ratio() raises OverflowError for infinities and ValueError for NaN with CPython's dedicated messages, while finite values (including -0.0 and the smallest subnormal) keep exact ratios.
 
 :kind: test
 """

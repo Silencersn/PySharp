@@ -1,4 +1,4 @@
-﻿"""
+"""
 '%c' % surrogate code points leaked a bare
 .NET ArgumentOutOfRangeException and crashed constant folding at compile time.
 

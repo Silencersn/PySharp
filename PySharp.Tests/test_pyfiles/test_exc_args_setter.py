@@ -1,4 +1,4 @@
-﻿"""BaseException.args is a writable member: assigned iterables drain into a fresh tuple (assigned tuples keep identity), non-iterables raise the plain iteration error, deletion is rejected, and str()/repr() reflect rewrites immediately.
+"""BaseException.args is a writable member: assigned iterables drain into a fresh tuple (assigned tuples keep identity), non-iterables raise the plain iteration error, deletion is rejected, and str()/repr() reflect rewrites immediately.
 
 :kind: test
 """

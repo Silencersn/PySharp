@@ -1,4 +1,4 @@
-﻿"""
+"""
 a dict key's hash only feeds the probe (a uint bucket
 index), so the hash must not be forced through the throwing Int32Value
 conversion - any hash outside the int32 range used to raise a bare

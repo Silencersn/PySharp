@@ -1,4 +1,4 @@
-﻿"""format() with the '%' presentation type appends the trailing percent sign to non-finite floats too, and the suffix counts toward width, fill and alignment while precision and grouping are ignored for inf/nan.
+"""format() with the '%' presentation type appends the trailing percent sign to non-finite floats too, and the suffix counts toward width, fill and alignment while precision and grouping are ignored for inf/nan.
 
 :kind: test
 """

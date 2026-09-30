@@ -1,4 +1,4 @@
-﻿"""function.__defaults__ is writable (Objects/funcobject.c
+"""function.__defaults__ is writable (Objects/funcobject.c
 func_get_defaults/func_set_defaults). Assigning a tuple replaces the
 defaults wholesale, the assigned tuple reads back as the same object, a
 tuple subclass is accepted (PyTuple_Check), a non-tuple is a TypeError,

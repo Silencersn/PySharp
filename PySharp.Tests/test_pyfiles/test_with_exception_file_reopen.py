@@ -1,4 +1,4 @@
-﻿"""
+"""
 with-block exception exit releases the file handle
 synchronously and deterministically — __exit__ runs during unwinding,
 the closed flag is set, and the same path can be reopened immediately

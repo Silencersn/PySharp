@@ -1,4 +1,4 @@
-﻿"""Identifier character classes follow CPython's XID_Start/XID_Continue tables and reject or accept names with CPython's exact SyntaxError messages.
+"""Identifier character classes follow CPython's XID_Start/XID_Continue tables and reject or accept names with CPython's exact SyntaxError messages.
 
 Covers Nd/Nl start rules, the invalid-character and invalid-non-printable
 message forms, and the continuation-character guards.

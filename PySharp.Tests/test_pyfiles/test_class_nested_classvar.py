@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for __class__ in nested class scopes (free variable propagation).
 Tests:
 - __class__ in nested class body raises NameError (cell empty, matches CPython)

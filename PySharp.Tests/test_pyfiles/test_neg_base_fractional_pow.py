@@ -1,4 +1,4 @@
-﻿"""A finite negative base raised to a non-integral exponent returns the complex principal value instead of a silent nan, while integral-exponent, zero, infinity and NaN special cases keep their float results and int/int true division supplies exact exponents.
+"""A finite negative base raised to a non-integral exponent returns the complex principal value instead of a silent nan, while integral-exponent, zero, infinity and NaN special cases keep their float results and int/int true division supplies exact exponents.
 
 :kind: test
 """

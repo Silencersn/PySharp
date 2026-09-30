@@ -1,4 +1,4 @@
-﻿"""
+"""
 tab/space mixed indentation inconsistency must raise
 TabError ("inconsistent use of tabs and spaces in indentation"), the
 IndentationError subclass, like CPython (Parser/pegen_errors.c picks the

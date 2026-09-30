@@ -1,4 +1,4 @@
-﻿"""
+"""
 container subclass construction dispatch.
 
 CPython splits construction into tp_new (allocates an empty object and,

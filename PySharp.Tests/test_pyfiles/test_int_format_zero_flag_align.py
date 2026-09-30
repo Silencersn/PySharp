@@ -1,4 +1,4 @@
-﻿"""The '0' format-spec flag supplies fill '0' even when an explicit alignment is present, defaulting the alignment to '=' only when none was parsed, across int, float and str format targets.
+"""The '0' format-spec flag supplies fill '0' even when an explicit alignment is present, defaulting the alignment to '=' only when none was parsed, across int, float and str format targets.
 
 :kind: test
 """

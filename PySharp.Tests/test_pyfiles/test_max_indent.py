@@ -1,4 +1,4 @@
-﻿"""
+"""
 more than 100 levels of indentation must be rejected with
 IndentationError ("too many levels of indentation"), like CPython's
 MAXINDENT=100 lexer limit. PySharp used to accept any indentation depth.

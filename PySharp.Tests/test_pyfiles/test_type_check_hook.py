@@ -1,4 +1,4 @@
-﻿"""
+"""
 isinstance / issubclass dispatch to __instancecheck__ and
 __subclasscheck__.
 

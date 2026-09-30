@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for the queue module
 
 :kind: test

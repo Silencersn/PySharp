@@ -1,4 +1,4 @@
-﻿"""Verifies that break, continue, and return crossing a with block run __exit__ cleanup before jumping, keeping the operand stack and handler records intact.
+"""Verifies that break, continue, and return crossing a with block run __exit__ cleanup before jumping, keeping the operand stack and handler records intact.
 
 Covers nested with, multiple with items, return values, for-else, class-body loops, generators, stale-record exception dispatch, and __exit__ raising during unwinding.
 

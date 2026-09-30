@@ -1,4 +1,4 @@
-﻿"""
+"""
 container equality and lookup go through the CPython
 PyObject_RichCompareBool identity shortcut — an identical object is
 always equal (Py_EQ) / never unequal (Py_NE) before any user __eq__

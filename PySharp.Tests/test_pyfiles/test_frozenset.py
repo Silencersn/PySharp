@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for frozenset
 
 :kind: test

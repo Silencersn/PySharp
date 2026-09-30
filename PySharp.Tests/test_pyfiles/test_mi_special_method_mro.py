@@ -1,4 +1,4 @@
-﻿"""With multiple inheritance, each special method slot resolves through the first MRO dict hit, so a non-first parent's __ne__/__gt__/__ge__/__hash__ and kin are not masked by inherited copies of the object defaults.
+"""With multiple inheritance, each special method slot resolves through the first MRO dict hit, so a non-first parent's __ne__/__gt__/__ge__/__hash__ and kin are not masked by inherited copies of the object defaults.
 
 :kind: test
 """

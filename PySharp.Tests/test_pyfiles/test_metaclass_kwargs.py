@@ -1,4 +1,4 @@
-﻿"""
+"""
 Metaclass keyword arguments and __init_subclass__ tests
 
 :kind: test

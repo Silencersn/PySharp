@@ -1,4 +1,4 @@
-﻿"""except* (PEP 654) unwinding re-raises the matched subgroup (recombined with the unmatched rest) on bare raise, never drops the rest when a new exception escapes, and treats a bare raise with no live exception as a catchable RuntimeError.
+"""except* (PEP 654) unwinding re-raises the matched subgroup (recombined with the unmatched rest) on bare raise, never drops the rest when a new exception escapes, and treats a bare raise with no live exception as a catchable RuntimeError.
 
 :kind: test
 """

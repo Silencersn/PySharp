@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for module attributes
 Exercises PyModuleObjectType, __dict__, __name__
 

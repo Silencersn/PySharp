@@ -1,4 +1,4 @@
-﻿"""
+"""
 sealed built-in types are not acceptable base types.
 
 CPython's type_new computes best_base first and rejects any base without

@@ -1,4 +1,4 @@
-﻿"""Verifies that break/continue/return escaping a try body run the finally body exactly once, that the finally body's own control flow overrides the pending exit, and that `except ... as name` bindings are deleted on every handler exit.
+"""Verifies that break/continue/return escaping a try body run the finally body exactly once, that the finally body's own control flow overrides the pending exit, and that `except ... as name` bindings are deleted on every handler exit.
 
 :kind: test
 """

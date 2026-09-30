@@ -1,4 +1,4 @@
-﻿"""str.encode() resolves the errors-handler name lazily at the first actual encoding error, so unknown handler names are inert on success and raise LookupError only when an error occurs.
+"""str.encode() resolves the errors-handler name lazily at the first actual encoding error, so unknown handler names are inert on success and raise LookupError only when an error occurs.
 
 :kind: test
 """

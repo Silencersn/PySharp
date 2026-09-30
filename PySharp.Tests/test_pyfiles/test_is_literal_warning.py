@@ -1,4 +1,4 @@
-﻿"""
+"""
 `is` / `is not` with a constant literal operand must emit a
 SyntaxWarning suggesting the value comparison operator, like CPython.
 PySharp used to be completely silent (evaluation results already match).

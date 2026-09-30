@@ -1,4 +1,4 @@
-﻿"""
+"""
 the bare 'utf-16' / 'utf-32' codecs must emit a native-order BOM
 when encoding and treat a leading BOM as a byte order mark when decoding,
 matching CPython. The explicit -le/-be variants stay BOM-free on encode and

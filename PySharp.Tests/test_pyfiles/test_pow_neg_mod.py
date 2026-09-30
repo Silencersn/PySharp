@@ -1,4 +1,4 @@
-﻿"""
+"""
 pow(base, -exp, mod) must compute the modular inverse and return
 an int (CPython 3.8+), instead of falling back to float modulo.
 

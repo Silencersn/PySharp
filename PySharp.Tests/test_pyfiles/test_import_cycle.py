@@ -1,4 +1,4 @@
-﻿"""
+"""
 Import cycle shapes
 
 A module body used to run before its module object was registered, so an

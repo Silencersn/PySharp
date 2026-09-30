@@ -1,4 +1,4 @@
-﻿"""
+"""
 resuming a finished coroutine must raise
 RuntimeError("cannot reuse already awaited coroutine") instead of a silent
 StopIteration, which made a double await look like a normal return.

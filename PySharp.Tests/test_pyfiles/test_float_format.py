@@ -1,4 +1,4 @@
-﻿"""
+"""
 format()/f-string float 'g'/'G'/'n' (and 'e'/'E' exponent width)
 must match CPython.
 

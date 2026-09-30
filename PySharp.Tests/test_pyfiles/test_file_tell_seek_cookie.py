@@ -1,4 +1,4 @@
-﻿"""Verifies text-mode tell() returns a seek cookie tracking the consumed byte position and that seek(cookie) restores the exact read state.
+"""Verifies text-mode tell() returns a seek cookie tracking the consumed byte position and that seek(cookie) restores the exact read state.
 
 Covers \r\n folding, multi-byte and chunk-refill reads, astral code points, errors='ignore', truncated BOM and multi-byte tails, BCL codecs, and utf-16 BOM accounting.
 

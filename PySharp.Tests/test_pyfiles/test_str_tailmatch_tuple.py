@@ -1,4 +1,4 @@
-﻿"""
+"""
 str.startswith/endswith must accept a tuple of prefixes/
 suffixes (any match wins, evaluated left to right), reject non-str items
 inside the tuple and non-str non-tuple first args with CPython's exact

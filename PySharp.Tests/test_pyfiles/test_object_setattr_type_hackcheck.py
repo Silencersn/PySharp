@@ -1,4 +1,4 @@
-﻿"""
+"""
 object.__setattr__/object.__delattr__ refuse every
 type-object target with "can't apply this __setattr__/__delattr__ to
 <N> object", like CPython's hackcheck (Objects/typeobject.c

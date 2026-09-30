@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for `not` expression
 
 :kind: test

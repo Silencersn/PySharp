@@ -1,4 +1,4 @@
-﻿"""
+"""
 input() at EOF (empty stdin) must raise EOFError instead of
 returning ''.
 

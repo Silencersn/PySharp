@@ -1,4 +1,4 @@
-﻿"""
+"""
 float() string parsing diverged from CPython on separators.
 NumberStyles.AllowThousands let any ',' through with a silently wrong value
 (the float grammar has no thousands separator), while digit-grouping

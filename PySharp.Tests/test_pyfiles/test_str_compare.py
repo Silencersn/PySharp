@@ -1,4 +1,4 @@
-﻿"""
+"""
 str comparison must use ordinal (code point) ordering and
 support <= / >=.
 

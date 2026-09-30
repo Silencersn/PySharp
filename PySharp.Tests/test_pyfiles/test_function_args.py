@@ -1,4 +1,4 @@
-﻿"""
+"""
 Function argument tests - exercises PyArgsValidator and argument handling
 
 :kind: test

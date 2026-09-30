@@ -1,4 +1,4 @@
-﻿"""
+"""
 iter(callable, sentinel) must return a callable iterator that
 repeatedly calls the callable with no args until the result compares equal
 to the sentinel (sentinel as the left operand of ==), swallows StopIteration

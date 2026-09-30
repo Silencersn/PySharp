@@ -1,4 +1,4 @@
-﻿"""A compound statement header that ends without a colon is rejected with "expected ':'".
+"""A compound statement header that ends without a colon is rejected with "expected ':'".
 
 Every place Python expects a colon to close a compound statement header reports
 the same missing token, whether the header opens a statement (`if`, `for`,

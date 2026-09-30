@@ -1,4 +1,4 @@
-﻿"""Re-import counter shared by the import cycle fixtures.
+"""Re-import counter shared by the import cycle fixtures.
 
 :kind: helper
 """

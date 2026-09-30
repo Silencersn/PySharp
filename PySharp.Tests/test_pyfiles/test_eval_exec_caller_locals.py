@@ -1,4 +1,4 @@
-﻿"""eval()/exec() with default namespaces use the calling frame's namespaces: a discarded snapshot of its fast locals for optimized frames, the live mapping for unoptimized ones (class bodies).
+"""eval()/exec() with default namespaces use the calling frame's namespaces: a discarded snapshot of its fast locals for optimized frames, the live mapping for unoptimized ones (class bodies).
 
 Covers local shadowing and NameError fallthrough, exec/walrus writes staying out of globals, explicit global declarations, cell and free vars, generator and coroutine frames, comprehensions, and code-object paths.
 

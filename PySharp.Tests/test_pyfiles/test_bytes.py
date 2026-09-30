@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for bytes and bytearray types - covers PyBytesObject, PyBytesIterator, PyByteArrayObject, PyByteArrayIterator
 
 :kind: test

@@ -1,4 +1,4 @@
-﻿"""
+"""
 a decimal integer literal with more than 4300 digits must be
 rejected with SyntaxError (the compile-time half of the CVE-2020-10735
 integer-string-conversion guard), like CPython. PySharp used to accept

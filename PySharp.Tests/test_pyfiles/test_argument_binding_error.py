@@ -1,4 +1,4 @@
-﻿"""Call-binding failures raise TypeErrors with CPython's exact messages, built from the failing parameter set and naming the callable by its __qualname__.
+"""Call-binding failures raise TypeErrors with CPython's exact messages, built from the failing parameter set and naming the callable by its __qualname__.
 
 Covers missing and overflowing arguments, repeated/unexpected/positional-only keywords, "did you mean" suggestions, duplicate keywords from ** merges, successful binding of every parameter shape, and range's own argument parsing.
 

@@ -1,4 +1,4 @@
-﻿"""
+"""
 pow(x, y, mod) with a non-integer modulus must raise a catchable
 TypeError instead of terminating the process via Debug.Assert.
 

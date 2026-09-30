@@ -1,4 +1,4 @@
-﻿"""
+"""
 str.splitlines accepts keepends as a keyword argument. CPython's
 clinic signature is splitlines(self, /, keepends=False) — the slash sits
 after self, so only self is positional-only and keepends binds by name as

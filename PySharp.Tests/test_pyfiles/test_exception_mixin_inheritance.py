@@ -1,4 +1,4 @@
-﻿"""
+"""
 exception classes combined with plain mixin bases (in either
 base order) must stay fully functional exception classes.
 

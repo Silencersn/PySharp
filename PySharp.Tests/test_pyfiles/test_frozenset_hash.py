@@ -1,4 +1,4 @@
-﻿"""
+"""
 frozenset hash must be order-independent (CPython
 frozenset_hash). The old fold mixed element hashes with a
 position-dependent chain, so equal frozensets built in different orders

@@ -1,4 +1,4 @@
-﻿"""
+"""
 three error-message semantics fixes aligned with CPython:
 - super attribute misses say "'super' object has no attribute 'name'"
 - subscript stores/deletes on types without those slots say

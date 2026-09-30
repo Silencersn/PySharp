@@ -1,4 +1,4 @@
-﻿"""Float repr renders the shortest round-trip digit string per CPython dtoa mode 0 — including tie cases like 2**-25 that need 17 digits — with the shortest rendering shared by str(), %r and format() and round-tripping verified over a deterministic sample.
+"""Float repr renders the shortest round-trip digit string per CPython dtoa mode 0 — including tie cases like 2**-25 that need 17 digits — with the shortest rendering shared by str(), %r and format() and round-tripping verified over a deterministic sample.
 
 :kind: test
 """

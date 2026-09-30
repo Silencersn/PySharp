@@ -1,4 +1,4 @@
-﻿"""
+"""
 class-object attribute access falls back to the metaclass MRO.
 
 CPython's _Py_type_getattro_impl (Objects/typeobject.c) looks the name up on

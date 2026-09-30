@@ -1,4 +1,4 @@
-﻿"""Verifies failed int()/float()/complex conversions quote their argument with %R of the original object, matching CPython's escaping, __repr__ overrides, the 200-character cap on int messages, and the fresh-bytes repr for bytes-like arguments.
+"""Verifies failed int()/float()/complex conversions quote their argument with %R of the original object, matching CPython's escaping, __repr__ overrides, the 200-character cap on int messages, and the fresh-bytes repr for bytes-like arguments.
 
 :kind: test
 """

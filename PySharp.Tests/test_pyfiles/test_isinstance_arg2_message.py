@@ -1,4 +1,4 @@
-﻿"""
+"""
 the TypeError raised when isinstance/issubclass get a second
 argument that is neither a type nor a tuple names the PEP 604 union as a
 third accepted form, and issubclass uses CPython's "class" wording rather

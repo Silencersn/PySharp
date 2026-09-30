@@ -1,4 +1,4 @@
-﻿"""Verifies that PEP 572 walrus targets inside a generator expression bind in the nearest enclosing non-comprehension scope, never in the genexp scope itself.
+"""Verifies that PEP 572 walrus targets inside a generator expression bind in the nearest enclosing non-comprehension scope, never in the genexp scope itself.
 
 Covers closure-cell binding in functions, module-level globals, UnboundLocalError and NameError wording, and the CPython-matching SyntaxError restrictions.
 

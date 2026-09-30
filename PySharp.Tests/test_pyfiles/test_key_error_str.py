@@ -1,4 +1,4 @@
-﻿"""
+"""
 str(KeyError) must apply repr() to a single argument
 (CPython KeyError_str), keeping quotes and type information. Every other
 arity keeps BaseException's form: no args is the empty string and several

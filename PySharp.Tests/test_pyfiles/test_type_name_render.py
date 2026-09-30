@@ -1,4 +1,4 @@
-﻿"""Error messages render the CPython tp_name (bare __name__) for runtime-created classes instead of the qualname, except the property wording (qualname), the dict-key/set-element %T wording (fully qualified name), and exception/bytearray reprs (bare name via _PyType_Name).
+"""Error messages render the CPython tp_name (bare __name__) for runtime-created classes instead of the qualname, except the property wording (qualname), the dict-key/set-element %T wording (fully qualified name), and exception/bytearray reprs (bare name via _PyType_Name).
 
 :kind: test
 """

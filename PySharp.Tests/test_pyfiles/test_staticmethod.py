@@ -1,4 +1,4 @@
-﻿"""@staticmethod is callable from both the class and its instances without receiving any implicit self or cls argument.
+"""@staticmethod is callable from both the class and its instances without receiving any implicit self or cls argument.
 
 :kind: test
 """

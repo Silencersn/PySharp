@@ -1,4 +1,4 @@
-﻿"""Verifies the std streams accept close(), expose the closed flag it sets, raise ValueError on further I/O, and treat a second close as a no-op.
+"""Verifies the std streams accept close(), expose the closed flag it sets, raise ValueError on further I/O, and treat a second close as a no-op.
 
 :kind: test
 :background: `closed` was hardcoded False on the std streams and no code path

@@ -1,4 +1,4 @@
-﻿"""
+"""
 PEP 515 underscore digit separators must work in every numeric
 literal form — float mantissa/fraction/exponent, complex literals, and hex/
 binary/octal ints — instead of crashing the process with an unhandled

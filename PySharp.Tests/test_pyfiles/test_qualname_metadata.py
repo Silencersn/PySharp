@@ -1,4 +1,4 @@
-﻿"""
+"""
 qualified names and creation metadata.
 
 Class __qualname__ carries the lexical scope path (PEP 3155): nested

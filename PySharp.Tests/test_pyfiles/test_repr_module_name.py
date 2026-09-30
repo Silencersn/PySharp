@@ -1,4 +1,4 @@
-﻿"""Verifies default instance and class reprs render the module-qualified name, function reprs use __qualname__ without a module prefix, and GenericAlias rendering follows the same module-qualified rule.
+"""Verifies default instance and class reprs render the module-qualified name, function reprs use __qualname__ without a module prefix, and GenericAlias rendering follows the same module-qualified rule.
 
 :kind: test
 """

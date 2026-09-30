@@ -1,4 +1,4 @@
-﻿"""
+"""
 the same SyntaxWarning (same file, line and message) must be
 printed to stderr exactly once, matching CPython's default warning filter
 dedup behavior.

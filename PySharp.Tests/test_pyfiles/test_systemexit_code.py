@@ -1,4 +1,4 @@
-﻿"""Verifies that SystemExit.code follows CPython's SystemExit_init — args[0] for one argument, the whole args tuple for several, None for none — and that assignment or deletion of code never falls back to args.
+"""Verifies that SystemExit.code follows CPython's SystemExit_init — args[0] for one argument, the whole args tuple for several, None for none — and that assignment or deletion of code never falls back to args.
 
 :kind: test
 """

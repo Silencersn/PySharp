@@ -1,4 +1,4 @@
-﻿"""
+"""
 Isolated test for bytearray iteration - no other tests in this file
 
 :kind: test

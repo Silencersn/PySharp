@@ -1,4 +1,4 @@
-﻿"""
+"""
 format specs on str values must implement the CPython mini
 language (Python/formatter_unicode.c: format_string_internal), and
 str.format must parse the full field grammar

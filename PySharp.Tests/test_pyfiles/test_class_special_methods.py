@@ -1,4 +1,4 @@
-﻿"""A user class defining the full set of special methods dispatches every corresponding operator, conversion, container, comparison, descriptor and attribute hook to the right implementation.
+"""A user class defining the full set of special methods dispatches every corresponding operator, conversion, container, comparison, descriptor and attribute hook to the right implementation.
 
 :kind: test
 """

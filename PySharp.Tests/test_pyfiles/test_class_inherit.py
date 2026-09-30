@@ -1,4 +1,4 @@
-﻿"""
+"""
 Class inheritance and super() behavior tests
 
 :kind: test

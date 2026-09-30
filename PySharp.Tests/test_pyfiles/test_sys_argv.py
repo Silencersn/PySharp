@@ -1,4 +1,4 @@
-﻿"""
+"""
 sys.argv tests
 
 :kind: helper

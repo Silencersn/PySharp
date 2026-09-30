@@ -1,4 +1,4 @@
-﻿"""
+"""
 an empty prefix/suffix in str.startswith / str.endswith must
 match at every valid window position, like CPython tailmatch (the clamped
 [start, end) window only has to fit the needle). PySharp used to return

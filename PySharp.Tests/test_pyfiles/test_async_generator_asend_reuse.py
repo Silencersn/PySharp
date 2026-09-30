@@ -1,4 +1,4 @@
-﻿"""
+"""
 the awaitable returned by __anext__()/asend() is single use.
 
 CPython 3.14 reference (Objects/genobject.c async_gen_asend_*):

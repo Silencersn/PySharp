@@ -1,4 +1,4 @@
-﻿"""
+"""
 float() with no arguments must return 0.0, like CPython's
 float_new (Objects/floatobject.c, x == NULL -> 0.0). PySharp used to
 raise TypeError: missing 1 required positional argument.

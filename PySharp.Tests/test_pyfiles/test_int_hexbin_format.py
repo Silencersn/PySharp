@@ -1,4 +1,4 @@
-﻿"""
+"""
 hex(0)/bin(0) must keep the digit, and int format()/f-string
 with b/o/x must not double the prefix.
 

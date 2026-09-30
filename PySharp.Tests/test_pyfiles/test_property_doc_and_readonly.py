@@ -1,4 +1,4 @@
-﻿"""
+"""
 property must raise AttributeError (not a None-callable
 TypeError) when assigning to or deleting a read-only/undeletable
 property, and property.__doc__ must inherit the getter's docstring when

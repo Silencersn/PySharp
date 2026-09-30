@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for PyObject base class edge cases - hash, repr, str, bool, type(), isinstance(), issubclass()
 
 :kind: test

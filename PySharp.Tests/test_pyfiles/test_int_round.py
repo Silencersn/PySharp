@@ -1,4 +1,4 @@
-﻿"""
+"""
 round() on int must work like CPython long_round in every
 ndigits form. PySharp used to throw a message-less TypeError for every
 round(int) call (with or without ndigits) because int had no __round__

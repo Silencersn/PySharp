@@ -1,4 +1,4 @@
-﻿"""
+"""
 sys.stdin.readline() at EOF returns '' (not StopIteration),
 and sys.stdout/stderr.write() return the number of characters written.
 

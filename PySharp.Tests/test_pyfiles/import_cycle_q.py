@@ -1,4 +1,4 @@
-﻿"""Cycle partner of import_cycle_p for circular from-imports.
+"""Cycle partner of import_cycle_p for circular from-imports.
 
 :kind: helper
 """

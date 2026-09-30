@@ -1,4 +1,4 @@
-﻿"""
+"""
 Tests for ExceptionGroup - covers PyBaseExceptionGroupObjectType, PyExceptionGroupObjectType
 
 :kind: test

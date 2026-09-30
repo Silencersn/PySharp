@@ -1,4 +1,4 @@
-﻿"""
+"""
 Edge case opcode coverage tests
 Covers: PushNull, SET_UPDATE, GetAwaitable, CheckEgMatch, _CheckMatch,
         _PopExceptionAndJumpIfNull, PopJumpIfNone, MatchMapping, MatchKeys, MatchClass

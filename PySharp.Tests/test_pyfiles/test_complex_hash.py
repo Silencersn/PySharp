@@ -1,4 +1,4 @@
-﻿"""
+"""
 complex hash must agree with int/float hashes for equal
 values. hash(complex(1, 0)) returned a HashCode-based value disjoint
 from hash(1), so cross-type dict/set lookups silently missed.

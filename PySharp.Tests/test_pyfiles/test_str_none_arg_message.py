@@ -1,4 +1,4 @@
-﻿"""
+"""
 the str methods whose sub/old/new arguments go through
 CPython's argument converter render None as "None" instead of its type
 name "NoneType". CPython's getargs layer special-cases Py_None when it
