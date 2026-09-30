@@ -3,6 +3,7 @@
     <File Path=".editorconfig" />
   </Folder>
   <Project Path="PySharp.Analyzer.Internal/PySharp.Analyzer.Internal.csproj" />
+  <Project Path="PySharp.Analyzer.Style/PySharp.Analyzer.Style.csproj" />
   <Project Path="PySharp.Analyzer/PySharp.Analyzer.csproj" />
   <Project Path="PySharp.Console/PySharp.Console.csproj" />
   <Project Path="PySharp.Roslyn.Shared/PySharp.Roslyn.Shared.csproj" />

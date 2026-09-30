@@ -3,12 +3,12 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace PySharp.Analyzer.Internal;
+namespace PySharp.Analyzer.Style;
 
-partial class PySharpAnalyzerInternalAnalyzer
+partial class PySharpStyleAnalyzer
 {
     /// <summary>
-    /// PYSPI005 — Use <c>string.Empty</c> instead of <c>""</c>.
+    /// PYSPS005 — Use <c>string.Empty</c> instead of <c>""</c>.
     /// <para/>
     /// Triggers when the empty string literal <c>""</c> is used.
     /// Exempted when it appears inside a constant pattern (e.g., <c>x is ""</c>,
@@ -28,11 +28,11 @@ partial class PySharpAnalyzerInternalAnalyzer
     /// SomeMethod("");
     /// </code>
     /// </summary>
-    private static readonly DiagnosticDescriptor PYSPI005 = new(
-        nameof(PYSPI005),
+    private static readonly DiagnosticDescriptor PYSPS005 = new(
+        nameof(PYSPS005),
         "Use string.Empty instead of \"\"",
         "Use 'string.Empty' instead of \"\"",
-        "PySharp",
+        "Style",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
         description: "Prefer 'string.Empty' over the empty string literal \"\" for consistency.");
@@ -52,7 +52,7 @@ partial class PySharpAnalyzerInternalAnalyzer
         if (IsInsideConstantPattern(literal))
             return;
 
-        context.ReportDiagnostic(Diagnostic.Create(PYSPI005, literal.GetLocation()));
+        context.ReportDiagnostic(Diagnostic.Create(PYSPS005, literal.GetLocation()));
     }
 
     /// <summary>

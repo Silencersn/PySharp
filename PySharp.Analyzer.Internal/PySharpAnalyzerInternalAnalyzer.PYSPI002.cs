@@ -1,151 +1,163 @@
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using System;
+using System.Collections.Generic;
 
 namespace PySharp.Analyzer.Internal;
 
 partial class PySharpAnalyzerInternalAnalyzer
 {
     /// <summary>
-    /// PYSPI002 — Control flow body should be on a new line without braces.
+    /// PYSPI002 — Type name should follow PySharp naming convention.
     /// <para/>
-    /// Triggers when: (a) a single-statement block uses unnecessary braces;
-    /// (b) the statement is on the same line as the control flow keyword.
-    /// Applies to: <c>if</c>/<c>for</c>/<c>foreach</c>/<c>while</c>.
+    /// Triggers when a class inherits from <c>PyObject</c> but its name does not match
+    /// the <c>Py&lt;Name&gt;Object</c> pattern, or when a class inherits from <c>PyTypeObject</c>
+    /// but its name does not match the <c>Py&lt;Name&gt;ObjectType</c> pattern.
     /// <para/>
     /// Compliant (no diagnostic):
     /// <code>
-    /// if (a)
-    ///     return b;
-    /// for (int i = 0; i &lt; n; i++)
-    ///     Process(i);
+    /// class PyIntObject : PyObject { }
+    /// class PyIntObjectType : PyTypeObject&lt;PyIntObject&gt; { }
+    /// class PyStrObject : PyObject { }
+    /// class PyStrObjectType : PyTypeObject&lt;PyStrObject&gt; { }
     /// </code>
     /// Non-compliant:
     /// <code>
-    /// if (a) { return b; }
-    /// if (a) return b;
-    /// if (a)
-    /// {
-    ///     return b;
-    /// }
+    /// class MyObject : PyObject { }                           // should be PyMyObject
+    /// class IntType : PyTypeObject&lt;PyIntObject&gt; { }          // should be PyIntObjectType
     /// </code>
-    /// Exemptions (no diagnostic):
+    /// Edge cases:
     /// <list type="bullet">
-    ///   <item><description>Single statement is itself a control flow statement (e.g., <c>if (a) { if (b) return c; }</c>) — removing braces would create ambiguity.</description></item>
-    ///   <item><description>Single statement spans multiple lines (ternary, LINQ chain) — braces improve readability.</description></item>
-    ///   <item><description>If-else chain where another branch needs braces (handled by PYSPI003 for consistency).</description></item>
+    ///   <item><description>Generic exception types (e.g., <c>PyExceptionType&lt;TSelf&gt;</c>) are exempt as known exceptions.</description></item>
+    ///   <item><description>Only <c>class</c> declarations are checked; struct, interface, and record are ignored.</description></item>
+    ///   <item><description>Indirect inheritance (e.g., inheriting from <c>PyIntObject</c> which inherits from <c>PyObject</c>) is still checked.</description></item>
+    ///   <item><description><c>PyTypeObject</c> is checked first because it inherits from <c>PyObject</c> via <c>PyObjectManagedDict</c>.</description></item>
     /// </list>
     /// </summary>
     private static readonly DiagnosticDescriptor PYSPI002 = new(
         nameof(PYSPI002),
-        "Body of control flow statement should be on a new line without braces",
-        "Body of '{0}' should be on a new line without braces: {1}",
+        "Type name should follow PySharp naming convention",
+        "Type '{0}' inherits from {1} - name should match the pattern '{2}'",
         "PySharp",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
-        description: "Control flow statements should have their body on a separate line without braces (e.g., 'if (a)\\n    return b;').");
+        description: "Types inheriting from PyObject should be named 'Py<Name>Object', and types inheriting from PyTypeObject should be named 'Py<Name>ObjectType'.");
 
-    private static void AnalyzeControlFlowBody(SyntaxNodeAnalysisContext context)
+    private static readonly HashSet<string> KnownExceptions =
+    [
+        "PyObjectManagedDict",  // Public intermediate base between PyObject and PyTypeObject; provides dictionary attribute storage; naming is descriptive (PyObject + ManagedDict) rather than following Py&lt;Name&gt;Object convention
+        "PyTypeObject",         // Non-generic + generic abstract base for type system; name follows PyObject convention not PyTypeObject convention
+        "PyExceptionType",      // Abstract exception base; intentionally omits "Object"
+        "UserDefinedType",      // Dynamic user-defined type; not a static built-in
+        "PySharpException",     // Internal exception in PyResult; intentionally non-standard
+        "TObject",              // Placeholder sentinel type in PyTypeObject.Declarations
+    ];
+
+    private static void AnalyzeTypeNaming(SyntaxNodeAnalysisContext context)
     {
-        var (keywordToken, statement) = context.Node switch
-        {
-            IfStatementSyntax s => (s.IfKeyword, (SyntaxNode?)s.Statement),
-            ForStatementSyntax s => (s.ForKeyword, s.Statement),
-            ForEachStatementSyntax s => (s.ForEachKeyword, s.Statement),
-            WhileStatementSyntax s => (s.WhileKeyword, s.Statement),
-            _ => (default, null),
-        };
-
-        if (statement is null)
+        var classDecl = (ClassDeclarationSyntax)context.Node;
+        var symbol = context.SemanticModel.GetDeclaredSymbol(classDecl);
+        if (symbol is null)
             return;
 
-        var keywordLine = keywordToken.GetLocation().GetLineSpan().StartLinePosition.Line;
+        // Skip known exceptions
+        if (IsKnownException(symbol))
+            return;
 
-        if (statement is BlockSyntax block)
+        // Resolve base types from the compilation.
+        var pyTypeObject = context.Compilation.GetTypeByMetadataName("PySharp.Modules.Builtins.PyTypeObject");
+        var pyObject = context.Compilation.GetTypeByMetadataName("PySharp.Modules.Builtins.PyObject");
+
+        // First check: inherits from PyTypeObject (directly or indirectly).
+        // This must be checked before PyObject because PyTypeObject also inherits
+        // from PyObject (via PyObjectManagedDict → PyObject).
+        if (pyTypeObject is not null && InheritsFrom(symbol, pyTypeObject))
         {
-            // Single-statement block should omit braces: if (a) { return b; } or if (a)\n{\n    return b;\n}
-            // But not when the single statement is itself a control flow statement (nested if/for/etc.),
-            // because removing braces would create ambiguity.
-            // Also not when this if-statement is part of a chain where another branch
-            // has a multi-statement block — braces are needed for consistency (warning 3 covers this).
-            // Note: IsBranchInMultiStatementChain only applies to IfStatementSyntax nodes.
-            // For for/foreach/while nodes, the chain check is skipped.
-            if (block.Statements.Count is 1
-                && !BlockNeedsBraces(block)
-                && (context.Node is not IfStatementSyntax || !IsBranchInMultiStatementChain(context.Node)))
+            // Name must start with "Py" and end with "ObjectType".
+            // This pattern covers: PyObjectType, PyIntObjectType, PyTypeObjectType, etc.
+            if (!IsValidTypeObjectName(symbol.Name))
             {
-                var sourceText = GetSourceSnippet(context.Node);
                 context.ReportDiagnostic(Diagnostic.Create(
-                    PYSPI002, block.GetLocation(), GetKeywordText(context.Node), sourceText));
+                    PYSPI002,
+                    classDecl.Identifier.GetLocation(),
+                    symbol.Name,
+                    "PyTypeObject",
+                    "Py<Name>ObjectType"));
             }
             return;
         }
 
-        // Direct statement on same line as keyword: if (a) return b;
-        var stmtLine = statement.GetLocation().GetLineSpan().StartLinePosition.Line;
-        if (stmtLine == keywordLine)
+        // Second check: inherits from PyObject (but not via PyTypeObject).
+        if (pyObject is not null && InheritsFrom(symbol, pyObject))
         {
-            var sourceText = GetSourceSnippet(context.Node);
-            context.ReportDiagnostic(Diagnostic.Create(
-                PYSPI002, statement.GetLocation(), GetKeywordText(context.Node), sourceText));
+            // Name must start with "Py" and end with "Object" (but not "ObjectType").
+            // This pattern covers: PyIntObject, PyStrObject, PyDictObject, etc.
+            if (!IsValidObjectName(symbol.Name))
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    PYSPI002,
+                    classDecl.Identifier.GetLocation(),
+                    symbol.Name,
+                    "PyObject",
+                    "Py<Name>Object"));
+            }
         }
     }
 
-    private static string GetKeywordText(SyntaxNode node)
+    /// <summary>
+    /// Determines whether <paramref name="symbol"/> is a known exception that is allowed
+    /// to deviate from the naming convention.
+    /// </summary>
+    private static bool IsKnownException(INamedTypeSymbol symbol)
     {
-        return node switch
-        {
-            IfStatementSyntax => "if",
-            ForStatementSyntax => "for",
-            ForEachStatementSyntax => "foreach",
-            WhileStatementSyntax => "while",
-            _ => "statement",
-        };
-    }
+        var name = symbol.Name;
 
-    private static string GetSourceSnippet(SyntaxNode node)
-    {
-        var text = node.ToString();
-        // Truncate long snippets to avoid excessively long messages
-        const int maxLen = 60;
-        if (text.Length > maxLen)
-            text = text.Substring(0, maxLen - 3) + "...";
-        return text;
-    }
+        // Check the static set first
+        if (KnownExceptions.Contains(name))
+            return true;
 
-    private static bool IsBranchInMultiStatementChain(SyntaxNode node)
-    {
-        // Walk up to the top-level if in an if-else-if chain
-        while (node is IfStatementSyntax { Parent: ElseClauseSyntax { Parent: IfStatementSyntax parent } })
-            node = parent;
-
-        // Walk the chain, check if any branch has a block that cannot lose braces
-        for (var current = (IfStatementSyntax)node; current is not null; current = current.Else?.Statement as IfStatementSyntax)
-        {
-            if (BranchNeedsBraces(current.Statement))
-                return true;
-
-            if (BranchNeedsBraces(current.Else?.Statement))
-                return true;
-        }
+        // Handle generic variants of PyExceptionType:
+        //   PyExceptionType<TSelf>
+        //   PyExceptionType<TSelf, TBase>
+        if (name == "PyExceptionType" && symbol.TypeParameters.Length > 0)
+            return true;
 
         return false;
     }
 
-    private static bool BranchNeedsBraces(SyntaxNode? statement) =>
-        statement is BlockSyntax block && BlockNeedsBraces(block);
-
-    private static bool BlockNeedsBraces(BlockSyntax block) => block.Statements.Count switch
+    /// <summary>
+    /// Returns <see langword="true"/> when <paramref name="type"/> inherits from
+    /// <paramref name="baseType"/> (directly or indirectly).
+    /// </summary>
+    private static bool InheritsFrom(INamedTypeSymbol type, INamedTypeSymbol baseType)
     {
-        > 1 => true,
-        1 => IsControlFlowStmt(block.Statements[0])
-             || block.Statements[0].GetLocation().GetLineSpan() is var s
-             && s.StartLinePosition.Line != s.EndLinePosition.Line,
-        _ => false
-    };
+        var current = type.BaseType;
+        while (current is not null)
+        {
+            if (SymbolEqualityComparer.Default.Equals(current, baseType))
+                return true;
+            current = current.BaseType;
+        }
+        return false;
+    }
 
-    private static bool IsControlFlowStmt(StatementSyntax s) => s
-        is IfStatementSyntax or ForStatementSyntax or ForEachStatementSyntax
-        or WhileStatementSyntax or DoStatementSyntax
-        or LockStatementSyntax or UsingStatementSyntax or FixedStatementSyntax;
+    /// <summary>
+    /// Checks whether <paramref name="name"/> follows the <c>Py&lt;Name&gt;ObjectType</c> pattern.
+    /// <para/>
+    /// The name must start with <c>"Py"</c> and end with <c>"ObjectType"</c>.
+    /// Examples of valid names: <c>PyObjectType</c>, <c>PyIntObjectType</c>, <c>PyTypeObjectType</c>.
+    /// </summary>
+    private static bool IsValidTypeObjectName(string name) =>
+        name.StartsWith("Py", StringComparison.Ordinal) && name.EndsWith("ObjectType", StringComparison.Ordinal);
+
+    /// <summary>
+    /// Checks whether <paramref name="name"/> follows the <c>Py&lt;Name&gt;Object</c> pattern.
+    /// <para/>
+    /// The name must start with <c>"Py"</c>, end with <c>"Object"</c>, and must not end with <c>"ObjectType"</c>.
+    /// Examples of valid names: <c>PyIntObject</c>, <c>PyStrObject</c>, <c>PyDictObject</c>.
+    /// </summary>
+    private static bool IsValidObjectName(string name) =>
+        name.StartsWith("Py", StringComparison.Ordinal) && name.EndsWith("Object", StringComparison.Ordinal) && !name.EndsWith("ObjectType", StringComparison.Ordinal);
 }

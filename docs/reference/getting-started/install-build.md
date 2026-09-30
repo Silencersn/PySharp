@@ -15,8 +15,8 @@ dotnet build PySharp.slnx   # 构建整个解决方案
 dotnet test  PySharp.slnx   # 运行测试套件
 ```
 
-解决方案文件为 XML 格式的 `PySharp.slnx`，包含核心库、命令行宿主、测试，以及两对源生成器与
-分析器项目，见[项目概览](./overview.md)中的组成表。
+解决方案文件为 XML 格式的 `PySharp.slnx`，包含核心库、命令行宿主、测试，以及源生成器与分析器
+工具项目组，见[项目概览](./overview.md)中的组成表。
 
 只构建核心库：
 

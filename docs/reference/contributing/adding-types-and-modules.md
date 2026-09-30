@@ -8,7 +8,7 @@
 
 以 `queue.Queue`（`PySharp/Modules/Queue/`）为参照模板。
 
-1. **命名与文件**：值类型为 `Py<Name>Object`，元类型为 `Py<Name>ObjectType`，由 PYSPI009 强制；放在 `Modules/Builtins/` 或所属模块目录。Python 侧方法很多的类型用分部拆文件，惯例是 `.Py.cs` 放 `[PyMethod]` 实现，参照 `PyStrObject.Py.cs`。
+1. **命名与文件**：值类型为 `Py<Name>Object`，元类型为 `Py<Name>ObjectType`，由 PYSPI002 强制；放在 `Modules/Builtins/` 或所属模块目录。Python 侧方法很多的类型用分部拆文件，惯例是 `.Py.cs` 放 `[PyMethod]` 实现，参照 `PyStrObject.Py.cs`。
 2. **值类型**：字段承载数据；`public override PyTypeObject DefaultPyType => Py<Name>ObjectType.Shared;`。构造函数按需声明为 `internal`。
 3. **元类型**：`[PyType("Name", Module = "builtins")]`（放其他模块时写模块名）加 `sealed partial class ... : PyTypeObject<Py<Name>Object>`。不要手写 `Shared`、私有构造、`DefaultName` / `DefaultModule` / `IsSealed`、`FillSlots()`、`RegisterMethods()` / `RegisterProperties()`，这些全部由 `PyTypeGenerator` 产出，手写会重复定义；只有 `[PyTypeConstructor(DoNotGenerateConstructor = true)]` 时才例外。
 4. **方法**：`[PyMethod("名字")]` 加 `[PyFunctionParameters("a", "b=1")]`，缺后者报 PYARG010；签名为 `static PyResult M(PyCallContext, Py<Name>Object self, PyArguments)`。静态方法与类方法用 `[PyStaticMethod]` / `[PyClassMethod]`；属性用 `[PyProperty]` 三件套。
@@ -17,7 +17,7 @@
 7. **注册进 `builtins`**：在 `Modules/Builtins/PyBuiltinsModuleObject.cs` 顶部追加一行
    `[PyModuleInclude(PyModuleIncludeScheme.TypeSingleton, typeof(Py<Name>ObjectType))]`
    该文件按“内建类型、异常层次、警告层次”分组排列，放在对应分组里。
-8. **错误消息**：需要新消息时登记 `PySR`，见[错误消息规范](./error-messages.md)；不要内联字符串。PYSPI006 禁的是 `__xxx__` 字面量，消息同理集中管理。
+8. **错误消息**：需要新消息时登记 `PySR`，见[错误消息规范](./error-messages.md)；不要内联字符串。PYSPI001 禁的是 `__xxx__` 字面量，消息同理集中管理。
 9. **测试**：`PySharp.Tests/test_pyfiles/test_<name>.py`（断言写在 Python 内）加 `TestPyFiles.cs` 里的 `[TestMethod]`；边界与缺陷场景用 `test_<现象>_regression.py` 命名，见[测试体系](../internals/testing.md)。
 10. **构建验证**：`dotnet build PySharp/PySharp.csproj` 必须通过（生成器自举，PYARG 诊断在此暴露），再跑 `dotnet test`。
 

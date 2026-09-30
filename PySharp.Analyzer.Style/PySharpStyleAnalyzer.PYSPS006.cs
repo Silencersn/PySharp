@@ -2,12 +2,12 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace PySharp.Analyzer.Internal;
+namespace PySharp.Analyzer.Style;
 
-partial class PySharpAnalyzerInternalAnalyzer
+partial class PySharpStyleAnalyzer
 {
     /// <summary>
-    /// PYSPI007 — Opening brace must be on a new line.
+    /// PYSPS006 — Opening brace must be on a new line.
     /// <para/>
     /// Triggers when a non-empty <c>BlockSyntax</c> has its opening brace <c>{</c>
     /// on the same line as the preceding token, or on the same line as the first
@@ -40,11 +40,11 @@ partial class PySharpAnalyzerInternalAnalyzer
     /// }
     /// </code>
     /// </summary>
-    private static readonly DiagnosticDescriptor PYSPI007 = new(
-        nameof(PYSPI007),
+    private static readonly DiagnosticDescriptor PYSPS006 = new(
+        nameof(PYSPS006),
         "Opening brace must be on a new line",
         "Place the opening brace on a new line",
-        "PySharp",
+        "Style",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
         description: "All opening braces should be on a new line (Allman style). Empty blocks ({ }) on the same line are exempted.");
@@ -68,7 +68,7 @@ partial class PySharpAnalyzerInternalAnalyzer
         var prevLine = prevToken.GetLocation().GetLineSpan().StartLinePosition.Line;
         if (openLine == prevLine)
         {
-            context.ReportDiagnostic(Diagnostic.Create(PYSPI007, openBrace.GetLocation()));
+            context.ReportDiagnostic(Diagnostic.Create(PYSPS006, openBrace.GetLocation()));
             return;
         }
 
@@ -80,7 +80,7 @@ partial class PySharpAnalyzerInternalAnalyzer
                 .GetLocation().GetLineSpan().StartLinePosition.Line;
             if (firstStmtLine == openLine)
             {
-                context.ReportDiagnostic(Diagnostic.Create(PYSPI007, openBrace.GetLocation()));
+                context.ReportDiagnostic(Diagnostic.Create(PYSPS006, openBrace.GetLocation()));
             }
         }
     }

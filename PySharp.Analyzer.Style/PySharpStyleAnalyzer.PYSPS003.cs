@@ -4,12 +4,12 @@ using Microsoft.CodeAnalysis.Diagnostics;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace PySharp.Analyzer.Internal;
+namespace PySharp.Analyzer.Style;
 
-partial class PySharpAnalyzerInternalAnalyzer
+partial class PySharpStyleAnalyzer
 {
     /// <summary>
-    /// PYSPI003 — Inconsistent brace style in an if-else chain.
+    /// PYSPS003 — Inconsistent brace style in an if-else chain.
     /// <para/>
     /// Triggers when at least one branch requires braces (multi-statement block, nested
     /// control flow, or multi-line statement) while other branches omit them.
@@ -44,16 +44,16 @@ partial class PySharpAnalyzerInternalAnalyzer
     /// </code>
     /// Edge cases:
     /// <list type="bullet">
-    ///   <item><description>All branches are single-statement blocks — PYSPI002 fires instead.</description></item>
+    ///   <item><description>All branches are single-statement blocks — PYSPS002 fires instead.</description></item>
     ///   <item><description>All branches are single-line without blocks — no diagnostic.</description></item>
     ///   <item><description>All branches consistently use or omit braces — no diagnostic.</description></item>
     /// </list>
     /// </summary>
-    private static readonly DiagnosticDescriptor PYSPI003 = new(
-        nameof(PYSPI003),
+    private static readonly DiagnosticDescriptor PYSPS003 = new(
+        nameof(PYSPS003),
         "Inconsistent brace style in if-else chain",
         "Inconsistent brace style in if-else chain - all branches should use braces: {0}",
-        "PySharp",
+        "Style",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
         description: "If any branch of an if-else chain has a multi-line body, all branches should consistently use braces.");
@@ -89,7 +89,7 @@ partial class PySharpAnalyzerInternalAnalyzer
         if (hasMultiBlock && hasNonBlock)
         {
             context.ReportDiagnostic(Diagnostic.Create(
-                PYSPI003, ifStmt.IfKeyword.GetLocation(), GetSourceSnippet(ifStmt)));
+                PYSPS003, ifStmt.IfKeyword.GetLocation(), GetSourceSnippet(ifStmt)));
         }
     }
 }

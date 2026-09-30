@@ -57,7 +57,7 @@
 - **`FillSlots`**：`PyTypeObject<T>` 上填充协议槽的虚钩子，由生成代码调用。
 - **`.Py.cs` 分部**：约定俗成的 partial 文件名后缀，放置 Python 侧实例方法实现，如 `PyStrObject.Py.cs` 的 `PyJoin`。
 - **`AIGenerated` 分部**：源码中带 `[AIGenerated]` 标注的成员，即 AI 辅助生成后经人工核验的实现，阅读时与手写代码同等对待。
-- **PYARG / PYSP / PYSPI**：分析器诊断规则族，分别对应参数注解约定（PYARG）、公共 API 使用约束（PYSP001-005）与内部实现约定（PYSPI001-009）。见[源生成器与代码分析](./internals/source-generators.md)。
+- **PYARG / PYSP / PYSPI / PYSPS**：分析器诊断规则族，分别对应参数注解约定（PYARG）、公共 API 使用约束（PYSP001-005）、内部领域约定（PYSPI001-002）与通用 C# 风格（PYSPS001-007）。见[源生成器与代码分析](./internals/source-generators.md)。
 - **`[PyExport]`**：把 C# 方法暴露为内建函数属性的特性，支持多重载；`PyBuiltinFunctions` 的 44 个内建函数由此组织。
 - **`PySR` 资源串**：`Resources/` 下按域拆分的 const string 分部类，全部 Python 可见错误消息的文本源。见[错误消息规范](./contributing/error-messages.md)。
 

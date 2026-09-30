@@ -3,12 +3,12 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace PySharp.Analyzer.Internal;
+namespace PySharp.Analyzer.Style;
 
-partial class PySharpAnalyzerInternalAnalyzer
+partial class PySharpStyleAnalyzer
 {
     /// <summary>
-    /// PYSPI008 — Use semicolon syntax for empty type declarations.
+    /// PYSPS007 — Use semicolon syntax for empty type declarations.
     /// <para/>
     /// Triggers when a <c>class</c>, <c>struct</c>, <c>interface</c>, or <c>record</c>
     /// has an empty body (<c>{ }</c>).  These should use the C# 10+ file-scoped syntax
@@ -32,11 +32,11 @@ partial class PySharpAnalyzerInternalAnalyzer
     /// [SomeAttr] class Foo { }
     /// </code>
     /// </summary>
-    private static readonly DiagnosticDescriptor PYSPI008 = new(
-        nameof(PYSPI008),
+    private static readonly DiagnosticDescriptor PYSPS007 = new(
+        nameof(PYSPS007),
         "Use semicolon syntax for empty type declaration",
         "Use '{0};' instead of '{0} {{ }}'",
-        "PySharp",
+        "Style",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
         description: "C# 10+ allows file-scoped type declarations. Use 'class Foo;' instead of 'class Foo { }' for empty types.");
@@ -57,7 +57,7 @@ partial class PySharpAnalyzerInternalAnalyzer
             return;
 
         context.ReportDiagnostic(Diagnostic.Create(
-            PYSPI008,
+            PYSPS007,
             typeDecl.CloseBraceToken.GetLocation(),
             $"{typeDecl.Keyword.Text} {typeDecl.Identifier.Text}"));
     }

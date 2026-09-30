@@ -42,7 +42,7 @@
 
 | 篇目 | 内容 |
 | --- | --- |
-| [源生成器与代码分析](./source-generators.md) | 生成器的产物、`PYARG`、`PYSP`、`PYSPI` 规则表、自举验证 |
+| [源生成器与代码分析](./source-generators.md) | 生成器的产物、`PYARG`、`PYSP`、`PYSPI`、`PYSPS` 规则表、自举验证 |
 | [测试体系](./testing.md) | 「断言写在 Python 里」的策略、语料命名惯例、新增测试流程 |
 | [Utility 速览](./utility-overview.md) | 与 Python 语义无关的工具类清单、准入标准 |
 | [性能与资源特征](./performance.md) | 分配复用机制、数据结构复杂度、编译开销、AOT 与并发边界、测量方法 |

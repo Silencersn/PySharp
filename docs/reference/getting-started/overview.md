@@ -34,6 +34,7 @@ PySharp 是用纯 C# 从零实现的 Python 3 解释器，目标框架 .NET 10�
 | `PySharp.SourceGeneration.Internal/` | 库内部使用的源生成器 |
 | `PySharp.Analyzer/` | 公开的 Roslyn 分析器（`PYSP*` 规则） |
 | `PySharp.Analyzer.Internal/` | 库内部使用的分析器（`PYSPI*` 规则） |
+| `PySharp.Analyzer.Style/` | 通用 C# 风格分析器（`PYSPS*` 规则），与 PySharp 领域解耦 |
 
 ## 适用场景
 

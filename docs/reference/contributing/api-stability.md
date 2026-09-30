@@ -41,7 +41,7 @@ internal 成员是实现细节，可自由重构，无兼容负担：`PyCallCont
 2. **错误即值**：协议层返回 `PyResult`，不在热路径抛异常，`PyRuntimeException` 保留给帧边界；
 3. **惯用法合规**：通过 `PYSP*` 分析器（隐式转换、`Interned` 字段、缓存常量）；
 4. **文档同步**：[API 参考](../api/)或相关 user-guide 篇目补充；
-5. **命名**：符合 PYSPI009 与既有词汇，宿主侧用 `Create*` 工厂加 Builder 链，对象侧用 `From*` / `Create*` 工厂加 `Shared` 单例。
+5. **命名**：符合 PYSPI002 与既有词汇，宿主侧用 `Create*` 工厂加 Builder 链，对象侧用 `From*` / `Create*` 工厂加 `Shared` 单例。
 
 ## 例外：技术上 public、政策上受限
 

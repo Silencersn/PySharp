@@ -82,29 +82,37 @@ PySharp 的类型机器（slots、方法描述符、异常工厂等）全部在�
 | PYSP004 | 用缓存常量（`PyIntObject.Zero`、`PyFloatObject.NaN`、`PyBoolObject.True`、`PyStrObject.Empty` 等）而非工厂调用 |
 | PYSP005 | 返回类型为非泛型 `PyResult` 时直接 `return x;`，而非 `return x.ExceptionResult;`，后者经 `PyExceptionResult` 隐式转换会把成功值坍缩为 `None` |
 
-内部包 `PySharp.Analyzer.Internal`（`PYSPI*`，Warning），约束库自身风格，在 `PySharp` 与
-`PySharp.Console` 强制启用：
+内部包 `PySharp.Analyzer.Internal`（`PYSPI*`，Warning），只约束库自身的领域约定（内建命名空间、
+`Py` 类型命名），在 `PySharp` 与 `PySharp.Console` 强制启用：
 
 | 规则 | 要求 |
 | --- | --- |
-| PYSPI001 | 常量比较用模式匹配（`is null`、`is 0`） |
-| PYSPI002、PYSPI003、PYSPI004 | 控制流语句体：单语句体无大括号且换行；if 与 else 链的大括号风格一致；跨多行的裸语句体必须加大括号 |
-| PYSPI005 | 用 `string.Empty` 代替 `""` |
-| PYSPI006 | `PySharp.Modules.Builtins` 内禁用 `__xxx__` 字面量，必须用 `PySpecialNames` |
-| PYSPI007 | Allman 风格：`{` 独占一行，空块 `{ }` 豁免 |
-| PYSPI008 | 空类型体用 `class Foo;` |
-| PYSPI009 | 命名规范：`PyObject` 子类必须为 `Py<Name>Object`，`PyTypeObject` 子类必须为 `Py<Name>ObjectType`，有少量白名单豁免 |
+| PYSPI001 | `PySharp.Modules.Builtins` 内禁用 `__xxx__` 字面量，必须用 `PySpecialNames` |
+| PYSPI002 | 命名规范：`PyObject` 子类必须为 `Py<Name>Object`，`PyTypeObject` 子类必须为 `Py<Name>ObjectType`，有少量白名单豁免 |
+
+内部包 `PySharp.Analyzer.Style`（`PYSPS*`，Warning），与 PySharp 领域完全解耦的通用 C# 风格规则
+（只依赖 Roslyn 与 BCL，不引用任何 `PySharp.*` 类型，因此可整体抽出复用到别的项目）；Category 为
+`Style`，同样在 `PySharp` 与 `PySharp.Console` 强制启用：
+
+| 规则 | 要求 |
+| --- | --- |
+| PYSPS001 | 常量比较用模式匹配（`is null`、`is 0`） |
+| PYSPS002、PYSPS003、PYSPS004 | 控制流语句体：单语句体无大括号且换行；if 与 else 链的大括号风格一致；跨多行的裸语句体必须加大括号 |
+| PYSPS005 | 用 `string.Empty` 代替 `""` |
+| PYSPS006 | Allman 风格：`{` 独占一行，空块 `{ }` 豁免 |
+| PYSPS007 | 空类型体用 `class Foo;` |
 
 ## 接线与验证
 
 - 接线：`PySharp.csproj` 以 `ProjectReference OutputItemType="Analyzer"
-  ReferenceOutputAssembly="false"` 引用全部 4 个工具项目，并同样引用 `PySharp.Roslyn.Shared`。
+  ReferenceOutputAssembly="false"` 引用全部 5 个工具项目，并同样引用 `PySharp.Roslyn.Shared`。
   共享工具必须走 `OutputItemType="Analyzer"` 而非普通引用：编译器只在被显式传入的程序集里解析
   生成器的依赖，不会探查引用方 DLL 所在目录，普通引用会让生成器在初始化时报
   `CS8784 FileNotFoundException`。打包后 `analyzers/dotnet/cs/` 下的 DLL 由消费端 SDK 整体
   当作 analyzer 传入，与本仓库自身构建的行为一致。公开生成器、分析器与共享工具的 DLL 均以
   `Pack="true" PackagePath="analyzers/dotnet/cs"` 打进主 NuGet 包，安装包即自动获得工具链。
-  `PySharp.Analyzer` 也可独立打包（`PackageId=PySharp.Analyzer`）。
+  `PySharp.Analyzer.Internal` 与 `PySharp.Analyzer.Style` 只作裸 dll 随主包分发，不打包成独立
+  package（`IsPackable=false`）。
 - 验证方式：没有独立的生成器单元测试，依赖自举与语义回归。主库是全部生成器的最大消费者，Debug
   构建产物 `obj/.../generated/` 下有 270 余个文件，生成器回归即编译失败。语义回归见
   [测试体系](./testing.md)。生成器与分析器项目均启用 `EnforceExtendedAnalyzerRules`。

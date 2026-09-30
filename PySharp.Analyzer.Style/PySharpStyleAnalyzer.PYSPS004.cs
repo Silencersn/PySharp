@@ -2,12 +2,12 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 
-namespace PySharp.Analyzer.Internal;
+namespace PySharp.Analyzer.Style;
 
-partial class PySharpAnalyzerInternalAnalyzer
+partial class PySharpStyleAnalyzer
 {
     /// <summary>
-    /// PYSPI004 — Multi-line bare statement body should use braces.
+    /// PYSPS004 — Multi-line bare statement body should use braces.
     /// <para/>
     /// Triggers when the body of an <c>if</c>/<c>for</c>/<c>foreach</c>/<c>while</c>
     /// is a bare statement (not a <c>BlockSyntax</c>) that spans multiple lines.
@@ -31,11 +31,11 @@ partial class PySharpAnalyzerInternalAnalyzer
     ///         arg1, arg2);
     /// </code>
     /// </summary>
-    private static readonly DiagnosticDescriptor PYSPI004 = new(
-        nameof(PYSPI004),
+    private static readonly DiagnosticDescriptor PYSPS004 = new(
+        nameof(PYSPS004),
         "Multi-line bare statement body should use braces",
         "Add braces to this multi-line body",
-        "PySharp",
+        "Style",
         DiagnosticSeverity.Warning,
         isEnabledByDefault: true,
         description: "A control flow body that spans multiple lines should use braces for clarity.");
@@ -56,6 +56,6 @@ partial class PySharpAnalyzerInternalAnalyzer
 
         var span = statement.GetLocation().GetLineSpan();
         if (span.StartLinePosition.Line != span.EndLinePosition.Line)
-            context.ReportDiagnostic(Diagnostic.Create(PYSPI004, statement.GetLocation()));
+            context.ReportDiagnostic(Diagnostic.Create(PYSPS004, statement.GetLocation()));
     }
 }

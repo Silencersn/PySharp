@@ -50,7 +50,7 @@ throw context.TypeError(PySR.Runtime_Import_PackageNotString);
 2. 按三段式命名追加常量，同结构的消息放在一起，现有文件内已按语句或特性聚类排列；
 3. 消费处用 `PyResult.<X>Error(PySR.Xxx, args)`，占位实参按顺序传入；
 4. 若消息属于新协议或新语句，而不是既有消息的改写，在 `test_pyfiles` 里断言该错误确实以预期类型与文本出现，参照 `test_type_error_messages.py` 的做法；
-5. 提交前 grep 确认没有把消息内联进实现代码，`Resources` 之外不应出现新的裸消息字符串；dunder 名字另受 PYSPI006 约束。
+5. 提交前 grep 确认没有把消息内联进实现代码，`Resources` 之外不应出现新的裸消息字符串；dunder 名字另受 PYSPI001 约束。
 
 ## 修改既有消息
 

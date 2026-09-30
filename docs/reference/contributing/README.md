@@ -17,7 +17,7 @@
 
 ## 篇目一览
 
-上手篇目是[构建与测试](./build-and-test.md)，覆盖环境、命令、按改动类型的验证路径与版本提交惯例；以及[编码规范](./coding-standards.md)，覆盖 PYSPI\* / PYSP\* 强制规则、`PyResult` 惯例与 AOT 纪律。
+上手篇目是[构建与测试](./build-and-test.md)，覆盖环境、命令、按改动类型的验证路径与版本提交惯例；以及[编码规范](./coding-standards.md)，覆盖 PYSPS\* / PYSPI\* / PYSP\* 强制规则、`PyResult` 惯例与 AOT 纪律。
 
 任务操作指南包括[新增类型与模块](./adding-types-and-modules.md)（五类任务的分步清单与收尾 checklist）、[调试指南](./debugging.md)（分层定位、断点建议、读生成的 `.g.cs`）、[错误消息规范](./error-messages.md)（`PySR` 的组织、命名与新增流程）和[测试语料规范](./test-corpus.md)（夹具命名、docstring 元数据、辅助件标记与生成器诊断）。
 

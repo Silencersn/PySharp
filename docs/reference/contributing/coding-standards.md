@@ -1,13 +1,13 @@
 # 编码规范
 
-代码风格由内建 Roslyn 分析器在每次构建时强制，规则全部为 Warning 级，项目要求清零存量。规范分两层：所有使用者可见的 `PYSP*`（随 `PySharp.Analyzer` 包分发）与仅约束库自身的 `PYSPI*`（`PySharp.Analyzer.Internal`，对 `PySharp` 与 `PySharp.Console` 生效）。规则机理见[源生成器与代码分析](../internals/source-generators.md)。
+代码风格由内建 Roslyn 分析器在每次构建时强制，规则全部为 Warning 级，项目要求清零存量。规范分三层：所有使用者可见的 `PYSP*`（随 `PySharp.Analyzer` 包分发）；仅约束库自身的 `PYSPI*`（`PySharp.Analyzer.Internal`，`PySharp` 领域约定）；以及 `PYSPS*`（`PySharp.Analyzer.Style`，与 PySharp 领域解耦的通用 C# 风格，可整体抽出复用）。后两层对 `PySharp` 与 `PySharp.Console` 生效。规则机理见[源生成器与代码分析](../internals/source-generators.md)。
 
-## 命名（PYSPI009）
+## 命名（PYSPI002）
 
 - `PyObject` 子类必须命名为 `Py<Name>Object`，`PyTypeObject` 子类必须命名为 `Py<Name>ObjectType`；
 - 少量历史豁免内置在白名单里：`PyObjectManagedDict`、`PyTypeObject`、`PyExceptionType<>`、`UserDefinedType`、`PySharpException` 等。
 
-## 控制流与大括号（PYSPI002 / 003 / 004 / 007）
+## 控制流与大括号（PYSPS002 / 003 / 004 / 006）
 
 - 单语句体不用大括号且必须换行：
 
@@ -18,17 +18,17 @@
   if (result.IsError) { return result; }  // 错误：用了大括号
   ```
 
-- 跨多行的裸语句体必须加大括号（PYSPI004）；if-else 链内的大括号风格必须一致（PYSPI003）。
-- 使用 Allman 风格，`{` 独占一行（PYSPI007）；空块 `{ }` 同行豁免。
-- 空类型体用表达式体声明（PYSPI008）：`class Foo;`。
+- 跨多行的裸语句体必须加大括号（PYSPS004）；if-else 链内的大括号风格必须一致（PYSPS003）。
+- 使用 Allman 风格，`{` 独占一行（PYSPS006）；空块 `{ }` 同行豁免。
+- 空类型体用表达式体声明（PYSPS007）：`class Foo;`。
 
 ## 表达式与惯用法
 
 | 规则 | 要求 | 示例 |
 | --- | --- | --- |
-| PYSPI001 | 常量比较用模式匹配 | `obj is null`、`count is 0` |
-| PYSPI005 | 用 `string.Empty` 代替 `""` | `PyStrObject.FromString(string.Empty)` |
-| PYSPI006 | 内建命名空间内禁用 `__xxx__` 字面量 | 用 `PySpecialNames.Repr`；缺常量先去 `PySpecialNames` 定义 |
+| PYSPS001 | 常量比较用模式匹配 | `obj is null`、`count is 0` |
+| PYSPS005 | 用 `string.Empty` 代替 `""` | `PyStrObject.FromString(string.Empty)` |
+| PYSPI001 | 内建命名空间内禁用 `__xxx__` 字面量 | 用 `PySpecialNames.Repr`；缺常量先去 `PySpecialNames` 定义 |
 | PYSP003 | 用预驻留字段而非池查找 | `PySpecialNames.Interned.Repr` 而非 `InternPool.FromString(...)` |
 | PYSP001 | 返回 `PyResult` 用隐式转换 | `return obj;` 而非 `return PyResult.FromValue(obj);` |
 | PYSP002 | 比较器走上下文 | `context.Comparer` 而非 `PyObjectComparer.Default` |
