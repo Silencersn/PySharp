@@ -45,15 +45,15 @@ partial class PySharpAnalyzerInternalAnalyzer
         isEnabledByDefault: true,
         description: "Types inheriting from PyObject should be named 'Py<Name>Object', and types inheriting from PyTypeObject should be named 'Py<Name>ObjectType'.");
 
-    private static readonly HashSet<string> KnownExceptions = new()
-    {
+    private static readonly HashSet<string> KnownExceptions =
+    [
         "PyObjectManagedDict",  // Public intermediate base between PyObject and PyTypeObject; provides dictionary attribute storage; naming is descriptive (PyObject + ManagedDict) rather than following Py&lt;Name&gt;Object convention
         "PyTypeObject",         // Non-generic + generic abstract base for type system; name follows PyObject convention not PyTypeObject convention
         "PyExceptionType",      // Abstract exception base; intentionally omits "Object"
         "UserDefinedType",      // Dynamic user-defined type; not a static built-in
         "PySharpException",     // Internal exception in PyResult; intentionally non-standard
         "TObject",              // Placeholder sentinel type in PyTypeObject.Declarations
-    };
+    ];
 
     private static void AnalyzeTypeNaming(SyntaxNodeAnalysisContext context)
     {

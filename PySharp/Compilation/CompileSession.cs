@@ -10,7 +10,7 @@ namespace PySharp.Compilation;
 // warnings runtime has no cross-compile dedup — see Lib/codeop.py).
 public sealed class CompileSession
 {
-    public HashSet<(int Line, int Offset, string Message)> WarnedSyntax { get; } = new();
+    public HashSet<(int Line, int Offset, string Message)> WarnedSyntax { get; } = [];
 
     // The compile unit's canonical constants: the one object this compilation
     // uses for every constant equal to a given value. This is CPython's

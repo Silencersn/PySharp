@@ -39,8 +39,10 @@ public sealed class UtilityTests
     [TestMethod]
     public void ConcurrentSet_Remove()
     {
-        var set = new ConcurrentSet<string>();
-        set.Add("hello");
+        var set = new ConcurrentSet<string>
+        {
+            "hello"
+        };
         Assert.IsTrue(set.Remove("hello"));
         Assert.IsFalse(set.Contains("hello"));
     }
@@ -48,8 +50,10 @@ public sealed class UtilityTests
     [TestMethod]
     public void ConcurrentSet_Clear()
     {
-        var set = new ConcurrentSet<int>();
-        set.Add(1);
+        var set = new ConcurrentSet<int>
+        {
+            1
+        };
         set.Clear();
         Assert.IsTrue(set.Count() == 0);
     }
