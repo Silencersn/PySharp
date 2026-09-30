@@ -57,7 +57,7 @@ public class PyModuleIncludeGenerator : IIncrementalGenerator
     {
         var schemeArgs = attr.ConstructorArguments;
         Debug.Assert(schemeArgs.Length > 0);
-        if (schemeArgs[0].Kind == TypedConstantKind.Error || schemeArgs[0].Value is null)
+        if (schemeArgs[0].Kind is TypedConstantKind.Error || schemeArgs[0].Value is null)
             return null; // Undecodable constant: skip silently.
 
         var schemeOrdinal = (int)schemeArgs[0].Value!;
@@ -219,20 +219,14 @@ public class PyModuleIncludeGenerator : IIncrementalGenerator
             foreach (var member in include.Members)
             {
                 if (include.ExplicitName is not null)
-                {
                     // ExplicitMember: AppendAttribute("name", Type.Member)
                     builder.AppendLine($"AppendAttribute(\"{include.ExplicitName}\", {member.SourceTypeFullName}.{member.Name});");
-                }
                 else if (member.HasName)
-                {
                     // IPyObjectName overload: AppendAttribute(Type.Member)
                     builder.AppendLine($"AppendAttribute({member.SourceTypeFullName}.{member.Name});");
-                }
                 else
-                {
                     // Explicit name fallback: use member name lowercase
                     builder.AppendLine($"AppendAttribute(\"{member.Name.ToLowerInvariant()}\", {member.SourceTypeFullName}.{member.Name});");
-                }
             }
 
             builder.AppendLine();

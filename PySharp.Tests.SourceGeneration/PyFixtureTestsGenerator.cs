@@ -133,7 +133,7 @@ public sealed class PyFixtureTestsGenerator : IIncrementalGenerator
         var directory = lastSlash < 0 ? string.Empty : normalized.Substring(0, lastSlash);
         return directory.EndsWith("test_pyfiles", StringComparison.OrdinalIgnoreCase)
             && (directory.Length == "test_pyfiles".Length
-                || directory[directory.Length - "test_pyfiles".Length - 1] == '/');
+                || directory[directory.Length - "test_pyfiles".Length - 1] is '/');
     }
 
     private static void Emit(SourceProductionContext context, ImmutableArray<FixtureInfo> fixtures)
@@ -152,7 +152,7 @@ public sealed class PyFixtureTestsGenerator : IIncrementalGenerator
         // A method-name collision emits its first member (duplicates would
         // not compile) and reports one diagnostic per twin.
         var eligible = fixtures
-            .Where(static f => f.Kind == FixtureKind.Test && !f.HasErrors && f.MethodName is not null)
+            .Where(static f => f.Kind is FixtureKind.Test && !f.HasErrors && f.MethodName is not null)
             .ToArray();
         var tests = eligible
             .GroupBy(static f => f.MethodName)
@@ -169,7 +169,7 @@ public sealed class PyFixtureTestsGenerator : IIncrementalGenerator
             }
         }
 
-        if (tests.Length == 0)
+        if (tests.Length is 0)
             return;
 
         context.AddSource("PyFileTests.g.cs", SourceText.From(
@@ -214,9 +214,7 @@ public sealed class PyFixtureTestsGenerator : IIncrementalGenerator
             builder.Append("    [TestMethod]").Append('\n');
             var reason = ignoreReason?.Invoke(test);
             if (reason is not null)
-            {
                 builder.Append("    [Ignore(\"").Append(reason.Replace("\"", "\\\"")).Append("\")]").Append('\n');
-            }
             builder.Append("    [Timeout(").Append(timeoutMs).Append(")]").Append('\n');
             builder.Append("    public void ").Append(test.MethodName).Append("() => ").Append(runnerType)
                 .Append(".Run(\"").Append(test.FileName).Append("\");").Append('\n');
@@ -257,7 +255,7 @@ public sealed class PyFixtureTestsGenerator : IIncrementalGenerator
 
         public ImmutableArray<(DiagnosticDescriptor Descriptor, string[] MessageArgs)> Diagnostics { get; }
 
-        internal bool HasErrors => Diagnostics.Any(static d => d.Descriptor.DefaultSeverity == DiagnosticSeverity.Error);
+        internal bool HasErrors => Diagnostics.Any(static d => d.Descriptor.DefaultSeverity is DiagnosticSeverity.Error);
 
         public bool Equals(FixtureInfo? other) =>
             other is not null
@@ -338,9 +336,9 @@ public sealed class PyFixtureTestsGenerator : IIncrementalGenerator
                 {
                     case "kind":
                         hasKindField = true;
-                        if (value == "test")
+                        if (value is "test")
                             kind = FixtureKind.Test;
-                        else if (value == "helper")
+                        else if (value is "helper")
                             kind = FixtureKind.Helper;
                         else
                             diagnostics.Add((InvalidKindValue, new[] { fileName, value }));
@@ -353,7 +351,7 @@ public sealed class PyFixtureTestsGenerator : IIncrementalGenerator
                         // output-comparison tests; the reason is emitted into
                         // the generated [Ignore].
                         cpythonDiffReason = value;
-                        if (value.Length == 0)
+                        if (value.Length is 0)
                             diagnostics.Add((EmptyCpythonDiffReason, new[] { fileName }));
                         break;
                     default:
@@ -373,7 +371,7 @@ public sealed class PyFixtureTestsGenerator : IIncrementalGenerator
         {
             unterminated = false;
             var index = 0;
-            if (text.Length > 0 && text[0] == '\uFEFF')
+            if (text.Length > 0 && text[0] is '\uFEFF')
                 index++;
             while (index < text.Length)
             {
@@ -382,7 +380,7 @@ public sealed class PyFixtureTestsGenerator : IIncrementalGenerator
                 {
                     index++;
                 }
-                else if (ch == '#')
+                else if (ch is '#')
                 {
                     var end = text.IndexOf('\n', index);
                     if (end < 0)
@@ -422,13 +420,13 @@ public sealed class PyFixtureTestsGenerator : IIncrementalGenerator
             var builder = new StringBuilder("Test");
             foreach (var segment in stem.Split('_'))
             {
-                if (segment.Length == 0)
+                if (segment.Length is 0)
                     continue;
                 builder.Append(char.ToUpperInvariant(segment[0]));
                 if (segment.Length > 1)
                     builder.Append(segment, 1, segment.Length - 1);
             }
-            return builder.Length == 4 ? null : builder.ToString();
+            return builder.Length is 4 ? null : builder.ToString();
         }
     }
 }

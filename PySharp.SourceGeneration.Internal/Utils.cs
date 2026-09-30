@@ -13,9 +13,7 @@ internal class Utils
             {
                 if (ctx.SemanticModel.GetDeclaredSymbol(ctx.Node, cancellationToken) is INamedTypeSymbol symbol &&
                     symbol.ToDisplayString() == fullyQualifiedName)
-                {
                     return symbol;
-                }
 
                 return null;
             }

@@ -61,38 +61,44 @@ public class PyExportGenerator : IIncrementalGenerator
     private static DiagnosticOr<ExportInfo>? Decode(IPropertySymbol property, AttributeData attribute)
     {
         var args = attribute.ConstructorArguments;
-        if (args.Length is 0 || args[0].Kind == TypedConstantKind.Error || args[0].Value is not string exportedName)
+        if (args.Length is 0 || args[0].Kind is TypedConstantKind.Error || args[0].Value is not string exportedName)
             return null; // Undecodable name argument: skip silently.
 
         if (string.IsNullOrEmpty(exportedName))
             return DiagnosticOr<ExportInfo>.From(DiagnosticInfo.For(attribute, PyGeneratorDiagnostics.ExportNameNullOrEmpty, property.Name));
 
-        if (args.Length < 2 || args[1].Kind == TypedConstantKind.Error)
+        if (args.Length < 2 || args[1].Kind is TypedConstantKind.Error)
             return null; // Undecodable params array: skip silently.
 
         var containingType = property.ContainingType;
         var methods = ImmutableArray.CreateBuilder<ExportMethodInfo>();
         foreach (var methodConstant in args[1].Values)
         {
-            if (methodConstant.Kind == TypedConstantKind.Error || methodConstant.Value is not string methodName)
+            if (methodConstant.Kind is TypedConstantKind.Error || methodConstant.Value is not string methodName)
                 return null; // Undecodable element: skip silently.
 
             var method = containingType.GetMembers(methodName).OfType<IMethodSymbol>().FirstOrDefault(static m => !m.IsImplicitlyDeclared);
             if (method is null)
+            {
                 return DiagnosticOr<ExportInfo>.From(DiagnosticInfo.For(
                     attribute, PyGeneratorDiagnostics.ExportMethodNotFound,
                     methodName, property.Name, containingType.ToDisplayString()));
+            }
 
             var parametersAttribute = method.GetAttribute(PyFunctionParametersAttribute);
             if (parametersAttribute is null)
+            {
                 return DiagnosticOr<ExportInfo>.From(DiagnosticInfo.For(
                     attribute, PyGeneratorDiagnostics.ExportMethodMissingParameters,
                     methodName, property.Name));
+            }
 
             if (!IsPyFunctionCompatible(method))
+            {
                 return DiagnosticOr<ExportInfo>.From(DiagnosticInfo.For(
                     attribute, PyGeneratorDiagnostics.ExportMethodSignatureIncompatible,
                     methodName, property.Name));
+            }
 
             var parameterStrings = ReadParameters(parametersAttribute);
             if (parameterStrings is not { } parameters)
@@ -113,12 +119,12 @@ public class PyExportGenerator : IIncrementalGenerator
 
     private static bool IsPyFunctionCompatible(IMethodSymbol method)
     {
-        if (method.ReturnsVoid || method.ReturnType.ToDisplayString() != PyResultType)
+        if (method.ReturnsVoid || method.ReturnType.ToDisplayString() is not PyResultType)
             return false;
-        if (method.Parameters.Length != 2)
+        if (method.Parameters.Length is not 2)
             return false;
-        return method.Parameters[0].Type.ToDisplayString() == PyCallContextType
-            && method.Parameters[1].Type.ToDisplayString() == PyArgumentsType;
+        return method.Parameters[0].Type.ToDisplayString() is PyCallContextType
+            && method.Parameters[1].Type.ToDisplayString() is PyArgumentsType;
     }
 
     private static ImmutableArray<string>? ReadParameters(AttributeData parametersAttribute)
@@ -127,13 +133,13 @@ public class PyExportGenerator : IIncrementalGenerator
         if (args.Length is 0)
             return [];
 
-        if (args[0].Kind == TypedConstantKind.Error)
+        if (args[0].Kind is TypedConstantKind.Error)
             return null;
 
         var builder = ImmutableArray.CreateBuilder<string>(args[0].Values.Length);
         foreach (var constant in args[0].Values)
         {
-            if (constant.Kind == TypedConstantKind.Error || constant.Value is not string value)
+            if (constant.Kind is TypedConstantKind.Error || constant.Value is not string value)
                 return null;
             builder.Add(value);
         }

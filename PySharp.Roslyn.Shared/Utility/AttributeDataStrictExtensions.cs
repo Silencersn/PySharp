@@ -63,7 +63,7 @@ internal static class AttributeDataStrictExtensions
             return true;
         }
 
-        if (constant.Kind == TypedConstantKind.Error || constant.Value is not null)
+        if (constant.Kind is TypedConstantKind.Error || constant.Value is not null)
         {
             // Error constants cannot be decoded reliably; fall back silently (the compiler already reports type errors).
             value = null;
@@ -99,7 +99,7 @@ internal static class AttributeDataStrictExtensions
         }
 
         var constant = args[index];
-        if (constant.Kind != TypedConstantKind.Type || constant.Value is not ITypeSymbol typeSymbol)
+        if (constant.Kind is not TypedConstantKind.Type || constant.Value is not ITypeSymbol typeSymbol)
         {
             // Error constants cannot be decoded reliably; fall back silently (the compiler already reports type errors).
             value = null;

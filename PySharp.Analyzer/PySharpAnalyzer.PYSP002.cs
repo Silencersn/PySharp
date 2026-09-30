@@ -102,10 +102,8 @@ partial class PySharpAnalyzer
             && condAccess.Expression is IdentifierNameSyntax condId
             && condId.Identifier.ValueText == paramName
             && condAccess.WhenNotNull is MemberBindingExpressionSyntax memberBinding
-            && memberBinding.Name.Identifier.ValueText == "Comparer")
-        {
+            && memberBinding.Name.Identifier.ValueText is "Comparer")
             return;
-        }
 
         string suggestion = pyCallContextParam.NullableAnnotation is NullableAnnotation.Annotated
             ? $"{paramName}?.Comparer ?? PyObjectComparer.Default"
@@ -121,8 +119,8 @@ partial class PySharpAnalyzer
         if (type is not INamedTypeSymbol namedType)
             return false;
 
-        return namedType.Name == "PyObjectComparer" &&
-               namedType.ContainingNamespace?.ToDisplayString() == "PySharp.Runtime.Comparison";
+        return namedType.Name is "PyObjectComparer" &&
+               namedType.ContainingNamespace?.ToDisplayString() is "PySharp.Runtime.Comparison";
     }
 
     private static bool IsPyCallContextType(ITypeSymbol type)
@@ -130,7 +128,7 @@ partial class PySharpAnalyzer
         if (type is not INamedTypeSymbol namedType)
             return false;
 
-        return namedType.Name == "PyCallContext" &&
-               namedType.ContainingNamespace?.ToDisplayString() == "PySharp.Runtime.Calls";
+        return namedType.Name is "PyCallContext" &&
+               namedType.ContainingNamespace?.ToDisplayString() is "PySharp.Runtime.Calls";
     }
 }

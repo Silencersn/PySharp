@@ -1,6 +1,6 @@
 # 编码规范
 
-代码风格由内建 Roslyn 分析器在每次构建时强制，规则全部为 Warning 级，项目要求清零存量。规范分三层：所有使用者可见的 `PYSP*`（随 `PySharp.Analyzer` 包分发）；仅约束库自身的 `PYSPI*`（`PySharp.Analyzer.Internal`，`PySharp` 领域约定）；以及 `PYSPS*`（`PySharp.Analyzer.Style`，与 PySharp 领域解耦的通用 C# 风格，可整体抽出复用）。后两层对 `PySharp` 与 `PySharp.Console` 生效。规则机理见[源生成器与代码分析](../internals/source-generators.md)。
+代码风格由内建 Roslyn 分析器在每次构建时强制，规则全部为 Warning 级，项目要求清零存量。规范分三层：所有使用者可见的 `PYSP*`（随 `PySharp.Analyzer` 包分发）；仅约束库自身的 `PYSPI*`（`PySharp.Analyzer.Internal`，`PySharp` 领域约定）；以及 `PYSPS*`（`PySharp.Analyzer.Style`，与 PySharp 领域解耦的通用 C# 风格，可整体抽出复用）。`PYSPI*` 只对 `PySharp` 与 `PySharp.Console` 生效；`PYSPS*` 是通用风格，解决方案内全部项目（含测试与生成器项目）都已接线，改动任一项目都受其约束。规则机理见[源生成器与代码分析](../internals/source-generators.md)。
 
 ## 命名（PYSPI002）
 

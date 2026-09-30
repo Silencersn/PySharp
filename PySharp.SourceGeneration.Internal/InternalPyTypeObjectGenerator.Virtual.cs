@@ -26,7 +26,7 @@ partial class InternalPyTypeObjectGenerator
                 {
                     var parameters = string.Join(", ", method.Parameters.Select(p =>
                     {
-                        string typeStr = p.Type.Name == "TObject" ? "PyObject" : p.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                        string typeStr = p.Type.Name is "TObject" ? "PyObject" : p.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
                         return $"{typeStr} {p.Name}";
                     }));
 

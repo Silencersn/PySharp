@@ -121,7 +121,7 @@ partial class PySharpAnalyzerInternalAnalyzer
         // Handle generic variants of PyExceptionType:
         //   PyExceptionType<TSelf>
         //   PyExceptionType<TSelf, TBase>
-        if (name == "PyExceptionType" && symbol.TypeParameters.Length > 0)
+        if (name is "PyExceptionType" && symbol.TypeParameters.Length > 0)
             return true;
 
         return false;

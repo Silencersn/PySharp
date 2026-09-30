@@ -138,7 +138,7 @@ internal static class PyCpythonDiffRunner
         if (cpy.TimedOut || ps.TimedOut)
             Assert.Fail($"{context} — timed out ({(cpy.TimedOut ? "CPython" : "PySharp")} side)");
 
-        if (cpy.ExitCode == 0 && ps.ExitCode == 0)
+        if (cpy.ExitCode is 0 && ps.ExitCode is 0)
         {
             var cpyOut = Normalize(cpy.StdOut);
             var psOut = Normalize(ps.StdOut);
@@ -147,14 +147,16 @@ internal static class PyCpythonDiffRunner
             return;
         }
 
-        if (cpy.ExitCode != 0 && ps.ExitCode != 0)
+        if (cpy.ExitCode is not 0 && ps.ExitCode is not 0)
         {
             var cpyType = ExceptionType(cpy.StdErr);
             var psType = ExceptionType(ps.StdErr);
             if (cpyType != psType)
+            {
                 Assert.AreEqual(
                     cpyType, psType,
                     $"{context} — both sides failed but with different exceptions\n{StderrTails(cpy, ps)}");
+            }
             return;
         }
 
@@ -206,9 +208,9 @@ internal static class PyCpythonDiffRunner
             lines[i] = lines[i].TrimEnd();
         var start = 0;
         var end = lines.Length;
-        while (start < end && lines[start].Length == 0)
+        while (start < end && lines[start].Length is 0)
             start++;
-        while (end > start && lines[end - 1].Length == 0)
+        while (end > start && lines[end - 1].Length is 0)
             end--;
         var normalized = string.Join('\n', lines[start..end]);
         normalized = AddressRegex.Replace(normalized, "0xADDR");
@@ -288,7 +290,7 @@ internal static class PyCpythonDiffRunner
                 }
 
                 version = version.Trim();
-                if (process.ExitCode == 0 && version.StartsWith("Python 3.14", StringComparison.Ordinal))
+                if (process.ExitCode is 0 && version.StartsWith("Python 3.14", StringComparison.Ordinal))
                     return (new Cpython(exePath, version), log.ToString());
                 log.Append(description).Append(": ").Append(version).Append("; ");
             }

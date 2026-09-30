@@ -235,7 +235,9 @@ public class PyTypeGenerator : IIncrementalGenerator
                             .ForEach(pyType.Slots, static (builder, slot) =>
                             {
                                 if (slot.Name is "New")
+                                {
                                     builder.AppendLine("FillNewSlot();");
+                                }
                                 else if (slot.SlotsMember is not null)
                                 {
                                     // the group struct is only pre-seeded by
@@ -246,7 +248,9 @@ public class PyTypeGenerator : IIncrementalGenerator
                                     builder.AppendLine($"FillSlot(PySpecialNames.{slot.Name}, ref Slots.{slot.SlotsMember}.{slot.Name}, {slot.Name}Bridge);");
                                 }
                                 else
+                                {
                                     builder.AppendLine($"FillSlot(PySpecialNames.{slot.Name}, ref Slots.{slot.Name}, {slot.Name}Bridge);");
+                                }
                             })
                             .AppendLine("FillReflectedSlots();")
                         .ExitBlock())
@@ -302,12 +306,10 @@ public class PyTypeGenerator : IIncrementalGenerator
     {
         for (INamedTypeSymbol? current = typeSymbol.BaseType; current is not null; current = current.BaseType)
         {
-            if (current.MetadataName == "PyTypeObject`1"
-                && current.ContainingNamespace.ToDisplayString() == "PySharp.Modules.Builtins"
+            if (current.MetadataName is "PyTypeObject`1"
+                && current.ContainingNamespace.ToDisplayString() is "PySharp.Modules.Builtins"
                 && current.TypeArguments.Length is 1)
-            {
                 return current.TypeArguments[0].Name;
-            }
         }
 
         return null;
@@ -327,13 +329,13 @@ public class PyTypeGenerator : IIncrementalGenerator
         if (args.Length is 0)
             return [];
 
-        if (args[0].Kind == TypedConstantKind.Error)
+        if (args[0].Kind is TypedConstantKind.Error)
             return null;
 
         var builder = ImmutableArray.CreateBuilder<string>(args[0].Values.Length);
         foreach (var constant in args[0].Values)
         {
-            if (constant.Kind == TypedConstantKind.Error || constant.Value is not string value)
+            if (constant.Kind is TypedConstantKind.Error || constant.Value is not string value)
                 return null;
             builder.Add(value);
         }
@@ -437,7 +439,7 @@ public class PyTypeGenerator : IIncrementalGenerator
         }
 
         /// <summary>The Python property name (C# literal) used to group accessors.</summary>
-        public string NameLiteral { get; } = "";
+        public string NameLiteral { get; } = string.Empty;
 
         public string? Getter { get; set; }
         public string? Setter { get; set; }

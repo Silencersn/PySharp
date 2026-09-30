@@ -67,7 +67,7 @@ partial class PySharpAnalyzerInternalAnalyzer
             if (current is BaseTypeDeclarationSyntax typeDecl)
             {
                 var symbol = context.SemanticModel.GetDeclaredSymbol(typeDecl);
-                return symbol?.ContainingNamespace?.ToDisplayString() == "PySharp.Modules.Builtins";
+                return symbol?.ContainingNamespace?.ToDisplayString() is "PySharp.Modules.Builtins";
             }
         }
 

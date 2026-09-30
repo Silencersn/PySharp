@@ -43,7 +43,7 @@ public sealed class ColorSupportTests
         Assert.IsNull(PyColorSupport.EnvironmentAllowsColor(Env(("PYTHON_COLORS", "yes"))));
 
         // empty NO_COLOR/FORCE_COLOR count as unset
-        Assert.IsNull(PyColorSupport.EnvironmentAllowsColor(Env(("NO_COLOR", ""))));
+        Assert.IsNull(PyColorSupport.EnvironmentAllowsColor(Env(("NO_COLOR", string.Empty))));
         Assert.IsFalse(PyColorSupport.EnvironmentAllowsColor(Env(("NO_COLOR", "1"))));
         Assert.IsTrue(PyColorSupport.EnvironmentAllowsColor(Env(("FORCE_COLOR", "1"))));
 

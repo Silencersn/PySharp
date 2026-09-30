@@ -58,11 +58,17 @@ public sealed class SlotNamesSyncTests
     private static IEnumerable<string> CollectSlotFieldNames(Type slotsType)
     {
         foreach (var field in slotsType.GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance))
+        {
             if (typeof(Delegate).IsAssignableFrom(field.FieldType))
                 yield return field.Name;
+        }
         foreach (var nested in slotsType.GetNestedTypes(BindingFlags.NonPublic | BindingFlags.Public))
+        {
             foreach (var field in nested.GetFields(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance))
+            {
                 if (typeof(Delegate).IsAssignableFrom(field.FieldType))
                     yield return field.Name;
+            }
+        }
     }
 }

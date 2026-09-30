@@ -36,7 +36,7 @@ partial class InternalPyTypeObjectGenerator
 
     private static (string? specialName, string? delegateType) ReadSlotDef(IMethodSymbol method)
     {
-        var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name == PySharpTypes.PySpecialMethodAttributeName);
+        var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name is PySharpTypes.PySpecialMethodAttributeName);
         return (attributeData.GetConstructorArgument<string>(0), attributeData.GetConstructorArgument<INamedTypeSymbol>(1)?.Name);
     }
 
@@ -55,7 +55,8 @@ partial class InternalPyTypeObjectGenerator
         void Add(IMethodSymbol method, string? fieldName)
         {
             var (specialName, delegateType) = ReadSlotDef(method);
-            if (specialName is null || delegateType is null) return;
+            if (specialName is null || delegateType is null)
+                return;
             targets.Add(new SlotTarget(fieldName, method.Name, specialName, delegateType, GetSlotConverterMethodName(specialName, delegateType)));
         }
 
@@ -63,7 +64,8 @@ partial class InternalPyTypeObjectGenerator
             Add(method, null);
         foreach (var group in slotsMemberGroups)
         {
-            if (!slotsMemberFieldTypes.ContainsKey(group.Key)) continue;
+            if (!slotsMemberFieldTypes.ContainsKey(group.Key))
+                continue;
             foreach (var method in group)
                 Add(method, group.Key);
         }
@@ -93,16 +95,18 @@ partial class InternalPyTypeObjectGenerator
         // Delegate fields for methods without SlotsMember
         foreach (var method in directMethods)
         {
-            var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name == PySharpTypes.PySpecialMethodAttributeName);
+            var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name is PySharpTypes.PySpecialMethodAttributeName);
             var delegateType = attributeData.GetConstructorArgument<INamedTypeSymbol>(1);
-            if (delegateType is null) continue;
+            if (delegateType is null)
+                continue;
             builder.AppendLine($"public {delegateType.Name}? {method.Name};");
         }
 
         // Nested types for each SlotsMember group — generate delegate fields inside the field's type
         foreach (var group in slotsMemberGroups)
         {
-            if (!slotsMemberFieldTypes.TryGetValue(group.Key, out var info)) continue;
+            if (!slotsMemberFieldTypes.TryGetValue(group.Key, out var info))
+                continue;
 
             var nestedType = info.type;
             builder.AppendLine();
@@ -111,9 +115,10 @@ partial class InternalPyTypeObjectGenerator
 
             foreach (var method in group)
             {
-                var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name == PySharpTypes.PySpecialMethodAttributeName);
+                var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name is PySharpTypes.PySpecialMethodAttributeName);
                 var delegateType = attributeData.GetConstructorArgument<INamedTypeSymbol>(1);
-                if (delegateType is null) continue;
+                if (delegateType is null)
+                    continue;
                 builder.AppendLine($"public {delegateType.Name}? {method.Name};");
             }
 
@@ -123,13 +128,15 @@ partial class InternalPyTypeObjectGenerator
         // Forwarding accessors for SlotsMember methods — exposes nested type's fields directly on PyTypeSlots
         foreach (var group in slotsMemberGroups)
         {
-            if (!slotsMemberFieldTypes.TryGetValue(group.Key, out var info)) continue;
+            if (!slotsMemberFieldTypes.TryGetValue(group.Key, out var info))
+                continue;
             var fieldName = group.Key;
             foreach (var method in group)
             {
-                var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name == PySharpTypes.PySpecialMethodAttributeName);
+                var attributeData = method.GetAttributes().First(a => a.AttributeClass?.Name is PySharpTypes.PySpecialMethodAttributeName);
                 var delegateType = attributeData.GetConstructorArgument<INamedTypeSymbol>(1);
-                if (delegateType is null) continue;
+                if (delegateType is null)
+                    continue;
                 builder.AppendLine($"internal {delegateType.Name}? {method.Name} => {fieldName}?.{method.Name};");
             }
         }
@@ -141,22 +148,19 @@ partial class InternalPyTypeObjectGenerator
 
         // FillNullWith: direct fields
         foreach (var method in directMethods)
-        {
             builder.AppendLine($"{method.Name} ??= other.{method.Name};");
-        }
 
         // FillNullWith: nested type fields
         foreach (var group in slotsMemberGroups)
         {
-            if (!slotsMemberFieldTypes.TryGetValue(group.Key, out var info)) continue;
+            if (!slotsMemberFieldTypes.TryGetValue(group.Key, out var info))
+                continue;
             var fieldName = group.Key;
             builder.AppendLine($"if (other.{fieldName} != null)");
             builder.EnterBlock();
             builder.AppendLine($"{fieldName} ??= new {info.type.Name}();");
             foreach (var method in group)
-            {
                 builder.AppendLine($"{fieldName}.{method.Name} ??= other.{fieldName}.{method.Name};");
-            }
             builder.ExitBlock();
         }
 
@@ -266,9 +270,7 @@ partial class InternalPyTypeObjectGenerator
 
             builder.Append($"case \"{nameGroup.Key}\": {{ if (wrapper._func is {primary.DelegateType} f) {{ ");
             foreach (var secondary in secondaries)
-            {
                 builder.Append($"if (ReferenceEquals(f, {secondary.FieldName}?.{secondary.MethodName})) return true; ");
-            }
             builder.Append(primary.FieldName is null
                 ? $"{primary.MethodName} = f; "
                 : $"{primary.FieldName} ??= new(); {primary.FieldName}.{primary.MethodName} = f; ");

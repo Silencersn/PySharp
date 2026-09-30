@@ -73,7 +73,7 @@ public sealed class StdIoTests
         var obj = CreateInput(new MemoryStream());
         var result = obj.ReadLine();
         Assert.IsFalse(result.IsError, "readline() at EOF should not be an error");
-        Assert.AreEqual("", ((PyStrObject)result.Value).Value);
+        Assert.AreEqual(string.Empty, ((PyStrObject)result.Value).Value);
     }
 
     [TestMethod]
@@ -132,7 +132,7 @@ public sealed class StdIoTests
             isTextMode: true, isReadable: true, isWritable: false, isSeekable: false);
         var result = obj.ReadLine();
         Assert.IsFalse(result.IsError);
-        Assert.AreEqual("", ((PyStrObject)result.Value).Value);
+        Assert.AreEqual(string.Empty, ((PyStrObject)result.Value).Value);
     }
 
     [TestMethod]
@@ -153,7 +153,7 @@ public sealed class StdIoTests
             isTextMode: true, isReadable: true, isWritable: false, isSeekable: false);
         Assert.AreEqual("hello\n", ((PyStrObject)obj.ReadLine().Value!).Value);
         Assert.AreEqual("world\n", ((PyStrObject)obj.ReadLine().Value!).Value);
-        Assert.AreEqual("", ((PyStrObject)obj.ReadLine().Value!).Value);
+        Assert.AreEqual(string.Empty, ((PyStrObject)obj.ReadLine().Value!).Value);
     }
 
     [TestMethod]
@@ -180,7 +180,7 @@ public sealed class StdIoTests
             Assert.IsTrue(module.PyAttributes.TryGetValue("stdin", out var stdin));
             Assert.IsInstanceOfType(stdin, typeof(PyTextIOWrapperObject));
             var stdinObj = (PyTextIOWrapperObject)stdin;
-            Assert.AreEqual("", ((PyStrObject)stdinObj.ReadLine().Value!).Value);
+            Assert.AreEqual(string.Empty, ((PyStrObject)stdinObj.ReadLine().Value!).Value);
 
             Assert.IsTrue(module.PyAttributes.TryGetValue("stdout", out var stdout));
             Assert.IsInstanceOfType(stdout, typeof(PyTextIOWrapperObject));
@@ -265,7 +265,7 @@ public sealed class StdIoTests
         var context = PyCallContext.CSharpRuntime;
 
         Assert.IsFalse(stdout.Write(context, PyStrObject.FromString("par")).IsError);
-        Assert.AreEqual("", Text(stream), "a partial line must stay buffered");
+        Assert.AreEqual(string.Empty, Text(stream), "a partial line must stay buffered");
 
         Assert.IsFalse(stdout.Write(context, PyStrObject.FromString("tial\n")).IsError);
         Assert.AreEqual("partial\n", Text(stream));
@@ -284,7 +284,7 @@ public sealed class StdIoTests
         var context = PyCallContext.CSharpRuntime;
 
         Assert.IsFalse(stdout.Write(context, PyStrObject.FromString("held\n")).IsError);
-        Assert.AreEqual("", Text(stream), "block-buffered stdout must not leak per write");
+        Assert.AreEqual(string.Empty, Text(stream), "block-buffered stdout must not leak per write");
 
         Assert.IsFalse(stdout.Flush().IsError);
         Assert.AreEqual("held\n", Text(stream));
@@ -362,7 +362,7 @@ public sealed class StdIoTests
         var stdout = GetStream(module, "stdout");
 
         Assert.IsFalse(stdout.Write(context, PyStrObject.FromString("exit-flush\n")).IsError);
-        Assert.AreEqual("", Text(stream), "redirected stdout holds its buffer while running");
+        Assert.AreEqual(string.Empty, Text(stream), "redirected stdout holds its buffer while running");
 
         context.Dispose();
         env.Dispose();

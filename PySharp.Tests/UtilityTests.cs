@@ -55,7 +55,7 @@ public sealed class UtilityTests
             1
         };
         set.Clear();
-        Assert.IsTrue(set.Count() == 0);
+        Assert.IsTrue(set.Count() is 0);
     }
 
     // ===== PyObjectComparer =====
@@ -68,7 +68,7 @@ public sealed class UtilityTests
         var b = PyIntObject.FromInteger(10);
         Assert.IsTrue(c.Compare(a, b) < 0);
         Assert.IsTrue(c.Compare(b, a) > 0);
-        Assert.IsTrue(c.Compare(a, a) == 0);
+        Assert.IsTrue(c.Compare(a, a) is 0);
     }
 
     [TestMethod]
@@ -78,7 +78,7 @@ public sealed class UtilityTests
         var o = PyIntObject.FromInteger(1);
         Assert.IsTrue(c.Compare(null, o) < 0);
         Assert.IsTrue(c.Compare(o, null) > 0);
-        Assert.IsTrue(c.Compare(null, null) == 0);
+        Assert.IsTrue(c.Compare(null, null) is 0);
     }
 
     [TestMethod]
@@ -119,7 +119,7 @@ public sealed class UtilityTests
         var fs = new MemoryFileSystem("C:\\");
         WriteText(fs, "C:\\f.txt", "hello");
         Assert.IsTrue(fs.ExistsFile("C:\\f.txt"));
-        Assert.IsTrue(ReadText(fs, "C:\\f.txt") == "hello");
+        Assert.IsTrue(ReadText(fs, "C:\\f.txt") is "hello");
     }
 
     [TestMethod]
@@ -135,10 +135,10 @@ public sealed class UtilityTests
     public void MemoryFileSystem_Enumerate()
     {
         var fs = new MemoryFileSystem("C:\\");
-        WriteText(fs, "C:\\a.txt", "");
-        WriteText(fs, "C:\\b.txt", "");
+        WriteText(fs, "C:\\a.txt", string.Empty);
+        WriteText(fs, "C:\\b.txt", string.Empty);
         fs.GetDirectory("C:\\sub").Create();
-        Assert.IsTrue(fs.GetDirectory("C:\\").EnumerateFiles().Count() == 2);
-        Assert.IsTrue(fs.GetDirectory("C:\\").EnumerateDirectories().Count() == 1);
+        Assert.IsTrue(fs.GetDirectory("C:\\").EnumerateFiles().Count() is 2);
+        Assert.IsTrue(fs.GetDirectory("C:\\").EnumerateDirectories().Count() is 1);
     }
 }

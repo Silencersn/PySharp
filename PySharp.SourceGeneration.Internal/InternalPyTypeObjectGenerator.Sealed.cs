@@ -26,13 +26,13 @@ partial class InternalPyTypeObjectGenerator
                 {
                     var parametersDef = string.Join(", ", method.Parameters.Select(p =>
                     {
-                        string typeStr = p.Type.Name == "TObject" ? "PyObject" : p.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                        string typeStr = p.Type.Name is "TObject" ? "PyObject" : p.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
                         return $"{typeStr} {p.Name}";
                     }));
 
                     var parametersCall = string.Join(", ", method.Parameters.Select(p =>
                     {
-                        return p.Name == "self" ? "selfOfT" : p.Name;
+                        return p.Name is "self" ? "selfOfT" : p.Name;
                     }));
 
                     builder

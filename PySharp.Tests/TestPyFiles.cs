@@ -384,9 +384,7 @@ public sealed class TestPyFiles
                 var outTask = process.StandardOutput.ReadToEndAsync();
                 var errTask = process.StandardError.ReadToEndAsync();
                 if (!process.WaitForExit(60_000))
-                {
                     process.Kill();
-                }
                 var output = outTask.Result + errTask.Result;
                 return (process.HasExited ? process.ExitCode : -1, output);
             }
@@ -454,9 +452,7 @@ public sealed class TestPyFiles
                 var outTask = process.StandardOutput.ReadToEndAsync();
                 var errTask = process.StandardError.ReadToEndAsync();
                 if (!process.WaitForExit(60_000))
-                {
                     process.Kill();
-                }
                 var output = outTask.Result + errTask.Result;
                 return (process.HasExited ? process.ExitCode : -1, output);
             }
@@ -524,9 +520,7 @@ public sealed class TestPyFiles
                 var outTask = process.StandardOutput.ReadToEndAsync();
                 var errTask = process.StandardError.ReadToEndAsync();
                 if (!process.WaitForExit(60_000))
-                {
                     process.Kill();
-                }
                 return (process.HasExited ? process.ExitCode : -1,
                     outTask.Result.Replace("\r\n", "\n"), errTask.Result);
             }

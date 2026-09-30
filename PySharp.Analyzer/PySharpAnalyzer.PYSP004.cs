@@ -123,10 +123,14 @@ partial class PySharpAnalyzer
                 // -0.0 as double is not available on netstandard2.0, construct it bit-wise
                 double negativeZero = BitConverter.Int64BitsToDouble(unchecked((long)0x8000000000000000));
 
-                if (BitMatchesDouble(constValue, 0.0)) return "Zero";
-                if (BitMatchesDouble(constValue, negativeZero)) return "NegativeZero";
-                if (BitMatchesDouble(constValue, 1.0)) return "One";
-                if (BitMatchesDouble(constValue, -1.0)) return "MinusOne";
+                if (BitMatchesDouble(constValue, 0.0))
+                    return "Zero";
+                if (BitMatchesDouble(constValue, negativeZero))
+                    return "NegativeZero";
+                if (BitMatchesDouble(constValue, 1.0))
+                    return "One";
+                if (BitMatchesDouble(constValue, -1.0))
+                    return "MinusOne";
             }
         }
 
@@ -212,8 +216,8 @@ partial class PySharpAnalyzer
             return true;
 
         return expression is PrefixUnaryExpressionSyntax unary &&
-               (unary.RawKind == (int)SyntaxKind.UnaryMinusExpression ||
-                unary.RawKind == (int)SyntaxKind.UnaryPlusExpression) &&
+               (unary.RawKind is (int)SyntaxKind.UnaryMinusExpression ||
+                unary.RawKind is (int)SyntaxKind.UnaryPlusExpression) &&
                unary.Operand is LiteralExpressionSyntax;
     }
 

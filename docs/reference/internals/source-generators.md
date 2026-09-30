@@ -92,7 +92,7 @@ PySharp 的类型机器（slots、方法描述符、异常工厂等）全部在�
 
 内部包 `PySharp.Analyzer.Style`（`PYSPS*`，Warning），与 PySharp 领域完全解耦的通用 C# 风格规则
 （只依赖 Roslyn 与 BCL，不引用任何 `PySharp.*` 类型，因此可整体抽出复用到别的项目）；Category 为
-`Style`，同样在 `PySharp` 与 `PySharp.Console` 强制启用：
+`Style`，在解决方案的**每个**项目上强制启用（含测试与生成器项目），使整仓代码风格一致：
 
 | 规则 | 要求 |
 | --- | --- |
@@ -120,6 +120,10 @@ PySharp 的类型机器（slots、方法描述符、异常工厂等）全部在�
   `Pack="true" PackagePath="analyzers/dotnet/cs"` 打进主 NuGet 包，安装包即自动获得工具链。
   `PySharp.Analyzer.Internal` 与 `PySharp.Analyzer.Style` 只作裸 dll 随主包分发，不打包成独立
   package（`IsPackable=false`）。
+- 接线范围：`PYSP`/`PySharp.Analyzer` 与 `PYSPI`/`PySharp.Analyzer.Internal` 只服务主库，仅
+  `PySharp` 与 `PySharp.Console` 引用；`PYSPS`/`PySharp.Analyzer.Style` 是通用 C# 风格规则，
+  解决方案内**全部 9 个项目**均以同样的 `OutputItemType="Analyzer"` 方式引用，测试与生成器
+  项目也不例外。
 - 验证方式：没有独立的生成器单元测试，依赖自举与语义回归。主库是全部生成器的最大消费者，Debug
   构建产物 `obj/.../generated/` 下有 270 余个文件，生成器回归即编译失败。语义回归见
   [测试体系](./testing.md)。生成器与分析器项目均启用 `EnforceExtendedAnalyzerRules`。

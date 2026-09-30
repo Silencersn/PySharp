@@ -106,7 +106,7 @@ public class PyFrozenModuleGenerator : IIncrementalGenerator
                     return filePath.EndsWith(expectedSuffix, StringComparison.OrdinalIgnoreCase)
                         // Ensure the match is for the full last path segment, not a substring
                         && (filePath.Length == expectedSuffix.Length
-                            || filePath[filePath.Length - expectedSuffix.Length - 1] == '/');
+                            || filePath[filePath.Length - expectedSuffix.Length - 1] is '/');
                 });
 
                 if (match is null)
@@ -130,7 +130,7 @@ public class PyFrozenModuleGenerator : IIncrementalGenerator
         var current = typeSymbol.BaseType;
         while (current is not null)
         {
-            if (current.ToDisplayString() == PyFrozenModuleObjectType)
+            if (current.ToDisplayString() is PyFrozenModuleObjectType)
                 return true;
             current = current.BaseType;
         }
@@ -182,7 +182,7 @@ public class PyFrozenModuleGenerator : IIncrementalGenerator
         int currentRun = 0;
         foreach (var c in text)
         {
-            if (c == '"')
+            if (c is '"')
             {
                 currentRun++;
                 if (currentRun > maxQuotes)
@@ -205,9 +205,7 @@ public class PyFrozenModuleGenerator : IIncrementalGenerator
         bool hasQuotes = maxQuotes > 0;
 
         if (!hasNewline && !hasQuotes)
-        {
             return $"{delimiter}{text}{delimiter}";
-        }
 
         // Multi-line raw string literal: opening/closing delimiters on separate
         // lines, delimited by the unified generated-code newline

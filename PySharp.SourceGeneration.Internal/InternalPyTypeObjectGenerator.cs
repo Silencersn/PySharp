@@ -44,9 +44,9 @@ public partial class InternalPyTypeObjectGenerator : IIncrementalGenerator
             var pyTypeSlotsSymbol = symbol.ContainingType.GetTypeMembers("PyTypeSlots").FirstOrDefault();
 
             // Group methods by SlotsMember
-            var directMethods = methodsList.Where(m => methodSlotsMember[m] == null).ToList();
+            var directMethods = methodsList.Where(m => methodSlotsMember[m] is null).ToList();
             var slotsMemberGroups = methodsList
-                .Where(m => methodSlotsMember[m] != null)
+                .Where(m => methodSlotsMember[m] is not null)
                 .GroupBy(m => methodSlotsMember[m]!)
                 .ToList();
 
@@ -71,17 +71,20 @@ public partial class InternalPyTypeObjectGenerator : IIncrementalGenerator
 
     private static string? GetSlotsMemberName(IMethodSymbol method)
     {
-        var attr = method.GetAttributes().FirstOrDefault(a => a.AttributeClass?.Name == PySharpTypes.PySpecialMethodAttributeName);
-        if (attr == null) return null;
+        var attr = method.GetAttributes().FirstOrDefault(a => a.AttributeClass?.Name is PySharpTypes.PySpecialMethodAttributeName);
+        if (attr == null)
+            return null;
         foreach (var kvp in attr.NamedArguments)
-            if (kvp.Key == "SlotsMember" && kvp.Value.Value is string sm)
+        {
+            if (kvp.Key is "SlotsMember" && kvp.Value.Value is string sm)
                 return sm;
+        }
         return null;
     }
 
     private static bool IsValidSpecialMethod(IMethodSymbol method, out DiagnosticInfo? error)
     {
-        var attributeData = method.GetAttributes().FirstOrDefault(a => a.AttributeClass?.Name == PySharpTypes.PySpecialMethodAttributeName);
+        var attributeData = method.GetAttributes().FirstOrDefault(a => a.AttributeClass?.Name is PySharpTypes.PySpecialMethodAttributeName);
         error = null;
         if (attributeData is null)
             return false;
