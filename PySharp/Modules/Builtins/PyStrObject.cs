@@ -2960,7 +2960,10 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                         break;
                     }
                 default:
-                    return PyResult.ValueError($"unsupported format character '{fmtType}' (0x{(int)fmtType:x})");
+                    // CPython prints the character only when printable ASCII
+                    // and points at its position in the format string itself
+                    var displayChar = fmtType is >= (char)31 and <= (char)126 ? fmtType : '?';
+                    return PyResult.ValueError($"unsupported format character '{displayChar}' (0x{(int)fmtType:x}) at index {i}");
             }
 
             // Apply # flag for float formats that already handled precision decimal point
