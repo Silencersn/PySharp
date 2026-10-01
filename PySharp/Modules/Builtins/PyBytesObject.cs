@@ -483,6 +483,10 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
         // generic resolution below
         if (normalized is "utf7")
             return PyUtf7Codec.Decode(data, errors, source ?? PyBytesObject.FromBytes(data));
+        if (normalized is "hz" or "hzgb" or "hzgb2312")
+            return PyHzCodec.Decode(data, errors, source ?? PyBytesObject.FromBytes(data));
+        if (normalized is "big5hkscs" or "hkscs")
+            return PyBig5HkscsCodec.Decode(data, errors, source ?? PyBytesObject.FromBytes(data));
 
         Encoding enc;
         try
