@@ -243,6 +243,7 @@ partial class PySR
     public const string Runtime_List_PopIndexOutOfRange = "pop index out of range";
     public const string Runtime_List_PopFromEmpty = "pop from empty list";
     public const string Runtime_List_IndexOutOfRange = "list index out of range";
+    public const string Runtime_List_AssignIterableToSlice = "must assign iterable to extended slice";
     public const string Runtime_List_AssignmentIndexOutOfRange = "list assignment index out of range";
 
     [AIGenerated]

@@ -438,7 +438,14 @@ partial class PyListObject
             var (start, stop, step, sliceLength) = indices;
             var iterableResult = PyUtils.IterableToList(context, value);
             if (iterableResult.IsError)
+            {
+                // PySequence_Fast takes the caller's fixed sentence for both
+                // the step-1 and extended paths, so the value's type never
+                // enters the message
+                if (iterableResult.Exception is { } failure && PyTypeErrorObjectType.Shared.IsInstance(failure))
+                    return PyResult.TypeError(PySR.Runtime_List_AssignIterableToSlice);
                 return iterableResult;
+            }
 
             var values = iterableResult.Value._list;
 
