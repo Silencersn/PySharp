@@ -121,4 +121,42 @@ except FileNotFoundError as ex:
     raise AssertionError("open('.') must not be FileNotFoundError: " + str(ex))
 print("directory ok")
 
+# the open() failure paths construct the OSError family with the
+# (errno, strerror) pair plus the filename, so the attributes and the
+# [Errno N] prefix all line up
+try:
+    open("no_such_file_for_open_test.txt")
+    raise AssertionError("FileNotFoundError expected")
+except FileNotFoundError as ex:
+    assert str(ex) == "[Errno 2] No such file or directory: 'no_such_file_for_open_test.txt'", str(ex)
+    assert ex.args == (2, "No such file or directory"), ex.args
+    assert ex.errno == 2, ex.errno
+    assert ex.strerror == "No such file or directory", ex.strerror
+    assert ex.filename == "no_such_file_for_open_test.txt", ex.filename
+
+try:
+    open("no_such_dir_for_open_test/f.txt")
+    raise AssertionError("FileNotFoundError expected")
+except FileNotFoundError as ex:
+    assert ex.errno == 2 and ex.filename == "no_such_dir_for_open_test/f.txt", (ex.errno, ex.filename)
+
+# a unique name: the suite runs several corpus processes in one working
+# directory, so a generic short name would race with the other runs
+exists_name = "test_413_exclusive_target.txt"
+try:
+    open(exists_name, "x")
+except FileExistsError:
+    pass
+else:
+    open(exists_name, "w").close()
+    try:
+        open(exists_name, "x")
+        raise AssertionError("FileExistsError expected")
+    except FileExistsError as ex:
+        assert str(ex) == "[Errno 17] File exists: 'test_413_exclusive_target.txt'", str(ex)
+        assert ex.args == (17, "File exists"), ex.args
+        assert ex.errno == 17 and ex.filename == exists_name, (ex.errno, ex.filename)
+    # no os module to unlink with: the leftover target makes the next run
+    # take the except branch above, both shapes stay covered
+
 print("ok")

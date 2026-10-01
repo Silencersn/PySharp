@@ -355,6 +355,9 @@ partial class PySR
     public const string Runtime_Property_NoSetter = "property '{0}' of '{1}' object has no setter";
     public const string Runtime_Property_NoDeleter = "property '{0}' of '{1}' object has no deleter";
     public const string Runtime_Os_FileNotFoundErrno = "[Errno 2] No such file or directory: '{0}'";
+    public const string Runtime_Os_FileExistsErrno = "[Errno 17] File exists: '{0}'";
+    public const string Runtime_Os_StrerrorFileNotFound = "No such file or directory";
+    public const string Runtime_Os_StrerrorFileExists = "File exists";
     public const string Runtime_Os_PermissionDeniedErrno = "[Errno 13] Permission denied: '{0}'";
     public const string Runtime_Os_IsADirectoryErrno = "[Errno 21] Is a directory: '{0}'";
     public const string Runtime_Os_InvalidArgumentErrno = "[Errno 22] Invalid argument";

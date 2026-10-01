@@ -1520,15 +1520,19 @@ public static partial class PyBuiltinFunctions
         bool pureRead = reading && !writing && !appending && !creating;
         if (pureRead && !fileInfo.Exists)
         {
-            return PyResult.FromException(
-                PyFileNotFoundErrorObjectType.Shared.Create(PyStrObject.FromString(path)));
+            // PyErr_SetFromErrnoWithFilenameObject shape: the errno/strerror
+            // pair feeds OSError.__str__ and the filename rides along
+            return PyResult.FromException(PyExceptionObject.UnsafeCreate(
+                PyFileNotFoundErrorObjectType.Shared,
+                [PyIntObject.FromInteger(2), PyStrObject.FromString(PySR.Runtime_Os_StrerrorFileNotFound), PyStrObject.FromString(path)]));
         }
 
         // Check non-existence for create mode
         if (creating && fileInfo.Exists)
         {
-            return PyResult.FromException(
-                PyFileExistsErrorObjectType.Shared.Create(PyStrObject.FromString(path)));
+            return PyResult.FromException(PyExceptionObject.UnsafeCreate(
+                PyFileExistsErrorObjectType.Shared,
+                [PyIntObject.FromInteger(17), PyStrObject.FromString(PySR.Runtime_Os_StrerrorFileExists), PyStrObject.FromString(path)]));
         }
 
         Stream stream;
@@ -1541,12 +1545,22 @@ public static partial class PyBuiltinFunctions
         }
         catch (Exception ex) when (ex is FileNotFoundException || ex is DirectoryNotFoundException)
         {
-            return PyResult.FromException(
-                PyFileNotFoundErrorObjectType.Shared.Create(PyStrObject.FromString(path)));
+            return PyResult.FromException(PyExceptionObject.UnsafeCreate(
+                PyFileNotFoundErrorObjectType.Shared,
+                [PyIntObject.FromInteger(2), PyStrObject.FromString(PySR.Runtime_Os_StrerrorFileNotFound), PyStrObject.FromString(path)]));
         }
         catch (UnauthorizedAccessException)
         {
             return PyResult.RaiseException(PyPermissionErrorObjectType.Shared, PySR.Runtime_Os_PermissionDeniedErrno, path);
+        }
+        catch (IOException ex) when (ex.HResult is unchecked((int)0x80070050))
+        {
+            // the pre-open existence check raced with another creator
+            // (Win32 ERROR_FILE_EXISTS): CPython's EEXIST surfaces as
+            // FileExistsError, not a permission failure
+            return PyResult.FromException(PyExceptionObject.UnsafeCreate(
+                PyFileExistsErrorObjectType.Shared,
+                [PyIntObject.FromInteger(17), PyStrObject.FromString(PySR.Runtime_Os_StrerrorFileExists), PyStrObject.FromString(path)]));
         }
         catch (IOException)
         {
