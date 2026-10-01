@@ -551,6 +551,17 @@ internal sealed class PyTextCodec
         if (!eof && sliceLen < width)
             return PyDecodeStatus.NeedMore; // wait for the whole code point
         int start = index;
+        if (sliceLen < width)
+        {
+            // end-of-input cut the sequence short: the incomplete event over
+            // the remaining bytes, whether the .NET decoder rejects the tail
+            // or decodes the lead byte alone (CPython requires the whole
+            // sequence before consulting its mapping)
+            index += sliceLen;
+            return ApplyHandler(data, start, index, PyCodecInfo.IncompleteMultibyteReason, sb, out index, out error)
+                ? PyDecodeStatus.Ok
+                : PyDecodeStatus.Error;
+        }
         Span<char> unit = stackalloc char[2];
         int bytesUsed;
         int charsUsed;
@@ -561,10 +572,9 @@ internal sealed class PyTextCodec
         catch (DecoderFallbackException)
         {
             _genericDecoder = null; // resume with a fresh decoder
+            // a rejected full sequence lands on its lead byte alone
             index += sliceLen;
-            var reason = eof && sliceLen < width ? "incomplete multibyte sequence"
-                : PyCodecInfo.Classify(_errorName).Reason;
-            return ApplyHandler(data, start, index, reason, sb, out index, out error)
+            return ApplyHandler(data, start, start + 1, PyCodecInfo.Classify(_errorName).Reason, sb, out index, out error)
                 ? PyDecodeStatus.Ok
                 : PyDecodeStatus.Error;
         }
@@ -580,7 +590,7 @@ internal sealed class PyTextCodec
             // end-of-input left less than a full sequence: the whole slice is
             // the incomplete event, never a silent loss
             index += bytesUsed > 0 ? bytesUsed : sliceLen;
-            return ApplyHandler(data, start, index, "incomplete multibyte sequence", sb, out index, out error)
+            return ApplyHandler(data, start, start + sliceLen, PyCodecInfo.IncompleteMultibyteReason, sb, out index, out error)
                 ? PyDecodeStatus.Ok
                 : PyDecodeStatus.Error;
         }

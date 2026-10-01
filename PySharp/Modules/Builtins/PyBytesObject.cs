@@ -1114,41 +1114,21 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
     // handler expressed as a decoder fallback. The handler name is resolved
     // at the first actual failure, and the failure is reported with the
     // failing codec's own name and wording.
+    // The one-shot .NET path. CPython's multibyte codecs decode left to
+    // right and raise one event per rejected sequence: the incomplete event
+    // when the sequence starting at the error would run past the end of the
+    // input (over every remaining byte — the full sequence is required
+    // before the mapping is consulted), otherwise the illegal event pinned
+    // to the lead byte alone. The .NET decoder instead reports whole
+    // rejected pairs and may decode a truncated lead byte its own table
+    // maps, so this loop drives it one error event at a time.
     private static PyResult DecodeViaDotNet(ReadOnlySpan<byte> data, Encoding enc, string encoding, string errors, PyObject source)
     {
         var codec = PyCodecInfo.Classify(PyStrObjectType.NormalizeEncodingName(encoding));
-
+        Encoding strictDecoder;
         try
         {
-            return PyStrObject.FromString(BuildDecoder(enc, new DecoderExceptionFallback()).GetString(data));
-        }
-        catch (DecoderFallbackException ex)
-        {
-            var unresolved = ResolveErrors(errors, out var handler);
-            if (unresolved is not null)
-                return unresolved.Value;
-            if (handler is DecodeErrorHandler.Strict)
-                return DecodeFailure(codec, source, data, ex);
-
-            try
-            {
-                DecoderFallback fallback = handler switch
-                {
-                    DecodeErrorHandler.Ignore => new DecoderReplacementFallback(string.Empty),
-                    DecodeErrorHandler.Replace => new DecoderReplacementFallback("\uFFFD"),
-                    DecodeErrorHandler.BackslashReplace => new ByteRendererFallback(b => $"\\x{b:x2}"),
-                    _ => new ByteRendererFallback(b => char.ToString((char)(0xDC00 + b))),
-                };
-                return PyStrObject.FromString(BuildDecoder(enc, fallback).GetString(data));
-            }
-            catch (DecoderFallbackException retried)
-            {
-                return DecodeFailure(codec, source, data, retried);
-            }
-            catch (ArgumentException)
-            {
-                return PyStrObject.FromString(enc.GetString(data));
-            }
+            strictDecoder = BuildDecoder(enc, new DecoderExceptionFallback());
         }
         catch (ArgumentException)
         {
@@ -1156,24 +1136,109 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
             // default replacement behavior
             return PyStrObject.FromString(enc.GetString(data));
         }
+
+        var multibyte = codec.Kind is PyCodecInfo.CodecKind.Multibyte;
+        var sb = new StringBuilder();
+        var pos = 0;
+        while (pos < data.Length)
+        {
+            var piece = data[pos..];
+            // a lead whose sequence is cut off by the end of the input is
+            // the incomplete event even where the .NET table decodes the
+            // lead byte alone
+            var cut = multibyte ? FirstTruncatedLead(codec, piece) : null;
+            string decoded;
+            try
+            {
+                decoded = strictDecoder.GetString(cut is int t ? piece[..t] : piece);
+            }
+            catch (DecoderFallbackException ex)
+            {
+                if (!TryResolveErrors(errors, out var handler))
+                    return UnknownErrorHandler(errors);
+                if (handler is DecodeErrorHandler.EncodeOnly)
+                    return WrongErrorHandlerType();
+                var start = pos + Math.Max(ex.Index, 0);
+                var reason = codec.Reason;
+                var end = start + (ex.BytesUnknown is { Length: > 0 } ? ex.BytesUnknown.Length : 1);
+                if (multibyte && PyCodecInfo.ExpectedSequenceWidth(codec.ErrorName, data, start) is int w)
+                {
+                    end = start + w > data.Length ? data.Length : start + 1;
+                    if (end > start + 1)
+                        reason = PyCodecInfo.IncompleteMultibyteReason;
+                }
+                if (handler is DecodeErrorHandler.Strict or DecodeErrorHandler.SurrogatePass)
+                {
+                    // mbcs reports every strict failure at position 0-0 with
+                    // the Windows message as its reason (the code page
+                    // converters never locate the character)
+                    return codec.Kind is PyCodecInfo.CodecKind.Mbcs
+                        ? UnicodeDecodeError(codec.ErrorName, source, data, 0, 0, PyCodecInfo.MbcsDecodeReason)
+                        : UnicodeDecodeError(codec.ErrorName, source, data, start, end, reason);
+                }
+                sb.Append(strictDecoder.GetString(piece[..(start - pos)]));
+                pos = ApplyMultibyteHandler(handler, data, start, end, sb);
+                continue;
+            }
+            sb.Append(decoded);
+            if (cut is not int tail)
+                break;
+            if (!TryResolveErrors(errors, out var tailHandler))
+                return UnknownErrorHandler(errors);
+            if (tailHandler is DecodeErrorHandler.EncodeOnly)
+                return WrongErrorHandlerType();
+            if (tailHandler is DecodeErrorHandler.Strict or DecodeErrorHandler.SurrogatePass)
+            {
+                return UnicodeDecodeError(codec.ErrorName, source, data, pos + tail, data.Length,
+                    PyCodecInfo.IncompleteMultibyteReason);
+            }
+            pos = ApplyMultibyteHandler(tailHandler, data, pos + tail, data.Length, sb);
+        }
+        return PyStrObject.FromString(sb.ToString());
+    }
+
+    // the first position whose sequence would run past the end of the
+    // input, or null when the whole input is made of complete sequences
+    // (or the family's width cannot be predicted)
+    private static int? FirstTruncatedLead(PyCodecInfo.Codec codec, ReadOnlySpan<byte> data)
+    {
+        for (var i = 0; i < data.Length;)
+        {
+            var width = PyCodecInfo.ExpectedSequenceWidth(codec.ErrorName, data, i);
+            if (width is not int w)
+                return null;
+            if (i + w > data.Length)
+                return i;
+            i += w;
+        }
+        return null;
+    }
+
+    // ignore skips the event range, replace writes one U+FFFD for it, and
+    // the escape handlers render the event bytes — multibytecodec_decerror
+    // advances past esize after each of them
+    private static int ApplyMultibyteHandler(DecodeErrorHandler handler, ReadOnlySpan<byte> data, int start, int end, StringBuilder sb)
+    {
+        switch (handler)
+        {
+            case DecodeErrorHandler.Replace:
+                sb.Append('\uFFFD');
+                break;
+            case DecodeErrorHandler.BackslashReplace:
+                for (var i = start; i < end; i++)
+                    sb.Append("\\x").Append(data[i].ToString("x2", CultureInfo.InvariantCulture));
+                break;
+            case DecodeErrorHandler.SurrogateEscape:
+                TrySurrogateEscape(data, start, end, sb, out var next);
+                return next > start ? next : end;
+            // Ignore falls through: the event range is skipped
+        }
+        return end;
     }
 
     private static Encoding BuildDecoder(Encoding enc, DecoderFallback fallback)
     {
         return Encoding.GetEncoding(enc.CodePage, new EncoderExceptionFallback(), fallback);
-    }
-
-    // the charmap codecs call one byte unmappable; everything else reports
-    // whatever the decoder could not consume
-    private static PyResult DecodeFailure(PyCodecInfo.Codec codec, PyObject source, ReadOnlySpan<byte> data, DecoderFallbackException ex)
-    {
-        var start = ex.Index;
-        var translated = codec.Kind is PyCodecInfo.CodecKind.Charmap;
-        var end = translated
-            ? start + 1
-            : start + (ex.BytesUnknown is { Length: > 0 } ? ex.BytesUnknown.Length : 1);
-        var reason = translated ? PyCodecInfo.CharmapReason : codec.Reason;
-        return UnicodeDecodeError(codec.ErrorName, source, data, start, end, reason);
     }
 
     private sealed class ByteRendererFallback(Func<byte, string> renderer) : DecoderFallback
