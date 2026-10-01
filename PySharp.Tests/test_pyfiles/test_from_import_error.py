@@ -41,6 +41,29 @@ except ImportError:
 except AttributeError:
     pass
 
+# the failure message trails the module's file location when it has one,
+# "unknown location" otherwise (ceval's origin trail)
+try:
+    from test_from_import_pkg import NotExported2
+    assert False, "ImportError expected"
+except ImportError as e:
+    assert "('unknown location')" not in str(e)
+    assert str(e).startswith(
+        "cannot import name 'NotExported2' from 'test_from_import_pkg' ("), str(e)
+    assert str(e).rstrip().endswith("__init__.py)"), str(e)
+
+try:
+    from math import nosuchthing
+    assert False, "ImportError expected"
+except ImportError as e:
+    assert str(e) == "cannot import name 'nosuchthing' from 'math' (unknown location)", str(e)
+
+# an attribute miss falls back to the "<module>.<name>" entry of the import
+# registry (sys.modules) before failing (ceval's relative-import fallback)
+import test_from_import_pkg.sub
+from test_from_import_pkg import sub
+assert sub.exported == 1
+
 # import of a missing module is still ModuleNotFoundError (an ImportError)
 try:
     import no_such_module_nw150

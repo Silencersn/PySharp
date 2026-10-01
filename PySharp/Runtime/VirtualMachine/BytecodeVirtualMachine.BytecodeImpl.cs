@@ -712,7 +712,10 @@ internal static partial class BytecodeVirtualMachine
 
     // CPython import_from (ceval.c): a missing from-import name surfaces as
     // ImportError ("cannot import name ..."), never the underlying
-    // AttributeError; other attribute errors propagate unchanged.
+    // AttributeError; other attribute errors propagate unchanged. An
+    // attribute miss first falls back to the "<module>.<name>" entry of the
+    // import registry (sys.modules), and the failure message trails the
+    // module's file location when it has one.
     private static PyObject InternalImportFrom(PyCallContext context, PyObject module, string name)
     {
         var attrResult = PyOperators.GetAttr(context, module, name);
@@ -733,6 +736,14 @@ internal static partial class BytecodeVirtualMachine
             moduleName = !nameResult.IsError && nameResult.Value is PyStrObject nameStr ? nameStr.Value : "<unknown>";
         }
 
-        throw context.ImportError(PySR.Runtime_Import_CannotImportName, name, moduleName);
+        if (context.PyEnvironment.Modules.TryGetValue($"{moduleName}.{name}", out var submodule)
+            && submodule is not null)
+            return submodule;
+
+        string location = "unknown location";
+        if (module.PyAttributes.TryGetValue(PySpecialNames.File, out var file) && file is PyStrObject fileString)
+            location = fileString.Value;
+
+        throw context.ImportError(PySR.Runtime_Import_CannotImportName, name, moduleName, location);
     }
 }

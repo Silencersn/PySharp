@@ -48,7 +48,7 @@ partial class PySR
     public const string Runtime_Import_PackageNotString = "__package__ not set to a string";
     public const string Runtime_Import_NonIterableAll = "{0}.__all__ must be iterable";
     public const string Runtime_Import_NonStringAllElt = "Item in {0}.__all__ must be str, not {1}";
-    public const string Runtime_Import_CannotImportName = "cannot import name '{0}' from '{1}'";
+    public const string Runtime_Import_CannotImportName = "cannot import name '{0}' from '{1}' ({2})";
     public const string Runtime_Import_ErrorUnexpectedKeyword = "ImportError() got an unexpected keyword argument '{0}'";
 
     public const string Runtime_Inheritance_UnacceptableBaseType = "type '{0}' is not an acceptable base type";
