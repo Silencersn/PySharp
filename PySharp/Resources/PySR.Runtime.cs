@@ -80,6 +80,7 @@ partial class PySR
 
     public const string Runtime_Type_InitTakesNoKeywordArguments = "type.__init__() takes no keyword arguments";
     public const string Runtime_Exception_TakesNoKeywordArguments = "{0}() takes no keyword arguments";
+    public const string Runtime_Exception_TakesNoArgumentsGiven = "{0}() takes no arguments ({1} given)";
     public const string Runtime_Type_InitTakes1Or3Arguments = "type.__init__() takes 1 or 3 arguments";
     public const string Runtime_Type_New_WrongArgCount = "type() takes 1 or 3 arguments";
     public const string Runtime_Type_New_NotEnoughArguments = "{0}.__new__(): not enough arguments";

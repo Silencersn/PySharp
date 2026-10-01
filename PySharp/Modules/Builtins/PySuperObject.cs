@@ -152,7 +152,14 @@ public sealed partial class PySuperObjectType : PyTypeObject<PySuperObject>
             {
                 var getFunc = attr.PyType.Slots.Get;
                 if (getFunc is not null)
-                    return getFunc(context, attr, self._object, self._type);
+                {
+                    // do_super_lookup binds through the obj's own type, not
+                    // super's first argument: instance mode passes the obj,
+                    // class mode (obj is itself the type) passes NULL so a
+                    // classmethod binds that class instead of the metaclass
+                    PyObject instanceArg = ReferenceEquals(self._object, startType) ? PyNoneObject.None : self._object;
+                    return getFunc(context, attr, instanceArg, startType);
+                }
                 return attr;
             }
         }

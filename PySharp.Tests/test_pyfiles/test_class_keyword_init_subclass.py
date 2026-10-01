@@ -13,12 +13,7 @@ The rejection names the class the descriptor bound to
 (Objects/methodobject.c meth_get__qualname__: __self__.__qualname__ + '.'
 + __name__), which for a class being created is the new class itself.
 
-Cases whose wording still differs carry a comment with CPython's text;
-they only assert the exception type.
-
 :kind: test
-
-:cpython-diff: the __init_subclass__() rejection message lacks the new class's qualname; remove this exemption once the message matches CPython
 """
 
 
@@ -60,7 +55,7 @@ expect_type_error(
 
 # ---------------------------------------------------------------------------
 # a base that forwards **kwargs reaches the default hook, which rejects
-# CPython names the new class; PySharp reports the builtin's own qualname
+# and names the new class
 # ---------------------------------------------------------------------------
 class Forwarding:
     def __init_subclass__(cls, **kwargs):
@@ -305,8 +300,7 @@ def case_qualname_keyword():
     type("C", (Plain,), {}, __qualname__="Q")
 
 
-# CPython names the new class in both; PySharp names the class the builtin
-# bound to (the deprecated base) and the applied qualname
+# CPython names the new class in both
 expect_type_error("deprecated-base", case_deprecated)
 expect_type_error("generic-base", case_generic)
 expect_type_error("qualname-keyword", case_qualname_keyword)
