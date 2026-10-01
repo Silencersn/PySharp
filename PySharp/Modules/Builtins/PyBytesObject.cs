@@ -274,6 +274,11 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
             return PyBytesObject.MoveBytes(result);
         }
 
+        // bytes_subscript branches on PyIndex_Check before any conversion;
+        // the message names the singular "byte", unlike the type name
+        if (item.PyType.Slots.Index is null)
+            return PyResult.TypeError(PySR.Runtime_Sequence_IndicesMustBeIntegersOrSlices, "byte", item.PyType.TpName);
+
         var indexResult = PySpecialMethods.Index(context, item);
         if (indexResult.IsError)
             return indexResult;

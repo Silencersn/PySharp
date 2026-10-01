@@ -461,6 +461,12 @@ partial class PyListObject
             return PyNoneObject.None;
         }
 
+        // list_ass_subscript branches on PyIndex_Check before any
+        // conversion, so an operand without the index protocol names the
+        // container instead of the generic integer-conversion sentence
+        if (key.PyType.Slots.Index is null)
+            return PyResult.TypeError(PySR.Runtime_Sequence_IndicesMustBeIntegersOrSlices, "list", key.PyType.TpName);
+
         var indexResult = PySpecialMethods.Index(context, key);
         if (indexResult.IsError)
             return indexResult;
@@ -504,6 +510,11 @@ partial class PyListObject
             }
             return PyNoneObject.None;
         }
+
+        // same PyIndex_Check-first shape as assignment: the container names
+        // the rejected operand type before any conversion runs
+        if (key.PyType.Slots.Index is null)
+            return PyResult.TypeError(PySR.Runtime_Sequence_IndicesMustBeIntegersOrSlices, "list", key.PyType.TpName);
 
         var indexResult = PySpecialMethods.Index(context, key);
         if (indexResult.IsError)

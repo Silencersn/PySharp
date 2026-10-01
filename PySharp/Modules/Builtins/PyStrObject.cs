@@ -2413,6 +2413,11 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
             return PyStrObject.FromString(sb.ToString());
         }
 
+        // unicode_subscript branches on PyIndex_Check before any conversion;
+        // the str wording is its own sentence and quotes the type name
+        if (item.PyType.Slots.Index is null)
+            return PyResult.TypeError(PySR.Runtime_String_IndicesMustBeIntegers, item.PyType.TpName);
+
         var result = PySpecialMethods.Index(context, item);
         if (result.IsError)
             return result;

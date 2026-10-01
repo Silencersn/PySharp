@@ -296,6 +296,12 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
             return self.Slice(start, step, length);
         }
 
+        // bytearray_subscript branches on PyIndex_Check before any
+        // conversion, so an operand without the index protocol names the
+        // container instead of the generic integer-conversion sentence
+        if (item.PyType.Slots.Index is null)
+            return PyResult.TypeError(PySR.Runtime_Sequence_IndicesMustBeIntegersOrSlices, "bytearray", item.PyType.TpName);
+
         var indexResult = PySpecialMethods.Index(context, item);
         if (indexResult.IsError)
             return indexResult;
@@ -339,6 +345,11 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
 
             return PyNoneObject.None;
         }
+
+        // same PyIndex_Check-first shape as reading: the container names
+        // the rejected operand type before any conversion runs
+        if (key.PyType.Slots.Index is null)
+            return PyResult.TypeError(PySR.Runtime_Sequence_IndicesMustBeIntegersOrSlices, "bytearray", key.PyType.TpName);
 
         var indexResult = PySpecialMethods.Index(context, key);
         if (indexResult.IsError)

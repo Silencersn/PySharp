@@ -307,7 +307,7 @@ internal static class PyUtils
         return index >= count || index < -count;
     }
 
-    public static PyResult GetSequenceItem(PyCallContext context, ReadOnlySpan<PyObject> items, PyObject item, Func<List<PyObject>, PyObject> factory, string outOfRangeErrMsg)
+    public static PyResult GetSequenceItem(PyCallContext context, ReadOnlySpan<PyObject> items, PyObject item, Func<List<PyObject>, PyObject> factory, string outOfRangeErrMsg, string indexTypeName)
     {
         if (item is PySliceObject slice)
         {
@@ -320,6 +320,12 @@ internal static class PyUtils
                 resultList.Add(items[idx]);
             return factory(resultList);
         }
+
+        // list_subscript/tuple_subscript branch on PyIndex_Check before any
+        // conversion, so an operand without the index protocol names the
+        // container instead of the generic integer-conversion sentence
+        if (item.PyType.Slots.Index is null)
+            return PyResult.TypeError(PySR.Runtime_Sequence_IndicesMustBeIntegersOrSlices, indexTypeName, item.PyType.TpName);
 
         var indexResult = PySpecialMethods.Index(context, item);
         if (indexResult.IsError)

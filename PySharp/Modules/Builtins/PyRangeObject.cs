@@ -204,6 +204,11 @@ public sealed partial class PyRangeObjectType : PyTypeObject<PyRangeObject>
             return PyRangeObject.CreateRange(newStart, newStop, newStep);
         }
 
+        // range_subscript branches on PyIndex_Check before any conversion,
+        // so an operand without the index protocol names the container
+        if (item.PyType.Slots.Index is null)
+            return PyResult.TypeError(PySR.Runtime_Sequence_IndicesMustBeIntegersOrSlices, "range", item.PyType.TpName);
+
         var idxResult = PySpecialMethods.Index(context, item);
         if (idxResult.IsError)
             return idxResult;

@@ -141,6 +141,8 @@ partial class PySR
     public const string Runtime_String_IndexOutOfRange = "string index out of range";
     public const string Runtime_String_AddNonStr = "can only concatenate str (not \"{0}\") to str";
     public const string Runtime_String_JoinNonStrAt = "sequence item {0}: expected str instance, {1} found";
+    public const string Runtime_String_IndicesMustBeIntegers = "string indices must be integers, not '{0}'";
+    public const string Runtime_Sequence_IndicesMustBeIntegersOrSlices = "{0} indices must be integers or slices, not {1}";
 
     public const string Runtime_Super_ObjNotMatchType = "super(type, obj): obj ({0} {1}) is not an instance or subtype of type ({2}).";
     public const string Runtime_Super_NoArgs = "super(): no arguments";
