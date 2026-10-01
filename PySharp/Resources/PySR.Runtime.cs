@@ -453,6 +453,7 @@ partial class PySR
     public const string Runtime_Bytes_IndexOverflow = "cannot fit '{0}' into an index-sized integer";
     public const string Runtime_ByteArray_CannotConvert = "cannot convert '{0}' object to bytearray";
     public const string Runtime_ByteArray_ResizedWhileExported = "Existing exports of data: object cannot be re-sized";
+    public const string Runtime_ByteArray_IndexOutOfRange = "bytearray index out of range";
 
     public const string Runtime_Memoryview_InvalidFormatValue = "memoryview: invalid value for format '{0}'";
     public const string Runtime_Memoryview_InvalidFormatType = "memoryview: invalid type for format '{0}'";

@@ -308,7 +308,7 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
 
         var index = PyUtils.MapIndex(indexResult.Value.Int32Value, self.Length);
         if (index < 0 || index >= self.Length)
-            return PyResult.IndexError(PySR.Runtime_IndexOutOfRange);
+            return PyResult.IndexError(PySR.Runtime_ByteArray_IndexOutOfRange);
 
         return PyIntObject.FromInteger(self[index]);
     }
@@ -361,7 +361,7 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
             return byteResult;
 
         if (!self.TrySetItem(mappedIndex, b))
-            return PyResult.IndexError(PySR.Runtime_IndexOutOfRange);
+            return PyResult.IndexError(PySR.Runtime_ByteArray_IndexOutOfRange);
 
         return PyNoneObject.None;
     }
