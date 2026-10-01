@@ -70,9 +70,13 @@ public static class PyDelegateConverter
         };
     }
 
-    // The parameter list is bound the same way a Python function's is, so the
-    // failure names the builtin the way CPython's messages do
+    // The parameter list is bound the same way a Python function's is, but a
+    // C-implemented callable reports through the CPython C families: what
+    // the binder rejected is reworded by PyBuiltinCallError, and only the
+    // failures no C family covers keep the binder's own message
     public static PyUncompoundedDelegate ToUncompounded(this PyDelegateDefinition<PyFunction> method, string name)
+        => ToUncompounded(method, name, name);
+    public static PyUncompoundedDelegate ToUncompounded(this PyDelegateDefinition<PyFunction> method, string name, string fullName)
     {
         PyArgsDef? def = null;
 
@@ -84,7 +88,9 @@ public static class PyDelegateConverter
             if (def.TryParse(args, kwargs, buffer, out var result))
                 return method.Delegate.Invoke(context, result);
 
-            return PyResult.TypeError(def.Describe(args, kwargs).Format(name));
+            var message = PyBuiltinCallError.Format(def, args, kwargs, name, fullName)
+                ?? def.Describe(args, kwargs).Format(name);
+            return PyResult.TypeError(message);
         };
     }
     public static PyUncompoundedDelegate ToUncompounded<TObject>(this PyDelegateDefinition<PyMethod<TObject>> method, string name, string ownerName) where TObject : PyObject
@@ -106,7 +112,9 @@ public static class PyDelegateConverter
             if (def.TryParse(args, kwargs, buffer, out var result))
                 return method.Delegate.Invoke(context, selfOfT, result);
 
-            return PyResult.TypeError(def.Describe(args, kwargs).Format($"{ownerName}.{name}"));
+            var message = PyBuiltinCallError.Format(def, args, kwargs, name, $"{ownerName}.{name}")
+                ?? def.Describe(args, kwargs).Format($"{ownerName}.{name}");
+            return PyResult.TypeError(message);
         };
     }
 
@@ -129,8 +137,13 @@ public static class PyDelegateConverter
             // an overload is chosen by the first signature that binds, so the
             // reported failure is the one of the first overload: the widest,
             // and the one a caller most likely meant
-            var failure = defs.Length is 0 ? default : defs[0].Describe(args, kwargs);
-            return PyResult.TypeError(failure.Format(name));
+            if (defs.Length is 0)
+                return PyResult.TypeError("got an invalid combination of arguments");
+
+            var def = defs[0];
+            var message = PyBuiltinCallError.Format(def, args, kwargs, name, name)
+                ?? def.Describe(args, kwargs).Format(name);
+            return PyResult.TypeError(message);
         };
 
         void EnsureDefCache()
@@ -175,8 +188,13 @@ public static class PyDelegateConverter
 
             // the reported failure is the one of the first overload (see the
             // function dispatcher)
-            var failure = defs.Length is 0 ? default : defs[0].Describe(args, kwargs);
-            return PyResult.TypeError(failure.Format($"{ownerName}.{name}"));
+            if (defs.Length is 0)
+                return PyResult.TypeError("got an invalid combination of arguments");
+
+            var def = defs[0];
+            var message = PyBuiltinCallError.Format(def, args, kwargs, name, $"{ownerName}.{name}")
+                ?? def.Describe(args, kwargs).Format($"{ownerName}.{name}");
+            return PyResult.TypeError(message);
         };
 
         void EnsureDefCache()

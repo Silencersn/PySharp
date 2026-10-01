@@ -359,8 +359,11 @@ partial class PySR
     public const string Runtime_Os_InvalidArgumentErrno = "[Errno 22] Invalid argument";
 
     public const string Runtime_Descriptor_GetNoneNoneInvalid = "__get__(None, None) is invalid";
-    public const string Runtime_Descriptor_ReceiveObjectOfWrongType = "descriptor '{0}' requires a '{1}' object but received a '{2}'";
-    public const string Runtime_Descriptor_NeedsArg = "descriptor '{0}' of '{1}' object needs an argument";
+    // descr_check (Objects/descrobject.c)
+    public const string Runtime_Descriptor_ReceiveObjectOfWrongType = "descriptor '{0}' for '{1}' objects doesn't apply to a '{2}' object";
+    // method_check_args (Objects/descrobject.c); {0} is the method name,
+    // {1} the declaring type
+    public const string Runtime_Descriptor_NeedsArg = "unbound method {1}.{0}() needs an argument";
 
     public const string Runtime_Exception_NonException = "exceptions must be classes or instances deriving from BaseException, not {0}";
 
@@ -389,6 +392,16 @@ partial class PySR
     public const string Runtime_Arguments_UnexpectedKey = "got an unexpected keyword argument '{0}'";
     public const string Runtime_Arguments_MultipleKeywords = "{0} got multiple values for keyword argument '{1}'";
     public const string Runtime_Arguments_StarStarNotMapping = "{0} argument after ** must be a mapping, not {1}";
+    // long_vectorcall (Objects/longobject.c): the int constructor's own
+    // keyword and count rejections, named after the type
+    public const string Runtime_Constructor_UnexpectedKeyword = "{0}() got an unexpected keyword argument '{1}'";
+    public const string Runtime_Constructor_ExpectedAtMost = "{0} expected at most {1} argument{2}, got {3}";
+    // _Py_Check_ArgsIterable (ceval.c): the single * expansion handed straight
+    // to CALL_FUNCTION_EX, named after the callable
+    public const string Runtime_Arguments_StarNotIterable = "{0} argument after * must be an iterable, not {1}";
+    // LIST_EXTEND (ceval.c): a * element merged into an accumulating list,
+    // with no callable to name
+    public const string Runtime_Arguments_ValueStarNotIterable = "Value after * must be an iterable, not {0}";
 
     public const string Runtime_Recursion_MaxRecursionDepthExceeded = "maximum recursion depth exceeded";
 

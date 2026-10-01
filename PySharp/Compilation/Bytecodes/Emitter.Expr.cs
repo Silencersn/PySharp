@@ -256,11 +256,35 @@ partial class Emitter
 
         void EmitCallFunctionEx()
         {
-            Builder.Emit(OpCode.BuildList, 0);
-            foreach (var arg in node.Args)
+            // CPython compiles a lone *expr into the callargs object itself
+            // (compiler_call_helper): CALL_FUNCTION_EX converts it, so a bad
+            // *value names the callable. Any other starred shape accumulates
+            // a list where LIST_EXTEND rejects the bad *value, then
+            // CALL_INTRINSIC_1 LIST_TO_TUPLE freezes it.
+            if (node.Args.Length is 1 && node.Args[0] is StarredNode)
             {
-                LoadExpr(arg);
-                Builder.Emit(arg is StarredNode ? OpCode.ListExtend : OpCode.ListAppend, 1);
+                LoadExpr(node.Args[0]);
+            }
+            else
+            {
+                Builder.Emit(OpCode.BuildList, 0);
+                var starred = false;
+                foreach (var arg in node.Args)
+                {
+                    LoadExpr(arg);
+                    if (arg is StarredNode)
+                    {
+                        starred = true;
+                        Builder.Emit(OpCode.ListExtend, 1);
+                    }
+                    else
+                    {
+                        Builder.Emit(OpCode.ListAppend, 1);
+                    }
+                }
+
+                if (starred)
+                    Builder.Emit(OpCode.CallIntrinsic1, IntrinsicFunctionType.ListToTuple);
             }
 
             // CPython compiles kwargs of a **-call into one accumulating map

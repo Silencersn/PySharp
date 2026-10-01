@@ -3,6 +3,7 @@ using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
 using PySharp.Utility;
 using System.Diagnostics;
+using System.Linq;
 using System.Numerics;
 
 namespace PySharp.Modules.Builtins;
@@ -97,41 +98,48 @@ public class PyIntObject : PyObject
 public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
 {
 
-    [PyExport(PySpecialNames.New, nameof(NewImpl_1), nameof(NewImpl_2))]
+    [PyExport(PySpecialNames.New, nameof(NewImpl))]
     private static partial PyBuiltinFunctionOrMethodObject _new { get; }
 
-    [PyFunctionParameters("number=0", "/")]
-    private static PyResult NewImpl_1(PyCallContext context, PyArguments arguments)
+    // CPython long_new: int(x=0, /, base=10) (Objects/longobject.c), one
+    // signature covering the zero-arg, one-arg and base forms
+    [PyFunctionParameters("number=0", "/", "base=10")]
+    private static PyResult NewImpl(PyCallContext context, PyArguments arguments)
     {
-        if (arguments[0] is PyStrObject str)
-        {
-            var maxStrDigits = context.PyEnvironment.IntStrDigits.MaxStrDigits;
-            var text = PyUnicodeData.TransformDecimalAndSpaceToAscii(str.Value);
-            var parseStatus = BigIntegerHelper.TryParse(text, 10, maxStrDigits, out var integer, out var digitCount);
-            if (parseStatus is BigIntegerHelper.IntParseStatus.OverLimit)
-                return PyResult.ValueError(PySR.Runtime_Number_Int_ExceedsMaxStrDigits, maxStrDigits, digitCount);
-            if (parseStatus is BigIntegerHelper.IntParseStatus.Invalid)
-                return InvalidStringLiteral(context, str, 10);
+        var given = arguments.GivenCount;
+        if (given is 0)
+            return PyIntObject.Zero;
 
-            return PyIntObject.FromInteger(integer);
+        if (given is 1)
+        {
+            var number = arguments[0];
+            if (number is PyStrObject str)
+            {
+                var maxStrDigits = context.PyEnvironment.IntStrDigits.MaxStrDigits;
+                var text = PyUnicodeData.TransformDecimalAndSpaceToAscii(str.Value);
+                var parseStatus = BigIntegerHelper.TryParse(text, 10, maxStrDigits, out var integer, out var digitCount);
+                if (parseStatus is BigIntegerHelper.IntParseStatus.OverLimit)
+                    return PyResult.ValueError(PySR.Runtime_Number_Int_ExceedsMaxStrDigits, maxStrDigits, digitCount);
+                if (parseStatus is BigIntegerHelper.IntParseStatus.Invalid)
+                    return InvalidStringLiteral(context, str, 10);
+
+                return PyIntObject.FromInteger(integer);
+            }
+
+            if (number is PyBytesObject numberBytes)
+                return FromBytesLiteral(context, numberBytes.AsSpan(), 10);
+            if (number is PyByteArrayObject numberByteArray)
+                return FromBytesLiteral(context, numberByteArray.AsSpan(), 10);
+            if (number is PyMemoryViewObject numberMemoryView)
+                return FromBytesLiteral(context, numberMemoryView.DataSpan, 10);
+
+            var result = PySpecialMethods.Int(context, number);
+            if (result.IsError)
+                return result;
+
+            return result.Value;
         }
 
-        if (arguments[0] is PyBytesObject bytes)
-            return FromBytesLiteral(context, bytes.AsSpan(), 10);
-        if (arguments[0] is PyByteArrayObject byteArray)
-            return FromBytesLiteral(context, byteArray.AsSpan(), 10);
-        if (arguments[0] is PyMemoryViewObject memoryView)
-            return FromBytesLiteral(context, memoryView.DataSpan, 10);
-
-        var result = PySpecialMethods.Int(context, arguments[0]);
-        if (result.IsError)
-            return result;
-
-        return result.Value;
-    }
-    [PyFunctionParameters("string", "/", "base=10")]
-    private static PyResult NewImpl_2(PyCallContext context, PyArguments arguments)
-    {
         // CPython long_new resolves the base through PyNumber_AsSsize_t, which consults
         // __index__; an oversized result saturates and then fails the range check below.
         var baseResult = PySpecialMethods.Index(context, arguments[1]);
@@ -142,15 +150,15 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
         if (!((numBase.Value >= 2 && numBase.Value <= 36) || numBase.Value.IsZero))
             return PyResult.ValueError(PySR.Runtime_Number_Int_BaseOutOfRange);
 
-        if (arguments[0] is PyStrObject str)
+        if (arguments[0] is PyStrObject strWithBase)
         {
             var maxStrDigits = context.PyEnvironment.IntStrDigits.MaxStrDigits;
-            var text = PyUnicodeData.TransformDecimalAndSpaceToAscii(str.Value);
+            var text = PyUnicodeData.TransformDecimalAndSpaceToAscii(strWithBase.Value);
             var parseStatus = BigIntegerHelper.TryParse(text, numBase.Int32Value, maxStrDigits, out var result, out var digitCount);
             if (parseStatus is BigIntegerHelper.IntParseStatus.OverLimit)
                 return PyResult.ValueError(PySR.Runtime_Number_Int_ExceedsMaxStrDigits, maxStrDigits, digitCount);
             if (parseStatus is BigIntegerHelper.IntParseStatus.Invalid)
-                return InvalidStringLiteral(context, str, numBase.Value);
+                return InvalidStringLiteral(context, strWithBase, numBase.Value);
 
             return PyIntObject.FromInteger(result);
         }
@@ -208,6 +216,12 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
+        // long_vectorcall (Objects/longobject.c) caps the positional count
+        // at two by the type's own name; keywords (base) go through the
+        // binder, whose unexpected-keyword message names the type too
+        if (args.Count > 2)
+            return PyResult.TypeError(PySR.Runtime_Constructor_ExpectedAtMost, "int", 2, "s", args.Count);
+
         var result = _new.Call(context, args, kwargs);
         if (result.IsError)
             return result;

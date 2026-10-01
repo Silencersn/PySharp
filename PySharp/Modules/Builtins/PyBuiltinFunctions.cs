@@ -138,7 +138,7 @@ public static partial class PyBuiltinFunctions
     [PyExport("repr", nameof(ReprImpl))]
     public static partial PyBuiltinFunctionOrMethodObject Repr { get; }
     // reversed -> PyReversedObjectType
-    [PyExport("round", nameof(RoundImpl_1), nameof(RoundImpl_2))]
+    [PyExport("round", nameof(RoundImpl))]
     public static partial PyBuiltinFunctionOrMethodObject Round { get; }
 
     // S
@@ -1370,15 +1370,8 @@ public static partial class PyBuiltinFunctions
     }
 
     [AIGenerated]
-    [PyFunctionParameters("number")]
-    private static PyResult RoundImpl_1(PyCallContext context, PyArguments arguments)
-    {
-        return PySpecialMethods.Round(context, arguments[0], PyNoneObject.None);
-    }
-
-    [AIGenerated]
-    [PyFunctionParameters("number", "ndigits")]
-    private static PyResult RoundImpl_2(PyCallContext context, PyArguments arguments)
+    [PyFunctionParameters("number", "ndigits=None")]
+    private static PyResult RoundImpl(PyCallContext context, PyArguments arguments)
     {
         return PySpecialMethods.Round(context, arguments[0], arguments[1]);
     }

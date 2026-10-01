@@ -362,7 +362,7 @@ public sealed class PyArgsDef
         if (!TryFillAndCheck(args.Count, resultArgs, resultKwargs, describe, out error))
             return false;
 
-        result = new PyArguments(this, buffer, resultExtraArgs, resultExtraKwargs);
+        result = new PyArguments(this, buffer, args.Count + kwargs.Count, resultExtraArgs, resultExtraKwargs);
         return true;
     }
 
@@ -380,7 +380,7 @@ public sealed class PyArgsDef
         if (!TryFillAndCheck(args.Count, resultArgs, resultKwargs, describe, out error))
             return false;
 
-        result = new PyArguments(this, buffer, resultExtraArgs, null);
+        result = new PyArguments(this, buffer, args.Count, resultExtraArgs, null);
         return true;
     }
 
@@ -588,7 +588,7 @@ public sealed class PyArgsDef
         for (int i = argsCount; i < Args.Length; i++)
             buffer[i] = Defaults[i - required];
 
-        result = new PyArguments(this, buffer, null, null);
+        result = new PyArguments(this, buffer, argsCount, null, null);
         return true;
     }
 }

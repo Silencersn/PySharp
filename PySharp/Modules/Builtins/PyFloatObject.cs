@@ -1695,14 +1695,10 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
 
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
-        // CPython's float_new takes at most one positional argument and no
-        // keywords; an unmatched dispatcher call would only give a bare
-        // TypeError, so produce the specific messages here.
-        if (args.Count > 1)
-            return PyResult.TypeError(PySR.Runtime_Arguments_OverflowArgs, 1, args.Count);
-        if (!PyArgsValidator.ValidateEmptyKwargs(kwargs, out var kwErr))
-            return kwErr.Value;
-
+        // float_vectorcall (Objects/floatobject.c) rejects the count and the
+        // keywords before float_new_impl; the all-positional signature
+        // reports both through the _PyArg_CheckPositional family, named
+        // after the type, which the dispatcher produces
         var result = _new.Call(context, args, kwargs);
         if (result.IsError)
             return result;
