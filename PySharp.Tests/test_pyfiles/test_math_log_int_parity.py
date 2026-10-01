@@ -39,7 +39,7 @@ for v in [0, -1, -(10 ** 50)]:
     else:
         raise AssertionError(v)
 
-# float path: message uses the repr of the original argument
+# float path: message renders the converted double as a repr
 for v, tail in [(0.0, '0.0'), (-0.0, '-0.0'), (-1.5, '-1.5')]:
     try:
         math.log10(v)
