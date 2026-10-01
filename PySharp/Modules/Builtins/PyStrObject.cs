@@ -3029,6 +3029,12 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         return PyStrObject.FromString(sb.ToString());
     }
 
+    // the CPython None split by entry path (getargs.c): positional
+    // _PyArg_BadArgument prints tp_name, the keyword converterr prints
+    // "None"; every other type keeps its plain type name
+    private static string ArgumentNameForRejected(PyObject value, bool fromKwargs) =>
+        value is PyNoneObject && !fromKwargs ? "NoneType" : PyUtils.ArgumentTypeName(value);
+
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         // CPython str_new: a missing object is the empty string regardless
@@ -3040,6 +3046,11 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         PyObject? source = args.Count > 0 ? args[0] : null;
         PyObject? encoding = args.Count > 1 ? args[1] : null;
         PyObject? errors = args.Count > 2 ? args[2] : null;
+        // CPython names a rejected None differently by entry path: the
+        // positional _PyArg_BadArgument prints tp_name ("NoneType") while
+        // the keyword converterr prints "None"
+        bool encodingFromKwargs = false;
+        bool errorsFromKwargs = false;
         foreach (var (name, value) in kwargs)
         {
             switch (name)
@@ -3053,16 +3064,26 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                     if (encoding is not null)
                         return PyResult.TypeError(PySR.Runtime_Codec_MultipleValues, "str", name, 2);
                     encoding = value;
+                    encodingFromKwargs = true;
                     break;
                 case "errors":
                     if (errors is not null)
                         return PyResult.TypeError(PySR.Runtime_Codec_MultipleValues, "str", name, 3);
                     errors = value;
+                    errorsFromKwargs = true;
                     break;
                 default:
                     return PyResult.TypeError(PySR.Runtime_Str_UnexpectedKeyword, name);
             }
         }
+
+        // the clinic 'str' converters reject non-str before any conversion —
+        // including before the missing-object shortcut, which stays the
+        // empty string
+        if (encoding is not null and not PyStrObject)
+            return PyResult.TypeError(PySR.Runtime_Str_ArgMustBeStr, "encoding", ArgumentNameForRejected(encoding, encodingFromKwargs));
+        if (errors is not null and not PyStrObject)
+            return PyResult.TypeError(PySR.Runtime_Str_ArgMustBeStr, "errors", ArgumentNameForRejected(errors, errorsFromKwargs));
 
         PyResult result;
         if (source is null)
@@ -3071,13 +3092,6 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         }
         else
         {
-            // the clinic 'str' converters reject non-str before any conversion;
-            // None reports as "NoneType" here (unlike bytes())
-            if (encoding is not null and not PyStrObject)
-                return PyResult.TypeError(PySR.Runtime_Str_ArgMustBeStr, "encoding", encoding.PyType.Name);
-            if (errors is not null and not PyStrObject)
-                return PyResult.TypeError(PySR.Runtime_Str_ArgMustBeStr, "errors", errors.PyType.Name);
-
             if (encoding is null && errors is null)
             {
                 result = PySpecialMethods.Str(context, source);
