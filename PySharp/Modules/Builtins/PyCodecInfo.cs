@@ -65,6 +65,8 @@ internal static class PyCodecInfo
     internal const string CharmapReason = "character maps to <undefined>";
     internal const string MultibyteReason = "illegal multibyte sequence";
     internal const string IncompleteMultibyteReason = "incomplete multibyte sequence";
+    internal const string MbcsDecodeReason = "No mapping for the Unicode character exists "
+        + "in the target code page.";
 
     // Codec name -> the name its C implementation reports. Aliases follow
     // Lib/encodings/aliases.py, in the normalization of

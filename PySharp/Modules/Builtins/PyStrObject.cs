@@ -1951,7 +1951,14 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 // CPython resolves the handler name at the first actual
                 // encoding error (unicode_encode_call_errorhandler), so a
                 // name it does not know is only rejected once one happens
-                return errors is "strict" ? UnicodeEncodeError(codec, value, start, end) : UnknownErrorHandler(errors);
+                if (errors is not "strict")
+                    return UnknownErrorHandler(errors);
+                // mbcs reports every strict failure at position 0-0; the
+                // code page converters never locate the character, so the
+                // start+1 != end wording of the message applies too
+                return codec.Kind is PyCodecInfo.CodecKind.Mbcs
+                    ? UnicodeEncodeError(codec, value, 0, 0)
+                    : UnicodeEncodeError(codec, value, start, end);
         }
     }
 

@@ -1156,7 +1156,14 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
                         reason = PyCodecInfo.IncompleteMultibyteReason;
                 }
                 if (handler is DecodeErrorHandler.Strict or DecodeErrorHandler.SurrogatePass)
-                    return UnicodeDecodeError(codec.ErrorName, source, data, start, end, reason);
+                {
+                    // mbcs reports every strict failure at position 0-0 with
+                    // the Windows message as its reason (the code page
+                    // converters never locate the character)
+                    return codec.Kind is PyCodecInfo.CodecKind.Mbcs
+                        ? UnicodeDecodeError(codec.ErrorName, source, data, 0, 0, PyCodecInfo.MbcsDecodeReason)
+                        : UnicodeDecodeError(codec.ErrorName, source, data, start, end, reason);
+                }
                 sb.Append(strictDecoder.GetString(piece[..(start - pos)]));
                 pos = ApplyMultibyteHandler(handler, data, start, end, sb);
                 continue;
