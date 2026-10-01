@@ -21,7 +21,7 @@ partial class Parser
         EnsureTokenTypeThenMove(TokenType.NewLine);
         if (CurrentTokenType is not TokenType.Indent)
             // the header's last column is exact, but there is no endpoint yet (-1)
-            throw _context.IndentationError(this, SyntaxErrorSpan.OpenEnd, PySR.Format(PySR.InvalidSyntax_Indentation_ExpectedForBlock, "'match'", lineno));
+            throw _context.IndentationError(this, SyntaxErrorSpan.OpenEnd, PySR.Format(PySR.InvalidSyntax_Indentation_ExpectedForBlock, "'match' statement", lineno));
         MoveNextToken();
 
         List<AstMatchCaseNode> cases = [ParseCaseBlock()];

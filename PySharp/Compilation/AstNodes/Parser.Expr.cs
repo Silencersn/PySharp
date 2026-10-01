@@ -1475,6 +1475,14 @@ partial class Parser
                     AstExprNode? defaultValue = null;
                     if (needDefault || CurrentTokenType is TokenType.Equal)
                     {
+                        // after the last parameter only '=' or the list's stop
+                        // token can legally follow; anything else is a broken
+                        // construct that CPython's PEG fails as invalid syntax
+                        // before any parameter check runs
+                        if (needDefault && CurrentTokenType is not TokenType.Equal
+                            && CurrentTokenType is not TokenType.RightParen
+                            && CurrentTokenType is not TokenType.Colon)
+                            throw SyntaxError();
                         defaultValue = ParseDefault();
                         if (state is StateMaybePosonlyArgsOrArgs or StateArgs)
                             needDefault = true;
@@ -1588,12 +1596,12 @@ partial class Parser
     }
 
     [GrammarSyntaxRule("star_target")]
-    private AstExprNode ParseStarTarget()
+    private AstExprNode ParseStarTarget(string invalidTargetMessage = PySR.InvalidSyntax_InvalidTarget)
     {
         if (CurrentTokenType is TokenType.Star)
         {
             MoveNextToken();
-            var target = ParseStarTarget();
+            var target = ParseStarTarget(invalidTargetMessage);
             if (target is StarredNode)
                 throw SyntaxError(PySR.InvalidSyntax_StarredExpression_Invalid);
             return Ast.Starred(target);
@@ -1602,7 +1610,7 @@ partial class Parser
         {
             var target = ParsePrimary();
             if (!target.IsValidTarget())
-                throw SyntaxError(PySR.InvalidSyntax_InvalidTarget, AstUtils.GetExprNodeName(target));
+                throw SyntaxError(invalidTargetMessage, AstUtils.GetExprNodeName(target));
             return target;
         }
     }
@@ -1610,7 +1618,7 @@ partial class Parser
     [GrammarSyntaxRule("star_targets")]
     private AstExprNode ParseStarTargets(StopPredicate predicate)
     {
-        var targets = ParseSomethingList(ParseStarTarget, predicate, out var endsWithComma);
+        var targets = ParseSomethingList(() => ParseStarTarget(), predicate, out var endsWithComma);
         return UnwrapOrMakeTuple(targets, endsWithComma);
     }
 

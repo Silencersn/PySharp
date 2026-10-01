@@ -636,7 +636,13 @@ partial class SemanticAnalyzer
             scope = scope.Parent;
 
         if (scope is not AsyncFunctionVariableScope)
-            throw SyntaxError(PySR.InvalidSyntax_Semantic_AwaitOutsideAsyncFunc);
+        {
+            // symtable.c distinguishes the module/class level ("outside
+            // function") from a synchronous function ("outside async function")
+            throw SyntaxError(scope is FunctionVariableScope
+                ? PySR.InvalidSyntax_Semantic_AwaitOutsideAsyncFunc
+                : PySR.InvalidSyntax_Semantic_AwaitOutsideFunction);
+        }
 
         VisitNode(node.Value);
     }

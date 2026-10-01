@@ -1,5 +1,6 @@
 using PySharp.Compilation.Primitives;
 using PySharp.Compilation.Tokenization;
+using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Utility;
@@ -90,13 +91,24 @@ partial class Parser
         }
 
         var targets = _context.BuilderPool.Rent<AstExprNode>();
+        var isFirstTarget = true;
 
         while (CurrentTokenType is TokenType.Equal)
         {
             if (!IsStarTarget(starExpressions, out var nonStarTargetNode))
-                throw SyntaxError(PySR.InvalidSyntax_InvalidTarget, AstUtils.GetExprNodeName(nonStarTargetNode));
+            {
+                // parser.c's invalid-target rule carries the '==' hint; the
+                // reserved-name check in ast.c and the chained targets of
+                // `x = 2 = 3` keep the bare sentence
+                var bare = !isFirstTarget
+                    || nonStarTargetNode is ConstantNode { Value: PyNoneObject or PyBoolObject };
+                throw SyntaxError(
+                    bare ? PySR.InvalidSyntax_InvalidTarget : PySR.InvalidSyntax_InvalidTargetStatement,
+                    AstUtils.GetExprNodeName(nonStarTargetNode));
+            }
 
             targets.Add(starExpressions);
+            isFirstTarget = false;
 
             MoveNextToken();
 
@@ -377,7 +389,7 @@ partial class Parser
     [GrammarSyntaxRule("del_target")]
     private AstExprNode ParseDelTarget()
     {
-        var target = ParseStarTarget();
+        var target = ParseStarTarget(PySR.InvalidSyntax_DelStmt_CannotDelete);
         CheckNoStarred(target);
         return target;
 

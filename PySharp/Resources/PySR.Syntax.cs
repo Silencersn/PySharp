@@ -91,7 +91,7 @@ partial class PySR
     public const string InvalidSyntax_Parameters_ArgsFollowVarKwArg = "arguments cannot follow var-keyword argument";
     public const string InvalidSyntax_Parameters_MultipleSlashes = "/ may appear only once";
     public const string InvalidSyntax_Parameters_SlashAfterStar = "/ must be ahead of *";
-    public const string InvalidSyntax_Parameters_MultipleStars = "* may appear only once";
+    public const string InvalidSyntax_Parameters_MultipleStars = "* argument may appear only once";
     public const string InvalidSyntax_Parameters_NoNamedArgsAfterStar = "named arguments must follow bare *";
     public const string InvalidSyntax_Parameters_VarKwArgWithDefault = "var-keyword argument cannot have default value";
     public const string InvalidSyntax_Parameters_ParameterWithoutDefault = "parameter without a default follows parameter with a default";
@@ -102,6 +102,8 @@ partial class PySR
     public const string InvalidSyntax_StarredExpression_TargetMustBeInListOrTuple = "starred assignment target must be in a list or tuple";
 
     public const string InvalidSyntax_InvalidTarget = "cannot assign to {0}";
+    public const string InvalidSyntax_InvalidTargetStatement = "cannot assign to {0} here. Maybe you meant '==' instead of '='?";
+    public const string InvalidSyntax_Semantic_AwaitOutsideFunction = "'await' outside function";
 
     public const string InvalidSyntax_ForStmt_ExpectedIn = "'in' expected after for-loop variables";
 
