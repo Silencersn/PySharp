@@ -1388,11 +1388,6 @@ partial class Parser
     [GrammarSyntaxRule("lambda_params")]
     private AstArgumentsNode ParseParams(bool isLambda)
     {
-        // CPython's compatibility sentence for a parenthesized parameter
-        // list on a lambda
-        if (isLambda && CurrentTokenType is TokenType.LeftParen)
-            throw SyntaxError(PySR.InvalidSyntax_LambdaParamsParenthesized);
-
         if (CurrentTokenType is TokenType.Slash)
         {
             MoveNextToken();
@@ -1471,6 +1466,13 @@ partial class Parser
                     state = StateKwonly;
                     needDefault = false;
                     break;
+
+                case TokenType.LeftParen:
+                    // CPython's py2 compatibility sentence for a parenthesized
+                    // parameter list
+                    throw SyntaxError(isLambda
+                        ? PySR.InvalidSyntax_LambdaParamsParenthesized
+                        : PySR.InvalidSyntax_Parameters_FunctionParenthesized);
 
                 case TokenType.DoubleStar:
                     MoveNextToken();
@@ -2004,7 +2006,9 @@ partial class Parser
     {
         EnsureTokenTypeThenMove(TokenType.Equal, PySR.InvalidSyntax_Parameters_ParameterWithoutDefault);
 
-        if (CurrentTokenType is TokenType.RightParen or TokenType.Colon)
+        // "def foo(a=1, d=, c)": the list may also continue after an empty
+        // default
+        if (CurrentTokenType is TokenType.RightParen or TokenType.Colon or TokenType.Comma)
             throw SyntaxError(PySR.InvalidSyntax_Parameters_ExpectedDefault);
 
         return ParseExpression();

@@ -248,7 +248,13 @@ partial class Parser
             return Ast.Alias(name, asName: null).With(metaInfo.WithPreviousEnd());
 
         MoveNextToken();
+        // "import math as 5" / "import a.b.c as d.e": the target must be a
+        // plain name; the offending node kind picks the sentence
+        if (CurrentTokenType is not TokenType.Name)
+            throw SyntaxError(PySR.InvalidSyntax_ImportTargetLiteral);
         var asName = ParseIdentifier();
+        if (CurrentTokenType is TokenType.Dot)
+            throw SyntaxError(PySR.InvalidSyntax_ImportTargetAttribute);
         return Ast.Alias(name, asName).With(metaInfo.WithPreviousEnd());
     }
 
@@ -271,6 +277,10 @@ partial class Parser
         if (!IsCurrentIdentifier && CurrentTokenType is TokenType.NewLine or TokenType.EndMarker)
             throw SyntaxError(PySR.InvalidSyntax_ImportExpectedNames);
         var names = ParseDottedAsNames();
+        // "import a from b": CPython's py2-style recovery points at the
+        // from-import form instead of a generic failure
+        if (IsCurrentKeyword("from"))
+            throw SyntaxError(PySR.InvalidSyntax_ImportFromInstead);
         // the node spans the whole statement: the import's caret rule
         // suppresses on a statement-sized range, so a keyword-sized one
         // would draw a caret CPython never draws
@@ -286,7 +296,11 @@ partial class Parser
             return Ast.Alias(name, asName: null).With(metaInfo.WithPreviousEnd());
 
         MoveNextToken();
+        if (CurrentTokenType is not TokenType.Name)
+            throw SyntaxError(PySR.InvalidSyntax_ImportTargetLiteral);
         var asName = ParseIdentifier();
+        if (CurrentTokenType is TokenType.Dot)
+            throw SyntaxError(PySR.InvalidSyntax_ImportTargetAttribute);
         return Ast.Alias(name, asName).With(metaInfo.WithPreviousEnd());
     }
 
@@ -317,7 +331,7 @@ partial class Parser
         {
             var result = ParseImportFromAsNames(out var endsWithComma);
             if (endsWithComma is not null)
-                throw SyntaxError();
+                throw SyntaxError(PySR.InvalidSyntax_ImportFromTrailingComma);
             return result.MakeArray();
         }
     }
@@ -983,7 +997,9 @@ partial class Parser
         if (CurrentTokenType is TokenType.LeftSquareBracket)
             typeParams = ParseTypeParams();
 
-        EnsureTokenTypeThenMove(TokenType.LeftParen);
+        // "def f:" / "def f -> int:": the parameter list is not optional
+        // in a function definition header
+        EnsureTokenTypeThenMove(TokenType.LeftParen, PySR.InvalidSyntax_FunctionExpectedParen);
         var args = CurrentTokenType is TokenType.RightParen ? Ast.Arguments() : ParseParams(isLambda: false);
         EnsureTokenTypeThenMove(TokenType.RightParen);
 
@@ -1171,7 +1187,9 @@ partial class Parser
         if (CurrentTokenType is TokenType.LeftSquareBracket)
             typeParams = ParseTypeParams();
 
-        EnsureTokenTypeThenMove(TokenType.LeftParen);
+        // "def f:" / "def f -> int:": the parameter list is not optional
+        // in a function definition header
+        EnsureTokenTypeThenMove(TokenType.LeftParen, PySR.InvalidSyntax_FunctionExpectedParen);
         var args = CurrentTokenType is TokenType.RightParen ? Ast.Arguments() : ParseParams(isLambda: false);
         EnsureTokenTypeThenMove(TokenType.RightParen);
 

@@ -131,6 +131,12 @@ partial class PySR
     public const string InvalidSyntax_LambdaParamsParenthesized = "Lambda expression parameters cannot be parenthesized";
     public const string InvalidSyntax_URPrefixesIncompatible = "'u' and '{0}' prefixes are incompatible";
     public const string InvalidSyntax_PositionalAfterKeywordPatterns = "positional patterns follow keyword patterns";
+    public const string InvalidSyntax_ImportFromInstead = "Did you mean to use 'from ... import ...' instead?";
+    public const string InvalidSyntax_FunctionExpectedParen = "expected '('";
+    public const string InvalidSyntax_ImportFromTrailingComma = "trailing comma not allowed without surrounding parentheses";
+    public const string InvalidSyntax_ImportTargetLiteral = "cannot use literal as import target";
+    public const string InvalidSyntax_ImportTargetAttribute = "cannot use attribute as import target";
+    public const string InvalidSyntax_Parameters_FunctionParenthesized = "Function parameters cannot be parenthesized";
 
     public const string InvalidSyntax_Assignment_IllegalTargetForAnnotation = "illegal target for annotation";
     public const string InvalidSyntax_Assignment_MultipleTargetsForAnnotation = "only single target (not tuple) can be annotated";
