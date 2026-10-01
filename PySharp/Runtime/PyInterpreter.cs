@@ -148,15 +148,19 @@ public sealed class PyInterpreter : IDisposable
 
                         const string ANSIColorRed = "\e[31m";
                         const string ANSIClearColor = "\e[0m";
+                        // the message already ends in its own line break
+                        // (print_exception writes one "\n" after the block
+                        // and no more), so Write instead of WriteLine keeps
+                        // a stray blank line off the end
                         if (context.PyEnvironment.ErrorSupportsColor)
                         {
                             context.Error.Write(ANSIColorRed);
-                            context.Error.WriteLine(exc.ToMessage(context));
+                            context.Error.Write(exc.ToMessage(context));
                             context.Error.Write(ANSIClearColor);
                         }
                         else
                         {
-                            context.Error.WriteLine(exc.ToMessage(context));
+                            context.Error.Write(exc.ToMessage(context));
                         }
                     }
 
