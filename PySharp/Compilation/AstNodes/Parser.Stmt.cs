@@ -470,7 +470,9 @@ partial class Parser
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("nonlocal");
         var names = ParseIdentifiers().MakeArray();
-        return Ast.Nonlocal(names).With(metaInfo);
+        // the statement-sized range gives the deferred no-binding error its
+        // whole-statement caret, like CPython's symtable_error
+        return Ast.Nonlocal(names).With(metaInfo.WithPreviousEnd());
     }
 
     [GrammarSyntaxRule("simple_stmt")]

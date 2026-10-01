@@ -196,16 +196,17 @@ partial class SemanticAnalyzer
     {
         var currentScope = _currentScopeStats.Scope;
         if (currentScope.IsRoot)
-            throw SyntaxError(PySR.InvalidSyntax_Semantic_NonlocalAtModule);
+            throw WithoutSourceText(SyntaxError(PySR.InvalidSyntax_Semantic_NonlocalAtModule));
 
         foreach (var name in node.Names)
         {
             if (currentScope.AnnotatedNames.Contains(name))
-                throw SyntaxError(PySR.InvalidSyntax_Semantic_AnnotatedNameCantBeNonlocal, name);
+                throw WithoutSourceText(SyntaxError(PySR.InvalidSyntax_Semantic_AnnotatedNameCantBeNonlocal, name));
 
             if (!currentScope.Variables.TryGetValue(name, out var type))
             {
                 currentScope.Variables.Add(name, PyVariableType.Nonlocal);
+                _nonlocalDeclarations[(currentScope, name)] = node;
                 continue;
             }
 
@@ -214,14 +215,14 @@ partial class SemanticAnalyzer
                 case PyVariableType.Nonlocal:
                     break;
                 case PyVariableType.Parameter:
-                    throw SyntaxError(PySR.InvalidSyntax_Semantic_BothParameterAndNonlocal, name);
+                    throw WithoutSourceText(SyntaxError(PySR.InvalidSyntax_Semantic_BothParameterAndNonlocal, name));
                 case PyVariableType.Global:
-                    throw SyntaxError(PySR.InvalidSyntax_Semantic_BothNonlocalAndGlobal, name);
+                    throw WithoutSourceText(SyntaxError(PySR.InvalidSyntax_Semantic_BothNonlocalAndGlobal, name));
                 default:
                     if (currentScope.FirstContext[name] is ExprContextType.Load)
-                        throw SyntaxError(PySR.InvalidSyntax_Semantic_UsedPriorToNonlocal, name);
+                        throw WithoutSourceText(SyntaxError(PySR.InvalidSyntax_Semantic_UsedPriorToNonlocal, name));
                     else
-                        throw SyntaxError(PySR.InvalidSyntax_Semantic_AssignToBeforeNonlocal, name);
+                        throw WithoutSourceText(SyntaxError(PySR.InvalidSyntax_Semantic_AssignToBeforeNonlocal, name));
             }
         }
     }

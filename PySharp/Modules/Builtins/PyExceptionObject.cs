@@ -1,3 +1,5 @@
+using PySharp.Compilation;
+using PySharp.Compilation.CodeAnalysis;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Utility;
@@ -264,6 +266,28 @@ public sealed class PyExceptionObject : PyObjectManagedDict
         var textValue = GetMember("text");
         var endLinenoValue = GetMember("end_lineno");
         var endOffsetValue = GetMember("end_offset");
+
+        // CPython's symtable errors carry no text, yet the display still
+        // shows the source line: print time re-reads the file for it, so
+        // an unreadable source simply renders without the line block
+        if (textValue is not PyStrObject
+            && filenameValue is PyStrObject readName
+            && linenoValue is PyIntObject readLine
+            && linenoValue is not PyBoolObject)
+        {
+            try
+            {
+                var sourceBytes = context.PyEnvironment.Host.FileSystem.ReadAllBytes(readName.Value);
+                var decoded = PySourceDecoder.Decode(context, sourceBytes, readName.Value);
+                var line = new CodeSource(readName.Value, decoded).Code.GetLineOrDefault((int)readLine.Value, false);
+                if (line.Length > 0)
+                    textValue = PyStrObject.FromString(line.ToString());
+            }
+            catch (Exception)
+            {
+                // unreadable source: no line block, like CPython
+            }
+        }
 
         string filenameSuffix = string.Empty;
         if (linenoValue is PyIntObject linenoInt && linenoValue is not PyBoolObject)
