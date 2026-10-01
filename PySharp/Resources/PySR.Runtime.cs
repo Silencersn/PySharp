@@ -465,6 +465,7 @@ partial class PySR
     public const string Runtime_Codec_EncodingWithoutString = "encoding without a string argument";
     public const string Runtime_Codec_ErrorsWithoutString = "errors without a string argument";
     public const string Runtime_StrEncode_ArgMustBeStr = "encode() argument '{0}' must be str, not {1}";
+    public const string Runtime_StrDecode_ArgMustBeStr = "decode() argument '{0}' must be str, not {1}";
 
     public const string Runtime_IndexOutOfRange = "index out of range";
     // PyNumber_AsSsize_t (Objects/abstract.c) names the object that

@@ -467,19 +467,13 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
     [PyFunctionParameters("encoding='utf-8'", "errors='strict'")]
     private static PyResult Decode(PyCallContext context, PyBytesObject self, PyArguments arguments)
     {
-        string encoding = "utf-8";
-        if (arguments[0] is PyStrObject encStr)
-            encoding = encStr.Value;
-        else if (arguments[0] is not PyNoneObject)
-            return PyResult.TypeError("decoding must be str");
+        // CPython 3.14's strict converters: neither parameter accepts None
+        if (arguments[0] is not PyStrObject encodingArg)
+            return PyResult.TypeError(PySR.Runtime_StrDecode_ArgMustBeStr, "encoding", PyUtils.ArgumentTypeName(arguments[0]));
+        if (arguments[1] is not PyStrObject errorsArg)
+            return PyResult.TypeError(PySR.Runtime_StrDecode_ArgMustBeStr, "errors", PyUtils.ArgumentTypeName(arguments[1]));
 
-        string errors = "strict";
-        if (arguments[1] is PyStrObject errStr)
-            errors = errStr.Value;
-        else if (arguments[1] is not PyNoneObject)
-            return PyResult.TypeError("errors must be str");
-
-        return DecodeCore(context, self.AsSpan(), encoding, errors, self);
+        return DecodeCore(context, self.AsSpan(), encodingArg.Value, errorsArg.Value, self);
     }
 
     // The bytes.decode core shared with the str(bytes, encoding) constructor
