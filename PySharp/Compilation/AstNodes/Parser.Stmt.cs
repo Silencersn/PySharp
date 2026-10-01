@@ -999,7 +999,18 @@ partial class Parser
         _classNameTrimmedStack.Push(className.TrimStart('_'));
         body = ParseBlock("class");
         _classNameTrimmedStack.Pop();
-        return Ast.ClassDef(name, bases, keywords, body, decorators ?? [], typeParams).With(metaInfo);
+        // the statement spans through the whole body: the build-class call
+        // and the name store report this range, so a class-body error shows
+        // the whole header in the module frame's traceback. The token walk
+        // back also skips the block's closing dedent, whose span would
+        // otherwise stretch the range past the last body line.
+        var span = _tokenSequence.AsSpan();
+        var endTokenPosition = TokenPosition - 1;
+        while (span[endTokenPosition].Type is TokenType.NL or TokenType.NewLine
+               or TokenType.Comment or TokenType.Dedent)
+            endTokenPosition--;
+        return Ast.ClassDef(name, bases, keywords, body, decorators ?? [], typeParams)
+            .With(new AstMetaInfo(this, metaInfo.StartTokenPosition, endTokenPosition));
     }
 
     [GrammarSyntaxRule("type_params")]

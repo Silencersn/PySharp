@@ -97,62 +97,144 @@ internal static class PyTraceback
                 builder.AppendFormat(", in {0}", callerName);
             builder.AppendLine();
 
-            var origLine = info.FirstLine.TrimEnd();
-            var line = origLine.TrimStart();
-
-            if (line.Length is 0)
-                return;
-
             using (builder.Indent())
             {
-                builder.AppendLine(line);
+                var startLine = info.Start.Line;
+                var endLine = info.HasRange ? Math.Max(info.End.Line, startLine) : startLine;
+                var lineCount = endLine - startLine + 1;
 
-                if (!info.HasRange)
+                // the block of lines the instruction spans, dedented by the
+                // leading whitespace every line shares (textwrap.dedent on the
+                // block); a single-line instruction keeps its old trim behavior
+                var lines = new string[lineCount];
+                var source = info.Source;
+                if (source is null)
                     return;
+                var code = source.Code;
+                for (var i = 0; i < lineCount; i++)
+                    lines[i] = code.GetLineOrDefault(startLine + i, false).TrimEnd().ToString();
+                var dedent = CommonLeadingWhitespace(lines);
+                for (var i = 0; i < lineCount; i++)
+                    lines[i] = lines[i].Length >= dedent ? lines[i][dedent..] : lines[i].TrimStart();
 
-                var offset = line.Length - origLine.Length;
-                var start = info.Start.Offset + offset;
-                var end = info.End.Line == info.Start.Line
-                    ? info.End.Offset + offset
-                    : line.Length;
-
-                if (start == end)
-                    return;
-
-                Debug.Assert(end > start);
-
-                if (StatementShapeSuppressesCarets(info, line.ToString(), start, end))
-                    return;
-
-                if (!info.HasCrucialRange || info.CrucialStart.Line != info.Start.Line)
+                var hasContent = false;
+                foreach (var line in lines)
                 {
-                    if (start >= 0 && end - start < line.Length)
+                    if (line.Length is not 0)
                     {
-                        // if the line is full of '^', do not draw
-                        builder
-                            .Append(' ', start)
-                            .Append('^', end - start)
-                            .AppendLine();
+                        hasContent = true;
+                        break;
                     }
+                }
+                if (!hasContent)
                     return;
+
+                var startInFirst = Math.Max(0, info.Start.Offset - dedent);
+                var endInLast = Math.Max(0, info.End.Offset - dedent);
+
+                // which rows carry caret rows (significant_lines): the first and
+                // last line of the block, plus one line around each anchor end
+                var significant = new SortedSet<int> { 0, lineCount - 1 };
+                var hasCrucial = info.HasCrucialRange;
+                if (hasCrucial)
+                {
+                    AddClippedSignificantLine(significant, info.CrucialStart.Line - startLine, lineCount);
+                    AddClippedSignificantLine(significant, info.CrucialEnd.Line - startLine, lineCount);
                 }
 
-                var crucialStart = info.CrucialStart.Offset + offset;
-                var crucialEnd = info.CrucialEnd.Line == info.Start.Line
-                    ? info.CrucialEnd.Offset + offset
-                    : line.Length;
-                Debug.Assert(crucialEnd > crucialStart);
-                Debug.Assert(end >= crucialEnd);
-                Debug.Assert(crucialStart >= start);
+                var showCarets = false;
+                var singleEmptyRange = lineCount is 1 && startInFirst == endInLast;
+                if (info.HasRange && !singleEmptyRange)
+                {
+                    if (StatementShapeSuppressesCarets(lines, startInFirst, endInLast))
+                    {
+                        // the statement shape rule cuts the caret row before the
+                        // anchor pass — see the method's comment
+                    }
+                    else if (hasCrucial)
+                    {
+                        showCarets = true;
+                    }
+                    else
+                    {
+                        // without anchors only an uncovered part of the block
+                        // warrants a caret row; '^' across the whole block would
+                        // repeat nothing new
+                        showCarets = lines[0][..Math.Min(startInFirst, lines[0].Length)].Trim().Length > 0
+                            || lines[^1][Math.Min(endInLast, lines[^1].Length)..].Trim().Length > 0;
+                    }
+                }
 
-                builder
-                    .Append(' ', start)
-                    .Append('~', crucialStart - start)
-                    .Append('^', crucialEnd - crucialStart)
-                    .Append('~', end - crucialEnd)
-                    .AppendLine();
+                var crucialStartLine = info.CrucialStart.Line - startLine;
+                var crucialEndLine = info.CrucialEnd.Line - startLine;
+                var crucialStartCol = Math.Max(0, info.CrucialStart.Offset - dedent);
+                var crucialEndCol = Math.Max(0, info.CrucialEnd.Offset - dedent);
+
+                void OutputLine(int index)
+                {
+                    builder.AppendLine(lines[index]);
+                    if (!showCarets)
+                        return;
+
+                    var line = lines[index];
+                    var leading = line.Length - line.TrimStart().Length;
+                    var numCarets = index == lineCount - 1 ? Math.Min(endInLast, line.Length) : line.Length;
+                    var carets = new StringBuilder(numCarets);
+                    for (var col = 0; col < numCarets; col++)
+                    {
+                        if (col < leading || (index is 0 && col < startInFirst))
+                            carets.Append(' ');
+                        else if (hasCrucial
+                                 && (index > crucialStartLine || (index == crucialStartLine && col >= crucialStartCol))
+                                 && (index < crucialEndLine || (index == crucialEndLine && col < crucialEndCol)))
+                            // within the anchors: the operand the error is about
+                            carets.Append('^');
+                        else
+                            // around the anchors: the already-executed part
+                            carets.Append('~');
+                    }
+                    builder.AppendLine(carets.ToString());
+                }
+
+                var sigList = significant.ToArray();
+                for (var i = 0; i < sigList.Length; i++)
+                {
+                    if (i > 0)
+                    {
+                        var diff = sigList[i] - sigList[i - 1];
+                        if (diff is 2)
+                            OutputLine(sigList[i] - 1);
+                        else if (diff > 2)
+                            builder.AppendLine($"...<{diff - 1} lines>...");
+                    }
+                    OutputLine(sigList[i]);
+                }
             }
         }
+    }
+
+    private static void AddClippedSignificantLine(SortedSet<int> significant, int center, int lineCount)
+    {
+        for (var n = center - 1; n <= center + 1; n++)
+        {
+            if (n >= 0 && n < lineCount)
+                significant.Add(n);
+        }
+    }
+
+    private static int CommonLeadingWhitespace(string[] lines)
+    {
+        var common = int.MaxValue;
+        foreach (var line in lines)
+        {
+            if (line.Trim().Length is 0)
+                continue;
+            var n = 0;
+            while (n < line.Length && line[n] is ' ' or '\t')
+                n++;
+            common = Math.Min(common, n);
+        }
+        return common is int.MaxValue ? 0 : common;
     }
 
     // The first caret rule reads the statement shape before the anchor pass:
@@ -162,9 +244,10 @@ internal static class PyTraceback
     // does carry anchors. Everything else keeps them: tuple/attribute/
     // subscript assignment targets, compound statement heads (`if c: x =`),
     // trailing operands (`x = f() + 1`), and bare expression statements.
-    private static bool StatementShapeSuppressesCarets(CodeMetaInfo info, string line, int start, int end)
+    private static bool StatementShapeSuppressesCarets(string[] lines, int startInFirst, int endInLast)
     {
-        var prefix = line[..Math.Min(start, line.Length)].Trim();
+        var first = lines[0];
+        var prefix = first[..Math.Min(startInFirst, first.Length)].Trim();
         bool requireNameCall;
         if (prefix is "return")
         {
@@ -181,30 +264,26 @@ internal static class PyTraceback
         }
 
         string segment;
-        if (info.End.Line == info.Start.Line)
+        if (lines.Length is 1)
         {
-            if (end > line.Length)
+            if (endInLast > first.Length)
                 return false;
             // content after the range (`x = f() + 1`) means the right-hand
             // value is a larger expression than the call and keeps its carets
-            if (line.AsSpan(end).Trim().Length is not 0)
+            if (first.AsSpan(endInLast).Trim().Length is not 0)
                 return false;
-            segment = line[start..end];
+            segment = first[startInFirst..endInLast];
         }
         else
         {
-            var lastRaw = info.Source.Code.GetLineOrDefault(info.End.Line, false);
-            var lastTrim = lastRaw.TrimStart();
-            // same convention as the first line: the offset shifts by the
-            // indent the trimmed display line dropped
-            var endInLast = info.End.Offset + (lastTrim.Length - lastRaw.Length);
-            if (endInLast > lastTrim.Length || lastTrim[endInLast..].Trim().Length is not 0)
+            var last = lines[^1];
+            if (endInLast > last.Length || last.AsSpan(endInLast).Trim().Length is not 0)
                 return false;
 
-            var builder = new StringBuilder(line[start..]);
-            for (var l = info.Start.Line + 1; l < info.End.Line; l++)
-                builder.Append('\n').Append(info.Source.Code.GetLineOrDefault(l, false));
-            builder.Append('\n').Append(lastTrim[..endInLast]);
+            var builder = new StringBuilder(first[startInFirst..]);
+            for (var i = 1; i < lines.Length - 1; i++)
+                builder.Append('\n').Append(lines[i]);
+            builder.Append('\n').Append(last[..endInLast]);
             segment = builder.ToString();
         }
 

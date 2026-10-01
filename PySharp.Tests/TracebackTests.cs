@@ -547,6 +547,57 @@ public sealed class TracebackTests
         StringAssert.Contains(stderr, "~~~~~^^", stderr);
     }
 
+    // An instruction spanning several lines prints the whole block it covers
+    // (dedented, with the anchor rows drawn line by line); long gaps collapse
+    // into a "...<N lines>..." marker.
+    [TestMethod]
+    public void MultiLineCall_PrintsTheWholeBlock()
+    {
+        var stderr = RunCapturingStderr("""
+            def add(a, b):
+                return a + b
+
+
+            x = add(
+                1,
+                'x',
+                )
+            """);
+        StringAssert.Contains(stderr, "    x = add(\r\n", stderr);
+        StringAssert.Contains(stderr, "    'x',\r\n", stderr);
+        // the assignment shape keeps its caret row suppressed across lines too
+        Assert.IsFalse(stderr.Contains('~', StringComparison.Ordinal) && stderr.Contains("~~~", StringComparison.Ordinal), stderr);
+        StringAssert.Contains(stderr, "~~^~~", stderr);
+    }
+
+    [TestMethod]
+    public void ClassBodyError_PrintsTheClassHeader()
+    {
+        var stderr = RunCapturingStderr("""
+            def add(a, b):
+                return a + b
+
+
+            class C:
+                x = add(1, 'x')
+            """);
+        StringAssert.Contains(stderr, "    class C:\r\n        x = add(1, 'x')\r\n", stderr);
+        // the build-class range covers the whole statement, so nothing is
+        // left uncovered and no caret row is drawn for the module frame
+        Assert.IsFalse(stderr.Contains("^^^^^", StringComparison.Ordinal), stderr);
+    }
+
+    [TestMethod]
+    public void CrossLineSubscript_PrintsPerLineAnchors()
+    {
+        var stderr = RunCapturingStderr("""
+            d = {"k": {"a": 1}}
+            v = (d["k"]
+                 ["more"])
+            """);
+        StringAssert.Contains(stderr, "    v = (d[\"k\"]\r\n         ~~~~~~\r\n         [\"more\"])\r\n         ^^^^^^^^\r\n", stderr);
+    }
+
     private static string FormatBytes(string stderr) =>
         string.Join(' ', stderr.Select(c => ((short)c).ToString("X4", System.Globalization.CultureInfo.InvariantCulture)));
 
