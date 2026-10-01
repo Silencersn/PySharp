@@ -3,6 +3,7 @@ using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
 using PySharp.Utility;
 using System.Diagnostics;
+using System.Text;
 
 namespace PySharp.Runtime;
 
@@ -120,6 +121,9 @@ internal static class PyTraceback
 
                 Debug.Assert(end > start);
 
+                if (StatementShapeSuppressesCarets(info, line.ToString(), start, end))
+                    return;
+
                 if (!info.HasCrucialRange || info.CrucialStart.Line != info.Start.Line)
                 {
                     if (start >= 0 && end - start < line.Length)
@@ -149,5 +153,152 @@ internal static class PyTraceback
                     .AppendLine();
             }
         }
+    }
+
+    // The first caret rule reads the statement shape before the anchor pass:
+    // `return f(...)` and a plain-name `x = f(...)` whose call spans the whole
+    // instruction range would only repeat what the source line already shows,
+    // so they print no caret row at all — even though the call instruction
+    // does carry anchors. Everything else keeps them: tuple/attribute/
+    // subscript assignment targets, compound statement heads (`if c: x =`),
+    // trailing operands (`x = f() + 1`), and bare expression statements.
+    private static bool StatementShapeSuppressesCarets(CodeMetaInfo info, string line, int start, int end)
+    {
+        var prefix = line[..Math.Min(start, line.Length)].Trim();
+        bool requireNameCall;
+        if (prefix is "return")
+        {
+            // only a named function makes the return-shape cut: `return obj.m()`
+            // still shows its anchors
+            requireNameCall = true;
+        }
+        else
+        {
+            if (prefix.Length < 2 || prefix[^1] is not '=' || !IsPythonIdentifier(prefix[..^1].TrimEnd()))
+                return false;
+            // the assignment shape accepts any callee: `x = obj.m()` cuts too
+            requireNameCall = false;
+        }
+
+        string segment;
+        if (info.End.Line == info.Start.Line)
+        {
+            if (end > line.Length)
+                return false;
+            // content after the range (`x = f() + 1`) means the right-hand
+            // value is a larger expression than the call and keeps its carets
+            if (line.AsSpan(end).Trim().Length is not 0)
+                return false;
+            segment = line[start..end];
+        }
+        else
+        {
+            var lastRaw = info.Source.Code.GetLineOrDefault(info.End.Line, false);
+            var lastTrim = lastRaw.TrimStart();
+            // same convention as the first line: the offset shifts by the
+            // indent the trimmed display line dropped
+            var endInLast = info.End.Offset + (lastTrim.Length - lastRaw.Length);
+            if (endInLast > lastTrim.Length || lastTrim[endInLast..].Trim().Length is not 0)
+                return false;
+
+            var builder = new StringBuilder(line[start..]);
+            for (var l = info.Start.Line + 1; l < info.End.Line; l++)
+                builder.Append('\n').Append(info.Source.Code.GetLineOrDefault(l, false));
+            builder.Append('\n').Append(lastTrim[..endInLast]);
+            segment = builder.ToString();
+        }
+
+        // the range must itself be one balanced call expression — an
+        // `obj.attr` or `d['k']` right-hand value is not a call and keeps
+        // its carets
+        return IsBalancedCallSegment(segment, requireNameCall);
+    }
+
+    private static bool IsBalancedCallSegment(string segment, bool requireNameCall)
+    {
+        var i = 0;
+        if (requireNameCall)
+        {
+            while (i < segment.Length && char.IsWhiteSpace(segment[i]))
+                i++;
+            var nameStart = i;
+            while (i < segment.Length && (char.IsAsciiLetterOrDigit(segment[i]) || segment[i] is '_'))
+                i++;
+            if (i == nameStart)
+                return false;
+            while (i < segment.Length && char.IsWhiteSpace(segment[i]))
+                i++;
+            if (i >= segment.Length || segment[i] is not '(')
+                return false;
+        }
+
+        var depth = 0;
+        var lastSignificant = -1;
+        while (i < segment.Length)
+        {
+            var c = segment[i];
+            if (c is '\'' or '"')
+            {
+                i = SkipQuotedString(segment, i);
+                continue;
+            }
+            if (c is '#')
+            {
+                while (i < segment.Length && segment[i] is not '\n')
+                    i++;
+                continue;
+            }
+            if (c is '(' or '[' or '{')
+            {
+                depth++;
+            }
+            else if (c is ')' or ']' or '}')
+            {
+                depth--;
+                if (depth < 0)
+                    return false;
+            }
+            if (!char.IsWhiteSpace(c))
+                lastSignificant = i;
+            i++;
+        }
+
+        return depth is 0 && lastSignificant >= 0 && segment[lastSignificant] is ')';
+    }
+
+    private static int SkipQuotedString(string segment, int start)
+    {
+        var quote = segment[start];
+        var triple = start + 2 < segment.Length && segment[start + 1] == quote && segment[start + 2] == quote;
+        var i = start + (triple ? 3 : 1);
+        while (i < segment.Length)
+        {
+            if (segment[i] is '\\')
+            {
+                i += 2;
+                continue;
+            }
+            if (segment[i] == quote)
+            {
+                if (!triple)
+                    return i + 1;
+                if (i + 2 < segment.Length && segment[i + 1] == quote && segment[i + 2] == quote)
+                    return i + 3;
+            }
+            i++;
+        }
+        return i;
+    }
+
+    private static bool IsPythonIdentifier(string text)
+    {
+        if (text.Length is 0 || (text[0] is not '_' && !char.IsAsciiLetter(text[0])))
+            return false;
+        for (var i = 1; i < text.Length; i++)
+        {
+            if (text[i] is not '_' && !char.IsAsciiLetterOrDigit(text[i]))
+                return false;
+        }
+        return true;
     }
 }

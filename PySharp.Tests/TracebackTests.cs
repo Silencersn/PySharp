@@ -442,6 +442,111 @@ public sealed class TracebackTests
         Assert.IsFalse(stderr.Contains("During handling", StringComparison.Ordinal), stderr);
     }
 
+    // The statement-shape rule cuts the caret row before the anchor pass: a
+    // return or a plain-name assignment whose call spans the whole instruction
+    // range would only repeat what the source line already shows. Other
+    // shapes keep theirs — attribute/tuple targets, trailing operands, and
+    // non-name callees on return.
+    private const string AddCallerPrelude = """
+        def add(a, b):
+            return a + b
+
+
+        """;
+
+    [TestMethod]
+    public void AssignShapeCall_PrintsNoCaretRow()
+    {
+        var stderr = RunCapturingStderr(AddCallerPrelude + "x = add(1, 'x')");
+        Assert.IsFalse(stderr.Contains("~~~^", StringComparison.Ordinal), stderr);
+        StringAssert.Contains(stderr, "~~^~~", stderr);
+    }
+
+    [TestMethod]
+    public void ReturnShapeCall_PrintsNoCaretRow()
+    {
+        var stderr = RunCapturingStderr("""
+            def add(a, b):
+                return a + b
+
+
+            def caller():
+                return add(1, 'x')
+
+
+            caller()
+            """);
+        // the caller() frame's own anchors (~~~~~~^^) must not trip the check
+        Assert.IsFalse(stderr.Contains("~~~^^^^^^^^", StringComparison.Ordinal), stderr);
+        StringAssert.Contains(stderr, "~~^~~", stderr);
+    }
+
+    [TestMethod]
+    public void MultiLineSpanningCall_PrintsNoCaretRow()
+    {
+        var stderr = RunCapturingStderr(AddCallerPrelude + "x = add(1,\n        'x')");
+        Assert.IsFalse(stderr.Contains("~~~^", StringComparison.Ordinal), stderr);
+        StringAssert.Contains(stderr, "~~^~~", stderr);
+    }
+
+    [TestMethod]
+    public void AttributeTargetAssignment_KeepsCaretRow()
+    {
+        var stderr = RunCapturingStderr("""
+            def add(a, b):
+                return a + b
+
+
+            self.y = add(1, 'x')
+            """);
+        StringAssert.Contains(stderr, "~~~^^^^^^^^", stderr);
+    }
+
+    [TestMethod]
+    public void TupleTargetAssignment_KeepsCaretRow()
+    {
+        var stderr = RunCapturingStderr("""
+            def add(a, b):
+                return a + b
+
+
+            x, y = add(1, 'x')
+            """);
+        StringAssert.Contains(stderr, "~~~^^^^^^^^", stderr);
+    }
+
+    [TestMethod]
+    public void TrailingOperand_KeepsCaretRow()
+    {
+        var stderr = RunCapturingStderr("""
+            def f():
+                raise ValueError('boom')
+
+
+            x = f() + 1
+            """);
+        StringAssert.Contains(stderr, "~^^", stderr);
+    }
+
+    [TestMethod]
+    public void ReturnShapeWithAttributeCallee_KeepsCaretRow()
+    {
+        var stderr = RunCapturingStderr("""
+            class C:
+                def m(self):
+                    raise ValueError('boom')
+
+
+            def caller():
+                return obj.m()
+
+
+            obj = C()
+            caller()
+            """);
+        StringAssert.Contains(stderr, "~~~~~^^", stderr);
+    }
+
     private static string FormatBytes(string stderr) =>
         string.Join(' ', stderr.Select(c => ((short)c).ToString("X4", System.Globalization.CultureInfo.InvariantCulture)));
 
