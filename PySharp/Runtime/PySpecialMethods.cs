@@ -191,12 +191,18 @@ public static class PySpecialMethods
     }
 
     public static PyResult Await(PyCallContext context, PyObject obj)
+        => Await(context, obj, PySR.Runtime_Async_NonAwaitable);
+
+    // The template overload lets bytecode-level callers attribute a
+    // non-awaitable object to their protocol context, mirroring CPython's
+    // message selection in _PyEval_FormatAwaitableError/_PyEval_GetANext
+    public static PyResult Await(PyCallContext context, PyObject obj, string nonAwaitableTemplate)
     {
         var func = obj.PyType.Slots.Await;
         if (func is not null)
             return func(context, obj);
 
-        return PyResult.TypeError(PySR.Runtime_Async_NonAwaitable, obj.PyType.TpName);
+        return PyResult.TypeError(nonAwaitableTemplate, obj.PyType.TpName);
     }
 
     public static PyResult AIter(PyCallContext context, PyObject obj)

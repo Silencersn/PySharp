@@ -1441,8 +1441,9 @@ partial class Emitter
             Builder.Emit(OpCode.Copy, 2); // -> [aexit, manager, aenter, manager]
             Builder.Emit(OpCode.Call, 1); // -> [aexit, manager, coroutine]
 
-            // Await __aenter__() result
-            Builder.Emit(OpCode.GetAwaitable);
+            // Await __aenter__() result; oparg 1 selects the
+            // __aenter__-specific message when the result is not awaitable
+            Builder.Emit(OpCode.GetAwaitable, 1);
             Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
 
             var sendEnterLabel = Builder.DefineLabel();
@@ -1479,7 +1480,7 @@ partial class Emitter
             Builder.Emit(OpCode.Call, 4); // -> [coroutine]
 
             // Await __aexit__() result
-            Builder.Emit(OpCode.GetAwaitable);
+            Builder.Emit(OpCode.GetAwaitable, 2);
             Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
 
             var sendExitLabel = Builder.DefineLabel();
@@ -1519,7 +1520,7 @@ partial class Emitter
         Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
         Builder.Emit(OpCode.Call, 4);
 
-        Builder.Emit(OpCode.GetAwaitable);
+        Builder.Emit(OpCode.GetAwaitable, 2);
         Builder.Emit(OpCode.LoadConst, PyNoneObject.None);
 
         var sendLabel = Builder.DefineLabel();

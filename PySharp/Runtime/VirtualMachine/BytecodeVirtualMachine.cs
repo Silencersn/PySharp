@@ -707,7 +707,15 @@ internal static partial class BytecodeVirtualMachine
                         if (PyCoroutineObjectType.Shared.IsInstance(Stack[-1]))
                             break;
 
-                        Stack[-1] = PySpecialMethods.Await(context, Stack[-1]).PyUnwrap(context);
+                        // oparg mirrors CPython GET_AWAITABLE: 1 = __aenter__ and
+                        // 2 = __aexit__ pick the async-with-specific message;
+                        // a plain await keeps the generic non-awaitable error
+                        if (instructionArg is 1)
+                            Stack[-1] = PySpecialMethods.Await(context, Stack[-1], PySR.Runtime_AsyncWith_NonAwaitableAEnter).PyUnwrap(context);
+                        else if (instructionArg is 2)
+                            Stack[-1] = PySpecialMethods.Await(context, Stack[-1], PySR.Runtime_AsyncWith_NonAwaitableAExit).PyUnwrap(context);
+                        else
+                            Stack[-1] = PySpecialMethods.Await(context, Stack[-1]).PyUnwrap(context);
                         break;
 
                     case OpCode.GetAIter:
@@ -726,8 +734,10 @@ internal static partial class BytecodeVirtualMachine
                             var aiter = Stack[-1];
                             var slot = aiter.PyType.Slots.ANext ?? throw context.TypeError(PySR.Runtime_AsyncFor_MissingANext, aiter.PyType.TpName);
                             var nextIter = slot(context, aiter).PyUnwrap(context);
+                            // _PyEval_GetANext attributes a non-awaitable result
+                            // to the async-for context, not the generic await error
                             if (!PyCoroutineObjectType.Shared.IsInstance(nextIter))
-                                nextIter = PySpecialMethods.Await(context, nextIter).PyUnwrap(context);
+                                nextIter = PySpecialMethods.Await(context, nextIter, PySR.Runtime_AsyncFor_InvalidANextResult).PyUnwrap(context);
                             Stack.Push(nextIter);
                         }
                         break;
