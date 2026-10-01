@@ -1,6 +1,7 @@
 """Verifies the standard streams and open() share one type: sys.stdin/stdout/stderr and a text-mode file are all _io.TextIOWrapper, with the same member surface and the same dunder protocols. The two reprs, __module__/__name__/__qualname__ and the type named in error messages all agree. Documented deviation: io is not importable yet, so isinstance(x, io.TextIOWrapper) cannot be written.
 
 :kind: test
+:cpython-diff: assert sys.stdout.errors == "strict"
 :background: The standard streams used to be a separate _io.StdIo type unrelated to open()'s file object, so type(sys.stdout) is type(open(...)) was False, sys.stdout.encoding raised AttributeError, and the context-manager and iteration protocols were missing. CPython constructs sys.std* in Python/pylifecycle.c create_stdio from the same _io.TextIOWrapper type the io stack builds for open() (Modules/_io/textio.c), so the surfaces are identical.
 """
 

@@ -1814,10 +1814,17 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     internal static PyResult EncodeCore(PyCallContext context, string value, string encoding, string errors,
         bool emitPreamble = true)
     {
-        // utf-7 has no BCL backing; its stateful shift-sequence encoder is
-        // self-contained and cannot fail, so it never consults errors=
-        if (NormalizeEncodingName(encoding) is "utf7")
-            return PyUtf7Codec.Encode(value);
+        // utf-7, hz and big5hkscs have no BCL backing; their stateful encoders
+        // are self-contained and carry their own errors= handling
+        switch (NormalizeEncodingName(encoding))
+        {
+            case "utf7":
+                return PyUtf7Codec.Encode(value);
+            case "hz" or "hzgb" or "hzgb2312":
+                return PyHzCodec.Encode(value, errors);
+            case "big5hkscs" or "hkscs":
+                return PyBig5HkscsCodec.Encode(value, errors);
+        }
 
         Encoding enc;
         try
@@ -2039,7 +2046,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     /// xmlcharrefreplace ('&amp;#NNNN;'), backslashreplace ('\xNN' / '\uNNNN' /
     /// '\UNNNNNNNN') and namereplace ('\N{NAME}').
     /// </summary>
-    private static string EncodeErrorReplacement(string errors, int codePoint)
+    internal static string EncodeErrorReplacement(string errors, int codePoint)
     {
         return errors switch
         {
@@ -2091,6 +2098,22 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 return Encoding.GetEncoding(10000);
             case "mbcs":
                 return Encoding.Default;
+            // CJK and euro-variant codec names the BCL knows by codepage;
+            // the byte streams match CPython's codecs on common text
+            case "eucjp":
+                return Encoding.GetEncoding(51932);
+            case "euckr":
+                return Encoding.GetEncoding(51949);
+            case "iso2022jp":
+                return Encoding.GetEncoding(50220);
+            case "iso2022kr":
+                return Encoding.GetEncoding(50225);
+            case "tis620":
+                return Encoding.GetEncoding(874);
+            case "eucjis2004" or "jisx0213":
+                return Encoding.GetEncoding(20932);
+            case "iso885915" or "latin9" or "l9":
+                return Encoding.GetEncoding(28605);
         }
         // The Windows codepages are primary Python codec names as cpNNNN
         // (and bare NNNN), while .NET only registers some of them by name
