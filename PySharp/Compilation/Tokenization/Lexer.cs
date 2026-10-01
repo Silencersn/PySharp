@@ -1,4 +1,5 @@
 using PySharp.Compilation.CodeAnalysis;
+using PySharp.Modules.Builtins;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using System.Diagnostics;
@@ -137,10 +138,10 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
     internal void InternalEnd()
     {
         if (CurrentState is LexerState.TokenizingMultiLineSingleOrDoubleString)
-            throw SyntaxError(PySR.InvalidSyntax_Tokenize_Unterminated_StringLiteral, Lineno);
+            throw UnterminatedStringError(_stringStartOffset, isTriple: false);
 
         if (CurrentState is LexerState.TokenizingTripleString)
-            throw SyntaxError(PySR.InvalidSyntax_Tokenize_Unterminated_TripleStringLiteral, Lineno);
+            throw UnterminatedStringError(_stringStartOffset, isTriple: true);
 
         // the innermost unclosed opener wins, exactly like CPython reading
         // parenstack[level-1] on EOF; CPython reports the opener column with
@@ -436,12 +437,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
     private void TokenizeMultiLineString(ReadOnlySpan<char> content, Regex wrapper, bool isTriple)
     {
         if (!TryMatch(wrapper, content, _offset, out var m))
-        {
-            if (isTriple)
-                throw SyntaxError(PySR.InvalidSyntax_Tokenize_Unterminated_TripleStringLiteral, Lineno);
-
-            throw SyntaxError(PySR.InvalidSyntax_Tokenize_Unterminated_StringLiteral, Lineno);
-        }
+            throw UnterminatedStringError(_stringStartOffset, isTriple);
 
         var endOffset = m.Index + m.Length;
         AppendToken(TokenType.String, new CodeTextSpan(_stringStartOffset, endOffset - _stringStartOffset));
@@ -657,6 +653,35 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         throw BracketError(SyntaxErrorSpan.Exact, _offset, PySR.InvalidSyntax_ParenMismatch, closing, opening);
     }
 
+    // CPython's unterminated-literal error keeps the caret and e.lineno on
+    // the literal's opening line while the sentence reports the line the
+    // scanner reached — tokenizer.c's tok->lineno: for a triple-quoted
+    // literal that is the last physical line at EOF, for a single-line
+    // one it is the opening line itself, where the scan already failed.
+    // The stored text stops at the detection point, without the break.
+    private PyRuntimeException UnterminatedStringError(int startOffset, bool isTriple)
+    {
+        var info = CodeMetaInfo.FromPosition(
+            _codeSource,
+            _codeSource.Code.OffsetToPosition(startOffset),
+            _codeSource.Code.OffsetToPosition(startOffset + 1));
+        var text = _codeSource.Code.Text;
+        var detectedOffset = isTriple ? text.Length : startOffset;
+        var detectedLine = _codeSource.Code.OffsetToPosition(detectedOffset).Line;
+        // a trailing break would land the EOF position on a virtual next
+        // line; the scanner's count stays on the last line it read
+        if (isTriple && text.Length > 0 && text[^1] is '\n')
+            detectedLine--;
+        var error = _context.SyntaxError(
+            new PositionMetaInfo(info),
+            SyntaxErrorSpan.Exact,
+            isTriple ? PySR.InvalidSyntax_Tokenize_Unterminated_TripleStringLiteral : PySR.InvalidSyntax_Tokenize_Unterminated_StringLiteral,
+            detectedLine);
+        if (_codeSource.Code.TryGetLine(info.Start.Line, includingLineBreak: false, out var line))
+            error.PyException.SetMember("text", PyStrObject.FromString(line.ToString()));
+        return error;
+    }
+
     private PyRuntimeException BracketError(SyntaxErrorSpan span, int offset, string message, params ReadOnlySpan<object?> args)
     {
         var info = CodeMetaInfo.FromPosition(
@@ -869,7 +894,10 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                 else if (IsStrictMatchFromCurrent(content, LexerRegexes.StartsWithContStr, out group))
                     TokenizeContStr(ref group);
                 else
-                    throw SyntaxError();
+                    // a quote that neither closes on its line nor continues
+                    // with a backslash never reaches the parser: the
+                    // tokenizer raises the unterminated-literal sentence
+                    throw UnterminatedStringError(_offset, isTriple: false);
                 break;
 
             case 'b':
