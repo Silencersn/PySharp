@@ -201,7 +201,16 @@ def _set_init(cls, all_fields):
     g['__dc_factories'] = factories_list
     g['__dc_sentinel'] = _MISSING
     exec(src, g)
+    _set_qualname(cls, g['__init__'])
     setattr(cls, '__init__', g['__init__'])
+
+
+def _set_qualname(cls, fn):
+    # the exec'ed source names the function bare, but a synthesized member
+    # must read like one: CPython stamps class-qualified names on every
+    # synthesized method, and the class qualname carries the <locals>
+    # segment and nesting that a plain class name would lose
+    fn.__qualname__ = cls.__qualname__ + '.' + fn.__name__
 
 
 def _set_repr(cls, field_list):
@@ -216,6 +225,7 @@ def _set_repr(cls, field_list):
     g['_dc_names'] = tuple(names)
     src = 'def __repr__(self):\n    return _dc_repr(self, _dc_cls_name, _dc_names)\n'
     exec(src, g)
+    _set_qualname(cls, g['__repr__'])
     setattr(cls, '__repr__', g['__repr__'])
 
 
@@ -230,6 +240,7 @@ def _set_eq(cls, field_list):
     g['_dc_names'] = tuple(names)
     src = 'def __eq__(self, other):\n    return _dc_eq(self, other, _dc_names)\n'
     exec(src, g)
+    _set_qualname(cls, g['__eq__'])
     setattr(cls, '__eq__', g['__eq__'])
 
 
