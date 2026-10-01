@@ -381,7 +381,23 @@ internal static partial class BytecodeVirtualMachine
                     case OpCode.CallFunctionEx:
                         {
                             var dict = (PyDictObject)Stack.Pop();
-                            var pyargs = (PyListObject)Stack.Pop();
+                            var callargs = Stack.Pop();
+
+                            // CPython _MAKE_CALLARGS_A_TUPLE (bytecodes.c): a
+                            // lone *expr arrives as the raw object, checked by
+                            // _Py_Check_ArgsIterable and converted by
+                            // PySequence_Tuple; a bad *value names the callable
+                            if (callargs is not PyTupleObject)
+                            {
+                                if (callargs.PyType.Slots.Iter is null && callargs.PyType.Slots.GetItem is null)
+                                    throw context.TypeError(PySR.Runtime_Arguments_StarNotIterable, PyCallableName.Get(context, Stack[-1]), callargs.PyType.TpName);
+
+                                var tupleResult = PyUtils.IterableToTuple(context, callargs);
+                                if (tupleResult.IsError)
+                                    throw new PyRuntimeException(context, tupleResult.Exception);
+                                callargs = tupleResult.Value;
+                            }
+
                             states.CacheKwargs.Clear();
 
                             foreach (var pair in dict.Entries)
@@ -392,7 +408,7 @@ internal static partial class BytecodeVirtualMachine
                             }
 
                             callable = Stack.Pop();
-                            callArgs = pyargs;
+                            callArgs = (PyTupleObject)callargs;
                             callKwargs = states.CacheKwargs;
                             goto case OpCode.__CallImpl;
                         }
@@ -611,7 +627,18 @@ internal static partial class BytecodeVirtualMachine
                     case OpCode.ListExtend:
                         {
                             value = Stack.Pop();
-                            _ = ((PyListObject)Stack[-instructionArg]).PyExtend(context, value).PyUnwrap(context);
+                            var extendResult = ((PyListObject)Stack[-instructionArg]).PyExtend(context, value);
+                            if (extendResult.IsError)
+                            {
+                                // CPython LIST_EXTEND renames a failed
+                                // iteration of a *-expansion element; an
+                                // iterator that exists but fails keeps its
+                                // own error
+                                if (value.PyType.Slots.Iter is null && value.PyType.Slots.GetItem is null)
+                                    throw context.TypeError(PySR.Runtime_Arguments_ValueStarNotIterable, value.PyType.TpName);
+
+                                throw new PyRuntimeException(context, extendResult.Exception);
+                            }
                         }
                         break;
 

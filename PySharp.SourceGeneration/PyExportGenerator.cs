@@ -70,6 +70,17 @@ public class PyExportGenerator : IIncrementalGenerator
         if (args.Length < 2 || args[1].Kind is TypedConstantKind.Error)
             return null; // Undecodable params array: skip silently.
 
+        // a type constructor is reported by its type's name, not by __new__
+        // (CPython long_vectorcall); the type name comes from [PyType]
+        string? errorName = null;
+        if (exportedName is "__new__")
+        {
+            errorName = property.ContainingType.GetAttributes()
+                .Where(static attr => attr.AttributeConstructor is not null && attr.AttributeConstructor.ContainingType.ToDisplayString() is PySharpTypes.PyTypeAttribute)
+                .Select(static attr => attr.ConstructorArguments.FirstOrDefault().Value as string)
+                .FirstOrDefault(static name => name is not null);
+        }
+
         var containingType = property.ContainingType;
         var methods = ImmutableArray.CreateBuilder<ExportMethodInfo>();
         foreach (var methodConstant in args[1].Values)
@@ -113,6 +124,7 @@ public class PyExportGenerator : IIncrementalGenerator
             property.Name,
             property.Type.ToDisplayString(),
             exportedName,
+            errorName,
             methods.ToImmutable(),
             GetAccessibilityKeyword(property.DeclaredAccessibility)));
     }
@@ -173,6 +185,8 @@ public class PyExportGenerator : IIncrementalGenerator
             builder.AppendLine($"private static readonly {export.PropertyType} {fieldName} = PyBuiltinFunctionOrMethodObject.CreateFunction(");
             builder.Indent();
             builder.AppendLine($"{FormatLiteral(export.ExportedName)},");
+            if (export.ErrorName is not null)
+                builder.AppendLine($"{FormatLiteral(export.ErrorName)},");
             for (int i = 0; i < export.Methods.Length; i++)
             {
                 var method = export.Methods[i];
@@ -217,13 +231,14 @@ public class PyExportGenerator : IIncrementalGenerator
 
     private sealed record ExportInfo
     {
-        public ExportInfo(string @namespace, string typeName, string propertyName, string propertyType, string exportedName, ImmutableArray<ExportMethodInfo> methods, string accessibility)
+        public ExportInfo(string @namespace, string typeName, string propertyName, string propertyType, string exportedName, string? errorName, ImmutableArray<ExportMethodInfo> methods, string accessibility)
         {
             Namespace = @namespace;
             TypeName = typeName;
             PropertyName = propertyName;
             PropertyType = propertyType;
             ExportedName = exportedName;
+            ErrorName = errorName;
             Methods = methods;
             Accessibility = accessibility;
         }
@@ -233,6 +248,11 @@ public class PyExportGenerator : IIncrementalGenerator
         public string PropertyName { get; }
         public string PropertyType { get; }
         public string ExportedName { get; }
+
+        // the name the call machinery reports a failure by; set for a type
+        // constructor, whose exported name is __new__ but whose errors name
+        // the type (CPython long_vectorcall)
+        public string? ErrorName { get; }
         public ImmutableArray<ExportMethodInfo> Methods { get; }
         public string Accessibility { get; }
     }

@@ -36,9 +36,26 @@ internal static class PyCallableName
                 break;
 
             default:
-                // no __qualname__ anywhere: CPython falls back to str(x)
-                var str = PySpecialMethods.Str(context, callable);
-                return str.IsSuccessful ? str.Value.Value : callable.PyType.QualName;
+                // CPython resolves __qualname__ and __module__ by attribute
+                // lookup, so any callable carrying them is named by them;
+                // without a __qualname__ it falls back to str(x)
+                var resolved = PyOperators.GetAttr(context, callable, "__qualname__");
+                if (!resolved.IsSuccessful)
+                {
+                    var str = PySpecialMethods.Str(context, callable);
+                    return str.IsSuccessful ? str.Value.Value : callable.PyType.QualName;
+                }
+
+                qualname = resolved.Value is PyStrObject resolvedName ? resolvedName.Value : null;
+                if (qualname is null)
+                {
+                    var fallback = PySpecialMethods.Str(context, callable);
+                    return fallback.IsSuccessful ? fallback.Value.Value : callable.PyType.QualName;
+                }
+
+                var moduleResult = PyOperators.GetAttr(context, callable, "__module__");
+                module = moduleResult.IsSuccessful ? ModuleName(moduleResult.Value) : null;
+                break;
         }
 
         if (module is null or "builtins")

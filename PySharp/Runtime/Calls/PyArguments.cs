@@ -5,7 +5,7 @@ namespace PySharp.Runtime.Calls;
 
 public readonly ref struct PyArguments
 {
-    public static PyArguments Empty => new(PyArgsDef.Empty, [], null, null);
+    public static PyArguments Empty => new(PyArgsDef.Empty, [], 0, null, null);
 
     private readonly PyObject[] _extraArgs;
     private readonly List<KeyValuePair<string, PyObject>>? _extraKwargs;
@@ -19,11 +19,19 @@ public readonly ref struct PyArguments
     public readonly IReadOnlyList<PyObject> ExtraArgs => _extraArgs;
     public IReadOnlyList<KeyValuePair<string, PyObject>> ExtraKwargs => _extraKwargs ?? [];
 
-    internal PyArguments(PyArgsDef argsDef, ReadOnlySpan<PyObject> argsAndKwargs, PyObject[]? extraArgs, List<KeyValuePair<string, PyObject>>? extraKwargs)
+    // the argument count the caller actually passed (positional and keyword
+    // together): Args covers every positional slot once the defaults have
+    // filled the ones the call left empty, so an implementation branching on
+    // the arity - a CPython constructor's NULL-sentinel defaults, for one -
+    // reads this instead
+    internal int GivenCount { get; }
+
+    internal PyArguments(PyArgsDef argsDef, ReadOnlySpan<PyObject> argsAndKwargs, int givenCount, PyObject[]? extraArgs, List<KeyValuePair<string, PyObject>>? extraKwargs)
     {
         _argsDef = argsDef;
         _argsAndKwargs = argsAndKwargs;
         Args = argsAndKwargs[..(argsDef.PosonlyArgs.Length + argsDef.Args.Length)];
+        GivenCount = givenCount;
         _extraArgs = extraArgs ?? [];
         _extraKwargs = extraKwargs;
     }

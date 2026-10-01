@@ -34,9 +34,14 @@ public class PyBuiltinFunctionOrMethodObject : PyObject, IPyObjectName
 
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static PyBuiltinFunctionOrMethodObject CreateFunction(string name, params PyDelegateDefinition<PyFunction>[] funcs)
-    {
-        return CreateFunction(name, PyDelegateConverter.CreateOverloadDispatcher(name, funcs));
-    }
+        => CreateFunction(name, PyDelegateConverter.CreateOverloadDispatcher(name, funcs));
+
+    // The overload's error name is what CPython's call machinery spells out:
+    // for a type constructor that is the bare type name (long_vectorcall's
+    // "int expected ..."), not the "__new__" the attribute is exported as
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public static PyBuiltinFunctionOrMethodObject CreateFunction(string name, string errorName, params PyDelegateDefinition<PyFunction>[] funcs)
+        => CreateFunction(name, PyDelegateConverter.CreateOverloadDispatcher(errorName, funcs));
     internal static PyBuiltinFunctionOrMethodObject CreateFunction(string name, PyUncompoundedDelegate uncompoundedDelegate)
     {
         return new PyBuiltinFunctionOrMethodObject(name, uncompoundedDelegate);
