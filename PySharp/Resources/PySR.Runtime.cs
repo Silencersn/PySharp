@@ -143,6 +143,10 @@ partial class PySR
     public const string Runtime_String_JoinNonStrAt = "sequence item {0}: expected str instance, {1} found";
     public const string Runtime_String_IndicesMustBeIntegers = "string indices must be integers, not '{0}'";
     public const string Runtime_Sequence_IndicesMustBeIntegersOrSlices = "{0} indices must be integers or slices, not {1}";
+    public const string Runtime_Sequence_ObjectNotIterable = "object is not iterable";
+    public const string Runtime_Dict_UpdateEltNote = "Cannot convert dictionary update sequence element #{0} to a sequence";
+    public const string Runtime_Exception_NoteMustBeStr = "add_note() argument must be str, not {0}";
+    public const string Runtime_Exception_NotesMustBeList = "Cannot add note: __notes__ is not a list";
 
     public const string Runtime_Super_ObjNotMatchType = "super(type, obj): obj ({0} {1}) is not an instance or subtype of type ({2}).";
     public const string Runtime_Super_NoArgs = "super(): no arguments";

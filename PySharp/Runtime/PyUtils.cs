@@ -199,7 +199,7 @@ internal static class PyUtils
         {
             var pairList = IterableToList(context, pairs.Value[i]);
             if (pairList.IsError)
-                return pairList.ExceptionResult;
+                return NotIterablePairResult(pairList, i).ExceptionResult;
 
             var count = pairList.Value.Count;
             if (count is not 2)
@@ -213,6 +213,22 @@ internal static class PyUtils
         }
 
         return dict;
+    }
+
+    // PySequence_Fast receives the caller's fixed sentence when the pairs
+    // loop converts an element (dict_update_arg / dict_merge), so the
+    // element's type never enters the message; a TypeError also gains the
+    // failing element's index as a note
+    internal static PyResult NotIterablePairResult(PyResult pairList, int index)
+    {
+        if (pairList.Exception is { } failure && PyTypeErrorObjectType.Shared.IsInstance(failure))
+        {
+            var notIterable = PyResult.TypeError(PySR.Runtime_Sequence_ObjectNotIterable);
+            if (notIterable.Exception is { } notIterableException)
+                notIterableException.AddNote(PySR.Format(PySR.Runtime_Dict_UpdateEltNote, index));
+            return notIterable;
+        }
+        return pairList;
     }
 
     public static PyResult<PyDictObject> ToDict(PyCallContext context, PyObject iterableOrMapping)

@@ -83,6 +83,22 @@ public sealed class PyExceptionObject : PyObjectManagedDict
     // reads back as None.
     internal void DeleteMember(string name) => _members?.Remove(name);
 
+    // CPython _PyErr_FormatNote appends a str to the per-instance __notes__
+    // list, creating it on first use; the list lives in the instance dict
+    // like BaseException_add_note's container
+    internal void AddNote(string note)
+    {
+        if (PyAttributes.TryGetValue(PySpecialNames.Notes, out var existing) && existing is PyListObject notes)
+        {
+            notes.PyAppend(PyStrObject.FromString(note));
+        }
+        else
+        {
+            var fresh = PyListObject.CreateList(PyStrObject.FromString(note));
+            PyAttributes[PySpecialNames.Notes] = fresh;
+        }
+    }
+
     [MemberNotNullWhen(true, nameof(AsGroup))]
     internal bool IsGroup => AsGroup is not null;
     internal ExceptionGroupInfo? AsGroup { get; }
@@ -194,7 +210,28 @@ public sealed class PyExceptionObject : PyObjectManagedDict
             PrintSyntaxErrorMessage(builder, context);
         else
             PrintSimpleMessage(builder, context);
-        builder.AppendLine();
+        // format_exception_only appends each note after the exception line;
+        // when notes rendered their last line already carries the break
+        if (!PrintNotes(builder, context))
+            builder.AppendLine();
+    }
+
+    private bool PrintNotes(IndentedStringBuilder builder, PyCallContext context)
+    {
+        if (PyAttributes.TryGetValue(PySpecialNames.Notes, out var notes) && notes is PyListObject noteList)
+        {
+            foreach (var note in noteList.AsSpan())
+            {
+                builder.AppendLine();
+                var strResult = PySpecialMethods.Str(context, note);
+                var text = strResult.IsSuccessful ? strResult.Value.Value : note.ToString();
+                builder.Append(text);
+                if (!text.EndsWith('\n'))
+                    builder.AppendLine();
+            }
+            return true;
+        }
+        return false;
     }
 
     private void PrintSimpleMessage(IndentedStringBuilder builder, PyCallContext context)

@@ -45,6 +45,7 @@ public static partial class PySpecialNames
 
     public const string Dict = "__dict__";
     public const string Defaults = "__defaults__";
+    public const string Notes = "__notes__";
 
     // exception attributes
     public const string Cause = "__cause__";
