@@ -364,6 +364,84 @@ public sealed class TracebackTests
         Assert.IsTrue(stderr.EndsWith("SyntaxError: '(' was never closed\r\n", StringComparison.Ordinal), FormatBytes(stderr));
     }
 
+    // The chain separator line is chosen at print time from the chain links
+    // alone: a non-null __cause__ is always the direct cause — whoever set
+    // it, the raise-from machinery, the PEP 479 StopIteration conversion or
+    // the user-facing __cause__ setter — while the implicit context only
+    // prints when it was not suppressed.
+    private const string DirectCauseSeparator =
+        "The above exception was the direct cause of the following exception:";
+
+    [TestMethod]
+    public void CauseSetter_PrintsTheDirectCauseSeparator()
+    {
+        var stderr = RunCapturingStderr("""
+            e = ValueError('outer')
+            e.__cause__ = KeyError('inner')
+            raise e
+            """);
+        StringAssert.Contains(stderr, DirectCauseSeparator, stderr);
+    }
+
+    [TestMethod]
+    public void GeneratorStopIterationConversion_PrintsTheDirectCauseSeparator()
+    {
+        var stderr = RunCapturingStderr("""
+            def gen():
+                value = yield 1
+
+
+            g = gen()
+            next(g)
+            g.throw(StopIteration('inner'))
+            """);
+        StringAssert.Contains(stderr, "StopIteration: inner", stderr);
+        StringAssert.Contains(stderr, DirectCauseSeparator, stderr);
+        StringAssert.Contains(stderr, "RuntimeError: generator raised StopIteration", stderr);
+    }
+
+    [TestMethod]
+    public void ImplicitContext_PrintsTheContextSeparator()
+    {
+        var stderr = RunCapturingStderr("""
+            try:
+                1 / 0
+            except ZeroDivisionError:
+                raise ValueError('wrap')
+            """);
+        StringAssert.Contains(stderr, "During handling of the above exception, another exception occurred:", stderr);
+    }
+
+    [TestMethod]
+    public void RaiseFromNone_PrintsNoSeparator()
+    {
+        var stderr = RunCapturingStderr("""
+            try:
+                1 / 0
+            except ZeroDivisionError as e0:
+                raise ValueError('wrap') from None
+            """);
+        Assert.IsFalse(stderr.Contains("During handling", StringComparison.Ordinal), stderr);
+        Assert.IsFalse(stderr.Contains("direct cause", StringComparison.Ordinal), stderr);
+    }
+
+    // A non-null cause wins over the implicit context even when the context
+    // was never suppressed (the __cause__ setter does not suppress it).
+    [TestMethod]
+    public void ExplicitCauseWinsOverImplicitContext()
+    {
+        var stderr = RunCapturingStderr("""
+            try:
+                1 / 0
+            except ZeroDivisionError as e0:
+                e = ValueError('wrap')
+                e.__cause__ = TypeError('inner')
+                raise e
+            """);
+        StringAssert.Contains(stderr, DirectCauseSeparator, stderr);
+        Assert.IsFalse(stderr.Contains("During handling", StringComparison.Ordinal), stderr);
+    }
+
     private static string FormatBytes(string stderr) =>
         string.Join(' ', stderr.Select(c => ((short)c).ToString("X4", System.Globalization.CultureInfo.InvariantCulture)));
 

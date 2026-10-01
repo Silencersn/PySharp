@@ -342,13 +342,10 @@ internal static class PyCore
             exc.SuppressContext = true;
 
             if (causeObj is PyNoneObject)
-            {
                 exc.Cause = null;
-            }
             else
             {
                 exc.Cause = ToException(context, causeObj, isCause: true);
-                exc.CauseReason = PySR.Runtime_RaiseStmt_Cause;
             }
         }
 

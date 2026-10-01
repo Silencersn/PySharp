@@ -49,7 +49,6 @@ public sealed class PyExceptionObject : PyObjectManagedDict
     // later propagation hops through deferred error results must not chain
     // again
     internal bool ContextSettled { get; set; }
-    internal string? CauseReason { get; set; }
     // Rebindable per CPython BaseException_init: when __new__ is overridden
     // but __init__ is not, the inherited __init__ re-binds e.args to the
     // original instantiation arguments.
@@ -148,9 +147,12 @@ public sealed class PyExceptionObject : PyObjectManagedDict
         if (Cause is not null && !seen.Contains(Cause))
         {
             Cause.PrintMessage(builder, context, seen);
+            // which separator to print is decided at print time from the
+            // chain links alone: a non-null __cause__ is always the direct
+            // cause, whoever set it
             builder
                 .AppendLine()
-                .AppendLine(CauseReason)
+                .AppendLine(PySR.Runtime_RaiseStmt_Cause)
                 .AppendLine();
         }
         else if (!SuppressContext && Context is not null && !seen.Contains(Context))
