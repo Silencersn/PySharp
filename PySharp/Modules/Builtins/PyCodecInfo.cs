@@ -162,8 +162,9 @@ internal static class PyCodecInfo
                 return new(CodecKind.Utf32Be, "utf-32-be", SurrogatesNotAllowed, collectsRun: false);
             case "mbcs":
                 return new(CodecKind.Mbcs, "mbcs", "invalid character", collectsRun: false);
+            // CPython's utf-7 codec reports the bare 'utf7' in its errors
             case "utf7":
-                return new(CodecKind.Other, "utf-7", "invalid character", collectsRun: false);
+                return new(CodecKind.Other, "utf7", "invalid character", collectsRun: false);
         }
 
         if (_multibyteNames.TryGetValue(normalizedName, out var multibyteName))
