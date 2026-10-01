@@ -155,7 +155,7 @@ public static class PySpecialMethods
             if (result.Value.Value < 0)
                 return PyResult.ValueError(PySR.Runtime_Sequence_NegativeLen);
             if (result.Value.Value > long.MaxValue)
-                return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt);
+                return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt, PyIntObjectType.Shared.TpName);
             return result;
         }
 

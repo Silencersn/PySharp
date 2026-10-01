@@ -265,7 +265,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
         if (result.IsError)
             return result;
         if (!result.Value.IsInt32)
-            return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt);
+            return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt, other.PyType.TpName);
         return self.PyMul((int)result.Value.Value);
     }
 
@@ -282,7 +282,7 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
         if (result.IsError)
             return result;
         if (!result.Value.IsInt32)
-            return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt);
+            return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt, other.PyType.TpName);
         return self.PyIMul((int)result.Value.Value);
     }
 

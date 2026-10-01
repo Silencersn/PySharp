@@ -121,7 +121,7 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
             if (count < 0)
                 return PyResult.ValueError(PySR.Runtime_Bytes_NegativeCount);
             if (count > long.MaxValue)
-                return PyResult.OverflowError(PySR.Runtime_Bytes_IndexOverflow, source.PyType.Name);
+                return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt, source.PyType.TpName);
             if (count > int.MaxValue)
                 return PyResult.MemoryError(null);
 
@@ -282,6 +282,8 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
         var indexResult = PySpecialMethods.Index(context, item);
         if (indexResult.IsError)
             return indexResult;
+        if (!indexResult.Value.IsInt32)
+            return PyResult.IndexError(PySR.Runtime_Index_CannotFitInt, item.PyType.TpName);
 
         var index = PyUtils.MapIndex(indexResult.Value.Int32Value, self.Length);
         if (index < 0 || index >= self.Length)
@@ -329,6 +331,9 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
 
         if (n == 1)
             return self;
+
+        if (!indexResult.Value.IsInt32)
+            return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt, other.PyType.TpName);
 
         var intN = (int)n;
         var result = new byte[self.Length * intN];

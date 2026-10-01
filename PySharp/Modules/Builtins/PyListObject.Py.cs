@@ -479,7 +479,7 @@ partial class PyListObject
             return indexResult;
 
         if (!indexResult.Value.IsInt32)
-            return PyResult.IndexError(PySR.Runtime_Index_CannotFitInt);
+            return PyResult.IndexError(PySR.Runtime_Index_CannotFitInt, key.PyType.TpName);
 
         int index = indexResult.Value.Int32Value;
         if (PyUtils.IsIndexOutOfRange(index, _list.Count))
@@ -528,7 +528,7 @@ partial class PyListObject
             return indexResult;
 
         if (!indexResult.Value.IsInt32)
-            return PyResult.IndexError(PySR.Runtime_Index_CannotFitInt);
+            return PyResult.IndexError(PySR.Runtime_Index_CannotFitInt, key.PyType.TpName);
 
         int index = indexResult.Value.Int32Value;
         if (PyUtils.IsIndexOutOfRange(index, _list.Count))

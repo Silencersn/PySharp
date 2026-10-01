@@ -238,7 +238,7 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
             if (count < 0)
                 return PyResult.ValueError(PySR.Runtime_Bytes_NegativeCount);
             if (count > long.MaxValue)
-                return PyResult.OverflowError(PySR.Runtime_Bytes_IndexOverflow, source.PyType.Name);
+                return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt, source.PyType.TpName);
             if (count > int.MaxValue)
                 return PyResult.MemoryError(null);
 
@@ -305,6 +305,8 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
         var indexResult = PySpecialMethods.Index(context, item);
         if (indexResult.IsError)
             return indexResult;
+        if (!indexResult.Value.IsInt32)
+            return PyResult.IndexError(PySR.Runtime_Index_CannotFitInt, item.PyType.TpName);
 
         var index = PyUtils.MapIndex(indexResult.Value.Int32Value, self.Length);
         if (index < 0 || index >= self.Length)
@@ -354,6 +356,8 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
         var indexResult = PySpecialMethods.Index(context, key);
         if (indexResult.IsError)
             return indexResult;
+        if (!indexResult.Value.IsInt32)
+            return PyResult.IndexError(PySR.Runtime_Index_CannotFitInt, key.PyType.TpName);
 
         var mappedIndex = PyUtils.MapIndex(indexResult.Value.Int32Value, self.Length);
         var byteResult = TryGetByteValue(context, value, out var b);
@@ -419,6 +423,9 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
         if (n == 1)
             return self.Copy();
 
+        if (!indexResult.Value.IsInt32)
+            return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt, other.PyType.TpName);
+
         var intN = (int)n;
         var result = new byte[self.Length * intN];
         var srcSpan = self.AsSpan();
@@ -448,6 +455,8 @@ public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObje
         // CPython bytearray_inplace_repeat only resizes when the result
         // differs from the current size: *1 is a no-op and *0/ *n on an
         // empty bytearray short-circuit in resize before the export check
+        if (!indexResult.Value.IsInt32)
+            return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt, other.PyType.TpName);
         if (self.Length is not 0 && n != 1)
         {
             var resizeErr = self.CheckNotExported();

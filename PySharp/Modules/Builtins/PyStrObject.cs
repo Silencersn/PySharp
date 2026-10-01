@@ -2498,7 +2498,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         if (count.Value < 0)
             return PyStrObject.Empty;   // CPython: 'x' * -1 == ''
         if (!count.IsInt32)
-            return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt);
+            return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt, other.PyType.TpName);
         return PyStrObject.FromString(string.Concat(Enumerable.Repeat(self.Value, count.Int32Value)));
     }
     protected override PyResult RMul(PyCallContext context, PyStrObject self, PyObject other)

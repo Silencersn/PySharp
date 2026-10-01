@@ -212,6 +212,8 @@ public sealed partial class PyTupleObjectType : PyTypeObject<PyTupleObject>
         var result = PySpecialMethods.Index(context, other);
         if (result.IsError)
             return result;
+        if (!result.Value.IsInt32)
+            return PyResult.OverflowError(PySR.Runtime_Index_CannotFitInt, other.PyType.TpName);
         return self.PyMul(result.Value.Int32Value);
     }
 

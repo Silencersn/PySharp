@@ -450,7 +450,6 @@ partial class PySR
     public const string Runtime_Bytes_CannotConcat = "can't concat {0} to bytes";
     public const string Runtime_Bytes_NegativeCount = "negative count";
     public const string Runtime_Bytes_CannotConvert = "cannot convert '{0}' object to bytes";
-    public const string Runtime_Bytes_IndexOverflow = "cannot fit '{0}' into an index-sized integer";
     public const string Runtime_ByteArray_CannotConvert = "cannot convert '{0}' object to bytearray";
     public const string Runtime_ByteArray_ResizedWhileExported = "Existing exports of data: object cannot be re-sized";
     public const string Runtime_ByteArray_IndexOutOfRange = "bytearray index out of range";
@@ -468,7 +467,11 @@ partial class PySR
     public const string Runtime_StrEncode_ArgMustBeStr = "encode() argument '{0}' must be str, not {1}";
 
     public const string Runtime_IndexOutOfRange = "index out of range";
-    public const string Runtime_Index_CannotFitInt = "cannot fit 'int' into an index-sized integer";
+    // PyNumber_AsSsize_t (Objects/abstract.c) names the object that
+    // produced the out-of-range value, not the normalized int — except
+    // where the value was already an int when it reached the narrowing
+    // (a __len__ result), which is why the len() site passes "int"
+    public const string Runtime_Index_CannotFitInt = "cannot fit '{0}' into an index-sized integer";
 
     public const string Runtime_Variable_UnboundLocalError = "cannot access local variable '{0}' where it is not associated with a value";
     public const string Runtime_Variable_UnboundFreeError = "cannot access free variable '{0}' where it is not associated with a value in enclosing scope";
