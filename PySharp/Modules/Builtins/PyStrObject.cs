@@ -2835,7 +2835,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                     {
                         var floatResult = PySpecialMethods.Float(context, value);
                         if (floatResult.IsError)
-                            return floatResult;
+                            return AsPctFormatDouble(value, floatResult);
                         double d = floatResult.Value.Value;
                         int prec = precision >= 0 ? precision : 6;
                         string fmt = fmtType is 'e' ? $"e{prec}" : $"E{prec}";
@@ -2878,7 +2878,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                     {
                         var floatResult = PySpecialMethods.Float(context, value);
                         if (floatResult.IsError)
-                            return floatResult;
+                            return AsPctFormatDouble(value, floatResult);
                         double d = floatResult.Value.Value;
                         int prec = precision >= 0 ? precision : 6;
                         string fmt = $"F{prec}";
@@ -2910,7 +2910,7 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                     {
                         var floatResult = PySpecialMethods.Float(context, value);
                         if (floatResult.IsError)
-                            return floatResult;
+                            return AsPctFormatDouble(value, floatResult);
                         double d = floatResult.Value.Value;
                         int prec = precision >= 0 ? precision : 6;
                         // CPython %g treats precision 0 as 1 significant digit;
@@ -2945,11 +2945,17 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                         {
                             formatted = cStr.Value;
                         }
+                        else if (value is PyStrObject wrongLength)
+                        {
+                            // formatchar (Objects/unicodeobject.c) names the
+                            // offending length for a longer string
+                            return PyResult.TypeError(PySR.Runtime_Str_PctFormatCharRequiresIntOrUnicodeLength, wrongLength.Value.Length);
+                        }
                         else
                         {
                             var indexResult = PySpecialMethods.Index(context, value);
                             if (indexResult.IsError)
-                                return indexResult;
+                                return PyResult.TypeError(PySR.Runtime_Str_PctFormatCharRequiresIntOrUnicode, value.PyType.TpName);
                             var codePoint = indexResult.Value.Value;   // BigInteger: range check before narrowing
                             if (codePoint < 0 || codePoint > 0x10FFFF)
                                 return PyResult.OverflowError("%c arg not in range(0x110000)");
@@ -3141,6 +3147,15 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         var chars = sb.ToString().ToCharArray();
         Array.Reverse(chars);
         return new string(chars);
+    }
+
+    // PyFloat_AsDouble's formatting-context sentence replaces the float()
+    // constructor one; a custom __float__ still propagates unchanged
+    private static PyResult AsPctFormatDouble(PyObject value, PyResult floatResult)
+    {
+        if (value.PyType.Slots.Float is null)
+            return PyResult.TypeError(PySR.Runtime_Str_PctFormatMustBeRealNumber, value.PyType.TpName);
+        return floatResult;
     }
 
     private static string FormatNonFinite(double d, bool upper)

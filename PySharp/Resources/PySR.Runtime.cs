@@ -348,6 +348,11 @@ partial class PySR
     public const string Runtime_Sys_LostStderr = "lost sys.stderr";
     public const string Runtime_Str_PctFormatRealNumberRequired = "%{0} format: a real number is required, not {1}";
     public const string Runtime_Str_PctFormatIntegerRequired = "%{0} format: an integer is required, not {1}";
+    // formatchar (Objects/unicodeobject.c) and PyFloat_AsDouble's own
+    // sentences, distinct from the float()/__index__ constructor wording
+    public const string Runtime_Str_PctFormatCharRequiresIntOrUnicode = "%c requires an int or a unicode character, not {0}";
+    public const string Runtime_Str_PctFormatCharRequiresIntOrUnicodeLength = "%c requires an int or a unicode character, not a string of length {0}";
+    public const string Runtime_Str_PctFormatMustBeRealNumber = "must be real number, not {0}";
     public const string Runtime_Str_StartswithTupleItemMustBeStr = "tuple for startswith must only contain str, not {0}";
     public const string Runtime_Str_EndswithTupleItemMustBeStr = "tuple for endswith must only contain str, not {0}";
     public const string Runtime_Str_StartswithFirstArgMustBeStr = "startswith first arg must be str or a tuple of str, not {0}";
