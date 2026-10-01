@@ -42,7 +42,7 @@ internal static class PyTraceback
         {
             ref var frame = ref context.FrameState.GetFrame(i);
             if (frame.FrameType is FrameType.ThreadRoot)
-                return $"Exception in thread Thread-{Environment.CurrentManagedThreadId} ({frame.CallerName}):";
+                return $"Exception in thread {frame.ThreadName ?? $"Thread-{Environment.CurrentManagedThreadId}"}:";
         }
 
         return null;

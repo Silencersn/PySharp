@@ -588,6 +588,21 @@ public sealed class TracebackTests
     }
 
     [TestMethod]
+    public void RaiseFromFrame_PrintsNoCaretRow()
+    {
+        var stderr = RunCapturingStderr("""
+            class C:
+                def m(self):
+                    raise KeyError('k') from None
+
+
+            C().m()
+            """);
+        Assert.IsFalse(stderr.Contains("^^^", StringComparison.Ordinal), stderr);
+        StringAssert.Contains(stderr, "KeyError: 'k'\r\n", stderr);
+    }
+
+    [TestMethod]
     public void CrossLineSubscript_PrintsPerLineAnchors()
     {
         var stderr = RunCapturingStderr("""
@@ -631,19 +646,87 @@ public sealed class TracebackTests
         Assert.IsFalse(stderr.Contains("^^^", StringComparison.Ordinal), stderr);
     }
 
-    [TestMethod]
-    public void RaiseFromFrame_PrintsNoCaretRow()
+    // A worker thread's uncaught exception only reports through the
+    // excepthook channel: the exit code stays with the main thread (0), a
+    // SystemExit inside the thread is swallowed silently, and the report
+    // header carries the Thread object's construction-time name.
+    private static (string Stderr, int ExitCode) RunScriptWithExitCode(string code)
     {
-        var stderr = RunCapturingStderr("""
-            class C:
-                def m(self):
-                    raise KeyError('k') from None
+        var error = new MemoryStream();
+        var host = new StderrHost(error);
 
+        using var environment = host.CreateEnvironmentBuilder().Build();
+        using var context = PyCallContext.CreateInterpreterRootContext(environment);
+        PyInterpreter.PyTryCatch(context, () =>
+            PyInterpreter.RunCodeWithContext(context, code, "<module>", "<traceback>", isMain: true));
 
-            C().m()
+        return (Encoding.UTF8.GetString(error.ToArray()), environment.ExitCode);
+    }
+
+    [TestMethod]
+    public void WorkerThreadException_LeavesTheExitCodeAlone()
+    {
+        var (stderr, exitCode) = RunScriptWithExitCode("""
+            import threading
+
+            def boom():
+                raise ValueError('kaboom')
+
+            t = threading.Thread(target=boom)
+            t.start()
+            t.join()
+            print('main continues')
             """);
-        Assert.IsFalse(stderr.Contains("^^^", StringComparison.Ordinal), stderr);
-        StringAssert.Contains(stderr, "KeyError: 'k'\r\n", stderr);
+        Assert.AreEqual(0, exitCode, stderr);
+        StringAssert.StartsWith(stderr, "Exception in thread Thread-", stderr);
+        StringAssert.Contains(stderr, "(boom):\r\nTraceback (most recent call last):", stderr);
+        StringAssert.Contains(stderr, "ValueError: kaboom", stderr);
+    }
+
+    [TestMethod]
+    public void WorkerThreadSystemExit_IsSwallowedSilently()
+    {
+        var (stderr, exitCode) = RunScriptWithExitCode("""
+            import threading
+
+            def exiter():
+                raise SystemExit(3)
+
+            t = threading.Thread(target=exiter)
+            t.start()
+            t.join()
+            print('main continues')
+            """);
+        Assert.AreEqual(0, exitCode, stderr);
+        Assert.AreEqual(string.Empty, stderr, stderr);
+    }
+
+    [TestMethod]
+    public void WorkerThreadDefaultName_CarriesTheTargetName()
+    {
+        var (stderr, _) = RunScriptWithExitCode("""
+            import threading
+
+            t = threading.Thread(target=lambda: 1 / 0)
+            t.start()
+            t.join()
+            """);
+        // the counter is consumed at construction and never resets — only
+        // the shape of the header is stable, not the number
+        StringAssert.Matches(stderr, new System.Text.RegularExpressions.Regex(@"Exception in thread Thread-\d+ \(<lambda>\):"));
+    }
+
+    [TestMethod]
+    public void WorkerThreadExplicitName_WinsWithoutSuffix()
+    {
+        var (stderr, _) = RunScriptWithExitCode("""
+            import threading
+
+            t = threading.Thread(target=lambda: 1 / 0, name='worker-x')
+            t.start()
+            t.join()
+            """);
+        StringAssert.StartsWith(stderr, "Exception in thread worker-x:\r\n", stderr);
     }
 
     private static string FormatBytes(string stderr) =>
