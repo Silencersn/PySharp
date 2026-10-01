@@ -694,6 +694,20 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
     private void TokenizeContStr(ref ValueGroup group)
     {
         var prefix = GetStringPrefix(group.Value, out _wrapper);
+        // the u prefix cannot combine with any other (tokenizer.c)
+        if (prefix.ContainsAny('u', 'U') && prefix.Length > 1)
+        {
+            var other = '\0';
+            foreach (var c in prefix)
+            {
+                if (c is not 'u' and not 'U')
+                {
+                    other = c;
+                    break;
+                }
+            }
+            throw SyntaxError(PySR.InvalidSyntax_URPrefixesIncompatible, char.ToLowerInvariant(other));
+        }
         var isFString = prefix.ContainsAny('f', 'F');
         var isTString = prefix.ContainsAny('t', 'T');
 
@@ -744,6 +758,13 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         else
         {
             char other = span[1];
+            // tokenizer.c: the u prefix cannot combine with another *prefix
+            // letter* — u( stays a call of a name spelled u
+            if ((span[0] is 'u' or 'U') && other is 'r' or 'R' or 'f' or 'F' or 't' or 'T' or 'b' or 'B')
+                throw SyntaxError(PySR.InvalidSyntax_URPrefixesIncompatible, char.ToLowerInvariant(other));
+            if ((other is 'u' or 'U') && span[0] is 'r' or 'R' or 'f' or 'F' or 't' or 'T' or 'b' or 'B')
+                throw SyntaxError(PySR.InvalidSyntax_URPrefixesIncompatible, char.ToLowerInvariant(span[0]));
+
             if (!isFirstFOrT)
             {
                 if (other is not ('f' or 'F' or 't' or 'T'))

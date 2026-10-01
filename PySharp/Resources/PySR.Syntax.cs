@@ -117,6 +117,20 @@ partial class PySR
     public const string InvalidSyntax_Arguments_ExpressionContainsAssignment = "expression cannot contain assignment, perhaps you meant \"==\"?";
     public const string InvalidSyntax_Arguments_PosArgFollowsKeyword = "positional argument follows keyword argument";
     public const string InvalidSyntax_Arguments_AssignToKeywordArgumentUnpacking = "cannot assign to keyword argument unpacking";
+    public const string InvalidSyntax_Arguments_ExpectedValue = "expected argument value expression";
+
+    // PEG error-recovery points that carry a dedicated sentence instead of
+    // the generic invalid syntax
+    public const string InvalidSyntax_GenexpMustBeParenthesized = "Generator expression must be parenthesized";
+    public const string InvalidSyntax_NotAfterOperator = "'not' after an operator must be parenthesized";
+    public const string InvalidSyntax_StarredInDictValue = "cannot use a starred expression in a dictionary value";
+    public const string InvalidSyntax_ExpectedElseAfterIf = "expected 'else' after 'if' expression";
+    public const string InvalidSyntax_ImportExpectedNames = "Expected one or more names after 'import'";
+    public const string InvalidSyntax_UnpackingInComprehension = "iterable unpacking cannot be used in comprehension";
+    public const string InvalidSyntax_TypeParamsEmpty = "Type parameter list cannot be empty";
+    public const string InvalidSyntax_LambdaParamsParenthesized = "Lambda expression parameters cannot be parenthesized";
+    public const string InvalidSyntax_URPrefixesIncompatible = "'u' and '{0}' prefixes are incompatible";
+    public const string InvalidSyntax_PositionalAfterKeywordPatterns = "positional patterns follow keyword patterns";
 
     public const string InvalidSyntax_Assignment_IllegalTargetForAnnotation = "illegal target for annotation";
     public const string InvalidSyntax_Assignment_MultipleTargetsForAnnotation = "only single target (not tuple) can be annotated";

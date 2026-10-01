@@ -266,6 +266,10 @@ partial class Parser
     {
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("import");
+        // "import" alone: the statement ends where a name was required —
+        // any other stray token keeps the generic sentence
+        if (!IsCurrentIdentifier && CurrentTokenType is TokenType.NewLine or TokenType.EndMarker)
+            throw SyntaxError(PySR.InvalidSyntax_ImportExpectedNames);
         var names = ParseDottedAsNames();
         // the node spans the whole statement: the import's caret rule
         // suppresses on a statement-sized range, so a keyword-sized one
@@ -1038,6 +1042,9 @@ partial class Parser
     private ImmutableArray<AstTypeParamNode> ParseTypeParams()
     {
         EnsureTokenTypeThenMove(TokenType.LeftSquareBracket);
+        // PEP 695: an empty type parameter list is not a declaration
+        if (CurrentTokenType is TokenType.RightSquareBracket)
+            throw SyntaxError(PySR.InvalidSyntax_TypeParamsEmpty);
         var result = ParseTypeParamSeq(StopPredicates.UntilRightSquareBracket);
         EnsureTokenTypeThenMove(TokenType.RightSquareBracket);
         return result.MakeArray();

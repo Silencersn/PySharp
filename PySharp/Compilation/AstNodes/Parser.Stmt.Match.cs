@@ -517,7 +517,43 @@ partial class Parser
 
         if (TestIsKeywordPattern())
         {
+            // CPython's class pattern normalization rejects a positional
+            // pattern after a keyword one ("P(x=1, 2)"); scan ahead so the
+            // mixed order is named before the item parse fails generically
+            var scanPos = TokenPosition;
+            var sawKeywordPattern = false;
+            var mixedPatterns = false;
+            while (CurrentTokenType is not TokenType.RightParen && CurrentTokenType is not TokenType.NewLine)
+            {
+                if (TestIsKeywordPattern())
+                {
+                    sawKeywordPattern = true;
+                    MoveNextToken();
+                    if (CurrentTokenType is TokenType.Equal)
+                    {
+                        MoveNextToken();
+                        _ = ParsePattern();
+                    }
+                }
+                else
+                {
+                    mixedPatterns |= sawKeywordPattern;
+                    _ = ParsePattern();
+                }
+                if (CurrentTokenType is TokenType.Comma)
+                    MoveNextToken();
+                else
+                    break;
+            }
+            TokenPosition = scanPos;
+            if (mixedPatterns)
+                throw SyntaxError(PySR.InvalidSyntax_PositionalAfterKeywordPatterns);
+
             var kwds = ParseKeywordPatterns().MakeArray();
+            // CPython's class pattern normalization: positionals may not
+            // follow keyword patterns ("P(x=1, 2)")
+            if (CurrentTokenType is not TokenType.RightParen)
+                throw SyntaxError(PySR.InvalidSyntax_PositionalAfterKeywordPatterns);
             var pattern = Ast.MatchClass(cls, patterns: [], kwds.Select(static kwd => kwd.Key), kwds.Select(static kwd => kwd.Value));
             EnsureTokenTypeThenMove(TokenType.RightParen);
             return pattern.With(metaInfo.WithPreviousEnd());
