@@ -116,9 +116,14 @@ partial class PyCallContext
         {
             filename = PyStrObject.FromString(source.Name);
             exc.SetMember("filename", filename);
-            // CPython's text keeps the physical line including its line break
+            // CPython's text keeps the physical line including its line
+            // break, but the tokenizer hands it over universal-newline
+            // translated, so a CRLF file never carries the CR into e.text
             if (source.Code.TryGetLine(metaInfo.Start.Line, true, out var line))
-                exc.SetMember("text", text = PyStrObject.FromString(line.ToString()));
+            {
+                var lineText = line.ToString().Replace("\r\n", "\n").Replace('\r', '\n');
+                exc.SetMember("text", text = PyStrObject.FromString(lineText));
+            }
         }
         var offset = span switch
         {

@@ -278,7 +278,9 @@ public sealed class PyExceptionObject : PyObjectManagedDict
 
         if (textValue is PyStrObject text)
         {
-            string rtext = text.Value.TrimEnd('\n');
+            // the line break in any of its shapes goes: a manually built
+            // SyntaxError can still carry a CRLF or a bare CR here
+            string rtext = text.Value.TrimEnd('\r', '\n');
             string ltext = rtext.TrimStart(' ', '\n', '\f');
             int spaces = rtext.Length - ltext.Length;
 
