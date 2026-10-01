@@ -1512,8 +1512,8 @@ public static partial class PyBuiltinFunctions
         if (fs.ExistsDirectory(path))
         {
             return OperatingSystem.IsWindows()
-                ? PyResult.RaiseException(PyPermissionErrorObjectType.Shared, PySR.Runtime_Os_PermissionDeniedErrno, path)
-                : PyResult.RaiseException(PyIsADirectoryErrorObjectType.Shared, PySR.Runtime_Os_IsADirectoryErrno, path);
+                ? PyUtils.OSErrorFromErrno(PyPermissionErrorObjectType.Shared, 13, PySR.Runtime_Os_StrerrorPermissionDenied, path)
+                : PyUtils.OSErrorFromErrno(PyIsADirectoryErrorObjectType.Shared, 21, PySR.Runtime_Os_StrerrorIsADirectory, path);
         }
 
         // Check existence for read-only or read-update without write/append/create
@@ -1551,7 +1551,7 @@ public static partial class PyBuiltinFunctions
         }
         catch (UnauthorizedAccessException)
         {
-            return PyResult.RaiseException(PyPermissionErrorObjectType.Shared, PySR.Runtime_Os_PermissionDeniedErrno, path);
+            return PyUtils.OSErrorFromErrno(PyPermissionErrorObjectType.Shared, 13, PySR.Runtime_Os_StrerrorPermissionDenied, path);
         }
         catch (IOException ex) when (ex.HResult is unchecked((int)0x80070050))
         {
@@ -1566,7 +1566,7 @@ public static partial class PyBuiltinFunctions
         {
             // a share violation (lock held by another process) must surface
             // as a catchable PermissionError, never a raw .NET exception
-            return PyResult.RaiseException(PyPermissionErrorObjectType.Shared, PySR.Runtime_Os_PermissionDeniedErrno, path);
+            return PyUtils.OSErrorFromErrno(PyPermissionErrorObjectType.Shared, 13, PySR.Runtime_Os_StrerrorPermissionDenied, path);
         }
 
         // Everything below fails after the file is open, so the handle is

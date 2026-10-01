@@ -231,6 +231,19 @@ internal static class PyUtils
         return pairList;
     }
 
+    // PyErr_SetFromErrnoWithFilenameObject shape: the errno/strerror pair
+    // feeds OSError.__str__ and the filename rides along as an attribute,
+    // so the exception must be built with all three instead of a single
+    // pre-formatted message that leaves errno/strerror/filename unset
+    internal static PyResult OSErrorFromErrno(PyTypeObject exceptionType, int errno, string strerror, string? path = null)
+    {
+        return PyResult.FromException(PyExceptionObject.UnsafeCreate(
+            exceptionType,
+            path is null
+                ? [PyIntObject.FromInteger(errno), PyStrObject.FromString(strerror)]
+                : [PyIntObject.FromInteger(errno), PyStrObject.FromString(strerror), PyStrObject.FromString(path)]));
+    }
+
     public static PyResult<PyDictObject> ToDict(PyCallContext context, PyObject iterableOrMapping)
     {
         if (iterableOrMapping is PyDictObject dict)
