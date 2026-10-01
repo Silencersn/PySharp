@@ -48,6 +48,12 @@ internal static class PyNameSuggestions
         return suggestion;
     }
 
+    // the NameError/AttributeError display form: suggestions.c offers the
+    // colon form to those two exceptions, while the argument-binding path
+    // keeps the bare form
+    internal static string FormatHint(string? suggestion) =>
+        suggestion is null ? string.Empty : $". Did you mean: '{suggestion}'?";
+
     // levenshtein_distance (suggestions.c): one row of the distance matrix is
     // updated in place, and maxCost + 1 reports "further away than asked for"
     private static int LevenshteinDistance(ReadOnlySpan<byte> a, ReadOnlySpan<byte> b, int maxCost)

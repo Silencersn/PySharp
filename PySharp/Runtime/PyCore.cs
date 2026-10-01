@@ -756,6 +756,6 @@ internal static class PyCore
         if (getAttrFunc is not null)
             return getAttrFunc(context, self, context.PyEnvironment.InternPool.Intern(name));
 
-        return PyResult.AttributeError(PySR.Runtime_Object_AttributeNotFound, self.PyType.TpName, name);
+        return PyTypeObject.AttributeNotFound(self, name);
     }
 }

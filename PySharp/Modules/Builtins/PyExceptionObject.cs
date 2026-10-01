@@ -14,6 +14,12 @@ public sealed class PyExceptionObject : PyObjectManagedDict
 {
     public override PyTypeObject DefaultPyType => PyBaseExceptionObjectType.Shared;
 
+    // CPython's _Py_Offer_Suggestions: the "Did you mean" sentence is a
+    // display-time append over the traceback, so the exception's own
+    // message stays clean; the internal field keeps it off the Python
+    // attribute surface
+    internal string? DisplaySuggestion;
+
     internal PyExceptionObject(PyTypeObject exceptionType, IEnumerable<PyObject> args, ExceptionGroupInfo? asGroup = null)
     {
         Debug.Assert(exceptionType.IsSubclassOf(PyBaseExceptionObjectType.Shared));
@@ -251,6 +257,7 @@ public sealed class PyExceptionObject : PyObjectManagedDict
         {
             builder.Append(": ").Append("<exception str() failed>");
         }
+        builder.Append(PyNameSuggestions.FormatHint(DisplaySuggestion));
     }
 
     // CPython traceback.TracebackException._format_syntax_error: for the
