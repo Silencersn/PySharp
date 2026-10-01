@@ -145,7 +145,9 @@ partial class PySR
     #region SemanticAnalyzer
 
     public const string InvalidSyntax_Semantic_BreakOutsideLoop = "'break' outside loop";
-    public const string InvalidSyntax_Semantic_ContinueOutsideLoop = "'continue' outside loop";
+    // codegen_continue keeps its historical sentence (it once had to
+    // single out continue-in-finally), unlike break's "outside loop"
+    public const string InvalidSyntax_Semantic_ContinueOutsideLoop = "'continue' not properly in loop";
     public const string InvalidSyntax_Semantic_ReturnOutsideFunction = "'return' outside function";
     public const string InvalidSyntax_Semantic_BreakInFinally = "'break' in a 'finally' block";
     public const string InvalidSyntax_Semantic_ContinueInFinally = "'continue' in a 'finally' block";
