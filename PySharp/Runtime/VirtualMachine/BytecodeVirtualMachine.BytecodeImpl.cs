@@ -627,11 +627,22 @@ internal static partial class BytecodeVirtualMachine
 
     private static void InternalUnpackSequence(PyCallContext context, ref ValueOperandStack stack, int instructionArg)
     {
-        var list = PyUtils.IterableToList(context, stack.Pop()).PyUnwrap(context);
+        var seq = stack.Pop();
+        var list = PyUtils.IterableToList(context, seq).PyUnwrap(context);
         var span = list.AsSpan();
         if (span.Length > instructionArg)
-            throw context.ValueError(PySR.Runtime_Assignment_TooManyToUnpack, instructionArg, span.Length);
-        else if (span.Length < instructionArg)
+        {
+            // CPython (Python/ceval.c) can name the got-count only when the
+            // unpacked object is an exact list/tuple/dict, whose length is
+            // still available once the iteration has overflowed; everything
+            // else reports just the expected count
+            if (seq is PyListObject or PyTupleObject or PyDictObject)
+                throw context.ValueError(PySR.Runtime_Assignment_TooManyToUnpack, instructionArg, span.Length);
+
+            throw context.ValueError(PySR.Runtime_Assignment_TooManyToUnpackWithoutGot, instructionArg);
+        }
+
+        if (span.Length < instructionArg)
             throw context.ValueError(PySR.Runtime_Assignment_NotEnoughToUnpack, instructionArg, span.Length);
         stack.PushReversedRange(span);
     }
