@@ -598,6 +598,54 @@ public sealed class TracebackTests
         StringAssert.Contains(stderr, "    v = (d[\"k\"]\r\n         ~~~~~~\r\n         [\"more\"])\r\n         ^^^^^^^^\r\n", stderr);
     }
 
+    // The raise instruction reports the whole statement range, so a frame
+    // leaving at the raise has nothing uncovered and prints no caret row —
+    // bare raise, raise <exc> and raise ... from ... alike.
+    [TestMethod]
+    public void RaiseFrame_PrintsNoCaretRow()
+    {
+        var stderr = RunCapturingStderr("""
+            def boom():
+                raise RuntimeError('inner')
+
+
+            boom()
+            """);
+        Assert.IsFalse(stderr.Contains("^^^^^", StringComparison.Ordinal), stderr);
+        StringAssert.Contains(stderr, "    raise RuntimeError('inner')\r\n", stderr);
+        StringAssert.Contains(stderr, "    ~~~~^^\r\n", stderr);
+    }
+
+    [TestMethod]
+    public void BareReraiseFrame_PrintsNoCaretRow()
+    {
+        var stderr = RunCapturingStderr("""
+            e = ValueError('v')
+            try:
+                raise e
+            except ValueError:
+                pass
+
+            raise
+            """);
+        Assert.IsFalse(stderr.Contains("^^^", StringComparison.Ordinal), stderr);
+    }
+
+    [TestMethod]
+    public void RaiseFromFrame_PrintsNoCaretRow()
+    {
+        var stderr = RunCapturingStderr("""
+            class C:
+                def m(self):
+                    raise KeyError('k') from None
+
+
+            C().m()
+            """);
+        Assert.IsFalse(stderr.Contains("^^^", StringComparison.Ordinal), stderr);
+        StringAssert.Contains(stderr, "KeyError: 'k'\r\n", stderr);
+    }
+
     private static string FormatBytes(string stderr) =>
         string.Join(' ', stderr.Select(c => ((short)c).ToString("X4", System.Globalization.CultureInfo.InvariantCulture)));
 

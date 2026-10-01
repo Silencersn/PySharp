@@ -346,17 +346,20 @@ partial class Parser
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("raise");
 
+        // the statement range covers the whole raise: the RAISE instruction
+        // reports it, and a frame leaving at the raise then prints no caret
+        // row because nothing in the shown line falls outside the range
         if (CurrentTokenType is TokenType.NewLine or TokenType.Semicolon)
-            return Ast.Raise().With(metaInfo);
+            return Ast.Raise().With(metaInfo.WithPreviousEnd());
 
         var exc = ParseExpression();
 
         if (!IsCurrentKeyword("from"))
-            return Ast.Raise(exc).With(metaInfo);
+            return Ast.Raise(exc).With(metaInfo.WithPreviousEnd());
 
         MoveNextToken();
         var cause = ParseExpression();
-        return Ast.Raise(exc, cause).With(metaInfo);
+        return Ast.Raise(exc, cause).With(metaInfo.WithPreviousEnd());
     }
 
     [GrammarSyntaxRule("pass_stmt")]
