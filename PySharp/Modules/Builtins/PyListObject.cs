@@ -200,6 +200,11 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
         return PyIntObject.FromInteger(self.Count);
     }
 
+    protected override PyResult Reversed(PyCallContext context, PyListObject self)
+    {
+        return new PyListReverseIteratorObject(self, self.Count);
+    }
+
     protected override PyResult Eq(PyCallContext context, PyListObject self, PyObject other)
     {
         if (other is not PyListObject otherList)

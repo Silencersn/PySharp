@@ -2389,7 +2389,19 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     }
     protected override PyResult Iter(PyCallContext context, PyStrObject self)
     {
-        return new PyStrIteratorObject(self.Value);
+        // CPython str_iter names the iterator after the string's storage
+        // kind: UCS-1 ascii strings report str_ascii_iterator
+        return new PyStrIteratorObject(self.Value, HasOnlyAscii(self.Value));
+    }
+
+    private static bool HasOnlyAscii(string value)
+    {
+        foreach (var c in value)
+        {
+            if (c > 127)
+                return false;
+        }
+        return true;
     }
     protected override PyResult GetItem(PyCallContext context, PyStrObject self, PyObject item)
     {
