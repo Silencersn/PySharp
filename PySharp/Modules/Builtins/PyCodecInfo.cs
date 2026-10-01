@@ -64,6 +64,7 @@ internal static class PyCodecInfo
     internal const string SurrogatesNotAllowed = "surrogates not allowed";
     internal const string CharmapReason = "character maps to <undefined>";
     internal const string MultibyteReason = "illegal multibyte sequence";
+    internal const string IncompleteMultibyteReason = "incomplete multibyte sequence";
 
     // Codec name -> the name its C implementation reports. Aliases follow
     // Lib/encodings/aliases.py, in the normalization of
@@ -180,4 +181,36 @@ internal static class PyCodecInfo
     internal static bool IsAscii(string normalizedName) => normalizedName
         is "ascii" or "usascii" or "us" or "646" or "iso646us" or "ansix341968" or "ansix341986" or "isoir6"
         or "csascii" or "ibm367" or "cp367";
+
+    /// <summary>
+    /// The number of bytes the CJK multibyte decoder requires for the
+    /// sequence starting at data[index] (the REQUIRE_INBUF calls in the
+    /// cjkcodecs), or null when the width cannot be predicted here: the
+    /// stateful iso-2022 codecs, and hz/big5hkscs which decode through
+    /// their own implementations. A lead whose sequence runs past the end
+    /// of the input makes these codecs report the incomplete event over
+    /// every remaining byte; a rejected sequence within the input is
+    /// reported on its lead byte alone.
+    /// </summary>
+    internal static int? ExpectedSequenceWidth(string errorName, ReadOnlySpan<byte> data, int index)
+    {
+        if (index >= data.Length)
+            return null;
+        var b0 = data[index];
+        return errorName switch
+        {
+            // cp932/shift_jis: the halfwidth katakana block is single-byte
+            "cp932" or "shift_jis" or "shift_jis_2004" or "shift_jisx0213"
+                => b0 is >= 0xA1 and <= 0xDF ? 1 : b0 >= 0x80 ? 2 : 1,
+            // euc-jp and the jisx0213 variants: 0x8F opens a three-byte
+            // sequence, 0x8E the two-byte katakana one
+            "euc_jp" or "euc_jis_2004" or "euc_jisx0213"
+                => b0 is 0x8F ? 3 : b0 is 0x8E ? 2 : b0 >= 0x80 ? 2 : 1,
+            "gb18030" => b0 < 0x80 ? 1
+                : index + 1 < data.Length && data[index + 1] is >= 0x30 and <= 0x39 ? 4 : 2,
+            "big5" or "cp949" or "cp950" or "gbk" or "gb2312" or "euc_kr" or "johab"
+                => b0 >= 0x80 ? 2 : 1,
+            _ => null,
+        };
+    }
 }
