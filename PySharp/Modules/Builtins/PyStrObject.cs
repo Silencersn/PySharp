@@ -1814,6 +1814,11 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     internal static PyResult EncodeCore(PyCallContext context, string value, string encoding, string errors,
         bool emitPreamble = true)
     {
+        // utf-7 has no BCL backing; its stateful shift-sequence encoder is
+        // self-contained and cannot fail, so it never consults errors=
+        if (NormalizeEncodingName(encoding) is "utf7")
+            return PyUtf7Codec.Encode(value);
+
         Encoding enc;
         try
         {

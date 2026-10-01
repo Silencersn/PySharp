@@ -478,6 +478,12 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
     // encoding/object/start/end/reason.
     internal static PyResult DecodeCore(PyCallContext context, ReadOnlySpan<byte> data, string encoding, string errors = "strict", PyObject? source = null)
     {
+        var normalized = PyStrObjectType.NormalizeEncodingName(encoding);
+        // utf-7 has no BCL backing, so its decoder runs ahead of the
+        // generic resolution below
+        if (normalized is "utf7")
+            return PyUtf7Codec.Decode(data, errors, source ?? PyBytesObject.FromBytes(data));
+
         Encoding enc;
         try
         {
@@ -494,7 +500,7 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
         // explicit -le/-be variants leave a BOM in the decoded text.
         int bomLength = 0;
         bool bigEndian = false;
-        switch (PyStrObjectType.NormalizeEncodingName(encoding))
+        switch (normalized)
         {
             case "utf16":
                 if (data.StartsWith((ReadOnlySpan<byte>)[0xFE, 0xFF]))
@@ -513,10 +519,16 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
         var payload = bomLength > 0 ? data[bomLength..] : data;
         var sourceObject = source ?? PyBytesObject.FromBytes(payload);
 
-        switch (PyStrObjectType.NormalizeEncodingName(encoding))
+        switch (normalized)
         {
             case "utf8":
                 return DecodeUtf8(payload, "utf-8", errors, sourceObject);
+            // CPython's utf_8_sig strips one leading BOM and hands the
+            // utf-8 decoder the sliced input, so error events report the
+            // sliced bytes with payload-relative positions
+            case "utf8sig":
+                var sigPayload = payload.StartsWith((ReadOnlySpan<byte>)[0xEF, 0xBB, 0xBF]) ? payload[3..] : payload;
+                return DecodeUtf8(sigPayload, "utf-8", errors, PyBytesObject.FromBytes(sigPayload));
             case "ascii" or "usascii" or "us" or "646" or "iso646us" or "ansix341968" or "ansix341986" or "isoir6" or "csascii" or "ibm367" or "cp367":
                 return DecodeSingleByte(payload, "ascii", errors, sourceObject, ordinalMax: 0x7F);
             // latin-1 (under any of its aliases) maps every byte, it can
