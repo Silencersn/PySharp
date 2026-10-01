@@ -255,7 +255,10 @@ partial class Parser
         var metaInfo = CreateAstMetaInfo();
         EnsureKeywordThenMove("import");
         var names = ParseDottedAsNames();
-        return Ast.Import(names).With(metaInfo);
+        // the node spans the whole statement: the import's caret rule
+        // suppresses on a statement-sized range, so a keyword-sized one
+        // would draw a caret CPython never draws
+        return Ast.Import(names).With(metaInfo.WithPreviousEnd());
     }
 
     [GrammarSyntaxRule("import_from_as_name")]
@@ -319,7 +322,8 @@ partial class Parser
 
         EnsureKeywordThenMove("import");
         var names = ParseImportFromTargets();
-        return Ast.ImportFrom(module, names, level).With(metaInfo);
+        // whole-statement range, same caret rule as import_name
+        return Ast.ImportFrom(module, names, level).With(metaInfo.WithPreviousEnd());
 
         int ParseLevel()
         {
@@ -428,11 +432,11 @@ partial class Parser
         var test = ParseExpression();
 
         if (CurrentTokenType is not TokenType.Comma)
-            return Ast.Assert(test).With(metaInfo);
+            return Ast.Assert(test).With(metaInfo.WithPreviousEnd());
 
         MoveNextToken();
         var msg = ParseExpression();
-        return Ast.Assert(test, msg).With(metaInfo);
+        return Ast.Assert(test, msg).With(metaInfo.WithPreviousEnd());
     }
 
     [GrammarSyntaxRule("break_stmt")]
@@ -876,7 +880,7 @@ partial class Parser
         EnsureColonThenMove();
         var body = ParseBlock("for");
         IEnumerable<AstStmtNode> orElse = IsCurrentKeyword("else") ? ParseElseBlock() : [];
-        return Ast.For(target, iter, body, orElse).With(metaInfo);
+        return Ast.For(target, iter, body, orElse).With(metaInfo.WithPreviousEnd());
     }
 
     [GrammarSyntaxRule("with_stmt")]
@@ -889,7 +893,7 @@ partial class Parser
 
         var body = ParseBlock("with");
 
-        return Ast.With(items, body).With(metaInfo);
+        return Ast.With(items, body).With(metaInfo.WithPreviousEnd());
     }
 
     /// <summary>

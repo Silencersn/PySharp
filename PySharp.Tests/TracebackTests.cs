@@ -646,6 +646,91 @@ public sealed class TracebackTests
         Assert.IsFalse(stderr.Contains("^^^", StringComparison.Ordinal), stderr);
     }
 
+    // Statement-level ranges follow compiler_assert/compiler_for/compiler_with:
+    // the failing instruction carries the operand's own location, so the caret
+    // lands on the test / iterable / context expression instead of the keyword.
+    [TestMethod]
+    public void AssertFailure_CaretCoversTheTestOperand()
+    {
+        var stderr = RunCapturingStderr("assert False");
+        StringAssert.Contains(stderr, "    assert False\r\n           ^^^^^\r\n", stderr);
+    }
+
+    [TestMethod]
+    public void NonIterableFor_CaretCoversTheIterable()
+    {
+        var stderr = RunCapturingStderr("""
+            for i in 1:
+                pass
+            """);
+        StringAssert.Contains(stderr, "    for i in 1:\r\n             ^\r\n", stderr);
+    }
+
+    [TestMethod]
+    public void NonContextManagerWith_CaretCoversTheContextExpression()
+    {
+        var stderr = RunCapturingStderr("""
+            with 1 as x:
+                pass
+            """);
+        StringAssert.Contains(stderr, "    with 1 as x:\r\n         ^\r\n", stderr);
+    }
+
+    // A whole-statement range has nothing uncovered on either side, and the
+    // statement-shape rule then drops the caret row entirely — the import and
+    // class-creation errors name no operand to point at.
+    [TestMethod]
+    public void MissingModuleImport_PrintsNoCaretRow()
+    {
+        var stderr = RunCapturingStderr("import nosuchmodule_xyz");
+        Assert.IsFalse(stderr.Contains("^^^", StringComparison.Ordinal), stderr);
+        Assert.IsFalse(stderr.Contains("~~~", StringComparison.Ordinal), stderr);
+    }
+
+    [TestMethod]
+    public void MissingModuleImportFrom_PrintsNoCaretRow()
+    {
+        var stderr = RunCapturingStderr("from nosuchmod import thing");
+        Assert.IsFalse(stderr.Contains("^^^", StringComparison.Ordinal), stderr);
+        Assert.IsFalse(stderr.Contains("~~~", StringComparison.Ordinal), stderr);
+    }
+
+    [TestMethod]
+    public void InconsistentMro_PrintsNoCaretRow()
+    {
+        var stderr = RunCapturingStderr("""
+            class A: pass
+            class B(A): pass
+            class C(A, B): pass
+            """);
+        Assert.IsFalse(stderr.Contains("^^^", StringComparison.Ordinal), stderr);
+        Assert.IsFalse(stderr.Contains("~~~", StringComparison.Ordinal), stderr);
+    }
+
+    // Without anchors the primary character starts at '^' (the tilde split
+    // only exists around extracted anchors), so an operand-shaped range like
+    // a name read or a whole del statement reads as one caret run.
+    [TestMethod]
+    public void NameErrorOnNameRead_CaretIsAllCarets()
+    {
+        var stderr = RunCapturingStderr("print(undefined_xyz)");
+        StringAssert.Contains(stderr, "    print(undefined_xyz)\r\n          ^^^^^^^^^^^^^\r\n", stderr);
+    }
+
+    [TestMethod]
+    public void NameErrorOnDel_CaretCoversTheWholeStatement()
+    {
+        var stderr = RunCapturingStderr("del undefined_name_xyz");
+        StringAssert.Contains(stderr, "    del undefined_name_xyz\r\n        ^^^^^^^^^^^^^^^^^^\r\n", stderr);
+    }
+
+    [TestMethod]
+    public void ModuleLevelReturnSyntaxError_CaretCoversTheWholeStatement()
+    {
+        var stderr = RunCapturingStderr("return 1+2");
+        StringAssert.Contains(stderr, "    return 1+2\r\n    ^^^^^^^^^^\r\n", stderr);
+    }
+
     // A worker thread's uncaught exception only reports through the
     // excepthook channel: the exit code stays with the main thread (0), a
     // SystemExit inside the thread is swallowed silently, and the report

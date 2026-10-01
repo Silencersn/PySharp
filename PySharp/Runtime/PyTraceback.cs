@@ -189,9 +189,14 @@ internal static class PyTraceback
                                  && (index < crucialEndLine || (index == crucialEndLine && col < crucialEndCol)))
                             // within the anchors: the operand the error is about
                             carets.Append('^');
-                        else
+                        else if (hasCrucial)
                             // around the anchors: the already-executed part
                             carets.Append('~');
+                        else
+                            // no anchors: format_frame_summary starts the
+                            // primary char at '^', so the whole range reads
+                            // as one without the tilde split
+                            carets.Append('^');
                     }
                     builder.AppendLine(carets.ToString());
                 }
