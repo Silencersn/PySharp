@@ -3,6 +3,8 @@ using PySharp.Runtime.Calls;
 using PySharp.Runtime.Environments;
 using PySharp.Runtime.IO;
 using PySharp.Runtime.IO.Memory;
+using System;
+using System.Linq;
 using System.Text;
 
 namespace PySharp.Tests;
@@ -344,6 +346,26 @@ public sealed class TracebackTests
             "line 2 in f: raise ValueError('boom')",
         ], InlineComprehension);
     }
+
+    // print_exception writes exactly one line break after the message block:
+    // the top-level stderr ends on the message line itself, with no blank
+    // line after it (both for runtime errors and for syntax errors)
+    [TestMethod]
+    public void TopLevelError_StderrEndsOnTheMessageLine()
+    {
+        var stderr = RunCapturingStderr("raise ValueError('boom')");
+        Assert.IsTrue(stderr.EndsWith("ValueError: boom\r\n", StringComparison.Ordinal), FormatBytes(stderr));
+    }
+
+    [TestMethod]
+    public void TopLevelSyntaxError_StderrEndsOnTheMessageLine()
+    {
+        var stderr = RunCapturingStderr("print(");
+        Assert.IsTrue(stderr.EndsWith("SyntaxError: '(' was never closed\r\n", StringComparison.Ordinal), FormatBytes(stderr));
+    }
+
+    private static string FormatBytes(string stderr) =>
+        string.Join(' ', stderr.Select(c => ((short)c).ToString("X4", System.Globalization.CultureInfo.InvariantCulture)));
 
     private const string UnraisableCloseLookup = """
         class LookupRaises:
