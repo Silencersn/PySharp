@@ -127,7 +127,6 @@ partial class PySR
     public const string Runtime_Object_InitTakesExactlyOneArg = "object.__init__() takes exactly one argument (the instance to initialize)";
     public const string Runtime_Object_TypeInitTakesExactlyOneArg = "{0}.__init__() takes exactly one argument (the instance to initialize)";
     public const string Runtime_Attribute_NoDelete = "__delete__";
-    public const string Runtime_Super_HasNoAttribute = "'super' object has no attribute '{0}'";
 
     public const string Runtime_Sequence_ItemAssignmentNotSupported = "'{0}' object does not support item assignment";
     public const string Runtime_Sequence_ItemDeletionNotSupported = "'{0}' object doesn't support item deletion";
