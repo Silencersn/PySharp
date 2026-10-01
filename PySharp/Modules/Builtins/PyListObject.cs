@@ -253,6 +253,9 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
 
     protected override PyResult Repeat(PyCallContext context, PyListObject self, PyObject other)
     {
+        // sequence_repeat: no index protocol means the non-int message wins
+        if (other.PyType.Slots.Index is null)
+            return PyResult.TypeError(PySR.Runtime_Object_CantMultiplySequenceByNonInt, other.PyType.TpName);
         var result = PySpecialMethods.Index(context, other);
         if (result.IsError)
             return result;
@@ -268,6 +271,8 @@ public sealed partial class PyListObjectType : PyTypeObject<PyListObject>
 
     protected override PyResult InplaceRepeat(PyCallContext context, PyListObject self, PyObject other)
     {
+        if (other.PyType.Slots.Index is null)
+            return PyResult.TypeError(PySR.Runtime_Object_CantMultiplySequenceByNonInt, other.PyType.TpName);
         var result = PySpecialMethods.Index(context, other);
         if (result.IsError)
             return result;

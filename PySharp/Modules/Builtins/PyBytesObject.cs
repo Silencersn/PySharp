@@ -311,6 +311,9 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
 
     protected override PyResult Repeat(PyCallContext context, PyBytesObject self, PyObject other)
     {
+        // sequence_repeat: no index protocol means the non-int message wins
+        if (other.PyType.Slots.Index is null)
+            return PyResult.TypeError(PySR.Runtime_Object_CantMultiplySequenceByNonInt, other.PyType.TpName);
         var indexResult = PySpecialMethods.Index(context, other);
         if (indexResult.IsError)
             return indexResult;

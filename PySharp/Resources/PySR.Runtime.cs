@@ -93,6 +93,7 @@ partial class PySR
     // the non-<type> template the other slots share, and reports no type name
     public const string Runtime_Object_HashShouldReturnInteger = "__hash__ method should return an integer";
     public const string Runtime_Object_Unhashable = "unhashable type: '{0}'";
+    public const string Runtime_Object_CantMultiplySequenceByNonInt = "can't multiply sequence by non-int of type '{0}'";
     public const string Runtime_Object_NonCallable = "'{0}' object is not callable";
     public const string Runtime_Object_FormatReturnsNonString = "__format__ must return a str, not {0}";
     public const string Runtime_Object_FormatArg2NonString = "format() argument 2 must be str, not {0}";

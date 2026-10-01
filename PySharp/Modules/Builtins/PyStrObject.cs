@@ -2470,6 +2470,10 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
     }
     protected override PyResult Repeat(PyCallContext context, PyStrObject self, PyObject other)
     {
+        // sequence_repeat: the repeat count must speak the index protocol
+        // before the conversion runs, or the non-int shape wins the message
+        if (other.PyType.Slots.Index is null)
+            return PyResult.TypeError(PySR.Runtime_Object_CantMultiplySequenceByNonInt, other.PyType.TpName);
         var result = PySpecialMethods.Index(context, other);
         if (result.IsError)
             return result;
