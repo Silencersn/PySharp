@@ -250,6 +250,16 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
             type.Slots.Hash = PyTypeObject.HashNotImplemented;
         }
 
+        // CPython type_new_set_slots (subtype_getsets_dict_only): a heap type
+        // whose instances carry an instance dict installs the __dict__ getset
+        // in its own dict, so the dict participates in the MRO and a class
+        // body can shadow it. type_add_getset sets the entry by default only:
+        // a class body or property claiming __dict__ first keeps its entry
+        // and answers instead of the getset. __slots__ classes that exclude
+        // the dict install none
+        if (!type.PyAttributes.ContainsKey(PySpecialNames.Dict))
+            type.PyAttributes[PySpecialNames.Dict] = PyTypeObject.CreateInstanceDictDescriptor(type);
+
         // CPython type_new fixup_slot_dispatchers: every special-method slot
         // re-resolves through the first MRO entry defining the dunder in its
         // own dict, so an inherited default copy from an earlier base cannot
@@ -305,7 +315,7 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
 
         // Follow CPython's type_new_init_subclass pattern:
         // super(type, type).__init_subclass__(**kwargs)
-        var superObj = PySuperObject.CreateSuper(type, type);
+        var superObj = PySuperObject.CreateSuper(context, type, type);
         if (superObj.IsError)
             return superObj;
 

@@ -12,17 +12,34 @@ public sealed class PyMemberDescriptorObject : PyObject
     internal readonly PyMemberSetter? _setter;
     internal readonly PyMemberDeleter? _deleter;
 
-    public override PyTypeObject DefaultPyType { get; }
+    private readonly PyTypeObject? _descriptorType;
+    private readonly bool _deferDescriptorType;
 
     // which face the descriptor wears is fixed by the type injected at
     // construction — member_descriptor or getset_descriptor — mirroring
     // the generator family's IsCoroutine check on the injected type
+    public override PyTypeObject DefaultPyType =>
+        // the __class__ getset on object is born inside object's own static
+        // initializer, while the descriptor types (whose MROs end at object)
+        // cannot be resolved yet — a deferred descriptor resolves its type
+        // on first use instead, and only the getset face is reachable there
+        _deferDescriptorType ? PyGetSetDescriptorObjectType.Shared : _descriptorType!;
+
     internal bool IsGetSet => PyType is PyGetSetDescriptorObjectType;
 
     internal PyMemberDescriptorObject(PyTypeObject descriptorType, PyTypeObject declaringType, string name, PyMemberGetter getter, PyMemberSetter? setter, PyMemberDeleter? deleter)
     {
-        _pyType = descriptorType;
-        DefaultPyType = descriptorType;
+        _descriptorType = descriptorType;
+        _declaringType = declaringType;
+        _name = name;
+        _getter = getter;
+        _setter = setter;
+        _deleter = deleter;
+    }
+
+    internal PyMemberDescriptorObject(PyTypeObject declaringType, string name, PyMemberGetter getter, PyMemberSetter? setter, PyMemberDeleter? deleter)
+    {
+        _deferDescriptorType = true;
         _declaringType = declaringType;
         _name = name;
         _getter = getter;
