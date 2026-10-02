@@ -1,7 +1,8 @@
+using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
 using System.Text;
 
-namespace PySharp.Modules.Builtins;
+namespace PySharp.Runtime.Unicode;
 
 /// <summary>
 /// The HZ-GB-2312 codec (RFC 1843), ported from CPython's cjkcodecs hz

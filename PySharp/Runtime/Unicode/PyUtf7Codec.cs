@@ -1,7 +1,8 @@
+using PySharp.Modules.Builtins;
 using PySharp.Runtime.Calls;
 using System.Text;
 
-namespace PySharp.Modules.Builtins;
+namespace PySharp.Runtime.Unicode;
 
 /// <summary>
 /// The utf-7 codec (RFC 2152), ported from CPython's Objects/unicodeobject.c

@@ -1,7 +1,9 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
+using PySharp.Runtime.Unicode;
 using PySharp.Utility;
+using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Globalization;
 using System.Numerics;
@@ -1839,6 +1841,13 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         }
 
         var codec = PyCodecInfo.Classify(NormalizeEncodingName(encoding));
+        // charmap codecs refuse the characters their tables leave undefined
+        // (the .NET tables encode them silently); CPython extends the error
+        // over the run of consecutive unmappable code points
+        FrozenSet<char>? undefined = null;
+        if (codec.Kind is PyCodecInfo.CodecKind.Charmap
+            && PyCharmapUndefined.TryGet(NormalizeEncodingName(encoding), out var undef))
+            undefined = undef.Chars;
         var strict = CreateReportingEncoding(enc);
         var codePoints = PyStrObject.ToCodePointArray(value);
         var bytes = new List<byte>(value.Length);
@@ -1847,6 +1856,26 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         while (position < codePoints.Length)
         {
             var rest = value[PyStrObject.CodePointIndexToCharIndex(value, position)..];
+            // stop the .NET encoder before the first undefined character; a
+            // run opening there is its own error event
+            var undefinedAt = -1;
+            if (undefined is not null)
+            {
+                undefinedAt = IndexOfUndefined(rest, undefined);
+                if (undefinedAt is 0)
+                {
+                    var undefinedRunEnd = codec.CollectsRun
+                        ? UnmappableRunEnd(strict, codePoints, position, undefined)
+                        : position + 1;
+                    var undefinedError = ApplyEncodeErrorHandler(codec, codePoints, position, undefinedRunEnd, errors, bytes, strict, value);
+                    if (undefinedError is not null)
+                        return PyResult.FromException(undefinedError);
+                    position = undefinedRunEnd;
+                    continue;
+                }
+                if (undefinedAt > 0)
+                    rest = rest[..undefinedAt];
+            }
             byte[] encoded;
             try
             {
@@ -1866,6 +1895,11 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 continue;
             }
             bytes.AddRange(encoded);
+            if (undefinedAt > 0)
+            {
+                position += PyStrObject.CharIndexToCodePointIndex(rest, undefinedAt);
+                continue;
+            }
             break;
         }
 
@@ -1893,12 +1927,25 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
     // CPython extends an unmappable character over the run of code points
     // the encoder also cannot map, so the error covers the whole run
-    private static int UnmappableRunEnd(Encoding strict, int[] codePoints, int start)
+    private static int UnmappableRunEnd(Encoding strict, int[] codePoints, int start, FrozenSet<char>? undefined = null)
     {
         var end = start + 1;
-        while (end < codePoints.Length && !CanEncode(strict, codePoints[end]))
+        while (end < codePoints.Length && (!CanEncode(strict, codePoints[end])
+                || undefined is not null && undefined.Contains((char)codePoints[end])))
             end++;
         return end;
+    }
+
+    // the char index of the first code point CPython's charmap table
+    // leaves undefined, or -1 when the text encodes cleanly
+    private static int IndexOfUndefined(string text, FrozenSet<char> undefined)
+    {
+        for (var i = 0; i < text.Length; i++)
+        {
+            if (undefined.Contains(text[i]))
+                return i;
+        }
+        return -1;
     }
 
     private static bool CanEncode(Encoding strict, int codePoint)
@@ -2112,6 +2159,8 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 return Encoding.GetEncoding(50225);
             case "tis620":
                 return Encoding.GetEncoding(874);
+            case "kz1048":
+                return Encoding.GetEncoding(21866);
             case "eucjis2004" or "jisx0213":
                 return Encoding.GetEncoding(20932);
             case "iso885915" or "latin9" or "l9":
@@ -2159,214 +2208,16 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         }
     }
 
-    /// <summary>
-    /// CPython namereplace: '\N{NAME}', or a hex escape for the code points
-    /// without a name. .NET has no Unicode name lookup API, so embed the
-    /// names for the range most relevant to ASCII-encoding namereplace
-    /// (Basic Latin + Latin-1 Supplement, U+0000-U+00FF; generated from
-    /// UnicodeData); beyond that the name is unknown here.
+    /// CPython namereplace: the character's Unicode name inside \N{...}
+    /// (formal and algorithmic names alike), or a hex escape for the code
+    /// points without a name.
     /// </summary>
     private static string GetNameReplacement(int codePoint)
     {
-        if (_unicodeNames.TryGetValue(codePoint, out var name))
+        if (PyUnicodeNameTable.TryGetName(codePoint, out var name))
             return $"\\N{{{name}}}";
         return BackslashEscape(codePoint);
     }
-
-    private static readonly Dictionary<int, string> _unicodeNames = new()
-    {
-        [0x20] = "SPACE",
-        [0x21] = "EXCLAMATION MARK",
-        [0x22] = "QUOTATION MARK",
-        [0x23] = "NUMBER SIGN",
-        [0x24] = "DOLLAR SIGN",
-        [0x25] = "PERCENT SIGN",
-        [0x26] = "AMPERSAND",
-        [0x27] = "APOSTROPHE",
-        [0x28] = "LEFT PARENTHESIS",
-        [0x29] = "RIGHT PARENTHESIS",
-        [0x2A] = "ASTERISK",
-        [0x2B] = "PLUS SIGN",
-        [0x2C] = "COMMA",
-        [0x2D] = "HYPHEN-MINUS",
-        [0x2E] = "FULL STOP",
-        [0x2F] = "SOLIDUS",
-        [0x30] = "DIGIT ZERO",
-        [0x31] = "DIGIT ONE",
-        [0x32] = "DIGIT TWO",
-        [0x33] = "DIGIT THREE",
-        [0x34] = "DIGIT FOUR",
-        [0x35] = "DIGIT FIVE",
-        [0x36] = "DIGIT SIX",
-        [0x37] = "DIGIT SEVEN",
-        [0x38] = "DIGIT EIGHT",
-        [0x39] = "DIGIT NINE",
-        [0x3A] = "COLON",
-        [0x3B] = "SEMICOLON",
-        [0x3C] = "LESS-THAN SIGN",
-        [0x3D] = "EQUALS SIGN",
-        [0x3E] = "GREATER-THAN SIGN",
-        [0x3F] = "QUESTION MARK",
-        [0x40] = "COMMERCIAL AT",
-        [0x41] = "LATIN CAPITAL LETTER A",
-        [0x42] = "LATIN CAPITAL LETTER B",
-        [0x43] = "LATIN CAPITAL LETTER C",
-        [0x44] = "LATIN CAPITAL LETTER D",
-        [0x45] = "LATIN CAPITAL LETTER E",
-        [0x46] = "LATIN CAPITAL LETTER F",
-        [0x47] = "LATIN CAPITAL LETTER G",
-        [0x48] = "LATIN CAPITAL LETTER H",
-        [0x49] = "LATIN CAPITAL LETTER I",
-        [0x4A] = "LATIN CAPITAL LETTER J",
-        [0x4B] = "LATIN CAPITAL LETTER K",
-        [0x4C] = "LATIN CAPITAL LETTER L",
-        [0x4D] = "LATIN CAPITAL LETTER M",
-        [0x4E] = "LATIN CAPITAL LETTER N",
-        [0x4F] = "LATIN CAPITAL LETTER O",
-        [0x50] = "LATIN CAPITAL LETTER P",
-        [0x51] = "LATIN CAPITAL LETTER Q",
-        [0x52] = "LATIN CAPITAL LETTER R",
-        [0x53] = "LATIN CAPITAL LETTER S",
-        [0x54] = "LATIN CAPITAL LETTER T",
-        [0x55] = "LATIN CAPITAL LETTER U",
-        [0x56] = "LATIN CAPITAL LETTER V",
-        [0x57] = "LATIN CAPITAL LETTER W",
-        [0x58] = "LATIN CAPITAL LETTER X",
-        [0x59] = "LATIN CAPITAL LETTER Y",
-        [0x5A] = "LATIN CAPITAL LETTER Z",
-        [0x5B] = "LEFT SQUARE BRACKET",
-        [0x5C] = "REVERSE SOLIDUS",
-        [0x5D] = "RIGHT SQUARE BRACKET",
-        [0x5E] = "CIRCUMFLEX ACCENT",
-        [0x5F] = "LOW LINE",
-        [0x60] = "GRAVE ACCENT",
-        [0x61] = "LATIN SMALL LETTER A",
-        [0x62] = "LATIN SMALL LETTER B",
-        [0x63] = "LATIN SMALL LETTER C",
-        [0x64] = "LATIN SMALL LETTER D",
-        [0x65] = "LATIN SMALL LETTER E",
-        [0x66] = "LATIN SMALL LETTER F",
-        [0x67] = "LATIN SMALL LETTER G",
-        [0x68] = "LATIN SMALL LETTER H",
-        [0x69] = "LATIN SMALL LETTER I",
-        [0x6A] = "LATIN SMALL LETTER J",
-        [0x6B] = "LATIN SMALL LETTER K",
-        [0x6C] = "LATIN SMALL LETTER L",
-        [0x6D] = "LATIN SMALL LETTER M",
-        [0x6E] = "LATIN SMALL LETTER N",
-        [0x6F] = "LATIN SMALL LETTER O",
-        [0x70] = "LATIN SMALL LETTER P",
-        [0x71] = "LATIN SMALL LETTER Q",
-        [0x72] = "LATIN SMALL LETTER R",
-        [0x73] = "LATIN SMALL LETTER S",
-        [0x74] = "LATIN SMALL LETTER T",
-        [0x75] = "LATIN SMALL LETTER U",
-        [0x76] = "LATIN SMALL LETTER V",
-        [0x77] = "LATIN SMALL LETTER W",
-        [0x78] = "LATIN SMALL LETTER X",
-        [0x79] = "LATIN SMALL LETTER Y",
-        [0x7A] = "LATIN SMALL LETTER Z",
-        [0x7B] = "LEFT CURLY BRACKET",
-        [0x7C] = "VERTICAL LINE",
-        [0x7D] = "RIGHT CURLY BRACKET",
-        [0x7E] = "TILDE",
-        [0xA0] = "NO-BREAK SPACE",
-        [0xA1] = "INVERTED EXCLAMATION MARK",
-        [0xA2] = "CENT SIGN",
-        [0xA3] = "POUND SIGN",
-        [0xA4] = "CURRENCY SIGN",
-        [0xA5] = "YEN SIGN",
-        [0xA6] = "BROKEN BAR",
-        [0xA7] = "SECTION SIGN",
-        [0xA8] = "DIAERESIS",
-        [0xA9] = "COPYRIGHT SIGN",
-        [0xAA] = "FEMININE ORDINAL INDICATOR",
-        [0xAB] = "LEFT-POINTING DOUBLE ANGLE QUOTATION MARK",
-        [0xAC] = "NOT SIGN",
-        [0xAD] = "SOFT HYPHEN",
-        [0xAE] = "REGISTERED SIGN",
-        [0xAF] = "MACRON",
-        [0xB0] = "DEGREE SIGN",
-        [0xB1] = "PLUS-MINUS SIGN",
-        [0xB2] = "SUPERSCRIPT TWO",
-        [0xB3] = "SUPERSCRIPT THREE",
-        [0xB4] = "ACUTE ACCENT",
-        [0xB5] = "MICRO SIGN",
-        [0xB6] = "PILCROW SIGN",
-        [0xB7] = "MIDDLE DOT",
-        [0xB8] = "CEDILLA",
-        [0xB9] = "SUPERSCRIPT ONE",
-        [0xBA] = "MASCULINE ORDINAL INDICATOR",
-        [0xBB] = "RIGHT-POINTING DOUBLE ANGLE QUOTATION MARK",
-        [0xBC] = "VULGAR FRACTION ONE QUARTER",
-        [0xBD] = "VULGAR FRACTION ONE HALF",
-        [0xBE] = "VULGAR FRACTION THREE QUARTERS",
-        [0xBF] = "INVERTED QUESTION MARK",
-        [0xC0] = "LATIN CAPITAL LETTER A WITH GRAVE",
-        [0xC1] = "LATIN CAPITAL LETTER A WITH ACUTE",
-        [0xC2] = "LATIN CAPITAL LETTER A WITH CIRCUMFLEX",
-        [0xC3] = "LATIN CAPITAL LETTER A WITH TILDE",
-        [0xC4] = "LATIN CAPITAL LETTER A WITH DIAERESIS",
-        [0xC5] = "LATIN CAPITAL LETTER A WITH RING ABOVE",
-        [0xC6] = "LATIN CAPITAL LETTER AE",
-        [0xC7] = "LATIN CAPITAL LETTER C WITH CEDILLA",
-        [0xC8] = "LATIN CAPITAL LETTER E WITH GRAVE",
-        [0xC9] = "LATIN CAPITAL LETTER E WITH ACUTE",
-        [0xCA] = "LATIN CAPITAL LETTER E WITH CIRCUMFLEX",
-        [0xCB] = "LATIN CAPITAL LETTER E WITH DIAERESIS",
-        [0xCC] = "LATIN CAPITAL LETTER I WITH GRAVE",
-        [0xCD] = "LATIN CAPITAL LETTER I WITH ACUTE",
-        [0xCE] = "LATIN CAPITAL LETTER I WITH CIRCUMFLEX",
-        [0xCF] = "LATIN CAPITAL LETTER I WITH DIAERESIS",
-        [0xD0] = "LATIN CAPITAL LETTER ETH",
-        [0xD1] = "LATIN CAPITAL LETTER N WITH TILDE",
-        [0xD2] = "LATIN CAPITAL LETTER O WITH GRAVE",
-        [0xD3] = "LATIN CAPITAL LETTER O WITH ACUTE",
-        [0xD4] = "LATIN CAPITAL LETTER O WITH CIRCUMFLEX",
-        [0xD5] = "LATIN CAPITAL LETTER O WITH TILDE",
-        [0xD6] = "LATIN CAPITAL LETTER O WITH DIAERESIS",
-        [0xD7] = "MULTIPLICATION SIGN",
-        [0xD8] = "LATIN CAPITAL LETTER O WITH STROKE",
-        [0xD9] = "LATIN CAPITAL LETTER U WITH GRAVE",
-        [0xDA] = "LATIN CAPITAL LETTER U WITH ACUTE",
-        [0xDB] = "LATIN CAPITAL LETTER U WITH CIRCUMFLEX",
-        [0xDC] = "LATIN CAPITAL LETTER U WITH DIAERESIS",
-        [0xDD] = "LATIN CAPITAL LETTER Y WITH ACUTE",
-        [0xDE] = "LATIN CAPITAL LETTER THORN",
-        [0xDF] = "LATIN SMALL LETTER SHARP S",
-        [0xE0] = "LATIN SMALL LETTER A WITH GRAVE",
-        [0xE1] = "LATIN SMALL LETTER A WITH ACUTE",
-        [0xE2] = "LATIN SMALL LETTER A WITH CIRCUMFLEX",
-        [0xE3] = "LATIN SMALL LETTER A WITH TILDE",
-        [0xE4] = "LATIN SMALL LETTER A WITH DIAERESIS",
-        [0xE5] = "LATIN SMALL LETTER A WITH RING ABOVE",
-        [0xE6] = "LATIN SMALL LETTER AE",
-        [0xE7] = "LATIN SMALL LETTER C WITH CEDILLA",
-        [0xE8] = "LATIN SMALL LETTER E WITH GRAVE",
-        [0xE9] = "LATIN SMALL LETTER E WITH ACUTE",
-        [0xEA] = "LATIN SMALL LETTER E WITH CIRCUMFLEX",
-        [0xEB] = "LATIN SMALL LETTER E WITH DIAERESIS",
-        [0xEC] = "LATIN SMALL LETTER I WITH GRAVE",
-        [0xED] = "LATIN SMALL LETTER I WITH ACUTE",
-        [0xEE] = "LATIN SMALL LETTER I WITH CIRCUMFLEX",
-        [0xEF] = "LATIN SMALL LETTER I WITH DIAERESIS",
-        [0xF0] = "LATIN SMALL LETTER ETH",
-        [0xF1] = "LATIN SMALL LETTER N WITH TILDE",
-        [0xF2] = "LATIN SMALL LETTER O WITH GRAVE",
-        [0xF3] = "LATIN SMALL LETTER O WITH ACUTE",
-        [0xF4] = "LATIN SMALL LETTER O WITH CIRCUMFLEX",
-        [0xF5] = "LATIN SMALL LETTER O WITH TILDE",
-        [0xF6] = "LATIN SMALL LETTER O WITH DIAERESIS",
-        [0xF7] = "DIVISION SIGN",
-        [0xF8] = "LATIN SMALL LETTER O WITH STROKE",
-        [0xF9] = "LATIN SMALL LETTER U WITH GRAVE",
-        [0xFA] = "LATIN SMALL LETTER U WITH ACUTE",
-        [0xFB] = "LATIN SMALL LETTER U WITH CIRCUMFLEX",
-        [0xFC] = "LATIN SMALL LETTER U WITH DIAERESIS",
-        [0xFD] = "LATIN SMALL LETTER Y WITH ACUTE",
-        [0xFE] = "LATIN SMALL LETTER THORN",
-        [0xFF] = "LATIN SMALL LETTER Y WITH DIAERESIS",
-    };
 
     protected override PyResult Repr(PyCallContext context, PyStrObject self)
     {

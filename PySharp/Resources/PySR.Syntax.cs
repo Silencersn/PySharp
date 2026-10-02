@@ -41,6 +41,8 @@ partial class PySR
 
     #region Parser
 
+    public const string InvalidSyntax_Identifier_ForbiddenConstant = "identifier field can't represent '{0}' constant";
+
     public const string InvalidSyntax_Warning_InvalidEscapeSequence = @"""\{0}"" is an invalid escape sequence. Such sequences will not work in the future. Did you mean ""\\{0}""? A raw string is also an option.";
     public const string InvalidSyntax_Warning_InvalidOctalEscapeSequence = @"""\{0}"" is an invalid octal escape sequence. Such sequences will not work in the future. Did you mean ""\\{0}""? A raw string is also an option.";
     public const string InvalidSyntax_Warning_IsWithLiteral = @"""is"" with '{0}' literal. Did you mean ""==""?";
@@ -82,6 +84,8 @@ partial class PySR
     public const string InvalidSyntax_UnicodeError_TruncatedLowerUSequence = "(unicode error) 'unicodeescape' codec can't decode bytes in position {0}-{1}: truncated \\uXXXX escape";
     public const string InvalidSyntax_UnicodeError_TruncatedUpperUSequence = "(unicode error) 'unicodeescape' codec can't decode bytes in position {0}-{1}: truncated \\UXXXXXXXX escape";
     public const string InvalidSyntax_UnicodeError_IllegalCharacter = "(unicode error) 'unicodeescape' codec can't decode bytes in position {0}-{1}: illegal Unicode character";
+    public const string InvalidSyntax_UnicodeError_MalformedNamedEscape = "(unicode error) 'unicodeescape' codec can't decode bytes in position {0}-{1}: malformed \\N character escape";
+    public const string InvalidSyntax_UnicodeError_UnknownUnicodeName = "(unicode error) 'unicodeescape' codec can't decode bytes in position {0}-{1}: unknown Unicode character name";
     public const string InvalidSyntax_BytesLiteral_NonAsciiCharacters = "bytes can only contain ASCII literal characters";
 
     public const string InvalidSyntax_Indentation_Unexpected = "unexpected indent";

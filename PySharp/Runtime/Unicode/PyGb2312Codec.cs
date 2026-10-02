@@ -1,6 +1,7 @@
+using PySharp.Modules.Builtins;
 using System.IO.Compression;
 
-namespace PySharp.Modules.Builtins;
+namespace PySharp.Runtime.Unicode;
 
 /// <summary>
 /// The GB2312 mapping, backed by the generated table in

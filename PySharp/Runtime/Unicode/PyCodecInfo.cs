@@ -1,6 +1,7 @@
+using PySharp.Modules.Builtins;
 using System.Collections.Frozen;
 
-namespace PySharp.Modules.Builtins;
+namespace PySharp.Runtime.Unicode;
 
 /// <summary>
 /// The codec classes UnicodeError messages depend on. Each codec reports

@@ -4,7 +4,7 @@
 // of 3-byte little-endian code points, 0xFFFFFF marking an unmapped
 // pair, indexed (lead - 0x87) * 157 + TrailIndex(trail).
 
-namespace PySharp.Modules.Builtins;
+namespace PySharp.Runtime.Unicode;
 
 internal static partial class PyBig5HkscsCodec
 {

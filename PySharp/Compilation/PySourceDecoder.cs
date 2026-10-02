@@ -1,5 +1,6 @@
 using PySharp.Compilation.CodeAnalysis;
 using PySharp.Runtime.Calls;
+using PySharp.Runtime.Unicode;
 using PySharp.Utility;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;

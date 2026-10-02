@@ -30,7 +30,7 @@ partial class Parser
         if (!IsCurrentIdentifier)
             throw SyntaxError();
 
-        var id = CurrentTokenString;
+        var id = NormalizeIdentifier(CurrentTokenString);
         MoveNextToken();
         return id;
     }
@@ -731,6 +731,8 @@ partial class Parser
                 PyStrConverter.ConvertError.UpperUSequence => SyntaxError(PySR.InvalidSyntax_UnicodeError_TruncatedUpperUSequence, start, end),
                 PyStrConverter.ConvertError.SurrogatesNotAllowed => _context.UnicodeEncodeError(PySR.Unicode_Encode_SurrogatesNotAllowed, $"{(uint)info.Char:x4}", info.Position),
                 PyStrConverter.ConvertError.IllegalUnicodeCharacter => SyntaxError(PySR.InvalidSyntax_UnicodeError_IllegalCharacter, start, end),
+                PyStrConverter.ConvertError.MalformedNamedEscape => SyntaxError(PySR.InvalidSyntax_UnicodeError_MalformedNamedEscape, start, end),
+                PyStrConverter.ConvertError.UnknownUnicodeName => SyntaxError(PySR.InvalidSyntax_UnicodeError_UnknownUnicodeName, start, end),
                 _ => new UnreachableException(),
             };
         }

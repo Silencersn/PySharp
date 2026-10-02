@@ -1,7 +1,8 @@
+using PySharp.Modules.Builtins;
 using System.Globalization;
 using System.Text;
 
-namespace PySharp.Modules.Builtins;
+namespace PySharp.Runtime.Unicode;
 
 // CPython's per-code-point Unicode tables (Objects/unicodetype_db.h). Letter
 // and decimal membership follows the general category; the tables below hold

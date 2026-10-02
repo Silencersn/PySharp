@@ -5,6 +5,7 @@ using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using System.Collections.Frozen;
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 namespace PySharp.Compilation.AstNodes;
 
@@ -104,6 +105,24 @@ public sealed partial class Parser : ICodeMetaInfoProvider
     private string CurrentTokenString => GetOrAddFromPool(CurrentTokenStringAsSpan);
 
     private bool IsCurrentIdentifier => CurrentTokenType is TokenType.Name && !IsKeyword(CurrentTokenStringAsSpan);
+
+    // CPython normalizes an identifier containing non-ASCII characters to
+    // NFKC once, in the parser (_PyPegen_new_identifier), after the
+    // tokenizer's XID validation and the keyword matching both ran on the
+    // raw source text. The result becomes the name everywhere and is never
+    // re-validated, so Ⅷ and VIII name one variable, while ｉｆ is still a
+    // plain name (not the `if` keyword) that NFKC turns into "if".
+    private string NormalizeIdentifier(string identifier)
+    {
+        if (Ascii.IsValid(identifier))
+            return identifier;
+
+        var normalized = GetOrAddFromPool(identifier.Normalize(NormalizationForm.FormKC));
+        if (normalized is "None" or "True" or "False")
+            throw _context.ValueError(PySR.InvalidSyntax_Identifier_ForbiddenConstant, normalized);
+
+        return normalized;
+    }
 
     // CPython's EOF fallback differs by start rule: eval/single_input report
     // no position at all (0/0), file_input pins the input end with a 1-column

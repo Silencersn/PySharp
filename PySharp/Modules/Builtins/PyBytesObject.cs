@@ -1,6 +1,7 @@
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
+using PySharp.Runtime.Unicode;
 using System.Globalization;
 using System.Text;
 
@@ -1151,19 +1152,41 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
         }
 
         var multibyte = codec.Kind is PyCodecInfo.CodecKind.Multibyte;
+        // CPython's charmap codecs refuse the bytes their tables leave
+        // undefined; the .NET code pages map them to C1 controls or
+        // private-use characters instead, so those bytes must never reach
+        // the .NET decoder
+        PyCharmapUndefined.Undefined? undefined = codec.Kind is PyCodecInfo.CodecKind.Charmap
+            && PyCharmapUndefined.TryGet(PyStrObjectType.NormalizeEncodingName(encoding), out var charmapUndefined)
+            ? charmapUndefined : null;
         var sb = new StringBuilder();
         var pos = 0;
         while (pos < data.Length)
         {
+            if (undefined is { } undef && undef.Bytes.Contains(data[pos]))
+            {
+                // CPython charmap_decode reports each undefined byte as its
+                // own single-byte event
+                if (!TryResolveErrors(errors, out var undefHandler))
+                    return UnknownErrorHandler(errors);
+                if (undefHandler is DecodeErrorHandler.EncodeOnly)
+                    return WrongErrorHandlerType();
+                if (undefHandler is DecodeErrorHandler.Strict or DecodeErrorHandler.SurrogatePass)
+                    return UnicodeDecodeError(codec.ErrorName, source, data, pos, pos + 1, codec.Reason);
+                pos = ApplyMultibyteHandler(undefHandler, data, pos, pos + 1, sb);
+                continue;
+            }
             var piece = data[pos..];
             // a lead whose sequence is cut off by the end of the input is
             // the incomplete event even where the .NET table decodes the
             // lead byte alone
             var cut = multibyte ? FirstTruncatedLead(codec, piece) : null;
+            // the clean run stops before the next undefined byte
+            var stop = undefined is { } clean ? NextUndefined(piece, clean) : null;
             string decoded;
             try
             {
-                decoded = strictDecoder.GetString(cut is int t ? piece[..t] : piece);
+                decoded = strictDecoder.GetString(cut is int t ? piece[..t] : stop is int s ? piece[..s] : piece);
             }
             catch (DecoderFallbackException ex)
             {
@@ -1195,7 +1218,12 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
             }
             sb.Append(decoded);
             if (cut is not int tail)
-                break;
+            {
+                if (stop is not int next)
+                    break;
+                pos += next;
+                continue;
+            }
             if (!TryResolveErrors(errors, out var tailHandler))
                 return UnknownErrorHandler(errors);
             if (tailHandler is DecodeErrorHandler.EncodeOnly)
@@ -1223,6 +1251,18 @@ public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
             if (i + w > data.Length)
                 return i;
             i += w;
+        }
+        return null;
+    }
+
+    // the first position whose byte CPython's charmap table leaves
+    // undefined, or null when the rest reaches the .NET decoder cleanly
+    private static int? NextUndefined(ReadOnlySpan<byte> data, PyCharmapUndefined.Undefined undefined)
+    {
+        for (var i = 0; i < data.Length; i++)
+        {
+            if (undefined.Bytes.Contains(data[i]))
+                return i;
         }
         return null;
     }
