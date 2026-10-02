@@ -136,10 +136,19 @@ partial class Emitter
         foreach (var tp in typeParams)
         {
             Builder.Emit(OpCode.LoadConst, PyStrObject.FromString(tp.Name));
-            Builder.Emit(OpCode.CallIntrinsic1, IntrinsicFunctionType.TypeVar);
+            Builder.Emit(OpCode.CallIntrinsic1, IntrinsicOf(tp));
             StoreName(tp.Name);
         }
     }
+
+    // CPython intrinsics.c: each PEP 695 type-param kind has its own
+    // intrinsic constructor (INTRINSIC_TYPEVAR/_PARAMSPEC/_TYPEVARTUPLE)
+    private static IntrinsicFunctionType IntrinsicOf(AstTypeParamNode tp) => tp switch
+    {
+        TypeVarTupleNode => IntrinsicFunctionType.TypeVarTuple,
+        ParamSpecNode => IntrinsicFunctionType.ParamSpec,
+        _ => IntrinsicFunctionType.TypeVar,
+    };
 
     private void EmitIf(IfNode node, out bool isPostUnreachable)
     {
@@ -765,7 +774,7 @@ partial class Emitter
         foreach (var tp in typeParams)
         {
             Builder.Emit(OpCode.LoadConst, PyStrObject.FromString(tp.Name));
-            Builder.Emit(OpCode.CallIntrinsic1, IntrinsicFunctionType.TypeVar);
+            Builder.Emit(OpCode.CallIntrinsic1, IntrinsicOf(tp));
             Builder.Emit(OpCode.MakeCell, tp.Name);
             Builder.Emit(OpCode.StoreDeref, tp.Name);
         }
