@@ -130,3 +130,14 @@ try:
     int.__bases__ = (str,)
 except TypeError as e:
     print("TypeError:", e)
+
+try:
+    (1.5).real = 2
+except AttributeError as e:
+    print("AttributeError:", e)
+
+
+try:
+    C.__mro__ = ()
+except AttributeError as e:
+    print("AttributeError:", e)

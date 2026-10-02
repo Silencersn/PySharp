@@ -121,6 +121,9 @@ partial class PySR
     public const string Runtime_Object_AttributeNotFound = "'{0}' object has no attribute '{1}'";
     public const string Runtime_Object_AttributeNoDict = "'{0}' object has no attribute '{1}' and no __dict__ for setting new attributes";
     public const string Runtime_Object_AttributeReadOnly = "'{0}' object attribute '{1}' is read-only";
+    public const string Runtime_Attribute_NotWritable = "attribute '{0}' of '{1}' objects is not writable";
+    // PyMember_SetOne's fixed sentence for a READONLY PyMemberDef slot
+    public const string Runtime_Member_ReadOnly = "readonly attribute";
     public const string Runtime_Object_CannotApplySetAttr = "can't apply this __setattr__ to {0} object";
     public const string Runtime_Object_CannotApplyDelAttr = "can't apply this __delattr__ to {0} object";
     public const string Runtime_Object_DictMustBeDictionary = "__dict__ must be set to a dictionary, not a '{0}'";

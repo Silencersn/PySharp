@@ -748,13 +748,14 @@ public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
         return PyBoolObject.FromBoolean(self.Value == Math.Truncate(self.Value));
     }
 
-    [PyProperty("real")]
+    // float_getset: real/imag are getsets without a setter
+    [PyProperty("real", GetSet = true)]
     private static PyResult Get_Real(PyCallContext context, PyFloatObject self)
     {
         return self;
     }
 
-    [PyProperty("imag")]
+    [PyProperty("imag", GetSet = true)]
     private static PyResult Get_Imag(PyCallContext context, PyFloatObject self)
     {
         return PyFloatObject.Zero;

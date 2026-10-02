@@ -431,7 +431,8 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
         return PyResult.TypeError($"cannot delete '{PySpecialNames.QualName}' attribute of immutable type '{self.Name}'");
     }
 
-    [PyProperty(PySpecialNames.MRO)]
+    // type_getsets: __mro__ is a getset without a setter
+    [PyProperty(PySpecialNames.MRO, GetSet = true)]
     private static PyResult Get_MRO(PyCallContext context, PyTypeObject self)
     {
         return PyTupleObject.CreateTuple(self.MRO);

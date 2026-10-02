@@ -713,25 +713,25 @@ public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
         return PyTupleObject.CreateTuple(ExactInt(self), PyIntObject.One);
     }
 
-    [PyProperty("real")]
+    [PyProperty("real", GetSet = true)]
     private static PyResult Get_Real(PyCallContext context, PyIntObject self)
     {
         return ExactInt(self);
     }
 
-    [PyProperty("imag")]
+    [PyProperty("imag", GetSet = true)]
     private static PyResult Get_Imag(PyCallContext context, PyIntObject self)
     {
         return PyIntObject.Zero;
     }
 
-    [PyProperty("numerator")]
+    [PyProperty("numerator", GetSet = true)]
     private static PyResult Get_Numerator(PyCallContext context, PyIntObject self)
     {
         return ExactInt(self);
     }
 
-    [PyProperty("denominator")]
+    [PyProperty("denominator", GetSet = true)]
     private static PyResult Get_Denominator(PyCallContext context, PyIntObject self)
     {
         return PyIntObject.One;

@@ -7,9 +7,9 @@ namespace PySharp.Modules.Builtins;
 partial class PyTypeObject<TObject>
 {
     [EditorBrowsable(EditorBrowsableState.Never)]
-    protected void AppendMemberDescriptor(string name, PyMemberGetter<TObject> getter, PyMemberSetter<TObject>? setter = null, PyMemberDeleter<TObject>? deleter = null)
+    protected void AppendMemberDescriptor(string name, PyMemberGetter<TObject> getter, PyMemberSetter<TObject>? setter = null, PyMemberDeleter<TObject>? deleter = null, bool getSet = false)
     {
-        PyAttributes[name] = new PyMemberDescriptorObject(this, getter.ToNonGeneric(), setter?.ToNonGeneric(), deleter?.ToNonGeneric());
+        PyAttributes[name] = new PyMemberDescriptorObject(this, name, getter.ToNonGeneric(), setter?.ToNonGeneric(), deleter?.ToNonGeneric(), getSet);
     }
 
     [EditorBrowsable(EditorBrowsableState.Never)]
