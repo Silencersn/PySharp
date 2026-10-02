@@ -11,6 +11,13 @@ public sealed class PyPropertyAttribute : PyAttribute
 
     public string Name { get; }
     public PyPropertyMethodType Type { get; set; }
+
+    // which CPython mechanism the property models: true builds a
+    // getset_descriptor face (tp_getset, e.g. float.real or type.__mro__),
+    // the default builds member_descriptor for the READONLY PyMemberDef
+    // tables most generated members come from; the face decides the repr
+    // and the message of a failed write
+    public bool GetSet { get; set; }
 }
 
 public enum PyPropertyMethodType

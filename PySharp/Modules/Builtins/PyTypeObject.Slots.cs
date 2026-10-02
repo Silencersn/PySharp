@@ -4,7 +4,8 @@ namespace PySharp.Modules.Builtins;
 
 partial class PyTypeObject
 {
-    protected internal PyTypeSlots Slots { get; }
+    // re-derived on every MRO rebuild (type_set_bases' update_all_slots)
+    protected internal PyTypeSlots Slots { get; private set; }
 
     protected internal sealed partial class PyTypeSlots
     {

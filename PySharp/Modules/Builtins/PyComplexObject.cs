@@ -51,6 +51,8 @@ public class PyComplexObject : PyObject
 [PyType("complex")]
 public sealed partial class PyComplexObjectType : PyTypeObject<PyComplexObject>
 {
+    internal override bool ReleasesWithFreeList => true;
+
 
     protected override PyResult Repr(PyCallContext context, PyComplexObject self)
     {

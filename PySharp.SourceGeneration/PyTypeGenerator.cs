@@ -149,6 +149,8 @@ public class PyTypeGenerator : IIncrementalGenerator
                             info.Setter = methodSymbol.Name;
                         else if (methodType is 2)
                             info.Deleter = methodSymbol.Name;
+                        if (propertyAttribute.GetNamedArgumentOrDefault("GetSet", false))
+                            info.GetSet = true;
                         pyTypeInfo.Properties.Add(DiagnosticOr<PyPropertyInfo>.From(info));
                     }
                 }
@@ -197,6 +199,8 @@ public class PyTypeGenerator : IIncrementalGenerator
                 group.Setter = accessor.Setter;
             else if (accessor.Deleter is not null)
                 group.Deleter = accessor.Deleter;
+            if (accessor.GetSet)
+                group.GetSet = true;
         }
 
         var builder = new IndentedStringBuilder();
@@ -288,7 +292,9 @@ public class PyTypeGenerator : IIncrementalGenerator
                         .EnterBlock()
                             .ForEach(properties, static (builder, pair) =>
                             {
-                                builder.AppendLine($"AppendMemberDescriptor({pair.Key}, {pair.Value.Getter ?? "null"}, {pair.Value.Setter ?? "null"}, {pair.Value.Deleter ?? "null"});");
+                                builder.AppendLine(pair.Value.GetSet
+                                    ? $"AppendMemberDescriptor({pair.Key}, {pair.Value.Getter ?? "null"}, {pair.Value.Setter ?? "null"}, {pair.Value.Deleter ?? "null"}, getSet: true);"
+                                    : $"AppendMemberDescriptor({pair.Key}, {pair.Value.Getter ?? "null"}, {pair.Value.Setter ?? "null"}, {pair.Value.Deleter ?? "null"});");
                             })
                         .ExitBlock())
 
@@ -444,6 +450,7 @@ public class PyTypeGenerator : IIncrementalGenerator
         public string? Getter { get; set; }
         public string? Setter { get; set; }
         public string? Deleter { get; set; }
+        public bool GetSet { get; set; }
     }
 }
 

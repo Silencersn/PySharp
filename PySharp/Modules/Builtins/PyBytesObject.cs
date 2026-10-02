@@ -48,6 +48,8 @@ public sealed class PyBytesObject : PyObject
 [PyType("bytes")]
 public sealed partial class PyBytesObjectType : PyTypeObject<PyBytesObject>
 {
+    internal override bool ReleasesWithFreeList => true;
+
     protected override PyResult New(PyCallContext context, PyTypeObject cls, IReadOnlyList<PyObject> args, IReadOnlyDictionary<string, PyObject> kwargs)
     {
         // CPython bytes_new: the clinic parser reports arity, keyword and
