@@ -45,11 +45,12 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         public char WrapperChar { get; }
         public bool IsTriple { get; }
         public bool IsTemplate { get; }
+        public bool IsRaw { get; }
         public int ParenLevelWhenEntering { get; }
         public Stack<int> FormatSpec { get; }
         public readonly int WrapperLength => IsTriple ? 3 : 1;
 
-        public FStringInfo(bool isTemplate, char wrapperChar, bool isTriple, int parenLevelWhenEntering)
+        public FStringInfo(bool isTemplate, char wrapperChar, bool isTriple, int parenLevelWhenEntering, bool isRaw)
         {
             IsTemplate = isTemplate;
             FormatSpec = [];
@@ -57,6 +58,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             WrapperChar = wrapperChar;
             IsTriple = isTriple;
             ParenLevelWhenEntering = parenLevelWhenEntering;
+            IsRaw = isRaw;
         }
     }
 
@@ -242,6 +244,18 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
                             if (c is '\\')
                             {
                                 i++;
+                                // CPython's f-string tokenizer keeps a
+                                // non-raw \N{...} inside the literal part:
+                                // its braces never open a replacement field
+                                if (!info.IsRaw && i + 2 < content.Length
+                                    && content[i] is 'N' && content[i + 1] is '{')
+                                {
+                                    var close = content[(i + 2)..].IndexOf('}');
+                                    if (close >= 0)
+                                        i = i + 2 + close;
+                                    else
+                                        i = content.Length;
+                                }
                                 continue;
                             }
 
@@ -592,7 +606,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
             if (isFString || isTString)
             {
                 AppendToken(isTString ? TokenType.TStringStart : TokenType.FStringStart, group.Length);
-                EnterFString(new FStringInfo(isTString, _wrapper, isTriple: true, parenLevelWhenEntering: ParenLevel));
+                EnterFString(new FStringInfo(isTString, _wrapper, isTriple: true, parenLevelWhenEntering: ParenLevel, isRaw: prefix.ContainsAny('r', 'R')));
                 return;
             }
 
@@ -715,7 +729,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         {
             group.Length = prefix.Length + 1 /* len of wrapper */;
             AppendToken(isTString ? TokenType.TStringStart : TokenType.FStringStart, group.Length);
-            EnterFString(new FStringInfo(isTString, _wrapper, isTriple: false, parenLevelWhenEntering: ParenLevel));
+            EnterFString(new FStringInfo(isTString, _wrapper, isTriple: false, parenLevelWhenEntering: ParenLevel, isRaw: prefix.ContainsAny('r', 'R')));
             return;
         }
 
@@ -783,7 +797,7 @@ public sealed partial class Lexer : ICodeMetaInfoProvider
         group.Index = _offset;
         group.Length = prefix.Length + 1 /* len of wrapper */;
         AppendToken(isTString ? TokenType.TStringStart : TokenType.FStringStart, group.Length);
-        EnterFString(new FStringInfo(isTString, span[indexOfWrapper], isTriple: false, parenLevelWhenEntering: ParenLevel));
+        EnterFString(new FStringInfo(isTString, span[indexOfWrapper], isTriple: false, parenLevelWhenEntering: ParenLevel, isRaw: prefix.ContainsAny('r', 'R')));
         return true;
     }
 

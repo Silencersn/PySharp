@@ -32,6 +32,8 @@ internal static class PyStrConverter
         NonAsciiInBytesLiteral,
         InvalidEscapeSequence,
         InvalidOctalEscapeSequence,
+        MalformedNamedEscape,
+        UnknownUnicodeName,
 
         WrongFormat,
     }
@@ -227,8 +229,57 @@ internal static class PyStrConverter
                             i += 8;
                             break;
 
-                        //case 'N':
-                        //    throw new NotSupportedException();
+                        case 'N':
+                            if (typeof(T) == typeof(byte))
+                                goto default;
+
+                            // CPython unicodeescape: str literals resolve
+                            // \N{NAME} through the unicodedata tables, a
+                            // missing brace or empty name is a malformed
+                            // escape, and an unknown name is a hard error
+                            // reported over the whole escape
+                            if (i + 1 >= textLength || text[i + 1] is not '{')
+                            {
+                                info.Error = ConvertError.MalformedNamedEscape;
+                                info.Position = i - 1;
+                                info.Length = 2;
+                                return false;
+                            }
+                            var nameClose = text[(i + 2)..].IndexOf('}');
+                            if (nameClose is 0 or < 0)
+                            {
+                                info.Error = ConvertError.MalformedNamedEscape;
+                                info.Position = i - 1;
+                                info.Length = (nameClose < 0 ? textLength : i + 2 + nameClose) - (i - 1);
+                                return false;
+                            }
+                            if (!PyUnicodeNameTable.TryGetCodePoint(text.Slice(i + 2, nameClose).ToString(), out var namedCodePoint))
+                            {
+                                info.Error = ConvertError.UnknownUnicodeName;
+                                info.Position = i - 1;
+                                info.Length = nameClose + 4;
+                                return false;
+                            }
+                            if (!Rune.TryCreate(namedCodePoint, out var namedRune))
+                            {
+                                info.Error = ConvertError.IllegalUnicodeCharacter;
+                                info.Position = i - 1;
+                                info.Length = nameClose + 4;
+                                return false;
+                            }
+                            if (namedRune.Utf16SequenceLength is 2)
+                            {
+                                hasSecond = true;
+                                namedRune.EncodeToUtf16(cache);
+                                charToWrite = cache[0];
+                                charToWrite2 = cache[1];
+                            }
+                            else
+                            {
+                                charToWrite = (char)namedRune.Value;
+                            }
+                            i += 2 + nameClose;
+                            break;
 
                         default:
                             // CPython warns about the first invalid escape only
