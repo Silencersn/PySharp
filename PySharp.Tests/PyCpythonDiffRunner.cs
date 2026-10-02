@@ -196,16 +196,18 @@ internal static class PyCpythonDiffRunner
     }
 
     /// <summary>
-    /// Normalizes captured stdout for comparison: line endings and
-    /// line-trailing whitespace (PySharp writes raw LF where a Windows
-    /// CPython pipe delivers CRLF), object addresses in default reprs, and
-    /// absolute paths. Content that survives this is the behavior contract.
+    /// Normalizes captured stdout for comparison: line-trailing whitespace,
+    /// object addresses in default reprs, and absolute paths. Line endings
+    /// are compared byte-exact — since the standard streams translate '\n'
+    /// to the platform newline (issue #396), PySharp's stdout matches a
+    /// Windows CPython pipe's CRLF and the old CRLF-fold tolerance is gone.
+    /// Content that survives this is the behavior contract.
     /// </summary>
     internal static string Normalize(string text)
     {
-        var lines = text.Replace("\r\n", "\n").Split('\n');
+        var lines = text.Split('\n');
         for (var i = 0; i < lines.Length; i++)
-            lines[i] = lines[i].TrimEnd();
+            lines[i] = lines[i].TrimEnd(' ', '\t');
         var start = 0;
         var end = lines.Length;
         while (start < end && lines[start].Length is 0)

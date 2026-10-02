@@ -95,6 +95,48 @@ public sealed class StdIoTests
         Assert.AreEqual("hello", System.Text.Encoding.UTF8.GetString(stream.ToArray()));
     }
 
+    // the standard streams mirror CPython's create_stdio newline=None
+    // (issue #396): writes expand '\n' to os.linesep while user '\r' bytes
+    // survive, reads fold \r\n and lone \r into '\n'
+    [TestMethod]
+    public void Stdio_StdoutWrite_ExpandsNewlineToPlatformNewline()
+    {
+        var stream = new MemoryStream();
+        var obj = CreateOutput(stream, "<stdout>");
+        var result = obj.Write(PyCallContext.CSharpRuntime, PyStrObject.FromString("x\n"));
+        Assert.IsFalse(result.IsError);
+        Assert.AreEqual("x" + Environment.NewLine, System.Text.Encoding.UTF8.GetString(stream.ToArray()));
+    }
+
+    [TestMethod]
+    public void Stdio_StdoutWrite_PreservesUserCarriageReturns()
+    {
+        var stream = new MemoryStream();
+        var obj = CreateOutput(stream, "<stdout>");
+        var result = obj.Write(PyCallContext.CSharpRuntime, PyStrObject.FromString("a\rb\n"));
+        Assert.IsFalse(result.IsError);
+        // CPython 3.14 (newline=None): "a\rb\n" -> a \r b \r \n on Windows
+        Assert.AreEqual("a\rb" + Environment.NewLine, System.Text.Encoding.UTF8.GetString(stream.ToArray()));
+    }
+
+    [TestMethod]
+    public void Stdio_StdinRead_FoldsUniversalNewlines()
+    {
+        var obj = CreateInput(new MemoryStream(System.Text.Encoding.UTF8.GetBytes("a\r\nb\rc\n")));
+        var result = obj.Read(PyCallContext.CSharpRuntime);
+        Assert.IsFalse(result.IsError);
+        Assert.AreEqual("a\nb\nc\n", ((PyStrObject)result.Value).Value);
+    }
+
+    [TestMethod]
+    public void Stdio_StdinReadLine_SplitsOnLoneCarriageReturn()
+    {
+        var obj = CreateInput(new MemoryStream(System.Text.Encoding.UTF8.GetBytes("a\r\nb\rc\n")));
+        Assert.AreEqual("a\n", ((PyStrObject)obj.ReadLine().Value!).Value);
+        Assert.AreEqual("b\n", ((PyStrObject)obj.ReadLine().Value!).Value);
+        Assert.AreEqual("c\n", ((PyStrObject)obj.ReadLine().Value!).Value);
+    }
+
     [TestMethod]
     public void Stdio_Stdin_NotWritable_Stdout_NotReadable()
     {
