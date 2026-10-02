@@ -1,3 +1,4 @@
+using PySharp.Modules.Typing;
 using PySharp.Runtime;
 using PySharp.Runtime.Calls;
 using PySharp.Runtime.Comparison;
@@ -148,6 +149,12 @@ public partial class PyFrozenSetObject : PyObject, IPyObjectRecursiveRepr, IRead
 [PyType("frozenset")]
 public sealed partial class PyFrozenSetObjectType : PyTypeObject<PyFrozenSetObject>
 {
+    // CPython Py_GenericAlias (descrobject.c): containers register
+    // __class_getitem__ so frozenset[int] and friends build a types.GenericAlias
+    [PyClassMethod(PySpecialNames.ClassGetItem)]
+    [PyFunctionParameters("*args")]
+    private static PyResult ClassGetItem(PyCallContext context, PyTypeObject cls, PyArguments arguments)
+        => PyGenericAliasObject.ClassGetItem(cls, arguments);
 
     [PyExport(PySpecialNames.New, nameof(NewImpl_1), nameof(NewImpl_2))]
     private static partial PyBuiltinFunctionOrMethodObject _new { get; }
