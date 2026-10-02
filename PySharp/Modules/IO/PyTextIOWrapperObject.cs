@@ -1265,6 +1265,44 @@ public sealed partial class PyTextIOWrapperObjectType : PyTypeObject<PyTextIOWra
         return PyListObject.CreateList(lines);
     }
 
+    // IOBase.writelines (Modules/_io/iobase.c): the closed check runs before
+    // the iterable is even touched, each element then goes through the
+    // object's write() — routed via attribute lookup so a Python subclass
+    // override participates — and no separators are added. Every write() to
+    // an open() file flushes (see Write), so the "one-shot write without
+    // close" idiom lands without an explicit close.
+    [PyMethod("writelines")]
+    [PyFunctionParameters("lines", "/")]
+    private static PyResult WriteLines(PyCallContext context, PyTextIOWrapperObject self, PyArguments arguments)
+    {
+        var check = self.CheckClosed();
+        if (check.IsError)
+            return check;
+
+        var iterator = PySpecialMethods.Iter(context, arguments[0]);
+        if (iterator.IsError)
+            return iterator;
+
+        var writeMethod = PyOperators.GetAttr(context, self, "write");
+        if (writeMethod.IsError)
+            return writeMethod;
+
+        while (true)
+        {
+            var item = PySpecialMethods.Next(context, iterator.Value);
+            if (item.IsError)
+            {
+                if (item.IsStopIteration)
+                    break;
+                return item;
+            }
+            var writeResult = writeMethod.Value.Call(context, [item.Value]);
+            if (writeResult.IsError)
+                return writeResult;
+        }
+        return PyNoneObject.None;
+    }
+
     [PyMethod("readable")]
     [PyFunctionParameters()]
     private static PyResult Readable(PyCallContext context, PyTextIOWrapperObject self, PyArguments arguments)
