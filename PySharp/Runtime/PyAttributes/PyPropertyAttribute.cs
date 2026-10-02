@@ -12,12 +12,11 @@ public sealed class PyPropertyAttribute : PyAttribute
     public string Name { get; }
     public PyPropertyMethodType Type { get; set; }
 
-    // which CPython mechanism the property models, which decides the
-    // message of a failed write: a tp_getset without a setter reports
-    // "attribute 'x' of 'T' objects is not writable" (descrobject.c
-    // gset_set), while a READONLY PyMemberDef keeps the bare
-    // "readonly attribute" of PyMember_SetOne (structmember.c) — the
-    // default, since most generated members model PyMemberDef tables
+    // which CPython mechanism the property models: true builds a
+    // getset_descriptor face (tp_getset, e.g. float.real or type.__mro__),
+    // the default builds member_descriptor for the READONLY PyMemberDef
+    // tables most generated members come from; the face decides the repr
+    // and the message of a failed write
     public bool GetSet { get; set; }
 }
 
