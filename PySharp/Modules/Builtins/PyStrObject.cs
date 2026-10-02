@@ -3,6 +3,7 @@ using PySharp.Runtime.Calls;
 using PySharp.Runtime.PyAttributes;
 using PySharp.Runtime.Unicode;
 using PySharp.Utility;
+using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Globalization;
 using System.Numerics;
@@ -1840,6 +1841,13 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         }
 
         var codec = PyCodecInfo.Classify(NormalizeEncodingName(encoding));
+        // charmap codecs refuse the characters their tables leave undefined
+        // (the .NET tables encode them silently); CPython extends the error
+        // over the run of consecutive unmappable code points
+        FrozenSet<char>? undefined = null;
+        if (codec.Kind is PyCodecInfo.CodecKind.Charmap
+            && PyCharmapUndefined.TryGet(NormalizeEncodingName(encoding), out var undef))
+            undefined = undef.Chars;
         var strict = CreateReportingEncoding(enc);
         var codePoints = PyStrObject.ToCodePointArray(value);
         var bytes = new List<byte>(value.Length);
@@ -1848,6 +1856,26 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
         while (position < codePoints.Length)
         {
             var rest = value[PyStrObject.CodePointIndexToCharIndex(value, position)..];
+            // stop the .NET encoder before the first undefined character; a
+            // run opening there is its own error event
+            var undefinedAt = -1;
+            if (undefined is not null)
+            {
+                undefinedAt = IndexOfUndefined(rest, undefined);
+                if (undefinedAt is 0)
+                {
+                    var undefinedRunEnd = codec.CollectsRun
+                        ? UnmappableRunEnd(strict, codePoints, position, undefined)
+                        : position + 1;
+                    var undefinedError = ApplyEncodeErrorHandler(codec, codePoints, position, undefinedRunEnd, errors, bytes, strict, value);
+                    if (undefinedError is not null)
+                        return PyResult.FromException(undefinedError);
+                    position = undefinedRunEnd;
+                    continue;
+                }
+                if (undefinedAt > 0)
+                    rest = rest[..undefinedAt];
+            }
             byte[] encoded;
             try
             {
@@ -1867,6 +1895,11 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 continue;
             }
             bytes.AddRange(encoded);
+            if (undefinedAt > 0)
+            {
+                position += PyStrObject.CharIndexToCodePointIndex(rest, undefinedAt);
+                continue;
+            }
             break;
         }
 
@@ -1894,12 +1927,25 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 
     // CPython extends an unmappable character over the run of code points
     // the encoder also cannot map, so the error covers the whole run
-    private static int UnmappableRunEnd(Encoding strict, int[] codePoints, int start)
+    private static int UnmappableRunEnd(Encoding strict, int[] codePoints, int start, FrozenSet<char>? undefined = null)
     {
         var end = start + 1;
-        while (end < codePoints.Length && !CanEncode(strict, codePoints[end]))
+        while (end < codePoints.Length && (!CanEncode(strict, codePoints[end])
+                || undefined is not null && undefined.Contains((char)codePoints[end])))
             end++;
         return end;
+    }
+
+    // the char index of the first code point CPython's charmap table
+    // leaves undefined, or -1 when the text encodes cleanly
+    private static int IndexOfUndefined(string text, FrozenSet<char> undefined)
+    {
+        for (var i = 0; i < text.Length; i++)
+        {
+            if (undefined.Contains(text[i]))
+                return i;
+        }
+        return -1;
     }
 
     private static bool CanEncode(Encoding strict, int codePoint)
@@ -2113,6 +2159,8 @@ public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
                 return Encoding.GetEncoding(50225);
             case "tis620":
                 return Encoding.GetEncoding(874);
+            case "kz1048":
+                return Encoding.GetEncoding(21866);
             case "eucjis2004" or "jisx0213":
                 return Encoding.GetEncoding(20932);
             case "iso885915" or "latin9" or "l9":

@@ -64,6 +64,14 @@ internal sealed class PyTextCodec
     private Decoder? _genericDecoder;
     private readonly GenericWidthMode _widthMode;
 
+    /// <summary>
+    /// CPython's charmap tables refuse these bytes ('character maps to
+    /// &lt;undefined&gt;'); the BCL code pages map them to controls or
+    /// private-use characters, so they become decode error events before
+    /// the generic decoder ever sees them.
+    /// </summary>
+    private readonly PyCharmapUndefined.Undefined? _charmapUndefined;
+
     private PyTextCodec(string errorName, string errors, PyCodecInfo.CodecKind kind,
         bool stripUtf8Bom = false, bool sniffBom = false)
     {
@@ -540,6 +548,16 @@ internal sealed class PyTextCodec
     private PyDecodeStatus DecodeGeneric(ReadOnlySpan<byte> data, ref int index, bool eof, StringBuilder sb, out PyResult? error)
     {
         error = null;
+        if (_charmapUndefined is { } undefined && undefined.Bytes.Contains(data[index]))
+        {
+            // CPython charmap_decode reports each undefined byte as its own
+            // single-byte event, whatever the .NET table would make of it
+            int eventStart = index;
+            index++;
+            return ApplyHandler(data, eventStart, index, PyCodecInfo.CharmapReason, sb, out index, out error)
+                ? PyDecodeStatus.Ok
+                : PyDecodeStatus.Error;
+        }
         if (_widthMode is GenericWidthMode.Legacy)
             return DecodeGenericLegacy(data, ref index, eof, sb, out error);
 
@@ -652,5 +670,7 @@ internal sealed class PyTextCodec
     {
         _genericEncoding = genericEncoding;
         _widthMode = ResolveWidthMode();
+        _charmapUndefined = PyCharmapUndefined.TryGet(
+            PyStrObjectType.NormalizeEncodingName(errorName), out var undefined) ? undefined : null;
     }
 }
