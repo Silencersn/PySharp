@@ -92,6 +92,8 @@ public class PyFloatObject : PyObject
 [PyType("float")]
 public sealed partial class PyFloatObjectType : PyTypeObject<PyFloatObject>
 {
+    internal override bool ReleasesWithFreeList => true;
+
     [PyExport(PySpecialNames.New, nameof(NewImpl_1))]
     private static partial PyBuiltinFunctionOrMethodObject _new { get; }
 

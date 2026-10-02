@@ -89,6 +89,10 @@ public sealed partial class PyObjectType : PyTypeObject<PyObject>
     internal static readonly PyBinaryFunction GenericGetAttribute = DefaultGetAttribute;
     public static PyTypeObject Shared { get; } = new PyObjectType();
 
+    // object releases with PyObject_Free, not the GC deallocator the heap
+    // classes share (see PyTypeObject.ReleasesWithFreeList)
+    internal override bool ReleasesWithFreeList => true;
+
 
     public override IReadOnlyList<PyTypeObject> Bases => [];
 

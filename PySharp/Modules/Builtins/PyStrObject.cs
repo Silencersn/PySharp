@@ -338,6 +338,8 @@ public partial class PyStrObject : PyObject
 [PyType("str")]
 public sealed partial class PyStrObjectType : PyTypeObject<PyStrObject>
 {
+    internal override bool ReleasesWithFreeList => true;
+
     [PyMethod("join")]
     [PyFunctionParameters("iterable", "/")]
     private static PyResult Join(PyCallContext context, PyStrObject self, PyArguments arguments)

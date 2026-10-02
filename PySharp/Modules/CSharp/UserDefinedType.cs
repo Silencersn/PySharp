@@ -6,10 +6,15 @@ internal sealed partial class UserDefinedType<TObject> : PyTypeObject<TObject> w
 {
     protected override string? DefaultModule => null;
     protected override string DefaultName { get; }
-    public override IReadOnlyList<PyTypeObject> Bases { get; }
+    private IReadOnlyList<PyTypeObject> _bases;
+    public override IReadOnlyList<PyTypeObject> Bases => _bases;
     internal override bool InstancesAreImmutable => false;
     internal override bool IsImmutable => false;
     internal override bool IsRuntimeCreated => true;
+
+    // the only shape __bases__ assignment can reach: the base class's
+    // Bases is the immutable [object] sentinel
+    internal override void OverwriteBases(IReadOnlyList<PyTypeObject> bases) => _bases = bases;
 
     internal UserDefinedType(string name, string qualName, IReadOnlyList<PyTypeObject> bases) : base(qualName, bases, false)
     {
@@ -19,6 +24,6 @@ internal sealed partial class UserDefinedType<TObject> : PyTypeObject<TObject> w
         // otherwise clobber the real name
         Name = name;
         DefaultName = name;
-        Bases = bases;
+        _bases = bases;
     }
 }

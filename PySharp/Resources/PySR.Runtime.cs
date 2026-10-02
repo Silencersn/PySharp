@@ -76,6 +76,12 @@ partial class PySR
     public const string Runtime_Type_NewClsNotSubtype = "{0}.__new__({1}): {1} is not a subtype of {0}";
     public const string Runtime_Type_NewClsNotSafe = "{0}.__new__({1}) is not safe, use {1}.__new__()";
     public const string Runtime_Type_SetImmutable = "cannot set '{0}' attribute of immutable type '{1}'";
+    public const string Runtime_Type_BasesNotTuple = "can only assign tuple to {0}.__bases__, not {1}";
+    public const string Runtime_Type_BasesEmpty = "can only assign non-empty tuple to {0}.__bases__, not ()";
+    public const string Runtime_Type_BasesNonClass = "{0}.__bases__ must be tuple of classes, not '{1}'";
+    public const string Runtime_Type_BasesCycle = "a __bases__ item causes an inheritance cycle";
+    public const string Runtime_Type_BasesLayoutDiffers = "__bases__ assignment: '{0}' object layout differs from '{1}'";
+    public const string Runtime_Type_BasesDeallocatorDiffers = "__bases__ assignment: '{0}' deallocator differs from '{1}'";
     public const string Runtime_Type_SetAttrRequiresType = "descriptor '{0}' requires a 'type' object but received a '{1}'";
     public const string Runtime_Type_DictNotWritable = "attribute '__dict__' of 'type' objects is not writable";
 

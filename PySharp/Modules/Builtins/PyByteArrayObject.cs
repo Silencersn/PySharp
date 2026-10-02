@@ -158,6 +158,8 @@ public sealed class PyByteArrayObject : PyObject
 [PyType("bytearray")]
 public sealed partial class PyByteArrayObjectType : PyTypeObject<PyByteArrayObject>
 {
+    internal override bool ReleasesWithFreeList => true;
+
     // CPython add_operators: unhashable types carry __hash__ = None in
     // the type dict (read face); the tp_hash override below raises
     protected override void PostConstruct()

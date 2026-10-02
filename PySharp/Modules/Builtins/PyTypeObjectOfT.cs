@@ -353,6 +353,15 @@ public sealed partial class PyTypeObjectType : PyTypeObject<PyTypeObject>
         return PyTupleObject.CreateTuple(self.Bases);
     }
 
+    [PyProperty(PySpecialNames.Bases, Type = PyPropertyMethodType.Setter)]
+    private static PyResult Set_Bases(PyCallContext context, PyTypeObject self, PyObject value)
+    {
+        if (self.InstancesAreImmutable)
+            return PyResult.TypeError(PySR.Runtime_Type_SetImmutable, PySpecialNames.Bases, self.TpName);
+
+        return PyTypeObject.ApplyBasesAssignment(self, value);
+    }
+
     [PyProperty(PySpecialNames.Bases, Type = PyPropertyMethodType.Deleter)]
     private static PyResult Delete_Bases(PyCallContext context, PyTypeObject self)
     {

@@ -7,7 +7,7 @@ namespace PySharp.Modules.Builtins;
 
 public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
 {
-    private readonly PyTypeObject[] _mro;
+    private PyTypeObject[] _mro;
 
     // CPython tp_subclasses: a weak registry of the direct subclasses, walked
     // when a dunder assignment/deletion on this type must re-resolve inherited
@@ -33,6 +33,18 @@ public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
             // update would otherwise grow their bases' registries unbounded
             _subclasses.RemoveAll(static weakRef => !weakRef.TryGetTarget(out _));
             _subclasses.Add(new WeakReference<PyTypeObject>(subclass));
+        }
+    }
+
+    // type_set_bases removes the type from every base it is leaving
+    // (remove_all_subclasses); symmetric with RegisterSubclass, including
+    // the pruning of collected entries
+    private void UnregisterSubclass(PyTypeObject subclass)
+    {
+        lock (_subclassLock)
+        {
+            _subclasses?.RemoveAll(weakRef =>
+                !weakRef.TryGetTarget(out var target) || ReferenceEquals(target, subclass));
         }
     }
 
@@ -128,6 +140,13 @@ public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
     // CPython Py_TPFLAGS_HEAPTYPE: only runtime-created classes accept
     // attribute writes on the type object itself
     internal virtual bool IsRuntimeCreated => false;
+
+    // CPython tp_free's allocation regime: the freelist types (int, str,
+    // float, bytes, complex, bytearray) release with PyObject_Free while
+    // GC-tracked containers and heap classes use PyObject_GC_Del, so a
+    // __bases__/__class__ walk between the two reports a deallocator
+    // difference (compatible_for_assignment, Objects/typeobject.c:7063)
+    internal virtual bool ReleasesWithFreeList => false;
 
     /// <summary>
     /// The modeled CPython tp_flags bits (sequence/mapping pattern matching,
@@ -234,7 +253,162 @@ public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
         return layoutTypeOwner;
     }
 
+    // solid_base (Objects/typeobject.c): the strongest layout along the
+    // base chain. A plain heap class shares object's payload — its layout
+    // type is the shared managed-dict wrapper — so it never anchors and
+    // the walk continues through its bases.
+    internal static PyTypeObject SolidBaseOf(PyTypeObject type)
+    {
+        while (!AnchorsLayout(type) && type.Bases.Count > 0)
+            type = StrongestLayoutOf(type.Bases);
+        return type;
+    }
+
+    // a type whose layout type is the shared managed-dict wrapper carries
+    // object's payload and leaves the anchoring to a base
+    private static bool AnchorsLayout(PyTypeObject type)
+        => type.LayoutType != typeof(PyObjectManagedDict);
+
+    // best_base's layout race: the first base whose payload type derives
+    // from every other candidate's
+    private static PyTypeObject StrongestLayoutOf(IEnumerable<PyTypeObject> bases)
+    {
+        var owner = PyObjectType.Shared;
+        foreach (var baseType in bases)
+        {
+            if (baseType.LayoutType != owner.LayoutType && baseType.LayoutType.IsSubclassOf(owner.LayoutType))
+                owner = baseType;
+        }
+        return owner;
+    }
+
+    // type_set_bases rewrites the bases of a heap type in place; the base
+    // class's Bases is the shared [object] sentinel, so only a derived
+    // type with a writable list can land here
+    internal virtual void OverwriteBases(IReadOnlyList<PyTypeObject> bases)
+        => throw new UnreachableException();
+
+    // the commit tail of type_set_bases (update_all_slots walks the same
+    // rebuilt hierarchy): swap in the new linearization and re-derive the
+    // slots and flags cached from the old chain
+    private void RebuildMro(List<PyTypeObject> baseLinearization)
+    {
+        _mro = [this, .. baseLinearization];
+        Slots = PyTypeSlots.Create(MRO.Skip(1));
+        ResolveTypeFlags();
+    }
+
+    // mro_hierarchy_for_complete_type's hierarchy walk: the registered
+    // direct subclasses of each runtime-created type, breadth first so a
+    // class is always recomputed after its ancestors
+    private List<PyTypeObject> CollectSubtree()
+    {
+        var tree = new List<PyTypeObject> { this };
+        var seen = new HashSet<PyTypeObject> { this };
+        for (int i = 0; i < tree.Count; i++)
+        {
+            foreach (var subclass in tree[i].EnumerateLiveSubclasses())
+            {
+                if (seen.Add(subclass))
+                    tree.Add(subclass);
+            }
+        }
+        return tree;
+    }
+
+    // type_set_bases_unlocked (Objects/typeobject.c:1791): validate the
+    // replacement bases, recompute the MRO of the whole subtree, and only
+    // then commit bases, registries and MROs — a failure anywhere leaves
+    // the graph untouched
+    internal static PyResult ApplyBasesAssignment(PyTypeObject self, PyObject value)
+    {
+        // check_set_special_type_attr's immutable guard ran in the setter
+
+        if (value is not PyTupleObject tuple)
+            return PyResult.TypeError(PySR.Runtime_Type_BasesNotTuple, self.TpName, value.PyType.Name);
+
+        if (tuple.Count is 0)
+            return PyResult.TypeError(PySR.Runtime_Type_BasesEmpty, self.TpName);
+
+        var newBases = new List<PyTypeObject>(tuple.Count);
+        foreach (var element in tuple)
+        {
+            if (element is not PyTypeObject baseType)
+                return PyResult.TypeError(PySR.Runtime_Type_BasesNonClass, self.TpName, element.PyType.Name);
+
+            // is_subtype_with_mro: a base that is already a descendant of
+            // the type would close an inheritance cycle
+            if (baseType.IsSubclassOf(self))
+                return PyResult.TypeError(PySR.Runtime_Type_BasesCycle);
+
+            newBases.Add(baseType);
+        }
+
+        // best_base's BASETYPE gate
+        foreach (var baseType in newBases)
+        {
+            if (baseType.IsSealed)
+                return PyResult.TypeError(PySR.Runtime_Inheritance_UnacceptableBaseType, baseType.Name);
+        }
+
+        // compatible_for_assignment (Objects/typeobject.c:7059), at the
+        // level of the chosen base and the old tp_base — the level whose
+        // names the message reports. The allocation regime is compared
+        // first (tp_free), then the solid bases must still agree.
+        var oldOwner = StrongestLayoutOf(self.Bases);
+        var newOwner = StrongestLayoutOf(newBases);
+        if (!ReferenceEquals(newOwner, oldOwner))
+        {
+            if (newOwner.ReleasesWithFreeList != oldOwner.ReleasesWithFreeList)
+                return PyResult.TypeError(PySR.Runtime_Type_BasesDeallocatorDiffers, newOwner.TpName, oldOwner.TpName);
+
+            if (!ReferenceEquals(SolidBaseOf(newOwner), SolidBaseOf(oldOwner)))
+                return PyResult.TypeError(PySR.Runtime_Type_BasesLayoutDiffers, newOwner.TpName, oldOwner.TpName);
+        }
+
+        var tree = self.CollectSubtree();
+        var overriddenMros = new Dictionary<PyTypeObject, PyTypeObject[]>();
+        var newLinearizations = new List<(PyTypeObject Type, List<PyTypeObject> BaseLinearization)>(tree.Count);
+        foreach (var type in tree)
+        {
+            var bases = ReferenceEquals(type, self) ? newBases : type.Bases;
+            // the duplicate sanity check of mro_implementation_unlocked,
+            // which only runs when several bases compete
+            if (bases.Count > 1)
+            {
+                var seenBases = new HashSet<PyTypeObject>();
+                foreach (var baseType in bases)
+                {
+                    if (!seenBases.Add(baseType))
+                        return PyResult.TypeError(PySR.Runtime_Inheritance_DuplicateBase, baseType.Name);
+                }
+            }
+
+            if (!TryCreateMROWithoutSelf(bases, overriddenMros, out var linearization, out var stuckHeads))
+                return PyResult.TypeError(PySR.Runtime_Inheritance_CannotCreateMRO, string.Join(", ", stuckHeads.Select(head => head.Name)));
+
+            overriddenMros[type] = [type, .. linearization];
+            newLinearizations.Add((type, linearization));
+        }
+
+        // leave the old bases, enter the new ones, then rewrite every MRO
+        foreach (var oldBase in self.Bases.Distinct())
+            oldBase.UnregisterSubclass(self);
+        self.OverwriteBases(newBases);
+        foreach (var newBase in newBases.Distinct())
+            newBase.RegisterSubclass(self);
+        foreach (var (type, linearization) in newLinearizations)
+            type.RebuildMro(linearization);
+
+        return PyNoneObject.None;
+    }
+
     private static bool TryCreateMROWithoutSelf(IEnumerable<PyTypeObject> bases, [NotNullWhen(true)] out List<PyTypeObject>? mro, [NotNullWhen(false)] out List<PyTypeObject>? stuckHeads)
+    {
+        return TryCreateMROWithoutSelf(bases, overriddenMros: null, out mro, out stuckHeads);
+    }
+
+    private static bool TryCreateMROWithoutSelf(IEnumerable<PyTypeObject> bases, IReadOnlyDictionary<PyTypeObject, PyTypeObject[]>? overriddenMros, [NotNullWhen(true)] out List<PyTypeObject>? mro, [NotNullWhen(false)] out List<PyTypeObject>? stuckHeads)
     {
         // L[C(B1 ... BN)] = C + merge(L[B1] ... L[BN], B1 ... BN)
         mro = [];
@@ -246,8 +420,12 @@ public abstract partial class PyTypeObject : PyObjectManagedDict, IPyObjectName
             // the type of object
             return true;
 
-        // L[B1] ... L[BN]
-        List<Queue<PyTypeObject>> baseMros = [.. baseTypes.Select(baseType => new Queue<PyTypeObject>(baseType.MRO))];
+        // L[B1] ... L[BN] — an ancestor recomputed during a __bases__
+        // assignment provides its not-yet-committed linearization
+        List<Queue<PyTypeObject>> baseMros = [.. baseTypes.Select(baseType => new Queue<PyTypeObject>(
+            overriddenMros is not null && overriddenMros.TryGetValue(baseType, out var overriddenMro)
+                ? overriddenMro
+                : baseType.MRO))];
 
         // L[B1] ... L[BN], B1 ... BN
         baseMros.Add(baseTypes);

@@ -97,6 +97,8 @@ public class PyIntObject : PyObject
 [PyType("int")]
 public sealed partial class PyIntObjectType : PyTypeObject<PyIntObject>
 {
+    internal override bool ReleasesWithFreeList => true;
+
 
     [PyExport(PySpecialNames.New, nameof(NewImpl))]
     private static partial PyBuiltinFunctionOrMethodObject _new { get; }
