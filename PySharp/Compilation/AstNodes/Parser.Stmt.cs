@@ -131,7 +131,7 @@ partial class Parser
             if (!IsCurrentIdentifier)
                 return false;
 
-            var name = CurrentTokenString;
+            var name = NormalizeIdentifier(CurrentTokenString);
             MoveNextToken();
             if (CurrentTokenType is not TokenType.Colon)
                 return false;

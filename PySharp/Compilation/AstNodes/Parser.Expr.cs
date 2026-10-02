@@ -30,7 +30,7 @@ partial class Parser
         if (!IsCurrentIdentifier)
             throw SyntaxError();
 
-        var id = CurrentTokenString;
+        var id = NormalizeIdentifier(CurrentTokenString);
         MoveNextToken();
         return id;
     }
